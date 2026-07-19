@@ -101,30 +101,27 @@ verbatim as a devDependency — it has zero React imports. The contract is the
 data (`src/visual/`) and the goldens (`__screenshots__/`) — not the
 React-shaped `ViewModel` interface, which each framework adapts to its own
 model. `client-solid`'s three visual tiers point their `snapshotDir` at
-*these* `__screenshots__/react/` trees — it asserts against them and owns no
-golden images of its own.
+*these* `__screenshots__/react/` (and `react-local/<arch>/`) trees — it
+asserts against them and owns no golden images of its own.
 
-### Goldens: one container-canonical set
+### Goldens: two committed sets (CI vs local)
 
-Screenshot pixels depend on OS/arch font rasterization, so a **native** golden
-is not portable across machines — native arm64 differs from CI's x86 by ~30% of
-pixels (rasterization, not font availability). But the pinned x86 Playwright
-container, emulated via `docker --platform linux/amd64`, renders
-**byte-identical** to CI on any host. So there is exactly one committed set:
+Screenshot pixels depend on OS/arch font rasterization, so one golden set is not
+portable across machines. Both configs route `snapshotPathTemplate` by
+environment:
 
-- **`__screenshots__/react/`** — rendered in that container. The **canonical,
-  enforced** set and the cross-framework contract. Regenerate/verify it through
-  the same container on any architecture:
-  - `pnpm goldens:verify` — assert the committed set locally, CI-exact (Docker).
-  - `pnpm goldens:regen` — rewrite `react/` into the working tree, ready to commit.
-  - or the `update-visual-goldens` GitHub workflow (same container; a
-    `scenario_pattern` input does a targeted refresh + auto-commits it).
+- **`__screenshots__/react/`** — rendered by CI on x86 Linux in the pinned
+  Playwright container. This is the **canonical, enforced** set and the
+  cross-framework contract. Regenerate it via the `update-visual-goldens`
+  GitHub workflow (it runs in that container); never hand-edit it locally.
+- **`__screenshots__/react-local/<platform>-<arch>/`** — written by a local
+  `:update` run for a fast inner loop on your own machine (e.g.
+  `react-local/linux-arm64/`). Committed and reviewed, but **not** re-rendered
+  by CI, so it's your responsibility to regenerate it when the UI changes.
 
-`snapshotPathTemplate` resolves the constant `react` baseline in all three tier
-configs. There is no per-arch `react-local/` set. A **native**
-`pnpm test:ui:visual` on a non-x86 host will *not* match `react/` — verify via
-the container wrapper instead. See ADR-001 → "Cross-platform pixel drift" for
-the rationale and the byte-identity measurement.
+A non-CI run (no `CI` env var) reads/writes the `react-local/<plat>-<arch>` set;
+CI reads/writes `react/`. An intentional UI change therefore means updating
+**both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale.
 
 ## The three implemented runners
 
@@ -154,7 +151,7 @@ golden images:
   differently (CT mounts the component in isolation; Tier 2 navigates a URL and
   shoots `scenario-root`; Tier 3 renders via `vitest-browser-react`). They encode
   the _same intent_ but are not byte-identical, so each tier diffs against its own
-  `__screenshots__/react/` set.
+  `__screenshots__/react/` (+ `react-local/<arch>/`) set.
 
 ### Architecture at a glance
 
@@ -224,8 +221,8 @@ They are a defence-in-depth triangle, not redundancy:
   specs are the easiest to read when debugging a single component.
 
 The cost of the triangle: an intentional UI change means regenerating up to three
-golden sets — but all through the one container (`pnpm goldens:regen`), a single
-`react/` set per tier, no per-arch duplication.
+golden sets × two arch sets (`react/` on CI + `react-local/<arch>/` locally) — the
+dual-golden dance described above.
 
 ### Tier 1 — Playwright Component Testing (`playwright-ct/`)
 
@@ -304,8 +301,11 @@ pnpm test:ui:visual:vitest-browser:react:update  # regenerate Tier 3 goldens
 
 ### Regenerate / verify the canonical `react/` set in the container (any architecture)
 
-There is a single container-canonical golden set (`react/`). Regenerate or verify
-it inside the pinned Playwright container (requires Docker) on *any* architecture:
+The `:update` scripts above write the **local** `react-local/<arch>` set (see
+"two committed sets" below), which never matches the CI `react/` baseline on a
+non-x86 machine. To produce or check the **canonical `react/` set** — CI-exact,
+byte-for-byte — on *any* architecture, run it inside the pinned Playwright
+container instead (requires Docker):
 
 ```
 pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate)
@@ -316,22 +316,8 @@ Both run all three tiers with `CI=1` inside `mcr.microsoft.com/playwright` via
 `--platform linux/amd64`; the emulated container reproduces CI's x86 pixels
 byte-for-byte (measured 2026-07-18), so an arm64 dev can regenerate and commit
 the canonical goldens locally — no `update-visual-goldens` workflow round-trip.
-
-> ⚠️ **The `:update` scripts refuse to run on a non-x86 host — by design.** Now
-> that `baseline` is the constant `react`, a native `…:react:update` would write
-> your host's (arm64) pixels straight into `react/` and corrupt the canonical
-> set. A preflight guard (`guardGoldenUpdate.ts`, called from all three tier
-> configs) hard-fails any `--update` / `--update-snapshots` off `x64` — so
-> regenerate only through `pnpm goldens:regen` (container) or the
-> `update-visual-goldens` workflow, both of which render as `x64` and pass the
-> guard. (Deliberate throwaway experiment that won't match CI?
-> `RTC_ALLOW_NATIVE_GOLDEN_UPDATE=1` overrides it.) The bare `:update` scripts
-> are correct only *inside* the container — which is exactly what `goldens:regen`
-> invokes.
-
-No Docker (e.g. the claude-sandbox)? Push a branch and dispatch
-`update-visual-goldens.yml` (optionally with a `scenario_pattern`) — it
-regenerates in the container and auto-commits back. See
+This is the first step of the migration to a single container-canonical set that
+retires `react-local/<arch>` entirely — see
 [the design spec](../../../../../docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md).
 
 `test:ui:visual` and `test:ui:visual:react` are wired to
@@ -350,8 +336,7 @@ per-runner benchmark. Run a single runner in isolation to measure actual speed.
 Per the caveat above, these were measured by running **each runner on its own**,
 sequentially — not via the concurrent `test:ui:visual` orchestrator — so they are
 fair per-tier figures. All three render the **same 88 scenarios** and diff
-against the committed `react/` golden set. (Historical bench — predates both the
-theme matrix and the single-set collapse; kept for relative per-tier timings.)
+against the local `react-local/darwin-arm64/` golden set.
 
 > **Bench box:** Apple M2 Max (12 cores), macOS (Darwin 25.5.0), Node 26.0.0,
 > pnpm 11.7.0 · single run each · **2026-06-21** · all tiers PASS. Wall-clock
@@ -405,7 +390,8 @@ did materialize, but the resolution was a fallback tier, not a stalled port.
   `client-solid`'s Tier 2 is this file, copied without a behavioural change
 - `playwright-ct/__screenshots__/react/` and
   `playwright/__screenshots__/react/` — the canonical (CI-enforced)
-  golden contract (see "Goldens: one container-canonical set" above)
+  golden contract (see "Goldens: two committed sets" above; the per-arch
+  `react-local/` sets are local-feedback only)
 
 **What was implemented for Solid:**
 
@@ -482,10 +468,10 @@ green = rendered into some frame (not a guarantee of a dedicated scenario). The
 denominator is `src/ui/**/*.tsx` only — pure `.ts` logic/hook files belong to the
 unit/contract tiers.
 
-> **CI golden caveat.** The canonical `react/` goldens are rendered in the pinned
-> x86 Playwright container — locally via `pnpm goldens:regen` (Docker), or via the
-> `update-visual-goldens` workflow (which the Docker-less claude-sandbox uses:
-> push a branch and dispatch it). When a PR adds or changes scenarios, `react/`
-> must be regenerated through the container; until it is, the **post-merge visual
-> job stays red** for those scenarios. That is expected on such a PR, not a
-> regression.
+> **CI golden caveat.** The canonical x86 `react/` goldens are generated by the
+> `update-visual-goldens` GitHub workflow (it runs in the pinned x86 Playwright
+> container); they **cannot** be produced in the aarch64 dev container, which
+> writes only the `react-local/linux-arm64/` set. When a PR adds or changes
+> scenarios, the local set is committed here but the CI `react/` set lags until
+> the workflow runs — so the **visual CI job stays red until that workflow
+> regenerates `react/`**. That is expected on such a PR, not a regression.

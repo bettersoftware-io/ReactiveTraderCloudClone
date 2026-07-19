@@ -40,25 +40,19 @@ Reasons, in priority order:
 ## Consequences / known weaknesses
 
 - **Experimental API.** `experimental-ct-*` can change between releases.
-- **Cross-platform pixel drift → a single container-canonical baseline.**
-  Screenshot pixels depend on OS/arch font rasterization (FreeType/HarfBuzz), so
-  a single golden filename is *not* portable across **native** renders — native
-  arm64 differs from CI's x86 by ~30% of pixels (rasterization rounding, not
-  font availability; the app fonts are self-hosted via `@fontsource/*`). But the
-  pinned x86 Playwright container, emulated via `docker --platform linux/amd64`,
-  renders **byte-identical** to CI on any host architecture (measured 2026-07-18:
-  30/30 across all three tiers, `cmp`-identical). So there is exactly ONE
-  committed set — `react/`, rendered in that container — and every architecture
-  regenerates/verifies through the same container via `pnpm goldens:regen` /
-  `pnpm goldens:verify`. `snapshotPathTemplate` resolves the constant `react`
-  baseline in all three tier configs; an intentional UI change regenerates the
-  one set (the `update-visual-goldens` workflow, or the wrapper locally) — there
-  is no per-arch set to keep in sync. **Tradeoff:** a native `pnpm test:ui:visual`
-  on a non-x86 host will not match `react/`; verify via the container wrapper.
-  This supersedes the original two-committed-baselines design (a per-arch
-  `react-local/<platform>-<arch>/` set), which rejected the emulated container
-  as "slow qemu amd64" **without measuring it** — in practice the warm container
-  install is ~21s and the byte-identity is exact.
+- **Cross-platform pixel drift → two committed baselines.** Screenshot pixels
+  depend on OS/arch font rasterization (FreeType/HarfBuzz), so a single golden
+  filename is *not* portable across machines. We route by environment
+  (`snapshotPathTemplate` in both Playwright configs): CI renders on x86 Linux
+  inside the pinned Playwright container and owns the canonical `react/`
+  baseline — the cross-framework contract, and the only set the CI visual job
+  re-renders and enforces. A local dev machine writes its own committed
+  `react-local/<platform>-<arch>/` set, giving a fast local inner loop without
+  an emulated container (which on Apple Silicon would be slow qemu amd64). Both
+  sets are versioned and reviewed at commit time; an intentional UI change must
+  regenerate **both** — the x86 set via the `update-visual-goldens` workflow,
+  each local set via the runner's `:update` script — since no CI runner
+  reproduces a developer's architecture.
 - **No review UI.** Baselines are inspected by eye and committed (no
   Chromatic-style approve/reject workflow).
 
@@ -84,8 +78,8 @@ A third comparison tier driven by Vitest's `@vitest/browser` +
 `vitest-browser-react`, using the **experimental**
 `expect.element(...).toMatchScreenshot()` matcher (Vitest 4). It mounts the React
 harness in a real Chromium via the Playwright provider and diffs against the same
-single committed golden set as the other tiers
-(`vitest-browser/__screenshots__/react/`).
+committed, env-routed goldens as the other tiers
+(`vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/`).
 
 **Previously blocked, now unblocked.** This tier was originally dropped at a
 decision gate because `toMatchScreenshot` needs **Vitest 4**, and at the time the
@@ -114,8 +108,8 @@ tests), so the tier was built.
   `page.elementLocator(document.body)`.
 - **No `page.route`.** The admin throughput fetch is stubbed by overriding
   `window.fetch` before the App mounts (vs the Playwright tier's `page.route`).
-- **Filename carries the browser.** Goldens are named `<scenario>-chromium.png`
-  under the single `react/` baseline directory.
+- **Filename carries the browser, dir carries the arch.** Goldens are named
+  `<scenario>-chromium.png`; the per-arch split lives in the baseline directory.
 
 Vitest browser mode is also the recommended *driver for a future Solid port* (see
 below) — having it as a live tier means the Solid port can reuse this runner
@@ -131,7 +125,7 @@ prerequisite landed — see "Vitest browser mode — implemented (Tier 3)" above
 | **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`playwright/host/`) | `vitest-browser-react` `render(<VisualScenario/>)` in Chromium via the `@vitest/browser-playwright` provider |
 | **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` | `expect.element(locator).toMatchScreenshot(...)` |
 | **Spec file** | Framework-specific — imports `@ui-visual`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework | Framework-specific — imports `@ui-visual`, calls `render(...)`; shares the `scenarioActions` table with Tier 2 |
-| **Goldens** | `playwright-ct/__screenshots__/react/` | `playwright/__screenshots__/react/` | `vitest-browser/__screenshots__/react/` |
+| **Goldens** | `playwright-ct/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` | `playwright/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` (CI vs local) | `vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` |
 | **Ergonomics** | Tighter feedback loop; components mount in-process; no server needed | Slightly heavier (Vite dev server started per run); but the spec is maximally portable | In-process mount, no server; fastest of the three locally (~2–4s for all 17) |
 | **Solid-reuse story** | **Alias-swap** — re-point `@ui-visual` in the CT Vite config to `solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced | **Alias-swap + render shim** — re-point `@ui-visual` and swap `vitest-browser-react` for the framework's `render`; no lagging CT adapter to track |
 | **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server | `vitest-browser-<framework>` render shim; Vite-native, no separate CT-adapter version to track |
@@ -273,18 +267,10 @@ no rework:
 
 ### Regeneration
 
-One set, one path. The canonical `react/` set is rendered in the pinned x86
-Playwright container — either by the `update-visual-goldens.yml` workflow (a
-full refresh **cleans the `react/` dirs before regen** since `--update` never
-deletes orphaned goldens; a `scenario_pattern` dispatch instead regenerates only
-the matching goldens and auto-commits them to the branch), or locally by the
-`pnpm goldens:regen` / `pnpm goldens:verify` wrapper, which runs the same
-container via `docker --platform linux/amd64` on any host and produces
-byte-identical output. There is no per-arch set to regenerate.
-
-**Docker-less environments (the claude-sandbox).** The sandbox has no Docker
-(no CLI, no socket mount, unprivileged), so it can't run the wrapper. It updates
-goldens by pushing a branch and dispatching `update-visual-goldens.yml` (Option
-C — CI-routed), which regenerates and commits back. A local native
-`pnpm test:ui:visual` there (or on any non-x86 host) will not match `react/` and
-is not the gate — the container run is.
+Same dual-set discipline as the rest of this ADR: the canonical `react/` set is
+baked in the Playwright container via `update-visual-goldens.yml` (which now
+**cleans the `react/` dirs before regen**, since the folder move orphans the old
+flat goldens that `--update` never deletes); the per-arch `react-local/<arch>/`
+set is regenerated on the dev machine. Local gen is ~11 min/arch; the container
+run is comparable. (`react-local/linux-arm64` must be regenerated in the aarch64
+sandbox — no darwin box reproduces its pixels.)
