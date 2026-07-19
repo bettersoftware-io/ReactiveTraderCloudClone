@@ -209,7 +209,7 @@ flowchart LR
         srv["rtc-clone-server<br/>@rtc/server · port 4000<br/>scale-to-zero · GET /health<br/>WS upgrade token-gated"]
     end
 
-    subgraph Vercel["Vercel (all password/Basic-Auth gated)"]
+    subgraph Vercel["Vercel (real apps: login-gated · protos: password-gated)"]
         v1["rtc-clone-react<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
         v1s["rtc-clone-solid<br/>@rtc/client-solid<br/>VITE_SERVER_URL baked at build"]
         v2["rtc-clone-proto<br/>@rtc/client-prototype<br/>(v2-design React port)"]
