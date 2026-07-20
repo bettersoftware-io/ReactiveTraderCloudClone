@@ -10,23 +10,37 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { BootCanvas } from "#/ui/shell/boot/BootCanvas";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
+import { hasBootScene } from "#/ui/shell/boot/bootScene";
+import { useBootMotionEnabled } from "#/ui/shell/boot/useBootMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Boot splash content: emblem + wordmark + progress ramp + SKIP. All timing
- * (progress, done, variant) comes from the reused BootSequenceMachine via
- * `useBootSequence(onDone)`; this leaf only paints it and dispatches `skip`.
- * `onDone` is passed straight through to the machine (which invokes it when the
- * ramp completes or SKIP is pressed) — BootSequence never calls it directly. */
+/** Boot splash content: Skia canvas + emblem + wordmark + progress ramp +
+ * SKIP. All timing (progress, done, variant) comes from the reused
+ * BootSequenceMachine via `useBootSequence(onDone)`; this leaf only paints it
+ * and dispatches `skip`. `onDone` is passed straight through to the machine
+ * (which invokes it when the ramp completes or SKIP is pressed) —
+ * BootSequence never calls it directly.
+ *
+ * `BootCanvas` mounts full-bleed BEHIND the chrome below (it renders first,
+ * so later siblings stack on top) and is itself the motion/variant gate —
+ * it returns `null` under reduced motion, Freeze power-saver, or for a
+ * variant with no registered scene. `BootEmblem`, the static SVG stand-in, is
+ * the mirror image: shown only when the canvas is NOT (`!motionEnabled ||
+ * !hasBootScene(...)`), so the two never overlap on screen. */
 export function BootSequence({ onDone }: BootSequenceProps): JSX.Element {
   const { useBootSequence } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
   const styles = useThemedStyles(makeStyles);
+  const motionEnabled = useBootMotionEnabled();
+  const showEmblem = !motionEnabled || !hasBootScene(state.variant);
 
   return (
     <View testID="boot-sequence" style={styles.root}>
-      <BootEmblem />
+      <BootCanvas variant={state.variant} />
+      {showEmblem ? <BootEmblem /> : null}
       <Text testID="boot-wordmark" style={styles.wordmark}>
         REACTIVE TRADER
       </Text>
