@@ -83,10 +83,28 @@
   color: var(--dim);
 }
 
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .detailTitle {
   margin: 0;
   color: var(--fg);
   font-size: 13px;
+}
+
+.timelineButton {
+  flex: none;
+  padding: 2px 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 .meta {
@@ -134,9 +152,26 @@
   gap: 6px;
 }
 
+/* The only interactive element in an intent row — a sibling of the
+ * `ValueView`-rendered args, never their wrapper (see `IntentPinButton`). */
+.intentPin {
+  flex: none;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .intentName {
   color: var(--accent);
   font-weight: 600;
+}
+
+.intentPin:hover .intentName,
+.intentPin:focus-visible .intentName {
+  text-decoration: underline;
 }
 
 .inject {

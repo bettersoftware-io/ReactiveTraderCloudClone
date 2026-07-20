@@ -226,7 +226,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The inspector SPA: a Vite + React 19 app with four panels (state tree, machine registry, event log, wire tap) driven entirely by the wire protocol. |
+| **What it is** | The inspector SPA: a Vite + React 19 app, timeline-first ([§20.11](20-devtools.md#2011-timeline-first-ux-v2)) — a unified event timeline with pin-to-moment selection, an Event/State/Diff context pane, and Machines/Wire as cross-linked lenses — driven entirely by the wire protocol. |
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Depends on** | `@rtc/devtools-core`, `react`, `react-dom` (`packages/devtools-app/package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace as a source dependency -- `client-react` only takes a `devDependency` build-order/dist-path edge to it (§6), never imports its source |
@@ -387,21 +387,26 @@ src/
 src/
 ├── protocol.ts               DevtoolsEvent / AppToInspector / InspectorToApp / PresenterManifest
 ├── serialize.ts                depth/array/string caps + Map/Set tagged encodings
+├── diff.ts                       diffSerialized — structural diff over two SerializedValue trees
 ├── DevtoolsHub.ts               registry · dormancy · coalescing · ring buffer · flush loop
 ├── transport.ts, channel.ts       DevtoolsTransport port · Duplex · in-memory pair
-├── BroadcastChannelDuplex.ts       same-origin v1 transport adapter
+├── BroadcastChannelDuplex.ts, WsRelayDuplex.ts   same-origin + RN-relay transport adapters
 ├── instrument/                     instrumentPresenters · instrumentMachineFactories · instrumentWsAdapter
 ├── InspectorClient.ts, InspectorStore.ts   panel-side: wraps a Duplex, rebuilds InspectorState
+├── projectSnapshot.ts              InspectorState → a synthetic seed AppToInspector frame
+├── LiveHistory.ts, Recorder.ts, recording.ts   rolling time-travel buffer · bounded flight recorder · Recording JSON (de)serialize
 └── index.ts                          public export surface
 ```
 
 `@rtc/devtools-app`:
 ```
 src/
-├── main.tsx, InspectorApp.tsx     entry point + shell (connection rail, tab switcher)
+├── main.tsx, InspectorApp.tsx     entry point + shell (connection rail, lens switcher)
 ├── inspectorSession.ts             wires an InspectorClient to React state
 ├── useInspectorState.ts             hook exposing the live InspectorState
-└── panels/                           StateTreePanel · MachinesPanel · EventLogPanel · WirePanel · ValueView
+├── panels/                           StateTreePanel · MachinesPanel · WirePanel · ValueView
+├── timeline/                          TimelinePane · ContextPane · FilterControls · DiffView · timelineModel · useTimeline
+└── recording/                         RecordingToolbar · useRecording · downloadRecording
 ```
 
 `@rtc/server`:

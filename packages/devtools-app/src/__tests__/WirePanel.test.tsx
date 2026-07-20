@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
 import type { LogRow } from "@rtc/devtools-core";
@@ -22,8 +22,8 @@ test("shows the exact empty-state text when the log has no wire events", () => {
 test("filters the log down to wire:in/wire:out rows only", () => {
   const log: LogRow[] = [
     nonWireRow({ seq: 1 }),
-    wireRow({ seq: 2, kind: "wire:out", msgType: "order" }),
-    wireRow({ seq: 3, kind: "wire:in", msgType: "price_tick" }),
+    wireRow(2, "wire:out", "order", 0),
+    wireRow(3, "wire:in", "price_tick", 0),
   ];
 
   render(<WirePanel log={log} />);
@@ -37,24 +37,59 @@ test("filters the log down to wire:in/wire:out rows only", () => {
   expect(screen.getByText("price_tick: 1")).toBeTruthy();
 });
 
-interface WireRowParams {
-  seq: number;
-  kind: "wire:in" | "wire:out";
-  msgType: string;
-}
+test("health header shows rates and reconnects; msgType chips add pills", () => {
+  const log = [
+    wireRow(1, "wire:in", "priceUpdate", 1000),
+    wireRow(2, "wire:in", "priceUpdate", 6000),
+    wireRow(3, "wire:out", "executeTrade", 9000),
+    registeredRow(4, "fx.price$", 9500),
+    registeredRow(5, "fx.price$", 9900), // re-registration => 1 reconnect
+  ];
+  const pills: string[] = [];
 
-function wireRow({ seq, kind, msgType }: WireRowParams): LogRow {
-  return {
-    seq,
-    ts: 0,
-    kind,
-    summary: `${msgType} payload`,
-    event: { kind, seq, ts: 0, msgType, payload: null },
-  };
-}
+  render(
+    <WirePanel
+      log={log}
+      onMsgTypePill={(msgType: string): void => {
+        pills.push(msgType);
+      }}
+    />,
+  );
+
+  expect(screen.getByText(/reconnects: 1/)).toBeTruthy();
+  expect(screen.getByText(/in\/s/)).toBeTruthy();
+
+  fireEvent.click(screen.getByText("priceUpdate: 2"));
+  expect(pills).toEqual(["priceUpdate"]);
+});
 
 interface NonWireRowParams {
   seq: number;
+}
+
+function wireRow(
+  seq: number,
+  kind: "wire:in" | "wire:out",
+  msgType: string,
+  ts: number,
+): LogRow {
+  return {
+    seq,
+    ts,
+    kind,
+    summary: `${msgType} payload`,
+    event: { kind, seq, ts, msgType, payload: null },
+  };
+}
+
+function registeredRow(seq: number, streamId: string, ts: number): LogRow {
+  return {
+    seq,
+    ts,
+    kind: "stream:registered",
+    summary: `${streamId} registered`,
+    event: { kind: "stream:registered", seq, ts, streamId },
+  };
 }
 
 function nonWireRow({ seq }: NonWireRowParams): LogRow {

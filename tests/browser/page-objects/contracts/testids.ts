@@ -129,6 +129,9 @@ export const TESTIDS = {
     connectionBadge: "connection-badge",
     streamRow: "devtools-stream-row",
     machineRow: "devtools-machine-row",
+    timelineRow: "timeline-row",
+    pinnedBar: "pinned-bar",
+    lensMachines: "lens-machines",
   },
   /**
    * The full-screen boot splash (BootSequence), mounted by BootGate OUTSIDE

@@ -10,13 +10,22 @@ import { ValueView } from "#/panels/ValueView";
  * under `blotter`; a method stream-id like `priceStream.price$[["EURUSD"]]`
  * still splits correctly since the double-bracket arg tuple comes after the
  * dot). Each row change-flashes its value span on a new `lastSeq`. */
-export function StateTreePanel({ streams }: StateTreePanelProps): ReactElement {
+export function StateTreePanel({
+  streams,
+  changedIds,
+}: StateTreePanelProps): ReactElement {
   const groups = groupByPresenter(streams);
 
   return (
     <div className={styles.panel}>
       {groups.map((group) => {
-        return <PresenterSection key={group.presenter} group={group} />;
+        return (
+          <PresenterSection
+            key={group.presenter}
+            group={group}
+            changedIds={changedIds}
+          />
+        );
       })}
     </div>
   );
@@ -24,6 +33,10 @@ export function StateTreePanel({ streams }: StateTreePanelProps): ReactElement {
 
 export interface StateTreePanelProps {
   streams: readonly StreamRow[];
+  /** streamIds whose pinned value differs from the live one — flagged with
+   * a "≠ live" mark. Optional so existing callers (the live "State" tab)
+   * stay unchanged. */
+  changedIds?: ReadonlySet<string>;
 }
 
 interface PresenterGroup {
@@ -33,15 +46,25 @@ interface PresenterGroup {
 
 interface PresenterSectionProps {
   group: PresenterGroup;
+  changedIds?: ReadonlySet<string>;
 }
 
-function PresenterSection({ group }: PresenterSectionProps): ReactElement {
+function PresenterSection({
+  group,
+  changedIds,
+}: PresenterSectionProps): ReactElement {
   return (
     <section className={styles.group}>
       <h3 className={styles.groupTitle}>{group.presenter}</h3>
       <div className={styles.rows}>
         {group.rows.map((row) => {
-          return <StreamRowView key={row.streamId} row={row} />;
+          return (
+            <StreamRowView
+              key={row.streamId}
+              row={row}
+              changed={changedIds?.has(row.streamId) ?? false}
+            />
+          );
         })}
       </div>
     </section>
@@ -50,9 +73,10 @@ function PresenterSection({ group }: PresenterSectionProps): ReactElement {
 
 interface StreamRowViewProps {
   row: StreamRow;
+  changed: boolean;
 }
 
-function StreamRowView({ row }: StreamRowViewProps): ReactElement {
+function StreamRowView({ row, changed }: StreamRowViewProps): ReactElement {
   const flashRef = useRef<HTMLSpanElement>(null);
 
   useEffect((): void => {
@@ -74,6 +98,11 @@ function StreamRowView({ row }: StreamRowViewProps): ReactElement {
       <span ref={flashRef} className={styles.flash}>
         <ValueView value={row.lastValue} />
       </span>
+      {changed ? (
+        <span className={styles.changedMark} title="differs from live">
+          ≠ live
+        </span>
+      ) : null}
       {row.ratePerSec > 0.5 ? (
         <span className={styles.rate}>{`${row.ratePerSec.toFixed(1)}/s`}</span>
       ) : null}
