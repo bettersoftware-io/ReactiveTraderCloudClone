@@ -12,6 +12,7 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 import { BLOTTER_COLUMN_FLEX } from "./blotterColumns";
@@ -22,15 +23,28 @@ import { useRowInsertFlash } from "./useRowInsertFlash";
  * rate, and a status pill with a joined-or-fallback timestamp beneath it.
  * Column widths are the shared `BLOTTER_COLUMN_FLEX` ratios so the row lines
  * up under `BlotterHeader`. Wrapped in an `Animated.View` carrying the
- * row-insert flash (rise + fade + direction-tinted background wash). */
+ * row-insert flash (rise + fade + a status/direction-tinted background wash,
+ * resting on the row's own opaque background — see `useRowInsertFlash`). */
 export function TradeRow({ trade, isNew, time }: TradeRowProps): JSX.Element {
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const motionEnabled = useShellMotionEnabled();
   const directionStyle = directionTextStyle(styles, trade.direction);
   const pillStyle = statusPillStyle(styles, trade.status);
+  // Prototype tints the insert flash by STATUS first, DIRECTION second
+  // (dc.html ~L870): `status === 'REJECTED' ? neg : dir === 'BUY' ? pos : neg`.
+  // `directionStyle.color` already resolves to `neg` for a sell in every
+  // case, so the only override needed is a rejected BUY, which would
+  // otherwise flash `pos` via `directionStyle`.
+  const flashColor =
+    trade.status === TradeStatus.Rejected
+      ? styles.directionSell.color
+      : directionStyle.color;
+
   const { flashStyle } = useRowInsertFlash(
     isNew,
-    directionStyle.color,
+    flashColor,
+    theme.bgPrimary,
     motionEnabled,
   );
 
@@ -149,7 +163,10 @@ function makeStyles(t: RnTheme): TradeRowStyles {
       paddingHorizontal: 14,
       paddingTop: 7,
       paddingBottom: 6,
-      backgroundColor: t.bgTile,
+      // The prototype's blotter row background is `var(--bg)` (dc.html row
+      // `data-tr`), the same token as the screen root — NOT `--tile-bg`
+      // (`bgTile`), which is the spot-tile surface `SpotTile.tsx` uses.
+      backgroundColor: t.bgPrimary,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.borderSubtle,
     },

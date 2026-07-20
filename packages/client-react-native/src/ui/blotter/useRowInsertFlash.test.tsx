@@ -15,7 +15,12 @@ import { useRowInsertFlash } from "./useRowInsertFlash";
 // returned — it cannot assert timing.
 test("mounts and survives isNew and gating transitions", async () => {
   function Probe({ isNew, enabled }: ProbeProps): React.JSX.Element {
-    const { flashStyle } = useRowInsertFlash(isNew, "#22c55e", enabled);
+    const { flashStyle } = useRowInsertFlash(
+      isNew,
+      "#22c55e",
+      "#00060a",
+      enabled,
+    );
     return (
       <Animated.View style={flashStyle}>
         <Text>row</Text>

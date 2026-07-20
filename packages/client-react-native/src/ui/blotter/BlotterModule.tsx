@@ -39,7 +39,14 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * Row insert/remove uses Reanimated's native layout-animation API
  * (`LinearTransition`/`FadeInDown`/`FadeOut`) — not `@rtc/motion-core`'s
  * `flipDeltas`, which targets the web clients' manual WAAPI path — all three
- * stripped to `undefined` when `useShellMotionEnabled()` is false. Named
+ * stripped to `undefined` when `useShellMotionEnabled()` is false.
+ * `FadeInDown`/`FadeOut`/`LinearTransition` are for the filter-chip FLIP
+ * (rows entering/leaving as the filter narrows or widens), not for trade
+ * arrival — a genuinely new trade already gets the 950ms row-insert flash
+ * (`TradeRow`/`useRowInsertFlash`), so `entering` is suppressed for rows the
+ * module already knows are new (`newIds.has(item.tradeId)`) to avoid playing
+ * both animations' opacity ramps at once; a filter change still reveals rows
+ * via `FadeInDown` since those are never in `newIds`. Named
  * export (repo policy bans default exports outside `app/**` route files/
  * config); the route re-exports its own default from this. */
 export function BlotterModule(): JSX.Element {
@@ -71,19 +78,22 @@ export function BlotterModule(): JSX.Element {
         data={shown}
         keyExtractor={keyExtractor}
         renderItem={({ item }: ListRenderItemInfo<Trade>) => {
+          const isNew = newIds.has(item.tradeId);
           return (
             <Animated.View
               layout={
                 motionEnabled ? LinearTransition.duration(320) : undefined
               }
               entering={
-                motionEnabled ? FadeInDown.duration(300).delay(60) : undefined
+                motionEnabled && !isNew
+                  ? FadeInDown.duration(300).delay(60)
+                  : undefined
               }
               exiting={motionEnabled ? FadeOut.duration(220) : undefined}
             >
               <TradeRow
                 trade={item}
-                isNew={newIds.has(item.tradeId)}
+                isNew={isNew}
                 time={timeById.get(item.tradeId)}
               />
             </Animated.View>

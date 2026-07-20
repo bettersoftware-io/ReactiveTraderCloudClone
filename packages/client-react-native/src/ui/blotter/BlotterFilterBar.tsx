@@ -58,8 +58,7 @@ export function BlotterFilterBar({
       </ScrollView>
       <Text style={styles.summary} testID="blotter-fills-summary">
         {summary.fills} FILLS · <Text style={styles.buys}>{summary.buys}B</Text>
-        <Text style={styles.divider}>/</Text>
-        <Text style={styles.sells}>{summary.sells}S</Text>
+        /<Text style={styles.sells}>{summary.sells}S</Text>
       </Text>
     </View>
   );
@@ -80,12 +79,37 @@ interface BlotterFilterBarStyles {
   label: TextStyle;
   labelActive: TextStyle;
   summary: TextStyle;
-  divider: TextStyle;
   buys: TextStyle;
   sells: TextStyle;
 }
 
 function makeStyles(t: RnTheme): BlotterFilterBarStyles {
+  // Chip-label base: shared by the inactive/active label variants (TradeRow's
+  // `direction`/`pill` local-base idiom — spread into each variant below).
+  const label: TextStyle = {
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 1,
+    fontFamily: t.fontMono,
+  };
+
+  // Fills-summary base: shared by the summary text and its buy/sell inline
+  // spans (a slightly tighter letterSpacing than the chip labels).
+  const metric: TextStyle = {
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    fontFamily: t.fontMono,
+  };
+
+  // Chip-shape base: shared by the inactive/active pill layout.
+  const pill: ViewStyle = {
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  };
+
   return StyleSheet.create({
     row: {
       flexDirection: "row",
@@ -99,69 +123,33 @@ function makeStyles(t: RnTheme): BlotterFilterBarStyles {
       gap: 7,
       paddingHorizontal: 12,
       paddingTop: 10,
-      paddingBottom: 2,
+      // Prototype bar is `padding: 10px 12px 8px` (dc.html:134); Phase 4a's
+      // `RateFilterBar` value of 2 was invisible there because the next
+      // element was a grid — here it's the bordered column header, where the
+      // gap shows.
+      paddingBottom: 8,
       alignItems: "center",
     },
-    pill: {
-      paddingHorizontal: 13,
-      paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      backgroundColor: "transparent",
-      borderColor: t.border,
-    },
+    pill: { ...pill, backgroundColor: "transparent", borderColor: t.border },
     pillActive: {
-      paddingHorizontal: 13,
-      paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
+      ...pill,
       backgroundColor: t.accentPrimary,
       borderColor: t.accentPrimary,
     },
-    label: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 1,
-      color: t.textSecondary,
-      fontFamily: t.fontMono,
-    },
-    labelActive: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 1,
-      color: t.textOnAccent,
-      fontFamily: t.fontMono,
-    },
+    label: { ...label, color: t.textSecondary },
+    labelActive: { ...label, color: t.textOnAccent },
     summary: {
+      ...metric,
       flex: 1,
       textAlign: "right",
       paddingRight: SPACING.md,
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 0.5,
-      color: t.textSecondary,
-      fontFamily: t.fontMono,
+      // Prototype's summary is `var(--faint)` (dc.html:138) → `textMuted`,
+      // matching `BlotterHeader`'s column labels on the same screen —
+      // `textSecondary` is the prototype's `T.dim`, reserved for the
+      // inactive chip label.
+      color: t.textMuted,
     },
-    divider: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 0.5,
-      color: t.textSecondary,
-      fontFamily: t.fontMono,
-    },
-    buys: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 0.5,
-      color: t.accentPositive,
-      fontFamily: t.fontMono,
-    },
-    sells: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 0.5,
-      color: t.accentNegative,
-      fontFamily: t.fontMono,
-    },
+    buys: { ...metric, color: t.accentPositive },
+    sells: { ...metric, color: t.accentNegative },
   });
 }

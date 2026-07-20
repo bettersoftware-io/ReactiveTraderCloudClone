@@ -83,6 +83,26 @@ test("paints a Rejected status with the negative accent colour", async () => {
   ).toBe(rnThemeTokens.holo.dark.accentNegative);
 });
 
+// Regression test for Important 1 (the insert flash permanently erasing
+// every row's background): with motion disabled, `useRowInsertFlash` must
+// still resolve `backgroundColor` to the row's own opaque base colour, not
+// leave it `"transparent"` and let the Skia ambient background show through.
+test("renders an opaque row background with motion disabled", async () => {
+  mockMotion.mockReturnValueOnce(false);
+
+  await renderWithTheme(
+    <TradeRow trade={DONE_TRADE} isNew={false} time={undefined} />,
+  );
+
+  expect(screen.getByTestId("trade-row-42").props.style).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        backgroundColor: rnThemeTokens.holo.dark.bgPrimary,
+      }),
+    ]),
+  );
+});
+
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
     useShellMotionEnabled: () => {
