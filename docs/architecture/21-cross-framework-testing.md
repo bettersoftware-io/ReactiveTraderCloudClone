@@ -59,7 +59,7 @@ this section.
 | Tier | Shared source | React result | Solid result |
 |---|---|---|---|
 | UI contract (sociable RTL) | 86 `*.contract.spec.ts` files, one tree | 86 files, 622 tests passing | 86 files, 622 tests passing — **full parity**, `notYetPortedSpecs` is `[]` |
-| Visual goldens (3 tiers) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) × 3 runners each | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios × 3 tiers, **assert-only** against the `ui-contract/goldens/` tree (generated only from client-react renders) — owns zero goldens of its own |
+| Visual goldens (`playwright` tier, CI-asserted since the 2026-07-20 bake-off retirement — see [§9.7](09-test-strategy.md#97-visual-golden-tiers)) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios, **assert-only** against the `ui-contract/goldens/playwright/` tree (generated only from client-react renders) — owns zero goldens of its own |
 | e2e (Gherkin behavioural) | Same `.feature` files + step definitions + page objects | 4 browser suites, ports 3001–3004 | 2 browser suites, ports 3005–3006 (`playwright`, `playwright-cucumber`) — 1 spec excluded (`login.spec.ts`, see [The fine print](#the-fine-print)) |
 | Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same four panels, same protocol, different app id) |
 
@@ -187,14 +187,18 @@ flowchart TB
 
 ### Mechanism 2 — assert-only visual tiers
 
-Both clients run the same three visual tiers (vitest-browser, Playwright,
-CT/CT-fallback) over the same shared manifest
+**Updated 2026-07-20.** Both clients used to run three visual tiers
+(vitest-browser, Playwright, CT/CT-fallback); a test-tooling bake-off retired
+two of them from the assert role (see [§9.7's Outcome](09-test-strategy.md#97-visual-golden-tiers)
+and [ADR-001's Outcome section](../../packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md)).
+Today both clients assert through the single surviving `playwright` tier over
+the same shared manifest
 (`packages/ui-contract/src/visual/scenarios.ts` — a `Scenario` maps a name to
 a `componentKey` + `fixtureKey`) and the same golden-path resolver
 (`packages/ui-contract/src/visual/goldenPath.ts` — `goldenPath(name,
 scenario)` turns a scenario into `<skin>-<mode>/<base-name>`). But
-`client-solid` never writes a screenshot: every one of its visual configs is
-wired to fail rather than create.
+`client-solid` never writes a screenshot: its visual config is wired to fail
+rather than create.
 
 The cross-package anchor
 (`packages/client-solid/tests/ui/visual/playwright/playwright.config.ts`):
@@ -203,9 +207,8 @@ The cross-package anchor
 // CROSS-PACKAGE: unlike react's own config (which owns its slice of the
 // shared tree), this tier's snapshotDir is anchored INSIDE @rtc/ui-contract —
 // this package writes and owns no goldens of its own (assert-only by
-// construction, same design as ../vitest-browser/vitest-browser.config.ts).
-// Goldens are generated exclusively from client-react's renders; solid only
-// ever reads them. …
+// construction). Goldens are generated exclusively from client-react's
+// renders; solid only ever reads them. …
 const REACT_SNAPSHOT_DIR = fileURLToPath(
   new URL(
     "../../../../../ui-contract/goldens/playwright/__screenshots__",
@@ -246,35 +249,25 @@ forms, and `-u=X` — `-u` is the only short flag beginning with "u" in
 Playwright's whole CLI, so there is no false-positive risk against an
 unrelated flag.
 
-The vitest-browser tier enforces the same invariant differently, because
-vitest's `toMatchScreenshot` has no `updateSnapshots: "none"` equivalent — it
-auto-creates a missing golden unconditionally. So
-`packages/client-solid/tests/ui/visual/vitest-browser/vitest-browser.config.ts:158`
-throws instead of ever returning a path that doesn't already exist:
-
-```ts
-if (!existsSync(screenshotPath)) {
-  throw new Error(
-    `assert-only tier: golden missing at ${screenshotPath} — ` +
-      "goldens are owned by client-react; refusing to auto-create " +
-      "one from the solid tier. Regenerate it via " +
-      "`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`.",
-  );
-}
-```
-
 **Client-solid owns zero goldens — that is what makes a pixel match a proof
 rather than a coincidence.** If the two clients' renders ever diverged by even
 a few pixels of layout, font, or color, this tier would fail loudly instead of
 quietly creating a second "correct" baseline next to the first.
 
+(Before the 2026-07-20 retirement, client-solid also ran a `vitest-browser`
+tier that enforced the same invariant differently — vitest's
+`toMatchScreenshot` has no `updateSnapshots: "none"` equivalent, so that
+config threw from an `existsSync` guard instead. That tier — and its
+`playwright-ct` sibling, which was always a URL-navigation fallback for Solid,
+never a real CT mount — is gone; `playwright` is the one surviving mechanism.)
+
 ```mermaid
 flowchart TB
     SCEN["scenarios.ts — the shared manifest"]
-    SCEN --> R["client-react<br/>vitest-browser · playwright · CT"]
-    SCEN --> S["client-solid<br/>vitest-browser · playwright · CT-fallback"]
-    R -- "owns the tree<br/>(may :update)" --> G["ui-contract/goldens/…/__screenshots__/react/…"]
-    S -- "assert-only<br/>snapshotDir anchored cross-package<br/>updateSnapshots: none · argv -u guard · existsSync throw" --> G
+    SCEN --> R["client-react<br/>playwright (asserts + owns)<br/>vitest-browser (coverage-only)"]
+    SCEN --> S["client-solid<br/>playwright (assert-only)"]
+    R -- "owns the tree<br/>(may :update)" --> G["ui-contract/goldens/playwright/__screenshots__/react/…"]
+    S -- "assert-only<br/>snapshotDir anchored cross-package<br/>updateSnapshots: none · argv -u guard" --> G
 ```
 
 ### Mechanism 3 — e2e via RTC_CLIENT_PKG
@@ -419,17 +412,21 @@ Every current asymmetry between the two clients' test coverage, in one place:
 | Asymmetry | Why | Tracked |
 |---|---|---|
 | e2e `login.spec.ts` excluded on Solid | Credential wiring, not missing UI — the spec drives `demo`/`demo`, which only `client-react`'s `VITE_DEV_AUTH` dev-auth path accepts; `client-solid` hardcodes the `mcdc2026` roster instead | [`docs/STATUS.md`](../STATUS.md) ("Solid `login.spec` e2e") |
-| 4 classic-skin CT assertions skipped CI-only | Host font-environment non-determinism for OS-generic font tokens, not a real UI difference | [`docs/STATUS.md`](../STATUS.md) ("Classic-skin fonts are host-environment-sensitive…") |
-| Solid's "CT tier" is a full-page Playwright host, not a real CT mount | `@playwright/experimental-ct-solid` is pinned at 1.48.2 against this repo's `@playwright/test` `^1.60.0` — a ~12-minor-version gap rejected as a forced install | [`packages/client-solid/README.md`](../../packages/client-solid/README.md#the-tier-1-fallback-url-navigation-not-a-ct-mount) |
 | `useMachine` eager-disposal divergence | Solid's `onCleanup` fires exactly once (no StrictMode double-invoke to guard against), so `solid-bindings`' `useMachine` disposes eagerly instead of react-bindings' microtask-deferred dispose — a deliberate difference, not a bug, but a place the two bridges are not byte-identical | [`packages/solid-bindings/README.md`](../../packages/solid-bindings/README.md#usemachines-eager-disposal--the-one-place-this-diverges-from-react-bindings) |
 
-Two items from earlier in the port's life are **no longer true** and are
+Three items from earlier in the port's life are **no longer true** and are
 recorded here only so a stale doc elsewhere doesn't outlive this correction:
 the UI-contract tier used to exclude the two `shell/auth` specs on Solid (84
 of 86 shared) — as of this chapter's write time both clients pass all 86 spec
 files, 622 tests each, with `notYetPortedSpecs = []`. And `devtools.spec.ts`
 is not excluded on Solid — `client-solid`'s Vite config now serves
-`/devtools/` same as `client-react`'s.
+`/devtools/` same as `client-react`'s. And the two visual-tier rows that used
+to sit here — 4 classic-skin CT assertions skipped CI-only, and Solid's "CT
+tier" being a full-page Playwright host rather than a real CT mount — are
+moot: a 2026-07-20 test-tooling bake-off deleted that tier outright (config
+and goldens), so there is no CT tier left to diverge from a real CT mount on
+either client. See [§9.7's Outcome](09-test-strategy.md#97-visual-golden-tiers)
+and [ADR-001's Outcome section](../../packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md).
 
 ## Reading map
 
@@ -438,7 +435,7 @@ remain authoritative for their own tier:
 
 | Doc | Owns |
 |---|---|
-| [`packages/client-react/tests/ui/visual/README.md`](../../packages/client-react/tests/ui/visual/README.md) | Visual tier layout & rationale — the three tiers, the scenario/fixture manifest, how they mount |
+| [`packages/client-react/tests/ui/visual/README.md`](../../packages/client-react/tests/ui/visual/README.md) | Visual tier layout & rationale — the surviving `playwright` tier plus the `vitest-browser` coverage instrument, the scenario/fixture manifest, how they mount |
 | [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md) | The operational runbook — which command to run when a golden goes red vs. a deliberate UI change |
 | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) | The framework-neutral UI-contract package itself — harness, specs, scenario manifest |
 | [`packages/client-react/tests/ui/contract/README.md`](../../packages/client-react/tests/ui/contract/README.md) | The contract tier's per-client mechanics (sociable RTL, coverage gate) |

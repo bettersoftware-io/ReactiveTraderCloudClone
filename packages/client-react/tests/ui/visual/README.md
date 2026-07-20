@@ -30,8 +30,8 @@ no presenters, no live streams — the dependency graph stops at `ViewModelProvi
   the Credit tab.
 - **Admin** — the loaded AdminPanel slider (`admin/panel-loaded`) and the full
   App on the Admin tab. The throughput fetch is stubbed (`page.route` for the
-  Playwright tiers, `window.fetch` for vitest-browser), since `AdminPanel` reads
-  its own hook outside the `ViewModelProvider` seam.
+  playwright tier, `window.fetch` for the vitest-browser coverage instrument),
+  since `AdminPanel` reads its own hook outside the `ViewModelProvider` seam.
 
 ### Interaction-driven goldens
 
@@ -40,7 +40,8 @@ states are reached by clicking/typing into controls keyed by **`data-testid`**.
 The user authorized **`data-testid`-only** production additions for these (pure
 attribute additions — no logic/markup/styling change), so the runner-neutral
 `scenarioActions` table can drive multi-step interactions (its `steps` array:
-`click` / `type` / `select` by testid). Each has a golden across all three runners.
+`click` / `type` / `select` by testid). Each has a golden from the surviving
+`playwright` runner.
 
 ### Excluded by design
 
@@ -78,49 +79,50 @@ tests/ui/visual/
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
-  playwright-ct/     — Tier 1: Playwright Component Testing specs
-    playwright-ct.config.ts — in-suite runner config
-    *.spec.tsx
-    host/            — CT bootstrap template (generated .cache/ is gitignored)
-      index.html
-      index.tsx
-  playwright/        — Tier 2: plain Playwright over a Vite host
+  playwright/        — The CI-asserted visual tier: plain Playwright over a Vite host
     playwright.config.ts — in-suite runner config
     host/            — Tiny Vite app served at /?scenario=<name>
       index.html
       main.tsx
       vite.config.ts
     visual.spec.ts   — Framework-agnostic URL-navigation spec
-  vitest-browser/    — Tier 3: Vitest browser mode (toMatchScreenshot)
-    vitest-browser.config.ts — in-suite runner config
-    visual.spec.tsx  — Data-driven spec (shares scenarioActions with Tier 2)
-  run-all.ts         — Parallel orchestrator (reads package.json scripts)
+  vitest-browser/    — Coverage-only instrument: Vitest browser mode
+    vitest-browser.config.ts — in-suite runner config (asserts, __RTC_VISUAL_SKIP_DIFF__=false)
+    vitest-browser.coverage.config.ts — coverage config (skips the assert, __RTC_VISUAL_SKIP_DIFF__=true)
+    visual.spec.tsx  — Data-driven spec (shares scenarioActions with the playwright tier)
+  run-all.ts         — Orchestrator (reads package.json scripts; discovers the one runner)
   ADR-001-visual-diff-tooling.md
   README.md          — this file
 
-packages/ui-contract/goldens/   — the committed golden trees for all 3 tiers,
-                                   generated only from these React renders
+packages/ui-contract/goldens/   — the committed golden tree for the surviving
+                                   tier, generated only from these React renders
                                    (a sibling package — see "Goldens" below)
-  playwright-ct/__screenshots__/react/    (+ react-local/<platform>-<arch>/)
   playwright/__screenshots__/react/       (+ react-local/<platform>-<arch>/)
-  vitest-browser/__screenshots__/react/   (+ react-local/<platform>-<arch>/)
 ```
+
+**Retired 2026-07-20** (see [ADR-001's Outcome section](./ADR-001-visual-diff-tooling.md)):
+`playwright-ct/` (Playwright Component Testing, Tier 1) and its
+`ui-contract/goldens/playwright-ct/` and `ui-contract/goldens/vitest-browser/`
+golden trees were deleted outright. `vitest-browser/` survives only as the
+istanbul coverage gap-finder — its pixel assert is compiled out via
+`__RTC_VISUAL_SKIP_DIFF__`, so it renders and interacts through every scenario
+without ever reading a golden.
 
 `@rtc/ui-contract`'s `src/visual/` is what `@rtc/client-solid` reuses
 verbatim as a devDependency — it has zero React imports. The contract is the
 data (`src/visual/`) and the goldens (`packages/ui-contract/goldens/`) — not
 the React-shaped `ViewModel` interface, which each framework adapts to its own
-model. `client-solid`'s three visual tiers point their `snapshotDir` at
-*these same* `ui-contract/goldens/<tier>/__screenshots__/react/` (and
-`react-local/<arch>/`) trees — generated only from this package's renders —
-and assert against them; `client-solid` owns no golden images of its own.
+model. `client-solid`'s visual tier points its `snapshotDir` at
+*this same* `ui-contract/goldens/playwright/__screenshots__/react/` (and
+`react-local/<arch>/`) tree — generated only from this package's renders —
+and asserts against it; `client-solid` owns no golden images of its own.
 
 ### Goldens: two committed sets (CI vs local)
 
 Screenshot pixels depend on OS/arch font rasterization, so one golden set is not
-portable across machines. Both configs route `snapshotPathTemplate` by
+portable across machines. The config routes `snapshotPathTemplate` by
 environment, into the committed tree at
-`packages/ui-contract/goldens/<tier>/__screenshots__/`:
+`packages/ui-contract/goldens/playwright/__screenshots__/`:
 
 - **`react/`** — rendered by CI on x86 Linux in the pinned
   Playwright container. This is the **canonical, enforced** set and the
@@ -136,39 +138,38 @@ CI reads/writes `react/`. An intentional UI change therefore means updating
 **both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale —
 including *why we keep the per-platform sets* rather than collapse to one
 container-canonical set (that was tried and reverted: it destroyed the instant,
-Docker-free native feedback loop). Note this per-*platform* split is orthogonal
-to the per-*tier* split (each runner keeps its own set too, because they render
-different pixels) — ADR-001 spells out both axes.
+Docker-free native feedback loop). Before the 2026-07-20 retirement this
+per-*platform* split was orthogonal to a per-*tier* split (each runner kept its
+own set too, because they rendered different pixels); with only one tier
+CI-asserted now, the per-platform split is the one axis that remains — see
+ADR-001's Outcome section for how the two axes played out.
 
-## The three implemented runners
+## The visual tier and its coverage instrument
 
-### Do the three runners share the same tests?
+**Updated 2026-07-20.** This package used to run a "defence-in-depth triangle"
+of three independent rasterizers (Playwright Component Testing, plain
+Playwright over a Vite host, Vitest browser mode) diffing against three
+separate golden sets. A dedicated test-tooling bake-off retired two of them —
+see [ADR-001's Outcome section](./ADR-001-visual-diff-tooling.md) for the
+full verdict and the measured numbers that drove it. What survives:
 
-**Partly — and knowing _which_ layer is shared is the whole mental model.** There
-are three layers, and "sharing" happens at one of them but not the others:
-
-| Layer | Shared across all 3? | What it is |
+| | **`playwright/` — the CI-asserted visual tier** | **`vitest-browser/` — coverage-only instrument** |
 |---|---|---|
-| **Scenario manifest** (`@rtc/ui-contract`'s `src/visual/scenarios.ts` + `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
-| **Test bodies** (the `*.spec` files) | ✅ **Yes** | All three tiers now _auto-derive_ their tests by looping over the manifest (Tier 1's `matrix.spec.tsx` joined Tiers 2/3 on this — see below) |
-| **Goldens** (`__screenshots__/`) | ❌ **No — each tier owns its own set** | Three separate PNG directories, one per runner |
+| **How it mounts** | Vite app serves `/?scenario=x`; Playwright navigates to it | `vitest-browser-react`'s `render()` in a real Chromium |
+| **Test source** | Auto-derived from the shared manifest (`visual.spec.ts`) | Auto-derived from the shared manifest (`visual.spec.tsx`) |
+| **Asserts a golden?** | **Yes — the only CI-enforced tier** | **No** — `toMatchScreenshot` is compiled out via `__RTC_VISUAL_SKIP_DIFF__` (`true` in the coverage config); the render + every scripted interaction still run |
+| **Framework coupling** | **Lowest** — the spec only knows URLs; the host is the only React bit | Medium — needs a render shim, but no lagging CT adapter to track |
+| **Why it's the one that asserts** | Framework-agnostic, reused **verbatim** by `client-solid`; production-like (`page.route`, real navigation); no CT-adapter version lag to track | Runs under Vitest → uniquely produces the **istanbul coverage report** (`reports/ui/visual/coverage/`) — the gap-finder |
+| **Command** | `test:ui:visual:playwright:react` | `test:ui:visual:vitest-browser:react:coverage` |
 
-So when we say the runners "share tests," what's actually shared is the
-**scenario list and the interaction steps** — not the spec files, and not the
-golden images:
-
-- **All three tiers are data-driven.** Each spec is a
-  `for (const [name, scenario] of Object.entries(scenarios))` loop that also
-  reads `scenarioActionFor(name)`. Add a scenario to the manifest → all three
-  tiers get the test for free, in lock-step. (Tier 1's `matrix.spec.tsx`
-  replaced the original hand-written per-file specs — `tile.spec.tsx` et
-  al. — precisely to close this drift risk: a new manifest entry no longer
-  needs a matching hand-authored CT test.)
-- **Goldens are physically separate per tier** because each runner rasterizes
-  differently (CT mounts the component in isolation; Tier 2 navigates a URL and
-  shoots `scenario-root`; Tier 3 renders via `vitest-browser-react`). They encode
-  the _same intent_ but are not byte-identical, so each tier diffs against its own
-  `ui-contract/goldens/<tier>/__screenshots__/react/` (+ `react-local/<arch>/`) set.
+**Retired outright** (config + goldens both deleted): `playwright-ct/`
+(Playwright Component Testing). Its central promise — "closest to mounting
+one component in isolation" — never extended cleanly to `client-solid`: the
+official `@playwright/experimental-ct-solid` adapter was frozen ~1.5 years
+behind this repo's pinned `@playwright/test`, so Solid's own "Tier 1" was
+always a second URL-navigation config wearing a CT-shaped name, never a real
+CT mount. A tier whose flagship justification doesn't survive the
+framework-swap goal it exists to serve doesn't earn a place in the CI budget.
 
 ### Architecture at a glance
 
@@ -187,75 +188,25 @@ flowchart TB
 
     CORE --> REACT
 
-    subgraph T1["Tier 1 · playwright-ct"]
-        T1S["DATA-DRIVEN matrix.spec.tsx<br/>loops scenarios, mount(VisualScenario)"]
-        T1G["ui-contract/goldens/playwright-ct/<br/>__screenshots__/react/ (own goldens)"]
-    end
-    subgraph T2["Tier 2 · playwright"]
+    subgraph T2["playwright — CI-asserted"]
         T2S["DATA-DRIVEN visual.spec.ts<br/>loops scenarios, nav ?scenario=…"]
-        T2G["ui-contract/goldens/playwright/<br/>__screenshots__/react/ (own goldens)"]
+        T2G["ui-contract/goldens/playwright/<br/>__screenshots__/react/ (owns goldens)"]
     end
-    subgraph T3["Tier 3 · vitest-browser"]
+    subgraph T3["vitest-browser — coverage-only"]
         T3S["DATA-DRIVEN visual.spec.tsx<br/>loops scenarios, render()"]
-        T3G["ui-contract/goldens/vitest-browser/<br/>__screenshots__/react/ (own goldens)"]
+        T3C["reports/ui/visual/coverage/<br/>(no golden read — __RTC_VISUAL_SKIP_DIFF__)"]
     end
 
-    REACT --> T1S
     REACT --> T2S
     REACT --> T3S
     SA -. shared by .-> T2S
     SA -. shared by .-> T3S
 
-    T1S -->|toHaveScreenshot| OUT["Real Chromium · pixel diff"]
-    T2S -->|toHaveScreenshot| OUT
-    T3S -->|toMatchScreenshot| OUT
+    T2S -->|toHaveScreenshot| OUT["Real Chromium · pixel diff"]
+    T3S -->|istanbul instrumentation| T3C
 ```
 
-### How they differ, and the trade-offs
-
-| | **Tier 1 — playwright-ct** | **Tier 2 — playwright (URL host)** | **Tier 3 — vitest-browser** |
-|---|---|---|---|
-| **How it mounts** | Playwright CT adapter mounts the component directly | Vite app serves `/?scenario=x`; Playwright navigates to it | `vitest-browser-react`'s `render()` |
-| **Test source** | Data-driven (`matrix.spec.tsx` loops the manifest) | Auto-derived from the manifest | Auto-derived from the manifest |
-| **Matcher** | `toHaveScreenshot` (AA-tolerant) | `toHaveScreenshot` (AA-tolerant) | `toMatchScreenshot` (Vitest 4; needs the AA cushion set in its config) |
-| **Framework coupling** | High — needs a CT adapter that tracks Playwright versions | **Lowest** — the spec only knows URLs; the host is the only React bit | Medium — needs a render shim, but no lagging adapter to track |
-| **Strength** | Closest to "mount one component in isolation"; explicit and readable | Most portable; production-like (real navigation, routing, `page.route` stubs) | Runs under Vitest → produces the **istanbul coverage report** (the gap-finder); shares Tier 2's actions for free |
-| **Weakness** | CT-adapter version lag can block a real CT mount for a new framework (`client-solid`'s Tier 1 ships as a URL-navigation fallback for exactly this reason — see `packages/client-solid`) | Needs a Vite host app to maintain | Newest matcher (experimental); zero-tolerance by default (hence the AA cushion) |
-| **Best for** | Component-level intent on today's React | The framework-swap contract | Coverage + behavioural lock-step with Tier 2 |
-
-### Why keep all three
-
-They are a defence-in-depth triangle, not redundancy:
-
-- **Tier 2** is the _portability contract_ — it proves the goldens can be
-  reproduced by something that knows nothing about React, which is exactly why
-  `client-solid`'s Tier 2 reuses `visual.spec.ts` verbatim.
-- **Tier 3** is the _coverage instrument_ — only it runs under Vitest, so it is
-  what produces `reports/ui/visual/coverage/` and reveals which component states
-  still lack a golden.
-- **Tier 1** is the _isolation / readability_ check and a hedge: if a stable CT
-  adapter becomes the cleanest mount path, it is already wired, and its explicit
-  specs are the easiest to read when debugging a single component.
-
-The cost of the triangle: an intentional UI change means regenerating up to three
-golden sets × two arch sets (`react/` on CI + `react-local/<arch>/` locally) — the
-dual-golden dance described above.
-
-### Tier 1 — Playwright Component Testing (`playwright-ct/`)
-
-Config: `playwright-ct/playwright-ct.config.ts`. Uses `@playwright/experimental-ct-react`
-to mount `VisualScenario` directly inside a Chromium process via the CT adapter.
-Each spec imports `@ui-visual` (the alias pointing at `react/`) and
-calls `mount(...)` + `expect(component).toHaveScreenshot(...)`. Goldens live in
-`packages/ui-contract/goldens/playwright-ct/__screenshots__/react/`.
-
-For a framework port, the `@ui-visual` alias in `playwright-ct.config.ts`'s
-`ctViteConfig` is the single re-point: swap `react/` for `solid/`
-and point to a matching CT adapter. (Note: the official Solid CT adapter lags the
-core Playwright version — see ADR-001 for the adapter-status table and the
-recommended alternative.)
-
-### Tier 2 — Plain Playwright over a Vite host (`playwright/`)
+### `playwright/` — plain Playwright over a Vite host
 
 Config: `playwright/playwright.config.ts`. Serves a tiny Vite page (`playwright/host/`)
 that reads `?scenario=<name>` from the URL, looks up the scenario in `registry`,
@@ -265,61 +216,62 @@ applies any per-scenario interactions from `scenarioActions.ts`, and calls
 `packages/ui-contract/goldens/playwright/__screenshots__/react/`.
 
 `playwright/visual.spec.ts` is **fully framework-agnostic** — it only
-navigates URLs and takes screenshots. A SolidJS port reuses this spec verbatim;
+navigates URLs and takes screenshots. `client-solid` reuses this spec verbatim;
 only the host at `playwright/host/` needs a new `main.tsx` (or `main.tsx`
 replaced by a Solid equivalent) that mounts the Solid `VisualScenario`.
 
-### Tier 3 — Vitest browser mode (`vitest-browser/`)
+### `vitest-browser/` — coverage-only instrument (Vitest browser mode)
 
-Config: `vitest-browser/vitest-browser.config.ts`. Uses `vitest-browser-react`'s `render(...)`
-to mount `VisualScenario` in a real Chromium via the `@vitest/browser-playwright`
-provider, then diffs with Vitest 4's experimental
-`expect.element(...).toMatchScreenshot(...)`. `vitest-browser/visual.spec.tsx`
-is data-driven and **shares the `scenarioActions.ts` table with Tier 2**, so the
-two stay behaviourally in lock-step. Goldens live in
-`packages/ui-contract/goldens/vitest-browser/__screenshots__/react/`.
+Config: `vitest-browser/vitest-browser.config.ts` (asserts;
+`__RTC_VISUAL_SKIP_DIFF__: "false"`) and
+`vitest-browser/vitest-browser.coverage.config.ts` (the one actually run —
+`mergeConfig`s the base and flips the flag to `"true"`). Uses
+`vitest-browser-react`'s `render(...)` to mount `VisualScenario` in a real
+Chromium via the `@vitest/browser-playwright` provider. `visual.spec.tsx`
+checks `__RTC_VISUAL_SKIP_DIFF__` (a compile-time `define`, not a runtime
+env read) before ever calling
+`expect.element(...).toMatchScreenshot(...)`, so under the coverage config
+the render and every scripted interaction still execute — istanbul sees every
+branch — but no golden is ever read or compared. `vitest-browser/visual.spec.tsx`
+is data-driven and **shares the `scenarioActions.ts` table with the
+`playwright` tier**, so the two stay behaviourally in lock-step.
 
 This tier was originally blocked on the Vitest 3→4 upgrade (its matcher is
 v4-only) and was deferred; once Plan A upgraded the repo to Vitest 4 — and the
-unit suite's `WebSocket` stub was migrated to a real class — it was built. A few
-v4-API specifics worth knowing (the provider is a factory from
-`@vitest/browser-playwright`; the golden path is set via a custom
-`resolveScreenshotPath`; full-bleed `App` shots target `document.body` since they
-have no `scenario-root`; the admin fetch is stubbed via `window.fetch`) are
-documented in [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md)
+unit suite's `WebSocket` stub was migrated to a real class — it was built as a
+third assert-only tier. A 2026-07-20 bake-off retired that assert role (see
+above) but kept the tier as the coverage gap-finder — it was already the
+fastest of the three at the full scenario count (83s vs. 241–258s for the
+other two, per "Measured durations" below), so running it for coverage alone
+costs little. A few v4-API specifics worth knowing (the provider is a factory
+from `@vitest/browser-playwright`; the golden path is set via a custom
+`resolveScreenshotPath`; full-bleed `App` shots target `document.body` since
+they have no `scenario-root`; the admin fetch is stubbed via `window.fetch`)
+are documented in [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md)
 under "Vitest browser mode — implemented (Tier 3)".
-
-For a Solid port, swap the `@ui-visual` alias and `vitest-browser-react` for the
-framework's render shim — there's no lagging CT adapter to track, which is why
-this tier is the recommended Solid driver.
 
 ## Commands
 
 ### Run everything
 
 ```
-pnpm test:ui:visual              # runs all implemented runners concurrently, prints summary
-pnpm test:ui:visual:react        # same (today every runner is :react — identical)
+pnpm test:ui:visual              # runs the implemented runner, prints summary
+pnpm test:ui:visual:react        # same (today the one runner is :react — identical)
 ```
 
 ### Per-runner
 
 ```
-pnpm test:ui:visual:playwright-ct:react          # Tier 1: CT runner
-pnpm test:ui:visual:playwright-ct:react:update   # regenerate Tier 1 goldens
-pnpm test:ui:visual:playwright-ct:react:ui       # Playwright UI for Tier 1
+pnpm test:ui:visual:playwright:react             # the CI-asserted tier: URL-driven runner
+pnpm test:ui:visual:playwright:react:update      # regenerate its goldens
+pnpm test:ui:visual:playwright:react:ui          # Playwright UI for this tier
 
-pnpm test:ui:visual:playwright:react             # Tier 2: URL-driven runner
-pnpm test:ui:visual:playwright:react:update      # regenerate Tier 2 goldens
-pnpm test:ui:visual:playwright:react:ui          # Playwright UI for Tier 2
-
-pnpm test:ui:visual:vitest-browser:react         # Tier 3: Vitest browser mode
-pnpm test:ui:visual:vitest-browser:react:update  # regenerate Tier 3 goldens
+pnpm test:ui:visual:vitest-browser:react:coverage  # coverage-only instrument — no golden read
 ```
 
 ### Regenerate / verify the canonical `react/` set in the container (any architecture)
 
-The `:update` scripts above write the **local** `react-local/<arch>` set (see
+The `:update` script above writes the **local** `react-local/<arch>` set (see
 "two committed sets" below), which never matches the CI `react/` baseline on a
 non-x86 machine. To produce or check the **canonical `react/` set** — CI-exact,
 byte-for-byte — on *any* architecture, run it inside the pinned Playwright
@@ -330,8 +282,8 @@ pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate
 pnpm goldens:regen    # rewrite react/ into the working tree, ready to commit
 ```
 
-Both run all three tiers with `CI=1` inside `mcr.microsoft.com/playwright` via
-`--platform linux/amd64`; the emulated container reproduces CI's x86 pixels
+Both run the `playwright` tier with `CI=1` inside `mcr.microsoft.com/playwright`
+via `--platform linux/amd64`; the emulated container reproduces CI's x86 pixels
 byte-for-byte (measured 2026-07-18), so an arm64 dev can regenerate and commit
 the canonical goldens locally — no `update-visual-goldens` workflow round-trip.
 This is **Route 2** in the update runbook; for the full picture (the CI workflow,
@@ -349,13 +301,17 @@ the native fast loop, and when to reach for each) see
 `test:ui:visual` and `test:ui:visual:react` are wired to
 `tsx tests/ui/visual/run-all.ts`. The orchestrator reads `package.json`
 scripts and discovers every entry matching
-`test:ui:visual:<runner>:<framework>` (exactly five colon-delimited parts). When a
-`:solid` framework set lands (with its own runner scripts), it is auto-discovered
-with no edit to `run-all.ts`.
+`test:ui:visual:<runner>:<framework>` (exactly five colon-delimited parts) —
+today that resolves to exactly one runner (`playwright`) per framework, since
+`playwright-ct` was deleted and `vitest-browser`'s `:coverage` variant is six
+parts, excluded from discovery by design (it's a coverage instrument, not
+another assert-able runner).
 
-**Perf caveat:** `test:ui:visual` runs runners concurrently for fast feedback.
-Concurrent runs contend for CPU/GPU, so the wall-clock time is NOT a fair
-per-runner benchmark. Run a single runner in isolation to measure actual speed.
+**Perf caveat (historical):** back when three tiers ran, `test:ui:visual`
+ran them concurrently for fast feedback and concurrent runs contended for
+CPU/GPU, so wall-clock time was NOT a fair per-runner benchmark. With one
+runner discovered today the caveat no longer applies in practice, but the
+"measure a single runner in isolation" method below is unchanged.
 
 ### Measured durations (isolated, local — 2026-07-19)
 
@@ -378,52 +334,79 @@ the 5-skin × dark/light theme matrix) and diff against the local
 
 **The ranking inverted since the 2026-06-21 measurement** (back then, at 88
 scenarios, Tier 1 led at 4.9s and Tiers 2/3 trailed around 11.6–11.7s). At the
-full 1282-scenario matrix, `vitest-browser` (Tier 3) is now fastest: the CT
-runner's **per-mount** overhead (Tier 1 spins up a fresh component mount for
-every scenario) scales worse than `vitest-browser`'s **in-page** renders (Tier
+full 1282-scenario matrix, `vitest-browser` (Tier 3) was fastest: the CT
+runner's **per-mount** overhead (Tier 1 spun up a fresh component mount for
+every scenario) scaled worse than `vitest-browser`'s **in-page** renders (Tier
 3 reuses one browser page and re-renders in place), so the gap that favoured
-CT at 88 scenarios flips once the scenario count grows ~15×. For context, these
+CT at 88 scenarios flipped once the scenario count grew ~15×. For context, these
 visual tiers are still cheaper than the **behavioural** browser e2e suites
 (~133–203s per browser suite on CI — see the e2e
 [`STRATEGY.md`](../../../../../tests/STRATEGY.md) → §5.5): a visual shot renders
 one injected-data scenario and diffs a PNG; an e2e scenario drives a live app
 through multi-step interactions.
 
-To reproduce: `pnpm --filter @rtc/client-react test:ui:visual:<runner>:react` for any
-single runner and time it.
+**Verdict (2026-07-20 — this table is the evidence, not the decision).** Speed
+alone did not pick a winner — `vitest-browser` was fastest but is not the
+portability contract, and the 17s gap between `playwright-ct` and `playwright`
+was not decisive either way. `playwright` won the CI-asserted role on the
+non-speed properties argued in
+["The visual tier and its coverage instrument"](#the-visual-tier-and-its-coverage-instrument)
+above and in [ADR-001's Outcome section](./ADR-001-visual-diff-tooling.md):
+no CT-adapter version lag, verbatim reuse by `client-solid`, production-like
+navigation. `playwright-ct` was retired outright; `vitest-browser` was retired
+from asserting but kept for coverage, since it was already the tier paying
+the least CI time for the most signal.
+
+To reproduce: `pnpm --filter @rtc/client-react test:ui:visual:playwright:react` and time it
+(the other two rows are now historical — their scripts and configs are deleted).
 
 ## Type-checking
 
 The harness is type-checked by `pnpm typecheck` via `tsconfig.ui-visual.json`.
 The main `tsconfig.json` restricts `rootDir` to `src`; without the separate
 visual project, drift between `buildFakeViewModel` and the `ViewModel` interface
-would go unnoticed (the Playwright CT bundle strips types without checking
-them). The ui-visual tsconfig covers both `src` and `tests` (the whole
-visual suite, including `run-all.ts` — minus
-`playwright-ct/playwright-ct.config.ts`, see the comment in the tsconfig).
+would go unnoticed. The ui-visual tsconfig covers both `src` and `tests` (the
+whole visual suite, including `run-all.ts`) with no exclusions — the
+`playwright-ct.config.ts` exclude (needed for the now-deleted CT tier's vite
+6/8 plugin type skew) was removed along with that tier.
 
 ## Porting to another UI framework — executed once, for SolidJS
+
+**Historical record — read with the 2026-07-20 retirement in mind.** This
+section describes how the Solid port actually landed at the time, across all
+three tiers that then existed. Two of those tiers (`playwright-ct` and
+`vitest-browser`'s assert role) were later retired — see
+[ADR-001's Outcome section](./ADR-001-visual-diff-tooling.md) — so the "Tier
+1"/"Tier 3" porting-effort narrative below is preserved for its lessons (the
+CT-adapter-lag risk it predicted and hit is exactly why Tier 1 was retired
+outright), not as a description of what runs today. Today only the `playwright`
+tier's porting story is live; see "The visual tier and its coverage
+instrument" above for the current state.
 
 The goal was always: run the **same** scenarios and match the **same**
 goldens. The plan below was written before the port started; `@rtc/client-solid`
 then executed it, and shipped it **assert-only** — `client-solid` owns none of
-its own golden images, it points all three tiers' `snapshotDir` at the
+its own golden images, it pointed all three tiers' `snapshotDir` at the
 `packages/ui-contract/goldens/<tier>/__screenshots__/` trees generated only
-from this package's renders, so a passing Solid run is a direct pixel
-match against React, not a self-comparison. The one place reality deviated
+from this package's renders, so a passing Solid run was a direct pixel
+match against React, not a self-comparison (the surviving `playwright` tier
+still works exactly this way today). The one place reality deviated
 from the original plan is Tier 1 (below): the predicted CT-adapter blocker
-did materialize, but the resolution was a fallback tier, not a stalled port.
+did materialize, but the resolution was a fallback tier, not a stalled port —
+and that same blocker is why Tier 1 was retired rather than fixed.
 
 **What was reused verbatim:**
 
 - `@rtc/ui-contract`'s `src/visual/` (by then already extracted from this
   package's `shared/`) — consumed as a devDependency, unmodified
 - `playwright/visual.spec.ts` — URL-driven, zero framework assumptions;
-  `client-solid`'s Tier 2 is this file, copied without a behavioural change
-- `ui-contract/goldens/playwright-ct/__screenshots__/react/` and
-  `ui-contract/goldens/playwright/__screenshots__/react/` — the canonical
-  (CI-enforced) golden contract (see "Goldens: two committed sets" above;
-  the per-arch `react-local/` sets are local-feedback only)
+  `client-solid`'s Tier 2 is this file, copied without a behavioural change,
+  and remains so today as the sole surviving tier
+- `ui-contract/goldens/playwright-ct/__screenshots__/react/` (since deleted)
+  and `ui-contract/goldens/playwright/__screenshots__/react/` (the one that
+  survives) — the canonical (CI-enforced) golden contract (see "Goldens: two
+  committed sets" above; the per-arch `react-local/` sets are local-feedback
+  only)
 
 **What was implemented for Solid:**
 
@@ -481,24 +464,29 @@ Tier 1 the one that didn't go as planned.**
   predicted never had to be paid on either side: this package's own Tier 1
   became data-driven (`matrix.spec.tsx`) before the Solid port needed to touch
   it, so there were no hand-written specs left to re-author.
-- **Revisit condition**: once a version-matched `@playwright/experimental-ct-solid`
-  ships, swapping in a real CT mount (matching this package's Tier 1
-  approach) is the documented follow-up — not a blocker on anything today.
+- **Revisit condition — superseded.** The original follow-up ("once a
+  version-matched `@playwright/experimental-ct-solid` ships, swap in a real
+  CT mount") no longer applies: the 2026-07-20 bake-off retired the tier
+  outright rather than waiting for the adapter to catch up, so there is
+  nothing left to revisit.
 
-For the full rationale, the adapter-status table, and guidance on choosing a
-driver per target (CT adapter vs. vitest-browser vs. plain Playwright), see
+For the full rationale, the adapter-status table (historical), and the
+2026-07-20 retirement verdict, see
 [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md).
 
 ## Coverage gaps
 
 `test:ui:visual:vitest-browser:react:coverage` instruments `src/ui` (istanbul)
-while the vitest-browser tier renders every scenario, so uncovered branches are
-visual states with no golden. The report (HTML + `lcov.info`) lands at
-`reports/ui/visual/coverage/` (open `reports/ui/visual/coverage/index.html`); it
-is report-only, with no threshold gate. See [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md)
-(snapshot 2026-06-16) for the current inventory. Red = definitely no snapshot;
-green = rendered into some frame (not a guarantee of a dedicated scenario). The
-denominator is `src/ui/**/*.tsx` only — pure `.ts` logic/hook files belong to the
+while the vitest-browser tier renders every scenario and drives every scripted
+interaction — with the pixel assert compiled out via `__RTC_VISUAL_SKIP_DIFF__`,
+so this run never reads a golden and can't fail on a pixel mismatch — so
+uncovered branches are visual states with no golden. The report (HTML +
+`lcov.info`) lands at `reports/ui/visual/coverage/` (open
+`reports/ui/visual/coverage/index.html`); it is report-only, with no threshold
+gate. See [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md) (snapshot 2026-06-16) for
+the current inventory. Red = definitely no snapshot; green = rendered into
+some frame (not a guarantee of a dedicated scenario). The denominator is
+`src/ui/**/*.tsx` only — pure `.ts` logic/hook files belong to the
 unit/contract tiers.
 
 > **CI golden caveat.** The canonical x86 `react/` goldens are generated by the

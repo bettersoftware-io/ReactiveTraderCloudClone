@@ -5,8 +5,9 @@
 //     (not currently exercised by any fixture-driven scenario, but frozen too
 //     as a safety net — see fixtures.ts's fxActivity, which supplies its own
 //     static `time` strings instead of going through the presenter).
-// Every committed golden across all three tiers (vitest-browser, playwright-ct,
-// plain Playwright) was captured with the tile footer reading "SPT 04 Jul"
+// Every committed golden — across the sole surviving `playwright` tier, and
+// historically the now-retired playwright-ct and vitest-browser tiers too —
+// was captured with the tile footer reading "SPT 04 Jul"
 // (verified by inspecting the committed PNGs directly). formatSpotDate adds
 // SPOT_VALUE_DAYS (2) to `from`, so the instant below is the one that
 // reproduces that date — it also matches formatSpotDate.test.ts's own fixture
