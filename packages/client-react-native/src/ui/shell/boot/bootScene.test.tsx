@@ -28,6 +28,11 @@ test("reports coverage for the core variant now that Task 6 registers it", () =>
   expect(BOOT_SCENES.core).toBeDefined();
 });
 
+test("reports coverage for the laser variant now that Task 7 registers it", () => {
+  expect(hasBootScene("laser")).toBe(true);
+  expect(BOOT_SCENES.laser).toBeDefined();
+});
+
 test("every registered key is a real boot variant (guards a typo'd key)", () => {
   const registeredKeys = Object.keys(BOOT_SCENES);
 

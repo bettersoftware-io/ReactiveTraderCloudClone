@@ -4,6 +4,7 @@ import type { SharedValue } from "react-native-reanimated";
 import type { BootVariant } from "@rtc/domain";
 
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
+import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
 
 /**
@@ -29,9 +30,7 @@ export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 /**
  * Boot variant → scene component. `Partial` by design: only `core` (Task 6)
  * and `laser` (Task 7) get a scene in phase 6a — the other six variants are
- * intentionally unported until 6b. `laser` isn't registered yet; Task 7 adds
- * its own entry rather than this module seeding a placeholder for a
- * component that doesn't exist yet.
+ * intentionally unported until 6b.
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -39,6 +38,7 @@ export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
  */
 export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   core: CoreScene,
+  laser: LaserScene,
 };
 
 /** Reports whether `variant` has a registered scene, without throwing for an
