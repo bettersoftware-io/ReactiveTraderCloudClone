@@ -13,6 +13,7 @@ import type { AppToInspector, LogRow } from "@rtc/devtools-core";
 import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
 import { ContextPane } from "#/timeline/ContextPane";
+import styles from "#/timeline/ContextPane.module.css";
 import { useTimeline } from "#/timeline/useTimeline";
 
 afterEach(cleanup);
@@ -53,8 +54,30 @@ test("diff tab shows leaf changes vs the predecessor", () => {
   expect(screen.getByText("changed")).toBeTruthy();
 });
 
+test("resuming from a pinned Diff selection clears the stale tab highlight", () => {
+  const harness = mount();
+
+  act(() => {
+    harness.pin(2);
+  });
+
+  fireEvent.click(screen.getByTestId("context-tab-diff"));
+
+  act(() => {
+    harness.resume();
+  });
+
+  const diffTab = screen.getByTestId("context-tab-diff");
+  const stateTab = screen.getByTestId("context-tab-state");
+
+  expect(diffTab.classList.contains(styles.tabActive)).toBe(false);
+  expect(diffTab.classList.contains(styles.tab)).toBe(true);
+  expect(stateTab.classList.contains(styles.tabActive)).toBe(true);
+});
+
 interface HarnessHandle {
   pin: (seq: number) => void;
+  resume: () => void;
 }
 
 interface SeedResult {
@@ -71,6 +94,7 @@ interface SeedResult {
 function mount(): HarnessHandle {
   const handle: HarnessHandle = {
     pin: () => {},
+    resume: () => {},
   };
 
   function Harness(): ReactElement {
@@ -78,6 +102,7 @@ function mount(): HarnessHandle {
     const model = useTimeline(log, history);
 
     handle.pin = model.pin;
+    handle.resume = model.resume;
 
     return <ContextPane model={model} log={log} presentState={present} />;
   }

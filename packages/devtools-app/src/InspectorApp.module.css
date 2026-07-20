@@ -13,6 +13,7 @@
   --dim: #64748b;
   --accent: #22d3ee;
   --danger: #f87171;
+  --warn: #d29922;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
   display: flex;

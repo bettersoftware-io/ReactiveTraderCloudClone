@@ -51,7 +51,7 @@
 }
 
 .changedMark {
-  color: #d29922;
+  color: var(--warn);
   font-size: 11px;
   margin-left: 6px;
 }

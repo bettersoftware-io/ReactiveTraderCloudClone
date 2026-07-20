@@ -30,32 +30,37 @@ export function ContextPane({
   const [tab, setTab] = useState<ContextTab>("state");
   const pinned = model.selection.mode === "pinned";
   const row = model.selectedRow;
+  // Following forces the body to "state" regardless of the last-selected tab
+  // (Event/Diff have nothing to show without a pinned row) — the tab strip's
+  // highlight must track that same fallback, or Resuming from a pinned Diff/
+  // Event selection leaves the now-disabled button looking active.
+  const activeTab = pinned ? tab : "state";
 
   return (
     <div className={styles.pane}>
       <nav className={styles.tabs}>
         <TabButton
           tabId="event"
-          active={tab}
+          active={activeTab}
           disabled={!pinned}
           onSelect={setTab}
         />
         <TabButton
           tabId="state"
-          active={tab}
+          active={activeTab}
           disabled={false}
           onSelect={setTab}
         />
         <TabButton
           tabId="diff"
-          active={tab}
+          active={activeTab}
           disabled={!pinned}
           onSelect={setTab}
         />
       </nav>
       <div className={styles.body}>
         <ContextBody
-          tab={pinned ? tab : "state"}
+          tab={activeTab}
           model={model}
           row={row}
           log={log}
