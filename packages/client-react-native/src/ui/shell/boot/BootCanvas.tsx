@@ -38,6 +38,12 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
     elapsedSec.value = frameInfo.timeSinceFirstFrame / 1000;
   }, false);
 
+  // No manual `elapsedSec.value = 0` on toggle: setActive(false) nulls the
+  // callback's startTime in Reanimated's registry, so the next activation
+  // reports timeSinceFirstFrame from 0 — the clock re-zeroes on re-enable
+  // (e.g. reduced-motion lifted mid-boot) without a JS-side write. Re-adding
+  // one also re-trips react-hooks/immutability (two shared-value writes gating
+  // the same value across the effect).
   useEffect(() => {
     frameCallback.setActive(enabled);
 
