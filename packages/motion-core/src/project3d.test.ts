@@ -11,7 +11,7 @@ test("with no rotation and no perspective, x and y pass through unchanged", () =
   expect(p.perspective).toBeCloseTo(1);
 });
 
-test("a quarter-turn of yaw rotates +x onto -z", () => {
+test("a quarter-turn of yaw rotates +x onto +z", () => {
   const p = project3d(1, 0, 0, { ...FLAT, yaw: Math.PI / 2 });
   expect(p.x).toBeCloseTo(0);
   expect(p.z).toBeCloseTo(1);
