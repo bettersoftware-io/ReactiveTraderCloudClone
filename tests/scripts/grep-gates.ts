@@ -17,14 +17,19 @@ interface Gate {
 }
 
 /**
- * Each entry maps a `specs/` feature file to its `presenter/vitest-fake-timers/`
- * test file. `feature` is the path under `specs/` (without `.feature`) — most
+ * Maps a `specs/` feature file to its `presenter/vitest-fake-timers/` test
+ * file. `feature` is the path under `specs/` (without `.feature`) — most
  * features sit directly in `specs/`, but some (e.g. admin/incident) live in a
  * subdirectory. `test` is the presenter test file's basename (without
  * `.test.ts`) — usually matches `feature`, but diverges when the feature path
  * has a directory segment the test file naming doesn't mirror.
  */
-const FEATURE_NAMES: Array<{ feature: string; test: string }> = [
+interface PresenterFeatureMapping {
+  feature: string;
+  test: string;
+}
+
+const FEATURE_NAMES: PresenterFeatureMapping[] = [
   { feature: "connection", test: "connection" },
   { feature: "fxLiveRates", test: "fxLiveRates" },
   { feature: "fxTrading", test: "fxTrading" },
