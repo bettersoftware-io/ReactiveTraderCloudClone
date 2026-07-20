@@ -19,7 +19,7 @@ export function DiffView({ entries, noPrior }: DiffViewProps): ReactElement {
   return (
     <div className={styles.list}>
       {entries.map((entry) => {
-        return <DiffRow key={pathLabel(entry)} entry={entry} />;
+        return <DiffRow key={entryKey(entry)} entry={entry} />;
       })}
     </div>
   );
@@ -56,6 +56,10 @@ function DiffRow({ entry }: DiffRowProps): ReactElement {
       ) : null}
     </div>
   );
+}
+
+function entryKey(entry: DiffEntry): string {
+  return `${JSON.stringify(entry.path)}:${entry.kind}`;
 }
 
 function pathLabel(entry: DiffEntry): string {

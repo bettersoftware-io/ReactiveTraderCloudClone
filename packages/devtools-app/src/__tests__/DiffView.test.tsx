@@ -29,3 +29,15 @@ test("renders the empty and no-prior states", () => {
   rerender(<DiffView entries={[]} noPrior={true} />);
   expect(screen.getByText("No prior value to diff against.")).toBeTruthy();
 });
+
+test("handles path keys with injective collision avoidance", () => {
+  const entries: DiffEntry[] = [
+    { path: ["a.b"], kind: "changed", before: 1, after: 2 },
+    { path: ["a", "b"], kind: "changed", before: 3, after: 4 },
+  ];
+
+  render(<DiffView entries={entries} noPrior={false} />);
+
+  const labels = screen.getAllByText("a.b");
+  expect(labels).toHaveLength(2);
+});
