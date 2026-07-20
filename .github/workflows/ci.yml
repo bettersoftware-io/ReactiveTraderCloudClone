@@ -1,9 +1,9 @@
 name: CI
 
 # Fast gates (typecheck, unit tests, build, the architecture + supply-chain
-# grep/audit gates) plus the full e2e suite. The e2e job is the heavy one (real
-# Cypress binary, Playwright Chromium, xvfb, the 12-way parallel orchestration in
-# tests/scripts/run-all.ts — 6 non-browser suites + 6 browser suites, the last
+# grep/audit gates) plus the full e2e suite. The e2e job is the heavy one
+# (Playwright Chromium, the 10-way parallel orchestration in
+# tests/scripts/run-all.ts — 6 non-browser suites + 4 browser suites, the last
 # two of which are the Solid client's playwright/playwright-cucumber peers);
 # it runs alongside the fast jobs so it never slows them down.
 #
@@ -38,11 +38,6 @@ jobs:
   checks:
     name: typecheck · test · build · gates
     runs-on: ubuntu-latest
-    env:
-      # These checks don't exercise Cypress; skip its heavy binary download.
-      # `allowBuilds` still permits the postinstall script — this just no-ops the
-      # binary fetch, keeping the job fast.
-      CYPRESS_INSTALL_BINARY: "0"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
@@ -172,10 +167,10 @@ jobs:
     name: e2e (browser · presenter · fullstack)
     runs-on: ubuntu-latest
     env:
-      # The 2-vCPU runner can't sustain the 12-way parallel orchestration (it
-      # starves the timing-sensitive WS smoke + cypress into timeouts). Cap the
-      # pool to 2 suites at a time — slower wall-clock, but reliable. run-all.ts
-      # defaults to fully parallel when this is unset (multi-core dev boxes).
+      # The 2-vCPU runner can't sustain the 10-way parallel orchestration (it
+      # starves the timing-sensitive WS smoke into timeouts). Cap the pool to 2
+      # suites at a time — slower wall-clock, but reliable. run-all.ts defaults
+      # to fully parallel when this is unset (multi-core dev boxes).
       RTC_E2E_MAX_PARALLEL: "2"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -197,17 +192,7 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      # This job, unlike the fast ones, genuinely needs the Cypress binary, so we
-      # do NOT set CYPRESS_INSTALL_BINARY=0. Cache it keyed on the lockfile (the
-      # pinned cypress version lives there) so it isn't re-downloaded every run.
-      - name: Cache the Cypress binary
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/Cypress
-          key: cypress-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: cypress-${{ runner.os }}-
-
-      - name: Install dependencies (incl. Cypress binary)
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       # The e2e browser suites run Playwright (cucumber-driven + raw) against
@@ -215,29 +200,12 @@ jobs:
       - name: Install Playwright Chromium + OS deps
         run: pnpm --filter @rtc/tests exec playwright install --with-deps chromium
 
-      # run-all.ts wraps each parallel Cypress suite in `xvfb-run -a` so the two
-      # Cypress suites don't collide on the fixed X display :99. Provide xvfb.
-      - name: Install xvfb (for parallel headless Cypress)
-        run: sudo apt-get update && sudo apt-get install -y xvfb
-
       # Invoke through turbo (root script = `turbo run test:e2e`, NOT
       # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
       # lib first — the suites import @rtc/{domain,shared,client,server} via their
-      # dist/. turbo then runs `pnpm gates` + the 12-way parallel orchestrator.
-      #
-      # RTC_E2E_SKIP_CYPRESS=1 excludes the two Cypress suites from the CI GATE.
-      # Cypress's command-queue model is fundamentally mismatched with this app's
-      # real RxJS timers + Promise-shaped scenario contracts, producing a long
-      # tail of CI-timing-only flakes (dropped events, detached-element re-render
-      # races) that no longer reproduce locally — chasing each via ~15-min CI
-      # cycles was pure waste, and retries only masked them. The Playwright suites
-      # run the SAME 48 scenarios deterministically at retries:0 and are the gate.
-      # Cypress remains fully runnable locally (`pnpm --filter @rtc/tests
-      # test:browser:cypress[-cucumber]`) as the deliberate framework-comparison
-      # reference — see tests/STRATEGY.md §7. All known Cypress flakes are still
-      # fixed at source; this only stops undiscovered ones from blocking merges.
-      - name: e2e suite (Playwright + presenter + fullstack; Cypress excluded from the gate)
-        run: RTC_E2E_SKIP_CYPRESS=1 pnpm test:e2e
+      # dist/. turbo then runs `pnpm gates` + the 10-way parallel orchestrator.
+      - name: e2e suite (Playwright + presenter + fullstack)
+        run: pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()

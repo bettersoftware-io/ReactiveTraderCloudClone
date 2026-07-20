@@ -587,11 +587,10 @@ updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing 
 
 spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIENT_PKG, <span class="cm">"dev"</span>], { … });</pre>
             <p class="code-path">tests/scripts/run-all.ts</p>
-            <pre class="code"><span class="cm">// react playwright/playwright-cucumber/cypress/cypress-cucumber get</span>
-<span class="cm">// 3001-3004; the two solid suites continue the same block at 3005-3006.</span>
+            <pre class="code"><span class="cm">// react playwright/playwright-cucumber get 3001-3002; the two solid</span>
+<span class="cm">// suites continue the same block at 3003-3004.</span>
 <span class="kw">const</span> browserScripts = [
   <span class="cm">"test:browser:playwright"</span>, <span class="cm">"test:browser:playwright-cucumber"</span>,
-  <span class="cm">"test:browser:cypress"</span>, <span class="cm">"test:browser:cypress-cucumber"</span>,
   <span class="cm">"test:browser:playwright:solid"</span>, <span class="cm">"test:browser:playwright-cucumber:solid"</span>,
 ];</pre>
           </div>
@@ -612,7 +611,7 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
               <span class="portchip solid-port">3005 playwright · solid</span>
               <span class="portchip solid-port">3006 pw-cucumber · solid</span>
             </div>
-            <div class="excl-note"><b>One exclusion:</b> <code>login.spec.ts</code> is Solid-excluded — not because Solid lacks sign-in UI, but because the dev server's demo credential (<code>VITE_DEV_AUTH</code>) isn't yet read by <code>client-solid</code>. Credential wiring, tracked in <code>docs/STATUS.md</code>.</div>
+            <div class="excl-note"><b>Full parity:</b> <code>login.spec.ts</code> runs on both clients since the Solid <code>VITE_DEV_AUTH</code> parity change — <code>client-solid</code> now reads the dev server's demo credential the same way <code>client-react</code> does.</div>
           </div>
         </div>
       </div>
@@ -626,10 +625,6 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
     <h2>Where the proof has edges</h2>
     <p class="kicker">The honest exceptions to "same suite, same verdict" — each one tracked, none of them silent.</p>
     <div class="fp-grid">
-      <div class="fp-item">
-        <span class="fp-tag">e2e</span>
-        <b>login.spec is Solid-excluded.</b> Credential-wiring gap (client-solid doesn't read <code>VITE_DEV_AUTH</code> yet), not a missing LoginScreen — <code>@rtc/client-solid</code> shipped its own LoginScreen/AuthGate. See <code>docs/STATUS.md</code>.
-      </div>
       <div class="fp-item">
         <span class="fp-tag">Visual · retired 2026-07-20</span>
         <b>The CT tier (and its Solid fallback) is gone.</b> <code>@playwright/experimental-ct-solid</code> was frozen at 1.48.2 (its own component-test runner) while Solid's "CT tier" was always a full-page Playwright fallback exercising the same scenarios, never a real CT mount. A test-tooling bake-off retired it outright, along with <code>vitest-browser</code>'s assert role — plain Playwright is now the sole CI-asserted visual tier for both clients.
@@ -652,7 +647,7 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
       <div class="file"><span class="path">packages/client-{react,solid}/tests/ui/contract/{react,solid}/*</span><span class="role">the matching 8-file trios</span></div>
       <div class="file"><span class="path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</span><span class="role">cross-package snapshotDir, updateSnapshots: "none" — the one surviving assert-only visual tier</span></div>
       <div class="file"><span class="path">tests/scripts/devServer.ts</span><span class="role">RTC_CLIENT_PKG → CLIENT_PKG → spawn</span></div>
-      <div class="file"><span class="path">tests/scripts/run-all.ts</span><span class="role">the two Solid suites, ports 3005/3006</span></div>
+      <div class="file"><span class="path">tests/scripts/run-all.ts</span><span class="role">the two Solid suites, ports 3003/3004</span></div>
       <div class="file"><span class="path">docs/architecture/21-cross-framework-testing.md</span><span class="role">authoritative doc — read this next</span></div>
     </div>
   </div>

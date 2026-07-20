@@ -1,7 +1,0 @@
-{
-  "stepDefinitions": ["browser/steps/*.steps.ts"],
-  "omitFiltered": true,
-  "filterSpecs": true,
-  "json": { "enabled": false },
-  "html": { "enabled": false }
-}

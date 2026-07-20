@@ -48,7 +48,6 @@ permissions:
 
 env:
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
-  CYPRESS_INSTALL_BINARY: "0"
 
 jobs:
   update:

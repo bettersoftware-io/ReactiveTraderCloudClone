@@ -37,8 +37,8 @@ export async function expectBlotterRowCountAtMost(
   key: string,
 ): Promise<void> {
   // Read the baseline AFTER awaiting the current count — see the matching note
-  // in scenarios/fxLiveRates.ts. Prevents the cucumber-cypress "no recorded row
-  // count" race where the read fires before the prior record step's set lands.
+  // in scenarios/fxLiveRates.ts. Prevents a race where the read fires before
+  // the prior record step's set lands.
   const current = await ctx.po.blotterTable.rowCount();
   const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
 
@@ -77,8 +77,7 @@ export async function expectExportCsvTextContains(
   assertContains(await ctx.po.blotterTable.exportCsvText(), expected);
 }
 
-/** Click the CSV chip and assert the download's suggested filename.
- *  Playwright-only (the Cypress driver throws "not supported"). */
+/** Click the CSV chip and assert the download's suggested filename. */
 export async function expectCsvDownloadSuggestedFilename(
   ctx: TestContext,
   expected: string,

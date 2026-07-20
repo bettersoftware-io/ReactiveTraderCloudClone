@@ -46,8 +46,6 @@ jobs:
     # Tag must track the @playwright/test version in packages/client-react.
     container: mcr.microsoft.com/playwright:v1.61.0-noble
     env:
-      # This job doesn't exercise Cypress; skip its heavy binary download.
-      CYPRESS_INSTALL_BINARY: "0"
       # Historically pinned to 1 to run the three visual runners SERIALLY,
       # matching update-visual-goldens.yml's sequential regen — run-all.ts
       # defaults to fully-concurrent under CI, and 3-tier CPU contention on the

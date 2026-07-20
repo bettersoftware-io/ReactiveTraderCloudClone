@@ -7,7 +7,7 @@
     "declaration": false,
     "declarationMap": false,
     "paths": { "#/*": ["./*"] },
-    "types": ["node", "cypress"],
+    "types": ["node"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": [

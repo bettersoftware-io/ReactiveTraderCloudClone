@@ -1,3 +1,4 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Slot } from "expo-router";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
@@ -103,35 +104,44 @@ interface ChromeProps {
  * active route (`<Slot/>`, driven by the dock and deep links) → status strip →
  * radial command dock, with the appearance sheet and lock screen as overlays.
  * Replaces the former tab navigator; the file routes under `app/(app)/` are
- * unchanged so deep links still resolve. */
+ * unchanged so deep links still resolve.
+ *
+ * `BottomSheetModalProvider` wraps the whole body here (not inside the Rates
+ * module that hosts the trade ticket) so the sheet's portal + backdrop sit
+ * ABOVE every other HUD layer — the status strip and the Phase-3 radial dock
+ * included — matching the prototype's full-bleed `inset:0` scrim. It only
+ * needs a `GestureHandlerRootView` above it, which the app root already
+ * provides. */
 function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   return (
-    <View style={styles.fill}>
-      <AmbientBackground />
-      <ShellHeader
-        simulator={simulator}
-        onToggleSimulator={onToggle}
-        onOpenAppearance={() => {
-          setAppearanceOpen(true);
-        }}
-      />
-      <ConnectionBanner />
-      <View style={styles.body}>
-        <Slot />
+    <BottomSheetModalProvider>
+      <View style={styles.fill}>
+        <AmbientBackground />
+        <ShellHeader
+          simulator={simulator}
+          onToggleSimulator={onToggle}
+          onOpenAppearance={() => {
+            setAppearanceOpen(true);
+          }}
+        />
+        <ConnectionBanner />
+        <View style={styles.body}>
+          <Slot />
+        </View>
+        <StatusStrip />
+        <RadialCommandDock />
+        <AppearanceOverlay
+          open={appearanceOpen}
+          onClose={() => {
+            setAppearanceOpen(false);
+          }}
+        />
+        <LockScreen />
       </View>
-      <StatusStrip />
-      <RadialCommandDock />
-      <AppearanceOverlay
-        open={appearanceOpen}
-        onClose={() => {
-          setAppearanceOpen(false);
-        }}
-      />
-      <LockScreen />
-    </View>
+    </BottomSheetModalProvider>
   );
 }
 

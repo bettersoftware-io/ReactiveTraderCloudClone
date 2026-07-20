@@ -8,9 +8,8 @@ Tests are layered the same way the system is. Each layer has its own kind of tes
 Behavioural Specs (Gherkin)             - WHAT the system does
   |
 Step Definitions / Page Objects         - HOW to drive the system today
-  |  (Cucumber-JS + Cypress; one tree)
   |
-Test Runner / Driver                    - Vitest, Playwright, Cypress, ...
+Test Runner / Driver                    - Vitest, Playwright, ...
 ```
 
 ### 9.1 Layers
@@ -44,7 +43,7 @@ Feature: FX price streaming
 ```
 
 The same `.feature` file is consumed by:
-- **client-side e2e step defs** (Playwright + Cypress — both share one step tree) -- drives a real browser, asserts DOM.
+- **client-side e2e step defs** (Playwright) -- drives a real browser, asserts DOM.
 - **application-layer step defs** -- drives presenters directly, asserts hook output, no browser. Fast.
 
 If a browser driver is replaced, only the page-object implementations for that driver change. Replacing React with SolidJS rewrites the page objects but not the specs.
@@ -62,22 +61,20 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Twelve-suite e2e stack (6 browser peers + 4 presenter peers + 2 fullstack smokes)
+### 9.5 Ten-suite e2e stack (4 browser peers + 4 presenter peers + 2 fullstack smokes)
 
-`tests/scripts/run-all.ts` orchestrates **twelve suites**: ten behavioural peers exercising the same spec surface via six binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The ten peers: Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Native `@playwright/test` and native Cypress bind scenarios programmatically through their own step trees. Both the native-Playwright and Cucumber+Playwright peers are additionally duplicated against `@rtc/client-solid` (via `RTC_CLIENT_PKG`, ports 3005/3006), bringing the browser family to six peers. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
+`tests/scripts/run-all.ts` orchestrates **ten suites**: eight behavioural peers exercising the same spec surface via two binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The eight peers: Cucumber-JS (with Playwright) binds Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree; native `@playwright/test` binds scenarios programmatically through its own step tree. Both peers are additionally duplicated against `@rtc/client-solid` (via `RTC_CLIENT_PKG`, ports 3003/3004), bringing the browser family to four peers. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
 
 | Layer | Stack |
 |---|---|
-| Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) + cypress-cucumber-preprocessor 22 (Cypress) |
-| Step definitions | One shared tree — bundler alias maps `@cucumber/cucumber` → preprocessor for Cypress |
+| Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) |
+| Step definitions | One tree, `tests/browser/steps/*.steps.ts` |
 | Native Playwright specs (`.spec.ts`) | `tests/browser/playwright/*.spec.ts` — bind scenarios via `@playwright/test` `test()` bodies; no Gherkin |
-| Native Cypress specs (`.spec.ts`) | `tests/browser/cypress/*.spec.ts` — bind cypress-forked scenarios via Mocha `it()` bodies; no Gherkin |
-| Scenarios layer (shared) | `tests/browser/scenarios/*.ts` — async fns taking `(ctx: TestContext, args)`; driver-free; used by Cucumber+Playwright, Cucumber+Cypress, native Playwright |
-| Scenarios layer (Cypress fork) | `tests/browser/cypress/scenarios/*.ts` — sync fns mirroring shared names 1:1; queue-aware; used by native Cypress only |
+| Scenarios layer (shared) | `tests/browser/scenarios/*.ts` — async fns taking `(ctx: TestContext, args)`; driver-free; used by Cucumber+Playwright and native Playwright (both clients) |
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
-| Page-object impls (drivers) | `tests/browser/page-objects/playwright/` (Playwright) + `tests/browser/page-objects/cypress/` (Cypress) |
-| Per-runner support | `tests/browser/playwright-cucumber/{world,hooks}.ts` (Cucumber+Playwright) · `tests/browser/cypress-cucumber/{world,e2e}.ts` (Cucumber+Cypress) · `tests/browser/playwright/{_context,_openWorkspace}.ts` (native Playwright fixture) · `tests/browser/cypress/{_context,_openWorkspace}.ts` (native Cypress getCtx accessor) |
-| Orchestration | `tests/scripts/run-all.ts` — twelve suites in parallel, per-suite dev servers (`RTC_DEV_PORT` 3001+), OR-ed exit codes; `RTC_E2E_MAX_PARALLEL` cap; `RTC_E2E_SKIP_CYPRESS` opt-out |
+| Page-object impls (drivers) | `tests/browser/page-objects/playwright/` |
+| Per-runner support | `tests/browser/playwright-cucumber/{world,hooks}.ts` (Cucumber+Playwright) · `tests/browser/playwright/{_context,_openWorkspace}.ts` (native Playwright fixture) |
+| Orchestration | `tests/scripts/run-all.ts` — ten suites in parallel, per-suite dev servers (`RTC_DEV_PORT` 3001+), OR-ed exit codes; `RTC_E2E_MAX_PARALLEL` cap |
 | Full-stack smokes | `tests/fullstack/{node-smoke,browser-smoke}.ts` + `tests/fullstack/browser/fullstack.spec.ts` — real server + real client on dedicated ports, live pricing/equities assertions |
 | Presenter-direct specs | Same `tests/specs/**/*.feature` files, scenarios tagged `@presenter` |
 | Presenter-direct step defs | `tests/presenter/steps/*.steps.ts` — bind to presenter streams; no driver imports |
@@ -91,11 +88,9 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | Presenter-vitest-fake-timers (plain) runner | `tests/presenter/vitest-fake-timers/vitest.config.ts` · `vitest` + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` — same 20 `@presenter` scenarios as the other 3 presenter peers |
 | Presenter-vitest-fake-timers (plain) harness | `tests/presenter/vitest-fake-timers/_world.ts` (VitestPlainPresenterWorld plain-object factory implementing the same `AwaitHelpers` interface; one `*.test.ts` per feature, beforeEach/afterEach building/tearing down the world per `it()`) |
 
-**Bundler-alias seam (Cucumber+Cypress).** `tests/browser/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/browser/cypress-cucumber/cypress.config.ts`) installs a plugin that intercepts the `@cucumber/cucumber` specifier and remaps it to the sibling `cucumber-shim.ts`, which wraps `Given/When/Then/And/But` handlers in `cy.wrap().then()` so async step bodies (returning native Promises) are presented to the preprocessor as Cypress Chainables — avoiding the v24+ native-Promise guard — and re-exports everything else from the preprocessor's browser entrypoint unchanged. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution. The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/browser/{playwright-cucumber,cypress-cucumber}/` directories.
-
 **Native Playwright binding.** `tests/browser/playwright/*.spec.ts` files import a `test` symbol from `./_context.ts`, a Playwright fixture extension that exposes `{ ctx: TestContext }` built from `buildPlaywrightPageObjects(page) + new Scratchpad()`. Each `.feature` file has a sibling `.spec.ts` whose `test.describe` title, `test()` titles, and step ordering mirror the Gherkin 1:1. Three named helpers in `_openWorkspace.ts` (`withWorkspaceOpen` / `withFxWorkspaceOpen` / `withCreditWorkspaceOpen`) map 1:1 to the three Background phrasings, replacing Cucumber's implicit Background mechanism. Test bodies contain only `await scenarios.fn(ctx, ...)` calls — no direct `page.*`, `expect`, or `ctx.po.*` — enforced by grep gates 9–11 in `tests/scripts/grep-gates.ts`.
 
-**Native Cypress binding (Phase 5A.4 §3.3).** `tests/browser/cypress/*.spec.ts` files are pure Mocha `describe`/`it` blocks. Each `it()` body opens with `const ctx = getCtx()` (from `_context.ts`'s module-scoped beforeEach builder) and then calls **synchronous** scenario fns from `tests/browser/cypress/scenarios/*.ts`. No `async`, no `await`, no `cy.*`, no `ctx.po.*`, no driver imports — enforced by grep gates 12–14. The forked `tests/browser/cypress/scenarios/` layer mirrors `tests/browser/scenarios/*.ts` fn-for-fn but uses cy queue idioms: a `chainable<T>` cast helper (in `_chainable.ts`) exposes Cypress's Chainable runtime under the shared layer's `Promise<T>` PO contract; reads call `.then(cb)` on chainables (queue-aware, propagates the subject); cross-call scratchpad reads sit inside `cy.then(() => ...)` to ensure ordering. **The fork was necessary, not desired:** Cypress's command-queue model and Promise-vs-Chainable thenable semantics make the shared async scenarios unusable in native `it()` bodies; four prior combinations were attempted and documented in spec §3.1, §3.2, §3.3 before this design landed. This is the architectural cost that proves the Cucumber-mediated stacks share strictly more (features + step defs + scenarios + Background mechanism) than the native stacks do (only PO contracts + features).
+**Historical note:** a second browser driver, Cypress, ran alongside Playwright through 2026-07-19 as a native suite and a Cucumber-driven suite (the latter via a bundler-alias seam remapping `@cucumber/cucumber` to a Chainable-wrapping shim; the former via a forked, queue-aware `scenarios/` layer, since its command-queue model couldn't reuse the shared `Promise`-shaped one). Both were deleted 2026-07-20 after a framework bake-off; see `tests/STRATEGY.md` §5.1 for the verdict.
 
 **Presenter-direct binding (Phase 5B.1).** `tests/presenter/steps/*.steps.ts` files use Cucumber-JS but in pure Node — no browser, no DOM, no React. Step bodies delegate to scenarios fns at `tests/presenter/scenarios/_shared/*.ts`, which subscribe to presenter streams (`priceStream.price$`, `connection.status$`, `blotter.trades$`, etc.) via `firstValueFrom + timeout` and assert on emitted values. Background steps are no-ops (workspaces are a UI concern). The `@presenter` tag in `.feature` files selects 20 scenarios that map cleanly to the application layer; UI-only scenarios (theme, hover, CSS, tabs) remain browser-only. `tests/presenter/scenarios/_buildApp.ts` is the sole seam to `createApp(simulatorPorts)`; grep gate 17 enforces it. Demonstrates that the same behavioural specs validate the application layer with no UI framework — closing the loop on [§1.2 rule #4 ("Behavioural Tests as Insurance")](01-overview.md#12-architectural-principles). First sub-phase of Phase 5B; sub-phases 5B.2-5B.4 add variants (fake timers; Vitest+Gherkin; Vitest+plain-TS) as a comparison artifact.
 
@@ -210,7 +205,7 @@ flowchart TD
         c7 --> c8["grep gates + pnpm audit"]
     end
     subgraph e2e["ci.yml · Job 2 — e2e"]
-        e1["Playwright browser peers<br/>+ presenter peers + fullstack smokes<br/>(Cypress de-gated on CI:<br/>RTC_E2E_SKIP_CYPRESS=1 — runs locally)"]
+        e1["Playwright browser peers<br/>+ presenter peers + fullstack smokes"]
     end
     checks ~~~ postmerge
     e2e ~~~ postmerge

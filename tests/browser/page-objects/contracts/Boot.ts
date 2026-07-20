@@ -14,8 +14,8 @@
  * touching the divergent login flow.
  *
  * Playwright-only: like {@link LoginScreenPO} and {@link PowerSaverPO}, this
- * capability has no Cypress implementation, so the field is optional on
- * {@link PageObjects}.
+ * capability is only implemented by the Playwright factory, so the field is
+ * optional on {@link PageObjects}.
  */
 /** Options for {@link BootPO.open}. */
 export interface BootOpenOptions {

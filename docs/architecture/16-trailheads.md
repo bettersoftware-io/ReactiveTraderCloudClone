@@ -66,7 +66,7 @@ Worked example: `SUBSCRIBE_POSITIONS` / `POSITIONS` (a bulk stream message, the 
 **Change-impact checklist**
 
 - Tests: `messages.test.ts`, the new/updated effect test, and the `portFactory` adapter test for the consuming port.
-- Grep gates: none of the 29 name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` (or `test:e2e:no-cypress` locally) if the message is reachable end to end.
+- Grep gates: none of the 34 active gates name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` if the message is reachable end to end.
 - Visual goldens: only if the message feeds a UI panel already rendering data (then follow recipe 4's checklist too).
 - Inventory (exhaustive per Global Constraints): `packages/server/src/effects/` is an inventory folder — if you added an effect, §13's exhaustive effects listing must gain a row.
 - README: `packages/shared/README.md` (wire protocol is its SoT) and, if you added an effect, `packages/server/README.md`.

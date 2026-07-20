@@ -1,8 +1,8 @@
 # E2E test strategy — sharing, trade-offs, and migration
 
 This is the **decision and migration companion** to [`README.md`](./README.md).
-`README.md` tells you *how to run* the suites (scripts, reports, orchestration,
-the Cypress arm64 known-issue). This document explains *why there are so many*,
+`README.md` tells you *how to run* the suites (scripts, reports,
+orchestration). This document explains *why there are so many*,
 *what they share*, and — most importantly — **which one to keep when this
 becomes a real production project, and how to migrate when the UI library or the
 test framework is replaced.**
@@ -29,7 +29,7 @@ different depths:
 ```
                          browser   →  React DOM  →  presenters  →  ports  →  domain  →  wire  →  server
  ──────────────────────────────────────────────────────────────────────────────────────────────────────
- Browser   (6 suites)       ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
+ Browser   (4 suites)       ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
  Presenter (4 suites)                                   ●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
  Full-stack node                                                     ●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
  Full-stack browser         ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
@@ -53,17 +53,15 @@ process from the runner. Coverage lives in the in-process tiers; see
 
 ---
 
-## 2. The suite map: 12 suites, 3 families, 2 variation axes
+## 2. The suite map: 10 suites, 3 families, 2 variation axes
 
 ```
 FAMILY        SUITE                                          varies by…
 ────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────────
-Browser       test:browser:playwright                        driver=Playwright       style=native
-(6)           test:browser:cypress                           driver=Cypress          style=native
-              test:browser:playwright-cucumber               driver=Playwright       style=Gherkin
-              test:browser:cypress-cucumber                  driver=Cypress          style=Gherkin
-              test:browser:playwright:solid                  driver=Playwright       style=native, client=Solid
-              test:browser:playwright-cucumber:solid         driver=Playwright       style=Gherkin, client=Solid
+Browser       test:browser:playwright                        style=native            client=React
+(4)           test:browser:playwright-cucumber               style=Gherkin           client=React
+              test:browser:playwright:solid                  style=native            client=Solid
+              test:browser:playwright-cucumber:solid         style=Gherkin           client=Solid
 
 Presenter     test:presenter:cucumber                        runner=cucumber         time=REAL (reference)
 (4)           test:presenter:cucumber-fake-timers            runner=cucumber         time=virtual
@@ -77,8 +75,12 @@ Full-stack    test:fullstack:node                            transport=WebSocket
 The two families that *intentionally over-cover* (browser ×4, presenter ×4) each
 vary along **two axes**:
 
-- **Browser** = `{Playwright, Cypress}` (the **driver**) × `{native, Gherkin}`
-  (the **authoring style**).
+- **Browser** = `{native, Gherkin}` (the **authoring style**) ×
+  `{React, Solid}` (the **client**). (A third axis — the **driver** —
+  existed through 2026-07-19: Cypress ran alongside Playwright as a second
+  driver × style pair. Both Cypress suites were deleted 2026-07-20 after a
+  bake-off; see [§5.1](#51-browser-suites-driver--style) and
+  [§5.4](#54-why-keep-them-all-in-this-repo) for the verdict.)
 - **Presenter** = `{cucumber-js, vitest}` (the **runner**) ×
   `{real, virtual}` (the **time model**).
 
@@ -98,27 +100,29 @@ tables.
 
 ### 3.1 Browser family
 
-| Layer | Path | Shared across the 6 browser suites? |
+| Layer | Path | Shared across the 4 browser suites? |
 |---|---|---|
-| **Behaviour specs** (Gherkin) | `specs/*.feature` (8 files) | ⚠️ **3 of 6** — both `-cucumber` suites + `playwright-cucumber:solid`; native suites mirror them in code |
+| **Behaviour specs** (Gherkin) | `specs/*.feature` (8 files) | ⚠️ **2 of 4** — both `-cucumber` suites; native suites mirror them in code |
 | **Page-object contracts** + `TESTIDS` + `STRINGS` | `browser/page-objects/contracts/` (10 + 2) | ✅ **Yes — one source of truth** |
-| **Scenario layer** (async, `Promise`-shaped) | `browser/scenarios/` (~80 fns) | ⚠️ **5 of 6** — every suite except native Cypress |
-| **Cypress scenario fork** (queue-aware) | `browser/cypress/scenarios/` | ❌ native Cypress **only** |
-| **Step definitions** (Gherkin → scenario) | `browser/steps/` | ⚠️ **3 of 6** — both `-cucumber` suites + `playwright-cucumber:solid` |
-| **Test context** `{ po, scratch }` | `browser/testContext.ts` | ✅ **Yes — all 6** |
-| **Page-object impls** (driver code) | `browser/page-objects/{playwright,cypress}/` | ❌ per-driver (10 classes + factory each; the two Solid suites reuse `playwright/` — same driver, different `RTC_CLIENT_PKG`) |
+| **Scenario layer** (async, `Promise`-shaped) | `browser/scenarios/` (~80 fns) | ✅ **Yes — all 4** |
+| **Step definitions** (Gherkin → scenario) | `browser/steps/` | ⚠️ **2 of 4** — both `-cucumber` suites |
+| **Test context** `{ po, scratch }` | `browser/testContext.ts` | ✅ **Yes — all 4** |
+| **Page-object impls** (driver code) | `browser/page-objects/playwright/` | ✅ **Yes — all 4** (10 classes + factory; the two Solid suites reuse the same classes — same driver, different `RTC_CLIENT_PKG`) |
 | **Runner glue** (config, world/hooks, fixture) | each suite's own folder | ❌ per-suite |
 
-The **load-bearing fact**: native Cypress is the one suite that *can't* reuse the
-shared async scenarios. Cypress's command-queue model and `Chainable`-vs-`Promise`
-thenable semantics make the `Promise`-shaped scenario contract unusable in a raw
-`it()` body (four combinations were tried and rejected — see
+**Historical note (through 2026-07-19):** a second driver, Cypress, ran
+alongside Playwright as a native suite and a Cucumber-driven suite. Cypress's
+command-queue model and `Chainable`-vs-`Promise` thenable semantics made the
+`Promise`-shaped scenario contract unusable in a raw `it()` body (four
+combinations were tried and rejected — see
 `docs/architecture/09-test-strategy.md` §9.5 and the
-`feedback_cypress_async_incompat` history). So it carries a **forked
-scenario layer** that mirrors the shared one fn-for-fn but uses `cy` queue
-idioms (`_chainable.ts` casts a Chainable to the contract's `Promise<T>`). That
-fork is the price tag that proves the boundary of the async-scenario contract —
-remember it for the driver-swap section.
+`feedback_cypress_async_incompat` history), so it carried a **forked scenario
+layer** (`browser/cypress/scenarios/`) that mirrored the shared one fn-for-fn
+but used `cy` queue idioms. That fork was the price tag that proved the
+boundary of the async-scenario contract, and its ongoing cost — plus the
+arm64/Electron hazard ([§5.4](#54-why-keep-them-all-in-this-repo)) — was the
+deciding evidence in the 2026-07-20 bake-off that retired both Cypress
+suites. See [§5.1](#51-browser-suites-driver--style) for the verdict.
 
 ### 3.2 Presenter family
 
@@ -172,16 +176,13 @@ flowchart TB
 
     subgraph DRV["page-object IMPLS — per driver (swap point B)"]
         PWPO["playwright/ (10 classes)"]
-        CYPO["cypress/ (10 classes)"]
     end
 
     subgraph BROWSER["BROWSER suites (real DOM, simulators)"]
         B1["playwright (native)"]
         B2["playwright-cucumber"]
-        B3["cypress-cucumber"]
-        B4["cypress (native)<br/>+ own scenario fork"]
-        B5["playwright (native) :solid"]
-        B6["playwright-cucumber :solid"]
+        B3["playwright (native) :solid"]
+        B4["playwright-cucumber :solid"]
     end
 
     subgraph PRES["PRESENTER suites (no DOM, simulators)"]
@@ -201,24 +202,19 @@ flowchart TB
     FEAT --> P3
     CONTRACTS --> BSCEN
     CONTRACTS --> PWPO
-    CONTRACTS --> CYPO
     BSCEN --> BSTEPS
     BCTX --> BSCEN
 
     PWPO --> B1
     PWPO --> B2
-    CYPO --> B3
-    CYPO --> B4
-    PWPO --> B5
-    PWPO --> B6
+    PWPO --> B3
+    PWPO --> B4
     BSTEPS --> B2
-    BSTEPS --> B3
-    BSTEPS --> B6
+    BSTEPS --> B4
     BSCEN --> B1
     BSCEN --> B2
     BSCEN --> B3
-    BSCEN --> B5
-    BSCEN --> B6
+    BSCEN --> B4
 
     BUILD --> PSCEN
     AWAIT --> PSCEN
@@ -235,7 +231,7 @@ flowchart TB
     %% doesn't tile the subgraphs side-by-side and shrink the whole diagram.
     FEAT ~~~ CONTRACTS
     FEAT ~~~ BCTX
-    B4 ~~~ B5
+    B3 ~~~ B4
     B1 ~~~ BUILD
     B2 ~~~ AWAIT
     P2 ~~~ F1
@@ -252,16 +248,33 @@ UI-library swap), **B** = the page-object impls (crossed by a driver swap).
 
 ### 5.1 Browser suites (driver × style)
 
-| | **native Playwright** | **Playwright + cucumber** | **native Cypress** | **Cypress + cucumber** |
-|---|---|---|---|---|
-| **Authoring** | `test()` bodies calling `scenarios.fn()` | `.feature` + shared steps | `it()` bodies calling **forked** scenarios | `.feature` + shared steps |
-| **Reuses shared scenarios?** | ✅ yes | ✅ yes | ❌ **fork** (queue tax) | ✅ yes |
-| **Living docs (BDD)** | no | ✅ yes | no | ✅ yes |
-| **Tooling** | **best** — `--ui`, traces, time-travel | `--headed` only | `cypress open` (interactive) | `cypress open` |
-| **Driver-swap friction** | low (async-native) | low | n/a (Cypress-specific fork) | low |
-| **arm64 dev container** | ✅ runs | ✅ runs | ❌ **hangs** (Electron) | ❌ **hangs** |
-| **Strength** | cleanest, fastest to debug, most portable | specs as SOT + best driver | proves the contract survives a queue driver | specs as SOT under Cypress |
-| **Weakness** | no BDD layer | Gherkin indirection | needs a parallel scenario fork | Electron hazard + needs a bundler-alias shim |
+| | **native Playwright** | **Playwright + cucumber** |
+|---|---|---|
+| **Authoring** | `test()` bodies calling `scenarios.fn()` | `.feature` + shared steps |
+| **Reuses shared scenarios?** | ✅ yes | ✅ yes |
+| **Living docs (BDD)** | no | ✅ yes |
+| **Tooling** | **best** — `--ui`, traces, time-travel | `--headed` only |
+| **Driver-swap friction** | low (async-native) | low |
+| **arm64 dev container** | ✅ runs | ✅ runs |
+| **Strength** | cleanest, fastest to debug, most portable | specs as SOT + best driver |
+| **Weakness** | no BDD layer | Gherkin indirection |
+
+**Verdict (2026-07-20 bake-off, both Cypress suites deleted):** native
+Playwright won: async-native scenario reuse vs the forked queue layer, no
+Electron/arm64 hazard, 133–203s vs 91–107s+flakes; both Cypress suites
+deleted 2026-07-20 — the fork's cost was the deciding evidence. Cypress ran
+here through 2026-07-19 as a native suite and a Cucumber-driven suite,
+mirroring the Playwright pair (driver = `{Playwright, Cypress}` × style =
+`{native, Gherkin}`); it could not reuse the shared `Promise`-shaped scenario
+layer (its command-queue/`Chainable` model needed a parallel fork,
+`browser/cypress/scenarios/`) and hung on the arm64 dev container (an
+Electron boot failure — see the retired "Known issue" section this repo used
+to carry in `README.md`). The 91–107s figures in the verdict are Cypress's
+own best-case **isolated, local** numbers ([§5.5](#55-measured-durations-isolated-local--2026-06-21));
+133–203s is Playwright's **CI, parallel-fan-out** wall-clock — a harsher
+condition. Even measured favourably against Playwright's harder number,
+Cypress's isolated figure didn't buy back the fork-maintenance cost or the
+reliability hazard, so it lost the bake-off on total cost, not raw speed.
 
 ### 5.2 Presenter suites (runner × time)
 
@@ -286,10 +299,12 @@ UI-library swap), **B** = the page-object impls (crossed by a driver swap).
 Like the visual triangle, this is defence-in-depth + a portability proof, not
 redundancy:
 
-- The **browser matrix (4 styles × 2 clients)** proves the PO-contract seam is
-  real: the *same* behaviour passes on two drivers, two authoring styles, and
-  now two UI frameworks. The Cypress fork is the deliberate counter-example
-  marking where the async contract ends.
+- The **browser matrix (2 styles × 2 clients)** proves the PO-contract seam is
+  real: the *same* behaviour passes on two authoring styles and two UI
+  frameworks. (Through 2026-07-19 it was also a driver × style matrix —
+  Cypress's forked scenario layer was the deliberate counter-example marking
+  where the async contract ends; the bake-off in [§5.1](#51-browser-suites-driver--style)
+  retired it.)
 - The **presenter ×4 peers** prove the `_shared`/`_await`/`_buildApp`
   abstractions aren't accidentally coupled to one runner or one time model —
   they survive cucumber *and* vitest, real *and* virtual time, Gherkin *and*
@@ -297,8 +312,8 @@ redundancy:
 - The **full-stack smokes** are the only wire-crossing tests; everything else
   mocks the server with simulators.
 
-The cost of keeping all twelve is the per-driver/per-runner glue and the Cypress
-maintenance hazard — which is exactly why a **product** picks one lane ([§7](#7-decision-guide-picking-one-for-production)).
+The cost of keeping all ten is the per-runner glue and the per-suite dev-server
+boot — which is exactly why a **product** picks one lane ([§7](#7-decision-guide-picking-one-for-production)).
 
 ### 5.5 Measured durations (isolated, local — 2026-06-21)
 
@@ -311,9 +326,10 @@ isolated timings.
 > pnpm 11.7.0 · single run each · **2026-06-21** · all suites PASS. Wall-clock
 > **includes** the per-suite dev-server / browser boot (a roughly fixed cost
 > shared by every browser suite), so treat these as *indicative*, not a
-> micro-benchmark — expect ±several seconds of run-to-run variance. Unlike the
-> arm64 dev container, **Cypress runs fine here** (see `README.md` → "Known
-> issue"), so all twelve are measurable on this box.
+> micro-benchmark — expect ±several seconds of run-to-run variance. At the time
+> of this measurement, all twelve suites (incl. both since-retired Cypress
+> suites — Cypress ran fine on this box, unlike the arm64 dev container it
+> hung on) existed and were measurable.
 
 | Suite | Scenarios | Duration | Notes |
 |---|---:|---:|---|
@@ -325,8 +341,8 @@ isolated timings.
 | **Presenter** `cucumber` (real timers) | 20 | **21.0s** | the reference — wall-clock waits are genuine |
 | **Browser** `playwright-cucumber` | 48 | **50.7s** | real browser + dev server |
 | **Browser** `playwright` (native) | 48 | **75.7s** | real browser + dev server |
-| **Browser** `cypress` (native) | 48 | **91.3s** | real browser + dev server |
-| **Browser** `cypress-cucumber` | 48 | **107.4s** | real browser + dev server |
+| **Browser** `cypress` (native, retired 2026-07-20) | 48 | **91.3s** | real browser + dev server |
+| **Browser** `cypress-cucumber` (retired 2026-07-20) | 48 | **107.4s** | real browser + dev server |
 
 What the numbers confirm:
 
@@ -339,8 +355,9 @@ What the numbers confirm:
   two orders of magnitude faster than any **browser** suite (51–107s), because
   the dominant cost is booting a real browser + dev server, not the test logic.
 - **Playwright < Cypress here** (51–76s vs 91–107s for the same 48 scenarios) —
-  and Cypress additionally carries the arm64/Electron hazard. A second reason the
-  decision guide defaults to Playwright.
+  and Cypress additionally carried the arm64/Electron hazard and the forked
+  scenario layer's maintenance cost. That combination is what the 2026-07-20
+  bake-off retired both Cypress suites over — see [§5.1](#51-browser-suites-driver--style).
 - These are **single-run** figures: on this run `playwright-cucumber` came in
   *below* native Playwright despite identical coverage. Don't read fine-grained
   rankings into a few seconds of difference — the families separate cleanly, the
@@ -372,9 +389,9 @@ actually happens on CI"*, not a second isolated benchmark.
 | **Browser** `playwright` (native, solid) | **176.4s** | real browser + dev server, Solid client |
 | **Browser** `playwright` (native) | **202.9s** | real browser + dev server |
 
-Native Cypress and `cypress-cucumber` have no CI figures — Cypress is
-de-gated from CI since #66 (see `README.md` → "Known issue"); they only run
-locally.
+Native Cypress and `cypress-cucumber` never had CI figures — Cypress was
+de-gated from CI since #66 and ran only locally, until both suites were
+deleted 2026-07-20 (the [§5.1](#51-browser-suites-driver--style) verdict).
 
 ---
 
@@ -439,15 +456,13 @@ live, not hypothetical:
   `test:browser:playwright:solid` and `test:browser:playwright-cucumber:solid`
   — the *same* two config files as their React counterparts, just invoked
   with `RTC_CLIENT_PKG=@rtc/client-solid` and their own port block
-  (3005–3006, vs. React's 3001–3004) and `-solid` report suffixes.
-- One spec, `login.spec.ts`, stays in `playwright.config.ts`'s `testIgnore`
-  for the Solid run — not because Solid lacks sign-in UI (`LoginScreen` /
-  `AuthGate` ship, and the UI-contract tier's `shell/auth` specs already pass
-  on Solid), but because the spec drives a `demo`/`demo` credential that only
-  `client-react`'s `VITE_DEV_AUTH`-reading path accepts; `client-solid`
-  hardcodes the `mcdc2026` demo roster instead. See
-  [`docs/STATUS.md`](../docs/STATUS.md) ("Solid `login.spec` e2e") for the
-  tracked follow-up.
+  (3003–3004, vs. React's 3001–3002) and `-solid` report suffixes.
+- `playwright.config.ts`'s `testIgnore` (`notYetPortedSpecs`) is empty for
+  both clients — `login.spec.ts` runs unmodified on the Solid run too, now
+  that `client-solid`'s `buildBrowserPorts.ts` reads `VITE_DEV_AUTH` via the
+  same `parseDevAuth` helper as `client-react` instead of hardcoding the
+  `mcdc2026` demo roster. The mechanism stays wired for any future genuine
+  port gap.
 
 Deep dive on the full mechanism — env var → `devServer.ts` → `run-all.ts`
 wiring, plus the two real incidents this cross-framework net has caught:
@@ -474,9 +489,12 @@ Survives **verbatim**: `specs/`, `browser/scenarios/`, `browser/steps/`,
 > assumes **`Promise`-returning** PO methods (async/await). A driver that is
 > async-native (Playwright, WebdriverIO async, Puppeteer, a hypothetical new
 > one) reuses the scenarios as-is. A driver with a **command-queue / chainable**
-> model (like Cypress) **cannot** — it needs a forked scenario layer, as Cypress
-> has. **When evaluating a new driver, the first question is: are its actions
-> plain Promises?** If yes, the port is cheap; if no, budget for a scenario fork.
+> model (like Cypress, run here through 2026-07-19) **cannot** — it needs a
+> forked scenario layer, as Cypress's retired `cypress/scenarios/` fork did.
+> **When evaluating a new driver, the first question is: are its actions
+> plain Promises?** If yes, the port is cheap; if no, budget for a scenario fork
+> — and weigh that ongoing cost against the driver's other merits, the way the
+> 2026-07-20 bake-off did ([§5.1](#51-browser-suites-driver--style)).
 
 Per-suite effort for a driver swap:
 
@@ -484,8 +502,7 @@ Per-suite effort for a driver swap:
 |---|---|---|---|
 | native Playwright→X | `page-objects/X/` (10) + factory + `_context.ts` + config + scripts | specs n/a, scenarios, contracts, testContext | **low** (async driver) |
 | Playwright-cucumber→X | `page-objects/X/` + `world.ts`/`hooks.ts` + config | specs, steps, scenarios, contracts | **low** |
-| Cypress→X | — (you'd be *removing* the fork) | — | n/a |
-| (queue-style new driver) | impls **+ a scenario fork** like `cypress/scenarios/` | specs, steps, contracts | **high** |
+| (queue-style new driver, e.g. the retired Cypress case) | impls **+ a scenario fork** like the deleted `cypress/scenarios/` | specs, steps, contracts | **high** |
 
 **Presenter runner swap** (e.g. cucumber-js → a new runner) — the "driver" is
 the runner + time engine:
@@ -511,8 +528,12 @@ independently and in either order. The only shared touch-point is
 
 ## 7. Decision guide: picking ONE for production
 
-This repo runs all twelve because it is a comparison artifact. A product keeps a
-small, intentional subset. Recommendations by goal:
+This repo runs all ten remaining suites because it is a comparison artifact —
+the browser-driver axis it once carried (Playwright × Cypress) was already
+narrowed to a single driver by the 2026-07-20 bake-off ([§5.1](#51-browser-suites-driver--style)),
+so the guidance below is partly already-acted-upon rather than hypothetical.
+A product keeps a small, intentional subset beyond that. Recommendations by
+goal:
 
 | Goal | Keep | Why |
 |---|---|---|
@@ -527,10 +548,10 @@ distinct jobs, no overlap.
 
 **What to drop in production, and why:**
 
-- **Both drivers at once (Playwright *and* Cypress).** The dual-driver matrix is
-  a portability *proof*, not a product need. Pick one. If you pick Cypress, you
-  inherit the queue-fork tax and the arm64/Electron hazard (`README.md` →
-  "Known issue").
+- **Running two drivers at once.** This repo did exactly that (Playwright +
+  Cypress) as a portability *proof*, not a product need — and the bake-off
+  concluded Playwright is the one to keep, retiring Cypress and its
+  queue-fork tax and arm64/Electron hazard ([§5.1](#51-browser-suites-driver--style)).
 - **Redundant presenter peers.** Keep *one* fast peer (plain vitest) plus,
   optionally, the real-timer cucumber peer as the ordering oracle. Three of the
   four exist to prove portability, not to gate releases.
@@ -547,11 +568,11 @@ distinct jobs, no overlap.
 
 ## 8. See also
 
-- [`README.md`](./README.md) — scripts, reports, orchestration, the Cypress
-  arm64 known-issue, caching/freshness.
+- [`README.md`](./README.md) — scripts, reports, orchestration,
+  caching/freshness.
 - [`../docs/architecture/09-test-strategy.md`](../docs/architecture/09-test-strategy.md) §9 "Test Strategy" — the
-  authoritative layer model, the twelve-suite e2e stack, the bundler-alias seam, and
-  the port-contract test layer.
+  authoritative layer model, the ten-suite e2e stack, and the port-contract
+  test layer.
 - [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
   — the visual-tier sibling of this document (one axis; pixel goldens).
 - [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md)

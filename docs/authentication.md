@@ -254,14 +254,21 @@ Full-stack local dev (`dev:react:fs` / `dev:ws`) is WS-real, so it ignores
 `dev:*:fs` scripts bake in the same demo roster, so full-stack also works out of
 the box.
 
+`@rtc/client-solid` (`pnpm dev:solid`) follows the identical mechanism: its own
+committed `packages/client-solid/.env.development` carries the same
+`VITE_DEV_AUTH` value, and its `buildBrowserPorts.ts` reads it via the same
+`parseDevAuth` helper as `client-react` — the two web clients are at full
+parity here, not just visually and behaviourally.
+
 ## 5. What's committed vs. what stays secret
 
 This is a **demo app**, so the demo *login* credentials are intentionally
 committed — the roster password (`mcdc2026` for `astark` / `nromanoff` /
-`tchalla` / `demo`) lives in `packages/client-react/.env.development`
-(simulator) and in the `dev:ws` / `dev:*:fs` scripts' `AUTH_USERS` (full-stack).
-They're throwaway and rotatable: change the password in those two places (and
-the Fly `AUTH_USERS` secret) if it ever matters.
+`tchalla` / `demo`) lives in `packages/client-react/.env.development` and
+`packages/client-solid/.env.development` (simulator, both web clients) and in
+the `dev:ws` / `dev:*:fs` scripts' `AUTH_USERS` (full-stack). They're
+throwaway and rotatable: change the password in those places (and the Fly
+`AUTH_USERS` secret) if it ever matters.
 
 What still stays **out of version control** is the thing that actually protects
 the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and

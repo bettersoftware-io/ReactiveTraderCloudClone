@@ -417,7 +417,7 @@ src/
 `tests` (not a package, included for orientation):
 ```
 tests/
-├── browser/       playwright · cypress · *-cucumber variants + shared browser/steps
+├── browser/       playwright · playwright-cucumber + shared browser/steps
 ├── presenter/      cucumber · cucumber-fake-timers · vitest-fake-timers · vitest-quickpickle-fake-timers
 ├── fullstack/       node-smoke · browser-smoke against the REAL server
 ├── scripts/          grep-gates · run-all · with-server · free-port

@@ -32,15 +32,11 @@
 | **Behavioural Specs** | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free; SOT for behaviour |
 | **Page Object Contracts** | `tests/browser/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
 | **Page Objects (Playwright)** | `tests/browser/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
-| **Page Objects (Cypress)** | `tests/browser/page-objects/cypress/**/*.ts` | Cypress implementations of the contracts |
-| **Step Definitions** | `tests/browser/steps/**/*.ts` | Cucumber-JS step defs (shared tree for Cucumber+Playwright + Cucumber+Cypress); import only contracts |
+| **Step Definitions** | `tests/browser/steps/**/*.ts` | Cucumber-JS step defs (Cucumber+Playwright); import only contracts |
 | **Native Playwright Specs** | `tests/browser/playwright/*.spec.ts` | `@playwright/test` bodies binding scenarios directly; no Gherkin |
 | **Native Playwright Harness** | `tests/browser/playwright/{playwright.config,_context,_openWorkspace}.ts` | `@playwright/test` config (Chromium, serial); fixture exposing `{ ctx }`; named Background helpers |
-| **Native Cypress Specs** | `tests/browser/cypress/*.spec.ts` | Sync Mocha `it()` bodies binding cypress-forked scenarios; no Gherkin; no `async`/`await`/`cy.*`/`ctx.po.*` |
-| **Native Cypress Harness** | `tests/browser/cypress/{cypress.config,_context,_openWorkspace}.ts` | Cypress config (no preprocessor); `getCtx()` accessor with module-scoped beforeEach builder; named Background helpers |
-| **Cypress-forked Scenarios** | `tests/browser/cypress/scenarios/*.ts` (+ `_chainable.ts`) | Sync scenario fns mirroring shared `browser/scenarios/*.ts` 1:1 by name; queue-aware (use `chainable<T>` cast helper to expose Cypress Chainable under the shared `Promise<T>` PO contract); used by native Cypress only |
-| **Test World + Hooks (Cucumber)** | `tests/browser/playwright-cucumber/{world,hooks}.ts` and `tests/browser/cypress-cucumber/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
-| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 29 gates) |
+| **Test World + Hooks (Cucumber)** | `tests/browser/playwright-cucumber/{world,hooks}.ts` | Per-runner World, dev-server lifecycle, hooks |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 34 active gates, numbered to 37 — gates 12–14 retired with Cypress 2026-07-20) |
 | **Visual Golden Tier** | `packages/client-react/tests/ui/visual/{playwright,vitest-browser}/` (runners/config) + `packages/ui-contract/goldens/playwright/__screenshots__/` (the goldens themselves) | Sole CI-asserted screenshot runner (`playwright`) + the `vitest-browser` coverage-only instrument (pixel assert compiled out); dual golden sets (`react/` CI-canonical + `react-local/<arch>/`), generated only from `client-react`; ADR-001 lives with the runners |
 | **UI Contract Tier** | `packages/client-react/tests/ui/contract/{specs,shared,react}/` | Framework-neutral sociable RTL specs + the thin React swap layer; ≥95% coverage gate |
 | **Dependency Rules** | `.dependency-cruiser.cjs` | `no-circular`, `domain-stays-pure`, `client-not-server`, `ws-effects-stays-pure`, `motion-core-stays-pure`, ... (`pnpm check:deps`) |
