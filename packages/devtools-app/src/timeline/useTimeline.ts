@@ -14,9 +14,7 @@ import {
   RADIUS_WINDOW_MS,
 } from "#/timeline/timelineModel";
 
-export type TimelineSelection =
-  | { mode: "follow" }
-  | { mode: "pinned"; seq: number };
+type TimelineSelection = { mode: "follow" } | { mode: "pinned"; seq: number };
 
 export interface TimelineModel {
   selection: TimelineSelection;

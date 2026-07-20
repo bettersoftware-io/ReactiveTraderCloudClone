@@ -9,7 +9,9 @@ machine; carries only devtools frames — never app data, never the production
 
 A fourth `Duplex` behind the inspector's transport seam (after
 BroadcastChannel, the Chrome extension's runtime port). The protocol, hub,
-`InspectorStore`/`InspectorClient`, and the four panels are unchanged:
+`InspectorStore`/`InspectorClient`, and the timeline-first inspector (a
+unified event timeline with an Event/State/Diff context pane, plus the
+Machines and Wire lenses) are unchanged:
 
 - The RN app (dev build only) opens `WsRelayDuplex(url, "app")` as its
   `DevtoolsHub` transport and applies the same three composition-root decorators

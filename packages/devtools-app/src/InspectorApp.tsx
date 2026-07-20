@@ -2,7 +2,7 @@ import type { ReactElement, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
-import { LiveHistory } from "@rtc/devtools-core";
+import { LiveHistory, projectSnapshot } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
 import { MachinesPanel } from "#/panels/MachinesPanel";
@@ -36,7 +36,20 @@ export function InspectorApp({
     return new LiveHistory();
   }, []);
 
+  // Seeds `liveHistory` with whatever the store already holds before the tap
+  // attaches, so messages applied before this effect mounts (e.g. an already
+  // up InspectorStore reused across a remount) aren't invisible to
+  // stateAt(). Guarded by a ref, not just the effect's own once-per-pair
+  // body, because StrictMode double-invokes effects — without the guard a
+  // second seed would insert a duplicate snapshot frame into history.
+  const seededHistoryRef = useRef<LiveHistory | null>(null);
+
   useEffect((): (() => void) => {
+    if (seededHistoryRef.current !== liveHistory) {
+      liveHistory.record(projectSnapshot(store.getSnapshot()));
+      seededHistoryRef.current = liveHistory;
+    }
+
     return store.tap((msg) => {
       liveHistory.record(msg);
     });
@@ -49,6 +62,28 @@ export function InspectorApp({
   const presentState = recording.imported?.state ?? liveState;
 
   const timeline = useTimeline(activeLog, activeHistory);
+
+  // Swapping the datasource (an import lands, or Back to live restores the
+  // live seam) is a new timeline: drop any pin and radius filter left over
+  // from the previous datasource rather than let them silently survive the
+  // swap. The ref comparison — not just the dependency array — is what keeps
+  // this from firing on every render: `timeline` is a fresh object every
+  // render, so a dependency array naming it (or its still-stable resume/
+  // clearRadius members without a body reference) would either refire
+  // constantly or trip the exhaustive-deps lint. Comparing against the
+  // previous `activeHistory` inside the effect body makes the real
+  // condition explicit. Firing on first mount too is harmless: a fresh
+  // timeline already starts in "follow" with no radius.
+  const previousHistoryRef = useRef<LiveHistory | null>(null);
+
+  useEffect((): void => {
+    if (previousHistoryRef.current !== activeHistory) {
+      previousHistoryRef.current = activeHistory;
+      timeline.resume();
+      timeline.clearRadius();
+    }
+  }, [activeHistory, timeline]);
+
   const [lens, setLens] = useState<InspectorLens>("timeline");
   const filterInputRef = useRef<HTMLInputElement | null>(null);
 

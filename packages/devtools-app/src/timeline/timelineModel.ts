@@ -13,14 +13,14 @@ export interface FamilyFilterState {
 
 export type TimelineFamily = keyof FamilyFilterState;
 
-export type SourcePillType = "stream" | "machine" | "msgType";
+type SourcePillType = "stream" | "machine" | "msgType";
 
 export interface SourcePill {
   type: SourcePillType;
   id: string;
 }
 
-export interface RadiusFilter {
+interface RadiusFilter {
   centerTs: number;
   windowMs: number;
 }
