@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Blotter } from "#/ui/Blotter";
+import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 
@@ -57,7 +57,7 @@ export const SCENARIOS: readonly Scenario[] = [
     build: (): ReactNode => {
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
-          <Blotter />
+          <BlotterModule />
         </VisualScenarioHost>
       );
     },
