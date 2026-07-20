@@ -1,7 +1,8 @@
 import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 
-import { Direction, ExecutionStatus } from "@rtc/domain";
+import type { Trade } from "@rtc/domain";
+import { Direction, ExecutionStatus, TradeStatus } from "@rtc/domain";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
@@ -37,6 +38,32 @@ test("finished+Done shows FILLED", async () => {
     />,
   );
   expect(screen.getByText("FILLED")).toBeTruthy();
+});
+
+test("finished+Done with a trade shows the {DIR} {notional} @ {rate} detail", async () => {
+  const trade: Trade = {
+    tradeId: 1,
+    tradeName: "You",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.0872,
+    status: TradeStatus.Done,
+    tradeDate: "",
+    valueDate: "",
+  };
+  await renderWithTheme(
+    <ExecutionCeremony
+      state={{
+        status: "finished",
+        executionStatus: ExecutionStatus.Done,
+        trade,
+      }}
+      direction={Direction.Buy}
+    />,
+  );
+  expect(screen.getByText("BUY 1,000,000 @ 1.0872")).toBeTruthy();
 });
 
 test("finished+Rejected shows REJECTED", async () => {

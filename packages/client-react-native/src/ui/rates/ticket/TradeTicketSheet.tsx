@@ -2,9 +2,11 @@
 import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  type BottomSheetBackgroundProps,
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { BlurView } from "expo-blur";
 import type { ComponentRef, JSX } from "react";
 import { useEffect, useRef } from "react";
 import {
@@ -78,7 +80,7 @@ export function TradeTicketSheet({
       enableDynamicSizing
       onDismiss={onClose}
       backdropComponent={TicketBackdrop}
-      backgroundStyle={styles.background}
+      backgroundComponent={TicketBackground}
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetView style={styles.body}>
@@ -119,8 +121,37 @@ function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
   );
 }
 
+// Private: the sheet body's background — `t.panel` is a translucent token
+// (its design contract is "translucent panel + blur"), and RN has no
+// `backdrop-filter` to realize that over the sheet's `style`, so the spot
+// tiles beneath bled straight through. Layers an `expo-blur` `BlurView`
+// (matching the Phase-3 dock-scrim idiom in RadialCommandDock) under a
+// `t.panel`-tinted overlay, clipped to the sheet's top corner radius. Not
+// exported — rtc/component-newspaper permits private subcomponents below the
+// lede.
+function TicketBackground({ style }: BottomSheetBackgroundProps): JSX.Element {
+  const t = useTheme();
+
+  return (
+    <View style={[style, backgroundStyles.clip]}>
+      <BlurView intensity={16} tint="dark" style={StyleSheet.absoluteFill} />
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: t.panel }]}
+      />
+    </View>
+  );
+}
+
+const backgroundStyles = StyleSheet.create({
+  clip: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: "hidden",
+  },
+});
+
 interface TradeTicketSheetStyles {
-  background: ViewStyle;
   handleIndicator: ViewStyle;
   body: ViewStyle;
   header: ViewStyle;
@@ -130,7 +161,6 @@ interface TradeTicketSheetStyles {
 
 function makeStyles(t: RnTheme): TradeTicketSheetStyles {
   return StyleSheet.create({
-    background: { backgroundColor: t.panel },
     handleIndicator: { backgroundColor: t.border },
     body: { padding: 20, paddingBottom: 32, gap: 18 },
     header: { gap: 4 },

@@ -21,7 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import type { TileExecutionState } from "@rtc/client-core";
-import { type Direction, ExecutionStatus } from "@rtc/domain";
+import { type Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -78,7 +78,11 @@ export function ExecutionCeremony({
               ? "FILLED"
               : "REJECTED"
           }
-          detail={state.trade?.tradeName ?? state.executionStatus}
+          detail={
+            state.trade === undefined
+              ? state.executionStatus
+              : formatTradeDetail(state.trade)
+          }
           positive={state.executionStatus === ExecutionStatus.Done}
         />
       );
@@ -100,6 +104,13 @@ export interface ExecutionCeremonyProps {
 
 function isTerminal(state: TileExecutionState): boolean {
   return state.status === "finished" || state.status === "timeout";
+}
+
+// The FILLED/REJECTED detail line: `{DIR} {notional} @ {rate}` (prototype's
+// `execDetail`), replacing the bare `tradeName` ("You") that on-device read
+// as unhelpful noise.
+function formatTradeDetail(trade: Trade): string {
+  return `${trade.direction.toUpperCase()} ${trade.notional.toLocaleString("en-US")} @ ${trade.spotRate}`;
 }
 
 // Private: the busy overlay (spinner + scan bar + "EXECUTING …"), shown while

@@ -15,6 +15,7 @@ export function RateFilterBar({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.row}
       testID="rate-filter-bar"
     >
@@ -60,7 +61,18 @@ interface RateFilterBarProps {
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 7, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 2 },
+  // flexGrow/flexShrink: 0 — a short filter (e.g. JPY, 3 tiles) leaves the
+  // ScrollView's parent with leftover flex height; without this the
+  // ScrollView itself stretches to absorb it, and its Pressable children
+  // (sized by the row's alignItems) balloon into giant vertical bars.
+  scroll: { flexGrow: 0, flexShrink: 0 },
+  row: {
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 2,
+    alignItems: "center",
+  },
   pill: {
     paddingHorizontal: 13,
     paddingVertical: 6,
