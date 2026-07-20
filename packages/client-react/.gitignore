@@ -1,4 +1,3 @@
 reports/
 coverage/
-tests/ui/visual/playwright-ct/host/.cache/
 .vitest-attachments/

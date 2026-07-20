@@ -22,5 +22,11 @@ export interface IWsAdapter {
   closeForIdle(): void;
   /** Re-establish the socket after an idle close (user-initiated). */
   reopen(): void;
+  /** Open the socket if it isn't already live (idempotent). Paired with
+   * disconnect() to gate the transport behind authentication. */
+  connect(): void;
+  /** Close the socket deliberately (sign-out) and suppress auto-reconnect,
+   * leaving the adapter reusable via connect(). */
+  disconnect(): void;
   dispose(): void;
 }

@@ -91,7 +91,7 @@ This repo ships [`.claude-sandbox.json`](../.claude-sandbox.json) — every
 **directory** a container `pnpm install` / build / test would otherwise write onto
 the bind mount: each workspace package's `node_modules` (including the top-level
 `tests` package) and `dist`, the per-package and root `.turbo` caches, pnpm's
-project-local `.pnpm-store` fallback, and the playwright-ct vite bundle cache:
+project-local `.pnpm-store` fallback:
 
 ```json
 {
@@ -125,8 +125,7 @@ project-local `.pnpm-store` fallback, and the playwright-ct vite bundle cache:
     "packages/ws-effects/.turbo",
     "packages/client-prototype/.turbo",
     "packages/server/.turbo",
-    "tests/.turbo",
-    "packages/client-react/tests/ui/visual/playwright-ct/host/.cache"
+    "tests/.turbo"
   ]
 }
 ```
@@ -229,7 +228,6 @@ because Cypress busy-spins on aarch64 — Playwright is the local driver), also 
 volumes for the browser caches:
 
 ```
-rtc-pwct-cache:$REPO/packages/client-react/tests/ui/visual/playwright-ct/host/.cache
 rtc-reports:$REPO/packages/client-react/reports
 ```
 

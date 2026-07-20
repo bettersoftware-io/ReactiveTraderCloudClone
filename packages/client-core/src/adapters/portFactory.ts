@@ -82,6 +82,13 @@ import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 import type { IWsAdapter } from "./IWsAdapter";
 import type { SessionStore } from "./sessionStore.js";
 
+/** The subset of the transport the composition root drives from auth state.
+ * Structural, so both `WsAdapter` and test fakes satisfy it. */
+export interface AuthGatedTransport {
+  connect(): void;
+  disconnect(): void;
+}
+
 export interface AppPorts {
   referenceData: ReferenceDataPort;
   pricing: PricingPort;
@@ -105,6 +112,11 @@ export interface AppPorts {
   sessionStore: SessionStore;
   /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
   metricControls: readonly MetricControl[];
+  /** Auth-gated transport handle. Optional — the simulator branch has no
+   * socket to gate, and omitting it leaves the gate inert. Supplied by the
+   * WS-real branch so `createApp` opens the connection only once the user is
+   * authenticated (and closes it on sign-out). */
+  transport?: AuthGatedTransport;
   /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
    * Browser implementation: `MediaQueryColorSchemeAdapter` (client-react). */
   colorScheme?: ColorSchemeSource;

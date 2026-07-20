@@ -15,7 +15,7 @@ import type { EquityQuote } from "../equities/quote.js";
 import type { CandleTimeframe } from "../equities/timeframe.js";
 import type { MarketDataPort } from "../ports/marketDataPort.js";
 import { aggregateCandle, gbmStep } from "./gbm.js";
-import { mulberry32 } from "./seededRandom.js";
+import { hashString, mulberry32 } from "./seededRandom.js";
 
 const WATCHLIST: readonly EquityInstrument[] = [
   { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
@@ -176,7 +176,16 @@ export class EquityMarketDataSimulator implements MarketDataPort {
       }
 
       const { count, bucketMs, vol, seed } = TF_CONFIG[timeframe];
-      const rng = mulberry32(seed);
+      // Seed from timeframe AND symbol. Seeding from the timeframe alone
+      // gave every symbol the identical sequence of percentage moves — and
+      // because gbmStep is purely multiplicative, the only per-symbol input
+      // (the `s.open` starting level) factors straight out, making the
+      // series exact scalar multiples of each other. chartVm autoscales
+      // each series to its own min/max, where a constant factor cancels, so
+      // every symbol rendered a PIXEL-identical chart (only the price-axis
+      // labels differed). Mixing a stable hash of the symbol into the seed
+      // gives each instrument its own shape while keeping determinism.
+      const rng = mulberry32(seed + hashString(symbol));
       const substepVol = vol / Math.sqrt(CANDLE_SUBSTEPS);
       let price = s.open;
       const out: Candle[] = [];

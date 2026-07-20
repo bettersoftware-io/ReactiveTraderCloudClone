@@ -84,7 +84,7 @@ const activeSuites: Suite[] = skipGherkinBrowser
   : suites;
 
 // Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
-// a multi-core dev box). On a small CI runner the 10-wide fan-out starves the
+// a multi-core dev box). On a small CI runner the 7-wide fan-out starves the
 // CPU and trips timing-sensitive suites, so CI sets RTC_E2E_MAX_PARALLEL=2 to run
 // in small batches — slower wall-clock, but reliable.
 const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);

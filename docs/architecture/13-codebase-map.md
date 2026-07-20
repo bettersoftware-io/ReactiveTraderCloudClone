@@ -163,7 +163,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | The SolidJS web client: dumb Solid UI (`src/ui`) + browser-specific platform adapters (`src/app`), at full parity with `@rtc/client-react` -- same contract specs, same visual goldens, same behavioural suites. |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
 | **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`packages/client-solid/package.json` `dependencies`) |
-| **Consumed by** | Nothing in-workspace -- like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) dependency; its own suite (contract + three visual tiers) runs in-package |
+| **Consumed by** | Nothing in-workspace -- like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) dependency; its own suite (contract + one visual tier) runs in-package |
 | **Non-obvious** | Asserts against goldens generated only from `client-react`'s renders rather than owning any of its own (`packages/ui-contract/goldens/<tier>/__screenshots__/`) -- a passing Solid visual run is a direct cross-framework pixel match, not a self-comparison ([its README](../../packages/client-solid/README.md)). `@rx-state/core` and `@rtc/ui-contract` are `devDependencies`, not runtime deps -- the former backs `solid-bindings`' streams in tests, the latter supplies the shared contract specs and visual scenario manifest. |
 | **README** | [`packages/client-solid/README.md`](../../packages/client-solid/README.md) |
 
@@ -197,7 +197,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ④ Frameworks & Drivers -- a test-only leaf, not part of either client's runtime bundle |
 | **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `rxjs` (`packages/ui-contract/package.json` `dependencies`) |
 | **Consumed by** | `client-react` and `client-solid`, both as a **devDependency** -- it never appears in either client's `src/` (only their `tests/`) |
-| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth both clients' three visual tiers loop over -- adding a scenario here gives all six tier-runners (three per client) the test for free. `src/specs/` holds the 80+ shared contract spec files (fx/credit/equities/admin/shell); each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for all three visual tiers, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
+| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the 86 shared contract spec files / 622 tests (fx/credit/equities/admin/shell); each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
 | **README** | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) |
 
 #### `@rtc/ws-effects`
@@ -365,7 +365,7 @@ src/
 `@rtc/ui-contract`:
 ```
 src/
-├── specs/fx/ credit/ equities/ admin/ shell/    80+ shared *.contract.spec.ts files, sociable RTL over a render-target prop
+├── specs/fx/ credit/ equities/ admin/ shell/    86 shared *.contract.spec.ts files / 622 tests, sociable RTL over a render-target prop
 ├── shared/harness/, shared/pages/                mount helper + Page-Object-ish query helpers, framework-neutral
 ├── shared/components.ts, shared/mount.ts          the render-target seam each client's swap-trio implements
 └── visual/     scenarios.ts · scenarioActions.ts · fixtures.ts · appData.ts · goldenPath.ts · freezeClock.ts
@@ -423,7 +423,7 @@ src/
 ```
 tests/
 ├── browser/       playwright · playwright-cucumber + shared browser/steps
-├── presenter/      cucumber · cucumber-fake-timers · vitest-fake-timers · vitest-quickpickle-fake-timers
+├── presenter/      vitest-fake-timers
 ├── fullstack/       node-smoke · browser-smoke against the REAL server
 ├── scripts/          grep-gates · run-all · with-server · free-port
 └── specs/             shared .feature Gherkin files

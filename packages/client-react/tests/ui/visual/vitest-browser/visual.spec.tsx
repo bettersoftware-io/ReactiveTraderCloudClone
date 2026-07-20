@@ -10,12 +10,14 @@ declare const __RTC_VISUAL_SKIP_DIFF__: boolean;
 
 // Tier 3 — Vitest browser mode. Drives the SAME shared scenario manifest and
 // interaction table as the plain-Playwright tier (`../playwright/visual.spec.ts`),
-// so the two stay behaviourally in lock-step. Goldens are routed per-environment
-// by `vitest-browser.config.ts` (CI `react/` vs local `react-local/<arch>/`).
+// so the two stay behaviourally in lock-step. Coverage-only since the
+// 2026-07-20 test-tooling bake-off: this tier's own goldens were retired, and
+// the pixel assert below is compiled out via __RTC_VISUAL_SKIP_DIFF__ (see
+// ../ADR-001-visual-diff-tooling.md's Outcome section).
 //
-// Golden basename: `<skin>-<mode>/<base-name>` (see `goldenPath`). The matcher
-// appends the browser name (e.g. `classic-dark/app-fx-chromium.png`); see the
-// config's resolveScreenshotPath.
+// Golden basename: `<skin>-<mode>/<base-name>` (see `goldenPath`) — used only
+// to name the assertion when this tier's diff role is re-enabled; unused
+// while __RTC_VISUAL_SKIP_DIFF__ is true.
 
 // Stub matchMedia so a query reports as matching (delegating every other query
 // to the real impl). Used for prefers-reduced-motion, which this runner cannot
