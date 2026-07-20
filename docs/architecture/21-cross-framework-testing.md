@@ -68,7 +68,13 @@ smokes + 1 in-process presenter peer (react/solid-agnostic — it never touches
 a UI framework; the presenter family was 4 peers until the 2026-07-20 bake-off
 collapsed it to 1 — see `tests/STRATEGY.md` §5.2) + the 4 browser suites in
 the table above (2 react + 2 solid; Cypress's two suites were deleted in the
-same bake-off retirement).
+same bake-off retirement). That 7-suite figure is the **full local run**
+(plain `pnpm test:e2e`, env var unset) and what the weekly
+`e2e-gherkin-weekly.yml` workflow re-proves; the **PR gate** runs 5 of the 7 —
+`ci.yml` sets `RTC_E2E_SKIP_GHERKIN_BROWSER=1`, which parks the two
+`playwright-cucumber` suites (react + solid) since the same bake-off declared
+native Playwright the gating browser SOT (`tests/STRATEGY.md` §7.1) — leaving
+2 native-Playwright browser suites + 1 presenter + 2 full-stack gating.
 
 **How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `86`;
 `pnpm --filter @rtc/client-react test:ui:contract` and the same for
@@ -328,7 +334,7 @@ as ordinary entries, no different in shape from React's:
 
 ```mermaid
 flowchart TB
-    RA["run-all.ts — 10 concurrent suites"]
+    RA["run-all.ts — 7 concurrent suites<br/>(5 on the PR gate; 2 parked weekly)"]
     RA -- "RTC_CLIENT_PKG unset<br/>ports 3001-3002" --> PWR["playwright / cucumber configs"]
     RA -- "RTC_CLIENT_PKG=@rtc/client-solid<br/>ports 3003-3004" --> PWS["same config files<br/>(-solid report suffix)"]
     PWR --> DS["devServer.ts<br/>spawn: pnpm --filter CLIENT_PKG dev"]

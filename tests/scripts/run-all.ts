@@ -59,13 +59,39 @@ const suites: Suite[] = [
   }),
 ];
 
+// The two Gherkin browser peers are PARKED (2026-07-19): native Playwright is
+// the gating browser SOT; these run weekly (e2e-gherkin-weekly.yml) so the
+// .feature/step tree can't silently rot. Set RTC_E2E_SKIP_GHERKIN_BROWSER=1
+// (the CI PR gate does) to exclude them; unset/0 runs all suites.
+const skipGherkinBrowser =
+  process.env.RTC_E2E_SKIP_GHERKIN_BROWSER === "1" ||
+  process.env.RTC_E2E_SKIP_GHERKIN_BROWSER === "true";
+
+function isGherkinBrowser(s: Suite): boolean {
+  return s.script.startsWith("test:browser:playwright-cucumber");
+}
+
+const droppedGherkinBrowser = skipGherkinBrowser
+  ? suites.filter(isGherkinBrowser).map((s) => {
+      return s.script;
+    })
+  : [];
+
+const activeSuites: Suite[] = skipGherkinBrowser
+  ? suites.filter((s) => {
+      return !isGherkinBrowser(s);
+    })
+  : suites;
+
 // Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
 // a multi-core dev box). On a small CI runner the 10-wide fan-out starves the
 // CPU and trips timing-sensitive suites, so CI sets RTC_E2E_MAX_PARALLEL=2 to run
 // in small batches — slower wall-clock, but reliable.
 const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);
 const MAX_PARALLEL: number =
-  Number.isFinite(envCap) && envCap > 0 ? Math.floor(envCap) : suites.length;
+  Number.isFinite(envCap) && envCap > 0
+    ? Math.floor(envCap)
+    : activeSuites.length;
 
 // Run `fn` over `items` with at most `limit` in flight at once. Results are kept
 // in input order; each item's own completion logging still fires as it finishes.
@@ -148,7 +174,13 @@ function rule(ch: string): string {
 
 const overallStart = Date.now();
 
-if (MAX_PARALLEL < suites.length) {
+if (skipGherkinBrowser) {
+  console.log(
+    `(RTC_E2E_SKIP_GHERKIN_BROWSER — parked ${droppedGherkinBrowser.length} Gherkin browser suite(s): ${droppedGherkinBrowser.join(", ")})`,
+  );
+}
+
+if (MAX_PARALLEL < activeSuites.length) {
   console.log(
     `(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`,
   );
@@ -156,16 +188,22 @@ if (MAX_PARALLEL < suites.length) {
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
 // final batch — keeps a long run feeling responsive without interleaving.
-const results: Result[] = await mapWithLimit(suites, MAX_PARALLEL, (s) => {
-  return runSuite(s).then((r) => {
-    const status = r.code === 0 ? "PASS" : "FAIL";
-    console.log(
-      `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
-    );
-    process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
-    return r;
-  });
-});
+const results: Result[] = await mapWithLimit(
+  activeSuites,
+  MAX_PARALLEL,
+  (s) => {
+    return runSuite(s).then((r) => {
+      const status = r.code === 0 ? "PASS" : "FAIL";
+      console.log(
+        `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
+      );
+      process.stdout.write(
+        r.output.endsWith("\n") ? r.output : `${r.output}\n`,
+      );
+      return r;
+    });
+  },
+);
 
 const failures = results.filter((r) => {
   return r.code !== 0;

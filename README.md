@@ -113,8 +113,8 @@ Everything below is wired through Turborepo, so runs are cached and incremental.
 ```bash
 pnpm typecheck                    # tsc --noEmit across every package
 pnpm test                         # unit tests (Vitest) across every package
-pnpm test:e2e                     # gates, then all 10 suites in parallel (8 runners + 2 smokes)
-pnpm test:ui:visual               # UI visual regression screenshots (all 3 runners)
+pnpm test:e2e                     # gates, then all 7 suites in parallel (5 runners + 2 smokes; the CI gate skips the 2 parked Gherkin peers)
+pnpm test:ui:visual               # UI visual regression screenshots (the playwright tier)
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
@@ -206,20 +206,20 @@ domain use cases, no server, no live streams, no timers — so it tests *renderi
 only*, the exact layer the SolidJS port replaced. The fixtures, scenario
 manifest, and golden PNGs live in a React-free `@rtc/ui-contract`'s
 `src/visual/` core (a separate package, consumed as a devDependency) so the
-same baselines gate that reimplementation — `@rtc/client-solid`'s three visual
-tiers assert against these goldens directly, owning none of their own.
+same baselines gate that reimplementation — `@rtc/client-solid`'s visual tier
+asserts against these goldens directly, owning none of its own.
 
 ```bash
-pnpm test:ui:visual                                              # all 3 runners vs committed goldens
-pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:ui  # interactive (runner 1; runner 2 has :ui too)
-# Regenerate goldens per runner — inspect before committing:
-pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update
+pnpm test:ui:visual                                              # the playwright tier vs committed goldens
+pnpm --filter @rtc/client-react test:ui:visual:playwright:react:ui      # interactive
+# Regenerate goldens — inspect before committing:
 pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
-pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update
+# Coverage-only instrument (renders every scenario, pixel assert compiled out):
+pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage
 ```
 
 See `packages/client-react/tests/ui/visual/README.md` for the layout and the SolidJS port's
-execution record (`@rtc/client-solid` runs the same three tiers, assert-only against these goldens).
+execution record (`@rtc/client-solid` runs the same tier, assert-only against these goldens).
 
 ### Do I need to start the servers first?
 

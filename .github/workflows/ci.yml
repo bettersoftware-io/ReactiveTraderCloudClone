@@ -1,11 +1,13 @@
 name: CI
 
 # Fast gates (typecheck, unit tests, build, the architecture + supply-chain
-# grep/audit gates) plus the full e2e suite. The e2e job is the heavy one
-# (Playwright Chromium, the 10-way parallel orchestration in
-# tests/scripts/run-all.ts — 6 non-browser suites + 4 browser suites, the last
-# two of which are the Solid client's playwright/playwright-cucumber peers);
-# it runs alongside the fast jobs so it never slows them down.
+# grep/audit gates) plus the e2e suite. The e2e job is the heavy one
+# (Playwright Chromium, the parallel orchestration in tests/scripts/run-all.ts
+# — the PR gate runs 5 of the 7 suites: 3 non-browser + 2 native-Playwright
+# browser suites (react + solid); the two Gherkin browser peers
+# (playwright-cucumber, react + solid) are parked here and run weekly instead
+# — see e2e-gherkin-weekly.yml and tests/STRATEGY.md §7.1); it runs alongside
+# the fast jobs so it never slows them down.
 #
 # The ~20-min visual-diff gate is DELIBERATELY NOT here: it runs post-merge only,
 # in its own workflow (.github/workflows/visual.yml, triggered on push to main),
@@ -167,10 +169,10 @@ jobs:
     name: e2e (browser · presenter · fullstack)
     runs-on: ubuntu-latest
     env:
-      # The 2-vCPU runner can't sustain the 10-way parallel orchestration (it
-      # starves the timing-sensitive WS smoke into timeouts). Cap the pool to 2
-      # suites at a time — slower wall-clock, but reliable. run-all.ts defaults
-      # to fully parallel when this is unset (multi-core dev boxes).
+      # The 2-vCPU runner can't sustain the full parallel fan-out (it starves
+      # the timing-sensitive WS smoke into timeouts). Cap the pool to 2 suites
+      # at a time — slower wall-clock, but reliable. run-all.ts defaults to
+      # fully parallel when this is unset (multi-core dev boxes).
       RTC_E2E_MAX_PARALLEL: "2"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -203,9 +205,15 @@ jobs:
       # Invoke through turbo (root script = `turbo run test:e2e`, NOT
       # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
       # lib first — the suites import @rtc/{domain,shared,client,server} via their
-      # dist/. turbo then runs `pnpm gates` + the 10-way parallel orchestrator.
+      # dist/. turbo then runs `pnpm gates` + the parallel orchestrator.
+      #
+      # RTC_E2E_SKIP_GHERKIN_BROWSER=1 parks the two Gherkin browser peers
+      # (playwright-cucumber, react + solid): native Playwright is the gating
+      # browser SOT (tests/STRATEGY.md §7.1), so the PR gate runs 5 of the 7
+      # suites. The weekly e2e-gherkin-weekly.yml workflow runs the two parked
+      # suites so the .feature/step tree can't silently rot.
       - name: e2e suite (Playwright + presenter + fullstack)
-        run: pnpm test:e2e
+        run: RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()
