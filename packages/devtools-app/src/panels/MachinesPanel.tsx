@@ -19,6 +19,8 @@ export function MachinesPanel({
   machines,
   dev = false,
   onInvokeIntent,
+  onFocusInTimeline,
+  onPinIntent,
 }: MachinesPanelProps): ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected =
@@ -37,6 +39,8 @@ export function MachinesPanel({
         machine={selected}
         dev={dev}
         onInvokeIntent={onInvokeIntent}
+        onFocusInTimeline={onFocusInTimeline}
+        onPinIntent={onPinIntent}
       />
     </div>
   );
@@ -52,6 +56,10 @@ export interface MachinesPanelProps {
     name: string,
     args: readonly unknown[],
   ) => void;
+  /** Cross-link into the timeline lens (Task 10), scoped to this machine. */
+  onFocusInTimeline?: (machineId: string) => void;
+  /** Cross-link that pins a specific intent occurrence on the timeline. */
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
 }
 
 interface MachineTableProps {
@@ -141,12 +149,16 @@ interface MachineDetailProps {
     name: string,
     args: readonly unknown[],
   ) => void;
+  onFocusInTimeline?: (machineId: string) => void;
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
 }
 
 function MachineDetail({
   machine,
   dev,
   onInvokeIntent,
+  onFocusInTimeline,
+  onPinIntent,
 }: MachineDetailProps): ReactElement {
   if (machine === null) {
     return (
@@ -158,7 +170,20 @@ function MachineDetail({
 
   return (
     <div className={styles.detail}>
-      <h3 className={styles.detailTitle}>{machine.machineId}</h3>
+      <div className={styles.detailHeader}>
+        <h3 className={styles.detailTitle}>{machine.machineId}</h3>
+        {onFocusInTimeline ? (
+          <button
+            type="button"
+            className={styles.timelineButton}
+            onClick={() => {
+              onFocusInTimeline(machine.machineId);
+            }}
+          >
+            ⏱ timeline
+          </button>
+        ) : null}
+      </div>
       <dl className={styles.meta}>
         <MetaRow label="Kind" value={machine.machineKind} />
         <MetaRow label="Transitions" value={String(machine.transitions)} />
@@ -172,7 +197,11 @@ function MachineDetail({
       <h4
         className={styles.sectionTitle}
       >{`Intents (${machine.intents.length})`}</h4>
-      <IntentList intents={machine.intents} />
+      <IntentList
+        intents={machine.intents}
+        machineId={machine.machineId}
+        onPinIntent={onPinIntent}
+      />
       {dev ? (
         <IntentInjector
           key={machine.machineId}
@@ -200,9 +229,15 @@ function MetaRow({ label, value }: MetaRowProps): ReactElement {
 
 interface IntentListProps {
   intents: readonly MachineIntentRow[];
+  machineId: string;
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
 }
 
-function IntentList({ intents }: IntentListProps): ReactElement {
+function IntentList({
+  intents,
+  machineId,
+  onPinIntent,
+}: IntentListProps): ReactElement {
   const newestFirst = withIntentKeys([...intents].reverse());
 
   return (
@@ -210,10 +245,18 @@ function IntentList({ intents }: IntentListProps): ReactElement {
       {newestFirst.map((entry) => {
         return (
           <li key={entry.key} className={styles.intent}>
-            <span data-testid="intent-name" className={styles.intentName}>
-              {entry.intent.name}
-            </span>
-            <ValueView value={entry.intent.args} />
+            <button
+              type="button"
+              className={styles.intentRow}
+              onClick={() => {
+                onPinIntent?.(machineId, entry.intent.name, entry.intent.ts);
+              }}
+            >
+              <span data-testid="intent-name" className={styles.intentName}>
+                {entry.intent.name}
+              </span>
+              <ValueView value={entry.intent.args} />
+            </button>
           </li>
         );
       })}

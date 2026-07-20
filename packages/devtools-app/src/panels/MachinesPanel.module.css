@@ -83,10 +83,28 @@
   color: var(--dim);
 }
 
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .detailTitle {
   margin: 0;
   color: var(--fg);
   font-size: 13px;
+}
+
+.timelineButton {
+  flex: none;
+  padding: 2px 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 .meta {
@@ -130,8 +148,20 @@
 
 .intent {
   display: flex;
+}
+
+.intentRow {
+  display: flex;
   align-items: baseline;
+  width: 100%;
   gap: 6px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .intentName {
