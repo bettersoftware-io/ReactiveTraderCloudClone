@@ -8,13 +8,23 @@ import "react-native-gesture-handler/jestSetup";
 // The official mock deliberately omits `useReducedMotion` ("ADD ME IF
 // NEEDED" in its source) — Task 6's `useAmbientEnabled` calls it, so it's
 // added here, pinned to `false` (no test exercises reduced-motion directly;
-// that's an on-device concern per the perf doctrine).
+// that's an on-device concern per the perf doctrine). It likewise omits
+// `useFrameCallback` (Task 5's `BootCanvas` — real UI-side timers driving
+// `elapsedSec`); the stub below returns the same `{setActive, isActive,
+// callbackId}` shape without ever invoking the callback — no fake frame
+// loop runs in jsdom, and no test asserts on a ticked value.
 jest.mock("react-native-reanimated", () => {
   const officialMock = require("react-native-reanimated/mock");
   return {
     ...officialMock,
     useReducedMotion: () => {
       return false;
+    },
+    useFrameCallback: (
+      _callback: (frameInfo: unknown) => void,
+      autostart = true,
+    ) => {
+      return { setActive: () => {}, isActive: autostart, callbackId: -1 };
     },
   };
 });
