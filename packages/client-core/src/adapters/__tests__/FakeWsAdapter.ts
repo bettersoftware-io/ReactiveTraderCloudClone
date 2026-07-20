@@ -82,6 +82,24 @@ export class FakeWsAdapter implements IWsAdapter {
     this.connectionEvents$.next({ type: "gatewayConnected" });
   }
 
+  connect(): void {
+    if (this._disposed || !this._idleClosed) {
+      return;
+    }
+
+    this._idleClosed = false;
+    this.connectionEvents$.next({ type: "gatewayConnected" });
+  }
+
+  disconnect(): void {
+    if (this._disposed || this._idleClosed) {
+      return;
+    }
+
+    this._idleClosed = true;
+    this.connectionEvents$.next({ type: "gatewayDisconnected" });
+  }
+
   dispose(): void {
     this._disposed = true;
     this.connectionEvents$.complete();

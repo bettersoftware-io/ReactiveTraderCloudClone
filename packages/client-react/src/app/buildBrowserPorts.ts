@@ -71,9 +71,17 @@ export function buildBrowserPorts(): AppPorts {
     // send/on/rpc is mirrored to the hub (dormant until an inspector attaches).
     // The simulator branch below has no adapter — its wire panel is simply empty.
     const ws = instrumentWsAdapter(
-      new WsAdapter(url, () => {
-        return sessionStore.read()?.token;
-      }),
+      // autoConnect: false — the socket is opened by createApp's auth gate once
+      // the user is authenticated. Connecting here (at composition time) would
+      // send a tokenless upgrade the server rejects, then retry it on a timer
+      // behind the login screen.
+      new WsAdapter(
+        url,
+        () => {
+          return sessionStore.read()?.token;
+        },
+        { autoConnect: false },
+      ),
       devtoolsHub,
     );
     const gateway = new WsConnectionEventsAdapter(ws);
@@ -102,6 +110,7 @@ export function buildBrowserPorts(): AppPorts {
       connectionEvents,
       colorScheme,
       bootSplash,
+      transport: ws,
     };
   }
 

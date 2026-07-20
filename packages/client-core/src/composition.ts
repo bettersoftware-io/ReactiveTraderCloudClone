@@ -1,5 +1,5 @@
 import { type Observable, of, Subject } from "rxjs";
-import { filter, map, take } from "rxjs/operators";
+import { distinctUntilChanged, filter, map, take } from "rxjs/operators";
 
 import type {
   BootVariant,
@@ -10,7 +10,7 @@ import type {
 } from "@rtc/domain";
 
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
-import type { AppPorts } from "#/adapters/portFactory";
+import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import {
   createDefaultLayoutPort,
   type WorkspaceTab,
@@ -327,12 +327,55 @@ export function createApp(ports: AppPorts): App {
     sessionsKpi: new SessionsKpiPresenter(ports.sessions),
   };
 
+  gateTransportOnAuth(ports.transport, presenters.auth);
+
   const commands: AppCommands = {
     reconnect: () => {
       reconnect$.next({ type: "reconnect" });
     },
   };
   return { presenters, ports, commands };
+}
+
+/**
+ * Opens the transport only while the user is authenticated, and closes it on
+ * sign-out.
+ *
+ * Without this gate the WS-real branch opened its socket from the `WsAdapter`
+ * constructor — i.e. at app mount, before the login screen had even rendered.
+ * With no session token the upgrade carries no `?access=` param, the server's
+ * `verifyClient` rejects it 401, and the adapter's auto-reconnect retried the
+ * same tokenless upgrade every few seconds for as long as the user sat on the
+ * login screen.
+ *
+ * `AuthPresenter.state$` is a replaying BehaviorSubject, so a resumed session
+ * connects synchronously here — a returning user is authenticated at
+ * composition time and must not be stranded behind a closed transport.
+ *
+ * A no-op when no transport is supplied (simulator mode has no socket).
+ */
+function gateTransportOnAuth(
+  transport: AuthGatedTransport | undefined,
+  auth: AuthPresenter,
+): void {
+  if (!transport) {
+    return;
+  }
+
+  auth.state$
+    .pipe(
+      map((state) => {
+        return state.status === "authenticated";
+      }),
+      distinctUntilChanged(),
+    )
+    .subscribe((isAuthenticated) => {
+      if (isAuthenticated) {
+        transport.connect();
+      } else {
+        transport.disconnect();
+      }
+    });
 }
 
 /** Build the app-layer machine factories the ViewModel seam injects. Each factory
