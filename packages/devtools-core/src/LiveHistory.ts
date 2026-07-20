@@ -156,6 +156,12 @@ export class LiveHistory {
         continue;
       }
 
+      // A non-batch frame's maxSeq only ever inherits the running value from
+      // the last batch (FrameEntry doc above), so it can't be the first
+      // frame in this loop to exceed target — a batch already would have
+      // hit this branch and broken first. The `kind === "batch"` guard is
+      // therefore never false in practice; the bare break below is what
+      // makes that safe either way (no partial non-batch frame to apply).
       if (frame.msg.kind === "batch") {
         working.apply({
           kind: "batch",
@@ -202,6 +208,8 @@ export class LiveHistory {
   }
 
   private trim(): void {
+    let trimmedAny = false;
+
     while (this.totalEvents > this.maxEvents && this.frames.length > 1) {
       const oldest = this.frames.shift();
 
@@ -213,6 +221,7 @@ export class LiveHistory {
       this.baseMaxSeq = oldest.maxSeq;
       this.totalEvents -= oldest.eventCount;
       this.trimmedFrames += 1;
+      trimmedAny = true;
     }
 
     // Checkpoints whose folded prefix now lies inside the base are useless
@@ -226,6 +235,28 @@ export class LiveHistory {
         break;
       }
     }
+
+    // firstTs is documented as the ts of the earliest RETAINED event, so an
+    // eviction above can invalidate the cached value — recompute it from
+    // what's left in the window (only when a trim actually happened; this is
+    // O(frames) but trims are the rare case, not every record()).
+    if (trimmedAny) {
+      this.firstTsValue = this.earliestRetainedTs();
+    }
+  }
+
+  private earliestRetainedTs(): number | null {
+    for (const frame of this.frames) {
+      if (frame.msg.kind !== "batch") {
+        continue;
+      }
+
+      for (const event of frame.msg.events) {
+        return event.ts;
+      }
+    }
+
+    return null;
   }
 }
 

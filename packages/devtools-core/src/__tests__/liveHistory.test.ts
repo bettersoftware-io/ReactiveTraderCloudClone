@@ -94,6 +94,19 @@ describe("LiveHistory", () => {
 
     expect(history.firstTs).toBe(1001);
   });
+
+  it("recomputes firstTs after trimming ages out the original earliest event", () => {
+    const history = new LiveHistory({ maxEvents: 5, checkpointInterval: 3 });
+
+    for (const frame of priceFrames(20)) {
+      history.record(frame);
+    }
+
+    // The original earliest event (seq 1, ts 1001) has aged out of the
+    // retained window — firstTs must track the earliest event still
+    // retained, not the first one ever seen.
+    expect(history.firstTs).toBe(1000 + history.oldestSeq + 1);
+  });
 });
 
 function priceFrames(count: number): AppToInspector[] {
