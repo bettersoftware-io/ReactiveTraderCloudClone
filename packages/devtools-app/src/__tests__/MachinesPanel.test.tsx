@@ -76,6 +76,37 @@ test("shows recorded intents newest-first in the detail pane", () => {
   expect(names).toEqual(["second", "first"]);
 });
 
+test("clicking the args disclosure does not pin; clicking the pin button does", () => {
+  const pins: Array<[string, string, number]> = [];
+  const machines: MachineRow[] = [
+    machineRow({
+      machineId: "m1",
+      intents: [
+        { name: "doThing", args: { symbol: "EURUSD", qty: 100 }, ts: 42 },
+      ],
+    }),
+  ];
+
+  render(
+    <MachinesPanel
+      machines={machines}
+      onPinIntent={(machineId: string, name: string, ts: number): void => {
+        pins.push([machineId, name, ts]);
+      }}
+    />,
+  );
+
+  fireEvent.click(screen.getByText("m1"));
+
+  // The args disclosure (`ValueView`'s `<details>/<summary>`) is a sibling
+  // of the pin button, not nested inside it — expanding it must NOT pin.
+  fireEvent.click(screen.getByText("Object(2)"));
+  expect(pins).toEqual([]);
+
+  fireEvent.click(screen.getByTestId("intent-name"));
+  expect(pins).toEqual([["m1", "doThing", 42]]);
+});
+
 function machineRow(overrides: Partial<MachineRow>): MachineRow {
   return {
     machineId: "m1",

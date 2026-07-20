@@ -1,9 +1,6 @@
 import type { InspectorState } from "./InspectorStore";
-import type {
-  AppToInspector,
-  SnapshotMachine,
-  SnapshotStream,
-} from "./protocol";
+import { projectSnapshot } from "./projectSnapshot";
+import type { AppToInspector } from "./protocol";
 import { RECORDING_VERSION, type Recording } from "./recording";
 
 const DEFAULT_MAX_FRAMES = 10000;
@@ -55,7 +52,7 @@ export class Recorder {
     this.droppedCount = 0;
     this.appIdValue = seedState.appId ?? "unknown";
     this.startedAtValue = startedAt;
-    this.framesBuf.push(seedSnapshot(seedState));
+    this.framesBuf.push(projectSnapshot(seedState));
     this.isRecording = true;
   }
 
@@ -91,30 +88,6 @@ export class Recorder {
       frames: this.framesBuf.slice(),
     };
   }
-}
-
-/** Project the live InspectorState back into a snapshot AppToInspector so a
- * recording always begins from a complete state. Emission counters/intents are
- * intentionally reset (a recording starts a fresh session view at record time,
- * not mid-stream) — snapshot has no place for them and the reducer rebuilds
- * them from the captured batches that follow. */
-function seedSnapshot(state: InspectorState): AppToInspector {
-  const streams: SnapshotStream[] = state.streams.map((s) => {
-    return { streamId: s.streamId, value: s.lastValue };
-  });
-
-  const machines: SnapshotMachine[] = state.machines.map((m) => {
-    return {
-      machineId: m.machineId,
-      machineKind: m.machineKind,
-      args: m.args,
-      state: m.state,
-      disposed: m.disposed,
-      createdAt: m.createdAt,
-    };
-  });
-
-  return { kind: "snapshot", streams, machines };
 }
 
 function defaultLog(message: string): void {

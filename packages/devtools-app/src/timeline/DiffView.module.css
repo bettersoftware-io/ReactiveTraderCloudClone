@@ -1,0 +1,51 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 1px 0;
+}
+
+.path {
+  font-family: inherit;
+  opacity: 0.85;
+  min-width: 120px;
+}
+
+.kind {
+  font-size: 11px;
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.added {
+  background: color-mix(in srgb, #3fb950 25%, transparent);
+}
+
+.removed {
+  background: color-mix(in srgb, #f85149 25%, transparent);
+}
+
+.changed {
+  background: color-mix(in srgb, #d29922 25%, transparent);
+}
+
+.arrow {
+  opacity: 0.6;
+}
+
+.value {
+  display: inline-flex;
+}
+
+.empty {
+  opacity: 0.6;
+  font-size: 12px;
+  padding: 8px;
+}

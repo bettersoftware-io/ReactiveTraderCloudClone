@@ -18,16 +18,29 @@ export interface InspectorPO {
   /** Wait until the connection-rail badge reads exactly `expected` (the app id
    *  once the hello/welcome handshake lands, or "disconnected" before/after). */
   waitConnectionBadge(expected: string, timeoutMs: number): Promise<void>;
-  /** Wait until a State-tab stream row whose text contains `streamId` is
-   *  visible. */
+  /** Wait until a stream row whose text contains `streamId` is visible — the
+   *  ContextPane's follow-mode state tree (the old State tab), one glance
+   *  away regardless of which lens is active. */
   waitStreamRow(streamId: string, timeoutMs: number): Promise<void>;
-  /** Switch to the Machines tab. Takes an explicit click timeout because the
+  /** Switch to the Machines lens. Takes an explicit click timeout because the
    *  inspector is a live-stream view whose main thread is busy under load —
    *  the click's actionability polling needs a bounded-but-generous budget
    *  (see the devtools spec's timing note). */
-  openMachinesTab(timeoutMs: number): Promise<void>;
+  openMachinesLens(timeoutMs: number): Promise<void>;
   /** Wait until a machine row whose text contains `kind` is visible. */
   waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void>;
+  /** Click the pin button on the FIRST timeline row, freezing the inspector's
+   *  selection at that moment (the tail keeps accumulating below, dimmed).
+   *  The timeline auto-scrolls to the tail while following, so the row may
+   *  need scrolling back into view before it is actionable. */
+  pinFirstTimelineRow(timeoutMs: number): Promise<void>;
+  /** Wait until the pinned-moment bar is visible (a pin is active). */
+  waitPinnedBar(timeoutMs: number): Promise<void>;
+  /** Wait until the pinned-moment bar is gone (back to following live). */
+  waitNoPinnedBar(timeoutMs: number): Promise<void>;
+  /** Press Escape on the inspector page, the keyboard shortcut that resumes
+   *  from a pinned moment back to the live tail. */
+  resumeViaEscape(): Promise<void>;
   /** Close the primary app page. This fires `pagehide` on the app window, the
    *  graceful-teardown path the app-side devtoolsHub turns into a `bye` over the
    *  channel — driving the inspector back to "disconnected". */
