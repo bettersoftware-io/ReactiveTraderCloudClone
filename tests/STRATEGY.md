@@ -587,6 +587,54 @@ distinct jobs, no overlap.
 `scenarios/` layer, and `testContext.ts` / `_await.ts`. These are the
 *deliverable*; the per-suite folders are just adapters onto them.
 
+### 7.1 Final verdict: the production set actually adopted (Task 6, 2026-07-20)
+
+Everything above this subsection is general guidance for *a* production set.
+This is what the same 2026-07-20 test-tooling bake-off actually shipped for
+*this* repo — the last of its three verdicts (browser driver §5.1, presenter
+runner/time-model §5.2, this one):
+
+| Suite | Status | Role |
+|---|---|---|
+| native Playwright — react | **gating** (PR CI) | the browser SOT (see below) |
+| native Playwright — solid | **gating** (PR CI) | proves the SOT against both clients |
+| presenter `vitest-fake-timers` | **gating** (PR CI) | fast behavioural insurance, no browser |
+| full-stack `node` | **gating** (PR CI) | the only wire-crossing coverage (headless) |
+| full-stack `browser` | **gating** (PR CI) | the only wire-crossing coverage (real UI) |
+| playwright-cucumber — react | **parked, weekly** | BDD showcase; anti-rot net only |
+| playwright-cucumber — solid | **parked, weekly** | BDD showcase; anti-rot net only |
+
+Unlike the browser-driver and presenter verdicts above (both of which
+*deleted* their losing peers outright), the Gherkin browser peers were not
+deleted — they earn their keep as this repo's living BDD demonstration (§5.4)
+and the `.feature`/step tree is real, maintained content, not disposable
+scaffolding. Instead they were **parked**: dropped from the PR gate but kept
+running on a schedule so they can't silently bit-rot unnoticed.
+`tests/scripts/run-all.ts` filters them via `RTC_E2E_SKIP_GHERKIN_BROWSER=1`
+(any suite whose script starts with `test:browser:playwright-cucumber`),
+which the CI PR gate (`ci.yml`) sets; a new
+`.github/workflows/e2e-gherkin-weekly.yml` runs both parked suites every
+Monday 06:00 UTC (plus `workflow_dispatch` for an on-demand run). Locally,
+plain `pnpm test:e2e` still runs all 7 suites — the env var only matters when
+set.
+
+**Native Playwright specs are declared the browser SOT.** From this verdict
+forward, new browser behaviour lands in `tests/browser/playwright/*.spec.ts`
+first — that is what every PR's gate actually proves. A matching Gherkin
+`.feature` scenario is *optional* while the layer stays parked, so the
+`.feature`/step tree **may lag native coverage** — that's an accepted,
+explicit trade-off, not an oversight. The weekly run only proves that
+*scenarios which already exist* still pass; it is not a gate that catches new
+native-only behaviour going unspecified in Gherkin, and it can't be, by
+construction — a weekly cron only ever looks backward at what's already
+written. If that drift starts to bite in practice, the plan's "Post-plan
+follow-ups" flags two escalations to consider: a `.feature` ↔ native-spec
+parity gate, or deleting the Gherkin layer outright (revisit ~2026-09).
+
+**Gate arithmetic:** the PR gate runs **5 of the 7** e2e suites (2 native
+browser + 1 presenter + 2 full-stack); the full run — local `pnpm test:e2e`
+with the env var unset, or the weekly workflow — still exercises all **7**.
+
 ---
 
 ## 8. See also

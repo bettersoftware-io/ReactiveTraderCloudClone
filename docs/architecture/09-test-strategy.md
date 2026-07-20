@@ -65,6 +65,8 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 
 `tests/scripts/run-all.ts` orchestrates **seven suites**: five behavioural peers exercising the same spec surface via two binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The five peers: Cucumber-JS (with Playwright) binds Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree; native `@playwright/test` binds scenarios programmatically through its own step tree. Both peers are additionally duplicated against `@rtc/client-solid` (via `RTC_CLIENT_PKG`, ports 3003/3004), bringing the browser family to four peers. One presenter-direct peer, **vitest-fake-timers** (plain), binds a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser, rerunning the `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()`.
 
+**Browser bake-off (2026-07-20) — native Playwright is the gating SOT; Gherkin browser peers parked weekly.** Of the four browser peers, the two Cucumber-JS (Playwright) suites — react and solid — were dropped from the PR gate (not deleted): native Playwright won the bake-off ([§9.7](#97-visual-golden-tiers) sibling verdict for the visual tier; see `tests/STRATEGY.md` §7.1 for this one), so it is declared the browser stack's source of truth going forward — new browser behaviour lands in `tests/browser/playwright/*.spec.ts` first, and a matching `.feature` scenario is optional while the layer stays parked. `tests/scripts/run-all.ts` filters both `test:browser:playwright-cucumber*` suites when `RTC_E2E_SKIP_GHERKIN_BROWSER=1` (set by the CI PR gate in `ci.yml`); a new weekly workflow, `.github/workflows/e2e-gherkin-weekly.yml`, runs both parked suites every Monday so the `.feature`/step tree can't silently rot while it's off the gate. Net effect: the PR gate runs **5 of the 7** suites (2 native-Playwright browser + 1 presenter + 2 fullstack); a plain local `pnpm test:e2e` (env var unset) and the weekly workflow both still exercise all 7.
+
 **Presenter bake-off (retired 2026-07-20).** The presenter family used to run four runner/time-model peers over the same 20 `@presenter` scenarios: **cucumber** (real timers, the wall-clock reference), **cucumber-fake-timers** (same bodies under `@sinonjs/fake-timers`), **vitest-quickpickle-fake-timers** (same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`), and **vitest-fake-timers** (plain — the same `_shared/` scenario modules under Vitest + raw `describe`/`it` + `vi.useFakeTimers()`, proving the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree). All four were the deliverable of Phase 5B.1-5B.4; the comparison concluded with the plain `vitest-fake-timers` peer winning on speed (1s local / 2.5s CI) and zero Gherkin-loader dependencies, and the other three were retired. See `tests/STRATEGY.md` §5.2 for the full verdict.
 
 | Layer | Stack |
@@ -180,6 +182,14 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~17-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
+The e2e job runs `RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e` — 5 of the 7
+`run-all.ts` suites (native Playwright react + solid, the presenter peer, both
+fullstack smokes). The two `playwright-cucumber` suites (react + solid) are
+parked off the gate, not deleted: native Playwright is the browser SOT
+(§9.5), and a separate `.github/workflows/e2e-gherkin-weekly.yml` runs the
+parked pair every Monday so the Gherkin tree can't silently rot while it's
+off the PR gate.
+
 ```mermaid
 flowchart TD
     trigger["PR / push to main"]
@@ -194,8 +204,8 @@ flowchart TD
         c6 --> c7["knip · dependency-cruiser · ESLint type-aware"]
         c7 --> c8["grep gates + pnpm audit"]
     end
-    subgraph e2e["ci.yml · Job 2 — e2e"]
-        e1["Playwright browser peers<br/>+ presenter peer + fullstack smokes"]
+    subgraph e2e["ci.yml · Job 2 — e2e (5 of 7 suites)"]
+        e1["native Playwright browser peers (react + solid)<br/>+ presenter peer + fullstack smokes"]
     end
     checks ~~~ postmerge
     e2e ~~~ postmerge
@@ -204,6 +214,12 @@ flowchart TD
     subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]
         v1["playwright tier vs<br/>ui-contract/goldens/playwright/__screenshots__/react/"]
     end
+    cron["cron (Mondays 06:00 UTC)<br/>/ workflow_dispatch"]
+    cron --> weekly
+    subgraph weekly["e2e-gherkin-weekly.yml — the 2 parked suites"]
+        w1["playwright-cucumber (react + solid)"]
+    end
+    visual ~~~ weekly
 ```
 
 ---

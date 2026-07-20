@@ -25,22 +25,31 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 
 ## Scripts
 
-| script | what it runs | server | report (under `reports/`) |
-|---|---|---|---|
-| `test:e2e` | gates, then ALL 7 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
-| `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
-| `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
-| `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) |
-| `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` |
-| `test:browser:playwright-cucumber:headed` | ↑ in a visible browser (headed Chromium + slowMo) | dev server | `browser/playwright-cucumber/` |
-| `test:browser:playwright:solid` | same config + specs as `test:browser:playwright`, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), ports 3003/3004 | dev server | `browser/playwright-solid/` |
-| `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3003/3004 | dev server | `browser/playwright-cucumber-solid/` |
-| `test:presenter:vitest-fake-timers` | presenter scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` |
-| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) |
-| `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` |
-| `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` |
-| `gates` | the grep/custom architecture gates (see `scripts/grep-gates.ts` for the current list) | none | — |
-| `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
+| script | what it runs | server | report (under `reports/`) | gate status |
+|---|---|---|---|---|
+| `test:e2e` | gates, then all 7 suites below in parallel via `scripts/run-all.ts` (5 with `RTC_E2E_SKIP_GHERKIN_BROWSER=1`, which the CI PR gate sets) | per-suite | — (each suite writes its own) | — |
+| `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` | gating |
+| `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` | dev tool |
+| `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) | dev tool |
+| `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` | **parked — weekly** |
+| `test:browser:playwright-cucumber:headed` | ↑ in a visible browser (headed Chromium + slowMo) | dev server | `browser/playwright-cucumber/` | dev tool |
+| `test:browser:playwright:solid` | same config + specs as `test:browser:playwright`, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), ports 3003/3004 | dev server | `browser/playwright-solid/` | gating |
+| `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3003/3004 | dev server | `browser/playwright-cucumber-solid/` | **parked — weekly** |
+| `test:presenter:vitest-fake-timers` | presenter scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` | gating |
+| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) | gating |
+| `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` | gating |
+| `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` | dev tool |
+| `gates` | the grep/custom architecture gates (see `scripts/grep-gates.ts` for the current list) | none | — | — |
+| `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — | — |
+
+**parked — weekly** = dropped from the PR gate (`ci.yml` sets
+`RTC_E2E_SKIP_GHERKIN_BROWSER=1`) but still run every Monday 06:00 UTC (plus
+on-demand `workflow_dispatch`) by
+[`.github/workflows/e2e-gherkin-weekly.yml`](../.github/workflows/e2e-gherkin-weekly.yml),
+so the `.feature`/step tree can't silently rot while it's off the gate.
+Native Playwright (react + solid) is the gating browser SOT — see
+`STRATEGY.md` §7.1 for the full verdict and its honest caveat (new browser
+behaviour lands native-first; the Gherkin tree may lag it while parked).
 
 The two `:solid` rows are not a separate suite family — they run the *same*
 config, specs, steps, and page objects as their React counterparts, only
@@ -112,6 +121,15 @@ solid 3003–3004) (via `scripts/with-server.ts`). `RTC_E2E_MAX_PARALLEL=n` caps
 concurrency (CI uses 2). Wall-clock ≈ the slowest single suite when uncapped;
 a cap stretches that proportionally.
 
+`RTC_E2E_SKIP_GHERKIN_BROWSER=1` (or `true`) filters both
+`test:browser:playwright-cucumber*` suites out of the pool before the
+concurrency cap or the dev-server port assignment is computed — `run-all.ts`
+logs which suites it parked. The CI PR gate (`ci.yml`) sets it, so the gate
+runs 5 suites; leave it unset (the default for a plain local `pnpm test:e2e`)
+to run all 7. The two parked suites still get their own scheduled CI run —
+see [`.github/workflows/e2e-gherkin-weekly.yml`](../.github/workflows/e2e-gherkin-weekly.yml)
+and `STRATEGY.md` §7.1.
+
 Full-stack smokes are self-contained: `test:fullstack:node` boots the real
 server on port 4123 and drives it directly over a Node WebSocket;
 `test:fullstack:browser` boots the real server on 4124 and the Vite client on
@@ -157,3 +175,14 @@ serve a Gherkin runner and a raw-Vitest runner equally well? All four were
 collapsed to the single `vitest-fake-timers` peer 2026-07-20 once it proved the
 fastest (1s local / 2.5s CI, vs the real-timer oracle's ~41s CI) with zero
 Gherkin-loader dependencies; see `STRATEGY.md` §5 for the full verdict.
+
+The same 2026-07-20 bake-off's third verdict: native Playwright (not
+`playwright-cucumber`) is the browser stack's gating SOT going forward. Unlike
+the Cypress and presenter-peer verdicts above, the two `playwright-cucumber`
+suites (react + solid) were not deleted — they're real, maintained BDD content
+(`specs/*.feature` + `browser/steps/`), not disposable scaffolding — so they
+were **parked** instead: dropped from the PR gate but kept alive on a weekly
+schedule (`.github/workflows/e2e-gherkin-weekly.yml`) so the Gherkin tree can't
+silently rot. See `STRATEGY.md` §7.1 for the full verdict, including the
+honest caveat that new browser behaviour now lands native-first, so the
+`.feature` tree may lag it while parked.

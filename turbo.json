@@ -48,7 +48,11 @@
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
-      "passThroughEnv": ["RTC_E2E_MAX_PARALLEL", "PLAYWRIGHT_BROWSERS_PATH"]
+      "passThroughEnv": [
+        "RTC_E2E_MAX_PARALLEL",
+        "RTC_E2E_SKIP_GHERKIN_BROWSER",
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ]
     },
     "test:ui:visual": {
       "dependsOn": ["^build"],
