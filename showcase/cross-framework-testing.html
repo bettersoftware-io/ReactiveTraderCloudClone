@@ -616,7 +616,7 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
               <span class="portchip solid-port">3005 playwright · solid</span>
               <span class="portchip solid-port">3006 pw-cucumber · solid</span>
             </div>
-            <div class="excl-note"><b>One exclusion:</b> <code>login.spec.ts</code> is Solid-excluded — not because Solid lacks sign-in UI, but because the dev server's demo credential (<code>VITE_DEV_AUTH</code>) isn't yet read by <code>client-solid</code>. Credential wiring, tracked in <code>docs/STATUS.md</code>.</div>
+            <div class="excl-note"><b>Full parity:</b> <code>login.spec.ts</code> runs on both clients since the Solid <code>VITE_DEV_AUTH</code> parity change — <code>client-solid</code> now reads the dev server's demo credential the same way <code>client-react</code> does.</div>
           </div>
         </div>
       </div>
@@ -630,10 +630,6 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
     <h2>Where the proof has edges</h2>
     <p class="kicker">The honest exceptions to "same suite, same verdict" — each one tracked, none of them silent.</p>
     <div class="fp-grid">
-      <div class="fp-item">
-        <span class="fp-tag">e2e</span>
-        <b>login.spec is Solid-excluded.</b> Credential-wiring gap (client-solid doesn't read <code>VITE_DEV_AUTH</code> yet), not a missing LoginScreen — <code>@rtc/client-solid</code> shipped its own LoginScreen/AuthGate. See <code>docs/STATUS.md</code>.
-      </div>
       <div class="fp-item">
         <span class="fp-tag">Visual · CT</span>
         <b>4 classic-skin CT assertions are CI-skipped.</b> GitHub-hosted runners resolve classic's OS-generic font tokens non-deterministically across runs — a runner-environment issue, not a Solid rendering bug. Still verified by the other two x86 tiers and all darwin tiers.
