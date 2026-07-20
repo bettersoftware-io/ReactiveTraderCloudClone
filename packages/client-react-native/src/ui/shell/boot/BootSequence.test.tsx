@@ -99,6 +99,28 @@ test("motion enabled on a covered variant: canvas renders, emblem does not", asy
   expect(screen.queryByTestId("boot-emblem")).toBeNull();
 });
 
+test("motion enabled on an unported variant: emblem falls back, no canvas", async () => {
+  // The boot rotation cycles all eight variants but only core/laser have Skia
+  // scenes in 6a, so this is the majority runtime path today: a motion-enabled
+  // boot landing on a scene-less variant must still show the static emblem.
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockResolvedValue(true);
+  mockUseBootMotionEnabled.mockReturnValue(true);
+  await renderWithTheme(
+    <ViewModelProvider
+      viewModel={fakeViewModel(
+        { variant: "docking", progress: 5, done: false },
+        noop,
+      )}
+    >
+      <BootSequence onDone={noop} />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("boot-emblem")).toBeTruthy();
+  expect(screen.queryByTestId("boot-canvas")).toBeNull();
+});
+
 test("SKIP still dispatches while the Skia canvas is showing", async () => {
   jest
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
