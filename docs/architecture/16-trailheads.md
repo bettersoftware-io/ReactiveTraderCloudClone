@@ -17,7 +17,7 @@ Five task recipes, each a starting point ("trailhead") for a change that touches
 - Tests to update: `ReferenceDataSimulator.test.ts` and (if you touched step 3) `AnalyticsSimulator.test.ts` both hardcode `toHaveLength(9)` for the pair/position count — bump to the new count. (`DealerSimulator.test.ts`'s `toHaveLength(9)` is Credit dealers, not FX pairs — do not touch it.)
 - `LiveRatesHead.contract.spec.ts` reads `KNOWN_CURRENCY_PAIRS.length` dynamically — no edit, just rerun.
 - Grep gates: none of the 29 gates touch domain data files directly — skip.
-- Visual goldens: **yes** — any panel rendering the pair list (watchlist row count, blotter filters) diffs. Regenerate both committed sets (CI-canonical `react/` + local `react-local/<arch>`) across all three visual tiers.
+- Visual goldens: **yes** — any panel rendering the pair list (watchlist row count, blotter filters) diffs. Regenerate both committed sets (CI-canonical `react/` + local `react-local/<arch>`) across the `playwright` tier.
 - UI contract coverage: rerun `test:ui:contract:coverage`; a new pair adds no new component so the percentage shouldn't move — just confirm still green.
 - Inventory: none. Currency pairs are data, not modules — §13's exhaustive listings cover ports/simulators/effects folders, not data-table rows inside a file.
 
@@ -66,7 +66,7 @@ Worked example: `SUBSCRIBE_POSITIONS` / `POSITIONS` (a bulk stream message, the 
 **Change-impact checklist**
 
 - Tests: `messages.test.ts`, the new/updated effect test, and the `portFactory` adapter test for the consuming port.
-- Grep gates: none of the 34 active gates name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` if the message is reachable end to end.
+- Grep gates: none of the 33 active gates name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` if the message is reachable end to end.
 - Visual goldens: only if the message feeds a UI panel already rendering data (then follow recipe 4's checklist too).
 - Inventory (exhaustive per Global Constraints): `packages/server/src/effects/` is an inventory folder — if you added an effect, §13's exhaustive effects listing must gain a row.
 - README: `packages/shared/README.md` (wire protocol is its SoT) and, if you added an effect, `packages/server/README.md`.

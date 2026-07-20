@@ -30,7 +30,6 @@
     "packages/ws-effects/.turbo",
     "packages/client-prototype/.turbo",
     "packages/server/.turbo",
-    "tests/.turbo",
-    "packages/client-react/tests/ui/visual/playwright-ct/host/.cache"
+    "tests/.turbo"
   ]
 }
