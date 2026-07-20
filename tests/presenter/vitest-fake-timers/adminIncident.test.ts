@@ -7,12 +7,6 @@ import {
 } from "../scenarios/_buildApp";
 import * as incident from "../scenarios/_shared/adminIncident";
 
-interface IncidentPresenterWorld {
-  ctx: IncidentPresenterCtx;
-  awaitFirstWithin<T>(source$: Observable<T>, timeoutMs: number): Promise<T>;
-  waitSeconds(n: number): Promise<void>;
-}
-
 describe("@presenter Feature: Admin incident injection breaks the live connection", () => {
   let w: IncidentPresenterWorld;
   // Held for the whole test to keep status$'s shareReplay warm.
@@ -58,3 +52,9 @@ describe("@presenter Feature: Admin incident injection breaks the live connectio
     await incident.expectStatusEqualsWithin(w, incident.CS_CONNECTED, 5);
   });
 });
+
+interface IncidentPresenterWorld {
+  ctx: IncidentPresenterCtx;
+  awaitFirstWithin<T>(source$: Observable<T>, timeoutMs: number): Promise<T>;
+  waitSeconds(n: number): Promise<void>;
+}
