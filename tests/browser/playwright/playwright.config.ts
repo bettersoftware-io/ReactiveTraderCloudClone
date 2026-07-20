@@ -10,16 +10,10 @@ import { defineConfig, devices } from "@playwright/test";
 const isSolid = process.env.RTC_CLIENT_PKG === "@rtc/client-solid";
 const reportSuffix = isSolid ? "-solid" : "";
 
-// Mirrors client-solid's tests/ui/contract/vitest.config.ts
-// `notYetPortedSpecs` — same rationale, same exclusion mechanism, one level
-// up the test pyramid. React-only, not a port gap:
-//   - login.spec.ts: drives the real LoginScreen/AuthGate. Solid has no
-//     sign-in/gate UI yet (AppRoot.tsx auto-logs in as demo/demo on mount) —
-//     the same shell/auth deviation the ui-contract tier already excludes.
-// Tracked as a pending follow-up in docs/STATUS.md, not silently dropped.
-// React (the default client) is unaffected — this array is empty unless
-// RTC_CLIENT_PKG=@rtc/client-solid.
-const notYetPortedSpecs = isSolid ? ["login.spec.ts"] : [];
+// Specs excluded for the Solid run. Empty since client-solid gained the same
+// VITE_DEV_AUTH dev-credential path as client-react (login.spec.ts now runs
+// against both clients); the mechanism stays for any future genuine port gap.
+const notYetPortedSpecs: string[] = [];
 
 export default defineConfig({
   testDir: ".",
