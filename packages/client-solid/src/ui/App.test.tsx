@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppRoot } from "#/AppRoot";
 import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
@@ -20,6 +20,10 @@ describe("App (shell chrome)", () => {
   // starts from the LoginScreen rather than resuming a prior test's session.
   beforeEach(() => {
     localStorage.clear();
+    vi.stubEnv("VITE_DEV_AUTH", '{"demo":"mcdc2026"}');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   // Regression (the SolidJS e2e outage): the browser e2e suites boot past the

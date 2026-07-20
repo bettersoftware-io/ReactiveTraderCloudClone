@@ -92,11 +92,9 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
     // the login-form e2e spec (browser/playwright/login.spec.ts) can drive the
     // real LoginScreen. Every OTHER browser spec seeds an authenticated
     // session directly (see tests/browser/authSeed.ts) and never touches this
-    // form, so the value is unused there. client-react reads it via
-    // `import.meta.env.VITE_DEV_AUTH` (see buildBrowserPorts.ts); client-solid
-    // has no LoginScreen yet (AppRoot.tsx auto-logs in as demo/demo on mount —
-    // documented there as pending Solid parity work), so this env var is
-    // inert — harmless, just unread — when CLIENT_PKG is @rtc/client-solid.
+    // form, so the value is unused there. Both clients read it identically via
+    // `import.meta.env.VITE_DEV_AUTH` through their own `parseDevAuth` helper
+    // in buildBrowserPorts.ts — client-react and client-solid alike.
     env: {
       ...process.env,
       PORT: String(preferredPort),
