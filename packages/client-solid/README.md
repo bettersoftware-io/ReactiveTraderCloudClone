@@ -6,7 +6,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
 | **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 34). |
-| **Consumed by** | Nothing in-workspace — like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) workspace dependency; its own suites (contract + three visual tiers) run entirely in-package. |
+| **Consumed by** | Nothing in-workspace — like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) workspace dependency; its own suites (contract + the visual tier) run entirely in-package. |
 | **Must never import** | `rxjs` / `@rx-state` in `src/ui` (gate 34); `local storage` in `src/ui` (gate 35); `fetch(` / `import.meta.env` in `src/ui` (gate 36); `setTimeout` / `setInterval` in `src/ui` (gate 37) — the exact same four-gate shape as `client-react`'s 26–29, re-numbered for this package, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
 ## Folder map
@@ -42,16 +42,10 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 "Full parity" is not a claim in a document — it is three passing test suites, each asserting against `client-react`'s own artifacts rather than this package's:
 
 - **Contract parity** — the ~52+ components under `src/ui` are exercised by the *same* 80+ shared `*.contract.spec.ts` files from `@rtc/ui-contract` that verify `client-react`. This package supplies only its half of the swap-trio (`tests/ui/contract/solid/`, registering a Solid `UiContractDriver`); the spec files themselves are an unmodified `devDependency` import.
-- **Visual parity** — all three visual tiers (`playwright-ct`, `playwright`, `vitest-browser`) are **assert-only**: this package owns **no golden images of its own**. Each tier's `snapshotDir` points at `packages/ui-contract/goldens/<tier>/__screenshots__/`, so a passing run is a direct pixel match against goldens generated only from React's renders, across the full theme matrix (5 skins × dark/light). Passing `--update-snapshots` (or `-u` in any form) to any of this package's visual configs throws — goldens are owned by `client-react`; regenerate them there.
+- **Visual parity** — the surviving `playwright` tier is **assert-only**: this package owns **no golden images of its own**. Its `snapshotDir` points at `packages/ui-contract/goldens/playwright/__screenshots__/`, so a passing run is a direct pixel match against goldens generated only from React's renders, across the full theme matrix (5 skins × dark/light). Passing `--update-snapshots` (or `-u` in any form) to this package's visual config throws — goldens are owned by `client-react`; regenerate them there. (A 2026-07-20 test-tooling bake-off retired this package's `playwright-ct` URL-navigation fallback and its `vitest-browser` tier — see [§9.7's Outcome](../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers) and [ADR-001's Outcome section](../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md).)
 - **Behavioural parity** — the shared Gherkin `.feature` suites run against this client the same way they run against `client-react`, through a Solid implementation of the same page-object interfaces.
 
 Full synthesis of how these three mechanisms share one source of truth, plus the live pass/fail scoreboard and what each tier has actually caught: [§21 Cross-Framework Testing](../../docs/architecture/21-cross-framework-testing.md).
-
-## The Tier 1 fallback: URL-navigation, not a CT mount
-
-`tests/ui/visual/playwright-ct/` is **not** a real Playwright Component Testing adapter. At the time this tier was built, `@playwright/experimental-ct-solid` was pinned several minor versions behind this repo's `@playwright/test`, and forcing the mismatch in was rejected (see the decision header in `playwright-ct.config.ts`). Instead, this tier is a second URL-navigation config — structurally identical to `tests/ui/visual/playwright/` — that asserts against `client-react`'s **`playwright-ct`** golden tree specifically, by matching its `{testFileName}` golden-path segment. It is data-driven over the same `@rtc/ui-contract` scenario manifest as the other two tiers, same as `client-react`'s own (now data-driven) Tier 1. Revisit once a version-matched Solid CT adapter ships.
-
-A handful of `classic` skin CT scenarios are skipped **on CI only** (`CI_HOST_FONT_SENSITIVE` in `matrix.spec.tsx`) — the `classic` skin is the one skin whose font tokens resolve to OS-generic keywords instead of embedded `@fontsource` faces, so its CT element-crops encode the CI runner's font environment, not the UI. Still verified by the other two x86 tiers and all three tiers on darwin. Tracked in `docs/STATUS.md`.
 
 ## CSS Modules: ported verbatim
 
@@ -76,10 +70,8 @@ pnpm dev:solid:fs    # full stack: starts the WS server + this client together
 | `test` | Vitest (jsdom): app-tier + co-located unit tests |
 | `test:ui:contract` | ui contract tier — the shared `@rtc/ui-contract` specs, driven through this package's Solid swap-trio |
 | `test:ui:contract:coverage` | coverage gate over the combined `src/ui` surface, same shape as `client-react`'s |
-| `test:ui:visual` / `test:ui:visual:solid` | all three visual tiers, assert-only against `client-react`'s goldens |
-| `test:ui:visual:playwright-ct:solid[:ui]` | Tier 1 — URL-navigation fallback (see above), not a CT mount |
-| `test:ui:visual:playwright:solid[:ui]` | Tier 2 — plain Playwright over a Vite host, reusing `client-react`'s `visual.spec.ts` verbatim |
-| `test:ui:visual:vitest-browser:solid` | Tier 3 — Vitest browser mode via `@solidjs/testing-library` |
+| `test:ui:visual` / `test:ui:visual:solid` | the visual tier, assert-only against `client-react`'s goldens |
+| `test:ui:visual:playwright:solid[:ui]` | The CI-asserted tier — plain Playwright over a Vite host, reusing `client-react`'s `visual.spec.ts` verbatim |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
 
 ## See also

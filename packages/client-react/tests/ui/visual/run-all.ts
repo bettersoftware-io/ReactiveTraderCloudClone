@@ -5,14 +5,19 @@
 // automatically (no edit here).
 //
 // Concurrency: each runner is a full browser stack (Chromium + a Vite dev
-// server). Running all three at once oversubscribes a constrained host — on a
-// virtualized box (e.g. the local arm64 Docker Desktop VM, which reports the
-// host's core count but delivers a fraction of it) three stacks on too few real
-// cores thrash, and the screenshot assertions fail as "Timeout exceeded" even
-// though every runner passes in seconds on its own. Raising the timeouts only
-// makes the thrash last longer; the fix is to stop oversubscribing. So the
-// default is SERIAL locally and fully concurrent under CI (an x86 runner that
-// copes). os.availableParallelism() can't pick this for us (it lies under
+// server). This mattered when three tiers (playwright-ct, playwright,
+// vitest-browser) ran concurrently — running all three at once oversubscribed
+// a constrained host: on a virtualized box (e.g. the local arm64 Docker
+// Desktop VM, which reports the host's core count but delivers a fraction of
+// it) three stacks on too few real cores thrashed, and the screenshot
+// assertions failed as "Timeout exceeded" even though every runner passed in
+// seconds on its own. Raising the timeouts only made the thrash last longer;
+// the fix was to stop oversubscribing. Since Task 3 retired playwright-ct and
+// vitest-browser's assert role (2026-07-20), only one tier (`playwright`)
+// survives per package, so the pool below runs a single item today — the
+// bounded-worker-pool machinery is kept generic for any future tier. Default
+// is SERIAL locally and fully concurrent under CI (an x86 runner that copes).
+// os.availableParallelism() can't pick this for us (it lies under
 // virtualization), so override explicitly with RTC_VISUAL_MAX_PARALLEL=N.
 //
 // Perf caveat: when runners DO overlap they contend for CPU/GPU — wall-clock is

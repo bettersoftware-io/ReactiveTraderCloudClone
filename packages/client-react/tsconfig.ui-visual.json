@@ -29,13 +29,7 @@
     }
   },
   "include": ["src", "tests"],
-  // Exclude only the CT config: it alone fails tsc, due to the vite 6/8 plugin
-  // type skew (config-injected — see the load-bearing comment in that file).
-  // The other suite configs typecheck clean and stay included.
-  "exclude": [
-    "tests/ui/visual/playwright-ct/playwright-ct.config.ts",
-    "tests/ui/contract"
-  ],
+  "exclude": ["tests/ui/contract"],
   "references": [
     { "path": "../domain" },
     { "path": "../shared" },

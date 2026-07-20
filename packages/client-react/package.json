@@ -28,17 +28,12 @@
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
     "test:ui:visual": "tsx tests/ui/visual/run-all.ts",
     "test:ui:visual:react": "tsx tests/ui/visual/run-all.ts react",
-    "test:ui:visual:playwright-ct:react": "playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts",
-    "test:ui:visual:playwright-ct:react:update": "playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts --update-snapshots",
-    "test:ui:visual:playwright-ct:react:ui": "playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts --ui",
     "test:ui:visual:playwright:react": "playwright test -c tests/ui/visual/playwright/playwright.config.ts",
     "test:ui:visual:playwright:react:update": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --update-snapshots",
     "test:ui:visual:playwright:react:ui": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --ui",
-    "test:ui:visual:vitest-browser:react": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts",
-    "test:ui:visual:vitest-browser:react:update": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts --update",
     "test:ui:visual:vitest-browser:react:coverage": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.coverage.config.ts --coverage",
     "dev": "vite",
-    "clean": "(rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments tests/ui/visual/playwright-ct/host/.cache 2>/dev/null || true) && find ../ui-contract/goldens -type f -path '*/__screenshots__/*' \\( -name '*-actual.png' -o -name '*-diff.png' \\) -delete",
+    "clean": "(rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments 2>/dev/null || true) && find ../ui-contract/goldens -type f -path '*/__screenshots__/*' \\( -name '*-actual.png' -o -name '*-diff.png' \\) -delete",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
@@ -59,7 +54,6 @@
   },
   "devDependencies": {
     "@babel/core": "^8.0.0",
-    "@playwright/experimental-ct-react": "^1.60.0",
     "@playwright/test": "^1.60.0",
     "@rolldown/plugin-babel": "^0.2.3",
     "@rtc/devtools-app": "workspace:*",

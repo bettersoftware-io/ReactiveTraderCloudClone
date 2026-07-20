@@ -1,16 +1,18 @@
 name: Visual diffs
 
-# The full theme-matrix visual-diff gate (5 skins × dark/light × 3 tiers,
-# ~1222 scenarios/tier, all serial — ~20 min) run for BOTH clients: react (which
-# owns the committed goldens) and solid (which asserts the same scenarios
-# against react's goldens, owning none of its own) — 6 tier-runs total. It used
-# to live in ci.yml as a PR gate but that blocked every branch push while the UI
-# was still churning. It now runs POST-MERGE ONLY: on push to main (i.e. right
-# after a PR merges) and on manual dispatch. A red run here is the signal to
-# inspect the diff and either fix the regression or — if the change was
-# intentional — regenerate the goldens via .github/workflows/update-visual-goldens.yml
-# (react-only; see that workflow). It does NOT gate merges; move it back into
-# ci.yml (as a PR job) once the UI stabilises.
+# The full theme-matrix visual-diff gate (5 skins × dark/light, ~1282 scenarios,
+# plain Playwright over the Vite host — the sole CI-asserted tier since Task 3
+# retired playwright-ct and vitest-browser's assert role, 2026-07-20) run for
+# BOTH clients: react (which owns the committed goldens) and solid (which
+# asserts the same scenarios against react's goldens, owning none of its own)
+# — 2 tier-runs total, ~17 min. It used to live in ci.yml as a PR gate but that
+# blocked every branch push while the UI was still churning. It now runs
+# POST-MERGE ONLY: on push to main (i.e. right after a PR merges) and on manual
+# dispatch. A red run here is the signal to inspect the diff and either fix the
+# regression or — if the change was intentional — regenerate the goldens via
+# .github/workflows/update-visual-goldens.yml (react-only; see that workflow).
+# It does NOT gate merges; move it back into ci.yml (as a PR job) once the UI
+# stabilises.
 on:
   push:
     branches: [main]
@@ -44,13 +46,16 @@ jobs:
     # Tag must track the @playwright/test version in packages/client-react.
     container: mcr.microsoft.com/playwright:v1.61.0-noble
     env:
-      # Run the three visual runners SERIALLY, matching update-visual-goldens.yml
-      # (which regenerates each tier in its own sequential step). run-all.ts
+      # Historically pinned to 1 to run the three visual runners SERIALLY,
+      # matching update-visual-goldens.yml's sequential regen — run-all.ts
       # defaults to fully-concurrent under CI, and 3-tier CPU contention on the
-      # 2-core runner lets Playwright's stable-frame check capture one frame
-      # early — goldens generated unloaded then verified under load drift by
-      # ±1px / glyph metrics on text-dense captures (same class as the
-      # playwright-ct workers:1 lesson, one level up).
+      # 2-core runner let Playwright's stable-frame check capture one frame
+      # early — goldens generated unloaded then verified under load drifted by
+      # ±1px / glyph metrics on text-dense captures. Since Task 3 retired
+      # playwright-ct and vitest-browser's assert role (2026-07-20), run-all.ts
+      # discovers exactly one tier (`playwright`) per package, so this pin is a
+      # no-op in practice today — kept for parity with update-visual-goldens.yml
+      # and as a guard against renewed oversubscription if a future tier lands.
       RTC_VISUAL_MAX_PARALLEL: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -86,28 +91,27 @@ jobs:
       #
       # React and solid run as TWO separate steps (not one unfiltered
       # `pnpm test:ui:visual`, which would let turbo schedule both packages'
-      # browser stacks concurrently) — each tier stands up its own
-      # Chromium + Vite dev server(s), and this job's RTC_VISUAL_MAX_PARALLEL=1
+      # browser stacks concurrently) — the surviving tier stands up its own
+      # Chromium + Vite dev server, and this job's RTC_VISUAL_MAX_PARALLEL=1
       # only bounds a single package's OWN run-all.ts, not cross-package turbo
       # scheduling. Splitting into two filtered, sequential steps keeps the
       # whole job's browser-stack concurrency at exactly one, matching the
-      # same oversubscription lesson as RTC_VISUAL_MAX_PARALLEL and the CT
-      # workers:1 pin.
-      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers per
-      # package, all serial per RTC_VISUAL_MAX_PARALLEL=1) makes each step a
-      # long run (~20 min) — which is exactly why this job is post-merge and
-      # not a PR gate.
-      - name: Visual diffs — react (playwright-ct + playwright + vitest-browser)
+      # same oversubscription lesson as RTC_VISUAL_MAX_PARALLEL.
+      # Full theme matrix (5 skins × dark/light, ~1282 scenarios, the sole
+      # `playwright` tier per package) makes each step several minutes long —
+      # ~17 min combined — which is exactly why this job is post-merge and not
+      # a PR gate.
+      - name: Visual diffs — react (playwright)
         id: visual_react
         continue-on-error: true
         run: pnpm test:ui:visual --filter=@rtc/client-react
 
       # Solid owns NO goldens of its own — every scenario here asserts against
-      # react's COMMITTED goldens (see each solid tier's config header). A red
-      # run here means either a solid-side rendering/framing regression or a
+      # react's COMMITTED goldens (see the tier's config header). A red run
+      # here means either a solid-side rendering/framing regression or a
       # react-side golden that hasn't been regenerated yet for a recent
       # scenario change — never a signal to add a solid golden.
-      - name: Visual diffs — solid (playwright-ct fallback + playwright + vitest-browser)
+      - name: Visual diffs — solid (playwright, asserting react's goldens)
         id: visual_solid
         continue-on-error: true
         run: pnpm test:ui:visual --filter=@rtc/client-solid
@@ -150,13 +154,12 @@ jobs:
           echo "::notice title=Visual diff report (live HTML)::Browse the report → $url"
 
       # On a mismatch, publish the actual-vs-expected images so the regression (or
-      # an intended change awaiting golden regen) can be inspected. React's three
-      # tiers and solid's playwright/playwright-ct tiers all resolve their failure
-      # debris (-actual/-diff) next to the golden they compared against, under the
-      # shared packages/ui-contract/goldens/ tree — the glob below covers that.
-      # Solid's vitest-browser tier is the one exception: it keeps its diffs local,
-      # under its own tests/ui/visual/vitest-browser/__diffs__/ (see
-      # scripts/pages/build-visual-report.mjs's scanPackage doc comment).
+      # an intended change awaiting golden regen) can be inspected. The lone
+      # surviving `playwright` tier, for both react and solid, resolves its
+      # failure debris (-actual/-diff) next to the golden it compared against,
+      # under the shared packages/ui-contract/goldens/ tree — the glob below
+      # covers that. (Solid's now-retired vitest-browser tier was the one
+      # exception that kept its diffs local; no exception remains.)
       - name: Upload visual diff report on failure
         if: ${{ always() && (steps.visual_react.outcome == 'failure' || steps.visual_solid.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

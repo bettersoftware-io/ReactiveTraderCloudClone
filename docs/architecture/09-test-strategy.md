@@ -24,7 +24,7 @@ Test Runner / Driver                    - Vitest, Playwright, ...
 | **Domain entity tests** | Pure functions over entities | Test framework only | Yes |
 | **Component tests** (optional) | Render component, assert hook contract is honoured | UI framework + test framework | Rewritten when UI framework changes |
 | **UI contract tests** (sociable RTL, [§9.8](#98-ui-contract-tier)) | Mount real components against a scripted `ViewModel`; assert behaviour | Framework-neutral specs + a thin per-framework swap layer | Specs survive; only the `react/` adapter directory is rewritten |
-| **Visual goldens** (3 tiers, [§9.7](#97-visual-golden-tiers)) | Pixel screenshots of workspaces × skins × modes | Screenshot runners | Goldens survive — they **are** the cross-framework rendering contract |
+| **Visual goldens** (CI-asserted `playwright` tier, [§9.7](#97-visual-golden-tiers)) | Pixel screenshots of workspaces × skins × modes | Screenshot runners | Goldens survive — they **are** the cross-framework rendering contract |
 | **RN component tests** (jest-expo + RNTL, [§9.9](#99-react-native-testing)) | Render RN screens against the ViewModel | jest-expo | Rewritten with the mobile UI |
 
 ### 9.2 Gherkin example
@@ -125,19 +125,52 @@ via `makeHarness`, they don't reach into either implementation.
 
 ### 9.7 Visual golden tiers
 
-`packages/client-react/tests/ui/visual/` runs the same screenshot scenarios through **three independent rasterizers**, because each one draws slightly differently and each catches different regressions:
+`packages/client-react/tests/ui/visual/` screenshots the UI against the same
+scenario matrix through a single CI-asserted rasterizer — plain **Playwright
+over a Vite host** (`playwright/`) — after a 2026-07-20 bake-off (§9.7 Outcome
+below) retired the other two candidate tiers from the assert role:
 
-| Tier | Runner | Config |
-|---|---|---|
-| 1 | Playwright Component Testing | `playwright-ct/` |
-| 2 | Plain Playwright over a Vite host | `playwright/` |
-| 3 | Vitest browser mode (`toMatchScreenshot`) | `vitest-browser/` |
+| Tier | Runner | Config | Role today |
+|---|---|---|---|
+| **Playwright** (the sole CI-asserted tier) | Plain Playwright over a Vite host | `playwright/` | Asserts on every push to `main` — the framework-agnostic spec (`visual.spec.ts`) is reused **verbatim** by `client-solid` |
+| Vitest browser mode | `vitest-browser-react` + `toMatchScreenshot` | `vitest-browser/` | **Coverage-only instrument** — still renders + interacts through the full 1282-scenario matrix so istanbul sees every branch, but the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`); never gates anything |
+| ~~Playwright Component Testing~~ | ~~`@playwright/experimental-ct-react`~~ | ~~`playwright-ct/`~~ | **Retired** — deleted along with its goldens |
 
-Two golden sets are committed per tier, under `packages/ui-contract/goldens/<tier>/__screenshots__/` — generated only from `client-react` renders: `react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**) and `react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
+Two golden sets are committed for the surviving tier, under
+`packages/ui-contract/goldens/playwright/__screenshots__/` — generated only
+from `client-react` renders: `react/` (rendered on pinned x86 CI — **the
+canonical cross-framework contract**) and `react-local/<platform>-<arch>/`
+(local runs, committed for review but never compared on CI). The render
+target lives behind the `visual/react/` seam barrel — the directory a
+SolidJS port swaps.
 
-**Updating goldens** is its own operational runbook — the two sets, the three update routes (dispatch the CI workflow / regenerate locally in Docker / the native fast loop), and which to run for a regression vs. a deliberate change vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
+**Updating goldens** is its own operational runbook — the two sets, the three
+update routes (dispatch the CI workflow / regenerate locally in Docker / the
+native fast loop), and which to run for a regression vs. a deliberate change
+vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
-How `client-solid` runs these same three tiers **assert-only** against these goldens — never writing one of its own — is [§21 Mechanism 2 — assert-only visual tiers](21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers).
+How `client-solid` runs this same tier **assert-only** against these goldens
+— never writing one of its own — is [§21 Mechanism 2 — assert-only visual tiers](21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers).
+
+**Outcome (2026-07-20 — the test-tooling bake-off's visual tier verdict).**
+Measured at the full 1282-scenario matrix (see `tests/ui/visual/README.md`'s
+"Measured durations"): playwright-ct 241s, playwright 258s, vitest-browser
+83s — so speed alone didn't decide it. Playwright (the URL-host tier) won the
+CI-asserted role because it is the actual cross-framework portability
+contract: `visual.spec.ts` is framework-agnostic and reused verbatim by
+`client-solid`, with no CT-adapter version lag (the official Solid CT adapter
+trailed the core Playwright version by ~1.5 years — the exact hazard the
+now-deleted `playwright-ct` tier for Solid worked around with a
+URL-navigation fallback that never became a real CT mount), and it exercises
+production-like `page.route`/navigation rather than an in-process component
+mount. `playwright-ct` was retired outright — its Solid side was always a
+fallback, never the CT adapter it was meant to demonstrate. `vitest-browser`
+was retired from the assert role but kept as the istanbul **coverage
+gap-finder**: it still renders and interacts through every scenario (so
+branch coverage reflects the true rendered surface), but its pixel assert is
+compiled out via a `define`-injected `__RTC_VISUAL_SKIP_DIFF__` flag, so it
+never reads a golden. Net effect: the post-merge `visual.yml` job drops from
+~52 min (3 tiers × 2 clients) to ~17 min (1 tier × 2 clients).
 
 ### 9.8 UI contract tier
 
@@ -155,7 +188,7 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~50-min visual-diff job (react + solid, 3 tiers each — see `visual.yml`) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~17-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
 ```mermaid
 flowchart TD
@@ -179,7 +212,7 @@ flowchart TD
     postmerge["push to main (post-merge)"]
     postmerge --> visual
     subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]
-        v1["3 golden tiers vs<br/>ui-contract/goldens/…/__screenshots__/react/"]
+        v1["playwright tier vs<br/>ui-contract/goldens/playwright/__screenshots__/react/"]
     end
 ```
 

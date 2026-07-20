@@ -6,6 +6,8 @@ import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 
+declare const __RTC_VISUAL_SKIP_DIFF__: boolean;
+
 // Tier 3 — Vitest browser mode. Drives the SAME shared scenario manifest and
 // interaction table as the plain-Playwright tier (`../playwright/visual.spec.ts`),
 // so the two stay behaviourally in lock-step. Goldens are routed per-environment
@@ -118,9 +120,11 @@ for (const [name, scenario] of Object.entries(scenarios)) {
         ? page.elementLocator(document.body)
         : screen.getByTestId("scenario-root");
 
-      await expect
-        .element(target)
-        .toMatchScreenshot(goldenPath(name, scenario));
+      if (!__RTC_VISUAL_SKIP_DIFF__) {
+        await expect
+          .element(target)
+          .toMatchScreenshot(goldenPath(name, scenario));
+      }
     } finally {
       window.matchMedia = realMatchMedia;
     }

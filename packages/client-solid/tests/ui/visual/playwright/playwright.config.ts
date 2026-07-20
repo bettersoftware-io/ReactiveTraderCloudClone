@@ -5,10 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Port map across the repo's visual/dev servers (no other config
 // re-documents this — kept here since it's the newest solid entry):
-//   3100 react playwright-ct (CT adapter's ctPort)
 //   3200 react playwright (this tier's react counterpart)
 //   3300 solid playwright (THIS config)
-//   3400 solid playwright-ct (the fallback tier, see its config header)
 //   5173 client-react dev, 5273 client-prototype dev, 5473 client-solid dev
 const PORT = 3300;
 
@@ -16,12 +14,11 @@ const PORT = 3300;
 // snapshotDir below). Goldens are entirely react's responsibility.
 // `--update-snapshots` would happily write into react's committed tree via
 // snapshotPathTemplate below, so refuse outright rather than silently
-// clobbering another package's golden set. Mirrors the vitest-browser
-// tier's `--update`/`-u` argv guard (../vitest-browser/vitest-browser.config.ts).
-// Also covers playwright's short alias `-u` (equivalent to
-// `--update-snapshots`) — without this, `-u` would slip past the guard and
-// still flip `updateSnapshots` at runtime. `startsWith("-u")` catches every
-// Commander-CLI short-flag shape: bare `-u`, `-u=X`, and the concatenated
+// clobbering another package's golden set. Also covers playwright's short
+// alias `-u` (equivalent to `--update-snapshots`) — without this, `-u` would
+// slip past the guard and still flip `updateSnapshots` at runtime.
+// `startsWith("-u")` catches every Commander-CLI short-flag shape: bare `-u`,
+// `-u=X`, and the concatenated
 // `-uX` form (e.g. `-uall`, `-umissing`) — playwright's `--help` confirms
 // `-u` is the only short flag beginning with "u" in its whole CLI, so this
 // has zero false-positive risk against any other flag.
@@ -41,9 +38,8 @@ if (
   );
 }
 
-// Same CI-vs-local baseline routing as react's own playwright.config.ts (see
-// its header comment for the full cross-platform-pixel-drift rationale) and
-// as this package's own vitest-browser tier.
+// Same CI-vs-local baseline routing as react's own playwright.config.ts — see
+// its header comment for the full cross-platform-pixel-drift rationale.
 const baseline = process.env.CI
   ? "react"
   : `react-local/${os.platform()}-${os.arch()}`;
@@ -51,13 +47,12 @@ const baseline = process.env.CI
 // CROSS-PACKAGE: unlike react's own config (which owns its slice of the
 // shared tree), this tier's snapshotDir is anchored INSIDE @rtc/ui-contract —
 // this package writes and owns no goldens of its own (assert-only by
-// construction, same design as ../vitest-browser/vitest-browser.config.ts).
-// Goldens are generated exclusively from client-react's renders; solid only
-// ever reads them. `updateSnapshots: "none"` below is the mechanical
-// enforcement: Playwright's own default (`"missing"`) would silently CREATE a
-// missing reference screenshot into this same cross-package path the first
-// time a scenario name drifts — "none" makes that a hard failure instead,
-// never a write.
+// construction). Goldens are generated exclusively from client-react's
+// renders; solid only ever reads them. `updateSnapshots: "none"` below is the
+// mechanical enforcement: Playwright's own default (`"missing"`) would
+// silently CREATE a missing reference screenshot into this same cross-package
+// path the first time a scenario name drifts — "none" makes that a hard
+// failure instead, never a write.
 const REACT_SNAPSHOT_DIR = fileURLToPath(
   new URL(
     "../../../../../ui-contract/goldens/playwright/__screenshots__",

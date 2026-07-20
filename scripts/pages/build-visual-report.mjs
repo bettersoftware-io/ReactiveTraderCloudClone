@@ -58,11 +58,10 @@ function walk(dir, out = []) {
 
 // The tier is the path segment immediately after either ".../ui/visual/"
 // (the legacy shape, still current for a package's own `reports/ui/visual/`
-// native-report tree, and for client-solid's local vitest-browser `__diffs__/`
-// scratch) or ".../goldens/" (the shared @rtc/ui-contract goldens tree that
-// `extraDirs` walks — see scanPackage's doc comment). Checked in that order
-// so a path containing both (there are none today, but "goldens" is the more
-// specific/newer anchor) still resolves correctly.
+// native-report tree) or ".../goldens/" (the shared @rtc/ui-contract goldens
+// tree that `extraDirs` walks — see scanPackage's doc comment). Checked in
+// that order so a path containing both (there are none today, but "goldens"
+// is the more specific/newer anchor) still resolves correctly.
 function tierOf(path) {
   const parts = path.split("/");
   const goldensIndex = parts.lastIndexOf("goldens");
@@ -94,14 +93,13 @@ const PAGE_STYLE = `
 // { package, tier, scenario, group, referencePath, actualPath, diffPath }
 //
 // `extraDirs` covers the shared @rtc/ui-contract goldens tree
-// (packages/ui-contract/goldens/<tier>/__screenshots__/): every tier writes
-// its failure debris (-actual.png / -diff.png) next to the golden it
-// compared against, and BOTH clients' playwright/playwright-ct tiers (plus
-// react's own vitest-browser tier) resolve their snapshotDir/screenshot path
-// there — only client-solid's vitest-browser tier keeps its diffs local
-// (tests/ui/visual/vitest-browser/__diffs__/, walked via pkgDir above). The
-// caller passes this only for the "client-react" scan (see main()), mirroring
-// the pre-relocation behavior where solid's cross-package writes into
+// (packages/ui-contract/goldens/<tier>/__screenshots__/): the sole surviving
+// `playwright` tier writes its failure debris (-actual.png / -diff.png) next
+// to the golden it compared against, and BOTH clients resolve their
+// snapshotDir/screenshot path there — no tier keeps its diffs local anymore
+// (that was solid's now-retired vitest-browser tier). The caller passes this
+// only for the "client-react" scan (see main()), mirroring the
+// pre-relocation behavior where solid's cross-package writes into
 // client-react's own tree were likewise reported under the "client-react"
 // label.
 function scanPackage(label, pkgDir, extraDirs = []) {
