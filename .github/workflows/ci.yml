@@ -107,7 +107,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Tests (unit + ui:contract)
+      - name: Tests (unit)
         run: pnpm test
 
       - name: Pages tooling unit tests

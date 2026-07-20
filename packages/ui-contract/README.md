@@ -13,7 +13,7 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 
 | Path | What lives here |
 |---|---|
-| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/admin/`, `src/specs/shell/` | 80+ shared `*.contract.spec.ts` files — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
+| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/admin/`, `src/specs/shell/` | 86 shared `*.contract.spec.ts` files / 622 tests (2026-07-19) — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
 | `src/shared/harness/activeDriver.ts` | The framework seam: `UiContractDriver` interface + `setDriver`/`getDriver` — each client's swap-trio registers its own driver (`render()` into the DOM, plus optional `flushSync`/`flushAsync` hooks for frameworks that batch updates, e.g. React's `act()`) |
 | `src/shared/harness/component.ts` | `ComponentToken`/`MountedComponent`/`PageContext` — the types a spec mounts against, independent of any framework |
 | `src/shared/harness/world.ts` | `createWorld`/`World` — the controllable fake-hook state a mounted component reads, driven by the spec via `PageContext` setters |
@@ -68,7 +68,7 @@ Neither client keeps its render-target adapter in this package — each owns its
 - `client-react/tests/ui/contract/react/` — `setup.ts` (registers the React `UiContractDriver`), `registry.tsx` (`ComponentToken` → React element), `render.tsx`, plus a few shared test doubles (`AnimationProbe.tsx`, `LayoutEngineHost.tsx`, `PropsHost.tsx`, `pinnedFixtureLayoutPort.ts`, `viewModelFromWorld.ts`).
 - `client-solid/tests/ui/contract/solid/` — the identical eight files, Solid-flavored: same names, same roles, `ComponentToken` → Solid component instead of React element.
 
-A spec under `src/specs/` never imports either trio directly — it only sees `ComponentToken`s and the `Page` interface `mount()` returns. Running the same spec file against both trios (via each client's own `vitest.config.ts`, which points at its own swap-trio's `setup.ts`) *is* the contract-parity proof: 80+ shared spec files, unmodified, pass against two structurally different render targets.
+A spec under `src/specs/` never imports either trio directly — it only sees `ComponentToken`s and the `Page` interface `mount()` returns. Running the same spec file against both trios (via each client's own `vitest.config.ts`, which points at its own swap-trio's `setup.ts`) *is* the contract-parity proof: 86 shared spec files / 622 tests (2026-07-19), unmodified, pass against two structurally different render targets.
 
 ```mermaid
 flowchart TB

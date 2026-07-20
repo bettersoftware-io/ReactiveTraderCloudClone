@@ -47,7 +47,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` |
-| `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none | — |
+| `gates` | the grep/custom architecture gates (see `scripts/grep-gates.ts` for the current list) | none | — |
 | `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
 
 The two `:solid` rows are not a separate suite family — they run the *same*
@@ -81,8 +81,8 @@ browser/
   cypress-cucumber/     cypress config + world/e2e support + cucumber shim
   steps/                [shared: both *-cucumber suites] Gherkin step defs
   scenarios/            [shared: playwright + both *-cucumber] async scenario layer
-  page-objects/         [shared: all 4 browser suites] contracts/ (driver-free) + impls
-  testContext.ts        [shared: all 4 browser suites] driver-agnostic ctx: { po, scratch }
+  page-objects/         [shared: all 6 browser suites] contracts/ (driver-free) + impls
+  testContext.ts        [shared: all 6 browser suites] driver-agnostic ctx: { po, scratch }
 presenter/
   cucumber/             cucumber.js config + world/hooks (real timers)
   cucumber-fake-timers/ cucumber.js config + world/hooks (virtual time)
@@ -90,7 +90,9 @@ presenter/
   vitest-quickpickle-fake-timers/  vitest config + quickpickle setup + steps/
   steps/                [shared: both presenter cucumber suites] step defs
   scenarios/            [shared: all 4 presenter peers] _buildApp seam + _shared/
-specs/                  [shared: all 5 Gherkin-driven suites] .feature files
+specs/                  [shared: all 5 Gherkin-driven suites — playwright-cucumber,
+                        cypress-cucumber, playwright-cucumber:solid, presenter
+                        cucumber, presenter cucumber-fake-timers] .feature files
 fullstack/              node + browser smokes against the real server
 scripts/                run-all, with-server, devServer, free-port, grep-gates
 ```
@@ -108,7 +110,7 @@ that. Browser suites also write raw failure output (screenshots, traces) to
 the `artifacts/` **sibling**; the two are siblings because each HTML reporter
 owns — and wipes — its own `report/` folder at write time.
 
-Failure screenshots are embedded in the report itself for all four browser
+Failure screenshots are embedded in the report itself for all six browser
 suites. One caveat: a step that throws from plain `await`ed JS (outside the
 Cypress command queue) crashes the badeball plugin before report write
 ("Unexpected state in testStepFinishedHandler", upstream), so the
@@ -127,8 +129,8 @@ see the root README's report map.
 ## Orchestration
 
 `test:e2e` → `scripts/run-all.ts`: every suite runs concurrently; each browser
-suite gets its own dev server on `RTC_DEV_PORT` 3001–3004 (via
-`scripts/with-server.ts`); Cypress suites get private X displays via
+suite gets its own dev server on `RTC_DEV_PORT` 3001–3006 (react 3001–3004,
+solid 3005–3006) (via `scripts/with-server.ts`); Cypress suites get private X displays via
 `xvfb-run -a` on Linux. `RTC_E2E_MAX_PARALLEL=n` caps concurrency (CI uses 2).
 Wall-clock ≈ the slowest single suite when uncapped; a cap stretches that
 proportionally.
@@ -158,7 +160,7 @@ Nothing in this package is ever cache-replayed:
 **Symptom:** every `test:browser:cypress*` script (headless and `:headed`)
 produces no output forever; the Cypress main process pins one core at 100%
 CPU and never connects to its X display. Playwright suites are unaffected,
-and all four browser suites pass on x86 CI.
+and all six browser suites pass on x86 CI.
 
 **Root cause (established empirically, 2026-06-08 → 06-10):** the Cypress
 runner is itself an Electron *app* — server, proxy, and reporter boot on the

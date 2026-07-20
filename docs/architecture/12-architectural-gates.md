@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes 36 import-boundary rules plus a supply-chain audit (37 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (37 gates as of this writing) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|

@@ -357,29 +357,34 @@ with no edit to `run-all.ts`.
 Concurrent runs contend for CPU/GPU, so the wall-clock time is NOT a fair
 per-runner benchmark. Run a single runner in isolation to measure actual speed.
 
-### Measured durations (isolated, local)
+### Measured durations (isolated, local — 2026-07-19)
 
 Per the caveat above, these were measured by running **each runner on its own**,
 sequentially — not via the concurrent `test:ui:visual` orchestrator — so they are
-fair per-tier figures. All three render the **same 88 scenarios** and diff
-against the local `react-local/darwin-arm64/` golden set.
+fair per-tier figures. All three render the **same 1282 scenarios** (≈130 base ×
+the 5-skin × dark/light theme matrix) and diff against the local
+`react-local/darwin-arm64/` golden set.
 
 > **Bench box:** Apple M2 Max (12 cores), macOS (Darwin 25.5.0), Node 26.0.0,
-> pnpm 11.7.0 · single run each · **2026-06-21** · all tiers PASS. Wall-clock
-> includes runner/host boot; treat as indicative (±a second or two of variance),
+> pnpm 11.7.0 · single run each · **2026-07-19** · all tiers PASS. Wall-clock
+> includes runner/host boot; treat as indicative (±a few seconds of variance),
 > not a micro-benchmark.
 
 | Tier | Runner | Scenarios | Duration |
 |---|---|---:|---:|
-| **Tier 1** | `playwright-ct` (CT mount) | 88 | **4.9s** |
-| **Tier 2** | `playwright` (URL host) | 88 | **11.6s** |
-| **Tier 3** | `vitest-browser` | 88 | **11.7s** |
+| **Tier 1** | `playwright-ct` (CT mount) | 1282 | **241s** |
+| **Tier 2** | `playwright` (URL host) | 1282 | **258s** |
+| **Tier 3** | `vitest-browser` | 1282 | **83s** |
 
-Tier 1 is fastest here because the CT runner mounts components directly, while
-Tiers 2 and 3 each stand up a real host/provider (a Vite host server; the
-`@vitest/browser-playwright` provider) before the first shot. For context, these
-visual tiers are far cheaper than the **behavioural** browser e2e suites
-(~50–107s for 48 scenarios — see the e2e
+**The ranking inverted since the 2026-06-21 measurement** (back then, at 88
+scenarios, Tier 1 led at 4.9s and Tiers 2/3 trailed around 11.6–11.7s). At the
+full 1282-scenario matrix, `vitest-browser` (Tier 3) is now fastest: the CT
+runner's **per-mount** overhead (Tier 1 spins up a fresh component mount for
+every scenario) scales worse than `vitest-browser`'s **in-page** renders (Tier
+3 reuses one browser page and re-renders in place), so the gap that favoured
+CT at 88 scenarios flips once the scenario count grows ~15×. For context, these
+visual tiers are still cheaper than the **behavioural** browser e2e suites
+(~133–203s per browser suite on CI — see the e2e
 [`STRATEGY.md`](../../../../../tests/STRATEGY.md) → §5.5): a visual shot renders
 one injected-data scenario and diffs a PNG; an e2e scenario drives a live app
 through multi-step interactions.
