@@ -13,7 +13,9 @@ describe("InspectorStore trackLog option", () => {
       unlogged.apply(msg);
     }
 
-    expect(unlogged.getSnapshot().streams).toEqual(logged.getSnapshot().streams);
+    expect(unlogged.getSnapshot().streams).toEqual(
+      logged.getSnapshot().streams,
+    );
     expect(unlogged.getSnapshot().machines).toEqual(
       logged.getSnapshot().machines,
     );
@@ -40,7 +42,14 @@ function batch(seq: number, streamId: string, value: number): AppToInspector {
   return {
     kind: "batch",
     events: [
-      { kind: "stream:emission", seq, ts: 1000 + seq, streamId, value, coalesced: 1 },
+      {
+        kind: "stream:emission",
+        seq,
+        ts: 1000 + seq,
+        streamId,
+        value,
+        coalesced: 1,
+      },
     ],
   };
 }
@@ -62,7 +71,14 @@ function messages(): AppToInspector[] {
           machineKind: "tileExecution",
           args: ["EURUSD"],
         },
-        { kind: "machine:state", seq: 4, ts: 1004, machineId: "m1", state: "idle", coalesced: 1 },
+        {
+          kind: "machine:state",
+          seq: 4,
+          ts: 1004,
+          machineId: "m1",
+          state: "idle",
+          coalesced: 1,
+        },
       ],
     },
   ];

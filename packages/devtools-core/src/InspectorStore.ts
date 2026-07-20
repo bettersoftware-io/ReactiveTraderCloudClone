@@ -245,7 +245,10 @@ export class InspectorStore {
    * without corrupting the cached original. Deep-copies the internal entries
    * and log (all JSON-safe SerializedValue data) via structuredClone. */
   clone(): InspectorStore {
-    const copy = new InspectorStore({ coalesce: false, trackLog: this.trackLog });
+    const copy = new InspectorStore({
+      coalesce: false,
+      trackLog: this.trackLog,
+    });
 
     for (const [id, entry] of this.streamEntries) {
       copy.streamEntries.set(id, structuredClone(entry));
