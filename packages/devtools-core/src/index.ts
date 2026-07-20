@@ -24,6 +24,8 @@ export {
   instrumentWsAdapter,
   type WsAdapterLike,
 } from "./instrument/wsAdapter";
+export { LiveHistory, type LiveHistoryOptions } from "./LiveHistory";
+export { projectSnapshot } from "./projectSnapshot";
 export * from "./protocol";
 export { Recorder, type RecorderOptions } from "./Recorder";
 export {
