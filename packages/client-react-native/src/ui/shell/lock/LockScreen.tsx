@@ -1,9 +1,9 @@
+import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +17,8 @@ import Svg, { Circle, Polygon } from "react-native-svg";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { BiometricLine } from "#/ui/shell/lock/BiometricLine";
+import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
+import { useHoldToUnlock } from "#/ui/shell/lock/useHoldToUnlock";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -24,13 +26,20 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Full-screen session-lock overlay. Renders nothing unless the session is
  * locked; while locked it covers the whole shell — an absolute-fill <View>
  * (NOT an RN Modal: Modal-via-press segfaults under x86 jest) — and shows the
- * operator identity plus a password-gated AUTHENTICATE control that
- * re-authenticates (unlock) against the real credentials seam. Dumb
- * component: all state arrives through the reused `useAuth` seam; the typed
- * password lives in local component state only and is never logged. Only
- * BiometricLine is decorative. Wrapped in `KeyboardAvoidingView` + a
+ * operator identity plus a password-gated hold-to-unlock ring that
+ * re-authenticates (unlock) against the real credentials seam. The password
+ * field still gates authentication — the ring only replaces the tap-trigger
+ * (the old AUTHENTICATE button) with a hold-gesture trigger; a plain tap on
+ * the ring keeps submitting instantly (accessibility + automation fallback).
+ * Dumb component: all state arrives through the reused `useAuth` seam; the
+ * typed password lives in local component state only and is never logged.
+ * Only BiometricLine is decorative. Wrapped in `KeyboardAvoidingView` + a
  * `ScrollView` with `keyboardShouldPersistTaps="handled"` so the soft
- * keyboard never strands the AUTHENTICATE control on a real device. */
+ * keyboard never strands the ring on a real device. Fires an
+ * `expo-haptics` success notification exactly once when `state.locked`
+ * newly transitions true→false — the `ExecutionCeremony` once-guard idiom,
+ * a ref updated unconditionally every effect run so it re-arms for a later
+ * lock/unlock cycle. */
 export function LockScreen(): JSX.Element | null {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();
@@ -38,6 +47,21 @@ export function LockScreen(): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
 
   const [password, setPassword] = useState("");
+  const wasLockedRef = useRef(state.locked);
+
+  function submit(): void {
+    unlock(password);
+  }
+
+  const { gesture, progress } = useHoldToUnlock({ onComplete: submit });
+
+  useEffect(() => {
+    if (wasLockedRef.current && !state.locked) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    wasLockedRef.current = state.locked;
+  }, [state.locked]);
 
   if (!state.locked || !state.user) {
     return null;
@@ -116,14 +140,11 @@ export function LockScreen(): JSX.Element | null {
           </Text>
         ) : null}
 
-        <Pressable
-          testID="lock-authenticate"
-          onPress={() => {
-            unlock(password);
-          }}
-        >
-          <Text style={styles.authenticate}>AUTHENTICATE ▸</Text>
-        </Pressable>
+        <HoldToUnlockRing
+          gesture={gesture}
+          progress={progress}
+          onPress={submit}
+        />
 
         <BiometricLine />
       </ScrollView>
@@ -146,7 +167,6 @@ interface LockScreenStyles {
   input: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
-  authenticate: TextStyle;
 }
 
 function makeStyles(t: RnTheme): LockScreenStyles {
@@ -210,13 +230,6 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       fontFamily: t.fontMono,
       fontSize: 12,
       marginTop: 4,
-    },
-    authenticate: {
-      color: t.accentPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 14,
-      letterSpacing: 1,
-      marginTop: 8,
     },
   });
 }
