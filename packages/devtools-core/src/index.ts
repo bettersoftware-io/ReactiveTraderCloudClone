@@ -4,6 +4,7 @@ export {
   type Duplex,
 } from "./channel";
 export { DevtoolsHub, type DevtoolsHubOptions } from "./DevtoolsHub";
+export { type DiffEntry, type DiffKind, diffSerialized } from "./diff";
 export { InspectorClient } from "./InspectorClient";
 export type {
   InspectorState,
