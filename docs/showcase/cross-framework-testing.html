@@ -436,7 +436,7 @@
     <span class="eyebrow">Start here</span>
     <div class="tldr">
       <p><strong>Contract tier:</strong> the same <code>*.contract.spec.ts</code> files run twice, once per framework, through a driver seam (<code>setDriver</code>/<code>getDriver</code>) that swaps out only the rendering adapter.</p>
-      <p><strong>Visual tier:</strong> Solid's Playwright and vitest-browser configs point their snapshot directory <em>into</em> <code>@rtc/ui-contract</code>'s committed <code>goldens/</code> tree — generated only from <code>client-react</code> renders — and refuse to write. Solid owns zero goldens of its own, so a pixel match is a real cross-framework proof, not a tautology.</p>
+      <p><strong>Visual tier:</strong> Solid's Playwright config points its snapshot directory <em>into</em> <code>@rtc/ui-contract</code>'s committed <code>goldens/playwright/</code> tree — generated only from <code>client-react</code> renders — and refuses to write. Solid owns zero goldens of its own, so a pixel match is a real cross-framework proof, not a tautology. (A 2026-07-20 bake-off retired the sibling <code>playwright-ct</code> and <code>vitest-browser</code> tiers from the assert role — Playwright is now the sole CI-asserted visual tier.)</p>
       <p><strong>e2e tier:</strong> the same Gherkin features drive whichever client <code>RTC_CLIENT_PKG</code> names, spawned by the same <code>devServer.ts</code> — Solid's runs just point the dev-server spawn and the ports somewhere else.</p>
     </div>
   </div>
@@ -552,15 +552,11 @@
 snapshotDir: REACT_SNAPSHOT_DIR,
 updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing golden is a hard failure, never a write</span>
 <span class="cm">// argv guard: refuses to run under --update-snapshots / -u at all</span></pre>
-            <p class="code-path">…/vitest-browser/vitest-browser.config.ts:158</p>
-            <pre class="code"><span class="kw">if</span> (!existsSync(screenshotPath)) {
-  <span class="kw">throw new</span> Error(
-    <span class="cm">`assert-only tier: golden missing at ${screenshotPath} — `</span> +
-    <span class="cm">"goldens are owned by client-react; refusing to auto-create " +</span>
-    <span class="cm">"one from the solid tier. Regenerate it via "</span> +
-    <span class="cm">"`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`."</span>,
-  );
-}</pre>
+            <p class="code-path">retired 2026-07-20</p>
+            <pre class="code"><span class="cm">// client-solid's vitest-browser tier enforced the same assert-only</span>
+<span class="cm">// invariant with an existsSync() throw (toMatchScreenshot has no</span>
+<span class="cm">// updateSnapshots: "none" equivalent). Deleted along with its goldens —</span>
+<span class="cm">// playwright is now the one surviving assert-only mechanism.</span></pre>
           </div>
           <div class="diagram">
             <h4>Solid's config reads FROM the ui-contract tree — never writes TO it</h4>
@@ -591,11 +587,10 @@ updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing 
 
 spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIENT_PKG, <span class="cm">"dev"</span>], { … });</pre>
             <p class="code-path">tests/scripts/run-all.ts</p>
-            <pre class="code"><span class="cm">// react playwright/playwright-cucumber/cypress/cypress-cucumber get</span>
-<span class="cm">// 3001-3004; the two solid suites continue the same block at 3005-3006.</span>
+            <pre class="code"><span class="cm">// react playwright/playwright-cucumber get 3001-3002; the two solid</span>
+<span class="cm">// suites continue the same block at 3003-3004.</span>
 <span class="kw">const</span> browserScripts = [
   <span class="cm">"test:browser:playwright"</span>, <span class="cm">"test:browser:playwright-cucumber"</span>,
-  <span class="cm">"test:browser:cypress"</span>, <span class="cm">"test:browser:cypress-cucumber"</span>,
   <span class="cm">"test:browser:playwright:solid"</span>, <span class="cm">"test:browser:playwright-cucumber:solid"</span>,
 ];</pre>
           </div>
@@ -631,12 +626,8 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
     <p class="kicker">The honest exceptions to "same suite, same verdict" — each one tracked, none of them silent.</p>
     <div class="fp-grid">
       <div class="fp-item">
-        <span class="fp-tag">Visual · CT</span>
-        <b>4 classic-skin CT assertions are CI-skipped.</b> GitHub-hosted runners resolve classic's OS-generic font tokens non-deterministically across runs — a runner-environment issue, not a Solid rendering bug. Still verified by the other two x86 tiers and all darwin tiers.
-      </div>
-      <div class="fp-item">
-        <span class="fp-tag">Visual · CT tier</span>
-        <b>Solid's "CT tier" is a full-page Playwright fallback.</b> <code>@playwright/experimental-ct-solid</code> is frozen at 1.48.2 (its own component-test runner), so the fallback exercises the same scenarios through full-page Playwright instead.
+        <span class="fp-tag">Visual · retired 2026-07-20</span>
+        <b>The CT tier (and its Solid fallback) is gone.</b> <code>@playwright/experimental-ct-solid</code> was frozen at 1.48.2 (its own component-test runner) while Solid's "CT tier" was always a full-page Playwright fallback exercising the same scenarios, never a real CT mount. A test-tooling bake-off retired it outright, along with <code>vitest-browser</code>'s assert role — plain Playwright is now the sole CI-asserted visual tier for both clients.
       </div>
       <div class="fp-item">
         <span class="fp-tag">Bindings</span>
@@ -654,10 +645,9 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
     <div class="files">
       <div class="file"><span class="path">packages/ui-contract/src/shared/harness/activeDriver.ts</span><span class="role">the driver seam — setDriver / getDriver</span></div>
       <div class="file"><span class="path">packages/client-{react,solid}/tests/ui/contract/{react,solid}/*</span><span class="role">the matching 8-file trios</span></div>
-      <div class="file"><span class="path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</span><span class="role">cross-package snapshotDir, updateSnapshots: "none"</span></div>
-      <div class="file"><span class="path">packages/client-solid/tests/ui/visual/vitest-browser/vitest-browser.config.ts</span><span class="role">the existsSync throw, assert-only guard</span></div>
+      <div class="file"><span class="path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</span><span class="role">cross-package snapshotDir, updateSnapshots: "none" — the one surviving assert-only visual tier</span></div>
       <div class="file"><span class="path">tests/scripts/devServer.ts</span><span class="role">RTC_CLIENT_PKG → CLIENT_PKG → spawn</span></div>
-      <div class="file"><span class="path">tests/scripts/run-all.ts</span><span class="role">the two Solid suites, ports 3005/3006</span></div>
+      <div class="file"><span class="path">tests/scripts/run-all.ts</span><span class="role">the two Solid suites, ports 3003/3004</span></div>
       <div class="file"><span class="path">docs/architecture/21-cross-framework-testing.md</span><span class="role">authoritative doc — read this next</span></div>
     </div>
   </div>
@@ -665,7 +655,7 @@ spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIEN
 
 <footer>
   <div class="wrap">
-    This page visualizes <a href="../architecture/21-cross-framework-testing.md">§21 — Cross-framework testing</a> in <code>docs/architecture.md</code>; that chapter is the source of truth, this is a companion. <code>@rtc/client-solid</code> reached full parity with <code>@rtc/client-react</code> across all three tiers (SolidJS-port workstream, PRs #180–#262).
+    This page visualizes <a href="../architecture/21-cross-framework-testing.md">§21 — Cross-framework testing</a> in <code>docs/architecture.md</code>; that chapter is the source of truth, this is a companion. <code>@rtc/client-solid</code> reached full parity with <code>@rtc/client-react</code> across all three visual tiers as they stood at the time (SolidJS-port workstream, PRs #180–#262); a 2026-07-20 test-tooling bake-off later retired two of them from the assert role, leaving Playwright as the sole CI-asserted visual tier.
   </div>
 </footer>
 

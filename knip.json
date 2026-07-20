@@ -50,13 +50,11 @@
         "src/main.tsx",
         "index.html",
         "vite.config.ts",
-        "tests/ui/visual/playwright-ct/host/main.tsx",
-        "tests/ui/visual/playwright-ct/host/vite.config.ts",
         "tests/ui/visual/playwright/host/main.tsx",
         "tests/ui/visual/playwright/host/vite.config.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@rtc/ui-contract", "@vitest/browser"]
+      "ignoreDependencies": ["@rtc/ui-contract"]
     },
     "packages/ui-contract": {
       "entry": [
@@ -80,7 +78,6 @@
         "src/index.ts",
         "index.html",
         "vite.config.ts",
-        "tests/ui/visual/playwright-ct/host/index.tsx",
         "tests/ui/visual/playwright/host/main.tsx",
         "tests/ui/visual/playwright/host/vite.config.ts"
       ],

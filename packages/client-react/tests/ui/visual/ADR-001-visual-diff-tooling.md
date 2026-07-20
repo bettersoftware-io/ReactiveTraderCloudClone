@@ -15,6 +15,70 @@ plan; this records the rationale and the framework-migration guidance).
 > that historical decision and are accurate below the (now relocated) tier
 > root; read them as `packages/ui-contract/goldens/<tier>/__screenshots__/…`.
 
+## Outcome (2026-07-20 — the test-tooling bake-off's visual-tier verdict)
+
+The three-tier "defence-in-depth triangle" this ADR describes below (§"Runner
+comparison") was a deliberate, temporary redundancy while the framework-swap
+proof was still being built. Once `client-solid` reached full parity and the
+full 1282-scenario theme matrix landed, the triangle's cost caught up with
+it: the post-merge `visual.yml` job ran ~52 min (3 tiers × 2 clients,
+`RTC_VISUAL_MAX_PARALLEL: "1"`). A dedicated bake-off measured all three
+tiers at that full scenario count (isolated, sequential, one run each,
+2026-07-19 — see `tests/ui/visual/README.md`'s "Measured durations"):
+`playwright-ct` **241s**, `playwright` **258s**, `vitest-browser` **83s**.
+Speed alone did not decide the verdict, because the tiers are not
+interchangeable on that axis alone:
+
+- **`playwright` (Tier 2) is now the sole CI-asserted tier.** It is the
+  actual cross-framework portability contract described throughout this
+  ADR: `visual.spec.ts` is framework-agnostic and reused **verbatim** by
+  `client-solid` (no per-framework rewrite, ever); it has no CT-adapter
+  version lag to track (see the adapter-status table below — Solid's CT
+  adapter trailed the core Playwright version by ~1.5 years); and it drives
+  production-like `page.route`/navigation against a real served page, rather
+  than an in-process component mount. Being ~17s slower than `playwright-ct`
+  at this scenario count did not outweigh those three properties.
+- **`playwright-ct` (Tier 1) is retired outright — deleted, config and
+  goldens.** Its central promise — "closest to mounting one component in
+  isolation" — never extended cleanly to Solid: the official
+  `@playwright/experimental-ct-solid` adapter was frozen ~1.5 years behind
+  this repo's pinned `@playwright/test`, so `client-solid`'s "Tier 1" was
+  always a second URL-navigation config wearing a CT-shaped name, never a
+  real CT mount (see the Runner comparison table's `client-solid` column,
+  historically). A tier whose flagship justification doesn't survive contact
+  with the framework-swap goal it exists to serve isn't earning its keep,
+  regardless of its speed on `client-react` alone.
+- **`vitest-browser` (Tier 3) is retired from the assert role, but kept as
+  the istanbul coverage gap-finder.** It was the fastest tier by a wide
+  margin (83s vs. 241–258s) — precisely because it re-renders in one browser
+  page rather than paying a fresh mount/navigation per scenario — but it was
+  never the portability contract (its own goldens were tier-local, not
+  shared with anything outside itself) and it uniquely produces
+  `reports/ui/visual/coverage/`, which nothing else in the repo does.
+  Deleting it outright would have quietly regressed the coverage gap-finder
+  to zero. Instead, `vitest-browser.config.ts` and
+  `vitest-browser.coverage.config.ts` now inject a compile-time
+  `__RTC_VISUAL_SKIP_DIFF__` flag (`false` for the plain config, `true` for
+  the coverage one) that the spec checks before calling
+  `toMatchScreenshot(...)`: the render + every scripted interaction still
+  run (so istanbul sees every branch the coverage denominator counts), but
+  the pixel assert — and therefore every golden read — is compiled out. Its
+  own goldens (`packages/ui-contract/goldens/vitest-browser/`) and
+  `client-solid`'s copy of this tier were deleted; only `client-react`'s
+  coverage-only instrument survives, run via
+  `test:ui:visual:vitest-browser:react:coverage`.
+
+Net effect: `visual.yml` drops from ~52 min to ~17 min (1 tier × 2 clients,
+still `RTC_VISUAL_MAX_PARALLEL: "1"`, now effectively a no-op since each
+package discovers exactly one runner). `tests/ui/visual/run-all.ts` needed no
+code change — its five-part-script discovery already picks up whichever
+`test:ui:visual:<runner>:<framework>` scripts exist in `package.json`, so
+deleting the two retired tiers' scripts was sufficient for both packages to
+converge on the one surviving runner. See
+[§9.7's Outcome](../../../../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers)
+and [§21 Mechanism 2](../../../../../docs/architecture/21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers)
+for how this reads from the architecture side.
+
 ## Context
 
 We want a deterministic visual-regression tier that screenshots `@rtc/client-react`

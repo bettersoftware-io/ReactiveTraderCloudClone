@@ -44,6 +44,12 @@ const GOLDENS_ROOT = fileURLToPath(
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // The coverage config flips this to "true": render + interactions still run
+    // (istanbul sees every branch) but the pixel assert is compiled out — its
+    // goldens were retired when this tier left the CI-assert role (2026-07-19).
+    __RTC_VISUAL_SKIP_DIFF__: "false",
+  },
   resolve: {
     alias: {
       "@ui-visual": fileURLToPath(new URL("../react", import.meta.url)),

@@ -7,17 +7,20 @@
 // arm64 vs x86 — font rasterisation, not availability), which is the whole reason
 // the repo committed a second `react-local/<arch>` set. But the SAME container,
 // emulated via `--platform linux/amd64`, reproduces CI's x86 output byte-for-byte
-// (proven 2026-07-18, 30/30 across all three tiers). So any machine with Docker
-// can regenerate or verify the canonical set locally — no CI round-trip, no
-// artifact download, no cherry-pick. See
+// (proven 2026-07-18, 30/30 across all three tiers back when there were three —
+// playwright-ct and vitest-browser retired from the assert role 2026-07-20, see
+// ADR-001's Outcome section). So any machine with Docker can regenerate or
+// verify the canonical set locally — no CI round-trip, no artifact download, no
+// cherry-pick. See
 // docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md.
 //
 //   pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate)
 //   pnpm goldens:regen    # rewrite react/ into the working tree, ready to commit
 //
-// Runs the full react/ set across all three tiers. Requires Docker (Desktop /
-// colima) with the daemon running. First run is slower (image pull + amd64
-// install under emulation); later runs reuse the layer + a persistent pnpm store.
+// Runs the full react/ set for the sole surviving `playwright` tier. Requires
+// Docker (Desktop / colima) with the daemon running. First run is slower (image
+// pull + amd64 install under emulation); later runs reuse the layer + a
+// persistent pnpm store.
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -26,7 +29,7 @@ import { fileURLToPath } from "node:url";
 // Keep in sync with the container tag in ci.yml / visual.yml / update-visual-goldens.yml.
 const IMAGE = "mcr.microsoft.com/playwright:v1.61.0-noble";
 
-const TIERS = ["playwright", "playwright-ct", "vitest-browser"];
+const TIERS = ["playwright"];
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -52,10 +55,9 @@ if (update) {
 }
 
 // Inside the container: copy source to /build (isolate from the host's arm64
-// node_modules), install + build for amd64, then run all three visual tiers with
-// CI=1 so the configs route to the canonical `react/` baseline.
+// node_modules), install + build for amd64, then run the sole surviving visual
+// tier with CI=1 so the config routes to the canonical `react/` baseline.
 const flag = update ? "--update-snapshots" : "";
-const vitestFlag = update ? "--update" : "";
 const inner = [
   "set -e",
   "mkdir -p /build && cd /build",
@@ -65,11 +67,9 @@ const inner = [
   "echo '[build]' && pnpm build 2>&1 | tail -1",
   "cd packages/client-react",
   `echo '[playwright]' && npx playwright test -c tests/ui/visual/playwright/playwright.config.ts ${flag}`,
-  `echo '[playwright-ct]' && npx playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts ${flag}`,
-  `echo '[vitest-browser]' && npx vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts ${vitestFlag}`,
   update
-    ? 'for t in playwright playwright-ct vitest-browser; do d="../ui-contract/goldens/$t/__screenshots__/react"; if [ -d "$d" ]; then mkdir -p "/out/$t"; cp -r "$d/." "/out/$t/"; fi; done'
-    : 'echo "[verify] all tiers passed against the committed react/ set"',
+    ? 'for t in playwright; do d="../ui-contract/goldens/$t/__screenshots__/react"; if [ -d "$d" ]; then mkdir -p "/out/$t"; cp -r "$d/." "/out/$t/"; fi; done'
+    : 'echo "[verify] playwright tier passed against the committed react/ set"',
 ].join("\n");
 
 const dockerArgs = [

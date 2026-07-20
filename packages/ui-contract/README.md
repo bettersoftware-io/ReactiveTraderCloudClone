@@ -20,36 +20,39 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 | `src/shared/mount.ts` | `mount()`/`mountWith()`/`cleanupMounted()` — the entry points every spec calls; builds a `World`, calls the active driver's `render()`, and returns a `Page` object built from `PageContext` |
 | `src/shared/pages/fx/`, `.../credit/`, `.../equities/`, `.../admin/`, `.../shell/` | Page-Object-ish query helpers per domain, layered over `MountedComponent` |
 | `src/shared/components.ts` | The full `ComponentToken` registry every spec imports tokens from |
-| `src/visual/scenarios.ts` | The visual scenario manifest: `name → { componentKey, fixtureKey }` — the single source of truth all three visual tiers, in both clients, loop over |
-| `src/visual/scenarioActions.ts` | Per-scenario interaction table (click/type/select steps) — pairs with `scenarios.ts` for the two data-driven tiers |
+| `src/visual/scenarios.ts` | The visual scenario manifest: `name → { componentKey, fixtureKey }` — the single source of truth the surviving `playwright` tier, in both clients, loops over |
+| `src/visual/scenarioActions.ts` | Per-scenario interaction table (click/type/select steps) — pairs with `scenarios.ts` for the data-driven tiers (`playwright`, and the `vitest-browser` coverage instrument) |
 | `src/visual/fixtures.ts`, `src/visual/appData.ts` | Named fixture data sets + the `AppData` injectable-data contract |
 | `src/visual/goldenPath.ts` | The shared golden-path resolver both clients' Playwright configs route `snapshotPathTemplate` through |
 | `src/visual/freezeClock.ts` | Deterministic clock freezing for time-sensitive scenarios |
-| `goldens/` | The committed golden PNG trees all three visual tiers diff against — see [Goldens](#goldens) below |
+| `goldens/` | The committed golden PNG tree the `playwright` tier diffs against — see [Goldens](#goldens) below |
 
 ## Goldens
 
-`goldens/<tier>/__screenshots__/{react,react-local/<platform>-<arch>}/…` (one
-subtree per visual tier — `playwright-ct`, `playwright`, `vitest-browser`) is
-where the pixel-contract *artifact* lives, right beside the pixel-contract
+`goldens/playwright/__screenshots__/{react,react-local/<platform>-<arch>}/…`
+is where the pixel-contract *artifact* lives, right beside the pixel-contract
 *specification* above it (`scenarios.ts`, `goldenPath.ts`). It moved here from
 `packages/client-react/tests/ui/visual/` (2026-07-19, pure `git mv`, byte-identical)
 so both clients resolve into it symmetrically instead of one client's tree
-reaching into another's.
+reaching into another's. A 2026-07-20 test-tooling bake-off then retired the
+sibling `playwright-ct/` and `vitest-browser/` golden trees along with the
+tiers that wrote them — see
+[ADR-001's Outcome section](../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md)
+and [§9.7](../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers).
 
-**Who writes it:** `client-react`'s three `:update` scripts and the
+**Who writes it:** `client-react`'s `:update` script and the
 `update-visual-goldens.yml` workflow are the only writers — goldens are
 generated exclusively from `client-react` renders. `client-solid` is
-**assert-only**: every one of its visual configs anchors `snapshotDir` into
+**assert-only**: its visual config anchors `snapshotDir` into
 this tree, refuses `--update`/`-u` at the argv level, and throws rather than
 auto-creating a missing golden — see
 [§21 Mechanism 2 — assert-only visual tiers](../../docs/architecture/21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers)
-for the three enforcement layers. `client-solid` owns zero goldens of its own.
+for the enforcement layers. `client-solid` owns zero goldens of its own.
 
 `goldens/` sits outside `src/` — it is not compiled, not exported, and not a
 package entry point; it carries no effect on this package's `tsconfig`/knip/biome
 surface (PNG-only directories). Regeneration, the two-set (CI vs local) split,
-and the three update routes are documented in
+and the update routes are documented in
 [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../client-react/tests/ui/visual/UPDATING-GOLDENS.md) —
 that runbook, and the configs that point here, stay with `client-react`; only
 the PNGs moved.
@@ -58,7 +61,7 @@ the PNGs moved.
 
 1. `src/shared/harness/activeDriver.ts` — the whole framework seam in one file: a driver knows only how to `render()` a token into a DOM node and, optionally, how to flush its framework's batched updates. Everything else in this package is framework-neutral by construction.
 2. `src/shared/mount.ts` — `mount()` is what every contract spec calls: build a `World`, hand it and the props stream to the active driver, wrap the result in a `Page`. Read `buildContext()` to see the full set of `PageContext` setters (`setPrice`, `emit`, `setWatchlist`, ...) a spec can drive.
-3. `src/visual/scenarios.ts` — the visual-tier equivalent of the contract harness: one named entry per rendered state, referenced by all three tiers in both clients.
+3. `src/visual/scenarios.ts` — the visual-tier equivalent of the contract harness: one named entry per rendered state, referenced by the surviving `playwright` tier (plus the `vitest-browser` coverage instrument) in both clients.
 4. Any file under `src/specs/` — pick one and see the pattern: import a `ComponentToken` from `src/shared/components.ts`, `mount()` it, assert through the returned `Page`. Nothing in the spec file itself is React- or Solid-specific.
 
 ## The swap-trio

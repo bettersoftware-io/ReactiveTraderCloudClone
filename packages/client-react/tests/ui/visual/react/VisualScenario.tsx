@@ -1,9 +1,9 @@
 import { fixtures } from "@ui-visual-shared/fixtures";
 // Side-effect import: pins the wall clock before anything below renders. This
-// module is the single import surface every tier routes through (vitest-
-// browser's spec, the plain-Playwright host, and every playwright-ct spec all
-// import VisualScenario via "@ui-visual" → react/index.ts → here), so freezing
-// the clock here freezes it identically in all three — see freezeClock.ts.
+// module is the single import surface both surviving tiers route through
+// (vitest-browser's spec and the plain-Playwright host both import
+// VisualScenario via "@ui-visual" → react/index.ts → here), so freezing the
+// clock here freezes it identically in both — see freezeClock.ts.
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
 import { type ReactElement, useEffect, useState } from "react";

@@ -18,9 +18,9 @@ export function baseScenarioName(name: string): string {
 /** Extension-less golden path for a scenario: `<skin>-<mode>/<base-name>`.
  *  Theme+mode is a folder under the spec dir; the file is the base scenario
  *  name with `/`→`-`. Used by the vitest-browser tier, whose `resolveScreenshotPath`
- *  nests this via `path.join` and appends `-<browser>.png`. The playwright /
- *  playwright-ct tiers use `goldenPathArray` instead (a string arg's `/` flattens
- *  in Playwright). Every scenario carries an explicit themeSkin/themeMode after
+ *  nests this via `path.join` and appends `-<browser>.png`. The playwright
+ *  tier uses `goldenPathArray` instead (a string arg's `/` flattens in
+ *  Playwright). Every scenario carries an explicit themeSkin/themeMode after
  *  expansion; the `?? classic/dark` fallback only guards a hand-authored base
  *  scenario that forgot them. */
 export function goldenPath(name: string, scenario: Scenario): string {
@@ -35,8 +35,8 @@ export function goldenPath(name: string, scenario: Scenario): string {
 }
 
 /** Playwright's ARRAY-arg form: `[<skin>-<mode>, <base-name>.png]`. Required for
- *  the playwright / playwright-ct tiers because a STRING arg containing `/` is
- *  flattened to `-` by Playwright, whereas array path-segments nest a real subdir.
+ *  the playwright tier because a STRING arg containing `/` is flattened to
+ *  `-` by Playwright, whereas array path-segments nest a real subdir.
  *  `goldenPath` always has exactly one `/` (folder and base-name are each `/`-free),
  *  so splitting at it is safe. */
 export function goldenPathArray(

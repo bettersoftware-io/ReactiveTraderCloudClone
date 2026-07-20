@@ -86,9 +86,10 @@ flowchart TB
 ### Route 1 — selective CI refresh (and it commits for you)
 
 The lever that killed the old "regenerate everything for one changed pixel"
-bottleneck. An empty pattern does a full wipe + re-render (~all scenarios × 3
-tiers, ~30 min); a pattern re-renders **only matching scenarios, no wipe**
-(~1 min), then CI commits the result back to your branch with `[skip ci]`.
+bottleneck. An empty pattern does a full wipe + re-render (~all scenarios for
+the sole `playwright` tier, ~11 min); a pattern re-renders **only matching
+scenarios, no wipe** (~seconds), then CI commits the result back to your
+branch with `[skip ci]`.
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +98,7 @@ sequenceDiagram
     participant Runner as pinned x86 container
     participant Branch as your branch
     You->>GH: dispatch (scenario_pattern="aurora")
-    GH->>Runner: render only matching scenarios × 3 tiers
+    GH->>Runner: render only matching scenarios
     Runner-->>GH: new / updated react/ PNGs
     GH->>Branch: commit "[skip ci]" + push
     Note over Branch: react/ refreshed — no round-trip
@@ -125,7 +126,7 @@ sequenceDiagram
     participant Container as pinned x86 container
     participant Tree as your working tree
     You->>Container: pnpm goldens:regen (CI=1 · --platform linux/amd64)
-    Container->>Container: render all scenarios × 3 tiers
+    Container->>Container: render all scenarios (playwright tier)
     Container-->>Tree: write react/ (byte-identical to CI)
     You->>Tree: review & commit
     Note over You,Tree: goldens:verify asserts react/ instead of writing — a CI-exact local gate
@@ -140,7 +141,7 @@ Use `goldens:verify` to reproduce CI's visual gate on your own machine **before*
 pushing — it's the only local way to prove `react/` is green without waiting for
 `visual.yml`. Requires the Docker daemon; first run is slower (image pull +
 amd64 install under emulation), later runs reuse the layer + a persistent pnpm
-store. **Full-set only today** (~20–30 min) — see [gaps](#known-gaps).
+store. **Full-set only today** (~11 min, one tier) — see [gaps](#known-gaps).
 
 ### Route 3 — local native (fast inner loop)
 
@@ -159,9 +160,8 @@ sequenceDiagram
 ```
 
 ```bash
-# one tier:
+# the sole CI-asserted tier:
 pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
-# tiers: playwright · playwright-ct · vitest-browser
 
 # narrow to matching scenarios (already supported — same env the CI workflow uses):
 SCENARIO_PATTERN=aurora \
@@ -271,10 +271,10 @@ sequenceDiagram
 
 - **Route 2 is not selective yet.** `goldens-in-container.mjs` doesn't forward
   `SCENARIO_PATTERN` into the container, so `pnpm goldens:regen` always renders
-  the full set (~20–30 min) — exactly where selectivity would help most.
+  the full set (~11 min, one tier) — exactly where selectivity would help most.
   Tracked in [docs/STATUS.md](../../../../../docs/STATUS.md).
-- **Route 3 selectivity is undocumented, not unbuilt.** All three native configs
-  already read `SCENARIO_PATTERN` (shown above); the only possible addition is a
+- **Route 3 selectivity is undocumented, not unbuilt.** The native config
+  already reads `SCENARIO_PATTERN` (shown above); the only possible addition is a
   friendlier wrapper script. Also tracked in STATUS.md.
 
 ## Reference
@@ -284,14 +284,15 @@ sequenceDiagram
 | [`.github/workflows/update-visual-goldens.yml`](../../../../../.github/workflows/update-visual-goldens.yml) | Route 1 — dispatch, filter, auto-commit |
 | [`scripts/goldens-in-container.mjs`](../../../../../scripts/goldens-in-container.mjs) | Route 2 — regen / verify wrapper |
 | `packages/client-react/package.json` → `test:ui:visual:*` | Route 3 — native `:update` scripts |
-| `tests/ui/visual/*/​*.config.ts` | baseline routing · `SCENARIO_PATTERN` filter |
-| [`packages/ui-contract/goldens/`](../../../../ui-contract/goldens/) | where all three tiers' `react/` + `react-local/<arch>/` sets actually live |
-| [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) | why two sets exist; the collapse that was reverted |
+| `tests/ui/visual/playwright/*.config.ts` | baseline routing · `SCENARIO_PATTERN` filter |
+| [`packages/ui-contract/goldens/`](../../../../ui-contract/goldens/) | where the surviving `playwright` tier's `react/` + `react-local/<arch>/` sets actually live |
+| [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) | why two sets exist; the collapse that was reverted; the 2026-07-20 tier-retirement Outcome |
 | [`.github/workflows/visual.yml`](../../../../../.github/workflows/visual.yml) | the gate — checks `react/` on push to `main` |
 
 Container image is pinned to `mcr.microsoft.com/playwright:v1.61.0-noble`;
-tolerance is `maxDiffPixelRatio: 0.06`; three tiers: `playwright`,
-`playwright-ct`, `vitest-browser`. Keep the image tag identical across
+tolerance is `maxDiffPixelRatio: 0.06`; sole tier: `playwright`
+(`playwright-ct` and `vitest-browser`'s assert role retired 2026-07-20 — see
+ADR-001). Keep the image tag identical across
 `ci.yml`, `visual.yml`, `update-visual-goldens.yml`, and
 `scripts/goldens-in-container.mjs` (the `check:image-tag-drift` gate enforces
 this).

@@ -1,5 +1,20 @@
 # Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
+> **Coverage instrument note (2026-07-20).** The `vitest-browser` tier that
+> generates the istanbul numbers below was retired from asserting pixel
+> goldens by a test-tooling bake-off — see
+> [ADR-001's Outcome section](./ADR-001-visual-diff-tooling.md) and
+> [§9.7](../../../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers).
+> It is now a coverage-only instrument: `vitest-browser.coverage.config.ts`
+> compiles the pixel assert out via `__RTC_VISUAL_SKIP_DIFF__`, so
+> `pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage`
+> still renders and interacts through every scenario (istanbul sees every
+> branch the same as before) but never reads a golden — the coverage figures
+> and methodology throughout this file are unaffected; only the mechanism
+> that makes them safe to run without a `react-local/<arch>` golden set has
+> changed. The retired `playwright-ct` tier never fed this report (it was
+> never wired to istanbul), so nothing here traces to it.
+
 ## Pre-SolidJS-port audit (2026-07-11) — full-tier re-verification
 
 Taken after the v3 design sync (PR #164: exec spinner, isotope filter motion,

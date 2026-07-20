@@ -47,14 +47,15 @@ export default defineConfig({
     ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
     : {}),
   // Tolerate cross-CI-runner anti-aliasing jitter (~1-4% of pixels, byte-identical
-  // layout) the same way the playwright-ct tier does: glyph-edge AA varies between
-  // the runner that renders the goldens (update-visual-goldens workflow) and the
-  // runner that verifies them (the `visual` CI job), tipping a random text-heavy
-  // golden over a strict threshold with no real change. Raised from 0.025 to
-  // 0.06: text-heavy fixed-dimension goldens (e.g. fxBlotter populated/sorted)
-  // show ~0.04 ratio of sub-pixel AA jitter on x86 run-to-run; 0.025 was too
-  // tight. 0.06 still catches layout/structure regressions (which move >> 6%).
-  // See project_visual_goldens_dual_set / PR #40 (playwright-ct precedent).
+  // layout): glyph-edge AA varies between the runner that renders the goldens
+  // (update-visual-goldens workflow) and the runner that verifies them (the
+  // `visual` CI job), tipping a random text-heavy golden over a strict threshold
+  // with no real change. Raised from 0.025 to 0.06: text-heavy fixed-dimension
+  // goldens (e.g. fxBlotter populated/sorted) show ~0.04 ratio of sub-pixel AA
+  // jitter on x86 run-to-run; 0.025 was too tight. 0.06 still catches
+  // layout/structure regressions (which move >> 6%).
+  // See project_visual_goldens_dual_set / PR #40 (the now-retired playwright-ct
+  // tier set this precedent first).
   //
   // NOT A TEMPORARY MASK — DO NOT "tighten this away". Sub-pixel glyph AA is
   // non-deterministic ACROSS x86 CI runner instances (FreeType/HarfBuzz
@@ -91,7 +92,8 @@ export default defineConfig({
     // Render at a realistic 1080p desktop (overriding Desktop Chrome's cramped
     // 1280×720) so full-page HUD captures aren't vertically squeezed. The app is
     // height:100vh, so this viewport IS the full-page golden size. Kept identical
-    // across all three runners (playwright-ct, playwright, vitest-browser).
+    // to the vitest-browser coverage instrument's viewport (the now-retired
+    // playwright-ct tier matched too).
     viewport: { width: 1920, height: 1080 },
   },
   webServer: {

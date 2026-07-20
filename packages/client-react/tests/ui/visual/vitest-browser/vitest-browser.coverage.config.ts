@@ -20,6 +20,7 @@ import base from "./vitest-browser.config";
 export default mergeConfig(
   base,
   defineConfig({
+    define: { __RTC_VISUAL_SKIP_DIFF__: "true" },
     test: {
       coverage: {
         provider: "istanbul",

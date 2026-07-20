@@ -118,12 +118,10 @@ import { WsAdapter } from "@rtc/client-react";
 | `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
 | `test:ui:contract:coverage` | **≥95% coverage gate** — combined `src/ui` surface (contract specs + co-located unit tests) | `ui/contract/coverage/` |
 | `test` | **default** — Vitest (jsdom): union of app + ui-contract (72 files / 406 tests) | `unit/` |
-| `test:ui:visual` | **visual tier** — every runner × every framework variant present, in parallel | per-runner, below |
-| `test:ui:visual:react` | all visual runners, react only | per-runner, below |
-| `test:ui:visual:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing | `ui/visual/playwright-ct/react/` |
-| `test:ui:visual:playwright:react[:update\|:ui]` | Tier 2 — plain Playwright over a Vite host page | `ui/visual/playwright/react/` |
-| `test:ui:visual:vitest-browser:react[:update]` | Tier 3 — Vitest browser mode (`toMatchScreenshot`) | `ui/visual/vitest-browser/react/` |
-| `test:ui:visual:vitest-browser:react:coverage` | **visual gap-finder** — istanbul coverage of `src/ui`; uncovered branches = no golden snapshot | `ui/visual/coverage/` |
+| `test:ui:visual` | **visual tier** — the sole surviving runner × every framework variant present | per-runner, below |
+| `test:ui:visual:react` | the visual runner, react only | per-runner, below |
+| `test:ui:visual:playwright:react[:update\|:ui]` | The CI-asserted tier — plain Playwright over a Vite host page | `ui/visual/playwright/react/` |
+| `test:ui:visual:vitest-browser:react:coverage` | **visual gap-finder** — istanbul coverage of `src/ui` while every scenario renders through `vitest-browser-react`; the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`), so uncovered branches = no golden snapshot | `ui/visual/coverage/` |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) | — |
 
 Script naming: `test:ui:visual:<runner>:<framework>` — the framework axis exists

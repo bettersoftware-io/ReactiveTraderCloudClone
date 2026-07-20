@@ -4,8 +4,8 @@
 // that references the app fonts by name silently falls back and the goldens
 // stop looking like the app. This mirrors the exact @fontsource set the real
 // entry point loads (src/main.tsx); keep them in sync. VisualScenario imports
-// this once, so all three tiers (plain-Playwright, playwright-ct, vitest-browser)
-// pick it up identically.
+// this once, so both the plain-Playwright tier and the vitest-browser coverage
+// instrument pick it up identically.
 import "@fontsource/chakra-petch/400.css";
 import "@fontsource/chakra-petch/500.css";
 import "@fontsource/chakra-petch/600.css";

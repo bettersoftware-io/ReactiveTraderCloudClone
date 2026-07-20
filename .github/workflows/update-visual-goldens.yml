@@ -7,19 +7,19 @@ name: Update visual goldens
 # the `visual` job in ci.yml.
 #
 # Two modes, chosen by the `scenario_pattern` dispatch input:
-#   - EMPTY (default) → full refresh: wipe the canonical react/ trees, then
-#     re-render all ~1222 scenarios × 3 tiers.
+#   - EMPTY (default) → full refresh: wipe the canonical react/ tree, then
+#     re-render all ~1282 scenarios for the sole `playwright` tier.
 #   - SET (e.g. `aurora`, `credit/new-rfq-open`) → targeted refresh: SKIP the
-#     wipe and pass the pattern to each runner (playwright `-g`, vitest `-t`), so
-#     only the matching goldens are re-rendered — a one-scenario change costs ~1
-#     minute instead of ~30, and can't drag in unrelated in-flight golden work.
+#     wipe and pass the pattern to the runner (playwright `-g`), so only the
+#     matching goldens are re-rendered — a one-scenario change costs seconds
+#     instead of ~11 minutes, and can't drag in unrelated in-flight golden work.
 #
 # It then AUTO-COMMITS the regenerated goldens straight to the dispatched branch
-# (scoped to the canonical react/ trees only — never the vitest failure-debris
-# dir or a partial react-local/ set) using the workflow's GITHUB_TOKEN, so there
-# is no artifact → download → cherry-pick → commit round-trip. The artifact is
-# still uploaded as a fallback. The commit is `[skip ci]` (and GITHUB_TOKEN
-# pushes don't retrigger workflows anyway), so it never loops.
+# (scoped to the canonical react/ tree only — never a partial react-local/ set)
+# using the workflow's GITHUB_TOKEN, so there is no artifact → download →
+# cherry-pick → commit round-trip. The artifact is still uploaded as a
+# fallback. The commit is `[skip ci]` (and GITHUB_TOKEN pushes don't retrigger
+# workflows anyway), so it never loops.
 #
 # SCOPE: refreshes ONLY the canonical x86 `react/` set (the CI-enforced baseline)
 # — react-only BY DESIGN. The goldens are react-owned; the Solid client
@@ -36,9 +36,9 @@ on:
     inputs:
       scenario_pattern:
         description: >-
-          Optional test-title filter (playwright -g / vitest -t). Empty = full
-          refresh (wipe + re-render all). Set = targeted refresh of only the
-          matching scenarios (no wipe). e.g. "aurora", "credit/new-rfq-open".
+          Optional test-title filter (playwright -g). Empty = full refresh
+          (wipe + re-render all). Set = targeted refresh of only the matching
+          scenarios (no wipe). e.g. "aurora", "credit/new-rfq-open".
         required: false
         default: ""
 
@@ -91,38 +91,30 @@ jobs:
       - name: Clean canonical react/ goldens before full regen
         if: ${{ inputs.scenario_pattern == '' }}
         run: |
-          rm -rf packages/ui-contract/goldens/playwright-ct/__screenshots__/react
           rm -rf packages/ui-contract/goldens/playwright/__screenshots__/react
-          rm -rf packages/ui-contract/goldens/vitest-browser/__screenshots__/react
 
-      # Re-render the canonical x86 react/ goldens for all three runners — the full
-      # theme matrix (5 skins × dark/light) unless SCENARIO_PATTERN narrows it.
-      # These are the exact proven pnpm :update scripts (unchanged), so the
-      # plain-playwright tier's vite webServer spawns in the same context it always
-      # has. The filter is applied INSIDE each config from $SCENARIO_PATTERN
-      # (playwright `grep`, vitest `testNamePattern`) rather than via CLI args,
-      # because `pnpm run <script> -- -g X` double-dashes the arg and playwright
+      # Re-render the canonical x86 react/ goldens for the sole surviving
+      # `playwright` tier — the full theme matrix (5 skins × dark/light) unless
+      # SCENARIO_PATTERN narrows it. This is the exact proven pnpm :update
+      # script (unchanged), so the tier's vite webServer spawns in the same
+      # context it always has. The filter is applied INSIDE the config from
+      # $SCENARIO_PATTERN (playwright `grep`) rather than via CLI args, because
+      # `pnpm run <script> -- -g X` double-dashes the arg and playwright
       # ignores it. Empty pattern = no filter = full matrix.
-      - name: Regenerate playwright-ct goldens
-        run: pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update
-
       - name: Regenerate playwright goldens
         run: pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
 
-      - name: Regenerate vitest-browser goldens
-        run: pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update
-
       # Commit the regenerated goldens straight to the dispatched branch. Scope the
-      # stage to the canonical react/ trees ONLY — a bare `git add` would also catch
-      # the vitest failure-debris dir (…/__screenshots__/visual.spec.tsx/) or a
-      # partial react-local/ set. The grep guard hard-fails if anything outside
+      # stage to the canonical react/ tree ONLY — a bare `git add` would also catch
+      # a partial react-local/ set. The grep guard hard-fails if anything outside
       # react/ somehow staged.
       # Auto-commit is for PR-branch dispatches only. On main, pushing directly
-      # would (a) race concurrent merges (main moves during the ~30-min container
-      # run — observed rejected non-fast-forward 2026-07-19) and (b) land
-      # unreviewed [skip ci] binary changes outside the repo's PR/merge-commit
-      # discipline and the post-merge visual backstop. Main dispatches get the
-      # artifact below instead — sync it via a normal PR.
+      # would (a) race concurrent merges (main moves during the ~11-min container
+      # run — observed rejected non-fast-forward 2026-07-19, when a full regen
+      # still ran all three tiers) and (b) land unreviewed [skip ci] binary
+      # changes outside the repo's PR/merge-commit discipline and the post-merge
+      # visual backstop. Main dispatches get the artifact below instead — sync it
+      # via a normal PR.
       - name: Commit regenerated react/ goldens to the branch
         if: github.ref_name != 'main'
         run: |
@@ -130,9 +122,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            packages/ui-contract/goldens/playwright-ct/__screenshots__/react \
-            packages/ui-contract/goldens/playwright/__screenshots__/react \
-            packages/ui-contract/goldens/vitest-browser/__screenshots__/react
+            packages/ui-contract/goldens/playwright/__screenshots__/react
           if git diff --cached --name-only | grep -v '__screenshots__/react/' | grep -q .; then
             echo "Refusing to commit paths outside the canonical react/ trees:"
             git diff --cached --name-only | grep -v '__screenshots__/react/'
@@ -154,8 +144,6 @@ jobs:
         with:
           name: visual-goldens
           path: |
-            packages/ui-contract/goldens/playwright-ct/__screenshots__/react/
             packages/ui-contract/goldens/playwright/__screenshots__/react/
-            packages/ui-contract/goldens/vitest-browser/__screenshots__/react/
           if-no-files-found: error
           retention-days: 7
