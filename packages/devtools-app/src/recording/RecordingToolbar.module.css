@@ -3,13 +3,13 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--border);
   font-size: 0.8rem;
 }
 
 .btn {
   padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border);
   border-radius: 3px;
   background: transparent;
   color: inherit;
@@ -23,25 +23,15 @@
 
 .btnActive {
   padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(120, 200, 255, 0.8);
+  border: 1px solid var(--accent);
   border-radius: 3px;
-  background: rgba(120, 200, 255, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: inherit;
   cursor: pointer;
 }
 
 .counter {
-  opacity: 0.75;
-}
-
-.scrubber {
-  flex: 1 1 auto;
-  min-width: 6rem;
-}
-
-.readout {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
+  color: var(--dim);
 }
 
 .spacer {
@@ -50,11 +40,35 @@
 
 .importLabel {
   padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border);
   border-radius: 3px;
   cursor: pointer;
 }
 
 .hiddenInput {
   display: none;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.bannerButton {
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
 }

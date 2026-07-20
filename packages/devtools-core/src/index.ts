@@ -29,10 +29,6 @@ export { projectSnapshot } from "./projectSnapshot";
 export * from "./protocol";
 export { Recorder, type RecorderOptions } from "./Recorder";
 export {
-  ReplayController,
-  type ReplayControllerOptions,
-} from "./ReplayController";
-export {
   parseRecording,
   RECORDING_VERSION,
   type Recording,

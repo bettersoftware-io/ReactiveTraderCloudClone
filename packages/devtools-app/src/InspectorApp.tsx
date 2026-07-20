@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
+import { LiveHistory } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
 import { EventLogPanel } from "#/panels/EventLogPanel";
@@ -21,16 +22,23 @@ export function InspectorApp({
   onInvokeIntent,
 }: InspectorAppProps): ReactElement {
   const liveState = useInspectorState(store);
-  const recording = useRecording(store);
+  const liveHistory = useMemo((): LiveHistory => {
+    return new LiveHistory();
+  }, []);
+
+  useEffect((): (() => void) => {
+    return store.tap((msg) => {
+      liveHistory.record(msg);
+    });
+  }, [store, liveHistory]);
+
+  const recording = useRecording(store, liveHistory, liveState.appId);
   const [tab, setTab] = useState<InspectorTab>("state");
 
-  // The panels are pure functions of InspectorState: in Live mode they get the
-  // store's live snapshot; in Replay mode, the state reconstructed from the
-  // recording at the scrubbed frame. This is the whole seam.
-  const state =
-    recording.mode === "replay" && recording.replay
-      ? recording.replay.stateAt(recording.frameIndex)
-      : liveState;
+  // The panels are pure functions of InspectorState. Task 11 wires the
+  // pin/follow timeline seam (incl. viewing an imported recording); for now
+  // this is just the live snapshot.
+  const state = liveState;
 
   return (
     <div className={styles.app}>
