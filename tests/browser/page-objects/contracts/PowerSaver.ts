@@ -5,8 +5,8 @@
  * — same rationale as the theme preference's root class).
  *
  * Playwright-only: like {@link InspectorPO} and the `login` field, this
- * capability has no Cypress implementation, so the field is optional on
- * {@link PageObjects}.
+ * capability is only implemented by the Playwright factory, so the field is
+ * optional on {@link PageObjects}.
  */
 export interface PowerSaverPO {
   /** Click the header's power-saver cycling control (advances one level). */

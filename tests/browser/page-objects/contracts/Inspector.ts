@@ -8,8 +8,7 @@
  * This is the one page object that owns a page OTHER than the primary app page.
  * The Playwright impl spawns the inspector page from the app page's browser
  * context inside `open()`, so scenarios (and the spec body) never touch a raw
- * `page.*` handle. There is no Cypress impl: Cypress cannot drive a second
- * same-origin tab, so this capability is Playwright-only and the field is
+ * `page.*` handle. This capability is Playwright-only and the field is
  * optional on {@link PageObjects}.
  */
 export interface InspectorPO {

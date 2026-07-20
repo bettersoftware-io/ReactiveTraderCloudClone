@@ -215,7 +215,7 @@ const GATES: Gate[] = [
   },
   {
     name: "2. No driver imports in contracts",
-    pattern: "@playwright/test|cypress|@badeball",
+    pattern: "@playwright/test",
     paths: ["browser/page-objects/contracts/"],
     excludes: ["/node_modules/"],
   },
@@ -233,12 +233,8 @@ const GATES: Gate[] = [
   },
   {
     name: "5. No driver imports in scenarios layer",
-    pattern: '@playwright/test|"cypress"|@badeball',
-    paths: [
-      "browser/scenarios/",
-      "browser/cypress/scenarios/",
-      "presenter/scenarios/",
-    ],
+    pattern: "@playwright/test",
+    paths: ["browser/scenarios/", "presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -289,40 +285,10 @@ const GATES: Gate[] = [
     paths: ["browser/playwright/"],
     excludes: ["/node_modules/", "browser/playwright/_context.ts"],
   },
-  {
-    name: "12. No driver imports in native Cypress test bodies",
-    pattern: '"cypress"|@badeball|@playwright/test',
-    paths: ["browser/cypress/"],
-    excludes: [
-      "/node_modules/",
-      "browser/cypress/cypress.config.ts",
-      "browser/cypress/_context.ts",
-      "browser/cypress/scenarios/",
-    ],
-  },
-  {
-    name: "13. No direct ctx.po.* access in native Cypress test bodies",
-    pattern: "ctx\\.po\\.",
-    paths: ["browser/cypress/"],
-    excludes: [
-      "/node_modules/",
-      "browser/cypress/_context.ts",
-      "browser/cypress/scenarios/",
-    ],
-  },
-  {
-    name: "14. No direct cy.* calls in native Cypress test bodies",
-    pattern: "\\bcy\\.",
-    paths: ["browser/cypress/"],
-    excludes: [
-      "/node_modules/",
-      "browser/cypress/_context.ts",
-      "browser/cypress/scenarios/",
-    ],
-  },
+  // Gates 12–14 retired with Cypress (2026-07-20) — numbers not reused.
   {
     name: "15. No driver imports in presenter step/scenario/support files",
-    pattern: '"cypress"|@badeball|@playwright/test|"quickpickle"',
+    pattern: '@playwright/test|"quickpickle"',
     paths: [
       "presenter/steps/",
       "presenter/scenarios/",

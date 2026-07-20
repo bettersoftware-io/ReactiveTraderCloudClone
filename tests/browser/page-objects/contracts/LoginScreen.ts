@@ -5,8 +5,8 @@
  * must land on a genuinely UNAUTHENTICATED session so AuthGate actually
  * renders this form instead of the app.
  *
- * Playwright-only (like {@link InspectorPO}): Cypress specs never need it,
- * this suite's ONE coverage test for the real login form is Playwright.
+ * Playwright-only (like {@link InspectorPO}): this suite's ONE coverage test
+ * for the real login form is Playwright.
  */
 export interface LoginScreenPO {
   /** Open a fresh, unauthenticated view of the app (no seeded session) and

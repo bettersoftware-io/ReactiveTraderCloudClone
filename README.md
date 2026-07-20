@@ -278,8 +278,6 @@ with a filter (each browser runner starts its own frontend on `:3000` by default
 # Browser peers (drive the real UI against simulators)
 pnpm --filter @rtc/tests test:browser:playwright            # native Playwright
 pnpm --filter @rtc/tests test:browser:playwright-cucumber   # Cucumber + Playwright
-pnpm --filter @rtc/tests test:browser:cypress               # native Cypress
-pnpm --filter @rtc/tests test:browser:cypress-cucumber      # Cucumber + Cypress
 
 # Presenter peers (pure Node, no browser/server)
 pnpm --filter @rtc/tests test:presenter:cucumber                       # Gherkin, real timers (default)
@@ -295,8 +293,6 @@ pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_
 pnpm --filter @rtc/tests test:browser:playwright:headed          # Playwright --headed (runs once)
 pnpm --filter @rtc/tests test:browser:playwright:ui              # Playwright UI mode (sidebar, watch, time-travel)
 pnpm --filter @rtc/tests test:browser:playwright-cucumber:headed # headed Chromium + slowMo
-pnpm --filter @rtc/tests test:browser:cypress:headed             # Cypress interactive runner (open)
-pnpm --filter @rtc/tests test:browser:cypress-cucumber:headed    # Cypress interactive runner (open)
 pnpm --filter @rtc/tests test:fullstack:browser:headed           # full stack, --headed
 ```
 
@@ -307,8 +303,9 @@ See tests/README.md for the full suite matrix and naming convention.
 This is where the project earns its keep. The same user-facing behaviour is
 exercised by **eight independent runners** so they can be compared head-to-head:
 
-- **Four browser peers** drive the real UI — Cucumber+Playwright, native
-  Playwright, Cucumber+Cypress, and native Cypress.
+- **Four browser peers** drive the real UI — Cucumber+Playwright and native
+  Playwright, each run once against the React client and once against the
+  Solid client.
 - **Four presenter peers** drive the RxJS presenter layer in pure Node against
   domain simulators — `cucumber` (real timers), `cucumber-fake-timers`,
   `vitest-fake-timers` (plain `it()`), and `vitest-quickpickle-fake-timers`
