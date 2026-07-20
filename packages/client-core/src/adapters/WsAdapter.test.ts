@@ -640,3 +640,78 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
 });
+
+describe("WsAdapter auth gating", () => {
+  it("opens no socket at construction when autoConnect is false", () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      { autoConnect: false },
+    );
+
+    expect(MockWebSocket.constructed).toBe(0);
+
+    adapter.dispose();
+  });
+
+  it("opens the socket only once connect() is called", () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return "tok";
+      },
+      { autoConnect: false },
+    );
+
+    adapter.connect();
+
+    expect(MockWebSocket.constructed).toBe(1);
+    expect(lastMock.url).toContain("access=tok");
+
+    adapter.dispose();
+  });
+
+  it("connect() is idempotent while a socket is already live", () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return "tok";
+      },
+      { autoConnect: false },
+    );
+
+    adapter.connect();
+    adapter.connect();
+
+    expect(MockWebSocket.constructed).toBe(1);
+
+    adapter.dispose();
+  });
+
+  it("disconnect() closes the socket and suppresses auto-reconnect", () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return "tok";
+      },
+      { autoConnect: false },
+    );
+    adapter.connect();
+    const socket = lastMock;
+
+    adapter.disconnect();
+
+    expect(socket.close).toHaveBeenCalled();
+
+    // The close handler must not schedule a reconnect for a deliberate
+    // sign-out — otherwise the tokenless retry loop resumes.
+    socket.onclose?.(new CloseEvent("close"));
+    vi.advanceTimersByTime(10_000);
+
+    expect(MockWebSocket.constructed).toBe(1);
+
+    adapter.dispose();
+  });
+});

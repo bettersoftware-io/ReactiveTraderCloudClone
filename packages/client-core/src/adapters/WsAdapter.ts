@@ -25,6 +25,13 @@ const DEFAULT_RECONNECT_DELAY_MS = 3_000;
 
 export interface WsAdapterOptions {
   reconnectDelayMs?: number;
+  /** Whether to open the socket from the constructor. Defaults to `true` for
+   * back-compat. Composition roots that gate the transport behind
+   * authentication pass `false` and drive `connect()`/`disconnect()` from the
+   * auth state instead — otherwise the socket opens tokenless at app mount,
+   * is rejected by the server's `verifyClient` upgrade check, and retries
+   * forever behind the login screen. */
+  autoConnect?: boolean;
 }
 
 export class WsAdapter implements IWsAdapter {
@@ -52,7 +59,10 @@ export class WsAdapter implements IWsAdapter {
 
   private disposed = false;
 
-  private idleClosed = false;
+  // Socket was closed deliberately (idle timeout, or a sign-out / not-yet-
+  // signed-in auth gate) rather than dropped. Suppresses auto-reconnect until
+  // an explicit reopen()/connect().
+  private suspended = false;
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
@@ -65,10 +75,49 @@ export class WsAdapter implements IWsAdapter {
     this.tokenProvider = tokenProvider;
     this.reconnectDelayMs =
       options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
-    this.connect();
+
+    if (options.autoConnect ?? true) {
+      this.openSocket();
+    } else {
+      // Nothing is open yet, so a later connect() must not be treated as a
+      // redundant call on a live socket.
+      this.suspended = true;
+    }
   }
 
-  private connect(): void {
+  /** Open the socket if it isn't already live. Idempotent — safe to call on
+   * every authenticated emission. Clears the suspend flag so the normal
+   * auto-reconnect behaviour resumes for genuine drops. */
+  connect(): void {
+    if (this.disposed || this.ws !== null) {
+      return;
+    }
+
+    this.suspended = false;
+    this.openSocket();
+  }
+
+  /** Close the socket deliberately (sign-out) and suppress auto-reconnect, so
+   * the adapter goes quiet instead of retrying tokenless upgrades. The
+   * adapter stays reusable — a later connect() re-establishes it. */
+  disconnect(): void {
+    if (this.disposed || this.suspended) {
+      return;
+    }
+
+    this.suspended = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+  }
+
+  private openSocket(): void {
     if (this.disposed) {
       return;
     }
@@ -122,8 +171,9 @@ export class WsAdapter implements IWsAdapter {
 
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
 
-      if (this.idleClosed) {
-        // Idle close: suppress auto-reconnect; user must call reopen() explicitly.
+      if (this.suspended) {
+        // Deliberate close (idle timeout or sign-out): suppress auto-reconnect;
+        // recovery is an explicit reopen()/connect().
         return;
       }
 
@@ -154,7 +204,7 @@ export class WsAdapter implements IWsAdapter {
       // Surface the retry so the connection state machine can show CONNECTING
       // (DISCONNECTED -> CONNECTING) while the socket is being re-established.
       this.connectionEvents$.next({ type: "reconnectAttempt" });
-      this.connect();
+      this.openSocket();
     }, this.reconnectDelayMs);
   }
 
@@ -244,11 +294,11 @@ export class WsAdapter implements IWsAdapter {
    * sends while idle-closed are buffered rather than sent to a closing socket.
    * Provenance: original services/connection.ts:91-93. */
   closeForIdle(): void {
-    if (this.disposed || this.idleClosed) {
+    if (this.disposed || this.suspended) {
       return;
     }
 
-    this.idleClosed = true;
+    this.suspended = true;
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -262,12 +312,12 @@ export class WsAdapter implements IWsAdapter {
 
   /** Re-establish the socket after an idle close (user activity). */
   reopen(): void {
-    if (this.disposed || !this.idleClosed) {
+    if (this.disposed || !this.suspended) {
       return;
     }
 
-    this.idleClosed = false;
-    this.connect();
+    this.suspended = false;
+    this.openSocket();
   }
 
   dispose(): void {
