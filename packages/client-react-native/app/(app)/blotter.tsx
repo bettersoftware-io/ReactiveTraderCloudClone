@@ -1,8 +1,8 @@
 import type { JSX } from "react";
 
-import { Blotter } from "#/ui/Blotter";
+import { BlotterModule } from "#/ui/blotter/BlotterModule";
 
-/** The Blotter tab — executed-trades history. */
+/** The Blotter module — executed-trades history. */
 export default function BlotterScreen(): JSX.Element {
-  return <Blotter />;
+  return <BlotterModule />;
 }
