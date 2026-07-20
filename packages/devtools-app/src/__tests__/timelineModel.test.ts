@@ -41,7 +41,9 @@ test("filterLog composes families AND pills AND text AND radius", () => {
       pills: [],
       text: "",
       radius: null,
-    }).map((r) => r.seq),
+    }).map((r) => {
+      return r.seq;
+    }),
   ).toEqual([1, 2]);
 
   expect(
@@ -50,7 +52,9 @@ test("filterLog composes families AND pills AND text AND radius", () => {
       pills: [{ type: "stream", id: "fx.price$" }],
       text: "",
       radius: null,
-    }).map((r) => r.seq),
+    }).map((r) => {
+      return r.seq;
+    }),
   ).toEqual([1]);
 
   expect(
@@ -59,7 +63,9 @@ test("filterLog composes families AND pills AND text AND radius", () => {
       pills: [],
       text: "trades",
       radius: null,
-    }).map((r) => r.seq),
+    }).map((r) => {
+      return r.seq;
+    }),
   ).toEqual([2]);
 
   // windowMs 1 around ts 1001 keeps rows at 1001/1002 (delta ≤ 1), drops 1003.
@@ -69,7 +75,9 @@ test("filterLog composes families AND pills AND text AND radius", () => {
       pills: [],
       text: "",
       radius: { centerTs: 1001, windowMs: 1 },
-    }).map((r) => r.seq),
+    }).map((r) => {
+      return r.seq;
+    }),
   ).toEqual([1, 2]);
 });
 
