@@ -4,6 +4,7 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 import {
   AMBIENT_STYLES,
   type AmbientStyle,
+  BOOT_VARIANTS,
   type BootVariant,
   type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
@@ -61,7 +62,7 @@ function isViewMode(value: string | null): value is ViewMode {
 }
 
 function isBootVariant(value: string | null): value is BootVariant {
-  return value === "core" || value === "laser" || value === "docking";
+  return value !== null && (BOOT_VARIANTS as readonly string[]).includes(value);
 }
 
 function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
