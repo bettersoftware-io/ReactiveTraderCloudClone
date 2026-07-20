@@ -27,7 +27,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
 
 /** Maps the real `TileExecutionState` (the tile's execution machine — no
- * `setTimeout` here, it's all driven by the machine's own started →
+ * UI-side timers here, it's all driven by the machine's own started →
  * tooLong → finished|timeout transitions) to the trade-ticket's execution
  * overlays: `ready` renders nothing; `started`/`tooLong` show a busy overlay
  * (spinner ring + scan bar + "EXECUTING {DIRECTION}"); `finished`/`timeout`
