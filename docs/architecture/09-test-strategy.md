@@ -161,8 +161,11 @@ was retired from the assert role but kept as the istanbul **coverage
 gap-finder**: it still renders and interacts through every scenario (so
 branch coverage reflects the true rendered surface), but its pixel assert is
 compiled out via a `define`-injected `__RTC_VISUAL_SKIP_DIFF__` flag, so it
-never reads a golden. Net effect: the post-merge `visual.yml` job drops from
-~52 min (3 tiers × 2 clients) to ~17 min (1 tier × 2 clients).
+never reads a golden. Net effect: the post-merge `visual.yml` job dropped from
+~52 min (3 tiers × 2 clients) to ~29 min measured (1 tier × 2 clients run
+serially in one job); a follow-up job-matrix parallelization ([§9.10](#910-the-ci-gauntlet))
+then took it to **~15 min** (measured 14.9) by running the two clients on
+separate runners.
 
 ### 9.8 UI contract tier
 
@@ -180,7 +183,7 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~17-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~15-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~29 min when the two clients ran serially in one job, ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), as a **matrix of two per-client jobs on separate runners** — one browser stack per runner, the isolation the ±1px stable-frame lesson needs — feeding a fan-in report/gate job. Branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
 The e2e job runs `RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e` — 5 of the 7
 `run-all.ts` suites (native Playwright react + solid, the presenter peer, both
@@ -212,7 +215,12 @@ flowchart TD
     postmerge["push to main (post-merge)"]
     postmerge --> visual
     subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]
-        v1["playwright tier vs<br/>ui-contract/goldens/playwright/__screenshots__/react/"]
+        direction TB
+        v1a["visual (react) — own runner<br/>playwright tier vs<br/>goldens/playwright/__screenshots__/react/"]
+        v1b["visual (solid) — own runner<br/>same goldens, asserts-only"]
+        v2["report + gate<br/>(fan-in: rebuild /visual/, publish, red/green)"]
+        v1a --> v2
+        v1b --> v2
     end
     cron["cron (Mondays 06:00 UTC)<br/>/ workflow_dispatch"]
     cron --> weekly

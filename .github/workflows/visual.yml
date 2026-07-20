@@ -4,15 +4,31 @@ name: Visual diffs
 # plain Playwright over the Vite host — the sole CI-asserted tier since Task 3
 # retired playwright-ct and vitest-browser's assert role, 2026-07-20) run for
 # BOTH clients: react (which owns the committed goldens) and solid (which
-# asserts the same scenarios against react's goldens, owning none of its own)
-# — 2 tier-runs total, ~17 min. It used to live in ci.yml as a PR gate but that
-# blocked every branch push while the UI was still churning. It now runs
-# POST-MERGE ONLY: on push to main (i.e. right after a PR merges) and on manual
-# dispatch. A red run here is the signal to inspect the diff and either fix the
-# regression or — if the change was intentional — regenerate the goldens via
-# .github/workflows/update-visual-goldens.yml (react-only; see that workflow).
-# It does NOT gate merges; move it back into ci.yml (as a PR job) once the UI
-# stabilises.
+# asserts the same scenarios against react's goldens, owning none of its own).
+# It used to live in ci.yml as a PR gate but that blocked every branch push
+# while the UI was still churning. It now runs POST-MERGE ONLY: on push to main
+# (i.e. right after a PR merges) and on manual dispatch. A red run here is the
+# signal to inspect the diff and either fix the regression or — if the change
+# was intentional — regenerate the goldens via update-visual-goldens.yml
+# (react-only). It does NOT gate merges; move it back into ci.yml (as a PR job)
+# once the UI stabilises.
+#
+# TOPOLOGY (2026-07-20): the two clients run as a JOB MATRIX on SEPARATE runners,
+# not as two sequential steps of one job. They used to be sequential steps
+# precisely to keep browser-stack concurrency at one — two Chromium+Vite stacks
+# fighting over a single 2-core runner made Playwright's stable-frame check
+# capture a frame early, drifting text-dense goldens by ±1px (the same
+# oversubscription lesson as RTC_VISUAL_MAX_PARALLEL below). A job matrix
+# PRESERVES that isolation — each client gets its OWN dedicated runner, one
+# browser stack per machine, byte-identical to where the goldens were generated
+# — while cutting wall-clock from ~30 min (14+12 serial + setup) to ~20 min
+# (max(14,12) + a short fan-in). A third `report` job fans in both clients'
+# diff artifacts, builds the combined /visual/ page, publishes it, and carries
+# the red/green gate. Trade-off: per-job setup (checkout + install + ^build)
+# now runs on both matrix legs instead of once — the turbo build cache below
+# claws most of that back for the UI-only merges that don't touch the pure-TS
+# libs. Runner-minutes rise modestly; on a public repo those are free and
+# wall-clock is the currency.
 on:
   push:
     branches: [main]
@@ -31,11 +47,19 @@ env:
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
 jobs:
+  # One dedicated runner per client — this is the isolation the ±1px lesson
+  # demands (one browser stack per machine), now achieved across runners rather
+  # than by serialising steps on one. A failing tier does NOT fail the job (the
+  # test step is continue-on-error); it records its outcome into the uploaded
+  # artifact and the `report` job below turns that into the real gate. That lets
+  # BOTH clients always run and always publish their debris, even when one is red.
   visual:
-    name: visual diffs
+    name: visual diffs (${{ matrix.client }})
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    strategy:
+      fail-fast: false # a red react tier must not cancel the solid tier — we want both diffs
+      matrix:
+        client: [react, solid]
     # Run inside the official Playwright image so chromium + fonts + OS libs are
     # byte-identical to where the goldens are generated. This eliminates the
     # cross-platform rendering diffs (sandbox/ubuntu) that fail toHaveScreenshot,
@@ -46,16 +70,13 @@ jobs:
     # Tag must track the @playwright/test version in packages/client-react.
     container: mcr.microsoft.com/playwright:v1.61.0-noble
     env:
-      # Historically pinned to 1 to run the three visual runners SERIALLY,
-      # matching update-visual-goldens.yml's sequential regen — run-all.ts
-      # defaults to fully-concurrent under CI, and 3-tier CPU contention on the
-      # 2-core runner let Playwright's stable-frame check capture one frame
-      # early — goldens generated unloaded then verified under load drifted by
-      # ±1px / glyph metrics on text-dense captures. Since Task 3 retired
-      # playwright-ct and vitest-browser's assert role (2026-07-20), run-all.ts
-      # discovers exactly one tier (`playwright`) per package, so this pin is a
-      # no-op in practice today — kept for parity with update-visual-goldens.yml
-      # and as a guard against renewed oversubscription if a future tier lands.
+      # Bounds a SINGLE package's own run-all.ts concurrency. Since Task 3
+      # retired playwright-ct and vitest-browser's assert role (2026-07-20),
+      # run-all.ts discovers exactly one tier (`playwright`) per package, so this
+      # pin is a no-op in practice today — kept for parity with
+      # update-visual-goldens.yml and as a guard against renewed oversubscription
+      # if a future tier lands. Cross-CLIENT isolation is now handled by the job
+      # matrix (one runner each), not by this var.
       RTC_VISUAL_MAX_PARALLEL: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -80,56 +101,136 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Cache turbo's local task cache so the `^build` chain (domain, shared,
+      # motion-core, ui-contract, client-core, the bindings — turbo `build` task,
+      # outputs: dist/**) is restored instead of recompiled on merges that didn't
+      # touch those pure-TS libs. Turbo invalidates per-package by input hash, so
+      # a UI-only merge is a cache HIT for every lib and rebuilds nothing; a merge
+      # that edits a lib rebuilds only that lib and its dependents. SAFE because
+      # test:ui:visual is `cache: false` in turbo.json — turbo NEVER caches or
+      # skips the visual assertion itself, only the build it depends on. Keyed per
+      # client (each leg builds a different bindings pkg) so the two matrix legs
+      # keep independent cache lineages instead of clobbering each other's save.
+      - name: Cache turbo build outputs
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo
+          key: turbo-visual-${{ matrix.client }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-visual-${{ matrix.client }}-${{ runner.os }}-
+
       # Invoke through turbo (NOT `pnpm --filter`) so the task's declared
       # dependsOn ["^build"] runs first: the visual harness imports the
       # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
-      # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
-      # turbo's graph and fails to resolve @rtc/domain. `--filter=@rtc/...`
-      # HERE is turbo's own package-scoping flag (forwarded through the root
-      # `test:ui:visual` script to `turbo run test:ui:visual`), not pnpm's —
-      # it still goes through turbo, so dependsOn still runs first.
-      #
-      # React and solid run as TWO separate steps (not one unfiltered
-      # `pnpm test:ui:visual`, which would let turbo schedule both packages'
-      # browser stacks concurrently) — the surviving tier stands up its own
-      # Chromium + Vite dev server, and this job's RTC_VISUAL_MAX_PARALLEL=1
-      # only bounds a single package's OWN run-all.ts, not cross-package turbo
-      # scheduling. Splitting into two filtered, sequential steps keeps the
-      # whole job's browser-stack concurrency at exactly one, matching the
-      # same oversubscription lesson as RTC_VISUAL_MAX_PARALLEL.
-      # Full theme matrix (5 skins × dark/light, ~1282 scenarios, the sole
-      # `playwright` tier per package) makes each step several minutes long —
-      # ~17 min combined — which is exactly why this job is post-merge and not
-      # a PR gate.
-      - name: Visual diffs — react (playwright)
-        id: visual_react
+      # fresh checkout hasn't produced. `--filter=@rtc/...` HERE is turbo's own
+      # package-scoping flag (forwarded through the root `test:ui:visual` script
+      # to `turbo run test:ui:visual`), not pnpm's — it still goes through turbo,
+      # so dependsOn still runs first. Full theme matrix (5 skins × dark/light,
+      # ~1282 scenarios) makes this step ~12–14 min. continue-on-error lets a red
+      # tier still upload its debris; the `report` job re-asserts the real result.
+      - name: Visual diffs — ${{ matrix.client }} (playwright)
+        id: visual
         continue-on-error: true
-        run: pnpm test:ui:visual --filter=@rtc/client-react
+        run: pnpm test:ui:visual --filter=@rtc/client-${{ matrix.client }}
 
-      # Solid owns NO goldens of its own — every scenario here asserts against
-      # react's COMMITTED goldens (see the tier's config header). A red run
-      # here means either a solid-side rendering/framing regression or a
-      # react-side golden that hasn't been regenerated yet for a recent
-      # scenario change — never a signal to add a solid golden.
-      - name: Visual diffs — solid (playwright, asserting react's goldens)
-        id: visual_solid
-        continue-on-error: true
-        run: pnpm test:ui:visual --filter=@rtc/client-solid
-
-      # Build the browsable /visual/ report from whatever diff images the two
-      # steps above produced (none on a green run → an "all green" page), then
-      # publish it to the gh-pages /visual/ subtree (disjoint from /coverage/;
-      # publish-to-pages.mjs's rebase loop serialises concurrent writers). Runs
-      # on pass and fail alike so a green run overwrites a stale red report.
-      - name: Build visual report site
+      # Stage exactly what the report needs into one tar, preserving
+      # workspace-relative paths (tar reproduces them byte-for-byte on the report
+      # runner — no cp/LCA-stripping guesswork). Contents: this client's native
+      # HTML report tree (reports/ui/visual, present pass or fail) + its failure
+      # debris (-actual/-diff/-reference PNGs) which the surviving `playwright`
+      # tier writes next to the golden it compared, under the SHARED
+      # packages/ui-contract/goldens/ tree + an outcome.txt carrying this leg's
+      # pass/fail. On a green run only outcome.txt exists — tar still succeeds.
+      - name: Stage report inputs
         if: always()
+        run: |
+          echo "${{ steps.visual.outcome }}" > outcome.txt
+          echo outcome.txt > files.txt
+          if [ -d "packages/client-${{ matrix.client }}/reports" ]; then
+            find "packages/client-${{ matrix.client }}/reports" -type f >> files.txt
+          fi
+          find packages/ui-contract/goldens -type f \
+            \( -name '*-actual.png' -o -name '*-diff.png' -o -name '*-reference.png' \) \
+            >> files.txt 2>/dev/null || true
+          tar -czf "visual-${{ matrix.client }}.tgz" -T files.txt
+
+      - name: Upload report inputs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-${{ matrix.client }}
+          path: visual-${{ matrix.client }}.tgz
+          if-no-files-found: error # the tar always exists (outcome.txt at minimum); missing ⇒ a real bug
+          retention-days: 7
+
+  # Fan-in: collect both clients' staged artifacts, rebuild the combined /visual/
+  # page, publish it, and carry the gate. Runs on a plain runner (no Playwright
+  # container) because the report/publish scripts are pure node builtins — no
+  # browser, no node_modules, so no pnpm install. `if: always()` so the report
+  # publishes and the gate fires even when a matrix leg died in setup.
+  report:
+    name: visual report + gate
+    needs: visual
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Download react report inputs
+        continue-on-error: true # a dead matrix leg ⇒ absent artifact ⇒ handled as a failure below
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: visual-react
+          path: _dl/react
+
+      - name: Download solid report inputs
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: visual-solid
+          path: _dl/solid
+
+      # Reconstruct the exact tree build-visual-report expects. Each tar restores
+      # its files at workspace root (native report trees under packages/client-*/
+      # + debris under packages/ui-contract/goldens/, on top of the checked-out
+      # goldens). React is extracted FIRST and solid LAST, so on a scenario both
+      # clients failed, solid's -actual/-diff wins the shared golden path — the
+      # same last-writer precedence the old sequential (react-then-solid) job had.
+      # A leg's outcome defaults to `failure` when its artifact is absent (the leg
+      # died before staging): a missing tier must never read as a silent pass.
+      - name: Reconstruct report inputs
+        run: |
+          REACT_OUTCOME=failure
+          SOLID_OUTCOME=failure
+          if [ -f _dl/react/visual-react.tgz ]; then
+            tar -xzf _dl/react/visual-react.tgz
+            REACT_OUTCOME="$(cat outcome.txt)"; rm -f outcome.txt
+          fi
+          if [ -f _dl/solid/visual-solid.tgz ]; then
+            tar -xzf _dl/solid/visual-solid.tgz
+            SOLID_OUTCOME="$(cat outcome.txt)"; rm -f outcome.txt
+          fi
+          echo "REACT_OUTCOME=$REACT_OUTCOME" >> "$GITHUB_ENV"
+          echo "SOLID_OUTCOME=$SOLID_OUTCOME" >> "$GITHUB_ENV"
+          echo "react=$REACT_OUTCOME solid=$SOLID_OUTCOME"
+
+      # Build the browsable /visual/ report from whatever debris the two legs
+      # produced (none on an all-green run → an "all green" page), then publish it
+      # to the gh-pages /visual/ subtree. Runs on pass and fail alike so a green
+      # run overwrites a stale red report.
+      - name: Build visual report site
         run: |
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           rm -rf _stage
           mkdir -p _stage/visual
           FAILED=""
-          [ "${{ steps.visual_react.outcome }}" = "failure" ] && FAILED="$FAILED client-react"
-          [ "${{ steps.visual_solid.outcome }}" = "failure" ] && FAILED="$FAILED client-solid"
+          [ "$REACT_OUTCOME" = "failure" ] && FAILED="$FAILED client-react"
+          [ "$SOLID_OUTCOME" = "failure" ] && FAILED="$FAILED client-solid"
           node scripts/pages/build-visual-report.mjs \
             --out _stage/visual \
             --react packages/client-react \
@@ -138,30 +239,24 @@ jobs:
             --failed "$FAILED"
 
       - name: Publish visual report to gh-pages
-        if: always()
         run: |
-          # The Playwright container checkout is owned by a different user than
-          # git runs as; clear the dubious-ownership guard before the worktree
-          # add inside publish-to-pages (mirrors coverage-report.yml).
+          # Mirror coverage-report.yml: clear the dubious-ownership guard before
+          # publish-to-pages does its worktree add.
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           node scripts/pages/publish-to-pages.mjs --source _stage --message "publish visual report @ ${GITHUB_SHA}"
 
       - name: Live report link
-        if: always()
         run: |
           url="https://bettersoftware-io.github.io/ReactiveTraderCloudClone/visual/"
           echo "Live visual diff report: $url"
           echo "::notice title=Visual diff report (live HTML)::Browse the report → $url"
 
-      # On a mismatch, publish the actual-vs-expected images so the regression (or
-      # an intended change awaiting golden regen) can be inspected. The lone
-      # surviving `playwright` tier, for both react and solid, resolves its
-      # failure debris (-actual/-diff) next to the golden it compared against,
-      # under the shared packages/ui-contract/goldens/ tree — the glob below
-      # covers that. (Solid's now-retired vitest-browser tier was the one
-      # exception that kept its diffs local; no exception remains.)
+      # Publish the actual-vs-expected images on a mismatch so the regression (or
+      # an intended change awaiting golden regen) can be inspected. Both clients'
+      # debris now sits under the shared packages/ui-contract/goldens/ tree
+      # (reconstructed above) plus each client's own reports/ tree.
       - name: Upload visual diff report on failure
-        if: ${{ always() && (steps.visual_react.outcome == 'failure' || steps.visual_solid.outcome == 'failure') }}
+        if: ${{ env.REACT_OUTCOME == 'failure' || env.SOLID_OUTCOME == 'failure' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ui-visual-report
@@ -172,13 +267,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # continue-on-error above lets both clients run and the report publish even
-      # on failure; re-assert the real result here so the post-merge signal (and
-      # this job's status) is still red when any tier failed.
+      # The real post-merge gate. The matrix legs are continue-on-error so both
+      # always run and publish; this re-asserts the true result so the run (and
+      # the commit's status) is red when any tier failed — or when a leg died and
+      # left its outcome defaulted to failure above.
       - name: Gate — fail if any visual tier failed
-        if: always()
         run: |
-          if [ "${{ steps.visual_react.outcome }}" = "failure" ] || [ "${{ steps.visual_solid.outcome }}" = "failure" ]; then
+          if [ "$REACT_OUTCOME" = "failure" ] || [ "$SOLID_OUTCOME" = "failure" ]; then
             echo "::error title=Visual diffs failed::One or more tiers failed — see the published report."
             exit 1
           fi
