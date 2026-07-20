@@ -110,14 +110,24 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
     expect(screen.getByTestId("recording-banner")).toBeTruthy();
   });
   // Importing swapped the datasource out from under the old pin — it must
-  // not silently survive onto the imported timeline.
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  // not silently survive onto the imported timeline. The banner landing
+  // only proves `imported` state committed; the reset effect that clears
+  // the pin runs as a passive effect on a later tick, so this needs its
+  // own wait rather than an assertion immediately following the banner's.
+  await waitFor(() => {
+    expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  });
 
   fireEvent.click(screen.getByTestId("back-to-live"));
-  expect(screen.queryByTestId("recording-banner")).toBeNull();
+  await waitFor(() => {
+    expect(screen.queryByTestId("recording-banner")).toBeNull();
+  });
   // Back to live is itself a datasource swap — still following, not stuck
-  // on whatever seq the import last had pinned.
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  // on whatever seq the import last had pinned. Same passive-effect gap as
+  // above, so wait rather than assert immediately.
+  await waitFor(() => {
+    expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  });
 });
 
 test("liveHistory seeds pre-mount store state — a pinned row reconstructs a machine that only ever existed before mount", () => {
