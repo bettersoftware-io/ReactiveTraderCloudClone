@@ -13,8 +13,8 @@ This repo is shared by **concurrent Claude Code sessions** working in the same c
 
 ## The Six Rules
 
-1. **Isolate first, off the latest `main`.** Before touching *any* file, `git fetch` and create a git worktree on a fresh branch cut from an up-to-date `origin/main`. Never edit the live working tree or `main` directly.
-2. **PR + loop until CI is green.** When work is done, push the branch, open a PR, and poll CI until the run for your latest commit completes **successfully**. If it fails, fix on the branch and loop again.
+1. **Isolate first, off the latest `main`.** Before touching *any* file, run **`./scripts/new-worktree.sh <name>`** — it fetches and branches explicitly off `origin/main`. Never edit the live working tree or `main` directly.
+2. **One PR per reviewable unit; loop until CI is green.** Put everything a reviewer would accept or reject *together* in one PR. Then push, open the PR, and poll CI until the run for your latest commit completes **successfully**. If it fails, fix on the branch and loop again.
 3. **Assess catch-up risk before merging.** Once green, if `origin/main` has advanced, don't reflexively catch up — triage what landed. Merge as-is when it's plainly disjoint from your change; merge `origin/main` *in* and re-run the CI loop only when there's an overlap / semantic-conflict path or the incoming diff is too broad to cheaply assess.
 4. **Merge once green.** As soon as CI is green on a current branch you may merge to `main` immediately via the GitHub API — no human review gate (move-fast policy, may tighten later).
 5. **Always a merge commit.** Merge with `--merge`. **Never** `--squash`, `--rebase`, or a fast-forward.
@@ -22,18 +22,35 @@ This repo is shared by **concurrent Claude Code sessions** working in the same c
 
 ## Rule 1 — Isolate off the *latest* `main`, before any change
 
-Create the worktree *before* the first edit, not after — and branch it off an **up-to-date** `origin/main`. A stale base only grows Rule 3's catch-up burden, so **fetch first:**
+Create the worktree *before* the first edit, not after — and branch it off an **up-to-date** `origin/main`. **Use the script, always:**
 
 ```bash
-git fetch origin main
+./scripts/new-worktree.sh <name>     # → .claude/worktrees/<name> on branch worktree-<name>
 ```
 
-- **Native tool (`EnterWorktree`)** — preferred. It branches off `origin/<default-branch>` only when `worktree.baseRef` is `fresh` (the default); if it's `head` you'd inherit your local `HEAD` instead. Either way the base is only as fresh as your last fetch — so fetch first.
-- **Git fallback (`superpowers:using-git-worktrees`)** — its `git worktree add <path> -b <branch>` branches off your **current `HEAD`**, *not* `origin/main`. So either fast-forward local `main` to `origin/main` before creating the worktree, or branch explicitly: `git worktree add <path> -b <branch> origin/main`.
+It fetches, then branches explicitly off `origin/main`, and prints the base commit it landed on. Works from the primary checkout or from inside another worktree.
+
+**Why a script and not "remember to fetch."** Every hand-rolled path branches off your **current `HEAD`**, which inherits however stale local `main` is — and local `main` is stale *by default* here, because `main` auto-pushes and concurrent sessions land commits continuously. This isn't theoretical: an audit on 2026-07-20 found local `main` 6 commits / 4h37m behind `origin/main`, with four of the five live worktrees sitting on that stale tip (one at **21 commits behind**). A stale base never fails loudly — it just silently inflates Rule 3's catch-up burden until a branch is too far behind to merge cheaply. Branching off `origin/main` by name removes the failure mode instead of asking you to remember.
+
+- **Native tool (`EnterWorktree`)** — acceptable *only* when `worktree.baseRef` is `fresh` (the default) **and** you've fetched first; it branches off `origin/<default-branch>`, but only as fresh as your last fetch. If `baseRef` is `head` it inherits local `HEAD` and is unsafe. Prefer the script.
+- **Bare `git worktree add <path> -b <branch>`** — ❌ never. It branches off `HEAD`. If you must go manual, name the base: `git worktree add <path> -b <branch> origin/main` — after a `git fetch origin main`.
 
 Pre-existing uncommitted files in the primary checkout stay there, untouched — that's the point of isolating.
 
-## Rule 2 — Push, PR, then loop on CI
+## Rule 2 — One PR per reviewable unit, then loop on CI
+
+### What belongs in ONE PR
+
+**The test: could a reviewer meaningfully reject one part while approving the other?**
+
+- **No → one PR.** Same workstream, non-overlapping files, no dependency between them. A doc-sync fix and the close-out entry for that same workstream fail this test — nobody approves one and blocks the other.
+- **Yes → separate PRs.** Independent concerns, different workstreams, or one genuinely depends on the other having landed.
+
+**"I'll do X once the current PR lands" is a dependency claim — verify it.** It's real only when the later change would be *wrong* until the earlier one merges, or when the two touch the same files. Neither is satisfied by "they're related" or "I want to see the first one land first." Sequencing without a real dependency costs a full extra CI run (~8 min here), a second review-and-merge cycle, and an extra worktree — per split.
+
+Fold in without a second thought: the tests covering the change, the doc update it invalidates, the status/backlog entry it closes, the config it needs.
+
+### Push, PR, then loop on CI
 
 ```bash
 git push -u origin <branch>
@@ -140,7 +157,9 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 
 | Need | Command |
 |------|---------|
-| Isolate before editing | `git fetch origin main` first, then `EnterWorktree` (native) or `superpowers:using-git-worktrees` — base off latest `origin/main` |
+| Isolate before editing | `./scripts/new-worktree.sh <name>` — fetches + branches off `origin/main` |
+| ❌ Never to isolate | bare `git worktree add <path> -b <branch>` (branches off stale local `HEAD`) |
+| Does this belong in the open PR? | Could a reviewer reject one part and approve the other? No → same PR |
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
 | Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
@@ -157,6 +176,10 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | Excuse | Reality |
 |--------|---------|
 | "It's a tiny/one-line change, I'll just edit main." | Another session may be mid-change and `main` auto-pushes. Isolate first — always. |
+| "`git worktree add -b foo` is the normal way to make a worktree." | It branches off your **current `HEAD`**, and local `main` is stale by default here. Use `./scripts/new-worktree.sh`. |
+| "I fetched recently, local `main` is fine." | An audit found it 6 commits behind after 4½ hours. Branch off `origin/main` by name; don't estimate freshness. |
+| "I'll do the doc/STATUS update once this PR lands." | That's sequencing, not a dependency. If the files don't overlap and neither change needs the other merged, it's one PR — you're paying an extra CI run for nothing. |
+| "These are separate concerns, so separate PRs is cleaner." | Apply the test: would a reviewer approve one and reject the other? If not, it's one reviewable unit. |
 | "`gh pr checks --watch` is the obvious way to wait for CI." | It returns 403 with this repo's PAT. Use `gh run list --workflow CI`. |
 | "My branch CI is green, so I can merge." | Green proves your branch against the base it *branched from*. If `origin/main` advanced, triage the incoming diff first (Rule 3) — merge as-is when it's disjoint, catch up + re-green only on overlap or a too-broad diff. |
 | "`main` moved while I was green, so I have to catch up." | Only if the incoming diff overlaps your change or is too broad to judge. Plainly-disjoint advances (docs churn, another package) merge as-is — reflexive catch-up against a fast-moving `main` is the cat-and-mouse trap Rule 3 now avoids. |
@@ -171,7 +194,8 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 ## Red Flags — STOP
 
 - About to run Edit/Write/`git mv`/`rm` while still in the primary checkout on `main`.
-- About to create the worktree without a fresh `git fetch` — you'd branch off a stale `origin/main`.
+- About to create a worktree with anything other than `./scripts/new-worktree.sh` — bare `git worktree add -b` branches off stale local `HEAD`.
+- About to defer a doc / test / STATUS update to "a follow-up PR" without a file overlap or a real dependency — it belongs in the PR you have open.
 - About to merge while **behind** `origin/main` *without checking what landed* — triage first (Rule 3): merge as-is if disjoint, catch up + re-green only on overlap or a too-broad diff.
 - About to type `gh pr merge` with `--squash`, `--rebase`, or `--auto`.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
