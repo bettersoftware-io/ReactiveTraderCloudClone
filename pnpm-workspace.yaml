@@ -18,6 +18,16 @@ allowBuilds:
 minimumReleaseAge: 1440
 
 overrides:
+  # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
+  # in dozens of prod-reachable paths, e.g. client-react-native > react-native
+  # > @react-native/jest-preset > … > test-exclude > minimatch) up from the
+  # vulnerable <1.1.16 to the PATCHED 1.1.16. Fixes the HIGH DoS advisory
+  # GHSA id 1123897 (exponential-time expansion of consecutive non-expanding
+  # {} groups), which reds CI gate 25 (`pnpm audit --prod`). SCOPED to the
+  # vulnerable range so consumers already on a safe version (incl. the 2.x
+  # line, patched separately as 2.1.2) are never forced off their choice.
+  # 1.1.16 published 2026-07-08 — outside the minimumReleaseAge cooldown.
+  "brace-expansion@<1.1.16": ^1.1.16
   # Force the transitive @xmldom/xmldom (pulled in by @expo/plist and plist —
   # Expo native-build tooling, exercised by `expo prebuild`/`run:ios` and every
   # `eas build`) up from the vulnerable <0.8.13 line to the PATCHED 0.8.13.
