@@ -61,7 +61,7 @@ this section.
 | UI contract (sociable RTL) | 86 `*.contract.spec.ts` files, one tree | 86 files, 622 tests passing | 86 files, 622 tests passing — **full parity**, `notYetPortedSpecs` is `[]` |
 | Visual goldens (`playwright` tier, CI-asserted since the 2026-07-20 bake-off retirement — see [§9.7](09-test-strategy.md#97-visual-golden-tiers)) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios, **assert-only** against the `ui-contract/goldens/playwright/` tree (generated only from client-react renders) — owns zero goldens of its own |
 | e2e (Gherkin behavioural) | Same `.feature` files + step definitions + page objects | 2 browser suites, ports 3001–3002 | 2 browser suites, ports 3003–3004 (`playwright`, `playwright-cucumber`) — full parity, `notYetPortedSpecs` is `[]` |
-| Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same four panels, same protocol, different app id) |
+| Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same inspector UI, same protocol, different app id) |
 
 `tests/scripts/run-all.ts` runs **7 concurrent suites** total: 2 full-stack
 smokes + 1 in-process presenter peer (react/solid-agnostic — it never touches
