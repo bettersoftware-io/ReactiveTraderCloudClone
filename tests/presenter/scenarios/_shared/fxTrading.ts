@@ -204,19 +204,6 @@ export async function expectAtLeastOneRejection(
   }
 }
 
-export async function dismissTradeConfirmation(
-  _w: PresenterWorld,
-): Promise<void> {
-  // UI-only: at presenter level the confirmation observable completes after one
-  // emission. No action needed.
-}
-
-export async function expectTradeConfirmationHides(
-  _w: PresenterWorld,
-): Promise<void> {
-  // UI-only counterpart to "dismiss".
-}
-
 export async function expectTradeNotionalEquals(
   w: PresenterWorld,
   expected: number,

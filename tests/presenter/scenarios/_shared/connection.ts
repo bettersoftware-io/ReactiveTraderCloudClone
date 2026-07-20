@@ -49,21 +49,6 @@ export async function expectStatusEqualsWithin(
   );
 }
 
-export async function expectStatusInWithin(
-  w: PresenterWorld,
-  statuses: ConnectionStatus[],
-  seconds: number,
-): Promise<void> {
-  await w.awaitFirstWithin(
-    w.ctx.app.presenters.connection.status$.pipe(
-      filter((s) => {
-        return statuses.includes(s);
-      }),
-    ),
-    seconds * 1000,
-  );
-}
-
 export async function noopAssertConnectionUiPresent(
   _w: PresenterWorld,
 ): Promise<void> {

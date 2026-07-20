@@ -6,7 +6,7 @@
  * mutually independent once each owns its own resources:
  *   - Browser suites each start their OWN dev server (via with-server) on a
  *     distinct port (RTC_DEV_PORT = 3001..), so they never share app state.
- *   - Presenter suites run against in-process simulators — no server at all.
+ *   - The presenter suite runs against in-process simulators — no server at all.
  *   - Full-stack smokes boot their own real server (and client) on dedicated
  *     ports (4123/4124/3100).
  *
@@ -37,7 +37,7 @@ const browserScripts = [
 
 // Order matters when a concurrency cap is in effect (see MAX_PARALLEL below):
 // the pool starts suites in array order. Front-load the light, in-process
-// presenter suites and the timing-sensitive full-stack smokes (their WS
+// presenter suite and the timing-sensitive full-stack smokes (their WS
 // connection to the real server is starved if it competes with a heavy browser
 // suite on a small CI runner) so they run first, uncontended. The four heavy
 // browser suites (each = a dev server + a real browser) run last. Browser-suite
@@ -48,11 +48,8 @@ const suites: Suite[] = [
   // Full-stack smokes — self-contained on their own ports; quick but timing-sensitive.
   { script: "test:fullstack:node" },
   { script: "test:fullstack:browser" },
-  // Presenter peers — in-process, no server, mutually independent.
-  { script: "test:presenter:cucumber" },
-  { script: "test:presenter:cucumber-fake-timers" },
+  // Presenter peer — in-process, no server.
   { script: "test:presenter:vitest-fake-timers" },
-  { script: "test:presenter:vitest-quickpickle-fake-timers" },
   // Heavy browser suites — one dev server + browser each.
   ...browserScripts.map((script, i) => {
     return {

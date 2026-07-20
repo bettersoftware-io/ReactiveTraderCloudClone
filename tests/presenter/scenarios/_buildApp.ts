@@ -46,8 +46,9 @@ export function buildPresenterApp(): PresenterCtx {
 export interface IncidentPresenterCtx {
   app: App;
   /**
-   * Must be unsubscribed in the After hook — it is the reactive bridge that
-   * translates IncidentMachine state transitions into myIncident$ emissions.
+   * Must be unsubscribed in the After/afterEach hook — it is the reactive
+   * bridge that translates IncidentMachine state transitions into
+   * myIncident$ emissions.
    */
   bridgeSub: Subscription;
 }

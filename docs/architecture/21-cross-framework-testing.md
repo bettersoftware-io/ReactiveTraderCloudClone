@@ -63,10 +63,12 @@ this section.
 | e2e (Gherkin behavioural) | Same `.feature` files + step definitions + page objects | 2 browser suites, ports 3001–3002 | 2 browser suites, ports 3003–3004 (`playwright`, `playwright-cucumber`) — full parity, `notYetPortedSpecs` is `[]` |
 | Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same four panels, same protocol, different app id) |
 
-`tests/scripts/run-all.ts` runs **10 concurrent suites** total: 2 full-stack
-smokes + 4 in-process presenter peers (react/solid-agnostic — they never touch
-a UI framework) + the 4 browser suites in the table above (2 react + 2 solid;
-Cypress's two suites were deleted in the 2026-07-20 bake-off retirement).
+`tests/scripts/run-all.ts` runs **7 concurrent suites** total: 2 full-stack
+smokes + 1 in-process presenter peer (react/solid-agnostic — it never touches
+a UI framework; the presenter family was 4 peers until the 2026-07-20 bake-off
+collapsed it to 1 — see `tests/STRATEGY.md` §5.2) + the 4 browser suites in
+the table above (2 react + 2 solid; Cypress's two suites were deleted in the
+same bake-off retirement).
 
 **How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `86`;
 `pnpm --filter @rtc/client-react test:ui:contract` and the same for

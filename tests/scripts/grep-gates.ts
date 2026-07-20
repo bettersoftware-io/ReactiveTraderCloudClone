@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 interface Gate {
@@ -16,20 +16,34 @@ interface Gate {
   customCheck?: () => string[];
 }
 
-const FEATURE_NAMES = [
-  "connection",
-  "fxLiveRates",
-  "fxTrading",
-  "analytics",
-  "blotter",
-  "fxRfq",
-  "creditRfq",
+/**
+ * Maps a `specs/` feature file to its `presenter/vitest-fake-timers/` test
+ * file. `feature` is the path under `specs/` (without `.feature`) — most
+ * features sit directly in `specs/`, but some (e.g. admin/incident) live in a
+ * subdirectory. `test` is the presenter test file's basename (without
+ * `.test.ts`) — usually matches `feature`, but diverges when the feature path
+ * has a directory segment the test file naming doesn't mirror.
+ */
+interface PresenterFeatureMapping {
+  feature: string;
+  test: string;
+}
+
+const FEATURE_NAMES: PresenterFeatureMapping[] = [
+  { feature: "connection", test: "connection" },
+  { feature: "fxLiveRates", test: "fxLiveRates" },
+  { feature: "fxTrading", test: "fxTrading" },
+  { feature: "analytics", test: "analytics" },
+  { feature: "blotter", test: "blotter" },
+  { feature: "fxRfq", test: "fxRfq" },
+  { feature: "creditRfq", test: "creditRfq" },
+  { feature: "admin/incident", test: "adminIncident" },
 ];
 
 function checkPresenterScenarioCounts(): string[] {
   const failures: string[] = [];
 
-  for (const feat of FEATURE_NAMES) {
+  for (const { feature: feat, test: testName } of FEATURE_NAMES) {
     const featurePath = `specs/${feat}.feature`;
 
     if (!existsSync(featurePath)) {
@@ -42,7 +56,7 @@ function checkPresenterScenarioCounts(): string[] {
       featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []
     ).length;
 
-    const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
+    const testPath = `presenter/vitest-fake-timers/${testName}.test.ts`;
 
     if (presenterScenarios === 0 && !existsSync(testPath)) {
       continue;
@@ -78,8 +92,8 @@ function checkPresenterScenarioCounts(): string[] {
 function checkPresenterDescribePrefix(): string[] {
   const failures: string[] = [];
 
-  for (const feat of FEATURE_NAMES) {
-    const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
+  for (const { test: testName } of FEATURE_NAMES) {
+    const testPath = `presenter/vitest-fake-timers/${testName}.test.ts`;
 
     if (!existsSync(testPath)) {
       continue;
@@ -104,34 +118,6 @@ function checkPresenterDescribePrefix(): string[] {
           `${testPath}: describe title "${title}" missing "@presenter Feature: " prefix`,
         );
       }
-    }
-  }
-
-  return failures;
-}
-
-function checkQuickpickleBarrelCompleteness(): string[] {
-  const failures: string[] = [];
-  const stepsDir = "presenter/vitest-quickpickle-fake-timers/steps";
-  const setupPath = "presenter/vitest-quickpickle-fake-timers/setup.ts";
-
-  if (!existsSync(stepsDir) || !existsSync(setupPath)) {
-    return failures;
-  }
-
-  const stepFiles = readdirSync(stepsDir).filter((f) => {
-    return f.endsWith(".steps.ts");
-  });
-  const setupSrc = readFileSync(setupPath, "utf8");
-
-  for (const f of stepFiles) {
-    const stem = f.replace(/\.ts$/, "");
-    const importMarker = `./steps/${stem}`;
-
-    if (!setupSrc.includes(importMarker)) {
-      failures.push(
-        `${setupPath}: missing import for ${stepsDir}/${f} (expected literal containing ${JSON.stringify(importMarker)})`,
-      );
     }
   }
 
@@ -240,11 +226,7 @@ const GATES: Gate[] = [
   {
     name: "6. No @playwright/test expect in step files",
     pattern: 'from "@playwright/test"',
-    paths: [
-      "browser/steps/",
-      "presenter/steps/",
-      "presenter/vitest-quickpickle-fake-timers/steps/",
-    ],
+    paths: ["browser/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -256,11 +238,7 @@ const GATES: Gate[] = [
   {
     name: "8. No this.page.* in step files",
     pattern: "this\\.page\\.",
-    paths: [
-      "browser/steps/",
-      "presenter/steps/",
-      "presenter/vitest-quickpickle-fake-timers/steps/",
-    ],
+    paths: ["browser/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -289,35 +267,19 @@ const GATES: Gate[] = [
   {
     name: "15. No driver imports in presenter step/scenario/support files",
     pattern: '@playwright/test|"quickpickle"',
-    paths: [
-      "presenter/steps/",
-      "presenter/scenarios/",
-      "presenter/cucumber/",
-      "presenter/cucumber-fake-timers/",
-    ],
+    paths: ["presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "16. No DOM/page references in presenter step/scenario files",
     pattern: "getByTestId|page\\.|cy\\.",
-    paths: [
-      "presenter/steps/",
-      "presenter/vitest-quickpickle-fake-timers/steps/",
-      "presenter/scenarios/",
-    ],
+    paths: ["presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "17. No createApp/createSimulatorPorts outside _buildApp.ts",
     pattern: "createApp|createSimulatorPorts",
-    paths: [
-      "presenter/steps/",
-      "presenter/scenarios/",
-      "presenter/cucumber/",
-      "presenter/cucumber-fake-timers/",
-      "presenter/vitest-fake-timers/",
-      "presenter/vitest-quickpickle-fake-timers/",
-    ],
+    paths: ["presenter/scenarios/", "presenter/vitest-fake-timers/"],
     excludes: ["/node_modules/", "presenter/scenarios/_buildApp.ts"],
   },
   {
@@ -327,14 +289,9 @@ const GATES: Gate[] = [
     excludes: ["/node_modules/"],
   },
   {
-    name: "19. No vitest/qpickle-loader imports outside the two vitest peers",
+    name: "19. No vitest/qpickle-loader imports outside the vitest peer",
     pattern: '"vitest"|"quickpickle"|from "vitest/',
-    paths: [
-      "presenter/scenarios/",
-      "presenter/cucumber/",
-      "presenter/cucumber-fake-timers/",
-      "presenter/steps/",
-    ],
+    paths: ["presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -362,12 +319,7 @@ const GATES: Gate[] = [
     paths: ["../packages/domain/src/ports/__contracts__/"],
     excludes: ["/node_modules/"],
   },
-  {
-    name: "24. vitest-quickpickle-fake-timers/setup.ts imports every step file in tests/presenter/vitest-quickpickle-fake-timers/steps/",
-    pattern: "",
-    paths: [],
-    customCheck: checkQuickpickleBarrelCompleteness,
-  },
+  // Gate 24 retired with the quickpickle presenter peer (2026-07-20) — number not reused.
   {
     name: "25. No high/critical advisories in production deps (pnpm audit --prod)",
     pattern: "",
