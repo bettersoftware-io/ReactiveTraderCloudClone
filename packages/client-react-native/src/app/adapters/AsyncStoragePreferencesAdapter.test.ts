@@ -4,6 +4,8 @@ import { skip, take } from "rxjs/operators";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import {
+  BOOT_VARIANTS,
+  DEFAULT_BOOT_VARIANT,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_VIEW_MODE,
@@ -145,6 +147,32 @@ test("setViewMode does not throw when AsyncStorage.setItem rejects", async () =>
   }).not.toThrow();
   const next = await firstValueFrom(prefs.viewMode$());
   expect(next).toBe("price");
+});
+
+/**
+ * Driven off `BOOT_VARIANTS` rather than a hand-listed set, so a variant added
+ * to the domain can never again outrun this adapter's guard: the boot rotation
+ * advances through every variant, and one the guard rejects silently resets the
+ * sequence to the default on cold launch.
+ */
+test.each([
+  ...BOOT_VARIANTS,
+])("hydrates the stored boot variant %s", async (variant) => {
+  store.set("rt-boot-variant", variant);
+  const prefs = new AsyncStoragePreferencesAdapter();
+  // Poll the current value rather than awaiting a second emission: the
+  // default variant hydrates to the value the subject already holds, and
+  // `distinctUntilChanged` rightly suppresses that duplicate.
+  await vi.waitFor(async () => {
+    expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
+  });
+});
+
+test("falls back to the default boot variant when the stored value is unknown", async () => {
+  store.set("rt-boot-variant", "not-a-real-variant");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.bootVariant$());
+  expect(first).toBe(DEFAULT_BOOT_VARIANT);
 });
 
 test("emits the default credit RFQ filter (live) synchronously", async () => {
