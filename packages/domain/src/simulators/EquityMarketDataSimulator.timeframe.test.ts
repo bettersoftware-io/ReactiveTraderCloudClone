@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { Candle } from "../equities/candle.js";
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
 describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
@@ -125,6 +126,70 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     const port = new EquityMarketDataSimulator(42);
     const candles = await firstValueFrom(port.candles("MSFT", tf));
     expect(candles.at(-1)?.close).toBeCloseTo(port.currentPrice("MSFT"), 6);
+  });
+
+  it.each([
+    "1D",
+    "1W",
+    "1M",
+    "3M",
+  ] as const)("'%s' uses a distinct deterministic seed per SYMBOL — the normalised chart SHAPE differs across symbols", async (tf) => {
+    // The per-symbol mirror of the per-timeframe seed test above, and the
+    // one case it never covered. Before the fix, candles() seeded its RNG
+    // from the timeframe alone (`mulberry32(seed)`), so every symbol drew
+    // the identical sequence of percentage moves. That was invisible in raw
+    // prices — each symbol starts from its own SEED_PRICES level, so the
+    // numbers differed — but gbmStep is purely multiplicative, so the
+    // starting price factors straight out and the series were exact scalar
+    // multiples of one another. chartVm autoscales each series to its own
+    // min/max and a constant factor cancels in that ratio, so the rendered
+    // charts were PIXEL-identical for every symbol.
+    //
+    // Hence: normalise each series to its own range before comparing —
+    // comparing raw closes would pass against the buggy code.
+    //
+    // And compare with a TOLERANCE, not `not.toEqual`. Under the bug the
+    // normalised series aren't bit-identical: the anchoring rescale leaves
+    // ~1e-14 of floating-point noise, so an exact `not.toEqual` passes
+    // vacuously while the charts are pixel-identical. Require the shapes to
+    // differ somewhere by at least MIN_SHAPE_DELTA of the plot's height —
+    // a difference a human can actually see.
+    const MIN_SHAPE_DELTA = 0.02;
+    const port = new EquityMarketDataSimulator(42);
+
+    function shape(candles: readonly Candle[]): readonly number[] {
+      const lo = Math.min(
+        ...candles.map((c) => {
+          return c.low;
+        }),
+      );
+
+      const hi = Math.max(
+        ...candles.map((c) => {
+          return c.high;
+        }),
+      );
+
+      const range = hi - lo || 1;
+      return candles.map((c) => {
+        return (c.close - lo) / range;
+      });
+    }
+
+    /** Largest gap between two normalised shapes, as a fraction of plot height. */
+    function maxShapeDelta(a: readonly number[], b: readonly number[]): number {
+      return a.reduce((worst, value, i) => {
+        return Math.max(worst, Math.abs(value - (b[i] ?? 0)));
+      }, 0);
+    }
+
+    const aapl = shape(await firstValueFrom(port.candles("AAPL", tf)));
+    const msft = shape(await firstValueFrom(port.candles("MSFT", tf)));
+    const xom = shape(await firstValueFrom(port.candles("XOM", tf)));
+
+    expect(maxShapeDelta(aapl, msft)).toBeGreaterThan(MIN_SHAPE_DELTA);
+    expect(maxShapeDelta(msft, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
+    expect(maxShapeDelta(aapl, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
   });
 
   it("is deterministic — repeated calls for the same symbol+timeframe reproduce the same close-price path", async () => {
