@@ -42,10 +42,10 @@ test("renders formatted pair, direction subline, notional, rate and status", asy
 
   expect(screen.getByTestId("trade-row-42")).toBeTruthy();
   expect(screen.getByText("EUR/USD")).toBeTruthy();
-  expect(screen.getByText(`${Direction.Buy} · #42`)).toBeTruthy();
+  expect(screen.getByText(`${Direction.Buy.toUpperCase()} · #42`)).toBeTruthy();
   expect(screen.getByText("1,000,000")).toBeTruthy();
   expect(screen.getByText("1.53818")).toBeTruthy();
-  expect(screen.getByText(TradeStatus.Done)).toBeTruthy();
+  expect(screen.getByText(TradeStatus.Done.toUpperCase())).toBeTruthy();
 });
 
 test("uses the joined activity time when given", async () => {
@@ -69,18 +69,18 @@ test("paints a Done status with the positive accent colour", async () => {
   await renderWithTheme(
     <TradeRow trade={DONE_TRADE} isNew={false} time={undefined} />,
   );
-  expect(screen.getByText(TradeStatus.Done).props.style.color).toBe(
-    rnThemeTokens.holo.dark.accentPositive,
-  );
+  expect(
+    screen.getByText(TradeStatus.Done.toUpperCase()).props.style.color,
+  ).toBe(rnThemeTokens.holo.dark.accentPositive);
 });
 
 test("paints a Rejected status with the negative accent colour", async () => {
   await renderWithTheme(
     <TradeRow trade={REJECTED_TRADE} isNew={false} time={undefined} />,
   );
-  expect(screen.getByText(TradeStatus.Rejected).props.style.color).toBe(
-    rnThemeTokens.holo.dark.accentNegative,
-  );
+  expect(
+    screen.getByText(TradeStatus.Rejected.toUpperCase()).props.style.color,
+  ).toBe(rnThemeTokens.holo.dark.accentNegative);
 });
 
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {

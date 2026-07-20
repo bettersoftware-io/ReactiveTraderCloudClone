@@ -42,7 +42,7 @@ export function TradeRow({ trade, isNew, time }: TradeRowProps): JSX.Element {
       <View style={styles.pairCol}>
         <Text style={styles.pair}>{formatPair(trade.currencyPair)}</Text>
         <Text style={directionStyle}>
-          {trade.direction} · #{trade.tradeId}
+          {trade.direction.toUpperCase()} · #{trade.tradeId}
         </Text>
       </View>
       <Text style={styles.notional}>
@@ -52,7 +52,7 @@ export function TradeRow({ trade, isNew, time }: TradeRowProps): JSX.Element {
         {formatRate(trade.spotRate, trade.currencyPair)}
       </Text>
       <View style={styles.statusCol}>
-        <Text style={pillStyle}>{trade.status}</Text>
+        <Text style={pillStyle}>{trade.status.toUpperCase()}</Text>
         <Text style={styles.time}>{time ?? trade.tradeDate}</Text>
       </View>
     </Animated.View>
