@@ -37,6 +37,7 @@
     "@expo-google-fonts/ibm-plex-sans": "^0.4.1",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo-google-fonts/orbitron": "^0.4.1",
+    "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@rtc/client-core": "workspace:*",
     "@rtc/devtools-core": "workspace:*",

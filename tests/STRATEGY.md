@@ -457,14 +457,12 @@ live, not hypothetical:
   — the *same* two config files as their React counterparts, just invoked
   with `RTC_CLIENT_PKG=@rtc/client-solid` and their own port block
   (3003–3004, vs. React's 3001–3002) and `-solid` report suffixes.
-- One spec, `login.spec.ts`, stays in `playwright.config.ts`'s `testIgnore`
-  for the Solid run — not because Solid lacks sign-in UI (`LoginScreen` /
-  `AuthGate` ship, and the UI-contract tier's `shell/auth` specs already pass
-  on Solid), but because the spec drives a `demo`/`demo` credential that only
-  `client-react`'s `VITE_DEV_AUTH`-reading path accepts; `client-solid`
-  hardcodes the `mcdc2026` demo roster instead. See
-  [`docs/STATUS.md`](../docs/STATUS.md) ("Solid `login.spec` e2e") for the
-  tracked follow-up.
+- `playwright.config.ts`'s `testIgnore` (`notYetPortedSpecs`) is empty for
+  both clients — `login.spec.ts` runs unmodified on the Solid run too, now
+  that `client-solid`'s `buildBrowserPorts.ts` reads `VITE_DEV_AUTH` via the
+  same `parseDevAuth` helper as `client-react` instead of hardcoding the
+  `mcdc2026` demo roster. The mechanism stays wired for any future genuine
+  port gap.
 
 Deep dive on the full mechanism — env var → `devServer.ts` → `run-all.ts`
 wiring, plus the two real incidents this cross-framework net has caught:

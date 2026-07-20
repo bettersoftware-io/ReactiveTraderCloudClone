@@ -26,6 +26,35 @@ import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 import { shouldPlayBootSplash } from "#/bootSplashGate";
 
+/**
+ * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in
+ * simulator mode) — tolerant of missing/malformed values, returning `{}`
+ * rather than throwing so a bad/absent env var degrades to "no dev logins
+ * work" instead of a boot crash. Never logs the raw value (it's credentials).
+ */
+function parseDevAuth(raw: string | undefined): Record<string, string> {
+  if (raw === undefined) {
+    return {};
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    if (typeof parsed !== "object" || parsed === null) {
+      return {};
+    }
+
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => {
+        return typeof entry[1] === "string";
+      },
+    );
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
@@ -81,14 +110,12 @@ export function buildBrowserPorts(): AppPorts {
     };
   }
 
-  // Committed demo roster (see roster.ts / CLAUDE.md "Demo accounts"): all four
-  // operators share the demo password so the real LoginScreen accepts any of them.
-  const auth = new AuthSimulator({
-    astark: "mcdc2026",
-    nromanoff: "mcdc2026",
-    tchalla: "mcdc2026",
-    demo: "mcdc2026",
-  });
+  // Dev credentials come from VITE_DEV_AUTH (committed .env.development — the
+  // demo roster; see packages/domain/src/auth/roster.ts), exactly as in
+  // client-react's buildBrowserPorts. Unset/malformed → no accepted credentials.
+  const auth = new AuthSimulator(
+    parseDevAuth(import.meta.env.VITE_DEV_AUTH as string | undefined),
+  );
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {

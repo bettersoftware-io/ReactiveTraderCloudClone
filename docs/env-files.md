@@ -23,6 +23,7 @@ rest are local-only or CLI-generated artifacts.
 | `packages/client-react/.env.example` | ✅ tracked | hand-written template | humans — copy it to `.env.local` |
 | `packages/client-react/.env.development` | ✅ tracked | committed demo credentials (`VITE_DEV_AUTH`) | Vite in **dev only** → web app simulator login |
 | `packages/client-react/.env.local` | 🚫 git-ignored | you (optional; not present by default) | Vite at dev/build → web app (overrides `.env.development`) |
+| `packages/client-solid/.env.development` | ✅ tracked | committed demo credentials (`VITE_DEV_AUTH`) — same value as client-react's | Vite in **dev only** → SolidJS web app simulator login |
 | `.env.local` (repo root) | 🚫 git-ignored | Vercel CLI (`vercel pull` / `vercel dev`) | Vercel CLI only — **not** app code |
 | `.vercel/.env.production.local` | 🚫 git-ignored | Vercel CLI (`vercel pull`) | `vercel build --prod` in the deploy pipeline |
 
@@ -37,7 +38,7 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | `AUTH_SECRET` | Fly secret (by hand) | HMAC secret that signs session tokens | `AuthService` (`packages/server/src/auth/AuthService.ts`) |
 | `AUTH_USERS` | Fly secret (deployed); the committed `dev:ws` / `dev:*:fs` scripts embed the demo roster for local full-stack | The credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) |
 | `AUTH_TTL_MS` | Fly secret (by hand, optional) | Session-token lifetime in ms (defaults to 8h) | `AuthService` |
-| `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via `buildBrowserPorts.ts`'s `parseDevAuth` |
+| `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` and `packages/client-solid/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via each client's own `buildBrowserPorts.ts`'s `parseDevAuth` — identical helper in both `client-react` and `client-solid` |
 | `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
 
 The **demo login password is committed** (`mcdc2026`) — this is a demo app, and

@@ -1,9 +1,8 @@
 import type { JSX } from "react";
 
-import { TileGrid } from "#/ui/TileGrid";
+import { RatesModule } from "#/ui/rates/RatesModule";
 
-/** The Rates tab — the live FX spot-tile grid. Composition, the simulator
- * toggle and the connection banner now live one level up in `_layout`. */
+/** The Rates module — the live FX spot-tile grid + trade ticket. */
 export default function RatesScreen(): JSX.Element {
-  return <TileGrid />;
+  return <RatesModule />;
 }
