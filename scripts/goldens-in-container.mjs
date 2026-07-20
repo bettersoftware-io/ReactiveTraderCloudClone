@@ -87,8 +87,6 @@ const dockerArgs = [
   "-e",
   "COREPACK_ENABLE_DOWNLOAD_PROMPT=0",
   "-e",
-  "CYPRESS_INSTALL_BINARY=0",
-  "-e",
   "RTC_VISUAL_MAX_PARALLEL=1",
   IMAGE,
   "bash",
