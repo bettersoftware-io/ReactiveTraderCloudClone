@@ -18,7 +18,12 @@ test("clicking a row pins it and shows the pinned bar; Resume returns to follow"
 
   expect(rows.length).toBe(3);
 
-  fireEvent.click(rows[0] as HTMLElement);
+  // The row itself is a non-interactive container (valid HTML — no nested
+  // interactive elements); the pin target is its first child button, which
+  // covers the time/kind-chip/summary area.
+  const pinButton = (rows[0] as HTMLElement).querySelector("button");
+
+  fireEvent.click(pinButton as HTMLElement);
   expect(screen.getByTestId("pinned-bar")).toBeTruthy();
 
   fireEvent.click(screen.getByText("Resume"));

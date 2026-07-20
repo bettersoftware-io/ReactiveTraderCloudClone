@@ -46,9 +46,17 @@
   width: 100%;
   box-sizing: border-box;
   padding: 2px 8px;
-  border: 0;
   border-bottom: 1px solid var(--border);
   border-left: 3px solid transparent;
+}
+
+.pinArea {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
   background: transparent;
   color: inherit;
   font: inherit;

@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactElement } from "react";
+import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
 
 import type { LogRow } from "@rtc/devtools-core";
@@ -95,34 +95,32 @@ function TimelineRowView({
       ? `${styles.row} ${styles.rowDimmed}`
       : styles.row;
 
-  function handleClick(): void {
+  function handlePinClick(): void {
     model.pin(row.seq);
   }
 
-  function handleSourceClick(e: MouseEvent<HTMLButtonElement>): void {
-    e.stopPropagation();
-
+  function handleSourceClick(): void {
     if (source !== null) {
       model.addPill(source);
     }
   }
 
-  function handleRadiusClick(e: MouseEvent<HTMLButtonElement>): void {
-    e.stopPropagation();
+  function handleRadiusClick(): void {
     model.setRadiusAround(row);
   }
 
   return (
-    <button
-      type="button"
+    <div
       data-testid="timeline-row"
       data-seq={row.seq}
       data-family={familyOf(row.kind)}
       className={rowClassName}
-      onClick={handleClick}
     >
-      <span className={styles.time}>{formatLogTime(row.ts)}</span>
-      <span className={styles.kindChip}>{row.kind}</span>
+      <button type="button" className={styles.pinArea} onClick={handlePinClick}>
+        <span className={styles.time}>{formatLogTime(row.ts)}</span>
+        <span className={styles.kindChip}>{row.kind}</span>
+        <span className={styles.summary}>{row.summary}</span>
+      </button>
       {source !== null ? (
         <button
           type="button"
@@ -133,7 +131,6 @@ function TimelineRowView({
           {source.id}
         </button>
       ) : null}
-      <span className={styles.summary}>{row.summary}</span>
       <button
         type="button"
         title="Show events within ±100 ms"
@@ -142,7 +139,7 @@ function TimelineRowView({
       >
         ±100ms
       </button>
-    </button>
+    </div>
   );
 }
 
