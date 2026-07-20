@@ -245,22 +245,49 @@ function IntentList({
       {newestFirst.map((entry) => {
         return (
           <li key={entry.key} className={styles.intent}>
-            <button
-              type="button"
-              className={styles.intentRow}
-              onClick={() => {
-                onPinIntent?.(machineId, entry.intent.name, entry.intent.ts);
-              }}
-            >
-              <span data-testid="intent-name" className={styles.intentName}>
-                {entry.intent.name}
-              </span>
-              <ValueView value={entry.intent.args} />
-            </button>
+            <IntentPinButton
+              machineId={machineId}
+              intent={entry.intent}
+              onPinIntent={onPinIntent}
+            />
+            <ValueView value={entry.intent.args} />
           </li>
         );
       })}
     </ul>
+  );
+}
+
+interface IntentPinButtonProps {
+  machineId: string;
+  intent: MachineIntentRow;
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
+}
+
+/** The only clickable part of an intent-history row. Deliberately a SIBLING
+ * of `ValueView` (never its parent/wrapper) — `ValueView` renders `<details>/
+ * <summary>` disclosures for object/array/map/set args, and nesting those
+ * inside a `<button>` is both invalid content-model nesting and a live bug:
+ * a click on the nested `<summary>` bubbles up and would fire this button's
+ * `onClick` too, pinning on every expand/collapse instead of only on an
+ * intentional pin click. */
+function IntentPinButton({
+  machineId,
+  intent,
+  onPinIntent,
+}: IntentPinButtonProps): ReactElement {
+  return (
+    <button
+      type="button"
+      className={styles.intentPin}
+      onClick={() => {
+        onPinIntent?.(machineId, intent.name, intent.ts);
+      }}
+    >
+      <span data-testid="intent-name" className={styles.intentName}>
+        {intent.name}
+      </span>
+    </button>
   );
 }
 
