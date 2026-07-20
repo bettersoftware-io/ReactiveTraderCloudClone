@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (34 active gates, numbered up to 37, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20 and their numbers are not reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (33 active gates, numbered up to 37, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -18,16 +18,16 @@
 | 10 | No direct `ctx.po.*` access in native Playwright spec bodies (allowed only in `_context.ts`) |
 | 11 | No direct `page.*` calls in native Playwright spec bodies (allowed only in `_context.ts`) |
 | 12–14 | *Retired (Cypress, 2026-07-20) — numbers not reused.* |
-| 15 | No driver imports in presenter step/scenario/support files (excludes the vitest-quickpickle-fake-timers peer) |
+| 15 | No driver imports in presenter step/scenario/support files |
 | 16 | No DOM or page references (`getByTestId`, `page.*`, `cy.*`) in presenter step/scenario files |
 | 17 | `createApp` / `createSimulatorPorts` may only appear in `presenter/scenarios/_buildApp.ts` |
 | 18 | No RxJS `timeout` keyword in presenter `_shared/` scenarios (must use `w.awaitFirstWithin`) |
-| 19 | No vitest or qpickle-loader imports in the `cucumber` (real-timers), `cucumber-fake-timers`, or shared presenter scenarios |
+| 19 | No vitest or qpickle-loader imports in the shared presenter scenarios (`presenter/scenarios/`) |
 | 20 | No Gherkin loader imports (`quickpickle`, `@cucumber/cucumber`) inside `tests/presenter/vitest-fake-timers/` |
 | 21 | `@presenter` scenario count per `.feature` file must equal `it()` block count in the matching `vitest-fake-timers/*.test.ts` file (custom check) |
 | 22 | Every `describe(...)` title in `tests/presenter/vitest-fake-timers/` must begin with `"@presenter Feature: "` |
 | 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` |
-| 24 | `vitest-quickpickle-fake-timers/setup.ts` must import every step file in `tests/presenter/vitest-quickpickle-fake-timers/steps/` (barrel completeness) |
+| 24 | *Retired (quickpickle presenter peer, 2026-07-20) — number not reused.* |
 | 25 | No high/critical advisories in production dependencies (`pnpm audit --prod`, non-blocking when the audit cannot run) |
 | 26 | No `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react/src/ui` (the dumb-UI boundary; only the bindings bridge may) |
 | 27 | No `localStorage` in `client-react/src/ui` (persistence belongs behind `PreferencesPort`) |

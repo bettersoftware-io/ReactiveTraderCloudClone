@@ -11,7 +11,7 @@ A from-scratch reimagining of [Adaptive's ReactiveTraderCloud](https://github.co
 > - **Spec-driven development** — behaviour is captured as executable
 >   specifications first; the implementation is built to satisfy them.
 > - **Robust, redundant verification** — the *same* behaviour is checked by
->   **eight independent test runners** plus a set of architectural "gates", so
+>   **five independent test runners** plus a set of architectural "gates", so
 >   the test suite itself becomes a comparison artifact you can trust.
 > - **AI-assisted development** — the entire codebase was built in close
 >   collaboration with an AI coding agent, and the structure above is precisely
@@ -153,7 +153,7 @@ adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
 sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
 
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
-launches all ten suites — the eight runners and the two full-stack smokes (see
+launches all seven suites — the five runners and the two full-stack smokes (see
 below) — **in parallel**, buffering each suite's output and printing a pass/fail
 summary at the end (non-zero exit if any fails). Wall-clock time is the slowest
 single suite, not the sum. To run the entire verification stack in one go:
@@ -226,12 +226,12 @@ execution record (`@rtc/client-solid` runs the same three tiers, assert-only aga
 No — every step boots whatever it needs and tears it down afterwards, so
 `pnpm test:e2e` works from a cold checkout with nothing running.
 
-- The **eight runners** test the client against **in-process domain simulators**
+- The **five runners** test the client against **in-process domain simulators**
   (`VITE_SERVER_URL` unset) — no backend at all. Each browser runner starts its
   **own** Vite frontend: on a dedicated port during `pnpm test:e2e` (`:3001`–
   `:3004`, so the four run concurrently), or on `http://127.0.0.1:3000` by
-  default when run standalone (override with `RTC_DEV_PORT`). The four presenter
-  peers don't even need a browser.
+  default when run standalone (override with `RTC_DEV_PORT`). The presenter
+  peer doesn't even need a browser.
 - The **two full-stack smokes** are the only steps that involve the real
   backend, and each starts its own server (and, for the browser smoke, its own
   client) on dedicated ports.
@@ -251,9 +251,9 @@ No — every step boots whatever it needs and tears it down afterwards, so
 > machine has; macOS ships `lsof`, our linuxkit/CI images often ship only `ss`)
 > and kills the listener.
 
-### Scope: what the eight runners do *not* cover
+### Scope: what the five runners do *not* cover
 
-The eight-runner suite is end-to-end *within the client* (UI → presenters →
+The five-runner suite is end-to-end *within the client* (UI → presenters →
 RxJS → adapters → **domain simulators**) — it is deliberately **not** full-stack.
 It never starts `@rtc/server`, so the server's WebSocket translation layer is
 covered separately by two layers:
@@ -279,11 +279,8 @@ with a filter (each browser runner starts its own frontend on `:3000` by default
 pnpm --filter @rtc/tests test:browser:playwright            # native Playwright
 pnpm --filter @rtc/tests test:browser:playwright-cucumber   # Cucumber + Playwright
 
-# Presenter peers (pure Node, no browser/server)
-pnpm --filter @rtc/tests test:presenter:cucumber                       # Gherkin, real timers (default)
-pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers           # Gherkin, virtual time
+# Presenter peer (pure Node, no browser/server)
 pnpm --filter @rtc/tests test:presenter:vitest-fake-timers             # plain vitest it() blocks, virtual time
-pnpm --filter @rtc/tests test:presenter:vitest-quickpickle-fake-timers # Gherkin via quickpickle, virtual time
 
 # Full-stack smokes (real server + real client)
 pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
@@ -301,19 +298,22 @@ See tests/README.md for the full suite matrix and naming convention.
 ### What "verification" means here
 
 This is where the project earns its keep. The same user-facing behaviour is
-exercised by **eight independent runners** so they can be compared head-to-head:
+exercised by **five independent runners** so they can be compared head-to-head:
 
 - **Four browser peers** drive the real UI — Cucumber+Playwright and native
   Playwright, each run once against the React client and once against the
   Solid client.
-- **Four presenter peers** drive the RxJS presenter layer in pure Node against
-  domain simulators — `cucumber` (real timers), `cucumber-fake-timers`,
-  `vitest-fake-timers` (plain `it()`), and `vitest-quickpickle-fake-timers`
-  (Gherkin via quickpickle).
+- **One presenter peer** (`vitest-fake-timers`) drives the RxJS presenter layer
+  in pure Node against domain simulators, with plain `describe`/`it()` blocks
+  and no Gherkin loader. It was the winner of a bake-off against three other
+  runner/time-model peers — a real-timer Gherkin oracle and two virtual-time
+  peers (one Gherkin, one plain) — retired 2026-07-20 once the plain-vitest
+  peer proved fastest (1s local / 2.5s CI) with zero Gherkin-loader deps; see
+  `tests/STRATEGY.md` for the verdict.
 
-All eight run against in-process simulators; on top of them the **two full-stack
+All five run against in-process simulators; on top of them the **two full-stack
 smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
-gates, then all ten suites in parallel, exiting non-zero if any fails. The **25 architectural gates** (`pnpm gates`, also run first by
+gates, then all seven suites in parallel, exiting non-zero if any fails. The **25 architectural gates** (`pnpm gates`, also run first by
 `test:e2e`) assert structural invariants that types alone can't — e.g. the
 dependency rule, layering boundaries, and parity between the spec scenarios and
 the tests that implement them. See
@@ -386,6 +386,6 @@ demand, behind a shared password:
 ## Status
 
 All planned phases are complete; the platform builds, typechecks, and passes the
-full eight-runner suite, the two full-stack smokes, and all gates. See
+full five-runner suite, the two full-stack smokes, and all gates. See
 [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) for the authoritative
 per-phase breakdown.

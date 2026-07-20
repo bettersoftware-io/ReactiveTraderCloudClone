@@ -5,8 +5,6 @@ import type {
   RfqQuoteResult,
 } from "@rtc/domain";
 
-import type { PresenterWorld } from "../_world";
-
 export interface PresenterScratchpad {
   firstPair?: CurrencyPair;
   lastTradeStatus?: ExecutionStatus;
@@ -17,16 +15,4 @@ export interface PresenterScratchpad {
 
 export function newScratchpad(): PresenterScratchpad {
   return {};
-}
-
-export async function openWorkspace(_w: PresenterWorld): Promise<void> {
-  /* no-op: workspaces are UI-only */
-}
-
-export async function openFxWorkspace(_w: PresenterWorld): Promise<void> {
-  /* no-op: workspaces are UI-only */
-}
-
-export async function openCreditWorkspace(_w: PresenterWorld): Promise<void> {
-  /* no-op: workspaces are UI-only */
 }

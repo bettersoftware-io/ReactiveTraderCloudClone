@@ -18,17 +18,16 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 - `test:<group>:<suite>` ⇒ code lives at `tests/<group>/<suite>/`.
 - Bare `playwright` = the runner's **native** authoring style (the default).
   The `-cucumber` suffix marks the Gherkin-driven variant.
-- The presenter reference suite is `cucumber` (Gherkin, **real timers**).
-  Every other presenter peer runs **virtual time**: `cucumber-fake-timers`
-  (`@sinonjs/fake-timers`), `vitest-fake-timers` (plain `it()` blocks,
-  `vi.useFakeTimers`), and `vitest-quickpickle-fake-timers` (`.feature` files
-  via quickpickle, `vi.useFakeTimers`).
+- The presenter family is a single suite, `vitest-fake-timers` (plain `it()`
+  blocks, no Gherkin loader, `vi.useFakeTimers`) — the winner of a bake-off
+  against a real-timer Gherkin oracle and two virtual-time peers (one Gherkin,
+  one plain), retired 2026-07-20; see `STRATEGY.md` §5 for the verdict.
 
 ## Scripts
 
 | script | what it runs | server | report (under `reports/`) |
 |---|---|---|---|
-| `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
+| `test:e2e` | gates, then ALL 7 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
 | `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
 | `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) |
@@ -36,10 +35,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:browser:playwright-cucumber:headed` | ↑ in a visible browser (headed Chromium + slowMo) | dev server | `browser/playwright-cucumber/` |
 | `test:browser:playwright:solid` | same config + specs as `test:browser:playwright`, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), ports 3003/3004 | dev server | `browser/playwright-solid/` |
 | `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3003/3004 | dev server | `browser/playwright-cucumber-solid/` |
-| `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none | `presenter/cucumber/` |
-| `test:presenter:cucumber-fake-timers` | same scenarios under `@sinonjs/fake-timers` | none | `presenter/cucumber-fake-timers/` |
-| `test:presenter:vitest-fake-timers` | same scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` |
-| `test:presenter:vitest-quickpickle-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none | `presenter/vitest-quickpickle-fake-timers/` |
+| `test:presenter:vitest-fake-timers` | presenter scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` |
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` |
@@ -74,15 +70,12 @@ browser/
   page-objects/         [shared: all 4 browser suites] contracts/ (driver-free) + impls
   testContext.ts        [shared: all 4 browser suites] driver-agnostic ctx: { po, scratch }
 presenter/
-  cucumber/             cucumber.js config + world/hooks (real timers)
-  cucumber-fake-timers/ cucumber.js config + world/hooks (virtual time)
-  vitest-fake-timers/   vitest config + plain *.test.ts files
-  vitest-quickpickle-fake-timers/  vitest config + quickpickle setup + steps/
-  steps/                [shared: both presenter cucumber suites] step defs
-  scenarios/            [shared: all 4 presenter peers] _buildApp seam + _shared/
-specs/                  [shared: all 3 Gherkin-driven suites — playwright-cucumber
-                        (incl. its :solid peer), presenter cucumber, presenter
-                        cucumber-fake-timers] .feature files
+  vitest-fake-timers/   vitest config + plain *.test.ts files (virtual time)
+  scenarios/            _buildApp seam + _shared/ scenario fns used by
+                        vitest-fake-timers (formerly shared by 3 other
+                        runner/time-model peers, retired 2026-07-20)
+specs/                  [shared: playwright-cucumber (incl. its :solid peer)]
+                        .feature files
 fullstack/              node + browser smokes against the real server
 scripts/                run-all, with-server, devServer, free-port, grep-gates
 ```
@@ -142,9 +135,8 @@ Nothing in this package is ever cache-replayed:
 ## Why so many overlapping suites?
 
 The playwright/playwright-cucumber pair (each also run against the Solid
-client) and the four presenter peers intentionally implement the same
-behavior specs on different authoring styles and timer strategies — a
-portability proof for the clean-architecture seams (see
+client) intentionally implements the same behavior specs on different
+authoring styles — a portability proof for the clean-architecture seams (see
 `docs/architecture/09-test-strategy.md` §9 "Test Strategy"). The shared layers
 (`specs/`, `steps/`, `scenarios/`, `page-objects/contracts/`) are the
 deliverable; the per-suite folders show how little each stack needs on top.
@@ -155,3 +147,13 @@ and a Cucumber-driven suite, mirroring the Playwright pair. Both were deleted
 better browser driver for this app (async-native scenario reuse vs Cypress's
 forked queue layer, no Electron/arm64 hazard, and a clear wall-clock win); see
 `STRATEGY.md` §7 for the full verdict.
+
+The presenter family ran the same 21 `@presenter` scenarios through four
+runner/time-model peers — a real-timer Gherkin oracle (`cucumber`) and three
+virtual-time peers (`cucumber-fake-timers`, `vitest-quickpickle-fake-timers`,
+and the plain `vitest-fake-timers`) — as a second portability proof: could the
+same `scenarios/_shared/*.ts` + `AwaitHelpers`/`PresenterWorld` abstractions
+serve a Gherkin runner and a raw-Vitest runner equally well? All four were
+collapsed to the single `vitest-fake-timers` peer 2026-07-20 once it proved the
+fastest (1s local / 2.5s CI, vs the real-timer oracle's ~41s CI) with zero
+Gherkin-loader dependencies; see `STRATEGY.md` §5 for the full verdict.

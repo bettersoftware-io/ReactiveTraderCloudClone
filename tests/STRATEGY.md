@@ -30,7 +30,7 @@ different depths:
                          browser   →  React DOM  →  presenters  →  ports  →  domain  →  wire  →  server
  ──────────────────────────────────────────────────────────────────────────────────────────────────────
  Browser   (4 suites)       ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
- Presenter (4 suites)                                   ●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
+ Presenter (1 suite)                                    ●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
  Full-stack node                                                     ●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
  Full-stack browser         ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
 ```
@@ -53,7 +53,7 @@ process from the runner. Coverage lives in the in-process tiers; see
 
 ---
 
-## 2. The suite map: 10 suites, 3 families, 2 variation axes
+## 2. The suite map: 7 suites, 3 families, 1 variation axis
 
 ```
 FAMILY        SUITE                                          varies by…
@@ -63,17 +63,15 @@ Browser       test:browser:playwright                        style=native       
               test:browser:playwright:solid                  style=native            client=Solid
               test:browser:playwright-cucumber:solid         style=Gherkin           client=Solid
 
-Presenter     test:presenter:cucumber                        runner=cucumber         time=REAL (reference)
-(4)           test:presenter:cucumber-fake-timers            runner=cucumber         time=virtual
-              test:presenter:vitest-quickpickle-fake-timers  runner=vitest(Gherkin)  time=virtual
-              test:presenter:vitest-fake-timers              runner=vitest(plain it) time=virtual
+Presenter     test:presenter:vitest-fake-timers              runner=vitest(plain it) time=virtual
+(1)
 
 Full-stack    test:fullstack:node                            transport=WebSocket,    no browser
 (2)           test:fullstack:browser                         transport=real          client UI
 ```
 
-The two families that *intentionally over-cover* (browser ×4, presenter ×4) each
-vary along **two axes**:
+The browser family still *intentionally over-covers* (browser ×4), varying
+along **two axes**:
 
 - **Browser** = `{native, Gherkin}` (the **authoring style**) ×
   `{React, Solid}` (the **client**). (A third axis — the **driver** —
@@ -81,8 +79,12 @@ vary along **two axes**:
   driver × style pair. Both Cypress suites were deleted 2026-07-20 after a
   bake-off; see [§5.1](#51-browser-suites-driver--style) and
   [§5.4](#54-why-keep-them-all-in-this-repo) for the verdict.)
-- **Presenter** = `{cucumber-js, vitest}` (the **runner**) ×
-  `{real, virtual}` (the **time model**).
+
+The **presenter** family used to over-cover the same way — `{cucumber-js,
+vitest}` (the **runner**) × `{real, virtual}` (the **time model**), 4 peers —
+until a 2026-07-20 bake-off collapsed it to the single `vitest-fake-timers`
+peer above; see [§5.2](#52-presenter-suites-runner--time) for the verdict
+(its roles column is now the historical record of that comparison).
 
 This 2×2-per-family shape is exactly what makes the migration story rich: each
 axis is a *different seam*, and a real migration moves along *one* axis at a
@@ -126,22 +128,32 @@ suites. See [§5.1](#51-browser-suites-driver--style) for the verdict.
 
 ### 3.2 Presenter family
 
-| Layer | Path | Shared across the 4 presenter suites? |
-|---|---|---|
-| **Behaviour specs** (Gherkin) | `specs/*.feature` | ⚠️ **3 of 4** — the 3 Gherkin runners; the plain-vitest peer hand-writes `it()` blocks |
-| **Scenario layer** (in-process, RxJS) | `presenter/scenarios/_shared/` (~33 fns) | ✅ **Yes — all 4** |
-| **App-build seam** | `presenter/scenarios/_buildApp.ts` | ✅ **Yes — all 4** (`createApp(simulatorPorts)`) |
-| **Time-model seam** (`AwaitHelpers` interface) | `presenter/scenarios/_await.ts` | ✅ interface shared by all 4; **impl differs** (real vs virtual) |
-| **Step definitions** | `presenter/steps/` | ⚠️ **2 of 4** — the two cucumber peers |
-| **World + hooks + config** | each peer's own folder | ❌ per-peer |
+The presenter family is now a single suite, `vitest-fake-timers`. What it uses:
 
-The presenter family's clever seam is `_await.ts`: scenarios never call
-`setTimeout` or `vi.advanceTimers` directly — they call `world.awaitFirstWithin`
-/ `world.waitSeconds`. Each peer's **world** supplies the implementation:
-`RealAwaitHelpers` (wall clock), `@sinonjs/fake-timers` `clock.tickAsync`, or
-`vi.advanceTimersByTimeAsync`. **Same scenario body, three time engines.** That
-is why the same 20 `@presenter` scenarios run at ~18.6s (real) and ~1s (virtual)
-with zero scenario edits.
+| Layer | Path | Notes |
+|---|---|---|
+| **Scenario layer** (in-process, RxJS) | `presenter/scenarios/_shared/` (~33 fns) | drives the surviving peer |
+| **App-build seam** | `presenter/scenarios/_buildApp.ts` | `createApp(simulatorPorts)` |
+| **Time-model seam** (`AwaitHelpers` interface) | `presenter/scenarios/_await.ts` | now a single virtual-time implementation |
+| **World + hooks + config** | `presenter/vitest-fake-timers/` | plain object literal, no Gherkin loader |
+
+**Historical note (through 2026-07-19):** four peers shared this seam —
+`cucumber` (real timers), `cucumber-fake-timers`, `vitest-quickpickle-fake-timers`,
+and `vitest-fake-timers` (plain) — to prove the `_shared`/`_await`/`_buildApp`
+abstractions weren't accidentally coupled to one runner or one time model: they
+worked under cucumber-js *and* vitest, real *and* virtual time, Gherkin *and*
+plain TS. Behaviour specs (Gherkin) were shared by 3 of the 4 — the Gherkin
+runners; the plain-vitest peer hand-wrote `it()` blocks instead. Step
+definitions were shared by the two cucumber peers only. The clever seam was
+`_await.ts`: scenarios never called `setTimeout` or `vi.advanceTimers`
+directly — they called `world.awaitFirstWithin` / `world.waitSeconds`, and
+each peer's **world** supplied the implementation (`RealAwaitHelpers` wall
+clock, `@sinonjs/fake-timers` `clock.tickAsync`, or
+`vi.advanceTimersByTimeAsync`) — **same scenario body, three time engines**,
+which is why the same 20 `@presenter` scenarios ran at ~18.6s (real) and ~1s
+(virtual) with zero scenario edits. The 2026-07-20 bake-off concluded that
+proof and collapsed the family to the single `vitest-fake-timers` peer that
+won it; see [§5.2](#52-presenter-suites-runner--time) for the verdict.
 
 ### 3.3 The one-line summary
 
@@ -167,11 +179,10 @@ flowchart TB
         BCTX["testContext.ts<br/>{ po, scratch }"]
     end
 
-    subgraph PSHARED["presenter/ — shared, UI-free, in-process"]
+    subgraph PSHARED["presenter/ — UI-free, in-process"]
         BUILD["scenarios/_buildApp.ts<br/>createApp(simulatorPorts)"]
         PSCEN["scenarios/_shared/ — ~33 fns"]
         AWAIT["_await.ts<br/>AwaitHelpers (time seam)"]
-        PSTEPS["steps/ — Gherkin → scenario"]
     end
 
     subgraph DRV["page-object IMPLS — per driver (swap point B)"]
@@ -185,11 +196,8 @@ flowchart TB
         B4["playwright-cucumber :solid"]
     end
 
-    subgraph PRES["PRESENTER suites (no DOM, simulators)"]
-        P1["cucumber (real time)"]
-        P2["cucumber-fake-timers"]
-        P3["vitest-quickpickle-fake-timers"]
-        P4["vitest-fake-timers (plain)"]
+    subgraph PRES["PRESENTER suite (no DOM, simulators)"]
+        P1["vitest-fake-timers (plain)"]
     end
 
     subgraph FS["FULL-STACK smokes (REAL server)"]
@@ -198,8 +206,6 @@ flowchart TB
     end
 
     FEAT --> BSTEPS
-    FEAT --> PSTEPS
-    FEAT --> P3
     CONTRACTS --> BSCEN
     CONTRACTS --> PWPO
     BSCEN --> BSTEPS
@@ -218,11 +224,7 @@ flowchart TB
 
     BUILD --> PSCEN
     AWAIT --> PSCEN
-    PSCEN --> PSTEPS
-    PSTEPS --> P1
-    PSTEPS --> P2
-    PSCEN --> P3
-    PSCEN --> P4
+    PSCEN --> P1
 
     CONTRACTS -. "data-testid + strings<br/>(swap point A: UI lib)" .-> BROWSER
     CONTRACTS -.-> F2
@@ -234,8 +236,7 @@ flowchart TB
     B3 ~~~ B4
     B1 ~~~ BUILD
     B2 ~~~ AWAIT
-    P2 ~~~ F1
-    P3 ~~~ F2
+    P1 ~~~ F1
 ```
 
 The two dotted edges are the **two migration seams** the rest of this doc is
@@ -278,13 +279,25 @@ reliability hazard, so it lost the bake-off on total cost, not raw speed.
 
 ### 5.2 Presenter suites (runner × time)
 
+**Historical comparison (through 2026-07-19) — this table's Role column is now
+the record of the bake-off, not a live "why keep them all" case:**
+
 | | **cucumber (real)** | **cucumber-fake-timers** | **vitest-quickpickle** | **vitest-fake-timers (plain)** |
 |---|---|---|---|---|
 | **Runner** | cucumber-js | cucumber-js | vitest + qpickle loader | vitest, raw `describe/it` |
 | **Gherkin?** | ✅ | ✅ | ✅ | ❌ (hand-written) |
 | **Time** | wall clock | `@sinonjs/fake-timers` | `vi` fake timers | `vi` fake timers |
-| **Speed** | ~18.6s (reference) | ~1s | ~1.5s | ~1.5s |
+| **Speed** | ~18.6s local / ~40.7s CI (reference) | ~1s local / ~2.0s CI | ~1.7s local / ~4.0s CI | ~1s local / ~2.5s CI |
 | **Role** | the **truth** (real timers can't lie about ordering) | 19× speedup proof | runner-portability proof | plain-TS portability proof (no BDD needed) |
+
+**Verdict (2026-07-20 bake-off):** plain `vitest-fake-timers` won — fastest
+measured time (1s local / 2.5s CI) with zero Gherkin-loader dependencies, on
+top of proving the same `_shared`/`_await`/`_buildApp` abstractions the other
+three peers also exercised. `cucumber` (the real-timer ordering oracle,
+~40.7s CI — the one peer that could catch an ordering bug virtual time might
+mask), `cucumber-fake-timers`, and `vitest-quickpickle-fake-timers` (the
+runner-portability proofs) were retired 2026-07-20; their comparison lives on
+in the table above and in [§3.2](#32-presenter-family).
 
 ### 5.3 Full-stack smokes
 
@@ -305,15 +318,18 @@ redundancy:
   Cypress's forked scenario layer was the deliberate counter-example marking
   where the async contract ends; the bake-off in [§5.1](#51-browser-suites-driver--style)
   retired it.)
-- The **presenter ×4 peers** prove the `_shared`/`_await`/`_buildApp`
-  abstractions aren't accidentally coupled to one runner or one time model —
-  they survive cucumber *and* vitest, real *and* virtual time, Gherkin *and*
-  plain TS.
+- The **presenter suite** (formerly ×4 peers, through 2026-07-19) proved the
+  `_shared`/`_await`/`_buildApp` abstractions weren't accidentally coupled to
+  one runner or one time model — they survived cucumber *and* vitest, real
+  *and* virtual time, Gherkin *and* plain TS. That proof is complete; the
+  2026-07-20 bake-off kept only the fastest, dependency-lightest peer
+  (`vitest-fake-timers`) — see [§5.2](#52-presenter-suites-runner--time).
 - The **full-stack smokes** are the only wire-crossing tests; everything else
   mocks the server with simulators.
 
-The cost of keeping all ten is the per-runner glue and the per-suite dev-server
-boot — which is exactly why a **product** picks one lane ([§7](#7-decision-guide-picking-one-for-production)).
+The cost of keeping all seven is the per-runner glue and the per-suite
+dev-server boot — which is exactly why a **product** picks one lane
+([§7](#7-decision-guide-picking-one-for-production)).
 
 ### 5.5 Measured durations (isolated, local — 2026-06-21)
 
@@ -333,12 +349,12 @@ isolated timings.
 
 | Suite | Scenarios | Duration | Notes |
 |---|---:|---:|---|
-| **Presenter** `vitest-fake-timers` | 20 | **1.3s** | fastest — plain Vitest, virtual time, no browser |
-| **Presenter** `cucumber-fake-timers` | 20 | **1.5s** | virtual time under cucumber-js |
-| **Presenter** `vitest-quickpickle-fake-timers` | 20 | **1.7s** | virtual time, Gherkin under Vitest |
+| **Presenter** `vitest-fake-timers` | 20 | **1.3s** | fastest — plain Vitest, virtual time, no browser (the 2026-07-20 winner) |
+| **Presenter** `cucumber-fake-timers` (retired 2026-07-20) | 20 | **1.5s** | virtual time under cucumber-js |
+| **Presenter** `vitest-quickpickle-fake-timers` (retired 2026-07-20) | 20 | **1.7s** | virtual time, Gherkin under Vitest |
 | **Full-stack** `node` | 1 path | **3.1s** | boots the real server; raw WebSocket, no browser |
 | **Full-stack** `browser` | 1 | **5.3s** | real server + Vite client + Playwright |
-| **Presenter** `cucumber` (real timers) | 20 | **21.0s** | the reference — wall-clock waits are genuine |
+| **Presenter** `cucumber` (real timers, retired 2026-07-20) | 20 | **21.0s** | the reference — wall-clock waits are genuine |
 | **Browser** `playwright-cucumber` | 48 | **50.7s** | real browser + dev server |
 | **Browser** `playwright` (native) | 48 | **75.7s** | real browser + dev server |
 | **Browser** `cypress` (native, retired 2026-07-20) | 48 | **91.3s** | real browser + dev server |
@@ -378,12 +394,12 @@ actually happens on CI"*, not a second isolated benchmark.
 
 | Suite | Duration | Notes |
 |---|---:|---|
-| **Presenter** `cucumber-fake-timers` | **2.0s** | virtual time under cucumber-js |
-| **Presenter** `vitest-fake-timers` | **2.5s** | virtual time, plain Vitest |
-| **Presenter** `vitest-quickpickle-fake-timers` | **4.0s** | virtual time, Gherkin under Vitest |
+| **Presenter** `cucumber-fake-timers` (retired 2026-07-20) | **2.0s** | virtual time under cucumber-js |
+| **Presenter** `vitest-fake-timers` | **2.5s** | virtual time, plain Vitest (the 2026-07-20 winner) |
+| **Presenter** `vitest-quickpickle-fake-timers` (retired 2026-07-20) | **4.0s** | virtual time, Gherkin under Vitest |
 | **Full-stack** `node` | **4.6s** | boots the real server; raw WebSocket, no browser |
 | **Full-stack** `browser` | **12.8s** | real server + Vite client + Playwright |
-| **Presenter** `cucumber` (real timers) | **40.7s** | the reference — wall-clock waits are genuine |
+| **Presenter** `cucumber` (real timers, retired 2026-07-20) | **40.7s** | the reference — wall-clock waits are genuine |
 | **Browser** `playwright-cucumber` (solid) | **132.5s** | real browser + dev server, Solid client |
 | **Browser** `playwright-cucumber` | **144.6s** | real browser + dev server |
 | **Browser** `playwright` (native, solid) | **176.4s** | real browser + dev server, Solid client |
@@ -411,7 +427,7 @@ So the impact is remarkably small:
 
 | Suite family | Impact of React→Solid | Why |
 |---|---|---|
-| **Presenter (×4)** | **zero** | never render UI — drive `createApp` presenters (domain + RxJS). A UI swap is invisible |
+| **Presenter (×1)** | **zero** | never render UI — drive `createApp` presenters (domain + RxJS). A UI swap is invisible |
 | **Full-stack node** | **zero** | no browser at all |
 | **Browser (×4)** | **zero test-code changes**¹ | POs select by `data-testid`; the driver doesn't know React from Solid |
 | **Full-stack browser** | **zero test-code changes**¹ | same testid contract |
@@ -512,9 +528,11 @@ the runner + time engine:
   step-callback shape, as quickpickle did).
 - Survives verbatim: `specs/`, `presenter/scenarios/_shared/`, `_buildApp.ts`,
   the `AwaitHelpers` *interface*.
-- This is **already demonstrated four times** (cucumber, cucumber+sinon,
-  vitest+qpickle, vitest+plain) — the proof that the presenter abstractions are
-  runner-portable.
+- This was **already demonstrated four times** (cucumber, cucumber+sinon,
+  vitest+qpickle, vitest+plain) before the 2026-07-20 bake-off collapsed the
+  family to the single surviving `vitest-fake-timers` peer — the proof that
+  the presenter abstractions are runner-portable stands even though only one
+  peer runs today.
 
 ### Axis interaction
 
@@ -528,9 +546,11 @@ independently and in either order. The only shared touch-point is
 
 ## 7. Decision guide: picking ONE for production
 
-This repo runs all ten remaining suites because it is a comparison artifact —
+This repo runs all seven remaining suites because it is a comparison artifact —
 the browser-driver axis it once carried (Playwright × Cypress) was already
-narrowed to a single driver by the 2026-07-20 bake-off ([§5.1](#51-browser-suites-driver--style)),
+narrowed to a single driver, and the presenter runner/time-model axis to a
+single peer, by the same 2026-07-20 bake-off
+([§5.1](#51-browser-suites-driver--style), [§5.2](#52-presenter-suites-runner--time)),
 so the guidance below is partly already-acted-upon rather than hypothetical.
 A product keeps a small, intentional subset beyond that. Recommendations by
 goal:
@@ -552,9 +572,12 @@ distinct jobs, no overlap.
   Cypress) as a portability *proof*, not a product need — and the bake-off
   concluded Playwright is the one to keep, retiring Cypress and its
   queue-fork tax and arm64/Electron hazard ([§5.1](#51-browser-suites-driver--style)).
-- **Redundant presenter peers.** Keep *one* fast peer (plain vitest) plus,
-  optionally, the real-timer cucumber peer as the ordering oracle. Three of the
-  four exist to prove portability, not to gate releases.
+- **Redundant presenter peers.** This repo did exactly that — ran four
+  runner/time-model peers as a portability proof — and the 2026-07-20 bake-off
+  concluded the single fast plain-vitest peer is the one production needs; the
+  real-timer `cucumber` ordering oracle and the two portability-proof peers
+  (`cucumber-fake-timers`, `vitest-quickpickle-fake-timers`) were retired
+  ([§5.2](#52-presenter-suites-runner--time)).
 - **The Gherkin layer**, unless BDD/living-docs is a real stakeholder
   requirement — it adds a step-tree to maintain for no behavioural gain over
   native specs.
@@ -571,7 +594,7 @@ distinct jobs, no overlap.
 - [`README.md`](./README.md) — scripts, reports, orchestration,
   caching/freshness.
 - [`../docs/architecture/09-test-strategy.md`](../docs/architecture/09-test-strategy.md) §9 "Test Strategy" — the
-  authoritative layer model, the ten-suite e2e stack, and the port-contract
+  authoritative layer model, the seven-suite e2e stack, and the port-contract
   test layer.
 - [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
   — the visual-tier sibling of this document (one axis; pixel goldens).
