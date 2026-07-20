@@ -2,24 +2,22 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (37 gates as of this writing) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (34 active gates, numbered up to 37, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20 and their numbers are not reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
 | 1 | No raw `data-testid="..."` literals outside `testids.ts` (must use `TESTIDS` constants) |
-| 2 | No driver imports (`@playwright/test`, `cypress`, `@badeball`) in page-object contracts |
+| 2 | No driver imports (`@playwright/test`) in page-object contracts |
 | 3 | No driver names or `data-testid` references in `.feature` spec files |
 | 4 | No raw `getByTestId("...")` calls in page-object implementations (must use `TESTIDS` constants) |
-| 5 | No driver imports (`@playwright/test`, `"cypress"`, `@badeball`) in the scenarios layer |
+| 5 | No driver imports (`@playwright/test`) in the scenarios layer |
 | 6 | No `from "@playwright/test"` imports in step definition files |
 | 7 | No copy-as-selector hardcoded text strings in page-object implementations (must use `STRINGS` constants) |
 | 8 | No `this.page.*` calls in step definition files |
 | 9 | No `from "@playwright/test"` imports in native Playwright spec bodies (allowed only in `playwright.config.ts` and `_context.ts`) |
 | 10 | No direct `ctx.po.*` access in native Playwright spec bodies (allowed only in `_context.ts`) |
 | 11 | No direct `page.*` calls in native Playwright spec bodies (allowed only in `_context.ts`) |
-| 12 | No driver imports (`"cypress"`, `@badeball`, `@playwright/test`) in native Cypress spec bodies (allowed only in `cypress.config.ts` and `_context.ts`) |
-| 13 | No direct `ctx.po.*` access in native Cypress spec bodies (allowed only in `_context.ts`) |
-| 14 | No direct `cy.*` calls in native Cypress spec bodies (allowed only in `_context.ts`) |
+| 12–14 | *Retired (Cypress, 2026-07-20) — numbers not reused.* |
 | 15 | No driver imports in presenter step/scenario/support files (excludes the vitest-quickpickle-fake-timers peer) |
 | 16 | No DOM or page references (`getByTestId`, `page.*`, `cy.*`) in presenter step/scenario files |
 | 17 | `createApp` / `createSimulatorPorts` may only appear in `presenter/scenarios/_buildApp.ts` |

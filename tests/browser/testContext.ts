@@ -2,8 +2,8 @@ import type { PageObjects } from "./page-objects/contracts";
 
 /**
  * Per-scenario typed scratchpad. A fresh instance is constructed for every
- * scenario by both PlaywrightWorld and the Cypress beforeEach hook. Holds all
- * cross-step state that used to live as module-level closures in step files.
+ * scenario by PlaywrightWorld. Holds all cross-step state that used to live
+ * as module-level closures in step files.
  */
 // eslint-disable-next-line rtc/class-filename-match -- shared e2e scratchpad helper; testContext.ts is a purpose-named harness module
 export class Scratchpad {
@@ -34,9 +34,8 @@ export interface TestContext {
 }
 
 /**
- * What step bodies bind `this` to. PlaywrightWorld satisfies it because it has
- * a `ctx: TestContext` field; the Cypress Mocha.Context satisfies it because
- * `browser/cypress-cucumber/e2e.ts` attaches `this.ctx` in beforeEach.
+ * What step bodies bind `this` to. PlaywrightWorld satisfies it because it
+ * has a `ctx: TestContext` field.
  */
 export interface StepContext {
   ctx: TestContext;

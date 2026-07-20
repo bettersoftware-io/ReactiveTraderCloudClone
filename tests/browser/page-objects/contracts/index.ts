@@ -29,8 +29,7 @@ export interface PageObjects {
   blotterTable: BlotterTablePO;
   layout: LayoutPO;
   /** Optional: the same-origin DevTools inspector (a second page). Only the
-   *  Playwright factory provides it — Cypress cannot drive a second same-origin
-   *  tab, so it is absent there. */
+   *  Playwright factory provides it. */
   inspector?: InspectorPO;
   /** Optional: the real LoginScreen form, opened in a fresh unauthenticated
    *  context. Only the Playwright factory provides it — every OTHER page

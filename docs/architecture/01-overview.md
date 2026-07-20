@@ -105,7 +105,7 @@ flowchart TB
       end
       ia["@rtc/client-core presenters + WsAdapter · @rtc/react-bindings (ViewModel)<br/>@rtc/domain simulators (in-memory gateways) · @rtc/server effects · @rtc/shared DTOs"]:::ia
     end
-    fw["@rtc/client-react (React UI) · @rtc/client-react-native (Expo)<br/>@rtc/ws-effects · Node http+ws · Vite · Playwright / Cypress"]:::fw
+    fw["@rtc/client-react (React UI) · @rtc/client-react-native (Expo)<br/>@rtc/ws-effects · Node http+ws · Vite · Playwright"]:::fw
   end
   note["Dependency Rule: every source-code arrow points inward.<br/>Data flows back outward through ports (declared inside ②, implemented in ③).<br/>Enforced by dependency-cruiser + grep gates."]:::noteC
   FW -.-> note
@@ -209,7 +209,7 @@ The exact mapping, ring by ring:
 | ① | **Entities** (Enterprise Business Rules) | What a thing *is*, independent of any app | `@rtc/domain/src/{fx,credit,equities,connection,analytics,telemetry,preferences}/` -- `Price`, `Notional`, `Trade`, `Instrument`, `Dealer`, `Rfq`, `Quote`, `EquityQuote`, `Candle`, `DepthBook`, `ConnectionStatus`, `PositionUpdates` |
 | ② | **Use Cases** (Application Business Rules) | App-specific orchestration + the interfaces it needs | `@rtc/domain/src/usecases/` (12: `PriceStreamUseCase`, `ExecuteTradeUseCase`, `CreateRfqUseCase`, `ConnectionStatusUseCase`, ...) **and** `@rtc/domain/src/ports/` (the port interfaces -- `PricingPort`, `ExecutionPort`, `WorkflowPort`, `MarketDataPort`, ...) |
 | ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core/src/presenters/`. **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`, `client-solid/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings` (React) and `@rtc/solid-bindings` (Solid). **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
-| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/client-solid/src/ui/` (SolidJS + DOM + the same CSS Modules), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
+| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/client-solid/src/ui/` (SolidJS + DOM + the same CSS Modules), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright, `@rtc/client-prototype` (design island) |
 
 > **Where's the wiring?** `AppRoot.tsx` (web and RN) and `server/src/index.ts` are the **composition roots** -- they live at the very outer edge and are the *only* places that instantiate concrete adapters and inject them inward. Everything inner receives its dependencies; nothing inner constructs them.
 >
@@ -263,7 +263,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | Server host | Node.js + `ws` + native `http` | -- |
 | Wire format | JSON over WebSocket | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared` |
 | Unit test runner | Vitest (all packages) + jest-expo (RN components) | -- |
-| E2E driver | Playwright (CI gate) + Cypress (local, de-gated) | -- |
+| E2E driver | Playwright (CI gate) | -- |
 | Behavioural specs | Gherkin | -- |
 | Build orchestration | pnpm workspaces + Turborepo | -- |
 

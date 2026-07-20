@@ -99,10 +99,8 @@ export async function expectBlotterContainsText(
 ): Promise<void> {
   // The blotter renders a numeric notional locale-formatted (e.g. "1000000" →
   // "1,000,000"), so assert on the formatted form (non-numeric text passes
-  // through unchanged). expectContainsText retries until the trade settles into
-  // the blotter — no fixed sleep. Under Cypress the retry runs in the command
-  // queue (a synthetic delay + JS-side assert would leak as an unhandled
-  // rejection onto a later scenario).
+  // through unchanged). expectContainsText retries until the trade settles
+  // into the blotter — no fixed sleep.
   const expected = Number.isFinite(Number(text))
     ? Number(text).toLocaleString("en-US", { maximumFractionDigits: 0 })
     : text;

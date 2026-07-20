@@ -66,7 +66,7 @@ this section.
 `tests/scripts/run-all.ts` runs **12 concurrent suites** total: 2 full-stack
 smokes + 4 in-process presenter peers (react/solid-agnostic — they never touch
 a UI framework) + the 6 browser suites in the table above (4 react + 2 solid;
-Cypress stays react-only, see the fine print).
+see the fine print).
 
 **How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `86`;
 `pnpm --filter @rtc/client-react test:ui:contract` and the same for

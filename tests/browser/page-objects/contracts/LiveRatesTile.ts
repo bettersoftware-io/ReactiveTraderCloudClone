@@ -46,9 +46,8 @@ export interface LiveRatesTilePO {
   /**
    * Buy n times, each time pausing 1.5 s after clicking, then dismissing the
    * confirmation overlay (if visible) and pausing 0.5 s after dismissal.
-   * Encapsulated in the PO so Cypress can implement the loop natively with
-   * its command queue instead of an async for-loop (which conflicts with
-   * Cypress's own Promise model).
+   * Encapsulated in the PO so the driver-specific retry loop lives with its
+   * implementation, not in the scenario body.
    */
   buyNTimesWithDismissals(n: number): Promise<void>;
 }

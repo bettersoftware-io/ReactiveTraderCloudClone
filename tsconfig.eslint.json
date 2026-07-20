@@ -13,7 +13,7 @@
   // resolve per-package without any "paths" here (a root-level "paths" could
   // not disambiguate "#/*" across packages anyway).
   //
-  // compilerOptions are a deliberate SUPERSET (DOM + node + cypress libs/types,
+  // compilerOptions are a deliberate SUPERSET (DOM + node libs/types,
   // react-jsx). A lint program only queries types, never emits, so a widened
   // ambient surface is harmless — it just means every file's globals resolve.
   "extends": "./tsconfig.base.json",
@@ -25,7 +25,7 @@
     "sourceMap": false,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node", "cypress"]
+    "types": ["node"]
   },
   "include": [
     "packages/*/src/**/*.ts",

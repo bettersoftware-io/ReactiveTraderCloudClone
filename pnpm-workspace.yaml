@@ -3,13 +3,12 @@ packages:
   - "tests"
 # Install-script allowlist (pnpm 11 strictDepBuilds): pnpm blocks dependency
 # lifecycle scripts by default; only the packages set to `true` here may execute
-# code at install time. All three are trusted build/test tooling that need
-# native binaries — esbuild (the bundler under vite/vitest/tsx), cypress (e2e
-# runner), and @shopify/react-native-skia (its postinstall fetches Skia's
-# prebuilt native libs, required for the native iOS/Android build later).
+# code at install time. Both are trusted build/test tooling that need native
+# binaries — esbuild (the bundler under vite/vitest/tsx) and
+# @shopify/react-native-skia (its postinstall fetches Skia's prebuilt native
+# libs, required for the native iOS/Android build later).
 allowBuilds:
   '@shopify/react-native-skia': true
-  cypress: true
   esbuild: true
 
 # Supply-chain cooldown: refuse to install any package version published fewer
@@ -19,22 +18,15 @@ allowBuilds:
 minimumReleaseAge: 1440
 
 overrides:
-  # Force the dev-only transitive uuid 11.0.x (11.0.5 -> 11.1.1, medium alert).
+  # Force the dev-only transitive uuid 11.0.x (11.0.5 -> 11.1.1, medium alert),
+  # pulled in via @cucumber/messages -> @cucumber/gherkin -> quickpickle.
   # Verified REQUIRED: removing this override re-resolves uuid back to the
   # vulnerable 11.0.5 (its declaring dep pins the 11.0.x line, so 11.1.1 is not
   # reachable by natural resolution or a parent bump — only by forcing the minor
   # bump here). Scoped to `uuid@11` so the older majors legitimately pinned
-  # elsewhere — uuid@7 (@marblejs/core), uuid@8, uuid@13 — are untouched.
-  # (form-data needed no override: @cypress/request declares form-data ~4.0.4,
-  # which already permits the patched 4.0.6, so it resolves naturally.)
+  # elsewhere — uuid@7 (@marblejs/core, expo/xcode), uuid@8, uuid@13 — are
+  # untouched.
   uuid@11: ^11.1.1
-  # Force the dev-only transitive serialize-javascript (6.0.2, pulled in by
-  # mocha, itself under @badeball/cypress-cucumber-preprocessor) up to the
-  # patched 7.0.3+ — fixes the RCE GHSA-5c6j-r48x-rmvq (high) and the related
-  # GHSA-qj8w-gfj5-8c6v (moderate). Dependabot CANNOT fix this by version bump:
-  # the preprocessor is already latest (24.0.1) and even latest mocha (11.7.6)
-  # still declares serialize-javascript ^6.0.2, so an override is the only path.
-  serialize-javascript: ^7.0.3
   # Force the transitive @xmldom/xmldom (pulled in by @expo/plist and plist —
   # Expo native-build tooling, exercised by `expo prebuild`/`run:ios` and every
   # `eas build`) up from the vulnerable <0.8.13 line to the PATCHED 0.8.13.

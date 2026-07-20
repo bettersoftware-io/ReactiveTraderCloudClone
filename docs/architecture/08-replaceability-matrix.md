@@ -20,7 +20,7 @@ Columns folded to three so the table stays readable at GitHub's narrow column wi
 | **Wire format**<br>JSON over WS | High (both ends change together) | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared`.<br>*Verified:* DTO round-trip tests + wire-frame fixtures + e2e |
 | **Build tooling**<br>Vite (web) · Metro/Expo (mobile) | ~1 dev-day | Bundles the client package, serves dev |
 | **Unit test runner**<br>Vitest (+ jest-expo for RN components) | ~1 dev-day | Same test files runnable.<br>*Verified:* The tests themselves (proven: the presenter suite runs under cucumber-js *and* vitest) |
-| **E2E driver**<br>Playwright (CI) + Cypress (local) | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added.<br>*Verified:* Behavioural specs (Gherkin) drive all drivers via one shared step tree |
+| **E2E driver**<br>Playwright (CI) | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added.<br>*Verified:* Behavioural specs (Gherkin) drive all drivers via one shared step tree — proven twice: once by the Solid-client duplication, once historically by the Cypress driver run alongside Playwright through 2026-07-19 (retired 2026-07-20, see `tests/STRATEGY.md` §5.1) |
 | **Behavioural spec language**<br>Gherkin | High (rewrite specs) | -- |
 | **Build orchestration**<br>pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared/ws-effects/motion-core -> core -> bindings -> clients/server |
 

@@ -38,8 +38,7 @@ test.describe("FX trade blotter", () => {
     await blotter.expectExportCsvTextContains(ctx, "CSV");
   });
 
-  // Behavioural download oracle — Playwright-only (the Cypress driver's
-  // downloadCsvSuggestedFilename throws "not supported").
+  // Behavioural download oracle for the CSV download flow.
   test("export CSV downloads as fx-trades.csv", async ({ ctx }) => {
     await fxTrading.expectBlotterVisible(ctx);
     await blotter.expectExportCsvVisible(ctx);
