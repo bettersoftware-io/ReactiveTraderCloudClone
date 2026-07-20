@@ -38,7 +38,7 @@ Two new packages, following the existing naming and layering conventions
 | Package | Contents | Runtime deps |
 |---|---|---|
 | `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
-| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, four panels | `@rtc/devtools-core`, `react`, `react-dom` |
+| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, timeline-first ([§20.11](#2011-timeline-first-ux-v2)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
 `devtools-core` never imports `@rtc/client-core` — it decorates by
 *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with a
@@ -90,7 +90,7 @@ flowchart TB
     subgraph Panel["devtools-app (served at /devtools/)"]
         direction TB
         store["InspectorStore<br/>rebuilds InspectorState from snapshot + batches"]
-        panels["State tree · Machines · Event log · Wire tap"]
+        panels["Timeline + Event/State/Diff context pane<br/>Machines lens · Wire lens"]
     end
 
     bc --> store --> panels
@@ -469,10 +469,10 @@ this.
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
 
 1. ~~**Intent injection**~~ — **shipped** (machine-level, web **and** React Native): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is gated on the hub's runtime `dev` flag, which every composition root resolves `false` in a production build (web `import.meta.env?.DEV`, RN `__DEV__`) — and **confirm-gated** in the panel's Machines tab. The gate is a runtime flag rather than a bundler-static `import.meta.env.DEV` literal because one shared `devtools-core` source line cannot be dead-code-eliminated by both Vite and Metro at once; the "a non-dev hub ignores `intent:invoke`" invariant is pinned by a `DevtoolsHub` unit test (a `dev:false` hub drops the frame) rather than by grepping the built bundle. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
-2. ~~**Record & replay**~~ — **shipped** (panel-side): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. Replay re-folds the captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) with periodic checkpoints, so a reconstructed `stateAt(k)` is byte-identical to a live fold by construction. Full *app* replay (recorded port inputs into a fresh composition root) is a separately scoped, larger step needing seeded time/timers.
+2. ~~**Record & replay**~~ — **shipped** (panel-side), **superseded by recording v2** ([§20.11](#2011-timeline-first-ux-v2)): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. The original design's `ReplayController` re-folded captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) at periodic checkpoints for frame-indexed lookup; v2 replaces that with the always-on `LiveHistory` buffer (same checkpoint mechanics, generalized to the live app too) and retires `ReplayController` itself — see [§20.11](#2011-timeline-first-ux-v2) for why. Full *app* replay (recorded port inputs into a fresh composition root) is still a separately scoped, larger step needing seeded time/timers.
 3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
 4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#209-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).
-5. ~~**Time-scrubbing UI**~~ — **shipped** with record & replay (item 2): a `ReplayController` exposes `stateAt(frameIndex)`/`tsAt(frameIndex)`, and the panel's recording toolbar renders a Live|Replay toggle plus a scrubber (step/play + a `+Δs` timestamp readout). In Replay mode the four panels — already pure functions of `InspectorState` — receive `replay.stateAt(frameIndex)` instead of the live snapshot; that single lifted value is the whole seam. Honest framing: viewing recorded history, not rewinding the live app — RxJS streams over a socket cannot be replayed the way Redux replays pure reducers.
+5. ~~**Time-scrubbing UI**~~ — **shipped, then replaced**: the original Live|Replay toggle + frame scrubber (item 2, `ReplayController.stateAt(frameIndex)`/`tsAt(frameIndex)`) is gone. Timeline-first UX ([§20.11](#2011-timeline-first-ux-v2)) replaced frame-indexed scrubbing with **pinning a moment on the always-on timeline** — click any row to freeze the context pane at that event's reconstructed state, Esc/Resume to snap back to live. Same underlying mechanic (checkpointed fold reconstruction), reframed as a first-class, always-available gesture instead of a mode you switch into after stopping a recording.
 6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
 ### 20.9 WebSocket relay transport (React Native)
@@ -542,5 +542,74 @@ the always-on reactivity cost above. Prefer gating that behind a separate,
 opt-in "inspectable" build rather than the default production bundle. Not
 planned: for deployed-build inspection the dormant RTC inspector is the
 intended path.
+
+### 20.11 Timeline-first UX (v2)
+
+Full design: [`2026-07-20-devtools-timeline-ux-design.md`](../superpowers/specs/2026-07-20-devtools-timeline-ux-design.md).
+The four-tab shell (State / Machines / Event log / Wire) is gone. `InspectorApp`
+now renders a rail (connection badge + `FilterControls`) beside a main column
+of a lens switcher and the active lens — **Timeline** is the default and does
+the job the old State + Event log tabs did together; **Machines** and **Wire**
+are unchanged panels, now cross-linked *into* the timeline (a machine's intent
+row or a wire message's `msgType` pill jumps back to Timeline pre-filtered).
+
+**Pin/follow selection model.** `useTimeline` tracks one
+`TimelineSelection`: `{ mode: "follow" }` (tracking the live tail, the
+default) or `{ mode: "pinned"; seq }`. Selection *implies* pause — clicking a
+row's pin button (or stepping with ↑/↓) freezes the **`ContextPane`** at that
+event while `TimelinePane`'s rows keep tailing live underneath, dimmed past
+the pin. Esc (or the pinned-bar's Resume button) snaps back to `"follow"`.
+`ContextPane` has three tabs — **Event** (raw payload), **State** (the
+reconstructed `InspectorState` as of that seq, with search, and — while
+pinned — changed-since-live stream ids marked ≠), **Diff** (structural diff
+vs. the same source's previous value) — Event/Diff are disabled while
+following, since there is no pinned moment for them to describe.
+
+**`LiveHistory`** (`packages/devtools-core/src/LiveHistory.ts`) is what makes
+pinning cheap at any point in an unbounded live session: an always-on rolling
+buffer (~20k events, independent of the panel's own render throttling) that
+tees off the same `InspectorStore.tap()` point the old `Recorder` used. It
+folds through a second, `trackLog: false` `InspectorStore` clone (state-only —
+no log — since the pane already has the log from the live store) and takes a
+checkpoint clone every 500 frames, so `stateAt(seq)` reconstructs by replaying
+forward from the nearest checkpoint rather than from frame zero. Trimming the
+rolling window folds evicted frames into a `base` store and recomputes
+`firstTs` from what remains. `toRecording`/`fromRecording` round-trip a
+`LiveHistory` through the existing `Recording` JSON shape unchanged
+(`RECORDING_VERSION` is still 1).
+
+**`diffSerialized`** (`packages/devtools-core/src/diff.ts`) is a small
+structural diff over two `SerializedValue` trees — records and arrays recurse,
+tagged/primitive nodes compare by JSON equality — capped at 200 entries
+against pathological fan-out. It powers the Diff tab and needs no new wire
+protocol: both sides are values the serializer already produced.
+
+**Recording v2.** The bounded Record/Stop capture (`Recorder`) is unchanged.
+What changed is what you can do with history you didn't explicitly start
+recording: `RecordingToolbar`'s **"Export last buffer"** calls
+`LiveHistory.toRecording()` *retroactively* — no Record click needed, the
+rolling buffer was already there. Importing a `.json` recording (Record/Stop
+**or** buffer export, same format) no longer opens a separate Replay mode;
+it swaps the timeline's datasource wholesale — `activeLog`/`activeHistory`/
+`presentState` all become the import's, a `recording-banner` marks the
+inspector as viewing a recording, and "Back to live" clears it. Pinning
+inside an imported recording works identically to pinning live (`≠-live`
+compares against the *import's* final state, never the real live app).
+
+**`ReplayController` retired — spec deviation.** The original design (§9 item
+5, [§20.8](#208-future-extensions) item 5) shipped a frame-indexed
+`ReplayController` (`stateAt(frameIndex)`/`tsAt(frameIndex)`) behind a
+Live|Replay mode toggle and a scrubber. Once the timeline could pin *any*
+moment of the live session directly — not just a moment inside a stopped
+recording — nothing in the app still needed a separate frame-indexed replay
+API: the scrubber's job (jump to an arbitrary past state) is now the
+timeline's job, continuously, without first stopping a recording. Keeping
+`ReplayController` around as a second, redundant path to the same
+reconstruction would have been dead code — `knip`'s exports check would flag
+it as unused once the last call site (the scrubber component) was deleted —
+so it was removed outright rather than kept "just in case". Its fold-
+equivalence property (a reconstructed `stateAt(k)` is byte-identical to a live
+fold of the same events) is exactly what `LiveHistory` now guarantees, and
+that property's test lives on in `LiveHistory.test.ts`.
 
 ---

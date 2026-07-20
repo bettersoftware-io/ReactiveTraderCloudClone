@@ -1,7 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
 import type { InspectorPO } from "../contracts/Inspector";
-import { STRINGS } from "../contracts/strings";
 import { TESTIDS } from "../contracts/testids";
 
 /**
@@ -47,9 +46,9 @@ export class PlaywrightInspector implements InspectorPO {
     ).toBeVisible({ timeout: timeoutMs });
   }
 
-  async openMachinesTab(timeoutMs: number): Promise<void> {
+  async openMachinesLens(timeoutMs: number): Promise<void> {
     await this.page()
-      .getByRole("button", { name: STRINGS.devtools.machinesTab })
+      .getByTestId(TESTIDS.devtools.lensMachines)
       .click({ timeout: timeoutMs });
   }
 
@@ -60,6 +59,37 @@ export class PlaywrightInspector implements InspectorPO {
         .filter({ hasText: kind })
         .first(),
     ).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async pinFirstTimelineRow(timeoutMs: number): Promise<void> {
+    // Rows are divs, not buttons — the pin target is the first button inside
+    // the first row (its other buttons filter by source / radius, not pin).
+    const pinButton = this.page()
+      .getByTestId(TESTIDS.devtools.timelineRow)
+      .first()
+      .locator("button")
+      .first();
+
+    // The timeline auto-scrolls to the tail while following, so the first
+    // row can start out scrolled out of view — bring it back before clicking.
+    await pinButton.scrollIntoViewIfNeeded({ timeout: timeoutMs });
+    await pinButton.click({ timeout: timeoutMs });
+  }
+
+  async waitPinnedBar(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.devtools.pinnedBar),
+    ).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async waitNoPinnedBar(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.devtools.pinnedBar),
+    ).toBeHidden({ timeout: timeoutMs });
+  }
+
+  async resumeViaEscape(): Promise<void> {
+    await this.page().keyboard.press("Escape");
   }
 
   async closeAppPage(): Promise<void> {

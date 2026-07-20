@@ -39,7 +39,8 @@ export async function expectInspectorBadge(
   await inspector(ctx).waitConnectionBadge(expected, seconds * 1_000);
 }
 
-/** Assert a State-tab stream row for `streamId` is visible within 10s. */
+/** Assert a stream row for `streamId` is visible within 10s — the
+ *  ContextPane's follow-mode state tree (the old State tab). */
 export async function expectStreamRow(
   ctx: TestContext,
   streamId: string,
@@ -47,14 +48,14 @@ export async function expectStreamRow(
   await inspector(ctx).waitStreamRow(streamId, 10_000);
 }
 
-/** Switch the inspector to its Machines tab, allowing the click up to
+/** Switch the inspector to its Machines lens, allowing the click up to
  *  `seconds` (the inspector's main thread is busy rendering the live stream, so
  *  the click's actionability polling needs a generous, explicit budget). */
-export async function openMachinesTab(
+export async function openMachinesLens(
   ctx: TestContext,
   seconds: number,
 ): Promise<void> {
-  await inspector(ctx).openMachinesTab(seconds * 1_000);
+  await inspector(ctx).openMachinesLens(seconds * 1_000);
 }
 
 /** Assert a machine row of the given `kind` is visible within 10s. */
@@ -63,6 +64,28 @@ export async function expectMachineOfKind(
   kind: string,
 ): Promise<void> {
   await inspector(ctx).waitMachineRowOfKind(kind, 10_000);
+}
+
+/** Pin the inspector at the FIRST timeline row's moment (clicking its pin
+ *  button), freezing the context pane on that event's Event/State/Diff. */
+export async function pinFirstTimelineRow(ctx: TestContext): Promise<void> {
+  await inspector(ctx).pinFirstTimelineRow(10_000);
+}
+
+/** Assert the pinned-moment bar is visible within 10s (a pin is active). */
+export async function expectPinnedBar(ctx: TestContext): Promise<void> {
+  await inspector(ctx).waitPinnedBar(10_000);
+}
+
+/** Assert the pinned-moment bar is gone within 10s (back to following live). */
+export async function expectNoPinnedBar(ctx: TestContext): Promise<void> {
+  await inspector(ctx).waitNoPinnedBar(10_000);
+}
+
+/** Press Escape on the inspector page — the shortcut that resumes from a
+ *  pinned moment back to the live tail. */
+export async function resumeViaEscape(ctx: TestContext): Promise<void> {
+  await inspector(ctx).resumeViaEscape();
 }
 
 /** Close the app page — the graceful teardown that drives the inspector back to

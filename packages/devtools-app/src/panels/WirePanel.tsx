@@ -15,7 +15,10 @@ import styles from "#/panels/WirePanel.module.css";
  * row (`▲ out` / `▼ in`). The simulator branch never wraps a WS adapter
  * (Task 7), so an empty wire log is the normal dev-mode state — shown as an
  * explicit empty-state message rather than an empty table. */
-export function WirePanel({ log }: WirePanelProps): ReactElement {
+export function WirePanel({
+  log,
+  onMsgTypePill,
+}: WirePanelProps): ReactElement {
   const [filterText, setFilterText] = useState("");
 
   const wireRows = wireRowsOf(log);
@@ -39,6 +42,7 @@ export function WirePanel({ log }: WirePanelProps): ReactElement {
 
   return (
     <div className={styles.panel}>
+      <HealthHeader health={healthOf(log, wireRows)} />
       <div className={styles.controls}>
         <input
           type="text"
@@ -48,7 +52,10 @@ export function WirePanel({ log }: WirePanelProps): ReactElement {
           onChange={handleFilterChange}
         />
       </div>
-      <CountStrip counts={countByMsgType(wireRows)} />
+      <CountStrip
+        counts={countByMsgType(wireRows)}
+        onMsgTypePill={onMsgTypePill}
+      />
       <div className={styles.rows}>
         {filtered.map((row) => {
           return <WireRowView key={row.seq} row={row} />;
@@ -60,6 +67,7 @@ export function WirePanel({ log }: WirePanelProps): ReactElement {
 
 export interface WirePanelProps {
   log: readonly LogRow[];
+  onMsgTypePill?: (msgType: string) => void;
 }
 
 const EMPTY_STATE_TEXT =
@@ -75,18 +83,92 @@ interface WireRow extends LogRow {
   event: WireEvent;
 }
 
-interface CountStripProps {
-  counts: ReadonlyMap<string, number>;
+const RATE_WINDOW_MS = 10_000;
+
+interface WireHealth {
+  inPerSec: number;
+  outPerSec: number;
+  reconnects: number;
 }
 
-function CountStrip({ counts }: CountStripProps): ReactElement {
+/** Trailing-window health for the wire lens: in/out throughput over the last
+ * `RATE_WINDOW_MS`, plus a lifetime reconnect count. Both are derived purely
+ * from `ts` fields already in the log — never `Date.now()` — so this is
+ * replay-correct (a recorded session shows the same numbers on every replay,
+ * not numbers that drift with wall-clock time). */
+function healthOf(
+  log: readonly LogRow[],
+  wireRows: readonly WireRow[],
+): WireHealth {
+  const latestTs = log.at(-1)?.ts ?? 0;
+  const windowStart = latestTs - RATE_WINDOW_MS;
+  let inCount = 0;
+  let outCount = 0;
+
+  for (const row of wireRows) {
+    if (row.ts >= windowStart) {
+      if (row.event.kind === "wire:in") {
+        inCount += 1;
+      } else {
+        outCount += 1;
+      }
+    }
+  }
+
+  const seenStreamIds = new Set<string>();
+  let reconnects = 0;
+
+  for (const row of log) {
+    if (row.event.kind === "stream:registered") {
+      if (seenStreamIds.has(row.event.streamId)) {
+        reconnects += 1;
+      } else {
+        seenStreamIds.add(row.event.streamId);
+      }
+    }
+  }
+
+  const seconds = RATE_WINDOW_MS / 1000;
+
+  return {
+    inPerSec: inCount / seconds,
+    outPerSec: outCount / seconds,
+    reconnects,
+  };
+}
+
+interface HealthHeaderProps {
+  health: WireHealth;
+}
+
+function HealthHeader({ health }: HealthHeaderProps): ReactElement {
+  return (
+    <div className={styles.health}>
+      {`▼ ${health.inPerSec.toFixed(1)} in/s · ▲ ${health.outPerSec.toFixed(1)} out/s · reconnects: ${health.reconnects}`}
+    </div>
+  );
+}
+
+interface CountStripProps {
+  counts: ReadonlyMap<string, number>;
+  onMsgTypePill?: (msgType: string) => void;
+}
+
+function CountStrip({ counts, onMsgTypePill }: CountStripProps): ReactElement {
   return (
     <div className={styles.countStrip}>
       {[...counts.entries()].map(([msgType, count]) => {
         return (
-          <span key={msgType} className={styles.countChip}>
+          <button
+            key={msgType}
+            type="button"
+            className={styles.countChip}
+            onClick={() => {
+              onMsgTypePill?.(msgType);
+            }}
+          >
             {`${msgType}: ${count}`}
-          </span>
+          </button>
         );
       })}
     </div>

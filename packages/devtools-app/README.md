@@ -19,12 +19,13 @@ protocol.
 | Path | What lives here |
 |---|---|
 | `src/main.tsx` | Entry point -- mounts `InspectorApp` |
-| `src/InspectorApp.tsx` | The shell: connection-status rail, app-instance picker, four-tab switcher |
+| `src/InspectorApp.tsx` | The shell: connection-status rail (badge, counts, filters), recording toolbar, lens switcher (Timeline/Machines/Wire) |
 | `src/inspectorSession.ts` | Constructs the transport (`BroadcastChannelDuplex`) + `InspectorClient` + `InspectorStore` from `devtools-core` and exposes them to React |
 | `src/useInspectorState.ts` | Hook subscribing to the live `InspectorState` snapshot |
+| `src/timeline/` | Timeline lens: `useTimeline` (selection/filter/pin state), `TimelinePane` (the row list), `ContextPane` (Event/State/Diff for the pinned moment), `FilterControls` |
+| `src/recording/` | `useRecording` (record/stop/export/import) + `RecordingToolbar`, incl. the imported-recording datasource switch |
 | `src/panels/StateTreePanel.tsx` | Collapsible presenter-stream tree, change-flash highlighting, per-node emission-rate badge |
 | `src/panels/MachinesPanel.tsx` | Live machine-instance table: id, kind, args, state, created-at, live/disposed |
-| `src/panels/EventLogPanel.tsx` | Unified chronological feed (emissions, transitions, intents, wire messages) with filters |
 | `src/panels/WirePanel.tsx` | Raw `CLIENT_MSG`/`SERVER_MSG` traffic, direction + topic filters |
 | `src/panels/ValueView.tsx` | Shared pretty-printer for `SerializedValue` (handles the tagged Map/Set/truncated encodings) |
 
@@ -39,7 +40,7 @@ protocol.
 2. `src/InspectorApp.tsx` -- the shell: renders "disconnected" until a
    `welcome` arrives (same-origin is load-bearing here -- see
    [§20.6](../../docs/architecture/20-devtools.md#206-serving-topology)), then
-   the four-tab switcher.
+   the recording toolbar and the Timeline/Machines/Wire lens switcher.
 3. `src/panels/` -- each panel is driven purely by `InspectorState` plus
    local React state for its own filters/selection; the inspector
    deliberately does **not** use the machine architecture it inspects -- it

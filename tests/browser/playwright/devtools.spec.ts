@@ -49,14 +49,22 @@ test.describe("DevTools inspector (same-origin)", () => {
     // completes (it renders "disconnected" until then).
     await devtools.expectInspectorBadge(ctx, expectedAppId, 10);
 
-    // State tab (default): a stream row for the blotter trades stream.
+    // Timeline lens (default), following live: the context pane's state tree
+    // shows a stream row for the blotter trades stream.
     await devtools.expectStreamRow(ctx, "blotter.trades$");
 
-    // Machines tab: at least one row of kind "tileExecution", born from the FX
+    // Timeline pin-and-inspect journey: pin an early row, confirm the
+    // inspector freezes at that moment, and Esc resumes the live tail.
+    await devtools.pinFirstTimelineRow(ctx);
+    await devtools.expectPinnedBar(ctx);
+    await devtools.resumeViaEscape(ctx);
+    await devtools.expectNoPinnedBar(ctx);
+
+    // Machines lens: at least one row of kind "tileExecution", born from the FX
     // tiles mounted above. With the inspector's repaint now throttled, this
     // click is no longer starved of actionability polling; 15s bounds a genuine
     // hang well below the whole-test timeout.
-    await devtools.openMachinesTab(ctx, 15);
+    await devtools.openMachinesLens(ctx, 15);
     await devtools.expectMachineOfKind(ctx, "tileExecution");
 
     // Closing the app view fires `pagehide` on its window, which the app-side

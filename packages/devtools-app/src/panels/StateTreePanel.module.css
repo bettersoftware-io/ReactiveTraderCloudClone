@@ -49,3 +49,9 @@
 .flash {
   display: inline-block;
 }
+
+.changedMark {
+  color: var(--warn);
+  font-size: 11px;
+  margin-left: 6px;
+}

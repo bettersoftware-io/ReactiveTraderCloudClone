@@ -4,6 +4,7 @@ export {
   type Duplex,
 } from "./channel";
 export { DevtoolsHub, type DevtoolsHubOptions } from "./DevtoolsHub";
+export { type DiffEntry, type DiffKind, diffSerialized } from "./diff";
 export { InspectorClient } from "./InspectorClient";
 export type {
   InspectorState,
@@ -23,12 +24,10 @@ export {
   instrumentWsAdapter,
   type WsAdapterLike,
 } from "./instrument/wsAdapter";
+export { LiveHistory, type LiveHistoryOptions } from "./LiveHistory";
+export { projectSnapshot } from "./projectSnapshot";
 export * from "./protocol";
 export { Recorder, type RecorderOptions } from "./Recorder";
-export {
-  ReplayController,
-  type ReplayControllerOptions,
-} from "./ReplayController";
 export {
   parseRecording,
   RECORDING_VERSION,

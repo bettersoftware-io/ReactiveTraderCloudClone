@@ -27,6 +27,14 @@
   font-size: 11px;
 }
 
+.health {
+  flex: none;
+  padding: 2px 8px;
+  color: var(--fg);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 .countStrip {
   display: flex;
   flex: none;
@@ -36,10 +44,17 @@
 
 .countChip {
   padding: 1px 6px;
+  border: none;
   border-radius: 3px;
   background: color-mix(in srgb, var(--dim) 18%, transparent);
   color: var(--fg);
+  font-family: inherit;
   font-size: 10px;
+  cursor: pointer;
+}
+
+.countChip:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .rows {
