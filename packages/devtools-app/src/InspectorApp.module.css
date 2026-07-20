@@ -107,12 +107,14 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
-.tabs {
+.lensStrip {
   display: flex;
-  flex: none;
-  border-bottom: 1px solid var(--border);
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border, #30363d);
   background: var(--bg-panel);
 }
 
@@ -133,8 +135,15 @@
   color: var(--accent);
 }
 
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  flex: 1;
+  min-height: 0;
+}
+
 .panel {
   flex: 1;
-  overflow: auto;
-  padding: 16px;
+  min-height: 0;
+  overflow-y: auto;
 }
