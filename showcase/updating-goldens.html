@@ -471,7 +471,7 @@
         <div class="stage">
           <div class="lbl">2 · CI renders</div>
           <div class="big">pinned x86 container</div>
-          <div class="small">only the 1 match · all 3 tiers · <code>CI=1</code> → react/</div>
+          <div class="small">only the 1 match · <code>CI=1</code> → react/</div>
         </div>
         <div class="conn">→</div>
         <div class="stage">
@@ -525,7 +525,7 @@ pnpm goldens:verify   # assert react/ passes (CI-exact)</div>
           <p>Plain Playwright / Vitest on your host writes your native set. Instant, no container. Run it after an intentional UI change so <code>pnpm test:ui:visual</code> goes green again locally. Narrow it with the <code>SCENARIO_PATTERN</code> env var.</p>
           <div class="cmd">pnpm --filter @rtc/client-react \
   test:ui:visual:playwright:react:update
-# tiers: playwright · playwright-ct · vitest-browser</div>
+# tier: playwright (the sole CI-asserted tier)</div>
           <div class="tags">
             <span class="tag set-blue">→ react-local/&lt;arch&gt;</span>
             <span class="tag yes">instant ✓</span>
@@ -587,7 +587,7 @@ pnpm goldens:verify   # assert react/ passes (CI-exact)</div>
 
 <footer>
   <div class="wrap">
-    Container image pinned to <code class="mono">mcr.microsoft.com/playwright:v1.61.0-noble</code> · tolerance maxDiffPixelRatio 0.06 · three tiers: playwright, playwright-ct, vitest-browser. The single container-canonical collapse was tried (PRs #272–274) and reverted (#275) because it cost the instant native loop; the per-platform sets stay by design.
+    Container image pinned to <code class="mono">mcr.microsoft.com/playwright:v1.61.0-noble</code> · tolerance maxDiffPixelRatio 0.06 · sole tier: playwright (playwright-ct and vitest-browser retired from the assert role 2026-07-20). The single container-canonical collapse was tried (PRs #272–274) and reverted (#275) because it cost the instant native loop; the per-platform sets stay by design.
   </div>
 </footer>
 
