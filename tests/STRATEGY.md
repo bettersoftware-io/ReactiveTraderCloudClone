@@ -29,7 +29,7 @@ different depths:
 ```
                          browser   →  React DOM  →  presenters  →  ports  →  domain  →  wire  →  server
  ──────────────────────────────────────────────────────────────────────────────────────────────────────
- Browser   (4 suites)       ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
+ Browser   (6 suites)       ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
  Presenter (4 suites)                                   ●━━━━━━━━━━━━●━━━━━━━━━●                        [ports = simulators]
  Full-stack node                                                     ●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
  Full-stack browser         ●━━━━━━━━━━━━●━━━━━━━━━━━━━━●━━━━━━━━━━━━●━━━━━━━━━●━━━━━━━━━━●━━━━━━━━●    [REAL server]
@@ -98,15 +98,15 @@ tables.
 
 ### 3.1 Browser family
 
-| Layer | Path | Shared across the 4 browser suites? |
+| Layer | Path | Shared across the 6 browser suites? |
 |---|---|---|
-| **Behaviour specs** (Gherkin) | `specs/*.feature` (8 files) | ⚠️ **2 of 4** — the two `-cucumber` suites only; native suites mirror them in code |
+| **Behaviour specs** (Gherkin) | `specs/*.feature` (8 files) | ⚠️ **3 of 6** — both `-cucumber` suites + `playwright-cucumber:solid`; native suites mirror them in code |
 | **Page-object contracts** + `TESTIDS` + `STRINGS` | `browser/page-objects/contracts/` (10 + 2) | ✅ **Yes — one source of truth** |
-| **Scenario layer** (async, `Promise`-shaped) | `browser/scenarios/` (~80 fns) | ⚠️ **3 of 4** — native Playwright + **both** cucumber suites. **Not** native Cypress |
+| **Scenario layer** (async, `Promise`-shaped) | `browser/scenarios/` (~80 fns) | ⚠️ **5 of 6** — every suite except native Cypress |
 | **Cypress scenario fork** (queue-aware) | `browser/cypress/scenarios/` | ❌ native Cypress **only** |
-| **Step definitions** (Gherkin → scenario) | `browser/steps/` | ⚠️ **2 of 4** — both `-cucumber` suites |
-| **Test context** `{ po, scratch }` | `browser/testContext.ts` | ✅ **Yes — all 4** |
-| **Page-object impls** (driver code) | `browser/page-objects/{playwright,cypress}/` | ❌ per-driver (10 classes + factory each) |
+| **Step definitions** (Gherkin → scenario) | `browser/steps/` | ⚠️ **3 of 6** — both `-cucumber` suites + `playwright-cucumber:solid` |
+| **Test context** `{ po, scratch }` | `browser/testContext.ts` | ✅ **Yes — all 6** |
+| **Page-object impls** (driver code) | `browser/page-objects/{playwright,cypress}/` | ❌ per-driver (10 classes + factory each; the two Solid suites reuse `playwright/` — same driver, different `RTC_CLIENT_PKG`) |
 | **Runner glue** (config, world/hooks, fixture) | each suite's own folder | ❌ per-suite |
 
 The **load-bearing fact**: native Cypress is the one suite that *can't* reuse the
@@ -180,6 +180,8 @@ flowchart TB
         B2["playwright-cucumber"]
         B3["cypress-cucumber"]
         B4["cypress (native)<br/>+ own scenario fork"]
+        B5["playwright (native) :solid"]
+        B6["playwright-cucumber :solid"]
     end
 
     subgraph PRES["PRESENTER suites (no DOM, simulators)"]
@@ -207,11 +209,16 @@ flowchart TB
     PWPO --> B2
     CYPO --> B3
     CYPO --> B4
+    PWPO --> B5
+    PWPO --> B6
     BSTEPS --> B2
     BSTEPS --> B3
+    BSTEPS --> B6
     BSCEN --> B1
     BSCEN --> B2
     BSCEN --> B3
+    BSCEN --> B5
+    BSCEN --> B6
 
     BUILD --> PSCEN
     AWAIT --> PSCEN
@@ -228,6 +235,7 @@ flowchart TB
     %% doesn't tile the subgraphs side-by-side and shrink the whole diagram.
     FEAT ~~~ CONTRACTS
     FEAT ~~~ BCTX
+    B4 ~~~ B5
     B1 ~~~ BUILD
     B2 ~~~ AWAIT
     P2 ~~~ F1
@@ -278,9 +286,10 @@ UI-library swap), **B** = the page-object impls (crossed by a driver swap).
 Like the visual triangle, this is defence-in-depth + a portability proof, not
 redundancy:
 
-- The **browser ×4 matrix** proves the PO-contract seam is real: the *same*
-  behaviour passes on two drivers and two authoring styles. The Cypress fork is
-  the deliberate counter-example marking where the async contract ends.
+- The **browser matrix (4 styles × 2 clients)** proves the PO-contract seam is
+  real: the *same* behaviour passes on two drivers, two authoring styles, and
+  now two UI frameworks. The Cypress fork is the deliberate counter-example
+  marking where the async contract ends.
 - The **presenter ×4 peers** prove the `_shared`/`_await`/`_buildApp`
   abstractions aren't accidentally coupled to one runner or one time model —
   they survive cucumber *and* vitest, real *and* virtual time, Gherkin *and*
@@ -288,10 +297,10 @@ redundancy:
 - The **full-stack smokes** are the only wire-crossing tests; everything else
   mocks the server with simulators.
 
-The cost of keeping all ten is the per-driver/per-runner glue and the Cypress
+The cost of keeping all twelve is the per-driver/per-runner glue and the Cypress
 maintenance hazard — which is exactly why a **product** picks one lane ([§7](#7-decision-guide-picking-one-for-production)).
 
-### 5.5 Measured durations (isolated, local)
+### 5.5 Measured durations (isolated, local — 2026-06-21)
 
 The tables above rank suites qualitatively; here are real numbers. **Each suite
 was run on its own, sequentially** (never in the `test:e2e` parallel fan-out — a
@@ -304,7 +313,7 @@ isolated timings.
 > shared by every browser suite), so treat these as *indicative*, not a
 > micro-benchmark — expect ±several seconds of run-to-run variance. Unlike the
 > arm64 dev container, **Cypress runs fine here** (see `README.md` → "Known
-> issue"), so all ten are measurable on this box.
+> issue"), so all twelve are measurable on this box.
 
 | Suite | Scenarios | Duration | Notes |
 |---|---:|---:|---|
@@ -341,6 +350,31 @@ To reproduce, run any single script from `README.md` → "Scripts" in isolation
 (e.g. `pnpm --filter @rtc/tests test:browser:playwright`) and time it; the
 visual tier has its own isolated table in
 [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md).
+
+### CI durations (2026-07-19, ubuntu 2-core, parallel fan-out `RTC_E2E_MAX_PARALLEL=2` — not isolated)
+
+These are **not** apples-to-apples with the table above: they come from the
+`e2e` CI job on a GitHub-hosted `ubuntu-latest` runner (2 cores) with every
+suite racing concurrently in `run-all.ts`'s parallel pool, whereas the table
+above isolates each suite serially on a 12-core Mac. Read this as *"what
+actually happens on CI"*, not a second isolated benchmark.
+
+| Suite | Duration | Notes |
+|---|---:|---|
+| **Presenter** `cucumber-fake-timers` | **2.0s** | virtual time under cucumber-js |
+| **Presenter** `vitest-fake-timers` | **2.5s** | virtual time, plain Vitest |
+| **Presenter** `vitest-quickpickle-fake-timers` | **4.0s** | virtual time, Gherkin under Vitest |
+| **Full-stack** `node` | **4.6s** | boots the real server; raw WebSocket, no browser |
+| **Full-stack** `browser` | **12.8s** | real server + Vite client + Playwright |
+| **Presenter** `cucumber` (real timers) | **40.7s** | the reference — wall-clock waits are genuine |
+| **Browser** `playwright-cucumber` (solid) | **132.5s** | real browser + dev server, Solid client |
+| **Browser** `playwright-cucumber` | **144.6s** | real browser + dev server |
+| **Browser** `playwright` (native, solid) | **176.4s** | real browser + dev server, Solid client |
+| **Browser** `playwright` (native) | **202.9s** | real browser + dev server |
+
+Native Cypress and `cypress-cucumber` have no CI figures — Cypress is
+de-gated from CI since #66 (see `README.md` → "Known issue"); they only run
+locally.
 
 ---
 
@@ -477,7 +511,7 @@ independently and in either order. The only shared touch-point is
 
 ## 7. Decision guide: picking ONE for production
 
-This repo runs all ten because it is a comparison artifact. A product keeps a
+This repo runs all twelve because it is a comparison artifact. A product keeps a
 small, intentional subset. Recommendations by goal:
 
 | Goal | Keep | Why |
@@ -516,7 +550,7 @@ distinct jobs, no overlap.
 - [`README.md`](./README.md) — scripts, reports, orchestration, the Cypress
   arm64 known-issue, caching/freshness.
 - [`../docs/architecture/09-test-strategy.md`](../docs/architecture/09-test-strategy.md) §9 "Test Strategy" — the
-  authoritative layer model, the eight-runner stack, the bundler-alias seam, and
+  authoritative layer model, the twelve-suite e2e stack, the bundler-alias seam, and
   the port-contract test layer.
 - [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
   — the visual-tier sibling of this document (one axis; pixel goldens).

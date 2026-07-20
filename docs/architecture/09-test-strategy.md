@@ -99,7 +99,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 
 **Presenter-direct binding (Phase 5B.1).** `tests/presenter/steps/*.steps.ts` files use Cucumber-JS but in pure Node — no browser, no DOM, no React. Step bodies delegate to scenarios fns at `tests/presenter/scenarios/_shared/*.ts`, which subscribe to presenter streams (`priceStream.price$`, `connection.status$`, `blotter.trades$`, etc.) via `firstValueFrom + timeout` and assert on emitted values. Background steps are no-ops (workspaces are a UI concern). The `@presenter` tag in `.feature` files selects 20 scenarios that map cleanly to the application layer; UI-only scenarios (theme, hover, CSS, tabs) remain browser-only. `tests/presenter/scenarios/_buildApp.ts` is the sole seam to `createApp(simulatorPorts)`; grep gate 17 enforces it. Demonstrates that the same behavioural specs validate the application layer with no UI framework — closing the loop on [§1.2 rule #4 ("Behavioural Tests as Insurance")](01-overview.md#12-architectural-principles). First sub-phase of Phase 5B; sub-phases 5B.2-5B.4 add variants (fake timers; Vitest+Gherkin; Vitest+plain-TS) as a comparison artifact.
 
-**Virtual-time binding (Phase 5B.2):** the `cucumber-fake-timers` runner reuses the same 20 `@presenter` scenarios as the `cucumber` (real-timers) runner but runs each under `@sinonjs/fake-timers`. The `FakePresenterWorld` implements the same `AwaitHelpers` interface as the real-time `PresenterWorld`, advancing virtual time inside `awaitFirstWithin` via `clock.tickAsync`. Scenario bodies are shared verbatim. Runtime: ~1s vs ~18.6s for the real-time peer (≈19× speedup).
+**Virtual-time binding (Phase 5B.2):** the `cucumber-fake-timers` runner reuses the same 20 `@presenter` scenarios as the `cucumber` (real-timers) runner but runs each under `@sinonjs/fake-timers`. The `FakePresenterWorld` implements the same `AwaitHelpers` interface as the real-time `PresenterWorld`, advancing virtual time inside `awaitFirstWithin` via `clock.tickAsync`. Scenario bodies are shared verbatim. Runtime: ~1–3s vs ~21–41s for the real-time peer (machine-dependent; ~1s vs ~18.6s measured 2026-06; 2.0s vs 40.7s on 2-core CI 2026-07-19).
 
 **Runner-portability binding (Phase 5B.3):** the `vitest-quickpickle-fake-timers` runner reuses the same 20 `@presenter` scenarios as the cucumber peers but executes them under Vitest with the qpickle-loader Vite plugin for Gherkin and `vi.useFakeTimers()` (sinon-based) for virtual time. The `VitestFakePresenterWorld` implements the same `AwaitHelpers` interface as `FakePresenterWorld`, advancing virtual time via `vi.advanceTimersByTimeAsync`. Step bodies are functional mirrors of the cucumber (real-timers) step files differing in three structural ways (`@cucumber/cucumber` → loader import, `PresenterWorld` type swap, and `function(this:)` callback shape → `async (state:) =>` because the loader's `Given/When/Then` types are `(state, ...args) => any` rather than this-bound). The peer is the **runner-portability proof:** the same `_shared/` scenario modules and the same `.feature` files drive cucumber-js *and* vitest under fake timers, validating that `_await.ts` / `_world.ts` aren't accidentally coupled to cucumber-js's lifecycle. Wall-clock: ~1.5s (vs ~1s for `cucumber-fake-timers` — the extra half-second is Vitest worker startup).
 
@@ -107,9 +107,8 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 
 ### 9.6 Port contract test layer
 
-The 8 transport ports (`ReferenceDataPort`, `PricingPort`, `ExecutionPort`,
-`BlotterPort`, `AnalyticsPort`, `InstrumentPort`, `DealerPort`,
-`WorkflowPort`) each have a contract describer at
+The transport ports (17 contract describers — see
+`packages/domain/src/ports/__contracts__/`) each have a contract describer at
 `packages/domain/src/ports/__contracts__/<Port>Contract.ts` asserting
 happy-path behavioral invariants the TypeScript type signature cannot
 catch — emission shapes, SoW protocol, RFQ lifecycle, multi-subscriber
@@ -135,7 +134,7 @@ via `makeHarness`, they don't reach into either implementation.
 
 | Tier | Runner | Config |
 |---|---|---|
-| 1 | Playwright Component Testing | `playwright-ct/` (also hosts the whole-app **paint smoke** — the guard against "renders in jsdom, paints empty in a real browser" bugs) |
+| 1 | Playwright Component Testing | `playwright-ct/` |
 | 2 | Plain Playwright over a Vite host | `playwright/` |
 | 3 | Vitest browser mode (`toMatchScreenshot`) | `vitest-browser/` |
 
@@ -161,7 +160,7 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~20-min visual-diff job is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~50-min visual-diff job (react + solid, 3 tiers each — see `visual.yml`) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
 ```mermaid
 flowchart TD
@@ -175,7 +174,7 @@ flowchart TD
         c3 --> c4["typecheck · unit + UI contract tests · coverage ≥ 95%"]
         c4 --> c6["build · Expo export smoke (RN Metro)"]
         c6 --> c7["knip · dependency-cruiser · ESLint type-aware"]
-        c7 --> c8["grep gates (29) + pnpm audit"]
+        c7 --> c8["grep gates + pnpm audit"]
     end
     subgraph e2e["ci.yml · Job 2 — e2e"]
         e1["Playwright browser peers<br/>+ presenter peers + fullstack smokes<br/>(Cypress de-gated on CI:<br/>RTC_E2E_SKIP_CYPRESS=1 — runs locally)"]
