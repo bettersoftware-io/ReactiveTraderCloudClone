@@ -69,6 +69,11 @@ export interface InspectorStoreOptions {
    * (true); the replay store uses false so getSnapshot() is fresh the moment a
    * frame is folded, even in a browser where requestAnimationFrame exists. */
   coalesce?: boolean;
+  /** When false, appendLog is a no-op and state.log stays [] forever. Used by
+   * LiveHistory's fold/checkpoint stores, which only ever serve the State
+   * sub-tab (streams + machines) — skipping the 5000-row log makes clone()
+   * cheap enough to run per checkpoint. */
+  trackLog?: boolean;
 }
 
 interface RateWindow {
@@ -151,6 +156,8 @@ export class InspectorStore {
 
   private readonly coalesce: boolean;
 
+  private readonly trackLog: boolean;
+
   private readonly messageListeners = new Set<(msg: AppToInspector) => void>();
 
   /** Repaint the whole tree at most ~15×/s (once per this many 60 Hz frames)
@@ -161,6 +168,7 @@ export class InspectorStore {
 
   constructor(options?: InspectorStoreOptions) {
     this.coalesce = options?.coalesce ?? true;
+    this.trackLog = options?.trackLog ?? true;
   }
 
   /** Bound retained disposed machines the way the hub does (MAX_DISPOSED_RETAINED)
@@ -237,7 +245,7 @@ export class InspectorStore {
    * without corrupting the cached original. Deep-copies the internal entries
    * and log (all JSON-safe SerializedValue data) via structuredClone. */
   clone(): InspectorStore {
-    const copy = new InspectorStore({ coalesce: false });
+    const copy = new InspectorStore({ coalesce: false, trackLog: this.trackLog });
 
     for (const [id, entry] of this.streamEntries) {
       copy.streamEntries.set(id, structuredClone(entry));
@@ -247,8 +255,10 @@ export class InspectorStore {
       copy.machineEntries.set(id, structuredClone(entry));
     }
 
-    for (const row of this.logAll) {
-      copy.logAll.push(structuredClone(row));
+    if (this.trackLog) {
+      for (const row of this.logAll) {
+        copy.logAll.push(structuredClone(row));
+      }
     }
 
     copy.connected = this.connected;
@@ -463,6 +473,10 @@ export class InspectorStore {
   }
 
   private appendLog(event: DevtoolsEvent): void {
+    if (!this.trackLog) {
+      return;
+    }
+
     this.logAll.push({
       seq: event.seq,
       ts: event.ts,
