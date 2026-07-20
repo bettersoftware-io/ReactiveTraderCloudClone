@@ -33,6 +33,23 @@ interface HostElementProps {
   children?: unknown;
 }
 
+interface MockPaint {
+  setColor: () => void;
+  setStyle: () => void;
+  setStrokeWidth: () => void;
+  setAntiAlias: () => void;
+  setAlphaf: () => void;
+}
+
+interface MockCanvas {
+  drawLine: () => void;
+  drawCircle: () => void;
+  drawPath: () => void;
+  drawRect: () => void;
+  drawText: () => void;
+  clear: () => void;
+}
+
 // Skia has no jest-expo mock. Stub the components used across the rehaul as
 // pass-through host elements so trees mount; extend this list as later phases
 // introduce more Skia primitives.
@@ -42,6 +59,35 @@ jest.mock("@shopify/react-native-skia", () => {
   function passthrough(name: string) {
     return function renderHostElement(props: HostElementProps): unknown {
       return React.createElement(name, props, props.children);
+    };
+  }
+
+  // Phase 6a boot scenes (starting with CoreScene, Task 6): the imperative
+  // `createPicture`/`Skia.*` API, used to build an `SkPicture` on the UI
+  // thread instead of declarative Skia components. The mock canvas/paint/font
+  // are no-op stand-ins (no real rasterization in jest — Skia is fully
+  // mocked, so pixels can never be asserted here), but `createPicture` DOES
+  // invoke the real drawing callback against them, so a scene's draw logic
+  // still runs on every render and a thrown/undefined-method bug in it still
+  // fails the test, same as the declarative primitives above.
+  function createMockPaint(): MockPaint {
+    return {
+      setColor: () => {},
+      setStyle: () => {},
+      setStrokeWidth: () => {},
+      setAntiAlias: () => {},
+      setAlphaf: () => {},
+    };
+  }
+
+  function createMockCanvas(): MockCanvas {
+    return {
+      drawLine: () => {},
+      drawCircle: () => {},
+      drawPath: () => {},
+      drawRect: () => {},
+      drawText: () => {},
+      clear: () => {},
     };
   }
 
@@ -62,6 +108,30 @@ jest.mock("@shopify/react-native-skia", () => {
     LinearGradient: passthrough("SkiaLinearGradient"),
     vec: (x: number, y: number) => {
       return { x, y };
+    },
+    // Phase 6a, Task 6 (CoreScene): the `<Picture>` host + its imperative
+    // recorder pair (see comment above).
+    Picture: passthrough("SkiaPicture"),
+    createPicture: (cb: (canvas: MockCanvas) => void) => {
+      cb(createMockCanvas());
+      return { __mockPicture: true };
+    },
+    PaintStyle: { Fill: 0, Stroke: 1 },
+    Skia: {
+      Paint: createMockPaint,
+      Color: (color: string) => {
+        return color;
+      },
+      Font: () => {
+        return {
+          getTextWidth: () => {
+            return 0;
+          },
+          measureText: () => {
+            return { width: 0 };
+          },
+        };
+      },
     },
   };
 });
