@@ -116,7 +116,9 @@
         "scripts/*.ts",
         "**/*.config.{ts,js}",
         "browser/playwright-cucumber/hooks.ts",
-        "browser/playwright-cucumber/world.ts"
+        "browser/playwright-cucumber/world.ts",
+        "presenter/cucumber-fake-timers/hooks.ts",
+        "presenter/cucumber-fake-timers/world.ts"
       ],
       "project": "**/*.{ts,tsx}",
       "ignoreDependencies": ["@rtc/server"]

@@ -164,7 +164,7 @@
   <h2>The headline</h2>
   <div class="stats">
     <div class="stat"><div class="n green">−70%</div><div class="l">visual-diff CI job: <b>~52 → ~15 min</b> per post-merge run</div></div>
-    <div class="stat"><div class="n blue">3 → 1</div><div class="l">visual tiers · <b>4 → 1</b> presenter · Cypress deleted</div></div>
+    <div class="stat"><div class="n blue">3 → 1</div><div class="l">visual tiers · presenter <b>4 → 1</b> gating (+1 parked BDD) · Cypress deleted</div></div>
     <div class="stat"><div class="n">~226 MB</div><div class="l">~5,300 golden PNGs removed from the repo</div></div>
     <div class="stat"><div class="n green">0</div><div class="l">coverage lost (verified) — and <b>1 gap closed</b></div></div>
   </div>
@@ -217,10 +217,10 @@
     </div>
 
     <div class="card">
-      <h3>Presenter <span class="sub">4 peers → 1</span></h3>
-      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="name">vitest-fake-timers</span> <span class="why">— plain vitest, fake timers. Fast and slim.</span></div></div>
-      <div class="row del"><span class="tag del">DELETE</span><div class="what"><span class="name">cucumber</span> · <span class="name">cucumber-fake-timers</span> · <span class="name">vitest-quickpickle-fake-timers</span></div></div>
-      <div class="row"><span class="tag del">DEPS</span><div class="what"><span class="why">Dropped <code>@sinonjs/fake-timers</code>, <code>quickpickle</code>, and the <code>RealAwaitHelpers</code> real-timer helper.</span></div></div>
+      <h3>Presenter <span class="sub">4 peers → 1 winner + 1 parked showcase</span></h3>
+      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="name">vitest-fake-timers</span> <span class="why">— plain vitest, fake timers. The gating presenter runner.</span></div></div>
+      <div class="row"><span class="tag park">PARK</span><div class="what"><span class="name">cucumber-fake-timers</span> <span class="why">— presenter-tier twin of playwright-cucumber (same @cucumber/cucumber runner, same specs/ corpus). Off the gate, run weekly.</span></div></div>
+      <div class="row del"><span class="tag del">DELETE</span><div class="what"><span class="name">cucumber</span> (real timers, slowest) · <span class="name">vitest-quickpickle-fake-timers</span></div></div>
     </div>
 
     <div class="card">

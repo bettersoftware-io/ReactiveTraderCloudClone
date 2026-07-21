@@ -23,6 +23,7 @@
     "test:fullstack:browser:headed": "FULLSTACK_HEADED=1 tsx fullstack/browser-smoke.ts",
     "test:fullstack:node": "tsx fullstack/node-smoke.ts",
     "test:presenter:vitest-fake-timers": "vitest run --config presenter/vitest-fake-timers/vitest.config.ts",
+    "test:presenter:cucumber-fake-timers": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber-fake-timers/cucumber.js",
     "coverage:report": "tsx scripts/coverage-report.ts",
     "test:report": "vitest run scripts/lib",
     "test:pages": "vitest run scripts/pages",
@@ -40,6 +41,7 @@
   "devDependencies": {
     "@cucumber/cucumber": "^13.0.0",
     "@playwright/test": "^1.60.0",
+    "@sinonjs/fake-timers": "^15.0.0",
     "@types/istanbul-lib-coverage": "^2.0.6",
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",

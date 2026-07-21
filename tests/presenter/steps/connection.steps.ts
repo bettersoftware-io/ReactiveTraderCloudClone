@@ -1,0 +1,129 @@
+// tests/presenter/steps/connection.steps.ts
+//
+// NOTE: ConnectionStatus is a `const enum` in @rtc/domain source. With
+// verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
+// accessed as values from a different package. We use their string literals
+// directly (safe because all members are string-valued) and cast via
+// `import type { ConnectionStatus }` for the type annotation only.
+import { Then, When } from "@cucumber/cucumber";
+import { filter } from "rxjs";
+
+import type { ConnectionStatus } from "@rtc/domain";
+
+import type { PresenterWorld } from "../cucumber-fake-timers/world";
+import * as conn from "../scenarios/_shared/connection";
+
+// A footer label maps to a FAMILY of statuses (e.g. "Disconnected" covers
+// DISCONNECTED / IDLE / OFFLINE). The shared _shared/connection helper only
+// exposes a single-status wait — all the winner peer's own scenarios assert one
+// exact status — so this "wait until status is any of" lives here, local to the
+// BDD showcase that needs the label→family mapping.
+function expectStatusInWithin(
+  w: PresenterWorld,
+  targets: ConnectionStatus[],
+  seconds: number,
+): Promise<unknown> {
+  return w.awaitFirstWithin(
+    w.ctx.app.presenters.connection.status$.pipe(
+      filter((s) => {
+        return targets.includes(s);
+      }),
+    ),
+    seconds * 1000,
+  );
+}
+
+// String-literal stand-ins for ConnectionStatus const enum values.
+const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
+const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
+const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
+const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
+const CS_IDLE = "IDLE_DISCONNECTED" as unknown as ConnectionStatus;
+
+const FOOTER_LABEL_TO_STATUSES: Record<string, ConnectionStatus[]> = {
+  Connected: [CS_CONNECTED],
+  Disconnected: [CS_DISCONNECTED, CS_IDLE, CS_OFFLINE],
+  "Connecting...": [CS_CONNECTING],
+};
+
+When(
+  "the browser goes offline",
+  function browserGoesOffline(this: PresenterWorld) {
+    return conn.browserGoesOffline(this);
+  },
+);
+
+When(
+  "the browser comes back online",
+  function browserComesBackOnline(this: PresenterWorld) {
+    return conn.browserComesBackOnline(this);
+  },
+);
+
+When(
+  "the gateway connection drops",
+  function gatewayConnectionDrops(this: PresenterWorld) {
+    return conn.gatewayDrops(this);
+  },
+);
+
+When(
+  "the gateway attempts to reconnect",
+  function gatewayAttemptsToReconnect(this: PresenterWorld) {
+    return conn.gatewayAttemptsReconnect(this);
+  },
+);
+
+When(
+  "the gateway connection is restored",
+  function gatewayConnectionRestored(this: PresenterWorld) {
+    return conn.gatewayConnectionRestored(this);
+  },
+);
+
+Then(
+  "the connection status footer is visible",
+  function connectionStatusFooterVisible(this: PresenterWorld) {
+    return conn.noopAssertConnectionUiPresent(this);
+  },
+);
+
+Then(
+  "the connection status footer shows {string}",
+  function connectionStatusFooterShows(this: PresenterWorld, label: string) {
+    const targets = FOOTER_LABEL_TO_STATUSES[label] ?? [CS_DISCONNECTED];
+    return expectStatusInWithin(this, targets, 3);
+  },
+);
+
+Then(
+  "the connection overlay is hidden",
+  function connectionOverlayHidden(this: PresenterWorld) {
+    return conn.expectStatusEqualsWithin(this, CS_CONNECTED, 1);
+  },
+);
+
+Then(
+  "the connection overlay is hidden within {int} seconds",
+  function connectionOverlayHiddenWithin(this: PresenterWorld, n: number) {
+    return conn.expectStatusEqualsWithin(this, CS_CONNECTED, n);
+  },
+);
+
+Then(
+  "the connection overlay becomes visible within {int} seconds",
+  function connectionOverlayBecomesVisibleWithin(
+    this: PresenterWorld,
+    n: number,
+  ) {
+    // "overlay visible" = status has left CONNECTED (reached a disconnected state)
+    return conn.expectStatusEqualsWithin(this, CS_OFFLINE, n);
+  },
+);
+
+Then(
+  "the connection overlay text matches \\/offline\\/i",
+  function connectionOverlayTextMatchesOffline(this: PresenterWorld) {
+    return conn.noopAssertConnectionUiPresent(this);
+  },
+);
