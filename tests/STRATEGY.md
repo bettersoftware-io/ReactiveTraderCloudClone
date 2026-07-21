@@ -130,6 +130,10 @@ suites. See [§5.1](#51-browser-suites-driver--style) for the verdict.
 
 ### 3.2 Presenter family
 
+> The `.feature` files these peers run are the shared `tests/specs/` corpus,
+> tag-routed to both the browser and presenter layers — see
+> [`GHERKIN.md`](./GHERKIN.md) for the diagram and the tag-routing rules.
+
 The presenter family is now one **gating** suite, `vitest-fake-timers`, plus one
 **parked BDD showcase**, `cucumber-fake-timers` (off `run-all.ts`, run weekly —
 see §5.2). What the gating suite uses:
