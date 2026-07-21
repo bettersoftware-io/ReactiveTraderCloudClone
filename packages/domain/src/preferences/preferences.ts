@@ -33,8 +33,9 @@ export type CreditRfqFilter = "live" | "closed" | "all";
 
 /** The boot sequence visual variant. Cycles across sessions — each run advances
  * to the next entry in the fixed order (core → laser → docking → hologram →
- * geo → layers → jarvis → topo → core …). Mirrors `localStorage['rt_bootSeq']`
- * from the prototype; the last five are the v3 3D scenes. */
+ * geo → layers → jarvis → topo → core …). Persisted under the
+ * `rt-boot-variant` key (web `localStorage`, RN AsyncStorage — the same
+ * constant on both); the last five are the v3 3D scenes. */
 export type BootVariant =
   | "core"
   | "laser"

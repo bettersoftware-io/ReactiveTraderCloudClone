@@ -155,3 +155,19 @@ interface AnimationEndResult {
 }
 
 type AnimationEndCallback = (result: AnimationEndResult) => void;
+
+// BootGate mounts BootSequence with a bare-bones fake ViewModel that only
+// stubs `useBootSequence` — it predates Task 8's `useBootMotionEnabled` call
+// inside BootSequence/BootCanvas, which pulls `usePowerSaver` /
+// `useForceBootAnimation` off the real ViewModel and would throw against
+// these fakes. Mocking the hook to `false` keeps every test above on its
+// original static-splash path (BootEmblem renders, no Skia canvas) — motion
+// gating itself is BootCanvas's/BootSequence's own concern, already covered
+// by BootCanvas.test.tsx and BootSequence.test.tsx.
+jest.mock("#/ui/shell/boot/useBootMotionEnabled", () => {
+  return {
+    useBootMotionEnabled: () => {
+      return false;
+    },
+  };
+});

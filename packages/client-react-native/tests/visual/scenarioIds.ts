@@ -21,4 +21,13 @@ export const SCENARIO_IDS = [
   // momentary (re-capture diffs swung 0.7% ↔ 11.9% vs a fixed golden). The two
   // fixtures above are rock-stable (0.02%). Restore a Credit fixture only with
   // a frozen-clock / cascade-disabled harness variant.
+  // Phase 6a Task 10: the two ported boot scenes and the static-splash
+  // fallback, each pinned to a fixed `elapsedSec`/state rather than mounted
+  // live — see `scenarios.tsx`'s header comment for why a free-running boot
+  // canvas can never be a stable golden.
+  "boot/core",
+  "boot/laser",
+  "boot/static",
+  // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
+  "lock/hold",
 ] as const;
