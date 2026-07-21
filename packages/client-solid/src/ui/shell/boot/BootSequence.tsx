@@ -1,23 +1,21 @@
 import type { Accessor, JSX } from "solid-js";
 import { createEffect, createMemo, For, onCleanup } from "solid-js";
 
-import type { BootVariant } from "@rtc/domain";
-import { useViewModel } from "@rtc/solid-bindings";
-
 import {
   type BootDrawCtx,
   type BootFrameFn,
+  createBootCore,
+  createBootGeo,
+  createBootHologram,
+  createBootJarvis,
+  createBootLayers,
+  createBootTopo,
   drawBootDocking,
   drawBootLaser,
-} from "./bootCanvas";
-import { createBootCore } from "./variants/bootCore";
-import { createBootGeo } from "./variants/bootGeo";
-import { createBootHologram } from "./variants/bootHologram";
-import { createBootJarvis } from "./variants/bootJarvis";
-import { createBootLayers } from "./variants/bootLayers";
-import { createBootTopo } from "./variants/bootTopo";
-
-import styles from "./BootSequence.module.css";
+} from "@rtc/boot-splash";
+import styles from "@rtc/boot-splash/styles/BootSequence.module.css";
+import type { BootVariant } from "@rtc/domain";
+import { useViewModel } from "@rtc/solid-bindings";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
   const { useBootSequence, useForceBootAnimation, usePowerSaver } =

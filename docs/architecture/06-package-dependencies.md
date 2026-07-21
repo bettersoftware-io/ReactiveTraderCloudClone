@@ -2,7 +2,7 @@
 
 ## 6. Package Dependencies
 
-Seventeen workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
+Eighteen workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
 
 ```mermaid
 graph TB
@@ -38,6 +38,7 @@ graph TB
 
     proto["@rtc/client-prototype\ndesign-comprehension island\nreact + react-dom only"]
     motion["@rtc/motion-core\nView-layer motion math\npure, zero-dep"]
+    boot["@rtc/boot-splash\nboot/splash canvas engine + gate\nDOM-touching leaf, no @rtc deps"]
     uic["@rtc/ui-contract\nframework-neutral UI contract\nspecs · harness · visual matrix"]
     tests["tests (@rtc/tests)\nbehavioural suites + gates"]
 
@@ -45,6 +46,7 @@ graph TB
     webc --> core
     webc --> domain
     webc --> motion
+    webc --> boot
     webc --> dtcore
     webc -.->|"dev-only asset\n(vite middleware / dist copy)"| dtapp
     dtapp --> dtcore
@@ -56,6 +58,7 @@ graph TB
     solidc --> sb
     solidc --> core
     solidc --> motion
+    solidc --> boot
     rb --> core
     rb --> domain
     sb --> core
@@ -84,6 +87,7 @@ graph TB
     style wse fill:#5E35B1,color:#fff
     style proto fill:#607D8B,color:#fff
     style motion fill:#607D8B,color:#fff
+    style boot fill:#607D8B,color:#fff
     style uic fill:#607D8B,color:#fff
     style solidc fill:#673AB7,color:#fff
     style sb fill:#FFB300,color:#fff
@@ -102,14 +106,15 @@ graph TB
 - Clients (`client-react`, `client-react-native`) depend on `core` + `react-bindings` + `domain`; `client-solid` depends on `core` + `solid-bindings` + `domain` the same way. **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
 - `@rtc/motion-core` is a zero-runtime-dependency leaf (no `rxjs`, no DOM, no React) consumed directly by a client's animation shell -- `client-react` and `client-solid` each depend on it the same way (`client-solid → motion-core`), never through `client-core`/`react-bindings`/`solid-bindings`.
+- `@rtc/boot-splash` is the framework-free boot/splash feature: the canvas draw engine (six 3D scene variants + shared laser/docking helpers), the reduced-motion/webdriver gate, and the two `*.module.css` stylesheets. It must not import any other `@rtc/*` package (dependency-cruiser `boot-splash-stays-pure`), but -- unlike `motion-core` -- it is a **DOM-touching** leaf, not a no-DOM one: the engine reaches the canvas 2D context and the gate reads `navigator`/`location` directly. Both web clients (`client-react`, `client-solid`) depend on it directly, each supplying its own thin `BootSequence`/`BootGate` shell.
 - `@rtc/ui-contract` is the framework-neutral UI test contract (shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree). It depends on `client-core` + `domain` + `motion-core` (+ `rxjs`) and is framework-free; clients consume it as a **devDependency** for their contract/visual suites -- it never appears in any `src/` import.
 - `@rtc/devtools-core` is an `rxjs`-only leaf, like `ws-effects` -- it decorates by structural shape and must not import any other `@rtc/*` package (dependency-cruiser `devtools-core-stays-pure`). `@rtc/devtools-app` (the inspector SPA) depends only on `devtools-core` + `react`/`react-dom` -- it understands the wire protocol, never `client-core`/`domain` (`devtools-app-protocol-only`). `client-react` has a real runtime edge to `devtools-core` (the composition-root decorators) plus a **dev-only asset edge** to `devtools-app` -- a `devDependency` used only to build-order and locate its `dist/` for the `/devtools/` Vite middleware/copy (see [§20](20-devtools.md)).
 - `@rtc/devtools-extension` (the MV3 Chrome DevTools extension -- a third `Duplex` transport that attaches the inspector to any running app, including the deployed build) is itself a **leaf consumer** of the devtools pair: it may import only `devtools-core` (transport/protocol/store) and `devtools-app` (the `InspectorApp`), never a client/server/domain package (dependency-cruiser `devtools-extension-is-a-leaf`). It is the **only** workspace package that imports `devtools-app` as source (its own Vite build transpiles it); nothing else imports `devtools-app`, and nothing depends on `devtools-extension`.
 - `@rtc/devtools-relay` is a standalone dev-machine WebSocket relay (bridging the browser inspector to the React Native client over `ws://localhost:8790`) that imports **no `@rtc/*` package at all** -- its only runtime dependency is `ws` (dependency-cruiser `devtools-relay-standalone`), making it structurally disconnected from every arrow in this graph. `WsRelayDuplex` (in `devtools-core`) is the RN/cross-machine transport that talks to it over the wire -- a runtime protocol pairing, not a package dependency, so it draws no edge here. `client-react-native` applies the same three composition-root decorators under `__DEV__` only to reach it.
 
-**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` | `devtools-core` | `devtools-relay` → `shared` → `client-core` → `react-bindings` | `solid-bindings` | `ui-contract` | `devtools-app` → `client-react` | `client-react-native` | `client-solid` | `server` | `devtools-extension` (prototype builds independently).
+**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` | `boot-splash` | `devtools-core` | `devtools-relay` → `shared` → `client-core` → `react-bindings` | `solid-bindings` | `ui-contract` | `devtools-app` → `client-react` | `client-react-native` | `client-solid` | `server` | `devtools-extension` (prototype builds independently).
 
-> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `motion-core-stays-pure`, `devtools-core-stays-pure`, `devtools-core-no-node-builtins`, `devtools-app-protocol-only`, `devtools-extension-is-a-leaf`, `devtools-relay-standalone`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `motion-core-stays-pure`, `boot-splash-stays-pure`, `devtools-core-stays-pure`, `devtools-core-no-node-builtins`, `devtools-app-protocol-only`, `devtools-extension-is-a-leaf`, `devtools-relay-standalone`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
 > **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 

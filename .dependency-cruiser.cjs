@@ -116,6 +116,16 @@ module.exports = {
       },
     },
     {
+      name: "boot-splash-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/boot-splash is the framework-free boot/splash feature — it must not import any other @rtc package (it may touch the DOM: canvas engine + navigator/location gate).",
+      from: { path: "^packages/boot-splash/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|react-bindings|solid-bindings|client-react|client-react-native|client-prototype|client-solid|ui-contract|motion-core|server|ws-effects|devtools-core|devtools-app|devtools-relay|devtools-extension)/",
+      },
+    },
+    {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:

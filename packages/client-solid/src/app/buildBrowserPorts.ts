@@ -1,5 +1,6 @@
 import { merge, mergeMap, of, tap } from "rxjs";
 
+import { shouldPlayBootSplash } from "@rtc/boot-splash";
 import {
   type AppPorts,
   createSimulatorPorts,
@@ -24,7 +25,6 @@ import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePrefe
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
-import { shouldPlayBootSplash } from "#/bootSplashGate";
 
 /**
  * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in

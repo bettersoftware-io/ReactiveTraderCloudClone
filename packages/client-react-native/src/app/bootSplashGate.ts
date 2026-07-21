@@ -3,7 +3,7 @@
  *
  * Real users get the splash on every cold start (it is skippable via SKIP).
  * This seam is where a future e2e/Maestro run would suppress it — the web
- * analogue (client-react `bootSplashGate.ts`) reads `navigator.webdriver` and
+ * analogue (`@rtc/boot-splash`) reads `navigator.webdriver` and
  * `?nosplash`; RN has no such signals yet, so it always plays. Kept as a named
  * function so the suppression policy has a single home outside the dumb UI.
  *

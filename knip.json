@@ -41,6 +41,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/boot-splash": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/solid-bindings": {
       "entry": "src/index.ts",
       "project": "src/**/*.{ts,tsx}"

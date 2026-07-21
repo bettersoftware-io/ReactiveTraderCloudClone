@@ -74,12 +74,6 @@ export default defineConfig({
         "src/ui/App.tsx",
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
-        // Canvas draw path: unreachable in jsdom (getContext("2d") returns
-        // null, early-return) — the DOM-assertable chrome is covered by
-        // BootSequence.contract.spec.ts; only the canvas internals are
-        // excluded, mirroring client-react's bootCanvas.ts exclusion.
-        "src/ui/shell/boot/bootCanvas.ts",
-        "src/ui/shell/boot/variants/**",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

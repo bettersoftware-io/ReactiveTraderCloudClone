@@ -1,21 +1,35 @@
 # Boot-splash canvas draws — maintainer's guide
 
-This folder renders the full-screen "boot sequence" splash. Most of it is normal,
-testable React/state code — but `bootCanvas.ts` and everything under `variants/`
-is **not**, and this note exists to keep edits to those files safe.
+This folder holds the `client-react` **shell** for the full-screen "boot
+sequence" splash — `BootGate.tsx` and `BootSequence.tsx` (the React host + the
+rAF loop) plus `BootSequence.test.tsx`. The canvas draw engine itself — the
+part this note is really about — lives one level out, in the framework-free
+`@rtc/boot-splash` package (`packages/boot-splash/src/`): `bootCanvas.ts`
+(shared helpers + the `laser` & `docking` draws), `variants/boot{Core,Hologram,
+Geo,Layers,Jarvis,Topo}.ts` (the six 3D scene draws), `bootSplashGate.ts` (the
+reduced-motion/webdriver gate), and the two `*.module.css` stylesheets. Both
+web clients (`client-react` here, and `client-solid`) import that package and
+supply their own thin shell on top — this file documents the shared engine
+that both shells rely on, wherever it lives.
 
 For *what the animations are and how each effect is drawn*, read the deep dive:
 [`docs/boot-splash-animations.md`](../../../../../../docs/boot-splash-animations.md).
 This file is only about **editing the draw code without breaking it**.
 
-## What's here
+## What's here (and what moved to `@rtc/boot-splash`)
 
-| File | Kind | Tested? |
-|------|------|---------|
-| `BootGate.tsx`, `BootSequence.tsx` | React shell + the rAF loop | yes — `BootSequence.test.tsx` + the UI contract |
-| `BootGate.module.css`, `BootSequence.module.css` | styles | via visual goldens |
-| `bootCanvas.ts` | shared helpers + the `laser` & `docking` draws | **no** |
-| `variants/boot{Core,Hologram,Geo,Layers,Jarvis,Topo}.ts` | the six 3D scene draws | **no** |
+| File | Lives in | Kind | Tested? |
+|------|----------|------|---------|
+| `BootGate.tsx`, `BootSequence.tsx` | here (`client-react`) | React shell + the rAF loop | yes — `BootSequence.test.tsx` + the UI contract |
+| `bootCanvas.ts` | `packages/boot-splash/src/` | shared helpers + the `laser` & `docking` draws | **no** |
+| `variants/boot{Core,Hologram,Geo,Layers,Jarvis,Topo}.ts` | `packages/boot-splash/src/variants/` | the six 3D scene draws | **no** |
+| `bootSplashGate.ts` | `packages/boot-splash/src/` | reduced-motion/webdriver gate | yes — `bootSplashGate.test.ts` |
+| `BootGate.module.css`, `BootSequence.module.css` | `packages/boot-splash/src/styles/` | styles | via visual goldens |
+
+The engine, gate, and CSS are consumed via `@rtc/boot-splash` (source imports)
+and `@rtc/boot-splash/styles/*` (the CSS Modules export) — see that package's
+`src/index.ts` for the full export list. `client-solid` has no README of its
+own for this; this file is the one maintainer's guide for the shared engine.
 
 ## Why the draw code is dangerous to touch
 
@@ -77,7 +91,7 @@ known-good version first**, then edit, then run.
 // boot canvas draws. Proves that no numeric literal and no canvas operation
 // changed — only identifiers. Usage:
 //   node verify-boot-rename.mjs <repoRoot> <relpath> [<relpath> ...]
-// e.g. node verify-boot-rename.mjs . packages/client-react/src/ui/shell/boot/variants/bootCore.ts
+// e.g. node verify-boot-rename.mjs . packages/boot-splash/src/variants/bootCore.ts
 
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -164,8 +178,8 @@ process.exit(anyFail ? 1 : 0);
 # 2. Do your rename / "behaviour-preserving" edit.
 # 3. Fingerprint every file you touched:
 node verify-boot-rename.mjs . \
-  packages/client-react/src/ui/shell/boot/bootCanvas.ts \
-  packages/client-react/src/ui/shell/boot/variants/bootCore.ts
+  packages/boot-splash/src/bootCanvas.ts \
+  packages/boot-splash/src/variants/bootCore.ts
 # Expect PASS on each. A FAIL prints the first differing number or draw call.
 ```
 
@@ -203,8 +217,8 @@ The boot splash is **suppressed** in two accessibility cases:
 1. **`prefers-reduced-motion: reduce`** — the standard OS/browser setting for
    motion-sensitive users and remote desktop / VDI environments (e.g. Citrix,
    which can't composite canvas fast enough). The splash skips canvas draw
-   entirely and the opacity transition disables via `BootSequence.module.css`
-   `@media (prefers-reduced-motion: reduce)` rules.
+   entirely and the opacity transition disables via `@rtc/boot-splash`'s
+   `BootSequence.module.css` `@media (prefers-reduced-motion: reduce)` rules.
 
 2. **`!ctx` — no 2D graphics context** — when `canvas.getContext("2d")` returns
    null (jsdom in tests, Chrome GPU-less). The canvas never starts the rAF loop;
@@ -221,11 +235,12 @@ off). The toggle is wired as a checkbox in the Preferences dialog's **DISPLAY**
 column: "Always play boot animation".
 
 When enabled, reduced-motion's suppression is bypassed: the effective
-reduced-motion state becomes `prefersReduced && !forced` (`BootSequence.tsx`
-line 39, `BootGate.tsx` line 38). The CSS restores the animation via a
+reduced-motion state becomes `prefersReduced && !forced` (in this folder's
+`BootSequence.tsx` and `BootGate.tsx`). The CSS restores the animation via a
 `data-force-anim="true"` attribute on the boot root (`.boot` in
-`BootSequence.module.css`), which the `@media` rule's `:not([data-force-anim="true"])`
-selector carves out — negating the suppression rules only when forced.
+`@rtc/boot-splash`'s `BootSequence.module.css`), which the `@media` rule's
+`:not([data-force-anim="true"])` selector carves out — negating the
+suppression rules only when forced.
 
 The preference takes effect on the **next page reload**, since the splash paints
 during composition before the user can open Preferences. Alternatively, the

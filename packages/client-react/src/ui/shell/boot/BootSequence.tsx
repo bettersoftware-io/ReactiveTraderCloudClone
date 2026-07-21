@@ -1,23 +1,21 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef } from "react";
 
-import type { BootVariant } from "@rtc/domain";
-import { useViewModel } from "@rtc/react-bindings";
-
 import {
   type BootDrawCtx,
   type BootFrameFn,
+  createBootCore,
+  createBootGeo,
+  createBootHologram,
+  createBootJarvis,
+  createBootLayers,
+  createBootTopo,
   drawBootDocking,
   drawBootLaser,
-} from "./bootCanvas";
-import { createBootCore } from "./variants/bootCore";
-import { createBootGeo } from "./variants/bootGeo";
-import { createBootHologram } from "./variants/bootHologram";
-import { createBootJarvis } from "./variants/bootJarvis";
-import { createBootLayers } from "./variants/bootLayers";
-import { createBootTopo } from "./variants/bootTopo";
-
-import styles from "./BootSequence.module.css";
+} from "@rtc/boot-splash";
+import styles from "@rtc/boot-splash/styles/BootSequence.module.css";
+import type { BootVariant } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
   const { useBootSequence, useForceBootAnimation, usePowerSaver } =
