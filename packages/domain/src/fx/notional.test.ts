@@ -39,6 +39,18 @@ describe("parseNotional", () => {
       error: "Invalid input",
     });
   });
+
+  it("rejects a long non-matching digit string without backtracking (ReDoS guard)", () => {
+    // The old `\d+\.?\d*` pattern took ~7.4s on this input (CodeQL
+    // js/polynomial-redos); the linear `\d+(?:\.\d*)?` returns instantly. If a
+    // regression reintroduces the ambiguity this test hangs and trips the
+    // suite's timeout rather than passing slowly.
+    const evil = `${"9".repeat(100_000)}!`;
+    expect(parseNotional(evil)).toEqual({
+      value: null,
+      error: "Invalid input",
+    });
+  });
 });
 
 describe("isRfqRequired", () => {
