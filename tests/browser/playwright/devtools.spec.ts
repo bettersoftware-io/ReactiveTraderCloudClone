@@ -53,9 +53,12 @@ test.describe("DevTools inspector (same-origin)", () => {
     // shows a stream row for the blotter trades stream.
     await devtools.expectStreamRow(ctx, "blotter.trades$");
 
-    // Timeline pin-and-inspect journey: pin an early row, confirm the
-    // inspector freezes at that moment, and Esc resumes the live tail.
-    await devtools.pinFirstTimelineRow(ctx);
+    // Timeline pin-and-inspect journey: pin the newest row (ArrowUp — the
+    // deterministic way to grab a moment out of a live tail; clicking a
+    // specific row's pin button races the ~15 Hz repaint and is covered at
+    // the RTL tier instead), confirm the inspector freezes at that moment,
+    // and Esc resumes the live tail.
+    await devtools.pinLatestTimelineRow(ctx);
     await devtools.expectPinnedBar(ctx);
     await devtools.resumeViaEscape(ctx);
     await devtools.expectNoPinnedBar(ctx);
