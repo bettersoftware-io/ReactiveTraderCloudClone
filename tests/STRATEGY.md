@@ -82,9 +82,11 @@ along **two axes**:
 
 The **presenter** family used to over-cover the same way — `{cucumber-js,
 vitest}` (the **runner**) × `{real, virtual}` (the **time model**), 4 peers —
-until a 2026-07-20 bake-off collapsed it to the single `vitest-fake-timers`
-peer above; see [§5.2](#52-presenter-suites-runner--time) for the verdict
-(its roles column is now the historical record of that comparison).
+until a 2026-07-20 bake-off named `vitest-fake-timers` the single **gating**
+peer above and kept `cucumber-fake-timers` parked as a presenter BDD showcase
+(the twin of the parked `playwright-cucumber` browser peer); the real-timer
+`cucumber` and `vitest-quickpickle-fake-timers` peers were deleted. See
+[§5.2](#52-presenter-suites-runner--time) for the verdict.
 
 This 2×2-per-family shape is exactly what makes the migration story rich: each
 axis is a *different seam*, and a real migration moves along *one* axis at a
@@ -128,7 +130,9 @@ suites. See [§5.1](#51-browser-suites-driver--style) for the verdict.
 
 ### 3.2 Presenter family
 
-The presenter family is now a single suite, `vitest-fake-timers`. What it uses:
+The presenter family is now one **gating** suite, `vitest-fake-timers`, plus one
+**parked BDD showcase**, `cucumber-fake-timers` (off `run-all.ts`, run weekly —
+see §5.2). What the gating suite uses:
 
 | Layer | Path | Notes |
 |---|---|---|
@@ -150,10 +154,20 @@ directly — they called `world.awaitFirstWithin` / `world.waitSeconds`, and
 each peer's **world** supplied the implementation (`RealAwaitHelpers` wall
 clock, `@sinonjs/fake-timers` `clock.tickAsync`, or
 `vi.advanceTimersByTimeAsync`) — **same scenario body, three time engines**,
-which is why the same 20 `@presenter` scenarios ran at ~18.6s (real) and ~1s
+which is why the same `@presenter` scenarios ran at ~18.6s (real) and ~1s
 (virtual) with zero scenario edits. The 2026-07-20 bake-off concluded that
-proof and collapsed the family to the single `vitest-fake-timers` peer that
-won it; see [§5.2](#52-presenter-suites-runner--time) for the verdict.
+proof: `vitest-fake-timers` won the **gating** role (fastest, no Gherkin-loader
+dep), and — mirroring the browser tier's parked `playwright-cucumber` —
+`cucumber-fake-timers` was kept as a **parked presenter BDD showcase**. It won
+that slot over `vitest-quickpickle-fake-timers` because it is the presenter-tier
+twin of `playwright-cucumber` (same `@cucumber/cucumber` runner already retained
+for the browser peer, same structure, same `specs/**/*.feature` corpus) and the
+fastest of the four peers (2.0s CI); quickpickle's single-runner appeal lost to
+that mirroring. The parked peer lives off `run-all.ts`, runs via
+`test:presenter:cucumber-fake-timers`, and is exercised weekly by
+`e2e-gherkin-weekly.yml`. The real-timer `cucumber` peer and
+`vitest-quickpickle-fake-timers` were deleted. See
+[§5.2](#52-presenter-suites-runner--time) for the verdict.
 
 ### 3.3 The one-line summary
 
@@ -288,16 +302,21 @@ the record of the bake-off, not a live "why keep them all" case:**
 | **Gherkin?** | ✅ | ✅ | ✅ | ❌ (hand-written) |
 | **Time** | wall clock | `@sinonjs/fake-timers` | `vi` fake timers | `vi` fake timers |
 | **Speed** | ~18.6s local / ~40.7s CI (reference) | ~1s local / ~2.0s CI | ~1.7s local / ~4.0s CI | ~1s local / ~2.5s CI |
-| **Role** | the **truth** (real timers can't lie about ordering) | 19× speedup proof | runner-portability proof | plain-TS portability proof (no BDD needed) |
+| **Role** | the **truth** (real timers can't lie about ordering) | 19× speedup proof → **now the parked BDD showcase** | runner-portability proof | plain-TS portability proof (no BDD needed) |
 
-**Verdict (2026-07-20 bake-off):** plain `vitest-fake-timers` won — fastest
-measured time (1s local / 2.5s CI) with zero Gherkin-loader dependencies, on
-top of proving the same `_shared`/`_await`/`_buildApp` abstractions the other
-three peers also exercised. `cucumber` (the real-timer ordering oracle,
-~40.7s CI — the one peer that could catch an ordering bug virtual time might
-mask), `cucumber-fake-timers`, and `vitest-quickpickle-fake-timers` (the
-runner-portability proofs) were retired 2026-07-20; their comparison lives on
-in the table above and in [§3.2](#32-presenter-family).
+**Verdict (2026-07-20 bake-off):** plain `vitest-fake-timers` won the **gating**
+role — fastest measured time (1s local / 2.5s CI) with zero Gherkin-loader
+dependencies, on top of proving the same `_shared`/`_await`/`_buildApp`
+abstractions the other three peers also exercised. **`cucumber-fake-timers` was
+kept, parked** as the presenter-tier BDD showcase — the twin of the parked
+`playwright-cucumber` browser peer (same `@cucumber/cucumber` runner, already
+retained for that peer; same `specs/**/*.feature` corpus) and the fastest of the
+four (2.0s CI); it beat `vitest-quickpickle-fake-timers` for that slot because
+mirroring the browser showcase outweighed quickpickle's single-runner appeal.
+`cucumber` (the real-timer ordering oracle, ~40.7s CI) and
+`vitest-quickpickle-fake-timers` were deleted. The parked peer is off
+`run-all.ts` and runs weekly via `e2e-gherkin-weekly.yml`; its comparison lives
+on in the table above and in [§3.2](#32-presenter-family).
 
 ### 5.3 Full-stack smokes
 

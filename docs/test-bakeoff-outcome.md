@@ -42,14 +42,32 @@ Speed did **not** decide it (measured at the full 1282-scenario matrix: playwrig
 
 Suites: **12 → 7 total, 5 on the PR gate.**
 
-### Presenter — 4 peers → 1
+### Presenter — 4 peers → 1 gating winner + 1 parked BDD showcase
 
 | Approach | Verdict |
 |---|---|
-| **`vitest-fake-timers`** (plain vitest, fake timers) | ✅ **Kept** |
-| `cucumber`, `cucumber-fake-timers`, `vitest-quickpickle-fake-timers` | ❌ **Deleted** |
+| **`vitest-fake-timers`** (plain vitest, fake timers) | ✅ **Kept — the gating presenter runner** |
+| **`cucumber-fake-timers`** (Cucumber.js + `@sinonjs/fake-timers`) | ⏸️ **Parked as the presenter BDD showcase** (see below) |
+| `cucumber` (Cucumber.js, real timers) | ❌ **Deleted** — slowest peer (real-time waits, 40.7s CI) |
+| `vitest-quickpickle-fake-timers` (quickpickle: Gherkin-in-Vitest) | ❌ **Deleted** |
 
-Removed with them: the `@sinonjs/fake-timers` and `quickpickle` dependencies, and the `RealAwaitHelpers` real-timer helper.
+The gating winner is the plain `vitest-fake-timers` peer (describe-based, no Gherkin loader). Its `RealAwaitHelpers` real-timer path went with the deleted real-timer `cucumber` peer, and the `quickpickle` dependency went with its peer — so **no presenter test runs under real timers any more** (the parked showcase uses `@sinonjs/fake-timers` too).
+
+#### Presenter BDD showcase — how the survivor was chosen
+
+The initial retirement deleted all three non-winner peers. A later decision kept **one** as a parked BDD showcase — mirroring how `playwright-cucumber` was parked at the browser tier — and the choice between the two fake-timer peers was made on evidence, not taste:
+
+| | `cucumber-fake-timers` ✅ | `vitest-quickpickle-fake-timers` |
+|---|---|---|
+| Runner | **`@cucumber/cucumber`** — same as the parked browser peer | quickpickle (Gherkin-in-Vitest) |
+| Structure | `cucumber.js` + `hooks` + `world` + shared `steps/` — identical shape to `playwright-cucumber` | own `vitest.config` + self-contained `steps/` |
+| Feature corpus | **`specs/**/*.feature`** — the same files `playwright-cucumber` runs | (own step-binding of the corpus) |
+| Dependency to re-add | `@sinonjs/fake-timers` (`@cucumber/cucumber` already kept for the browser peer) | `quickpickle` |
+| Speed (CI) | **2.0s** (fastest of the four peers) | 4.0s |
+
+**Verdict: `cucumber-fake-timers`.** It is the literal presenter-tier twin of `playwright-cucumber` — same Cucumber.js runner, same structure, same `tests/specs/` corpus — so the repo tells one coherent story: *the Gherkin corpus is executed by Cucumber.js at both the browser and presenter layers.* Its runner dependency was already retained for the browser peer, so it adds the least, and it was the fastest of the four. The counter-case for quickpickle (it keeps the presenter tier single-runner, Gherkin inside Vitest) was real but lost to the mirroring argument.
+
+**Parked, not gating:** it is never in `run-all.ts` (so it can't touch the PR gate), is runnable via `pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers`, and is exercised every Monday by `.github/workflows/e2e-gherkin-weekly.yml` so its step tree can't silently rot. It runs all 21 `@presenter` scenarios (incl. `admin/incident`), green.
 
 ### Contract tier — untouched
 

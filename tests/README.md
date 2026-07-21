@@ -18,8 +18,11 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 - `test:<group>:<suite>` ⇒ code lives at `tests/<group>/<suite>/`.
 - Bare `playwright` = the runner's **native** authoring style (the default).
   The `-cucumber` suffix marks the Gherkin-driven variant.
-- The presenter family is a single suite, `vitest-fake-timers` (plain `it()`
-  blocks, no Gherkin loader, `vi.useFakeTimers`) — the winner of a bake-off
+- The presenter family is one **gating** suite, `vitest-fake-timers` (plain
+  `it()` blocks, no Gherkin loader, `vi.useFakeTimers`), plus one **parked BDD
+  showcase**, `cucumber-fake-timers` (Cucumber.js, off the gate, run weekly —
+  the presenter twin of `playwright-cucumber`). `vitest-fake-timers` was the
+  gating winner of a bake-off
   against a real-timer Gherkin oracle and two virtual-time peers (one Gherkin,
   one plain), retired 2026-07-20; see `STRATEGY.md` §5 for the verdict.
 
@@ -36,6 +39,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:browser:playwright:solid` | same config + specs as `test:browser:playwright`, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), ports 3003/3004 | dev server | `browser/playwright-solid/` | gating |
 | `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3003/3004 | dev server | `browser/playwright-cucumber-solid/` | **parked — weekly** |
 | `test:presenter:vitest-fake-timers` | presenter scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` | gating |
+| `test:presenter:cucumber-fake-timers` | the same `@presenter` `.feature` corpus driven by Cucumber.js over the live presenters, virtual time (`@sinonjs/fake-timers`) | none | `presenter/cucumber-fake-timers/` + `presenter/steps/` | **parked — weekly** |
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) | gating |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` | gating |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` | dev tool |
@@ -171,10 +175,13 @@ runner/time-model peers — a real-timer Gherkin oracle (`cucumber`) and three
 virtual-time peers (`cucumber-fake-timers`, `vitest-quickpickle-fake-timers`,
 and the plain `vitest-fake-timers`) — as a second portability proof: could the
 same `scenarios/_shared/*.ts` + `AwaitHelpers`/`PresenterWorld` abstractions
-serve a Gherkin runner and a raw-Vitest runner equally well? All four were
-collapsed to the single `vitest-fake-timers` peer 2026-07-20 once it proved the
-fastest (1s local / 2.5s CI, vs the real-timer oracle's ~41s CI) with zero
-Gherkin-loader dependencies; see `STRATEGY.md` §5 for the full verdict.
+serve a Gherkin runner and a raw-Vitest runner equally well? `vitest-fake-timers`
+won the **gating** role 2026-07-20 once it proved the fastest (1s local / 2.5s CI,
+vs the real-timer oracle's ~41s CI) with zero Gherkin-loader dependencies;
+`cucumber-fake-timers` was kept **parked** as the presenter BDD showcase (the
+twin of `playwright-cucumber` — same runner + `.feature` corpus, fastest of the
+four at 2.0s CI), while `cucumber` (real timers) and `vitest-quickpickle-fake-timers`
+were deleted. See `STRATEGY.md` §5 for the full verdict.
 
 The same 2026-07-20 bake-off's third verdict: native Playwright (not
 `playwright-cucumber`) is the browser stack's gating SOT going forward. Unlike
