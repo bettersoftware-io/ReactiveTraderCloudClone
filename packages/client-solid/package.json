@@ -26,6 +26,7 @@
     "@fontsource/ibm-plex-sans": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/orbitron": "^5.2.8",
+    "@rtc/boot-splash": "workspace:*",
     "@rtc/client-core": "workspace:*",
     "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",

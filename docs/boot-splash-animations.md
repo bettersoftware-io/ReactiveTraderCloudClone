@@ -6,8 +6,10 @@ show next**, and, for each of the eight scenes, **how the graphical effect is
 actually drawn** on a 2D `<canvas>`: the fake 3D, the cursor-tracked camera, the
 self-tracing coastlines, the marching-squares topography, and the rest.
 
-This is the reading companion to the code under
-`packages/client-react/src/ui/shell/boot/`. The canvas draw code was ported
+This is the reading companion to the code under `packages/boot-splash/src/` —
+the shared `@rtc/boot-splash` package, consumed by both web clients
+(`client-react`, `client-solid`), that owns the canvas draw engine, the
+suppression gate, and the boot chrome's CSS. The canvas draw code was ported
 "verbatim" from a design prototype and originally used one- and two-character
 names (`d`, `t`, `k`, `P`, `ac2`, `ga`, …). Those have since been renamed to
 intention-revealing names — this doc uses the **new** names throughout, so you
