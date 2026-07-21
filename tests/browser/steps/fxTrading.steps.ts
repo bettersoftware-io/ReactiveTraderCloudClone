@@ -25,7 +25,10 @@ Then(
 );
 
 Then(
-  /^the trade confirmation matches one of (\/.*\/[gimsuy]?(?:,\s*\/.*\/[gimsuy]?)*)$/,
+  // `[^/]*` (not `.*`) keeps each /…/ token bounded by its delimiters — linear
+  // matching, no catastrophic backtracking (CodeQL js/redos). Regex literals in
+  // the .feature steps never contain an inner `/`, so this preserves behaviour.
+  /^the trade confirmation matches one of (\/[^/]*\/[gimsuy]?(?:,\s*\/[^/]*\/[gimsuy]?)*)$/,
   function expectTradeConfirmationMatchesOneOfRegex(
     this: StepContext,
     raw: string,

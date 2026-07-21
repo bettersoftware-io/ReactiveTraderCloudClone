@@ -46,6 +46,11 @@ env:
   # first-run download prompt so non-interactive CI never stalls.
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
+# Default the token to read-only; the `report` job overrides to `contents: write`
+# for its gh-pages publish. (CodeQL actions/missing-workflow-permissions.)
+permissions:
+  contents: read
+
 jobs:
   # One dedicated runner per client — this is the isolation the ±1px lesson
   # demands (one browser stack per machine), now achieved across runners rather
