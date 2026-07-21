@@ -163,15 +163,13 @@ git commit -m "feat(boot-splash): scaffold empty @rtc/boot-splash package"
 
 **Interfaces:**
 - Consumes: nothing (engine is self-contained; variants import `../bootCanvas` relatively — path is preserved by the identical `src/` + `src/variants/` layout).
-- Produces (exported from `@rtc/boot-splash`):
-  - `const BOOT_DURATION_MS: number`
+- Produces (the package public surface — exactly what the `.tsx` shells import):
   - `interface BootDrawCtx { readonly canvas: HTMLCanvasElement; readonly ctx: CanvasRenderingContext2D; … }`
   - `type BootFrameFn = () => void`
-  - `function hexToRgba(hex: string, alpha: number): string`
-  - `function ease(t: number): number`
   - `function drawBootLaser(scene: BootDrawCtx): void`
   - `function drawBootDocking(scene: BootDrawCtx): void`
   - `function createBootCore(...)`, `createBootGeo(...)`, `createBootHologram(...)`, `createBootJarvis(...)`, `createBootLayers(...)`, `createBootTopo(...)` — each returns a `BootFrameFn`-producing scene builder (signatures preserved verbatim from the source).
+- Internal (stay `export`ed in `bootCanvas.ts` for the variants' relative imports, but **not** re-exported from `index.ts` — the shells never import them, and the variants consume them internally so knip does not flag them): `BOOT_DURATION_MS`, `hexToRgba`, `ease`.
 
 - [ ] **Step 1: Copy the engine files verbatim**
 
@@ -202,13 +200,10 @@ Expected: every `diff` prints nothing and the `IDENTICAL` line — proving no lo
 
 ```ts
 export {
-  BOOT_DURATION_MS,
   type BootDrawCtx,
   type BootFrameFn,
   drawBootDocking,
   drawBootLaser,
-  ease,
-  hexToRgba,
 } from "#/bootCanvas";
 export { createBootCore } from "#/variants/bootCore";
 export { createBootGeo } from "#/variants/bootGeo";
@@ -218,7 +213,7 @@ export { createBootLayers } from "#/variants/bootLayers";
 export { createBootTopo } from "#/variants/bootTopo";
 ```
 
-(Re-exporting the full `bootCanvas` surface — including `BOOT_DURATION_MS`/`hexToRgba`/`ease` used internally by the variants — keeps them reachable from the package entry so knip does not flag them.)
+Export only the surface the `.tsx` shells consume. `BOOT_DURATION_MS`, `hexToRgba`, and `ease` stay `export`ed in `bootCanvas.ts` (the variants import them relatively) but are **not** re-exported here — they are engine internals, and knip still sees them as used via the variants' relative imports.
 
 - [ ] **Step 4: Verify the package builds and typechecks**
 
