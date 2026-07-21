@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Bake-Off Is Over</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ground: #f4f6f9;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --ink: #1a2230;
+    --ink-soft: #4a5567;
+    --ink-faint: #798197;
+    --line: #d9dfe8;
+    --line-soft: #e7ebf1;
+
+    --blue: #2f5fd0;   --blue-bg: #e3eafc;   --blue-line: #b9caf3;
+    --teal: #0f7c82;   --teal-bg: #dcf1f1;   --teal-line: #a9d7d8;
+    --green: #1f8a5b;  --green-bg: #dcf1e6;  --green-line: #a9dcc2;
+    --amber: #b5731a;  --amber-bg: #f8ecd8;  --amber-line: #ecca92;
+    --red: #c0392b;    --red-bg: #f8e1de;    --red-line: #eab5ad;
+
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+    --radius: 12px;
+    --maxw: 980px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1016; --panel: #141a22; --panel-2: #1b222c;
+      --ink: #e8edf4; --ink-soft: #a7b2c2; --ink-faint: #6f7b8d;
+      --line: #262f3b; --line-soft: #1f2731;
+      --blue: #7da2f5; --blue-bg: #172236; --blue-line: #2a3a5a;
+      --teal: #59c2c6; --teal-bg: #10272a; --teal-line: #204b4d;
+      --green: #4bc48b; --green-bg: #10281c; --green-line: #1f4634;
+      --amber: #e0b455; --amber-bg: #2a2312; --amber-line: #4c3f1c;
+      --red: #e88b7d; --red-bg: #2c1613; --red-line: #4d2621;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f6f9; --panel: #ffffff; --panel-2: #eef1f6;
+    --ink: #1a2230; --ink-soft: #4a5567; --ink-faint: #798197;
+    --line: #d9dfe8; --line-soft: #e7ebf1;
+    --blue: #2f5fd0; --blue-bg: #e3eafc; --blue-line: #b9caf3;
+    --teal: #0f7c82; --teal-bg: #dcf1f1; --teal-line: #a9d7d8;
+    --green: #1f8a5b; --green-bg: #dcf1e6; --green-line: #a9dcc2;
+    --amber: #b5731a; --amber-bg: #f8ecd8; --amber-line: #ecca92;
+    --red: #c0392b; --red-bg: #f8e1de; --red-line: #eab5ad;
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1016; --panel: #141a22; --panel-2: #1b222c;
+    --ink: #e8edf4; --ink-soft: #a7b2c2; --ink-faint: #6f7b8d;
+    --line: #262f3b; --line-soft: #1f2731;
+    --blue: #7da2f5; --blue-bg: #172236; --blue-line: #2a3a5a;
+    --teal: #59c2c6; --teal-bg: #10272a; --teal-line: #204b4d;
+    --green: #4bc48b; --green-bg: #10281c; --green-line: #1f4634;
+    --amber: #e0b455; --amber-bg: #2a2312; --amber-line: #4c3f1c;
+    --red: #e88b7d; --red-bg: #2c1613; --red-line: #4d2621;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    font-size: 16px; letter-spacing: .1px;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--panel-2); padding: .1em .35em; border-radius: 5px; }
+
+  .toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 10;
+    font: 500 13px var(--sans); color: var(--ink-soft);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  header { padding: 58px 0 30px; }
+  .eyebrow { font: 600 12.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-size: clamp(30px, 5.5vw, 46px); line-height: 1.08; margin: 14px 0 0; letter-spacing: -.5px; font-weight: 800; }
+  h1 .strike { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: var(--red); }
+  h1 .win { color: var(--green); }
+  .dek { font-size: 18px; color: var(--ink-soft); margin: 18px 0 0; max-width: 62ch; }
+
+  section { padding: 26px 0; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 16px; }
+
+  /* headline stat strip */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow); }
+  .stat .n { font: 800 30px/1 var(--sans); letter-spacing: -1px; }
+  .stat .n.green { color: var(--green); } .stat .n.blue { color: var(--blue); }
+  .stat .l { font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* before→after bars */
+  .bars { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 22px 8px; box-shadow: var(--shadow); }
+  .barrow { display: grid; grid-template-columns: 140px 1fr; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .barrow .cap { font-size: 13.5px; color: var(--ink-soft); text-align: right; }
+  .barrow .cap b { display: block; color: var(--ink); font-size: 14px; }
+  .track { position: relative; height: 30px; }
+  .bar { height: 30px; border-radius: 7px; display: flex; align-items: center; padding: 0 11px; color: #fff; font: 700 13px var(--mono); white-space: nowrap; }
+  .bar.before { background: linear-gradient(90deg, #6c7688, #8a93a3); }
+  .bar.mid    { background: linear-gradient(90deg, var(--amber), #cf9a4a); }
+  .bar.after  { background: linear-gradient(90deg, var(--green), #37a56f); }
+  .barrow.small .bar { height: 24px; font-size: 12px; }
+  .barrow.small .track, .barrow.small .bar { height: 24px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-soft); margin: 4px 2px 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  /* verdict cards */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card .sub { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 12px; }
+  .row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+  .row:first-of-type { border-top: 0; }
+  .tag { flex: none; font: 700 10.5px var(--mono); letter-spacing: .04em; padding: 3px 7px; border-radius: 6px; margin-top: 1px; }
+  .tag.keep { color: var(--green); background: var(--green-bg); border: 1px solid var(--green-line); }
+  .tag.del  { color: var(--red); background: var(--red-bg); border: 1px solid var(--red-line); }
+  .tag.park { color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-line); }
+  .row .what { }
+  .row .what .name { font-family: var(--mono); font-size: 13px; }
+  .row .what .why { color: var(--ink-soft); font-size: 13px; }
+  .row.del .name { text-decoration: line-through; text-decoration-color: var(--red-line); color: var(--ink-faint); }
+
+  /* integrity callout */
+  .note { border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+  .note.good { background: var(--green-bg); border: 1px solid var(--green-line); }
+  .note.warn { background: var(--amber-bg); border: 1px solid var(--amber-line); }
+  .note h3 { margin: 0 0 8px; font-size: 15px; }
+  .note.good h3 { color: var(--green); } .note.warn h3 { color: var(--amber); }
+  .note ul { margin: 8px 0 0; padding-left: 20px; }
+  .note li { margin: 5px 0; font-size: 14px; }
+  .note.good code, .note.warn code { background: rgba(127,127,127,.16); }
+
+  footer { border-top: 1px solid var(--line); margin-top: 24px; }
+  footer .wrap { padding: 24px 22px 46px; color: var(--ink-soft); font-size: 14px; }
+  footer .file { display: flex; justify-content: space-between; gap: 12px; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px; padding: 9px 13px; margin: 6px 0; font-family: var(--mono); font-size: 12.5px; flex-wrap: wrap; }
+  footer .file .role { color: var(--ink-faint); }
+  a { color: var(--blue); text-decoration-color: var(--blue-line); text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+<button class="toggle" id="tg" aria-label="Toggle light or dark theme">Theme</button>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Test-tooling bake-off · concluded 2026-07-20</div>
+    <h1>We shipped every tool to <span class="win">judge</span> them.<br />Then we <span class="strike">kept them all</span> picked one each.</h1>
+    <p class="dek">The repo ran multiple testing tools per category on purpose — to evaluate them on real evidence, then choose a single winner and retire the rest. Here's how it ended: what won, what was cut, and the proof that nothing was lost.</p>
+  </div>
+</header>
+
+<section class="wrap">
+  <h2>The headline</h2>
+  <div class="stats">
+    <div class="stat"><div class="n green">−70%</div><div class="l">visual-diff CI job: <b>~52 → ~15 min</b> per post-merge run</div></div>
+    <div class="stat"><div class="n blue">3 → 1</div><div class="l">visual tiers · <b>4 → 1</b> presenter · Cypress deleted</div></div>
+    <div class="stat"><div class="n">~226 MB</div><div class="l">~5,300 golden PNGs removed from the repo</div></div>
+    <div class="stat"><div class="n green">0</div><div class="l">coverage lost (verified) — and <b>1 gap closed</b></div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The main prize — the visual-diff bottleneck</h2>
+  <div class="bars">
+    <div class="legend">
+      <span><i class="dot" style="background:#8a93a3"></i>before</span>
+      <span><i class="dot" style="background:var(--amber)"></i>after retiring 2 tiers</span>
+      <span><i class="dot" style="background:var(--green)"></i>after parallelizing the survivor</span>
+    </div>
+    <div class="barrow">
+      <div class="cap"><b>Visual diffs</b>post-merge job</div>
+      <div class="track"><div class="bar before" style="width:100%">~52 min — 3 tiers × 2 clients, serial</div></div>
+    </div>
+    <div class="barrow">
+      <div class="cap">retire playwright-ct<br />+ vitest-browser assert</div>
+      <div class="track"><div class="bar mid" style="width:56%">~29 min</div></div>
+    </div>
+    <div class="barrow">
+      <div class="cap">react ∥ solid<br />on a job matrix</div>
+      <div class="track"><div class="bar after" style="width:29%">~15 min</div></div>
+    </div>
+    <div class="barrow small">
+      <div class="cap">Goldens regen<br />workflow</div>
+      <div class="track"><div class="bar after" style="width:34%; background:linear-gradient(90deg,var(--green),#37a56f)">~32 → ~11 min</div></div>
+    </div>
+  </div>
+  <p class="dek" style="font-size:15px">Everything else was rounding error on CI: the <code>checks</code> job went ~10.1 → ~7.9 min, <code>e2e</code> ~8.0 → ~7.8 min. Cypress was already off the gate, and e2e suites run ~10-wide in parallel — so deleting suites there paid off in <em>local</em> time, dependencies, and flakiness, not the bottleneck. <strong>Visual was the whole CI story.</strong></p>
+</section>
+
+<section class="wrap">
+  <h2>Verdicts — pick the winner, retire the rest</h2>
+  <div class="cards">
+
+    <div class="card">
+      <h3>Visual diff <span class="sub">3 tiers → 1</span></h3>
+      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="name">playwright</span> <span class="why">— plain Playwright over a Vite host. Won as the cross-framework portability contract (one spec, both clients), not on speed — it was the slowest of the three.</span></div></div>
+      <div class="row del"><span class="tag del">DELETE</span><div class="what"><span class="name">playwright-ct</span> <span class="why">— its Solid side was never a real CT mount; the adapter trailed core by ~1.5 yr.</span></div></div>
+      <div class="row"><span class="tag park">COVERAGE</span><div class="what"><span class="name">vitest-browser</span> <span class="why">— assert retired, kept coverage-only: renders every scenario for istanbul, pixel assert compiled out.</span></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Browser e2e <span class="sub">Cypress out, Gherkin parked</span></h3>
+      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="name">native Playwright</span> <span class="why">— react + solid; declared the browser source-of-truth.</span></div></div>
+      <div class="row del"><span class="tag del">DELETE</span><div class="what"><span class="name">cypress ×2</span> <span class="why">— forked queue-aware scenario layer was the cost; arm64/Electron hazard.</span></div></div>
+      <div class="row"><span class="tag park">PARK</span><div class="what"><span class="name">playwright-cucumber ×2</span> <span class="why">— off the PR gate, run weekly so the feature tree can't rot.</span></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Presenter <span class="sub">4 peers → 1</span></h3>
+      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="name">vitest-fake-timers</span> <span class="why">— plain vitest, fake timers. Fast and slim.</span></div></div>
+      <div class="row del"><span class="tag del">DELETE</span><div class="what"><span class="name">cucumber</span> · <span class="name">cucumber-fake-timers</span> · <span class="name">vitest-quickpickle-fake-timers</span></div></div>
+      <div class="row"><span class="tag del">DEPS</span><div class="what"><span class="why">Dropped <code>@sinonjs/fake-timers</code>, <code>quickpickle</code>, and the <code>RealAwaitHelpers</code> real-timer helper.</span></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Contract tier <span class="sub">untouched</span></h3>
+      <div class="row"><span class="tag keep">KEEP</span><div class="what"><span class="why">Its four "variants" were never a bake-off — <span class="name">{react,solid} × {plain,coverage}</span> over one 86-file spec corpus. Parity insurance + the ≥95% coverage gates. Left exactly as-is.</span></div></div>
+    </div>
+
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The part worth celebrating — nothing was lost</h2>
+  <div class="note good">
+    <h3>Coverage integrity, verified adversarially (not assumed)</h3>
+    <ul>
+      <li>All <b>48 deleted Cypress <code>it()</code>s map name-for-name</b> to surviving Playwright tests — the two differences both in Playwright's favour.</li>
+      <li>Deleted presenter step files held <b>zero <code>expect</code>/<code>assert</code> calls</b> — drivers, not oracles.</li>
+      <li>The visual matrix stayed at <b>1282 scenarios</b>; the surviving golden tree is <b>byte-identical</b> at 2,659 PNGs.</li>
+      <li><b>A real gap was found and closed:</b> <code>admin/incident</code>'s <code>@presenter</code> scenario had been cucumber-only and invisible to gate 21 — recovered into the surviving peer (<b>21 → 22</b>) and the gate extended to enforce it. The retirement made the suite <em>more</em> correct.</li>
+    </ul>
+  </div>
+  <div style="height:14px"></div>
+  <div class="note warn">
+    <h3>Two reductions accepted on purpose — not regressions</h3>
+    <ul>
+      <li>A Gherkin / step-tree regression is now caught <b>weekly, not per-PR</b> (the parked browser layer).</li>
+      <li><b>No presenter test runs under real timers</b> any more — a bug that only shows up with a real <code>setTimeout</code> has lost its witness.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>This page is a companion — the authoritative record and the full number-by-number trail live in markdown.</p>
+    <div class="file"><span>docs/test-bakeoff-outcome.md</span><span class="role">authoritative doc — read this next</span></div>
+    <div class="file"><span>docs/architecture/09-test-strategy.md</span><span class="role">§9.7 visual verdict · §9.10 the gauntlet</span></div>
+    <p style="margin-top:14px">Read the source: <a href="../test-bakeoff-outcome.md">test-bakeoff-outcome.md</a> · <a href="../architecture/09-test-strategy.md">09-test-strategy.md</a> · <a href="../STATUS.md">STATUS.md</a> (deferred follow-ups). Retirement PRs #294–#304, close-out #305, visual parallelization #311.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("tg");
+    function cur() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = cur() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      btn.textContent = next === "dark" ? "☾ Dark" : "☀ Light";
+    });
+    btn.textContent = cur() === "dark" ? "☾ Dark" : "☀ Light";
+  })();
+</script>
+</body>
+</html>
