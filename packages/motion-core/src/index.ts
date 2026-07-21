@@ -25,6 +25,8 @@ export {
   formatHeapMb,
   fpsTone,
 } from "./frameRate.js";
+export type { Projected3dPoint, Projection3dParams } from "./project3d.js";
+export { project3d } from "./project3d.js";
 export type { CoalesceDecision, RankDirection } from "./rankGlide.js";
 export {
   coalesceOrder,
