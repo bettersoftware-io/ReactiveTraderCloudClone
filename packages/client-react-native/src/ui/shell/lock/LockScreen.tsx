@@ -42,17 +42,20 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * lock/unlock cycle.
  *
  * The ring is both a `GestureDetector` (LongPress) and a `Pressable` (tap
- * fallback) on one hit target, so a completed hold and the Pressable's own
- * tap could both fire for a single real-device interaction — a duplicate
- * `unlock(password)` call (same password, not a security bypass, but
- * undesirable). `submittingRef` guards against a second `submit()` in the
- * same interaction; it re-arms — allowing a fresh submit — only on a real
- * signal that a new attempt is legitimate: a new `state.error` (a failed
- * attempt) or an edited password, NOT on every render (which would defeat
- * the guard). FOLLOW-UP (on-device task): consider `Gesture.Race(LongPress,
- * Tap)` in `useHoldToUnlock`/`HoldToUnlockRing` instead of this app-level
- * guard, once on-device testing can confirm a Race composition doesn't
- * regress the tap-fallback's accessibility/automation behaviour. */
+ * fallback) on one hit target. A completed hold and the Pressable's own tap
+ * could in principle both fire `unlock(password)` for one real-device
+ * interaction — a duplicate call, but with the SAME real password, so not a
+ * security bypass and harmless to authentication. We deliberately do NOT add
+ * an app-level submit guard here: every guard scheme that distinguishes a
+ * one-interaction double-fire from a genuine retry depends on RN
+ * Pressable ↔ gesture-handler touch arbitration, which can't be verified off
+ * a device — a prior guard keyed on `state.error` silently stranded the
+ * ordinary relock-after-success retry (`null` error → `null` error → never
+ * re-armed). FOLLOW-UP (on-device task): confirm on hardware whether the hold
+ * and tap actually double-fire; if they do, switch to a single
+ * `Gesture.Race(LongPress, Tap)` in `useHoldToUnlock`/`HoldToUnlockRing`,
+ * which collapses them in one arbitration layer, rather than reintroducing an
+ * unverifiable app-level guard. */
 export function LockScreen(): JSX.Element | null {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();
@@ -61,36 +64,12 @@ export function LockScreen(): JSX.Element | null {
 
   const [password, setPassword] = useState("");
   const wasLockedRef = useRef(state.locked);
-  const submittingRef = useRef(false);
-  const lastErrorRef = useRef(state.error);
 
   function submit(): void {
-    if (submittingRef.current) {
-      return;
-    }
-
-    submittingRef.current = true;
     unlock(password);
   }
 
-  function handlePasswordChange(next: string): void {
-    submittingRef.current = false;
-    setPassword(next);
-  }
-
   const { gesture, progress } = useHoldToUnlock({ onComplete: submit });
-
-  useEffect(() => {
-    // Re-arm the submit guard when a fresh auth error surfaces (a failed
-    // attempt), so the operator can hold again and retry. Compare against the
-    // last error via a ref — the wasLockedRef idiom below — rather than a bare
-    // change-trigger dep, which reads state.error and keeps the exhaustive-deps
-    // lint satisfied.
-    if (state.error !== lastErrorRef.current) {
-      lastErrorRef.current = state.error;
-      submittingRef.current = false;
-    }
-  }, [state.error]);
 
   useEffect(() => {
     if (wasLockedRef.current && !state.locked) {
@@ -161,7 +140,7 @@ export function LockScreen(): JSX.Element | null {
           <TextInput
             testID="lock-password"
             value={password}
-            onChangeText={handlePasswordChange}
+            onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
