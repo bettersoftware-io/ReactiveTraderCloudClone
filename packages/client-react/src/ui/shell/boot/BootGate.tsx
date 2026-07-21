@@ -1,10 +1,9 @@
 import type { ReactElement, ReactNode, TransitionEvent } from "react";
 
+import styles from "@rtc/boot-splash/styles/BootGate.module.css";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { BootSequence } from "./BootSequence";
-
-import styles from "./BootGate.module.css";
 
 /**
  * Mounts the app immediately (so its streams warm during boot) and overlays the
