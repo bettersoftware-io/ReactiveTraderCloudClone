@@ -27,7 +27,10 @@ import { clamp01 } from "#/ui/shell/boot/scenes/coreGeometry";
  *     needing that point computed separately, so the head has no direct
  *     declarative counterpart here;
  *   - the background HUD grid + translucent wash the web variant paints
- *     first (`ctx.fillRect` + 44px grid lines).
+ *     first (`ctx.fillRect` + 44px grid lines);
+ *   - the per-panel border-stroke glow (`ctx.shadowBlur`/`shadowColor` on the
+ *     same trace stroke this scene does port) — the outline is drawn, the
+ *     neon bloom around it is not.
  */
 
 /** A single traced-in UI panel: normalised screen-space rectangle
