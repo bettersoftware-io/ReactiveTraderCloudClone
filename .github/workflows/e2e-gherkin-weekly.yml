@@ -17,6 +17,11 @@ on:
 env:
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
+# Minimal token: both jobs only checkout, build, run tests, and upload artifacts
+# — none write to the repo. (CodeQL actions/missing-workflow-permissions.)
+permissions:
+  contents: read
+
 jobs:
   gherkin:
     name: playwright-cucumber (react + solid)

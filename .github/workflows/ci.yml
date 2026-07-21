@@ -36,6 +36,11 @@ env:
   # first-run download prompt so non-interactive CI never stalls.
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
 
+# Minimal token: the checks and e2e jobs only read the repo (test + lint) — no
+# job pushes, comments, or publishes. (CodeQL actions/missing-workflow-permissions.)
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: typecheck · test · build · gates
