@@ -20,7 +20,13 @@ export function parseNotional(input: string): NotionalParseResult {
     return { value: null, error: null };
   }
 
-  const match = trimmed.match(/^(\d+\.?\d*)\s*([kKmM]?)$/);
+  // `\d+(?:\.\d*)?` — NOT `\d+\.?\d*`. The latter lets `\d+` and `\d*` both
+  // consume digits with an optional `.` between, so a long non-matching digit
+  // string (e.g. "9…9!") forces the engine to re-partition the digits many
+  // ways → polynomial backtracking (CodeQL js/polynomial-redos; measured ~7.4s
+  // on a 50k-digit input). Gating the second digit run behind a literal `.`
+  // removes the ambiguity while matching exactly the same strings.
+  const match = trimmed.match(/^(\d+(?:\.\d*)?)\s*([kKmM]?)$/);
 
   if (!match) {
     return { value: null, error: "Invalid input" };
