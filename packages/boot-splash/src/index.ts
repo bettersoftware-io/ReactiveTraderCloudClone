@@ -10,3 +10,4 @@ export { createBootHologram } from "#/variants/bootHologram";
 export { createBootJarvis } from "#/variants/bootJarvis";
 export { createBootLayers } from "#/variants/bootLayers";
 export { createBootTopo } from "#/variants/bootTopo";
+export { shouldPlayBootSplash } from "#/bootSplashGate";
