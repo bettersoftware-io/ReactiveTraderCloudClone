@@ -39,7 +39,20 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * `expo-haptics` success notification exactly once when `state.locked`
  * newly transitions true→false — the `ExecutionCeremony` once-guard idiom,
  * a ref updated unconditionally every effect run so it re-arms for a later
- * lock/unlock cycle. */
+ * lock/unlock cycle.
+ *
+ * The ring is both a `GestureDetector` (LongPress) and a `Pressable` (tap
+ * fallback) on one hit target, so a completed hold and the Pressable's own
+ * tap could both fire for a single real-device interaction — a duplicate
+ * `unlock(password)` call (same password, not a security bypass, but
+ * undesirable). `submittingRef` guards against a second `submit()` in the
+ * same interaction; it re-arms — allowing a fresh submit — only on a real
+ * signal that a new attempt is legitimate: a new `state.error` (a failed
+ * attempt) or an edited password, NOT on every render (which would defeat
+ * the guard). FOLLOW-UP (on-device task): consider `Gesture.Race(LongPress,
+ * Tap)` in `useHoldToUnlock`/`HoldToUnlockRing` instead of this app-level
+ * guard, once on-device testing can confirm a Race composition doesn't
+ * regress the tap-fallback's accessibility/automation behaviour. */
 export function LockScreen(): JSX.Element | null {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();
@@ -48,12 +61,36 @@ export function LockScreen(): JSX.Element | null {
 
   const [password, setPassword] = useState("");
   const wasLockedRef = useRef(state.locked);
+  const submittingRef = useRef(false);
+  const lastErrorRef = useRef(state.error);
 
   function submit(): void {
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
     unlock(password);
   }
 
+  function handlePasswordChange(next: string): void {
+    submittingRef.current = false;
+    setPassword(next);
+  }
+
   const { gesture, progress } = useHoldToUnlock({ onComplete: submit });
+
+  useEffect(() => {
+    // Re-arm the submit guard when a fresh auth error surfaces (a failed
+    // attempt), so the operator can hold again and retry. Compare against the
+    // last error via a ref — the wasLockedRef idiom below — rather than a bare
+    // change-trigger dep, which reads state.error and keeps the exhaustive-deps
+    // lint satisfied.
+    if (state.error !== lastErrorRef.current) {
+      lastErrorRef.current = state.error;
+      submittingRef.current = false;
+    }
+  }, [state.error]);
 
   useEffect(() => {
     if (wasLockedRef.current && !state.locked) {
@@ -124,7 +161,7 @@ export function LockScreen(): JSX.Element | null {
           <TextInput
             testID="lock-password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}

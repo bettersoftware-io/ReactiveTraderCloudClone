@@ -112,6 +112,52 @@ test("fires the success haptic exactly once on unlock, and re-arms for a later l
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(2);
 });
 
+test("submit guard: two presses in one interaction call unlock only once", async () => {
+  // The ring is both a GestureDetector and a Pressable on one hit target, so a
+  // real interaction can fire both submit paths. The guard collapses them: a
+  // second submit with no intervening edit or error is ignored.
+  const unlock = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(true, unlock)}>
+      <LockScreen />
+    </ViewModelProvider>,
+  );
+  await fireEvent.changeText(screen.getByTestId("lock-password"), "pw");
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  expect(unlock).toHaveBeenCalledTimes(1);
+});
+
+test("submit guard re-arms after the password is edited", async () => {
+  const unlock = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(true, unlock)}>
+      <LockScreen />
+    </ViewModelProvider>,
+  );
+  await fireEvent.changeText(screen.getByTestId("lock-password"), "wrong");
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  await fireEvent.changeText(screen.getByTestId("lock-password"), "right");
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  expect(unlock).toHaveBeenCalledTimes(2);
+  expect(unlock).toHaveBeenNthCalledWith(1, "wrong");
+  expect(unlock).toHaveBeenNthCalledWith(2, "right");
+});
+
+test("submit guard re-arms on a new auth error, allowing a retry", async () => {
+  // A wrong password surfaces an error and stays locked; the guard must re-arm
+  // so the operator can hold again — without editing — and retry.
+  const unlock = jest.fn();
+  const { rerender } = await render(errorTree(unlock, null));
+  await fireEvent.changeText(screen.getByTestId("lock-password"), "again");
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  expect(unlock).toHaveBeenCalledTimes(1);
+
+  await rerender(errorTree(unlock, "Invalid credentials"));
+  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  expect(unlock).toHaveBeenCalledTimes(2);
+});
+
 // `rerender` replaces the whole tree (it does not reapply `renderWithTheme`'s
 // initial wrapper), so every rerender in the haptic test above needs the
 // same `ThemeContext.Provider` + `ViewModelProvider` nesting spelled out
@@ -123,6 +169,21 @@ function lockedTree(
   return (
     <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
       <ViewModelProvider viewModel={fakeViewModel(locked, unlock)}>
+        <LockScreen />
+      </ViewModelProvider>
+    </ThemeContext.Provider>
+  );
+}
+
+// Same nesting as `lockedTree`, but locked with a threadable auth error so the
+// error-driven re-arm path can be exercised across a rerender.
+function errorTree(
+  unlock: (password: string) => void,
+  error: string | null,
+): JSX.Element {
+  return (
+    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+      <ViewModelProvider viewModel={fakeViewModel(true, unlock, error)}>
         <LockScreen />
       </ViewModelProvider>
     </ThemeContext.Provider>
