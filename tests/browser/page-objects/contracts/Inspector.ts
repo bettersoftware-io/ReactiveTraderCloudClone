@@ -29,11 +29,16 @@ export interface InspectorPO {
   openMachinesLens(timeoutMs: number): Promise<void>;
   /** Wait until a machine row whose text contains `kind` is visible. */
   waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void>;
-  /** Click the pin button on the FIRST timeline row, freezing the inspector's
-   *  selection at that moment (the tail keeps accumulating below, dimmed).
-   *  The timeline auto-scrolls to the tail while following, so the row may
-   *  need scrolling back into view before it is actionable. */
-  pinFirstTimelineRow(timeoutMs: number): Promise<void>;
+  /** Pin the inspector at the newest timeline row via the ArrowUp shortcut
+   *  (from follow mode, one ArrowUp pins the tail row), freezing the
+   *  inspector's selection at that moment. Keyboard on purpose: while
+   *  following a live stream the rows repaint at ~15 Hz and slide through the
+   *  500-row render window, so clicking any specific row's pin button is a
+   *  race against detach/auto-scroll that flakes on slow CI runners — the
+   *  shortcut pins atomically in state. The mouse pin-click path is covered
+   *  at the RTL tier (TimelinePane.test.tsx). `timeoutMs` bounds the wait for
+   *  a first timeline row to exist before the key is pressed. */
+  pinLatestTimelineRow(timeoutMs: number): Promise<void>;
   /** Wait until the pinned-moment bar is visible (a pin is active). */
   waitPinnedBar(timeoutMs: number): Promise<void>;
   /** Wait until the pinned-moment bar is gone (back to following live). */

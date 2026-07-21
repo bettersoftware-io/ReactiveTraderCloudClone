@@ -66,10 +66,13 @@ export async function expectMachineOfKind(
   await inspector(ctx).waitMachineRowOfKind(kind, 10_000);
 }
 
-/** Pin the inspector at the FIRST timeline row's moment (clicking its pin
- *  button), freezing the context pane on that event's Event/State/Diff. */
-export async function pinFirstTimelineRow(ctx: TestContext): Promise<void> {
-  await inspector(ctx).pinFirstTimelineRow(10_000);
+/** Pin the inspector at the NEWEST timeline row's moment (ArrowUp from follow
+ *  mode), freezing the context pane on that event's Event/State/Diff. Driven
+ *  by keyboard, not a row click: under a live stream the rows are a moving
+ *  click target (see the Inspector PO contract), while the shortcut pins
+ *  atomically. */
+export async function pinLatestTimelineRow(ctx: TestContext): Promise<void> {
+  await inspector(ctx).pinLatestTimelineRow(10_000);
 }
 
 /** Assert the pinned-moment bar is visible within 10s (a pin is active). */
