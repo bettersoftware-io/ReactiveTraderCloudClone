@@ -1,11 +1,14 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import { renderHook } from "@testing-library/react-native";
+import type { SharedValue } from "react-native-reanimated";
 import * as Reanimated from "react-native-reanimated";
 
-import type { UseHoldToUnlockOptions } from "#/ui/shell/lock/useHoldToUnlock";
-
-const { useHoldToUnlock, HOLD_MS, DECAY_MS } =
-  require("./useHoldToUnlock") as typeof import("./useHoldToUnlock");
+import {
+  DECAY_MS,
+  HOLD_MS,
+  type UseHoldToUnlockOptions,
+  useHoldToUnlock,
+} from "#/ui/shell/lock/useHoldToUnlock";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -153,7 +156,7 @@ function latestMotionEnabledSharedValue(
   const index = spy.mock.calls.findLastIndex((args) => {
     return typeof args[0] === "boolean";
   });
-  const shared = spy.mock.results[index]?.value as { value: boolean };
+  const shared = spy.mock.results[index]?.value as SharedValue<boolean>;
 
   return shared.value;
 }

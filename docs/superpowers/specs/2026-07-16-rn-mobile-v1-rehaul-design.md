@@ -169,8 +169,11 @@ on a proven motion stack.
 **Deliverable:** the cinematic boot rotation and the lock screen.
 - Skia `<BootSequence>` on the shared `motion-core` 3D kernel (yaw/pitch + perspective
   divide, extracted once). Port **CORE SYNC + UI DRAW-IN first** (prove rotation, SKIP,
-  persistence via AsyncStorage `rtm_bootSeq`, fade-out handoff, perf), then the remaining six
-  scenes (DOCKING CAM, HOLO PROJECTOR, GEO TACTICAL, LAYER COMPOSITOR, SCHEMATIC CORE, VOL
+  persistence via AsyncStorage `rt-boot-variant` — reusing the same
+  `BOOT_VARIANT_STORAGE_KEY` constant the web client's `LocalStoragePreferencesAdapter`
+  already defines, not the design prototype's original `rtm_bootSeq`/`rt_bootSeq`
+  — fade-out handoff, perf), then the remaining six scenes (DOCKING CAM, HOLO PROJECTOR,
+  GEO TACTICAL, LAYER COMPOSITOR, SCHEMATIC CORE, VOL
   TERRAIN) incrementally.
 - **Lock screen:** hold-to-unlock progress ring with decay (`Gesture.LongPress` → shared
   value → SVG/Skia `strokeDashoffset`) + `expo-haptics` on unlock.

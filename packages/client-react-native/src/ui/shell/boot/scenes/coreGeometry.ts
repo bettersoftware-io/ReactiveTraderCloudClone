@@ -32,8 +32,10 @@ export function ease(t: number): number {
 
 /** Deterministic pseudo-random in [0,1) from an integer seed — verbatim
  * sine-hash from the web variant, used to seed each hub's ping-ripple phase
- * offset so it's stable across renders (not `Math.random`). */
-export function hashRandom(seed: number): number {
+ * offset so it's stable across renders (not `Math.random`). Not exported: only
+ * consumed internally (`CORE_HUBS`'s ping-phase seeding below), unlike the
+ * other pure helpers above, which `coreGeometry.test.ts` exercises directly. */
+function hashRandom(seed: number): number {
   "worklet";
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
@@ -68,16 +70,20 @@ export function segmentAlpha(z: number): number {
 
 // --- projection -------------------------------------------------------
 
-export const GLOBE_YAW_RATE = 0.42;
-export const GLOBE_YAW_OFFSET = 0.6;
-export const GLOBE_TILT = 0.38;
+// `GLOBE_YAW_RATE`/`GLOBE_YAW_OFFSET`/`GLOBE_TILT`/`DRIFT_YAW_INFLUENCE`/
+// `DRIFT_PITCH_INFLUENCE` are consumed only by `globeYaw`/`globePitch` below,
+// which `coreGeometry.test.ts` tests directly — so, unlike `GLOBE_PERSPECTIVE_K`
+// (read straight by `CoreScene.tsx`), they stay file-private.
+const GLOBE_YAW_RATE = 0.42;
+const GLOBE_YAW_OFFSET = 0.6;
+const GLOBE_TILT = 0.38;
 export const GLOBE_PERSPECTIVE_K = 0.28;
 
 /** Cap on how far the gyro-drift pointer seam may steer yaw/pitch — an RN
  * addition (the web globe is fixed-tilt, no cursor). Kept small so it reads
  * as parallax, not steering. */
-export const DRIFT_YAW_INFLUENCE = 0.12;
-export const DRIFT_PITCH_INFLUENCE = 0.12;
+const DRIFT_YAW_INFLUENCE = 0.12;
+const DRIFT_PITCH_INFLUENCE = 0.12;
 
 export function globeYaw(elapsedSec: number, driftMx: number): number {
   "worklet";
