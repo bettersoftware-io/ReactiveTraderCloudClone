@@ -180,14 +180,22 @@ export function meridianRevealPhase(
  * first sample past that cutoff, matching the web loop's `break`. */
 export function meridianLatitudes(
   phase: number,
-  segments: number = MERIDIAN_LAT_SEGMENTS,
+  segments?: number,
 ): readonly number[] {
   "worklet";
+  // Resolve the default INSIDE the worklet body, never as a default-parameter
+  // expression. Reanimated's worklet plugin captures a module constant
+  // referenced in a worklet's *body* into its closure, but silently drops one
+  // referenced only in a default-parameter position — on the UI thread that
+  // surfaces as "Property 'MERIDIAN_LAT_SEGMENTS' doesn't exist". jest runs
+  // worklets as plain JS with full module scope, so it never catches this; the
+  // simulator is the only witness. `??` (not `||`) so an explicit `0` is kept.
+  const segmentCount = segments ?? MERIDIAN_LAT_SEGMENTS;
   const maxLat = -Math.PI / 2 + Math.PI * phase;
   const lats: number[] = [];
 
-  for (let i = 0; i <= segments; i++) {
-    const lat = -Math.PI / 2 + (Math.PI * i) / segments;
+  for (let i = 0; i <= segmentCount; i++) {
+    const lat = -Math.PI / 2 + (Math.PI * i) / segmentCount;
 
     if (lat > maxLat) {
       break;
@@ -222,14 +230,18 @@ export function parallelRevealPhase(
  * partial-loop cutoff). */
 export function parallelLongitudes(
   phase: number,
-  segments: number = PARALLEL_LON_SEGMENTS,
+  segments?: number,
 ): readonly number[] {
   "worklet";
-  const count = Math.floor(segments * phase);
+  // Same worklet closure-capture rule as `meridianLatitudes` above: resolve the
+  // module default in the body, not in a default-parameter position, or the UI
+  // thread throws "Property 'PARALLEL_LON_SEGMENTS' doesn't exist".
+  const segmentCount = segments ?? PARALLEL_LON_SEGMENTS;
+  const count = Math.floor(segmentCount * phase);
   const lons: number[] = [];
 
   for (let i = 0; i <= count; i++) {
-    lons.push((i / segments) * Math.PI * 2);
+    lons.push((i / segmentCount) * Math.PI * 2);
   }
 
   return lons;

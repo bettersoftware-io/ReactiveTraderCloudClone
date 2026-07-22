@@ -7,6 +7,7 @@ import { useSharedValue } from "react-native-reanimated";
 import type { BootSceneComponent } from "#/ui/shell/boot/bootScene";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
+import { useTheme } from "#/ui/theme/useTheme";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -23,6 +24,9 @@ import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
  */
 export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
   const { width, height } = useWindowDimensions();
+  // Read outside the <Canvas> below and pass in as a prop: Skia's canvas is a
+  // separate reconciler React Context can't cross (see BootSceneProps.theme).
+  const theme = useTheme();
   const elapsedSec = useSharedValue(BOOT_SCENE_ELAPSED_SEC);
   // `false`: never subscribes to the device gyroscope regardless (see
   // `useGyroDrift`), so `drift` stays centred for the whole capture — the
@@ -40,6 +44,7 @@ export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
         drift={drift}
         width={width}
         height={height}
+        theme={theme}
       />
     </Canvas>
   );

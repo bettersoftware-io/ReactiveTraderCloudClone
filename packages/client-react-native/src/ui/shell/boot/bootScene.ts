@@ -6,6 +6,7 @@ import type { BootVariant } from "@rtc/domain";
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import type { RnTheme } from "#/ui/theme/tokens";
 
 /**
  * The props every boot scene receives. A types-and-registry module (no
@@ -23,6 +24,15 @@ export interface BootSceneProps {
   readonly drift: SharedValue<GyroDrift>;
   readonly width: number;
   readonly height: number;
+  /**
+   * Resolved theme, passed as a PROP rather than read via `useTheme()` inside
+   * the scene. Scenes render inside Skia's `<Canvas>`, which is a separate
+   * reconciler that React Context does NOT cross — a `useTheme()` call in a
+   * scene body throws "must be used within a ThemeProvider" on a real device
+   * (invisible under jest, whose mocked Canvas is a plain context-passing
+   * View). `BootCanvas` reads the theme outside the Canvas and threads it in.
+   */
+  readonly theme: RnTheme;
 }
 
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;

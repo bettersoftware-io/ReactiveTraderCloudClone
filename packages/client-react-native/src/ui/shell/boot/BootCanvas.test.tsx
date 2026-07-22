@@ -1,26 +1,31 @@
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
+
+import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 const mockUseBootMotionEnabled = jest.fn<() => boolean>();
 const { BootCanvas } = require("./BootCanvas") as typeof import("./BootCanvas");
 
+// BootCanvas reads the theme (to thread into the scene, since Skia's Canvas is
+// a separate reconciler React Context can't cross) — so every render needs a
+// ThemeProvider, via renderWithTheme.
 test("renders nothing when boot motion is disabled, even for a covered variant", async () => {
   mockUseBootMotionEnabled.mockReturnValue(false);
-  await render(<BootCanvas variant="core" />);
+  await renderWithTheme(<BootCanvas variant="core" />);
   expect(screen.queryByTestId("boot-canvas")).toBeNull();
   expect(screen.queryByTestId("boot-scene-core")).toBeNull();
 });
 
 test("renders nothing for an unported variant, even when motion is enabled", async () => {
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await render(<BootCanvas variant="topo" />);
+  await renderWithTheme(<BootCanvas variant="topo" />);
   expect(screen.queryByTestId("boot-canvas")).toBeNull();
   expect(screen.queryByTestId("boot-scene-core")).toBeNull();
 });
 
 test("renders the canvas and scene for a covered variant when motion is enabled", async () => {
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await render(<BootCanvas variant="core" />);
+  await renderWithTheme(<BootCanvas variant="core" />);
   expect(await screen.findByTestId("boot-canvas")).toBeTruthy();
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });

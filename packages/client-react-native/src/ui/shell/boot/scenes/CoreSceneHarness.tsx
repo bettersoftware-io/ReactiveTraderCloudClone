@@ -28,7 +28,13 @@ export function CoreSceneHarness({
   const drift = useSharedValue({ mx, my });
   return (
     <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <CoreScene elapsedSec={elapsed} drift={drift} width={390} height={844} />
+      <CoreScene
+        elapsedSec={elapsed}
+        drift={drift}
+        width={390}
+        height={844}
+        theme={rnThemeTokens.holo.dark}
+      />
     </ThemeContext.Provider>
   );
 }

@@ -124,6 +124,10 @@ jest.mock("@shopify/react-native-skia", () => {
       },
       Font: () => {
         return {
+          // CoreScene builds the banner font as `Skia.Font()` + `setSize(12)`
+          // (real iOS Skia throws on `Skia.Font(undefined, 12)`); the mock font
+          // must carry `setSize` or the imperative recorder throws under jest.
+          setSize: () => {},
           getTextWidth: () => {
             return 0;
           },
