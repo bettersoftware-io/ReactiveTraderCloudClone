@@ -77,6 +77,14 @@ graph TB
     tests --> server
     tests --> domain
 
+    %% Invisible rank constraints -- stack the lanes vertically:
+    %% core → Server side → Inner circles → DevTools (horizontal space is scarce, vertical scroll is free)
+    core ~~~ server
+    core ~~~ wse
+    shared ~~~ dtcore
+    domain ~~~ dtext
+    domain ~~~ dtrelay
+
     style domain fill:#4CAF50,color:#fff
     style shared fill:#2196F3,color:#fff
     style core fill:#00897B,color:#fff
