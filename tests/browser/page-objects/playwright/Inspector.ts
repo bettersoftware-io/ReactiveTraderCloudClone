@@ -61,19 +61,16 @@ export class PlaywrightInspector implements InspectorPO {
     ).toBeVisible({ timeout: timeoutMs });
   }
 
-  async pinFirstTimelineRow(timeoutMs: number): Promise<void> {
-    // Rows are divs, not buttons — the pin target is the first button inside
-    // the first row (its other buttons filter by source / radius, not pin).
-    const pinButton = this.page()
+  async pinLatestTimelineRow(timeoutMs: number): Promise<void> {
+    // ArrowUp from follow mode pins the tail row atomically in state — no
+    // element to click, so nothing to race the ~15 Hz repaint/auto-scroll.
+    // Guard: the shortcut is a no-op on an empty timeline, so first wait for
+    // a row to exist (attachment only — no stability/viewport requirement).
+    await this.page()
       .getByTestId(TESTIDS.devtools.timelineRow)
       .first()
-      .locator("button")
-      .first();
-
-    // The timeline auto-scrolls to the tail while following, so the first
-    // row can start out scrolled out of view — bring it back before clicking.
-    await pinButton.scrollIntoViewIfNeeded({ timeout: timeoutMs });
-    await pinButton.click({ timeout: timeoutMs });
+      .waitFor({ state: "attached", timeout: timeoutMs });
+    await this.page().keyboard.press("ArrowUp");
   }
 
   async waitPinnedBar(timeoutMs: number): Promise<void> {

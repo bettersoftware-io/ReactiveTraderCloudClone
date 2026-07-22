@@ -130,6 +130,10 @@ suites. See [§5.1](#51-browser-suites-driver--style) for the verdict.
 
 ### 3.2 Presenter family
 
+> The `.feature` files these peers run are the shared `tests/specs/` corpus,
+> tag-routed to both the browser and presenter layers — see
+> [`GHERKIN.md`](./GHERKIN.md) for the diagram and the tag-routing rules.
+
 The presenter family is now one **gating** suite, `vitest-fake-timers`, plus one
 **parked BDD showcase**, `cucumber-fake-timers` (off `run-all.ts`, run weekly —
 see §5.2). What the gating suite uses:
@@ -183,7 +187,7 @@ that mirroring. The parked peer lives off `run-all.ts`, runs via
 ```mermaid
 flowchart TB
     subgraph SPEC["specs/ — Gherkin behaviour (the WHAT)"]
-        FEAT["8 × *.feature<br/>plain Given/When/Then"]
+        FEAT["9 × *.feature<br/>plain Given/When/Then"]
     end
 
     subgraph BSHARED["browser/ — shared, driver-free (the HOW, once)"]
@@ -197,6 +201,7 @@ flowchart TB
         BUILD["scenarios/_buildApp.ts<br/>createApp(simulatorPorts)"]
         PSCEN["scenarios/_shared/ — ~33 fns"]
         AWAIT["_await.ts<br/>AwaitHelpers (time seam)"]
+        PSTEPS["steps/ — Gherkin → scenario"]
     end
 
     subgraph DRV["page-object IMPLS — per driver (swap point B)"]
@@ -210,8 +215,9 @@ flowchart TB
         B4["playwright-cucumber :solid"]
     end
 
-    subgraph PRES["PRESENTER suite (no DOM, simulators)"]
+    subgraph PRES["PRESENTER suites (no DOM, simulators)"]
         P1["vitest-fake-timers (plain)"]
+        P2["cucumber-fake-timers"]
     end
 
     subgraph FS["FULL-STACK smokes (REAL server)"]
@@ -239,6 +245,9 @@ flowchart TB
     BUILD --> PSCEN
     AWAIT --> PSCEN
     PSCEN --> P1
+    FEAT --> PSTEPS
+    PSCEN --> PSTEPS
+    PSTEPS --> P2
 
     CONTRACTS -. "data-testid + strings<br/>(swap point A: UI lib)" .-> BROWSER
     CONTRACTS -.-> F2

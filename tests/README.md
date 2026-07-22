@@ -2,6 +2,10 @@
 
 Browser e2e, presenter integration, and full-stack smoke suites. Unit tests and
 visual tests live inside each package (see `packages/client-react/README.md`).
+
+> **New here / confused by the tiny step folders?** The `.feature` files are a
+> single shared corpus in `tests/specs/`, tag-routed to both the browser and
+> presenter layers — read [`GHERKIN.md`](./GHERKIN.md) first (it has the diagram).
 The **visual** (pixel-golden) tier has its own home under `client-react`:
 [layout & rationale](../packages/client-react/tests/ui/visual/README.md) and a
 [golden-update runbook](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
