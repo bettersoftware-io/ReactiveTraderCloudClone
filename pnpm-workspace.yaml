@@ -91,13 +91,9 @@ overrides:
   # Printer._parameters, thrown from makeWorkletFactory on reanimated's
   # Easing.ts / isSharedValue.ts. This is the SAME error signature as the version
   # mismatch in (1) but a DIFFERENT cause (generator/traverse, not the worklets
-  # runtime). It regressed 2026-07-19 when a reinstall re-hoisted generator@8 into
-  # the worklets path; it also reproduces on arm64-local, not just x86 CI. Pin BOTH
-  # to the 7.29.7 that matches @babel/core@7.29.7 so the plugin's whole Babel
-  # toolchain is uniformly 7 (proven: redirecting these two to 7.29.7 transforms
-  # Easing.ts clean). Scoped to the worklets subtree only — web keeps @babel/*@8.
-  "react-native-worklets>@babel/generator": 7.29.7
-  "react-native-worklets>@babel/traverse": 7.29.7
+  # runtime). The pin now lives in packageExtensions below, NOT as a
+  # `react-native-worklets>@babel/generator` override — see that block for why
+  # the override form is a silent no-op here.
 
 # Force @babel/core@7 for the RN Metro babel toolchain. The main Metro transform
 # runs through @expo/metro-config's babel-transformer, whose `require("@babel/core")`
@@ -116,3 +112,24 @@ packageExtensions:
   "@expo/metro-config":
     dependencies:
       "@babel/core": "7.29.7"
+  # Pin @babel/generator + @babel/traverse to 7.29.7 INSIDE the worklets subtree.
+  # react-native-worklets' babel plugin (plugin/index.js:869/1006/1499/1500)
+  # `require("@babel/generator")`/`require("@babel/traverse")` DIRECTLY, but the
+  # package declares NEITHER as a dependency (only `@babel/core: *`). So a pnpm
+  # `react-native-worklets>@babel/generator` OVERRIDE has no dependency edge to
+  # bind to and is a SILENT NO-OP — the plugin instead falls back to Node's
+  # upward resolution and picks up whatever @babel/generator happens to be
+  # hoisted into reach, which is @8.0.0 (pulled to the top by the web's React
+  # Compiler @babel/core@8). A Babel-8 generator printing the Babel-7 AST the
+  # plugin built → `reading 'length'` (see the overrides note above). This was
+  # never actually fixed by the override; it only "worked" while a lucky hoist
+  # put generator@7.29.7 in reach, and regressed whenever the hoist flipped.
+  # packageExtensions ADDS the real dependency edge, so pnpm installs
+  # generator@7.29.7 + traverse@7.29.7 into worklets' OWN subtree and the
+  # plugin's require() resolves them locally — hoist-independent. Scoped to
+  # worklets only; the web keeps @babel/*@8. Same rationale (and same manypkg /
+  # syncpack invisibility) as the @expo/metro-config extension above.
+  react-native-worklets:
+    dependencies:
+      "@babel/generator": "7.29.7"
+      "@babel/traverse": "7.29.7"
