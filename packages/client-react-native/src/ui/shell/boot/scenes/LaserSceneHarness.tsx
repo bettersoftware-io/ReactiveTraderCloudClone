@@ -26,7 +26,13 @@ export function LaserSceneHarness({
   const drift = useSharedValue({ mx: 0, my: 0 });
   return (
     <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <LaserScene elapsedSec={elapsed} drift={drift} width={390} height={844} />
+      <LaserScene
+        elapsedSec={elapsed}
+        drift={drift}
+        width={390}
+        height={844}
+        theme={rnThemeTokens.holo.dark}
+      />
     </ThemeContext.Provider>
   );
 }

@@ -10,6 +10,7 @@ import type { BootVariant } from "@rtc/domain";
 import { BOOT_SCENES } from "#/ui/shell/boot/bootScene";
 import { useBootMotionEnabled } from "#/ui/shell/boot/useBootMotionEnabled";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import { useTheme } from "#/ui/theme/useTheme";
 
 /**
  * The Skia host for the boot splash's motion scenes: a single full-bleed
@@ -33,6 +34,10 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
   const { width, height } = useWindowDimensions();
   const elapsedSec = useSharedValue(0);
   const drift = useGyroDrift(enabled);
+  // Read the theme HERE, outside the <Canvas> below: Skia's canvas is a
+  // separate reconciler React Context can't cross, so scenes take theme as a
+  // prop rather than calling useTheme() themselves. See BootSceneProps.theme.
+  const theme = useTheme();
 
   const frameCallback = useFrameCallback((frameInfo) => {
     elapsedSec.value = frameInfo.timeSinceFirstFrame / 1000;
@@ -73,6 +78,7 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
         drift={drift}
         width={width}
         height={height}
+        theme={theme}
       />
     </Canvas>
   );

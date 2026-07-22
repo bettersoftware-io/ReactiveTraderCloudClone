@@ -40,7 +40,6 @@ import {
   projectGlobePoint,
   segmentAlpha,
 } from "#/ui/shell/boot/scenes/coreGeometry";
-import { useTheme } from "#/ui/theme/useTheme";
 
 /**
  * `core` boot scene — the "global market mesh": a rotating wireframe globe of
@@ -91,8 +90,8 @@ export function CoreScene({
   drift,
   width,
   height,
+  theme,
 }: BootSceneProps): JSX.Element {
-  const theme = useTheme();
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
 
@@ -337,11 +336,14 @@ function drawStatusBanner(
   const color = status.useAltColor ? accentAlt : accent;
   const blink = bannerBlinkAlpha(progress, elapsedSec);
   const text = `▸ ${status.text} ◂`;
-  // No bold-weight synthesis: `Skia.Font(undefined, size)` resolves the
-  // platform's default embedded typeface at regular weight only. The web
-  // banner is `bold 12px`; this is a deliberate, minor cosmetic gap, not one
-  // of the deferred elements above.
-  const font = Skia.Font(undefined, 12);
+  // Default typeface at regular weight (no bold synthesis — the web banner is
+  // `bold 12px`; a deliberate minor cosmetic gap, not one of the deferred
+  // elements above). Build with no args + setSize rather than
+  // `Skia.Font(undefined, 12)`: passing `undefined` explicitly as the typeface
+  // throws "Value is undefined, expected an Object" on real iOS Skia (the jest
+  // mock tolerates it), firing every frame from this draw.
+  const font = Skia.Font();
+  font.setSize(12);
   const textWidth = font.getTextWidth(text);
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);

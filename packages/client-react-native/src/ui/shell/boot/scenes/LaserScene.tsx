@@ -14,7 +14,6 @@ import {
   panelRevealFraction,
   rectTracePath,
 } from "#/ui/shell/boot/scenes/laserGeometry";
-import { useTheme } from "#/ui/theme/useTheme";
 
 /**
  * `laser` boot scene — UI panels traced in by a sweeping laser: a fixed set
@@ -40,8 +39,8 @@ export function LaserScene({
   elapsedSec,
   width,
   height,
+  theme,
 }: BootSceneProps): JSX.Element {
-  const theme = useTheme();
   const accent = theme.accentPrimary;
 
   const groupProps = { testID: "boot-scene-laser" };
