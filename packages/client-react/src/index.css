@@ -17,6 +17,33 @@ body,
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Native browser chrome (scrollbars, form controls) follows the active theme.
+ * Without `color-scheme`, Windows/Linux Chrome paints its LIGHT default
+ * scrollbar over the dark HUD — a bright grey bar that clashes; macOS overlay
+ * scrollbars auto-hide, which is why the mismatch only showed on Windows.
+ * `color-scheme` only picks which native palette the browser draws with; it
+ * never touches our own token colours. `data-mode` (dark|light) is written on
+ * :root by the ThemeProvider in both web clients. */
+:root[data-mode="dark"] {
+  color-scheme: dark;
+}
+
+:root[data-mode="light"] {
+  color-scheme: light;
+}
+
+/* Thin, theme-matched scrollbars for every scroll region (the LiveRates panel
+ * body, blotters, admin lists, …). `scrollbar-width`/`scrollbar-color` are
+ * inherited properties, so setting them on :root cascades to every descendant;
+ * the one element that deliberately hides its scrollbar (InstrumentTabs
+ * `.tabs`) still wins on specificity. Standard properties only (Chrome 121+,
+ * Firefox, Safari 18.2+) — a ::-webkit-scrollbar rule would flip the element to
+ * the legacy custom renderer and make it ignore `color-scheme`, so we avoid it. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
 /* Power-saver "freeze" tier: neutralise ALL decorative motion at once for
  * GPU-less Citrix/VDI boxes. 0.01ms (not `none`) keeps `forwards` end-states
  * resolving and animationend/transitionend events firing, so JS choreography
