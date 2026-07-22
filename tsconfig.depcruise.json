@@ -1,0 +1,63 @@
+{
+  // Resolution-only tsconfig for dependency-cruiser (see .dependency-cruiser.cjs
+  // options.tsConfig). It maps every `@rtc/<pkg>` main-entry import to that
+  // package's SOURCE entry instead of its published `dist/` entry.
+  //
+  // Why this exists: 17 of the 18 workspace packages export `"." : "./dist/…"`.
+  // Without this mapping, dependency-cruiser resolves an `@rtc/<pkg>` import to
+  // `packages/<pkg>/dist/index.js` — which options.exclude drops (`/dist/`) — or,
+  // in an unbuilt tree, to an unresolvable bare specifier. Either way the
+  // package-boundary rules (`*-stays-pure`, layering, etc.) never match, so they
+  // silently do nothing. Pointing resolution at `src` makes those rules actually
+  // evaluate cross-package edges, independent of whether `dist/` has been built.
+  //
+  // Each package gets two entries: the exact `@rtc/<pkg>` main entry → its
+  // `src/index.ts`, and `@rtc/<pkg>/*` subpath imports → under its `src/` (so a
+  // forbidden subpath import, e.g. `@rtc/domain/ports/…`, is caught the same as
+  // a main-entry one — no subpath escape hatch). A generic `@rtc/*` wildcard
+  // can't do this: `*` is greedy over slashes, so it can't distinguish the main
+  // entry from a subpath. New packages need a line pair here (same as they need
+  // a dependency-cruiser rule and a knip entry).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@rtc/domain": ["packages/domain/src/index.ts"],
+      "@rtc/domain/*": ["packages/domain/src/*"],
+      "@rtc/shared": ["packages/shared/src/index.ts"],
+      "@rtc/shared/*": ["packages/shared/src/*"],
+      "@rtc/client-core": ["packages/client-core/src/index.ts"],
+      "@rtc/client-core/*": ["packages/client-core/src/*"],
+      "@rtc/react-bindings": ["packages/react-bindings/src/index.ts"],
+      "@rtc/react-bindings/*": ["packages/react-bindings/src/*"],
+      "@rtc/solid-bindings": ["packages/solid-bindings/src/index.ts"],
+      "@rtc/solid-bindings/*": ["packages/solid-bindings/src/*"],
+      "@rtc/client-react": ["packages/client-react/src/index.ts"],
+      "@rtc/client-react/*": ["packages/client-react/src/*"],
+      "@rtc/client-react-native": ["packages/client-react-native/src/index.ts"],
+      "@rtc/client-react-native/*": ["packages/client-react-native/src/*"],
+      "@rtc/client-prototype": ["packages/client-prototype/src/index.ts"],
+      "@rtc/client-prototype/*": ["packages/client-prototype/src/*"],
+      "@rtc/client-solid": ["packages/client-solid/src/index.ts"],
+      "@rtc/client-solid/*": ["packages/client-solid/src/*"],
+      "@rtc/motion-core": ["packages/motion-core/src/index.ts"],
+      "@rtc/motion-core/*": ["packages/motion-core/src/*"],
+      "@rtc/boot-splash": ["packages/boot-splash/src/index.ts"],
+      "@rtc/boot-splash/*": ["packages/boot-splash/src/*"],
+      "@rtc/ui-contract": ["packages/ui-contract/src/index.ts"],
+      "@rtc/ui-contract/*": ["packages/ui-contract/src/*"],
+      "@rtc/ws-effects": ["packages/ws-effects/src/index.ts"],
+      "@rtc/ws-effects/*": ["packages/ws-effects/src/*"],
+      "@rtc/devtools-core": ["packages/devtools-core/src/index.ts"],
+      "@rtc/devtools-core/*": ["packages/devtools-core/src/*"],
+      "@rtc/devtools-app": ["packages/devtools-app/src/index.ts"],
+      "@rtc/devtools-app/*": ["packages/devtools-app/src/*"],
+      "@rtc/devtools-relay": ["packages/devtools-relay/src/index.ts"],
+      "@rtc/devtools-relay/*": ["packages/devtools-relay/src/*"],
+      "@rtc/devtools-extension": ["packages/devtools-extension/src/index.ts"],
+      "@rtc/devtools-extension/*": ["packages/devtools-extension/src/*"],
+      "@rtc/server": ["packages/server/src/index.ts"],
+      "@rtc/server/*": ["packages/server/src/*"]
+    }
+  }
+}

@@ -1,4 +1,23 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
+//
+// Package-boundary rules use a "closed allowlist" shape:
+//
+//   from: { path: "^packages/<pkg>/src" },
+//   to:   { path: "^packages/", pathNot: "^packages/(<pkg>|<allowed>…)/" },
+//
+// i.e. "from <pkg>, importing ANY package that is not <pkg> itself or one of
+// its explicitly-allowed dependencies is forbidden." This is deliberately
+// preferred over the older enumerate-every-forbidden-sibling shape
+// (`to: { path: "^packages/(a|b|c|…)/" }`): an enumerated blocklist silently
+// goes stale the moment a new package is added — the new package isn't in any
+// existing list, so a leaf could import it undetected. The allowlist form has
+// no such gap: a new package is forbidden by default until it is explicitly
+// added to a rule's `pathNot`. (`clients-never-import-each-other` below has
+// used this `pathNot` idiom all along.)
+//
+// Type-only edges are globally excluded (`tsPreCompilationDeps: false`), so a
+// `import type { X } from "@rtc/other"` never counts as a dependency — which is
+// why some "pure" leaves legitimately type-import a sibling.
 module.exports = {
   forbidden: [
     {
@@ -12,9 +31,10 @@ module.exports = {
     {
       name: "domain-stays-pure",
       severity: "error",
-      comment: "@rtc/domain must not depend on shared/client/server.",
+      comment:
+        "@rtc/domain is the innermost leaf — it must not depend on any other @rtc package.",
       from: { path: "^packages/domain/src" },
-      to: { path: "^packages/(shared|client-react|server)/" },
+      to: { path: "^packages/", pathNot: "^packages/domain/" },
     },
     {
       name: "domain-no-node-builtins",
@@ -30,9 +50,9 @@ module.exports = {
     {
       name: "shared-no-apps",
       severity: "error",
-      comment: "@rtc/shared must not depend on client/server.",
+      comment: "@rtc/shared depends only on domain — no other @rtc package.",
       from: { path: "^packages/shared/src" },
-      to: { path: "^packages/(client-react|server)/" },
+      to: { path: "^packages/", pathNot: "^packages/(shared|domain)/" },
     },
     {
       name: "client-not-server",
@@ -51,19 +71,17 @@ module.exports = {
       name: "ws-effects-stays-pure",
       severity: "error",
       comment:
-        "@rtc/ws-effects is a transport framework — it must not depend on domain/shared/client/server.",
+        "@rtc/ws-effects is a transport framework — it must not import any other @rtc package.",
       from: { path: "^packages/ws-effects/src" },
-      to: { path: "^packages/(domain|shared|client-react|server)/" },
+      to: { path: "^packages/", pathNot: "^packages/ws-effects/" },
     },
     {
       name: "devtools-core-stays-pure",
       severity: "error",
       comment:
-        "@rtc/devtools-core decorates by structural shape — it must not import any @rtc package.",
+        "@rtc/devtools-core decorates by structural shape — it must not import any other @rtc package.",
       from: { path: "^packages/devtools-core/src" },
-      to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-app|devtools-relay)/",
-      },
+      to: { path: "^packages/", pathNot: "^packages/devtools-core/" },
     },
     {
       name: "devtools-core-no-node-builtins",
@@ -82,18 +100,17 @@ module.exports = {
         "@rtc/devtools-app understands only the wire protocol — devtools-core is its sole @rtc dependency.",
       from: { path: "^packages/devtools-app/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-relay)/",
+        path: "^packages/",
+        pathNot: "^packages/(devtools-app|devtools-core)/",
       },
     },
     {
       name: "devtools-relay-standalone",
       severity: "error",
       comment:
-        "@rtc/devtools-relay is a standalone ws-only relay — it holds no protocol knowledge and must not import any @rtc package.",
+        "@rtc/devtools-relay is a standalone ws-only relay — it holds no protocol knowledge and must not import any other @rtc package.",
       from: { path: "^packages/devtools-relay/src" },
-      to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-core|devtools-app)/",
-      },
+      to: { path: "^packages/", pathNot: "^packages/devtools-relay/" },
     },
     {
       name: "devtools-extension-is-a-leaf",
@@ -102,18 +119,17 @@ module.exports = {
         "@rtc/devtools-extension is a leaf consumer of the devtools pair — it may import only devtools-core (transport/protocol/store) and devtools-app (InspectorApp), never a client/server/domain package.",
       from: { path: "^packages/devtools-extension/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects)/",
+        path: "^packages/",
+        pathNot: "^packages/(devtools-extension|devtools-core|devtools-app)/",
       },
     },
     {
       name: "motion-core-stays-pure",
       severity: "error",
       comment:
-        "@rtc/motion-core is zero-dependency pure view-layer math — it must not depend on domain/shared/client-core/bindings/any client/server/ws-effects.",
+        "@rtc/motion-core is zero-dependency pure view-layer math — it must not import any other @rtc package.",
       from: { path: "^packages/motion-core/src" },
-      to: {
-        path: "^packages/(domain|shared|client-core|react-bindings|solid-bindings|client-react|client-react-native|client-prototype|client-solid|server|ws-effects)/",
-      },
+      to: { path: "^packages/", pathNot: "^packages/motion-core/" },
     },
     {
       name: "boot-splash-stays-pure",
@@ -121,28 +137,28 @@ module.exports = {
       comment:
         "@rtc/boot-splash is the framework-free boot/splash feature — it must not import any other @rtc package (it may touch the DOM: canvas engine + navigator/location gate).",
       from: { path: "^packages/boot-splash/src" },
-      to: {
-        path: "^packages/(domain|shared|client-core|react-bindings|solid-bindings|client-react|client-react-native|client-prototype|client-solid|ui-contract|motion-core|server|ws-effects|devtools-core|devtools-app|devtools-relay|devtools-extension)/",
-      },
+      to: { path: "^packages/", pathNot: "^packages/boot-splash/" },
     },
     {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and, later, client-solid) — it may depend only on client-core/domain/motion-core/rxjs, never on a concrete client or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/domain/motion-core, never on a concrete client, a binding, or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
-        path: "^packages/(shared|client-react|client-react-native|client-prototype|client-solid|react-bindings|solid-bindings|server|ws-effects)/",
+        path: "^packages/",
+        pathNot: "^packages/(ui-contract|client-core|domain|motion-core)/",
       },
     },
     {
       name: "client-core-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core is the shared application core — it must not depend on bindings, any client, or the server.",
+        "@rtc/client-core is the shared application core — it may depend only on domain/shared, never on bindings, a view-layer leaf, any client, or the server.",
       from: { path: "^packages/client-core/src" },
       to: {
-        path: "^packages/(react-bindings|solid-bindings|client-react|client-react-native|client-prototype|client-solid|server)/",
+        path: "^packages/",
+        pathNot: "^packages/(client-core|domain|shared)/",
       },
     },
     {
@@ -157,20 +173,22 @@ module.exports = {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/react-bindings is the React↔RxJS bridge — it may depend on client-core/domain/react, never on an app or the server.",
+        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on client-core/domain (+ react), never on an app or the server.",
       from: { path: "^packages/react-bindings/src" },
       to: {
-        path: "^packages/(client-react|client-react-native|client-prototype|client-solid|server)/",
+        path: "^packages/",
+        pathNot: "^packages/(react-bindings|client-core|domain)/",
       },
     },
     {
       name: "solid-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend on client-core/domain/solid-js/@rx-state/core/rxjs, never on an app or the server.",
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on client-core/domain (+ solid-js/@rx-state/core/rxjs), never on an app or the server.",
       from: { path: "^packages/solid-bindings/src" },
       to: {
-        path: "^packages/(client-react|client-react-native|client-prototype|client-solid|react-bindings|server)/",
+        path: "^packages/",
+        pathNot: "^packages/(solid-bindings|client-core|domain)/",
       },
     },
     {
@@ -210,14 +228,15 @@ module.exports = {
       comment:
         "@rtc/client-prototype is a design-comprehension island — react/react-dom only, no @rtc/* imports (CLAUDE.md).",
       from: { path: "^packages/client-prototype/src" },
-      to: {
-        path: "^packages/(domain|shared|client-core|react-bindings|client-react|client-react-native|server|ws-effects)/",
-      },
+      to: { path: "^packages/", pathNot: "^packages/client-prototype/" },
     },
   ],
   options: {
     tsPreCompilationDeps: false,
-    tsConfig: { fileName: "tsconfig.base.json" },
+    // Resolution-only config that maps @rtc/<pkg> → packages/<pkg>/src so the
+    // package-boundary rules above actually resolve (and therefore enforce)
+    // cross-package edges. See tsconfig.depcruise.json for the full rationale.
+    tsConfig: { fileName: "tsconfig.depcruise.json" },
     doNotFollow: { path: "node_modules" },
     exclude: {
       path: "(\\.cache|/dist/|/__screenshots__/|\\.turbo)",
