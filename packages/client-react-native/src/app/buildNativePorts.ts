@@ -19,6 +19,7 @@ import {
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
+  type PreferencesPort,
 } from "@rtc/domain";
 
 import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
@@ -28,6 +29,12 @@ import { DEV_CREDENTIALS } from "#/app/nativeAuthConfig";
 interface BuildNativePortsOptions {
   simulator?: boolean;
   sessionStore?: SessionStore;
+  /** Pre-hydrated preferences adapter, injected by the composition root so a
+   * synchronous read (e.g. the boot variant at boot-machine construction) sees
+   * the persisted value. Defaults to a self-hydrating adapter — fine for
+   * Observable consumers, but its boot variant would race a cold-launch read.
+   * See `AsyncStoragePreferencesAdapter.hydrate()` / `_layout.tsx`. */
+  preferences?: PreferencesPort;
 }
 
 /** The assembled `AppPorts` plus a `dispose` that tears down any transport the
@@ -68,7 +75,7 @@ export function buildNativePorts(
     ? undefined
     : (extra.serverUrl as string | undefined);
   const sessionStore = opts.sessionStore ?? new InMemorySessionStore();
-  const preferences = new AsyncStoragePreferencesAdapter();
+  const preferences = opts.preferences ?? new AsyncStoragePreferencesAdapter();
   const colorScheme = new AppearanceColorSchemeAdapter();
 
   if (url) {

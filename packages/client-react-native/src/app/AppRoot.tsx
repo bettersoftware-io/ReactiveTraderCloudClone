@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
 import { createApp, type SessionStore } from "@rtc/client-core";
+import type { PreferencesPort } from "@rtc/domain";
 import {
   createViewModel,
   type ViewModel,
@@ -58,12 +59,17 @@ import { resolveRelayUrl } from "#/app/devtools/resolveRelayUrl";
 export function AppRoot({
   simulator,
   sessionStore,
+  preferences,
   children,
 }: AppRootProps): ReactElement {
   const ref = useRef<Composition | null>(null);
 
   if (ref.current === null) {
-    const { ports, dispose } = buildNativePorts({ simulator, sessionStore });
+    const { ports, dispose } = buildNativePorts({
+      simulator,
+      sessionStore,
+      preferences,
+    });
     const { presenters, commands } = createApp(ports);
 
     const devtools = createNativeDevtools();
@@ -108,6 +114,7 @@ export function AppRoot({
 interface AppRootProps {
   simulator: boolean;
   sessionStore?: SessionStore;
+  preferences?: PreferencesPort;
   children: ReactNode;
 }
 
