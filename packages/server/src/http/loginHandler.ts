@@ -80,16 +80,41 @@ export function authorizeUpgrade(
   reqUrl: string | undefined,
   auth: AuthService,
 ): boolean {
+  return describeUpgrade(reqUrl, auth).ok;
+}
+
+/** Why an upgrade was rejected — surfaced so the server can log the difference
+ * between a client that never authenticated (`no-token`, the pre-login case)
+ * and one whose token failed verification (`invalid-token`, e.g. an expired
+ * session). `no-url` is a malformed request with no URL at all. */
+export type UpgradeRejection = "no-url" | "no-token" | "invalid-token";
+
+export interface UpgradeDecision {
+  readonly ok: boolean;
+  readonly reason?: UpgradeRejection;
+}
+
+/** The reason-carrying core of {@link authorizeUpgrade}. Same strict policy —
+ * missing URL / missing `?access=` / unverifiable token all reject — but names
+ * which one, without ever returning or logging the token itself. */
+export function describeUpgrade(
+  reqUrl: string | undefined,
+  auth: AuthService,
+): UpgradeDecision {
   if (reqUrl === undefined) {
-    return false;
+    return { ok: false, reason: "no-url" };
   }
 
   const url = new URL(reqUrl, "http://localhost");
   const access = url.searchParams.get("access");
 
   if (access === null) {
-    return false;
+    return { ok: false, reason: "no-token" };
   }
 
-  return auth.verifyToken(access) !== null;
+  if (auth.verifyToken(access) === null) {
+    return { ok: false, reason: "invalid-token" };
+  }
+
+  return { ok: true };
 }

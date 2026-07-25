@@ -88,11 +88,17 @@ const wss = new WebSocketServer({
   // listen() only ever runs for authorized clients. /health and /login stay
   // reachable (HTTP routes, not WS upgrades) for Fly health checks and login.
   verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
-    return authorizeUpgrade(info.req.url, auth);
+    const decision = describeUpgrade(info.req.url, auth);
+    if (!decision.ok && decision.reason) {
+      connectionLog.onRejectedUpgrade(decision.reason);
+    }
+    return decision.ok;
   },
 });
 
 wss.on("connection", (ws) => {
+  connectionLog.onConnect();
+  ws.on("close", () => connectionLog.onDisconnect());
   listen(toSocket(ws));
 });
 
@@ -107,6 +113,40 @@ httpServer.listen(PORT, HOSTNAME, () => {
 ```
 
 The `tests` workspace boots this same file from source (`pnpm --filter @rtc/server exec tsx src/index.ts`, `tests/fullstack/_orchestration.ts`) and points a real client at it for full-stack browser/node smokes -- the only cross-package consumer of this package.
+
+## Connection observability
+
+`createConnectionLog` (`src/observability/connectionLog.ts`) emits one structured
+stdout line per WebSocket lifecycle event, so live connection activity is visible
+from the outside with no logging framework and no client inspector:
+
+```
+[ws] 2026-07-25T09:14:02.031Z connect       active=1 total=1
+[ws] 2026-07-25T09:14:02.088Z upgrade-reject reason=no-token active=1
+[ws] 2026-07-25T09:14:31.500Z disconnect    active=0 total=1
+```
+
+- **connect / disconnect** track `active` (open now) and `total` (accepted since
+  start).
+- **upgrade-reject** logs the [`describeUpgrade`](src/http/loginHandler.ts) reason
+  — `no-token` (never signed in — the pre-login case), `invalid-token`
+  (expired/bad), or `no-url` — and **never the token itself**.
+
+Watch it live:
+
+```bash
+# local — start the dev server and its stdout streams to your terminal
+pnpm dev:ws
+
+# deployed — tail the Fly app's logs
+fly logs -a rtc-clone-server
+```
+
+This is also the outside-in oracle for the RN client's connection behaviour: a
+logged-out app that (correctly) opens no socket produces **no** `connect` and no
+`upgrade-reject` lines until you sign in. A wider observability workstream
+(Sentry, structured logging, metrics) is tracked as a follow-up in
+[STATUS.md](../../docs/STATUS.md); this is the lightweight first step.
 
 ## See also
 
