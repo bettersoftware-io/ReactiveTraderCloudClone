@@ -8,7 +8,9 @@ import {
   DEFAULT_BOOT_VARIANT,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_VIEW_MODE,
+  LOGIN_WAIT_VARIANTS,
 } from "@rtc/domain";
 
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
@@ -251,6 +253,41 @@ test("setAmbientStyle writes through to AsyncStorage and emits", async () => {
   const next = await firstValueFrom(prefs.ambientStyle$());
   expect(next).toBe("rays");
   expect(store.get("rtc-ambient-style")).toBe("rays");
+});
+
+test("emits the default login-wait variant synchronously on construction", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.loginWaitVariant$());
+  expect(first).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
+});
+
+/**
+ * Driven off `LOGIN_WAIT_VARIANTS` rather than a hand-listed set, so a variant
+ * added to the domain can never again outrun this adapter's guard.
+ */
+test.each([
+  ...LOGIN_WAIT_VARIANTS,
+])("hydrates the stored login-wait variant %s", async (variant) => {
+  store.set("rt-login-wait-variant", variant);
+  const prefs = new AsyncStoragePreferencesAdapter();
+  await vi.waitFor(async () => {
+    expect(await firstValueFrom(prefs.loginWaitVariant$())).toBe(variant);
+  });
+});
+
+test("falls back to the default login-wait variant when the stored value is unknown", async () => {
+  store.set("rt-login-wait-variant", "not-a-real-variant");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.loginWaitVariant$());
+  expect(first).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
+});
+
+test("setLoginWaitVariant writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setLoginWaitVariant("reactor");
+  const next = await firstValueFrom(prefs.loginWaitVariant$());
+  expect(next).toBe("reactor");
+  expect(store.get("rt-login-wait-variant")).toBe("reactor");
 });
 
 vi.mock("@react-native-async-storage/async-storage", () => {
