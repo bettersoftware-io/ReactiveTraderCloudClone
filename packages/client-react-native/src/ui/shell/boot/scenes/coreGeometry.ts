@@ -62,10 +62,23 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${(intValue >> 16) & 255},${(intValue >> 8) & 255},${intValue & 255},${alpha})`;
 }
 
+/** Depth-cue floor/range for the mesh strokes. The web (`bootCore.ts`) uses
+ * `0.1 + 0.4 * …` → a [0.1, 0.5] band, but there the mesh is lifted by layers
+ * RN defers to phase 6b: the nucleus-glow wash behind the globe and the Skia
+ * `shadowBlur` bloom on the strokes/draw-heads. Without those, a 1px stroke at
+ * 0.1–0.3 alpha is near-invisible on a pure-black canvas on-device — only the
+ * one or two near-edge meridians read, so the globe looks like flickering arcs
+ * rather than a wireframe sphere. Raising the band to [0.28, 0.78] makes the
+ * far side and mid-facing strokes visible too, restoring the "globe" read
+ * without pulling the deferred glow layers forward. A deliberate, documented
+ * deviation from the web values, revisit when 6b adds the glow. */
+const SEGMENT_ALPHA_FLOOR = 0.28;
+const SEGMENT_ALPHA_RANGE = 0.5;
+
 /** Depth-cue alpha: the far side of the globe is dimmer than the near side. */
 export function segmentAlpha(z: number): number {
   "worklet";
-  return 0.1 + 0.4 * clamp01((0.55 - z) / 1.1);
+  return SEGMENT_ALPHA_FLOOR + SEGMENT_ALPHA_RANGE * clamp01((0.55 - z) / 1.1);
 }
 
 // --- projection -------------------------------------------------------
@@ -294,7 +307,9 @@ export function nodeRevealPhase(
 
 export function nodeAlpha(nodePhase: number, z: number): number {
   "worklet";
-  return (0.4 + 0.55 * clamp01(0.3 - z)) * nodePhase;
+  // Floor raised 0.4 → 0.55 (web value) for the same reason as segmentAlpha:
+  // without the deferred glow, hub dots barely read against black on-device.
+  return (0.55 + 0.4 * clamp01(0.3 - z)) * nodePhase;
 }
 
 /** 0..1 ping-ripple fraction (loops every ~1.25s, offset per hub). */
