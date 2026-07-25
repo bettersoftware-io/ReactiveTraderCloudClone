@@ -32,9 +32,9 @@
     "@rx-state/core": "^0.1.4",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^29",
     "tsc-alias": "1.9.0",
-    "vitest": "^4"
+    "vitest": "^4.1.10"
   }
 }
