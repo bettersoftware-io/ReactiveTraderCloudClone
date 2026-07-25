@@ -82,9 +82,14 @@ export const LOGIN_WAIT_VARIANTS: readonly LoginWaitVariant[] = [
 ];
 
 export const DEFAULT_LOGIN_WAIT_VARIANT: LoginWaitVariant = "handshake";
-
-export function isLoginWaitVariant(value: unknown): value is LoginWaitVariant;
 ```
+
+Note that domain exports the **list and default only, not a type guard** — matching
+`BOOT_VARIANTS`. Each persistence adapter defines its own local
+`isLoginWaitVariant(value: string | null)` narrowing against the exported list,
+exactly as all three already do for `isBootVariant`
+(e.g. `LocalStoragePreferencesAdapter.ts:64`). Duplicated, but consistent with
+the established pattern; unifying the guards is a separate concern.
 
 `PreferencesPort` (`packages/domain/src/ports/preferencesPort.ts`) gains the
 matching pair, alongside the existing `bootVariant$` / `setBootVariant`:
@@ -209,7 +214,13 @@ being what makes the label readable.
 ### `prefers-reduced-motion`
 
 Both treatments degrade to their static base state, which by the rule above is
-already fully informative.
+already fully informative — but **not automatically.** Unlike the
+`data-power-saver="freeze"` catch-all, this repo has **no global
+reduced-motion rule**; it is handled per-component (`Tile.module.css`,
+`RfqCard.module.css`, `AmbientBackground.module.css` each carry their own
+block). Every stylesheet added by this work must therefore include its own
+`@media (prefers-reduced-motion: reduce)` block disabling its animations.
+Omitting it leaves the motion running for users who asked the OS to stop it.
 
 ## Testing
 
