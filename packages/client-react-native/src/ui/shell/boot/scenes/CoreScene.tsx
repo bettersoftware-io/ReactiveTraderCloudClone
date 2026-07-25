@@ -153,6 +153,16 @@ const GLOBE_RADIUS_FACTOR = 0.24;
  * parallel draw-in completes at 32% of the boot progress. */
 const REVEAL_FRACTION = 0.32;
 
+/** Mesh + ring stroke widths, raised from the web's 1px. On-device (3× retina)
+ * a 1px Skia stroke is physically thin and, without the deferred glow/bloom
+ * layers, the wireframe barely reads; 1.5px restores presence. Ring is kept a
+ * touch thinner so the ping ripple stays secondary to the node dot. Pairs with
+ * the raised `segmentAlpha` band in coreGeometry.ts. */
+const MESH_STROKE_WIDTH = 1.5;
+const HUB_RING_STROKE_WIDTH = 1.25;
+/** Draw-head dot radius (web 1.8), nudged up with the wider strokes. */
+const DRAW_HEAD_RADIUS = 2.2;
+
 function drawMeridians(
   canvas: SkCanvas,
   params: Projection3dParams,
@@ -166,7 +176,7 @@ function drawMeridians(
   "worklet";
   const linePaint = Skia.Paint();
   linePaint.setStyle(PaintStyle.Stroke);
-  linePaint.setStrokeWidth(1);
+  linePaint.setStrokeWidth(MESH_STROKE_WIDTH);
   linePaint.setAntiAlias(true);
   const headPaint = Skia.Paint();
   headPaint.setAntiAlias(true);
@@ -204,7 +214,7 @@ function drawMeridians(
 
     if (phase < 1 && prev !== null) {
       headPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9)));
-      canvas.drawCircle(prev.x, prev.y, 1.8, headPaint);
+      canvas.drawCircle(prev.x, prev.y, DRAW_HEAD_RADIUS, headPaint);
     }
   }
 }
@@ -221,7 +231,7 @@ function drawParallels(
   "worklet";
   const linePaint = Skia.Paint();
   linePaint.setStyle(PaintStyle.Stroke);
-  linePaint.setStrokeWidth(1);
+  linePaint.setStrokeWidth(MESH_STROKE_WIDTH);
   linePaint.setAntiAlias(true);
 
   for (const parallelIndex of PARALLEL_INDICES) {
@@ -282,7 +292,7 @@ function drawHubNodes(
   nodePaint.setAntiAlias(true);
   const ringPaint = Skia.Paint();
   ringPaint.setStyle(PaintStyle.Stroke);
-  ringPaint.setStrokeWidth(1);
+  ringPaint.setStrokeWidth(HUB_RING_STROKE_WIDTH);
   ringPaint.setAntiAlias(true);
 
   for (let i = 0; i < CORE_HUBS.length; i++) {

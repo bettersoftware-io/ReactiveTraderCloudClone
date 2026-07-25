@@ -6,8 +6,10 @@ import { StyleSheet, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import type { SessionStore } from "@rtc/client-core";
+import type { PreferencesPort } from "@rtc/domain";
 
 import { AppRoot } from "#/app/AppRoot";
+import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
 import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
@@ -28,13 +30,17 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** App-group layout: owns the simulator/live toggle, wraps the HUD chrome in one
  * `AppRoot` (one composition, one WS, one blotter presenter) and one
  * `ThemeProvider` (one resolved skin×mode shared by every route). First paint is
- * gated on both the bundled fonts (so no leaf renders a not-yet-loaded family)
- * and a hydrated `AsyncStorageSessionStore` — `AuthPresenter.resume()` reads
- * the store synchronously at construction, so the persisted session must be
- * loaded into the in-memory mirror before `AppRoot` mounts, else a cold launch
- * would always fall back to the login screen. The store is created once and
- * kept stable across the sim/live `key`-remount, so a session survives a
- * toggle; `logout()` clears it (and AsyncStorage) through the same instance.
+ * gated on the bundled fonts (so no leaf renders a not-yet-loaded family), a
+ * hydrated `AsyncStorageSessionStore`, and a hydrated
+ * `AsyncStoragePreferencesAdapter`. Both stores have the same constraint: a
+ * presenter reads them synchronously at construction — `AuthPresenter.resume()`
+ * the session, `BootPreferencePresenter.current()` the boot variant (once, at
+ * boot-machine construction) — so each must be loaded into its in-memory mirror
+ * before `AppRoot` mounts. Otherwise a cold launch always falls back to the
+ * login screen (session) and always replays the `core` boot variant instead of
+ * cycling (preferences). Both are created once and kept stable across the
+ * sim/live `key`-remount, so a session (and the persisted variant pointer)
+ * survives a toggle; `logout()` clears the session through the same instance.
  * The outer wrapper is a plain `View` (not `SafeAreaView`): `ShellHeader` now
  * owns its own top safe-area inset via `useSafeAreaInsets`, so a `SafeAreaView`
  * here would double-pad the top edge. */
@@ -42,6 +48,7 @@ export default function AppGroupLayout(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
   const [bootDone, setBootDone] = useState(false);
   const [sessionStore, setSessionStore] = useState<SessionStore | null>(null);
+  const [preferences, setPreferences] = useState<PreferencesPort | null>(null);
   const fontsLoaded = useAppFonts();
 
   useEffect(() => {
@@ -51,13 +58,18 @@ export default function AppGroupLayout(): JSX.Element {
         setSessionStore(store);
       }
     });
+    void AsyncStoragePreferencesAdapter.hydrate().then((prefs) => {
+      if (alive) {
+        setPreferences(prefs);
+      }
+    });
 
     return (): void => {
       alive = false;
     };
   }, []);
 
-  if (!fontsLoaded || sessionStore === null) {
+  if (!fontsLoaded || sessionStore === null || preferences === null) {
     return (
       <GestureHandlerRootView style={styles.screen}>
         <View style={styles.screen} testID="fonts-loading" />
@@ -74,6 +86,7 @@ export default function AppGroupLayout(): JSX.Element {
           key={simulator ? "sim" : "live"}
           simulator={simulator}
           sessionStore={sessionStore}
+          preferences={preferences}
         >
           <ThemeProvider>
             <AuthGate simulator={simulator} onToggleSimulator={setSimulator}>
