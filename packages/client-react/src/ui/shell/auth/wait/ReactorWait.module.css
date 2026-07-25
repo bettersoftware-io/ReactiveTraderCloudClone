@@ -116,6 +116,7 @@
   color: var(--accent-primary);
   text-align: center;
   animation: pulse 1.8s ease-in-out infinite;
+  will-change: opacity;
 }
 
 @keyframes pulse {

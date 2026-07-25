@@ -54,6 +54,7 @@
 .caret {
   margin-left: 2px;
   animation: blink 1s steps(2, start) infinite;
+  will-change: opacity;
 }
 
 @keyframes blink {

@@ -7,6 +7,7 @@ import type {
   LoginWaitVariant,
   SessionUser,
 } from "@rtc/domain";
+import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { StoredSession } from "#/adapters/sessionStore";
@@ -436,6 +437,37 @@ describe("AuthPresenter", () => {
     expect(latest(presenter).waitVariant).toBe("reactor");
     expect(advanced).toEqual(["handshake"]);
   });
+
+  it("resume() does not advance the cycle for a resumed live session", () => {
+    // All the advance-on-start tests above start from an empty store, which
+    // only exercises the unauthenticated branch. The design rationale for
+    // "advance on login/unlock, not on resume" is specifically about NOT
+    // flipping the variant on every page load of an already-signed-in
+    // session — this pins that live-session branch directly.
+    function now(): number {
+      return 1_000_000;
+    }
+
+    const store = new InMemorySessionStore();
+    const session: StoredSession = {
+      token: "tok-1",
+      user: USER,
+      username: "astark",
+      exp: now() + 1000,
+    };
+    store.write(session);
+
+    const { cycle, advanced } = recordingCycle("reactor");
+    const presenter = new AuthPresenter(
+      fakeAuthPort({ ok: true, token: "tok-1", user: USER, exp: 9_000_000 }),
+      store,
+      now,
+      cycle,
+    );
+
+    expect(advanced).toEqual([]);
+    expect(latest(presenter).waitVariant).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
+  });
 });
 
 interface AuthStatusSnapshot {
@@ -473,10 +505,12 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
  * `lockedPresenter`'s setup) also receive a later `resolve()` meant for
  * `unlock()` — silently re-running `handleLoginOutcome` and clobbering
  * `status` out from under the in-flight `unlock()` assertions. */
-function deferredAuthPort(): {
+interface DeferredAuthPort {
   readonly port: AuthPort;
   readonly resolve: (outcome: AuthOutcome) => void;
-} {
+}
+
+function deferredAuthPort(): DeferredAuthPort {
   let current: Subject<AuthOutcome> | null = null;
 
   return {
@@ -494,10 +528,12 @@ function deferredAuthPort(): {
 }
 
 /** A `LoginWaitCycle` pinned to `start`, recording every advance. */
-function recordingCycle(start: LoginWaitVariant): {
+interface RecordingCycle {
   readonly cycle: LoginWaitCycle;
   readonly advanced: LoginWaitVariant[];
-} {
+}
+
+function recordingCycle(start: LoginWaitVariant): RecordingCycle {
   const advanced: LoginWaitVariant[] = [];
 
   return {
@@ -514,10 +550,12 @@ function recordingCycle(start: LoginWaitVariant): {
 }
 
 /** A presenter already logged in as USER and then locked — the LockScreen state. */
-function lockedPresenter(): {
+interface LockedPresenter {
   readonly presenter: AuthPresenter;
   readonly resolve: (outcome: AuthOutcome) => void;
-} {
+}
+
+function lockedPresenter(): LockedPresenter {
   const { port, resolve } = deferredAuthPort();
   const presenter = new AuthPresenter(port, new InMemorySessionStore());
 
