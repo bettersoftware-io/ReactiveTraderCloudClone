@@ -38,12 +38,13 @@ interface BuildNativePortsOptions {
 }
 
 /** The assembled `AppPorts` plus a `dispose` that tears down any transport the
- * build owns. The real-WS branch constructs a `WsAdapter` that opens its socket
- * eagerly in the constructor (not on Rx subscribe), so on unmount the raw
- * `WebSocket` must be closed explicitly — otherwise it lingers and reconnects
- * forever via its internal timer, and each remount opens another. `dispose`
- * closes it (WsAdapter.dispose suppresses reconnect too); the simulator branch
- * has no socket, so its `dispose` is a no-op. */
+ * build owns. The real-WS branch constructs a `WsAdapter` with
+ * `autoConnect: false`; `createApp`'s auth gate opens the socket once the user
+ * authenticates (and closes it on sign-out). Once open, on unmount the raw
+ * `WebSocket` must still be closed explicitly — otherwise it lingers and
+ * reconnects forever via its internal timer, and each remount opens another.
+ * `dispose` closes it (WsAdapter.dispose suppresses reconnect too); the
+ * simulator branch has no socket, so its `dispose` is a no-op. */
 export interface NativeComposition {
   ports: AppPorts;
   dispose: () => void;

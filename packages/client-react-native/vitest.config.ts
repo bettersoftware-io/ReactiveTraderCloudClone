@@ -13,7 +13,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    // Root-level `*.test.ts` too, so the package-root config (`app.config.ts`)
+    // can be characterized next to itself.
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts", "*.test.ts"],
     // The owl tier owns its own runner (`owl test` → owl's jest + matchers);
     // its `*.owl.test.ts` must NOT run under the repo's vitest — `react-native-owl`
     // calls `expect.extend` at import time (`expect is not defined` under vitest).
