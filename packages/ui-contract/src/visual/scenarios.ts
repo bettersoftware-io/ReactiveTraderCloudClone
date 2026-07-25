@@ -584,16 +584,27 @@ const baseScenarios: Record<string, Scenario> = {
   // sets that attribute from the seeded level, so freeze CSS genuinely
   // applies here.
   //
-  // What they do NOT catch, deliberately recorded so nobody trusts them for
-  // it: the delay+`backwards` bug class that HandshakeConsole's `.sealed`
-  // line shipped with on this branch (freeze zeroes animation-duration but
-  // not animation-delay, so a `backwards` fill can hold its `from` state —
-  // opacity 0 — through the delay). Playwright's `animations: "disabled"`
-  // calls `animation.finish()`, which jumps straight to the end state and
-  // bypasses the delay entirely, so the invisible window never appears in a
-  // capture. Verified empirically, not assumed. That bug class currently has
-  // NO automated witness in any tier — jsdom doesn't run CSS animations
-  // either. It is caught by review and by the manual freeze check only.
+  // TWO limits, deliberately recorded so nobody trusts these for more than
+  // they do. Both verified by probing the live harness DOM, not assumed:
+  //
+  // 1. The harness applies `data-power-saver`, and component-level freeze
+  //    rules in a `*.module.css` DO take effect here (measured: `.sealed`
+  //    resolves `animation-delay: 0s` from its override rather than its 0.35s
+  //    base). But the GLOBAL freeze catch-all lives in
+  //    `client-react/src/index.css`, which the visual harness never imports —
+  //    its `host/main.tsx` injects only a small reset. So
+  //    `animation-duration` still measures 0.5s here where the real app would
+  //    force 0.01ms. These goldens therefore pin a PARTIAL freeze render.
+  //
+  // 2. Even with that fixed, the delay+`backwards` bug class that
+  //    HandshakeConsole's `.sealed` line shipped with would still escape:
+  //    Playwright's `animations: "disabled"` calls `animation.finish()`,
+  //    jumping straight to the end state and bypassing the delay, so the
+  //    invisible window never appears in a capture.
+  //
+  // That bug class has NO automated witness in any tier — jsdom doesn't run
+  // CSS animations either. It is caught by review and the manual freeze check
+  // only. Tracked in docs/STATUS.md.
   //
   // Login only (the higher-traffic sign-in gate); the lock overlay reuses the
   // same treatment components and the same freeze CSS. waitVariant is seeded
