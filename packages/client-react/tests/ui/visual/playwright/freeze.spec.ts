@@ -43,17 +43,42 @@ for (const name of FREEZE_SCENARIOS) {
       "freeze",
     );
 
-    // Freeze runs each animation for 0.01ms. Two frames is enough for them to
-    // start AND settle, so the opacity check reads final state rather than a
-    // half-applied one.
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
+    // Settle every animation before sampling. Two rAFs alone were NOT enough on
+    // a loaded CI runner: an animation still in its pending/before phase applies
+    // `backwards` fill, so `.sealed` read `opacity: 0` and the run flaked.
+    // Awaiting the animations' own `finished` promises removes the race — under
+    // freeze they all complete in 0.01ms. The timeout is a backstop so a
+    // never-finishing animation fails the assertion rather than hanging.
+    //
+    // This does NOT weaken the delay guard. `animation-delay` is a static
+    // computed-style fact, so collectFreezeViolations reports it no matter when
+    // it samples; that assertion — not the opacity one — is what catches the
+    // delay+`backwards` class, and it is why settling here is safe.
+    await page.evaluate(async () => {
+      async function twoFrames(): Promise<void> {
+        await new Promise<void>((resolve) => {
           requestAnimationFrame(() => {
-            resolve();
+            requestAnimationFrame(() => {
+              resolve();
+            });
           });
         });
-      });
+      }
+
+      await twoFrames();
+      await Promise.race([
+        Promise.all(
+          document.getAnimations().map((animation) => {
+            return animation.finished.catch(() => {
+              return undefined;
+            });
+          }),
+        ),
+        new Promise((resolve) => {
+          setTimeout(resolve, 2000);
+        }),
+      ]);
+      await twoFrames();
     });
 
     expect(await page.evaluate(collectFreezeViolations)).toEqual([]);

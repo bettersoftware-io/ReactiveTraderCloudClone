@@ -144,9 +144,13 @@ export function collectFreezeViolations(): FreezeViolation[] {
       report("animation-iteration-count", style.animationIterationCount);
     }
 
-    // The legibility half of the promise. Every animation has finished by the
-    // time this runs, so an animated element sitting at opacity 0 is being held
-    // invisible by a fill mode — the user-visible symptom of the bug class.
+    // The legibility half of the promise, and a SECONDARY check by design. The
+    // caller settles every animation before sampling, so this catches the
+    // permanent cases (a base `opacity: 0` with no animation left to reveal it)
+    // rather than a transient window. The `animation-delay` assertion above is
+    // the primary, timing-independent guard for the delay+`backwards` class —
+    // do not drop it on the grounds that this one "covers" the same bug: it
+    // does not, precisely because animations have finished by the time we look.
     if (Number.parseFloat(style.opacity) === 0) {
       report("opacity", style.opacity);
     }
