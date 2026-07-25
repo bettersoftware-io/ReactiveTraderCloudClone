@@ -264,20 +264,44 @@ test("emits the default login-wait variant synchronously on construction", async
 /**
  * Driven off `LOGIN_WAIT_VARIANTS` rather than a hand-listed set, so a variant
  * added to the domain can never again outrun this adapter's guard.
+ *
+ * Also seeds a companion `rtc-view-mode` value and waits for THAT to flip
+ * first: `hydrate()` reads every key in one `Promise.all` batch and every
+ * guard runs synchronously right after with no further `await`, so once the
+ * companion is visibly hydrated the loginWaitVariant guard has already run
+ * too. Without this, the "handshake" iteration (the default) would pass
+ * identically whether hydration ran or not — the subject already starts at
+ * "handshake" pre-hydration, so a bare wait on loginWaitVariant$ can't tell
+ * the two apart.
  */
 test.each([
   ...LOGIN_WAIT_VARIANTS,
 ])("hydrates the stored login-wait variant %s", async (variant) => {
   store.set("rt-login-wait-variant", variant);
+  store.set("rtc-view-mode", "price");
   const prefs = new AsyncStoragePreferencesAdapter();
   await vi.waitFor(async () => {
-    expect(await firstValueFrom(prefs.loginWaitVariant$())).toBe(variant);
+    expect(await firstValueFrom(prefs.viewMode$())).toBe("price");
   });
+  expect(await firstValueFrom(prefs.loginWaitVariant$())).toBe(variant);
 });
 
 test("falls back to the default login-wait variant when the stored value is unknown", async () => {
   store.set("rt-login-wait-variant", "not-a-real-variant");
+  // A companion valid value in the SAME hydrate() batch — Promise.all
+  // resolves every key together and every guard runs synchronously right
+  // after with no further `await`, so waiting for THIS to visibly flip away
+  // from its own default proves hydrate() has already evaluated (and
+  // rejected) the invalid loginWaitVariant above. Without it, this assertion
+  // would pass identically whether the guard ran or hydrate() never fired at
+  // all: an invalid input can never itself produce an observable change to
+  // wait on, so a bare `firstValueFrom` here would only ever capture the
+  // subject's synchronous pre-hydration default.
+  store.set("rtc-view-mode", "price");
   const prefs = new AsyncStoragePreferencesAdapter();
+  await vi.waitFor(async () => {
+    expect(await firstValueFrom(prefs.viewMode$())).toBe("price");
+  });
   const first = await firstValueFrom(prefs.loginWaitVariant$());
   expect(first).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
 });

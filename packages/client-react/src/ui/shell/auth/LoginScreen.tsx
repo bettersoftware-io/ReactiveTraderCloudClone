@@ -38,7 +38,6 @@ export function LoginScreen(): ReactElement {
   }
 
   const authenticating = state.status === "authenticating";
-  const submitLabel = authenticating ? "AUTHENTICATING" : "AUTHENTICATE ▸";
 
   return (
     <div data-testid="login-screen" className={styles.overlay}>
@@ -102,7 +101,7 @@ export function LoginScreen(): ReactElement {
             }
             disabled={authenticating}
           >
-            {submitLabel}
+            {authenticating ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
           </button>
 
           {authenticating && state.waitVariant === "handshake" ? (

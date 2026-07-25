@@ -20,7 +20,7 @@
 }
 
 .line {
-  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-family: var(--font-mono);
   font-size: 10px;
   line-height: 1.85;
   letter-spacing: 0.09em;

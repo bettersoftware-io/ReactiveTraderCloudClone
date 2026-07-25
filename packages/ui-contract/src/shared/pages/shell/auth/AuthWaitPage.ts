@@ -14,11 +14,23 @@ import type { LoginWaitVariant } from "@rtc/domain";
 export function waitVariantWithin(root: HTMLElement): LoginWaitVariant | null {
   const scope = within(root);
 
-  if (scope.queryByTestId("auth-wait-handshake") !== null) {
+  const hasHandshake = scope.queryByTestId("auth-wait-handshake") !== null;
+  const hasReactor = scope.queryByTestId("auth-wait-reactor") !== null;
+
+  // Exactly one treatment is ever mounted at a time (see the module comment
+  // above). If a regression rendered both simultaneously, silently returning
+  // the first match would mask it — fail loudly instead.
+  if (hasHandshake && hasReactor) {
+    throw new Error(
+      "waitVariantWithin: both auth-wait-handshake and auth-wait-reactor are present — exactly one login-wait treatment should be mounted at a time.",
+    );
+  }
+
+  if (hasHandshake) {
     return "handshake";
   }
 
-  if (scope.queryByTestId("auth-wait-reactor") !== null) {
+  if (hasReactor) {
     return "reactor";
   }
 

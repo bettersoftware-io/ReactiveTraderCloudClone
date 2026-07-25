@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { fixtures } from "./fixtures";
 import { goldenPath, goldenPathArray } from "./goldenPath";
 import { MATRIX_MODES, MATRIX_SKINS, scenarios } from "./scenarios";
 
@@ -71,5 +72,39 @@ describe("theme-matrix expansion", () => {
       "classic-light",
       "app-fx-light.png",
     ]);
+  });
+});
+
+describe("scenario referential integrity", () => {
+  // Guards the WHOLE registered set, not just a hand-picked sample — a typo'd
+  // fixtureKey (e.g. a copy-paste slip) would otherwise only surface as a
+  // runtime "Unknown fixture" throw the first time that scenario is actually
+  // rendered by a visual tier, rather than failing this fast unit test.
+  it("every scenario's fixtureKey resolves to a registered fixture", () => {
+    for (const [name, scenario] of Object.entries(scenarios)) {
+      expect(
+        fixtures[scenario.fixtureKey],
+        `scenario "${name}" points at unknown fixtureKey "${scenario.fixtureKey}"`,
+      ).toBeDefined();
+    }
+  });
+
+  // `scenarios` is a plain object, so its own keys are trivially unique by JS
+  // semantics — that alone can't catch two DIFFERENT scenario names silently
+  // colliding on the same golden PNG path (e.g. a near-miss typo in a base
+  // name), which would make one scenario silently overwrite the other's
+  // golden file. Compute every golden path and assert none repeat.
+  it("no two scenarios collapse onto the same golden path", () => {
+    const seenBy = new Map<string, string>();
+
+    for (const [name, scenario] of Object.entries(scenarios)) {
+      const path = goldenPath(name, scenario);
+      const collidesWith = seenBy.get(path);
+      expect(
+        collidesWith,
+        `scenario "${name}" collides with "${collidesWith}" at golden path "${path}"`,
+      ).toBeUndefined();
+      seenBy.set(path, name);
+    }
   });
 });

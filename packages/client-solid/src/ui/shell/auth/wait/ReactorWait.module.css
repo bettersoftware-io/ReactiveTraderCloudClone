@@ -60,8 +60,10 @@
 
 /* `fill` is set inline on the <circle> (fill="none") rather than here:
  * stylelint-declaration-strict-value's ignoreValues list covers `transparent`
- * but not `none`, and `fill: none` in CSS trips the gate. Same pattern as
- * DeskPnlGauge.tsx. */
+ * but not `none`, and `fill: none` in CSS trips the gate. Inline `fill`
+ * presentation attributes are an established, lint-clean technique elsewhere
+ * in this codebase too (e.g. DeskPnlGauge.tsx, for its own independent
+ * reasons — its stroke colour is runtime-conditional). */
 .arcOuter {
   stroke: var(--accent-primary);
   stroke-width: 2.5;
@@ -108,7 +110,7 @@
 
 .status {
   margin-top: 10px;
-  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.16em;
   color: var(--accent-primary);

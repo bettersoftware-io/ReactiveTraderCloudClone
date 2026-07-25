@@ -9,7 +9,7 @@ import type {
 } from "@rtc/domain";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { SessionStore, StoredSession } from "#/adapters/sessionStore";
+import type { StoredSession } from "#/adapters/sessionStore";
 
 import {
   AuthPresenter,
@@ -353,13 +353,26 @@ describe("AuthPresenter", () => {
     expect(inFlight.locked).toBe(true);
 
     resolve({ ok: true, token: "t2", user: USER, exp: 9e12 });
-    expect(latest(presenter).unlocking).toBe(false);
+    const after = latest(presenter);
+    expect(after.unlocking).toBe(false);
+    // Pin the branch's central invariant on this path too: an unlock must
+    // never leave `status`, whichever way it resolves.
+    expect(after.status).toBe("authenticated");
   });
 
   it("unlock clears unlocking on failure and stays locked", () => {
     const { presenter, resolve } = lockedPresenter();
 
     presenter.unlock("wrong");
+
+    // Observe the in-flight state before resolving — without this, the test
+    // can't distinguish "unlocking was cleared after being set" from
+    // "unlocking was never set" (both would leave `after.unlocking` false).
+    const inFlight = latest(presenter);
+    expect(inFlight.unlocking).toBe(true);
+    expect(inFlight.status).toBe("authenticated");
+    expect(inFlight.locked).toBe(true);
+
     resolve({ ok: false, reason: "invalid" });
 
     const after = latest(presenter);
@@ -374,7 +387,7 @@ describe("AuthPresenter", () => {
     const { port } = deferredAuthPort();
     const presenter = new AuthPresenter(
       port,
-      memorySessionStore(),
+      new InMemorySessionStore(),
       undefined,
       cycle,
     );
@@ -392,7 +405,7 @@ describe("AuthPresenter", () => {
     const { port } = deferredAuthPort();
     const presenter = new AuthPresenter(
       port,
-      memorySessionStore(),
+      new InMemorySessionStore(),
       undefined,
       cycle,
     );
@@ -408,7 +421,7 @@ describe("AuthPresenter", () => {
     const { port, resolve } = deferredAuthPort();
     const presenter = new AuthPresenter(
       port,
-      memorySessionStore(),
+      new InMemorySessionStore(),
       undefined,
       cycle,
     );
@@ -478,12 +491,6 @@ function deferredAuthPort(): {
       current?.next(outcome);
     },
   };
-}
-
-/** A fresh in-memory SessionStore for tests that only need a working store,
- * not persistence assertions — shorthand for `new InMemorySessionStore()`. */
-function memorySessionStore(): SessionStore {
-  return new InMemorySessionStore();
 }
 
 /** A `LoginWaitCycle` pinned to `start`, recording every advance. */
