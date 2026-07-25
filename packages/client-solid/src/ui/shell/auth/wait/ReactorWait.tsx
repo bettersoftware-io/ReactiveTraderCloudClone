@@ -18,6 +18,11 @@ import styles from "./ReactorWait.module.css";
 export function ReactorWait(): JSX.Element {
   return (
     <div data-testid="auth-wait-reactor" class={styles.wait}>
+      {/* The two inner <svg>s repeat aria-hidden even though this wrapper
+          already carries it — not redundant: Biome's error-severity
+          lint/a11y/noSvgWithoutTitle requires a title element or
+          aria-hidden on the <svg> itself, not an ancestor, and this repo
+          disallows lint disables. Removing them fails the build. */}
       <div class={styles.rings} aria-hidden="true">
         <div class={styles.ringOuter}>
           <svg viewBox="0 0 100 100" aria-hidden="true">

@@ -1336,6 +1336,28 @@ export const fixtures: Record<string, AppData> = {
     sessionUnlocking: true,
     waitVariant: "reactor",
   }),
+  // Freeze-tier login-wait treatments: same in-flight sign-in as
+  // login-wait-{handshake,reactor} above, plus powerSaverLevel "freeze" (see
+  // app-fx-power-saver's "calm" precedent). Freeze zeroes animation-duration
+  // but NOT animation-delay, so a `backwards`-filled animation can hold its
+  // `from` state through the delay and render invisible — exactly the class
+  // of bug HandshakeConsole's `.sealed` line shipped with (fixed via a
+  // `:root[data-power-saver="freeze"]` override). jsdom never runs CSS
+  // animations, so this pixel tier is the only automated witness for that
+  // regression class. Login only (not lock/wait-*-freeze): the sign-in gate
+  // is the higher-traffic surface and the treatments are shared components,
+  // so login coverage exercises the same freeze-tier CSS the lock overlay
+  // reuses.
+  "login-wait-handshake-freeze": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "handshake",
+    powerSaverLevel: "freeze",
+  }),
+  "login-wait-reactor-freeze": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "reactor",
+    powerSaverLevel: "freeze",
+  }),
   // Preferences modal: animated background off → its real switch reads "off".
   "prefs-open": makeAppData({ animatedBackground: false }),
   // Boot sequence: the deterministic chrome is captured under reduced motion

@@ -275,6 +275,17 @@ const scenarioActions: Record<string, ScenarioAction> = {
   "login/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
   "lock/wait-handshake": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
   "lock/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
+  // Freeze-tier wait treatments: same static full-page shot as the non-freeze
+  // arms above, seeded via powerSaverLevel "freeze" in the fixture instead of
+  // a click.
+  "login/wait-handshake-freeze": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
+  "login/wait-reactor-freeze": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };
 

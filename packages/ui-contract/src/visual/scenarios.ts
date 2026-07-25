@@ -579,6 +579,25 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "LockScreen",
     fixtureKey: "lock-wait-reactor",
   },
+  // Freeze-tier coverage of the two wait treatments: the power-saver "freeze"
+  // level zeroes animation-duration but not animation-delay (see
+  // client-react/src/index.css), so a `backwards`-filled animation can hold
+  // its `from` state through the delay and render invisible under freeze —
+  // the exact bug class HandshakeConsole's `.sealed` line shipped with on
+  // this branch. jsdom doesn't run CSS animations, so this pixel tier is the
+  // only automated witness. Login only (the higher-traffic sign-in gate);
+  // the lock overlay reuses the same treatment components and freeze CSS, so
+  // it doesn't need its own freeze goldens too. waitVariant is seeded
+  // explicitly in the fixture, same reasoning as the non-freeze wait
+  // scenarios above.
+  "login/wait-handshake-freeze": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-handshake-freeze",
+  },
+  "login/wait-reactor-freeze": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-reactor-freeze",
+  },
   "chrome/header": {
     componentKey: "HeaderChrome",
     fixtureKey: "app-connected",
