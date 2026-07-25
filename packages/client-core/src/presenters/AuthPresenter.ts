@@ -1,25 +1,53 @@
 import { BehaviorSubject, type Observable } from "rxjs";
 import { shareReplay } from "rxjs/operators";
 
-import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
+import {
+  type AuthOutcome,
+  type AuthPort,
+  DEFAULT_LOGIN_WAIT_VARIANT,
+  LOGIN_WAIT_VARIANTS,
+  type LoginWaitVariant,
+  type SessionUser,
+} from "@rtc/domain";
 
 import type { SessionStore, StoredSession } from "../adapters/sessionStore.js";
 
 export type AuthStatus = "unauthenticated" | "authenticating" | "authenticated";
+
+/** The persisted login-wait variant cycle. Shaped like `BootSequenceDeps` —
+ * the presenter reads and advances, but never touches localStorage itself. */
+export interface LoginWaitCycle {
+  /** Current persisted cycle position → the variant for this attempt. */
+  readonly current: () => LoginWaitVariant;
+  /** Advance the persisted pointer (preferences seam; NO localStorage here). */
+  readonly advance: (next: LoginWaitVariant) => void;
+}
 
 /** Auth view-model: sign-in status, the signed-in operator, and lock state. */
 export interface AuthViewState {
   readonly status: AuthStatus;
   readonly user: SessionUser | null;
   readonly locked: boolean;
+  /** True while an unlock (re-authenticate) request is in flight.
+   *
+   * Deliberately NOT modelled as `status: "authenticating"`. AuthGate renders
+   * LoginScreen whenever `status !== "authenticated"`, so reusing the status
+   * would unmount the entire app mid-unlock and flash the sign-in form —
+   * taking the lock overlay down with it, since LockScreen lives inside App
+   * rather than in the gate. */
+  readonly unlocking: boolean;
   readonly error: string | null;
+  /** The wait treatment to render for the current attempt. */
+  readonly waitVariant: LoginWaitVariant;
 }
 
 const UNAUTHENTICATED_STATE: AuthViewState = {
   status: "unauthenticated",
   user: null,
   locked: false,
+  unlocking: false,
   error: null,
+  waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
 /**
@@ -41,11 +69,30 @@ export class AuthPresenter {
     private readonly now: () => number = () => {
       return Date.now();
     },
+    private readonly cycle: LoginWaitCycle = {
+      current: (): LoginWaitVariant => {
+        return DEFAULT_LOGIN_WAIT_VARIANT;
+      },
+      advance: (): void => {
+        // no-op default: composition injects the real preferences-backed cycle
+      },
+    },
   ) {
     this.subject = new BehaviorSubject<AuthViewState>(this.resume());
     this.state$ = this.subject.pipe(
       shareReplay({ bufferSize: 1, refCount: true }),
     );
+  }
+
+  /** Reads the current variant and advances the persisted pointer immediately.
+   * Advance-on-start mirrors createBootSequenceMachine (BootSequenceMachine.ts:44-45):
+   * an attempt abandoned by a reload still flips the variant for next time. */
+  private pickWaitVariant(): LoginWaitVariant {
+    const variant = this.cycle.current();
+    const nextIdx =
+      (LOGIN_WAIT_VARIANTS.indexOf(variant) + 1) % LOGIN_WAIT_VARIANTS.length;
+    this.cycle.advance(LOGIN_WAIT_VARIANTS[nextIdx]);
+    return variant;
   }
 
   /** Reads the store and either resumes a live session or clears a stale one. */
@@ -58,7 +105,9 @@ export class AuthPresenter {
         status: "authenticated",
         user: entry.user,
         locked: false,
+        unlocking: false,
         error: null,
+        waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
       };
     }
 
@@ -72,7 +121,9 @@ export class AuthPresenter {
       status: "authenticating",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: this.pickWaitVariant(),
     });
 
     this.auth.login(username, password).subscribe((outcome) => {
@@ -88,7 +139,9 @@ export class AuthPresenter {
         status: "authenticated",
         user: outcome.user,
         locked: false,
+        unlocking: false,
         error: null,
+        waitVariant: this.subject.value.waitVariant,
       });
       return;
     }
@@ -97,7 +150,9 @@ export class AuthPresenter {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: describeAuthFailure(outcome.reason),
+      waitVariant: this.subject.value.waitVariant,
     });
   }
 
@@ -120,6 +175,13 @@ export class AuthPresenter {
       return;
     }
 
+    this.subject.next({
+      ...this.subject.value,
+      unlocking: true,
+      error: null,
+      waitVariant: this.pickWaitVariant(),
+    });
+
     this.auth.login(username, password).subscribe((outcome) => {
       this.handleUnlockOutcome(username, outcome);
     });
@@ -134,6 +196,7 @@ export class AuthPresenter {
         ...current,
         user: outcome.user,
         locked: false,
+        unlocking: false,
         error: null,
       });
       return;
@@ -142,6 +205,7 @@ export class AuthPresenter {
     this.subject.next({
       ...current,
       locked: true,
+      unlocking: false,
       error: describeAuthFailure(outcome.reason),
     });
   }

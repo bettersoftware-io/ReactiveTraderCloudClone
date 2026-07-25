@@ -227,7 +227,9 @@ const DEFAULT_AUTH: AuthViewState = {
   status: "authenticated",
   user: DEFAULT_AUTH_USER,
   locked: false,
+  unlocking: false,
   error: null,
+  waitVariant: "handshake",
 };
 
 export interface World {

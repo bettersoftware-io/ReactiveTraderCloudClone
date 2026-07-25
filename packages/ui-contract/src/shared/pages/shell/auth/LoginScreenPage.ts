@@ -2,6 +2,10 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
+import type { LoginWaitVariant } from "@rtc/domain";
+
+import { waitVariantWithin } from "./AuthWaitPage";
+
 /**
  * Page object for LoginScreen. Hook-driven (reads `useAuth`): a username/
  * password form that calls `login(username, password)` on submit.
@@ -59,5 +63,15 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
   /** Each [username, password] pair `login()` was invoked with, through the seam. */
   loginArgs(): Array<[string, string]> {
     return this.commandLog().authLoginArgs;
+  }
+
+  /** True when either login-wait treatment is on screen. */
+  hasWait(): boolean {
+    return this.waitVariant() !== null;
+  }
+
+  /** Which wait treatment is rendered: "handshake", "reactor", or null. */
+  waitVariant(): LoginWaitVariant | null {
+    return waitVariantWithin(this.root);
   }
 }

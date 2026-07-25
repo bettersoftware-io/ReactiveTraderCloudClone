@@ -6,7 +6,7 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 // clock here freezes it identically in both — see freezeClock.ts.
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useEffect, useLayoutEffect, useState } from "react";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
 
@@ -34,6 +34,7 @@ const FULL_BLEED = new Set([
   "App",
   "BootSequence",
   "LockScreen",
+  "LoginScreen",
   "PreferencesModal",
 ]);
 
@@ -96,6 +97,28 @@ export function VisualScenario({
   if (!render) {
     throw new Error(`Unknown component: ${scenario.componentKey}`);
   }
+
+  // The real app applies the seeded power-saver level to the document root
+  // via PowerSaverRoot (mounted only by AppRoot, which this harness does not
+  // mount) — see #/ui/shell/power/PowerSaverRoot.tsx. Without this, every
+  // `[data-power-saver="freeze"] *` / `var(--fx-play, running)` rule never
+  // matches and freeze/calm scenarios render identically to their unstyled
+  // twins. Mirror PowerSaverRoot's two writes here, and clean up on unmount
+  // so one scenario's level cannot leak into the next (the class of bug
+  // Important 3 in the final-review fixes was about).
+  useLayoutEffect(() => {
+    const level = data.powerSaverLevel ?? "off";
+    document.documentElement.dataset.powerSaver = level;
+    document.documentElement.style.setProperty(
+      "--fx-play",
+      level === "off" ? "running" : "paused",
+    );
+
+    return () => {
+      delete document.documentElement.dataset.powerSaver;
+      document.documentElement.style.removeProperty("--fx-play");
+    };
+  }, [data.powerSaverLevel]);
 
   if (!fontsReady) {
     return null;

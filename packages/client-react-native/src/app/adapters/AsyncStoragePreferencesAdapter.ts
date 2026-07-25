@@ -13,6 +13,7 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
@@ -21,6 +22,8 @@ import {
   type EqBlotterView,
   type EqWatchlistSort,
   isPowerSaverLevel,
+  LOGIN_WAIT_VARIANTS,
+  type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
   THEME_SKINS,
@@ -36,6 +39,7 @@ export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
 export const FORCE_BOOT_ANIMATION_STORAGE_KEY = "rtc-force-boot-animation";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
+export const LOGIN_WAIT_VARIANT_STORAGE_KEY = "rt-login-wait-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
@@ -65,6 +69,12 @@ function isBootVariant(value: string | null): value is BootVariant {
   return value !== null && (BOOT_VARIANTS as readonly string[]).includes(value);
 }
 
+function isLoginWaitVariant(value: string | null): value is LoginWaitVariant {
+  return (
+    value !== null && (LOGIN_WAIT_VARIANTS as readonly string[]).includes(value)
+  );
+}
+
 function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
   return value === "live" || value === "closed" || value === "all";
 }
@@ -91,6 +101,7 @@ interface StoredPreferences {
   powerSaver?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
+  loginWaitVariant?: LoginWaitVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
@@ -111,6 +122,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       powerSaver,
       forceBootAnimation,
       bootVariant,
+      loginWaitVariant,
       creditRfqFilter,
       eqWatchlistSort,
       eqBlotterView,
@@ -123,6 +135,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(POWER_SAVER_STORAGE_KEY),
       AsyncStorage.getItem(FORCE_BOOT_ANIMATION_STORAGE_KEY),
       AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+      AsyncStorage.getItem(LOGIN_WAIT_VARIANT_STORAGE_KEY),
       AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
       AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
@@ -163,6 +176,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
 
     if (isBootVariant(bootVariant)) {
       stored.bootVariant = bootVariant;
+    }
+
+    if (isLoginWaitVariant(loginWaitVariant)) {
+      stored.loginWaitVariant = loginWaitVariant;
     }
 
     if (isCreditRfqFilter(creditRfqFilter)) {
@@ -229,6 +246,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
+  private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
+
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
   private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
@@ -260,6 +279,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       s.bootVariant ?? DEFAULT_BOOT_VARIANT,
+    );
+    this.loginWaitVariantSubject = new BehaviorSubject<LoginWaitVariant>(
+      s.loginWaitVariant ?? DEFAULT_LOGIN_WAIT_VARIANT,
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
       s.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
@@ -317,6 +339,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.bootVariant !== undefined) {
       this.bootVariantSubject.next(s.bootVariant);
+    }
+
+    if (s.loginWaitVariant !== undefined) {
+      this.loginWaitVariantSubject.next(s.loginWaitVariant);
     }
 
     if (s.creditRfqFilter !== undefined) {
@@ -405,6 +431,19 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.bootVariantSubject.next(variant);
+  }
+
+  loginWaitVariant$(): Observable<LoginWaitVariant> {
+    return this.loginWaitVariantSubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitVariant(variant: LoginWaitVariant): void {
+    void AsyncStorage.setItem(LOGIN_WAIT_VARIANT_STORAGE_KEY, variant).catch(
+      () => {
+        // Storage failures are non-fatal — the in-memory subject stays correct.
+      },
+    );
+    this.loginWaitVariantSubject.next(variant);
   }
 
   creditRfqFilter$(): Observable<CreditRfqFilter> {

@@ -33,4 +33,23 @@ describe("LoginScreen", () => {
     const page = mount(LoginScreen, { auth: { status: "authenticating" } });
     expect(page.isSubmitDisabled()).toBe(true);
   });
+
+  it("shows no wait treatment when idle", () => {
+    const page = mount(LoginScreen, { auth: { status: "unauthenticated" } });
+    expect(page.hasWait()).toBe(false);
+  });
+
+  it("shows the handshake treatment while authenticating on that variant", () => {
+    const page = mount(LoginScreen, {
+      auth: { status: "authenticating", waitVariant: "handshake" },
+    });
+    expect(page.waitVariant()).toBe("handshake");
+  });
+
+  it("shows the reactor treatment while authenticating on that variant", () => {
+    const page = mount(LoginScreen, {
+      auth: { status: "authenticating", waitVariant: "reactor" },
+    });
+    expect(page.waitVariant()).toBe("reactor");
+  });
 });

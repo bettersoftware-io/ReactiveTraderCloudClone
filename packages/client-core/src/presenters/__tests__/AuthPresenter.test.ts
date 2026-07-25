@@ -1,12 +1,22 @@
-import { of } from "rxjs";
+import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
+import type {
+  AuthOutcome,
+  AuthPort,
+  LoginWaitVariant,
+  SessionUser,
+} from "@rtc/domain";
+import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { StoredSession } from "#/adapters/sessionStore";
 
-import { AuthPresenter, type AuthViewState } from "../AuthPresenter";
+import {
+  AuthPresenter,
+  type AuthViewState,
+  type LoginWaitCycle,
+} from "../AuthPresenter";
 
 const USER: SessionUser = {
   name: "Anthony Stark",
@@ -43,7 +53,9 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -71,7 +83,9 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
   });
@@ -87,7 +101,9 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -139,7 +155,9 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: "Invalid credentials",
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
   });
@@ -180,7 +198,9 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -214,7 +234,9 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
 
     expect(auth.calls.at(-1)).toEqual(["astark", "correct-horse"]);
@@ -249,7 +271,9 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: "Invalid credentials",
+      waitVariant: "handshake",
     });
 
     expect(auth.calls.at(-1)).toEqual(["astark", "wrong-password"]);
@@ -280,7 +304,9 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: "Service unavailable",
+      waitVariant: "handshake",
     });
   });
 
@@ -308,9 +334,139 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
+  });
+
+  it("unlock sets unlocking while in flight and leaves status authenticated", () => {
+    const { presenter, resolve } = lockedPresenter();
+
+    presenter.unlock("mcdc2026");
+
+    const inFlight = latest(presenter);
+    expect(inFlight.unlocking).toBe(true);
+    // The whole app unmounts if status leaves "authenticated" — AuthGate
+    // renders LoginScreen for any non-authenticated status.
+    expect(inFlight.status).toBe("authenticated");
+    expect(inFlight.locked).toBe(true);
+
+    resolve({ ok: true, token: "t2", user: USER, exp: 9e12 });
+    const after = latest(presenter);
+    expect(after.unlocking).toBe(false);
+    // Pin the branch's central invariant on this path too: an unlock must
+    // never leave `status`, whichever way it resolves.
+    expect(after.status).toBe("authenticated");
+  });
+
+  it("unlock clears unlocking on failure and stays locked", () => {
+    const { presenter, resolve } = lockedPresenter();
+
+    presenter.unlock("wrong");
+
+    // Observe the in-flight state before resolving — without this, the test
+    // can't distinguish "unlocking was cleared after being set" from
+    // "unlocking was never set" (both would leave `after.unlocking` false).
+    const inFlight = latest(presenter);
+    expect(inFlight.unlocking).toBe(true);
+    expect(inFlight.status).toBe("authenticated");
+    expect(inFlight.locked).toBe(true);
+
+    resolve({ ok: false, reason: "invalid" });
+
+    const after = latest(presenter);
+    expect(after.status).toBe("authenticated");
+    expect(after.unlocking).toBe(false);
+    expect(after.locked).toBe(true);
+    expect(after.error).toBe("Invalid credentials");
+  });
+
+  it("login stamps the current variant and advances the pointer on start", () => {
+    const { cycle, advanced } = recordingCycle("handshake");
+    const { port } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      new InMemorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("handshake");
+    // Advance-on-START, not on completion: a user who reloads mid-attempt
+    // must still get a different variant next time.
+    expect(advanced).toEqual(["reactor"]);
+  });
+
+  it("the cycle pointer wraps reactor -> handshake", () => {
+    const { cycle, advanced } = recordingCycle("reactor");
+    const { port } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      new InMemorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("reactor");
+    expect(advanced).toEqual(["handshake"]);
+  });
+
+  it("unlock also stamps and advances the variant", () => {
+    const { cycle, advanced } = recordingCycle("reactor");
+    const { port, resolve } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      new InMemorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+    resolve({ ok: true, token: "t", user: USER, exp: 9e12 });
+    presenter.lock();
+    advanced.length = 0; // discard the login's advance; assert only the unlock's
+
+    presenter.unlock("mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("reactor");
+    expect(advanced).toEqual(["handshake"]);
+  });
+
+  it("resume() does not advance the cycle for a resumed live session", () => {
+    // All the advance-on-start tests above start from an empty store, which
+    // only exercises the unauthenticated branch. The design rationale for
+    // "advance on login/unlock, not on resume" is specifically about NOT
+    // flipping the variant on every page load of an already-signed-in
+    // session — this pins that live-session branch directly.
+    function now(): number {
+      return 1_000_000;
+    }
+
+    const store = new InMemorySessionStore();
+    const session: StoredSession = {
+      token: "tok-1",
+      user: USER,
+      username: "astark",
+      exp: now() + 1000,
+    };
+    store.write(session);
+
+    const { cycle, advanced } = recordingCycle("reactor");
+    const presenter = new AuthPresenter(
+      fakeAuthPort({ ok: true, token: "tok-1", user: USER, exp: 9_000_000 }),
+      store,
+      now,
+      cycle,
+    );
+
+    expect(advanced).toEqual([]);
+    expect(latest(presenter).waitVariant).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
   });
 });
 
@@ -335,6 +491,79 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
       return of(outcome);
     },
   };
+}
+
+/** An `AuthPort` stub whose outcome the test resolves explicitly, so the
+ * in-flight state is observable. `fakeAuthPort` uses `of(outcome)`, which
+ * emits synchronously and skips straight past the wait state.
+ *
+ * Each `login()` call gets its own `Subject`, and `resolve()` always targets
+ * the most recent one — mirroring how a real `AuthPort` call is an
+ * independent async operation. `AuthPresenter` never unsubscribes its
+ * internal `.subscribe()` callback, so a single shared `Subject` across calls
+ * would let a *stale* subscription (e.g. the initial `login()` from
+ * `lockedPresenter`'s setup) also receive a later `resolve()` meant for
+ * `unlock()` — silently re-running `handleLoginOutcome` and clobbering
+ * `status` out from under the in-flight `unlock()` assertions. */
+interface DeferredAuthPort {
+  readonly port: AuthPort;
+  readonly resolve: (outcome: AuthOutcome) => void;
+}
+
+function deferredAuthPort(): DeferredAuthPort {
+  let current: Subject<AuthOutcome> | null = null;
+
+  return {
+    port: {
+      login(): Observable<AuthOutcome> {
+        const subject = new Subject<AuthOutcome>();
+        current = subject;
+        return subject.asObservable();
+      },
+    },
+    resolve: (outcome: AuthOutcome): void => {
+      current?.next(outcome);
+    },
+  };
+}
+
+/** A `LoginWaitCycle` pinned to `start`, recording every advance. */
+interface RecordingCycle {
+  readonly cycle: LoginWaitCycle;
+  readonly advanced: LoginWaitVariant[];
+}
+
+function recordingCycle(start: LoginWaitVariant): RecordingCycle {
+  const advanced: LoginWaitVariant[] = [];
+
+  return {
+    advanced,
+    cycle: {
+      current: (): LoginWaitVariant => {
+        return start;
+      },
+      advance: (next: LoginWaitVariant): void => {
+        advanced.push(next);
+      },
+    },
+  };
+}
+
+/** A presenter already logged in as USER and then locked — the LockScreen state. */
+interface LockedPresenter {
+  readonly presenter: AuthPresenter;
+  readonly resolve: (outcome: AuthOutcome) => void;
+}
+
+function lockedPresenter(): LockedPresenter {
+  const { port, resolve } = deferredAuthPort();
+  const presenter = new AuthPresenter(port, new InMemorySessionStore());
+
+  presenter.login("astark", "mcdc2026");
+  resolve({ ok: true, token: "t", user: USER, exp: 9e12 });
+  presenter.lock();
+
+  return { presenter, resolve };
 }
 
 function latest(presenter: AuthPresenter): AuthViewState {

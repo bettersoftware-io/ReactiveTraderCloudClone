@@ -1312,6 +1312,52 @@ export const fixtures: Record<string, AppData> = {
   }),
   // Lock screen: the session is locked, so the full-screen overlay renders.
   "session-locked": makeAppData({ sessionLocked: true }),
+  // Login-wait treatments: a sign-in request is in flight (status
+  // "authenticating"), seeded to a fixed waitVariant — never the live cycling
+  // pointer, which would alternate the variant (and the golden) between runs.
+  "login-wait-handshake": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "handshake",
+  }),
+  "login-wait-reactor": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "reactor",
+  }),
+  // Lock-wait treatments: the session is locked AND an unlock (re-auth)
+  // request is in flight, seeded to a fixed waitVariant for the same reason
+  // as the login-wait fixtures above.
+  "lock-wait-handshake": makeAppData({
+    sessionLocked: true,
+    sessionUnlocking: true,
+    waitVariant: "handshake",
+  }),
+  "lock-wait-reactor": makeAppData({
+    sessionLocked: true,
+    sessionUnlocking: true,
+    waitVariant: "reactor",
+  }),
+  // Freeze-tier login-wait treatments: same in-flight sign-in as
+  // login-wait-{handshake,reactor} above, plus powerSaverLevel "freeze" (see
+  // app-fx-power-saver's "calm" precedent). Freeze zeroes animation-duration
+  // but NOT animation-delay, so a `backwards`-filled animation can hold its
+  // `from` state through the delay and render invisible — exactly the class
+  // of bug HandshakeConsole's `.sealed` line shipped with (fixed via a
+  // `:root[data-power-saver="freeze"]` override). jsdom never runs CSS
+  // animations, so this pixel tier is the only automated witness for that
+  // regression class. Login only (not lock/wait-*-freeze): the sign-in gate
+  // is the higher-traffic surface and the treatments are shared components,
+  // so login coverage exercises the same freeze-tier CSS the lock overlay
+  // reuses.
+  "login-wait-handshake-freeze": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "handshake",
+    powerSaverLevel: "freeze",
+  }),
+  "login-wait-reactor-freeze": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "reactor",
+    powerSaverLevel: "freeze",
+  }),
   // Preferences modal: animated background off → its real switch reads "off".
   "prefs-open": makeAppData({ animatedBackground: false }),
   // Boot sequence: the deterministic chrome is captured under reduced motion

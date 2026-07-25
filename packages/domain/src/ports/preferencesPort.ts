@@ -6,6 +6,7 @@ import type {
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
+  LoginWaitVariant,
   PowerSaverLevel,
   ThemeModePreference,
   ThemeSkin,
@@ -60,6 +61,11 @@ export interface PreferencesPort {
    * BootSequenceMachine at each boot start via setBootVariant. */
   bootVariant$(): Observable<BootVariant>;
   setBootVariant(variant: BootVariant): void;
+  /** Replay-current login-wait variant stream; emits synchronously on subscribe.
+   * The cycle pointer (handshake → reactor → handshake …) is advanced by
+   * AuthPresenter at each login/unlock attempt start via setLoginWaitVariant. */
+  loginWaitVariant$(): Observable<LoginWaitVariant>;
+  setLoginWaitVariant(variant: LoginWaitVariant): void;
   /** Replay-current Credit RFQs filter stream; emits synchronously on subscribe.
    * Shared between the RFQs panel (reader) and its head's filter pills (writer). */
   creditRfqFilter$(): Observable<CreditRfqFilter>;

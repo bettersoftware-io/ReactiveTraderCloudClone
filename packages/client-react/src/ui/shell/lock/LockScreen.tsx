@@ -3,10 +3,14 @@ import { useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { HandshakeConsole } from "../auth/wait/HandshakeConsole";
+import { ReactorRings } from "../auth/wait/ReactorRings";
+import { ReactorWait } from "../auth/wait/ReactorWait";
 import { HudLogo } from "../logo/HudLogo";
 import { BiometricChannel } from "./BiometricChannel";
 import { BiometricDots } from "./BiometricDots";
 
+import waitStyles from "../auth/wait/authWait.module.css";
 import styles from "./LockScreen.module.css";
 
 /**
@@ -27,7 +31,8 @@ export function LockScreen(): ReactElement | null {
     return null;
   }
 
-  const { user } = state;
+  const { user, unlocking } = state;
+  const reactorWaiting = unlocking && state.waitVariant === "reactor";
 
   function handlePasswordChange(event: ChangeEvent<HTMLInputElement>): void {
     setPassword(event.target.value);
@@ -42,9 +47,17 @@ export function LockScreen(): ReactElement | null {
     <div data-testid="lock-screen" className={styles.overlay}>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.panel}>
-        {/* Hex emblem (prototype line 80) — the shared animated HUD logo. */}
+        {/* Hex emblem (prototype line 80) — the shared animated HUD logo.
+            While the reactor wait treatment is in flight, ReactorRings wraps
+            it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div className={styles.badge} aria-hidden="true">
-          <HudLogo />
+          {reactorWaiting ? (
+            <ReactorRings>
+              <HudLogo />
+            </ReactorRings>
+          ) : (
+            <HudLogo />
+          )}
         </div>
 
         <div data-testid="lock-title" className={styles.title}>
@@ -79,17 +92,25 @@ export function LockScreen(): ReactElement | null {
         <BiometricDots />
 
         <form className={styles.form} onSubmit={handleSubmit}>
-          <label className={styles.field}>
-            <span className={styles.label}>Password</span>
-            <input
-              data-testid="lock-password"
-              className={styles.input}
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={handlePasswordChange}
-            />
-          </label>
+          <div
+            className={
+              unlocking
+                ? `${waitStyles.fields} ${waitStyles.recede}`
+                : waitStyles.fields
+            }
+          >
+            <label className={styles.field}>
+              <span className={styles.label}>Password</span>
+              <input
+                data-testid="lock-password"
+                className={styles.input}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={handlePasswordChange}
+              />
+            </label>
+          </div>
 
           {state.error !== null ? (
             <div data-testid="lock-error" className={styles.error}>
@@ -100,10 +121,22 @@ export function LockScreen(): ReactElement | null {
           <button
             type="submit"
             data-testid="lock-authenticate"
-            className={styles.authenticate}
+            className={
+              unlocking
+                ? `${styles.authenticate} ${waitStyles.busy}`
+                : styles.authenticate
+            }
+            disabled={unlocking}
           >
-            AUTHENTICATE ▸
+            {unlocking ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
           </button>
+
+          {unlocking && state.waitVariant === "handshake" ? (
+            <HandshakeConsole />
+          ) : null}
+          {unlocking && state.waitVariant === "reactor" ? (
+            <ReactorWait />
+          ) : null}
         </form>
 
         <BiometricChannel />

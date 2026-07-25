@@ -7,7 +7,9 @@ import type {
   CurrencyPair,
   EquityInstrument,
   ExecuteTradeInput,
+  LoginWaitVariant,
 } from "@rtc/domain";
+import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
@@ -302,7 +304,30 @@ export function createApp(ports: AppPorts): App {
     // decision (defaults to playing when no bootSplash port is supplied).
     bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
     // Login/lock/logout lifecycle over the injected AuthPort + SessionStore.
-    auth: new AuthPresenter(ports.auth, ports.sessionStore),
+    // The 4th argument is the persisted login-wait variant cycle, read and
+    // advanced through the preferences seam — same pattern as boot's variant.
+    auth: new AuthPresenter(ports.auth, ports.sessionStore, undefined, {
+      current: (): LoginWaitVariant => {
+        // All current PreferencesPort adapters are BehaviorSubject-backed, so
+        // this synchronous read always resolves before `.subscribe()`
+        // returns. The `?? DEFAULT_LOGIN_WAIT_VARIANT` is a guard against a
+        // hypothetical non-replaying implementation: without it, `value`
+        // would stay `undefined`, LOGIN_WAIT_VARIANTS.indexOf(undefined)
+        // would be -1, and the wait treatment would silently fail to render
+        // — exactly the no-feedback state this feature exists to fix.
+        let value: LoginWaitVariant | undefined;
+        ports.preferences
+          .loginWaitVariant$()
+          .pipe(take(1))
+          .subscribe((v) => {
+            value = v;
+          });
+        return value ?? DEFAULT_LOGIN_WAIT_VARIANT;
+      },
+      advance: (next: LoginWaitVariant): void => {
+        ports.preferences.setLoginWaitVariant(next);
+      },
+    }),
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),

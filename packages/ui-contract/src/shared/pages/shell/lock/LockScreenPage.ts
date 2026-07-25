@@ -2,6 +2,10 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
+import type { LoginWaitVariant } from "@rtc/domain";
+
+import { waitVariantWithin } from "../auth/AuthWaitPage";
+
 /**
  * Page object for LockScreen. Hook-driven (reads `useAuth`): renders nothing
  * unless the session is locked with a known user, and while locked shows the
@@ -61,5 +65,15 @@ export class LockScreenPage extends MountedComponent<Record<string, never>> {
   /** Each password `unlock()` was invoked with, through the seam, in order. */
   unlockArgs(): readonly string[] {
     return this.commandLog().authUnlockArgs;
+  }
+
+  /** True when either login-wait treatment is on screen. */
+  hasWait(): boolean {
+    return this.waitVariant() !== null;
+  }
+
+  /** Which wait treatment is rendered: "handshake", "reactor", or null. */
+  waitVariant(): LoginWaitVariant | null {
+    return waitVariantWithin(this.root);
   }
 }

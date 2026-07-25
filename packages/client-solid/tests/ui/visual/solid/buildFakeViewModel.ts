@@ -274,15 +274,20 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
     },
     // Auth: static snapshot for screenshots. Defaults to authenticated +
-    // unlocked, so the LockScreen overlay renders nothing and existing
-    // goldens are unchanged.
+    // unlocked + not authenticating, so the LockScreen overlay renders
+    // nothing and existing goldens are unchanged. sessionAuthenticating/
+    // waitVariant drive the login/lock-wait scenarios (see fixtures.ts).
     useAuth: () => {
       return {
         state: at({
-          status: "authenticated" as const,
+          status: data.sessionAuthenticating
+            ? ("authenticating" as const)
+            : ("authenticated" as const),
           user: DEMO_USER,
           locked: data.sessionLocked ?? false,
+          unlocking: data.sessionUnlocking ?? false,
           error: null,
+          waitVariant: data.waitVariant ?? "handshake",
         }),
         login: (): void => {
           return;

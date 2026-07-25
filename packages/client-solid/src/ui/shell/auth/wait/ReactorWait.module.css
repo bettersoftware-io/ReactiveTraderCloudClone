@@ -1,0 +1,78 @@
+/* The `reactor` login-wait treatment: the indeterminate bar and status line
+ * below the submit button. The counter-rotating arcs around the hex emblem
+ * live in `ReactorRings.module.css` instead — see that file for the ring
+ * geometry and the emblem pulse.
+ *
+ * PERF (docs/performance.md):
+ *  - Only `transform` and `opacity` are animated.
+ *  - The bar slides a fixed-width child with translateX inside an
+ *    overflow:hidden track. Animating `width` or `left` would trigger layout
+ *    on every frame, forever, on a permanently-mounted HUD.
+ *
+ * FREEZE (index.css:47-58): base CSS is the informative state. The status
+ * line is fully legible unanimated; the keyframes only pulse it.
+ */
+
+.wait {
+  margin-top: 10px;
+}
+
+.track {
+  position: relative;
+  overflow: hidden;
+  height: 2px;
+  margin-top: 9px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+}
+
+.bar {
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: var(--glow);
+  animation: slide 1.25s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(390%);
+  }
+}
+
+.status {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--accent-primary);
+  text-align: center;
+  animation: pulse 1.8s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* No global reduced-motion rule exists in this repo — every stylesheet opts in
+ * for itself. The bar is decorative (aria-hidden), and the status line is
+ * legible unanimated, so stopping both loses no information. */
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .status {
+    animation: none;
+  }
+}

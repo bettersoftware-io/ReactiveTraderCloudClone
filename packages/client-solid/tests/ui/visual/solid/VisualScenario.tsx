@@ -37,6 +37,7 @@ const FULL_BLEED = new Set([
   "App",
   "BootSequence",
   "LockScreen",
+  "LoginScreen",
   "PreferencesModal",
 ]);
 
@@ -105,6 +106,28 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
   if (!render) {
     throw new Error(`Unknown component: ${scenario.componentKey}`);
   }
+
+  // The real app applies the seeded power-saver level to the document root
+  // via PowerSaverRoot (mounted only by AppRoot, which this harness does not
+  // mount) — see #/ui/shell/power/PowerSaverRoot.tsx. Without this, every
+  // `[data-power-saver="freeze"] *` / `var(--fx-play, running)` rule never
+  // matches and freeze/calm scenarios render identically to their unstyled
+  // twins. Mirror PowerSaverRoot's two writes here, and clean up on unmount
+  // so one scenario's level cannot leak into the next (the class of bug
+  // Important 3 in the final-review fixes was about).
+  // Component body runs once (see the `fullBleed` note below), so a plain
+  // synchronous write is correct here — no reactive wrapper needed.
+  const powerSaverLevel = data.powerSaverLevel ?? "off";
+  document.documentElement.dataset.powerSaver = powerSaverLevel;
+  document.documentElement.style.setProperty(
+    "--fx-play",
+    powerSaverLevel === "off" ? "running" : "paused",
+  );
+
+  onCleanup(() => {
+    delete document.documentElement.dataset.powerSaver;
+    document.documentElement.style.removeProperty("--fx-play");
+  });
 
   // Setup-scope-only condition (derived from `name`, which never changes
   // within one mount — see above), so a plain JS ternary below is correct;

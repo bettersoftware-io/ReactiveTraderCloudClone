@@ -10,11 +10,13 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
   type ThemeSkin,
@@ -32,6 +34,7 @@ export interface PreferencesSeed {
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
+  loginWaitVariant?: LoginWaitVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
@@ -231,6 +234,31 @@ export function describePreferencesPortContract(
     it("reads back a seeded bootVariant", async () => {
       const port = makeSeeded({ bootVariant: "docking" });
       expect(await firstValueFrom(port.bootVariant$())).toBe("docking");
+    });
+
+    describe("loginWaitVariant", () => {
+      it("empty store emits the default loginWaitVariant", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.loginWaitVariant$())).toBe(
+          DEFAULT_LOGIN_WAIT_VARIANT,
+        );
+      });
+
+      it("setLoginWaitVariant pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: LoginWaitVariant[] = [];
+        const sub = port.loginWaitVariant$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setLoginWaitVariant("reactor");
+        sub.unsubscribe();
+        expect(seen).toEqual(["handshake", "reactor"]);
+      });
+
+      it("reads back a seeded loginWaitVariant", async () => {
+        const port = makeSeeded({ loginWaitVariant: "reactor" });
+        expect(await firstValueFrom(port.loginWaitVariant$())).toBe("reactor");
+      });
     });
 
     it("empty store emits the default creditRfqFilter", async () => {

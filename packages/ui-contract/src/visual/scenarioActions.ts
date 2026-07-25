@@ -263,6 +263,29 @@ const scenarioActions: Record<string, ScenarioAction> = {
   },
   // Lock + preferences are fixed-position viewport overlays → full-page capture.
   "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
+  // Login/lock-wait treatments: state is seeded through the seam (no click
+  // needed), so this is a static shot like the tile execution/RFQ arms above.
+  // "AWAITING AUTH GRANT" is rendered by both HandshakeConsole and ReactorWait
+  // (see their component source), so it proves either treatment mounted.
+  // Fixed-position viewport overlays like lock/locked → full-page capture.
+  "login/wait-handshake": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
+  "login/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
+  "lock/wait-handshake": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
+  "lock/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
+  // Freeze-tier wait treatments: same static full-page shot as the non-freeze
+  // arms above, seeded via powerSaverLevel "freeze" in the fixture instead of
+  // a click.
+  "login/wait-handshake-freeze": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
+  "login/wait-reactor-freeze": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };
 

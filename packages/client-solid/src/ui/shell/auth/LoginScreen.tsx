@@ -1,11 +1,15 @@
 import type { JSX } from "solid-js";
-import { createSignal, Show } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { ReactorRings } from "./wait/ReactorRings";
+import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
+import waitStyles from "./wait/authWait.module.css";
 
 /**
  * Full-screen sign-in form (prototype-styled to match LockScreen). Renders
@@ -21,12 +25,26 @@ export function LoginScreen(): JSX.Element {
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
 
+  const authenticating = createMemo((): boolean => {
+    return state().status === "authenticating";
+  });
+
   return (
     <div data-testid="login-screen" class={styles.overlay}>
       <div class={styles.grid} aria-hidden="true" />
       <div class={styles.panel}>
+        {/* Hex emblem — the shared animated HUD logo, matching LockScreen.
+            While the reactor wait treatment is in flight, ReactorRings wraps
+            it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div class={styles.badge} aria-hidden="true">
-          <HudLogo />
+          <Show
+            when={authenticating() && state().waitVariant === "reactor"}
+            fallback={<HudLogo />}
+          >
+            <ReactorRings>
+              <HudLogo />
+            </ReactorRings>
+          </Show>
         </div>
 
         <div data-testid="login-title" class={styles.title}>
@@ -40,33 +58,41 @@ export function LoginScreen(): JSX.Element {
             login(username(), password());
           }}
         >
-          <label class={styles.field}>
-            <span class={styles.label}>Username</span>
-            <input
-              data-testid="login-username"
-              class={styles.input}
-              type="text"
-              autocomplete="username"
-              value={username()}
-              onInput={(event: InputChangeEvent) => {
-                setUsername(event.currentTarget.value);
-              }}
-            />
-          </label>
+          <div
+            class={
+              authenticating()
+                ? `${waitStyles.fields} ${waitStyles.recede}`
+                : waitStyles.fields
+            }
+          >
+            <label class={styles.field}>
+              <span class={styles.label}>Username</span>
+              <input
+                data-testid="login-username"
+                class={styles.input}
+                type="text"
+                autocomplete="username"
+                value={username()}
+                onInput={(event: InputChangeEvent) => {
+                  setUsername(event.currentTarget.value);
+                }}
+              />
+            </label>
 
-          <label class={styles.field}>
-            <span class={styles.label}>Password</span>
-            <input
-              data-testid="login-password"
-              class={styles.input}
-              type="password"
-              autocomplete="current-password"
-              value={password()}
-              onInput={(event: InputChangeEvent) => {
-                setPassword(event.currentTarget.value);
-              }}
-            />
-          </label>
+            <label class={styles.field}>
+              <span class={styles.label}>Password</span>
+              <input
+                data-testid="login-password"
+                class={styles.input}
+                type="password"
+                autocomplete="current-password"
+                value={password()}
+                onInput={(event: InputChangeEvent) => {
+                  setPassword(event.currentTarget.value);
+                }}
+              />
+            </label>
+          </div>
 
           <Show when={state().error !== null}>
             <div data-testid="login-error" class={styles.error}>
@@ -77,11 +103,22 @@ export function LoginScreen(): JSX.Element {
           <button
             type="submit"
             data-testid="login-submit"
-            class={styles.submit}
-            disabled={state().status === "authenticating"}
+            class={
+              authenticating()
+                ? `${styles.submit} ${waitStyles.busy}`
+                : styles.submit
+            }
+            disabled={authenticating()}
           >
-            AUTHENTICATE ▸
+            {authenticating() ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
           </button>
+
+          <Show when={authenticating() && state().waitVariant === "handshake"}>
+            <HandshakeConsole />
+          </Show>
+          <Show when={authenticating() && state().waitVariant === "reactor"}>
+            <ReactorWait />
+          </Show>
         </form>
       </div>
     </div>

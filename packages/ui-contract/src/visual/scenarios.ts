@@ -558,6 +558,66 @@ const baseScenarios: Record<string, Scenario> = {
   // by `animations: "disabled"`). See the runner specs / scenarioActions.
   "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
+  // Login/lock-wait treatments: the handshake/reactor overlays shown while a
+  // sign-in or unlock request is in flight. waitVariant is seeded explicitly
+  // in the fixture (never the live cycling pointer — see fixtures.ts), and
+  // both are full-screen overlays like lock/locked above (captured fullPage
+  // via scenarioActions.ts).
+  "login/wait-handshake": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-handshake",
+  },
+  "login/wait-reactor": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-reactor",
+  },
+  "lock/wait-handshake": {
+    componentKey: "LockScreen",
+    fixtureKey: "lock-wait-handshake",
+  },
+  "lock/wait-reactor": {
+    componentKey: "LockScreen",
+    fixtureKey: "lock-wait-reactor",
+  },
+  // Freeze-tier renders of the two wait treatments. These pin how the
+  // treatments look with `data-power-saver="freeze"` applied — the harness
+  // sets that attribute from the seeded level, so freeze CSS genuinely
+  // applies here.
+  //
+  // TWO limits, deliberately recorded so nobody trusts these for more than
+  // they do. Both verified by probing the live harness DOM, not assumed:
+  //
+  // 1. The harness applies `data-power-saver`, and component-level freeze
+  //    rules in a `*.module.css` DO take effect here (measured: `.sealed`
+  //    resolves `animation-delay: 0s` from its override rather than its 0.35s
+  //    base). But the GLOBAL freeze catch-all lives in
+  //    `client-react/src/index.css`, which the visual harness never imports —
+  //    its `host/main.tsx` injects only a small reset. So
+  //    `animation-duration` still measures 0.5s here where the real app would
+  //    force 0.01ms. These goldens therefore pin a PARTIAL freeze render.
+  //
+  // 2. Even with that fixed, the delay+`backwards` bug class that
+  //    HandshakeConsole's `.sealed` line shipped with would still escape:
+  //    Playwright's `animations: "disabled"` calls `animation.finish()`,
+  //    jumping straight to the end state and bypassing the delay, so the
+  //    invisible window never appears in a capture.
+  //
+  // That bug class has NO automated witness in any tier — jsdom doesn't run
+  // CSS animations either. It is caught by review and the manual freeze check
+  // only. Tracked in docs/STATUS.md.
+  //
+  // Login only (the higher-traffic sign-in gate); the lock overlay reuses the
+  // same treatment components and the same freeze CSS. waitVariant is seeded
+  // explicitly in the fixture, same reasoning as the non-freeze wait
+  // scenarios above.
+  "login/wait-handshake-freeze": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-handshake-freeze",
+  },
+  "login/wait-reactor-freeze": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-reactor-freeze",
+  },
   "chrome/header": {
     componentKey: "HeaderChrome",
     fixtureKey: "app-connected",

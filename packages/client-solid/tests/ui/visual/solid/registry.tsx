@@ -37,6 +37,7 @@ import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
 import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
+import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { AccountMenu } from "#/ui/shell/chrome/AccountMenu";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
@@ -529,6 +530,9 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   },
   LockScreen: () => {
     return <LockScreen />;
+  },
+  LoginScreen: () => {
+    return <LoginScreen />;
   },
   HeaderChrome: () => {
     return <HeaderChrome activeTab="fx" onTabChange={() => {}} />;
