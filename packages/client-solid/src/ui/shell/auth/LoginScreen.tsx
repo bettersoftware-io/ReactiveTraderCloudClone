@@ -5,6 +5,7 @@ import { useViewModel } from "@rtc/solid-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
 import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { ReactorRings } from "./wait/ReactorRings";
 import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
@@ -32,8 +33,18 @@ export function LoginScreen(): JSX.Element {
     <div data-testid="login-screen" class={styles.overlay}>
       <div class={styles.grid} aria-hidden="true" />
       <div class={styles.panel}>
+        {/* Hex emblem — the shared animated HUD logo, matching LockScreen.
+            While the reactor wait treatment is in flight, ReactorRings wraps
+            it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div class={styles.badge} aria-hidden="true">
-          <HudLogo />
+          <Show
+            when={authenticating() && state().waitVariant === "reactor"}
+            fallback={<HudLogo />}
+          >
+            <ReactorRings>
+              <HudLogo />
+            </ReactorRings>
+          </Show>
         </div>
 
         <div data-testid="login-title" class={styles.title}>

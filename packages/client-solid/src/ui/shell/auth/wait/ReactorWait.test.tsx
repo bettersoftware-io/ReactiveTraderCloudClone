@@ -23,14 +23,23 @@ describe("ReactorWait", () => {
     expect(status.textContent).toContain("AWAITING AUTH GRANT");
   });
 
-  it("the spinning rings are decorative and hidden from assistive tech", () => {
+  it("renders the indeterminate bar below the status content, decorative to assistive tech", () => {
     render(() => {
       return <ReactorWait />;
     });
 
-    const rings = screen
-      .getByTestId("auth-wait-reactor")
-      .querySelectorAll("svg[aria-hidden='true']");
-    expect(rings.length).toBe(2);
+    const root = screen.getByTestId("auth-wait-reactor");
+    const track = root.querySelector('[aria-hidden="true"]');
+    expect(track).not.toBeNull();
+    expect(track?.querySelector("div")).not.toBeNull();
+  });
+
+  it("no longer owns the reactor rings — those wrap the emblem via ReactorRings", () => {
+    render(() => {
+      return <ReactorWait />;
+    });
+
+    const root = screen.getByTestId("auth-wait-reactor");
+    expect(root.querySelectorAll("svg").length).toBe(0);
   });
 });

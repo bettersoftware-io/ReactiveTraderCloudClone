@@ -5,6 +5,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
 import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { ReactorRings } from "./wait/ReactorRings";
 import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
@@ -38,14 +39,23 @@ export function LoginScreen(): ReactElement {
   }
 
   const authenticating = state.status === "authenticating";
+  const reactorWaiting = authenticating && state.waitVariant === "reactor";
 
   return (
     <div data-testid="login-screen" className={styles.overlay}>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.panel}>
-        {/* Hex emblem — the shared animated HUD logo, matching LockScreen. */}
+        {/* Hex emblem — the shared animated HUD logo, matching LockScreen.
+            While the reactor wait treatment is in flight, ReactorRings wraps
+            it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div className={styles.badge} aria-hidden="true">
-          <HudLogo />
+          {reactorWaiting ? (
+            <ReactorRings>
+              <HudLogo />
+            </ReactorRings>
+          ) : (
+            <HudLogo />
+          )}
         </div>
 
         <div data-testid="login-title" className={styles.title}>

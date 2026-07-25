@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HandshakeConsole } from "../auth/wait/HandshakeConsole";
+import { ReactorRings } from "../auth/wait/ReactorRings";
 import { ReactorWait } from "../auth/wait/ReactorWait";
 import { HudLogo } from "../logo/HudLogo";
 import { BiometricChannel } from "./BiometricChannel";
@@ -31,6 +32,7 @@ export function LockScreen(): ReactElement | null {
   }
 
   const { user, unlocking } = state;
+  const reactorWaiting = unlocking && state.waitVariant === "reactor";
 
   function handlePasswordChange(event: ChangeEvent<HTMLInputElement>): void {
     setPassword(event.target.value);
@@ -45,9 +47,17 @@ export function LockScreen(): ReactElement | null {
     <div data-testid="lock-screen" className={styles.overlay}>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.panel}>
-        {/* Hex emblem (prototype line 80) — the shared animated HUD logo. */}
+        {/* Hex emblem (prototype line 80) — the shared animated HUD logo.
+            While the reactor wait treatment is in flight, ReactorRings wraps
+            it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div className={styles.badge} aria-hidden="true">
-          <HudLogo />
+          {reactorWaiting ? (
+            <ReactorRings>
+              <HudLogo />
+            </ReactorRings>
+          ) : (
+            <HudLogo />
+          )}
         </div>
 
         <div data-testid="lock-title" className={styles.title}>
