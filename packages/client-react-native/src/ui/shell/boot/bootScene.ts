@@ -4,6 +4,7 @@ import type { SharedValue } from "react-native-reanimated";
 import type { BootVariant } from "@rtc/domain";
 
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
+import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -38,9 +39,11 @@ export interface BootSceneProps {
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 
 /**
- * Boot variant → scene component. `Partial` by design: only `core` (Task 6)
- * and `laser` (Task 7) get a scene in phase 6a — the other six variants are
- * intentionally unported until 6b.
+ * Boot variant → scene component. `Partial` by design: three of eight
+ * variants are registered so far — `core` (phase 6a Task 6), `laser` (phase
+ * 6a Task 7) and `docking` (phase 6b-1 Task 9). `hologram`/`geo`/`layers`/
+ * `jarvis`/`topo` remain deliberately unported until phase 6b-2 (they all
+ * need the `project3d` camera kernel `docking` doesn't).
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -48,6 +51,7 @@ export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
  */
 export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   core: CoreScene,
+  docking: DockingScene,
   laser: LaserScene,
 };
 

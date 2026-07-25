@@ -5,6 +5,7 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
+import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 
 import type { Scenario } from "./driver";
@@ -74,7 +75,21 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * with a `Math.random` walk at construction).
  *
  * - `boot/core` / `boot/laser` — the two Phase 6a boot scenes, each pinned to
- *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSceneFixture`.
+ *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSceneFixture`. **Their
+ *   Phase 6a goldens are now stale by design**: Phase 6b-1 backfilled `core`
+ *   to all 12 of the web's elements (7 deferred layers + the whole-frame holo
+ *   flicker) and `laser` from border-trace-only to the full web draw, so both
+ *   scenes paint materially more than the goldens on `main` show. Treat a
+ *   diff against the pre-6b-1 goldens as an EXPECTED recapture, not a
+ *   regression — Task 11 (on-device) is where they get re-pinned.
+ * - `boot/docking` — Phase 6b-1's third scene (the "escort craft lock-on" HUD,
+ *   the last boot scene needing no `project3d` camera kernel), pinned to the
+ *   SAME shared `BOOT_SCENE_ELAPSED_SEC` as `core`/`laser` above rather than a
+ *   scene-specific constant: at that instant `docking` is mid-`TARGET LOCKED`
+ *   with the craft at ~80% size and the lock box nearly closed — a good,
+ *   non-degenerate frame — so there was no need to add the second pinned
+ *   constant the plan allows for (which would only be worth the churn if this
+ *   scene read blank or degenerate at the shared instant).
  * - `boot/static` — the reduced-motion/Freeze fallback: `BootEmblem` alone,
  *   the only thing `BootSequence` paints once `BootCanvas` is gated off (no
  *   wordmark/progress chrome here — that lives inside the real
@@ -146,6 +161,18 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <BootSceneFixture Scene={LaserScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/docking",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={DockingScene} />
         </VisualScenarioHost>
       );
     },

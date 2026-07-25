@@ -55,3 +55,68 @@ test("survives gyro drift sweeping to its extremes without throwing", async () =
 
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
+
+test("survives elapsedSec sweeping across the ring-reveal thresholds without throwing", async () => {
+  // ringsPhase ramps from 18% to 43% of BOOT_DURATION_MS (4200ms): 0.756s and
+  // 1.806s. 0.7/0.8 straddle the start of the ramp, 1.9 sits just past it.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  for (const t of [0.7, 0.8, 1.9]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
+test("survives elapsedSec sweeping across the order-flow arc gate without throwing", async () => {
+  // ARC_FIRST_SEC = 0.36 * 4.2 = 1.512s: 1.6 is just past the gate (one arc
+  // live), 2.4/3.1/4.2 sweep further in, each spawning more arcs and — once
+  // nodesPhase reaches 1 — also exercising the spotlight callout. The arc
+  // schedule's per-frame path building (trail + tail per live arc) is the
+  // densest allocation this scene does; a mocked-Skia mount is the cheapest
+  // jest-visible proof it doesn't throw.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  for (const t of [1.6, 2.4, 3.1, 4.2]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
+test("survives elapsedSec sweeping across the calibration-tick wrap point without throwing", async () => {
+  // calibrationTickLit's `(elapsedSec * 14) % 48` wraps every ~3.4286s — the
+  // one modulo edge case Task 4 (coreTelemetry.ts) adds. Straddling it here
+  // is the jest-visible proof `drawCalibrationTicks`/`drawTelemetry` don't
+  // throw right at the wrap.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={3.4} mx={0} my={0} />,
+  );
+
+  for (const t of [3.4285, 3.4286, 3.4287, 3.43]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
+test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, without throwing", async () => {
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  // Task 1's `holoFlickerAlpha` dips hard whenever a per-sixth-of-a-second
+  // hash crosses 0.94 — rare enough that a coarse sweep can miss it. A dense
+  // sweep (i/6 steps, matching the flicker's own sampling rate) is the only
+  // jest-visible proof `drawBackdropWash`/`drawStars`/`drawNucleusGlow` (and
+  // the now flicker-threaded existing helpers) don't throw on a glitch frame.
+  for (let i = 0; i < 40; i++) {
+    await rerender(<CoreSceneHarness elapsedSec={i / 6} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});

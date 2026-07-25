@@ -24,6 +24,7 @@ import {
   pingRingFraction,
   pingRingRadius,
   projectGlobePoint,
+  projectGlobeVector,
   segmentAlpha,
 } from "./coreGeometry.js";
 
@@ -105,6 +106,14 @@ test("projectGlobePoint centres a point with no rotation and zero radius contrib
   // (1,0,0) unit vector, no rotation, no perspective: screen x = center + radius
   expect(point.x).toBeCloseTo(70);
   expect(point.y).toBeCloseTo(50);
+});
+
+test("projectGlobeVector agrees with projectGlobePoint for a lat/lon-derived vector — proves the delegation refactor", () => {
+  const params = { yaw: 0.4, pitch: 0.2, perspectiveK: 0.28 };
+  const [x, y, z] = hubVectorFromLatLon(0.6, 1.1);
+  const viaVector = projectGlobeVector(x, y, z, params, 120, 90, 35);
+  const viaPoint = projectGlobePoint(0.6, 1.1, params, 120, 90, 35);
+  expect(viaVector).toEqual(viaPoint);
 });
 
 test("meridianLongitude spaces meridians evenly around the globe", () => {

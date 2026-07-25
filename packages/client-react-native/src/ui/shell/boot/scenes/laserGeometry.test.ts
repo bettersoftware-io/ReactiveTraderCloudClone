@@ -1,7 +1,12 @@
 import { expect, test } from "vitest";
 
 import {
+  cornerTickPath,
+  gridLinePositions,
+  LASER_GRID_STEP,
   LASER_PANELS,
+  panelFlashAlpha,
+  panelRectPx,
   panelRevealFraction,
   rectTracePath,
 } from "./laserGeometry.js";
@@ -101,4 +106,42 @@ test("panelRevealFraction never leaves [0,1] across a dense sweep of every panel
 
 test("rectTracePath emits a closed 4-segment rectangle outline, top-left origin, clockwise", () => {
   expect(rectTracePath(10, 20, 30, 40)).toBe("M10 20 L40 20 L40 60 L10 60 Z");
+});
+
+test("grid lines march from 0 in 44px steps and stop before the extent", () => {
+  expect(gridLinePositions(100, LASER_GRID_STEP)).toEqual([0, 44, 88]);
+  expect(gridLinePositions(88, LASER_GRID_STEP)).toEqual([0, 44]);
+});
+
+test("a zero or negative extent produces no grid lines rather than looping", () => {
+  expect(gridLinePositions(0, LASER_GRID_STEP)).toEqual([]);
+  expect(gridLinePositions(-10, LASER_GRID_STEP)).toEqual([]);
+});
+
+test("a non-positive step is floored to 1 so the loop always advances", () => {
+  expect(gridLinePositions(3, 0)).toEqual([0, 1, 2]);
+});
+
+test("the post-trace flash fades over the 0.07 window after a panel completes", () => {
+  expect(panelFlashAlpha(0.09, 0.1)).toBe(0);
+  expect(panelFlashAlpha(0.1, 0.1)).toBeCloseTo(1);
+  expect(panelFlashAlpha(0.135, 0.1)).toBeCloseTo(0.5);
+  expect(panelFlashAlpha(0.17, 0.1)).toBe(0);
+  expect(panelFlashAlpha(0.9, 0.1)).toBe(0);
+});
+
+test("corner ticks trace an L into each corner of the panel rect", () => {
+  const path = cornerTickPath({ x: 10, y: 20, width: 100, height: 50 }, 8);
+  // Four L shapes: each is a moveTo plus two lineTo commands.
+  expect(path.split("M")).toHaveLength(5);
+  expect(path).toContain("M10 28");
+  expect(path).toContain("M110 28");
+});
+
+test("panel rects scale to the viewport", () => {
+  const rect = panelRectPx(LASER_PANELS[0], 400, 800);
+  expect(rect.x).toBeCloseTo(22);
+  expect(rect.y).toBeCloseTo(36);
+  expect(rect.width).toBeCloseTo(356);
+  expect(rect.height).toBeCloseTo(60);
 });

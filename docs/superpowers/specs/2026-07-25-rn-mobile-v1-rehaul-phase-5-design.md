@@ -116,7 +116,27 @@ Unchanged from 4a/4b: covering unit tests per component and pure function (`*.te
 
 **One caveat that must reach every plan.** The simctl visual tier's captures have proven able to fail in a way that is *indistinguishable from a visual regression* — a failed deep link screenshots the Expo dev-client launcher and reports a large diff percentage. Until the readiness assertion lands, treat any visual failure above ~50% as "prove the capture succeeded" before treating it as a regression, and never regenerate a golden from an unverified capture.
 
-## 8. Prototype ↔ data-model mismatches
+## 8. Which gaps are RN-only, and which are shared
+
+Worth stating plainly, because it changes who should fix what.
+
+**Every mismatch in §8.1 below is shared.** M1–M7 all live in `@rtc/domain` or `@rtc/client-core` — below the UI layer and above both clients. `AnalyticsSimulator` is the same file feeding the in-browser simulator *and* the server, so the web analytics bars read the same frozen `STATIC_POSITIONS` constant RN does. Web simply hides it: it never animates those bars, so nothing visibly fails to move. The same holds for M1's absent submitted-quote history, M2's required `dealerIds`, and M5's binary fill intent — all are web gaps too, currently worked around or simply not exercised there.
+
+That is the argument for fixing the model rather than the UI: one change, both clients.
+
+**The rendering and tooling wrinkles are RN-only** and have no web analogue: the Reanimated worklet class (no browser equivalent — a browser has no UI-thread/JS-thread split to get wrong), the regular-weight-only Skia text, the unported `shadowBlur` bloom, the dev-client/simulator dependency, and the visual-golden tier. Note the asymmetry on that last one: the **web** visual tier runs post-merge in CI against committed goldens, while the **RN** tier is Mac-local by necessity (iOS pixels need a Mac) and gates nothing automatically.
+
+### 8.0 Gaps against the reference implementation (not against the prototype)
+
+A distinct category, and one this spec did not previously track. Everything else here compares us to the *mobile-v1 design prototype*. These compare us to **Adaptive's actual ReactiveTraderCloud**, the product this repo recreates.
+
+| # | Gap | Where we stand | Notes |
+|---|---|---|---|
+| R1 | **Exposure bubbles are draggable in the reference implementation; ours are not — on either client.** Adaptive's analytics bubbles run a force-directed simulation with a drag behaviour: grab a bubble, the physics re-settles around it. | Verified absent in **both** clients: no pointer, mouse, or touch handler exists anywhere in `packages/client-react/src/ui/fx/positions/PositionsPanel.tsx` (nor the Solid equivalent), and RN's bubbles are a static shelf-packed layout. Our bubbles are inert everywhere. | Interaction, not decoration: dragging is how you pull a crowded bubble out to read it. Its value is highest exactly where our layouts are weakest — many currencies at once. Note the tension with §3.3: we chose deterministic shelf-packing partly *because* it is stable for pinned visual goldens, and a physics sim with drag is inherently non-deterministic. Adding drag likely means either a settled-then-frozen layout that drag perturbs, or accepting the bubbles cannot be a pixel-pinned golden surface. Decide that trade before implementing, not during. |
+
+Whether R1 is worth building is an open product question — it is a genuine capability of the thing we are recreating, and it is currently missing from the whole repo, not just from mobile.
+
+## 8.1 Prototype ↔ data-model mismatches
 
 Every decision in §3 and §5 bends the **UI** to fit the existing seam, because §4 freezes the seam for this phase. That is the right default for a presentation rehaul — but it is not automatically the right *answer*. Several of these mismatches exist because the domain was built for the desktop product's information architecture, and the mobile prototype is asking for something the model genuinely cannot express. In those cases the better long-term fix is to **evolve the data model to serve the UX**, rather than permanently contort the UI around a gap.
 
@@ -129,10 +149,10 @@ This section is the ledger. Nothing here is in Phase 5's scope; each row is a ca
 | M3 | RFQ window: prototype uses **45 s**, domain uses `CREDIT_RFQ_EXPIRY_SECONDS = 120`. | Use 120 s; the ring geometry is identical, only the fill rate differs. | Decide which is the product's intended window and set one value. A 120 s ring barely moves on a phone screen — 45 s reads far better on mobile. |
 | M4 | Equities sparklines: there is **no equities tick-history stream**. FX has `usePriceHistory`; equities has only OHLC `useCandles`. | Derive the sparkline from candle closes — coarser and differently-shaped than the prototype's 24-point tick trace. | Add an **equities price-history stream** mirroring the FX one. The presenter-side retention pattern already exists (see the FX sparkline retention fix, PR #242). |
 | M5 | Equities fill toast: the seam represents a fill as a **binary animation intent**, with no order-lifecycle event carrying qty/price//outcome. | Reconstruct toast content from `OrderTicketState` phase transitions in the view. | Emit a proper **order-lifecycle event** (accepted → working → filled, with fill qty and average price). The view then renders an event instead of inferring one from state diffing. |
-| M6 | Analytics exposure: `AnalyticsSimulator.currentPositions` is a **static array that never changes**. | "Breathing" bubbles will not breathe — only the P&L history moves. | Let positions **drift** in the simulator. Without this, the bubble motion this sub-phase builds is unobservable on real data, and the visual golden is the only place it is ever seen. |
+| M6 | `AnalyticsSimulator` emits `currentPositions: STATIC_POSITIONS` — the **same frozen constant on every emission** (`AnalyticsSimulator.ts:107` and `:124`), initial and 10-second update alike. Only `history` grows. **Two of the Analytics screen's three widgets read `currentPositions`**: the pair P&L bars and the exposure bubbles. | Both the bars' 800 ms width tween and the bubbles' 900 ms breathing animate a *change in value* — so against a value that never changes, both fire once on mount and then never again. Correct code, permanently still output. Only the P&L chart (fed by `history`) actually moves. | Let positions **drift** in the simulator. One file, small change. Without it, two of the three widgets' motion is unobservable on real data and exists only inside a pinned visual golden. |
 | M7 | Analytics cadence: history appends every **10 s**; the prototype's mock ticks every **1 s**. | Accept much slower motion than the prototype demonstrates. | Either raise the emit cadence, or interpolate between points client-side. Worth deciding deliberately — this is the difference between a live-feeling HUD and a chart that looks frozen. |
 
-**M6 is the one to weigh first.** It is cheap, it is confined to a simulator, and without it Phase 5c builds breathing-bubble motion that no user will ever see move.
+**M6 is the one to weigh first, and it is bigger than it first reads.** It is cheap and confined to a simulator, but it decides whether *most of 5c's motion work is worth doing at all*: two of that sub-phase's three animated widgets are wired to a constant. Three ways out — let positions drift (recommended; the only one where the work has a point), build the motion anyway and accept it moves only in a screenshot test, or drop it from 5c's scope and save the effort. Decide before planning 5c, not after.
 
 ## 9. Open items
 
