@@ -12,7 +12,9 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
 - `simctl/` — **Tier 1** capture driver + CLI runner (`xcrun simctl` + `idb`).
 - `maestro/` — **Tier 2** generated flows + CLI runner (`maestro test`, XCUITest a11y driver).
-- `owl/` — **Tier 3** config + test — **not viable on this stack** (see `BAKEOFF.md`).
+- `owl/` — **Tier 3** config only — **not viable on this stack**; the dep and its
+  test were removed 2026-07-25 (they were the sole source of a vulnerable
+  transitive `ajv@7`). See `BAKEOFF.md`.
 - `__screenshots__/ios-iphone17-26/{simctl,maestro}/` — committed goldens (one set per viable tier).
 
 **Scenarios** (provisional "prove-the-harness" fixtures — module goldens are pinned in their own rehaul phases, per spec §7):

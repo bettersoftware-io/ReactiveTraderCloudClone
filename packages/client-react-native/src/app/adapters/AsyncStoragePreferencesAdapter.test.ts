@@ -177,6 +177,33 @@ test("falls back to the default boot variant when the stored value is unknown", 
   expect(first).toBe(DEFAULT_BOOT_VARIANT);
 });
 
+// The pre-seeded `hydrate()` path is the race fix: a synchronous read (e.g.
+// BootPreferencePresenter.current(), taken once at boot-machine construction)
+// must see the PERSISTED variant, not the default. Unlike the self-hydrating
+// constructor above — where the stored value only arrives on a LATER emission —
+// hydrate() seeds it as the FIRST value, so no `skip(1)` is needed here. Driven
+// off BOOT_VARIANTS so a new domain variant can't outrun the seed path either.
+test.each([
+  ...BOOT_VARIANTS,
+])("hydrate() seeds the stored boot variant %s on the first emission", async (variant) => {
+  store.set("rt-boot-variant", variant);
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  // No skip: the first emission is already the persisted value.
+  expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
+});
+
+test("hydrate() seeds defaults when nothing is stored", async () => {
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.bootVariant$())).toBe(DEFAULT_BOOT_VARIANT);
+  expect(await firstValueFrom(prefs.viewMode$())).toBe(DEFAULT_VIEW_MODE);
+});
+
+test("hydrate() seeds a non-boot preference (theme mode) on the first emission", async () => {
+  store.set("rtc-theme", "light");
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.themeMode$())).toBe("light");
+});
+
 test("emits the default credit RFQ filter (live) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.creditRfqFilter$());

@@ -89,151 +89,276 @@ function isEqBlotterView(value: string | null): value is EqBlotterView {
   return value === "orders" || value === "positions";
 }
 
+/** The validated subset of stored preference values — only keys whose stored
+ * string passed its guard are present. Shared by both construction paths so
+ * the read + validation (including the legacy `powerSaver="true"→"calm"` and
+ * `animatedBg` string→bool mappings) lives in exactly one place. */
+interface StoredPreferences {
+  themeMode?: ThemeModePreference;
+  themeSkin?: ThemeSkin;
+  viewMode?: ViewMode;
+  animatedBg?: boolean;
+  powerSaver?: PowerSaverLevel;
+  forceBootAnimation?: boolean;
+  bootVariant?: BootVariant;
+  loginWaitVariant?: LoginWaitVariant;
+  creditRfqFilter?: CreditRfqFilter;
+  eqWatchlistSort?: EqWatchlistSort;
+  eqBlotterView?: EqBlotterView;
+  ambientStyle?: AmbientStyle;
+}
+
+/** Read every preference key from AsyncStorage once and return the validated,
+ * mapped values. Tolerant of unavailable storage (returns `{}`, i.e. all
+ * defaults). Feeds both the pre-seeded `hydrate()` path and the self-hydrating
+ * constructor fallback. */
+async function readStoredPreferences(): Promise<StoredPreferences> {
+  try {
+    const [
+      themeMode,
+      themeSkin,
+      viewMode,
+      animatedBg,
+      powerSaver,
+      forceBootAnimation,
+      bootVariant,
+      loginWaitVariant,
+      creditRfqFilter,
+      eqWatchlistSort,
+      eqBlotterView,
+      ambientStyle,
+    ] = await Promise.all([
+      AsyncStorage.getItem(THEME_STORAGE_KEY),
+      AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
+      AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
+      AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
+      AsyncStorage.getItem(POWER_SAVER_STORAGE_KEY),
+      AsyncStorage.getItem(FORCE_BOOT_ANIMATION_STORAGE_KEY),
+      AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+      AsyncStorage.getItem(LOGIN_WAIT_VARIANT_STORAGE_KEY),
+      AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
+      AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
+      AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
+      AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
+    ]);
+
+    const stored: StoredPreferences = {};
+
+    if (isThemeModePreference(themeMode)) {
+      stored.themeMode = themeMode;
+    }
+
+    if (isThemeSkin(themeSkin)) {
+      stored.themeSkin = themeSkin;
+    }
+
+    if (isViewMode(viewMode)) {
+      stored.viewMode = viewMode;
+    }
+
+    if (animatedBg === "true") {
+      stored.animatedBg = true;
+    } else if (animatedBg === "false") {
+      stored.animatedBg = false;
+    }
+
+    if (isPowerSaverLevel(powerSaver)) {
+      stored.powerSaver = powerSaver;
+    } else if (powerSaver === "true") {
+      stored.powerSaver = "calm";
+    }
+
+    if (forceBootAnimation === "true") {
+      stored.forceBootAnimation = true;
+    } else if (forceBootAnimation === "false") {
+      stored.forceBootAnimation = false;
+    }
+
+    if (isBootVariant(bootVariant)) {
+      stored.bootVariant = bootVariant;
+    }
+
+    if (isLoginWaitVariant(loginWaitVariant)) {
+      stored.loginWaitVariant = loginWaitVariant;
+    }
+
+    if (isCreditRfqFilter(creditRfqFilter)) {
+      stored.creditRfqFilter = creditRfqFilter;
+    }
+
+    if (isEqWatchlistSort(eqWatchlistSort)) {
+      stored.eqWatchlistSort = eqWatchlistSort;
+    }
+
+    if (isEqBlotterView(eqBlotterView)) {
+      stored.eqBlotterView = eqBlotterView;
+    }
+
+    if (isAmbientStyle(ambientStyle)) {
+      stored.ambientStyle = ambientStyle;
+    }
+
+    return stored;
+  } catch {
+    // AsyncStorage may be unavailable — fall back to all defaults.
+    return {};
+  }
+}
+
 /**
  * AsyncStorage-backed PreferencesPort for the RN client. AsyncStorage has no
- * synchronous read, so each BehaviorSubject seeds with its DEFAULT
- * synchronously on construction (still satisfying the port's no-flash,
- * replay-current contract), then `hydrate()` reads the store asynchronously
- * and `.next()`s any valid stored value it finds. `set*` writes through to
- * AsyncStorage (fire-and-forget) and pushes the new value synchronously.
- * Mirrors `LocalStoragePreferencesAdapter`'s keys, guards, and defaults so
- * the two adapters stay behaviourally interchangeable.
+ * synchronous read, so each BehaviorSubject seeds synchronously on construction
+ * (satisfying the port's no-flash, replay-current contract). There are two
+ * construction paths:
+ *
+ *   - `await AsyncStoragePreferencesAdapter.hydrate()` — reads the store first
+ *     and seeds every subject with its PERSISTED value, so a synchronous read
+ *     (e.g. `BootPreferencePresenter.current()`, taken once at boot-machine
+ *     construction) sees the persisted value rather than the default. This is
+ *     the path the composition root uses (`_layout.tsx` gates `AppRoot`'s mount
+ *     on it, exactly like `AsyncStorageSessionStore.hydrate()`).
+ *   - `new AsyncStoragePreferencesAdapter()` — seeds with DEFAULTS synchronously
+ *     then reads the store asynchronously and `.next()`s any stored value it
+ *     finds. Used as a fallback (and by the adapter's unit tests). Fine for
+ *     Observable consumers, which pick up the later emission; NOT safe for a
+ *     synchronous read that races the async load — hence the pre-seeded path.
+ *
+ * `set*` writes through to AsyncStorage (fire-and-forget) and pushes the new
+ * value synchronously. Mirrors `LocalStoragePreferencesAdapter`'s keys, guards,
+ * and defaults so the two adapters stay behaviourally interchangeable.
  */
 export class AsyncStoragePreferencesAdapter implements PreferencesPort {
-  private readonly themeMode = new BehaviorSubject<ThemeModePreference>(
-    DEFAULT_THEME_MODE_PREFERENCE,
-  );
+  private readonly themeMode: BehaviorSubject<ThemeModePreference>;
 
-  private readonly themeSkin = new BehaviorSubject<ThemeSkin>(
-    DEFAULT_THEME_SKIN,
-  );
+  private readonly themeSkin: BehaviorSubject<ThemeSkin>;
 
-  private readonly viewMode = new BehaviorSubject<ViewMode>(DEFAULT_VIEW_MODE);
+  private readonly viewMode: BehaviorSubject<ViewMode>;
 
   // Intentionally off by default on mobile, overriding the web-oriented
   // DEFAULT_ANIMATED_BACKGROUND (true): the native RN backdrop is not the
   // compositor-only CSS the web ships, and an always-animating layer is a
   // battery cost on device. A user's explicit choice still persists.
-  private readonly animatedBg = new BehaviorSubject<boolean>(false);
+  private readonly animatedBg: BehaviorSubject<boolean>;
 
-  private readonly powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
-    DEFAULT_POWER_SAVER_LEVEL,
-  );
+  private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
 
-  private readonly forceBootAnimationSubject = new BehaviorSubject<boolean>(
-    DEFAULT_FORCE_BOOT_ANIMATION,
-  );
+  private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
 
-  private readonly bootVariantSubject = new BehaviorSubject<BootVariant>(
-    DEFAULT_BOOT_VARIANT,
-  );
+  private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
-  private readonly loginWaitVariantSubject =
-    new BehaviorSubject<LoginWaitVariant>(DEFAULT_LOGIN_WAIT_VARIANT);
+  private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
 
-  private readonly creditRfqFilterSubject =
-    new BehaviorSubject<CreditRfqFilter>(DEFAULT_CREDIT_RFQ_FILTER);
+  private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
-  private readonly eqWatchlistSortSubject =
-    new BehaviorSubject<EqWatchlistSort>(DEFAULT_EQ_WATCHLIST_SORT);
+  private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
 
-  private readonly eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
-    DEFAULT_EQ_BLOTTER_VIEW,
-  );
+  private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
 
-  private readonly ambientStyle = new BehaviorSubject<AmbientStyle>(
-    DEFAULT_AMBIENT_STYLE,
-  );
+  private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
-  constructor() {
-    void this.hydrate();
+  /** When `seed` is provided (the `hydrate()` path) every subject starts on its
+   * persisted value and NO async load runs. When omitted, subjects start on
+   * defaults and `selfHydrate()` reads the store asynchronously. */
+  constructor(seed?: StoredPreferences) {
+    const s = seed ?? {};
+    this.themeMode = new BehaviorSubject<ThemeModePreference>(
+      s.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE,
+    );
+    this.themeSkin = new BehaviorSubject<ThemeSkin>(
+      s.themeSkin ?? DEFAULT_THEME_SKIN,
+    );
+    this.viewMode = new BehaviorSubject<ViewMode>(
+      s.viewMode ?? DEFAULT_VIEW_MODE,
+    );
+    this.animatedBg = new BehaviorSubject<boolean>(s.animatedBg ?? false);
+    this.powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
+      s.powerSaver ?? DEFAULT_POWER_SAVER_LEVEL,
+    );
+    this.forceBootAnimationSubject = new BehaviorSubject<boolean>(
+      s.forceBootAnimation ?? DEFAULT_FORCE_BOOT_ANIMATION,
+    );
+    this.bootVariantSubject = new BehaviorSubject<BootVariant>(
+      s.bootVariant ?? DEFAULT_BOOT_VARIANT,
+    );
+    this.loginWaitVariantSubject = new BehaviorSubject<LoginWaitVariant>(
+      s.loginWaitVariant ?? DEFAULT_LOGIN_WAIT_VARIANT,
+    );
+    this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
+      s.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
+    );
+    this.eqWatchlistSortSubject = new BehaviorSubject<EqWatchlistSort>(
+      s.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+    );
+    this.eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+      s.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+    );
+    this.ambientStyle = new BehaviorSubject<AmbientStyle>(
+      s.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
+    );
+
+    if (seed === undefined) {
+      void this.selfHydrate();
+    }
   }
 
-  private async hydrate(): Promise<void> {
-    try {
-      const [
-        themeMode,
-        themeSkin,
-        viewMode,
-        animatedBg,
-        powerSaver,
-        forceBootAnimation,
-        bootVariant,
-        loginWaitVariant,
-        creditRfqFilter,
-        eqWatchlistSort,
-        eqBlotterView,
-        ambientStyle,
-      ] = await Promise.all([
-        AsyncStorage.getItem(THEME_STORAGE_KEY),
-        AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
-        AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
-        AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
-        AsyncStorage.getItem(POWER_SAVER_STORAGE_KEY),
-        AsyncStorage.getItem(FORCE_BOOT_ANIMATION_STORAGE_KEY),
-        AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
-        AsyncStorage.getItem(LOGIN_WAIT_VARIANT_STORAGE_KEY),
-        AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
-        AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
-        AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
-        AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
-      ]);
+  /** Pre-seeded factory: reads the store, then returns an adapter whose every
+   * subject already holds its persisted value. The composition root awaits this
+   * before mounting so synchronous reads never race the load. */
+  static async hydrate(): Promise<AsyncStoragePreferencesAdapter> {
+    return new AsyncStoragePreferencesAdapter(await readStoredPreferences());
+  }
 
-      if (isThemeModePreference(themeMode)) {
-        this.themeMode.next(themeMode);
-      }
+  /** Fallback async load for the no-seed constructor: read the store and push
+   * any stored value onto its subject (defaults already seeded synchronously). */
+  private async selfHydrate(): Promise<void> {
+    const s = await readStoredPreferences();
 
-      if (isThemeSkin(themeSkin)) {
-        this.themeSkin.next(themeSkin);
-      }
+    if (s.themeMode !== undefined) {
+      this.themeMode.next(s.themeMode);
+    }
 
-      if (isViewMode(viewMode)) {
-        this.viewMode.next(viewMode);
-      }
+    if (s.themeSkin !== undefined) {
+      this.themeSkin.next(s.themeSkin);
+    }
 
-      if (animatedBg === "true") {
-        this.animatedBg.next(true);
-      } else if (animatedBg === "false") {
-        this.animatedBg.next(false);
-      }
+    if (s.viewMode !== undefined) {
+      this.viewMode.next(s.viewMode);
+    }
 
-      if (isPowerSaverLevel(powerSaver)) {
-        this.powerSaverSubject.next(powerSaver);
-      } else if (powerSaver === "true") {
-        this.powerSaverSubject.next("calm");
-      }
+    if (s.animatedBg !== undefined) {
+      this.animatedBg.next(s.animatedBg);
+    }
 
-      if (forceBootAnimation === "true") {
-        this.forceBootAnimationSubject.next(true);
-      } else if (forceBootAnimation === "false") {
-        this.forceBootAnimationSubject.next(false);
-      }
+    if (s.powerSaver !== undefined) {
+      this.powerSaverSubject.next(s.powerSaver);
+    }
 
-      if (isBootVariant(bootVariant)) {
-        this.bootVariantSubject.next(bootVariant);
-      }
+    if (s.forceBootAnimation !== undefined) {
+      this.forceBootAnimationSubject.next(s.forceBootAnimation);
+    }
 
-      if (isLoginWaitVariant(loginWaitVariant)) {
-        this.loginWaitVariantSubject.next(loginWaitVariant);
-      }
+    if (s.bootVariant !== undefined) {
+      this.bootVariantSubject.next(s.bootVariant);
+    }
 
-      if (isCreditRfqFilter(creditRfqFilter)) {
-        this.creditRfqFilterSubject.next(creditRfqFilter);
-      }
+    if (s.loginWaitVariant !== undefined) {
+      this.loginWaitVariantSubject.next(s.loginWaitVariant);
+    }
 
-      if (isEqWatchlistSort(eqWatchlistSort)) {
-        this.eqWatchlistSortSubject.next(eqWatchlistSort);
-      }
+    if (s.creditRfqFilter !== undefined) {
+      this.creditRfqFilterSubject.next(s.creditRfqFilter);
+    }
 
-      if (isEqBlotterView(eqBlotterView)) {
-        this.eqBlotterViewSubject.next(eqBlotterView);
-      }
+    if (s.eqWatchlistSort !== undefined) {
+      this.eqWatchlistSortSubject.next(s.eqWatchlistSort);
+    }
 
-      if (isAmbientStyle(ambientStyle)) {
-        this.ambientStyle.next(ambientStyle);
-      }
-    } catch {
-      // AsyncStorage may be unavailable — keep the seeded defaults.
+    if (s.eqBlotterView !== undefined) {
+      this.eqBlotterViewSubject.next(s.eqBlotterView);
+    }
+
+    if (s.ambientStyle !== undefined) {
+      this.ambientStyle.next(s.ambientStyle);
     }
   }
 

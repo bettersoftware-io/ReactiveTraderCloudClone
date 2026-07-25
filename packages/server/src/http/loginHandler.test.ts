@@ -5,7 +5,11 @@ import type { LoginResponseDto } from "@rtc/shared";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { createRateLimiter } from "#/auth/rateLimit";
 
-import { authorizeUpgrade, handleLogin } from "./loginHandler.js";
+import {
+  authorizeUpgrade,
+  describeUpgrade,
+  handleLogin,
+} from "./loginHandler.js";
 
 describe("handleLogin", () => {
   it("returns 429 when the caller is rate-limited", () => {
@@ -136,6 +140,35 @@ describe("authorizeUpgrade", () => {
     });
     expect(authorizeUpgrade("/", auth)).toBe(false);
     expect(authorizeUpgrade(undefined, auth)).toBe(false);
+  });
+});
+
+describe("describeUpgrade", () => {
+  it("names each rejection reason without leaking the token", () => {
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
+    const login = auth.login("demo", "localpass");
+
+    if (login === null) {
+      throw new Error("expected login to succeed");
+    }
+
+    expect(describeUpgrade(undefined, auth)).toEqual({
+      ok: false,
+      reason: "no-url",
+    });
+    expect(describeUpgrade("/", auth)).toEqual({
+      ok: false,
+      reason: "no-token",
+    });
+    expect(describeUpgrade("/?access=garbage", auth)).toEqual({
+      ok: false,
+      reason: "invalid-token",
+    });
+    expect(describeUpgrade(`/?access=${login.token}`, auth)).toEqual({
+      ok: true,
+    });
   });
 });
 

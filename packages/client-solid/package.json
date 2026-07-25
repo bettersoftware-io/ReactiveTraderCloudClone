@@ -43,13 +43,13 @@
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/node": "^26.0.0",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/ui": "^4.1.10",
     "jsdom": "^29",
     "playwright": "^1.60.0",
     "solid-devtools": "^0.34.5",
     "tsx": "^4",
     "vite": "^8",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "^4"
+    "vitest": "^4.1.10"
   }
 }

@@ -72,9 +72,22 @@ Expo Go and the Expo prebuild. Which runner you use depends on the platform.
 From the repo root (with Xcode + an iOS simulator runtime installed):
 
 ```bash
-pnpm build                                                # build the workspace libs (client-core → dist)
-pnpm --filter @rtc/client-react-native exec expo run:ios  # builds a dev client, launches the simulator
+pnpm build          # build the workspace libs (client-core → dist)
+pnpm dev:ios        # simulator mode — builds a dev client, launches the simulator, starts Metro
 ```
+
+`dev:ios` selects a **data-source mode** the same way the web clients do (bare = simulator):
+
+```bash
+pnpm dev:ios            # a) simulator — in-process fake data, no server (alias of dev:ios:sim)
+pnpm dev:ios:ws:local   # b) connect to a local server — needs `pnpm dev:ws` in another terminal
+pnpm dev:ios:ws:remote  # c) connect to the deployed server (wss://rtc-clone-server.fly.dev)
+pnpm dev:ios:fs         #    full stack — starts the local WS server + the app together
+```
+
+The mode is carried by `EXPO_PUBLIC_SERVER_URL`, which Metro **bakes into the
+bundle** — so switching modes needs a Metro restart (each script starts its
+own). All run `expo run:ios` under the hood.
 
 - Use `pnpm … exec expo` (the workspace-local Expo CLI), **not** `npx expo` —
   on this repo's Node 26, `npx expo` crashes (a `stripTypeScriptTypes` bug in
@@ -87,9 +100,11 @@ pnpm --filter @rtc/client-react-native exec expo run:ios  # builds a dev client,
 <details>
 <summary>Force deterministic simulator data without tapping the toggle</summary>
 
-`buildNativePorts` takes the in-process simulator branch whenever `serverUrl`
-is empty. Since `EXPO_PUBLIC_*` vars are inlined at bundle time and `??` only
-catches null/undefined, an empty string works:
+`pnpm dev:ios:sim` already does this — it sets `EXPO_PUBLIC_SERVER_URL=` (empty),
+and `buildNativePorts` takes the in-process simulator branch whenever `serverUrl`
+is empty. To force it from a raw Metro start instead (empty string survives
+because `EXPO_PUBLIC_*` is inlined at bundle time and `??` only catches
+null/undefined):
 
 ```bash
 EXPO_PUBLIC_SERVER_URL="" pnpm --filter @rtc/client-react-native exec expo start --clear
@@ -126,6 +141,15 @@ Compiles the whole app through Metro (no phone/simulator needed) — a quick
 check that everything still bundles. Note this is a *production* export; it does
 **not** exercise the dev runtime. To prove the dev bundle boots, start Metro and
 fetch `http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false`.
+
+### Inspecting a running app
+
+For live debugging (console, network, component tree, the WS wire), see
+[docs/react-native-inspectors.md](../../docs/react-native-inspectors.md) — a field
+guide to React Native DevTools (built in), Reactotron, Radon IDE, and the repo's
+own RTC devtools relay. Or watch the server side instead: `@rtc/server` logs every
+WS connect / disconnect / rejected upgrade (server README →
+[Connection observability](../server/README.md#connection-observability)).
 
 ---
 
@@ -235,9 +259,10 @@ just for one run, without a file:
 EXPO_PUBLIC_DEV_AUTH='{"astark":"mcdc2026","demo":"mcdc2026"}' pnpm --filter @rtc/client-react-native start
 ```
 
-Optional companion var: `EXPO_PUBLIC_SERVER_URL` overrides the WS endpoint
-(defaults to `wss://rtc-clone-server.fly.dev`; set it to an empty string to
-force the in-process simulator branch — see Running the app).
+Optional companion var: `EXPO_PUBLIC_SERVER_URL` selects the WS endpoint
+(defaults to `wss://rtc-clone-server.fly.dev`; empty string → the in-process
+simulator branch). You normally don't set it by hand — the `pnpm dev:ios:*`
+scripts do (see [Running the app](#running-the-app)).
 
 > ⚠️ **Two caveats.**
 > 1. `.env` is git-ignored on purpose — **never commit a real credential**.

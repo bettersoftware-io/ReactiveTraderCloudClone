@@ -9,7 +9,8 @@ import { combineEffects, createWsListener } from "@rtc/ws-effects";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
 import { allEffects } from "./effects/index.js";
-import { authorizeUpgrade, handleLogin } from "./http/loginHandler.js";
+import { describeUpgrade, handleLogin } from "./http/loginHandler.js";
+import { createConnectionLog } from "./observability/connectionLog.js";
 import { createServices } from "./services/serviceContainer.js";
 import { toSocket } from "./socket/toSocket.js";
 
@@ -105,17 +106,33 @@ const httpServer = createServer((req, res) => {
 
 // ── WebSocket Server ────────────────────────────────────────────
 
+// Connection observability — one structured stdout line per WS accept /
+// disconnect / rejected upgrade, visible live via `fly logs -a rtc-clone-server`.
+const connectionLog = createConnectionLog();
+
 const wss = new WebSocketServer({
   server: httpServer,
   // Reject unauthorized upgrades with 401 before a socket exists, so
   // listen() only ever runs for authorized clients. /health and /login
-  // stay reachable (they are HTTP routes, not WS upgrades).
+  // stay reachable (they are HTTP routes, not WS upgrades). A rejection is
+  // logged by reason (no-token = never signed in; invalid-token = expired/bad)
+  // — never the token itself.
   verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
-    return authorizeUpgrade(info.req.url, auth);
+    const decision = describeUpgrade(info.req.url, auth);
+
+    if (!decision.ok && decision.reason) {
+      connectionLog.onRejectedUpgrade(decision.reason);
+    }
+
+    return decision.ok;
   },
 });
 
 wss.on("connection", (ws) => {
+  connectionLog.onConnect();
+  ws.on("close", () => {
+    connectionLog.onDisconnect();
+  });
   listen(toSocket(ws));
 });
 

@@ -19,6 +19,7 @@ import {
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
+  type PreferencesPort,
 } from "@rtc/domain";
 
 import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
@@ -28,15 +29,22 @@ import { DEV_CREDENTIALS } from "#/app/nativeAuthConfig";
 interface BuildNativePortsOptions {
   simulator?: boolean;
   sessionStore?: SessionStore;
+  /** Pre-hydrated preferences adapter, injected by the composition root so a
+   * synchronous read (e.g. the boot variant at boot-machine construction) sees
+   * the persisted value. Defaults to a self-hydrating adapter — fine for
+   * Observable consumers, but its boot variant would race a cold-launch read.
+   * See `AsyncStoragePreferencesAdapter.hydrate()` / `_layout.tsx`. */
+  preferences?: PreferencesPort;
 }
 
 /** The assembled `AppPorts` plus a `dispose` that tears down any transport the
- * build owns. The real-WS branch constructs a `WsAdapter` that opens its socket
- * eagerly in the constructor (not on Rx subscribe), so on unmount the raw
- * `WebSocket` must be closed explicitly — otherwise it lingers and reconnects
- * forever via its internal timer, and each remount opens another. `dispose`
- * closes it (WsAdapter.dispose suppresses reconnect too); the simulator branch
- * has no socket, so its `dispose` is a no-op. */
+ * build owns. The real-WS branch constructs a `WsAdapter` with
+ * `autoConnect: false`; `createApp`'s auth gate opens the socket once the user
+ * authenticates (and closes it on sign-out). Once open, on unmount the raw
+ * `WebSocket` must still be closed explicitly — otherwise it lingers and
+ * reconnects forever via its internal timer, and each remount opens another.
+ * `dispose` closes it (WsAdapter.dispose suppresses reconnect too); the
+ * simulator branch has no socket, so its `dispose` is a no-op. */
 export interface NativeComposition {
   ports: AppPorts;
   dispose: () => void;
@@ -68,7 +76,7 @@ export function buildNativePorts(
     ? undefined
     : (extra.serverUrl as string | undefined);
   const sessionStore = opts.sessionStore ?? new InMemorySessionStore();
-  const preferences = new AsyncStoragePreferencesAdapter();
+  const preferences = opts.preferences ?? new AsyncStoragePreferencesAdapter();
   const colorScheme = new AppearanceColorSchemeAdapter();
 
   if (url) {

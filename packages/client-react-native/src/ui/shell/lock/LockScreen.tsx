@@ -51,11 +51,20 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * Pressable ↔ gesture-handler touch arbitration, which can't be verified off
  * a device — a prior guard keyed on `state.error` silently stranded the
  * ordinary relock-after-success retry (`null` error → `null` error → never
- * re-armed). FOLLOW-UP (on-device task): confirm on hardware whether the hold
- * and tap actually double-fire; if they do, switch to a single
- * `Gesture.Race(LongPress, Tap)` in `useHoldToUnlock`/`HoldToUnlockRing`,
- * which collapses them in one arbitration layer, rather than reintroducing an
- * unverifiable app-level guard. */
+ * re-armed).
+ *
+ * On-device status (Phase 6a residual sweep): the ring's REAL on-device
+ * blocker was never the double-fire — it was a worklet "remote function"
+ * crash in `HoldToUnlockRing`'s `useAnimatedProps` (it called `motion-core`'s
+ * `ringDashOffset`, which lacked the `"worklet"` directive), so the ring
+ * redboxed the moment this screen mounted on hardware. That is now fixed
+ * (motion-core `countdownRing.ts`) and the ring renders + fills correctly on
+ * the simulator (see the `lock/hold` visual golden). The harmless double-fire
+ * remains a theoretical edge case; we keep the a11y-preserving dual mechanism
+ * (the `Pressable` carries the VoiceOver "activate" action a raw
+ * `Gesture.Tap` would lose). `Gesture.Race(LongPress, Tap)` stays a documented
+ * future option only if a real, non-harmless double-fire is ever observed —
+ * not worth the a11y regression pre-emptively. */
 export function LockScreen(): JSX.Element | null {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();

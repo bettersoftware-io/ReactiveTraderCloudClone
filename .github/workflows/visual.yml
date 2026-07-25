@@ -29,9 +29,27 @@ name: Visual diffs
 # claws most of that back for the UI-only merges that don't touch the pure-TS
 # libs. Runner-minutes rise modestly; on a public repo those are free and
 # wall-clock is the currency.
+#
+# PATHS FILTER: a merge that changed only prose cannot move a rendered pixel, so
+# it skips the whole two-runner job rather than burning ~15 min × 2 runners to
+# re-prove an unchanged UI. Measured on the 12 merges to 2026-07-25, 5 (~40%)
+# were doc-only. `paths-ignore` (not an allowlist) is the deliberate polarity:
+# anything NOT listed here still triggers, so a new top-level directory can never
+# silently stop running the gate — it fails open, toward over-running. GitHub
+# evaluates the UNION of a push's changed files, so a merge touching one source
+# file plus ten markdown files still runs. `**/*.md` is the load-bearing glob
+# (docs/** alone would have missed PR #326's tests/STRATEGY.md); docs/** adds the
+# non-markdown design/presentation artifacts, which the app never imports.
+# Skipping means no run and therefore no visual status on that commit — correct,
+# since the preceding commit's run covered byte-identical UI code. workflow_dispatch
+# is unfiltered, so a manual re-run is always available.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - docs/**
+      - .claude/**
   workflow_dispatch:
 
 # Verify every main commit — don't let a newer merge cancel an in-flight run, or a

@@ -14,6 +14,7 @@ import { Direction } from "@rtc/domain";
 
 import { splitPrice } from "#/ui/formatPrice";
 import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 export function BuySellPads({
   pair,
@@ -21,7 +22,7 @@ export function BuySellPads({
   onExecute,
 }: BuySellPadsProps): JSX.Element {
   const theme = useTheme();
-  const styles = makeStyles(theme);
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <View style={styles.container}>

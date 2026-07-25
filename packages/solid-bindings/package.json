@@ -38,6 +38,6 @@
     "jsdom": "^29",
     "tsc-alias": "1.9.0",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "^4"
+    "vitest": "^4.1.10"
   }
 }
