@@ -474,8 +474,9 @@ export function createViewModel(
     status: "unauthenticated",
     user: null,
     locked: false,
+    unlocking: false,
     error: null,
-  } as AuthViewState);
+  });
 
   // Stable, this-bound command callbacks (the presenter methods touch `this`).
   function loginAuth(username: string, password: string): void {
