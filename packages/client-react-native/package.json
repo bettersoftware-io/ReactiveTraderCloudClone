@@ -84,6 +84,6 @@
     "test-renderer": "^1.2.0",
     "tsx": "^4",
     "typescript": "^6",
-    "vitest": "^4"
+    "vitest": "^4.1.10"
   }
 }
