@@ -1,0 +1,73 @@
+/* The `handshake` login-wait treatment.
+ *
+ * PERF (docs/performance.md): only `opacity` is animated here — no transform
+ * is needed at all. No filter animation, no layout-affecting property.
+ *
+ * FREEZE (index.css:47-58): power-saver freeze runs one 0.01ms iteration and
+ * falls back to base CSS, so every line's BASE state is already its
+ * informative state. The keyframes only add emphasis on top. A base of
+ * `opacity: 0.3` here would render the whole console inert on exactly the
+ * low-power machines where the wait is longest.
+ */
+
+.console {
+  margin-top: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--panel-head);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+}
+
+.line {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  line-height: 1.85;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.done {
+  color: var(--accent-positive);
+}
+
+/* Base = fully legible. The animation only fades it IN from the same colour,
+ * so a frozen render still shows the line at full strength. */
+.sealed {
+  color: var(--accent-positive);
+  animation: seal 0.5s ease-out 0.35s backwards;
+}
+
+@keyframes seal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.active {
+  color: var(--accent-primary);
+}
+
+.caret {
+  margin-left: 2px;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* No global reduced-motion rule exists in this repo — every stylesheet opts in
+ * for itself. Base CSS is already the informative state, so simply dropping
+ * the animations leaves the console fully readable. */
+@media (prefers-reduced-motion: reduce) {
+  .sealed,
+  .caret {
+    animation: none;
+  }
+}
