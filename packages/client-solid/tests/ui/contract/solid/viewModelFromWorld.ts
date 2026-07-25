@@ -505,6 +505,7 @@ export function solidViewModel(world: World): ViewModel {
             locked: false,
             unlocking: false,
             error: null,
+            waitVariant: "handshake",
           });
         },
       };

@@ -516,6 +516,7 @@ export function reactViewModel(world: World): ViewModel {
             locked: false,
             unlocking: false,
             error: null,
+            waitVariant: "handshake",
           });
         },
       };

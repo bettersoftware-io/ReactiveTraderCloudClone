@@ -43,6 +43,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
@@ -505,6 +506,7 @@ export function createViewModel(
     locked: false,
     unlocking: false,
     error: null,
+    waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
   });
 
   // Stable command callbacks (the presenter methods touch `this`).

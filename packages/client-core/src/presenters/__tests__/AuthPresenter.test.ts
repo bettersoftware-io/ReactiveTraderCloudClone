@@ -1,12 +1,21 @@
 import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
+import type {
+  AuthOutcome,
+  AuthPort,
+  LoginWaitVariant,
+  SessionUser,
+} from "@rtc/domain";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { StoredSession } from "#/adapters/sessionStore";
+import type { SessionStore, StoredSession } from "#/adapters/sessionStore";
 
-import { AuthPresenter, type AuthViewState } from "../AuthPresenter";
+import {
+  AuthPresenter,
+  type AuthViewState,
+  type LoginWaitCycle,
+} from "../AuthPresenter";
 
 const USER: SessionUser = {
   name: "Anthony Stark",
@@ -45,6 +54,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -74,6 +84,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
   });
@@ -91,6 +102,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -144,6 +156,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: "Invalid credentials",
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
   });
@@ -186,6 +199,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
   });
 
@@ -221,6 +235,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
 
     expect(auth.calls.at(-1)).toEqual(["astark", "correct-horse"]);
@@ -257,6 +272,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: "Invalid credentials",
+      waitVariant: "handshake",
     });
 
     expect(auth.calls.at(-1)).toEqual(["astark", "wrong-password"]);
@@ -289,6 +305,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: "Service unavailable",
+      waitVariant: "handshake",
     });
   });
 
@@ -318,6 +335,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
   });
@@ -349,6 +367,61 @@ describe("AuthPresenter", () => {
     expect(after.unlocking).toBe(false);
     expect(after.locked).toBe(true);
     expect(after.error).toBe("Invalid credentials");
+  });
+
+  it("login stamps the current variant and advances the pointer on start", () => {
+    const { cycle, advanced } = recordingCycle("handshake");
+    const { port } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      memorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("handshake");
+    // Advance-on-START, not on completion: a user who reloads mid-attempt
+    // must still get a different variant next time.
+    expect(advanced).toEqual(["reactor"]);
+  });
+
+  it("the cycle pointer wraps reactor -> handshake", () => {
+    const { cycle, advanced } = recordingCycle("reactor");
+    const { port } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      memorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("reactor");
+    expect(advanced).toEqual(["handshake"]);
+  });
+
+  it("unlock also stamps and advances the variant", () => {
+    const { cycle, advanced } = recordingCycle("reactor");
+    const { port, resolve } = deferredAuthPort();
+    const presenter = new AuthPresenter(
+      port,
+      memorySessionStore(),
+      undefined,
+      cycle,
+    );
+
+    presenter.login("astark", "mcdc2026");
+    resolve({ ok: true, token: "t", user: USER, exp: 9e12 });
+    presenter.lock();
+    advanced.length = 0; // discard the login's advance; assert only the unlock's
+
+    presenter.unlock("mcdc2026");
+
+    expect(latest(presenter).waitVariant).toBe("reactor");
+    expect(advanced).toEqual(["handshake"]);
   });
 });
 
@@ -403,6 +476,32 @@ function deferredAuthPort(): {
     },
     resolve: (outcome: AuthOutcome): void => {
       current?.next(outcome);
+    },
+  };
+}
+
+/** A fresh in-memory SessionStore for tests that only need a working store,
+ * not persistence assertions — shorthand for `new InMemorySessionStore()`. */
+function memorySessionStore(): SessionStore {
+  return new InMemorySessionStore();
+}
+
+/** A `LoginWaitCycle` pinned to `start`, recording every advance. */
+function recordingCycle(start: LoginWaitVariant): {
+  readonly cycle: LoginWaitCycle;
+  readonly advanced: LoginWaitVariant[];
+} {
+  const advanced: LoginWaitVariant[] = [];
+
+  return {
+    advanced,
+    cycle: {
+      current: (): LoginWaitVariant => {
+        return start;
+      },
+      advance: (next: LoginWaitVariant): void => {
+        advanced.push(next);
+      },
     },
   };
 }
