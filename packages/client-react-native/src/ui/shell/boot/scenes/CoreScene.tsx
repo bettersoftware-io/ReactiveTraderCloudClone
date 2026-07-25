@@ -83,6 +83,19 @@ import {
   scanRingAlpha,
   scanRingLatitude,
 } from "#/ui/shell/boot/scenes/coreRings";
+import {
+  CALIBRATION_DIM_ALPHA,
+  CALIBRATION_INNER_FACTOR,
+  CALIBRATION_LIT_ALPHA,
+  CALIBRATION_OUTER_FACTOR,
+  CALIBRATION_TICK_COUNT,
+  calibrationTickLit,
+  coreTelemetryLines,
+  TELEMETRY_FIRST_BASELINE,
+  TELEMETRY_FONT_SIZE,
+  TELEMETRY_INSET,
+  TELEMETRY_SECOND_BASELINE,
+} from "#/ui/shell/boot/scenes/coreTelemetry";
 
 /**
  * `core` boot scene — the "global market mesh": a rotating wireframe globe of
@@ -133,10 +146,24 @@ import {
  *   - the rotating spotlight callout labelling one front-facing hub, cycling
  *     every 2.2s once the hub layer has fully revealed.
  *
- * DEFERRED to a later phase 6b task (each a distinct visual layer in the web
- * source, left out here rather than half-ported):
- *   - screen-space calibration ticks and the corner telemetry readout (CORE
- *     SYNC / NODES / YAW / LINKS).
+ * Task 4 (phase 6b-1) adds the last two elements, both screen-space, not
+ * projected through the globe camera (`coreTelemetry.ts`, ported from
+ * `bootCore.ts` lines 560-588):
+ *   - the 48 calibration ticks ringing the globe, a sweep head lighting the
+ *     arc behind it;
+ *   - the four corner telemetry strings (CORE SYNC · GLOBAL MESH / NODES ·
+ *     UPLINK top-left, YAW / LINKS · LIVE top-right), the latter pair reading
+ *     the order-flow arc state Task 3 added.
+ *
+ * All twelve web elements are now ported. Two documented non-goals remain,
+ * neither a missing element so much as a mobile-rendering constraint:
+ *   - the `ctx.shadowBlur` bloom the web layers onto the mesh strokes and the
+ *     arc/ripple draw-heads — a per-frame `MaskFilter.MakeBlur` is the mobile
+ *     equivalent of the compositing traps `docs/performance.md` catalogues,
+ *     so the underlying stroke/dot is ported and the glow is not;
+ *   - the web's `bold 12px`/`bold 13px`/`bold 18px` banner and telemetry text
+ *     render at regular weight — `Skia.Font()` resolves the platform default
+ *     typeface and no bold face is bundled.
  * The web's `ctx.clearRect` + translucent background-wash pair (canvas-2D's
  * own persistence workaround) has no counterpart here: `createPicture`
  * always starts a fresh, blank recording, so there is nothing to clear. The
@@ -256,6 +283,25 @@ export function CoreScene({
           width,
           elapsed,
           progress,
+          flicker,
+          accent,
+          accentAlt,
+        );
+        drawCalibrationTicks(
+          canvas,
+          centerX,
+          centerY,
+          radius,
+          elapsed,
+          flicker,
+          accent,
+        );
+        drawTelemetry(
+          canvas,
+          width,
+          elapsed,
+          progress,
+          params.yaw,
           flicker,
           accent,
           accentAlt,
@@ -797,6 +843,93 @@ function drawSpotlight(
     labelX + 2,
     point.y - 7,
     textPaint,
+    font,
+  );
+}
+
+/** The 48 screen-space calibration ticks ringing the globe, a fixed head
+ * sweeping the ring once per ~3.43s (`coreTelemetry.ts`'s
+ * `calibrationTickLit`). Screen space, not projected through the globe
+ * camera — the web draws these after the arcs/spotlight, so this does too. */
+function drawCalibrationTicks(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  elapsed: number,
+  flicker: number,
+  accent: string,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(1);
+  paint.setAntiAlias(true);
+
+  for (let i = 0; i < CALIBRATION_TICK_COUNT; i++) {
+    const angle = (i / CALIBRATION_TICK_COUNT) * Math.PI * 2;
+    const alpha = calibrationTickLit(elapsed, i)
+      ? CALIBRATION_LIT_ALPHA
+      : CALIBRATION_DIM_ALPHA;
+    paint.setColor(Skia.Color(hexToRgba(accent, alpha * flicker)));
+    canvas.drawLine(
+      centerX + Math.cos(angle) * radius * CALIBRATION_INNER_FACTOR,
+      centerY + Math.sin(angle) * radius * CALIBRATION_INNER_FACTOR,
+      centerX + Math.cos(angle) * radius * CALIBRATION_OUTER_FACTOR,
+      centerY + Math.sin(angle) * radius * CALIBRATION_OUTER_FACTOR,
+      paint,
+    );
+  }
+}
+
+/** The four corner telemetry strings (`coreTelemetry.ts`'s
+ * `coreTelemetryLines`) — CORE SYNC / NODES-UPLINK top-left, YAW / LINKS-LIVE
+ * top-right. Skia has no `textAlign`, so the right-aligned pair subtracts
+ * `font.getTextWidth`, same as `drawStatusBanner` below. */
+function drawTelemetry(
+  canvas: SkCanvas,
+  width: number,
+  elapsed: number,
+  progress: number,
+  yaw: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  const lines = coreTelemetryLines(elapsed, progress, yaw);
+  const font = Skia.Font();
+  font.setSize(TELEMETRY_FONT_SIZE);
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(accent, 0.7 * flicker)));
+  canvas.drawText(
+    lines.topLeftFirst,
+    TELEMETRY_INSET,
+    TELEMETRY_FIRST_BASELINE,
+    paint,
+    font,
+  );
+  canvas.drawText(
+    lines.topLeftSecond,
+    TELEMETRY_INSET,
+    TELEMETRY_SECOND_BASELINE,
+    paint,
+    font,
+  );
+  canvas.drawText(
+    lines.topRightFirst,
+    width - TELEMETRY_INSET - font.getTextWidth(lines.topRightFirst),
+    TELEMETRY_FIRST_BASELINE,
+    paint,
+    font,
+  );
+  paint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7 * flicker)));
+  canvas.drawText(
+    lines.topRightSecond,
+    width - TELEMETRY_INSET - font.getTextWidth(lines.topRightSecond),
+    TELEMETRY_SECOND_BASELINE,
+    paint,
     font,
   );
 }

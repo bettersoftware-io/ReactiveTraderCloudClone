@@ -88,6 +88,22 @@ test("survives elapsedSec sweeping across the order-flow arc gate without throwi
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
 
+test("survives elapsedSec sweeping across the calibration-tick wrap point without throwing", async () => {
+  // calibrationTickLit's `(elapsedSec * 14) % 48` wraps every ~3.4286s — the
+  // one modulo edge case Task 4 (coreTelemetry.ts) adds. Straddling it here
+  // is the jest-visible proof `drawCalibrationTicks`/`drawTelemetry` don't
+  // throw right at the wrap.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={3.4} mx={0} my={0} />,
+  );
+
+  for (const t of [3.4285, 3.4286, 3.4287, 3.43]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
 test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, without throwing", async () => {
   const { rerender } = await render(
     <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
