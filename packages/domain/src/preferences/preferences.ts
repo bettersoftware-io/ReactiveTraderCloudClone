@@ -46,6 +46,12 @@ export type BootVariant =
   | "jarvis"
   | "topo";
 
+/** The login/unlock waiting-state visual variant. Cycles across attempts —
+ * each attempt advances to the next entry (handshake → reactor → handshake …).
+ * Persisted under the `rt-login-wait-variant` key (web `localStorage`, RN
+ * AsyncStorage — the same constant on both). */
+export type LoginWaitVariant = "handshake" | "reactor";
+
 /** The equities Watchlist's sort mode — symbol (A–Z), % change, or last price.
  * Driven by the watchlist head's ⇅ cycle control. */
 export type EqWatchlistSort = "sym" | "chg" | "price";
@@ -72,6 +78,12 @@ export const BOOT_VARIANTS: readonly BootVariant[] = [
   "topo",
 ];
 
+/** Login-wait variant cycle order. Advanced on attempt start by AuthPresenter. */
+export const LOGIN_WAIT_VARIANTS: readonly LoginWaitVariant[] = [
+  "handshake",
+  "reactor",
+];
+
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
@@ -91,6 +103,7 @@ export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
 export const DEFAULT_FORCE_BOOT_ANIMATION = false;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
+export const DEFAULT_LOGIN_WAIT_VARIANT: LoginWaitVariant = "handshake";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";
 export const DEFAULT_EQ_BLOTTER_VIEW: EqBlotterView = "orders";
 

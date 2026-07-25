@@ -12,12 +12,14 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
   type ThemeSkin,
@@ -33,6 +35,7 @@ export interface PreferencesSeed {
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
+  loginWaitVariant?: LoginWaitVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
@@ -59,6 +62,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
+
+  private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
@@ -90,6 +95,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
+    );
+    this.loginWaitVariantSubject = new BehaviorSubject<LoginWaitVariant>(
+      seed.loginWaitVariant ?? DEFAULT_LOGIN_WAIT_VARIANT,
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
       seed.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
@@ -164,6 +172,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setBootVariant(variant: BootVariant): void {
     this.bootVariantSubject.next(variant);
+  }
+
+  loginWaitVariant$(): Observable<LoginWaitVariant> {
+    return this.loginWaitVariantSubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitVariant(variant: LoginWaitVariant): void {
+    this.loginWaitVariantSubject.next(variant);
   }
 
   creditRfqFilter$(): Observable<CreditRfqFilter> {
