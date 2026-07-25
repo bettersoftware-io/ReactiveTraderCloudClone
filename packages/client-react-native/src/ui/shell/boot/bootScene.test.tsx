@@ -33,6 +33,24 @@ test("reports coverage for the laser variant now that Task 7 registers it", () =
   expect(BOOT_SCENES.laser).toBeDefined();
 });
 
+test("docking resolves to a scene now that phase 6b-1 has ported it", () => {
+  expect(hasBootScene("docking")).toBe(true);
+  expect(BOOT_SCENES.docking).toBeDefined();
+});
+
+test("the five scenes deferred to phase 6b-2 still resolve to nothing, without throwing", () => {
+  for (const variant of [
+    "hologram",
+    "geo",
+    "layers",
+    "jarvis",
+    "topo",
+  ] as const) {
+    expect(hasBootScene(variant)).toBe(false);
+    expect(BOOT_SCENES[variant]).toBeUndefined();
+  }
+});
+
 test("every registered key is a real boot variant (guards a typo'd key)", () => {
   const registeredKeys = Object.keys(BOOT_SCENES);
 

@@ -34,10 +34,9 @@ test("survives elapsedSec sweeping across every status threshold without throwin
 
   // 0 .. well past BOOT_DURATION_MS (4200ms == 4.2s), crossing every
   // dockingStatus threshold (0.25, 0.55, 0.8, 0.92, 0.96 of boot progress) on
-  // both sides. Status/lock/label drawing itself lands in Task 9, but this
-  // task's draws (craftRadius/dockingTarget/dockingShake, all continuous
-  // functions of the same progress value) already read off it every frame,
-  // so the sweep is a real regression guard here too.
+  // both sides — including the final-flash ramp past 0.92 and the "CLAMP
+  // ENGAGED" state past 0.96, both added by Task 9's status banner, lock
+  // reticle and final-flash draws.
   for (const t of [0, 0.4, 1.1, 2.3, 3.5, 4.2, 6]) {
     await rerender(<DockingSceneHarness elapsedSec={t} />);
   }

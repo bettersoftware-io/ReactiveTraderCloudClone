@@ -156,6 +156,11 @@ jest.mock("@shopify/react-native-skia", () => {
         MakeRadialGradient: () => {
           return { __mockShader: true };
         },
+        // Phase 6b-1, Task 9 (DockingScene): the scan-sweep's linear gradient
+        // band.
+        MakeLinearGradient: () => {
+          return { __mockShader: true };
+        },
       },
       // Phase 6b-1, Task 8 (DockingScene): the dashed acquiring ring.
       PathEffect: {

@@ -4,7 +4,9 @@ import {
   PaintStyle,
   Picture,
   type SkCanvas,
+  type SkFont,
   Skia,
+  type SkPaint,
   type SkPath,
   TileMode,
 } from "@shopify/react-native-skia";
@@ -21,7 +23,11 @@ import {
   hexToRgba,
 } from "#/ui/shell/boot/scenes/coreGeometry";
 import {
+  attitudeReadouts,
   CRAFT_BODY_RECTS,
+  CROSSHAIR_ARM,
+  CROSSHAIR_GAP,
+  CROSSHAIR_HUB_R,
   corridorLines,
   craftGridLines,
   craftRadius,
@@ -29,14 +35,40 @@ import {
   DOCKING_RING_COUNT,
   DOCKING_RING_FACTOR,
   DOCKING_WASH,
+  type DockingColorRole,
   type DockingOffset,
+  dockingLabels,
   dockingShake,
+  dockingStatus,
+  dockingStatusBlink,
   dockingTarget,
+  dockingTelemetry,
+  finalFlashAlpha,
   hudGridStep,
+  LOCK_CALLOUT_ARM_DX,
+  LOCK_CALLOUT_ELBOW_DX,
+  LOCK_CALLOUT_ELBOW_DY,
+  LOCK_CALLOUT_TEXT,
+  LOCK_CALLOUT_TEXT_DX,
+  LOCK_CALLOUT_TEXT_DY,
+  LOCK_DASH_INTERVALS,
+  LOCK_DASH_SPIN,
+  LOCK_DASH_UNTIL,
+  lockBlink,
+  lockBoxSize,
+  lockColorRole,
+  lockPhase,
   markerOffset,
+  padTwo,
+  pipLadder,
+  RANGE_RADIUS_FACTOR,
   RETICLE_SPEC,
+  SCAN_BAND_ALPHA,
+  SCAN_BAND_HALF,
   SCANLINE_ALPHA,
   scanlineOffsets,
+  scanSweepY,
+  signalBars,
   VIGNETTE_INNER_FACTOR,
   VIGNETTE_OUTER_ALPHA,
   VIGNETTE_OUTER_FACTOR,
@@ -53,19 +85,21 @@ import {
  * into declarative components.
  *
  * Ported verbatim (formulas/constants unchanged) from `drawBootDocking`,
- * `packages/boot-splash/src/bootCanvas.ts` lines 459-716. This is the FIRST
- * HALF only — backdrop (wash + vignette + scanline overlay), the shaking
+ * `packages/boot-splash/src/bootCanvas.ts` lines 459-1021. Task 8 landed the
+ * first half — backdrop (wash + vignette + scanline overlay), the shaking
  * perspective corridor + its 5 concentric rings, the (unshaken) HUD grid, the
  * craft body (hull/struts/rails/pods), the full lock-on reticle (hoop, 36
  * spokes, inner ring + 12 pips, 4 vanes, crosshair rings + ticks, hub dot)
- * and the buy-coloured drift marker. DEFERRED to Task 9 (same file, same
- * component — see that task's own header once it lands): the range dial +
- * attitude readouts, the lock box + acquiring ring + callout, the centre
- * crosshair + pip ladder, the horizontal scan sweep, the four corner
- * telemetry blocks + REC indicator, the signal-strength bars, the status
- * banner and the final docking flash. `docking` is NOT registered in
- * `BOOT_SCENES` until Task 9 completes the draw — a half-drawn scene must
- * never reach a booting device.
+ * and the buy-coloured drift marker. Task 9 (this change) adds the second
+ * half, appended to the recorder in the source's order: the range dial + its
+ * P/Y/R and PITCH attitude columns, the RANGE / RANGE RATE readouts, the lock
+ * box + dashed acquiring ring + elbow callout + centre tether, the gapped
+ * centre crosshair + bobbing pip ladder, the horizontal scan sweep, the four
+ * corner telemetry blocks + REC indicator + signal-strength bars, the status
+ * banner and the final docking flash — and registers `docking` in
+ * `BOOT_SCENES` (`bootScene.ts`), the last step: a half-drawn scene must
+ * never reach a booting device, so registration only happens once every
+ * layer above is in place.
  *
  * **The static-geometry rule earns its keep here.** Three layers' shapes
  * depend only on `width`/`height` — the scan-line overlay (~280 one-pixel
@@ -129,6 +163,7 @@ export function DockingScene({
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
   const buy = theme.accentPositive;
+  const sell = theme.accentNegative;
 
   // Shapes that depend only on the viewport — built once, drawn every frame.
   // Rebuilding these inside the recorder would allocate ~300 path segments
@@ -181,6 +216,74 @@ export function DockingScene({
         drawCraftBody(canvas, target, radius, accent);
         drawReticle(canvas, target, radius, elapsed, accent, accentAlt);
         drawMarker(canvas, target, radius, eased, elapsed, width, height, buy);
+        drawRangeRing(
+          canvas,
+          centerX,
+          centerY,
+          width,
+          height,
+          elapsed,
+          eased,
+          accent,
+          accentAlt,
+          buy,
+        );
+        drawRangeReadouts(
+          canvas,
+          centerX,
+          centerY,
+          width,
+          height,
+          progress,
+          eased,
+          accent,
+          accentAlt,
+        );
+        drawLockReticle(
+          canvas,
+          target,
+          centerX,
+          centerY,
+          radius,
+          width,
+          height,
+          progress,
+          elapsed,
+          accent,
+          accentAlt,
+        );
+        drawCrosshair(canvas, centerX, centerY, elapsed, accent);
+        drawScanSweep(canvas, width, height, elapsed, accentAlt);
+        drawCornerLabels(
+          canvas,
+          width,
+          height,
+          target,
+          elapsed,
+          progress,
+          accent,
+          accentAlt,
+          sell,
+        );
+        drawStatusBanner(
+          canvas,
+          centerX,
+          centerY,
+          progress,
+          elapsed,
+          accent,
+          accentAlt,
+          buy,
+        );
+        drawFinalFlash(
+          canvas,
+          width,
+          height,
+          centerX,
+          centerY,
+          progress,
+          accentAlt,
+        );
       },
       { width, height },
     );
@@ -627,4 +730,731 @@ function drawMarker(
   const arm = radius * MARKER_ARM_FACTOR;
   canvas.drawLine(x, y - arm, x, y + arm, paint);
   canvas.drawLine(x - arm, y, x + arm, y, paint);
+}
+
+// --- Task 9: range dial, lock reticle, crosshair, sweep, labels, banner ----
+
+/** Resolves a `DockingColorRole` to its theme token — the one mapping shared
+ * by every status-driven element below (`dockingStatus`, `dockingLabels`'
+ * blocks, `lockColorRole`'s "primary"/"alt" pair): `primary` → `accent`,
+ * `alt` → `accentAlt`, `positive` → `buy`, `negative` → `sell`. No hardcoded
+ * colours anywhere in this scene (repo-wide constraint 8). */
+function resolveDockingColor(
+  role: DockingColorRole,
+  accent: string,
+  accentAlt: string,
+  buy: string,
+  sell: string,
+): string {
+  "worklet";
+
+  switch (role) {
+    case "alt":
+      return accentAlt;
+    case "positive":
+      return buy;
+    case "negative":
+      return sell;
+    default:
+      return accent;
+  }
+}
+
+const RANGE_RING_STROKE_WIDTH = 1.6;
+const RANGE_OUTER_RING_OFFSET = 8;
+const RANGE_ATTITUDE_FONT_SIZE = 11;
+
+/** The two concentric range circles at `RANGE_RADIUS_FACTOR`, plus the P/Y/R
+ * and PITCH side columns — `bootCanvas.ts:716-772`. The web sets
+ * `textBaseline = "middle"` for the three numeric rows in each column
+ * (`bootCanvas.ts:729`); Skia has no baseline modes (only the default,
+ * roughly "alphabetic"), so these draw with the same baseline-anchored
+ * `drawText` every other label in this scene uses — a minor, accepted
+ * vertical-position gap alongside the regular-weight one `drawRangeReadouts`
+ * documents below. */
+function drawRangeRing(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  width: number,
+  height: number,
+  elapsedSec: number,
+  easedProgress: number,
+  accent: string,
+  accentAlt: string,
+  buy: string,
+): void {
+  "worklet";
+  const rangeRadius = Math.min(width, height) * RANGE_RADIUS_FACTOR;
+  const wobble = 1 - easedProgress;
+
+  const ringPaint = Skia.Paint();
+  ringPaint.setStyle(PaintStyle.Stroke);
+  ringPaint.setStrokeWidth(RANGE_RING_STROKE_WIDTH);
+  ringPaint.setColor(Skia.Color(hexToRgba(accent, 0.5)));
+  canvas.drawCircle(centerX, centerY, rangeRadius, ringPaint);
+  ringPaint.setColor(Skia.Color(hexToRgba(accent, 0.2)));
+  canvas.drawCircle(
+    centerX,
+    centerY,
+    rangeRadius + RANGE_OUTER_RING_OFFSET,
+    ringPaint,
+  );
+
+  const readouts = attitudeReadouts(elapsedSec, wobble);
+  const font = Skia.Font();
+  font.setSize(RANGE_ATTITUDE_FONT_SIZE);
+  const textPaint = Skia.Paint();
+  textPaint.setAntiAlias(true);
+  textPaint.setColor(Skia.Color(hexToRgba(buy, 0.85)));
+  const columnX = centerX - rangeRadius + 20;
+  canvas.drawText(readouts.pyr[0], columnX, centerY - 14, textPaint, font);
+  canvas.drawText(readouts.pyr[1], columnX, centerY, textPaint, font);
+  canvas.drawText(readouts.pyr[2], columnX, centerY + 14, textPaint, font);
+
+  canvas.save();
+  canvas.translate(centerX - rangeRadius + 8, centerY);
+  canvas.rotate(-90, 0, 0);
+  const pyrLabel = "P Y R";
+  textPaint.setColor(Skia.Color(hexToRgba(accent, 0.5)));
+  canvas.drawText(
+    pyrLabel,
+    -font.getTextWidth(pyrLabel) / 2,
+    0,
+    textPaint,
+    font,
+  );
+  canvas.restore();
+
+  textPaint.setColor(Skia.Color(hexToRgba(buy, 0.85)));
+  canvas.drawText(
+    readouts.pitchAngle,
+    centerX + rangeRadius - 18 - font.getTextWidth(readouts.pitchAngle),
+    centerY - 8,
+    textPaint,
+    font,
+  );
+  textPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7)));
+  canvas.drawText(
+    readouts.pitchRate,
+    centerX + rangeRadius - 18 - font.getTextWidth(readouts.pitchRate),
+    centerY + 8,
+    textPaint,
+    font,
+  );
+
+  canvas.save();
+  canvas.translate(centerX + rangeRadius - 6, centerY);
+  canvas.rotate(90, 0, 0);
+  const pitchLabel = "P I T C H";
+  textPaint.setColor(Skia.Color(hexToRgba(accent, 0.5)));
+  canvas.drawText(
+    pitchLabel,
+    -font.getTextWidth(pitchLabel) / 2,
+    0,
+    textPaint,
+    font,
+  );
+  canvas.restore();
+}
+
+const RANGE_CAPTION_FONT_SIZE = 9;
+const RANGE_FIGURE_FONT_SIZE = 18;
+const RANGE_METERS_BASE = 4820;
+const RANGE_RATE_BASE = 34;
+const RANGE_RATE_PROGRESS_FACTOR = 6;
+
+/** RANGE / RANGE RATE captions at 9px plus the two large figures —
+ * `bootCanvas.ts:773-799`. **Regular weight, where the web is `bold 18px`**
+ * — the most visible instance of the Skia-has-no-bold-face gap in this
+ * scene (repo-wide constraint 3, and `dockingGeometry.ts`'s own header);
+ * no bold face is bundled, so no attempt is made to synthesize one. */
+function drawRangeReadouts(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  width: number,
+  height: number,
+  progress: number,
+  easedProgress: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  const rangeRadius = Math.min(width, height) * RANGE_RADIUS_FACTOR;
+  const rangeMeters = Math.max(
+    0,
+    Math.round(RANGE_METERS_BASE * (1 - easedProgress)),
+  );
+  const rangeRateText = `-0.${padTwo(RANGE_RATE_BASE - Math.round(progress * RANGE_RATE_PROGRESS_FACTOR))} m/s`;
+
+  const captionFont = Skia.Font();
+  captionFont.setSize(RANGE_CAPTION_FONT_SIZE);
+  const captionPaint = Skia.Paint();
+  captionPaint.setAntiAlias(true);
+  captionPaint.setColor(Skia.Color(hexToRgba(accent, 0.5)));
+
+  const rangeLabel = "RANGE";
+  canvas.drawText(
+    rangeLabel,
+    centerX - rangeRadius * 0.42 - captionFont.getTextWidth(rangeLabel) / 2,
+    centerY + rangeRadius - 28,
+    captionPaint,
+    captionFont,
+  );
+  const rangeRateLabel = "RANGE RATE";
+  canvas.drawText(
+    rangeRateLabel,
+    centerX + rangeRadius * 0.42 - captionFont.getTextWidth(rangeRateLabel) / 2,
+    centerY + rangeRadius - 28,
+    captionPaint,
+    captionFont,
+  );
+
+  const figureFont = Skia.Font();
+  figureFont.setSize(RANGE_FIGURE_FONT_SIZE);
+  const figurePaint = Skia.Paint();
+  figurePaint.setAntiAlias(true);
+  figurePaint.setColor(Skia.Color(hexToRgba(accent, 0.95)));
+  const rangeText = `${rangeMeters} m`;
+  canvas.drawText(
+    rangeText,
+    centerX - rangeRadius * 0.42 - figureFont.getTextWidth(rangeText) / 2,
+    centerY + rangeRadius - 9,
+    figurePaint,
+    figureFont,
+  );
+  figurePaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.95)));
+  canvas.drawText(
+    rangeRateText,
+    centerX + rangeRadius * 0.42 - figureFont.getTextWidth(rangeRateText) / 2,
+    centerY + rangeRadius - 9,
+    figurePaint,
+    figureFont,
+  );
+}
+
+const LOCK_CORNERS: readonly [number, number][] = [
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1],
+];
+const LOCK_CORNER_TICK_MIN = 10;
+const LOCK_CORNER_TICK_FACTOR = 0.22;
+const LOCK_CORNER_STROKE_WIDTH = 1.8;
+const LOCK_DASH_STROKE_WIDTH = 1.2;
+const LOCK_DASH_RADIUS_FACTOR = 1.25;
+const LOCK_ELBOW_STROKE_WIDTH = 1;
+const LOCK_CALLOUT_FONT_SIZE = 11;
+const LOCK_TETHER_STROKE_WIDTH = 1.4;
+
+/** The lock box's 4 corner brackets (blinking while acquiring), the dashed
+ * spinning acquiring ring while `progress < LOCK_DASH_UNTIL`, the elbow
+ * leader line + `AC-417 ▸ EUR/USD ESCORT` callout, and the tether from the
+ * target to the mid-point of screen centre — `bootCanvas.ts:800-866`.
+ * `lockColorRole` only ever returns `"primary"`/`"alt"` (never
+ * `"positive"`/`"negative"`), so this resolves the 2-way swap directly
+ * rather than through `resolveDockingColor`'s full 4-way switch. */
+function drawLockReticle(
+  canvas: SkCanvas,
+  target: DockingOffset,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  width: number,
+  height: number,
+  progress: number,
+  elapsedSec: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  const minDim = Math.min(width, height);
+  const currentLockPhase = lockPhase(progress);
+  const lockBox = lockBoxSize(currentLockPhase, radius, minDim);
+  const blink = lockBlink(elapsedSec, progress);
+  const lockColor = lockColorRole(progress) === "alt" ? accentAlt : accent;
+
+  const tickLen = Math.max(
+    LOCK_CORNER_TICK_MIN,
+    lockBox * LOCK_CORNER_TICK_FACTOR,
+  );
+  const cornerPaint = Skia.Paint();
+  cornerPaint.setStyle(PaintStyle.Stroke);
+  cornerPaint.setStrokeWidth(LOCK_CORNER_STROKE_WIDTH);
+  cornerPaint.setColor(Skia.Color(hexToRgba(lockColor, 0.92 * blink)));
+
+  for (const [dx, dy] of LOCK_CORNERS) {
+    const cornerX = target.x + dx * lockBox;
+    const cornerY = target.y + dy * lockBox;
+    canvas.drawLine(
+      cornerX,
+      cornerY - dy * tickLen,
+      cornerX,
+      cornerY,
+      cornerPaint,
+    );
+    canvas.drawLine(
+      cornerX,
+      cornerY,
+      cornerX - dx * tickLen,
+      cornerY,
+      cornerPaint,
+    );
+  }
+
+  if (progress < LOCK_DASH_UNTIL) {
+    canvas.save();
+    canvas.translate(target.x, target.y);
+    canvas.rotate(toDegrees(elapsedSec * LOCK_DASH_SPIN), 0, 0);
+    const dashPaint = Skia.Paint();
+    dashPaint.setStyle(PaintStyle.Stroke);
+    dashPaint.setStrokeWidth(LOCK_DASH_STROKE_WIDTH);
+    dashPaint.setColor(Skia.Color(hexToRgba(accent, 0.5 * blink)));
+    dashPaint.setPathEffect(
+      Skia.PathEffect.MakeDash([...LOCK_DASH_INTERVALS], 0),
+    );
+    canvas.drawCircle(0, 0, lockBox * LOCK_DASH_RADIUS_FACTOR, dashPaint);
+    canvas.restore();
+  }
+
+  const elbowPaint = Skia.Paint();
+  elbowPaint.setStyle(PaintStyle.Stroke);
+  elbowPaint.setStrokeWidth(LOCK_ELBOW_STROKE_WIDTH);
+  elbowPaint.setColor(Skia.Color(hexToRgba(lockColor, 0.5)));
+  const elbowStartX = target.x + lockBox;
+  const elbowStartY = target.y - lockBox;
+  const elbowMidX = elbowStartX + LOCK_CALLOUT_ELBOW_DX;
+  const elbowMidY = elbowStartY + LOCK_CALLOUT_ELBOW_DY;
+  canvas.drawLine(elbowStartX, elbowStartY, elbowMidX, elbowMidY, elbowPaint);
+  canvas.drawLine(
+    elbowMidX,
+    elbowMidY,
+    elbowStartX + LOCK_CALLOUT_ARM_DX,
+    elbowMidY,
+    elbowPaint,
+  );
+
+  const calloutFont = Skia.Font();
+  calloutFont.setSize(LOCK_CALLOUT_FONT_SIZE);
+  const calloutPaint = Skia.Paint();
+  calloutPaint.setAntiAlias(true);
+  calloutPaint.setColor(Skia.Color(hexToRgba(lockColor, 0.9)));
+  canvas.drawText(
+    LOCK_CALLOUT_TEXT,
+    elbowStartX + LOCK_CALLOUT_TEXT_DX,
+    elbowStartY + LOCK_CALLOUT_TEXT_DY,
+    calloutPaint,
+    calloutFont,
+  );
+
+  const tetherPaint = Skia.Paint();
+  tetherPaint.setStyle(PaintStyle.Stroke);
+  tetherPaint.setStrokeWidth(LOCK_TETHER_STROKE_WIDTH);
+  tetherPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.55)));
+  canvas.drawLine(
+    target.x,
+    target.y,
+    target.x + (centerX - target.x) * 0.5,
+    target.y + (centerY - target.y) * 0.5,
+    tetherPaint,
+  );
+}
+
+const CROSSHAIR_STROKE_WIDTH = 1.4;
+const CROSSHAIR_HUB_ALPHA = 0.3;
+const PIP_TICK_INNER = 32;
+const PIP_TICK_OUTER = 72;
+const PIP_LABEL_X = -92;
+const PIP_LABEL_Y_OFFSET = 3;
+const PIP_FONT_SIZE = 9;
+const PIP_STROKE_WIDTH = 1;
+
+/** The gapped centre cross, its 8px hub circle, and the bobbing pip ladder
+ * — `bootCanvas.ts:867-906`. The ladder is drawn in its own bobbing local
+ * space (`save`/`translate(centerX, centerY + ladder.offsetY)`), matching
+ * every other local-space assembly in this scene. */
+function drawCrosshair(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  elapsedSec: number,
+  accent: string,
+): void {
+  "worklet";
+  const crossPaint = Skia.Paint();
+  crossPaint.setStyle(PaintStyle.Stroke);
+  crossPaint.setStrokeWidth(CROSSHAIR_STROKE_WIDTH);
+  crossPaint.setColor(Skia.Color(hexToRgba(accent, 0.6)));
+  canvas.drawLine(
+    centerX - CROSSHAIR_ARM,
+    centerY,
+    centerX - CROSSHAIR_GAP,
+    centerY,
+    crossPaint,
+  );
+  canvas.drawLine(
+    centerX + CROSSHAIR_GAP,
+    centerY,
+    centerX + CROSSHAIR_ARM,
+    centerY,
+    crossPaint,
+  );
+  canvas.drawLine(
+    centerX,
+    centerY - CROSSHAIR_ARM,
+    centerX,
+    centerY - CROSSHAIR_GAP,
+    crossPaint,
+  );
+  canvas.drawLine(
+    centerX,
+    centerY + CROSSHAIR_GAP,
+    centerX,
+    centerY + CROSSHAIR_ARM,
+    crossPaint,
+  );
+
+  const hubPaint = Skia.Paint();
+  hubPaint.setStyle(PaintStyle.Stroke);
+  hubPaint.setColor(Skia.Color(hexToRgba(accent, CROSSHAIR_HUB_ALPHA)));
+  canvas.drawCircle(centerX, centerY, CROSSHAIR_HUB_R, hubPaint);
+
+  const ladder = pipLadder(elapsedSec);
+  const ladderStrokePaint = Skia.Paint();
+  ladderStrokePaint.setStyle(PaintStyle.Stroke);
+  ladderStrokePaint.setStrokeWidth(PIP_STROKE_WIDTH);
+  ladderStrokePaint.setColor(Skia.Color(hexToRgba(accent, 0.22)));
+  const ladderTextPaint = Skia.Paint();
+  ladderTextPaint.setAntiAlias(true);
+  ladderTextPaint.setColor(Skia.Color(hexToRgba(accent, 0.4)));
+  const ladderFont = Skia.Font();
+  ladderFont.setSize(PIP_FONT_SIZE);
+
+  canvas.save();
+  canvas.translate(centerX, centerY + ladder.offsetY);
+
+  for (const tick of ladder.ticks) {
+    canvas.drawLine(
+      -PIP_TICK_OUTER,
+      tick.y,
+      -PIP_TICK_INNER,
+      tick.y,
+      ladderStrokePaint,
+    );
+    canvas.drawLine(
+      PIP_TICK_INNER,
+      tick.y,
+      PIP_TICK_OUTER,
+      tick.y,
+      ladderStrokePaint,
+    );
+    canvas.drawText(
+      tick.label,
+      PIP_LABEL_X,
+      tick.y + PIP_LABEL_Y_OFFSET,
+      ladderTextPaint,
+      ladderFont,
+    );
+  }
+
+  canvas.restore();
+}
+
+/** A full-width band at `scanSweepY`, filled with a linear gradient
+ * (transparent → `accentAlt` at 0.1 → transparent) — `bootCanvas.ts:907-913`.
+ * The web's `createLinearGradient` (two same-x points, differing only in y)
+ * ports directly to `Skia.Shader.MakeLinearGradient`, unlike the two-circle
+ * radial gradient `drawBackdrop`/`drawFinalFlash` have to approximate. */
+function drawScanSweep(
+  canvas: SkCanvas,
+  width: number,
+  height: number,
+  elapsedSec: number,
+  accentAlt: string,
+): void {
+  "worklet";
+  const bandCenterY = scanSweepY(elapsedSec, height);
+  const shader = Skia.Shader.MakeLinearGradient(
+    { x: 0, y: bandCenterY - SCAN_BAND_HALF },
+    { x: 0, y: bandCenterY + SCAN_BAND_HALF },
+    [
+      Skia.Color("rgba(0,0,0,0)"),
+      Skia.Color(hexToRgba(accentAlt, SCAN_BAND_ALPHA)),
+      Skia.Color("rgba(0,0,0,0)"),
+    ],
+    [0, 0.5, 1],
+    TileMode.Clamp,
+  );
+  const paint = Skia.Paint();
+  paint.setShader(shader);
+  canvas.drawRect(
+    {
+      x: 0,
+      y: bandCenterY - SCAN_BAND_HALF,
+      width,
+      height: SCAN_BAND_HALF * 2,
+    },
+    paint,
+  );
+}
+
+const CORNER_LABEL_FONT_SIZE = 11;
+const CORNER_LABEL_LINE_HEIGHT = 15;
+const CORNER_LABEL_ALPHA = 0.85;
+const CORNER_INSET = 20;
+const CORNER_REC_Y = 73;
+const CORNER_TOP_Y = 28;
+const CORNER_BOTTOM_OFFSET = 58;
+const SIGNAL_BAR_WIDTH = 6;
+const SIGNAL_BAR_BASELINE_OFFSET = 26;
+
+/** One label block, left- or right-aligned — `bootCanvas.ts`'s inline
+ * `drawLabel` closure, hoisted to a top-level worklet since Skia's recorder
+ * has no closures to reuse across calls. Right alignment subtracts
+ * `font.getTextWidth` per line (Skia has no `textAlign`), the same idiom
+ * `CoreScene.tsx`'s `drawTelemetry` and this file's `drawRangeReadouts` use. */
+function drawLabelBlock(
+  canvas: SkCanvas,
+  x: number,
+  y: number,
+  lines: readonly string[],
+  align: "left" | "right",
+  color: string,
+  font: SkFont,
+  paint: SkPaint,
+): void {
+  "worklet";
+  paint.setColor(Skia.Color(hexToRgba(color, CORNER_LABEL_ALPHA)));
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineX = align === "right" ? x - font.getTextWidth(line) : x;
+    canvas.drawText(line, lineX, y + i * CORNER_LABEL_LINE_HEIGHT, paint, font);
+  }
+}
+
+/** The four corner telemetry blocks (`dockingLabels`), the `● REC` marker in
+ * the sell colour, and the five signal-strength bars (`signalBars`) —
+ * `bootCanvas.ts:914-975`. */
+function drawCornerLabels(
+  canvas: SkCanvas,
+  width: number,
+  height: number,
+  target: DockingOffset,
+  elapsedSec: number,
+  progress: number,
+  accent: string,
+  accentAlt: string,
+  sell: string,
+): void {
+  "worklet";
+  const telemetry = dockingTelemetry(
+    elapsedSec,
+    progress,
+    target.x,
+    target.y,
+    width,
+    height,
+  );
+  const labels = dockingLabels(telemetry);
+  const font = Skia.Font();
+  font.setSize(CORNER_LABEL_FONT_SIZE);
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+
+  drawLabelBlock(
+    canvas,
+    CORNER_INSET,
+    CORNER_TOP_Y,
+    labels.topLeft.lines,
+    "left",
+    resolveDockingColor(
+      labels.topLeft.colorRole,
+      accent,
+      accentAlt,
+      accent,
+      sell,
+    ),
+    font,
+    paint,
+  );
+  drawLabelBlock(
+    canvas,
+    CORNER_INSET,
+    CORNER_REC_Y,
+    labels.rec.lines,
+    "left",
+    resolveDockingColor(labels.rec.colorRole, accent, accentAlt, accent, sell),
+    font,
+    paint,
+  );
+  drawLabelBlock(
+    canvas,
+    width - CORNER_INSET,
+    CORNER_TOP_Y,
+    labels.topRight.lines,
+    "right",
+    resolveDockingColor(
+      labels.topRight.colorRole,
+      accent,
+      accentAlt,
+      accent,
+      sell,
+    ),
+    font,
+    paint,
+  );
+  drawLabelBlock(
+    canvas,
+    width - CORNER_INSET,
+    CORNER_REC_Y,
+    labels.topRightAlt.lines,
+    "right",
+    resolveDockingColor(
+      labels.topRightAlt.colorRole,
+      accent,
+      accentAlt,
+      accent,
+      sell,
+    ),
+    font,
+    paint,
+  );
+  drawLabelBlock(
+    canvas,
+    width - CORNER_INSET,
+    height - CORNER_BOTTOM_OFFSET,
+    labels.bottomRight.lines,
+    "right",
+    resolveDockingColor(
+      labels.bottomRight.colorRole,
+      accent,
+      accentAlt,
+      accent,
+      sell,
+    ),
+    font,
+    paint,
+  );
+  drawLabelBlock(
+    canvas,
+    CORNER_INSET,
+    height - CORNER_BOTTOM_OFFSET,
+    labels.bottomLeft.lines,
+    "left",
+    resolveDockingColor(
+      labels.bottomLeft.colorRole,
+      accent,
+      accentAlt,
+      accent,
+      sell,
+    ),
+    font,
+    paint,
+  );
+
+  const barPaint = Skia.Paint();
+
+  for (const bar of signalBars(elapsedSec)) {
+    barPaint.setColor(
+      Skia.Color(hexToRgba(bar.lit ? accentAlt : accent, bar.lit ? 0.85 : 0.2)),
+    );
+    canvas.drawRect(
+      {
+        x: width - CORNER_INSET - bar.xOffsetFromRight,
+        y: height - SIGNAL_BAR_BASELINE_OFFSET,
+        width: SIGNAL_BAR_WIDTH,
+        height: bar.height,
+      },
+      barPaint,
+    );
+  }
+}
+
+const STATUS_BANNER_FONT_SIZE = 13;
+const STATUS_BANNER_Y_OFFSET = -66;
+const STATUS_BANNER_ALPHA = 0.95;
+
+/** `▸ TEXT ◂` at `centerY - 66`, colour resolved from `dockingStatus()`'s
+ * `colorRole` (`primary` → `accent`, `alt` → `accentAlt`, `positive` →
+ * `buy`), blinking while ACQUIRING (`dockingStatusBlink`) —
+ * `bootCanvas.ts:977-1004`. Regular weight, where the web is `bold 13px` —
+ * same accepted gap as `drawRangeReadouts`. */
+function drawStatusBanner(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  progress: number,
+  elapsedSec: number,
+  accent: string,
+  accentAlt: string,
+  buy: string,
+): void {
+  "worklet";
+  const status = dockingStatus(progress);
+  const color = resolveDockingColor(
+    status.colorRole,
+    accent,
+    accentAlt,
+    buy,
+    accent,
+  );
+  const blink = dockingStatusBlink(elapsedSec, status.text);
+  const text = `▸ ${status.text} ◂`;
+  const font = Skia.Font();
+  font.setSize(STATUS_BANNER_FONT_SIZE);
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(color, STATUS_BANNER_ALPHA * blink)));
+  const textWidth = font.getTextWidth(text);
+  canvas.drawText(
+    text,
+    centerX - textWidth / 2,
+    centerY + STATUS_BANNER_Y_OFFSET,
+    paint,
+    font,
+  );
+}
+
+const FLASH_WHITE_ALPHA = 0.4;
+const FLASH_ALT_ALPHA = 0.3;
+const FLASH_RADIUS_FACTOR = 0.5;
+
+/** The radial white/alt wash over the last 8% of the boot
+ * (`finalFlashAlpha`) — `bootCanvas.ts:1005-1020`. Same 3-stop single-circle
+ * approximation of the web's two-circle `createRadialGradient` that
+ * `drawBackdrop`'s vignette already uses (Skia's radial gradient factory
+ * takes one circle, not two). */
+function drawFinalFlash(
+  canvas: SkCanvas,
+  width: number,
+  height: number,
+  centerX: number,
+  centerY: number,
+  progress: number,
+  accentAlt: string,
+): void {
+  "worklet";
+  const fadeAlpha = finalFlashAlpha(progress);
+
+  if (fadeAlpha <= 0) {
+    return;
+  }
+
+  const shader = Skia.Shader.MakeRadialGradient(
+    { x: centerX, y: centerY },
+    Math.max(width, height) * FLASH_RADIUS_FACTOR,
+    [
+      Skia.Color(hexToRgba("#ffffff", FLASH_WHITE_ALPHA * fadeAlpha)),
+      Skia.Color(hexToRgba(accentAlt, FLASH_ALT_ALPHA * fadeAlpha)),
+      Skia.Color("rgba(0,0,0,0)"),
+    ],
+    [0, 0.35, 1],
+    TileMode.Clamp,
+  );
+  const paint = Skia.Paint();
+  paint.setShader(shader);
+  canvas.drawRect({ x: 0, y: 0, width, height }, paint);
 }
