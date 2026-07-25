@@ -17,10 +17,18 @@
 //   pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate)
 //   pnpm goldens:regen    # rewrite react/ into the working tree, ready to commit
 //
-// Runs the full react/ set for the sole surviving `playwright` tier. Requires
-// Docker (Desktop / colima) with the daemon running. First run is slower (image
-// pull + amd64 install under emulation); later runs reuse the layer + a
-// persistent pnpm store.
+// Both accept an optional scenario filter — a test-title regex, the same lever
+// Route 1 (update-visual-goldens.yml's scenario_pattern) and Route 3 (native
+// :update) already expose — so a one-pixel change no longer costs a full-set
+// render:
+//
+//   pnpm goldens:regen aurora               # positional
+//   SCENARIO_PATTERN=aurora pnpm goldens:regen   # or the env var Route 3 uses
+//
+// Without a filter the full react/ set renders for the sole surviving
+// `playwright` tier. Requires Docker (Desktop / colima) with the daemon running.
+// First run is slower (image pull + amd64 install under emulation); later runs
+// reuse the layer + a persistent pnpm store.
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -36,10 +44,23 @@ const repoRoot = resolve(scriptDir, "..");
 
 const mode = process.argv[2];
 if (mode !== "regen" && mode !== "verify") {
-  console.error("usage: goldens-in-container.mjs <regen|verify>");
+  console.error(
+    "usage: goldens-in-container.mjs <regen|verify> [scenario-pattern]",
+  );
   process.exit(2);
 }
 const update = mode === "regen";
+
+// Optional scenario filter, from either a positional arg or the SCENARIO_PATTERN
+// env var Routes 1 and 3 already use — accepting both means the muscle memory
+// from `SCENARIO_PATTERN=… pnpm …:update` carries over unchanged. Forwarded into
+// the container below, where playwright.config.ts turns it into Playwright's
+// `grep`. A literal `--` is dropped: pnpm needs no separator and passes it
+// straight through, so npm-habit `pnpm goldens:regen -- aurora` would otherwise
+// filter on "--" and match nothing. `||` (not `??`) so an explicitly empty value
+// reads as "no filter" rather than an empty regex.
+const positional = process.argv.slice(3).find((arg) => arg !== "--");
+const pattern = positional || process.env.SCENARIO_PATTERN || "";
 
 if (spawnSync("docker", ["version"], { stdio: "ignore" }).status !== 0) {
   console.error(
@@ -57,6 +78,12 @@ if (update) {
 // Inside the container: copy source to /build (isolate from the host's arm64
 // node_modules), install + build for amd64, then run the sole surviving visual
 // tier with CI=1 so the config routes to the canonical `react/` baseline.
+//
+// A FILTERED regen is safe to copy back wholesale: the tar above seeds /build
+// with the COMMITTED goldens, so scenarios the filter skipped are still present
+// and unmodified: they round-trip byte-identically and show up as no git diff.
+// Only the matched scenarios are actually re-rendered. So the copy-back below
+// can stay a plain whole-tree copy — it never drops an unmatched golden.
 const flag = update ? "--update-snapshots" : "";
 const inner = [
   "set -e",
@@ -88,13 +115,21 @@ const dockerArgs = [
   "COREPACK_ENABLE_DOWNLOAD_PROMPT=0",
   "-e",
   "RTC_VISUAL_MAX_PARALLEL=1",
+  ...(pattern ? ["-e", `SCENARIO_PATTERN=${pattern}`] : []),
   IMAGE,
   "bash",
   "-lc",
   inner,
 ];
 
-console.log(`[goldens] ${mode} in ${IMAGE} (emulated linux/amd64)…`);
+// Echo the filter so a pattern that silently matched nothing is diagnosable from
+// the log alone (Playwright itself exits non-zero on an empty selection).
+const scope = pattern
+  ? `scenarios matching /${pattern}/`
+  : "the full react/ set";
+console.log(
+  `[goldens] ${mode} — ${scope} — in ${IMAGE} (emulated linux/amd64)…`,
+);
 const res = spawnSync("docker", dockerArgs, { stdio: "inherit" });
 if (res.status !== 0) {
   process.exit(res.status ?? 1);
@@ -117,6 +152,6 @@ if (update) {
   }
   rmSync(outDir, { recursive: true, force: true });
   console.log(
-    "[goldens] regenerated the canonical react/ set into the working tree — review and commit.",
+    `[goldens] regenerated ${scope} into the canonical react/ tree — review and commit.`,
   );
 }
