@@ -36,10 +36,9 @@ const DEFAULT_IDB_PATH = "idb";
 const DEFAULT_IDB_TAP_X = 274;
 const DEFAULT_IDB_TAP_Y = 474;
 
-/** Bounded poll for the `login-screen` a11y marker after loading the Metro
- * base URL (mirrors the Maestro tier's `extendedWaitUntil` — see
- * `maestro/generateFlows.ts`). */
-const DEFAULT_LOGIN_TIMEOUT_MS = 20_000;
+/** Bounded poll for the app to leave the dev-client launcher after loading
+ * the Metro base URL — i.e. our bundle is on screen, in whatever state. */
+const DEFAULT_APP_BOOT_TIMEOUT_MS = 20_000;
 /** Bounded poll for the `visual-ready` a11y marker after the in-app scenario
  * deep link. This is the core fix: the driver must not screenshot until this
  * marker is observed, and must throw — never return a screenshot — if it
@@ -52,7 +51,6 @@ const DEFAULT_POLL_INTERVAL_MS = 400;
  * readiness gate now, not a guessed fixed wait. */
 const DEFAULT_POST_READY_SETTLE_MS = 300;
 
-const LOGIN_SCREEN_ID = "login-screen";
 const VISUAL_READY_ID = "visual-ready";
 const OPEN_CONFIRM_LABEL = "Open";
 
@@ -105,9 +103,9 @@ export interface SimctlDriverConfig {
    * the iPhone 17 pin's on-device-measured coordinates. */
   idbTapX?: number;
   idbTapY?: number;
-  /** Bounded wait (ms) for the `login-screen` marker after loading the Metro
-   * base URL. Throws if never observed. */
-  loginTimeoutMs?: number;
+  /** Bounded wait (ms) for the app to leave the dev-client launcher after
+   * loading the Metro base URL. Throws if it never does. */
+  appBootTimeoutMs?: number;
   /** Bounded wait (ms) for the `visual-ready` marker after the in-app
    * scenario deep link. Throws if never observed — this is what makes a
    * capture failure loud instead of silently screenshotting whatever's on
@@ -127,7 +125,10 @@ export interface SimctlDriverConfig {
  * The on-device sequence (rehaul Phase 1 amendment A2, later hardened by the
  * reliability fix below): load the dev client at its Metro base URL first
  * (the combined `?url=.../--/<route>` form does NOT work), poll the a11y
- * tree for the `login-screen` boot marker, THEN deep-link in-app to the
+ * tree until the app has left the dev-client launcher (NOT for a
+ * `login-screen` marker — the session persists in AsyncStorage, so a
+ * simulator that has ever signed in boots straight to the shell and that
+ * marker never appears), THEN deep-link in-app to the
  * scenario route, poll the a11y tree for the iOS "Open in RTC Mobile?"
  * confirmation and dismiss it by tapping the located "Open" button (falling
  * back to a blind coordinate tap only if it can't be found), poll the a11y
@@ -151,7 +152,7 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
   const idbPath = cfg.idbPath ?? DEFAULT_IDB_PATH;
   const idbTapX = cfg.idbTapX ?? DEFAULT_IDB_TAP_X;
   const idbTapY = cfg.idbTapY ?? DEFAULT_IDB_TAP_Y;
-  const loginTimeoutMs = cfg.loginTimeoutMs ?? DEFAULT_LOGIN_TIMEOUT_MS;
+  const appBootTimeoutMs = cfg.appBootTimeoutMs ?? DEFAULT_APP_BOOT_TIMEOUT_MS;
   const readyTimeoutMs = cfg.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
   const pollIntervalMs = cfg.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const postReadySettleMs =
@@ -161,11 +162,10 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
     name: "simctl",
     async capture(scenarioId: string): Promise<Buffer> {
       await openMetroBase(cfg.udid, metroPort);
-      await waitForMarker(idbPath, cfg.udid, {
-        id: LOGIN_SCREEN_ID,
-        timeoutMs: loginTimeoutMs,
+      await waitForAppBoot(idbPath, cfg.udid, {
+        timeoutMs: appBootTimeoutMs,
         pollIntervalMs,
-        describe: `dev client boot ("${LOGIN_SCREEN_ID}") for scenario "${scenarioId}"`,
+        scenarioId,
       });
 
       await openScenarioDeepLink(cfg.udid, scenarioId);
@@ -294,6 +294,55 @@ interface MarkerWaitConfig {
   timeoutMs: number;
   pollIntervalMs: number;
   describe: string;
+}
+
+/** Polls until the dev client has left its launcher home screen — i.e. OUR
+ * app is on screen, whatever it is showing.
+ *
+ * This deliberately does NOT wait for `login-screen`. That marker only
+ * renders when the app is signed OUT, and the session persists in
+ * AsyncStorage, so a simulator that has ever signed in boots straight to the
+ * shell and the login marker never appears. Waiting for it timed out against
+ * a perfectly healthy app (observed: the tree carried `logout-button` and the
+ * spot-tile ids instead).
+ *
+ * Inverting the launcher signature is the robust gate: it is true for every
+ * app state — signed in, signed out, or the harness route — and false only
+ * while the dev client is still on its own home screen. */
+interface AppBootWaitConfig {
+  timeoutMs: number;
+  pollIntervalMs: number;
+  scenarioId: string;
+}
+
+async function waitForAppBoot(
+  idbPath: string,
+  udid: string,
+  { timeoutMs, pollIntervalMs, scenarioId }: AppBootWaitConfig,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      const tree = await describeAll(idbPath, udid);
+
+      if (!looksLikeLauncherHome(tree)) {
+        return;
+      }
+    } catch {
+      // `idb ui describe-all` can transiently fail while the app is mid
+      // relaunch; keep polling rather than failing on the blip.
+    }
+
+    await delay(pollIntervalMs);
+  }
+
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for the app to leave the dev ` +
+      `client launcher for scenario "${scenarioId}" — it never loaded from ` +
+      `Metro. Refusing to return a screenshot (a capture failure is not the ` +
+      `same as a visual regression).`,
+  );
 }
 
 /** Polls the accessibility tree until an element with `AXUniqueId === id`
