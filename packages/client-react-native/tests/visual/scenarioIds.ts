@@ -27,6 +27,10 @@ export const SCENARIO_IDS = [
   // canvas can never be a stable golden.
   "boot/core",
   "boot/laser",
+  // Phase 6b-1 Task 10: the `docking` boot scene, pinned to the same shared
+  // `BOOT_SCENE_ELAPSED_SEC` as `boot/core`/`boot/laser` — see
+  // `scenarios.tsx`'s header comment for why that instant still lands well.
+  "boot/docking",
   "boot/static",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",

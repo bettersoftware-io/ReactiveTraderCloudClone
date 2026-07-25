@@ -140,8 +140,9 @@ export const ARC_TRAIL_SAMPLES = 20;
 export const ARC_TAIL_SAMPLES = 8;
 /** The bright tail trails the head by this much of the arc. */
 export const ARC_TAIL_LENGTH = 0.18;
-/** Landing-ripple window: the last 12% of an arc's flight. */
-export const ARC_RIPPLE_START = 0.88;
+/** Landing-ripple window: the last 12% of an arc's flight. Not exported: only
+ * `arcRippleFraction` below (which is exported) needs it. */
+const ARC_RIPPLE_START = 0.88;
 
 export function arcRippleFraction(progress: number): number {
   "worklet";

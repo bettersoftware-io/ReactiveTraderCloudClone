@@ -39,7 +39,12 @@ export interface FillRectContentShape {
   readonly useAltColor: boolean;
 }
 
-export interface StrokeRectContentShape {
+// The three variants below are not exported by name — unlike
+// `FillRectContentShape` (imported directly by `laserPanelContent.test.ts` to
+// narrow with `shape is FillRectContentShape`), nothing outside this module
+// narrows to these by name today; each is still reachable through the
+// exported `ContentShape` union.
+interface StrokeRectContentShape {
   readonly kind: "strokeRect";
   readonly x: number;
   readonly y: number;
@@ -50,7 +55,7 @@ export interface StrokeRectContentShape {
   readonly strokeWidth: number;
 }
 
-export interface LineContentShape {
+interface LineContentShape {
   readonly kind: "line";
   readonly x: number;
   readonly y: number;
@@ -60,7 +65,7 @@ export interface LineContentShape {
   readonly useAltColor: boolean;
 }
 
-export interface PolylineContentShape {
+interface PolylineContentShape {
   readonly kind: "polyline";
   readonly points: readonly (readonly [number, number])[];
   readonly alpha: number;

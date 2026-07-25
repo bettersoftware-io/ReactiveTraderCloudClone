@@ -64,8 +64,10 @@ export const VIGNETTE_INNER_FACTOR = 0.18;
 export const VIGNETTE_OUTER_FACTOR = 0.62;
 export const VIGNETTE_OUTER_ALPHA = 0.55;
 
-/** Horizontal scanline overlay pitch/alpha (`bootCanvas.ts:497-501`). */
-export const SCANLINE_PITCH = 3;
+/** Horizontal scanline overlay pitch/alpha (`bootCanvas.ts:497-501`).
+ * `SCANLINE_PITCH` is not exported: only `scanlineOffsets` below (which is
+ * exported) needs it. */
+const SCANLINE_PITCH = 3;
 export const SCANLINE_ALPHA = 0.035;
 
 /** Y-offsets for the scanline overlay, built once per viewport height — the
@@ -188,8 +190,10 @@ export function craftRadius(easedProgress: number): number {
 
 /** One rectangle, expressed as multiples of the live craft radius (not
  * pixels) — the caller scales by the current `craftRadius(...)` at draw
- * time, so this table never needs rebuilding as the craft grows. */
-export interface CraftRectFactor {
+ * time, so this table never needs rebuilding as the craft grows. Not
+ * exported: only used as a field type of `CraftBodyRectFactors` below, which
+ * IS exported (and reachable via `CRAFT_BODY_RECTS`'s own export). */
+interface CraftRectFactor {
   readonly x: number;
   readonly y: number;
   readonly w: number;
@@ -211,8 +215,10 @@ export const CRAFT_BODY_RECTS: CraftBodyRectFactors = {
 };
 
 /** One line segment of the craft's internal grid, in the same local (craft-
- * centred) space as `CRAFT_BODY_RECTS`. */
-export interface CraftLine {
+ * centred) space as `CRAFT_BODY_RECTS`. Not exported: only used as a field
+ * type of `CraftGridLines` below, which IS exported (the return type of the
+ * exported `craftGridLines`). */
+interface CraftLine {
   readonly x0: number;
   readonly y0: number;
   readonly x1: number;
@@ -249,20 +255,22 @@ export function craftGridLines(radius: number): CraftGridLines {
 // --- reticle (bootCanvas.ts:604-695) ----------------------------------------
 
 /** One ring's radius/alpha/stroke-width, radius as a multiple of the craft
- * radius. */
-export interface ReticleRingSpec {
+ * radius. Not exported, along with the other `Reticle*Spec` field types
+ * below: only used inside `ReticleSpec`, which IS exported (reachable via
+ * `RETICLE_SPEC`'s own export). */
+interface ReticleRingSpec {
   readonly radiusFactor: number;
   readonly alpha: number;
   readonly lineWidth: number;
 }
 
-export interface ReticleSpokeSpec {
+interface ReticleSpokeSpec {
   readonly angle: number;
   readonly outerFactor: number;
   readonly alpha: number;
 }
 
-export interface ReticleAngleSpec {
+interface ReticleAngleSpec {
   readonly angle: number;
 }
 
@@ -552,7 +560,9 @@ export const CROSSHAIR_HUB_R = 8;
 
 // --- pip ladder (bootCanvas.ts:884-906) -------------------------------------
 
-export interface PipTick {
+/** Not exported: only used as a field type of `PipLadder` below, which IS
+ * exported (the return type of the exported `pipLadder`). */
+interface PipTick {
   /** Y offset from the ladder's own (bobbing) origin. */
   readonly y: number;
   readonly label: string;
@@ -594,7 +604,9 @@ export function scanSweepY(elapsedSec: number, height: number): number {
 
 // --- corner labels (bootCanvas.ts:940-968) ----------------------------------
 
-export interface DockingLabelBlock {
+/** Not exported: only used as a field type of `DockingLabels` below, which IS
+ * exported (the return type of the exported `dockingLabels`). */
+interface DockingLabelBlock {
   readonly lines: readonly string[];
   readonly colorRole: DockingColorRole;
 }
