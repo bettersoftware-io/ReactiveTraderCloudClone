@@ -9,7 +9,7 @@
  *    overflow:hidden track. Animating `width` or `left` would trigger layout
  *    on every frame, forever, on a permanently-mounted HUD.
  *
- * FREEZE (index.css:47-58): base CSS is the informative state. The status
+ * FREEZE (index.css): base CSS is the informative state. The status
  * line is fully legible unanimated; the keyframes only pulse it.
  */
 

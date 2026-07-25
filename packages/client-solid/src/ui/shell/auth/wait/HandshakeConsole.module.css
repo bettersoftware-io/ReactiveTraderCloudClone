@@ -3,7 +3,7 @@
  * PERF (docs/performance.md): only `opacity` is animated here — no transform
  * is needed at all. No filter animation, no layout-affecting property.
  *
- * FREEZE (index.css:47-58): power-saver freeze runs one 0.01ms iteration and
+ * FREEZE (index.css): power-saver freeze runs one 0.01ms iteration and
  * falls back to base CSS, so every line's BASE state is already its
  * informative state. The keyframes only add emphasis on top. A base of
  * `opacity: 0.3` here would render the whole console inert on exactly the
@@ -32,7 +32,13 @@
 }
 
 /* Base = fully legible. The animation only fades it IN from the same colour,
- * so a frozen render still shows the line at full strength. */
+ * so a frozen render still shows the line at full strength.
+ *
+ * The 0.35s delay + `backwards` fill once needed a per-component freeze
+ * override here: freeze zeroed animation-duration but not delay, so this line
+ * held `from { opacity: 0 }` for 350ms. index.css now zeroes animation-delay
+ * globally, which fixes the whole class rather than this one instance, so the
+ * override is gone. freeze.spec.ts fails if that global rule regresses. */
 .sealed {
   color: var(--accent-positive);
   animation: seal 0.5s ease-out 0.35s backwards;
@@ -71,13 +77,4 @@
   .caret {
     animation: none;
   }
-}
-
-/* Power saver (Freeze): override animation-delay to 0. The freeze tier zeros
-   animation-duration/iteration-count but not delay (index.css:52-58), so the
-   0.35s delay still elapses while `backwards` fill-mode holds opacity: 0,
-   rendering the sealed line invisible. Zeroing delay ensures the frozen render
-   shows the base state (opacity: 1) immediately. */
-:root[data-power-saver="freeze"] .sealed {
-  animation-delay: 0s;
 }

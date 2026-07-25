@@ -2,20 +2,16 @@ import { VisualScenario } from "@ui-visual";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-// Same reset the real app uses, so full-App scenarios lay out at full height.
-const style = document.createElement("style");
-style.textContent = `
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body, #root {
-    height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
-      sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-`;
-document.head.appendChild(style);
+// The real app's global stylesheet, in the same last-import position that
+// src/main.tsx loads it from. This used to be a hand-copied <style> block
+// holding only the reset, which silently made every golden a PARTIAL render:
+// index.css also carries `color-scheme` + `scrollbar-color` (native scrollbar
+// theming) and the `data-power-saver=freeze` catch-all that neutralises
+// decorative motion. None of those applied here, so freeze scenarios pinned an
+// un-frozen render and dark-mode full-page captures pinned a white canvas.
+// Importing the real file keeps harness and app on one source of truth, so a
+// global rule can never again be invisible to the visual tier.
+import "#/index.css";
 
 const name = new URLSearchParams(window.location.search).get("scenario");
 
