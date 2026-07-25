@@ -84,6 +84,19 @@ overrides:
   # path was never exercised; the SDK-57 native-build work proved that wrong.)
   # 0.8.13 keeps the pre-0.9 one-arg DOMParser API @expo/plist depends on.
   "@xmldom/xmldom@<0.8.13": ^0.8.13
+  # Force the transitive fast-uri (arrives via ajv@8 — schema $ref URI parsing,
+  # itself reached through the eslint/webpack-adjacent tool chain) up from the
+  # vulnerable 3.1.3 to the PATCHED 3.1.4. Fixes the HIGH host-confusion
+  # advisory (literal-backslash authority: `fast-uri` parsed `http:/\evil.com`
+  # as host `evil.com`, so a URI allowlist check could be bypassed) — range
+  # `>=3.0.0 <=3.1.3`. Dev-scope only, so `pnpm audit --prod` (gate 25) never
+  # saw it; it surfaced via the Dependabot alert list instead.
+  # SCOPED to the vulnerable range so a consumer already on a safe version
+  # keeps its choice. Deliberately stays on the 3.x line: 3.1.4 is the in-line
+  # patch, so no major 3->4 lift is needed (fast-uri 4.x is available but would
+  # change the API surface ajv@8 compiles against for no security gain).
+  # 3.1.4 published 2026-07-19 — outside the minimumReleaseAge cooldown.
+  "fast-uri@<3.1.4": ^3.1.4
   # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
   # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
   # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router

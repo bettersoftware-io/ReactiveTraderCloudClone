@@ -84,6 +84,30 @@ owl would need a new-architecture-capable fork (or a React downgrade) to be
 viable here. Recorded as a decisive finding, not a failure — the `owl.config.json`
 is kept for documentation.
 
+### The dependency was REMOVED on 2026-07-25 (the config stays)
+
+The finding above stood, but the npm package kept being installed — and a
+package that cannot execute still has a supply chain. `react-native-owl@1.5.0`
+was the **sole** source of `ajv@7.2.4` in the whole workspace, which carries a
+MEDIUM ReDoS advisory (`$data` option; vulnerable `>=7.0.0-alpha.0 <8.18.0`).
+Clearing it by override would have meant forcing a major `ajv` 7 → 8 lift on a
+tool that is documented as non-functional here — all risk, no benefit. Removing
+the dependency deletes the advisory at its root instead.
+
+Removed: the `react-native-owl` devDependency and `tests/visual/owl/visual.owl.test.ts`
+(it imported `takeScreenshot` from the package, and `tsconfig` includes
+`**/*.ts`, so it could not survive the dep's removal).
+
+**Kept: `tests/visual/owl/owl.config.json`** — the artifact this section already
+promised to keep, plus this write-up. The *evidence* for the owl verdict is prose
+and config, neither of which needs the package installed. Nothing was runnable
+before the removal and nothing is runnable after it; what changed is that the
+workspace no longer ships a vulnerable transitive dep for a dead tier.
+
+To revisit owl (i.e. if a new-arch-capable release lands), re-add the dep and
+restore a test from the Tier 3 recipe in
+`docs/superpowers/plans/2026-07-17-rn-visual-tiers-followup.md` (Task O).
+
 ## Findings from the injected-paint-bug proof
 
 The tiers were validated against a deliberately introduced regression (PR #147's
