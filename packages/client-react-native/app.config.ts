@@ -37,12 +37,22 @@ const config: ExpoConfig = {
   // port adapters — and mis-treats every file under `src/app/` as a route.
   extra: {
     router: { root: "./app" },
-    // `serverUrl` defaults to the deployed Fly endpoint so the demo streams
-    // with no env set. The old shared `wsToken` query-param gate is gone —
-    // the WS connection now authenticates with a genuine session token
-    // (`buildNativePorts`), obtained by signing in through the login screen
-    // (`AuthGate` + `LoginScreen`) against the real server's `AUTH_USERS`
-    // secret — no credentials are baked for the real-WS branch.
+    // `serverUrl` selects the transport `buildNativePorts` composes:
+    //   - a real `wss://`/`ws://` URL  → the WS-real branch (live server)
+    //   - empty string                 → the in-process simulator branch
+    // Defaults to the deployed endpoint so a distributed build streams live
+    // with no env set. The explicit dev scripts drive `EXPO_PUBLIC_SERVER_URL`
+    // per mode — `dev:ios:sim` sets it empty (offline), `dev:ios:ws:local`
+    // points at `ws://localhost:4000`, `dev:ios:ws:remote` at the deployed
+    // endpoint. `??` only catches null/undefined, so an empty string is a
+    // deliberate "force simulator" and survives to `buildNativePorts`.
+    // The old shared `wsToken` query-param gate is gone — the WS connection
+    // now authenticates with a genuine session token (`buildNativePorts`),
+    // obtained by signing in through the login screen (`AuthGate` +
+    // `LoginScreen`) against the real server's `AUTH_USERS` secret — no
+    // credentials are baked for the real-WS branch.
+    serverUrl:
+      process.env.EXPO_PUBLIC_SERVER_URL ?? "wss://rtc-clone-server.fly.dev",
     // `devAuth` is simulator-mode only: a JSON `username -> password` map
     // (mirroring client-react's `VITE_DEV_AUTH`) so the offline `Sim` toggle
     // can log in as any roster user; see `nativeAuthConfig.ts`, which falls

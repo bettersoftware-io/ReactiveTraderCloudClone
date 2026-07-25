@@ -1,10 +1,22 @@
 import { filter, firstValueFrom } from "rxjs";
-import { describe, expect, it, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
-import { createApp } from "@rtc/client-core";
-import { type AuthOutcome, ConnectionStatus } from "@rtc/domain";
+import { createApp, InMemorySessionStore } from "@rtc/client-core";
+import {
+  type AuthOutcome,
+  ConnectionStatus,
+  findRosterUser,
+} from "@rtc/domain";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
+
+// Mutable holder so individual tests can flip `expoConfig.extra` — the
+// simulator tests want it empty; the real-WS tests below set `serverUrl` to
+// select the WsAdapter branch. `vi.hoisted` runs before the `vi.mock` factory,
+// so the getter in the mock reads whatever a test last assigned.
+const constantsHolder = vi.hoisted(() => {
+  return { extra: {} as Record<string, unknown> };
+});
 
 test("simulator branch composes an App and streams currency pairs", async () => {
   const app = createApp(buildNativePorts({ simulator: true }).ports);
@@ -69,11 +81,115 @@ describe("simulator branch auth accepts every fallback roster credential", () =>
   });
 });
 
+// The real-WS branch must NOT open a socket until the user is authenticated —
+// otherwise the tokenless upgrade the server rejects retries forever behind the
+// login screen (the "WebSocket connects before login" defect, fixed in the web
+// clients and shared client-core; these tests pin the RN wiring specifically,
+// since client-core's own gate tests inject a fake transport and never exercise
+// `buildNativePorts`). A counting `WebSocket` stub is the oracle: the RN app's
+// socket construction is fully observable here in Node, no device or inspector
+// needed.
+describe("real-WS branch gates the socket on authentication", () => {
+  // Mirrors client-core's MockWebSocket.testHelpers: the static OPEN (=1) and
+  // readyState (=0, never OPEN here) make WsAdapter.send() buffer into its
+  // sendQueue rather than call a live socket, so eager port subscriptions at
+  // createApp time (e.g. the watchlist SUBSCRIBE) don't throw against the stub.
+  class MockWebSocket {
+    static OPEN = 1;
+
+    static instances = 0;
+
+    static lastUrl = "";
+
+    readyState = 0;
+
+    onopen: ((ev: unknown) => void) | null = null;
+
+    onmessage: ((ev: unknown) => void) | null = null;
+
+    onclose: ((ev: unknown) => void) | null = null;
+
+    onerror: ((ev: unknown) => void) | null = null;
+
+    send = (): void => {};
+
+    close = (): void => {};
+
+    constructor(url: string) {
+      MockWebSocket.instances++;
+      MockWebSocket.lastUrl = url;
+    }
+  }
+
+  beforeEach(() => {
+    constantsHolder.extra = { serverUrl: "ws://test.local:4000" };
+    MockWebSocket.instances = 0;
+    MockWebSocket.lastUrl = "";
+    vi.stubGlobal("WebSocket", MockWebSocket);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    constantsHolder.extra = {};
+  });
+
+  it("opens no socket while unauthenticated (autoConnect: false is wired)", () => {
+    // No session → the auth gate keeps the transport closed. Pre-fix, the
+    // WsAdapter constructor connected eagerly and this would be 1.
+    const composition = buildNativePorts({
+      sessionStore: new InMemorySessionStore(),
+    });
+    createApp(composition.ports);
+
+    expect(MockWebSocket.instances).toBe(0);
+
+    composition.dispose();
+  });
+
+  it("opens exactly one token-bearing socket for a resumed session", () => {
+    // A persisted, unexpired session makes AuthPresenter resume as
+    // authenticated at composition time, so the gate connects synchronously.
+    // This only passes if `buildNativePorts` actually passed the adapter as
+    // `transport` — otherwise the gate has nothing to open and instances stay 0.
+    const entry = findRosterUser("demo");
+
+    if (!entry) {
+      throw new Error("roster is missing the demo account");
+    }
+
+    const store = new InMemorySessionStore();
+    store.write({
+      username: "demo",
+      token: "seeded-token",
+      user: entry.user,
+      exp: Date.now() + 60_000,
+    });
+
+    const composition = buildNativePorts({ sessionStore: store });
+    createApp(composition.ports);
+
+    expect(MockWebSocket.instances).toBe(1);
+    expect(MockWebSocket.lastUrl).toContain("access=seeded-token");
+
+    composition.dispose();
+  });
+});
+
 // expo-constants has no runtime `expoConfig` under vitest-node; stub it so the
 // module import resolves and `Constants.expoConfig?.extra ?? {}` never throws.
-// The simulator branch forces `url = undefined` and never reads `serverUrl`.
+// The simulator branch forces `url = undefined` and never reads `serverUrl`;
+// the real-WS tests assign `constantsHolder.extra.serverUrl` to select the
+// WsAdapter branch.
 vi.mock("expo-constants", () => {
-  return { default: { expoConfig: { extra: {} } } };
+  return {
+    default: {
+      expoConfig: {
+        get extra(): Record<string, unknown> {
+          return constantsHolder.extra;
+        },
+      },
+    },
+  };
 });
 
 // buildNativePorts wires an AppearanceColorSchemeAdapter, whose module scope

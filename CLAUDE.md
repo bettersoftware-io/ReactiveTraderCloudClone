@@ -20,25 +20,43 @@ pnpm test:e2e    # Playwright (client only)
 pnpm dev         # Alias of `dev:react` — @rtc/client-react in simulator mode (no server); sign in with a committed demo account (see below)
 pnpm dev:ws      # @rtc/server only — native WS + login on ws://localhost:4000 (tsx watch)
 pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, ws-effects, motion-core, ui-contract, devtools-core) — run alongside a client to hot-rebuild lib edits
-pnpm dev:react       # @rtc/client-react only (Vite) → http://localhost:5173 — simulator mode (no server)
-pnpm dev:react:ws    # @rtc/client-react only, connected to an already-running `dev:ws` (ws://localhost:4000)
-pnpm dev:react:fs    # Full stack: start the WS server + @rtc/client-react connected to it
-pnpm dev:solid       # @rtc/client-solid only (Vite) → http://localhost:5473 — simulator mode (no server)
-pnpm dev:solid:ws    # @rtc/client-solid only, connected to an already-running `dev:ws`
-pnpm dev:solid:fs    # Full stack: start the WS server + @rtc/client-solid connected to it
+# Web clients — each has the same four data-source modes (bare = alias of :sim):
+pnpm dev:react           # @rtc/client-react (Vite) → http://localhost:5173 — simulator mode (no server); alias of dev:react:sim
+pnpm dev:react:ws:local  # connect to an already-running local `dev:ws` (ws://localhost:4000)
+pnpm dev:react:ws:remote # connect to the deployed server (wss://rtc-clone-server.fly.dev)
+pnpm dev:react:fs        # Full stack: start the WS server + @rtc/client-react together (ws://localhost:4000)
+pnpm dev:solid           # @rtc/client-solid (Vite) → http://localhost:5473 — simulator mode; alias of dev:solid:sim
+pnpm dev:solid:ws:local  # connect to an already-running local `dev:ws`
+pnpm dev:solid:ws:remote # connect to the deployed server
+pnpm dev:solid:fs        # Full stack: start the WS server + @rtc/client-solid together
 pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite) → http://localhost:5273
 pnpm dev:design:web     # standalone web design prototype HTML (v5), served by a zero-dep Node script → http://localhost:8899
 pnpm dev:design:mobile  # same server, but the standalone mobile design prototype (mobile v1) → http://localhost:8899
-pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
+# iOS (React Native) — the same four modes, via expo run:ios (bare = alias of :sim):
+pnpm dev:ios             # @rtc/client-react-native on the iOS simulator — simulator mode (no server); alias of dev:ios:sim
+pnpm dev:ios:ws:local    # connect to an already-running local `dev:ws` (ws://localhost:4000)
+pnpm dev:ios:ws:remote   # connect to the deployed server (wss://rtc-clone-server.fly.dev)
+pnpm dev:ios:fs          # Full stack: start the WS server + the RN app together (ws://localhost:4000)
 pnpm dev:devtools     # @rtc/devtools-app — the standalone inspector SPA (Vite), served same-origin at /devtools/
 pnpm dev:devtools:ext # @rtc/devtools-extension — watch-build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
 pnpm dev:devtools:relay # @rtc/devtools-relay — the standalone dev-machine WebSocket relay (ws://localhost:8790) bridging the browser inspector to the React Native client; open the panel at /devtools/?relay=ws://localhost:8790
 pnpm clean       # Remove dist/ in all packages
 ```
 
-**Client dev matrix.** Both web clients pick their data source at composition time from `VITE_SERVER_URL` (`packages/client-*/src/app/buildBrowserPorts.ts`): set → real `WsAdapter`; unset → in-browser simulator. The scripts encode that as an orthogonal matrix — a bare client (`dev:react` / `dev:solid`) runs simulator-only; the `:ws` suffix points the client at an already-running `dev:ws` server (start it in another terminal); the `:fs` suffix starts the WS server **and** the client together (the reconnecting `WsAdapter` tolerates the server coming up moments later, so parallel start is fine). `dev:ws` and `dev:watch` are the reusable building blocks (server alone; library rebuild-watchers alone). Bare `pnpm dev` is a plain **alias of `dev:react`** — `@rtc/client-react` in simulator mode: no server, simulated prices in-browser. It still shows the sign-in gate, but the demo credentials are committed (see below), so it works out of the box. Full-stack live data is the opt-in `dev:react:fs` / `dev:solid:fs`. The turbo-routed scripts (the `*:fs` pair) rely on `VITE_SERVER_URL` (and, for the server, `AUTH_USERS` / `AUTH_SECRET`) being declared on turbo's `dev` task / `globalPassThroughEnv` (turbo's env mode is strict — an undeclared var would be stripped and silently drop the client back to simulator mode).
+**Client dev matrix.** All three clients (React, Solid, iOS/RN) expose the **same four data-source modes** as an orthogonal script suffix, so the mode is always explicit in the command rather than hidden in a default:
 
-**Demo accounts & auth env.** All local dev logins use a committed demo roster (`packages/domain/src/auth/roster.ts` — `astark` / `nromanoff` / `tchalla` / `demo`, all password `mcdc2026`; demo-only, safe to commit, rotate if it ever matters). Simulator mode (`pnpm dev` / `dev:react` / `dev:solid`) reads them from each client's own committed `.env.development` (`packages/client-react/.env.development` and `packages/client-solid/.env.development`, both `VITE_DEV_AUTH`, JSON `{"user":"pass"}` — Vite loads it dev-only, never in a production build) via the identical `parseDevAuth` helper in each client's `buildBrowserPorts.ts`. WS-real mode (`dev:*:fs` / `dev:*:ws` and the deployed client) authenticates against the **server's** `AUTH_USERS` instead — a *different* format, `"user:pass,user2:pass2"`, plus an `AUTH_SECRET`; the `dev:ws` / `dev:*:fs` scripts bake the same demo roster in so full-stack works out of the box too. Production is unaffected: Fly sets its own `AUTH_USERS` / `AUTH_SECRET` secrets, and these `dev:*` npm scripts never run there.
+| suffix | mode | server URL |
+|--------|------|-----------|
+| `:sim` (bare alias) | in-process / in-browser simulator | none |
+| `:ws:local` | connect to an already-running local `dev:ws` (start it in another terminal) | `ws://localhost:4000` |
+| `:ws:remote` | connect to the deployed server | `wss://rtc-clone-server.fly.dev` |
+| `:fs` | full stack — starts the WS server **and** the client together | `ws://localhost:4000` |
+
+Each client reads its source at composition time: the **web** clients from `VITE_SERVER_URL` (`packages/client-*/src/app/buildBrowserPorts.ts`), the **RN** client from `EXPO_PUBLIC_SERVER_URL` → `app.config.ts` `extra.serverUrl` → `buildNativePorts.ts`. Set → real `WsAdapter`; empty/unset → simulator. Names use *roles* (`:ws:local` / `:ws:remote`), never a vendor, so a host migration is a URL edit in the `:ws:remote` scripts, not a rename. Bare `dev:react` / `dev:solid` / `dev:ios` alias `:sim`; bare `pnpm dev` aliases `dev:react`. The reconnecting `WsAdapter` tolerates the server coming up moments later, so `:fs`'s parallel start is fine. `dev:ws` and `dev:watch` are the reusable building blocks (server alone; library rebuild-watchers alone).
+
+The turbo-routed `*:fs` scripts rely on `VITE_SERVER_URL` / `EXPO_PUBLIC_SERVER_URL` (and, for the server, `AUTH_USERS` / `AUTH_SECRET`) being declared on turbo's `dev` task `env` / `globalPassThroughEnv` (turbo's env mode is strict — an undeclared var would be stripped and silently drop the client back to simulator mode). **RN caveat:** `EXPO_PUBLIC_*` is baked into the JS bundle by Metro, so switching RN modes needs a Metro restart (the mode scripts each start their own Metro; an in-app reload against a stale Metro keeps the old value). The RN default when no env is set is the deployed endpoint — so a *distributed* build streams live out of the box; `dev:ios:sim` sets `EXPO_PUBLIC_SERVER_URL=` (empty) to force the offline branch locally. That env→`extra.serverUrl` wiring is guarded by `packages/client-react-native/app.config.test.ts` (it was silently dropped once, stranding the app in simulator mode).
+
+**Demo accounts & auth env.** All local dev logins use a committed demo roster (`packages/domain/src/auth/roster.ts` — `astark` / `nromanoff` / `tchalla` / `demo`, all password `mcdc2026`; demo-only, safe to commit, rotate if it ever matters). Simulator mode (`pnpm dev` / `dev:react` / `dev:solid`) reads them from each client's own committed `.env.development` (`packages/client-react/.env.development` and `packages/client-solid/.env.development`, both `VITE_DEV_AUTH`, JSON `{"user":"pass"}` — Vite loads it dev-only, never in a production build) via the identical `parseDevAuth` helper in each client's `buildBrowserPorts.ts`. WS-real mode (`dev:*:fs` / `dev:*:ws:local` / `dev:*:ws:remote` and the deployed client) authenticates against the **server's** `AUTH_USERS` instead — a *different* format, `"user:pass,user2:pass2"`, plus an `AUTH_SECRET`; the `dev:ws` / `dev:*:fs` scripts bake the same demo roster in so full-stack works out of the box too. Production is unaffected: Fly sets its own `AUTH_USERS` / `AUTH_SECRET` secrets, and these `dev:*` npm scripts never run there.
 
 **Blank screen on `pnpm dev`?** A stale Vite pre-bundle cache (e.g. after a lockfile change re-links a workspace dep) can silently break the render — the app crashes with the error swallowed and no Vite overlay, leaving a blank white page. Clear it and restart: `rm -rf packages/client-react/node_modules/.vite`.
 
