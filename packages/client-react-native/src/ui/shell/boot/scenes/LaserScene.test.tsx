@@ -2,7 +2,7 @@ import { expect, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
 
 import { LaserSceneHarness } from "./LaserSceneHarness";
-import { LASER_PANELS } from "./laserGeometry";
+import { CORNER_TICK_OPACITY, LASER_PANELS } from "./laserGeometry";
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as
 // CoreScene.test.tsx), so pixels can never be asserted here — what's real is
@@ -21,12 +21,33 @@ test("mounts with the boot-scene-laser testID", async () => {
   expect(await screen.findByTestId("boot-scene-laser")).toBeTruthy();
 });
 
+test("renders the background HUD grid", async () => {
+  await render(<LaserSceneHarness elapsedSec={0} />);
+  expect(await screen.findByTestId("boot-scene-laser-grid")).toBeTruthy();
+});
+
 test("renders one traced panel per entry in LASER_PANELS", async () => {
   await render(<LaserSceneHarness elapsedSec={2} />);
 
   for (let index = 0; index < LASER_PANELS.length; index++) {
     const panel = await screen.findByTestId(`boot-scene-laser-panel-${index}`);
     expect(panel).toBeTruthy();
+  }
+});
+
+test("renders one post-trace flash rect and one completion-tick path per panel", async () => {
+  await render(<LaserSceneHarness elapsedSec={2} />);
+
+  for (let index = 0; index < LASER_PANELS.length; index++) {
+    const flash = await screen.findByTestId(
+      `boot-scene-laser-panel-flash-${index}`,
+    );
+
+    const ticks = await screen.findByTestId(
+      `boot-scene-laser-panel-ticks-${index}`,
+    );
+    expect(flash).toBeTruthy();
+    expect(ticks).toBeTruthy();
   }
 });
 
@@ -59,4 +80,16 @@ test("survives elapsedSec sweeping across the whole boot timeline without throwi
   // Every panel's t1 is well under 1 (max is 0.74), so by well past the boot
   // duration every trace should be fully drawn and held there.
   expect(lastPanel.props.end.value).toBe(1);
+
+  // Long past every panel's t1 + 0.07 flash window, the flash has fully
+  // faded but the completion corner ticks stay lit (they never re-hide).
+  const lastFlash = await screen.findByTestId(
+    `boot-scene-laser-panel-flash-${LASER_PANELS.length - 1}`,
+  );
+
+  const lastTicks = await screen.findByTestId(
+    `boot-scene-laser-panel-ticks-${LASER_PANELS.length - 1}`,
+  );
+  expect(lastFlash.props.opacity.value).toBe(0);
+  expect(lastTicks.props.opacity.value).toBe(CORNER_TICK_OPACITY);
 });

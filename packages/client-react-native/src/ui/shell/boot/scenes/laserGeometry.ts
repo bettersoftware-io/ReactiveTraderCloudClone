@@ -18,19 +18,22 @@ import { clamp01 } from "#/ui/shell/boot/scenes/coreGeometry";
  * DEFERRED (each a distinct visual layer in the web source, left out here
  * rather than half-ported, same discipline as `CoreScene`'s header comment):
  *   - per-kind panel content (header chips, main tiles+sparkline, list rows,
- *     blotter grid, status dots) — `drawPanelContent`'s five branches;
- *   - the completion corner-ticks (`drawFrac > 0.985`);
- *   - the post-trace flash wash (`progress in [t1, t1+0.07]`);
+ *     blotter grid, status dots) — `drawPanelContent`'s five branches (Task
+ *     6 ports this);
  *   - the laser draw-head (glow dot + emitter beam) — the web tracks the
  *     exact point on the rectangle's perimeter the trace has reached;
  *     Skia's declarative `<Path start/end>` trims the same stroke without
  *     needing that point computed separately, so the head has no direct
  *     declarative counterpart here;
- *   - the background HUD grid + translucent wash the web variant paints
- *     first (`ctx.fillRect` + 44px grid lines);
  *   - the per-panel border-stroke glow (`ctx.shadowBlur`/`shadowColor` on the
  *     same trace stroke this scene does port) — the outline is drawn, the
- *     neon bloom around it is not.
+ *     neon bloom around it is not (docs/performance.md — no `MaskFilter`
+ *     blur on a per-frame stroke).
+ *
+ * Task 5 adds the background HUD grid + translucent wash, the post-trace
+ * flash, and the completion corner ticks — see `drawBootLaser` in
+ * `packages/boot-splash/src/bootCanvas.ts`, lines 292-310 (wash + grid),
+ * 383-387 (flash) and 389-407 (corner ticks).
  */
 
 /** A single traced-in UI panel: normalised screen-space rectangle
@@ -131,4 +134,106 @@ export function rectTracePath(
   h: number,
 ): string {
   return `M${x} ${y} L${x + w} ${y} L${x + w} ${y + h} L${x} ${y + h} Z`;
+}
+
+/** Panel rectangle in pixels. Shaped like Skia's `SkRect` (`x`/`y`/`width`/
+ * `height`) so it can be handed straight to a draw call or a `<Rect>` without
+ * a translation step. */
+export interface LaserRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export function panelRectPx(
+  panel: LaserPanel,
+  width: number,
+  height: number,
+): LaserRect {
+  return {
+    x: panel.nx * width,
+    y: panel.ny * height,
+    width: panel.nw * width,
+    height: panel.nh * height,
+  };
+}
+
+/** The web's HUD grid pitch (`x += 44`). */
+export const LASER_GRID_STEP = 44;
+/** The flat wash the web paints under everything (`rgba(0,0,0,0.42)`). */
+export const LASER_WASH = "rgba(0,0,0,0.42)";
+export const LASER_GRID_ALPHA = 0.045;
+
+/**
+ * Grid-line offsets along one axis. Floors the step at 1 for the same reason
+ * `drawBootDocking` does: a zero step would never advance the loop, which is
+ * an infinite loop rather than a wasted frame.
+ */
+export function gridLinePositions(
+  extent: number,
+  step: number,
+): readonly number[] {
+  const safeStep = Math.max(1, step);
+  const positions: number[] = [];
+
+  for (let at = 0; at < extent; at += safeStep) {
+    positions.push(at);
+  }
+
+  return positions;
+}
+
+/** Grid lines as one SVG path string, built once per viewport size — the
+ * shape depends only on width/height, so it must never be rebuilt per frame
+ * (docs/performance.md). */
+export function gridPath(width: number, height: number): string {
+  const parts: string[] = [];
+
+  for (const x of gridLinePositions(width, LASER_GRID_STEP)) {
+    parts.push(`M${x} 0 L${x} ${height}`);
+  }
+
+  for (const y of gridLinePositions(height, LASER_GRID_STEP)) {
+    parts.push(`M0 ${y} L${width} ${y}`);
+  }
+
+  return parts.join(" ");
+}
+
+const FLASH_WINDOW = 0.07;
+
+/** Post-trace flash: a full-panel wash that fires the instant a panel
+ * finishes tracing and fades out over the next 7% of boot progress. */
+export function panelFlashAlpha(progress: number, t1: number): number {
+  "worklet";
+
+  if (progress < t1 || progress >= t1 + FLASH_WINDOW) {
+    return 0;
+  }
+
+  return 1 - (progress - t1) / FLASH_WINDOW;
+}
+
+export const FLASH_PEAK_OPACITY = 0.2;
+/** Trace fraction past which the completion corner ticks appear. */
+export const CORNER_TICK_THRESHOLD = 0.985;
+export const CORNER_TICK_LENGTH = 8;
+export const CORNER_TICK_OPACITY = 0.85;
+export const CORNER_TICK_STROKE_WIDTH = 1.4;
+
+/** Four corner "L" brackets as one SVG path, drawn inward from each corner —
+ * verbatim geometry from the web's `[x, y, dx, dy]` corner table. */
+export function cornerTickPath(rect: LaserRect, tickLength: number): string {
+  const corners: ReadonlyArray<readonly [number, number, number, number]> = [
+    [rect.x, rect.y, 1, 1],
+    [rect.x + rect.width, rect.y, -1, 1],
+    [rect.x, rect.y + rect.height, 1, -1],
+    [rect.x + rect.width, rect.y + rect.height, -1, -1],
+  ];
+  return corners
+    .map(([cx, cy, dx, dy]) => {
+      return `M${cx} ${cy + dy * tickLength} L${cx} ${cy} L${cx + dx * tickLength} ${cy}`;
+    })
+    .join(" ");
 }
