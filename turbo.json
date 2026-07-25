@@ -62,7 +62,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["VITE_SERVER_URL"]
+      "env": ["VITE_SERVER_URL", "EXPO_PUBLIC_SERVER_URL"]
     },
     "clean": {
       "cache": false

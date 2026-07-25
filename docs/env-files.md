@@ -69,9 +69,15 @@ Per-developer, git-ignored. Keys:
   local dev password. The app shows a login screen on every launch (no
   auto-login) — in **live** mode, sign in with any credential that exists in
   the real deployed server's `AUTH_USERS` secret instead (ask the team).
-- `EXPO_PUBLIC_SERVER_URL` — optional; overrides the WS endpoint (defaults to
+- `EXPO_PUBLIC_SERVER_URL` — selects the WS endpoint (defaults to
   `wss://rtc-clone-server.fly.dev`; set to `""` to force the in-process
-  simulator).
+  simulator). You normally don't set this by hand — the explicit dev scripts do
+  it per mode: `pnpm dev:ios:sim` (empty → simulator), `pnpm dev:ios:ws:local`
+  (`ws://localhost:4000`, needs a local `pnpm dev:ws`), `pnpm dev:ios:ws:remote`
+  (the deployed endpoint), `pnpm dev:ios:fs` (starts the local server + the app
+  together). Bare `pnpm dev:ios` aliases `:sim`. The mapping into
+  `extra.serverUrl` is guarded by `app.config.test.ts` (it was silently dropped
+  once, stranding the app in simulator mode regardless of this var).
 
 Flow: `app.config.ts` reads these into `extra.devAuth` / `extra.serverUrl` →
 `nativeAuthConfig.ts` supplies the simulator-only credential map to
