@@ -1,0 +1,139 @@
+/* The `reactor` login-wait treatment.
+ *
+ * PERF (docs/performance.md):
+ *  - Only `transform` and `opacity` are animated.
+ *  - Rotation is applied to the wrapping DIV, never to the <circle>:
+ *    SVG-child transforms never composite.
+ *  - The bar slides a fixed-width child with translateX inside an
+ *    overflow:hidden track. Animating `width` or `left` would trigger layout
+ *    on every frame, forever, on a permanently-mounted HUD.
+ *  - The glow is a STATIC drop-shadow. Animating `filter` repaints per frame.
+ *
+ * FREEZE (index.css:47-58): base CSS is the informative state. The status
+ * line is fully legible unanimated; the keyframes only pulse it.
+ */
+
+.wait {
+  margin-top: 10px;
+}
+
+.rings {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+}
+
+.ringOuter,
+.ringInner {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.ringOuter svg,
+.ringInner svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ringOuter {
+  animation: spin 1.4s linear infinite;
+}
+
+.ringInner {
+  inset: 6px;
+  animation: spin-reverse 2.3s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* `fill` is set inline on the <circle> (fill="none") rather than here:
+ * stylelint-declaration-strict-value's ignoreValues list covers `transparent`
+ * but not `none`, and `fill: none` in CSS trips the gate. Same pattern as
+ * DeskPnlGauge.tsx. */
+.arcOuter {
+  stroke: var(--accent-primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 34 130;
+  /* Static, not animated — an animated filter repaints every frame. */
+  filter: drop-shadow(0 0 5px var(--accent-primary));
+}
+
+.arcInner {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 10 22;
+}
+
+.track {
+  position: relative;
+  overflow: hidden;
+  height: 2px;
+  margin-top: 9px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+}
+
+.bar {
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  box-shadow: var(--glow);
+  animation: slide 1.25s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(390%);
+  }
+}
+
+.status {
+  margin-top: 10px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--accent-primary);
+  text-align: center;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* No global reduced-motion rule exists in this repo — every stylesheet opts in
+ * for itself. The rings and bar are decorative (aria-hidden), and the status
+ * line is legible unanimated, so stopping all three loses no information. */
+@media (prefers-reduced-motion: reduce) {
+  .ringOuter,
+  .ringInner,
+  .bar,
+  .status {
+    animation: none;
+  }
+}
