@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.27% </span>
+                <span class="strong">98.29% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>114/116</span>
+                <span class='fraction'>115/117</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.27% </span>
+                <span class="strong">98.29% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>114/116</span>
+                <span class='fraction'>115/117</span>
             </div>
         
             
@@ -432,7 +432,24 @@
 <a name='L367'></a><a href='#L367'>367</a>
 <a name='L368'></a><a href='#L368'>368</a>
 <a name='L369'></a><a href='#L369'>369</a>
-<a name='L370'></a><a href='#L370'>370</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -482,6 +499,8 @@
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
@@ -494,6 +513,7 @@
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">126x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -504,6 +524,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">25x</span>
@@ -564,6 +585,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">37x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-yes">92x</span>
@@ -626,6 +648,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">5x</span>
@@ -843,16 +867,23 @@ import styles from "./RfqsPanel.module.css";
  * longer rendered; switching to CLOSED shows it again). Under
  * prefers-reduced-motion both flavours skip the animation entirely. */
 export function RfqsPanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
-    useViewModel();
+  const {
+    useRfqs,
+    useInstruments,
+    useDealers,
+    useCreditRfqFilterPreference,
+    usePowerSaver,
+  } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
+  const { isFreeze } = usePowerSaver();
   const [dismissed, setDismissed] = useState&lt;ReadonlySet&lt;number&gt;&gt;(new Set());
   const [exiting, setExiting] = useState&lt;ReadonlyMap&lt;number, ExitReason&gt;&gt;(
     new Map(),
   );
+&nbsp;
   const [entering, setEntering] = useState&lt;ReadonlyMap&lt;number, number&gt;&gt;(
     new Map(),
   );
@@ -864,6 +895,7 @@ export function RfqsPanel(): ReactElement {
   const matching = rfqs.filter((r) =&gt; {
     return matchesFilter(r.state, filter) &amp;&amp; !dismissed.has(r.id);
   });
+&nbsp;
   const matchingIdSet = new Set(
     matching.map((r) =&gt; {
       return r.id;
@@ -874,6 +906,7 @@ export function RfqsPanel(): ReactElement {
   const [prevAll, setPrevAll] = useState&lt;IdSnapshot&gt;(() =&gt; {
     return { key: allIdsKey, ids: new Set(allIds) };
   });
+&nbsp;
   const [prevMatching, setPrevMatching] = useState&lt;IdSnapshot&gt;(() =&gt; {
     return { key: matchingKey, ids: matchingIdSet };
   });
@@ -934,6 +967,7 @@ export function RfqsPanel(): ReactElement {
     .sort((a, b) =&gt; {
       return b.creationTimestamp - a.creationTimestamp;
     });
+&nbsp;
   const renderedIds = rendered.map((r) =&gt; {
     return r.id;
   });
@@ -994,7 +1028,9 @@ export function RfqsPanel(): ReactElement {
     }
   }
 &nbsp;
-  const { register } = useFlipGrid([filter, renderedIdsKey]);
+  const { register } = useFlipGrid([filter, renderedIdsKey], {
+    freeze: isFreeze,
+  });
 &nbsp;
   function handleRemove(rfqId: number): void {
     if (prefersReducedMotion()) {
@@ -1177,7 +1213,7 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-15T00:13:59.323Z
+                at 2026-07-25T17:17:40.960Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

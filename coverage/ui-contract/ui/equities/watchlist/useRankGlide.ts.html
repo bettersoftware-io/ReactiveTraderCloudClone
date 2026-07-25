@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.36% </span>
+                <span class="strong">98.38% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>60/61</span>
+                <span class='fraction'>61/62</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">96.87% </span>
+                <span class="strong">97.14% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>31/32</span>
+                <span class='fraction'>34/35</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">98.36% </span>
+                <span class="strong">98.38% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>60/61</span>
+                <span class='fraction'>61/62</span>
             </div>
         
             
@@ -308,7 +308,21 @@
 <a name='L243'></a><a href='#L243'>243</a>
 <a name='L244'></a><a href='#L244'>244</a>
 <a name='L245'></a><a href='#L245'>245</a>
-<a name='L246'></a><a href='#L246'>246</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -432,6 +446,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">59x</span>
 <span class="cline-any cline-yes">59x</span>
 <span class="cline-any cline-yes">59x</span>
 <span class="cline-any cline-yes">59x</span>
@@ -476,6 +494,7 @@
 <span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -551,7 +570,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">59x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -671,12 +699,16 @@ function prefersReducedMotion(): boolean {
  * moment the current glide settles, so a burst of quote-driven re-sorts
  * (~12/sec under the default "chg" sort) collapses into at most one reorder
  * per glide window instead of restarting overlapping animations (I4 fix).
- * No-ops under reduced motion or before a previous rank has been recorded
- * (the first render never glides). */
+ * No-ops under reduced motion, under power-saver's Freeze tier
+ * (`options.freeze`, since the CSS catch-all can't reach raw
+ * `Element.animate()`), or before a previous rank has been recorded (the
+ * first render never glides). */
 export function useRankGlide(
   rootRef: RefObject&lt;HTMLElement | null&gt;,
   candidate: readonly string[],
+  options: UseRankGlideOptions = {},
 ): readonly string[] {
+  const { freeze = false } = options;
   const prevRankRef = useRef&lt;Record&lt;string, number&gt; | undefined&gt;(undefined);
   const glidingRef = useRef(false);
   const pendingRef = useRef&lt;readonly string[] | null&gt;(null);
@@ -722,6 +754,7 @@ export function useRankGlide(
 &nbsp;
       if (
         !prefersReducedMotion() &amp;&amp;
+        !freeze &amp;&amp;
         prevRankRef.current != null &amp;&amp;
         nodes.length &gt; 0
       ) {
@@ -793,10 +826,19 @@ export function useRankGlide(
     // Keyed on `committed` (not `candidate`): this effect's whole job is to
     // glide from the PREVIOUS committed order to the current one, so it must
     // fire exactly when `committed` actually changes — never for a candidate
-    // that got buffered instead (nothing moved in the DOM yet).
-  }, [committed, rootRef]);
+    // that got buffered instead (nothing moved in the DOM yet). `freeze`
+    // joins the deps because it gates the effect's own animate calls above
+    // and can flip live (usePowerSaver().isFreeze).
+  }, [committed, freeze, rootRef]);
 &nbsp;
   return committed;
+}
+&nbsp;
+export interface UseRankGlideOptions {
+  /** Power-saver "freeze" tier (`usePowerSaver().isFreeze`): skip the glide/
+   *  highlight WAAPI pass entirely — rows jump-cut straight to their new
+   *  rank. Defaults to `false` so existing callers are unaffected. */
+  freeze?: boolean;
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -805,7 +847,7 @@ export function useRankGlide(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-15T00:13:59.323Z
+                at 2026-07-25T17:17:40.960Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
