@@ -54,9 +54,10 @@ Every `.module.css` file in `src/ui` is a byte-for-byte copy of `client-react`'s
 ## Dev server
 
 ```bash
-pnpm dev:solid       # this package alone (Vite) → http://localhost:5473 — simulator mode, no server
-pnpm dev:solid:ws    # connected to an already-running `pnpm dev:ws`
-pnpm dev:solid:fs    # full stack: starts the WS server + this client together
+pnpm dev:solid           # this package alone (Vite) → http://localhost:5473 — simulator mode, no server; alias of dev:solid:sim
+pnpm dev:solid:ws:local  # connected to an already-running local `pnpm dev:ws` (ws://localhost:4000)
+pnpm dev:solid:ws:remote # connected to the deployed server (wss://rtc-clone-server.fly.dev)
+pnpm dev:solid:fs        # full stack: starts the WS server + this client together
 ```
 5173 is `client-react`'s port, 5273 is `client-prototype`'s; 5473 is this package's, following the same convention.
 
