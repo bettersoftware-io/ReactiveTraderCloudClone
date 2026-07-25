@@ -75,11 +75,31 @@ export function VisualScenarioHost({
   return (
     <ViewModelProvider viewModel={viewModel}>
       <ThemeProvider>
-        <View
-          testID={ready ? "visual-ready" : "visual-pending"}
-          style={{ flex: 1 }}
-        >
+        <View style={{ flex: 1 }}>
           {children}
+          {/* Readiness marker for the simctl capture driver.
+           *
+           * It must be its OWN accessibility element, not an attribute of the
+           * wrapper: iOS only exposes `testID` (as `accessibilityIdentifier`)
+           * for nodes that are themselves accessibility elements, so a plain
+           * container View never appears in `idb ui describe-all` at all —
+           * which is exactly why the driver's readiness poll timed out
+           * against a perfectly healthy app.
+           *
+           * It is also deliberately a SIBLING rather than `accessible` on the
+           * wrapper. Marking the wrapper accessible does surface the marker,
+           * but it collapses the whole subtree into one element (measured:
+           * 41 accessibility nodes -> 3), which would blind the Maestro tier
+           * to the scenario's own content.
+           *
+           * 1x1 and empty, so it paints nothing and cannot shift a golden. */}
+          <View
+            testID={ready ? "visual-ready" : "visual-pending"}
+            accessible={true}
+            accessibilityLabel={ready ? "visual-ready" : "visual-pending"}
+            pointerEvents="none"
+            style={{ position: "absolute", top: 0, left: 0, width: 1, height: 1 }}
+          />
         </View>
       </ThemeProvider>
     </ViewModelProvider>
