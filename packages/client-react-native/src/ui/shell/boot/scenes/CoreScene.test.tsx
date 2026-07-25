@@ -55,3 +55,20 @@ test("survives gyro drift sweeping to its extremes without throwing", async () =
 
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
+
+test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, without throwing", async () => {
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  // Task 1's `holoFlickerAlpha` dips hard whenever a per-sixth-of-a-second
+  // hash crosses 0.94 — rare enough that a coarse sweep can miss it. A dense
+  // sweep (i/6 steps, matching the flicker's own sampling rate) is the only
+  // jest-visible proof `drawBackdropWash`/`drawStars`/`drawNucleusGlow` (and
+  // the now flicker-threaded existing helpers) don't throw on a glitch frame.
+  for (let i = 0; i < 40; i++) {
+    await rerender(<CoreSceneHarness elapsedSec={i / 6} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});

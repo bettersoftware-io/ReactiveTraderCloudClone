@@ -5,6 +5,7 @@ import {
   Picture,
   type SkCanvas,
   Skia,
+  TileMode,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
 import { useDerivedValue } from "react-native-reanimated";
@@ -13,6 +14,18 @@ import { BOOT_DURATION_MS } from "@rtc/client-core";
 import type { Projection3dParams } from "@rtc/motion-core";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";
+import {
+  CORE_BACKDROP_WASH,
+  CORE_STARS,
+  holoFlickerAlpha,
+  NUCLEUS_ALPHAS,
+  NUCLEUS_BOX_FACTOR,
+  NUCLEUS_RADIUS_FACTOR,
+  NUCLEUS_STOPS,
+  nucleusAlpha,
+  STAR_SIZE_PX,
+  starTwinkleAlpha,
+} from "#/ui/shell/boot/scenes/coreBackdrop";
 import {
   bannerBlinkAlpha,
   bootProgress,
@@ -61,24 +74,33 @@ import {
  *   - the central status banner (SPINNING UP CORE → LINKING GLOBAL NODES →
  *     MESH ONLINE).
  *
- * DEFERRED to phase 6b (each a distinct visual layer in the web source, left
- * out here rather than half-ported):
- *   - star-drift backdrop (twinkling starfield behind the globe);
- *   - nucleus glow (radial gradient wash behind the globe);
+ * Task 1 (phase 6b-1) adds three more, all whole-frame/backdrop layers ported
+ * from `packages/boot-splash/src/variants/bootCore.ts`:
+ *   - the star-drift backdrop (twinkling starfield behind the globe);
+ *   - the nucleus glow (radial gradient wash behind the globe);
+ *   - the whole-frame "holo flicker" (a fast carrier sine + occasional glitch
+ *     dip). The web applies this as `ctx.globalAlpha` around its entire draw;
+ *     Skia's equivalent, `canvas.saveLayer()`, allocates an offscreen surface
+ *     every frame and is banned by `docs/performance.md`. Instead every draw
+ *     helper below — old and new — takes a `flicker: number` and multiplies
+ *     it into the alpha it already passes to `hexToRgba`/`nucleusAlpha`.
+ *     Visually identical for these alpha-blended strokes/fills, no per-frame
+ *     allocation.
+ *
+ * DEFERRED to a later phase 6b task (each a distinct visual layer in the web
+ * source, left out here rather than half-ported):
  *   - latitude scan ring (a second sweeping ring, south → north);
  *   - the two counter-rotating gyroscopic segmented rings;
  *   - the rotating spotlight callout labelling one front-facing hub;
  *   - order-flow arcs (buy/sell great-circle arcs between hubs);
  *   - screen-space calibration ticks and the corner telemetry readout (CORE
  *     SYNC / NODES / YAW / LINKS — the last two read `arcs`/`arcCount`,
- *     which don't exist without the deferred arcs);
- *   - the web's whole-frame "holo flicker" (a `globalAlpha` wash over
- *     everything, sourced from a per-frame sine + occasional glitch dip) —
- *     since it modulates the entire draw, not one layer, it's deferred as a
- *     unit with the other unported elements rather than applied partially.
+ *     which don't exist without the deferred arcs).
  * The web's `ctx.clearRect` + translucent background-wash pair (canvas-2D's
  * own persistence workaround) has no counterpart here: `createPicture`
- * always starts a fresh, blank recording, so there is nothing to clear.
+ * always starts a fresh, blank recording, so there is nothing to clear. The
+ * `drawBackdropWash` layer below ports only the wash's *colour*, not the
+ * clear — `createPicture` needs neither.
  *
  * Every draw helper below carries its own `"worklet"` directive — Reanimated
  * worklet-ifies a function where it's *defined*, so a plain function called
@@ -112,7 +134,11 @@ export function CoreScene({
           pitch: globePitch(pointerDrift.my),
           perspectiveK: GLOBE_PERSPECTIVE_K,
         };
+        const flicker = holoFlickerAlpha(elapsed);
 
+        drawBackdropWash(canvas, width, height);
+        drawStars(canvas, width, height, elapsed, flicker, accent);
+        drawNucleusGlow(canvas, centerX, centerY, radius, flicker, accent);
         drawMeridians(
           canvas,
           params,
@@ -120,10 +146,20 @@ export function CoreScene({
           centerY,
           radius,
           reveal,
+          flicker,
           accent,
           accentAlt,
         );
-        drawParallels(canvas, params, centerX, centerY, radius, reveal, accent);
+        drawParallels(
+          canvas,
+          params,
+          centerX,
+          centerY,
+          radius,
+          reveal,
+          flicker,
+          accent,
+        );
         drawHubNodes(
           canvas,
           params,
@@ -132,9 +168,18 @@ export function CoreScene({
           radius,
           elapsed,
           progress,
+          flicker,
           accentAlt,
         );
-        drawStatusBanner(canvas, centerX, progress, elapsed, accent, accentAlt);
+        drawStatusBanner(
+          canvas,
+          centerX,
+          progress,
+          elapsed,
+          flicker,
+          accent,
+          accentAlt,
+        );
       },
       { width, height },
     );
@@ -170,6 +215,7 @@ function drawMeridians(
   centerY: number,
   radius: number,
   reveal: number,
+  flicker: number,
   accent: string,
   accentAlt: string,
 ): void {
@@ -204,7 +250,9 @@ function drawMeridians(
 
       if (prev !== null) {
         linePaint.setColor(
-          Skia.Color(hexToRgba(accent, segmentAlpha((point.z + prev.z) / 2))),
+          Skia.Color(
+            hexToRgba(accent, segmentAlpha((point.z + prev.z) / 2) * flicker),
+          ),
         );
         canvas.drawLine(prev.x, prev.y, point.x, point.y, linePaint);
       }
@@ -213,7 +261,7 @@ function drawMeridians(
     }
 
     if (phase < 1 && prev !== null) {
-      headPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9)));
+      headPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * flicker)));
       canvas.drawCircle(prev.x, prev.y, DRAW_HEAD_RADIUS, headPaint);
     }
   }
@@ -226,6 +274,7 @@ function drawParallels(
   centerY: number,
   radius: number,
   reveal: number,
+  flicker: number,
   accent: string,
 ): void {
   "worklet";
@@ -258,7 +307,10 @@ function drawParallels(
       if (prev !== null) {
         linePaint.setColor(
           Skia.Color(
-            hexToRgba(accent, segmentAlpha((point.z + prev.z) / 2) * 0.85),
+            hexToRgba(
+              accent,
+              segmentAlpha((point.z + prev.z) / 2) * 0.85 * flicker,
+            ),
           ),
         );
         canvas.drawLine(prev.x, prev.y, point.x, point.y, linePaint);
@@ -279,6 +331,7 @@ function drawHubNodes(
   radius: number,
   elapsedSec: number,
   progress: number,
+  flicker: number,
   accentAlt: string,
 ): void {
   "worklet";
@@ -317,12 +370,14 @@ function drawHubNodes(
     }
 
     nodePaint.setColor(
-      Skia.Color(hexToRgba(accentAlt, nodeAlpha(nodePhase, point.z))),
+      Skia.Color(hexToRgba(accentAlt, nodeAlpha(nodePhase, point.z) * flicker)),
     );
     canvas.drawCircle(point.x, point.y, 2 * point.perspective, nodePaint);
     const ringFraction = pingRingFraction(elapsedSec, hub.phase);
     ringPaint.setColor(
-      Skia.Color(hexToRgba(accentAlt, pingRingAlpha(ringFraction, nodePhase))),
+      Skia.Color(
+        hexToRgba(accentAlt, pingRingAlpha(ringFraction, nodePhase) * flicker),
+      ),
     );
     canvas.drawCircle(
       point.x,
@@ -338,6 +393,7 @@ function drawStatusBanner(
   centerX: number,
   progress: number,
   elapsedSec: number,
+  flicker: number,
   accent: string,
   accentAlt: string,
 ): void {
@@ -357,6 +413,82 @@ function drawStatusBanner(
   const textWidth = font.getTextWidth(text);
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);
-  textPaint.setColor(Skia.Color(hexToRgba(color, 0.9 * blink)));
+  textPaint.setColor(Skia.Color(hexToRgba(color, 0.9 * blink * flicker)));
   canvas.drawText(text, centerX - textWidth / 2, 72, textPaint, font);
+}
+
+function drawBackdropWash(
+  canvas: SkCanvas,
+  width: number,
+  height: number,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setColor(Skia.Color(CORE_BACKDROP_WASH));
+  canvas.drawRect({ x: 0, y: 0, width, height }, paint);
+}
+
+function drawStars(
+  canvas: SkCanvas,
+  width: number,
+  height: number,
+  elapsed: number,
+  flicker: number,
+  accent: string,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setAntiAlias(false);
+
+  for (const star of CORE_STARS) {
+    paint.setColor(
+      Skia.Color(hexToRgba(accent, starTwinkleAlpha(elapsed, star) * flicker)),
+    );
+    canvas.drawRect(
+      {
+        x: star.x * width,
+        y: star.y * height,
+        width: STAR_SIZE_PX,
+        height: STAR_SIZE_PX,
+      },
+      paint,
+    );
+  }
+}
+
+function drawNucleusGlow(
+  canvas: SkCanvas,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  flicker: number,
+  accent: string,
+): void {
+  "worklet";
+  // SkPoint is structurally `{ x, y }`, so an object literal beats calling the
+  // `Skia.Point` host factory from inside the worklet — one less cross-boundary
+  // call per frame and nothing extra for the jest mock to stub.
+  const shader = Skia.Shader.MakeRadialGradient(
+    { x: centerX, y: centerY },
+    radius * NUCLEUS_RADIUS_FACTOR,
+    [
+      Skia.Color(hexToRgba(accent, nucleusAlpha(NUCLEUS_ALPHAS[0], flicker))),
+      Skia.Color(hexToRgba(accent, nucleusAlpha(NUCLEUS_ALPHAS[1], flicker))),
+      Skia.Color("rgba(0,0,0,0)"),
+    ],
+    [...NUCLEUS_STOPS],
+    TileMode.Clamp,
+  );
+  const paint = Skia.Paint();
+  paint.setShader(shader);
+  const box = radius * NUCLEUS_BOX_FACTOR;
+  canvas.drawRect(
+    {
+      x: centerX - box,
+      y: centerY - box,
+      width: box * 2,
+      height: box * 2,
+    },
+    paint,
+  );
 }

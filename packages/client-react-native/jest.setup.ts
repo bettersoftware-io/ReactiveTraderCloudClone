@@ -39,6 +39,9 @@ interface MockPaint {
   setStrokeWidth: () => void;
   setAntiAlias: () => void;
   setAlphaf: () => void;
+  // Phase 6b-1, Task 1 (CoreScene nucleus glow): the radial-gradient shader
+  // setter a paint needs before `drawRect` fills with it.
+  setShader: () => void;
 }
 
 interface MockCanvas {
@@ -48,6 +51,9 @@ interface MockCanvas {
   drawRect: () => void;
   drawText: () => void;
   clear: () => void;
+  // Phase 6b-1, Task 1 (CoreScene backdrop wash): a flat-fill whole-canvas
+  // paint call, distinct from `drawRect` in the real API.
+  drawPaint: () => void;
 }
 
 // Skia has no jest-expo mock. Stub the components used across the rehaul as
@@ -77,6 +83,7 @@ jest.mock("@shopify/react-native-skia", () => {
       setStrokeWidth: () => {},
       setAntiAlias: () => {},
       setAlphaf: () => {},
+      setShader: () => {},
     };
   }
 
@@ -88,6 +95,7 @@ jest.mock("@shopify/react-native-skia", () => {
       drawRect: () => {},
       drawText: () => {},
       clear: () => {},
+      drawPaint: () => {},
     };
   }
 
@@ -117,10 +125,18 @@ jest.mock("@shopify/react-native-skia", () => {
       return { __mockPicture: true };
     },
     PaintStyle: { Fill: 0, Stroke: 1 },
+    // Phase 6b-1, Task 1 (CoreScene nucleus glow): the radial-gradient shader
+    // factory and the tile-mode enum it takes.
+    TileMode: { Clamp: 0, Repeat: 1, Mirror: 2, Decal: 3 },
     Skia: {
       Paint: createMockPaint,
       Color: (color: string) => {
         return color;
+      },
+      Shader: {
+        MakeRadialGradient: () => {
+          return { __mockShader: true };
+        },
       },
       Font: () => {
         return {
