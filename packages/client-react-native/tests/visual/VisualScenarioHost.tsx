@@ -98,7 +98,13 @@ export function VisualScenarioHost({
             accessible={true}
             accessibilityLabel={ready ? "visual-ready" : "visual-pending"}
             pointerEvents="none"
-            style={{ position: "absolute", top: 0, left: 0, width: 1, height: 1 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+            }}
           />
         </View>
       </ThemeProvider>
