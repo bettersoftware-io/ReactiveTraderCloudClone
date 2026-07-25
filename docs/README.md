@@ -72,6 +72,9 @@ flowchart TD
 - [`dependency-cruiser.md`](dependency-cruiser.md) — the dependency-graph
   enforcement setup.
 - [`tooling-roadmap.md`](tooling-roadmap.md) — planned/adopted dev-tooling.
+- [`mobile-ci-testing-options.md`](mobile-ci-testing-options.md) — decision
+  support for running iOS/Android tests in CI: why iOS needs a Mac, every option
+  with dated costs, what teams actually gate on, and a staged recommendation.
 
 ## Process & contributor rules
 
