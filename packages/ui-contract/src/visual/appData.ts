@@ -95,6 +95,8 @@ export interface AppData {
   creditRfqFilter?: CreditRfqFilter;
   /** Session lock state (useAuth's `state.locked`); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
+  /** Unlock-in-flight state (useAuth's `state.unlocking`); defaults to false. */
+  sessionUnlocking?: boolean;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
   adminMetrics?: {

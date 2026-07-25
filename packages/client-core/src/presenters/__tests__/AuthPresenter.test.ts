@@ -1,4 +1,4 @@
-import { of } from "rxjs";
+import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
@@ -43,6 +43,7 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: false,
+      unlocking: false,
       error: null,
     });
   });
@@ -71,6 +72,7 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
     });
     expect(store.read()).toBeNull();
@@ -87,6 +89,7 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
     });
   });
@@ -139,6 +142,7 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: "Invalid credentials",
     });
     expect(store.read()).toBeNull();
@@ -180,6 +184,7 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: null,
     });
   });
@@ -214,6 +219,7 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: false,
+      unlocking: false,
       error: null,
     });
 
@@ -249,6 +255,7 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: "Invalid credentials",
     });
 
@@ -280,6 +287,7 @@ describe("AuthPresenter", () => {
       status: "authenticated",
       user: USER,
       locked: true,
+      unlocking: false,
       error: "Service unavailable",
     });
   });
@@ -308,9 +316,38 @@ describe("AuthPresenter", () => {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
     });
     expect(store.read()).toBeNull();
+  });
+
+  it("unlock sets unlocking while in flight and leaves status authenticated", () => {
+    const { presenter, resolve } = lockedPresenter();
+
+    presenter.unlock("mcdc2026");
+
+    const inFlight = latest(presenter);
+    expect(inFlight.unlocking).toBe(true);
+    // The whole app unmounts if status leaves "authenticated" — AuthGate
+    // renders LoginScreen for any non-authenticated status.
+    expect(inFlight.status).toBe("authenticated");
+    expect(inFlight.locked).toBe(true);
+
+    resolve({ ok: true, token: "t2", user: USER, exp: 9e12 });
+    expect(latest(presenter).unlocking).toBe(false);
+  });
+
+  it("unlock clears unlocking on failure and stays locked", () => {
+    const { presenter, resolve } = lockedPresenter();
+
+    presenter.unlock("wrong");
+    resolve({ ok: false, reason: "invalid" });
+
+    const after = latest(presenter);
+    expect(after.unlocking).toBe(false);
+    expect(after.locked).toBe(true);
+    expect(after.error).toBe("Invalid credentials");
   });
 });
 
@@ -335,6 +372,42 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
       return of(outcome);
     },
   };
+}
+
+/** An `AuthPort` stub whose outcome the test resolves explicitly, so the
+ * in-flight state is observable. `fakeAuthPort` uses `of(outcome)`, which
+ * emits synchronously and skips straight past the wait state. */
+function deferredAuthPort(): {
+  readonly port: AuthPort;
+  readonly resolve: (outcome: AuthOutcome) => void;
+} {
+  const subject = new Subject<AuthOutcome>();
+
+  return {
+    port: {
+      login(): Observable<AuthOutcome> {
+        return subject.asObservable();
+      },
+    },
+    resolve: (outcome: AuthOutcome): void => {
+      subject.next(outcome);
+    },
+  };
+}
+
+/** A presenter already logged in as USER and then locked — the LockScreen state. */
+function lockedPresenter(): {
+  readonly presenter: AuthPresenter;
+  readonly resolve: (outcome: AuthOutcome) => void;
+} {
+  const { port, resolve } = deferredAuthPort();
+  const presenter = new AuthPresenter(port, new InMemorySessionStore());
+
+  presenter.login("astark", "mcdc2026");
+  resolve({ ok: true, token: "t", user: USER, exp: 9e12 });
+  presenter.lock();
+
+  return { presenter, resolve };
 }
 
 function latest(presenter: AuthPresenter): AuthViewState {

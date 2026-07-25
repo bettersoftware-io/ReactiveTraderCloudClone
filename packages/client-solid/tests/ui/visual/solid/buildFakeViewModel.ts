@@ -282,6 +282,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           status: "authenticated" as const,
           user: DEMO_USER,
           locked: data.sessionLocked ?? false,
+          unlocking: data.sessionUnlocking ?? false,
           error: null,
         }),
         login: (): void => {

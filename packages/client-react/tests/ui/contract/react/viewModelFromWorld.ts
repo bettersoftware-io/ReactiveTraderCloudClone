@@ -514,6 +514,7 @@ export function reactViewModel(world: World): ViewModel {
             status: "unauthenticated",
             user: null,
             locked: false,
+            unlocking: false,
             error: null,
           });
         },

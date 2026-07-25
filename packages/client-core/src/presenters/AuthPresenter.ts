@@ -12,6 +12,14 @@ export interface AuthViewState {
   readonly status: AuthStatus;
   readonly user: SessionUser | null;
   readonly locked: boolean;
+  /** True while an unlock (re-authenticate) request is in flight.
+   *
+   * Deliberately NOT modelled as `status: "authenticating"`. AuthGate renders
+   * LoginScreen whenever `status !== "authenticated"`, so reusing the status
+   * would unmount the entire app mid-unlock and flash the sign-in form —
+   * taking the lock overlay down with it, since LockScreen lives inside App
+   * rather than in the gate. */
+  readonly unlocking: boolean;
   readonly error: string | null;
 }
 
@@ -19,6 +27,7 @@ const UNAUTHENTICATED_STATE: AuthViewState = {
   status: "unauthenticated",
   user: null,
   locked: false,
+  unlocking: false,
   error: null,
 };
 
@@ -58,6 +67,7 @@ export class AuthPresenter {
         status: "authenticated",
         user: entry.user,
         locked: false,
+        unlocking: false,
         error: null,
       };
     }
@@ -72,6 +82,7 @@ export class AuthPresenter {
       status: "authenticating",
       user: null,
       locked: false,
+      unlocking: false,
       error: null,
     });
 
@@ -88,6 +99,7 @@ export class AuthPresenter {
         status: "authenticated",
         user: outcome.user,
         locked: false,
+        unlocking: false,
         error: null,
       });
       return;
@@ -97,6 +109,7 @@ export class AuthPresenter {
       status: "unauthenticated",
       user: null,
       locked: false,
+      unlocking: false,
       error: describeAuthFailure(outcome.reason),
     });
   }
@@ -120,6 +133,8 @@ export class AuthPresenter {
       return;
     }
 
+    this.subject.next({ ...this.subject.value, unlocking: true, error: null });
+
     this.auth.login(username, password).subscribe((outcome) => {
       this.handleUnlockOutcome(username, outcome);
     });
@@ -134,6 +149,7 @@ export class AuthPresenter {
         ...current,
         user: outcome.user,
         locked: false,
+        unlocking: false,
         error: null,
       });
       return;
@@ -142,6 +158,7 @@ export class AuthPresenter {
     this.subject.next({
       ...current,
       locked: true,
+      unlocking: false,
       error: describeAuthFailure(outcome.reason),
     });
   }
