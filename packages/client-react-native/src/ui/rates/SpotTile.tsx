@@ -17,6 +17,7 @@ import { splitPrice } from "#/ui/formatPrice";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
   const { usePrice } = useViewModel();
@@ -27,7 +28,7 @@ export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
     price === null ? 0 : price.mid,
     motionEnabled,
   );
-  const styles = makeStyles(theme);
+  const styles = useThemedStyles(makeStyles);
   const label = `${pair.base}/${pair.terms}`;
 
   let body: JSX.Element;

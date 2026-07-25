@@ -25,6 +25,7 @@ import { ExecutionCeremony } from "#/ui/rates/ticket/ExecutionCeremony";
 import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The trade ticket, presented as a `@gorhom/bottom-sheet` modal — the real
  * wiring behind the old RN-`Modal` prototype (`../../TradeTicket.tsx`,
@@ -47,8 +48,7 @@ export function TradeTicketSheet({
   const price = usePrice(pair);
   const notional = useNotional(pair.defaultNotional);
   const execution = useTileExecution(pair);
-  const theme = useTheme();
-  const styles = makeStyles(theme);
+  const styles = useThemedStyles(makeStyles);
 
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
   const lastDirRef = useRef<Direction | null>(null);
