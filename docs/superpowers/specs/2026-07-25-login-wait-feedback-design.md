@@ -274,8 +274,18 @@ local-arch).
 | `packages/client-react-native/src/app/adapters/AsyncStoragePreferencesAdapter.ts` | persistence |
 
 The React Native **adapter** must be updated even though the RN **UI** is
-deferred: `PreferencesPortContract` is a shared contract exercised against
-every adapter, so omitting it fails the RN package's tests.
+deferred: adding methods to the `PreferencesPort` interface fails typecheck for
+every implementor that lacks them.
+
+> **`PreferencesPortContract` does NOT run against the React Native adapter.**
+> Its three consumers are `client-react`, `client-solid` and the domain
+> simulator; RN is covered instead by a hand-rolled
+> `AsyncStoragePreferencesAdapter.test.ts` with explicit per-preference cases
+> (its `bootVariant` block is driven off `BOOT_VARIANTS`). So the RN adapter
+> needs **its own tests written by hand** — the shared contract will not catch
+> a regression there. This matters most for `hydrate()`, whose destructuring
+> and `Promise.all` entries are positional: a misaligned index silently
+> assigns the wrong stored value to the wrong preference.
 
 ### `AuthViewState` shape — fixtures
 

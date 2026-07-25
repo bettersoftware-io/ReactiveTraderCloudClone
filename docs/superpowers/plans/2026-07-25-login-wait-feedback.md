@@ -297,6 +297,19 @@ Add the methods after `setBootVariant` (line 289):
 
 > The destructured name and the `Promise.all` entry are **positional** — a mismatch silently assigns the wrong stored value to the wrong preference. Verify the index of your new entry matches in both places.
 
+- [ ] **Step 10b: Write the React Native adapter's tests by hand**
+
+`PreferencesPortContract` does **not** run against the RN adapter — its only consumers are `client-react`, `client-solid` and the domain simulator. RN is covered by the hand-rolled `packages/client-react-native/src/app/adapters/AsyncStoragePreferencesAdapter.test.ts`, so the code from Step 10 has **no** coverage until you add it there.
+
+Mirror that file's existing `bootVariant` block (line ~153), which is driven off `BOOT_VARIANTS` rather than a hand-listed set so a newly added variant is covered automatically. Add the equivalent for `loginWaitVariant`:
+
+- emits `DEFAULT_LOGIN_WAIT_VARIANT` from an empty store
+- hydrates each member of `LOGIN_WAIT_VARIANTS` from the store (`test.each`)
+- falls back to the default when the stored value is invalid
+- `setLoginWaitVariant` writes through and pushes to subscribers
+
+This is the regression net for the positional `hydrate()` risk above.
+
 - [ ] **Step 11: Run every affected package's tests**
 
 Run: `pnpm --filter @rtc/domain --filter @rtc/client-react --filter @rtc/client-solid --filter @rtc/client-react-native test`
