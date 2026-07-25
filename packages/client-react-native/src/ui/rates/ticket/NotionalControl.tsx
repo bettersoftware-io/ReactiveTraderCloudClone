@@ -9,13 +9,14 @@ import {
 } from "react-native";
 
 import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 export function NotionalControl({
   notional,
   base,
 }: NotionalControlProps): JSX.Element {
   const theme = useTheme();
-  const styles = makeStyles(theme);
+  const styles = useThemedStyles(makeStyles);
   const { numericValue, displayValue } = notional.state;
 
   return (
