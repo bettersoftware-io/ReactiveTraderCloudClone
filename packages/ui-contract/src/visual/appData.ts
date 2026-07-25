@@ -30,6 +30,7 @@ import {
   type EqWatchlistSort,
   type Instrument,
   type LogEvent,
+  type LoginWaitVariant,
   type MetricSample,
   type PositionUpdates,
   type PowerSaverLevel,
@@ -97,6 +98,12 @@ export interface AppData {
   sessionLocked?: boolean;
   /** Unlock-in-flight state (useAuth's `state.unlocking`); defaults to false. */
   sessionUnlocking?: boolean;
+  /** Sign-in-in-flight state (useAuth's `state.status === "authenticating"`);
+   * defaults to false → LoginScreen renders the idle sign-in form. */
+  sessionAuthenticating?: boolean;
+  /** Login-wait treatment (useAuth's `state.waitVariant`); only visible while
+   * sessionAuthenticating or sessionUnlocking is true. Defaults to "handshake". */
+  waitVariant?: LoginWaitVariant;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
   adminMetrics?: {

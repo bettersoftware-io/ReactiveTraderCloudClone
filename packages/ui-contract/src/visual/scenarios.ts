@@ -558,6 +558,27 @@ const baseScenarios: Record<string, Scenario> = {
   // by `animations: "disabled"`). See the runner specs / scenarioActions.
   "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
+  // Login/lock-wait treatments: the handshake/reactor overlays shown while a
+  // sign-in or unlock request is in flight. waitVariant is seeded explicitly
+  // in the fixture (never the live cycling pointer — see fixtures.ts), and
+  // both are full-screen overlays like lock/locked above (captured fullPage
+  // via scenarioActions.ts).
+  "login/wait-handshake": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-handshake",
+  },
+  "login/wait-reactor": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-wait-reactor",
+  },
+  "lock/wait-handshake": {
+    componentKey: "LockScreen",
+    fixtureKey: "lock-wait-handshake",
+  },
+  "lock/wait-reactor": {
+    componentKey: "LockScreen",
+    fixtureKey: "lock-wait-reactor",
+  },
   "chrome/header": {
     componentKey: "HeaderChrome",
     fixtureKey: "app-connected",

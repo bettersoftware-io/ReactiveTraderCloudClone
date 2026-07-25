@@ -1312,6 +1312,30 @@ export const fixtures: Record<string, AppData> = {
   }),
   // Lock screen: the session is locked, so the full-screen overlay renders.
   "session-locked": makeAppData({ sessionLocked: true }),
+  // Login-wait treatments: a sign-in request is in flight (status
+  // "authenticating"), seeded to a fixed waitVariant — never the live cycling
+  // pointer, which would alternate the variant (and the golden) between runs.
+  "login-wait-handshake": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "handshake",
+  }),
+  "login-wait-reactor": makeAppData({
+    sessionAuthenticating: true,
+    waitVariant: "reactor",
+  }),
+  // Lock-wait treatments: the session is locked AND an unlock (re-auth)
+  // request is in flight, seeded to a fixed waitVariant for the same reason
+  // as the login-wait fixtures above.
+  "lock-wait-handshake": makeAppData({
+    sessionLocked: true,
+    sessionUnlocking: true,
+    waitVariant: "handshake",
+  }),
+  "lock-wait-reactor": makeAppData({
+    sessionLocked: true,
+    sessionUnlocking: true,
+    waitVariant: "reactor",
+  }),
   // Preferences modal: animated background off → its real switch reads "off".
   "prefs-open": makeAppData({ animatedBackground: false }),
   // Boot sequence: the deterministic chrome is captured under reduced motion
