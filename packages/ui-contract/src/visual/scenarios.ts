@@ -579,15 +579,24 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "LockScreen",
     fixtureKey: "lock-wait-reactor",
   },
-  // Freeze-tier coverage of the two wait treatments: the power-saver "freeze"
-  // level zeroes animation-duration but not animation-delay (see
-  // client-react/src/index.css), so a `backwards`-filled animation can hold
-  // its `from` state through the delay and render invisible under freeze —
-  // the exact bug class HandshakeConsole's `.sealed` line shipped with on
-  // this branch. jsdom doesn't run CSS animations, so this pixel tier is the
-  // only automated witness. Login only (the higher-traffic sign-in gate);
-  // the lock overlay reuses the same treatment components and freeze CSS, so
-  // it doesn't need its own freeze goldens too. waitVariant is seeded
+  // Freeze-tier renders of the two wait treatments. These pin how the
+  // treatments look with `data-power-saver="freeze"` applied — the harness
+  // sets that attribute from the seeded level, so freeze CSS genuinely
+  // applies here.
+  //
+  // What they do NOT catch, deliberately recorded so nobody trusts them for
+  // it: the delay+`backwards` bug class that HandshakeConsole's `.sealed`
+  // line shipped with on this branch (freeze zeroes animation-duration but
+  // not animation-delay, so a `backwards` fill can hold its `from` state —
+  // opacity 0 — through the delay). Playwright's `animations: "disabled"`
+  // calls `animation.finish()`, which jumps straight to the end state and
+  // bypasses the delay entirely, so the invisible window never appears in a
+  // capture. Verified empirically, not assumed. That bug class currently has
+  // NO automated witness in any tier — jsdom doesn't run CSS animations
+  // either. It is caught by review and by the manual freeze check only.
+  //
+  // Login only (the higher-traffic sign-in gate); the lock overlay reuses the
+  // same treatment components and the same freeze CSS. waitVariant is seeded
   // explicitly in the fixture, same reasoning as the non-freeze wait
   // scenarios above.
   "login/wait-handshake-freeze": {
