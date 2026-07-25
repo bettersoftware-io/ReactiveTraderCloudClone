@@ -345,6 +345,7 @@ describe("AuthPresenter", () => {
     resolve({ ok: false, reason: "invalid" });
 
     const after = latest(presenter);
+    expect(after.status).toBe("authenticated");
     expect(after.unlocking).toBe(false);
     expect(after.locked).toBe(true);
     expect(after.error).toBe("Invalid credentials");
@@ -376,21 +377,32 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
 
 /** An `AuthPort` stub whose outcome the test resolves explicitly, so the
  * in-flight state is observable. `fakeAuthPort` uses `of(outcome)`, which
- * emits synchronously and skips straight past the wait state. */
+ * emits synchronously and skips straight past the wait state.
+ *
+ * Each `login()` call gets its own `Subject`, and `resolve()` always targets
+ * the most recent one — mirroring how a real `AuthPort` call is an
+ * independent async operation. `AuthPresenter` never unsubscribes its
+ * internal `.subscribe()` callback, so a single shared `Subject` across calls
+ * would let a *stale* subscription (e.g. the initial `login()` from
+ * `lockedPresenter`'s setup) also receive a later `resolve()` meant for
+ * `unlock()` — silently re-running `handleLoginOutcome` and clobbering
+ * `status` out from under the in-flight `unlock()` assertions. */
 function deferredAuthPort(): {
   readonly port: AuthPort;
   readonly resolve: (outcome: AuthOutcome) => void;
 } {
-  const subject = new Subject<AuthOutcome>();
+  let current: Subject<AuthOutcome> | null = null;
 
   return {
     port: {
       login(): Observable<AuthOutcome> {
+        const subject = new Subject<AuthOutcome>();
+        current = subject;
         return subject.asObservable();
       },
     },
     resolve: (outcome: AuthOutcome): void => {
-      subject.next(outcome);
+      current?.next(outcome);
     },
   };
 }
