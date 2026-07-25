@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main, TIERS } from "./coverage-report";
 
 describe("coverage-report CLI", () => {
-  it("exposes the five standalone coverage tiers", () => {
+  it("exposes the seven standalone coverage tiers, both clients framework-prefixed", () => {
     expect(
       TIERS.coverage.map((t) => {
         return t.name;
@@ -13,10 +13,22 @@ describe("coverage-report CLI", () => {
     ).toEqual([
       "domain",
       "server",
-      "client/app",
-      "client/ui (contract)",
-      "client/ui (visual)",
+      "react/app",
+      "react/ui (contract)",
+      "react/ui (visual)",
+      "solid/app",
+      "solid/ui (contract)",
     ]);
+
+    // Both clients must be represented: a react-only report is what let
+    // client-solid's buildBrowserPorts sit at 50% unnoticed.
+    for (const client of ["react", "solid"]) {
+      expect(
+        TIERS.coverage.some((t) => {
+          return t.name.startsWith(`${client}/`);
+        }),
+      ).toBe(true);
+    }
 
     // Each tier reads exactly one coverage-final.json (no union).
     for (const t of TIERS.coverage) {
