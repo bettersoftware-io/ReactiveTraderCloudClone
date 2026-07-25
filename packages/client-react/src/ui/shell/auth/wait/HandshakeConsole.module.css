@@ -71,3 +71,12 @@
     animation: none;
   }
 }
+
+/* Power saver (Freeze): override animation-delay to 0. The freeze tier zeros
+   animation-duration/iteration-count but not delay (index.css:52-58), so the
+   0.35s delay still elapses while `backwards` fill-mode holds opacity: 0,
+   rendering the sealed line invisible. Zeroing delay ensures the frozen render
+   shows the base state (opacity: 1) immediately. */
+:root[data-power-saver="freeze"] .sealed {
+  animation-delay: 0s;
+}
