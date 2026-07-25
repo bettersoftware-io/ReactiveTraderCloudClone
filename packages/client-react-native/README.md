@@ -127,6 +127,15 @@ check that everything still bundles. Note this is a *production* export; it does
 **not** exercise the dev runtime. To prove the dev bundle boots, start Metro and
 fetch `http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false`.
 
+### Inspecting a running app
+
+For live debugging (console, network, component tree, the WS wire), see
+[docs/react-native-inspectors.md](../../docs/react-native-inspectors.md) — a field
+guide to React Native DevTools (built in), Reactotron, Radon IDE, and the repo's
+own RTC devtools relay. Or watch the server side instead: `@rtc/server` logs every
+WS connect / disconnect / rejected upgrade (server README →
+[Connection observability](../server/README.md#connection-observability)).
+
 ---
 
 ## Native motion/render stack
