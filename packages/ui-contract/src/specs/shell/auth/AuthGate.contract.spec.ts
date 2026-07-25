@@ -20,4 +20,14 @@ describe("AuthGate", () => {
     expect(page.showsLogin()).toBe(true);
     expect(page.showsChildren()).toBe(false);
   });
+
+  it("keeps the app mounted while an unlock is in flight", () => {
+    // Regression: modelling the unlock wait as status "authenticating" would
+    // make AuthGate swap the whole app for LoginScreen mid-unlock.
+    const page = mount(AuthGate, {
+      auth: { status: "authenticated", locked: true, unlocking: true },
+    });
+    expect(page.showsChildren()).toBe(true);
+    expect(page.showsLogin()).toBe(false);
+  });
 });

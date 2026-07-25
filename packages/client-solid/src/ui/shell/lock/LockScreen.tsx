@@ -4,10 +4,13 @@ import { createSignal, Show } from "solid-js";
 import type { SessionUser } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
+import { HandshakeConsole } from "../auth/wait/HandshakeConsole";
+import { ReactorWait } from "../auth/wait/ReactorWait";
 import { HudLogo } from "../logo/HudLogo";
 import { BiometricChannel } from "./BiometricChannel";
 import { BiometricDots } from "./BiometricDots";
 
+import waitStyles from "../auth/wait/authWait.module.css";
 import styles from "./LockScreen.module.css";
 
 /**
@@ -75,19 +78,27 @@ export function LockScreen(): JSX.Element {
                   unlock(password());
                 }}
               >
-                <label class={styles.field}>
-                  <span class={styles.label}>Password</span>
-                  <input
-                    data-testid="lock-password"
-                    class={styles.input}
-                    type="password"
-                    autocomplete="current-password"
-                    value={password()}
-                    onInput={(event: InputChangeEvent) => {
-                      setPassword(event.currentTarget.value);
-                    }}
-                  />
-                </label>
+                <div
+                  class={
+                    state().unlocking
+                      ? `${waitStyles.fields} ${waitStyles.recede}`
+                      : waitStyles.fields
+                  }
+                >
+                  <label class={styles.field}>
+                    <span class={styles.label}>Password</span>
+                    <input
+                      data-testid="lock-password"
+                      class={styles.input}
+                      type="password"
+                      autocomplete="current-password"
+                      value={password()}
+                      onInput={(event: InputChangeEvent) => {
+                        setPassword(event.currentTarget.value);
+                      }}
+                    />
+                  </label>
+                </div>
 
                 <Show when={state().error !== null}>
                   <div data-testid="lock-error" class={styles.error}>
@@ -98,10 +109,28 @@ export function LockScreen(): JSX.Element {
                 <button
                   type="submit"
                   data-testid="lock-authenticate"
-                  class={styles.authenticate}
+                  class={
+                    state().unlocking
+                      ? `${styles.authenticate} ${waitStyles.busy}`
+                      : styles.authenticate
+                  }
+                  disabled={state().unlocking}
                 >
-                  AUTHENTICATE ▸
+                  {state().unlocking ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
                 </button>
+
+                <Show
+                  when={
+                    state().unlocking && state().waitVariant === "handshake"
+                  }
+                >
+                  <HandshakeConsole />
+                </Show>
+                <Show
+                  when={state().unlocking && state().waitVariant === "reactor"}
+                >
+                  <ReactorWait />
+                </Show>
               </form>
 
               <BiometricChannel />

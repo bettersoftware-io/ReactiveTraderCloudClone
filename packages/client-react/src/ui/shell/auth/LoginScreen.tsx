@@ -4,8 +4,11 @@ import { useState } from "react";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
+import waitStyles from "./wait/authWait.module.css";
 
 /**
  * Full-screen sign-in form (prototype-styled to match LockScreen). Renders
@@ -35,6 +38,7 @@ export function LoginScreen(): ReactElement {
   }
 
   const authenticating = state.status === "authenticating";
+  const submitLabel = authenticating ? "AUTHENTICATING" : "AUTHENTICATE ▸";
 
   return (
     <div data-testid="login-screen" className={styles.overlay}>
@@ -50,29 +54,37 @@ export function LoginScreen(): ReactElement {
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
-          <label className={styles.field}>
-            <span className={styles.label}>Username</span>
-            <input
-              data-testid="login-username"
-              className={styles.input}
-              type="text"
-              autoComplete="username"
-              value={username}
-              onChange={handleUsernameChange}
-            />
-          </label>
+          <div
+            className={
+              authenticating
+                ? `${waitStyles.fields} ${waitStyles.recede}`
+                : waitStyles.fields
+            }
+          >
+            <label className={styles.field}>
+              <span className={styles.label}>Username</span>
+              <input
+                data-testid="login-username"
+                className={styles.input}
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={handleUsernameChange}
+              />
+            </label>
 
-          <label className={styles.field}>
-            <span className={styles.label}>Password</span>
-            <input
-              data-testid="login-password"
-              className={styles.input}
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={handlePasswordChange}
-            />
-          </label>
+            <label className={styles.field}>
+              <span className={styles.label}>Password</span>
+              <input
+                data-testid="login-password"
+                className={styles.input}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={handlePasswordChange}
+              />
+            </label>
+          </div>
 
           {state.error !== null ? (
             <div data-testid="login-error" className={styles.error}>
@@ -83,11 +95,22 @@ export function LoginScreen(): ReactElement {
           <button
             type="submit"
             data-testid="login-submit"
-            className={styles.submit}
+            className={
+              authenticating
+                ? `${styles.submit} ${waitStyles.busy}`
+                : styles.submit
+            }
             disabled={authenticating}
           >
-            AUTHENTICATE ▸
+            {submitLabel}
           </button>
+
+          {authenticating && state.waitVariant === "handshake" ? (
+            <HandshakeConsole />
+          ) : null}
+          {authenticating && state.waitVariant === "reactor" ? (
+            <ReactorWait />
+          ) : null}
         </form>
       </div>
     </div>

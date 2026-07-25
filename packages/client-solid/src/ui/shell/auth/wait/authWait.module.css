@@ -1,0 +1,64 @@
+/* Base layout for the field wrapper both screens conditionally dim — applied
+ * UNCONDITIONALLY (not just while a request is in flight), so toggling
+ * `.recede` on top never re-flows the form: it only ever changes `opacity`
+ * (composited, cheap). Without this split, a wrapper with no class while
+ * idle would collapse the 14px gap the two LoginScreen fields previously got
+ * for free from the parent .form's flex gap. */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Form recedes while a request is in flight, so the wait treatment leads.
+ * Only `opacity` — no layout, no paint beyond the composited layer. */
+.recede {
+  opacity: 0.35;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Sweeping highlight on the busy submit button.
+ * PERF: translateX on a pseudo-element inside overflow:hidden. The BASE state
+ * already reads AUTHENTICATING, so the sweep is pure emphasis and a frozen
+ * render is still informative (index.css:47-58). */
+.busy {
+  position: relative;
+  overflow: hidden;
+  opacity: 0.85;
+}
+
+.busy::after {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--bg-overlay),
+    transparent
+  );
+  animation: sweep 1.15s linear infinite;
+  will-change: transform;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-250%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+/* Per-stylesheet opt-in; there is no global reduced-motion rule. The button
+ * already reads AUTHENTICATING at base, so dropping the sweep loses nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .recede {
+    transition: none;
+  }
+
+  .busy::after {
+    animation: none;
+  }
+}
