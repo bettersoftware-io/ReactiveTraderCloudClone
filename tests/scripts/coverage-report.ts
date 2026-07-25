@@ -9,6 +9,19 @@ import { summarize, type TierResult } from "./lib/testResults";
 // Coverage tiers (paths relative to repo root). Each tier is reported standalone
 // (no union) so every file is attributable to one script; the two UI tiers
 // (contract specs vs visual goldens) appear as separate sections.
+//
+// BOTH web clients are measured. This was react-only until 2026-07-25, which
+// left client-solid's per-file gaps invisible in two different ways:
+//   - its ui:contract CI gate asserts an AGGREGATE >=95%, and an aggregate
+//     hides individual files — solid sat at 99.35% overall while
+//     appHeadRegistry was 69% and appPanelRegistry 56%;
+//   - its app tier had no coverage denominator at all, hiding
+//     buildBrowserPorts.ts at 50% (the same gap its react twin had).
+// Tier names are framework-prefixed so the two are never conflated.
+//
+// There is deliberately NO solid visual tier: client-solid has no
+// vitest-browser coverage instrument, and the react one measures INCIDENTAL
+// coverage from a pixel tier — a number to read with suspicion, not mirror.
 export const TIERS = {
   coverage: [
     {
@@ -20,32 +33,48 @@ export const TIERS = {
       path: "packages/server/reports/unit/coverage/coverage-final.json",
     },
     {
-      name: "client/app",
+      name: "react/app",
       path: "packages/client-react/reports/app/coverage/coverage-final.json",
     },
     {
-      name: "client/ui (contract)",
+      name: "react/ui (contract)",
       path: "packages/client-react/reports/ui/contract/coverage/coverage-final.json",
     },
     {
-      name: "client/ui (visual)",
+      name: "react/ui (visual)",
       path: "packages/client-react/reports/ui/visual/coverage/coverage-final.json",
+    },
+    {
+      name: "solid/app",
+      path: "packages/client-solid/reports/app/coverage/coverage-final.json",
+    },
+    {
+      name: "solid/ui (contract)",
+      path: "packages/client-solid/reports/ui/contract/coverage/coverage-final.json",
     },
   ],
   results: [
     { tier: "domain", path: "packages/domain/reports/unit/test-results.json" },
     { tier: "server", path: "packages/server/reports/unit/test-results.json" },
     {
-      tier: "app",
+      tier: "react/app",
       path: "packages/client-react/reports/app/test-results.json",
     },
     {
-      tier: "contract",
+      tier: "react/contract",
       path: "packages/client-react/reports/ui/contract/test-results.json",
     },
     {
-      tier: "visual",
+      tier: "react/visual",
       path: "packages/client-react/reports/ui/visual/test-results.json",
+    },
+    {
+      tier: "solid/app",
+      path: "packages/client-solid/reports/app/test-results.json",
+    },
+    {
+      tier: "solid/contract",
+      path: "packages/client-solid/reports/ui/contract/test-results.json",
     },
   ],
 } as const;

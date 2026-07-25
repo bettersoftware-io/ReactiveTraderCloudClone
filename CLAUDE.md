@@ -101,6 +101,44 @@ packages/
 - Turborepo config is framework-blind (task names + dependency graph only)
 - Reference implementation: https://github.com/AdaptiveConsulting/ReactiveTraderCloud
 
+## Published Reports Are Stale By Default
+
+Several workflows here **never trigger themselves** — they only run on
+`workflow_dispatch`. Whatever they publish keeps serving the last *manually
+dispatched* commit, with no banner saying so. Reading one of those artifacts
+without checking its provenance means reasoning about a tree that may be weeks
+and dozens of merges old.
+
+| workflow | trigger | what goes stale |
+|---|---|---|
+| `coverage-report.yml` | **dispatch only** | the gh-pages coverage report (5 istanbul tiers) |
+| `update-visual-goldens.yml` | **dispatch only** | the committed x86 `react/` golden set |
+| `deploy.yml`, `deploy-proto.yml`, `deploy-cd-proto.yml` | **dispatch only** | the deployed sites |
+| `ci.yml` | PR + push to main | — |
+| `visual.yml` | push to main (post-merge, **not** a PR gate) | — |
+| `publish-site.yml` | push to main | — |
+| `e2e-gherkin-weekly.yml` | weekly cron (Mon 06:00) | up to 7 days of Gherkin drift |
+
+**Before trusting the coverage report, refresh it and wait** (~7 min):
+
+```bash
+gh run list --workflow=coverage-report.yml --limit 1   # how old is the current one?
+gh workflow run coverage-report.yml --ref main         # dispatch on the tree you care about
+```
+
+Report: <https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/>
+— five tiers (`domain`, `server`, `client-app`, `ui-contract`, `ui-visual`),
+react-only by design. It is **report-only and gates nothing**; the enforced bar
+is the `ui:contract` ≥95% gate in `ci.yml`. Its per-tier `index.html` only lists
+directories, so finding gaps means crawling into them — or reading
+`coverage-final.json` from a local `--coverage` run instead.
+
+Two traps when reading it: the ~88 `*.module.css` rows sit at 0% but carry
+**zero statements** (a v8 `PARSE_ERROR` on non-executed files, harmless — they
+do not drag the percentage down), and a file can read 0% in one tier while
+being fully covered in another (`appHeadRegistry` was 0% contract / 100%
+visual). Always check the other tiers before concluding something is untested.
+
 ## Markdown Diagrams
 
 GitHub (and most md viewers) scale every diagram down to column width, so

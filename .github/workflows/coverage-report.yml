@@ -7,16 +7,28 @@ name: Coverage Report
 #      with collapsible per-file diff snippets). Readable on mobile web from the
 #      run's Summary page.
 #   2. The FULL istanbul HTML report (colored, click-through, file-by-file) for
-#      all five tiers, published to GitHub Pages at a stable URL you can open
+#      all seven tiers, published to GitHub Pages at a stable URL you can open
 #      and browse immediately on any device — no download, no unzip. The repo is
 #      public, so the report (which shows source lines) leaks nothing new.
 #
-# All five tiers are @rtc/client-react (+ domain/server) ONLY, BY DESIGN — this
-# is a report-only convenience tool (no CI gates; see docs/STATUS.md), not the
-# coverage GATE. Solid's ui:contract coverage is already gated separately in
-# ci.yml ("UI contract coverage gate — solid"); adding solid's own
-# app/contract/visual istanbul tiers here (mirroring the react ones below) is
-# a nice-to-have left for a future pass, not required for this workstream.
+# BOTH web clients are covered (+ domain/server). This was react-only until
+# 2026-07-25, on the reasoning that Solid's ui:contract coverage is gated
+# separately in ci.yml ("UI contract coverage gate — solid"). That reasoning was
+# wrong in a specific way worth recording: the gate asserts an AGGREGATE >=95%,
+# and an aggregate cannot surface a single weak file. Solid sat at 99.35%
+# overall while appHeadRegistry.tsx was 69% and appPanelRegistry.tsx 56%; its
+# app tier meanwhile had no coverage denominator AT ALL, hiding
+# buildBrowserPorts.ts at 50% — the same gap its react twin had. A gate tells
+# you whether the total passes; only this report tells you WHICH file is thin.
+#
+# Still report-only — it gates nothing (see docs/STATUS.md). There is
+# deliberately no solid VISUAL tier: client-solid has no vitest-browser
+# instrument, and the react one measures incidental coverage from a pixel tier.
+#
+# THIS WORKFLOW IS DISPATCH-ONLY. Nothing triggers it automatically, so the
+# published report serves whatever commit last dispatched it — check its date
+# before trusting it (it was once 10 days / 48 commits stale). See the
+# "Published Reports Are Stale By Default" section in CLAUDE.md.
 on:
   workflow_dispatch:
 
@@ -125,6 +137,31 @@ jobs:
           --reporter=default --reporter=json
           --outputFile.json=reports/ui/visual/test-results.json
 
+      # --- client-solid -----------------------------------------------------
+      # Added 2026-07-25. Solid's ui:contract gate in ci.yml only asserts an
+      # AGGREGATE >=95%, which cannot surface a single weak file, and its app
+      # tier had no coverage denominator at all — between them they hid
+      # buildBrowserPorts.ts at 50% and appHeadRegistry.tsx at 69%. There is no
+      # solid visual tier on purpose (no vitest-browser instrument, and the
+      # react one reports incidental pixel-tier coverage).
+      - name: Coverage — solid app
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-solid exec vitest run src/app
+          -c vitest.app.coverage.config.ts --coverage
+          --coverage.reporter=json --coverage.reporter=html
+          --reporter=default --reporter=json
+          --outputFile.json=reports/app/test-results.json
+
+      - name: Coverage — solid UI (contract tier)
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-solid exec vitest run
+          -c tests/ui/contract/vitest.coverage.config.ts --coverage
+          --coverage.reporter=json --coverage.reporter=html
+          --reporter=default --reporter=json
+          --outputFile.json=reports/ui/contract/test-results.json
+
       - name: Render report to job summary
         run: pnpm --filter @rtc/tests coverage:report
 
@@ -140,12 +177,17 @@ jobs:
           mkdir -p "$site"
 
           # display-name | url-slug | istanbul html directory
+          # Slugs for the react tiers are kept as-is (client-app / ui-contract /
+          # ui-visual) so previously-shared report URLs keep resolving; only the
+          # display names gained a framework prefix.
           tiers=(
             "domain|domain|packages/domain/reports/unit/coverage"
             "server|server|packages/server/reports/unit/coverage"
-            "client/app|client-app|packages/client-react/reports/app/coverage"
-            "client/ui (contract)|ui-contract|packages/client-react/reports/ui/contract/coverage"
-            "client/ui (visual)|ui-visual|packages/client-react/reports/ui/visual/coverage"
+            "react/app|client-app|packages/client-react/reports/app/coverage"
+            "react/ui (contract)|ui-contract|packages/client-react/reports/ui/contract/coverage"
+            "react/ui (visual)|ui-visual|packages/client-react/reports/ui/visual/coverage"
+            "solid/app|solid-app|packages/client-solid/reports/app/coverage"
+            "solid/ui (contract)|solid-ui-contract|packages/client-solid/reports/ui/contract/coverage"
           )
 
           links=""

@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.ui-contract.json && tsc --noEmit -p tsconfig.ui-visual.json",
     "test": "vitest run",
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
+    "test:app:coverage": "vitest run src/app -c vitest.app.coverage.config.ts --coverage",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
     "test:ui:visual": "tsx tests/ui/visual/run-all.ts",
     "test:ui:visual:solid": "tsx tests/ui/visual/run-all.ts solid",

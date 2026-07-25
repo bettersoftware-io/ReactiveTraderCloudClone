@@ -10,7 +10,7 @@
  *  - The outer arc's glow is a STATIC drop-shadow. Animating `filter`
  *    repaints per frame.
  *
- * FREEZE (index.css:47-58): base CSS is the informative state — every
+ * FREEZE (index.css): base CSS is the informative state — every
  * keyframe here starts (0%) at the fully-settled visual (full opacity,
  * unscaled emblem, rings in their rest rotation), so a frozen single
  * .01ms-duration pass never gets stuck on a transient mid-animation frame.

@@ -20,7 +20,7 @@
 /* Sweeping highlight on the busy submit button.
  * PERF: translateX on a pseudo-element inside overflow:hidden. The BASE state
  * already reads AUTHENTICATING, so the sweep is pure emphasis and a frozen
- * render is still informative (index.css:47-58). */
+ * render is still informative (index.css). */
 .busy {
   position: relative;
   overflow: hidden;
