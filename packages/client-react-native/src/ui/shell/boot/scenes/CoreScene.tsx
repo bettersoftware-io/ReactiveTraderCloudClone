@@ -15,6 +15,21 @@ import type { Projection3dParams } from "@rtc/motion-core";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";
 import {
+  ARC_TAIL_LENGTH,
+  ARC_TAIL_SAMPLES,
+  ARC_TRAIL_SAMPLES,
+  activeFlowArcs,
+  arcBulgeVector,
+  arcRippleFraction,
+  SPOTLIGHT_ELBOW_DX,
+  SPOTLIGHT_ELBOW_DY,
+  SPOTLIGHT_LABEL_MIN_X,
+  SPOTLIGHT_LABEL_RIGHT_INSET,
+  SPOTLIGHT_LABEL_WIDTH,
+  spotlightFlowRate,
+  spotlightIndex,
+} from "#/ui/shell/boot/scenes/coreArcs";
+import {
   CORE_BACKDROP_WASH,
   CORE_STARS,
   holoFlickerAlpha,
@@ -37,12 +52,14 @@ import {
   globePitch,
   globeYaw,
   hexToRgba,
+  hubVectorFromLatLon,
   MERIDIAN_COUNT,
   meridianLatitudes,
   meridianLongitude,
   meridianRevealPhase,
   nodeAlpha,
   nodeRevealPhase,
+  nodesPhase,
   PARALLEL_INDICES,
   parallelLatitude,
   parallelLongitudes,
@@ -107,13 +124,19 @@ import {
  *   - the two counter-rotating gyroscopic segmented rings that wrap the
  *     globe, revealed only once boot progress passes 18%.
  *
+ * Task 3 (phase 6b-1) adds order-flow arcs and the rotating spotlight callout
+ * (`coreArcs.ts`, ported from `bootCore.ts` lines 435-558):
+ *   - buy/sell great-circle arcs between hubs, drawn from a closed-form
+ *     schedule rather than the web's mutable arc array/seed counter — see
+ *     `coreArcs.ts`'s header for why a worklet recorder needs a pure function
+ *     of `elapsedSec`;
+ *   - the rotating spotlight callout labelling one front-facing hub, cycling
+ *     every 2.2s once the hub layer has fully revealed.
+ *
  * DEFERRED to a later phase 6b task (each a distinct visual layer in the web
  * source, left out here rather than half-ported):
- *   - the rotating spotlight callout labelling one front-facing hub;
- *   - order-flow arcs (buy/sell great-circle arcs between hubs);
  *   - screen-space calibration ticks and the corner telemetry readout (CORE
- *     SYNC / NODES / YAW / LINKS — the last two read `arcs`/`arcCount`,
- *     which don't exist without the deferred arcs).
+ *     SYNC / NODES / YAW / LINKS).
  * The web's `ctx.clearRect` + translucent background-wash pair (canvas-2D's
  * own persistence workaround) has no counterpart here: `createPicture`
  * always starts a fresh, blank recording, so there is nothing to clear. The
@@ -134,6 +157,8 @@ export function CoreScene({
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
+  const buyColor = theme.accentPositive;
+  const sellColor = theme.accentNegative;
 
   const picture = useDerivedValue(() => {
     return createPicture(
@@ -209,6 +234,30 @@ export function CoreScene({
           elapsed,
           progress,
           flicker,
+          accentAlt,
+        );
+        drawFlowArcs(
+          canvas,
+          params,
+          centerX,
+          centerY,
+          radius,
+          elapsed,
+          flicker,
+          buyColor,
+          sellColor,
+        );
+        drawSpotlight(
+          canvas,
+          params,
+          centerX,
+          centerY,
+          radius,
+          width,
+          elapsed,
+          progress,
+          flicker,
+          accent,
           accentAlt,
         );
         drawStatusBanner(
@@ -486,9 +535,9 @@ function drawHubNodes(
   accentAlt: string,
 ): void {
   "worklet";
-  const nodesPhase = ease(Math.max(0, Math.min(1, (progress - 0.28) / 0.22)));
+  const phase = nodesPhase(progress);
 
-  if (nodesPhase <= 0) {
+  if (phase <= 0) {
     return;
   }
 
@@ -501,7 +550,7 @@ function drawHubNodes(
 
   for (let i = 0; i < CORE_HUBS.length; i++) {
     const hub = CORE_HUBS[i];
-    const nodePhase = nodeRevealPhase(nodesPhase, i, CORE_HUBS.length);
+    const nodePhase = nodeRevealPhase(phase, i, CORE_HUBS.length);
 
     if (nodePhase <= 0) {
       continue;
@@ -537,6 +586,219 @@ function drawHubNodes(
       ringPaint,
     );
   }
+}
+
+/** Buy/sell order-flow arcs between hubs, drawn from the closed-form schedule
+ * in `coreArcs.ts` — see that file's header for why the web's mutable arc
+ * bookkeeping (a pushed/spliced array, a seed counter) had to become a pure
+ * function of `elapsedSec`. */
+function drawFlowArcs(
+  canvas: SkCanvas,
+  params: Projection3dParams,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  elapsed: number,
+  flicker: number,
+  buyColor: string,
+  sellColor: string,
+): void {
+  "worklet";
+  const arcs = activeFlowArcs(elapsed);
+
+  if (arcs.length === 0) {
+    return;
+  }
+
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setAntiAlias(true);
+  const headPaint = Skia.Paint();
+  headPaint.setAntiAlias(true);
+
+  for (const arc of arcs) {
+    const fromVec = hubVectorFromLatLon(
+      CORE_HUBS[arc.fromHub].lat,
+      CORE_HUBS[arc.fromHub].lon,
+    );
+
+    const toVec = hubVectorFromLatLon(
+      CORE_HUBS[arc.toHub].lat,
+      CORE_HUBS[arc.toHub].lon,
+    );
+    const color = arc.buy ? buyColor : sellColor;
+
+    const trail = Skia.Path.Make();
+
+    for (let i = 0; i <= ARC_TRAIL_SAMPLES; i++) {
+      const [vx, vy, vz] = arcBulgeVector(
+        i / ARC_TRAIL_SAMPLES,
+        fromVec,
+        toVec,
+      );
+
+      const point = projectGlobeVector(
+        vx,
+        vy,
+        vz,
+        params,
+        centerX,
+        centerY,
+        radius,
+      );
+
+      if (i === 0) {
+        trail.moveTo(point.x, point.y);
+      } else {
+        trail.lineTo(point.x, point.y);
+      }
+    }
+
+    paint.setStrokeWidth(1);
+    paint.setColor(Skia.Color(hexToRgba(color, 0.16 * flicker)));
+    canvas.drawPath(trail, paint);
+
+    const tailStart = Math.max(0, arc.progress - ARC_TAIL_LENGTH);
+    const tail = Skia.Path.Make();
+
+    for (let i = 0; i <= ARC_TAIL_SAMPLES; i++) {
+      const [vx, vy, vz] = arcBulgeVector(
+        tailStart + ((arc.progress - tailStart) * i) / ARC_TAIL_SAMPLES,
+        fromVec,
+        toVec,
+      );
+
+      const point = projectGlobeVector(
+        vx,
+        vy,
+        vz,
+        params,
+        centerX,
+        centerY,
+        radius,
+      );
+
+      if (i === 0) {
+        tail.moveTo(point.x, point.y);
+      } else {
+        tail.lineTo(point.x, point.y);
+      }
+    }
+
+    paint.setStrokeWidth(1.7);
+    paint.setColor(Skia.Color(hexToRgba(color, 0.8 * flicker)));
+    canvas.drawPath(tail, paint);
+
+    const [hx, hy, hz] = arcBulgeVector(arc.progress, fromVec, toVec);
+    const head = projectGlobeVector(
+      hx,
+      hy,
+      hz,
+      params,
+      centerX,
+      centerY,
+      radius,
+    );
+    // The web wraps this dot in a `shadowBlur: 10` bloom. A per-frame blur
+    // mask filter is the mobile equivalent of the compositing traps in
+    // docs/performance.md, so the dot is ported and the bloom is not.
+    headPaint.setColor(Skia.Color(`rgba(255,255,255,${flicker})`));
+    canvas.drawCircle(head.x, head.y, 1.9, headPaint);
+
+    const ripple = arcRippleFraction(arc.progress);
+
+    if (ripple > 0) {
+      const [lx, ly, lz] = arcBulgeVector(1, fromVec, toVec);
+      const landing = projectGlobeVector(
+        lx,
+        ly,
+        lz,
+        params,
+        centerX,
+        centerY,
+        radius,
+      );
+      paint.setStrokeWidth(1.3);
+      paint.setColor(
+        Skia.Color(hexToRgba(color, 0.7 * (1 - ripple) * flicker)),
+      );
+      canvas.drawCircle(landing.x, landing.y, 2 + ripple * 9, paint);
+    }
+  }
+}
+
+/** Rotating callout labelling one front-facing hub, cycling every 2.2s. Gated
+ * on the same `nodesPhase` ramp as `drawHubNodes` so the label never appears
+ * before the hub dots themselves have fully revealed. */
+function drawSpotlight(
+  canvas: SkCanvas,
+  params: Projection3dParams,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  width: number,
+  elapsed: number,
+  progress: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+
+  if (nodesPhase(progress) < 1) {
+    return;
+  }
+
+  const index = spotlightIndex(elapsed, CORE_HUBS.length);
+  const hub = CORE_HUBS[index];
+  const point = projectGlobePoint(
+    hub.lat,
+    hub.lon,
+    params,
+    centerX,
+    centerY,
+    radius,
+  );
+
+  if (point.z >= 0) {
+    return;
+  }
+
+  const labelX = Math.min(
+    Math.max(point.x + 14, SPOTLIGHT_LABEL_MIN_X),
+    width - SPOTLIGHT_LABEL_RIGHT_INSET,
+  );
+  const leader = Skia.Path.Make();
+  leader.moveTo(point.x, point.y);
+  leader.lineTo(point.x + SPOTLIGHT_ELBOW_DX, point.y + SPOTLIGHT_ELBOW_DY);
+  leader.lineTo(labelX + SPOTLIGHT_LABEL_WIDTH, point.y + SPOTLIGHT_ELBOW_DY);
+  const linePaint = Skia.Paint();
+  linePaint.setStyle(PaintStyle.Stroke);
+  linePaint.setStrokeWidth(1);
+  linePaint.setAntiAlias(true);
+  linePaint.setColor(Skia.Color(hexToRgba(accent, 0.45 * flicker)));
+  canvas.drawPath(leader, linePaint);
+
+  // Regular weight only — no bold typeface is bundled (see this file's header
+  // and the phase 6a note in docs/STATUS.md). The web label is 10px regular
+  // here anyway, so only the banner is affected. Built as `Skia.Font()` +
+  // `setSize`, not `Skia.Font(undefined, 10)` — see `drawStatusBanner`'s
+  // comment for why the explicit-`undefined` form throws on real iOS Skia.
+  const font = Skia.Font();
+  font.setSize(10);
+  const textPaint = Skia.Paint();
+  textPaint.setAntiAlias(true);
+  textPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * flicker)));
+  const code = `${hub.code} · NODE ${String(index + 1).padStart(2, "0")}`;
+  canvas.drawText(code, labelX + 2, point.y - 20, textPaint, font);
+  textPaint.setColor(Skia.Color(hexToRgba(accent, 0.7 * flicker)));
+  canvas.drawText(
+    `FLOW ${spotlightFlowRate(elapsed, hub.phase)}M/S`,
+    labelX + 2,
+    point.y - 7,
+    textPaint,
+    font,
+  );
 }
 
 function drawStatusBanner(

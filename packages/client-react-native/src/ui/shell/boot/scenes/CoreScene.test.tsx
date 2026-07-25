@@ -70,6 +70,24 @@ test("survives elapsedSec sweeping across the ring-reveal thresholds without thr
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
 
+test("survives elapsedSec sweeping across the order-flow arc gate without throwing", async () => {
+  // ARC_FIRST_SEC = 0.36 * 4.2 = 1.512s: 1.6 is just past the gate (one arc
+  // live), 2.4/3.1/4.2 sweep further in, each spawning more arcs and — once
+  // nodesPhase reaches 1 — also exercising the spotlight callout. The arc
+  // schedule's per-frame path building (trail + tail per live arc) is the
+  // densest allocation this scene does; a mocked-Skia mount is the cheapest
+  // jest-visible proof it doesn't throw.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  for (const t of [1.6, 2.4, 3.1, 4.2]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
 test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, without throwing", async () => {
   const { rerender } = await render(
     <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,

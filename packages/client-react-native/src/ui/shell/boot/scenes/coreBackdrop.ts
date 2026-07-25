@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/coreBackdrop.ts
-import { clamp01 } from "#/ui/shell/boot/scenes/coreGeometry";
+import { clamp01, hashRandom } from "#/ui/shell/boot/scenes/coreGeometry";
 
 /**
  * The three backdrop/whole-frame layers of the `core` boot scene, deferred
@@ -18,19 +18,6 @@ import { clamp01 } from "#/ui/shell/boot/scenes/coreGeometry";
  * catch that (its mock runs worklets as plain JS); the simulator is the only
  * witness.
  */
-
-/** Deterministic pseudo-random in [0,1) from an integer seed — the same
- * sine-hash the web variant uses so the star field is stable across renders
- * (never `Math.random`, which would make the visual golden non-deterministic).
- * Duplicated from `coreGeometry.ts`'s file-private copy rather than exported
- * from there, because Task 3 needs it too and a single shared export would
- * make `coreGeometry` the odd module that owns another scene layer's seeding.
- * See Task 3: it promotes this to the shared export and this copy is removed. */
-function hashRandom(seed: number): number {
-  "worklet";
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
 
 /** One star-drift mote: normalized position (0..1 of width/height), pixel
  * size and twinkle phase offset. */

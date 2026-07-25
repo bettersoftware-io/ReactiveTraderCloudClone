@@ -31,11 +31,11 @@ export function ease(t: number): number {
 }
 
 /** Deterministic pseudo-random in [0,1) from an integer seed — verbatim
- * sine-hash from the web variant, used to seed each hub's ping-ripple phase
- * offset so it's stable across renders (not `Math.random`). Not exported: only
- * consumed internally (`CORE_HUBS`'s ping-phase seeding below), unlike the
- * other pure helpers above, which `coreGeometry.test.ts` exercises directly. */
-function hashRandom(seed: number): number {
+ * sine-hash from the web variant. Seeds the hub ping-ripple phase offsets
+ * below, and (Task 3, `coreArcs.ts`) the star field's positions/sizes/
+ * twinkle phases and the order-flow arc schedule's from/to hub, duration and
+ * buy/sell draws — all stable across renders and never `Math.random`. */
+export function hashRandom(seed: number): number {
   "worklet";
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
@@ -311,6 +311,16 @@ export const CORE_HUBS: readonly CoreHub[] = RAW_HUBS.map(
     };
   },
 );
+
+/** Hub-layer reveal ramp: nothing before 28% of boot progress, fully in by
+ * 50%. Shared by `drawHubNodes` (the gate for drawing hubs at all) and
+ * `drawSpotlight` (Task 3, `coreArcs.ts` consumer) — hoisted here instead of
+ * repeating the literal `(progress - 0.28) / 0.22` thresholds at both draw
+ * sites. */
+export function nodesPhase(progress: number): number {
+  "worklet";
+  return ease(Math.max(0, Math.min(1, (progress - 0.28) / 0.22)));
+}
 
 /** Staggered per-hub cascade, same shape as `meridianRevealPhase`. */
 export function nodeRevealPhase(
