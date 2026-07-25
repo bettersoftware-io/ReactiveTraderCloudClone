@@ -97,6 +97,30 @@ overrides:
   # change the API surface ajv@8 compiles against for no security gain).
   # 3.1.4 published 2026-07-19 — outside the minimumReleaseAge cooldown.
   "fast-uri@<3.1.4": ^3.1.4
+  # Force the transitive uuid up from 7.0.3 to 11.1.1. Fixes GHSA-w5hq-g745-h8pq
+  # (MEDIUM: missing buffer bounds check in the v3/v5/v6 generators when the
+  # optional `buf` output argument is supplied — note those are uuid ALGORITHM
+  # versions, not package majors).
+  #
+  # Sole consumer is `xcode@3.0.1` (declares uuid ^7.0.3), reached via
+  # @expo/config-plugins — i.e. Expo native-build tooling exercised by
+  # `expo prebuild` / `expo run:ios` and every EAS build, and by nothing the unit
+  # or e2e suites touch. That is exactly the path the @xmldom/xmldom note below
+  # warns about, so this lift was checked against xcode's REAL usage rather than
+  # assumed safe:
+  #   - xcode calls `uuid.v4()` and nothing else (lib/pbxProject.js:90) — it
+  #     never touches v3/v5/v6, and never passes a `buf`, so the vulnerable code
+  #     path was unreachable here to begin with. This bump is hygiene, not a
+  #     live-exploit fix.
+  #   - xcode consumes it as CommonJS (`require('uuid')`), and uuid@11 still
+  #     ships a CJS entry: `require('uuid').v4()` verified working on 11.1.1.
+  # The two ways this class of lift has broken us before (a required argument
+  # appearing, and a CJS/ESM export-shape change) are therefore both excluded.
+  #
+  # SCOPED to the vulnerable range so a consumer already on >=11.1.1 keeps its
+  # choice. 11.1.1 published 2026-04-29 — well outside the minimumReleaseAge
+  # cooldown.
+  "uuid@<11.1.1": ^11.1.1
   # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
   # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
   # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router
