@@ -212,19 +212,29 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
  */
 export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   private readonly themeMode: BehaviorSubject<ThemeModePreference>;
+
   private readonly themeSkin: BehaviorSubject<ThemeSkin>;
+
   private readonly viewMode: BehaviorSubject<ViewMode>;
+
   // Intentionally off by default on mobile, overriding the web-oriented
   // DEFAULT_ANIMATED_BACKGROUND (true): the native RN backdrop is not the
   // compositor-only CSS the web ships, and an always-animating layer is a
   // battery cost on device. A user's explicit choice still persists.
   private readonly animatedBg: BehaviorSubject<boolean>;
+
   private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
+
   private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
+
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
+
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
+
   private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
+
   private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
+
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
   /** When `seed` is provided (the `hydrate()` path) every subject starts on its
