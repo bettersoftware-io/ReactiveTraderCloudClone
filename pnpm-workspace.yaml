@@ -17,6 +17,26 @@ allowBuilds:
 # the default. Add packages to `minimumReleaseAgeExclude` to bypass per-package.
 minimumReleaseAge: 1440
 
+# CI gate 25 runs `pnpm audit --prod --audit-level high`. The single advisory
+# suppressed here is a tooling false-positive, NOT an unpatched dependency:
+#
+# GHSA-mh99-v99m-4gvg (brace-expansion DoS) is published with one unbounded
+# range, `<=5.0.7`. The genuinely-affected line is 5.x (a 2026 major that
+# reintroduced the bug); it is fully patched here by forcing every 5.x
+# resolution to >=5.0.8 (see `brace-expansion@5` in overrides). But `<=5.0.7`
+# as raw semver ALSO matches the long-stable 1.x / 2.x lines that `minimatch`
+# still requires — and those are already pinned to their maintenance-patch tips
+# (1.1.16, 2.1.2, both forced below). They cannot be lifted to 5.x:
+# brace-expansion 5.x changed its CommonJS export shape, so `minimatch@3`'s
+# `require("brace-expansion")` (called as a bare function) would break, taking
+# the jest/Metro toolchain with it — a break the unit suites can't even see.
+# So every line is on its real fix; only the collapsed-range false-positive on
+# the CJS-locked 1.x/2.x lines is suppressed. Drop this once brace-expansion's
+# advisory ships a corrected per-major range.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mh99-v99m-4gvg
+
 overrides:
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
   # in dozens of prod-reachable paths, e.g. client-react-native > react-native
@@ -28,6 +48,26 @@ overrides:
   # line, patched separately as 2.1.2) are never forced off their choice.
   # 1.1.16 published 2026-07-08 — outside the minimumReleaseAge cooldown.
   "brace-expansion@<1.1.16": ^1.1.16
+  # The SAME DoS advisory (GHSA-mh99-v99m-4gvg) also lands on the newer 5.x
+  # line: brace-expansion@5.0.7 arrives transitively via @gorhom/bottom-sheet
+  # (the RN trade-ticket sheet). Vulnerable <=5.0.7 → PATCHED 5.0.8. Keyed to
+  # the whole 5.x major (not the exact 5.0.7 — that only matched some of the
+  # 100 paths, leaving 5.0.7 behind) so every 5.x resolution is lifted, while
+  # the safe 1.x / 2.x lines (below major 5) are untouched.
+  # 5.0.8 published 2026-07-23 — outside the minimumReleaseAge cooldown.
+  "brace-expansion@5": ^5.0.8
+  # Same advisory, 2.x line: force it to the maintenance-v2 patch 2.1.2 (we'd
+  # otherwise resolve 2.1.1, one patch behind). minimatch@10 asks ^2.0.1, so a
+  # 2.1.x patch bump is safe. Scoped to major 2 so 1.x / 5.x are untouched.
+  "brace-expansion@2": ^2.1.2
+  # Force the transitive postcss (Expo build tooling — expo > @expo/cli >
+  # @expo/metro-config, and expo-blur > expo > @expo/…) up from the vulnerable
+  # 8.5.16 to the PATCHED 8.5.18. Fixes the HIGH path-traversal advisory
+  # GHSA-r28c-9q8g-f849 (Previous Source Map path traversal), which reds CI
+  # gate 25 (`pnpm audit --prod`). SCOPED to the vulnerable range so a consumer
+  # already on >=8.5.18 keeps its choice. 8.5.18 published 2026-07-12 —
+  # outside the minimumReleaseAge cooldown.
+  "postcss@<8.5.18": ^8.5.18
   # Force the transitive @xmldom/xmldom (pulled in by @expo/plist and plist —
   # Expo native-build tooling, exercised by `expo prebuild`/`run:ios` and every
   # `eas build`) up from the vulnerable <0.8.13 line to the PATCHED 0.8.13.
