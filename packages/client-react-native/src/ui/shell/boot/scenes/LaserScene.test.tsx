@@ -64,6 +64,40 @@ test("a panel's path traces in (start=0, end<1) mid-window and holds fully drawn
   expect(midTrace.props.end.value).toBeLessThan(1);
 });
 
+test("renders one per-kind content group per panel, for every panel kind", async () => {
+  await render(<LaserSceneHarness elapsedSec={2} />);
+
+  for (let index = 0; index < LASER_PANELS.length; index++) {
+    const content = await screen.findByTestId(
+      `boot-scene-laser-panel-content-${index}`,
+    );
+    expect(content).toBeTruthy();
+  }
+});
+
+test("renders the draw-head emitter beam and dot pair", async () => {
+  await render(<LaserSceneHarness elapsedSec={2} />);
+  expect(await screen.findByTestId("boot-scene-laser-head")).toBeTruthy();
+  expect(await screen.findByTestId("boot-scene-laser-head-glow")).toBeTruthy();
+  expect(await screen.findByTestId("boot-scene-laser-head-core")).toBeTruthy();
+});
+
+test("the draw head is hidden before any panel starts tracing (elapsedSec = 0)", async () => {
+  await render(<LaserSceneHarness elapsedSec={0} />);
+  const head = await screen.findByTestId("boot-scene-laser-head");
+  expect(head.props.opacity.value).toBe(0);
+});
+
+test("the draw head is visible mid-trace and hidden again once every panel has completed (elapsedSec = 4.2)", async () => {
+  const { rerender } = await render(<LaserSceneHarness elapsedSec={0.2} />);
+  const midHead = await screen.findByTestId("boot-scene-laser-head");
+  expect(midHead.props.opacity.value).toBe(1);
+
+  await rerender(<LaserSceneHarness elapsedSec={4.2} />);
+  const doneHead = await screen.findByTestId("boot-scene-laser-head");
+  expect(doneHead.props.opacity.value).toBe(0);
+});
+
 test("survives elapsedSec sweeping across the whole boot timeline without throwing", async () => {
   const { rerender } = await render(<LaserSceneHarness elapsedSec={0} />);
 

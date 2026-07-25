@@ -15,31 +15,33 @@ import { clamp01 } from "#/ui/shell/boot/scenes/coreGeometry";
  * `useDerivedValue` off `elapsedSec`) — the opposite idiom from `CoreScene`'s
  * imperative `createPicture` recording.
  *
- * DEFERRED (each a distinct visual layer in the web source, left out here
- * rather than half-ported, same discipline as `CoreScene`'s header comment):
- *   - per-kind panel content (header chips, main tiles+sparkline, list rows,
- *     blotter grid, status dots) — `drawPanelContent`'s five branches (Task
- *     6 ports this);
- *   - the laser draw-head (glow dot + emitter beam) — the web tracks the
- *     exact point on the rectangle's perimeter the trace has reached;
- *     Skia's declarative `<Path start/end>` trims the same stroke without
- *     needing that point computed separately, so the head has no direct
- *     declarative counterpart here;
+ * DEFERRED — the one layer still left out, same discipline as `CoreScene`'s
+ * header comment:
  *   - the per-panel border-stroke glow (`ctx.shadowBlur`/`shadowColor` on the
  *     same trace stroke this scene does port) — the outline is drawn, the
  *     neon bloom around it is not (docs/performance.md — no `MaskFilter`
- *     blur on a per-frame stroke).
+ *     blur on a per-frame stroke). The web's draw-head glow (`shadowBlur`
+ *     22/14 on the two head circles) is skipped for the same reason.
  *
- * Task 5 adds the background HUD grid + translucent wash, the post-trace
+ * Task 5 added the background HUD grid + translucent wash, the post-trace
  * flash, and the completion corner ticks — see `drawBootLaser` in
  * `packages/boot-splash/src/bootCanvas.ts`, lines 292-310 (wash + grid),
  * 383-387 (flash) and 389-407 (corner ticks).
+ *
+ * Task 6 completes the port: per-kind panel content (`drawPanelContent`'s
+ * five branches, ported to `laserPanelContent.ts`) and the laser draw-head
+ * (glow dot + emitter beam). The web tracks the exact point on the
+ * rectangle's perimeter the trace has reached to draw the head; Skia's
+ * declarative `<Path start/end>` trims the same stroke without ever
+ * computing that point, so `perimeterPoint` below (walking the same
+ * four-segment perimeter `rectTracePath` traces) fills the gap — `LaserScene`
+ * drives a `<Circle>` pair plus an emitter `<Line>` off it.
  */
 
 /** A single traced-in UI panel: normalised screen-space rectangle
  * (`nx/ny/nw/nh`, 0..1 fractions of width/height) plus the boot-progress
- * window (`t0..t1`) it traces in across, and a content `kind` tag (unused by
- * Task 7's border-only trace, kept for the deferred per-kind content pass). */
+ * window (`t0..t1`) it traces in across, and a content `kind` tag consumed by
+ * `laserPanelContent.ts`'s `panelContentShapes` to pick the right branch. */
 export interface LaserPanel {
   readonly nx: number;
   readonly ny: number;
@@ -237,3 +239,43 @@ export function cornerTickPath(rect: LaserRect, tickLength: number): string {
     })
     .join(" ");
 }
+
+/** A plain screen-space point — the draw-head's position, both at rest (the
+ * emitter) and while tracing (`perimeterPoint`'s return value). */
+export interface LaserPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** The point at `fraction` along the panel rect's perimeter, walked in the
+ * same top → right → bottom → left order `rectTracePath` traces. This is what
+ * `<Path start/end>` trimming hides: the laser draw-head needs the trace's
+ * actual current point, which the trim never exposes. */
+export function perimeterPoint(rect: LaserRect, fraction: number): LaserPoint {
+  "worklet";
+  const segments: ReadonlyArray<readonly [number, number, number, number]> = [
+    [rect.x, rect.y, rect.x + rect.width, rect.y],
+    [rect.x + rect.width, rect.y, rect.x + rect.width, rect.y + rect.height],
+    [rect.x + rect.width, rect.y + rect.height, rect.x, rect.y + rect.height],
+    [rect.x, rect.y + rect.height, rect.x, rect.y],
+  ];
+  const perimeter = (rect.width + rect.height) * 2;
+  let remaining = clamp01(fraction) * perimeter;
+
+  for (const [x0, y0, x1, y1] of segments) {
+    const length = Math.hypot(x1 - x0, y1 - y0);
+
+    if (remaining > length) {
+      remaining -= length;
+      continue;
+    }
+
+    const along = length === 0 ? 0 : remaining / length;
+    return { x: x0 + (x1 - x0) * along, y: y0 + (y1 - y0) * along };
+  }
+
+  return { x: rect.x, y: rect.y };
+}
+
+/** The emitter sits just off the top edge, centred — the web's `emitterY = -24`. */
+export const LASER_EMITTER_Y = -24;
