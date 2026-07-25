@@ -42,6 +42,8 @@ interface MockPaint {
   // Phase 6b-1, Task 1 (CoreScene nucleus glow): the radial-gradient shader
   // setter a paint needs before `drawRect` fills with it.
   setShader: () => void;
+  // Phase 6b-1, Task 8 (DockingScene): the dashed acquiring ring.
+  setPathEffect: () => void;
 }
 
 interface MockCanvas {
@@ -54,6 +56,16 @@ interface MockCanvas {
   // Phase 6b-1, Task 1 (CoreScene backdrop wash): a flat-fill whole-canvas
   // paint call, distinct from `drawRect` in the real API.
   drawPaint: () => void;
+  // Phase 6b-1, Task 8 (DockingScene): this scene is the first to use canvas
+  // transform state (the shaking corridor, the craft body/reticle's local
+  // translate+rotate) and the oval primitive (the corridor's concentric
+  // rings).
+  save: () => void;
+  restore: () => void;
+  translate: () => void;
+  rotate: () => void;
+  scale: () => void;
+  drawOval: () => void;
 }
 
 // Skia has no jest-expo mock. Stub the components used across the rehaul as
@@ -84,6 +96,7 @@ jest.mock("@shopify/react-native-skia", () => {
       setAntiAlias: () => {},
       setAlphaf: () => {},
       setShader: () => {},
+      setPathEffect: () => {},
     };
   }
 
@@ -96,6 +109,12 @@ jest.mock("@shopify/react-native-skia", () => {
       drawText: () => {},
       clear: () => {},
       drawPaint: () => {},
+      save: () => {},
+      restore: () => {},
+      translate: () => {},
+      rotate: () => {},
+      scale: () => {},
+      drawOval: () => {},
     };
   }
 
@@ -136,6 +155,12 @@ jest.mock("@shopify/react-native-skia", () => {
       Shader: {
         MakeRadialGradient: () => {
           return { __mockShader: true };
+        },
+      },
+      // Phase 6b-1, Task 8 (DockingScene): the dashed acquiring ring.
+      PathEffect: {
+        MakeDash: () => {
+          return { __mockPathEffect: true };
         },
       },
       // Phase 6b-1, Task 2 (CoreScene gyro rings): polyline paths built inside
