@@ -62,7 +62,7 @@ A plain local run (no `CI`) reads/writes `react-local/<arch>`; CI reads/writes
 | # | Route | Updates | Selective? | Who commits |
 |---|---|---|---|---|
 | **1** | **CI workflow** — dispatch `update-visual-goldens.yml` | `react/` | ✅ `scenario_pattern` | **CI auto-commits & pushes** to your branch |
-| **2** | **Local Docker** — `pnpm goldens:regen` / `goldens:verify` | `react/` | ❌ full-set only *(today — see gaps)* | **you** (writes to working tree) |
+| **2** | **Local Docker** — `pnpm goldens:regen` / `goldens:verify` | `react/` | ✅ arg or `SCENARIO_PATTERN` | **you** (writes to working tree) |
 | **3** | **Local native** — `pnpm test:ui:visual:<tier>:react:update` | `react-local/<arch>` | ✅ `SCENARIO_PATTERN` env | **you** — no Docker, instant |
 
 Routes **1 and 2 produce the byte-identical `react/` set** — pick 1 to let CI do
@@ -72,7 +72,7 @@ is separate: it keeps *your machine's* fast-feedback set in sync.
 ```mermaid
 flowchart TB
     R1["Route 1 · CI workflow<br/>update-visual-goldens.yml<br/>selective · CI auto-commits"]
-    R2["Route 2 · local Docker<br/>goldens:regen / verify<br/>full-set today · you commit"]
+    R2["Route 2 · local Docker<br/>goldens:regen / verify<br/>selective · you commit"]
     R3["Route 3 · native :update<br/>SCENARIO_PATTERN · instant · no Docker<br/>you commit"]
     RCI["react/ (canonical x86)"]
     RLOC["react-local/&lt;arch&gt;"]
@@ -125,8 +125,8 @@ sequenceDiagram
     participant You
     participant Container as pinned x86 container
     participant Tree as your working tree
-    You->>Container: pnpm goldens:regen (CI=1 · --platform linux/amd64)
-    Container->>Container: render all scenarios (playwright tier)
+    You->>Container: pnpm goldens:regen [pattern] (CI=1 · --platform linux/amd64)
+    Container->>Container: render all scenarios — or only those matching the pattern
     Container-->>Tree: write react/ (byte-identical to CI)
     You->>Tree: review & commit
     Note over You,Tree: goldens:verify asserts react/ instead of writing — a CI-exact local gate
@@ -135,13 +135,24 @@ sequenceDiagram
 ```bash
 pnpm goldens:regen    # rewrite react/ into the working tree — review & commit
 pnpm goldens:verify   # assert the committed react/ set passes (a CI-exact gate)
+
+# narrow to matching scenarios — a positional arg, or the same env var Route 3 uses:
+pnpm goldens:regen aurora
+SCENARIO_PATTERN=aurora pnpm goldens:verify
 ```
 
 Use `goldens:verify` to reproduce CI's visual gate on your own machine **before**
 pushing — it's the only local way to prove `react/` is green without waiting for
 `visual.yml`. Requires the Docker daemon; first run is slower (image pull +
 amd64 install under emulation), later runs reuse the layer + a persistent pnpm
-store. **Full-set only today** (~11 min, one tier) — see [gaps](#known-gaps).
+store.
+
+The pattern is the same test-title regex Route 1 takes, and matters most here:
+this is the slowest of the three routes, so a full-set render (~11 min, one tier)
+for one changed pixel is the worst trade in the matrix. A filtered **regen** is
+safe — the container is seeded with the committed goldens, so scenarios the
+filter skipped round-trip byte-identically and produce no git diff; only matched
+ones are re-rendered. Run it unfiltered when you want the whole set re-proved.
 
 ### Route 3 — local native (fast inner loop)
 
@@ -203,7 +214,7 @@ machine, not from a PR check.
    `react-local/<arch>`. Commit it.
 3. **Refresh the canonical set** — dispatch **Route 1** with a `scenario_pattern`
    covering those scenarios (CI renders + commits `react/`), **or** run **Route 2**
-   `pnpm goldens:regen` locally.
+   `pnpm goldens:regen <pattern>` locally with the same pattern.
 4. **(Optional) prove it** — `pnpm goldens:verify` reproduces CI's exact gate
    before you push.
 
@@ -269,13 +280,15 @@ sequenceDiagram
 
 ## Known gaps
 
-- **Route 2 is not selective yet.** `goldens-in-container.mjs` doesn't forward
-  `SCENARIO_PATTERN` into the container, so `pnpm goldens:regen` always renders
-  the full set (~11 min, one tier) — exactly where selectivity would help most.
-  Tracked in [docs/STATUS.md](../../../../../docs/STATUS.md).
-- **Route 3 selectivity is undocumented, not unbuilt.** The native config
-  already reads `SCENARIO_PATTERN` (shown above); the only possible addition is a
-  friendlier wrapper script. Also tracked in STATUS.md.
+- **None blocking — all three routes are scenario-selective.** Route 1 via the
+  `scenario_pattern` dispatch input, Route 2 via a positional arg or
+  `SCENARIO_PATTERN` (closed 2026-07-25 — it was the last route without it, and
+  the slowest), Route 3 via `SCENARIO_PATTERN` (never unbuilt; only the
+  documentation was missing, and it is shown above now).
+- **Optional nicety, not tracked in STATUS.md:** Route 3's invocation stays
+  verbose (`SCENARIO_PATTERN=… pnpm --filter @rtc/client-react
+  test:ui:visual:playwright:react:update`). A short wrapper script would be
+  friendlier; nothing depends on it.
 
 ## Reference
 
