@@ -138,6 +138,19 @@ jest.mock("@shopify/react-native-skia", () => {
           return { __mockShader: true };
         },
       },
+      // Phase 6b-1, Task 2 (CoreScene gyro rings): polyline paths built inside
+      // the recorder worklet.
+      Path: {
+        Make: () => {
+          return {
+            moveTo: () => {},
+            lineTo: () => {},
+            close: () => {},
+            addRect: () => {},
+            addCircle: () => {},
+          };
+        },
+      },
       Font: () => {
         return {
           // CoreScene builds the banner font as `Skia.Font()` + `setSize(12)`

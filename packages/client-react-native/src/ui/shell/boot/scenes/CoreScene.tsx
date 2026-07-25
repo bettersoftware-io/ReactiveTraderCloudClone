@@ -51,8 +51,21 @@ import {
   pingRingFraction,
   pingRingRadius,
   projectGlobePoint,
+  projectGlobeVector,
   segmentAlpha,
 } from "#/ui/shell/boot/scenes/coreGeometry";
+import {
+  GYRO_RINGS,
+  GYRO_SEGMENT_INDICES,
+  gyroPointVector,
+  gyroRingSpin,
+  gyroSegmentAngles,
+  ringsPhase,
+  SCAN_RING_SEGMENTS,
+  SCAN_RING_STROKE_WIDTH,
+  scanRingAlpha,
+  scanRingLatitude,
+} from "#/ui/shell/boot/scenes/coreRings";
 
 /**
  * `core` boot scene — the "global market mesh": a rotating wireframe globe of
@@ -87,10 +100,15 @@ import {
  *     Visually identical for these alpha-blended strokes/fills, no per-frame
  *     allocation.
  *
+ * Task 2 (phase 6b-1) adds the two ring layers, both projected through the
+ * same globe camera as the mesh (`coreRings.ts`, ported from
+ * `bootCore.ts` lines 322-402):
+ *   - the latitude scan ring, a highlight parallel sweeping south → north;
+ *   - the two counter-rotating gyroscopic segmented rings that wrap the
+ *     globe, revealed only once boot progress passes 18%.
+ *
  * DEFERRED to a later phase 6b task (each a distinct visual layer in the web
  * source, left out here rather than half-ported):
- *   - latitude scan ring (a second sweeping ring, south → north);
- *   - the two counter-rotating gyroscopic segmented rings;
  *   - the rotating spotlight callout labelling one front-facing hub;
  *   - order-flow arcs (buy/sell great-circle arcs between hubs);
  *   - screen-space calibration ticks and the corner telemetry readout (CORE
@@ -159,6 +177,28 @@ export function CoreScene({
           reveal,
           flicker,
           accent,
+        );
+        drawScanRing(
+          canvas,
+          params,
+          centerX,
+          centerY,
+          radius,
+          elapsed,
+          flicker,
+          accentAlt,
+        );
+        drawGyroRings(
+          canvas,
+          params,
+          centerX,
+          centerY,
+          radius,
+          elapsed,
+          progress,
+          flicker,
+          accent,
+          accentAlt,
         );
         drawHubNodes(
           canvas,
@@ -317,6 +357,117 @@ function drawParallels(
       }
 
       prev = point;
+    }
+  }
+}
+
+/** The highlight parallel sweeping south → north across the globe — a second,
+ * brighter ring layered over the static mesh. */
+function drawScanRing(
+  canvas: SkCanvas,
+  params: Projection3dParams,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  elapsed: number,
+  flicker: number,
+  accentAlt: string,
+): void {
+  "worklet";
+  const lat = scanRingLatitude(elapsed);
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(SCAN_RING_STROKE_WIDTH);
+  paint.setAntiAlias(true);
+  let prev: GlobeScreenPoint | null = null;
+
+  for (let i = 0; i <= SCAN_RING_SEGMENTS; i++) {
+    const point = projectGlobePoint(
+      lat,
+      (i / SCAN_RING_SEGMENTS) * Math.PI * 2,
+      params,
+      centerX,
+      centerY,
+      radius,
+    );
+
+    if (prev !== null) {
+      paint.setColor(
+        Skia.Color(hexToRgba(accentAlt, scanRingAlpha(point.z) * flicker)),
+      );
+      canvas.drawLine(prev.x, prev.y, point.x, point.y, paint);
+    }
+
+    prev = point;
+  }
+}
+
+/** The two counter-rotating gyroscopic segmented rings that wrap the globe,
+ * drawn as machinery — 6 of 8 segments per ring, each a short polyline. */
+function drawGyroRings(
+  canvas: SkCanvas,
+  params: Projection3dParams,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  elapsed: number,
+  progress: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  const phase = ringsPhase(progress);
+
+  if (phase <= 0) {
+    return;
+  }
+
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setAntiAlias(true);
+
+  for (const spec of GYRO_RINGS) {
+    const spin = gyroRingSpin(elapsed, spec);
+    paint.setStrokeWidth(spec.strokeWidth);
+    paint.setColor(
+      Skia.Color(
+        hexToRgba(
+          spec.useAltColor ? accentAlt : accent,
+          spec.alpha * phase * flicker,
+        ),
+      ),
+    );
+
+    for (const segmentIndex of GYRO_SEGMENT_INDICES) {
+      const angles = gyroSegmentAngles(segmentIndex);
+
+      if (angles.length === 0) {
+        continue;
+      }
+
+      const path = Skia.Path.Make();
+
+      for (let i = 0; i < angles.length; i++) {
+        const [vx, vy, vz] = gyroPointVector(angles[i], spec, spin);
+        const point = projectGlobeVector(
+          vx,
+          vy,
+          vz,
+          params,
+          centerX,
+          centerY,
+          radius,
+        );
+
+        if (i === 0) {
+          path.moveTo(point.x, point.y);
+        } else {
+          path.lineTo(point.x, point.y);
+        }
+      }
+
+      canvas.drawPath(path, paint);
     }
   }
 }

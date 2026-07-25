@@ -132,9 +132,32 @@ export interface GlobeScreenPoint {
   readonly perspective: number;
 }
 
-/** `project3d` returns unit-space coordinates; this applies the globe's
- * centre, radius and Y-up sign (`centerY - y * radius`) on top, so callers
- * work in screen pixels. */
+/** Projects an arbitrary unit-space vector through the globe camera. The
+ * gyroscopic rings (`coreRings.ts`) sample points that are not on the unit
+ * sphere at all — they are tilted, spun ring points at radius 1.5/1.66 — so
+ * they cannot go through `projectGlobePoint`'s lat/lon door. `project3d`
+ * returns unit-space coordinates; this applies the globe's centre, radius
+ * and Y-up sign (`centerY - y * radius`) on top, so callers work in screen
+ * pixels. */
+export function projectGlobeVector(
+  x: number,
+  y: number,
+  z: number,
+  params: Projection3dParams,
+  centerX: number,
+  centerY: number,
+  radius: number,
+): GlobeScreenPoint {
+  "worklet";
+  const projected = project3d(x, y, z, params);
+  return {
+    x: centerX + projected.x * radius,
+    y: centerY - projected.y * radius,
+    z: projected.z,
+    perspective: projected.perspective,
+  };
+}
+
 export function projectGlobePoint(
   lat: number,
   lon: number,
@@ -145,13 +168,7 @@ export function projectGlobePoint(
 ): GlobeScreenPoint {
   "worklet";
   const [x, y, z] = hubVectorFromLatLon(lat, lon);
-  const projected = project3d(x, y, z, params);
-  return {
-    x: centerX + projected.x * radius,
-    y: centerY - projected.y * radius,
-    z: projected.z,
-    perspective: projected.perspective,
-  };
+  return projectGlobeVector(x, y, z, params, centerX, centerY, radius);
 }
 
 /** Seconds-since-mount → 0..1 boot fraction, mirroring the web's

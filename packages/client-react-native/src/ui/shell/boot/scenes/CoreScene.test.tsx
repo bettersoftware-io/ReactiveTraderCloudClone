@@ -56,6 +56,20 @@ test("survives gyro drift sweeping to its extremes without throwing", async () =
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
 
+test("survives elapsedSec sweeping across the ring-reveal thresholds without throwing", async () => {
+  // ringsPhase ramps from 18% to 43% of BOOT_DURATION_MS (4200ms): 0.756s and
+  // 1.806s. 0.7/0.8 straddle the start of the ramp, 1.9 sits just past it.
+  const { rerender } = await render(
+    <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
+  );
+
+  for (const t of [0.7, 0.8, 1.9]) {
+    await rerender(<CoreSceneHarness elapsedSec={t} mx={0} my={0} />);
+  }
+
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+});
+
 test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, without throwing", async () => {
   const { rerender } = await render(
     <CoreSceneHarness elapsedSec={0} mx={0} my={0} />,
