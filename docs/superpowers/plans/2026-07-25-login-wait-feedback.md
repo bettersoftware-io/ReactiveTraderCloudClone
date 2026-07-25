@@ -1339,14 +1339,12 @@ git commit -m "feat(client-solid): port HandshakeConsole and ReactorWait"
 Both clients and the shared specs land together — a contract spec added before the Solid wiring exists would red `client-solid`.
 
 **Files:**
+- Create: `packages/client-react/src/ui/shell/auth/wait/authWait.module.css`
+- Create: `packages/client-solid/src/ui/shell/auth/wait/authWait.module.css`
 - Modify: `packages/client-react/src/ui/shell/auth/LoginScreen.tsx`
-- Modify: `packages/client-react/src/ui/shell/auth/LoginScreen.module.css`
 - Modify: `packages/client-react/src/ui/shell/lock/LockScreen.tsx`
-- Modify: `packages/client-react/src/ui/shell/lock/LockScreen.module.css`
 - Modify: `packages/client-solid/src/ui/shell/auth/LoginScreen.tsx`
-- Modify: `packages/client-solid/src/ui/shell/auth/LoginScreen.module.css`
 - Modify: `packages/client-solid/src/ui/shell/lock/LockScreen.tsx`
-- Modify: `packages/client-solid/src/ui/shell/lock/LockScreen.module.css`
 - Create: `packages/ui-contract/src/shared/pages/shell/auth/AuthWaitPage.ts`
 - Modify: `packages/ui-contract/src/shared/pages/shell/auth/LoginScreenPage.ts`
 - Modify: `packages/ui-contract/src/shared/pages/shell/lock/LockScreenPage.ts`
@@ -1439,6 +1437,8 @@ Add the imports and a switch on the variant, replacing the `<button>` block:
 ```tsx
 import { HandshakeConsole } from "./wait/HandshakeConsole";
 import { ReactorWait } from "./wait/ReactorWait";
+
+import waitStyles from "./wait/authWait.module.css";
 ```
 
 Inside the component, after `const authenticating = …`:
@@ -1454,7 +1454,9 @@ Then, replacing the existing button and adding the treatment beneath it:
             type="submit"
             data-testid="login-submit"
             className={
-              authenticating ? `${styles.submit} ${styles.busy}` : styles.submit
+              authenticating
+                ? `${styles.submit} ${waitStyles.busy}`
+                : styles.submit
             }
             disabled={authenticating}
           >
@@ -1469,15 +1471,24 @@ Then, replacing the existing button and adding the treatment beneath it:
           ) : null}
 ```
 
-Wrap the two `<label>` fields in a `<div>` that carries `styles.recede` when `authenticating`, so the form dims:
+Wrap the two `<label>` fields in a `<div>` that carries `waitStyles.recede` when `authenticating`, so the form dims:
 
 ```tsx
-          <div className={authenticating ? styles.recede : undefined}>
+          <div className={authenticating ? waitStyles.recede : undefined}>
             {/* the two existing <label className={styles.field}> blocks */}
           </div>
 ```
 
-- [ ] **Step 5: Extend the React `LoginScreen.module.css`**
+- [ ] **Step 5: Create the shared `authWait.module.css`**
+
+Create `packages/client-react/src/ui/shell/auth/wait/authWait.module.css`. Both `LoginScreen` and `LockScreen` import it **alongside** their own stylesheet — these rules are shared between the two screens, so they live in one file rather than being copied into each:
+
+```tsx
+import waitStyles from "./wait/authWait.module.css";     // from LoginScreen
+import waitStyles from "../auth/wait/authWait.module.css"; // from LockScreen
+```
+
+Reference the shared classes as `waitStyles.recede` / `waitStyles.busy`, and each screen's own classes as `styles.submit` etc.
 
 ```css
 /* Form recedes while a request is in flight, so the wait treatment leads.
@@ -1550,11 +1561,20 @@ import { ReactorWait } from "../auth/wait/ReactorWait";
   const { unlocking } = state;
 ```
 
-Give the submit button the `styles.busy` class and the label `unlocking ? "AUTHENTICATING" : "AUTHENTICATE"`, add `disabled={unlocking}`, wrap the password field in the `styles.recede` div, and render the two treatments on `unlocking && state.waitVariant === …`. Copy the `.recede`, `.busy`, `::after` and `@keyframes sweep` rules from Step 5 into `LockScreen.module.css`.
+Import the shared stylesheet with `import waitStyles from "../auth/wait/authWait.module.css";`. Give the submit button the `waitStyles.busy` class and the label `unlocking ? "AUTHENTICATING" : "AUTHENTICATE"`, add `disabled={unlocking}`, wrap the password field in a `waitStyles.recede` div, and render the two treatments on `unlocking && state.waitVariant === …`.
+
+`LockScreen.module.css` needs **no new rules** — the shared classes come from `authWait.module.css`.
 
 - [ ] **Step 7: Wire both Solid screens**
 
-Apply Steps 4–6 to `packages/client-solid/src/ui/shell/auth/LoginScreen.tsx` and `packages/client-solid/src/ui/shell/lock/LockScreen.tsx`, and copy the CSS additions into their `.module.css` files verbatim.
+Copy the shared stylesheet across verbatim, then apply Steps 4 and 6 to the Solid screens:
+
+```bash
+cp packages/client-react/src/ui/shell/auth/wait/authWait.module.css \
+   packages/client-solid/src/ui/shell/auth/wait/authWait.module.css
+```
+
+Then wire `packages/client-solid/src/ui/shell/auth/LoginScreen.tsx` and `packages/client-solid/src/ui/shell/lock/LockScreen.tsx` the same way. No Solid `.module.css` file gains new rules.
 
 Solid differences: `class` not `className`; state is a signal, so read it as `state().status`, `state().unlocking`, `state().waitVariant`; prefer `<Show when={…}>` over the `? :` ternaries for the conditional treatments. The existing Solid `LoginScreen.tsx:81` already reads `state().status === "authenticating"` — follow that idiom.
 
