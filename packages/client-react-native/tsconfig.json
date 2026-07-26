@@ -8,6 +8,14 @@
       "#/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  // Do NOT re-add ".expo/types/**/*.ts" or "expo-env.d.ts" here, and do not
+  // restore the deleted expo-env.d.ts. Both are typed-routes artifacts, and we
+  // do not set `experiments.typedRoutes`. @expo/cli's type-generation step
+  // (start/server/type-generation/) branches on that flag: with it off, every
+  // `expo run:ios` / `expo start` calls forceRemovalTSConfig() to strip those
+  // two entries and removeExpoEnvDTS() to delete the file. That write is
+  // guarded by `if (updates.size)`, so once they are absent Expo stops
+  // touching this file entirely — reverting its edit is what made it recur.
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }
