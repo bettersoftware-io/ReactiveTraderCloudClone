@@ -127,11 +127,11 @@ export class AuthPresenter {
     });
 
     this.auth.login(username, password).subscribe((outcome) => {
-      this.handleLoginOutcome(username, outcome);
+      this.commitLoginOutcome(username, outcome);
     });
   }
 
-  private handleLoginOutcome(username: string, outcome: AuthOutcome): void {
+  private commitLoginOutcome(username: string, outcome: AuthOutcome): void {
     if (outcome.ok) {
       this.currentUsername = username;
       this.writeSession(username, outcome.token, outcome.user, outcome.exp);
@@ -183,11 +183,11 @@ export class AuthPresenter {
     });
 
     this.auth.login(username, password).subscribe((outcome) => {
-      this.handleUnlockOutcome(username, outcome);
+      this.commitUnlockOutcome(username, outcome);
     });
   }
 
-  private handleUnlockOutcome(username: string, outcome: AuthOutcome): void {
+  private commitUnlockOutcome(username: string, outcome: AuthOutcome): void {
     const current = this.subject.value;
 
     if (outcome.ok) {

@@ -19,7 +19,7 @@ const BOOT_MESSAGES: string[] = [
 ];
 
 export interface BootOptions {
-  onDone(): void;
+  onDone: () => void;
   durationMs?: number;
 }
 

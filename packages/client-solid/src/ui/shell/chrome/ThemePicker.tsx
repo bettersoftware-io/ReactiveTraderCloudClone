@@ -36,24 +36,24 @@ export function ThemePicker(): JSX.Element {
       return;
     }
 
-    function handlePointerDown(event: MouseEvent): void {
+    function closePickerOnOutsideClick(event: MouseEvent): void {
       if (!anchorEl.contains(event.target as Node)) {
         setOpen(false);
       }
     }
 
-    function handleKeyDown(event: KeyboardEvent): void {
+    function closePickerOnEscape(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         setOpen(false);
       }
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", closePickerOnOutsideClick);
+    document.addEventListener("keydown", closePickerOnEscape);
 
     onCleanup(() => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", closePickerOnOutsideClick);
+      document.removeEventListener("keydown", closePickerOnEscape);
     });
   });
 

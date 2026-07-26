@@ -17,12 +17,12 @@ describe("useFxBlotter", () => {
     expect(result.current.rows[0]?.id).toBe(1042);
 
     act(() => {
-      result.current.onSort("tradeId");
+      result.current.toggleSortColumn("tradeId");
     });
     expect(result.current.rows[0]?.id).toBe(1038);
 
     act(() => {
-      result.current.onQuery("gbpusd");
+      result.current.setBlotterQuery("gbpusd");
     });
     expect(result.current.rows).toHaveLength(1);
     expect(result.current.rows[0]?.id).toBe(1040);

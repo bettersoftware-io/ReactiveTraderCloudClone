@@ -33,7 +33,7 @@ function jsonResult(
  * real HTTP server is needed to test it — `index.ts` wires `node:http`
  * request/response objects to this function.
  */
-export function handleLogin(
+export function authenticateLoginRequest(
   bodyText: string,
   ip: string,
   deps: LoginHandlerDeps,

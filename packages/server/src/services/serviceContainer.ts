@@ -48,7 +48,7 @@ export function createServices(): ServiceContainer {
   const positions = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
     listener: (fill: FillEvent): void => {
-      positions.onFill(fill);
+      positions.bookFill(fill);
     },
     markFor: (symbol: string): number => {
       return marketData.currentPrice(symbol);

@@ -74,7 +74,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  function handleAnimationEnd(
+  function settleCardTransition(
     event: ReactAnimationEvent<HTMLDivElement>,
   ): void {
     // Ignore animations bubbling up from descendants (none currently exist,
@@ -99,7 +99,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       return;
     }
 
-    function handleAnimationCancel(event: AnimationEvent): void {
+    function settleCardTransitionOnCancel(event: AnimationEvent): void {
       if (event.target !== event.currentTarget) {
         return;
       }
@@ -109,10 +109,10 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       }
     }
 
-    el.addEventListener("animationcancel", handleAnimationCancel);
+    el.addEventListener("animationcancel", settleCardTransitionOnCancel);
 
     return () => {
-      el.removeEventListener("animationcancel", handleAnimationCancel);
+      el.removeEventListener("animationcancel", settleCardTransitionOnCancel);
     };
   }, [anim, onAnimationEnd]);
 
@@ -124,7 +124,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       data-anim={anim}
       data-parity={vm.rfqId % 2 ? "b" : "a"}
       data-testid={`rfq-card-${vm.rfqId}`}
-      onAnimationEnd={handleAnimationEnd}
+      onAnimationEnd={settleCardTransition}
       // eslint-disable-next-line no-restricted-syntax -- runtime entrance-stagger delay via CSS custom property; static CSS can't express it
       style={{ "--card-delay": `${delayMs}ms` } as CSSProperties}
     >

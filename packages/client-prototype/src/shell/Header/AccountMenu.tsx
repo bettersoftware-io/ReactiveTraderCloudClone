@@ -6,9 +6,9 @@ import type { MenusApi } from "#/shell/Header/useMenus";
 
 export interface AccountMenuProps {
   menus: MenusApi;
-  onOpenPrefs(): void;
-  onReboot(): void;
-  onLogout(): void;
+  onOpenPrefs: () => void;
+  onReboot: () => void;
+  onLogout: () => void;
 }
 
 export function AccountMenu(props: AccountMenuProps): ReactElement {

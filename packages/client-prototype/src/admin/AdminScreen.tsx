@@ -12,8 +12,6 @@ import { Panel } from "#/layout/Panel";
 
 const OBS_PANEL = "observability";
 
-function noToggle(): void {}
-
 // PROTO L682-720: the Admin / Observability screen — a single full-width panel
 // (no dock/splits, not maximizable) over three rows: KPIs, charts, bottom.
 export function AdminScreen(): ReactElement {
@@ -26,8 +24,6 @@ export function AdminScreen(): ReactElement {
     <section className={styles.screen} data-testid="admin-screen">
       <Panel
         id={OBS_PANEL}
-        maxPanel={null}
-        onToggleMax={noToggle}
         maximizable={false}
         head={
           <div className={styles.head}>

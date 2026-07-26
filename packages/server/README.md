@@ -17,7 +17,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the eleven domain simulators/ports once at module load and packages them, plus the server-only `ThroughputService`, as the twelve-field `ServiceContainer` (aliased `Ctx` in `effects/context.ts`). |
 | `src/socket/` | The transport seam: `toSocket` adapts a raw `ws` `WebSocket` into `@rtc/ws-effects`'s domain-blind `Socket` shape (`messages$`/`closed$`/`send`), `protocol.ts` holds the `WsMessage` envelope, and `FakeWs.testHelpers.ts` is the in-memory test double. Named `socket`, not `ws`, on purpose -- see the note below. |
 | `src/auth/` | `AuthService` -- scrypt-hashes + `timingSafeEqual`-checks credentials from the `AUTH_USERS` roster and issues/verifies signed session tokens (`token.ts`); `loadUsers.ts` parses the `"user:pass,user2:pass2"` `AUTH_USERS` format; `rateLimit.ts` is the per-IP rate limiter `/login` runs through. |
-| `src/http/` | `loginHandler.ts` -- `handleLogin` (the pure `/login` request handler: rate-limit → parse → `AuthService.login`) and `authorizeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`), both run before `src/index.ts` ever creates a socket. |
+| `src/http/` | `loginHandler.ts` -- `authenticateLoginRequest` (the pure `/login` request handler: rate-limit → parse → `AuthService.login`) and `authorizeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`), both run before `src/index.ts` ever creates a socket. |
 | `src/index.ts` | The composition root: HTTP server (`/health`, `/login`) + `WebSocketServer` (gated by `authorizeUpgrade`) + `combineEffects(...allEffects)` + `createWsListener` + `httpServer.listen`. |
 
 ### `src/effects/` inventory
@@ -38,7 +38,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 ## Where to start reading
 
 1. `src/index.ts` -- the composition root: build services, combine effects into one listener, build `AuthService` from `AUTH_SECRET`/`AUTH_USERS`/`AUTH_TTL_MS`, serve `/health` + `/login`, gate WS upgrades on `authorizeUpgrade`, wire each connection through `toSocket`, start listening.
-2. `src/http/loginHandler.ts` -- `handleLogin` (the `/login` request/response shape) and `authorizeUpgrade` (the WS-upgrade gate); both are pure functions, easy to test without a real HTTP server.
+2. `src/http/loginHandler.ts` -- `authenticateLoginRequest` (the `/login` request/response shape) and `authorizeUpgrade` (the WS-upgrade gate); both are pure functions, easy to test without a real HTTP server.
 3. `src/auth/AuthService.ts` -- credential verification (scrypt + `timingSafeEqual`) and session-token issuance/verification (delegates signing to `token.ts`).
 4. `src/effects/index.ts` -- the `allEffects` barrel; shows the four domain effect arrays before opening any single one.
 5. `src/socket/toSocket.ts` -- the adapter that turns a `ws` `WebSocket` into the `Socket` shape `@rtc/ws-effects` expects; the seam between this package's one framework dependency (`ws`) and the domain-blind effects framework.
@@ -90,15 +90,15 @@ const wss = new WebSocketServer({
   verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
     const decision = describeUpgrade(info.req.url, auth);
     if (!decision.ok && decision.reason) {
-      connectionLog.onRejectedUpgrade(decision.reason);
+      connectionLog.recordRejectedUpgrade(decision.reason);
     }
     return decision.ok;
   },
 });
 
 wss.on("connection", (ws) => {
-  connectionLog.onConnect();
-  ws.on("close", () => connectionLog.onDisconnect());
+  connectionLog.recordConnect();
+  ws.on("close", () => connectionLog.recordDisconnect());
   listen(toSocket(ws));
 });
 

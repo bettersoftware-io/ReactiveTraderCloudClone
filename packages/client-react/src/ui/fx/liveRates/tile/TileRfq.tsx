@@ -20,7 +20,7 @@ export function TileRfq({
 }: TileRfqProps): ReactElement | null {
   const { state } = rfqState;
 
-  function handleAccept(direction: Direction): void {
+  function executeAcceptedQuote(direction: Direction): void {
     // Capture the quote BEFORE accepting: accept() resets the machine to init
     // and no longer returns the quote synchronously.
     const quote = state.quote;
@@ -68,7 +68,7 @@ export function TileRfq({
           <button
             type="button"
             onClick={() => {
-              return handleAccept(Direction.Sell);
+              return executeAcceptedQuote(Direction.Sell);
             }}
             className={styles.sellQuoteButton}
           >
@@ -77,7 +77,7 @@ export function TileRfq({
           <button
             type="button"
             onClick={() => {
-              return handleAccept(Direction.Buy);
+              return executeAcceptedQuote(Direction.Buy);
             }}
             className={styles.buyQuoteButton}
           >

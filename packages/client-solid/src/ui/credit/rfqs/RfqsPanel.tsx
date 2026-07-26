@@ -284,7 +284,7 @@ export function RfqsPanel(): JSX.Element {
     { freeze: isFreeze },
   );
 
-  function handleRemove(rfqId: number): void {
+  function removeRfq(rfqId: number): void {
     if (prefersReducedMotion()) {
       setDismissed((prev) => {
         return new Set(prev).add(rfqId);
@@ -301,7 +301,7 @@ export function RfqsPanel(): JSX.Element {
     });
   }
 
-  function handleCardAnimationEnd(rfqId: number, kind: "enter" | "exit"): void {
+  function settleRfqCardAnimation(rfqId: number, kind: "enter" | "exit"): void {
     if (kind === "enter") {
       setEntering((prev) => {
         if (!prev.has(rfqId)) {
@@ -379,8 +379,8 @@ export function RfqsPanel(): JSX.Element {
                               entering().has(rfqId),
                             )}
                             delayMs={entering().get(rfqId) ?? 0}
-                            onRemove={handleRemove}
-                            onAnimationEnd={handleCardAnimationEnd}
+                            onRemove={removeRfq}
+                            onAnimationEnd={settleRfqCardAnimation}
                           />
                         );
                       }}
@@ -447,22 +447,6 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
     return rfqCardVm(props.rfq, quotes(), props.instruments, props.dealers);
   });
 
-  function handleAccept(quoteId: number): void {
-    void acceptQuote(quoteId);
-  }
-
-  function handleCancel(): void {
-    void cancelRfq(props.rfq.id);
-  }
-
-  function handleRemove(): void {
-    props.onRemove(props.rfq.id);
-  }
-
-  function handleAnimationEnd(kind: "enter" | "exit"): void {
-    props.onAnimationEnd(props.rfq.id, kind);
-  }
-
   return (
     <RfqCard
       vm={vm()}
@@ -470,10 +454,18 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
       expirySecs={props.rfq.expirySecs}
       anim={props.anim}
       delayMs={props.delayMs}
-      onAccept={handleAccept}
-      onCancel={handleCancel}
-      onRemove={handleRemove}
-      onAnimationEnd={handleAnimationEnd}
+      onAccept={(quoteId: number) => {
+        void acceptQuote(quoteId);
+      }}
+      onCancel={() => {
+        void cancelRfq(props.rfq.id);
+      }}
+      onRemove={() => {
+        props.onRemove(props.rfq.id);
+      }}
+      onAnimationEnd={(kind: "enter" | "exit") => {
+        props.onAnimationEnd(props.rfq.id, kind);
+      }}
     />
   );
 }

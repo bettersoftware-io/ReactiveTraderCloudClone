@@ -265,7 +265,7 @@ describe("Tile", () => {
     });
     tile.setNotional("20m");
     await tile.clickInitiateRfq();
-    // Accept the buy side → handleExecute runs with the synthetic quote price.
+    // Accept the buy side → executeTrade runs with the synthetic quote price.
     await tile.clickRfqButton("Buy 1.20050");
     const cmds = tile.executedTrades();
     expect(cmds).toHaveLength(1);
@@ -292,7 +292,7 @@ describe("Tile", () => {
     expect(tile.isStale()).toBe(false);
   });
 
-  // Tile.tsx's handleExecute guard (`if (!p || hasError || stale) return;`)
+  // Tile.tsx's executeTrade guard (`if (!p || hasError || stale) return;`)
   // gates every execution path, not just the market price boxes — TileRfq's
   // accept buttons carry no `disabled` attribute of their own, so this proves
   // the guard (not the DOM) is what blocks execution once the tile goes stale
@@ -324,7 +324,7 @@ describe("Tile", () => {
 
     await tile.clickRfqButton("Buy 1.09250");
     // TileRfq's accept() still fires (resets the RFQ machine), but Tile's
-    // handleExecute guard blocks the execute() call while stale.
+    // executeTrade's own guard blocks the execute() call while stale.
     expect(tile.executedTrades()).toHaveLength(0);
   });
 

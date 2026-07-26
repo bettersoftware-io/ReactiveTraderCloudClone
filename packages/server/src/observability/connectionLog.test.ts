@@ -9,9 +9,9 @@ describe("createConnectionLog", () => {
       return lines.push(l);
     }, fixedClock());
 
-    log.onConnect();
-    log.onConnect();
-    log.onDisconnect();
+    log.recordConnect();
+    log.recordConnect();
+    log.recordDisconnect();
 
     expect(lines).toHaveLength(3);
     expect(lines[0]).toContain("connect");
@@ -27,7 +27,7 @@ describe("createConnectionLog", () => {
       return lines.push(l);
     }, fixedClock());
 
-    log.onDisconnect();
+    log.recordDisconnect();
 
     expect(lines[0]).toContain("active=0 total=0");
   });
@@ -38,8 +38,8 @@ describe("createConnectionLog", () => {
       return lines.push(l);
     }, fixedClock());
 
-    log.onRejectedUpgrade("no-token");
-    log.onRejectedUpgrade("invalid-token");
+    log.recordRejectedUpgrade("no-token");
+    log.recordRejectedUpgrade("invalid-token");
 
     expect(lines[0]).toContain("upgrade-reject reason=no-token");
     expect(lines[1]).toContain("upgrade-reject reason=invalid-token");
@@ -54,7 +54,7 @@ describe("createConnectionLog", () => {
       return lines.push(l);
     }, fixedClock());
 
-    log.onConnect();
+    log.recordConnect();
 
     expect(lines[0]).toContain("2026-07-25T00:00:00.000Z");
   });
@@ -69,7 +69,7 @@ describe("createConnectionLog", () => {
       return lines.push(l);
     });
 
-    log.onConnect();
+    log.recordConnect();
 
     const stamp = lines[0]?.match(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/)?.[0];
 

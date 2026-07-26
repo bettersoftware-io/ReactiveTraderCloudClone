@@ -6,17 +6,13 @@ import type { WatchRowVm } from "#/equities/watchlistVm";
 
 export interface WatchlistRowProps {
   row: WatchRowVm;
-  onSelect(sym: EqSym): void;
+  onSelect: (sym: EqSym) => void;
 }
 
 // PROTO L672: one watchlist row — symbol + name on the left, last + %-change
 // on the right; selected/flash/direction are all `data-*` hooks.
 export function WatchlistRow(props: WatchlistRowProps): ReactElement {
   const { row, onSelect } = props;
-
-  function handleClick(): void {
-    onSelect(row.sym);
-  }
 
   return (
     <button
@@ -26,7 +22,9 @@ export function WatchlistRow(props: WatchlistRowProps): ReactElement {
       data-selected={String(row.selected)}
       data-flash={String(row.flashOn)}
       data-up={String(row.up)}
-      onClick={handleClick}
+      onClick={() => {
+        onSelect(row.sym);
+      }}
     >
       <span className={styles.left}>
         <span className={styles.sym}>{row.sym}</span>

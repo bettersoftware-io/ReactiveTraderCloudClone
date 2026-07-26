@@ -36,10 +36,6 @@ export function WirePanel({
     return needle === "" || row.event.msgType.toLowerCase().includes(needle);
   });
 
-  function handleFilterChange(e: ChangeEvent<HTMLInputElement>): void {
-    setFilterText(e.target.value);
-  }
-
   return (
     <div className={styles.panel}>
       <HealthHeader health={healthOf(log, wireRows)} />
@@ -49,7 +45,9 @@ export function WirePanel({
           className={styles.filterInput}
           placeholder="Filter by msgType…"
           value={filterText}
-          onChange={handleFilterChange}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            setFilterText(e.target.value);
+          }}
         />
       </div>
       <CountStrip

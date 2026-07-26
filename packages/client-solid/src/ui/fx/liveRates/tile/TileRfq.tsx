@@ -14,7 +14,7 @@ import { RfqCountdown } from "./RfqCountdown";
 import styles from "./TileRfq.module.css";
 
 export function TileRfq(props: TileRfqProps): JSX.Element {
-  function handleAccept(direction: Direction): void {
+  function executeAcceptedQuote(direction: Direction): void {
     // Capture the quote BEFORE accepting: accept() resets the machine to init
     // and no longer returns the quote synchronously.
     const quote = props.rfqState.state().quote;
@@ -66,7 +66,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
             <button
               type="button"
               onClick={() => {
-                return handleAccept(Direction.Sell);
+                return executeAcceptedQuote(Direction.Sell);
               }}
               class={styles.sellQuoteButton}
             >
@@ -79,7 +79,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
             <button
               type="button"
               onClick={() => {
-                return handleAccept(Direction.Buy);
+                return executeAcceptedQuote(Direction.Buy);
               }}
               class={styles.buyQuoteButton}
             >

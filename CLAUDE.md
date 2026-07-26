@@ -213,3 +213,18 @@ function in `@rtc/motion-core` + a thin framework shell. The rule of thumb:
 RxJS machines are for autonomous async folds decoupled from the view; per-frame
 DOM-edge-driven computation is a pure function + injected signal, shared via
 `@rtc/motion-core`.
+
+## Handler Naming
+
+A function's own name must state its **effect** — what it does, to what — never
+the occasion that triggers it. `rtc/name-functions-by-effect` enforces this on
+every `.ts`/`.tsx`: `handleClick`, `onMessage`, `processClick` and
+`frameCallback` (when the binding holds a function) all fail CI. **Slots are exempt and correct as `onX`** — a
+function-typed prop declared in property syntax (`onExecute: (d: Direction) =>
+void`), or a method whose sole parameter is the callback (`onTrade(listener:
+TradeListener)`) — because their declarer must not know what gets attached. So
+`<Car onYellowLight={prepare} />` is right and `<Car
+onYellowLight={handleYellowLight} />` is not. A function-valued member in
+*method* syntax is treated as a command and is flagged, so declare prop slots in
+property syntax. Design:
+`docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md`.

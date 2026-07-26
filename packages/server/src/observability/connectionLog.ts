@@ -11,9 +11,9 @@ import type { UpgradeRejection } from "../http/loginHandler.js";
  * is unit-testable and the clock is deterministic in tests.
  */
 export interface ConnectionLog {
-  onConnect(): void;
-  onDisconnect(): void;
-  onRejectedUpgrade(reason: UpgradeRejection): void;
+  recordConnect(): void;
+  recordDisconnect(): void;
+  recordRejectedUpgrade(reason: UpgradeRejection): void;
 }
 
 export function createConnectionLog(
@@ -30,17 +30,17 @@ export function createConnectionLog(
   }
 
   return {
-    onConnect(): void {
+    recordConnect(): void {
       active += 1;
       total += 1;
       out(`[ws] ${stamp()} connect       active=${active} total=${total}`);
     },
-    onDisconnect(): void {
+    recordDisconnect(): void {
       // Guard against a stray close after active hits zero — never go negative.
       active = Math.max(0, active - 1);
       out(`[ws] ${stamp()} disconnect    active=${active} total=${total}`);
     },
-    onRejectedUpgrade(reason: UpgradeRejection): void {
+    recordRejectedUpgrade(reason: UpgradeRejection): void {
       out(`[ws] ${stamp()} upgrade-reject reason=${reason} active=${active}`);
     },
   };

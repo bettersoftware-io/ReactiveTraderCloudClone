@@ -41,7 +41,7 @@ export function SetFilter<TRow>({
     });
   }
 
-  function handleApply(): void {
+  function applySelectedValues(): void {
     if (selected.size === allValues.length) {
       onApply(null); // all selected = no filter
     } else {
@@ -69,7 +69,7 @@ export function SetFilter<TRow>({
       <button
         type="button"
         data-testid="set-filter-apply"
-        onClick={handleApply}
+        onClick={applySelectedValues}
         className={styles.applyBtn}
       >
         Apply

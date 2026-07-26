@@ -75,14 +75,14 @@ describe("EqBlotterPanelControls", () => {
   test("shows the live count and calls onView when a tab is clicked", () => {
     let view: EqBlotView = "orders";
 
-    function handleView(next: EqBlotView): void {
+    function setView(next: EqBlotView): void {
       view = next;
     }
 
     const { getByText, rerender } = render(
       <EqBlotterPanelControls
         view={view}
-        onView={handleView}
+        onView={setView}
         ordersCount={3}
         positionsCount={2}
       />,
@@ -95,7 +95,7 @@ describe("EqBlotterPanelControls", () => {
     rerender(
       <EqBlotterPanelControls
         view={view}
-        onView={handleView}
+        onView={setView}
         ordersCount={3}
         positionsCount={2}
       />,

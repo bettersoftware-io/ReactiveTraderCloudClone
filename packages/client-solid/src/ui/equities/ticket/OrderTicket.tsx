@@ -319,7 +319,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     props.setQty(Math.max(0, f.qty + delta));
   }
 
-  function handleQtyChange(e: InputChangeEvent): void {
+  function setOrderQty(e: InputChangeEvent): void {
     const n = Number(e.currentTarget.value);
 
     if (Number.isFinite(n)) {
@@ -327,7 +327,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     }
   }
 
-  function handleLimitPriceChange(e: InputChangeEvent): void {
+  function setOrderLimitPrice(e: InputChangeEvent): void {
     const raw = e.currentTarget.value;
     const n = raw === "" ? undefined : Number(raw);
     props.setLimitPrice(Number.isFinite(n) ? n : undefined);
@@ -413,8 +413,8 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           class={styles.qtyInput}
           value={form()?.qty === 0 ? "" : (form()?.qty ?? "")}
           placeholder="0"
-          onInput={handleQtyChange}
-          onChange={handleQtyChange}
+          onInput={setOrderQty}
+          onChange={setOrderQty}
         />
         <button
           type="button"
@@ -438,8 +438,8 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           class={styles.input}
           value={form()?.limitPrice ?? ""}
           placeholder={live().toFixed(2)}
-          onInput={handleLimitPriceChange}
-          onChange={handleLimitPriceChange}
+          onInput={setOrderLimitPrice}
+          onChange={setOrderLimitPrice}
         />
       </Show>
 

@@ -17,7 +17,7 @@ export async function expectSplitterDragResizes(
   ctx: TestContext,
 ): Promise<void> {
   assertGreaterThanZero(
-    await ctx.po.layout.handleCount(),
+    await ctx.po.layout.resizeHandleCount(),
     "expected at least one draggable splitter handle in the FX layout",
   );
 

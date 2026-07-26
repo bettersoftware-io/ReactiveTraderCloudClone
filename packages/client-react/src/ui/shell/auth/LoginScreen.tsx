@@ -25,15 +25,7 @@ export function LoginScreen(): ReactElement {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  function handleUsernameChange(event: ChangeEvent<HTMLInputElement>): void {
-    setUsername(event.target.value);
-  }
-
-  function handlePasswordChange(event: ChangeEvent<HTMLInputElement>): void {
-    setPassword(event.target.value);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  function submitLogin(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     login(username, password);
   }
@@ -62,7 +54,7 @@ export function LoginScreen(): ReactElement {
           REACTIVE TRADER OS · SIGN IN
         </div>
 
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form className={styles.form} onSubmit={submitLogin}>
           <div
             className={
               authenticating
@@ -78,7 +70,9 @@ export function LoginScreen(): ReactElement {
                 type="text"
                 autoComplete="username"
                 value={username}
-                onChange={handleUsernameChange}
+                onChange={(event: ChangeEvent<HTMLInputElement>): void => {
+                  setUsername(event.target.value);
+                }}
               />
             </label>
 
@@ -90,7 +84,9 @@ export function LoginScreen(): ReactElement {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={(event: ChangeEvent<HTMLInputElement>): void => {
+                  setPassword(event.target.value);
+                }}
               />
             </label>
           </div>

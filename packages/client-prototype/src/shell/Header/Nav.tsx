@@ -5,7 +5,7 @@ import type { Tab } from "#/shell/Header/useMenus";
 
 export interface NavProps {
   tab: Tab;
-  onSelect(tab: Tab): void;
+  onSelect: (tab: Tab) => void;
 }
 
 type NavItem = { key: Tab; label: string };

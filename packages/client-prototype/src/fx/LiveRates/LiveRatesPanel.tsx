@@ -18,16 +18,16 @@ import { usePreferences } from "#/shell/Preferences/usePreferences";
 export interface LiveRatesPanelProps {
   rates: RatesApi;
   filter: Filter;
-  onFilter(f: Filter): void;
+  onFilter: (f: Filter) => void;
   view: "rates" | "watch";
   showCharts: boolean;
 }
 
 export interface LiveRatesHeadControlsProps {
   view: "rates" | "watch";
-  onView(v: "rates" | "watch"): void;
+  onView: (v: "rates" | "watch") => void;
   showCharts: boolean;
-  onToggleCharts(): void;
+  onToggleCharts: () => void;
 }
 
 const NOW_TICK_MS = 250;
@@ -108,7 +108,7 @@ export function LiveRatesPanel(props: LiveRatesPanelProps): ReactElement {
                 meta={META[sym]}
                 now={now}
                 onDismiss={() => {
-                  rates.onDismiss(sym);
+                  rates.dismissTile(sym);
                 }}
               />
             );
@@ -131,7 +131,7 @@ interface TileCellProps {
   tile: TileState;
   meta: PairMeta;
   now: number;
-  onDismiss(): void;
+  onDismiss: () => void;
 }
 
 function TileCell(props: TileCellProps): ReactElement {
@@ -156,7 +156,7 @@ function TileCell(props: TileCellProps): ReactElement {
       return;
     }
 
-    function handleClick(e: Event): void {
+    function routeOverlayAction(e: Event): void {
       const target = e.target as HTMLElement;
       const actionEl = target.closest<HTMLElement>("[data-action],[data-side]");
 
@@ -173,10 +173,10 @@ function TileCell(props: TileCellProps): ReactElement {
       }
     }
 
-    host.addEventListener("click", handleClick);
+    host.addEventListener("click", routeOverlayAction);
 
     return () => {
-      host.removeEventListener("click", handleClick);
+      host.removeEventListener("click", routeOverlayAction);
     };
   });
 
@@ -281,16 +281,16 @@ function buildTileVm(
     isRfq,
     showCharts,
     onNotional: (v: string) => {
-      rates.onNotional(sym, v);
+      rates.setNotional(sym, v);
     },
     onReset: () => {
-      rates.onReset(sym);
+      rates.resetNotional(sym);
     },
     onSell: () => {
-      rates.onSell(sym);
+      rates.sellPair(sym);
     },
     onBuy: () => {
-      rates.onBuy(sym);
+      rates.buyPair(sym);
     },
   };
 }

@@ -5,7 +5,7 @@ import type { QuoteVm } from "#/credit/rfqCardVm";
 
 export interface QuoteRowProps {
   vm: QuoteVm;
-  onAccept(): void;
+  onAccept: () => void;
 }
 
 // PROTO L572: one dealer's quote line inside an RfqCard — a ★ when it's the

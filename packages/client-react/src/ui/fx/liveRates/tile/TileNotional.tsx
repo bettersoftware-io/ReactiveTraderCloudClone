@@ -12,18 +12,10 @@ export function TileNotional({
 }: TileNotionalProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleChange(e: ChangeEvent<HTMLInputElement>): void {
-    notional.change(e.target.value);
-  }
-
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
+  function blurNotionalOnEnter(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === "Enter") {
       inputRef.current?.blur();
     }
-  }
-
-  function handleFocus(): void {
-    inputRef.current?.select();
   }
 
   const hasError = !!notional.state.error;
@@ -35,9 +27,13 @@ export function TileNotional({
         <input
           ref={inputRef}
           value={notional.state.displayValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
+          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+            notional.change(e.target.value);
+          }}
+          onKeyDown={blurNotionalOnEnter}
+          onFocus={() => {
+            inputRef.current?.select();
+          }}
           disabled={disabled}
           data-error={hasError ? "true" : "false"}
           className={styles.input}

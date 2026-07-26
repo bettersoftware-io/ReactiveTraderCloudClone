@@ -27,7 +27,7 @@ export function BootGate(props: ParentProps): JSX.Element {
   const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();
 
-  function handleDone(): void {
+  function dismissOnJumpCut(): void {
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -37,13 +37,13 @@ export function BootGate(props: ParentProps): JSX.Element {
     // `transition-property: none`, so no transitionend ever arrives) — dismiss
     // it directly. Freeze wins over forced, which overrides only the
     // accessibility signal. Otherwise the transition runs (restored when
-    // forced — see BootSequence.module.css) and handleTransitionEnd dismisses.
+    // forced — see BootSequence.module.css) and dismissOnOpacityEnd dismisses.
     if (isFreeze() || (reduce && !forced())) {
       dismiss();
     }
   }
 
-  function handleTransitionEnd(event: TransitionEvent): void {
+  function dismissOnOpacityEnd(event: TransitionEvent): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip
     // transitions that also bubble through this host.
     if (event.propertyName === "opacity") {
@@ -55,8 +55,8 @@ export function BootGate(props: ParentProps): JSX.Element {
     <>
       {props.children}
       <Show when={visible()}>
-        <div class={styles.host} onTransitionEnd={handleTransitionEnd}>
-          <BootSequence onDone={handleDone} />
+        <div class={styles.host} onTransitionEnd={dismissOnOpacityEnd}>
+          <BootSequence onDone={dismissOnJumpCut} />
         </div>
       </Show>
     </>

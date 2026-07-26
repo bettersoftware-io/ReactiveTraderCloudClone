@@ -66,7 +66,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 | `DealerSimulator.ts` | `DealerPort` — serves the `DEALERS_CATALOG` constant |
 | `EquityMarketDataSimulator.ts` | `MarketDataPort` — watchlist/quotes/candles/depth for equities |
 | `EquityOrderSimulator.ts` | `OrderPort` — advances orders `new → working → partiallyFilled → filled`/`rejected` |
-| `EquityPositionSimulator.ts` | `PositionPort` — updates positions via `onFill(fill)` |
+| `EquityPositionSimulator.ts` | `PositionPort` — updates positions via `bookFill(fill)` |
 | `ErrorRateSimulator.ts` | `MetricControl` — error-rate metric walk with perturbation support |
 | `EventLogSimulator.ts` | `EventLogPort`, `MetricControl` — admin event-log stream |
 | `ExecutionSimulator.ts` | `ExecutionPort` — trade execution (GBPJPY always rejects, EURJPY carries an extra 4s delay, others resolve in 0–2s) |

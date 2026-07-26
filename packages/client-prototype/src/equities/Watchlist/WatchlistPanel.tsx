@@ -16,7 +16,7 @@ const SORT_LABEL: Record<WlSort, string> = {
 
 export interface WatchlistPanelControlsProps {
   wlSort: WlSort;
-  onCycleSort(): void;
+  onCycleSort: () => void;
 }
 
 // PROTO L670-671: the watchlist's control row — sort-cycle + a decorative ⊕
@@ -42,7 +42,7 @@ export function WatchlistPanelControls(
 
 export interface WatchlistPanelProps {
   rows: WatchRowVm[];
-  onSelect(sym: EqSym): void;
+  onSelect: (sym: EqSym) => void;
 }
 
 // PROTO L672-674, L879-892: the watchlist body — the rows. (The control row

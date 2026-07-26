@@ -43,7 +43,7 @@ export class BootSequencePage extends MountedComponent<Record<string, never>> {
    * calls onDone() synchronously on the same tick that emits done:true, so
    * this is a faithful witness for the onDone invocation without requiring a spy.
    */
-  onDoneCount(): number {
+  doneCallCount(): number {
     const el = within(this.root).queryByTestId("boot-sequence");
     return el?.getAttribute("data-done") === "true" ? 1 : 0;
   }

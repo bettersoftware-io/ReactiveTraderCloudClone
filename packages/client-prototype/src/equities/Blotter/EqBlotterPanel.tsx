@@ -9,7 +9,7 @@ export type EqBlotView = "orders" | "positions";
 
 export interface EqBlotterPanelControlsProps {
   view: EqBlotView;
-  onView(view: EqBlotView): void;
+  onView: (view: EqBlotView) => void;
   ordersCount: number;
   positionsCount: number;
 }

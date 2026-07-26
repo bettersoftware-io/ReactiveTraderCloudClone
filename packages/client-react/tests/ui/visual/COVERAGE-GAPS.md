@@ -64,7 +64,7 @@ darwin-arm64), full 5-skin × dark/light matrix, real app fonts, @1920×1080.
 
 | File / lines | Class | Evidence |
 |---|---|---|
-| `NewRfqPanel.tsx` 129 (`!canSubmit` guard in handleSend) | disabled-button guard | SEND carries a real `disabled` attr; native disabled buttons never dispatch click. |
+| `NewRfqPanel.tsx` 129 (`!canSubmit` guard in submitRfq) | disabled-button guard | SEND carries a real `disabled` attr; native disabled buttons never dispatch click. |
 | `RfqCard.tsx` 99 (`if (!el)` in animationcancel effect) | ref-null defensive | root div unconditionally rendered; React populates refs before effects. |
 | `RfqsPanel.tsx` 217, 230 (`!prev.has(rfqId)` dup-event guards) | animation-lifecycle defensive | empirically probed: RfqCard's own `anim` check blocks a second dispatch through any real DOM path; guards a browser duplicate-delivery race. |
 | `OrderTicket.tsx` 262 (qty `Number.isFinite` guard) | input-type sanitization | `<input type="number">` sanitizes `.value` before any event in browsers AND jsdom — `Number()` can never see a non-finite string here. |
@@ -305,12 +305,12 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | File | Lines | Reason |
 |------|-------|--------|
 | `ui/fx/analytics/PairPnlBars.tsx` lines 56-59 | `hoveredSymbol === pos.symbol` hover branch | Requires a `hover` step type not present in `scenarioActions.ts`. Deferred. |
-| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `handleApply` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
+| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `applySelectedValues` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
 | `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
 | `ui/credit/rfqTiles/RfqTilesPanel.tsx` lines 80-85 | `handleDismiss` + `handleAccept` | Dismiss and Accept buttons in QuoteCard have no testids. Production code unchanged. |
-| `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `handleClick` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |
-| `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | handleChange/handleKeyDown/handleFocus | Interaction handlers for the notional input. Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
-| `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `handleAccept` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
+| `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `executeAtSide` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |
+| `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | input onChange, `blurNotionalOnEnter` (Enter-to-blur), onFocus (select-on-focus) | Interaction handlers for the notional input (onChange/onFocus are inline arrows; only Enter-to-blur is a named function). Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
+| `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `executeAcceptedQuote` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
 | `ui/shell/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. |
 | `ui/credit/CreditWorkspace.tsx` line 17 | Router switch `default` fallback | Defensive fallthrough after all tabs handled. TypeScript-exhaustive. |
 | `ui/credit/newRfq/DealerSelection.tsx` lines 19-22, 36 | Checkbox onChange + deselect-all guard | No testids on individual dealer checkboxes. Same testid constraint. |

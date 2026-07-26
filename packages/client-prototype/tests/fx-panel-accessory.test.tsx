@@ -40,13 +40,7 @@ describe("Panel headAccessory", () => {
 
   test("omits the maximize button when maximizable is false", () => {
     const { queryByTitle, queryByLabelText } = render(
-      <Panel
-        id={ANA_ID}
-        head={<span>Analytics</span>}
-        maxPanel={null}
-        onToggleMax={noop}
-        maximizable={false}
-      >
+      <Panel id={ANA_ID} head={<span>Analytics</span>} maximizable={false}>
         <div>body</div>
       </Panel>,
     );

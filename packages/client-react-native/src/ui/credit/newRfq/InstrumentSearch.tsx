@@ -35,7 +35,7 @@ export function InstrumentSearch({
       })
     : [];
 
-  function handleSelect(instrument: Instrument): void {
+  function selectInstrument(instrument: Instrument): void {
     onSelect(instrument);
     setQuery(instrument.name);
   }
@@ -84,7 +84,7 @@ export function InstrumentSearch({
                 testID={`instrument-result-${inst.id}`}
                 style={styles.resultItem}
                 onPress={() => {
-                  handleSelect(inst);
+                  selectInstrument(inst);
                 }}
               >
                 <Text style={styles.resultName}>{inst.name}</Text>
