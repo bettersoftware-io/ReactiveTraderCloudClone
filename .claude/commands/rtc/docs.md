@@ -55,8 +55,8 @@ user trim.
 ./scripts/new-worktree.sh <name>
 ```
 
-**Before touching any file** — this repo's `main` auto-pushes and concurrent
-sessions share the checkout (`shipping-repo-changes`, Rule 1).
+**Before touching any file** — concurrent sessions share this checkout, and
+`main` takes changes only through a PR (`shipping-repo-changes`, Rule 1).
 
 Then write. Organize by topic, never by conversation order. Distinguish what was
 **verified** from what was asserted — this corpus is trusted precisely because it
@@ -79,7 +79,8 @@ pnpm exec biome ci .
 
 Anchor slugs are unforgiving (` -- ` slugs to four dashes); the checker is the
 oracle, not your intuition. Then commit, push, open a PR, poll CI on your
-`headSha` with `gh run list` (**never `gh pr checks` — it 403s with this PAT**),
+`headSha` with `gh run list` (**not `gh pr checks`** — it can't be matched to a
+`headSha`, so it may report a stale run, and it 403s under the sandbox's PAT),
 merge with `--merge` once green, confirm the commit is on `origin/main`, and
 remove the worktree.
 
