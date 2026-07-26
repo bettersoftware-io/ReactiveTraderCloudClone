@@ -10,6 +10,7 @@ import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
 import { PlaywrightFooter } from "./Footer";
 import { PlaywrightFxRfqForm } from "./FxRfqForm";
 import { PlaywrightInspector } from "./Inspector";
+import { PlaywrightJarvis } from "./Jarvis";
 import { PlaywrightLayout } from "./Layout";
 import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
 import { PlaywrightLoginScreen } from "./LoginScreen";
@@ -32,6 +33,7 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     creditRfqPanel: new PlaywrightCreditRfqPanel(page),
     blotterTable: new PlaywrightBlotterTable(page),
     layout: new PlaywrightLayout(page),
+    jarvis: new PlaywrightJarvis(page),
     inspector: new PlaywrightInspector(page),
     login: new PlaywrightLoginScreen(page),
     powerSaver: new PlaywrightPowerSaver(page),
