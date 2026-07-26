@@ -74,7 +74,7 @@ export function CreditBlotter(): ReactElement {
     setPrevTradeIds({ key: tradeIdsKey, ids: new Set(tradeIds) });
   }
 
-  function toggleSortColumn(column: keyof CreditTrade): void {
+  function cycleSortColumn(column: keyof CreditTrade): void {
     setSort((prev) => {
       return nextSortDirection(column, prev, CREDIT_DESC_FIRST);
     });
@@ -148,7 +148,7 @@ export function CreditBlotter(): ReactElement {
           <thead>
             <BlotterHeader
               sort={sort}
-              onSort={toggleSortColumn}
+              onSort={cycleSortColumn}
               filters={filters}
               onFilter={setColumnFilter}
               rows={trades}

@@ -75,7 +75,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
     setInstrumentOpen(false);
   }
 
-  function setQuantity(e: ChangeEvent<HTMLInputElement>): void {
+  function setQuantityFromInput(e: ChangeEvent<HTMLInputElement>): void {
     setValue((prev) => {
       return { ...prev, qty: e.target.value };
     });
@@ -182,7 +182,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
             className={styles.qtyInput}
             data-testid="new-rfq-qty-input"
             value={value.qty}
-            onChange={setQuantity}
+            onChange={setQuantityFromInput}
             placeholder="0"
           />
         </div>
