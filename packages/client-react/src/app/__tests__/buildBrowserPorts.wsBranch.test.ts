@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { WsAdapter } from "@rtc/client-core";
+import { incident$, reconnect$, WsAdapter } from "@rtc/client-core";
 
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
 // The sibling buildBrowserPorts.test.ts covers the simulator branch, which is
@@ -43,6 +44,61 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     // Connecting here would send a tokenless upgrade the server rejects, then
     // retry it on a timer while the user is still looking at the login screen.
     expect(ctor).not.toHaveBeenCalled();
+  });
+
+  it("supplies the stored session token when the gate later connects", () => {
+    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+    seedSession("tok-abc123");
+
+    const sockets = stubWebSocket();
+    const ports = buildBrowserPorts();
+
+    // The composition root hands WsAdapter a token PROVIDER, not a token —
+    // read fresh per (re)connect. Nothing invokes it until the auth gate
+    // opens the socket, which is why the pin above (no eager connect) leaves
+    // it unexercised. Drive the same call the gate makes.
+    ports.transport?.connect();
+
+    expect(sockets).toHaveLength(1);
+    expect(sockets[0]).toContain("tok-abc123");
+  });
+
+  it("re-reads the token on every connect rather than baking it in", () => {
+    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+    seedSession("first-token");
+
+    const sockets = stubWebSocket();
+    const ports = buildBrowserPorts();
+
+    ports.transport?.connect();
+    ports.transport?.disconnect();
+    seedSession("second-token"); // e.g. a re-login between drops
+    ports.transport?.connect();
+
+    // A provider that captured the token at composition time would send the
+    // stale one here, and the upgrade would be rejected after a re-login.
+    expect(sockets[1]).toContain("second-token");
+  });
+
+  it("routes idle-lifecycle events from the merged stream to the transport", () => {
+    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+
+    const ports = buildBrowserPorts();
+    const closeForIdle = vi.spyOn(ports.transport as WsAdapter, "closeForIdle");
+    const reopen = vi.spyOn(ports.transport as WsAdapter, "reopen");
+
+    const sub = ports.connectionEvents.events().subscribe();
+
+    // The `tap` that side-effects the transport only runs while something is
+    // subscribed, so this is the whole point of the subscription above: it is
+    // how idleTimeout actually reaches closeForIdle() in the running app.
+    incident$.next({ type: "idleTimeout" });
+    reconnect$.next({ type: "reconnect" });
+
+    expect(closeForIdle).toHaveBeenCalledTimes(1);
+    expect(reopen).toHaveBeenCalledTimes(1);
+
+    sub.unsubscribe();
   });
 
   it("still wires the browser-side ports that both branches share", () => {
@@ -134,4 +190,44 @@ function loginOutcome(devAuth: string): LoginProbe {
     });
 
   return outcome;
+}
+
+/** Writes a session whose token is `token`, so the adapter's token provider
+ * has something to read. */
+function seedSession(token: string): void {
+  new LocalStorageSessionStore().write({
+    token,
+    username: "demo",
+    exp: Date.now() + 60_000,
+    user: {
+      name: "Demo User",
+      initials: "DU",
+      role: "trader",
+      id: "u1",
+      email: "demo@example.com",
+      desk: "FX",
+      clearance: "standard",
+    },
+  });
+}
+
+/** Replaces WebSocket with an inert stub and returns the list of URLs it was
+ * constructed with, so a test can read the token off the connect URL. */
+function stubWebSocket(): string[] {
+  const urls: string[] = [];
+
+  vi.stubGlobal(
+    "WebSocket",
+    class {
+      constructor(url: string) {
+        urls.push(url);
+      }
+
+      close(): void {}
+
+      send(): void {}
+    },
+  );
+
+  return urls;
 }
