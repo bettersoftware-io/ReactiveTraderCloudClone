@@ -32,6 +32,17 @@ name: iOS visual spike (T1)
 # `pnpm install` would add first.
 
 on:
+  # ==================================================================
+  # TEMPORARY — STRIP BEFORE MERGE.
+  # GitHub only lets you dispatch a workflow that exists on the DEFAULT
+  # branch, so a dispatch-only workflow cannot be exercised until it is
+  # merged. This branch-scoped push trigger is the iteration loop; it can
+  # never fire on main because the branch name is pinned. The final commit
+  # on this branch removes this block.
+  # ==================================================================
+  push:
+    branches: [t1-ios-ci-spike]
+
   workflow_dispatch:
     inputs:
       xcode:
