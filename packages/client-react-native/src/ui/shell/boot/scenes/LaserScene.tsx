@@ -1,7 +1,6 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx
 import { Circle, Group, Line, Path, Rect } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import { useDerivedValue } from "react-native-reanimated";
 
@@ -50,16 +49,16 @@ import {
  * cursor-tracked globe (`core`).
  *
  * Task 7 (phase 6a) ported the panel table and its trace-in window. Task 5
- * (phase 6b-1) added the background HUD grid + translucent wash (built once
- * in a `useMemo` keyed on `width`/`height` — its shape never changes, per
- * docs/performance.md), the post-trace flash, and the completion corner
- * ticks. Task 6 completes the port:
+ * (phase 6b-1) added the background HUD grid + translucent wash (built once,
+ * memoized by the React Compiler on `width`/`height` — its shape never
+ * changes, per docs/performance.md), the post-trace flash, and the
+ * completion corner ticks. Task 6 completes the port:
  *   - per-kind panel content (`laserPanelContent.ts`'s `panelContentShapes`),
  *     rendered as one `<Group>` per panel whose `opacity`/`transform` (a
  *     translate-scale-translate triple, the declarative form of the web's
  *     `translate(cx,cy); scale(s,s); translate(-cx,-cy)`) animate off
  *     `contentEase`/`contentScale` — the shapes themselves are built once per
- *     panel per viewport (`useMemo`), never per frame;
+ *     panel per viewport (memoized by the React Compiler), never per frame;
  *   - the laser draw-head: a scene-level (not per-panel) `<Line>` emitter
  *     beam plus a glow-dot/core-dot `<Circle>` pair, walking
  *     `perimeterPoint(rect, fraction)` for the single panel still tracing
@@ -78,21 +77,16 @@ export function LaserScene({
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
 
-  const grid = useMemo(() => {
-    return gridPath(width, height);
-  }, [width, height]);
+  const grid = gridPath(width, height);
 
-  // Precomputed once per viewport size — the draw-head worklet below walks
-  // this array every frame but never rebuilds it (docs/performance.md).
-  const panelRects = useMemo(() => {
-    return LASER_PANELS.map((panel) => {
-      return panelRectPx(panel, width, height);
-    });
-  }, [width, height]);
+  // Precomputed once per viewport size — the React Compiler memoizes this
+  // call across renders, so the draw-head worklet below walks this array
+  // every frame but never rebuilds it (docs/performance.md).
+  const panelRects = LASER_PANELS.map((panel) => {
+    return panelRectPx(panel, width, height);
+  });
 
-  const emitterPoint = useMemo(() => {
-    return { x: width / 2, y: LASER_EMITTER_Y };
-  }, [width]);
+  const emitterPoint = { x: width / 2, y: LASER_EMITTER_Y };
 
   // The point the draw-head sits at: the highest-indexed panel still tracing
   // (`fraction` strictly in `(0, 1)`), mirroring the web's `head` variable —
@@ -258,9 +252,9 @@ function LaserPanelTrace({
   const path = rectTracePath(rect.x, rect.y, rect.width, rect.height);
   const tickPath = cornerTickPath(rect, CORNER_TICK_LENGTH);
 
-  const contentShapes = useMemo(() => {
-    return withPositionalKeys(panelContentShapes(panel.kind, rect));
-  }, [panel.kind, rect]);
+  const contentShapes = withPositionalKeys(
+    panelContentShapes(panel.kind, rect),
+  );
 
   const end = useDerivedValue(() => {
     const progress = bootProgress(elapsedSec.value, BOOT_DURATION_MS);

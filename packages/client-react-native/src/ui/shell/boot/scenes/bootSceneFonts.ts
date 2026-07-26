@@ -9,7 +9,6 @@ import {
   type SkTypeface,
   useFont,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
 
 /**
  * The boot scenes' text typefaces, and the per-site fonts built from them.
@@ -46,9 +45,9 @@ import { useMemo } from "react";
  * **Build-once, not per-frame.** `Skia.Font` is a host-object factory. Every
  * export here is deliberately UNMARKED — none may be called from inside a
  * worklet. Scenes build their fonts in React-land and capture the result in
- * the draw closure, the same shape `DockingScene`'s `useMemo`'d `SkPath`
- * already uses. Adding `"worklet"` to make a per-frame call legal would
- * reintroduce exactly the per-frame allocation this avoids.
+ * the draw closure, the same shape `DockingScene`'s compiler-memoized
+ * `SkPath`s already use. Adding `"worklet"` to make a per-frame call legal
+ * would reintroduce exactly the per-frame allocation this avoids.
  */
 export interface BootFontSpec {
   readonly size: number;
@@ -62,8 +61,8 @@ export interface BootFontSpec {
  *
  * Takes the whole spec map at once (rather than exposing a per-size hook)
  * because the two `useFont` calls below must run an identical number of times
- * on every render. Pass a module-level constant, so the memo's identity is
- * stable across renders.
+ * on every render. Pass a module-level constant, so the React Compiler's
+ * memoization of this call keys on a stable reference across renders.
  *
  * Consumers must handle the `null` window: the asset load is asynchronous, so
  * the first frames of a scene have geometry but no text. Scenes draw their
@@ -76,9 +75,7 @@ export function useBootSceneFonts<Spec extends Record<string, BootFontSpec>>(
 ): Readonly<Record<keyof Spec, SkFont>> | null {
   const regular = useFont(JetBrainsMono_400Regular, TYPEFACE_PROBE_SIZE);
   const bold = useFont(JetBrainsMono_700Bold, TYPEFACE_PROBE_SIZE);
-  return useMemo(() => {
-    return buildSceneFonts(specs, regular, bold);
-  }, [specs, regular, bold]);
+  return buildSceneFonts(specs, regular, bold);
 }
 
 /** Size handed to the two loader hooks. Irrelevant to what gets drawn — only

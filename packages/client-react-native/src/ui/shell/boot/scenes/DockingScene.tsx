@@ -11,7 +11,6 @@ import {
   TileMode,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -108,13 +107,15 @@ import {
  * **The static-geometry rule earns its keep here.** Three layers' shapes
  * depend only on `width`/`height` — the scan-line overlay (~280 one-pixel
  * rects), the 22-line perspective corridor, and the HUD grid — so they are
- * built into `SkPath`s once in a `useMemo` keyed on the dimensions, captured
- * in the per-frame recorder's closure, and drawn with a single `drawPath`
- * each (docs/performance.md: never rebuild a static point set inside the
- * per-frame worklet). The corridor shakes, so it's drawn inside its own
- * `canvas.save()`/`translate(shake.x, shake.y)`/`restore()` pair rather than
- * rebuilt per frame; the HUD grid does not shake and is drawn in absolute
- * screen space, exactly matching the web's draw order (wash → vignette →
+ * built into `SkPath`s once, memoized across renders by the React Compiler
+ * (keyed on the same `width`/`height` inputs a manual `useMemo` would have
+ * used), captured in the per-frame recorder's closure, and drawn with a
+ * single `drawPath` each (docs/performance.md: never rebuild a static point
+ * set inside the per-frame worklet). The corridor shakes, so it's drawn
+ * inside its own `canvas.save()`/`translate(shake.x, shake.y)`/`restore()`
+ * pair rather than rebuilt per frame; the HUD grid does not shake and is
+ * drawn in absolute screen space, exactly matching the web's draw order
+ * (wash → vignette →
  * scanlines → [save/shake] corridor → rings [restore] → HUD grid → craft →
  * reticle → marker).
  *
@@ -134,19 +135,19 @@ import {
  * `drawCraftBody`'s own comment.
  *
  * > **Device-verification item (jest is blind, per the plan's own callout):**
- * > capturing a `useMemo`'d `SkPath` in a worklet closure (the three static
- * > layers above) is the documented RN Skia pattern, but no scene in this
- * > repo had exercised it before this task — `CoreScene`/`LaserScene` build
- * > every path fresh inside the worklet or use declarative `<Path>` with a
- * > plain SVG string (a value type, not a host object). This scene ships
- * > with the memoized-closure pattern per the plan's primary instruction;
- * > jest passes either way (its Skia mock is a no-op), so this is NOT
- * > confirmed safe on a real device. If it red-boxes with `[Worklets] Tried
- * > to synchronously call a Remote Function` on-device, the fallback is to
- * > build `scanlines`/`corridor`/`hudGrid` fresh inside the recorder each
- * > frame (same per-frame-allocation trade CoreScene's `drawGyroRings`
- * > already makes for its polyline paths) — Task 11 is the on-device witness
- * > for this, not this file.
+ * > capturing a compiler-memoized `SkPath` in a worklet closure (the three
+ * > static layers above) is the documented RN Skia pattern, but no scene in
+ * > this repo had exercised it before this task — `CoreScene`/`LaserScene`
+ * > build every path fresh inside the worklet or use declarative `<Path>`
+ * > with a plain SVG string (a value type, not a host object). This scene
+ * > ships with the memoized-closure pattern per the plan's primary
+ * > instruction; jest passes either way (its Skia mock is a no-op), so this
+ * > is NOT confirmed safe on a real device. If it red-boxes with
+ * > `[Worklets] Tried to synchronously call a Remote Function` on-device,
+ * > the fallback is to build `scanlines`/`corridor`/`hudGrid` fresh inside
+ * > the recorder each frame (same per-frame-allocation trade CoreScene's
+ * > `drawGyroRings` already makes for its polyline paths) — Task 11 is the
+ * > on-device witness for this, not this file.
  *
  * No `saveLayer` anywhere. `ctx.shadowBlur` bloom (the web reticle/marker
  * have none in this half, but later layers do) is never ported as a
@@ -169,20 +170,16 @@ export function DockingScene({
   const buy = theme.accentPositive;
   const sell = theme.accentNegative;
 
-  // Shapes that depend only on the viewport — built once, drawn every frame.
-  // Rebuilding these inside the recorder would allocate ~300 path segments
-  // per frame for no visual difference (docs/performance.md).
-  const scanlines = useMemo(() => {
-    return buildScanlinePath(width, height);
-  }, [width, height]);
+  // Shapes that depend only on the viewport — the React Compiler memoizes
+  // these calls across renders unless width/height change, so they're still
+  // built once and drawn every frame. Rebuilding these inside the recorder
+  // would allocate ~300 path segments per frame for no visual difference
+  // (docs/performance.md).
+  const scanlines = buildScanlinePath(width, height);
 
-  const corridor = useMemo(() => {
-    return buildCorridorPath(width, height);
-  }, [width, height]);
+  const corridor = buildCorridorPath(width, height);
 
-  const hudGrid = useMemo(() => {
-    return buildHudGridPath(width, height);
-  }, [width, height]);
+  const hudGrid = buildHudGridPath(width, height);
 
   // Null until the bundled faces load. Built here rather than in the recorder
   // — `Skia.Font` is a host-object factory, and the bare `Skia.Font()` this
@@ -308,7 +305,8 @@ export function DockingScene({
 }
 
 // --- static (per-viewport) path builders — plain functions, NOT worklets: --
-// --- called once from `useMemo` on the JS thread, never from the recorder --
+// --- called once on the JS thread (memoized by the React Compiler), never --
+// --- from the recorder --------------------------------------------------
 
 /** ~280 one-pixel-tall rects at 844pt, one `SCANLINE_PITCH`-spaced row per
  * `scanlineOffsets(height)` entry — a single path so the per-frame draw is
