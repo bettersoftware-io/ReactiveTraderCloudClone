@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { shouldPlayBootSplash } from "./bootSplashGate";
 
 afterEach(() => {
+  // Unstub FIRST: the no-window test replaces `window`, and the resets below
+  // reach through it (window.history / navigator).
+  vi.unstubAllGlobals();
   setSearch("");
   setWebdriver(false);
 });
@@ -39,6 +42,13 @@ describe("shouldPlayBootSplash", () => {
     setWebdriver(true);
     setSearch("?splash&nosplash");
     expect(shouldPlayBootSplash()).toBe(true);
+  });
+
+  it("does not play without a window — the gate reads location, so it must not throw on the server", () => {
+    // @rtc/boot-splash is a DOM-touching leaf; this guard is the one thing
+    // standing between a server render and a ReferenceError.
+    vi.stubGlobal("window", undefined);
+    expect(shouldPlayBootSplash()).toBe(false);
   });
 });
 

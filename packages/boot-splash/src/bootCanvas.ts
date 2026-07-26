@@ -93,6 +93,12 @@ export function ease(t: number): number {
   return 1 - (1 - Math.max(0, Math.min(1, t))) ** 3;
 }
 
+/* v8 ignore start -- imperative canvas drawing; see the coverage note in
+   vitest.config.ts. Everything from here to the end of drawBootDocking emits
+   pixels and nothing else, so a unit test could only assert a call sequence
+   against a mock 2D context — pinning the implementation, not the render.
+   The pure helpers above (hexToRgba, ease) stay measured and are tested. */
+
 /** Zero-pad a number to two digits. Verbatim from prototype _drawBootDocking. */
 function padTwo(value: number): string {
   return String(Math.abs(Math.floor(value))).padStart(2, "0");
@@ -1019,3 +1025,5 @@ export function drawBootDocking(scene: BootDrawCtx): void {
     ctx.fillRect(0, 0, width, height);
   }
 }
+
+/* v8 ignore stop */
