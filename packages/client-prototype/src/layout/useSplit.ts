@@ -82,7 +82,7 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
   const [ratio, setRatio] = useState(() => {
     return clamp(readStoredRatio(storageKey, initial), min, 1 - min);
   });
-  // startResizeDrag/updateSplitRatio/persistSplitRatio are stable callbacks
+  // startResizeDrag/updateSplitRatio/endResizeDrag are stable callbacks
   // (window listeners rebind per drag), so they read the live ratio through a
   // ref rather than closing over the `ratio` state value.
   const ratioRef = useRef(ratio);
@@ -103,11 +103,11 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
     [orientation, min],
   );
 
-  const persistSplitRatio = useCallback(() => {
+  const endResizeDrag = useCallback(() => {
     const drag = dragRef.current;
 
     window.removeEventListener("pointermove", updateSplitRatio);
-    window.removeEventListener("pointerup", persistSplitRatio);
+    window.removeEventListener("pointerup", endResizeDrag);
 
     if (drag && typeof drag.target.releasePointerCapture === "function") {
       drag.target.releasePointerCapture(drag.pointerId);
@@ -122,9 +122,9 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
   useEffect(() => {
     return () => {
       window.removeEventListener("pointermove", updateSplitRatio);
-      window.removeEventListener("pointerup", persistSplitRatio);
+      window.removeEventListener("pointerup", endResizeDrag);
     };
-  }, [updateSplitRatio, persistSplitRatio]);
+  }, [updateSplitRatio, endResizeDrag]);
 
   const startResizeDrag = useCallback(
     (e: ReactPointerEvent) => {
@@ -145,9 +145,9 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
       };
 
       window.addEventListener("pointermove", updateSplitRatio);
-      window.addEventListener("pointerup", persistSplitRatio);
+      window.addEventListener("pointerup", endResizeDrag);
     },
-    [orientation, containerRef, updateSplitRatio, persistSplitRatio],
+    [orientation, containerRef, updateSplitRatio, endResizeDrag],
   );
 
   return {

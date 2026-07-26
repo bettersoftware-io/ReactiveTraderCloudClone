@@ -282,7 +282,7 @@ export default tseslint.config(
     // syntax is treated as a command and IS flagged — a prop slot must be
     // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
     //
-    // See docs/superpowers/plans/2026-07-26-name-functions-by-effect.md.
+    // See docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md.
     files: ["**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },

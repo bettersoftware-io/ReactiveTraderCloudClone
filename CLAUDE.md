@@ -218,7 +218,7 @@ DOM-edge-driven computation is a pure function + injected signal, shared via
 A function's own name must state its **effect** — what it does, to what — never
 the occasion that triggers it. `rtc/name-functions-by-effect` enforces this on
 every `.ts`/`.tsx`: `handleClick`, `onMessage`, `processClick` and
-`frameCallback` all fail CI. **Slots are exempt and correct as `onX`** — a
+`frameCallback` (when the binding holds a function) all fail CI. **Slots are exempt and correct as `onX`** — a
 function-typed prop declared in property syntax (`onExecute: (d: Direction) =>
 void`), or a method whose sole parameter is the callback (`onTrade(listener:
 TradeListener)`) — because their declarer must not know what gets attached. So
