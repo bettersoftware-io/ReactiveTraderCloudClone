@@ -27,7 +27,7 @@
     "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
     "test:rn:visual:maestro": "tsx tests/visual/maestro/run.ts",
     "test:rn:visual:maestro:update": "tsx tests/visual/maestro/run.ts --update",
-    "clean": "rm -rf dist .turbo .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
+    "clean": "rm -rf dist .turbo coverage .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"
   },
   "dependencies": {

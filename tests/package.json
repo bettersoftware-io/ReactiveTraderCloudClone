@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "clean": "rm -rf .turbo reports 2>/dev/null || true",
+    "clean": "rm -rf .turbo reports coverage 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)",
     "gates": "tsx scripts/grep-gates.ts",
     "port:free": "tsx scripts/free-port.ts",
