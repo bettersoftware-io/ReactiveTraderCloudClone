@@ -64,6 +64,19 @@ The turbo-routed `*:fs` scripts rely on `VITE_SERVER_URL` / `EXPO_PUBLIC_SERVER_
 
 `dev:design:web` serves `docs/design/web/v5/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`; `dev:design:mobile` serves the mobile counterpart under `docs/design/mobile/v1/standalone/`. The design prototypes are organized as `docs/design/web/{v1..v5}` (web iterations, v5 current) and `docs/design/mobile/v1` (mobile). v5's HTML and media are Git LFS-tracked (scoped to `docs/design/web/v5/**` in `.gitattributes`), so a fresh clone needs `git lfs pull` before `dev:design:web` can serve it. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
 
+## Repo Slash Commands
+
+Project-scoped Claude Code commands live in `.claude/commands/rtc/` (committed,
+so every worktree and session gets them):
+
+| Command | What it does |
+|---|---|
+| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 14 fast gates (~50s, no build). `full` adds typecheck, unit tests, both ≥95% coverage gates, type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` check (~8 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
+| `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it's ~59k). |
+
+`/rtc:gauntlet` re-reads `ci.yml`'s step list on every run and warns if CI has
+gained a gate it doesn't know about, so it can't silently drift out of sync.
+
 ## Package Structure
 
 ```
