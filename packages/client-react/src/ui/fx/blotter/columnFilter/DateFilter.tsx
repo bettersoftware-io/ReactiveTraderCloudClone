@@ -24,7 +24,7 @@ export function DateFilter<TRow>({
       : "",
   );
 
-  function handleApply(): void {
+  function applyDateFilter(): void {
     if (!value) {
       onApply(null);
       return;
@@ -81,7 +81,7 @@ export function DateFilter<TRow>({
         <button
           type="button"
           data-testid="date-filter-apply"
-          onClick={handleApply}
+          onClick={applyDateFilter}
           className={styles.applyBtn}
         >
           Apply

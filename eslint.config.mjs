@@ -297,6 +297,7 @@ export default tseslint.config(
       "packages/server/**/*.{ts,tsx}",
       "packages/devtools-app/**/*.{ts,tsx}",
       "packages/devtools-extension/**/*.{ts,tsx}",
+      "packages/client-react/**/*.{ts,tsx}",
     ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },

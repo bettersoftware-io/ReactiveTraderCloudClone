@@ -41,13 +41,13 @@ export function FxBlotter(): ReactElement {
     new Map(),
   );
 
-  function handleSort(column: keyof Trade): void {
+  function toggleSortColumn(column: keyof Trade): void {
     setSort((prev) => {
       return nextSortDirection(column, prev);
     });
   }
 
-  function handleFilter(
+  function setColumnFilter(
     column: keyof Trade,
     filter: ColumnFilter<Trade> | null,
   ): void {
@@ -117,9 +117,9 @@ export function FxBlotter(): ReactElement {
           <thead>
             <BlotterHeader
               sort={sort}
-              onSort={handleSort}
+              onSort={toggleSortColumn}
               filters={filters}
-              onFilter={handleFilter}
+              onFilter={setColumnFilter}
               rows={trades}
               columns={COLUMNS}
             />

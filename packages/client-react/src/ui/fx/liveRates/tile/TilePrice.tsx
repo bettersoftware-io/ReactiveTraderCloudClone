@@ -119,7 +119,7 @@ function PriceButton({
     pipsPosition,
   );
 
-  function handleClick(): void {
+  function executeAtSide(): void {
     onExecute(side === "bid" ? Direction.Sell : Direction.Buy);
   }
 
@@ -128,7 +128,7 @@ function PriceButton({
       type="button"
       data-testid={side === "bid" ? "sell-btn" : "buy-btn"}
       data-side={side}
-      onClick={handleClick}
+      onClick={executeAtSide}
       disabled={disabled}
       className={styles.priceBox}
     >

@@ -62,32 +62,26 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
     value.dealerIds.length > 0;
   const canSubmit = valid && !submitting;
 
-  function handleDir(dir: Direction): void {
+  function setDirection(dir: Direction): void {
     setValue((prev) => {
       return { ...prev, dir };
     });
   }
 
-  function handleInstrumentToggle(): void {
-    setInstrumentOpen((prev) => {
-      return !prev;
-    });
-  }
-
-  function handleInstrumentSelect(instrument: Instrument): void {
+  function selectInstrument(instrument: Instrument): void {
     setValue((prev) => {
       return { ...prev, instrumentId: instrument.id };
     });
     setInstrumentOpen(false);
   }
 
-  function handleQty(e: ChangeEvent<HTMLInputElement>): void {
+  function setQuantity(e: ChangeEvent<HTMLInputElement>): void {
     setValue((prev) => {
       return { ...prev, qty: e.target.value };
     });
   }
 
-  function handleToggleDealer(id: number): void {
+  function toggleDealer(id: number): void {
     setValue((prev) => {
       const has = prev.dealerIds.includes(id);
       return {
@@ -101,7 +95,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
     });
   }
 
-  function handleToggleAllDealers(): void {
+  function toggleAllDealers(): void {
     setValue((prev) => {
       const allSelected =
         dealers.length > 0 &&
@@ -119,12 +113,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
     });
   }
 
-  function handleClear(): void {
+  function clearRfqDraft(): void {
     setValue(EMPTY_VALUE);
     setInstrumentOpen(false);
   }
 
-  function handleSend(): void {
+  function submitRfq(): void {
     if (!canSubmit || !selectedInstrument) {
       return;
     }
@@ -159,12 +153,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
         <DirButton
           dir={Direction.Buy}
           active={value.dir === Direction.Buy}
-          onSelect={handleDir}
+          onSelect={setDirection}
         />
         <DirButton
           dir={Direction.Sell}
           active={value.dir === Direction.Sell}
-          onSelect={handleDir}
+          onSelect={setDirection}
         />
       </div>
 
@@ -173,8 +167,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
         instruments={instruments}
         selected={selectedInstrument}
         open={instrumentOpen}
-        onToggle={handleInstrumentToggle}
-        onSelect={handleInstrumentSelect}
+        onToggle={() => {
+          setInstrumentOpen((prev) => {
+            return !prev;
+          });
+        }}
+        onSelect={selectInstrument}
       />
 
       <div className={styles.fieldsRow}>
@@ -184,7 +182,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
             className={styles.qtyInput}
             data-testid="new-rfq-qty-input"
             value={value.qty}
-            onChange={handleQty}
+            onChange={setQuantity}
             placeholder="0"
           />
         </div>
@@ -198,8 +196,8 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
       <DealerChecklist
         dealers={dealers}
         selectedIds={value.dealerIds}
-        onToggleDealer={handleToggleDealer}
-        onToggleAll={handleToggleAllDealers}
+        onToggleDealer={toggleDealer}
+        onToggleAll={toggleAllDealers}
       />
 
       <div className={styles.actions}>
@@ -207,7 +205,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
           type="button"
           className={styles.clearBtn}
           data-testid="new-rfq-clear"
-          onClick={handleClear}
+          onClick={clearRfqDraft}
         >
           CLEAR
         </button>
@@ -217,7 +215,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
           data-testid="new-rfq-send"
           data-enabled={String(valid)}
           disabled={!canSubmit}
-          onClick={handleSend}
+          onClick={submitRfq}
         >
           SEND RFQ
         </button>
@@ -251,15 +249,11 @@ export interface NewRfqPanelProps {
 interface DirButtonProps {
   dir: Direction;
   active: boolean;
-  onSelect(dir: Direction): void;
+  onSelect: (dir: Direction) => void;
 }
 
 function DirButton(props: DirButtonProps): ReactElement {
   const { dir, active, onSelect } = props;
-
-  function handleClick(): void {
-    onSelect(dir);
-  }
 
   return (
     <button
@@ -268,7 +262,9 @@ function DirButton(props: DirButtonProps): ReactElement {
       data-testid={`new-rfq-dir-${dir.toLowerCase()}`}
       data-dir={dir.toLowerCase()}
       data-active={String(active)}
-      onClick={handleClick}
+      onClick={() => {
+        onSelect(dir);
+      }}
     >
       You {dir}
     </button>
