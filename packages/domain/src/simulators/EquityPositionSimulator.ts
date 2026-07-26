@@ -25,7 +25,7 @@ export class EquityPositionSimulator implements PositionPort {
   ) {}
 
   /** Wired from the order simulator's fill listener (composition seam). */
-  onFill(fill: FillEvent): void {
+  bookFill(fill: FillEvent): void {
     const signed = fill.side === "buy" ? fill.qty : -fill.qty;
     const lot = this.lots.get(fill.symbol) ?? { qty: 0, cost: 0 };
 
@@ -44,7 +44,7 @@ export class EquityPositionSimulator implements PositionPort {
   }
 
   /** Wired from quote stream subscriptions to re-mark live (composition seam). */
-  onMark(symbol: string, price: number): void {
+  applyMark(symbol: string, price: number): void {
     this.marks.set(symbol, price);
     this.recompute();
   }
@@ -55,7 +55,7 @@ export class EquityPositionSimulator implements PositionPort {
     }
 
     const sub = this.marketData.quotes(symbol).subscribe((q) => {
-      return this.onMark(symbol, q.last);
+      return this.applyMark(symbol, q.last);
     });
     this.markSubs.set(symbol, sub);
   }

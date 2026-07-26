@@ -293,6 +293,7 @@ export default tseslint.config(
       "packages/react-bindings/**/*.{ts,tsx}",
       "packages/solid-bindings/**/*.{ts,tsx}",
       "packages/client-core/**/*.{ts,tsx}",
+      "packages/domain/**/*.{ts,tsx}",
     ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },

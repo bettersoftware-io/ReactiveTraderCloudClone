@@ -231,11 +231,11 @@ flowchart TB
     subgraph serverL["@rtc/server (Mode B)"]
         placeEffect["placeOrder$ (raw WsEffect)<br/>ack {orderId} + ORDER_LIFECYCLE stream,<br/>ONE shareReplay(1) source for both"]:::server
         orderSim["EquityOrderSimulator (on server)"]:::domain
-        posSim["EquityPositionSimulator.onFill()"]:::domain
+        posSim["EquityPositionSimulator.bookFill()"]:::domain
     end
 
     ticket -->|"1"| hook -->|"2"| machine -->|"3"| blotterPres -->|"4"| port --> wsOrder & simOrder
-    wsOrder -->|"5 rpc"| placeEffect --> orderSim -->|"6 onFill"| posSim
+    wsOrder -->|"5 rpc"| placeEffect --> orderSim -->|"6 bookFill"| posSim
     orderSim -.->|"7 lifecycle event"| placeEffect -.->|"ORDER_LIFECYCLE frames"| wsOrder
     wsOrder -.-> port
     simOrder -.-> port
@@ -247,7 +247,7 @@ flowchart TB
 3. `createOrderTicketMachine` (`packages/client-core/src/presenters/OrderTicketMachine.ts`) validates the form (`qty > 0`, a limit price for `type: "limit"`), goes `editing → submitting`, and calls `deps.place(req)`.
 4. `deps.place` is `OrdersBlotterPresenter.place()` (`packages/client-core/src/presenters/OrdersBlotterPresenter.ts`), which calls `this.orderPort.place(req)` — **directly**; there is no `PlaceOrderUseCase` in `@rtc/domain/usecases`, unlike every other command flow in this document.
 5. In Mode B, `createOrderPort(ws)` (`portFactory.ts`) sends `CLIENT_MSG.PLACE_ORDER` via `ws.rpc(...)`. The `placeOrder$` effect (`packages/server/src/effects/equities.effects.ts`) is a raw `WsEffect`, not the `rpc()`/`stream()` sugar — it builds one `shareReplay({ bufferSize: 1, refCount: true })` source from `ctx.orders.place(...)` and derives *both* the RPC ack (`take(1)`, mapped to `{ orderId }`) and the `ORDER_LIFECYCLE` stream from it, so the ack and the first lifecycle frame can never race.
-6. `EquityOrderSimulator` (`packages/domain/src/simulators/` — Mode A runs the same class in-process) advances the order through `new → working → partiallyFilled → filled` (or `rejected`); each fill also calls `EquityPositionSimulator.onFill(fill)`, updating the Positions blotter on a stream `OrderTicketMachine` never touches.
+6. `EquityOrderSimulator` (`packages/domain/src/simulators/` — Mode A runs the same class in-process) advances the order through `new → working → partiallyFilled → filled` (or `rejected`); each fill also calls `EquityPositionSimulator.bookFill(fill)`, updating the Positions blotter on a stream `OrderTicketMachine` never touches.
 7–8. Lifecycle frames flow back through `OrderPort.place()`'s `Observable` (`createOrderPort`'s `ws.on(SERVER_MSG.ORDER_LIFECYCLE, ...)` filters by `orderId` and completes on a terminal status) into `OrdersBlotterPresenter.place()` and back to the machine.
 9. `orderToPhase()` inside the machine maps each `EquityOrder.status` to a `OrderTicketState` phase (`working` / `partiallyFilled` / `filled` / `rejected`); `useOrderTicket` re-renders `OrderTicket.tsx` at each phase.
 
