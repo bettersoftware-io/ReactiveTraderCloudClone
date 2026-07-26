@@ -74,6 +74,15 @@
   background-color: rgba(239, 68, 68, 0.14);
 }
 
+/* Power-saver Freeze: the overlay's resting state is its `forwards` end-frame
+ * (opacity 0), so `animation: none` would strand the tint visible — hide the
+ * overlay outright instead. Each genuine tick otherwise spawns a fresh 0.01ms
+ * Animation via the freeze catch-all (~6 live Animation objects at any instant
+ * under streaming, pure churn on the GPU-less boxes freeze serves). */
+:root[data-power-saver="freeze"] .flashPulse {
+  display: none;
+}
+
 @keyframes rowFlashFade {
   from {
     opacity: 1;

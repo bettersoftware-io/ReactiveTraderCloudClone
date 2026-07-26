@@ -39,7 +39,7 @@ it in sync with the implementation when the behaviour changes.
 | Logo spin, connection-dot pulse (`--fx-play`) | animating | paused | frozen |
 | **Price tick-flash** | on | on | **frozen** |
 | Price *number* + directional tint | live | conflated | conflated (same rate as Calm), **tint kept** |
-| **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **~instant (0.01ms)** |
+| **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **off (`transition-property: none` — snap)** |
 | **FLIP tile/row reorder, rank-glide** (WAAPI) | glide | glide | **snap, no glide** |
 | **Spinners, infinite pulses, row-flash keyframes** | on | on | **frozen** |
 | FPS-meter `rAF` loop | running | running | **paused** |
@@ -112,27 +112,53 @@ Two things Freeze deliberately does *not* take away:
   client's non-module global stylesheet (`index.css`) carries:
 
   ```css
+  [data-power-saver="freeze"],
   [data-power-saver="freeze"] *,
   [data-power-saver="freeze"] *::before,
   [data-power-saver="freeze"] *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     animation-delay: 0s !important;
-    transition-duration: 0.01ms !important;
-    transition-delay: 0s !important;
+    transition-property: none !important;
   }
   ```
 
   This is the deliberate choice over per-file gating: the whole point of
   "freeze *everything*" is that motion added to the app **later** is frozen
-  automatically, which only a catch-all guarantees.
+  automatically, which only a catch-all guarantees. (The bare first selector
+  is the root `<html>` element itself — `*` matches only descendants, so
+  without it root-level motion would slip through.)
 
-  **`0.01ms`, not `none`.** Setting the duration to (near-)zero rather than
-  disabling animation entirely keeps two things working that `animation: none`
-  would break: `forwards`-filled animations still resolve to their end state
-  (fill confirmations, a countdown bar landing on "done"), and
-  `animationend` / `transitionend` still fire — so any JS choreography
-  waiting on those events does not hang.
+  **Animations: `0.01ms`, not `none`.** Setting the duration to (near-)zero
+  rather than disabling animation entirely keeps two things working that
+  `animation: none` would break: `forwards`-filled animations still resolve to
+  their end state (fill confirmations, a countdown bar landing on "done"), and
+  `animationend` still fires — so any JS choreography waiting on it does not
+  hang.
+
+  **Transitions: `transition-property: none`, not a 0.01ms duration.** The
+  initial value of `transition-property` is `all`, so a global *non-zero*
+  `transition-duration` **manufactures a live `CSSTransition`** (an `Animation`
+  object plus a style recalc) for every data-driven style change on every
+  element. Profiled on the original catch-all: every price tick spawned
+  `color`/`background-color` transitions on the pips and `d`/`stroke`
+  transitions on the sparkline `<path>`s — visually frozen, but continuous
+  per-quote churn on exactly the GPU-less boxes freeze exists to spare.
+  `none` creates no `Animation` at all; the new style still applies instantly,
+  and transitions have no `forwards` end-state to lose. The one consumer that
+  waited on a `transitionend` (BootGate's splash dismiss) dismisses directly
+  under freeze instead (`BootGate.handleDone`, both clients).
+
+  **Churn hot-spots are additionally removed at the source.** The catch-all
+  neutralises what an animation *does*, not that it *starts*: a retriggered
+  flash keyframe still spawns a fresh 0.01ms `Animation` per quote, and a
+  `--fx-play`-paused loop stays alive as a paused `Animation` forever. The
+  known offenders carry scoped `:root[data-power-saver="freeze"]` overrides in
+  their own CSS modules (tick-flash overlay in `TilePrice`, row flashes in
+  `WatchlistRow`/`OrdersTable`, the resident loops in `AmbientBackground`'s
+  grid, `HudLogo`, `ConnectionStatusBar`), so freeze's steady state holds
+  **zero** entries in `document.getAnimations()`. These overrides are an
+  optimisation *on top of* the catch-all safety net, not a replacement for it.
 
   **Zeroing the duration is not enough — the delays must go too.** An earlier
   version of this rule set only the durations, and shipped a real bug: a
@@ -147,14 +173,27 @@ Two things Freeze deliberately does *not* take away:
   **The witness has to assert computed style, not pixels.** `freeze.spec.ts`
   (both web clients) walks every element plus `::before`/`::after` in each
   freeze scenario and fails on any non-zero delay, non-instant duration,
-  iteration count ≠ 1, or animated element stuck at `opacity: 0`. A screenshot
-  *cannot* catch this: `toHaveScreenshot({ animations: "disabled" })` calls
+  iteration count ≠ 1, `transition-property` other than `none`, animated
+  element stuck at `opacity: 0`, or any live (`running`/`paused`) entry left
+  in `document.getAnimations()` after settling. A screenshot *cannot* catch
+  this: `toHaveScreenshot({ animations: "disabled" })` calls
   `animation.finish()`, which jumps past the delay, so the invisible window is
   unobservable by capture — and jsdom runs no CSS animations at all, so the
   unit tier can't see it either. The spec pins `data-power-saver="freeze"` as a
   precondition so it cannot pass vacuously, and it is falsification-verified:
   removing the `animation-delay` line above makes it fail on both the delay and
   the resulting `opacity: 0`.
+
+  **The churn class needs a live stream, so it has its own witnesses.** The
+  visual harness renders static fixtures — nothing ticks, so per-quote churn
+  can't appear there. Two instruments cover it: the e2e gate
+  (`tests/browser/playwright/powerSaver.spec.ts`, "freeze leaves no animation
+  or rAF churn while quotes stream") samples `document.getAnimations()` and
+  `requestAnimationFrame` registrations on the live simulator app under
+  freeze and fails on anything non-`finished`; and the on-demand audit
+  (`pnpm perf:motion-audit` / `/rtc:perf-audit`) reports the same census per
+  view per power-saver level for both web clients, asserting freeze
+  motion-free. Both share the probe in `tests/browser/motionProbe.ts`.
 - **JS gates (CSS can't reach imperative motion):**
   - **WAAPI** — `useFlipGrid` (tile/row FLIP glide, enter/exit) and
     `useRankGlide` (watchlist rank glide + highlight) already contained a
