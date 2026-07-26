@@ -7,6 +7,7 @@ import type {
   CurrencyPair,
   EquityInstrument,
   ExecuteTradeInput,
+  JarvisSkin,
   LoginWaitVariant,
 } from "@rtc/domain";
 import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
@@ -33,6 +34,7 @@ import {
   createBootSequenceMachine,
   createEqWorkspaceMachine,
   createIncidentMachine,
+  createJarvisMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -52,6 +54,8 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
+  type JarvisIntents,
+  type JarvisState,
   LatencyPresenter,
   type Machine,
   type MachineFactories,
@@ -151,6 +155,8 @@ export interface Presenters {
   sessions: SessionsPresenter;
   /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
   sessionsKpi: SessionsKpiPresenter;
+  /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase. */
+  jarvis: Machine<JarvisState, JarvisIntents>;
 }
 
 export interface AppCommands {
@@ -350,6 +356,13 @@ export function createApp(ports: AppPorts): App {
     eventLog: new EventLogPresenter(ports.eventLog),
     sessions: new SessionsPresenter(ports.sessions),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions),
+    jarvis: createJarvisMachine({
+      port: ports.jarvis,
+      skin$: ports.preferences.jarvisSkin$(),
+      setSkin: (s: JarvisSkin): void => {
+        ports.preferences.setJarvisSkin(s);
+      },
+    }),
   };
 
   gateTransportOnAuth(ports.transport, presenters.auth);
