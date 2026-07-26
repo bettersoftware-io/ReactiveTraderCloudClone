@@ -41,13 +41,7 @@ import { clamp01, ease, hashRandom } from "./coreGeometry";
  */
 
 /** What a panel draws inside itself. */
-type LayerPanelKind =
-  | "bg"
-  | "status"
-  | "blotter"
-  | "main"
-  | "list"
-  | "header";
+type LayerPanelKind = "bg" | "status" | "blotter" | "main" | "list" | "header";
 
 /** One exploded UI layer — normalised rect, z-depth, content kind. */
 export interface LayerPanel {
