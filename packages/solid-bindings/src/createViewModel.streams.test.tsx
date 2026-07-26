@@ -398,7 +398,7 @@ describe("createViewModel — equities streams", () => {
     expect(result()).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
-  it("useCandles threads an explicit timeframe through — every timeframe generates CANDLE_HISTORY_TOTAL candles", () => {
+  it("useCandles threads an explicit timeframe through — every timeframe generates CANDLE_HISTORY_TOTAL candles, at a bucket spacing distinct per timeframe", () => {
     const vm = makeViewModel();
     const { result: oneWeek } = renderHook(() => {
       return vm.useCandles("AAPL", "1W");
@@ -410,6 +410,16 @@ describe("createViewModel — equities streams", () => {
 
     expect(oneWeek()).toHaveLength(CANDLE_HISTORY_TOTAL);
     expect(oneMonth()).toHaveLength(CANDLE_HISTORY_TOTAL);
+
+    // Length alone no longer discriminates timeframes (every series is now
+    // CANDLE_HISTORY_TOTAL long) — so if `tf` were silently ignored and
+    // useCandles always resolved "1D", the length assertions above would
+    // still pass. Bucket spacing (series[1].time - series[0].time) is
+    // per-timeframe (each TF_CONFIG entry has its own bucketMs) and proves
+    // the tf argument actually threaded through to the simulator.
+    const oneWeekSpacing = oneWeek()[1].time - oneWeek()[0].time;
+    const oneMonthSpacing = oneMonth()[1].time - oneMonth()[0].time;
+    expect(oneWeekSpacing).not.toBe(oneMonthSpacing);
   });
 
   it("useDepth reads the seeded depth book for that symbol", () => {
