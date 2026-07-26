@@ -12,7 +12,7 @@ Document what this session established, into this repo's `docs/`. Topic keywords
 
 ## Topic hits
 
-!`for kw in $ARGUMENTS; do echo "--- $kw ---"; grep -rl -i -- "$kw" docs --include='*.md' 2>/dev/null | head -6 | sed 's/^/  /' || echo "  (none)"; done; [ -z "$ARGUMENTS" ] && echo "(no keywords supplied — survey the listing by hand)"`
+!`if [ -z "$ARGUMENTS" ]; then echo "(no keywords supplied — survey the listing above by hand)"; else printf '%s' "$ARGUMENTS" | tr ' ' '\n' | grep -v '^$' | while read -r kw; do echo "--- $kw ---"; hits=$(grep -rl -i -F --include='*.md' -e "$kw" docs 2>/dev/null | head -6); if [ -n "$hits" ]; then printf '%s\n' "$hits" | sed 's/^/  /'; else echo "  (none)"; fi; done; fi; true`
 
 ## Where things belong
 
