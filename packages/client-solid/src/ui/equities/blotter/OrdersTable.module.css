@@ -41,6 +41,13 @@
     rowFlashFade 1.5s ease-out;
 }
 
+/* Power-saver Freeze: suppress the entry flash at the source — the catch-all
+ * only shortens it, so every new row still spawned two 0.01ms Animations.
+ * Neither keyframe set uses `forwards`; natural style IS the end state. */
+:root[data-power-saver="freeze"] .row[data-new="true"] {
+  animation: none;
+}
+
 @keyframes rowIn {
   from {
     opacity: 0;

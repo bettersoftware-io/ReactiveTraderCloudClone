@@ -7,8 +7,11 @@ import { scenarios } from "./scenarios";
  *
  * WHY THIS TIER EXISTS. Freeze promises "no decorative motion, and the render
  * stays legible". `index.css` delivers it by forcing `animation-duration` to
- * 0.01ms, `animation-iteration-count` to 1, and both delays to 0. Nothing else
- * could prove that held:
+ * 0.01ms, `animation-iteration-count` to 1, `animation-delay` to 0 and
+ * `transition-property` to `none` (a global non-zero transition duration would
+ * MANUFACTURE a CSSTransition for every data-driven style change, because the
+ * initial `transition-property` is `all` — see index.css). Nothing else could
+ * prove that held:
  *
  *  - jsdom (unit + contract tiers) never runs CSS animations at all.
  *  - The pixel tier can't either: `toHaveScreenshot({ animations: "disabled" })`
@@ -116,14 +119,17 @@ export function collectFreezeViolations(): FreezeViolation[] {
       violations.push({ element: describe(el, pseudo), property, actual });
     }
 
-    // Transitions apply to every element (initial `transition-property: all`),
-    // and a non-zero duration or delay here is exactly the lag freeze removes.
-    if (exceedsInstant(style.transitionDuration)) {
-      report("transition-duration", style.transitionDuration);
-    }
-
-    if (hasDelay(style.transitionDelay)) {
-      report("transition-delay", style.transitionDelay);
+    // Transitions must be OFF (`transition-property: none`), not merely fast.
+    // The initial `transition-property` is `all`, so freeze's earlier
+    // 0.01ms-duration approach manufactured a live CSSTransition (Animation
+    // object + style recalc) for every data-driven style change on every
+    // element — `color` flips on the pips and `d`/`stroke` updates on the
+    // sparkline paths churned at quote rate on exactly the GPU-less boxes
+    // freeze serves. With `none` no Animation is created at all; authored
+    // durations may still compute to their original values, which is why this
+    // asserts the property list and not the duration.
+    if (style.transitionProperty !== "none") {
+      report("transition-property", style.transitionProperty);
     }
 
     if (style.animationName === "none") {
@@ -160,6 +166,41 @@ export function collectFreezeViolations(): FreezeViolation[] {
     check(el, "");
     check(el, "::before");
     check(el, "::after");
+  }
+
+  // Live-animation census: after the caller has settled (freeze.spec.ts awaits
+  // every animation's `finished`), nothing may still be running or paused.
+  // `finished` entries are inert and allowed — a finished CSSAnimation stays
+  // listed while its `animation-name` applies, at zero per-frame cost. This is
+  // what catches the churn class the computed-style walk can't see: a paused
+  // 0.01ms loop held alive for the app's lifetime (`--fx-play`), or an
+  // imperative WAAPI call that slipped past its TS freeze gate.
+  for (const animation of document.getAnimations()) {
+    if (animation.playState !== "finished") {
+      const target =
+        animation.effect instanceof KeyframeEffect &&
+        animation.effect.target !== null
+          ? describe(
+              animation.effect.target,
+              animation.effect.pseudoElement ?? "",
+            )
+          : "(detached)";
+
+      const name =
+        animation instanceof CSSAnimation
+          ? animation.animationName
+          : animation instanceof CSSTransition
+            ? animation.transitionProperty
+            : animation.id === ""
+              ? "waapi"
+              : animation.id;
+
+      violations.push({
+        element: target,
+        property: `live-animation:${name}`,
+        actual: animation.playState,
+      });
+    }
   }
 
   return violations;
