@@ -160,6 +160,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   function handleSend(): void {
     const instrument = selectedInstrument();
 
+    // Unreachable at runtime — the SEND button carries `disabled={!canSubmit()}`,
+    // so the DOM never dispatches this handler while the draft is invalid (the
+    // three "keeps SEND RFQ disabled until …" contract specs pin that). It
+    // stays because `!instrument` is what narrows the null away for
+    // `instrument.id` below; deleting it only trades this line for a
+    // non-null assertion. Expect it to show as uncovered.
     if (!canSubmit() || !instrument) {
       return;
     }
