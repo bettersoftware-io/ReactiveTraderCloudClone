@@ -37,17 +37,32 @@ export interface LiveRatesTilePO {
   ): Promise<void>;
   dismissConfirmation(): Promise<void>;
   confirmationHidden(timeoutMs: number): Promise<void>;
-  isConfirmationVisible(): Promise<boolean>;
+  /**
+   * Wait for the first tile's execution to leave its in-flight EXECUTING…
+   * state, dismiss the resulting confirmation, and wait for the overlay to
+   * disappear — leaving the tile clickable again.
+   *
+   * There is deliberately no plain `isConfirmationVisible()` companion: the
+   * in-flight overlay carries the SAME testid as the terminal one, so a bare
+   * visibility check reads true while nothing is dismissible yet. Every caller
+   * that had one was racing.
+   */
+  dismissConfirmationOnceSettled(timeoutMs: number): Promise<void>;
+  /** Same, on a named pair's tile (e.g. "GBPJPY") rather than the first. */
+  dismissPairConfirmationOnceSettled(
+    symbol: string,
+    timeoutMs: number,
+  ): Promise<void>;
 
   /** Notional input on the first tile. */
   fillFirstTileNotional(value: string): Promise<void>;
   isNotionalInputVisible(): Promise<boolean>;
 
   /**
-   * Buy n times, each time pausing 1.5 s after clicking, then dismissing the
-   * confirmation overlay (if visible) and pausing 0.5 s after dismissal.
-   * Encapsulated in the PO so the driver-specific retry loop lives with its
-   * implementation, not in the scenario body.
+   * Buy n times on the first tile, waiting for each execution to settle and
+   * dismissing its confirmation before the next click. Encapsulated in the PO
+   * so the driver-specific wait loop lives with its implementation, not in the
+   * scenario body.
    */
   buyNTimesWithDismissals(n: number): Promise<void>;
 }
