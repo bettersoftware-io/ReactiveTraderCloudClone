@@ -179,6 +179,33 @@ describe("createChartGestures", () => {
     expect(result.atLiveEdge()).toBe(false);
   });
 
+  it("real candles landing after an initial empty series snap to the live-edge default, not a degenerate zero-width window", () => {
+    // Regression: EqWorkspace's `useCandles` (solid-bindings' resource/store
+    // equivalent of react-rxjs bind()) can start at `[]` on the very first
+    // reactive run before the presenter's real emission is observed.
+    // Naively `followLive`-ing that {0,0} initial viewport by the FULL new
+    // length (a real symbol's series arriving) used to land on {200,200} —
+    // width zero, permanently reading as "at the live edge" so the plot
+    // could never pan away (the real-browser bug an e2e smoke caught,
+    // since jsdom/testing-library component tests always mount with the
+    // real series already in hand).
+    const [seriesLen, setSeriesLen] = createSignal(0);
+    const { result } = renderHook(() => {
+      return createChartGestures(seriesLen, fixedDefaultVisible);
+    });
+
+    setSeriesLen(SERIES_LEN);
+
+    expect(result.viewport()).toEqual({
+      start: SERIES_LEN - DEFAULT_VISIBLE,
+      end: SERIES_LEN,
+    });
+    expect(result.viewport().end - result.viewport().start).toBe(
+      DEFAULT_VISIBLE,
+    );
+    expect(result.atLiveEdge()).toBe(true);
+  });
+
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
     const { result } = renderHook(() => {
       return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
@@ -218,6 +245,40 @@ describe("createChartGestures", () => {
     result.plotProps.onPointerDown(event);
 
     expect(setPointerCapture).toHaveBeenCalledWith(7);
+  });
+
+  it("a pointerdown that lands on a nested button does not capture the pointer (lets the button's own click through)", () => {
+    // Regression: `setPointerCapture` retargets every later pointer event
+    // for this pointer — including the resulting click — to the plot
+    // wrapper, no matter where inside it the pointer actually is. Left
+    // unguarded, that silently swallowed the BACK TO LIVE button's click
+    // in a real browser (jsdom's synthetic events don't model capture
+    // retargeting, so no jsdom test ever saw it break — only a real-browser
+    // e2e run did).
+    const { result } = renderHook(() => {
+      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
+    });
+    const setPointerCapture = vi.fn();
+    const event = {
+      pointerId: 9,
+      clientX: 10,
+      clientY: 10,
+      target: {
+        closest: (selector: string) => {
+          return selector === "button" ? {} : null;
+        },
+      },
+      currentTarget: {
+        setPointerCapture,
+        getBoundingClientRect: (): DOMRect => {
+          return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+        },
+      } as unknown as HTMLDivElement,
+    } as unknown as PointerEvent;
+
+    result.plotProps.onPointerDown(event);
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
   });
 
   it("onPointerCancel clears an in-flight drag and releases capture (same as onPointerUp)", () => {

@@ -101,6 +101,20 @@ export function createChartGestures(
 
     if (len !== prevLen) {
       setViewport((vp) => {
+        // prevLen === 0 is the solid-bindings placeholder before the
+        // candle presenter's real emission lands — not a genuine one-tick
+        // delta. Treating it as one via `followLive` slides the degenerate
+        // {0,0} initial viewport by the FULL new length, landing on a
+        // zero-width window exactly at the series end: `resolveWindow`
+        // then renders nothing (empty candles/labels/NaN prices) and
+        // `isAtLiveEdge` reads permanently true, so the plot can never pan
+        // away from "live" at all. Snap straight to the real default
+        // window instead — this is the very first time real data exists,
+        // so there is no panned-away position to preserve yet.
+        if (prevLen === 0) {
+          return defaultViewport(len, defaultVisible());
+        }
+
         return followLive(vp, prevLen, len);
       });
     }
@@ -157,6 +171,19 @@ export function createChartGestures(
   }
 
   function startDrag(e: PointerEvent): void {
+    // A pointerdown that lands on an interactive descendant (currently: the
+    // BACK TO LIVE pill) must let ITS click through untouched.
+    // `setPointerCapture` below retargets every subsequent pointer event
+    // for this pointer — including the resulting click — to the plot
+    // wrapper regardless of where inside it the pointer actually is, which
+    // silently swallows that button's click in a real browser. jsdom's
+    // synthetic pointer events don't model capture retargeting, so this
+    // was invisible to every component test — exactly the real-browser-
+    // only lifecycle an e2e smoke exists to witness.
+    if ((e.target as HTMLElement | null)?.closest("button")) {
+      return;
+    }
+
     const target = e.currentTarget as HTMLDivElement;
     const rect = target.getBoundingClientRect();
 

@@ -25,7 +25,12 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.page.getByTestId(TESTIDS.shell.tab("admin")).click();
   }
 
-  async clickTab(tab: "fx" | "credit" | "admin"): Promise<void> {
+  async openEquities(): Promise<void> {
+    await this.page.goto("/");
+    await this.page.getByTestId(TESTIDS.shell.tab("equities")).click();
+  }
+
+  async clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void> {
     await this.page.getByTestId(TESTIDS.shell.tab(tab)).click();
   }
 

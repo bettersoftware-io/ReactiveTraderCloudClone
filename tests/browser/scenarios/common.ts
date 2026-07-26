@@ -12,8 +12,17 @@ export async function openCreditWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.openCredit();
 }
 
+export async function openEquitiesWorkspace(ctx: TestContext): Promise<void> {
+  await ctx.po.workspace.openEquities();
+}
+
 export async function clickTab(ctx: TestContext, tab: string): Promise<void> {
-  if (tab !== "fx" && tab !== "credit" && tab !== "admin") {
+  if (
+    tab !== "fx" &&
+    tab !== "credit" &&
+    tab !== "admin" &&
+    tab !== "equities"
+  ) {
     throw new Error(`unsupported tab: ${tab}`);
   }
 

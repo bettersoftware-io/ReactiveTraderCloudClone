@@ -89,6 +89,21 @@ export function useChartGestures(
   if (seriesLen !== prevLen) {
     setPrevLen(seriesLen);
     setViewport((vp) => {
+      // prevLen === 0 is the react-rxjs bind() placeholder before the
+      // candle presenter's (synchronous, but not yet delivered on this
+      // component's first commit) real emission lands — not a genuine
+      // one-tick delta. Treating it as one via `followLive` slides the
+      // degenerate {0,0} initial viewport by the FULL new length, landing
+      // on a zero-width window exactly at the series end: `resolveWindow`
+      // then renders nothing (empty candles/labels/NaN prices) and
+      // `isAtLiveEdge` reads permanently true, so the plot can never pan
+      // away from "live" at all. Snap straight to the real default window
+      // instead — this is the very first time real data exists, so there
+      // is no panned-away position to preserve yet.
+      if (prevLen === 0) {
+        return defaultViewport(seriesLen, defaultVisible);
+      }
+
       return followLive(vp, prevLen, seriesLen);
     });
   }
@@ -136,6 +151,20 @@ export function useChartGestures(
   }, [seriesLen]);
 
   function startDrag(e: ReactPointerEvent<HTMLDivElement>): void {
+    // A pointerdown that lands on an interactive descendant (currently: the
+    // BACK TO LIVE pill) must let ITS click through untouched.
+    // `setPointerCapture` below retargets every subsequent pointer event
+    // for this pointer — including the resulting click — to
+    // `e.currentTarget` (the plot wrapper) regardless of where inside it
+    // the pointer actually is, which silently swallows that button's
+    // onClick in a real browser. jsdom's synthetic pointer events don't
+    // model capture retargeting, so this was invisible to every jsdom
+    // component test — exactly the real-browser-only lifecycle an e2e
+    // smoke exists to witness.
+    if ((e.target as HTMLElement | null)?.closest("button")) {
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
 
     dragRef.current = {
