@@ -626,7 +626,9 @@ pnpm --filter @rtc/devtools-app typecheck
 node scripts/react-compiler-healthcheck.mjs
 ```
 
-Expected: tests and typecheck pass. The healthcheck will now report `InspectorApp.tsx` as **BAILED — Cannot access refs during render**, which is expected and correct: reading a never-reassigned ref in render is the documented seam pattern. **Remove `InspectorApp.tsx` from `TRACKED`** and add a comment beside the removal explaining that it holds an instance, not compiler-memoized derived state, so there is nothing for the gate to protect.
+Expected: tests and typecheck pass.
+
+**Do NOT touch `scripts/react-compiler-healthcheck.mjs`.** `InspectorApp` was never added to `TRACKED` — Task 2 already excluded it, with the reason documented in the script's exclusion comments. (An earlier revision of this plan told you to remove it here; that instruction is obsolete.) After your change the compiler will report `InspectorApp` as bailing with "Cannot access refs during render", which is expected and correct: reading a never-reassigned ref during render is the documented build-once seam pattern, and the gate deliberately does not track it.
 
 - [ ] **Step 4: Commit**
 
@@ -832,6 +834,12 @@ git commit -m "feat(lint): ban manual memoization in compiler-enabled packages"
 - Modify: `docs/STATUS.md`
 
 **REQUIRED SUB-SKILL for the STATUS.md half:** use the `tracking-workstream-status` skill — it owns that file's shape and section ordering.
+
+- [ ] **Step 0: Fix two documentation drifts this workstream caused**
+
+`CLAUDE.md` (repo root) describes `/rtc:gauntlet` as running "the 14 fast gates". Task 2 added `check:compiler`, making it 15. Update that count.
+
+In `scripts/react-compiler-healthcheck.mjs`, the closing line reads `${TRACKED.length} files OK`, but `TRACKED` is keyed by function, not file. Change the wording to `${TRACKED.length} tracked functions OK` so it stays accurate if a second function in an already-tracked file is ever added.
 
 - [ ] **Step 1: Extend ADR-003's scope**
 
