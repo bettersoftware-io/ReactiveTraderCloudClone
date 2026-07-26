@@ -35,10 +35,6 @@ const TRACKED = [
   { file: "packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.tsx", fn: "DockingScene" },
   { file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx", fn: "LaserScene" },
   { file: "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts", fn: "useBootSceneFonts" },
-  // TODO(Task 3): uncomment once useHoldToUnlock is fixed — it currently BAILS
-  // with "Cannot access refs during render". Task 3 fixes the ref access and
-  // re-adds this entry as its final step.
-  // { file: "packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts", fn: "useHoldToUnlock" },
   { file: "packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts", fn: "useShellTelemetry" },
   { file: "packages/client-react-native/src/ui/theme/useThemedStyles.ts", fn: "useThemedStyles" },
 ];
@@ -57,6 +53,12 @@ const TRACKED = [
 //   at all. That deletion is justified instead by the fact that this repo has
 //   zero `React.memo` boundaries, so callback identity buys nothing at runtime.
 //   Recorded here because "untracked" must never read as "forgotten".
+// - `useHoldToUnlock.ts` keeps semantic memos — the compiler cannot supply
+//   gesture identity, since it bails on `runOnJS(fireComplete)()` (no special
+//   case for `runOnJS`) and, even if the ref were removed, would key
+//   `gesture`'s memoization on `LockScreen`'s `submit`, which churns identity
+//   every render because `LockScreen` itself bails on the ViewModel seam; see
+//   the hook's header comment for the full measured chain.
 
 const failures = [];
 
