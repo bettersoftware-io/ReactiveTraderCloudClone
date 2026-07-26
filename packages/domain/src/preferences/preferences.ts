@@ -66,6 +66,9 @@ export type EqBlotterView = "orders" | "positions";
  * style is active. */
 export type AmbientStyle = "aurora" | "rays";
 
+/** J.A.R.V.I.S orb/overlay visual core. Rendered in order by the skin switch. */
+export type JarvisSkin = "singularity" | "reactor";
+
 /** Boot-variant cycle order (PROTO _startBoot `variants` list, v3). */
 export const BOOT_VARIANTS: readonly BootVariant[] = [
   "core",
@@ -98,6 +101,9 @@ export const DEFAULT_ANIMATED_BACKGROUND = true;
  * curtains). Users who pick "rays" keep that choice (persisted under
  * `rtc-ambient-style`). */
 export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
+/** J.A.R.V.I.S visual core default. Users who pick "reactor" keep that choice
+ * (persisted under `rtc-jarvis-skin`). */
+export const DEFAULT_JARVIS_SKIN: JarvisSkin = "singularity";
 /** Force the boot-splash animation to play even under prefers-reduced-motion.
  * Default false: absent an explicit opt-in, honour the accessibility signal. */
 export const DEFAULT_FORCE_BOOT_ANIMATION = false;
@@ -126,6 +132,9 @@ export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];
 
 /** The Preferences "Ambient style" segmented control renders these in order. */
 export const AMBIENT_STYLES: readonly AmbientStyle[] = ["aurora", "rays"];
+
+/** The J.A.R.V.I.S skin switch renders these in order. */
+export const JARVIS_SKINS: readonly JarvisSkin[] = ["singularity", "reactor"];
 
 /** Default stored mode preference. Equal in value to DEFAULT_THEME_MODE, so
  * existing users (who have a concrete "dark"/"light" persisted) and the visual
