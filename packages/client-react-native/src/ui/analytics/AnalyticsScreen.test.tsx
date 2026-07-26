@@ -59,6 +59,29 @@ test("surfaces a stale indicator when the stream is stale", async () => {
   expect(screen.getByTestId("analytics-stale")).toBeTruthy();
 });
 
+// The prototype's card order is P&L -> Pair P&L -> Exposure. RN rendered
+// Exposure second. Asserted positionally because the testIDs alone cannot
+// express order, and order is the whole content of this fix.
+test("renders the cards in the prototype's order", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(DATA, false)}>
+      <AnalyticsScreen />
+    </ViewModelProvider>,
+  );
+
+  // `getAllByTestId` returns matches in render order, which is the whole point
+  // of this test — the three testIDs alone cannot express which comes first.
+  const ids = screen.getAllByTestId(/^analytics-widget-/).map((node) => {
+    return node.props.testID;
+  });
+
+  expect(ids).toStrictEqual([
+    "analytics-widget-pnl",
+    "analytics-widget-pairs",
+    "analytics-widget-exposure",
+  ]);
+});
+
 function fakeViewModel(
   data: PositionUpdates | null,
   stale: boolean,

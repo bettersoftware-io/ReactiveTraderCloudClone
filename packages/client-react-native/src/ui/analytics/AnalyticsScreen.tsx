@@ -59,20 +59,20 @@ export function AnalyticsScreen(): JSX.Element {
 
       <SurfaceCard
         variant="panel"
-        testID="analytics-widget-exposure"
-        style={styles.widget}
-      >
-        <Text style={styles.widgetTitle}>Exposure</Text>
-        <ExposureBubbles positions={data.currentPositions} />
-      </SurfaceCard>
-
-      <SurfaceCard
-        variant="panel"
         testID="analytics-widget-pairs"
         style={styles.widget}
       >
         <Text style={styles.widgetTitle}>Pair P&amp;L</Text>
         <PairPnlBars positions={data.currentPositions} />
+      </SurfaceCard>
+
+      <SurfaceCard
+        variant="panel"
+        testID="analytics-widget-exposure"
+        style={styles.widget}
+      >
+        <Text style={styles.widgetTitle}>Exposure</Text>
+        <ExposureBubbles positions={data.currentPositions} />
       </SurfaceCard>
     </ScrollView>
   );

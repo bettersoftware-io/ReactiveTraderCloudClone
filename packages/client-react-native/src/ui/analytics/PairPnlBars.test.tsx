@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
@@ -55,6 +55,41 @@ test("colours a row's label by the sign of its basePnl", async () => {
   expect(screen.getByTestId("pair-pnl-label-USDJPY").props.style.color).toBe(
     THEME.accentNegative,
   );
+});
+
+// The bar is now a transform, not a layout property: the previous version set
+// `flex: fraction`, which animates layout — banned by docs/performance.md and
+// impossible to run off the JS thread.
+test("renders a bar per position, tinted by direction", async () => {
+  await renderWithTheme(
+    <PairPnlBars positions={[pos("EURUSD", 12000), pos("USDJPY", -3400)]} />,
+  );
+  expect(screen.getByTestId("pair-pnl-bar-pos")).toBeTruthy();
+  expect(screen.getByTestId("pair-pnl-bar-neg")).toBeTruthy();
+});
+
+// A zero-P&L pair still occupies its row: the bar scales to 0 rather than the
+// row disappearing, so the symbol and label stay readable.
+test("a zero-P&L pair keeps its row, symbol and label", async () => {
+  await renderWithTheme(<PairPnlBars positions={[pos("EURGBP", 0)]} />);
+  expect(screen.getByTestId("pair-pnl-row-EURGBP")).toBeTruthy();
+  expect(screen.getByText("EURGBP")).toBeTruthy();
+  expect(screen.getByText("+0k")).toBeTruthy();
+});
+
+test("survives every pair being zero, where the max-abs guard divides by 1", async () => {
+  await renderWithTheme(
+    <PairPnlBars positions={[pos("EURUSD", 0), pos("USDJPY", 0)]} />,
+  );
+  expect(screen.getByTestId("pair-pnl-bars")).toBeTruthy();
+});
+
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
 });
 
 function pos(symbol: string, basePnl: number): CurrencyPairPosition {
