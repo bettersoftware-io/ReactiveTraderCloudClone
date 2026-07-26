@@ -38,14 +38,19 @@ test("docking resolves to a scene now that phase 6b-1 has ported it", () => {
   expect(BOOT_SCENES.docking).toBeDefined();
 });
 
-test("the five scenes deferred to phase 6b-2 still resolve to nothing, without throwing", () => {
-  for (const variant of [
-    "hologram",
-    "geo",
-    "layers",
-    "jarvis",
-    "topo",
-  ] as const) {
+test("hologram resolves to a scene now that phase 6b-2a has ported it", () => {
+  expect(hasBootScene("hologram")).toBe(true);
+  expect(BOOT_SCENES.hologram).toBeDefined();
+});
+
+test("layers resolves to a scene now that phase 6b-2a has ported it", () => {
+  expect(hasBootScene("layers")).toBe(true);
+  expect(BOOT_SCENES.layers).toBeDefined();
+});
+
+test("the three scenes still deferred resolve to nothing, without throwing", () => {
+  // `geo`/`jarvis`/`topo` land in phase 6b-2b.
+  for (const variant of ["geo", "jarvis", "topo"] as const) {
     expect(hasBootScene(variant)).toBe(false);
     expect(BOOT_SCENES[variant]).toBeUndefined();
   }

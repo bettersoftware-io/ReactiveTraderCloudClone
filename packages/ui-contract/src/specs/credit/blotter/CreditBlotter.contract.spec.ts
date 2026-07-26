@@ -287,6 +287,36 @@ describe("CreditBlotter", () => {
       expect(blotter.tradeRowCount()).toBe(1);
       expect(blotter.hasCell("5,000")).toBe(true);
     });
+
+    it("clears the filter when every value is re-selected, restoring all rows", async () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: {
+          useInstruments: instruments,
+          useDealers: dealers,
+          useRfqs: [rfq(1, { instrumentId: 1 }), rfq(2, { instrumentId: 2 })],
+          useAllQuotes: quoteMap(
+            acceptedQuote(900, 1, { dealerId: 1 }),
+            acceptedQuote(901, 2, { dealerId: 2 }),
+          ),
+        },
+      });
+      await blotter.openColumnFilter("Counterparty");
+      await blotter.toggleSetOption("Adaptive Bank");
+      await blotter.applyOpenFilter();
+      expect(blotter.tradeRowCount()).toBe(1);
+
+      // The filter panel is built from the UNFILTERED rows, so both dealers are
+      // still offered; re-checking the one that was excluded makes the
+      // selection all-inclusive, which the set filter applies as `null` rather
+      // than as an all-pass filter. The blotter must then DROP the column from
+      // its filter map — keeping an all-pass entry would leave the
+      // "Filtered: …" summary claiming a filter the user has just removed.
+      await blotter.openColumnFilter("Counterparty");
+      await blotter.toggleSetOption("Adaptive Bank");
+      await blotter.applyOpenFilter();
+      expect(blotter.tradeRowCount()).toBe(2);
+      expect(blotter.activeFilterSummary()).toBeNull();
+    });
   });
 
   // The CSV chip lives in CreditBlotterHead now; the body registers the

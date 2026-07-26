@@ -128,6 +128,14 @@
   animation-play-state: var(--amb-play, paused);
 }
 
+/* Power-saver Freeze: drop the drift entirely instead of holding it paused —
+ * a paused 0.01ms animation stays alive as an Animation object for the app's
+ * whole lifetime. frame-0 equals natural style (translate3d(0,0,0)), so this
+ * is pixel-identical to the paused hold. */
+:root[data-power-saver="freeze"] .grid {
+  animation: none;
+}
+
 /* PROTO line 110: particle dot field. Same compositor-only drift treatment
  * as .grid — the prototype's background-position keyframes moved this layer's
  * single image straight down 48px (two 24px tiles) per loop. */

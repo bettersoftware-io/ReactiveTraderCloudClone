@@ -1,5 +1,7 @@
 import { type Projection3dParams, project3d } from "@rtc/motion-core";
 
+import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
+
 /**
  * The world→screen seam every projected boot scene shares.
  *
@@ -37,11 +39,17 @@ import { type Projection3dParams, project3d } from "@rtc/motion-core";
  * point is to never quietly substitute a value here.
  */
 
-/** A 2-D drift vector in normalised `[-1, 1]` space, as `useGyroDrift` emits. */
-export interface BootGyroDrift {
-  readonly x: number;
-  readonly y: number;
-}
+/**
+ * The drift vector `useGyroDrift` actually emits.
+ *
+ * Imported rather than redeclared. Task 1 shipped a local `BootGyroDrift` with
+ * `x`/`y` fields, which no producer in this codebase has — the real seam is
+ * `mx`/`my` — so every scene would have had to adapt at the call site, and a
+ * per-frame adapter object is exactly the allocation the worklet split exists
+ * to avoid. A type-only import is erased, so this does not pull `expo-sensors`
+ * into a module that worklets reach.
+ */
+export type { GyroDrift };
 
 /** Everything `projectBootPoint` needs: camera orientation plus canvas mapping. */
 export interface Boot3dCamera {
@@ -119,15 +127,15 @@ export function projectBootPoint(
  * `Property 'X' doesn't exist` in #334.
  */
 export function gyroYawPitch(
-  drift: BootGyroDrift,
+  drift: GyroDrift,
   yawRange: number,
   pitchRange: number,
 ): BootCameraOrientation {
   "worklet";
 
   return {
-    yaw: clampUnit(drift.x) * yawRange,
-    pitch: clampUnit(drift.y) * pitchRange,
+    yaw: clampUnit(drift.mx) * yawRange,
+    pitch: clampUnit(drift.my) * pitchRange,
   };
 }
 

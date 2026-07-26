@@ -280,6 +280,11 @@ export class CreditRfqSimulator implements WorkflowPort {
 
         this.applyQuote({ quoteId, price });
       } catch (e) {
+        // applyQuote throws only on state the simulator itself just created, so
+        // this is a backstop rather than a path a test can drive. It has to
+        // exist: this body runs inside a setTimeout callback, where an escaping
+        // throw is an unhandled rejection that takes the process down rather
+        // than failing one RFQ. Expect it to show as uncovered.
         console.error("Error submitting simulated quote:", e);
       }
     }, responseDelay);
@@ -371,6 +376,10 @@ export class CreditRfqSimulator implements WorkflowPort {
 
         const other = this.quotes.get(otherId);
 
+        // Unreachable — every id in rfqQuotes was written to `quotes` in the
+        // same step, so this lookup always hits. Kept because it is what
+        // narrows `Quote | undefined` to `Quote`; the alternative is a non-null
+        // assertion. Expect it to show as uncovered.
         if (!other) {
           continue;
         }

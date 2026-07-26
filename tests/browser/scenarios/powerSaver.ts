@@ -81,3 +81,36 @@ export async function expectConnectionDotFrozen(
     `expected freeze's CSS catch-all to collapse animation-duration to ~0, got "${duration}"`,
   );
 }
+
+/**
+ * Asserts freeze leaves NO live motion machinery while quotes stream: zero
+ * non-`finished` animations across repeated `document.getAnimations()`
+ * snapshots, and zero `requestAnimationFrame` registrations. This is the
+ * churn gate: the original catch-all's global 0.01ms `transition-duration`
+ * manufactured a CSSTransition per data-driven style change and the flash
+ * keyframes respawned a 0.01ms Animation per quote — visually frozen, but
+ * per-tick style-recalc/Animation churn on exactly the GPU-less boxes freeze
+ * exists to spare. Only a live streaming app can witness this; the visual
+ * harness's fixtures are static.
+ */
+export async function expectNoLiveMotionMachinery(
+  ctx: TestContext,
+): Promise<void> {
+  // ~1.5s across 6 snapshots: the sim quotes tick every ~500ms per stream, so
+  // any per-tick churn appears well within the window.
+  const sample = await powerSaverPO(ctx).sampleMotion({
+    samples: 6,
+    intervalMs: 250,
+  });
+
+  assertEquals(
+    sample.liveAnimations.join("\n"),
+    "",
+    `expected no live (running/paused) animations under freeze, got:\n${sample.liveAnimations.join("\n")}`,
+  );
+  assertEquals(
+    sample.rafCallbacks,
+    0,
+    `expected no requestAnimationFrame activity under freeze, got ${sample.rafCallbacks} registrations in ${Math.round(sample.elapsedMs)}ms`,
+  );
+}

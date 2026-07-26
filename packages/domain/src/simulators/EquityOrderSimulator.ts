@@ -94,6 +94,9 @@ export class EquityOrderSimulator implements OrderPort {
         complete: () => {
           return subscriber.complete();
         },
+        // `lifecycle$` is a merge of local timers, so it has no error path to
+        // drive from a test. The arm exists so a future non-timer source is
+        // forwarded rather than swallowed. Expect it to show as uncovered.
         error: (e: unknown) => {
           return subscriber.error(e);
         },

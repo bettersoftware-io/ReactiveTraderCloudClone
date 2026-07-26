@@ -72,19 +72,19 @@ test("each scene keeps its own perspectiveK", () => {
 });
 
 test("gyro drift maps into bounded yaw and pitch", () => {
-  const centred = gyroYawPitch({ x: 0, y: 0 }, 0.5, 0.3);
+  const centred = gyroYawPitch({ mx: 0, my: 0 }, 0.5, 0.3);
 
   expect(centred.yaw).toBeCloseTo(0);
   expect(centred.pitch).toBeCloseTo(0);
 
-  const extreme = gyroYawPitch({ x: 1, y: 1 }, 0.5, 0.3);
+  const extreme = gyroYawPitch({ mx: 1, my: 1 }, 0.5, 0.3);
 
   expect(Math.abs(extreme.yaw)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(extreme.pitch)).toBeLessThanOrEqual(0.3);
 });
 
 test("gyro drift beyond unit range is clamped, not extrapolated", () => {
-  const past = gyroYawPitch({ x: 9, y: -9 }, 0.5, 0.3);
+  const past = gyroYawPitch({ mx: 9, my: -9 }, 0.5, 0.3);
 
   expect(past.yaw).toBeCloseTo(0.5);
   expect(past.pitch).toBeCloseTo(-0.3);
@@ -94,7 +94,7 @@ test("gyro drift beyond unit range is clamped, not extrapolated", () => {
 // than `??` would silently turn a deliberate 0 into the fallback — the same
 // class of defect as the worklet default-parameter trap in #334.
 test("a zero drift axis stays zero rather than falling back", () => {
-  const partial = gyroYawPitch({ x: 0, y: 1 }, 0.5, 0.3);
+  const partial = gyroYawPitch({ mx: 0, my: 1 }, 0.5, 0.3);
 
   expect(partial.yaw).toBe(0);
   expect(partial.pitch).toBeCloseTo(0.3);

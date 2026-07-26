@@ -142,15 +142,59 @@ Adopt only if the residual tax justifies it. Shape if adopted:
 - Rule 3 then collapses to "enqueue" — the triage disappears entirely, and the
   untested-combined-state hole closes structurally.
 
+> ### ⛔ Amendment 2026-07-26 — Phase B is not buildable as specified
+>
+> Both open questions below were investigated the same day the spec landed.
+> The feasibility one came back **negative**, which retires Phase B rather
+> than deferring it. Everything above this box is preserved as written; the
+> Phase A design it justifies is unaffected and already shipped (PR #370).
+>
+> **Merge queue requires an organization-owned repository.** This repo is
+> `owner.type: "User"`, `visibility: public` (verified via the API). Public
+> visibility is not sufficient. GitHub's GA changelog: *"Merge queue is
+> available on private and public repos on the GitHub Enterprise Cloud plan
+> and all public repos owned by **organizations**."* A GitHub staff reply in
+> [community #51483](https://github.com/orgs/community/discussions/51483)
+> matches, and that thread runs to June 2026 with the personal-account
+> question unanswered.
+>
+> Supporting local signals: classic branch protection returns 404 (this repo
+> is rulesets-only), `mergeQueue(branch:"main")` resolves to `null`, and
+> `viewerPermission` is `ADMIN` — so nothing is being masked by insufficient
+> permissions on the caller's side.
+>
+> *Evidence limit:* the decisive probe (`POST /rulesets` carrying a
+> `merge_queue` rule, `enforcement: "disabled"`, targeting a nonexistent
+> branch) was **not run** — it writes repo settings. This conclusion rests on
+> ownership type plus GitHub's documentation, not on an API rejection. Run
+> that probe if the last 1% matters.
+>
+> **Consequence:** the trigger recorded in § Verification ("catch-up rate stays
+> above ~15%") is no longer a decision point for Phase B. Re-measuring cannot
+> unblock an unavailable feature. The real precondition is **transferring the
+> repo to an organization** — a separate, larger decision. Until then Phase A's
+> manual triage is the permanent mechanism, not an interim one.
+
 **Open feasibility question, must be answered before building:** whether GitHub
 merge queue is available on a **user-owned** public repo. The docs emphasise
 organisations; this repo is public but owned by a user account, not an org.
 IDEAS.md's note ("available for public repos and Team/Enterprise orgs") is
 ambiguous on exactly this case. Verify before any further design.
 
+> **Answered 2026-07-26: no.** See the amendment box above.
+
 **Second known risk:** this repo's fine-grained PAT `403`s on `gh pr checks` /
 `statusCheckRollup`. Merge queue leans on the same check-rollup APIs, so tooling
 friction is likely to resurface in whatever polls queue state.
+
+> **Retracted 2026-07-26 — this risk was misattributed.** The 403 is not a
+> property of the repo or the API; it is a property of *which token is loaded*.
+> On the host OAuth token (`gho_`, `repo` scope) `gh pr checks` exits 0 and
+> `statusCheckRollup` returns `SUCCESS` with 7 contexts. The 403 came from the
+> under-scoped fine-grained PAT the sandbox launcher injects from
+> `.github/.token`, which needs *Checks: read* + *Commit statuses: read*.
+> Separately: that PAT is now **revoked** (`gh api user` → `401`), so a
+> sandboxed session currently fails every `gh` call — tracked in `STATUS.md`.
 
 ## Verification
 
