@@ -125,7 +125,7 @@ catch-up, and 9 of those 17 shared only docs/STATUS.md — every one auto-merged
 cleanly. They were not conflicts, they were the rule read literally, at ~10 min
 of CI each.
 
-Rule 3 now exempts overlaps where every shared path matches **/*.md or docs/**
+Rule 3 now exempts overlaps where every shared path matches **/*.md
 (CLAUDE.md counts as prose; .claude/settings.json does not). Code, lockfiles,
 config, fixtures and CI still trigger a catch-up — pnpm-lock.yaml is the case
 that genuinely warrants it.
@@ -137,6 +137,13 @@ as deferred-on-data with a revisit trigger in STATUS.md.
 Residual risk unchanged and now stated in the rule: strict_required_status_checks_policy
 is false, so a green-but-stale PR can still merge into an untested main."
 ```
+
+**Note (added after final review):** the commit actually made for Task 1
+(`8465509e`) predates this glob narrowing and its message says `**/*.md or
+docs/**`, matching the code as it stood at that moment — that history is not
+rewritten. The template above reflects the current rule (`**/*.md` only)
+after the fix-round amendment; it is what a *new* commit touching this rule
+should say, not a rewrite of the old one.
 
 - [ ] **Step 8: Open the PR and follow Rules 2-6**
 
@@ -151,7 +158,7 @@ merge with `--merge` once green for your SHA, then remove the worktree.
 
 | Spec requirement | Task/Step |
 |---|---|
-| Prose-only overlap merges as-is, glob `**/*.md` \| `docs/**` | Task 1, Step 1 |
+| Prose-only overlap merges as-is, glob `**/*.md` | Task 1, Step 1 |
 | `CLAUDE.md` prose / `.claude/settings.json` not | Task 1, Step 1 |
 | Code, lockfiles, config, fixtures, CI still catch up | Task 1, Step 1 (bullet a) |
 | Carry the measured evidence in the rule | Task 1, Step 1 (both bullets) |
@@ -166,4 +173,4 @@ No gaps.
 
 **Placeholder scan:** No TBD/TODO. Every step contains the literal text to write, not a description of it.
 
-**Type consistency:** N/A (no code). Cross-checked instead that the glob `**/*.md` or `docs/**` is stated identically in the spec, Step 1, and Step 3, and that the figures (59 merges, 17 catch-ups, 9 from STATUS.md, 53%, 10.1 min, 71%, ~2.9 min) match the spec exactly in every place they appear.
+**Type consistency:** N/A (no code). Cross-checked instead that the glob `**/*.md` is stated identically in the spec, Step 1, and Step 3, and that the figures (59 merges, 17 catch-ups, 9 from STATUS.md, 53%, 10.1 min, 71%, ~2.9 min) match the spec exactly in every place they appear.
