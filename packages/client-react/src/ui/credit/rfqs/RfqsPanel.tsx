@@ -349,6 +349,22 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
   const cancelRfq = useCancelRfq();
   const vm = rfqCardVm(rfq, quotes, instruments, dealers);
 
+  function acceptRfqQuote(quoteId: number): void {
+    void acceptQuote(quoteId);
+  }
+
+  function cancelRfqCard(): void {
+    void cancelRfq(rfq.id);
+  }
+
+  function removeRfqCard(): void {
+    onRemove(rfq.id);
+  }
+
+  function reportCardSettled(kind: "enter" | "exit"): void {
+    onAnimationEnd(rfq.id, kind);
+  }
+
   return (
     <RfqCard
       vm={vm}
@@ -356,18 +372,10 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
       expirySecs={rfq.expirySecs}
       anim={anim}
       delayMs={delayMs}
-      onAccept={(quoteId: number) => {
-        void acceptQuote(quoteId);
-      }}
-      onCancel={() => {
-        void cancelRfq(rfq.id);
-      }}
-      onRemove={() => {
-        onRemove(rfq.id);
-      }}
-      onAnimationEnd={(kind: "enter" | "exit") => {
-        onAnimationEnd(rfq.id, kind);
-      }}
+      onAccept={acceptRfqQuote}
+      onCancel={cancelRfqCard}
+      onRemove={removeRfqCard}
+      onAnimationEnd={reportCardSettled}
     />
   );
 }

@@ -40,6 +40,10 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
     }
   }
 
+  function changeUiScale(e: ChangeEvent<HTMLInputElement>): void {
+    setPref("uiScale", Number.parseInt(e.target.value, 10));
+  }
+
   return (
     <div
       role="dialog"
@@ -134,9 +138,7 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
                     max={120}
                     step={5}
                     value={prefs.uiScale}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      setPref("uiScale", Number.parseInt(e.target.value, 10));
-                    }}
+                    onChange={changeUiScale}
                     aria-label="Interface scale"
                     className={styles.range}
                   />

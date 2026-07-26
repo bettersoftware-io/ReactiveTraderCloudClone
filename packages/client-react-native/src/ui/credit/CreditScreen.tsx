@@ -17,17 +17,15 @@ export function CreditScreen(): JSX.Element {
   const [view, setView] = useState<CreditView>("tiles");
   const styles = useThemedStyles(makeStyles);
 
+  function showTilesView(): void {
+    setView("tiles");
+  }
+
   return (
     <View style={styles.screen} testID="credit-screen">
       <CreditNav view={view} onChange={setView} />
       {view === "tiles" ? <RfqTilesPanel /> : null}
-      {view === "new-rfq" ? (
-        <NewRfqForm
-          onCreated={() => {
-            setView("tiles");
-          }}
-        />
-      ) : null}
+      {view === "new-rfq" ? <NewRfqForm onCreated={showTilesView} /> : null}
       {view === "sell-side" ? <SellSidePanel /> : null}
     </View>
   );

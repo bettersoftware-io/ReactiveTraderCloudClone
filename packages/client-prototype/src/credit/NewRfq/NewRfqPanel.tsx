@@ -86,15 +86,17 @@ interface DirButtonProps {
 function DirButton(props: DirButtonProps): ReactElement {
   const { dir, active, onSelect } = props;
 
+  function selectDirection(): void {
+    onSelect(dir);
+  }
+
   return (
     <button
       type="button"
       className={styles.dirBtn}
       data-dir={dir.toLowerCase()}
       data-active={String(active)}
-      onClick={() => {
-        onSelect(dir);
-      }}
+      onClick={selectDirection}
     >
       You {dir}
     </button>

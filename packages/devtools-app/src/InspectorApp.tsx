@@ -311,14 +311,16 @@ function LensButton({
   active,
   onSelect,
 }: LensButtonProps): ReactElement {
+  function selectLens(): void {
+    onSelect(id);
+  }
+
   return (
     <button
       type="button"
       data-testid={`lens-${id}`}
       className={id === active ? styles.tabActive : styles.tab}
-      onClick={() => {
-        onSelect(id);
-      }}
+      onClick={selectLens}
     >
       {label}
     </button>

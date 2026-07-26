@@ -21,6 +21,10 @@ export function WirePanel({
 }: WirePanelProps): ReactElement {
   const [filterText, setFilterText] = useState("");
 
+  function changeWireFilter(e: ChangeEvent<HTMLInputElement>): void {
+    setFilterText(e.target.value);
+  }
+
   const wireRows = wireRowsOf(log);
 
   if (wireRows.length === 0) {
@@ -45,9 +49,7 @@ export function WirePanel({
           className={styles.filterInput}
           placeholder="Filter by msgType…"
           value={filterText}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            setFilterText(e.target.value);
-          }}
+          onChange={changeWireFilter}
         />
       </div>
       <CountStrip

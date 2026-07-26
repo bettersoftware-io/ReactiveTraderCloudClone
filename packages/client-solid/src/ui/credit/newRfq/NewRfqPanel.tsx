@@ -146,6 +146,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
     });
   }
 
+  function toggleInstrumentDropdown(): void {
+    setInstrumentOpen((prev) => {
+      return !prev;
+    });
+  }
+
   function clearRfqDraft(): void {
     setValue(EMPTY_VALUE);
     setInstrumentOpen(false);
@@ -208,11 +214,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
           instruments={instruments()}
           selected={selectedInstrument()}
           open={instrumentOpen()}
-          onToggle={() => {
-            setInstrumentOpen((prev) => {
-              return !prev;
-            });
-          }}
+          onToggle={toggleInstrumentDropdown}
           onSelect={selectInstrument}
         />
 
@@ -298,6 +300,10 @@ interface DirButtonProps {
 }
 
 function DirButton(props: DirButtonProps): JSX.Element {
+  function selectDirection(): void {
+    props.onSelect(props.dir);
+  }
+
   return (
     <button
       type="button"
@@ -305,9 +311,7 @@ function DirButton(props: DirButtonProps): JSX.Element {
       data-testid={`new-rfq-dir-${props.dir.toLowerCase()}`}
       data-dir={props.dir.toLowerCase()}
       data-active={String(props.active)}
-      onClick={() => {
-        props.onSelect(props.dir);
-      }}
+      onClick={selectDirection}
     >
       You {props.dir}
     </button>

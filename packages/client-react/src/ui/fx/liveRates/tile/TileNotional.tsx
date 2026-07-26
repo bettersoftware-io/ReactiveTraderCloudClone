@@ -18,6 +18,14 @@ export function TileNotional({
     }
   }
 
+  function changeNotional(e: ChangeEvent<HTMLInputElement>): void {
+    notional.change(e.target.value);
+  }
+
+  function selectNotionalText(): void {
+    inputRef.current?.select();
+  }
+
   const hasError = !!notional.state.error;
 
   return (
@@ -27,13 +35,9 @@ export function TileNotional({
         <input
           ref={inputRef}
           value={notional.state.displayValue}
-          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-            notional.change(e.target.value);
-          }}
+          onChange={changeNotional}
           onKeyDown={blurNotionalOnEnter}
-          onFocus={() => {
-            inputRef.current?.select();
-          }}
+          onFocus={selectNotionalText}
           disabled={disabled}
           data-error={hasError ? "true" : "false"}
           className={styles.input}

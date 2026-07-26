@@ -12,6 +12,10 @@ export function FilterControls({
   model,
   textInputRef,
 }: FilterControlsProps): ReactElement {
+  function changeTimelineFilter(e: ChangeEvent<HTMLInputElement>): void {
+    model.setText(e.target.value);
+  }
+
   return (
     <div className={styles.controls}>
       <input
@@ -20,9 +24,7 @@ export function FilterControls({
         className={styles.text}
         placeholder="Filter… ( / )"
         value={model.filter.text}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => {
-          model.setText(e.target.value);
-        }}
+        onChange={changeTimelineFilter}
       />
       <div className={styles.families}>
         {FAMILIES.map((family) => {
@@ -68,14 +70,16 @@ interface FamilyCheckboxProps {
 }
 
 function FamilyCheckbox({ family, model }: FamilyCheckboxProps): ReactElement {
+  function toggleFamilyFilter(): void {
+    model.toggleFamily(family);
+  }
+
   return (
     <label className={styles.family}>
       <input
         type="checkbox"
         checked={model.filter.families[family]}
-        onChange={() => {
-          model.toggleFamily(family);
-        }}
+        onChange={toggleFamilyFilter}
       />
       {family}
     </label>
@@ -88,14 +92,16 @@ interface PillChipProps {
 }
 
 function PillChip({ pill, model }: PillChipProps): ReactElement {
+  function removeFilterPill(): void {
+    model.removePill(pill);
+  }
+
   return (
     <button
       type="button"
       className={styles.pill}
       title="Remove filter"
-      onClick={() => {
-        model.removePill(pill);
-      }}
+      onClick={removeFilterPill}
     >
       {`${pill.id} ✕`}
     </button>

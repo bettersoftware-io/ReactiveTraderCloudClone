@@ -42,22 +42,26 @@ interface InstrumentTabProps {
 function InstrumentTab(props: InstrumentTabProps): ReactElement {
   const { sym, active, onSelect, onClose } = props;
 
+  function selectInstrumentTab(): void {
+    onSelect(sym);
+  }
+
+  function closeInstrumentTab(e: MouseEvent): void {
+    e.stopPropagation();
+    onClose(sym);
+  }
+
   return (
     <button
       type="button"
       className={styles.tab}
       data-active={String(active)}
-      onClick={() => {
-        onSelect(sym);
-      }}
+      onClick={selectInstrumentTab}
     >
       {sym}
       <span
         className={styles.close}
-        onClick={(e: MouseEvent) => {
-          e.stopPropagation();
-          onClose(sym);
-        }}
+        onClick={closeInstrumentTab}
         aria-hidden="true"
       >
         ✕

@@ -113,6 +113,18 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
   const { rfq, rfqs, index } = props;
   const vm = rfqCardVm(rfq, rfqs.now);
 
+  function acceptDealerQuote(dealerId: number): void {
+    rfqs.acceptQuote(rfq.id, dealerId);
+  }
+
+  function cancelRfqCard(): void {
+    rfqs.cancelRfq(rfq.id);
+  }
+
+  function removeRfqCard(): void {
+    rfqs.removeRfq(rfq.id);
+  }
+
   return (
     <div data-flip-key={rfq.id} data-rfq-id={rfq.id} className={styles.cell}>
       <RfqCard
@@ -121,15 +133,9 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
         isExiting={rfqs.cardExitIds.includes(rfq.id)}
         isTabRecent={rfqs.tabRecent}
         index={index}
-        onAccept={(dealerId: number) => {
-          rfqs.acceptQuote(rfq.id, dealerId);
-        }}
-        onCancel={() => {
-          rfqs.cancelRfq(rfq.id);
-        }}
-        onRemove={() => {
-          rfqs.removeRfq(rfq.id);
-        }}
+        onAccept={acceptDealerQuote}
+        onCancel={cancelRfqCard}
+        onRemove={removeRfqCard}
       />
     </div>
   );
