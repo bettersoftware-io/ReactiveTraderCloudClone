@@ -90,10 +90,11 @@ emits numbers, never markup.**
 ### 3.2 Data layer
 
 - `@rtc/domain` — `Candle` gains `readonly volume: number`. The simulator's
-  per-timeframe history deepens 60 → 300. Volume is generated from an
-  **independent seeded PRNG stream** (never interleaved with the OHLC draws)
-  so the existing "1D first-60 OHLC byte-identical, seed 7" guarantee holds;
-  a regression test pins it.
+  per-timeframe history deepens to 300 **by prepending older candles from an
+  independently-seeded backwards walk** — the existing forward walk (and thus
+  the newest pre-deepening candles, the whole old series) stays byte-identical.
+  Volume likewise comes from its own PRNG stream, never interleaved with the
+  OHLC draws. A regression pin asserts both.
 - `@rtc/shared` — candle DTO gains `volume`.
 - `@rtc/server` — the equities candle effect serves the widened series (it
   reuses the domain simulator). Sim and server ship together; no wire
@@ -171,7 +172,8 @@ gating carries over untouched.
   live-follow at-edge vs panned-away, chartVm slicing + Y-fit + all kinds,
   crosshair snapping/readout, SMA/EMA warm-up, nice-tick selection.
 - **Unit (domain)**: 300-deep history; volume determinism; **byte-identity
-  pin on 1D first-60 OHLC**.
+  pin on the newest 60 1D candles' OHLC** (the whole pre-deepening series —
+  proves deepening prepends only).
 - **Contract (`ui-contract`, both clients via swap-trio)**: keyboard-driven
   viewport specs (pan → back-to-live lifecycle, zoom changes rendered candle
   count, Home/End), crosshair readout for a pinned position, chart-type
@@ -184,21 +186,28 @@ gating carries over untouched.
 - **e2e (Playwright, per client)**: pan away → "back to live" appears →
   click → follows live again.
 
-## 6. Rollout — four PRs, each independently green
+## 6. Rollout — three PRs, each independently green
 
-1. **Data**: domain volume + 300 history + byte-identity pin; shared DTO;
-   server effect; fixture sweep across all packages (RN included —
-   compile-error-guided, behaviour-neutral).
+1. **Data**: domain volume + 300 history (prepend) + byte-identity pin;
+   fixture sweep across all packages (RN included — compile-error-guided,
+   behaviour-neutral). The wire and server effects pass domain objects
+   through and need no code change.
 2. **Interaction core**: motion-core modules + unit suites (pure library PR).
-3. **React UI**: gesture hook, five components, EqChartHead controls,
-   EqWorkspaceMachine fields, contract specs, goldens, e2e smoke.
-4. **Solid parity**: ported shell + components; shared contract specs pass
-   as-is; goldens assert; e2e smoke.
+3. **Web UI, both clients**: gesture shells, five components each,
+   EqChartHead controls, EqWorkspaceMachine fields, shared contract specs,
+   visual scenarios + goldens, e2e smoke, and the architecture-doc note on
+   the hybrid div/SVG mark-shape rule.
+
+*(Amended from four PRs at planning time: `@rtc/ui-contract` specs run
+against **both** clients in CI and visual goldens are react-rendered /
+solid-asserted, so a React-only UI PR carrying shared specs or scenarios
+would red the Solid gates — React and Solid must land together.)*
 
 The spec/STATUS PR (this document + the two follow-up backlog entries) precedes
-them. `docs/architecture` gains a short note on the hybrid div/SVG mark-shape
-rule when PR 3 lands the SVG layer. No new packages → no dep-cruiser or
-`tsconfig.depcruise.json` wiring.
+them. No new packages → no dep-cruiser or `tsconfig.depcruise.json` wiring.
+
+Implementation plan:
+[../plans/2026-07-26-equities-chart-interactivity.md](../plans/2026-07-26-equities-chart-interactivity.md)
 
 ## 7. Non-goals restated
 
