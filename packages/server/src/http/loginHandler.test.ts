@@ -8,10 +8,10 @@ import { createRateLimiter } from "#/auth/rateLimit";
 import {
   authorizeUpgrade,
   describeUpgrade,
-  handleLogin,
+  authenticateLoginRequest,
 } from "./loginHandler.js";
 
-describe("handleLogin", () => {
+describe("authenticateLoginRequest", () => {
   it("returns 429 when the caller is rate-limited", () => {
     const auth = makeAuth((): number => {
       return 1_000;
@@ -26,8 +26,8 @@ describe("handleLogin", () => {
     };
     const body = JSON.stringify({ username: "demo", password: "localpass" });
 
-    expect(handleLogin(body, "1.2.3.4", deps).status).toBe(200);
-    expect(handleLogin(body, "1.2.3.4", deps).status).toBe(429);
+    expect(authenticateLoginRequest(body, "1.2.3.4", deps).status).toBe(200);
+    expect(authenticateLoginRequest(body, "1.2.3.4", deps).status).toBe(429);
   });
 
   it("returns 400 on malformed JSON", () => {
@@ -43,7 +43,7 @@ describe("handleLogin", () => {
       },
     };
 
-    const result = handleLogin("{not json", "1.2.3.4", deps);
+    const result = authenticateLoginRequest("{not json", "1.2.3.4", deps);
     expect(result.status).toBe(400);
   });
 
@@ -60,7 +60,7 @@ describe("handleLogin", () => {
       },
     };
 
-    const result = handleLogin(
+    const result = authenticateLoginRequest(
       JSON.stringify({ username: "demo" }),
       "1.2.3.4",
       deps,
@@ -82,7 +82,7 @@ describe("handleLogin", () => {
     };
 
     const body = JSON.stringify({ username: "demo", password: "wrong" });
-    const result = handleLogin(body, "1.2.3.4", deps);
+    const result = authenticateLoginRequest(body, "1.2.3.4", deps);
     expect(result.status).toBe(401);
   });
 
@@ -100,7 +100,7 @@ describe("handleLogin", () => {
     };
 
     const body = JSON.stringify({ username: "demo", password: "localpass" });
-    const result = handleLogin(body, "1.2.3.4", deps);
+    const result = authenticateLoginRequest(body, "1.2.3.4", deps);
 
     expect(result.status).toBe(200);
     expect(result.headers?.["Access-Control-Allow-Origin"]).toBe("*");

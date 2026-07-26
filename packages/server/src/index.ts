@@ -9,7 +9,10 @@ import { combineEffects, createWsListener } from "@rtc/ws-effects";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
 import { allEffects } from "./effects/index.js";
-import { describeUpgrade, handleLogin } from "./http/loginHandler.js";
+import {
+  authenticateLoginRequest,
+  describeUpgrade,
+} from "./http/loginHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
 import { createServices } from "./services/serviceContainer.js";
 import { toSocket } from "./socket/toSocket.js";
@@ -83,7 +86,7 @@ const httpServer = createServer((req, res) => {
   if (req.url === "/login" && req.method === "POST") {
     readBody(req)
       .then((bodyText) => {
-        const result = handleLogin(bodyText, clientIp(req), {
+        const result = authenticateLoginRequest(bodyText, clientIp(req), {
           auth,
           rateLimit: loginRateLimit,
           now: (): number => {
@@ -121,7 +124,7 @@ const wss = new WebSocketServer({
     const decision = describeUpgrade(info.req.url, auth);
 
     if (!decision.ok && decision.reason) {
-      connectionLog.onRejectedUpgrade(decision.reason);
+      connectionLog.recordRejectedUpgrade(decision.reason);
     }
 
     return decision.ok;
@@ -129,9 +132,9 @@ const wss = new WebSocketServer({
 });
 
 wss.on("connection", (ws) => {
-  connectionLog.onConnect();
+  connectionLog.recordConnect();
   ws.on("close", () => {
-    connectionLog.onDisconnect();
+    connectionLog.recordDisconnect();
   });
   listen(toSocket(ws));
 });

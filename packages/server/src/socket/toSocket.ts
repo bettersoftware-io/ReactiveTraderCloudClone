@@ -5,7 +5,7 @@ import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 
 export function toSocket(ws: WebSocket): Socket {
   const messages$ = new Observable<Inbound>((subscriber) => {
-    function onMessage(data: unknown): void {
+    function emitParsedFrame(data: unknown): void {
       try {
         subscriber.next(JSON.parse(String(data)) as Inbound);
       } catch {
@@ -13,10 +13,10 @@ export function toSocket(ws: WebSocket): Socket {
       }
     }
 
-    ws.on("message", onMessage);
+    ws.on("message", emitParsedFrame);
 
     return () => {
-      ws.off("message", onMessage);
+      ws.off("message", emitParsedFrame);
     };
   });
 

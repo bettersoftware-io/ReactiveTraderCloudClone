@@ -83,7 +83,7 @@ sequenceDiagram
      public `ROSTER` and the password against an injected `DevCredentials` map;
      issues a cosmetic `sim.<username>.<id>` token (there is no real WS to gate
      in simulator mode).
-5. **On the server, `handleLogin`** (`packages/server/src/http/loginHandler.ts:36-70`)
+5. **On the server, `authenticateLoginRequest`** (`packages/server/src/http/loginHandler.ts:36-70`)
    runs, in order: **rate-limit** the caller's IP (`RateLimiter.hit`, 10
    requests/60s, `packages/server/src/auth/rateLimit.ts`) → **parse** the JSON
    body (`isLoginRequestDto`) → **`AuthService.login`**
