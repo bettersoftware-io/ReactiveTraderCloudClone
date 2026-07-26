@@ -1,7 +1,6 @@
 import { createMemo, type JSX, Show } from "solid-js";
 
-import type { CandleTimeframe } from "@rtc/domain";
-import { type ChartVm, chartVm } from "@rtc/motion-core";
+import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CandleChart } from "./CandleChart";
@@ -11,19 +10,22 @@ import { useTickFlash } from "./useTickFlash";
 import styles from "./ChartPanel.module.css";
 
 /**
- * The chart panel's body: the live instrument header over the candlestick
- * plot for the workspace's selected symbol. The control row (instrument
- * tabs + timeframe pills) is hoisted to EqChartHead, the panel's
- * headControls — mirroring the prototype's ChartPanelControls split.
+ * The chart panel's body: the live instrument header over the interactive
+ * candle plot for the workspace's selected symbol. The control row
+ * (instrument tabs + chart-type/indicator/timeframe pills) is hoisted to
+ * EqChartHead, the panel's headControls — mirroring the prototype's
+ * ChartPanelControls split. A pure data/join component: all chart geometry
+ * and gesture state live in CandleChart.
  *
  * SOLID PORT NOTE: `useEquityQuote`/`useCandles` take a plain `symbol`
  * (mirroring the react ViewModel's per-render hook-call shape), not an
  * accessor — so a persistent ChartPanel can't just re-call them when the
  * shared `sel`/`timeframe` change; it wouldn't re-run. Instead, `ChartBody`
  * below is keyed on `sel::timeframe` — Solid's keyed `<Show>` fully remounts
- * (tears down and recreates, including each hook's underlying subscription)
- * whenever that composite key's VALUE changes, the Solid analogue of React
- * re-invoking the whole component function with fresh hook args.
+ * (tears down and recreates, including each hook's underlying subscription
+ * AND `createChartGestures`'s gesture state) whenever that composite key's
+ * VALUE changes — the same remount-on-switch signal React's
+ * `key={`${sel}|${timeframe}`}` gives `useChartGestures`.
  */
 export function ChartPanel(): JSX.Element {
   const { useEqWorkspace } = useViewModel();
@@ -53,7 +55,9 @@ interface ChartBodyProps {
 }
 
 function ChartBody(props: ChartBodyProps): JSX.Element {
-  const { useEquityQuote, useCandles, useWatchlist } = useViewModel();
+  const { useEqWorkspace, useEquityQuote, useCandles, useWatchlist } =
+    useViewModel();
+  const { state } = useEqWorkspace();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
@@ -72,8 +76,8 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     return quote()?.last ?? null;
   });
 
-  const vm = createMemo((): ChartVm => {
-    return chartVm(candles(), quote()?.last ?? 0, flash().flashOn);
+  const defaultVisible = createMemo(() => {
+    return CANDLE_DEFAULT_VISIBLE[props.timeframe];
   });
 
   return (
@@ -88,7 +92,14 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           flashOn={flash().flashOn}
           flashDir={flash().dir}
         />
-        <CandleChart vm={vm()} />
+        <CandleChart
+          candles={candles()}
+          liveRate={quote()?.last ?? 0}
+          flashOn={flash().flashOn}
+          kind={state().chartType}
+          indicators={state().indicators}
+          defaultVisible={defaultVisible()}
+        />
       </div>
     </div>
   );

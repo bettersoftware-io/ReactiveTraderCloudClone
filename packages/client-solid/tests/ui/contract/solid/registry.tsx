@@ -93,6 +93,8 @@ import type { Accessor, JSX } from "solid-js";
 
 import type {
   ColumnFilter,
+  EqChartType,
+  EqIndicatorId,
   NotionalIntents,
   NotionalView,
   PanelId,
@@ -120,7 +122,6 @@ import type {
   Rfq,
   Trade,
 } from "@rtc/domain";
-import type { ChartVm } from "@rtc/motion-core";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
@@ -887,7 +888,23 @@ export const registry = new Map<AnyToken, ElementFor>([
   [
     CandleChart,
     (p: Accessor<Record<string, unknown>>): JSX.Element => {
-      return <CandleChartComponent vm={p().vm as ChartVm} />;
+      // NOTE(C2->C4 handoff): CandleChart became the interactive plot in
+      // Task C3 (mirroring React's C2) — owns createChartGestures; props are
+      // candles/liveRate/flashOn/kind/indicators/defaultVisible, not a
+      // precomputed `vm`. This adapter is updated just enough to keep the
+      // registry type-checking — CandleChart.contract.spec.ts itself (which
+      // still mounts the old `{ vm }` shape) is Task C4's to rewrite against
+      // the new contract.
+      return (
+        <CandleChartComponent
+          candles={(p().candles as readonly Candle[]) ?? []}
+          liveRate={(p().liveRate as number) ?? 0}
+          flashOn={(p().flashOn as boolean) ?? false}
+          kind={(p().kind as EqChartType) ?? "candles"}
+          indicators={(p().indicators as readonly EqIndicatorId[]) ?? []}
+          defaultVisible={(p().defaultVisible as number) ?? 50}
+        />
+      );
     },
   ],
   [

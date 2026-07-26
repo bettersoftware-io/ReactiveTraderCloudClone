@@ -1,0 +1,24 @@
+.pane {
+  position: relative;
+  flex: none;
+  height: 36px;
+  border-top: 1px solid var(--border);
+}
+
+.bar {
+  position: absolute;
+  left: var(--x);
+  bottom: 0;
+  width: var(--w);
+  height: var(--h);
+  transform: translateX(-50%);
+  opacity: 0.5;
+}
+
+.bar[data-up="true"] {
+  background: var(--accent-positive);
+}
+
+.bar[data-up="false"] {
+  background: var(--accent-negative);
+}
