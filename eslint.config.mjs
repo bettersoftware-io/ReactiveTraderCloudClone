@@ -5,6 +5,7 @@ import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
+import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
@@ -92,6 +93,7 @@ const rtcPlugin = {
     "class-filename-match": classFilenameMatch,
     "component-newspaper": componentNewspaper,
     "no-render-functions": noRenderFunctions,
+    "name-functions-by-effect": nameFunctionsByEffect,
   },
 };
 
@@ -270,6 +272,28 @@ export default tseslint.config(
     ignores: ["**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/component-newspaper": "error" },
+  },
+  {
+    // A function's own name must state its EFFECT — what it does, to what —
+    // never the occasion that triggers it. Slots are exempt BY SHAPE: a
+    // function-typed prop, or a method whose sole parameter is the callback,
+    // belongs to a declarer that must not know what gets attached. Prop types,
+    // JSX attributes, `vi.fn()` spies and uninitialised slot captures are legal
+    // by construction, so there is nothing to keep in sync.
+    //
+    // Scope widens one package per commit until it reaches **/*.{ts,tsx} —
+    // see docs/superpowers/plans/2026-07-26-name-functions-by-effect.md.
+    files: [
+      "packages/shared/**/*.{ts,tsx}",
+      "packages/ws-effects/**/*.{ts,tsx}",
+      "packages/motion-core/**/*.{ts,tsx}",
+      "packages/boot-splash/**/*.{ts,tsx}",
+      "packages/devtools-core/**/*.{ts,tsx}",
+      "packages/react-bindings/**/*.{ts,tsx}",
+      "packages/solid-bindings/**/*.{ts,tsx}",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-functions-by-effect": "error" },
   },
   {
     // eslint-plugin-solid's recommended rules — Solid's JSX has different
