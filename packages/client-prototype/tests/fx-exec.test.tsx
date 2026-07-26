@@ -21,7 +21,7 @@ describe("useFxRates exec machine", () => {
     });
 
     act(() => {
-      result.current.onBuy("EURUSD");
+      result.current.buyPair("EURUSD");
     });
     expect(result.current.tiles.EURUSD.stage).toBe("executing");
 
@@ -41,10 +41,10 @@ describe("useFxRates exec machine", () => {
     });
 
     act(() => {
-      result.current.onNotional("EURUSD", "25m");
+      result.current.setNotional("EURUSD", "25m");
     });
     act(() => {
-      result.current.onBuy("EURUSD");
+      result.current.buyPair("EURUSD");
     });
     expect(result.current.tiles.EURUSD.stage).toBe("rfqReq");
 

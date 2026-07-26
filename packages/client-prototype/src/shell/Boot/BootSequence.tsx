@@ -4,7 +4,7 @@ import styles from "#/shell/Boot/BootSequence.module.css";
 import { useBootSequence } from "#/shell/Boot/useBootSequence";
 
 export interface BootSequenceProps {
-  onDone(): void;
+  onDone: () => void;
 }
 
 export function BootSequence(props: BootSequenceProps): ReactElement {

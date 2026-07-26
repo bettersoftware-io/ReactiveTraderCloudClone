@@ -165,7 +165,7 @@ describe("useCreditRfqs", () => {
     expect(result.current.tabRecent).toBe(false);
 
     act(() => {
-      result.current.onTab("live");
+      result.current.selectTab("live");
     });
     expect(result.current.creditTab).toBe("live");
     expect(result.current.tabRecent).toBe(true);

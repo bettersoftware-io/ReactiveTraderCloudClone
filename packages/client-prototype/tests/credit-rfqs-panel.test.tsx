@@ -28,7 +28,7 @@ describe("RfqsPanel", () => {
         <RfqFilterPills
           creditTab={result.current.creditTab}
           liveCount={result.current.liveCount}
-          onTab={result.current.onTab}
+          onTab={result.current.selectTab}
         />
         <RfqsPanel rfqs={result.current} />
       </PreferencesProvider>,
@@ -44,7 +44,7 @@ describe("RfqsPanel", () => {
         <RfqFilterPills
           creditTab={result.current.creditTab}
           liveCount={result.current.liveCount}
-          onTab={result.current.onTab}
+          onTab={result.current.selectTab}
         />
         <RfqsPanel rfqs={result.current} />
       </PreferencesProvider>,
@@ -82,7 +82,7 @@ describe("RfqsPanel", () => {
     );
 
     act(() => {
-      result.current.onTab("closed");
+      result.current.selectTab("closed");
     });
     view.rerender(
       <PreferencesProvider>

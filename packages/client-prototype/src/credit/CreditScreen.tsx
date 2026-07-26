@@ -52,7 +52,7 @@ export function CreditScreen(): ReactElement {
     containerRef: rightColRef,
   });
 
-  function handleSend(): void {
+  function submitRfq(): void {
     if (form.valid) {
       rfqs.sendRfq(form.value);
       form.clear();
@@ -83,10 +83,8 @@ export function CreditScreen(): ReactElement {
             id={FORM_PANEL}
             head={<span className={styles.regionLabel}>✚ New RFQ</span>}
             headAccessory="⊕"
-            maxPanel={dock.maxPanel}
-            onToggleMax={dock.toggleMax}
           >
-            <NewRfqPanel form={form} onSend={handleSend} />
+            <NewRfqPanel form={form} onSend={submitRfq} />
           </Panel>
         </div>
       )}
@@ -104,7 +102,7 @@ export function CreditScreen(): ReactElement {
               <RfqFilterPills
                 creditTab={rfqs.creditTab}
                 liveCount={rfqs.liveCount}
-                onTab={rfqs.onTab}
+                onTab={rfqs.selectTab}
               />
             }
             maxPanel={dock.maxPanel}
@@ -129,7 +127,7 @@ export function CreditScreen(): ReactElement {
               trades={rfqs.creditTrades}
               count={countText}
               newCreditId={rfqs.newCreditId}
-              onExport={rfqs.onExport}
+              onExport={rfqs.exportCsv}
             />
           </Panel>
         </div>
@@ -139,7 +137,7 @@ export function CreditScreen(): ReactElement {
 }
 
 interface LeftCollapsedStripProps {
-  onRestore(): void;
+  onRestore: () => void;
 }
 
 // The left column collapsed to a restore strip (cf. FxScreen's

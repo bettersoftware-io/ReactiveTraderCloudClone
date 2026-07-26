@@ -196,7 +196,7 @@ export function FxScreen(): ReactElement {
 }
 
 interface AsideCollapsedStripProps {
-  onRestore(): void;
+  onRestore: () => void;
 }
 
 // PROTO 1226 (asideCol collapsed): a narrow vertical strip of restore

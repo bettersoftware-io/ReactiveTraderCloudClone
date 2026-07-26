@@ -12,12 +12,12 @@ import { StatusBar } from "#/shell/StatusBar/StatusBar";
 
 export interface AppShellProps {
   tab: Tab;
-  onSelectTab(tab: Tab): void;
+  onSelectTab: (tab: Tab) => void;
   lang: string;
-  onSelectLang(code: string): void;
-  onOpenPrefs(): void;
-  onReboot(): void;
-  onLogout(): void;
+  onSelectLang: (code: string) => void;
+  onOpenPrefs: () => void;
+  onReboot: () => void;
+  onLogout: () => void;
   booted?: boolean;
 }
 
