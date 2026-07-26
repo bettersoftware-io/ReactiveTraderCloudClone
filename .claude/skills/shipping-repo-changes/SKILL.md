@@ -126,7 +126,11 @@ A **textual** conflict always forces a resolve regardless — git won't merge ot
 gh pr merge <number> --merge --subject "Merge PR #<number>: <title>"
 ```
 
-`--merge` produces the required merge commit (matches the repo's `Merge PR #NN: …` history). Then confirm and clean up:
+`--merge` produces the required merge commit (matches the repo's `Merge PR #NN: …` history).
+
+**This command is pre-approved repo-wide.** `Bash(gh pr merge *)` is in the committed [`.claude/settings.json`](../../settings.json) allow-list, so no permission prompt stands between a green branch and `main` — for *any* session in this checkout, not just the one that set it up. That is deliberate (it's what makes Rule 4's no-human-gate policy actually work unattended), but it means **Rules 2 and 3 are the only gate left**: a run that is green for your SHA, and a triaged base. Do not type this command until you have seen both. Nothing downstream will stop you.
+
+Then confirm and clean up:
 
 ```bash
 gh pr view <number> --json state -q .state          # expect MERGED
