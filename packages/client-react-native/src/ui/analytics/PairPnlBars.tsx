@@ -9,6 +9,7 @@ import {
 
 import { type CurrencyPairPosition, formatPnlK } from "@rtc/domain";
 
+import { PairPnlBar } from "#/ui/analytics/PairPnlBar";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -33,17 +34,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
             style={styles.row}
           >
             <Text style={styles.symbol}>{pos.symbol}</Text>
-            <View style={styles.track}>
-              <View style={styles.centerLine} />
-              <View
-                style={[
-                  styles.bar,
-                  positive ? styles.barPos : styles.barNeg,
-                  { flex: fraction },
-                ]}
-              />
-              <View style={styles.spacer} />
-            </View>
+            <PairPnlBar fraction={fraction} positive={positive} />
             <Text
               testID={`pair-pnl-label-${pos.symbol}`}
               style={positive ? styles.labelPos : styles.labelNeg}
@@ -65,12 +56,6 @@ interface PairPnlBarsStyles {
   container: ViewStyle;
   row: ViewStyle;
   symbol: TextStyle;
-  track: ViewStyle;
-  centerLine: ViewStyle;
-  bar: ViewStyle;
-  barPos: ViewStyle;
-  barNeg: ViewStyle;
-  spacer: ViewStyle;
   labelPos: TextStyle;
   labelNeg: TextStyle;
 }
@@ -85,18 +70,6 @@ function makeStyles(t: RnTheme): PairPnlBarsStyles {
       color: t.textSecondary,
       fontFamily: t.fontMono,
     },
-    track: { flex: 1, flexDirection: "row", alignItems: "center", height: 12 },
-    centerLine: {
-      position: "absolute",
-      left: "50%",
-      width: 1,
-      height: 12,
-      backgroundColor: t.textMuted,
-    },
-    bar: { height: 8 },
-    barPos: { backgroundColor: t.accentPositive },
-    barNeg: { backgroundColor: t.accentNegative },
-    spacer: { flex: 1 },
     labelPos: {
       width: 56,
       textAlign: "right",
