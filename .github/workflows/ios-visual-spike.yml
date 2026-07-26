@@ -270,3 +270,226 @@ jobs:
             xcrun simctl shutdown "$UDID" 2>/dev/null || true
             xcrun simctl delete "$UDID" 2>/dev/null || true
           fi
+
+  # ==========================================================================
+  # The actual spike: drive ONE scenario end to end and emit its PNG.
+  #
+  # It deliberately makes NO pass/fail claim about the pixels. §5 of the options
+  # doc argues the committed `ios-iphone17-26` goldens almost certainly will not
+  # reproduce byte-for-byte on a different machine, and that the answer is a
+  # second golden bucket (mirroring the web tier's `react/` vs
+  # `react-local/<arch>` split), never a widened tolerance — the tolerance is
+  # already 6%, and BAKEOFF.md's injected-bug proof showed the real #147
+  # shadow-clip regression moved only 0.04% of pixels. Widening it narrows what
+  # the tier can ever catch. So: capture, upload both images, and let a human
+  # look. Turning this into an assertion is the NEXT decision, not this one.
+  #
+  # Runs as its own job rather than more steps on `probe` so the cheap
+  # environment facts are not held hostage to a ~30-minute native build. Two
+  # concurrent macOS jobs is well inside the 5-job cap.
+  # ==========================================================================
+  capture:
+    name: capture one scenario (Maestro)
+    runs-on: macos-26
+    timeout-minutes: 90
+
+    env:
+      # The one scenario the spike drives. `shell/connection-banner` is chosen
+      # deliberately: rn-open-items T8 records `blotter/seeded` and
+      # `shell/appearance` reproducing at 2.9% / 4.0% run-to-run against their
+      # goldens while the rest sit at 0.01–0.05%, and those are the only other
+      # two with committed Maestro flows (T9). Picking a known-jittery scenario
+      # would confound machine drift with scenario drift.
+      SCENARIO_ID: shell/connection-banner
+      SCENARIO_FILE: shell_connection-banner
+      METRO_PORT: "8083"
+
+    steps:
+      # macOS standard runners document ~14 GB free, and a full Xcode plus extra
+      # simulator runtimes plus node_modules plus DerivedData is a genuine
+      # squeeze. Reclaim before building rather than discovering it at link time.
+      - name: Reclaim disk
+        run: |
+          set -euo pipefail
+          echo "before:"; df -h /
+          KEEP="$(xcode-select -p | sed 's|/Contents/Developer||')"
+          echo "keeping: $KEEP"
+          for app in /Applications/Xcode_*.app; do
+            [ "$app" = "$KEEP" ] && continue
+            echo "removing $app"
+            sudo rm -rf "$app" || true
+          done
+          echo "after:"; df -h /
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The RN app imports the @rtc/* workspace libs through their built dist/,
+      # which a fresh checkout has not produced; Metro would fail to resolve them.
+      - name: Build workspace libraries
+        run: pnpm build
+
+      - name: Install JDK 17 + Maestro
+        run: |
+          set -euo pipefail
+          brew install openjdk@17
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+
+      - name: Create and boot the golden pin
+        id: sim
+        env:
+          RUNTIME_INPUT: ${{ inputs.runtime }}
+        run: |
+          set -euo pipefail
+          WANT="$RUNTIME_INPUT"
+          if [ -n "$WANT" ]; then
+            RUNTIME=$(xcrun simctl list runtimes --json \
+              | jq -r --arg w "$WANT" '.runtimes[] | select(.isAvailable) | select(.version | contains($w)) | .identifier' | tail -1)
+          else
+            RUNTIME=$(xcrun simctl list runtimes --json \
+              | jq -r '.runtimes[] | select(.isAvailable) | select(.identifier | test("iOS-26")) | .identifier' | tail -1)
+          fi
+          DEVTYPE=$(xcrun simctl list devicetypes --json \
+            | jq -r '.devicetypes[] | select(.name == "iPhone 17") | .identifier' | head -1)
+          if [ -z "$RUNTIME" ] || [ -z "$DEVTYPE" ]; then
+            echo "::error title=Golden pin unreachable::iPhone 17 + iOS 26.x not resolvable on this image."
+            exit 1
+          fi
+          UDID=$(xcrun simctl create rtc-capture "$DEVTYPE" "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "booted $UDID on $RUNTIME"
+
+      # `ios/` is gitignored and lives only where you run it, so CI always
+      # generates it. --no-install because pnpm already installed the JS deps.
+      - name: Expo prebuild (generate the iOS project)
+        working-directory: packages/client-react-native
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Build the app for the simulator
+        id: build
+        working-directory: packages/client-react-native
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set -euo pipefail
+          WS=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WS" .xcworkspace)
+          echo "workspace=$WS scheme=$SCHEME"
+          xcodebuild \
+            -workspace "$WS" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=$UDID" \
+            -derivedDataPath ios/build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          APP="ios/build/Build/Products/Debug-iphonesimulator/${SCHEME}.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error title=App bundle missing::Expected $APP after a successful xcodebuild."
+            exit 1
+          fi
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+
+      - name: Install the app on the simulator
+        working-directory: packages/client-react-native
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+          APP: ${{ steps.build.outputs.app }}
+        run: xcrun simctl install "$UDID" "$APP"
+
+      # EXPO_PUBLIC_VISUAL_HARNESS=1 is what un-gates the __visual/ routes
+      # (src/app/visualHarnessGate.ts requires it AND __DEV__). EXPO_PUBLIC_SERVER_URL=""
+      # forces the in-process simulator branch — app.config.ts otherwise defaults
+      # to the DEPLOYED wss endpoint, which would make a pixel capture depend on
+      # a live server being up.
+      - name: Start Metro and wait for it to serve
+        working-directory: packages/client-react-native
+        env:
+          EXPO_PUBLIC_VISUAL_HARNESS: "1"
+          EXPO_PUBLIC_SERVER_URL: ""
+        run: |
+          set -euo pipefail
+          # nohup + disown so Metro survives this step's shell exiting — each
+          # `run:` block is its own shell, and the next step needs the packager
+          # still serving.
+          nohup npx expo start --dev-client --port "$METRO_PORT" > "$RUNNER_TEMP/metro.log" 2>&1 &
+          METRO_PID=$!
+          disown || true
+          echo "metro pid $METRO_PID"
+          # Wait on the CONDITION, never a fixed sleep — a sleep is precisely the
+          # failure mode T7 was about (inferring readiness from elapsed time).
+          for i in $(seq 1 60); do
+            if curl -sf "http://localhost:${METRO_PORT}/status" 2>/dev/null | grep -q "packager-status:running"; then
+              echo "Metro ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error title=Metro never became ready::No packager-status:running on :${METRO_PORT} within 60s."
+          cat "$RUNNER_TEMP/metro.log" || true
+          exit 1
+
+      - name: Run the Maestro flow
+        working-directory: packages/client-react-native
+        env:
+          # The flows interpolate ${MAESTRO_METRO_PORT} literally — the MAESTRO_
+          # prefix is what makes Maestro substitute it at `maestro test` time.
+          MAESTRO_METRO_PORT: ${{ env.METRO_PORT }}
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          maestro test "tests/visual/maestro/flows/${SCENARIO_FILE}.yaml" --format junit
+
+      # Stage the fresh capture beside the committed golden. No comparison, no
+      # verdict — the artifact is the deliverable, for a human to eyeball.
+      - name: Stage capture vs committed golden
+        if: always()
+        working-directory: packages/client-react-native
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          SHOT="shots/${SCENARIO_FILE}.png"
+          GOLDEN="tests/visual/__screenshots__/ios-iphone17-26/maestro/${SCENARIO_ID}.png"
+          if [ -f "$SHOT" ]; then
+            cp "$SHOT" "$RUNNER_TEMP/out/ci-capture.png"
+            echo "captured: $(du -h "$SHOT" | cut -f1)"
+          else
+            echo "::warning title=No capture produced::$SHOT is absent — the flow did not screenshot."
+          fi
+          if [ -f "$GOLDEN" ]; then
+            cp "$GOLDEN" "$RUNNER_TEMP/out/mac-local-golden.png"
+          fi
+          cp "$RUNNER_TEMP/metro.log" "$RUNNER_TEMP/out/metro.log" 2>/dev/null || true
+
+      - name: Upload capture
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-spike-capture
+          path: ${{ runner.temp }}/out
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Teardown the simulator
+        if: always()
+        env:
+          CAPTURE_UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          if [ -n "$CAPTURE_UDID" ]; then
+            xcrun simctl shutdown "$CAPTURE_UDID" 2>/dev/null || true
+            xcrun simctl delete "$CAPTURE_UDID" 2>/dev/null || true
+          fi
