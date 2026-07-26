@@ -6,14 +6,20 @@ allowed-tools: Bash(pnpm:*), Bash(git:*), Read
 
 Run the local gate gauntlet. Argument: `$ARGUMENTS` (empty → fast tier, `full` → everything).
 
-## CI's current step list — check this against the tiers below
+## CI's current `checks` step list — compare against the tiers below
 
-!`grep -E "^\s+- name:" .github/workflows/ci.yml | sed 's/.*- name: //' | grep -viE "corepack|store path|cache the|install dependencies|checkout|setup-node"`
+!`awk '/^  checks:/,/^  e2e:/' .github/workflows/ci.yml | grep -E "^\s+- name:" | sed 's/.*- name: //' | grep -viE "corepack|store path|cache the|install dependencies|checkout|setup-node"`
 
 **Before running anything**, compare that list against the two tiers below. If CI
 has a step that appears in neither tier, say so loudly and run it anyway — a
 gauntlet that has silently stopped mirroring CI is worse than no gauntlet. This
 repo already runs four drift checks; this is the same idea applied to itself.
+
+The list is scoped to the **`checks` job only**. An earlier version grepped the
+whole workflow and so flagged the three `e2e`-job steps (`Install Playwright
+Chromium…`, `e2e suite…`, `Upload e2e artifacts…`) as unknown gates on *every*
+run. A drift check that always fires is one you learn to ignore — which is
+exactly the failure it exists to prevent.
 
 ## Fast tier — default, ~50s, no build required
 
