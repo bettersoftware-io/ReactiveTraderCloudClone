@@ -22,6 +22,7 @@ import {
   type AuthOutcome,
   type AuthPort,
   AuthSimulator,
+  CANDLE_HISTORY_TOTAL,
   ConnectionEventsSimulator,
   KNOWN_CURRENCY_PAIRS,
   PreferencesSimulator,
@@ -388,16 +389,16 @@ describe("createViewModel — equities streams", () => {
     expect(result()?.symbol).toBe("AAPL");
   });
 
-  it("useCandles defaults to '1D' (60 one-minute candles) when timeframe is omitted", () => {
+  it("useCandles defaults to '1D' (CANDLE_HISTORY_TOTAL deepened candles) when timeframe is omitted", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
       return vm.useCandles("AAPL");
     });
 
-    expect(result()).toHaveLength(60);
+    expect(result()).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
-  it("useCandles threads an explicit timeframe through to a distinct series length", () => {
+  it("useCandles threads an explicit timeframe through — every timeframe generates CANDLE_HISTORY_TOTAL candles", () => {
     const vm = makeViewModel();
     const { result: oneWeek } = renderHook(() => {
       return vm.useCandles("AAPL", "1W");
@@ -407,8 +408,8 @@ describe("createViewModel — equities streams", () => {
       return vm.useCandles("AAPL", "1M");
     });
 
-    expect(oneWeek()).toHaveLength(44);
-    expect(oneMonth()).toHaveLength(48);
+    expect(oneWeek()).toHaveLength(CANDLE_HISTORY_TOTAL);
+    expect(oneMonth()).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
   it("useDepth reads the seeded depth book for that symbol", () => {
