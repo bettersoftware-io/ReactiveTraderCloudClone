@@ -42,6 +42,16 @@ describe("BootGate", () => {
     expect(page.hasContent()).toBe(true);
   });
 
+  it("unmounts the splash immediately under power-saver Freeze (no transitionend)", async () => {
+    // Freeze's catch-all sets `transition-property: none`, so the opacity
+    // transitionend BootGate normally waits on never fires — without the
+    // direct dismiss in handleDone the splash would overlay the app forever.
+    const page = mount(BootGate, { powerSaverLevel: "freeze" });
+    await page.skip();
+    expect(page.hasSplash()).toBe(false);
+    expect(page.hasContent()).toBe(true);
+  });
+
   it("re-raises the splash when the seam reboots after a dismissal", async () => {
     const page = mount(BootGate, {});
     await page.skip();

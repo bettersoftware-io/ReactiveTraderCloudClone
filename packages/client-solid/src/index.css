@@ -46,8 +46,8 @@ body,
 
 /* Power-saver "freeze" tier: neutralise ALL decorative motion at once for
  * GPU-less Citrix/VDI boxes. 0.01ms (not `none`) keeps `forwards` end-states
- * resolving and animationend/transitionend events firing, so JS choreography
- * waiting on them does not hang. Imperative motion (WAAPI, rAF) is gated in TS.
+ * resolving and animationend events firing, so JS choreography waiting on
+ * them does not hang. Imperative motion (WAAPI, rAF) is gated in TS.
  * The static neon HUD (box/text-shadow) is deliberately kept.
  *
  * The *-delay resets are load-bearing, not tidiness. Zeroing duration alone
@@ -57,13 +57,29 @@ body,
  * help. Delays only sequence motion, and at 0.01ms per animation there is no
  * sequence left to preserve, so zeroing them costs nothing and closes the whole
  * delay+backwards bug class globally. Guarded by the freeze-contract spec in
- * tests/ui/visual/playwright/freeze.spec.ts. */
+ * tests/ui/visual/playwright/freeze.spec.ts.
+ *
+ * Transitions get `transition-property: none`, NOT a 0.01ms duration. The
+ * initial value of `transition-property` is `all`, so a global non-zero
+ * duration MANUFACTURES a CSSTransition for every data-driven style change on
+ * every element — each price tick spawned live `color`/`background-color`
+ * transitions on the pips and `d`/`stroke` transitions on the sparkline paths
+ * (style recalc + Animation churn at quote rate, on exactly the boxes freeze
+ * exists to spare). `none` creates no Animation objects at all; the new style
+ * still applies instantly, and unlike `animation: none` there is no `forwards`
+ * end-state to lose. The one consumer that WAITED on a transitionend
+ * (BootGate's splash dismiss) dismisses directly under freeze instead — see
+ * BootGate.handleDone. */
+/* The bare `[data-power-saver="freeze"]` selector is the ROOT element itself
+ * (`<html>` carries the attribute) — `*` matches only descendants, so without
+ * it any animation/transition on `:root` would slip through the catch-all
+ * (caught by the freeze contract's `transition-property` check). */
+[data-power-saver="freeze"],
 [data-power-saver="freeze"] *,
 [data-power-saver="freeze"] *::before,
 [data-power-saver="freeze"] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   animation-delay: 0s !important;
-  transition-duration: 0.01ms !important;
-  transition-delay: 0s !important;
+  transition-property: none !important;
 }

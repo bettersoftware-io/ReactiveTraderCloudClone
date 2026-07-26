@@ -1,5 +1,8 @@
 import type { Page } from "@playwright/test";
 
+import type { MotionSample, MotionSampleOptions } from "#/browser/motionProbe";
+import { sampleMotion } from "#/browser/motionProbe";
+
 import type { PowerSaverPO } from "../contracts/PowerSaver";
 import { TESTIDS } from "../contracts/testids";
 
@@ -28,5 +31,11 @@ export class PlaywrightPowerSaver implements PowerSaverPO {
     return await dot.evaluate((el) => {
       return getComputedStyle(el).animationDuration;
     });
+  }
+
+  async sampleMotion(options: MotionSampleOptions): Promise<MotionSample> {
+    // `sampleMotion` is written self-contained (no closed-over module state)
+    // precisely so Playwright can serialise it into the page here.
+    return await this.page.evaluate(sampleMotion, options);
   }
 }
