@@ -19,25 +19,25 @@ describe("InhouseLayoutEngine", () => {
   it("shows a resize handle between rates and the blotter inside the left column", () => {
     const page = mount(LayoutEngine, {});
     // the left column is child 0 of the root row split → pathKey "0"
-    expect(page.handleExists("0", 0)).toBe(true);
+    expect(page.resizeHandleExists("0", 0)).toBe(true);
   });
 
   it("shows a resize handle between analytics and positions inside the right rail", () => {
     const page = mount(LayoutEngine, {});
     // the right rail is child 1 of the root row split → pathKey "1"
-    expect(page.handleExists("1", 0)).toBe(true);
+    expect(page.resizeHandleExists("1", 0)).toBe(true);
   });
 
   it("shows a resize handle between the left column and the right rail", () => {
     const page = mount(LayoutEngine, {});
     // root path is [] → pathKey ""
-    expect(page.handleExists("", 0)).toBe(true);
+    expect(page.resizeHandleExists("", 0)).toBe(true);
   });
 
   it("renders split handles as siblings between cells, not inside them", () => {
     const page = mount(LayoutEngine, {});
     // the analytics/positions rail is a column split at pathKey "1"
-    const handle = page.handleElement("1", 0);
+    const handle = page.resizeHandleElement("1", 0);
     expect(handle.parentElement?.getAttribute("data-dir")).toBe("column");
     expect(handle.previousElementSibling?.getAttribute("data-testid")).toBe(
       "cell-1-0",
@@ -124,7 +124,7 @@ describe("InhouseLayoutEngine", () => {
     const page = mount(LayoutEngine, {});
     page.collapse("fx-analytics");
     // the analytics/positions handle sits at pathKey "1", index 0.
-    expect(page.handleExists("1", 0)).toBe(false);
+    expect(page.resizeHandleExists("1", 0)).toBe(false);
   });
 
   it("suppresses resize handles beside cells stripped as a side effect of another panel's maximize", () => {
@@ -132,10 +132,10 @@ describe("InhouseLayoutEngine", () => {
     page.maximize("fx-rates");
     // left-column/rail handle at root path "", index 0 — the rail
     // (analytics+positions) is an all-strip subtree.
-    expect(page.handleExists("", 0)).toBe(false);
+    expect(page.resizeHandleExists("", 0)).toBe(false);
     // rates/blotter handle within the left column at pathKey "0", index 0 —
     // the blotter is stripped.
-    expect(page.handleExists("0", 0)).toBe(false);
+    expect(page.resizeHandleExists("0", 0)).toBe(false);
   });
 
   it("orients strips by the reclaim axis: maximizing rates turns the fully-stripped right rail into vertical strips, while the blotter (whose column still hosts rates) stays horizontal", () => {
@@ -187,9 +187,9 @@ describe("InhouseLayoutEngine", () => {
     it("keeps the main column|rail handle and the rates/blotter handle; only the rail-internal handle disappears", () => {
       const page = mount(LayoutEngine, {});
       page.maximize("fx-analytics");
-      expect(page.handleExists("", 0)).toBe(true);
-      expect(page.handleExists("0", 0)).toBe(true);
-      expect(page.handleExists("1", 0)).toBe(false);
+      expect(page.resizeHandleExists("", 0)).toBe(true);
+      expect(page.resizeHandleExists("0", 0)).toBe(true);
+      expect(page.resizeHandleExists("1", 0)).toBe(false);
     });
 
     it("keeps the rail's 360px initialPx design width (the rail cell sits at the boundary, not inside it)", () => {
@@ -220,7 +220,7 @@ describe("InhouseLayoutEngine", () => {
       expect(page.stripOrientation("fx-analytics")).toBe("horizontal");
       expect(page.isStrip("fx-rates")).toBe(false);
       expect(page.isStrip("fx-blotter")).toBe(false);
-      expect(page.handleExists("", 0)).toBe(true);
+      expect(page.resizeHandleExists("", 0)).toBe(true);
     });
   });
 
@@ -243,13 +243,13 @@ describe("InhouseLayoutEngine", () => {
       const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
       expect(page.isPinned("fx-blotter")).toBe(true);
       // root path is [] → pathKey ""; the pinned tail suppresses the handle
-      expect(page.handleExists("", 0)).toBe(false);
+      expect(page.resizeHandleExists("", 0)).toBe(false);
     });
 
     it("suppresses the resize handle beside a fixedPx cell", () => {
       const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
       // content row is child 0 of the root column split → pathKey "0"
-      expect(page.handleExists("0", 0)).toBe(false);
+      expect(page.resizeHandleExists("0", 0)).toBe(false);
     });
   });
 });

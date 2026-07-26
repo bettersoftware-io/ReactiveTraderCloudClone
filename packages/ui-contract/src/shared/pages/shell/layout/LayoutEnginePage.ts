@@ -122,12 +122,12 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     fireEvent.click(within(this.root).getByTestId(testId));
   }
 
-  handleExists(pathKey: string, i: number): boolean {
+  resizeHandleExists(pathKey: string, i: number): boolean {
     return within(this.root).queryByTestId(`handle-${pathKey}-${i}`) !== null;
   }
 
   /** True when the cell wrapping this child (identified the same way as
-   * `handleExists`'s pathKey/index pair) has released its ratio-derived
+   * `resizeHandleExists`'s pathKey/index pair) has released its ratio-derived
    * flex-grow because its entire subtree is strips — every panel leaf inside
    * it is either collapsed or a sibling of the maximized panel elsewhere. */
   isStripCell(pathKey: string, i: number): boolean {
@@ -140,7 +140,7 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
 
   /** The handle element itself — for asserting DOM position (sibling vs
    * descendant of a cell), not just presence. */
-  handleElement(pathKey: string, i: number): HTMLElement {
+  resizeHandleElement(pathKey: string, i: number): HTMLElement {
     return within(this.root).getByTestId(`handle-${pathKey}-${i}`);
   }
 

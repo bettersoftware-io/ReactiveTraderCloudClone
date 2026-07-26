@@ -23,6 +23,6 @@ describe("BootSequence", () => {
   it("invokes onDone and transitions to done when SKIP is pressed", async () => {
     const page = mount(BootSequence, {});
     await page.skip();
-    expect(page.onDoneCount()).toBe(1);
+    expect(page.doneCallCount()).toBe(1);
   });
 });

@@ -300,6 +300,7 @@ export default tseslint.config(
       "packages/client-react/**/*.{ts,tsx}",
       "packages/client-solid/**/*.{ts,tsx}",
       "packages/client-react-native/**/*.{ts,tsx}",
+      "packages/ui-contract/**/*.{ts,tsx}",
     ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },
