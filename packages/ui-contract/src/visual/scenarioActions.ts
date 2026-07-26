@@ -287,6 +287,12 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "AWAITING AUTH GRANT",
   },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
+
+  // --- Phase 1: J.A.R.V.I.S overlay --- fixed-position viewport overlay,
+  // same treatment as prefs/modal above — full-page capture, no interaction
+  // (both fixtures seed `open: true` through the seam).
+  "jarvis/overlay-chat": { fullPage: true },
+  "jarvis/overlay-confirm": { fullPage: true },
 };
 
 /** Resolve the capture action for a scenario, mapping matrix-expanded names

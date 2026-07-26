@@ -676,6 +676,25 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "AdminHead",
     fixtureKey: "admin-incident-active",
   },
+
+  // --- Phase 1: J.A.R.V.I.S orb + overlay scenarios ---
+  // Orb: idle resting arm (closed, no unread) + the attention pulse (a
+  // pending confirmation, reusing the same fixture the overlay-confirm
+  // scenario below mounts). Overlay: a completed chat turn and the pending-
+  // confirmation card, both static (no mid-stream entry, no live countdown).
+  "jarvis/orb-idle": { componentKey: "JarvisOrb", fixtureKey: "jarvis-idle" },
+  "jarvis/orb-attention": {
+    componentKey: "JarvisOrb",
+    fixtureKey: "jarvis-confirm",
+  },
+  "jarvis/overlay-chat": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-chat",
+  },
+  "jarvis/overlay-confirm": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-confirm",
+  },
 };
 
 // The theme matrix: every skin except neon × dark/light. Every base scenario is

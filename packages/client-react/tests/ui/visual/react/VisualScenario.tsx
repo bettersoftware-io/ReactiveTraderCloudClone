@@ -36,6 +36,7 @@ const FULL_BLEED = new Set([
   "LockScreen",
   "LoginScreen",
   "PreferencesModal",
+  "JarvisOverlay",
 ]);
 
 interface VisualScenarioProps {

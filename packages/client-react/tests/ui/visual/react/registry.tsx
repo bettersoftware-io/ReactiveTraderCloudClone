@@ -44,6 +44,8 @@ import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ThemePicker } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
+import { JarvisOrb } from "#/ui/shell/jarvis/JarvisOrb";
+import { JarvisOverlay } from "#/ui/shell/jarvis/JarvisOverlay";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -574,6 +576,28 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
         }}
       >
         <PreferencesModal open={true} onClose={() => {}} />
+      </div>
+    );
+  },
+  // --- Phase 1: J.A.R.V.I.S ---
+  // Orb: a small header-affordance component (32px button), same bare-mount
+  // idiom as ConnectionStatusBar above — reads its own state via useJarvis().
+  JarvisOrb: () => {
+    return <JarvisOrb />;
+  },
+  // Overlay: reads its own open/entries/confirmation state via useJarvis() (no
+  // props), so the registry only supplies the same PreferencesModal backdrop
+  // wrapper — the overlay's own scrim is translucent (rgba(0,0,0,0.62)).
+  JarvisOverlay: () => {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "var(--bg-primary)",
+        }}
+      >
+        <JarvisOverlay />
       </div>
     );
   },

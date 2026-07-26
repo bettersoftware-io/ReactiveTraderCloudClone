@@ -3,9 +3,9 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_SKIN,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
-  type JarvisSkin,
   resolveThemeMode,
 } from "@rtc/domain";
 
@@ -25,10 +25,28 @@ const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 // DEFAULT_AMBIENT_STYLE_FOR_FIXTURES exactly.
 const DEFAULT_AMBIENT_STYLE_FOR_FIXTURES = "rays" as const;
 
+// JarvisOrb is embedded in every HeaderChrome (hence every App/chrome-header
+// golden) and JarvisOverlay in every App shot — so this default must stay
+// pixel-identical to the pre-Task-10 stub for every fixture that does NOT set
+// `jarvis`: closed, unread 0, idle, EMPTY entries (JarvisOrb never reads
+// entries; JarvisOverlay renders null while closed, so entries are inert
+// either way — kept `[]` rather than the machine's real greeting-seeded
+// INITIAL so none of those pre-existing goldens need re-pinning). Mirrors the
+// react driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.
+const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
+  open: false,
+  skin: DEFAULT_JARVIS_SKIN,
+  unread: 0,
+  phase: "idle",
+  entries: [],
+  pendingConfirmation: null,
+};
+
 import type { AppData } from "@ui-visual-shared/appData";
 
 import type {
   BootSequenceState,
+  JarvisState,
   NotionalView,
   SessionUser,
 } from "@rtc/client-core";
@@ -431,21 +449,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
     },
     // Jarvis: stub returning a noop implementation (no visual tests yet).
+    // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a
+    // static state snapshot (Task 10); all intents stay no-ops (static
+    // screenshots never fire them). Fixtures that don't set `jarvis` fall
+    // back to the same closed/idle/empty-entries default the pre-Task-10
+    // stub returned (see DEFAULT_JARVIS_STATE_FOR_FIXTURES above).
     useJarvis: () => {
       return {
-        state: at({
-          open: false,
-          skin: "singularity" as JarvisSkin,
-          unread: 0,
-          phase: "idle" as const,
-          entries: [] as readonly {
-            id: number;
-            role: "user" | "jarvis";
-            text: string;
-            done: boolean;
-          }[],
-          pendingConfirmation: null,
-        }),
+        state: at(data.jarvis ?? DEFAULT_JARVIS_STATE_FOR_FIXTURES),
         open: noop,
         close: noop,
         toggle: noop,
