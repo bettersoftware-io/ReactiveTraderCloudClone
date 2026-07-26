@@ -127,17 +127,35 @@ gh workflow run coverage-report.yml --ref main         # dispatch on the tree yo
 ```
 
 Report: <https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/>
-— five tiers (`domain`, `server`, `client-app`, `ui-contract`, `ui-visual`),
-react-only by design. It is **report-only and gates nothing**; the enforced bar
-is the `ui:contract` ≥95% gate in `ci.yml`. Its per-tier `index.html` only lists
-directories, so finding gaps means crawling into them — or reading
-`coverage-final.json` from a local `--coverage` run instead.
+— **seven** tiers: `domain`, `server`, `react/app`, `react/ui (contract)`,
+`react/ui (visual)`, `solid/app`, `solid/ui (contract)`. It is **report-only and
+gates nothing**; the enforced bars are the `ui:contract` ≥95% gates in `ci.yml`
+(one per web client). Its per-tier `index.html` only lists directories, so
+finding gaps means crawling into them — or reading `coverage-final.json` from a
+local `--coverage` run instead.
 
-Two traps when reading it: the ~88 `*.module.css` rows sit at 0% but carry
-**zero statements** (a v8 `PARSE_ERROR` on non-executed files, harmless — they
-do not drag the percentage down), and a file can read 0% in one tier while
-being fully covered in another (`appHeadRegistry` was 0% contract / 100%
-visual). Always check the other tiers before concluding something is untested.
+**`react/ui (visual)` is not what its name suggests.** It is *not* the pixel
+tier's own coverage. It is a vitest-browser instrument that walks the **same
+shared scenario matrix** as the playwright golden tier with the pixel assert
+compiled out (`__RTC_VISUAL_SKIP_DIFF__`), so its ~77% means *"~23% of `src/ui`
+is never rendered by any golden scenario"*. That is the guarantee the pixel tier
+isn't quietly testing less than assumed — work it DOWN by adding scenarios; do
+not dismiss it. `EqDepthDock` at 0% is why `equities/depth-dock-empty` exists.
+See `packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`. There is no
+`solid/ui (visual)` only because client-solid has no vitest-browser harness to
+instrument.
+
+Three traps when reading the report:
+1. The ~88 `*.module.css` rows sit at 0% but carry **zero statements** (a v8
+   `PARSE_ERROR` on non-executed files — harmless, and they do not drag any
+   percentage down).
+2. A file can read 0% in one tier while fully covered in another
+   (`appHeadRegistry` was 0% contract / 100% visual). Check the other tiers
+   before concluding something is untested.
+3. **A passing gate does not mean no gaps.** Gates assert an AGGREGATE, which
+   cannot surface one weak file: `solid/ui (contract)` reported 99.36% overall
+   while `appPanelRegistry` sat at 56% and `appHeadRegistry` at 69%. Only this
+   per-file report shows that — which is the whole reason it exists.
 
 ## Markdown Diagrams
 

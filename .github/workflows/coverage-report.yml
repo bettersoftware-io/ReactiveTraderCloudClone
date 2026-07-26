@@ -21,9 +21,16 @@ name: Coverage Report
 # buildBrowserPorts.ts at 50% — the same gap its react twin had. A gate tells
 # you whether the total passes; only this report tells you WHICH file is thin.
 #
-# Still report-only — it gates nothing (see docs/STATUS.md). There is
-# deliberately no solid VISUAL tier: client-solid has no vitest-browser
-# instrument, and the react one measures incidental coverage from a pixel tier.
+# Still report-only — it gates nothing (see docs/STATUS.md).
+#
+# "react/ui (visual)" is NOT the pixel tier's own coverage, and its ~77% is not
+# incidental. The vitest-browser spec walks the SAME shared scenario matrix as
+# the playwright golden tier with the pixel assert compiled out
+# (__RTC_VISUAL_SKIP_DIFF__), so the number answers "how much of src/ui does the
+# golden matrix actually render?" — its job is finding components the pixel tier
+# never reaches (EqDepthDock at 0% is why equities/depth-dock-empty exists; see
+# client-react/tests/ui/visual/COVERAGE-GAPS.md). There is no solid counterpart
+# only because client-solid has no vitest-browser harness to instrument.
 #
 # THIS WORKFLOW IS DISPATCH-ONLY. Nothing triggers it automatically, so the
 # published report serves whatever commit last dispatched it — check its date
@@ -142,8 +149,8 @@ jobs:
       # AGGREGATE >=95%, which cannot surface a single weak file, and its app
       # tier had no coverage denominator at all — between them they hid
       # buildBrowserPorts.ts at 50% and appHeadRegistry.tsx at 69%. There is no
-      # solid visual tier on purpose (no vitest-browser instrument, and the
-      # react one reports incidental pixel-tier coverage).
+      # solid visual tier simply because client-solid has no vitest-browser
+      # harness to instrument — see the header for what that tier measures.
       - name: Coverage — solid app
         continue-on-error: true
         run: >

@@ -19,9 +19,23 @@ import { summarize, type TierResult } from "./lib/testResults";
 //     buildBrowserPorts.ts at 50% (the same gap its react twin had).
 // Tier names are framework-prefixed so the two are never conflated.
 //
-// There is deliberately NO solid visual tier: client-solid has no
-// vitest-browser coverage instrument, and the react one measures INCIDENTAL
-// coverage from a pixel tier — a number to read with suspicion, not mirror.
+// WHAT "react/ui (visual)" ACTUALLY MEASURES — its ~77% is easy to misread as
+// a weak tier. It is not incidental coverage, and it is not the pixel tier's
+// own coverage. It is a purpose-built instrument: the vitest-browser spec walks
+// the SAME shared scenario matrix as the playwright golden tier
+// (@ui-visual-shared/scenarios) with the pixel assert compiled out via
+// __RTC_VISUAL_SKIP_DIFF__, so istanbul sees exactly what the visual scenarios
+// render. The number therefore answers "how much of src/ui does the golden
+// matrix actually exercise?" — it exists to find components and branches the
+// pixel tier never reaches. It has a track record: EqDepthDock showed 0% here,
+// which is why the equities/depth-dock-empty scenario was added. See
+// client-react/tests/ui/visual/COVERAGE-GAPS.md.
+//
+// There is no solid equivalent because client-solid has no vitest-browser
+// harness at all (only tests/ui/visual/playwright/ + its render target) —
+// nothing to instrument, not a judgement that the metric is worthless. Porting
+// one would add real information (solid-specific branches the shared matrix
+// misses) and is tracked as a follow-up in docs/STATUS.md.
 export const TIERS = {
   coverage: [
     {
