@@ -47,7 +47,6 @@ import {
   jarvisStatus,
   jarvisTelemetry,
   jarvisYaw,
-  lungeAmount,
   particleAlpha,
   particleDriftY,
   ringPhase,

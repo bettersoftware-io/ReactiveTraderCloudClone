@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
 
-import { BOOT_VARIANTS } from "@rtc/domain";
+import { BOOT_VARIANTS, type BootVariant } from "@rtc/domain";
 
 import { BOOT_SCENES, hasBootScene } from "#/ui/shell/boot/bootScene";
 
@@ -12,15 +12,21 @@ import { BOOT_SCENES, hasBootScene } from "#/ui/shell/boot/bootScene";
 // pipeline. `coreGeometry.test.ts` still covers the framework-free math
 // under vitest.
 
-test("reports no coverage for an unported variant, without throwing", () => {
+test("reports coverage for a variant without throwing", () => {
   expect(() => {
     return hasBootScene("topo");
   }).not.toThrow();
-  expect(hasBootScene("topo")).toBe(false);
+  expect(hasBootScene("topo")).toBe(true);
 });
 
-test("returns undefined for an unported variant's registry entry", () => {
-  expect(BOOT_SCENES.topo).toBeUndefined();
+// The registry is total in practice but still `Partial` in type, so the
+// "no scene registered" fallback stays reachable and tested. A non-variant key
+// is the only way to reach it now that every real variant resolves.
+test("an unknown variant key still resolves to nothing, without throwing", () => {
+  const unknown = "not-a-variant" as BootVariant;
+
+  expect(hasBootScene(unknown)).toBe(false);
+  expect(BOOT_SCENES[unknown]).toBeUndefined();
 });
 
 test("reports coverage for the core variant now that Task 6 registers it", () => {
@@ -58,9 +64,18 @@ test("jarvis resolves to a scene now that phase 6b-2b has ported it", () => {
   expect(BOOT_SCENES.jarvis).toBeDefined();
 });
 
-test("topo, the last deferred scene, resolves to nothing without throwing", () => {
-  expect(hasBootScene("topo")).toBe(false);
-  expect(BOOT_SCENES.topo).toBeUndefined();
+test("topo resolves to a scene, completing the set", () => {
+  expect(hasBootScene("topo")).toBe(true);
+  expect(BOOT_SCENES.topo).toBeDefined();
+});
+
+// Phase 6b is complete: all eight variants the preference can select now
+// resolve to a real scene.
+test("every boot variant now resolves to a scene", () => {
+  for (const variant of BOOT_VARIANTS) {
+    expect(hasBootScene(variant)).toBe(true);
+    expect(BOOT_SCENES[variant]).toBeDefined();
+  }
 });
 
 test("every registered key is a real boot variant (guards a typo'd key)", () => {
