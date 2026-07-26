@@ -22,53 +22,46 @@ const require = createRequire(path.join(repoRoot, "packages/client-react/"));
 const babel = require("@babel/core");
 const compilerPath = require.resolve("babel-plugin-react-compiler");
 
-// Files that gave up a manual memo and now depend on the compiler. Adding a
-// de-memoized file here is REQUIRED — that is what makes the trade enforceable.
+// The FUNCTIONS that gave up a manual memo and now depend on the compiler.
+//
+// Granularity is per-function, not per-file, because the compiler bails per
+// function: `ContextPane.tsx` holds seven optimized components and one
+// unrelated bail (`DiffTab`, a ternary inside try/catch). A file-level gate
+// would read that file as failing and pressure someone into deleting the gate
+// rather than fixing anything.
 const TRACKED = [
-  "packages/devtools-app/src/timeline/useTimeline.ts",
-  "packages/devtools-app/src/InspectorApp.tsx",
-  "packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.tsx",
-  "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx",
-  "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts",
-  "packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts",
-  "packages/client-react-native/src/ui/theme/useThemedStyles.ts",
+  { file: "packages/devtools-app/src/timeline/useTimeline.ts", fn: "useTimeline" },
+  { file: "packages/devtools-app/src/timeline/ContextPane.tsx", fn: "StateTab" },
+  { file: "packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.tsx", fn: "DockingScene" },
+  { file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx", fn: "LaserScene" },
+  { file: "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts", fn: "useBootSceneFonts" },
+  // TODO(Task 3): uncomment once useHoldToUnlock is fixed — it currently BAILS
+  // with "Cannot access refs during render". Task 3 fixes the ref access and
+  // re-adds this entry as its final step.
+  // { file: "packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts", fn: "useHoldToUnlock" },
+  { file: "packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts", fn: "useShellTelemetry" },
+  { file: "packages/client-react-native/src/ui/theme/useThemedStyles.ts", fn: "useThemedStyles" },
 ];
 
-// `useRecording.ts` is deliberately NOT tracked: it bails on a compiler
-// limitation (value blocks inside try/catch), and its callbacks were pure
-// caching with no memo boundary — nothing was traded away, so there is nothing
-// to protect. `ThemeProvider.tsx` is likewise untracked: it bails on the seam,
-// and its memo was replaced by a module-scope table, not by compiler memoization.
+// Deliberately NOT tracked, each for a different reason:
 //
-// TEMPORARILY DROPPED as of Task 2 (2026-07-26) — each BAILS today, for a
-// reason unrelated to the manual memo its own later task plans to touch. Each
-// must be resolved (fixed and re-added, or permanently justified like the two
-// above) by the task named, not silently left out:
-//   - "packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts"
-//     BAILS — "Cannot access refs during render". Expected per the plan;
-//     Task 3 fixes the ref access and re-adds it as its final step.
-//   - "packages/client-react/src/ui/equities/watchlist/WatchlistPanel.tsx"
-//     BAILS on the whole component — "Hooks must be the same function on
-//     every render" (the ADR-004 ViewModel-seam pattern: useWatchlist,
-//     useEqWorkspace, useEqWatchlistSort, usePowerSaver are all destructured
-//     from useViewModel()). This is NOT caused by the one useCallback Task 8
-//     plans to delete — the compiler already cannot optimize this component
-//     at all, seam or no seam, so that callback is not provably safe to drop
-//     until this is resolved. Unanticipated by the plan; flagged in the Task
-//     2 report for the plan owner.
-//   - "packages/devtools-app/src/timeline/ContextPane.tsx"
-//     BAILS in DiffTab — "Support value blocks (conditional, logical,
-//     optional chaining, etc) within a try/catch statement", triggered by a
-//     ternary inside a try block. This is NOT one of the two useMemo sites
-//     (changedIds, visibleStreams) Task 7 plans to remove — that task's own
-//     "report optimized" expectation for this file does not hold as written
-//     unless the try/catch is also addressed. Unanticipated by the plan;
-//     flagged in the Task 2 report for the plan owner.
+// - `useRecording.ts` bails on a compiler limitation (value blocks inside
+//   try/catch), but its callbacks were pure caching with no memo boundary —
+//   nothing was traded away, so there is nothing to protect.
+// - `ThemeProvider.tsx` bails on the ViewModel seam; its memo was replaced by a
+//   module-scope lookup table, not by compiler memoization.
+// - `InspectorApp.tsx` holds a build-once INSTANCE via ref, not compiler-
+//   memoized derived state.
+// - `WatchlistPanel.tsx` CANNOT be protected: the component itself bails on the
+//   seam (ADR-004), so its deleted `useCallback` gets no compiler memoization
+//   at all. That deletion is justified instead by the fact that this repo has
+//   zero `React.memo` boundaries, so callback identity buys nothing at runtime.
+//   Recorded here because "untracked" must never read as "forgotten".
 
 const failures = [];
 
-for (const rel of TRACKED) {
-  const abs = path.join(repoRoot, rel);
+for (const { file, fn } of TRACKED) {
+  const abs = path.join(repoRoot, file);
   const events = [];
 
   babel.transformSync(readFileSync(abs, "utf8"), {
@@ -79,19 +72,29 @@ for (const rel of TRACKED) {
     plugins: [[compilerPath, { logger: { logEvent: (_f, e) => events.push(e) } }]],
   });
 
-  const bails = events.filter((e) => e.kind === "CompileError" || e.kind === "CompileSkip");
-  const wins = events.filter((e) => e.kind === "CompileSuccess");
+  const win = events.find((e) => e.kind === "CompileSuccess" && e.fnName === fn);
+
+  if (win) {
+    console.log(`ok  ${file}  ${fn}  (${win.memoSlots} memo slots)`);
+    continue;
+  }
+
+  // Not optimized. Bail events carry NO `fnName` — only `fnLoc` — so the bail
+  // cannot be attributed to the tracked function by name. List every bail in
+  // the file with its line, and let the reader match it up. Reporting "not
+  // optimized" with no location would be a riddle, not a gate.
+  const bails = events
+    .filter((e) => e.kind === "CompileError" || e.kind === "CompileSkip")
+    .map((e) => {
+      const reason = e.detail?.reason ?? e.detail?.description ?? "unknown";
+
+      return `line ${e.fnLoc?.start?.line ?? "?"}: ${String(reason).split("\n")[0]}`;
+    });
 
   if (bails.length > 0) {
-    for (const bail of bails) {
-      const reason = bail.detail?.reason ?? bail.detail?.description ?? "unknown";
-
-      failures.push(`${rel}: BAILED — ${String(reason).split("\n")[0]}`);
-    }
-  } else if (wins.length === 0) {
-    failures.push(`${rel}: no component or hook found — is the path still correct?`);
+    failures.push(`${file}: ${fn} is NOT optimized. Bails in this file:\n      ${bails.join("\n      ")}`);
   } else {
-    console.log(`ok  ${rel}  (${wins.length} optimized)`);
+    failures.push(`${file}: ${fn} not found and nothing bailed — was it renamed or moved? Update TRACKED.`);
   }
 }
 
