@@ -53,12 +53,14 @@ test("geo resolves to a scene now that phase 6b-2b has started", () => {
   expect(BOOT_SCENES.geo).toBeDefined();
 });
 
-test("the two scenes still deferred resolve to nothing, without throwing", () => {
-  // `jarvis`/`topo` land later in phase 6b-2b.
-  for (const variant of ["jarvis", "topo"] as const) {
-    expect(hasBootScene(variant)).toBe(false);
-    expect(BOOT_SCENES[variant]).toBeUndefined();
-  }
+test("jarvis resolves to a scene now that phase 6b-2b has ported it", () => {
+  expect(hasBootScene("jarvis")).toBe(true);
+  expect(BOOT_SCENES.jarvis).toBeDefined();
+});
+
+test("topo, the last deferred scene, resolves to nothing without throwing", () => {
+  expect(hasBootScene("topo")).toBe(false);
+  expect(BOOT_SCENES.topo).toBeUndefined();
 });
 
 test("every registered key is a real boot variant (guards a typo'd key)", () => {
