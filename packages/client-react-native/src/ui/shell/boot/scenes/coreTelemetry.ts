@@ -1,4 +1,6 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/coreTelemetry.ts
+
+import { BOOT_TELEMETRY_BULLET } from "#/ui/shell/boot/scenes/bootGlyphs";
 import {
   activeFlowArcs,
   spawnedArcCount,
@@ -50,7 +52,7 @@ export function coreTelemetryLines(
 ): CoreTelemetry {
   "worklet";
   return {
-    topLeftFirst: "◉ CORE SYNC · GLOBAL MESH",
+    topLeftFirst: `${BOOT_TELEMETRY_BULLET} CORE SYNC · GLOBAL MESH`,
     topLeftSecond: `NODES ${CORE_HUBS.length} · UPLINK ${Math.round(progress * 100)}%`,
     topRightFirst: `YAW ${((yaw * 57.29) % 360).toFixed(1)}°`,
     topRightSecond: `LINKS ${spawnedArcCount(elapsedSec)} · LIVE ${activeFlowArcs(elapsedSec).length}`,

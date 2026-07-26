@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
 
+import { BOOT_TELEMETRY_BULLET } from "#/ui/shell/boot/scenes/bootGlyphs";
+
 import {
   CALIBRATION_TICK_COUNT,
   calibrationTickLit,
@@ -45,6 +47,6 @@ test("the links line counts scheduled and live arcs", () => {
 
 test("the fixed banner text never changes", () => {
   expect(coreTelemetryLines(2, 0.4, 1).topLeftFirst).toBe(
-    "◉ CORE SYNC · GLOBAL MESH",
+    `${BOOT_TELEMETRY_BULLET} CORE SYNC · GLOBAL MESH`,
   );
 });

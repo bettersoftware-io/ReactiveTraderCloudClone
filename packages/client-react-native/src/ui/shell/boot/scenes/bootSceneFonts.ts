@@ -35,6 +35,10 @@ import { useMemo } from "react";
  * rather than synthesising weight also closes the separate documented gap
  * where the web's `bold 12px`/`bold 13px`/`bold 18px` sites rendered regular.
  *
+ * One glyph the web variants use is in NO bundled face — see
+ * `bootGlyphs.ts`, which records the substitution and why a CSS font
+ * stack renders it where a single Skia typeface cannot.
+ *
  * Bundled rather than system-matched (`Skia.FontMgr.System()`) on purpose:
  * the pixels are pinned as visual goldens, and a system face would drift with
  * the OS version underneath them.

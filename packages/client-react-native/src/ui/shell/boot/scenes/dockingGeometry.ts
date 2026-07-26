@@ -1,4 +1,6 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/dockingGeometry.ts
+
+import { BOOT_TELEMETRY_BULLET } from "#/ui/shell/boot/scenes/bootGlyphs";
 import { clamp01, ease } from "#/ui/shell/boot/scenes/coreGeometry";
 
 /**
@@ -628,7 +630,7 @@ export function dockingLabels(telemetry: DockingTelemetry): DockingLabels {
   return {
     topLeft: {
       lines: [
-        "◉ CAM-04  DOCK BAY 07",
+        `${BOOT_TELEMETRY_BULLET} CAM-04  DOCK BAY 07`,
         "GIMBAL TRACK · AUTO",
         `TC ${telemetry.timecode}`,
       ],
