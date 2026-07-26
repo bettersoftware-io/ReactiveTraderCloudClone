@@ -282,27 +282,8 @@ export default tseslint.config(
     // syntax is treated as a command and IS flagged — a prop slot must be
     // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
     //
-    // Scope widens one package per commit until it reaches **/*.{ts,tsx} —
-    // see docs/superpowers/plans/2026-07-26-name-functions-by-effect.md.
-    files: [
-      "packages/shared/**/*.{ts,tsx}",
-      "packages/ws-effects/**/*.{ts,tsx}",
-      "packages/motion-core/**/*.{ts,tsx}",
-      "packages/boot-splash/**/*.{ts,tsx}",
-      "packages/devtools-core/**/*.{ts,tsx}",
-      "packages/react-bindings/**/*.{ts,tsx}",
-      "packages/solid-bindings/**/*.{ts,tsx}",
-      "packages/client-core/**/*.{ts,tsx}",
-      "packages/domain/**/*.{ts,tsx}",
-      "packages/server/**/*.{ts,tsx}",
-      "packages/devtools-app/**/*.{ts,tsx}",
-      "packages/devtools-extension/**/*.{ts,tsx}",
-      "packages/client-react/**/*.{ts,tsx}",
-      "packages/client-solid/**/*.{ts,tsx}",
-      "packages/client-react-native/**/*.{ts,tsx}",
-      "packages/ui-contract/**/*.{ts,tsx}",
-      "packages/client-prototype/**/*.{ts,tsx}",
-    ],
+    // See docs/superpowers/plans/2026-07-26-name-functions-by-effect.md.
+    files: ["**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },
   },

@@ -305,7 +305,7 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | File | Lines | Reason |
 |------|-------|--------|
 | `ui/fx/analytics/PairPnlBars.tsx` lines 56-59 | `hoveredSymbol === pos.symbol` hover branch | Requires a `hover` step type not present in `scenarioActions.ts`. Deferred. |
-| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `handleApply` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
+| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `applySelectedValues` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
 | `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
 | `ui/credit/rfqTiles/RfqTilesPanel.tsx` lines 80-85 | `handleDismiss` + `handleAccept` | Dismiss and Accept buttons in QuoteCard have no testids. Production code unchanged. |
 | `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `executeAtSide` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |

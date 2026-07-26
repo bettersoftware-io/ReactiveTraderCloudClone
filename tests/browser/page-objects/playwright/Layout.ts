@@ -12,7 +12,7 @@ export class PlaywrightLayout implements LayoutPO {
     return this.page.locator(HANDLE).first();
   }
 
-  async handleCount(): Promise<number> {
+  async splitterHandleCount(): Promise<number> {
     return await this.page.locator(HANDLE).count();
   }
 
