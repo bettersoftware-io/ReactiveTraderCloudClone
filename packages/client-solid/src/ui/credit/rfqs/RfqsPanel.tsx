@@ -447,6 +447,22 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
     return rfqCardVm(props.rfq, quotes(), props.instruments, props.dealers);
   });
 
+  function acceptRfqQuote(quoteId: number): void {
+    void acceptQuote(quoteId);
+  }
+
+  function cancelRfqCard(): void {
+    void cancelRfq(props.rfq.id);
+  }
+
+  function removeRfqCard(): void {
+    props.onRemove(props.rfq.id);
+  }
+
+  function reportCardSettled(kind: "enter" | "exit"): void {
+    props.onAnimationEnd(props.rfq.id, kind);
+  }
+
   return (
     <RfqCard
       vm={vm()}
@@ -454,18 +470,10 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
       expirySecs={props.rfq.expirySecs}
       anim={props.anim}
       delayMs={props.delayMs}
-      onAccept={(quoteId: number) => {
-        void acceptQuote(quoteId);
-      }}
-      onCancel={() => {
-        void cancelRfq(props.rfq.id);
-      }}
-      onRemove={() => {
-        props.onRemove(props.rfq.id);
-      }}
-      onAnimationEnd={(kind: "enter" | "exit") => {
-        props.onAnimationEnd(props.rfq.id, kind);
-      }}
+      onAccept={acceptRfqQuote}
+      onCancel={cancelRfqCard}
+      onRemove={removeRfqCard}
+      onAnimationEnd={reportCardSettled}
     />
   );
 }

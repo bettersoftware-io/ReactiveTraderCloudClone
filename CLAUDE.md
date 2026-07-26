@@ -228,3 +228,16 @@ onYellowLight={handleYellowLight} />` is not. A function-valued member in
 *method* syntax is treated as a command and is flagged, so declare prop slots in
 property syntax. Design:
 `docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md`.
+
+**Handlers get names even when the body is one line.** An inline arrow
+(`onChange={(e) => { notional.change(e.target.value); }}`) is maximally
+coupled to its one call site — it cannot be reused from a different trigger
+at all, which is the exact coupling the rule exists to remove. Extract and
+name it instead: `onChange={changeNotional}` over the inline form.
+
+**A name is part of the contract.** When a diff — or a merge — widens a
+function's condition, guard, or set of effects, re-check that its name still
+describes them; the lint rule cannot, since a decayed name is still
+perfectly well-formed. `dismissOnReducedMotion` decayed exactly this way once
+a catch-up merge widened its condition to also cover power-saver Freeze, and
+was renamed to `dismissOnJumpCut`.

@@ -30,6 +30,14 @@ export function LoginScreen(): ReactElement {
     login(username, password);
   }
 
+  function changeUsername(event: ChangeEvent<HTMLInputElement>): void {
+    setUsername(event.target.value);
+  }
+
+  function changePassword(event: ChangeEvent<HTMLInputElement>): void {
+    setPassword(event.target.value);
+  }
+
   const authenticating = state.status === "authenticating";
   const reactorWaiting = authenticating && state.waitVariant === "reactor";
 
@@ -70,9 +78,7 @@ export function LoginScreen(): ReactElement {
                 type="text"
                 autoComplete="username"
                 value={username}
-                onChange={(event: ChangeEvent<HTMLInputElement>): void => {
-                  setUsername(event.target.value);
-                }}
+                onChange={changeUsername}
               />
             </label>
 
@@ -84,9 +90,7 @@ export function LoginScreen(): ReactElement {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={(event: ChangeEvent<HTMLInputElement>): void => {
-                  setPassword(event.target.value);
-                }}
+                onChange={changePassword}
               />
             </label>
           </div>

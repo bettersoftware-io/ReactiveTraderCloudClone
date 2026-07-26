@@ -40,7 +40,16 @@ describe("CandleChart", () => {
 
   it("renders nothing for an empty vm", () => {
     const chart = mount(CandleChart, {
-      props: { vm: { candles: [], grid: [], labels: [] } },
+      props: {
+        vm: {
+          candles: [],
+          grid: [],
+          labels: [],
+          linePoints: [],
+          timeLabels: [],
+          scale: { cmin: 0, cmax: 0 },
+        },
+      },
     });
 
     expect(chart.candleCount()).toBe(0);

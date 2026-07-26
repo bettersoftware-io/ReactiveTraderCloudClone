@@ -42,6 +42,15 @@ proven by typecheck + the full test suite staying green.
      **delete it** and inline the arrow at the call site. Inline arrows in JSX
      are already idiomatic here (58 in `client-react` alone) and React Compiler
      is enabled, so there is no memoisation cost.
+
+     > **[Corrected after execution]** This step was reversed: an inline
+     > arrow is maximally coupled to its one call site, which is the exact
+     > coupling the rule exists to remove. Commit `faba43bf9` re-extracted all
+     > 51 sites migrated under this step back into named functions. This plan
+     > is left as the dated execution record and is not rewritten; the
+     > corrected rule lives in
+     > `docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md`
+     > ("Extraction is not optional at one line").
   4. If a decode step is the whole point, name the condition:
      `handleKeyDown` → `blurNotionalOnEnter`, not `keyDownHandler`.
   5. Never settle for a synonym: `processClick` / `doClick` / `handleClicked`

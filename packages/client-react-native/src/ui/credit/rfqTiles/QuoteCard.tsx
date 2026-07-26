@@ -23,6 +23,12 @@ export function QuoteCard({
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept != null;
   const styles = useThemedStyles(makeStyles);
 
+  function acceptPendingQuote(): void {
+    if (quote.state.type === "pendingWithPrice" && onAccept) {
+      void onAccept(quote.id);
+    }
+  }
+
   return (
     <SurfaceCard
       variant="panel"
@@ -39,11 +45,7 @@ export function QuoteCard({
         <Pressable
           testID={`quote-accept-${quote.id}`}
           style={styles.acceptBtn}
-          onPress={() => {
-            if (quote.state.type === "pendingWithPrice" && onAccept) {
-              void onAccept(quote.id);
-            }
-          }}
+          onPress={acceptPendingQuote}
         >
           <Text style={styles.acceptLabel}>Accept</Text>
         </Pressable>

@@ -34,15 +34,17 @@ interface TimeframePillProps {
 function TimeframePill(props: TimeframePillProps): ReactElement {
   const { id, active, onSet } = props;
 
+  function selectTimeframe(): void {
+    onSet(id);
+  }
+
   return (
     <button
       type="button"
       className={styles.pill}
       data-tf={id}
       data-active={String(active)}
-      onClick={() => {
-        onSet(id);
-      }}
+      onClick={selectTimeframe}
     >
       {id}
     </button>

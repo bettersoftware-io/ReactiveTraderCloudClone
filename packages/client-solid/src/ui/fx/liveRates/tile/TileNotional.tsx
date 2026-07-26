@@ -44,6 +44,10 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
     }
   }
 
+  function selectNotionalText(): void {
+    inputRef.select();
+  }
+
   const hasError = createMemo((): boolean => {
     return !!props.notional.state().error;
   });
@@ -58,9 +62,7 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
           onInput={applyNotionalInput}
           onChange={applyNotionalInput}
           onKeyDown={blurNotionalOnEnter}
-          onFocus={() => {
-            inputRef.select();
-          }}
+          onFocus={selectNotionalText}
           disabled={props.disabled}
           data-error={hasError() ? "true" : "false"}
           class={styles.input}
