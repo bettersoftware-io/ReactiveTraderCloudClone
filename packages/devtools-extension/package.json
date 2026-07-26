@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "vite build --watch",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports coverage 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {

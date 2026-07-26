@@ -3,6 +3,10 @@ dist/
 .turbo/
 *.tsbuildinfo
 reports/
+# vitest's DEFAULT coverage reportsDirectory. Most packages point coverage at
+# reports/<tier>/coverage/ (covered above), but any package that doesn't — and
+# `pnpm coverage:gaps` reads both — drops it here instead.
+coverage/
 playwright-report/
 test-results/
 .pnpm-store/
