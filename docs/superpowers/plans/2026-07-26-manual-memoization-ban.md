@@ -936,7 +936,7 @@ Two entries, via the `tracking-workstream-status` skill:
    completion signal); none was attempted here because it is a design change,
    not a cleanup. Cross-reference the hook's header comment, ADR-003, and this
    plan's Task 3.
-3. **`client-prototype` retains 44 manual memo sites** — explicitly descoped: it is the deliberately-isolated readable port of the v2 design prototype (`react`/`react-dom` only, no compiler), and churning it works against its purpose. Revisit only if it stops being a faithful port.
+3. **`client-prototype` retains 34 manual memo sites** — explicitly descoped: it is the deliberately-isolated readable port of the v2 design prototype (`react`/`react-dom` only, no compiler), and churning it works against its purpose. Revisit only if it stops being a faithful port.
 
 - [ ] **Step 4: Verify links**
 
