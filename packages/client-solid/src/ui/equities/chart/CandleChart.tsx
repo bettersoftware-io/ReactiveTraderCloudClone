@@ -1,4 +1,4 @@
-import { createMemo, For, type JSX, Show } from "solid-js";
+import { createMemo, type JSX } from "solid-js";
 
 import type { EqChartType, EqIndicatorId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
@@ -12,24 +12,17 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import { BackToLiveButton } from "./BackToLiveButton";
-import { CandleBars } from "./CandleBars";
-import { CrosshairOverlay } from "./CrosshairOverlay";
+import { ChartPlot } from "./ChartPlot";
 import { type ChartGestures, createChartGestures } from "./createChartGestures";
 import type { IndicatorPath } from "./SvgPathLayer";
-import { SvgPathLayer } from "./SvgPathLayer";
-import { TimeAxis } from "./TimeAxis";
-import { VolumePane } from "./VolumePane";
-
-import styles from "./CandleChart.module.css";
 
 /**
- * The interactive price plot: owns the gesture primitive (zoom/pan/crosshair
- * — `createChartGestures`) and composes the read-only render layers over it
- * — grid, price labels, candles/line/area, indicator overlays, crosshair,
- * back-to-live — plus the volume pane and time axis below the plot box.
- * `ChartPanel` stays a data/join component; this is where @rtc/motion-core's
- * chartVm/volumeVm/crosshairVm/indicator projections are actually consumed.
+ * The interactive price plot's data/gesture join: owns the gesture primitive
+ * (zoom/pan/crosshair — `createChartGestures`), the `@rtc/motion-core`
+ * chartVm/volumeVm/crosshairVm/indicator projections, and hands the result to
+ * `ChartPlot` — the presentational leaf that actually renders the DOM.
+ * `ChartPanel` stays a data/join component one level up; this is the seam
+ * between the two.
  */
 export function CandleChart(props: CandleChartProps): JSX.Element {
   const g: ChartGestures = createChartGestures(
@@ -74,62 +67,17 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
   });
 
   return (
-    <div class={styles.wrap}>
-      <div
-        class={styles.plot}
-        data-testid="chart-plot"
-        tabIndex={0}
-        role="application"
-        aria-label="Price chart"
-        ref={g.plotRef}
-        onPointerDown={g.plotProps.onPointerDown}
-        onPointerMove={g.plotProps.onPointerMove}
-        onPointerUp={g.plotProps.onPointerUp}
-        onPointerCancel={g.plotProps.onPointerCancel}
-        onPointerLeave={g.plotProps.onPointerLeave}
-        onDblClick={g.plotProps.onDblClick}
-        onKeyDown={g.plotProps.onKeyDown}
-      >
-        <For each={vm().grid}>
-          {(gr: ChartVm["grid"][number]): JSX.Element => {
-            return (
-              <div
-                class={styles.grid}
-                style={gr.style}
-                data-testid="chart-grid-line"
-              />
-            );
-          }}
-        </For>
-        <For each={vm().labels}>
-          {(l: ChartVm["labels"][number]): JSX.Element => {
-            return (
-              <div
-                class={styles.label}
-                style={l.style}
-                data-testid="chart-price-label"
-              >
-                {l.txt}
-              </div>
-            );
-          }}
-        </For>
-        <Show when={props.kind === "candles"}>
-          <CandleBars candles={vm().candles} />
-        </Show>
-        <SvgPathLayer
-          linePoints={vm().linePoints}
-          kind={props.kind}
-          indicatorPaths={indicatorPaths()}
-        />
-        <CrosshairOverlay vm={cross()} />
-        <Show when={!g.atLiveEdge()}>
-          <BackToLiveButton onClick={g.resetToLive} />
-        </Show>
-      </div>
-      <VolumePane bars={volumeVm(props.candles, g.viewport())} />
-      <TimeAxis labels={vm().timeLabels} />
-    </div>
+    <ChartPlot
+      vm={vm()}
+      kind={props.kind}
+      indicatorPaths={indicatorPaths()}
+      cross={cross()}
+      atLiveEdge={g.atLiveEdge()}
+      volumeBars={volumeVm(props.candles, g.viewport())}
+      onBackToLive={g.resetToLive}
+      plotProps={g.plotProps}
+      plotRef={g.plotRef}
+    />
   );
 }
 

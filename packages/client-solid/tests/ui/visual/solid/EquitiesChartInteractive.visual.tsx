@@ -1,4 +1,4 @@
-import { createMemo, For, type JSX, Show } from "solid-js";
+import { createMemo, type JSX } from "solid-js";
 
 import type { EqIndicatorId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
@@ -12,31 +12,26 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import { BackToLiveButton } from "#/ui/equities/chart/BackToLiveButton";
-import { CandleBars } from "#/ui/equities/chart/CandleBars";
 import { CandleChart } from "#/ui/equities/chart/CandleChart";
-import styles from "#/ui/equities/chart/CandleChart.module.css";
-import { CrosshairOverlay } from "#/ui/equities/chart/CrosshairOverlay";
-import { SvgPathLayer } from "#/ui/equities/chart/SvgPathLayer";
-import { TimeAxis } from "#/ui/equities/chart/TimeAxis";
-import { VolumePane } from "#/ui/equities/chart/VolumePane";
+import { ChartPlot } from "#/ui/equities/chart/ChartPlot";
 
 /**
  * Golden-only wrapper components for the interactive equities chart's
  * forced, gesture-unreachable states (Task C5: panned/zoomed viewport, a
  * pinned crosshair, the line/area kinds, indicator overlays, and the
  * volume/time-axis pair). `CandleChart` owns its viewport/cursor via
- * `createChartGestures` — an internal primitive with no prop seam — so,
- * following the `EquitiesInstrumentHeader` forced-flashOn precedent
- * (registry.tsx), `EquitiesChartPanned`/`Zoomed`/`Crosshair` rebuild
- * CandleChart's exact render tree (`ForcedChart` below) around a LITERAL
- * viewport/cursor instead of calling the primitive, rather than driving a
- * real gesture sequence with synthetic pointer events (out of scope for the
- * visual tier). The other four scenarios (`Line`/`Area`/`Indicators`/
- * `VolumeAxis`) need no such bypass — `kind`/`indicators` are already real
- * `CandleChart` props — so those mount the genuine component at its default
- * (initial, untouched) gesture state: fully deterministic, since no
- * pointer/keyboard event ever fires.
+ * `createChartGestures` — an internal primitive with no prop seam — so
+ * `EquitiesChartPanned`/`Zoomed`/`Crosshair` mount the extracted, purely
+ * presentational `ChartPlot` (the real production DOM tree — see
+ * `ChartPlot.tsx`) directly with a LITERAL viewport/cursor computed via the
+ * same `@rtc/motion-core` functions `CandleChart` itself calls, instead of
+ * driving a real gesture sequence with synthetic pointer events (out of
+ * scope for the visual tier). `plotProps`/`plotRef` are omitted, yielding a
+ * static, gesture-free mount. The other four scenarios (`Line`/`Area`/
+ * `Indicators`/`VolumeAxis`) need no such bypass — `kind`/`indicators` are
+ * already real `CandleChart` props — so those mount the genuine component
+ * at its default (initial, untouched) gesture state: fully deterministic,
+ * since no pointer/keyboard event ever fires.
  */
 
 // A one-minute-bucket candle at series index `i`: open climbs by 1 per
@@ -175,8 +170,8 @@ interface ForcedChartProps {
   readonly cursor?: { readonly xFrac: number; readonly yFrac: number };
 }
 
-/** Rebuilds `CandleChart`'s render tree (candles kind, no indicators, no
- * flash) around a literal viewport/cursor — see the file doc above. */
+/** Mounts the real `ChartPlot` (the extracted production DOM tree) around a
+ * literal viewport/cursor — see the file doc above. */
 function ForcedChart(props: ForcedChartProps): JSX.Element {
   const vm = createMemo((): ChartVm => {
     return chartVm(CANDLES, LIVE_RATE, false, {
@@ -206,45 +201,14 @@ function ForcedChart(props: ForcedChartProps): JSX.Element {
   });
 
   return (
-    <div class={styles.wrap}>
-      <div class={styles.plot} data-testid="chart-plot">
-        <For each={vm().grid}>
-          {(gr: ChartVm["grid"][number]): JSX.Element => {
-            return (
-              <div
-                class={styles.grid}
-                style={gr.style}
-                data-testid="chart-grid-line"
-              />
-            );
-          }}
-        </For>
-        <For each={vm().labels}>
-          {(l: ChartVm["labels"][number]): JSX.Element => {
-            return (
-              <div
-                class={styles.label}
-                style={l.style}
-                data-testid="chart-price-label"
-              >
-                {l.txt}
-              </div>
-            );
-          }}
-        </For>
-        <CandleBars candles={vm().candles} />
-        <SvgPathLayer
-          linePoints={vm().linePoints}
-          kind="candles"
-          indicatorPaths={[]}
-        />
-        <CrosshairOverlay vm={cross()} />
-        <Show when={!atLiveEdge()}>
-          <BackToLiveButton onClick={() => {}} />
-        </Show>
-      </div>
-      <VolumePane bars={volumeVm(CANDLES, props.viewport)} />
-      <TimeAxis labels={vm().timeLabels} />
-    </div>
+    <ChartPlot
+      vm={vm()}
+      kind="candles"
+      indicatorPaths={[]}
+      cross={cross()}
+      atLiveEdge={atLiveEdge()}
+      volumeBars={volumeVm(CANDLES, props.viewport)}
+      onBackToLive={() => {}}
+    />
   );
 }

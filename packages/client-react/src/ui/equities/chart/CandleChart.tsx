@@ -10,24 +10,17 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import { BackToLiveButton } from "./BackToLiveButton";
-import { CandleBars } from "./CandleBars";
-import { CrosshairOverlay } from "./CrosshairOverlay";
+import { ChartPlot } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
-import { SvgPathLayer } from "./SvgPathLayer";
-import { TimeAxis } from "./TimeAxis";
 import { type ChartGestures, useChartGestures } from "./useChartGestures";
-import { VolumePane } from "./VolumePane";
-
-import styles from "./CandleChart.module.css";
 
 /**
- * The interactive price plot: owns the gesture hook (zoom/pan/crosshair —
- * `useChartGestures`) and composes the read-only render layers over it —
- * grid, price labels, candles/line/area, indicator overlays, crosshair,
- * back-to-live — plus the volume pane and time axis below the plot box.
- * `ChartPanel` stays a data/join component; this is where @rtc/motion-core's
- * chartVm/volumeVm/crosshairVm/indicator projections are actually consumed.
+ * The interactive price plot's data/gesture join: owns the gesture hook
+ * (zoom/pan/crosshair — `useChartGestures`), the `@rtc/motion-core`
+ * chartVm/volumeVm/crosshairVm/indicator projections, and hands the result to
+ * `ChartPlot` — the presentational leaf that actually renders the DOM.
+ * `ChartPanel` stays a data/join component one level up; this is the seam
+ * between the two.
  */
 export function CandleChart({
   candles,
@@ -57,50 +50,17 @@ export function CandleChart({
   );
 
   return (
-    <div className={styles.wrap}>
-      <div
-        className={styles.plot}
-        data-testid="chart-plot"
-        tabIndex={0}
-        role="application"
-        aria-label="Price chart"
-        ref={plotRef}
-        {...plotProps}
-      >
-        {vm.grid.map((gr) => {
-          return (
-            <div
-              key={gr.key}
-              className={styles.grid}
-              style={gr.style}
-              data-testid="chart-grid-line"
-            />
-          );
-        })}
-        {vm.labels.map((l) => {
-          return (
-            <div
-              key={l.key}
-              className={styles.label}
-              style={l.style}
-              data-testid="chart-price-label"
-            >
-              {l.txt}
-            </div>
-          );
-        })}
-        {kind === "candles" && <CandleBars candles={vm.candles} />}
-        <SvgPathLayer
-          linePoints={vm.linePoints}
-          kind={kind}
-          indicatorPaths={indicatorPaths}
-        />
-        <CrosshairOverlay vm={cross} />
-        {!atLiveEdge && <BackToLiveButton onClick={resetToLive} />}
-      </div>
-      <VolumePane bars={volumeVm(candles, viewport)} />
-      <TimeAxis labels={vm.timeLabels} />
-    </div>
+    <ChartPlot
+      vm={vm}
+      kind={kind}
+      indicatorPaths={indicatorPaths}
+      cross={cross}
+      atLiveEdge={atLiveEdge}
+      volumeBars={volumeVm(candles, viewport)}
+      onBackToLive={resetToLive}
+      plotProps={plotProps}
+      plotRef={plotRef}
+    />
   );
 }
 

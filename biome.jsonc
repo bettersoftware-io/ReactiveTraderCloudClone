@@ -200,9 +200,11 @@
       // child. `role="application"` isn't in aria-query's "widget" role
       // subtree, so noNoninteractiveTabindex (mirroring jsx-a11y) flags it as
       // a false positive for this specific, deliberate pattern. Scoped to the
-      // chart plot component(s) across every web client (React today; the
-      // Solid port lands at the analogous path under client-solid).
-      "includes": ["packages/client-*/src/ui/equities/chart/CandleChart.tsx"],
+      // extracted, purely presentational `ChartPlot` (the plot div's actual
+      // owner post-Task-C5-fix — `CandleChart` itself no longer renders any
+      // DOM) across every web client (React today; the Solid port lands at
+      // the analogous path under client-solid).
+      "includes": ["packages/client-*/src/ui/equities/chart/ChartPlot.tsx"],
       "linter": {
         "rules": {
           "a11y": {
