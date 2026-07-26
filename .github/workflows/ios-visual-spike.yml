@@ -329,8 +329,15 @@ jobs:
 
       # The RN app imports the @rtc/* workspace libs through their built dist/,
       # which a fresh checkout has not produced; Metro would fail to resolve them.
-      - name: Build workspace libraries
-        run: pnpm build
+      #
+      # Scoped to this package's DEPENDENCIES (`^...`) rather than the root
+      # `pnpm build`: that builds all 19 packages, including the Vite bundles for
+      # client-react, client-solid, devtools-app and client-prototype, none of
+      # which an iOS capture touches. The filter resolves to the 7 that matter —
+      # domain, shared, client-core, react-bindings, motion-core, devtools-core,
+      # devtools-relay — which is real time back on a 3-core runner.
+      - name: Build workspace libraries (this package's deps only)
+        run: pnpm exec turbo run build --filter='@rtc/client-react-native^...'
 
       - name: Install JDK 17 + Maestro
         run: |
@@ -367,10 +374,28 @@ jobs:
           echo "booted $UDID on $RUNTIME"
 
       # `ios/` is gitignored and lives only where you run it, so CI always
-      # generates it. --no-install because pnpm already installed the JS deps.
+      # generates it. --no-install because pnpm already installed the JS deps and
+      # we do not want prebuild reaching for a package manager inside a
+      # workspace it does not own.
       - name: Expo prebuild (generate the iOS project)
         working-directory: packages/client-react-native
         run: npx expo prebuild --platform ios --no-install
+
+      # `--no-install` skips CocoaPods as well as npm — the flag covers both.
+      # Without this step prebuild leaves an .xcodeproj and NO .xcworkspace, and
+      # the build fails with `ls: ios/*.xcworkspace: No such file or directory`,
+      # which reads like a path bug rather than a missing install. Run pods
+      # explicitly so the failure, if any, is attributable to pods.
+      - name: Install CocoaPods
+        working-directory: packages/client-react-native/ios
+        run: |
+          set -euo pipefail
+          if [ -f Gemfile ]; then
+            bundle install
+            bundle exec pod install
+          else
+            pod install
+          fi
 
       - name: Build the app for the simulator
         id: build
@@ -379,7 +404,12 @@ jobs:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
           set -euo pipefail
-          WS=$(ls -d ios/*.xcworkspace | head -1)
+          WS=$(ls -d ios/*.xcworkspace 2>/dev/null | head -1 || true)
+          if [ -z "$WS" ]; then
+            echo "::error title=No .xcworkspace::prebuild ran but CocoaPods did not — pods generate the workspace. Check the 'Install CocoaPods' step."
+            ls -la ios/ || true
+            exit 1
+          fi
           SCHEME=$(basename "$WS" .xcworkspace)
           echo "workspace=$WS scheme=$SCHEME"
           xcodebuild \
