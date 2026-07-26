@@ -10,6 +10,7 @@ import type {
 import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -18,6 +19,9 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  type JarvisIntents,
+  type JarvisState,
+  type Machine,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type {
@@ -101,6 +105,34 @@ function useMachineState<T>(state$: PeekableState<T>): T {
       return v;
     },
   );
+}
+
+/** The REAL createJarvisMachine, one shared instance PER WORLD — keyed by
+ * World identity (not built inside createWorld itself, since the machine is
+ * an application-layer concern; see world.ts's `JarvisWorld` doc comment).
+ * Every `reactViewModel(world)` call (one per `mountWith`/`mount`) reuses the
+ * same cached machine, mirroring world.eqWorkspace's per-World singleton so a
+ * co-mounted JarvisOrb + JarvisOverlay observe the same open/phase/entries. */
+const jarvisMachines = new WeakMap<
+  World,
+  Machine<JarvisState, JarvisIntents>
+>();
+
+function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
+  let machine = jarvisMachines.get(world);
+
+  if (!machine) {
+    machine = createJarvisMachine({
+      port: world.jarvis.port,
+      skin$: world.jarvisSkin,
+      setSkin: (skin: JarvisSkin) => {
+        world.jarvisSkin.next(skin);
+      },
+    });
+    jarvisMachines.set(world, machine);
+  }
+
+  return machine;
 }
 
 /** Build a reactive ViewModel backed by the neutral World. */
@@ -621,30 +653,15 @@ export function reactViewModel(world: World): ViewModel {
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
       };
     },
-    // Jarvis: stub returning a noop implementation (TODO: wire World).
+    // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
+    // (getJarvisMachine above) and bridged through useMachineState exactly
+    // like the shared eqWorkspace machine above — so JarvisOrb and
+    // JarvisOverlay, even mounted via separate mountWith() calls sharing one
+    // World, observe the same open/phase/entries/pendingConfirmation.
     useJarvis: () => {
-      return {
-        state: {
-          open: false,
-          skin: "singularity" as JarvisSkin,
-          unread: 0,
-          phase: "idle" as const,
-          entries: [] as readonly {
-            id: number;
-            role: "user" | "jarvis";
-            text: string;
-            done: boolean;
-          }[],
-          pendingConfirmation: null,
-        },
-        open: (): void => {},
-        close: (): void => {},
-        toggle: (): void => {},
-        send: (): void => {},
-        approveConfirmation: (): void => {},
-        declineConfirmation: (): void => {},
-        setSkin: (_skin: JarvisSkin): void => {},
-      };
+      const machine = getJarvisMachine(world);
+      const state = useMachineState(machine.state$);
+      return { state, ...machine.intents };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

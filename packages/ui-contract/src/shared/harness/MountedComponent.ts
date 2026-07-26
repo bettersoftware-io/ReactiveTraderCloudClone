@@ -1,6 +1,7 @@
 import type {
   AnimationIntent,
   IncidentKind,
+  JarvisEvent,
   ThroughputView,
 } from "@rtc/client-core";
 import type {
@@ -59,6 +60,10 @@ export interface PageContext<P> {
   setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Push the boot-splash visibility (useBootGate source — drives BootGate). */
   setBootGateVisible(visible: boolean): void;
+  /** Push one or more reply events onto the Jarvis fake's in-flight `ask()`
+   * turn (`world.jarvis.emit`), flush-wrapped so the framework driver applies
+   * the resulting re-render before the caller's next assertion. */
+  emitJarvis(events: readonly JarvisEvent[]): void;
   // Equities drivers (flush-wrapped, mirroring setPrice/setTopology — added so
   // the equities specs need no direct framework `act()` around raw World
   // mutations; the framework driver's flushSync does the flushing).
@@ -186,6 +191,11 @@ export abstract class MountedComponent<P> {
   /** Push the boot-splash visibility through the seam → re-render BootGate. */
   protected setBootGateVisible(visible: boolean): void {
     this.ctx.setBootGateVisible(visible);
+  }
+
+  /** Push reply events onto the Jarvis fake's in-flight `ask()` turn. */
+  protected emitJarvis(events: readonly JarvisEvent[]): void {
+    this.ctx.emitJarvis(events);
   }
 
   // Equities drivers (flush-wrapped; see the PageContext docs above).
