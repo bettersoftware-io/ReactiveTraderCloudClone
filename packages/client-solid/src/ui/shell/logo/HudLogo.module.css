@@ -64,3 +64,12 @@
     animation: none;
   }
 }
+
+/* Power-saver Freeze: same suppression as reduced motion — `--fx-play` only
+ * pauses these loops, leaving two permanent Animation objects alive; `from`
+ * frames equal natural style (rotate 0/360deg), so dropping them is
+ * pixel-identical to the paused hold. */
+:root[data-power-saver="freeze"] .spin,
+:root[data-power-saver="freeze"] .spinRev {
+  animation: none;
+}

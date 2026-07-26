@@ -43,9 +43,14 @@ test("hologram resolves to a scene now that phase 6b-2a has ported it", () => {
   expect(BOOT_SCENES.hologram).toBeDefined();
 });
 
-test("the four scenes still deferred resolve to nothing, without throwing", () => {
-  // `layers` lands later in 6b-2a; `geo`/`jarvis`/`topo` in 6b-2b.
-  for (const variant of ["geo", "layers", "jarvis", "topo"] as const) {
+test("layers resolves to a scene now that phase 6b-2a has ported it", () => {
+  expect(hasBootScene("layers")).toBe(true);
+  expect(BOOT_SCENES.layers).toBeDefined();
+});
+
+test("the three scenes still deferred resolve to nothing, without throwing", () => {
+  // `geo`/`jarvis`/`topo` land in phase 6b-2b.
+  for (const variant of ["geo", "jarvis", "topo"] as const) {
     expect(hasBootScene(variant)).toBe(false);
     expect(BOOT_SCENES[variant]).toBeUndefined();
   }

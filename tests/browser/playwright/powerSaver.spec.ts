@@ -44,4 +44,22 @@ test.describe("Power saver", () => {
 
     await powerSaver.expectConnectionDotFrozen(ctx);
   });
+
+  // The churn gate, distinct from the catch-all test above: computed styles
+  // can look frozen while data-driven retriggers still spawn a 0.01ms
+  // Animation (plus a style recalc) per quote — manufactured transitions,
+  // flash keyframes, paused resident loops, ungated rAF. Only a live
+  // streaming app can witness those; the visual tier's freeze contract runs
+  // against static fixtures.
+  test("freeze leaves no animation or rAF churn while quotes stream", async ({
+    ctx,
+  }) => {
+    await connection.expectConnectionStatusFooterShows(ctx, "Connected");
+
+    await powerSaver.clickQuickToggle(ctx);
+    await powerSaver.clickQuickToggle(ctx);
+    await powerSaver.expectDocumentFlag(ctx, "freeze");
+
+    await powerSaver.expectNoLiveMotionMachinery(ctx);
+  });
 });
