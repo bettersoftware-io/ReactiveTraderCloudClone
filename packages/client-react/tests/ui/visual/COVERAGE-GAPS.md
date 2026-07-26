@@ -1,5 +1,17 @@
 # Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
+> **How to read the paths (2026-07-26).** This is an **append-only log of dated
+> audits**, so every file path and line number is *as-of its own section's date*
+> and is never rewritten in place — rewriting them would silently re-attribute a
+> finding to code that was never audited. Two consequences when a path does not
+> resolve today: line numbers are only valid against the tree of that date, and a
+> bare path (`adapters/WsAdapter.ts`) is relative to whichever package owned it
+> then, which is not always the package that owns it now. Sections whose base
+> moved or whose files were deleted carry their own provenance note; the
+> repo-wide moves that affect most citations are the app-layer lift into
+> `@rtc/client-core` (`a246be547`, 2026-07-01) and the server's cutover to
+> declarative `@rtc/ws-effects` (`55091b766`, 2026-07-02).
+
 > **Coverage instrument note (2026-07-20).** The `vitest-browser` tier that
 > generates the istanbul numbers below was retired from asserting pixel
 > goldens by a test-tooling bake-off — see
@@ -208,6 +220,11 @@ unit tests** (`DepthPresenter.test.ts` / `CandleSeriesPresenter.test.ts`) assert
 the cache contract (relay, same-Observable cache hit, distinct-symbol streams).
 Only the `portFactory` wiring gap below remains, with the same intentional rationale.
 
+> **Path below is as-of 2026-06-30**, relative to the then-current
+> `packages/client-react/src/app/`; `portFactory.ts` moved to
+> `packages/client-core/src/adapters/` with the 2026-07-01 app-layer lift
+> (`a246be547`). Line numbers are as-of the audit.
+
 | File | Lines | Reason |
 |------|-------|--------|
 | `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
@@ -272,12 +289,28 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 
 ### Server — intentionally-open gaps (2026-06-25)
 
+> **Paths below are as-of 2026-06-25 and no longer resolve.** They were relative
+> to `packages/server/src/`, and `ws/wsHandler.ts` **no longer exists**: the
+> server cut over to declarative `@rtc/ws-effects` in `55091b766` (2026-07-02),
+> which deleted the file and its `switch`. Both rows are kept as a record of what
+> was intentionally open at that date; neither describes today's tree, and the
+> line numbers belong to the deleted file.
+
 | File | Lines | Reason |
 |------|-------|--------|
 | `ws/wsHandler.ts` 253-260, 303-310, 349-356 | Abort listeners for `streamPricing`, `streamBlotter`, `streamAnalytics` | Same pattern as the two now-covered abort tests (instruments + workflow). These streams complete synchronously in the default `fakeServices()`. Covering them requires per-stream interval-based fakes; gap severity does not warrant the fixture complexity. |
 | `ws/wsHandler.ts` 461-462 | Abort listener for `streamDealers` | Same rationale as the three above. |
 
 ### Client app layer — intentionally-open gaps (2026-06-25)
+
+> **Paths below are as-of 2026-06-25**, relative to the then-current
+> `packages/client-react/src/app/`. The universal app layer was lifted into
+> `@rtc/client-core` in `a246be547` (2026-07-01), so the `adapters/WsAdapter.ts`,
+> `adapters/portFactory.ts` and `presenters/RfqsPresenter.ts` rows now correspond
+> to `packages/client-core/src/…`. `adapters/BrowserConnectionEventsAdapter.ts`
+> stayed behind as a browser-specific adapter and still resolves against that
+> base — it now also has a `client-solid` twin. Line numbers are as-of the audit
+> and will not match either tree.
 
 | File | Lines | Reason |
 |------|-------|--------|
