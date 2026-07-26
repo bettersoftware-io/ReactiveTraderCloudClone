@@ -10,6 +10,7 @@ import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
 import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
+import { TopoScene } from "#/ui/shell/boot/scenes/TopoScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import type { RnTheme } from "#/ui/theme/tokens";
 
@@ -43,11 +44,15 @@ export interface BootSceneProps {
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 
 /**
- * Boot variant → scene component. `Partial` by design: seven of eight variants
- * are registered so far — `core` (phase 6a Task 6), `laser` (phase 6a Task 7),
- * `docking` (phase 6b-1 Task 9), `hologram` + `layers` (phase 6b-2a) and
- * `geo` + `jarvis` (phase 6b-2b). The last four are built on the shared
- * `boot3dCamera` seam. Only `topo` remains unported.
+ * Boot variant → scene component. `Partial` by design: **every** variant is now
+ * registered — `core`/`laser` (phase 6a), `docking` (6b-1),
+ * `hologram` + `layers` (6b-2a) and `geo` + `jarvis` + `topo` (6b-2b). The
+ * last five are built on the shared `boot3dCamera` seam.
+ *
+ * The map stays `Partial` in TYPE even though it is now total in practice.
+ * That is deliberate: `BootCanvas`'s "no scene for this variant" fallback is
+ * still reachable code with its own test, and narrowing the type would delete
+ * that path — leaving a future ninth variant to crash instead of fall back.
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -61,6 +66,7 @@ export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   jarvis: JarvisScene,
   laser: LaserScene,
   layers: LayersScene,
+  topo: TopoScene,
 };
 
 /** Reports whether `variant` has a registered scene, without throwing for an
