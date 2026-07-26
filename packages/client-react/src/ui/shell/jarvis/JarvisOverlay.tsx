@@ -42,16 +42,16 @@ export function JarvisOverlay(): ReactElement | null {
       return undefined;
     }
 
-    function handleKeyDown(event: KeyboardEvent): void {
+    function closeOnEscape(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         close();
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", closeOnEscape);
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [state.open, close]);
 
@@ -83,16 +83,14 @@ export function JarvisOverlay(): ReactElement | null {
     send(trimmed);
   }
 
-  function handleSendClick(): void {
+  function sendDraft(): void {
     submit(inputValue);
     setInputValue("");
   }
 
-  function handleInputKeyDown(
-    event: ReactKeyboardEvent<HTMLInputElement>,
-  ): void {
+  function sendDraftOnEnter(event: ReactKeyboardEvent<HTMLInputElement>): void {
     if (event.key === "Enter") {
-      handleSendClick();
+      sendDraft();
     }
   }
 
@@ -222,14 +220,14 @@ export function JarvisOverlay(): ReactElement | null {
             onChange={(event: ChangeEvent<HTMLInputElement>) => {
               setInputValue(event.target.value);
             }}
-            onKeyDown={handleInputKeyDown}
+            onKeyDown={sendDraftOnEnter}
           />
           <button
             type="button"
             data-testid="jarvis-send"
             className={styles.sendButton}
             disabled={speaking}
-            onClick={handleSendClick}
+            onClick={sendDraft}
           >
             SEND
           </button>

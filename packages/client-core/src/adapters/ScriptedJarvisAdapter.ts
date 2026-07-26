@@ -255,16 +255,16 @@ export class ScriptedJarvisAdapter implements JarvisPort {
         await this.handlePnl(push);
         return;
       case "movers":
-        await this.handleMovers(pairs, push);
+        await this.streamMoversReply(pairs, push);
         return;
       case "quote":
-        await this.handleQuote(pairs, intent.symbol, push);
+        await this.streamQuoteReply(pairs, intent.symbol, push);
         return;
       case "spread":
-        await this.handleSpread(pairs, intent.symbol, push);
+        await this.streamSpreadReply(pairs, intent.symbol, push);
         return;
       case "trade":
-        await this.handleTrade(pairs, intent, push);
+        await this.executeConfirmedTrade(pairs, intent, push);
         return;
 
       default: {
@@ -295,7 +295,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     await this.reveal(reply, push);
   }
 
-  private async handleMovers(
+  private async streamMoversReply(
     pairs: readonly CurrencyPair[],
     push: (event: JarvisEvent) => void,
   ): Promise<void> {
@@ -326,7 +326,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     await this.reveal(reply, push);
   }
 
-  private async handleQuote(
+  private async streamQuoteReply(
     pairs: readonly CurrencyPair[],
     symbol: string,
     push: (event: JarvisEvent) => void,
@@ -356,7 +356,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     await this.reveal(reply, push);
   }
 
-  private async handleSpread(
+  private async streamSpreadReply(
     pairs: readonly CurrencyPair[],
     symbol: string,
     push: (event: JarvisEvent) => void,
@@ -370,7 +370,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     await this.reveal(reply, push);
   }
 
-  private async handleTrade(
+  private async executeConfirmedTrade(
     pairs: readonly CurrencyPair[],
     intent: JarvisTradeIntent,
     push: (event: JarvisEvent) => void,

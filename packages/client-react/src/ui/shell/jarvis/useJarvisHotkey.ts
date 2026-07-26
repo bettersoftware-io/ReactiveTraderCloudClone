@@ -8,7 +8,7 @@ import { useEffect } from "react";
  */
 export function useJarvisHotkey(toggle: () => void): void {
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent): void {
+    function toggleJarvisOnHotkey(event: KeyboardEvent): void {
       if (
         (event.metaKey || event.ctrlKey) &&
         (event.key === "j" || event.key === "J")
@@ -18,10 +18,10 @@ export function useJarvisHotkey(toggle: () => void): void {
       }
     }
 
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", toggleJarvisOnHotkey);
 
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", toggleJarvisOnHotkey);
     };
   }, [toggle]);
 }

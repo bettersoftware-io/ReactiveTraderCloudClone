@@ -41,16 +41,16 @@ export function JarvisOverlay(): JSX.Element {
       return;
     }
 
-    function handleKeyDown(event: KeyboardEvent): void {
+    function closeOnEscape(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         close();
       }
     }
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", closeOnEscape);
 
     onCleanup(() => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", closeOnEscape);
     });
   });
 
@@ -78,18 +78,18 @@ export function JarvisOverlay(): JSX.Element {
     send(trimmed);
   }
 
-  function handleSendClick(): void {
+  function sendDraft(): void {
     submit(inputValue());
     setInputValue("");
   }
 
-  function handleInputChange(event: InputChangeEvent): void {
+  function updateDraft(event: InputChangeEvent): void {
     setInputValue(event.currentTarget.value);
   }
 
-  function handleInputKeyDown(event: InputKeyDownEvent): void {
+  function sendDraftOnEnter(event: InputKeyDownEvent): void {
     if (event.key === "Enter") {
-      handleSendClick();
+      sendDraft();
     }
   }
 
@@ -231,16 +231,16 @@ export function JarvisOverlay(): JSX.Element {
               placeholder="Ask J.A.R.V.I.S…"
               value={inputValue()}
               disabled={state().phase === "speaking"}
-              onInput={handleInputChange}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
+              onInput={updateDraft}
+              onChange={updateDraft}
+              onKeyDown={sendDraftOnEnter}
             />
             <button
               type="button"
               data-testid="jarvis-send"
               class={styles.sendButton}
               disabled={state().phase === "speaking"}
-              onClick={handleSendClick}
+              onClick={sendDraft}
             >
               SEND
             </button>
