@@ -12,11 +12,11 @@ export class PlaywrightLayout implements LayoutPO {
     return this.page.locator(HANDLE).first();
   }
 
-  async handleCount(): Promise<number> {
+  async resizeHandleCount(): Promise<number> {
     return await this.page.locator(HANDLE).count();
   }
 
-  async firstHandleSize(): Promise<number> {
+  async firstResizeHandleSize(): Promise<number> {
     return Number(await this.first().getAttribute("aria-valuenow"));
   }
 

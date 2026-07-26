@@ -67,7 +67,7 @@ export function TradeTicketSheet({
     }
   }, [status]);
 
-  function handleExecute(direction: Direction): void {
+  function executeTrade(direction: Direction): void {
     if (price !== null) {
       lastDirRef.current = direction;
       execution.execute(direction, price, notional.state.numericValue);
@@ -92,7 +92,7 @@ export function TradeTicketSheet({
         </View>
         <NotionalControl notional={notional} base={pair.base} />
         {price === null ? null : (
-          <BuySellPads pair={pair} price={price} onExecute={handleExecute} />
+          <BuySellPads pair={pair} price={price} onExecute={executeTrade} />
         )}
         <ExecutionCeremony
           state={execution.state}

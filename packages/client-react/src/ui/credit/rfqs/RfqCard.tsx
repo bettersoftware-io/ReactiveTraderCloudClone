@@ -1,9 +1,5 @@
-import type {
-  CSSProperties,
-  AnimationEvent as ReactAnimationEvent,
-  ReactElement,
-} from "react";
-import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -74,19 +70,33 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  function handleAnimationEnd(
-    event: ReactAnimationEvent<HTMLDivElement>,
-  ): void {
-    // Ignore animations bubbling up from descendants (none currently exist,
-    // but this keeps the handler correct if one is added later).
-    if (event.target !== event.currentTarget) {
-      return;
-    }
+  // Settles this card's transition regardless of which of the two wirings
+  // below fired it — the JSX `onAnimationEnd` (React synthetic event) and
+  // the native `animationcancel` listener (see the doc comment below) share
+  // this one function rather than each getting their own, since their
+  // bodies are identical: ignore descendant-bubbled events, then report the
+  // currently-selected keyframe. The parameter is typed to the two fields
+  // actually read — `target`/`currentTarget` — rather than either event
+  // type by name, since React's synthetic `AnimationEvent<HTMLDivElement>`
+  // and the platform `AnimationEvent` used by the native listener aren't
+  // the same type; both satisfy this minimal structural shape. Wrapped in
+  // `useCallback` (deps: `anim`, `onAnimationEnd`) so the native-listener
+  // effect below can depend on a stable reference instead of re-binding the
+  // listener on every render.
+  const settleCardTransition = useCallback(
+    (event: CardTransitionEvent): void => {
+      // Ignore animations bubbling up from descendants (none currently
+      // exist, but this keeps the handler correct if one is added later).
+      if (event.target !== event.currentTarget) {
+        return;
+      }
 
-    if (anim === "enter" || anim === "exit") {
-      onAnimationEnd(anim);
-    }
-  }
+      if (anim === "enter" || anim === "exit") {
+        onAnimationEnd(anim);
+      }
+    },
+    [anim, onAnimationEnd],
+  );
 
   // See the doc comment above: no React synthetic event exists for
   // "animationcancel", so it's subscribed natively. jsdom (this repo's test
@@ -99,22 +109,12 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       return;
     }
 
-    function handleAnimationCancel(event: AnimationEvent): void {
-      if (event.target !== event.currentTarget) {
-        return;
-      }
-
-      if (anim === "enter" || anim === "exit") {
-        onAnimationEnd(anim);
-      }
-    }
-
-    el.addEventListener("animationcancel", handleAnimationCancel);
+    el.addEventListener("animationcancel", settleCardTransition);
 
     return () => {
-      el.removeEventListener("animationcancel", handleAnimationCancel);
+      el.removeEventListener("animationcancel", settleCardTransition);
     };
-  }, [anim, onAnimationEnd]);
+  }, [settleCardTransition]);
 
   return (
     <div
@@ -124,7 +124,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       data-anim={anim}
       data-parity={vm.rfqId % 2 ? "b" : "a"}
       data-testid={`rfq-card-${vm.rfqId}`}
-      onAnimationEnd={handleAnimationEnd}
+      onAnimationEnd={settleCardTransition}
       // eslint-disable-next-line no-restricted-syntax -- runtime entrance-stagger delay via CSS custom property; static CSS can't express it
       style={{ "--card-delay": `${delayMs}ms` } as CSSProperties}
     >
@@ -203,6 +203,16 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       </div>
     </div>
   );
+}
+
+/** The two fields `settleCardTransition` reads, shared structurally by
+ * React's synthetic `AnimationEvent<HTMLDivElement>` (the JSX
+ * `onAnimationEnd` wiring) and the platform `AnimationEvent` (the native
+ * `animationcancel` listener) — see the doc comment on `settleCardTransition`
+ * for why one function needs a type broader than either event type by name. */
+interface CardTransitionEvent {
+  target: EventTarget | null;
+  currentTarget: EventTarget | null;
 }
 
 export interface RfqCardProps {

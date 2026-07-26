@@ -31,6 +31,22 @@ export const SCENARIO_IDS = [
   // `BOOT_SCENE_ELAPSED_SEC` as `boot/core`/`boot/laser` — see
   // `scenarios.tsx`'s header comment for why that instant still lands well.
   "boot/docking",
+  // Phase 6b-2a Tasks 5/8: the two projected-3D scenes, on the same shared
+  // `BOOT_SCENE_ELAPSED_SEC`. That instant is mid-boot, which for these two is
+  // deliberately the busiest frame rather than a convenient one — `hologram`
+  // has columns still assembling AND risen columns drawn together, and
+  // `layers` is inside its inspection window with a panel pulled out. A
+  // quieter instant would leave most of both scenes uncovered by the golden.
+  "boot/hologram",
+  "boot/layers",
+  // Phase 6b-2b: `geo` and `jarvis`. `boot/topo` is DELIBERATELY ABSENT even
+  // though the scene is ported and registered — it prints a live wall-clock
+  // timestamp, so two captures minutes apart differ and the golden could never
+  // reproduce itself. Same class as `credit/rfq-tiles-empty`, dropped above.
+  // Restoring it needs a harness that can freeze the clock; see
+  // `TopoScene.tsx`'s header and `rn-open-items.md`.
+  "boot/geo",
+  "boot/jarvis",
   "boot/static",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",

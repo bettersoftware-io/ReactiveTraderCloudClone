@@ -5,6 +5,7 @@ import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
+import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
@@ -92,6 +93,7 @@ const rtcPlugin = {
     "class-filename-match": classFilenameMatch,
     "component-newspaper": componentNewspaper,
     "no-render-functions": noRenderFunctions,
+    "name-functions-by-effect": nameFunctionsByEffect,
   },
 };
 
@@ -332,6 +334,20 @@ export default tseslint.config(
     ignores: ["**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/component-newspaper": "error" },
+  },
+  {
+    // A function's own name must state its EFFECT — what it does, to what —
+    // never the occasion that triggers it. Slots are exempt BY SHAPE:
+    // function-typed PROPERTY-syntax members, JSX attributes, `vi.fn()` spies
+    // and uninitialised slot captures are legal by construction, so there is
+    // nothing to keep in sync. A function-valued member written in METHOD
+    // syntax is treated as a command and IS flagged — a prop slot must be
+    // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
+    //
+    // See docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md.
+    files: ["**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-functions-by-effect": "error" },
   },
   {
     // eslint-plugin-solid's recommended rules — Solid's JSX has different

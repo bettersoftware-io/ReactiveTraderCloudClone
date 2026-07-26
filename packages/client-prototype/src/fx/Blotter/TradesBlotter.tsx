@@ -29,7 +29,7 @@ export function TradesBlotter(props: TradesBlotterProps): ReactElement {
               type="button"
               className={styles.headerCell}
               onClick={() => {
-                api.onSort(col.field);
+                api.toggleSortColumn(col.field);
               }}
             >
               {col.label}

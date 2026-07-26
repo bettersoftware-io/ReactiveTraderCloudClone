@@ -62,8 +62,8 @@ export function DealerChecklist(props: DealerChecklistProps): JSX.Element {
 export interface DealerChecklistProps {
   dealers: readonly Dealer[];
   selectedIds: readonly number[];
-  onToggleDealer(id: number): void;
-  onToggleAll(): void;
+  onToggleDealer: (id: number) => void;
+  onToggleAll: () => void;
 }
 
 interface CheckBoxProps {

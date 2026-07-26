@@ -54,7 +54,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
     selectedDealerIds.size > 0 &&
     !submitting;
 
-  function handleSubmit(): void {
+  function submitRfq(): void {
     if (!canSubmit || !instrument) {
       return;
     }
@@ -134,7 +134,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
         testID="rfq-submit"
         disabled={!canSubmit}
         style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
-        onPress={handleSubmit}
+        onPress={submitRfq}
       >
         <Text style={styles.submitLabel}>
           {submitting ? "Submitting..." : "Submit RFQ"}

@@ -5,9 +5,12 @@ import type { BootVariant } from "@rtc/domain";
 
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
 import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
+import { GeoScene } from "#/ui/shell/boot/scenes/GeoScene";
 import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
+import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
+import { TopoScene } from "#/ui/shell/boot/scenes/TopoScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import type { RnTheme } from "#/ui/theme/tokens";
 
@@ -41,11 +44,15 @@ export interface BootSceneProps {
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 
 /**
- * Boot variant → scene component. `Partial` by design: five of eight variants
- * are registered so far — `core` (phase 6a Task 6), `laser` (phase 6a Task 7),
- * `docking` (phase 6b-1 Task 9), and `hologram` + `layers` (phase 6b-2a), the
- * first two built on the shared `boot3dCamera` seam. `geo`/`jarvis`/`topo`
- * remain deliberately unported until phase 6b-2b.
+ * Boot variant → scene component. `Partial` by design: **every** variant is now
+ * registered — `core`/`laser` (phase 6a), `docking` (6b-1),
+ * `hologram` + `layers` (6b-2a) and `geo` + `jarvis` + `topo` (6b-2b). The
+ * last five are built on the shared `boot3dCamera` seam.
+ *
+ * The map stays `Partial` in TYPE even though it is now total in practice.
+ * That is deliberate: `BootCanvas`'s "no scene for this variant" fallback is
+ * still reachable code with its own test, and narrowing the type would delete
+ * that path — leaving a future ninth variant to crash instead of fall back.
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -54,9 +61,12 @@ export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   core: CoreScene,
   docking: DockingScene,
+  geo: GeoScene,
   hologram: HologramScene,
+  jarvis: JarvisScene,
   laser: LaserScene,
   layers: LayersScene,
+  topo: TopoScene,
 };
 
 /** Reports whether `variant` has a registered scene, without throwing for an

@@ -21,27 +21,27 @@ import { ToggleRow } from "#/shell/Preferences/ToggleRow";
 import { usePreferences } from "#/shell/Preferences/usePreferences";
 
 export interface PreferencesModalProps {
-  onClose(): void;
+  onClose: () => void;
 }
 
 export function PreferencesModal(props: PreferencesModalProps): ReactElement {
   const { onClose } = props;
   const { prefs, setPref, togglePref } = usePreferences();
 
-  function handleScaleChange(e: ChangeEvent<HTMLInputElement>): void {
-    setPref("uiScale", Number.parseInt(e.target.value, 10));
-  }
-
-  function handleOverlayClick(e: MouseEvent<HTMLDivElement>): void {
+  function closeModalOnOutsideClick(e: MouseEvent<HTMLDivElement>): void {
     if (e.target === e.currentTarget) {
       onClose();
     }
   }
 
-  function handleOverlayKeyDown(e: KeyboardEvent<HTMLDivElement>): void {
+  function closeModalOnEscape(e: KeyboardEvent<HTMLDivElement>): void {
     if (e.key === "Escape") {
       onClose();
     }
+  }
+
+  function changeUiScale(e: ChangeEvent<HTMLInputElement>): void {
+    setPref("uiScale", Number.parseInt(e.target.value, 10));
   }
 
   return (
@@ -50,8 +50,8 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
       aria-modal={true}
       aria-label="Preferences"
       className={styles.overlay}
-      onClick={handleOverlayClick}
-      onKeyDown={handleOverlayKeyDown}
+      onClick={closeModalOnOutsideClick}
+      onKeyDown={closeModalOnEscape}
     >
       <div className={styles.panel}>
         <div className={styles.header}>
@@ -138,7 +138,7 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
                     max={120}
                     step={5}
                     value={prefs.uiScale}
-                    onChange={handleScaleChange}
+                    onChange={changeUiScale}
                     aria-label="Interface scale"
                     className={styles.range}
                   />

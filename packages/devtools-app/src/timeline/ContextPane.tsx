@@ -100,7 +100,7 @@ function TabButton({
   disabled,
   onSelect,
 }: TabButtonProps): ReactElement {
-  function handleClick(): void {
+  function selectContextTab(): void {
     onSelect(tabId);
   }
 
@@ -110,7 +110,7 @@ function TabButton({
       data-testid={`context-tab-${tabId}`}
       disabled={disabled}
       className={tabId === active ? styles.tabActive : styles.tab}
-      onClick={handleClick}
+      onClick={selectContextTab}
     >
       {TAB_LABELS[tabId]}
     </button>
@@ -264,13 +264,13 @@ function StateTab({
 }: StateTabProps): ReactElement {
   const [query, setQuery] = useState("");
 
+  function changeStateQuery(e: ChangeEvent<HTMLInputElement>): void {
+    setQuery(e.target.value);
+  }
+
   const changedIds = computeChangedIds(marked, state, presentState);
 
   const visibleStreams = computeVisibleStreams(state, query);
-
-  function handleQuery(e: ChangeEvent<HTMLInputElement>): void {
-    setQuery(e.target.value);
-  }
 
   return (
     <div className={styles.stateTab}>
@@ -279,7 +279,7 @@ function StateTab({
         className={styles.search}
         placeholder="Search state…"
         value={query}
-        onChange={handleQuery}
+        onChange={changeStateQuery}
       />
       <StateTreePanel streams={visibleStreams} changedIds={changedIds} />
       <h3 className={styles.machinesTitle}>Machines</h3>

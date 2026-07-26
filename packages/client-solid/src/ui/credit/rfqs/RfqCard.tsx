@@ -80,8 +80,10 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
   // but this keeps the handler correct if one is added later) — `data-anim`
   // only ever selects ONE keyframe at a time, so this doesn't need to read
   // `event.animationName`; it just reports whichever one is CURRENTLY
-  // selected via the `anim` prop.
-  function handleAnimationEnd(event: Event): void {
+  // selected via the `anim` prop. Settles the card's transition regardless
+  // of which of the three events below fired it — see the doc comment on
+  // this component for why cancel is treated identically to completion.
+  function settleCardTransition(event: Event): void {
     if (event.target !== event.currentTarget) {
       return;
     }
@@ -94,16 +96,20 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
   // Both native listeners (see the doc comment above): no Solid synthetic
   // event exists for "animationcancel", and the unprefixed "animationend"
   // never fires in this repo's jsdom, so both are subscribed directly on
-  // the card's own ref rather than via JSX.
+  // the card's own ref rather than via JSX. `settleCardTransition` covers
+  // all three — animationend, webkitAnimationEnd, AND animationcancel — in
+  // one function; unlike the React port, this isn't split into a separate
+  // "OnCancel" handler because Solid has no `onAnimationCancel` JSX event to
+  // split it onto in the first place.
   onMount(() => {
-    cardEl.addEventListener("animationend", handleAnimationEnd);
-    cardEl.addEventListener("webkitAnimationEnd", handleAnimationEnd);
-    cardEl.addEventListener("animationcancel", handleAnimationEnd);
+    cardEl.addEventListener("animationend", settleCardTransition);
+    cardEl.addEventListener("webkitAnimationEnd", settleCardTransition);
+    cardEl.addEventListener("animationcancel", settleCardTransition);
 
     onCleanup(() => {
-      cardEl.removeEventListener("animationend", handleAnimationEnd);
-      cardEl.removeEventListener("webkitAnimationEnd", handleAnimationEnd);
-      cardEl.removeEventListener("animationcancel", handleAnimationEnd);
+      cardEl.removeEventListener("animationend", settleCardTransition);
+      cardEl.removeEventListener("webkitAnimationEnd", settleCardTransition);
+      cardEl.removeEventListener("animationcancel", settleCardTransition);
     });
   });
 

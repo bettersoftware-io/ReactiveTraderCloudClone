@@ -143,7 +143,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
   const positionsSim = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
     listener: (fill: FillEvent): void => {
-      positionsSim.onFill(fill);
+      positionsSim.bookFill(fill);
     },
     markFor: (symbol: string): number => {
       return marketData.currentPrice(symbol);

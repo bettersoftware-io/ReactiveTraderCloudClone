@@ -6,7 +6,7 @@ export interface ToggleRowProps {
   label: string;
   hint?: string;
   on: boolean;
-  onToggle(): void;
+  onToggle: () => void;
 }
 
 export function ToggleRow(props: ToggleRowProps): ReactElement {

@@ -28,34 +28,36 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
         }, IDLE_TIMEOUT_MS);
       }
 
-      function onActivity(): void {
+      function emitUserActivity(): void {
         subscriber.next({ type: "userActivity" });
         armIdleTimer();
       }
 
-      function onOnline(): void {
+      function emitBrowserOnline(): void {
         subscriber.next({ type: "browserOnline" });
       }
 
-      function onOffline(): void {
+      function emitBrowserOffline(): void {
         subscriber.next({ type: "browserOffline" });
       }
 
       for (const eventName of ACTIVITY_EVENTS) {
-        window.addEventListener(eventName, onActivity, { passive: true });
+        window.addEventListener(eventName, emitUserActivity, {
+          passive: true,
+        });
       }
 
-      window.addEventListener("online", onOnline);
-      window.addEventListener("offline", onOffline);
+      window.addEventListener("online", emitBrowserOnline);
+      window.addEventListener("offline", emitBrowserOffline);
       armIdleTimer();
 
       return (): void => {
         for (const eventName of ACTIVITY_EVENTS) {
-          window.removeEventListener(eventName, onActivity);
+          window.removeEventListener(eventName, emitUserActivity);
         }
 
-        window.removeEventListener("online", onOnline);
-        window.removeEventListener("offline", onOffline);
+        window.removeEventListener("online", emitBrowserOnline);
+        window.removeEventListener("offline", emitBrowserOffline);
 
         if (idleTimer) {
           clearTimeout(idleTimer);

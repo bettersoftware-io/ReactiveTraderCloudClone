@@ -67,12 +67,12 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
     // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on
     // window mousemove and normalize to -1..1. One listener here feeds the
     // shared pointer for whichever variant reads it; removed with the loop.
-    function onMove(e: MouseEvent): void {
+    function updatePointerPosition(e: MouseEvent): void {
       d.pointer.mx = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
       d.pointer.my = (e.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
     }
 
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", updatePointerPosition);
 
     // Factories run once per boot (geo/topo precompute geometry here); the
     // returned closure draws one frame.
@@ -87,7 +87,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
     loop();
 
     return () => {
-      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mousemove", updatePointerPosition);
       cancelAnimationFrame(raf);
     };
   }, [state.variant, forced, isFreeze]);

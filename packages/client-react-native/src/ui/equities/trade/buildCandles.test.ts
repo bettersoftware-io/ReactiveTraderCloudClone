@@ -42,5 +42,6 @@ function c(open: number, high: number, low: number, close: number): Candle {
     high,
     low,
     close,
+    volume: 1_200_000,
   };
 }

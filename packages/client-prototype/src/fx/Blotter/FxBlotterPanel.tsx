@@ -16,7 +16,7 @@ export interface FxBlotterPanelProps {
 export interface FxBlotterHeadControlsProps {
   api: BlotterApi;
   view: "blotter" | "activity";
-  onView(v: "blotter" | "activity"): void;
+  onView: (v: "blotter" | "activity") => void;
 }
 
 // PROTO 469-479 (panBlot head): the Blotter/Activity tabs, plus (blotter
@@ -27,16 +27,16 @@ export function FxBlotterHeadControls(
 ): ReactElement {
   const { api, view, onView } = props;
 
-  function handleQuery(e: ChangeEvent<HTMLInputElement>): void {
-    api.onQuery(e.target.value);
-  }
-
   function showBlotter(): void {
     onView("blotter");
   }
 
   function showActivity(): void {
     onView("activity");
+  }
+
+  function changeBlotterQuery(e: ChangeEvent<HTMLInputElement>): void {
+    api.setBlotterQuery(e.target.value);
   }
 
   return (
@@ -63,13 +63,13 @@ export function FxBlotterHeadControls(
           <input
             className={styles.filter}
             value={api.query}
-            onChange={handleQuery}
+            onChange={changeBlotterQuery}
             placeholder="Filter…"
           />
           <button
             type="button"
             className={styles.csvBtn}
-            onClick={api.onExport}
+            onClick={api.exportCsv}
           >
             ⤓ CSV
           </button>

@@ -34,7 +34,7 @@ export function NumberFilter<TRow>(
       : "",
   );
 
-  function handleApply(): void {
+  function applyNumberFilter(): void {
     const num = Number.parseFloat(value());
 
     if (Number.isNaN(num)) {
@@ -106,7 +106,7 @@ export function NumberFilter<TRow>(
         <button
           type="button"
           data-testid="number-filter-apply"
-          onClick={handleApply}
+          onClick={applyNumberFilter}
           class={styles.applyBtn}
         >
           Apply

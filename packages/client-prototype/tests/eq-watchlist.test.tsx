@@ -51,12 +51,12 @@ describe("WatchlistPanelControls", () => {
   test("shows the sort label and cycles sort on click", () => {
     let clicks = 0;
 
-    function handleCycle(): void {
+    function incrementClicks(): void {
       clicks += 1;
     }
 
     const { getByText } = render(
-      <WatchlistPanelControls wlSort="chg" onCycleSort={handleCycle} />,
+      <WatchlistPanelControls wlSort="chg" onCycleSort={incrementClicks} />,
     );
     expect(getByText("% CHG")).toBeTruthy();
 

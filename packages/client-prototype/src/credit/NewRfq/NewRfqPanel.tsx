@@ -8,7 +8,7 @@ import type { CreditFormApi } from "#/credit/useCreditForm";
 
 export interface NewRfqPanelProps {
   form: CreditFormApi;
-  onSend(): void;
+  onSend: () => void;
 }
 
 // PROTO L538-555: the New RFQ form body — direction toggle, instrument
@@ -18,7 +18,7 @@ export interface NewRfqPanelProps {
 export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
   const { form, onSend } = props;
 
-  function handleQty(e: ChangeEvent<HTMLInputElement>): void {
+  function setQuantityFromInput(e: ChangeEvent<HTMLInputElement>): void {
     form.setQty(e.target.value);
   }
 
@@ -46,7 +46,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
           <input
             className={styles.qtyInput}
             value={form.value.qty}
-            onChange={handleQty}
+            onChange={setQuantityFromInput}
             placeholder="0"
           />
         </div>
@@ -80,13 +80,13 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
 interface DirButtonProps {
   dir: Dir;
   active: boolean;
-  onSelect(dir: Dir): void;
+  onSelect: (dir: Dir) => void;
 }
 
 function DirButton(props: DirButtonProps): ReactElement {
   const { dir, active, onSelect } = props;
 
-  function handleClick(): void {
+  function selectDirection(): void {
     onSelect(dir);
   }
 
@@ -96,7 +96,7 @@ function DirButton(props: DirButtonProps): ReactElement {
       className={styles.dirBtn}
       data-dir={dir.toLowerCase()}
       data-active={String(active)}
-      onClick={handleClick}
+      onClick={selectDirection}
     >
       You {dir}
     </button>

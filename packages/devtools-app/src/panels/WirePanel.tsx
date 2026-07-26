@@ -21,6 +21,10 @@ export function WirePanel({
 }: WirePanelProps): ReactElement {
   const [filterText, setFilterText] = useState("");
 
+  function changeWireFilter(e: ChangeEvent<HTMLInputElement>): void {
+    setFilterText(e.target.value);
+  }
+
   const wireRows = wireRowsOf(log);
 
   if (wireRows.length === 0) {
@@ -36,10 +40,6 @@ export function WirePanel({
     return needle === "" || row.event.msgType.toLowerCase().includes(needle);
   });
 
-  function handleFilterChange(e: ChangeEvent<HTMLInputElement>): void {
-    setFilterText(e.target.value);
-  }
-
   return (
     <div className={styles.panel}>
       <HealthHeader health={healthOf(log, wireRows)} />
@@ -49,7 +49,7 @@ export function WirePanel({
           className={styles.filterInput}
           placeholder="Filter by msgType…"
           value={filterText}
-          onChange={handleFilterChange}
+          onChange={changeWireFilter}
         />
       </div>
       <CountStrip

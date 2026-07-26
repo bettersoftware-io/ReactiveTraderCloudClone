@@ -50,13 +50,13 @@ export interface InstrumentSelectProps {
   instruments: readonly Instrument[];
   selected: Instrument | null;
   open: boolean;
-  onToggle(): void;
-  onSelect(instrument: Instrument): void;
+  onToggle: () => void;
+  onSelect: (instrument: Instrument) => void;
 }
 
 interface InstrumentRowProps {
   instrument: Instrument;
-  onSelect(): void;
+  onSelect: () => void;
 }
 
 function InstrumentRow(props: InstrumentRowProps): JSX.Element {

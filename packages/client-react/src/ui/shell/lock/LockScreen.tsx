@@ -34,13 +34,13 @@ export function LockScreen(): ReactElement | null {
   const { user, unlocking } = state;
   const reactorWaiting = unlocking && state.waitVariant === "reactor";
 
-  function handlePasswordChange(event: ChangeEvent<HTMLInputElement>): void {
-    setPassword(event.target.value);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  function submitUnlock(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     unlock(password);
+  }
+
+  function changePassword(event: ChangeEvent<HTMLInputElement>): void {
+    setPassword(event.target.value);
   }
 
   return (
@@ -91,7 +91,7 @@ export function LockScreen(): ReactElement | null {
             the AUTHENTICATE button; the channel line stays below the button. */}
         <BiometricDots />
 
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form className={styles.form} onSubmit={submitUnlock}>
           <div
             className={
               unlocking
@@ -107,7 +107,7 @@ export function LockScreen(): ReactElement | null {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={handlePasswordChange}
+                onChange={changePassword}
               />
             </label>
           </div>

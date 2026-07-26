@@ -137,6 +137,19 @@ jobs:
       # the root vercel.json was renamed, Vercel no longer auto-detects it, so
       # every Vercel CLI call here must pass `-A`. RTC_SOURCEMAPS is inherited by
       # the turbo/vite build (declared in turbo.json build.env).
+      #
+      # There IS a root vercel.json again, but it carries only
+      # `git.deploymentEnabled: false` — no framework, build command or output
+      # dir — so it cannot resurrect the auto-detection the rename removed. It
+      # exists because Vercel's Git integration reads that key from a file named
+      # exactly `vercel.json`: while the only configs were `vercel.*.json`, the
+      # switch was written down but never read, and every push kept triggering a
+      # Git deploy until the account hit its build rate limit. Deploys from this
+      # workflow are unaffected — `deploymentEnabled` governs only Git-triggered
+      # deploys, never CLI ones, and every call here passes `-A` anyway. The
+      # prototype deploys are insulated too: deploy/{proto,cd-proto}/deploy.sh
+      # each write their own vercel.json into a throwaway build dir and run the
+      # CLI from inside it, so they never see the repo root at all.
       - name: Build (Vercel bakes VITE_SERVER_URL from pulled env)
         run: vercel build --prod -A vercel.react.json --token="$VERCEL_TOKEN"
         env:

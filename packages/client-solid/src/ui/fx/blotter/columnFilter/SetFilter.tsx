@@ -45,7 +45,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
     });
   }
 
-  function handleApply(): void {
+  function applySelectedValues(): void {
     if (selected().size === allValues().length) {
       props.onApply(null); // all selected = no filter
     } else {
@@ -75,7 +75,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
       <button
         type="button"
         data-testid="set-filter-apply"
-        onClick={handleApply}
+        onClick={applySelectedValues}
         class={styles.applyBtn}
       >
         Apply

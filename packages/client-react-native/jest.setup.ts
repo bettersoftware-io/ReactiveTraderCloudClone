@@ -165,6 +165,8 @@ jest.mock("@shopify/react-native-skia", () => {
   return {
     Canvas: passthrough("SkiaCanvas"),
     Group: passthrough("SkiaGroup"),
+    // Phase 5c Task 3 (PnlChart): the dashed zero baseline, declaratively.
+    DashPathEffect: passthrough("SkiaDashPathEffect"),
     Circle: passthrough("SkiaCircle"),
     Rect: passthrough("SkiaRect"),
     Fill: passthrough("SkiaFill"),
@@ -213,9 +215,21 @@ jest.mock("@shopify/react-native-skia", () => {
         },
       },
       // Phase 6b-1, Task 2 (CoreScene gyro rings): polyline paths built inside
-      // the recorder worklet.
+      // the recorder worklet. Phase 5c Task 3 (PnlChart) adds
+      // `MakeFromSVGString`, which returns `SkPath | null` on the real API —
+      // the mock returns an object, so a caller's null-guard is exercised by
+      // its own unit tests rather than here.
       Path: {
         Make: () => {
+          return {
+            moveTo: () => {},
+            lineTo: () => {},
+            close: () => {},
+            addRect: () => {},
+            addCircle: () => {},
+          };
+        },
+        MakeFromSVGString: () => {
           return {
             moveTo: () => {},
             lineTo: () => {},

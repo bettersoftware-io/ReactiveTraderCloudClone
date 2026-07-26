@@ -94,13 +94,13 @@ export function CreditBlotter(): JSX.Element {
     prevTradeIds = { key: currentKey, ids: new Set(currentIds) };
   });
 
-  function handleSort(column: keyof CreditTrade): void {
+  function cycleSortColumn(column: keyof CreditTrade): void {
     setSort((prev) => {
       return nextSortDirection(column, prev, CREDIT_DESC_FIRST);
     });
   }
 
-  function handleFilter(
+  function setColumnFilter(
     column: keyof CreditTrade,
     filter: ColumnFilter<CreditTrade> | null,
   ): void {
@@ -191,9 +191,9 @@ export function CreditBlotter(): JSX.Element {
           <thead>
             <BlotterHeader
               sort={sort()}
-              onSort={handleSort}
+              onSort={cycleSortColumn}
               filters={filters()}
-              onFilter={handleFilter}
+              onFilter={setColumnFilter}
               rows={trades()}
               columns={CREDIT_COLUMNS}
             />

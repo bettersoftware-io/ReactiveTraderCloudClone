@@ -9,8 +9,8 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const CANDLES: readonly Candle[] = [
-  { time: 1, open: 2, high: 10, low: 0, close: 8 },
-  { time: 2, open: 8, high: 9, low: 3, close: 4 },
+  { time: 1, open: 2, high: 10, low: 0, close: 8, volume: 1_200_000 },
+  { time: 2, open: 8, high: 9, low: 3, close: 4, volume: 1_350_000 },
 ];
 
 test("renders the chart svg when candles are present", async () => {

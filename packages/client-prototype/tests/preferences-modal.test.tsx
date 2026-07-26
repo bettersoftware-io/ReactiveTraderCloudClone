@@ -31,7 +31,7 @@ test("selecting a density segment updates the active state", () => {
 });
 
 interface ModalHarness {
-  onClose(): void;
+  onClose: () => void;
 }
 
 function renderModal(): ModalHarness {

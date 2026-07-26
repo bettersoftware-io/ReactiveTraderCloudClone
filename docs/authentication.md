@@ -83,7 +83,7 @@ sequenceDiagram
      public `ROSTER` and the password against an injected `DevCredentials` map;
      issues a cosmetic `sim.<username>.<id>` token (there is no real WS to gate
      in simulator mode).
-5. **On the server, `handleLogin`** (`packages/server/src/http/loginHandler.ts:36-70`)
+5. **On the server, `authenticateLoginRequest`** (`packages/server/src/http/loginHandler.ts:36-70`)
    runs, in order: **rate-limit** the caller's IP (`RateLimiter.hit`, 10
    requests/60s, `packages/server/src/auth/rateLimit.ts`) → **parse** the JSON
    body (`isLoginRequestDto`) → **`AuthService.login`**
@@ -101,7 +101,7 @@ sequenceDiagram
    (`AuthService.ts:45-47`) if `AUTH_USERS` has entries but `AUTH_SECRET` is
    empty — a deploy can never silently serve unsigned/unverifiable tokens.
 7. **The client stores the session.** On a `{ ok: true, token, user }`
-   outcome, `AuthPresenter.handleLoginOutcome` writes
+   outcome, `AuthPresenter.commitLoginOutcome` writes
    `{ token, user, username, exp: now() + SESSION_TTL_MS }` to the injected
    `SessionStore` (`packages/client-core/src/adapters/sessionStore.ts`) —
    `SESSION_TTL_MS` is a client-side 8-hour constant

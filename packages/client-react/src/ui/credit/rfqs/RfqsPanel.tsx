@@ -205,7 +205,7 @@ export function RfqsPanel(): ReactElement {
     freeze: isFreeze,
   });
 
-  function handleRemove(rfqId: number): void {
+  function removeRfq(rfqId: number): void {
     if (prefersReducedMotion()) {
       setDismissed((prev) => {
         return new Set(prev).add(rfqId);
@@ -222,7 +222,7 @@ export function RfqsPanel(): ReactElement {
     });
   }
 
-  function handleCardAnimationEnd(rfqId: number, kind: "enter" | "exit"): void {
+  function settleRfqCardAnimation(rfqId: number, kind: "enter" | "exit"): void {
     if (kind === "enter") {
       setEntering((prev) => {
         if (!prev.has(rfqId)) {
@@ -286,8 +286,8 @@ export function RfqsPanel(): ReactElement {
                       entering.has(rfq.id),
                     )}
                     delayMs={entering.get(rfq.id) ?? 0}
-                    onRemove={handleRemove}
-                    onAnimationEnd={handleCardAnimationEnd}
+                    onRemove={removeRfq}
+                    onAnimationEnd={settleRfqCardAnimation}
                   />
                 </div>
               );
@@ -349,19 +349,19 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
   const cancelRfq = useCancelRfq();
   const vm = rfqCardVm(rfq, quotes, instruments, dealers);
 
-  function handleAccept(quoteId: number): void {
+  function acceptRfqQuote(quoteId: number): void {
     void acceptQuote(quoteId);
   }
 
-  function handleCancel(): void {
+  function cancelRfqCard(): void {
     void cancelRfq(rfq.id);
   }
 
-  function handleRemove(): void {
+  function removeRfqCard(): void {
     onRemove(rfq.id);
   }
 
-  function handleAnimationEnd(kind: "enter" | "exit"): void {
+  function reportCardSettled(kind: "enter" | "exit"): void {
     onAnimationEnd(rfq.id, kind);
   }
 
@@ -372,10 +372,10 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
       expirySecs={rfq.expirySecs}
       anim={anim}
       delayMs={delayMs}
-      onAccept={handleAccept}
-      onCancel={handleCancel}
-      onRemove={handleRemove}
-      onAnimationEnd={handleAnimationEnd}
+      onAccept={acceptRfqQuote}
+      onCancel={cancelRfqCard}
+      onRemove={removeRfqCard}
+      onAnimationEnd={reportCardSettled}
     />
   );
 }

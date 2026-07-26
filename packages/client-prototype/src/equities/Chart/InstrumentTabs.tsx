@@ -6,8 +6,8 @@ import type { EqSym } from "#/equities/types";
 export interface InstrumentTabsProps {
   tabs: EqSym[];
   sel: EqSym;
-  onSelect(sym: EqSym): void;
-  onClose(sym: EqSym): void;
+  onSelect: (sym: EqSym) => void;
+  onClose: (sym: EqSym) => void;
 }
 
 // PROTO L601: the open-instrument tab strip, each tab an active/idle symbol
@@ -35,18 +35,18 @@ export function InstrumentTabs(props: InstrumentTabsProps): ReactElement {
 interface InstrumentTabProps {
   sym: EqSym;
   active: boolean;
-  onSelect(sym: EqSym): void;
-  onClose(sym: EqSym): void;
+  onSelect: (sym: EqSym) => void;
+  onClose: (sym: EqSym) => void;
 }
 
 function InstrumentTab(props: InstrumentTabProps): ReactElement {
   const { sym, active, onSelect, onClose } = props;
 
-  function handleSelect(): void {
+  function selectInstrumentTab(): void {
     onSelect(sym);
   }
 
-  function handleClose(e: MouseEvent): void {
+  function closeInstrumentTab(e: MouseEvent): void {
     e.stopPropagation();
     onClose(sym);
   }
@@ -56,10 +56,14 @@ function InstrumentTab(props: InstrumentTabProps): ReactElement {
       type="button"
       className={styles.tab}
       data-active={String(active)}
-      onClick={handleSelect}
+      onClick={selectInstrumentTab}
     >
       {sym}
-      <span className={styles.close} onClick={handleClose} aria-hidden="true">
+      <span
+        className={styles.close}
+        onClick={closeInstrumentTab}
+        aria-hidden="true"
+      >
         ✕
       </span>
     </button>

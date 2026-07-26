@@ -24,10 +24,10 @@ export interface TileVm {
   notionalInvalid: boolean;
   isRfq: boolean;
   showCharts: boolean;
-  onNotional(v: string): void;
-  onReset(): void;
-  onSell(): void;
-  onBuy(): void;
+  onNotional: (v: string) => void;
+  onReset: () => void;
+  onSell: () => void;
+  onBuy: () => void;
 }
 
 export interface RateTileProps {
@@ -41,17 +41,17 @@ const SPOT_OFFSET_DAYS = 2;
 export function RateTile(props: RateTileProps): ReactElement {
   const { vm, stage, overlay } = props;
 
-  function handleNotionalChange(e: ChangeEvent<HTMLInputElement>): void {
-    vm.onNotional(e.target.value);
-  }
-
-  function handleNotionalFocus(e: FocusEvent<HTMLInputElement>): void {
-    e.target.select();
-  }
-
   const moveColor = {
     "--move-color": vm.moveUp ? "var(--buy)" : "var(--sell)",
   } as CSSProperties;
+
+  function changeNotional(e: ChangeEvent<HTMLInputElement>): void {
+    vm.onNotional(e.target.value);
+  }
+
+  function selectNotionalText(e: FocusEvent<HTMLInputElement>): void {
+    e.target.select();
+  }
 
   return (
     <div
@@ -77,8 +77,8 @@ export function RateTile(props: RateTileProps): ReactElement {
             className={styles.notionalInput}
             data-invalid={String(vm.notionalInvalid)}
             value={vm.notional}
-            onChange={handleNotionalChange}
-            onFocus={handleNotionalFocus}
+            onChange={changeNotional}
+            onFocus={selectNotionalText}
           />
           <button
             type="button"

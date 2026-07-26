@@ -117,7 +117,7 @@ interface FilterPanelProps<TRow> {
 }
 
 function FilterPanel<TRow>(props: FilterPanelProps<TRow>): JSX.Element {
-  function handleApply(filter: ColumnFilter<TRow> | null): void {
+  function commitColumnFilter(filter: ColumnFilter<TRow> | null): void {
     props.onApply(filter);
     props.onClose();
   }
@@ -130,21 +130,21 @@ function FilterPanel<TRow>(props: FilterPanelProps<TRow>): JSX.Element {
             column={props.col.key}
             rows={props.rows}
             currentFilter={props.currentFilter}
-            onApply={handleApply}
+            onApply={commitColumnFilter}
           />
         </Match>
         <Match when={props.col.filterType === "number"}>
           <NumberFilter
             column={props.col.key}
             currentFilter={props.currentFilter}
-            onApply={handleApply}
+            onApply={commitColumnFilter}
           />
         </Match>
         <Match when={props.col.filterType === "date"}>
           <DateFilter
             column={props.col.key}
             currentFilter={props.currentFilter}
-            onApply={handleApply}
+            onApply={commitColumnFilter}
           />
         </Match>
       </Switch>

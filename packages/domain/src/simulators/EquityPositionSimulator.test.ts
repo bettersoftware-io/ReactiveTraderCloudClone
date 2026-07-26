@@ -17,12 +17,12 @@ describe("EquityPositionSimulator sell bookkeeping", () => {
     const sim = new EquityPositionSimulator(stubMarketData());
 
     // Two buys → avg 110 over 200 shares (cost 22_000).
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 100, price: 100 });
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 100, price: 120 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 100, price: 100 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 100, price: 120 });
 
     // Sell 50 at 200. Cost must drop by 50 * 110 (the average), NOT 50 * 200 —
     // relieving at the sale price would leave avgPrice wrong for the remainder.
-    sim.onFill({ symbol: "AAPL", side: "sell", qty: 50, price: 200 });
+    sim.bookFill({ symbol: "AAPL", side: "sell", qty: 50, price: 200 });
 
     const position = await onlyPosition(sim);
 
@@ -35,7 +35,7 @@ describe("EquityPositionSimulator sell bookkeeping", () => {
 
     // qty is 0, so there is no average to relieve against: the code falls back
     // to the fill price, which must leave the short's avgPrice at that price.
-    sim.onFill({ symbol: "TSLA", side: "sell", qty: 10, price: 250 });
+    sim.bookFill({ symbol: "TSLA", side: "sell", qty: 10, price: 250 });
 
     const position = await onlyPosition(sim);
 
@@ -53,9 +53,9 @@ describe("EquityPositionSimulator marking", () => {
       }),
     );
 
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 101 });
-    sim.onFill({ symbol: "AAPL", side: "sell", qty: 5, price: 102 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 101 });
+    sim.bookFill({ symbol: "AAPL", side: "sell", qty: 5, price: 102 });
 
     // One per SYMBOL. Re-subscribing per fill would leak a subscription on
     // every trade and re-mark the same position N times per tick.
@@ -70,8 +70,8 @@ describe("EquityPositionSimulator marking", () => {
       }),
     );
 
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
-    sim.onFill({ symbol: "MSFT", side: "buy", qty: 10, price: 400 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
+    sim.bookFill({ symbol: "MSFT", side: "buy", qty: 10, price: 400 });
 
     expect(subscribeCount).toBe(2);
   });
@@ -80,7 +80,7 @@ describe("EquityPositionSimulator marking", () => {
     const quotes = new Subject<Tick>();
     const sim = new EquityPositionSimulator(stubMarketData(undefined, quotes));
 
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
     quotes.next({ last: 130 });
 
     const position = await onlyPosition(sim);
@@ -94,9 +94,9 @@ describe("EquityPositionSimulator flat positions", () => {
   it("drops a symbol once it is fully closed", async () => {
     const sim = new EquityPositionSimulator(stubMarketData());
 
-    sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
-    sim.onFill({ symbol: "MSFT", side: "buy", qty: 5, price: 400 });
-    sim.onFill({ symbol: "AAPL", side: "sell", qty: 10, price: 120 });
+    sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
+    sim.bookFill({ symbol: "MSFT", side: "buy", qty: 5, price: 400 });
+    sim.bookFill({ symbol: "AAPL", side: "sell", qty: 10, price: 120 });
 
     const positions = await firstValueFrom(sim.positions());
 

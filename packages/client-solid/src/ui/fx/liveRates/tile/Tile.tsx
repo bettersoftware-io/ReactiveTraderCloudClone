@@ -125,7 +125,7 @@ export function Tile(props: TileProps): JSX.Element {
     return computeMovementPips(history(), props.pair.pipsPosition);
   });
 
-  function handleExecute(
+  function executeTrade(
     direction: Direction,
     priceVal?: Price,
     notionalVal?: number,
@@ -177,7 +177,7 @@ export function Tile(props: TileProps): JSX.Element {
                 anim={tickAnim()}
                 spread={currentPrice().spread}
                 onExecute={(dir: Direction): void => {
-                  handleExecute(dir);
+                  executeTrade(dir);
                 }}
                 disabled={priceBoxDisabled()}
               />
@@ -199,7 +199,7 @@ export function Tile(props: TileProps): JSX.Element {
           <TileRfq
             pair={props.pair}
             rfqState={rfqState}
-            onExecute={handleExecute}
+            onExecute={executeTrade}
             notional={notional.state().numericValue}
           />
         </Show>

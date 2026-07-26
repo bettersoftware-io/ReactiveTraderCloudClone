@@ -6,7 +6,11 @@ import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
 import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
+import { GeoScene } from "#/ui/shell/boot/scenes/GeoScene";
+import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
+import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
+import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
 
 import type { Scenario } from "./driver";
 import { BootSceneFixture, LockHoldFixture } from "./fixtures";
@@ -173,6 +177,54 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <BootSceneFixture Scene={DockingScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/hologram",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={HologramScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/layers",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={LayersScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/geo",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={GeoScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/jarvis",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={JarvisScene} />
         </VisualScenarioHost>
       );
     },

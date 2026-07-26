@@ -24,7 +24,7 @@ export function TradeTicket({
     rfq.state === RfqState.Open && quote.state.type === "pendingWithoutPrice";
   const hasResponded = quote.state.type !== "pendingWithoutPrice";
 
-  function handleSubmit(): void {
+  function submitQuote(): void {
     const num = parseFloat(price);
 
     if (Number.isNaN(num) || num <= 0) {
@@ -34,7 +34,7 @@ export function TradeTicket({
     submitPrice(quote.id, num);
   }
 
-  function handlePass(): void {
+  function passOnRfq(): void {
     pass(quote.id);
   }
 
@@ -80,14 +80,14 @@ export function TradeTicket({
           />
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={submitQuote}
             disabled={!price}
             data-can-submit={price ? "true" : "false"}
             className={styles.submitBtn}
           >
             Submit
           </button>
-          <button type="button" onClick={handlePass} className={styles.passBtn}>
+          <button type="button" onClick={passOnRfq} className={styles.passBtn}>
             Pass
           </button>
         </div>

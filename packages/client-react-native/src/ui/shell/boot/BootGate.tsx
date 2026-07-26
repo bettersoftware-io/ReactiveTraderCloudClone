@@ -19,7 +19,7 @@ import { BootSequence } from "#/ui/shell/boot/BootSequence";
 export function BootGate({ onFinished }: BootGateProps): JSX.Element {
   const opacity = useRef(new Animated.Value(1)).current;
 
-  function handleDone(): void {
+  function dismissBoot(): void {
     void AccessibilityInfo.isReduceMotionEnabled()
       .then((reduce) => {
         if (reduce) {
@@ -43,7 +43,7 @@ export function BootGate({ onFinished }: BootGateProps): JSX.Element {
 
   return (
     <Animated.View testID="boot-gate" style={[styles.overlay, { opacity }]}>
-      <BootSequence onDone={handleDone} />
+      <BootSequence onDone={dismissBoot} />
     </Animated.View>
   );
 }

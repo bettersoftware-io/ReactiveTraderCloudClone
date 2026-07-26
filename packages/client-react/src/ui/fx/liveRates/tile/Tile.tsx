@@ -78,7 +78,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
       ? animIntent.kind
       : undefined;
 
-  function handleExecute(
+  function executeTrade(
     direction: Direction,
     priceVal?: Price,
     notionalVal?: number,
@@ -125,7 +125,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
             anim={tickAnim}
             spread={price.spread}
             onExecute={(dir: Direction): void => {
-              handleExecute(dir);
+              executeTrade(dir);
             }}
             disabled={priceBoxDisabled}
           />
@@ -145,7 +145,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
           <TileRfq
             pair={pair}
             rfqState={rfqState}
-            onExecute={handleExecute}
+            onExecute={executeTrade}
             notional={notional.state.numericValue}
           />
         )}

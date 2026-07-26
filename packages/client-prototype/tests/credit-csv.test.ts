@@ -11,14 +11,14 @@ afterEach(() => {
 });
 
 describe("credit CSV export", () => {
-  test("onExport writes credit-trades.csv with headers and rows in the fixed 10-column order", () => {
+  test("exportCsv writes credit-trades.csv with headers and rows in the fixed 10-column order", () => {
     // A huge tick interval keeps the background now-sweep from firing mid-test.
     const { result } = renderHook(() => {
       return useCreditRfqs({ nowIntervalMs: 1_000_000 });
     });
 
     act(() => {
-      result.current.onExport();
+      result.current.exportCsv();
     });
 
     expect(downloadCsv).toHaveBeenCalledTimes(1);
@@ -40,7 +40,7 @@ describe("credit CSV export", () => {
 
 // Keep the real `toCsv` (so the produced string is genuine) but capture the
 // download so we can assert the exact CSV content, guarding the hand-ordered
-// 10-column header↔row mapping in useCreditRfqs.onExport (spec §5).
+// 10-column header↔row mapping in useCreditRfqs.exportCsv (spec §5).
 vi.mock("#/csvExport", async (importOriginal) => {
   const actual = await importOriginal<typeof import("#/csvExport")>();
   return { ...actual, downloadCsv: vi.fn() };

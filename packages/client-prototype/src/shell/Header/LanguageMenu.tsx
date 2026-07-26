@@ -7,7 +7,7 @@ import type { MenusApi } from "#/shell/Header/useMenus";
 export interface LanguageMenuProps {
   menus: MenusApi;
   lang: string;
-  onSelectLang(code: string): void;
+  onSelectLang: (code: string) => void;
 }
 
 export function LanguageMenu(props: LanguageMenuProps): ReactElement {

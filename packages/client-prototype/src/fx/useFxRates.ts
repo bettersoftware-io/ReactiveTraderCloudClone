@@ -47,11 +47,11 @@ export interface RatesApi {
   trades: Trade[];
   newRowId: number | null;
   pnl: number;
-  onNotional(sym: Sym, raw: string): void;
-  onReset(sym: Sym): void;
-  onSell(sym: Sym): void;
-  onBuy(sym: Sym): void;
-  onDismiss(sym: Sym): void;
+  setTileNotional(sym: Sym, raw: string): void;
+  resetNotional(sym: Sym): void;
+  sellPair(sym: Sym): void;
+  buyPair(sym: Sym): void;
+  dismissTile(sym: Sym): void;
 }
 
 export interface UseFxRatesOptions {
@@ -352,7 +352,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     book(sym, side);
   }
 
-  function onNotional(sym: Sym, raw: string): void {
+  function setTileNotional(sym: Sym, raw: string): void {
     const n = parseNotional(raw);
 
     setNotionals((prev) => {
@@ -362,7 +362,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     });
   }
 
-  function onReset(sym: Sym): void {
+  function resetNotional(sym: Sym): void {
     setNotionals((prev) => {
       const next = { ...prev, [sym]: DEFAULT_NOTIONAL };
       notionalsRef.current = next;
@@ -370,15 +370,15 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     });
   }
 
-  function onSell(sym: Sym): void {
+  function sellPair(sym: Sym): void {
     priceClick(sym, "Sell");
   }
 
-  function onBuy(sym: Sym): void {
+  function buyPair(sym: Sym): void {
     priceClick(sym, "Buy");
   }
 
-  function onDismiss(sym: Sym): void {
+  function dismissTile(sym: Sym): void {
     setTile(sym, { stage: "idle" });
   }
 
@@ -394,10 +394,10 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     trades,
     newRowId,
     pnl,
-    onNotional,
-    onReset,
-    onSell,
-    onBuy,
-    onDismiss,
+    setTileNotional,
+    resetNotional,
+    sellPair,
+    buyPair,
+    dismissTile,
   };
 }
