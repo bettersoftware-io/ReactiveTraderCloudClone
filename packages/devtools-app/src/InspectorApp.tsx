@@ -1,5 +1,5 @@
 import type { ReactElement, RefObject } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
 import { LiveHistory, projectSnapshot } from "@rtc/devtools-core";
@@ -32,9 +32,19 @@ export function InspectorApp({
   onInvokeIntent,
 }: InspectorAppProps): ReactElement {
   const liveState = useInspectorState(store);
-  const liveHistory = useMemo((): LiveHistory => {
-    return new LiveHistory();
-  }, []);
+
+  // Build-exactly-once instance, NOT a cache. Its identity is observed twice —
+  // it is a dependency of the store-tap effect below, and `seededHistoryRef` is
+  // keyed on it — so a fresh instance per render would re-tap the store every
+  // render. A ref guarantees single construction even under StrictMode's
+  // double-render; `useMemo` never did (React may discard a memo cache).
+  const liveHistoryRef = useRef<LiveHistory | null>(null);
+
+  if (liveHistoryRef.current === null) {
+    liveHistoryRef.current = new LiveHistory();
+  }
+
+  const liveHistory = liveHistoryRef.current;
 
   // Seeds `liveHistory` with whatever the store already holds before the tap
   // attaches, so messages applied before this effect mounts (e.g. an already
@@ -123,33 +133,24 @@ export function InspectorApp({
     };
   }, [timeline]);
 
-  const handleFocusInTimeline = useCallback(
-    (machineId: string): void => {
-      timeline.addPill({ type: "machine", id: machineId });
+  function handleFocusInTimeline(machineId: string): void {
+    timeline.addPill({ type: "machine", id: machineId });
+    setLens("timeline");
+  }
+
+  function handlePinIntent(machineId: string, name: string, ts: number): void {
+    const seq = seqOfMachineIntent(activeLog, machineId, name, ts);
+
+    if (seq !== null) {
+      timeline.pin(seq);
       setLens("timeline");
-    },
-    [timeline],
-  );
+    }
+  }
 
-  const handlePinIntent = useCallback(
-    (machineId: string, name: string, ts: number): void => {
-      const seq = seqOfMachineIntent(activeLog, machineId, name, ts);
-
-      if (seq !== null) {
-        timeline.pin(seq);
-        setLens("timeline");
-      }
-    },
-    [activeLog, timeline],
-  );
-
-  const handleMsgTypePill = useCallback(
-    (msgType: string): void => {
-      timeline.addPill({ type: "msgType", id: msgType });
-      setLens("timeline");
-    },
-    [timeline],
-  );
+  function handleMsgTypePill(msgType: string): void {
+    timeline.addPill({ type: "msgType", id: msgType });
+    setLens("timeline");
+  }
 
   return (
     <div className={styles.app}>
