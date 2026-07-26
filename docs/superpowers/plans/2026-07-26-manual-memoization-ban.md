@@ -744,6 +744,12 @@ In `eslint.config.mjs`, add a new block after the existing RN `react-hooks` bloc
       "packages/client-react-native/app/**/*.{ts,tsx}",
       "packages/devtools-app/src/**/*.{ts,tsx}",
     ],
+    // Test files are OUT of scope: they never go through the Babel transform,
+    // so nothing auto-memoizes them and their stable identities are real.
+    // `client-react` keeps tests outside `src/`, but `devtools-app` keeps them
+    // in `src/__tests__/` — without this the glob catches them and contradicts
+    // the deliberate non-goal stated in the comment above.
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -782,6 +788,29 @@ using a config-scoped block — never an inline disable:
     rules: { "no-restricted-imports": "off" },
   },
 ```
+
+- [ ] **Step 2c: Fix DiffTab's error-boundary violations**
+
+Adding `devtools-app/src` to the `react-hooks` block (next step) surfaces two
+pre-existing `react-hooks/error-boundaries` errors in
+`packages/devtools-app/src/timeline/ContextPane.tsx`'s `DiffTab`: it constructs
+JSX inside a `try`/`catch`. The rule is right — React renders the element later,
+so a render error escapes the `catch`.
+
+The `catch` is not useless, though: `findPredecessorRow`, `diffableValueOf` and
+`diffSerialized` are all *called* inside the `try`, so genuine diff failures do
+get caught. Preserve that. Hoist the computation out of the JSX — compute the
+entries (or an error) inside the `try`/`catch`, then construct the JSX outside
+it — so the `catch` still covers exactly the calls that can throw.
+
+Keep user-visible behaviour identical: a failed diff still renders `ErrorCard`
+with the same message, and both `noPrior` cases still render `DiffView` as
+before.
+
+This should also clear `DiffTab`'s React Compiler bail ("Support value blocks
+within a try/catch statement"). Verify with the healthcheck — but do NOT add it
+to `TRACKED`: it traded no manual memo for compiler memoization, and the gate
+tracks only functions that did.
 
 - [ ] **Step 3: Extend the react-hooks block to devtools-app**
 
