@@ -90,9 +90,32 @@ draw time instead.
 | Item | State |
 |---|---|
 | **Phase 5** (Credit / Equities / Analytics) | Designed (5a/5b/5c, parallel-buildable); **no plan files**. M6 gates sensible planning of 5c. |
-| **Phase 6b-2** (`hologram`, `geo`, `layers`, `jarvis`, `topo`) | Scoped in the 6b plan's "Scope note"; not planned. All five share a `project3d` camera + precomputed world geometry. They are text-heavy, so **P1 blocks them meaningfully**. |
+| **Phase 6b-2b** (`geo`, `jarvis`, `topo`) | **6b-2a is built** — `hologram` and `layers` are ported and registered, so **5 of 8 variants now resolve** (`core`, `laser`, `docking`, `hologram`, `layers`). The three remaining share the `boot3dCamera` seam 6b-2a introduced. Plan: [superpowers/plans/2026-07-26-rn-mobile-v1-rehaul-phase-6b-2a-boot-3d-foundation.md](superpowers/plans/2026-07-26-rn-mobile-v1-rehaul-phase-6b-2a-boot-3d-foundation.md) covers 6b-2a only; 6b-2b is not planned. **Read the projection table below before starting it.** |
 | **Phase 7** (cross-cutting polish + sign-off) | Untouched, last by definition. |
 | `withAlpha()` helper / branded hex type | From #301 — colours are built by string-appending an alpha suffix; safe for today's accent tokens, silently invalid for any future `rgba()` one. |
 | Credit filter alignment | RN uses a local 5-way filter; both the prototype and the domain are 3-way, and the shared `useCreditRfqFilterPreference()` seam is unused on RN. |
 | Equities workspace alignment | RN holds selection in local `useState`; `useEqWorkspace()` is the shared singleton the web client uses for cross-panel sync. |
 | RN visual harness | An inset 3D-card scenario is still wanted, to guard the `overflow:hidden` shadow-clip regression class the current full-bleed scenario cannot catch. |
+
+### Projection per boot scene — measured, do not re-derive
+
+The 6b-1 scope note recorded that all five projected scenes clamp the near plane
+at `0.4`. **They do not.** Each was read back from its own web variant while
+porting 6b-2a:
+
+| scene | `perspectiveK` | near-plane clamp | source |
+|---|---|---|---|
+| `hologram` | 0.26 | **none** | `bootHologram.ts:216` — `1 / (1 + depth * 0.26)` |
+| `geo` | 0.22 | **none** | `bootGeo.ts:528` — `1 / (1 + depth * 0.22)` |
+| `layers` | 0.24 | 0.4 | `bootLayers.ts:202` — `1 / Math.max(0.4, 1 + z2 * 0.24)` |
+| `jarvis` | 0.30 | 0.4 | `bootJarvis.ts:166` — `1 / Math.max(0.4, 1 + depthZ * 0.3)` |
+| `topo` | 0.26 | 0.4 | `bootTopo.ts:381` — `1 / Math.max(0.4, 1 + z2 * 0.26)` |
+
+**All five rows are now read from source**, each with its line cited. Two of the
+five — `hologram` and `geo` — have no clamp at all.
+
+This is why [`boot3dCamera.ts`](../packages/client-react-native/src/ui/shell/boot/scenes/boot3dCamera.ts)
+makes `minPerspectiveDenom` optional and never defaults it. Defaulting the clamp
+on — the obvious convenience — diverges from the web at depth in the unclamped
+scenes, in a way no unit test catches and only a side-by-side pixel comparison
+shows.
