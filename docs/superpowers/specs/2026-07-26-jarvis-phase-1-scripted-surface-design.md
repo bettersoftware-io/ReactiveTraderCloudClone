@@ -98,9 +98,14 @@ client-core/
   Owns the confirm lifecycle including the 60s timeout. The pending confirmation is
   resolved through the port so the phase-2 wire (`JARVIS_CONFIRM_REQUEST` /
   `JARVIS_CONFIRM`) maps 1:1.
-- **Typed-out reveal**: pure typewriter math in `@rtc/motion-core`
-  (elapsed → visible chars) + thin per-framework shells, per ADR-005.
-  Freeze / reduced-motion ⇒ instant reveal.
+- **Typed-out reveal**: the reveal cadence is the *adapter's* chunked delta
+  emission — pure chunk math in `@rtc/motion-core` (`speechChunks`), rxjs
+  timing in the adapter. Not a view-layer rAF shell: grep-gate 29 bans UI
+  timers, adapter-side pacing is the exact shape `JARVIS_DELTA` streams in
+  phase 2, and it makes the reveal TestScheduler-deterministic. Power-saver
+  Freeze ⇒ instant reveal (one full-text delta, via an `instantReveal$` dep
+  derived from the power-saver preference); `prefers-reduced-motion` disables
+  the CSS animations (orb pulse, core rotation, caret) but text still streams.
 - **Dumb UI**: no rxjs/fetch/localStorage in `src/ui` (existing grep gates). Skin
   preference persists through `PreferencesPort` (note the ~10-site preference
   blast radius: adapters ×4, contract, presenter, both bindings, ui-contract,
@@ -135,7 +140,7 @@ client-core/
 - **client-core**: `JarvisMachine` unit tests (streaming fold, confirm lifecycle
   incl. timeout via fake timers, skin persistence); `ScriptedJarvisAdapter` tests —
   every intent branch against stub use cases, incl. the execution round-trip.
-- **motion-core**: typewriter math unit tests.
+- **motion-core**: `speechChunks` chunk-math unit tests.
 - **ui-contract**: framework-neutral contract specs — orb states + badge, overlay
   open/close (click, ⌘J, Escape), send → scripted reply with reveal, suggestion
   chips, confirm approve/reject/timeout card states, skin switch. Swap-trio runs
@@ -160,6 +165,7 @@ client-core/
 ## 7. Counterfactual check (parent §9)
 
 When phase 1 ships it should be: one machine, one port, two adapters' worth of
-composition-root wiring, one dumb overlay + orb per framework, pure typewriter math
-in motion-core, zero changes to `@rtc/domain`, zero changes to `@rtc/server`. If the
+composition-root wiring, one dumb overlay + orb per framework, pure chunk math
+in motion-core, zero changes to `@rtc/domain` beyond the skin preference, zero
+changes to `@rtc/server`. If the
 implementation plan needs more than that, revisit this spec before proceeding.
