@@ -159,8 +159,15 @@ function eventPatch(event: JarvisEvent): Patch {
           ...s,
           phase: "idle",
           unread: s.open ? s.unread : s.unread + 1,
+          // Drop `tool` entirely rather than leaving it at whatever status a
+          // prior toolEvent left it in: a later sequential snapshot read
+          // (e.g. ScriptedJarvisAdapter's pnl/movers turns) can still time
+          // out into an error after toolEvent(running) already landed, and
+          // without clearing it the finalized entry would show error text
+          // alongside a permanently-stuck "running" badge.
           entries: updateLastEntry(s.entries, (e) => {
-            return { ...e, text: event.message, done: true };
+            const { tool: _tool, ...rest } = e;
+            return { ...rest, text: event.message, done: true };
           }),
         };
       };

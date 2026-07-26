@@ -136,6 +136,40 @@ describe("createJarvisMachine", () => {
     });
   });
 
+  it("an error arriving after a toolEvent clears the tool badge, not just the text", () => {
+    // Mirrors ScriptedJarvisAdapter's pnl/movers turns: toolEvent(running) is
+    // pushed before a later sequential snapshot read, and THAT read can
+    // still time out into an error. Without clearing `tool`, the finalized
+    // entry would be done:true with error text but a permanently-stuck
+    // running badge.
+    const states = run(
+      (ts) => {
+        return {
+          port: fakePort(ts, "a-(b|)", {
+            a: { type: "toolEvent", tool: "pnl", status: "running" },
+            b: { type: "error", message: "snapshot timed out" },
+          }),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+        };
+      },
+      ({ machine, ts }) => {
+        ts.schedule(() => {
+          machine.intents.send("brief me on pnl");
+        }, 1);
+      },
+    );
+
+    const last = states.at(-1);
+    expect(last?.phase).toBe("idle");
+    expect(last?.entries.at(-1)).toEqual({
+      id: 2,
+      role: "jarvis",
+      text: "snapshot timed out",
+      done: true,
+    });
+  });
+
   it("runs sequential sends one at a time (concatMap), not interleaved", () => {
     const states = run(
       (ts) => {
