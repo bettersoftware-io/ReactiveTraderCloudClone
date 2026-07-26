@@ -32,6 +32,7 @@ import type {
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  JarvisSkin,
   PlaceOrderRequest,
   PowerSaverLevel,
   RfqQuoteResult,
@@ -605,6 +606,33 @@ export function solidViewModel(world: World): ViewModel {
         select: world.eqWorkspace.intents.select,
         closeTab: world.eqWorkspace.intents.closeTab,
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
+      };
+    },
+    // Jarvis: stub returning a noop implementation (TODO: wire World).
+    useJarvis: () => {
+      const [jarvisState] = createSignal({
+        open: false,
+        skin: "singularity" as JarvisSkin,
+        unread: 0,
+        phase: "idle" as const,
+        entries: [] as readonly {
+          id: number;
+          role: "user" | "jarvis";
+          text: string;
+          done: boolean;
+        }[],
+        pendingConfirmation: null,
+      });
+
+      return {
+        state: jarvisState,
+        open: (): void => {},
+        close: (): void => {},
+        toggle: (): void => {},
+        send: (): void => {},
+        approveConfirmation: (): void => {},
+        declineConfirmation: (): void => {},
+        setSkin: (_skin: JarvisSkin): void => {},
       };
     },
     // Admin / telemetry: World-backed fakes that re-render subscribing

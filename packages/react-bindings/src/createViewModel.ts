@@ -1,7 +1,12 @@
 import { bind, useStateObservable } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
-import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
+import type {
+  ActivityEntry,
+  AppCommands,
+  JarvisState,
+  Presenters,
+} from "@rtc/client-core";
 import {
   type AnimationIntent,
   type AuthViewState,
@@ -56,6 +61,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisSkin,
   type LogEvent,
   type MetricSample,
   nextPowerSaverLevel,
@@ -97,6 +103,17 @@ type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
 type UseEqWorkspaceResult = {
   state: EqWorkspaceState;
 } & EqWorkspaceIntents;
+
+export interface UseJarvisResult {
+  state: JarvisState;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+  send: (text: string) => void;
+  approveConfirmation: () => void;
+  declineConfirmation: () => void;
+  setSkin: (skin: JarvisSkin) => void;
+}
 
 interface MetricsView {
   throughput: readonly MetricSample[];
@@ -296,6 +313,8 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** Jarvis AI assistant state + intents (singleton, app-level). */
+  useJarvis: () => UseJarvisResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -668,6 +687,13 @@ export function createViewModel(
     presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
+  // Jarvis AI assistant — shared single instance. Reads
+  // presenters.jarvis.state$ DIRECTLY via useStateObservable, NOT via
+  // bind() (mirroring the eqWorkspace pattern — see its comment for why).
+  function useJarvisState(): JarvisState {
+    return useStateObservable(presenters.jarvis.state$);
+  }
+
   return {
     usePrice,
     usePriceHistory,
@@ -864,6 +890,12 @@ export function createViewModel(
         select: selectEqSymbol,
         closeTab: closeEqTab,
         setTimeframe: setEqTimeframe,
+      };
+    },
+    useJarvis: () => {
+      return {
+        state: useJarvisState(),
+        ...presenters.jarvis.intents,
       };
     },
     useMetrics: () => {

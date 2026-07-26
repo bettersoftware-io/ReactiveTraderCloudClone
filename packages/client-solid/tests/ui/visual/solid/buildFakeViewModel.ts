@@ -5,6 +5,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
+  type JarvisSkin,
   resolveThemeMode,
 } from "@rtc/domain";
 
@@ -427,6 +428,31 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         select: noop,
         closeTab: noop,
         setTimeframe: noop,
+      };
+    },
+    // Jarvis: stub returning a noop implementation (no visual tests yet).
+    useJarvis: () => {
+      return {
+        state: at({
+          open: false,
+          skin: "singularity" as JarvisSkin,
+          unread: 0,
+          phase: "idle" as const,
+          entries: [] as readonly {
+            id: number;
+            role: "user" | "jarvis";
+            text: string;
+            done: boolean;
+          }[],
+          pendingConfirmation: null,
+        }),
+        open: noop,
+        close: noop,
+        toggle: noop,
+        send: noop,
+        approveConfirmation: noop,
+        declineConfirmation: noop,
+        setSkin: noop,
       };
     },
   };
