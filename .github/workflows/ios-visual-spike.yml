@@ -467,6 +467,41 @@ jobs:
           cat "$RUNNER_TEMP/metro.log" || true
           exit 1
 
+      # Force Metro to build the dev bundle BEFORE the flow runs. Two purposes,
+      # and the diagnostic one matters more than the warm-up:
+      #
+      #  - As a CHECK: this is the exact URL the harness README prescribes for
+      #    diagnosing a bundle headlessly. A healthy dev bundle is >100 KB and
+      #    contains no `Babel plugin exception`. If the bundle is broken, we
+      #    learn it here, attributably, instead of as a mute 20s flow timeout.
+      #  - As a WARM-UP: the flow allows 20s to reach `login-screen`, and a cold
+      #    first bundle on 3 cores can exceed that comfortably.
+      #
+      # The first capture attempt failed with `Assertion is false: id:
+      # login-screen is visible`, and metro.log showed NO bundling activity at
+      # all — so the app never reached Metro. That rules the bundle in or out
+      # rather than leaving it a suspect.
+      - name: Pre-warm and health-check the Metro bundle
+        run: |
+          set -euo pipefail
+          URL="http://localhost:${METRO_PORT}/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true"
+          echo "requesting $URL"
+          if ! curl -sf "$URL" -o "$RUNNER_TEMP/dev.bundle"; then
+            echo "::error title=Metro could not serve a bundle::$URL failed. Metro is up but cannot bundle."
+            exit 1
+          fi
+          SIZE=$(wc -c < "$RUNNER_TEMP/dev.bundle")
+          echo "bundle bytes: $SIZE"
+          if grep -qF "Babel plugin exception" "$RUNNER_TEMP/dev.bundle"; then
+            echo "::error title=Bundle contains a Babel plugin exception::The known worklets crash class — see the harness README."
+            exit 1
+          fi
+          if [ "$SIZE" -lt 102400 ]; then
+            echo "::error title=Bundle implausibly small::${SIZE} bytes; a healthy dev bundle is >100 KB."
+            exit 1
+          fi
+          echo "bundle looks healthy"
+
       - name: Run the Maestro flow
         working-directory: packages/client-react-native
         env:
@@ -477,6 +512,24 @@ jobs:
         run: |
           set -euo pipefail
           maestro test "tests/visual/maestro/flows/${SCENARIO_FILE}.yaml" --format junit
+
+      # A failed flow reports only "Assertion is false: id: X is visible", which
+      # says what was NOT on screen and nothing about what WAS. That ambiguity is
+      # the whole subject of rn-open-items T2 — a capture failure and a visual
+      # regression looked identical until the driver was taught to refuse to
+      # guess. Nobody is watching the screen in CI, so shoot it and keep it.
+      - name: Diagnostics on flow failure
+        if: failure()
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/out/failure-screen.png" 2>/dev/null || echo "screenshot failed"
+          xcrun simctl listapps "$UDID" 2>/dev/null | grep -A3 -i rtcmobile > "$RUNNER_TEMP/out/installed-app.txt" || echo "app not listed" > "$RUNNER_TEMP/out/installed-app.txt"
+          cp "$RUNNER_TEMP/dev.bundle" "$RUNNER_TEMP/out/dev.bundle.txt" 2>/dev/null || true
+          head -c 2000 "$RUNNER_TEMP/out/dev.bundle.txt" > "$RUNNER_TEMP/out/dev.bundle.head.txt" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/out/dev.bundle.txt"
+          echo "--- installed app ---"; cat "$RUNNER_TEMP/out/installed-app.txt"
 
       # Stage the fresh capture beside the committed golden. No comparison, no
       # verdict — the artifact is the deliverable, for a human to eyeball.
