@@ -281,6 +281,39 @@ only — no DOM output changes, so visual goldens and contract specs are untouch
 by construction. Interface-member renames change call sites
 (`api.onSort` → `api.toggleSort`), which typecheck catches exhaustively.
 
+## Extraction is not optional at one line
+
+A concrete handler is named regardless of how short its body is — a pure
+event→call adapter is **extracted and named**, never deleted and inlined at
+the call site. In decreasing force:
+
+1. **Coupling, not compression, is what the rule is about.** An inline arrow
+   (`onChange={(e) => { notional.change(e.target.value); }}`) is maximally
+   coupled to its one call site — it cannot be reused from a second trigger at
+   all, which is the exact coupling `onClick={handleClick}` already has and
+   the rule exists to remove. This is decisive on its own.
+2. **A name's job is to say what happens without reading how.** That holds at
+   one line as much as at twenty.
+3. **There is something to compress even at one line.** `e.target.value` and
+   `inputRef.current?.` are DOM/ref ceremony, not intent; inlining drags that
+   plumbing into the markup instead of naming past it.
+4. **Readability.** A column of verbs (`onChange={changeNotional}`,
+   `onFocus={selectNotionalText}`) scans; a column of `{(e) => { … }}` bodies
+   does not.
+
+So: `onChange={changeNotional}`, not `onChange={(e) => { notional.change(e.target.value); }}`.
+
+**Superseded.** The workstream's execution plan
+(`docs/superpowers/plans/2026-07-26-name-functions-by-effect.md`, Global
+Constraints, "Naming procedure for every rename," step 3) originally
+prescribed the opposite of the rule above — delete a pure event→call adapter
+and inline the arrow at the call site — and 51 sites across `devtools-app`
+(9), `client-react` (11), `client-solid` (7), `client-react-native` (3), and
+`client-prototype` (21) were migrated that way. Commit `faba43bf9` reversed
+all 51 back into named functions; this section is the corrected, current
+guidance, and the plan file carries a pointer back to it rather than being
+rewritten.
+
 ## Testing
 
 `RuleTester` under vitest via the existing `pnpm test:rules` (gated at
