@@ -179,6 +179,11 @@ jest.mock("@shopify/react-native-skia", () => {
     // Task 12 (AmbientBackground aurora curtains): a gradient shader node
     // (child of a Rect), filling the curtain bands.
     LinearGradient: passthrough("SkiaLinearGradient"),
+    // Phase 5c Task 5 (ExposureBubbles): the bubble glow's radial shader, and
+    // the first DECLARATIVE text node in the app — the boot scenes all draw
+    // their text imperatively through `canvas.drawText`.
+    RadialGradient: passthrough("SkiaRadialGradient"),
+    Text: passthrough("SkiaText"),
     vec: (x: number, y: number) => {
       return { x, y };
     },

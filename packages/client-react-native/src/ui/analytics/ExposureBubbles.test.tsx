@@ -1,14 +1,10 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
-import { processColor } from "react-native";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
 import { ExposureBubbles } from "#/ui/analytics/ExposureBubbles";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
-
-const THEME: RnTheme = rnThemeTokens.holo.dark;
 
 // EURUSD contributes to EUR (base) and USD (counter); USDJPY to USD and JPY.
 const POSITIONS: readonly CurrencyPairPosition[] = [
@@ -26,31 +22,59 @@ const POSITIONS: readonly CurrencyPairPosition[] = [
   },
 ];
 
-test("renders one bubble per aggregated currency", async () => {
+/**
+ * These tests prove the canvas MOUNTS and survives every book shape. They
+ * deliberately assert nothing about individual bubbles: Skia elements take no
+ * `testID`, so there is nothing to query. Which currencies appear, how big,
+ * which accent and which labels they carry are decided in
+ * `buildBubbleDrawModel` and asserted in its own test.
+ */
+test("mounts a canvas for a book with positions", async () => {
   await renderWithTheme(<ExposureBubbles positions={POSITIONS} />);
-  // EUR, USD, JPY -> three currencies with non-zero net traded amounts.
-  expect(screen.getByTestId("exposure-bubble-EUR")).toBeTruthy();
-  expect(screen.getByTestId("exposure-bubble-USD")).toBeTruthy();
-  expect(screen.getByTestId("exposure-bubble-JPY")).toBeTruthy();
-});
-
-test("renders an empty svg when there are no positions", async () => {
-  await renderWithTheme(<ExposureBubbles positions={[]} />);
   expect(screen.getByTestId("exposure-bubbles")).toBeTruthy();
-  expect(screen.queryByTestId("exposure-bubble-EUR")).toBeNull();
 });
 
-test("colours a bubble by the aggregated sign of its net exposure", async () => {
-  // Net traded amounts for POSITIONS: EUR = +1,000,000 (pos), USD = -600,000
-  // (neg), JPY = -55,000,000 (neg) — see aggregatePositionsByCurrency. The
-  // native SVG host node reports `fill` as a processed colour object, so
-  // compare its payload against the theme's accent tokens run through
-  // react-native's own colour processing rather than the raw hex.
-  await renderWithTheme(<ExposureBubbles positions={POSITIONS} />, THEME);
-  expect(screen.getByTestId("exposure-bubble-EUR").props.fill).toEqual(
-    expect.objectContaining({ payload: processColor(THEME.accentPositive) }),
+test("collapses to nothing when there are no positions", async () => {
+  await renderWithTheme(<ExposureBubbles positions={[]} />);
+
+  // Nothing to draw, so the card must not reserve a gap.
+  expect(screen.getByTestId("exposure-bubbles").props.style).toEqual(
+    expect.objectContaining({ height: 0 }),
   );
-  expect(screen.getByTestId("exposure-bubble-USD").props.fill).toEqual(
-    expect.objectContaining({ payload: processColor(THEME.accentNegative) }),
+});
+
+test("reserves the height the tallest shelf needs", async () => {
+  await renderWithTheme(<ExposureBubbles positions={POSITIONS} />);
+
+  // JPY dominates this book, so it takes the maximum radius of 60.
+  expect(screen.getByTestId("exposure-bubbles").props.style).toEqual(
+    expect.objectContaining({ height: 120 }),
   );
+});
+
+test("survives a book whose currencies all carry the same magnitude", async () => {
+  // Equal magnitudes collapse the radius scale's lower bound to zero — the one
+  // branch in `aggregatePositionsByCurrency` that could otherwise divide by
+  // zero.
+  await renderWithTheme(
+    <ExposureBubbles
+      positions={[
+        {
+          symbol: "EURUSD",
+          basePnl: 0,
+          baseTradedAmount: 1_000_000,
+          counterTradedAmount: -1_000_000,
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByTestId("exposure-bubbles")).toBeTruthy();
+});
+
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
 });

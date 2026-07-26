@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 
 import type { PositionUpdates } from "@rtc/domain";
@@ -72,3 +72,11 @@ function fakeViewModel(
     },
   } as unknown as ViewModel;
 }
+
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});
