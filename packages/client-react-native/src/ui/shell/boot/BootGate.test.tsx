@@ -49,7 +49,7 @@ test("fades out then calls onFinished on the animated (non-reduce-motion) path",
 
   // BootSequence also renders BootEmblem, which drives its own cosmetic
   // Animated.timing pulse loop. Only the fade-out (toValue 0, 320ms) started
-  // by BootGate.handleDone is under test here, so completions are keyed on
+  // by BootGate.dismissBoot is under test here, so completions are keyed on
   // that specific config — the emblem's timing calls are left uncompleted
   // (their .start callback is simply never invoked).
   const completions: AnimationEndCallback[] = [];

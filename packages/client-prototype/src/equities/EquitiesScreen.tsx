@@ -217,7 +217,7 @@ export function EquitiesScreen(): ReactElement {
 }
 
 interface RightCollapsedStripProps {
-  onRestore(): void;
+  onRestore: () => void;
 }
 
 // PROTO L647 (eqRightCol collapsed): the aside collapsed to a two-bar restore

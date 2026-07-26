@@ -2,23 +2,34 @@ import type { ReactElement, ReactNode } from "react";
 
 import styles from "#/layout/Panel.module.css";
 
-export interface PanelProps {
-  id: string;
+// Generic over the caller's own panel-id union (e.g. FX's `PanelId`, credit's
+// `CreditPanelId`) so `id`/`maxPanel`/`onToggleMax` all agree on one concrete
+// type per screen, instead of widening to `string` — property syntax (unlike
+// the method syntax this replaced) checks `onToggleMax` contravariantly, so a
+// screen's narrower `toggleMax(id: XPanelId)` would otherwise no longer be
+// assignable here.
+export interface PanelProps<TId extends string = string> {
+  id: TId;
   head: ReactElement;
   children: ReactNode;
-  maxPanel: string | null;
-  onToggleMax(id: string): void;
+  // Only meaningful (and only required by callers) when `maximizable` is
+  // true — a non-maximizable panel (e.g. credit's New RFQ form) has no
+  // `maxPanel` id of its own to compare against and nothing to toggle.
+  maxPanel?: TId | null;
+  onToggleMax?: (id: TId) => void;
   headControls?: ReactNode;
   headAccessory?: ReactNode;
   maximizable?: boolean;
 }
 
-export function Panel(props: PanelProps): ReactElement {
+export function Panel<TId extends string = string>(
+  props: PanelProps<TId>,
+): ReactElement {
   const {
     id,
     head,
     children,
-    maxPanel,
+    maxPanel = null,
     onToggleMax,
     headControls,
     headAccessory,
@@ -26,8 +37,8 @@ export function Panel(props: PanelProps): ReactElement {
   } = props;
   const isMax = maxPanel === id;
 
-  function handleMaxClick(): void {
-    onToggleMax(id);
+  function togglePanelMaximized(): void {
+    onToggleMax?.(id);
   }
 
   return (
@@ -48,7 +59,7 @@ export function Panel(props: PanelProps): ReactElement {
             className={styles.maxBtn}
             aria-label="Maximize"
             title="Maximize"
-            onClick={handleMaxClick}
+            onClick={togglePanelMaximized}
           >
             {isMax ? "⧉" : "⛶"}
           </button>

@@ -61,12 +61,12 @@ export interface CreditRfqsApi {
   exitingRfqs: number[];
   cardExitIds: number[];
   tabRecent: boolean;
-  onTab(tab: CreditTab): void;
+  selectTab(tab: CreditTab): void;
   sendRfq(form: RfqFormValue): void;
   acceptQuote(rfqId: number, dealerId: number): void;
   cancelRfq(rfqId: number): void;
   removeRfq(rfqId: number): void;
-  onExport(): void;
+  exportCsv(): void;
 }
 
 interface DealerDraw {
@@ -155,7 +155,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
 
   // PROTO L1325: a no-op click on the already-active tab doesn't restart
   // the cascade window.
-  function onTab(tab: CreditTab): void {
+  function selectTab(tab: CreditTab): void {
     if (tab === creditTab) {
       return;
     }
@@ -365,7 +365,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
   }
 
   // PROTO L1161 (exportCredit).
-  function onExport(): void {
+  function exportCsv(): void {
     const csv = toCsv(
       CSV_HEADERS,
       creditTrades.map((t) => {
@@ -433,11 +433,11 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     exitingRfqs,
     cardExitIds,
     tabRecent,
-    onTab,
+    selectTab,
     sendRfq,
     acceptQuote,
     cancelRfq,
     removeRfq,
-    onExport,
+    exportCsv,
   };
 }

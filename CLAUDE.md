@@ -213,3 +213,15 @@ function in `@rtc/motion-core` + a thin framework shell. The rule of thumb:
 RxJS machines are for autonomous async folds decoupled from the view; per-frame
 DOM-edge-driven computation is a pure function + injected signal, shared via
 `@rtc/motion-core`.
+
+## Handler Naming
+
+Before naming a function or a prop callback, read **`docs/handler-naming.md`**
+— a function's own name must state its **effect** (what it does, to what),
+never the occasion that triggers it; `rtc/name-functions-by-effect` enforces
+this on every `.ts`/`.tsx` file. **Slots are exempt and correct as `onX`** — a
+function-typed prop or callback-only method parameter, because its declarer
+must not know what gets attached — but a concrete handler must be named for
+its effect, even when the body is one line. The doc covers the full
+slot-vs-handler doctrine (the `<Car>` example, the property-vs-method syntax
+consequence), the name-decay rule, and the two known limits.

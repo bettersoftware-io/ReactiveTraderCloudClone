@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export interface SplitApi {
   ratio: number;
   handleProps: {
-    onPointerDown(e: ReactPointerEvent): void;
+    onPointerDown: (e: ReactPointerEvent) => void;
     role: "separator";
     "data-orientation": "h" | "v";
   };
@@ -82,14 +82,14 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
   const [ratio, setRatio] = useState(() => {
     return clamp(readStoredRatio(storageKey, initial), min, 1 - min);
   });
-  // onPointerDown/handleMove/handleUp are stable callbacks (window listeners
-  // rebind per drag), so they read the live ratio through a ref rather than
-  // closing over the `ratio` state value.
+  // startResizeDrag/updateSplitRatio/endResizeDrag are stable callbacks
+  // (window listeners rebind per drag), so they read the live ratio through a
+  // ref rather than closing over the `ratio` state value.
   const ratioRef = useRef(ratio);
   ratioRef.current = ratio;
   const dragRef = useRef<DragState | null>(null);
 
-  const handleMove = useCallback(
+  const updateSplitRatio = useCallback(
     (e: PointerEvent) => {
       const drag = dragRef.current;
 
@@ -103,11 +103,11 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
     [orientation, min],
   );
 
-  const handleUp = useCallback(() => {
+  const endResizeDrag = useCallback(() => {
     const drag = dragRef.current;
 
-    window.removeEventListener("pointermove", handleMove);
-    window.removeEventListener("pointerup", handleUp);
+    window.removeEventListener("pointermove", updateSplitRatio);
+    window.removeEventListener("pointerup", endResizeDrag);
 
     if (drag && typeof drag.target.releasePointerCapture === "function") {
       drag.target.releasePointerCapture(drag.pointerId);
@@ -115,18 +115,18 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
 
     dragRef.current = null;
     localStorage.setItem(storageKey, String(ratioRef.current));
-  }, [storageKey, handleMove]);
+  }, [storageKey, updateSplitRatio]);
 
   // Belt-and-braces: a leaked window listener from an unmount mid-drag would
   // fail unrelated tests, so remove both on unmount too, not just on pointerup.
   useEffect(() => {
     return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointermove", updateSplitRatio);
+      window.removeEventListener("pointerup", endResizeDrag);
     };
-  }, [handleMove, handleUp]);
+  }, [updateSplitRatio, endResizeDrag]);
 
-  const onPointerDown = useCallback(
+  const startResizeDrag = useCallback(
     (e: ReactPointerEvent) => {
       const target = e.currentTarget as unknown as CaptureTarget;
 
@@ -144,16 +144,16 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
         size: rect ? sizeFor(orientation, rect) : 1,
       };
 
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", handleUp);
+      window.addEventListener("pointermove", updateSplitRatio);
+      window.addEventListener("pointerup", endResizeDrag);
     },
-    [orientation, containerRef, handleMove, handleUp],
+    [orientation, containerRef, updateSplitRatio, endResizeDrag],
   );
 
   return {
     ratio,
     handleProps: {
-      onPointerDown,
+      onPointerDown: startResizeDrag,
       role: "separator",
       "data-orientation": orientation,
     },

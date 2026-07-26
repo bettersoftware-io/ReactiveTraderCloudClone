@@ -95,17 +95,17 @@ function TimelineRowView({
       ? `${styles.row} ${styles.rowDimmed}`
       : styles.row;
 
-  function handlePinClick(): void {
-    model.pin(row.seq);
-  }
-
-  function handleSourceClick(): void {
+  function addSourcePill(): void {
     if (source !== null) {
       model.addPill(source);
     }
   }
 
-  function handleRadiusClick(): void {
+  function pinTimelineRow(): void {
+    model.pin(row.seq);
+  }
+
+  function narrowTimelineToRow(): void {
     model.setRadiusAround(row);
   }
 
@@ -116,7 +116,7 @@ function TimelineRowView({
       data-family={familyOf(row.kind)}
       className={rowClassName}
     >
-      <button type="button" className={styles.pinArea} onClick={handlePinClick}>
+      <button type="button" className={styles.pinArea} onClick={pinTimelineRow}>
         <span className={styles.time}>{formatLogTime(row.ts)}</span>
         <span className={styles.kindChip}>{row.kind}</span>
         <span className={styles.summary}>{row.summary}</span>
@@ -126,7 +126,7 @@ function TimelineRowView({
           type="button"
           title="Filter to this source"
           className={styles.source}
-          onClick={handleSourceClick}
+          onClick={addSourcePill}
         >
           {source.id}
         </button>
@@ -135,7 +135,7 @@ function TimelineRowView({
         type="button"
         title="Show events within ±100 ms"
         className={styles.radius}
-        onClick={handleRadiusClick}
+        onClick={narrowTimelineToRow}
       >
         ±100ms
       </button>

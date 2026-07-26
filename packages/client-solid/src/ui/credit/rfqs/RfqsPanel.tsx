@@ -284,7 +284,7 @@ export function RfqsPanel(): JSX.Element {
     { freeze: isFreeze },
   );
 
-  function handleRemove(rfqId: number): void {
+  function removeRfq(rfqId: number): void {
     if (prefersReducedMotion()) {
       setDismissed((prev) => {
         return new Set(prev).add(rfqId);
@@ -301,7 +301,7 @@ export function RfqsPanel(): JSX.Element {
     });
   }
 
-  function handleCardAnimationEnd(rfqId: number, kind: "enter" | "exit"): void {
+  function settleRfqCardAnimation(rfqId: number, kind: "enter" | "exit"): void {
     if (kind === "enter") {
       setEntering((prev) => {
         if (!prev.has(rfqId)) {
@@ -379,8 +379,8 @@ export function RfqsPanel(): JSX.Element {
                               entering().has(rfqId),
                             )}
                             delayMs={entering().get(rfqId) ?? 0}
-                            onRemove={handleRemove}
-                            onAnimationEnd={handleCardAnimationEnd}
+                            onRemove={removeRfq}
+                            onAnimationEnd={settleRfqCardAnimation}
                           />
                         );
                       }}
@@ -447,19 +447,19 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
     return rfqCardVm(props.rfq, quotes(), props.instruments, props.dealers);
   });
 
-  function handleAccept(quoteId: number): void {
+  function acceptRfqQuote(quoteId: number): void {
     void acceptQuote(quoteId);
   }
 
-  function handleCancel(): void {
+  function cancelRfqCard(): void {
     void cancelRfq(props.rfq.id);
   }
 
-  function handleRemove(): void {
+  function removeRfqCard(): void {
     props.onRemove(props.rfq.id);
   }
 
-  function handleAnimationEnd(kind: "enter" | "exit"): void {
+  function reportCardSettled(kind: "enter" | "exit"): void {
     props.onAnimationEnd(props.rfq.id, kind);
   }
 
@@ -470,10 +470,10 @@ function RfqCardCell(props: RfqCardCellProps): JSX.Element {
       expirySecs={props.rfq.expirySecs}
       anim={props.anim}
       delayMs={props.delayMs}
-      onAccept={handleAccept}
-      onCancel={handleCancel}
-      onRemove={handleRemove}
-      onAnimationEnd={handleAnimationEnd}
+      onAccept={acceptRfqQuote}
+      onCancel={cancelRfqCard}
+      onRemove={removeRfqCard}
+      onAnimationEnd={reportCardSettled}
     />
   );
 }

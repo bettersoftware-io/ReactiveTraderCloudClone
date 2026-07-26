@@ -197,7 +197,7 @@ sequenceDiagram
         Machine-->>Hook: state$ update
         Hook-->>Ticket: progress render
     end
-    OrderSim->>PosSim: onFill(fill)
+    OrderSim->>PosSim: bookFill(fill)
     Note over PosSim: positions$ subscription (separate stream)<br/>updates the Positions blotter
     Port-->>Machine: complete (terminal event)
     Ticket->>Trader: Order filled confirmation

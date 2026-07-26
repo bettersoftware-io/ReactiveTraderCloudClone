@@ -37,14 +37,14 @@ export function RfqTilesPanel(): JSX.Element {
 
   const visible = filterRfqs(rfqs, filter, dismissed);
 
-  async function handleAccept(quoteId: number): Promise<void> {
-    await acceptQuote(quoteId);
-  }
-
-  function handleDismiss(rfqId: number): void {
+  function removeRfq(rfqId: number): void {
     setDismissed((prev) => {
       return new Set(prev).add(rfqId);
     });
+  }
+
+  function acceptRfqQuote(quoteId: number): void {
+    void acceptQuote(quoteId);
   }
 
   return (
@@ -63,8 +63,8 @@ export function RfqTilesPanel(): JSX.Element {
                 rfq={rfq}
                 instrumentMap={instrumentMap}
                 dealers={dealers}
-                onAccept={handleAccept}
-                onDismiss={handleDismiss}
+                onAccept={acceptRfqQuote}
+                onDismiss={removeRfq}
               />
             );
           })}
@@ -78,7 +78,7 @@ interface RfqTileRowProps {
   rfq: Rfq;
   instrumentMap: Map<number, Instrument>;
   dealers: readonly Dealer[];
-  onAccept: (quoteId: number) => Promise<void>;
+  onAccept: (quoteId: number) => void;
   onDismiss: (rfqId: number) => void;
 }
 

@@ -7,7 +7,7 @@ import styles from "#/shell/LockScreen/LockScreen.module.css";
 const SESSION_ID = "RT-7F3A2";
 
 export interface LockScreenProps {
-  onAuthenticate(): void;
+  onAuthenticate: () => void;
 }
 
 export function LockScreen(props: LockScreenProps): ReactElement {

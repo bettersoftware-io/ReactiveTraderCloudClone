@@ -1,18 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import { type ChartCandle, type ChartVarStyle, chartVm } from "./chartVm";
+import {
+  type ChartCandle,
+  type ChartVarStyle,
+  chartVm,
+  volumeVm,
+} from "./chartVm";
 
 describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
   it("returns empty candles/grid/labels for an empty series", () => {
     const vm = chartVm([], 100, true);
 
-    expect(vm).toEqual({ candles: [], grid: [], labels: [] });
+    expect(vm).toEqual({
+      candles: [],
+      grid: [],
+      labels: [],
+      linePoints: [],
+      timeLabels: [],
+      scale: { cmin: 0, cmax: 0 },
+    });
   });
 
   it("pins x/top/h/wick percentages for a known two-candle series", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 12, low: 8, close: 11 },
-      { time: 60, open: 11, high: 14, low: 9, close: 13 },
+      { time: 0, open: 10, high: 12, low: 8, close: 11, volume: 1_000 },
+      { time: 60, open: 11, high: 14, low: 9, close: 13, volume: 2_000 },
     ];
 
     // liveRate === the stored close: the live-last overlay is a no-op here,
@@ -68,7 +80,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("glows only the last candle, and only when flashOn is true", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 11, low: 9, close: 10.5 },
+      { time: 0, open: 10, high: 11, low: 9, close: 10.5, volume: 1_000 },
     ];
 
     const glowing = chartVm(series, 10.5, true);
@@ -81,8 +93,8 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("falls back to a range of 1 when every OHLC value is flat (cmax === cmin)", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 10, low: 10, close: 10 },
-      { time: 60, open: 10, high: 10, low: 10, close: 10 },
+      { time: 0, open: 10, high: 10, low: 10, close: 10, volume: 1_000 },
+      { time: 60, open: 10, high: 10, low: 10, close: 10, volume: 1_000 },
     ];
 
     // liveRate === the flat price too, so withLiveLast is also a no-op: cmax
@@ -110,7 +122,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("overlays the live price onto the last candle: close=liveRate, high/low stretch to include it", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 12, low: 8, close: 11 },
+      { time: 0, open: 10, high: 12, low: 8, close: 11, volume: 1_000 },
     ];
 
     // liveRate above the stored high — the plot's range must stretch to it,
@@ -134,8 +146,112 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
       high: 12,
       low: 8,
       close: 11,
+      volume: 1_000,
     });
   });
+});
+
+describe("chartVm (viewport slicing, chart kinds, time axis, volume vm)", () => {
+  it("renders only the viewport slice", () => {
+    const vm = chartVm(SERIES, 0, false, {
+      viewport: { start: 240, end: 300 },
+    });
+    expect(vm.candles.length).toBeGreaterThanOrEqual(60);
+    expect(vm.candles.length).toBeLessThanOrEqual(62); // + clipped edges
+  });
+
+  it("defaults to the whole series and candles kind (back-compat)", () => {
+    const vm = chartVm(SERIES, 0, false);
+    expect(vm.candles).toHaveLength(300);
+    expect(vm.linePoints).toHaveLength(0);
+  });
+
+  it("Y-fits the visible slice, not the whole series", () => {
+    // craft a series with a huge spike OUTSIDE the viewport; the visible
+    // candles' --top values must span most of the plot, proving the spike
+    // didn't compress the scale. Assert via vm.scale.
+    const spiked = SERIES.map((c, i) => {
+      return i === 0 ? { ...c, high: 10_000 } : c;
+    });
+
+    const vm = chartVm(spiked, 0, false, {
+      viewport: { start: 240, end: 300 },
+    });
+    expect(vm.scale.cmax).toBeLessThan(200);
+  });
+
+  it("applies the live overlay only when the last candle is visible", () => {
+    const away = chartVm(SERIES, 9_999, false, {
+      viewport: { start: 0, end: 60 },
+    });
+    expect(away.scale.cmax).toBeLessThan(200);
+  });
+
+  it("emits linePoints for kind line/area and no candles", () => {
+    const vm = chartVm(SERIES, 0, false, {
+      viewport: { start: 240, end: 300 },
+      kind: "line",
+    });
+    expect(vm.candles).toHaveLength(0);
+    expect(vm.linePoints.length).toBeGreaterThanOrEqual(60);
+
+    for (const p of vm.linePoints) {
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("time labels are stable under panning (keyed to series indices)", () => {
+    const a = chartVm(SERIES, 0, false, { viewport: { start: 240, end: 300 } });
+    const b = chartVm(SERIES, 0, false, { viewport: { start: 239, end: 299 } });
+    const aKeys = a.timeLabels.map((l) => {
+      return l.key;
+    });
+
+    const bKeys = b.timeLabels.map((l) => {
+      return l.key;
+    });
+    expect(
+      aKeys.filter((k) => {
+        return bKeys.includes(k);
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("formats intraday ticks HH:MM UTC and daily ticks DD MMM", () => {
+    const vm = chartVm(SERIES, 0, false, {
+      viewport: { start: 240, end: 300 },
+    });
+    expect(vm.timeLabels[0]?.txt).toMatch(/^\d{2}:\d{2}$/);
+
+    const daily = SERIES.map((c, i) => {
+      return { ...c, time: 1_782_864_000_000 + i * 86_400_000 };
+    });
+
+    const dvm = chartVm(daily, 0, false, {
+      viewport: { start: 240, end: 300 },
+    });
+    expect(dvm.timeLabels[0]?.txt).toMatch(/^\d{2} [A-Z]{3}$/);
+  });
+
+  it("volumeVm scales bars to the visible max", () => {
+    const bars = volumeVm(SERIES, { start: 240, end: 300 });
+    const hs = bars.map((b) => {
+      return Number.parseFloat(b.style["--h"] as string);
+    });
+    expect(Math.max(...hs)).toBeCloseTo(100, 1);
+  });
+});
+
+const SERIES: readonly Candle[] = Array.from({ length: 300 }, (_, i) => {
+  return {
+    time: 1_782_864_000_000 + i * 60_000,
+    open: 100 + Math.sin(i / 7) * 5,
+    high: 102 + Math.sin(i / 7) * 5,
+    low: 98 + Math.sin(i / 7) * 5,
+    close: 101 + Math.sin(i / 7) * 5,
+    volume: 800_000 + i * 1_000,
+  };
 });
 
 /** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;

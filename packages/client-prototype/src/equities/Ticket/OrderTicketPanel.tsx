@@ -24,36 +24,36 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
   const unit = ticket.type === "Limit" && limitN ? limitN : last;
   const cost = `$${fmtNum(qtyN * unit)}`;
 
-  function handleBuy(): void {
+  function selectBuySide(): void {
     api.setSide("Buy");
   }
 
-  function handleSell(): void {
+  function selectSellSide(): void {
     api.setSide("Sell");
   }
 
-  function handleMarket(): void {
+  function selectMarketOrder(): void {
     api.setType("Market");
   }
 
-  function handleLimit(): void {
+  function selectLimitOrder(): void {
     api.setType("Limit");
   }
 
-  function handleQty(e: ChangeEvent<HTMLInputElement>): void {
-    api.setQty(e.target.value);
-  }
-
-  function handleLimitPx(e: ChangeEvent<HTMLInputElement>): void {
-    api.setLimit(e.target.value);
-  }
-
-  function handleDec(): void {
+  function decrementOrderQty(): void {
     api.stepQty(-10);
   }
 
-  function handleInc(): void {
+  function changeOrderQty(e: ChangeEvent<HTMLInputElement>): void {
+    api.setQty(e.target.value);
+  }
+
+  function incrementOrderQty(): void {
     api.stepQty(10);
+  }
+
+  function changeLimitPrice(e: ChangeEvent<HTMLInputElement>): void {
+    api.setLimit(e.target.value);
   }
 
   return (
@@ -64,7 +64,7 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
           className={styles.side}
           data-side="buy"
           data-active={String(ticket.side === "Buy")}
-          onClick={handleBuy}
+          onClick={selectBuySide}
         >
           BUY
         </button>
@@ -73,7 +73,7 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
           className={styles.side}
           data-side="sell"
           data-active={String(ticket.side === "Sell")}
-          onClick={handleSell}
+          onClick={selectSellSide}
         >
           SELL
         </button>
@@ -85,7 +85,7 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
           type="button"
           className={styles.type}
           data-active={String(ticket.type === "Market")}
-          onClick={handleMarket}
+          onClick={selectMarketOrder}
         >
           Market
         </button>
@@ -93,7 +93,7 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
           type="button"
           className={styles.type}
           data-active={String(ticket.type === "Limit")}
-          onClick={handleLimit}
+          onClick={selectLimitOrder}
         >
           Limit
         </button>
@@ -101,16 +101,24 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
 
       <div className={styles.label}>Quantity</div>
       <div className={styles.qtyRow}>
-        <button type="button" className={styles.step} onClick={handleDec}>
+        <button
+          type="button"
+          className={styles.step}
+          onClick={decrementOrderQty}
+        >
           −
         </button>
         <input
           className={styles.qtyInput}
           value={ticket.qty}
-          onChange={handleQty}
+          onChange={changeOrderQty}
           inputMode="numeric"
         />
-        <button type="button" className={styles.step} onClick={handleInc}>
+        <button
+          type="button"
+          className={styles.step}
+          onClick={incrementOrderQty}
+        >
           +
         </button>
       </div>
@@ -121,7 +129,7 @@ export function OrderTicketPanel(props: OrderTicketPanelProps): ReactElement {
           <input
             className={styles.limitInput}
             value={ticket.limit}
-            onChange={handleLimitPx}
+            onChange={changeLimitPrice}
             placeholder={last.toFixed(2)}
           />
         </>

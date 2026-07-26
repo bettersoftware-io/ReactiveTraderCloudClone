@@ -489,15 +489,15 @@ const baseScenarios: Record<string, Scenario> = {
   // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
 
   // CreditBlotter sort: click the Quantity column header → CreditBlotter
-  // handleSort fires, sort state changes, ▼ indicator appears on that column.
-  // Covers CreditBlotter.tsx lines 104-108 (handleSort / nextSortDirection call).
+  // cycleSortColumn fires, sort state changes, ▼ indicator appears on that column.
+  // Covers CreditBlotter.tsx lines 104-108 (cycleSortColumn / nextSortDirection call).
   "credit/blotter-sorted": {
     componentKey: "CreditBlotter",
     fixtureKey: "credit-populated",
   },
   // CreditBlotter number filter: open the Quantity filter, enter a large
   // value (99999999) that no trade matches → "No credit trades match" message.
-  // Covers handleFilter (lines 110-120), activeFilterLabels (128-131), and
+  // Covers setColumnFilter (lines 110-120), activeFilterLabels (128-131), and
   // the "No credit trades match" empty-row branch (line 195).
   "credit/blotter-filtered": {
     componentKey: "CreditBlotter",
@@ -518,7 +518,7 @@ const baseScenarios: Record<string, Scenario> = {
   // snapshot is meaningful because the post-interaction view differs) ---
   // SetFilter: open the Status set-filter popover, uncheck "Rejected", Apply →
   // the blotter drops the Rejected row + "Filtered: Status" toolbar label.
-  // Covers SetFilter toggleValue / checkbox onChange / handleApply (filter arm).
+  // Covers SetFilter toggleValue / checkbox onChange / applySelectedValues (filter arm).
   "fx-blotter/filter-set-applied": {
     componentKey: "FxBlotter",
     fixtureKey: "fx-trades",

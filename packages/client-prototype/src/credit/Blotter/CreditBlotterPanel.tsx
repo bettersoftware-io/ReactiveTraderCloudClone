@@ -7,7 +7,7 @@ export interface CreditBlotterPanelProps {
   trades: CreditTrade[];
   count: string;
   newCreditId: number | null;
-  onExport(): void;
+  onExport: () => void;
 }
 
 // PROTO L585-590 (panCBlot): the Credit Blotter panel body. The outer dock

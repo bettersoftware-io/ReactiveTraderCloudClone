@@ -53,7 +53,7 @@ interface InstrumentRowProps {
   ticker: string;
   cusip: string;
   name: string;
-  onSelect(): void;
+  onSelect: () => void;
 }
 
 function InstrumentRow(props: InstrumentRowProps): ReactElement {

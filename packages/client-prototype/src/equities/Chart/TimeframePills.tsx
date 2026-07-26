@@ -5,7 +5,7 @@ import type { Timeframe } from "#/equities/types";
 
 export interface TimeframePillsProps {
   tf: Timeframe;
-  onSet(tf: Timeframe): void;
+  onSet: (tf: Timeframe) => void;
 }
 
 const TIMEFRAMES: Timeframe[] = ["1D", "1W", "1M", "3M"];
@@ -28,13 +28,13 @@ export function TimeframePills(props: TimeframePillsProps): ReactElement {
 interface TimeframePillProps {
   id: Timeframe;
   active: boolean;
-  onSet(tf: Timeframe): void;
+  onSet: (tf: Timeframe) => void;
 }
 
 function TimeframePill(props: TimeframePillProps): ReactElement {
   const { id, active, onSet } = props;
 
-  function handleClick(): void {
+  function selectTimeframe(): void {
     onSet(id);
   }
 
@@ -44,7 +44,7 @@ function TimeframePill(props: TimeframePillProps): ReactElement {
       className={styles.pill}
       data-tf={id}
       data-active={String(active)}
-      onClick={handleClick}
+      onClick={selectTimeframe}
     >
       {id}
     </button>

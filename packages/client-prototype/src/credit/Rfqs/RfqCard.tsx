@@ -10,9 +10,9 @@ export interface RfqCardProps {
   isExiting: boolean;
   isTabRecent: boolean;
   index: number;
-  onAccept(dealerId: number): void;
-  onCancel(): void;
-  onRemove(): void;
+  onAccept: (dealerId: number) => void;
+  onCancel: () => void;
+  onRemove: () => void;
 }
 
 type CardState = "live" | "accepted" | "terminated";

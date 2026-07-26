@@ -287,7 +287,7 @@ function SplitNode({
   const splitRef = useRef<HTMLDivElement | null>(null);
   const pathKey = path.join(".");
 
-  function onHandlePointerDown(
+  function startResizeDrag(
     index: number,
     e: ReactPointerEvent<HTMLHRElement>,
   ): void {
@@ -520,7 +520,7 @@ function SplitNode({
                 className={styles.handle}
                 tabIndex={0}
                 onPointerDown={(e: ReactPointerEvent<HTMLHRElement>) => {
-                  onHandlePointerDown(i, e);
+                  startResizeDrag(i, e);
                 }}
               />
             ) : null}

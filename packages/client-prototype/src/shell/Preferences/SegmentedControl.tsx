@@ -6,7 +6,7 @@ export interface SegmentedControlProps {
   label: string;
   options: string[];
   value: string;
-  onSelect(opt: string): void;
+  onSelect: (opt: string) => void;
 }
 
 export function SegmentedControl(props: SegmentedControlProps): ReactElement {

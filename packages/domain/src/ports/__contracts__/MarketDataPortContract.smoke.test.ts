@@ -24,7 +24,14 @@ describe("describeMarketDataPortContract :: smoke", () => {
       },
       candles: () => {
         return of([
-          { time: 0, open: 1, high: 2, low: 0.5, close: 1.5 },
+          {
+            time: 0,
+            open: 1,
+            high: 2,
+            low: 0.5,
+            close: 1.5,
+            volume: 1_200_000,
+          },
         ] as const);
       },
       depth: (symbol: string) => {

@@ -58,7 +58,7 @@ export function RfqsPanel(props: RfqsPanelProps): ReactElement {
 export interface RfqFilterPillsProps {
   creditTab: CreditRfqsApi["creditTab"];
   liveCount: CreditRfqsApi["liveCount"];
-  onTab: CreditRfqsApi["onTab"];
+  onTab: CreditRfqsApi["selectTab"];
 }
 
 // PROTO L564/L1325: the LIVE/CLOSED/ALL filter pills. P6: rendered as the
@@ -113,15 +113,15 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
   const { rfq, rfqs, index } = props;
   const vm = rfqCardVm(rfq, rfqs.now);
 
-  function handleAccept(dealerId: number): void {
+  function acceptDealerQuote(dealerId: number): void {
     rfqs.acceptQuote(rfq.id, dealerId);
   }
 
-  function handleCancel(): void {
+  function cancelRfqCard(): void {
     rfqs.cancelRfq(rfq.id);
   }
 
-  function handleRemove(): void {
+  function removeRfqCard(): void {
     rfqs.removeRfq(rfq.id);
   }
 
@@ -133,9 +133,9 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
         isExiting={rfqs.cardExitIds.includes(rfq.id)}
         isTabRecent={rfqs.tabRecent}
         index={index}
-        onAccept={handleAccept}
-        onCancel={handleCancel}
-        onRemove={handleRemove}
+        onAccept={acceptDealerQuote}
+        onCancel={cancelRfqCard}
+        onRemove={removeRfqCard}
       />
     </div>
   );

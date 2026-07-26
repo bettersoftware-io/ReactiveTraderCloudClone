@@ -2,6 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { Candle } from "../equities/candle.js";
+import { CANDLE_HISTORY_TOTAL } from "../equities/timeframe.js";
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
 describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
@@ -12,20 +13,38 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     // Two independent calls with the same (default) timeframe are
     // deterministic — same seed, same bucket grid at ~same `now`.
     expect(noArg).toEqual(explicit);
-    expect(noArg).toHaveLength(60);
+    // Task A3 deepened every timeframe's generated series to
+    // CANDLE_HISTORY_TOTAL (300) via a prepended backwards walk; the
+    // named-period count (60 for "1D") is now only the newest-window slice
+    // — see the '%s' test below.
+    expect(noArg).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
   it.each([
     ["1W", 44] as const,
     ["1M", 48] as const,
     ["3M", 52] as const,
-  ])("'%s' returns %i candles with high >= low for every bar", async (tf, count) => {
+  ])("'%s' returns CANDLE_HISTORY_TOTAL candles, newest %i with high >= low for every bar", async (tf, count) => {
     const port = new EquityMarketDataSimulator(42);
     const candles = await firstValueFrom(port.candles("AAPL", tf));
-    expect(candles).toHaveLength(count);
+    expect(candles).toHaveLength(CANDLE_HISTORY_TOTAL);
 
     for (const c of candles) {
       expect(c.high).toBeGreaterThanOrEqual(c.low);
+    }
+
+    // Real newest-window assertion (not just a length tautology on
+    // slice(-count)): every bar in the newest-`count` window keeps the OHLC
+    // invariant low <= open/close <= high, proving the named-period window
+    // is populated with real candles, not e.g. accidentally sliced/duped
+    // entries from the back-walk.
+    const newestWindow = candles.slice(-count);
+
+    for (const c of newestWindow) {
+      expect(c.open).toBeGreaterThanOrEqual(c.low);
+      expect(c.open).toBeLessThanOrEqual(c.high);
+      expect(c.close).toBeGreaterThanOrEqual(c.low);
+      expect(c.close).toBeLessThanOrEqual(c.high);
     }
   });
 

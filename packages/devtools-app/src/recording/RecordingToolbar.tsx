@@ -11,7 +11,7 @@ import type { RecordingModel } from "#/recording/useRecording";
 export function RecordingToolbar({
   model,
 }: RecordingToolbarProps): ReactElement {
-  function onImport(event: ChangeEvent<HTMLInputElement>): void {
+  function importRecordingFile(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
 
     if (file) {
@@ -61,7 +61,7 @@ export function RecordingToolbar({
           accept="application/json"
           data-testid="import"
           className={styles.hiddenInput}
-          onChange={onImport}
+          onChange={importRecordingFile}
         />
       </label>
 

@@ -226,7 +226,7 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "No credit trades match the current filters",
   },
   // SetFilter applied: open the Status set-filter popover, uncheck "Rejected",
-  // Apply -> the Rejected row is filtered out (toggleValue / onChange / handleApply).
+  // Apply -> the Rejected row is filtered out (toggleValue / onChange / applySelectedValues).
   "fx-blotter/filter-set-applied": {
     steps: [
       { click: "blotter-filter-toggle-status" },

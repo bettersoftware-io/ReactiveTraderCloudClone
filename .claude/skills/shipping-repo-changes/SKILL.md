@@ -148,6 +148,8 @@ git push                       # then re-loop on CI (Rule 2) until green again
 
 A **textual** conflict always forces a resolve regardless — git won't merge otherwise; resolve minimally, don't preemptively catch up just to dodge one.
 
+**A conflict inside a function your branch renamed gets a name check too, not just a correctness check.** Resolving the conflict is the one moment where two independently-reviewed diffs actually combine — the "each side fine alone, broken together" risk this rule exists for applies to names exactly as much as to logic, and nobody is reviewing the combination the way a normal PR review would. If the other side's hunk widens a condition or adds a branch inside a function you renamed, re-read the merged body against the name before committing the resolution — no gate catches a decayed-but-well-formed name; lint and typecheck both stay green on it. This happened for real: a workstream named a function `dismissOnReducedMotion`, then a catch-up merge pulled in `main`'s widened condition (`isFreeze || (reduce && !forced)`), which made the name understate itself — it became `dismissOnJumpCut`.
+
 **Merge `origin/main` *in* — never rebase the branch to update it.** Rebase rewrites pushed commits, needs a force-push, and discards the branch's CI history; merging is non-destructive and keeps the PR intact. (The final merge *to* `main` is still `--merge` per Rule 5.)
 
 **Framing the risk.** A red `main` is bounded and recoverable — the post-merge `main` CI run is the backstop, and fixing forward is fine *as long as it's rare*. Optimize for throughput: pay the catch-up cycle only when overlap is real or the diff is too broad to judge, not on every advance. If you do land a break, fix it forward immediately.

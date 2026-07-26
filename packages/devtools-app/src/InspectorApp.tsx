@@ -88,7 +88,7 @@ export function InspectorApp({
   const filterInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect((): (() => void) => {
-    function onKeyDown(e: KeyboardEvent): void {
+    function dispatchTimelineShortcut(e: KeyboardEvent): void {
       const target = e.target as HTMLElement | null;
 
       if (
@@ -116,14 +116,14 @@ export function InspectorApp({
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", dispatchTimelineShortcut);
 
     return (): void => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", dispatchTimelineShortcut);
     };
   }, [timeline]);
 
-  const handleFocusInTimeline = useCallback(
+  const filterTimelineByMachine = useCallback(
     (machineId: string): void => {
       timeline.addPill({ type: "machine", id: machineId });
       setLens("timeline");
@@ -131,7 +131,7 @@ export function InspectorApp({
     [timeline],
   );
 
-  const handlePinIntent = useCallback(
+  const pinTimelineAtIntent = useCallback(
     (machineId: string, name: string, ts: number): void => {
       const seq = seqOfMachineIntent(activeLog, machineId, name, ts);
 
@@ -143,7 +143,7 @@ export function InspectorApp({
     [activeLog, timeline],
   );
 
-  const handleMsgTypePill = useCallback(
+  const filterTimelineByMsgType = useCallback(
     (msgType: string): void => {
       timeline.addPill({ type: "msgType", id: msgType });
       setLens("timeline");
@@ -177,14 +177,17 @@ export function InspectorApp({
               machines={presentState.machines}
               dev={presentState.dev}
               onInvokeIntent={onInvokeIntent}
-              onFocusInTimeline={handleFocusInTimeline}
-              onPinIntent={handlePinIntent}
+              onFocusInTimeline={filterTimelineByMachine}
+              onPinIntent={pinTimelineAtIntent}
             />
           </div>
         ) : null}
         {lens === "wire" ? (
           <div className={styles.panel}>
-            <WirePanel log={activeLog} onMsgTypePill={handleMsgTypePill} />
+            <WirePanel
+              log={activeLog}
+              onMsgTypePill={filterTimelineByMsgType}
+            />
           </div>
         ) : null}
       </div>
@@ -308,7 +311,7 @@ function LensButton({
   active,
   onSelect,
 }: LensButtonProps): ReactElement {
-  function handleClick(): void {
+  function selectLens(): void {
     onSelect(id);
   }
 
@@ -317,7 +320,7 @@ function LensButton({
       type="button"
       data-testid={`lens-${id}`}
       className={id === active ? styles.tabActive : styles.tab}
-      onClick={handleClick}
+      onClick={selectLens}
     >
       {label}
     </button>

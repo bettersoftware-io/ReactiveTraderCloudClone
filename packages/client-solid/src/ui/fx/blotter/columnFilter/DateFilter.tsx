@@ -27,7 +27,7 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
       : "",
   );
 
-  function handleApply(): void {
+  function applyDateFilter(): void {
     if (!value()) {
       props.onApply(null);
       return;
@@ -93,7 +93,7 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
         <button
           type="button"
           data-testid="date-filter-apply"
-          onClick={handleApply}
+          onClick={applyDateFilter}
           class={styles.applyBtn}
         >
           Apply

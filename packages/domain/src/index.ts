@@ -72,7 +72,11 @@ export type {
 export type { EquityPosition } from "./equities/position.js";
 export type { EquityQuote } from "./equities/quote.js";
 export type { CandleTimeframe } from "./equities/timeframe.js";
-export { CANDLE_TIMEFRAMES } from "./equities/timeframe.js";
+export {
+  CANDLE_DEFAULT_VISIBLE,
+  CANDLE_HISTORY_TOTAL,
+  CANDLE_TIMEFRAMES,
+} from "./equities/timeframe.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,

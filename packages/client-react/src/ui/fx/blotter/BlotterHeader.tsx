@@ -126,7 +126,7 @@ function FilterPanel<TRow>({
   onApply,
   onClose,
 }: FilterPanelProps<TRow>): ReactElement {
-  function handleApply(filter: ColumnFilter<TRow> | null): void {
+  function commitColumnFilter(filter: ColumnFilter<TRow> | null): void {
     onApply(filter);
     onClose();
   }
@@ -138,21 +138,21 @@ function FilterPanel<TRow>({
           column={col.key}
           rows={rows}
           currentFilter={currentFilter}
-          onApply={handleApply}
+          onApply={commitColumnFilter}
         />
       )}
       {col.filterType === "number" && (
         <NumberFilter
           column={col.key}
           currentFilter={currentFilter}
-          onApply={handleApply}
+          onApply={commitColumnFilter}
         />
       )}
       {col.filterType === "date" && (
         <DateFilter
           column={col.key}
           currentFilter={currentFilter}
-          onApply={handleApply}
+          onApply={commitColumnFilter}
         />
       )}
     </div>

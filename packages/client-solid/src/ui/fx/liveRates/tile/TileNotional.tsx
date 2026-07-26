@@ -28,7 +28,7 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
   // `parseNotional` — which rejects commas — would stomp the just-applied
   // valid state with a spurious "Invalid input" error. Skip re-processing
   // when the incoming value already matches what's currently displayed.
-  function handleInput(e: InputChangeEvent): void {
+  function applyNotionalInput(e: InputChangeEvent): void {
     const raw = e.currentTarget.value;
 
     if (raw === props.notional.state().displayValue) {
@@ -38,13 +38,13 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
     props.notional.change(raw);
   }
 
-  function handleKeyDown(e: InputKeyDownEvent): void {
+  function blurNotionalOnEnter(e: InputKeyDownEvent): void {
     if (e.key === "Enter") {
       inputRef.blur();
     }
   }
 
-  function handleFocus(): void {
+  function selectNotionalText(): void {
     inputRef.select();
   }
 
@@ -59,10 +59,10 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
         <input
           ref={inputRef}
           value={props.notional.state().displayValue}
-          onInput={handleInput}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
+          onInput={applyNotionalInput}
+          onChange={applyNotionalInput}
+          onKeyDown={blurNotionalOnEnter}
+          onFocus={selectNotionalText}
           disabled={props.disabled}
           data-error={hasError() ? "true" : "false"}
           class={styles.input}

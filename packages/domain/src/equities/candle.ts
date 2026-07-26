@@ -4,4 +4,7 @@ export interface Candle {
   readonly high: number;
   readonly low: number;
   readonly close: number;
+  /** Traded shares in the bucket. Simulator-generated deterministically;
+   * price-independent (survives the series' live-price anchoring rescale). */
+  readonly volume: number;
 }

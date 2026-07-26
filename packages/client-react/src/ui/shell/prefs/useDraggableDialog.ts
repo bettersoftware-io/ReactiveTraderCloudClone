@@ -49,7 +49,7 @@ export function useDraggableDialog({
     }
   }
 
-  function onPointerDown(event: ReactPointerEvent<HTMLElement>): void {
+  function startDrag(event: ReactPointerEvent<HTMLElement>): void {
     const target = event.target as HTMLElement;
 
     if (target.closest("[data-nodrag]")) {
@@ -65,7 +65,7 @@ export function useDraggableDialog({
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function onPointerMove(event: ReactPointerEvent<HTMLElement>): void {
+  function updateDragOffset(event: ReactPointerEvent<HTMLElement>): void {
     const drag = dragRef.current;
     const dialogEl = dialogRef.current;
 
@@ -99,8 +99,8 @@ export function useDraggableDialog({
     offset,
     dialogRef,
     headerProps: {
-      onPointerDown,
-      onPointerMove,
+      onPointerDown: startDrag,
+      onPointerMove: updateDragOffset,
       onPointerUp: endDrag,
       onPointerCancel: endDrag,
     },

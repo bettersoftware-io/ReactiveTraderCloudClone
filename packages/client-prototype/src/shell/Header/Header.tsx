@@ -14,12 +14,12 @@ import { useMenus } from "#/shell/Header/useMenus";
 
 export interface HeaderProps {
   tab: Tab;
-  onSelectTab(tab: Tab): void;
+  onSelectTab: (tab: Tab) => void;
   lang: string;
-  onSelectLang(code: string): void;
-  onOpenPrefs(): void;
-  onLogout(): void;
-  onReboot(): void;
+  onSelectLang: (code: string) => void;
+  onOpenPrefs: () => void;
+  onLogout: () => void;
+  onReboot: () => void;
 }
 
 export function Header(props: HeaderProps): ReactElement {

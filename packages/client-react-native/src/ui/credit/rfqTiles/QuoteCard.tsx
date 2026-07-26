@@ -23,8 +23,8 @@ export function QuoteCard({
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept != null;
   const styles = useThemedStyles(makeStyles);
 
-  function handleAccept(): void {
-    if (quote.state.type === "pendingWithPrice" && onAccept) {
+  function acceptPendingQuote(): void {
+    if (canAccept && onAccept) {
       void onAccept(quote.id);
     }
   }
@@ -45,7 +45,7 @@ export function QuoteCard({
         <Pressable
           testID={`quote-accept-${quote.id}`}
           style={styles.acceptBtn}
-          onPress={handleAccept}
+          onPress={acceptPendingQuote}
         >
           <Text style={styles.acceptLabel}>Accept</Text>
         </Pressable>

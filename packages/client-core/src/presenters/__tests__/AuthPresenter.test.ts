@@ -503,7 +503,7 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
  * internal `.subscribe()` callback, so a single shared `Subject` across calls
  * would let a *stale* subscription (e.g. the initial `login()` from
  * `lockedPresenter`'s setup) also receive a later `resolve()` meant for
- * `unlock()` — silently re-running `handleLoginOutcome` and clobbering
+ * `unlock()` — silently re-running `commitLoginOutcome` and clobbering
  * `status` out from under the in-flight `unlock()` assertions. */
 interface DeferredAuthPort {
   readonly port: AuthPort;

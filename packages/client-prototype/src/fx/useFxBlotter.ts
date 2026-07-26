@@ -25,9 +25,9 @@ export interface BlotterApi {
   sort: { field: SortField; dir: 1 | -1 };
   query: string;
   count: number;
-  onSort(f: SortField): void;
-  onQuery(v: string): void;
-  onExport(): void;
+  toggleSortColumn(f: SortField): void;
+  setBlotterQuery(v: string): void;
+  exportCsv(): void;
   cols: { field: SortField; label: string; ind: string }[];
 }
 
@@ -145,14 +145,14 @@ export function useFxBlotter(trades: Trade[]): BlotterApi {
 
   // PROTO 1157 (fxSortClick): toggle direction on the active field, else
   // switch to the new field ascending.
-  function onSort(f: SortField): void {
+  function toggleSortColumn(f: SortField): void {
     setSort((prev) => {
       const dir: 1 | -1 = prev.field === f ? (-prev.dir as 1 | -1) : 1;
       return { field: f, dir };
     });
   }
 
-  function onQuery(v: string): void {
+  function setBlotterQuery(v: string): void {
     setQuery(v);
   }
 
@@ -160,7 +160,7 @@ export function useFxBlotter(trades: Trade[]): BlotterApi {
 
   // PROTO 1160 (exportFx): build the CSV in header-column order, then
   // trigger the download.
-  function onExport(): void {
+  function exportCsv(): void {
     const csv = toCsv(
       CSV_HEADERS,
       rows.map((t) => {
@@ -194,9 +194,9 @@ export function useFxBlotter(trades: Trade[]): BlotterApi {
     sort,
     query,
     count: rows.length,
-    onSort,
-    onQuery,
-    onExport,
+    toggleSortColumn,
+    setBlotterQuery,
+    exportCsv,
     cols,
   };
 }
