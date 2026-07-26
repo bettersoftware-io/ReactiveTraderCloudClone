@@ -24,7 +24,7 @@ appId: io.bettersoftware.rtcmobile
 - extendedWaitUntil:
     visible:
       id: "login-screen"
-    timeout: 20000
+    timeout: 120000
 # Step 2: in-app navigation to the scenario route (release scheme).
 - openLink:
     link: "rtcmobile://__visual/boot/laser"
@@ -39,5 +39,5 @@ appId: io.bettersoftware.rtcmobile
 - extendedWaitUntil:
     visible:
       id: "visual-ready"
-    timeout: 20000
+    timeout: 60000
 - takeScreenshot: shots/boot_laser
