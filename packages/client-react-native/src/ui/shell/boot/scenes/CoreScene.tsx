@@ -4,6 +4,7 @@ import {
   PaintStyle,
   Picture,
   type SkCanvas,
+  type SkFont,
   Skia,
   TileMode,
 } from "@shopify/react-native-skia";
@@ -14,6 +15,7 @@ import { BOOT_DURATION_MS } from "@rtc/client-core";
 import type { Projection3dParams } from "@rtc/motion-core";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";
+import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import {
   ARC_TAIL_LENGTH,
   ARC_TAIL_SAMPLES,
@@ -155,15 +157,21 @@ import {
  *     UPLINK top-left, YAW / LINKS · LIVE top-right), the latter pair reading
  *     the order-flow arc state Task 3 added.
  *
- * All twelve web elements are now ported. Two documented non-goals remain,
- * neither a missing element so much as a mobile-rendering constraint:
- *   - the `ctx.shadowBlur` bloom the web layers onto the mesh strokes and the
- *     arc/ripple draw-heads — a per-frame `MaskFilter.MakeBlur` is the mobile
- *     equivalent of the compositing traps `docs/performance.md` catalogues,
- *     so the underlying stroke/dot is ported and the glow is not;
- *   - the web's `bold 12px`/`bold 13px`/`bold 18px` banner and telemetry text
- *     render at regular weight — `Skia.Font()` resolves the platform default
- *     typeface and no bold face is bundled.
+ * All twelve web elements are now ported. One documented non-goal remains,
+ * less a missing element than a mobile-rendering constraint: the
+ * `ctx.shadowBlur` bloom the web layers onto the mesh strokes and the
+ * arc/ripple draw-heads — a per-frame `MaskFilter.MakeBlur` is the mobile
+ * equivalent of the compositing traps `docs/performance.md` catalogues, so
+ * the underlying stroke/dot is ported and the glow is not.
+ *
+ * A second entry stood here until 2026-07-26, claiming the text merely
+ * rendered at regular weight because "`Skia.Font()` resolves the platform
+ * default typeface". It does not. A font built with no typeface draws ZERO
+ * glyphs on real iOS — silently — so the banner, the corner telemetry and
+ * the spotlight labels rendered nothing at all, on device and in the pinned
+ * golden alike. Fonts now come from `bootSceneFonts.ts` (bundled JetBrains
+ * Mono, matching the web's stack, real 700 face for the bold sites) and are
+ * built in React-land, never inside the draw worklet.
  * The web's `ctx.clearRect` + translucent background-wash pair (canvas-2D's
  * own persistence workaround) has no counterpart here: `createPicture`
  * always starts a fresh, blank recording, so there is nothing to clear. The
@@ -186,6 +194,10 @@ export function CoreScene({
   const accentAlt = theme.accent2;
   const buyColor = theme.accentPositive;
   const sellColor = theme.accentNegative;
+  // Null until the bundled faces load; the text layers below sit that window
+  // out while the geometry draws normally. Built here, outside the recorder
+  // worklet, and captured by it — see `bootSceneFonts.ts`.
+  const fonts = useBootSceneFonts(CORE_FONTS);
 
   const picture = useDerivedValue(() => {
     return createPicture(
@@ -286,6 +298,7 @@ export function CoreScene({
           flicker,
           accent,
           accentAlt,
+          fonts?.spotlight ?? null,
         );
         drawCalibrationTicks(
           canvas,
@@ -305,6 +318,7 @@ export function CoreScene({
           flicker,
           accent,
           accentAlt,
+          fonts?.telemetry ?? null,
         );
         drawStatusBanner(
           canvas,
@@ -314,6 +328,7 @@ export function CoreScene({
           flicker,
           accent,
           accentAlt,
+          fonts?.banner ?? null,
         );
       },
       { width, height },
@@ -323,6 +338,22 @@ export function CoreScene({
   const pictureProps = { testID: "boot-scene-core", picture };
   return <Picture {...pictureProps} />;
 }
+
+/** `bootCore.ts`'s `10px ${MONO}` spotlight label and `bold 12px ${MONO}`
+ * status banner. The telemetry pair's `11px` already had a name, next to the
+ * insets it is laid out with (`coreTelemetry.ts`). */
+const SPOTLIGHT_LABEL_FONT_SIZE = 10;
+const BANNER_FONT_SIZE = 12;
+
+/** The scene's three text sites, each matching its web `ctx.font` string in
+ * `bootCore.ts`: the spotlight labels (`10px`), the corner telemetry
+ * (`11px`), and the status banner (`bold 12px`). Module-level so the memo
+ * inside `useBootSceneFonts` sees a stable identity. */
+const CORE_FONTS = {
+  spotlight: { size: SPOTLIGHT_LABEL_FONT_SIZE },
+  telemetry: { size: TELEMETRY_FONT_SIZE },
+  banner: { size: BANNER_FONT_SIZE, bold: true },
+} as const;
 
 /** Screen-space tuning, verbatim from the web variant: the globe sits
  * slightly above true centre, sized off the smaller viewport dimension. */
@@ -788,6 +819,7 @@ function drawSpotlight(
   flicker: number,
   accent: string,
   accentAlt: string,
+  font: SkFont | null,
 ): void {
   "worklet";
 
@@ -825,13 +857,12 @@ function drawSpotlight(
   linePaint.setColor(Skia.Color(hexToRgba(accent, 0.45 * flicker)));
   canvas.drawPath(leader, linePaint);
 
-  // Regular weight only — no bold typeface is bundled (see this file's header
-  // and the phase 6a note in docs/STATUS.md). The web label is 10px regular
-  // here anyway, so only the banner is affected. Built as `Skia.Font()` +
-  // `setSize`, not `Skia.Font(undefined, 10)` — see `drawStatusBanner`'s
-  // comment for why the explicit-`undefined` form throws on real iOS Skia.
-  const font = Skia.Font();
-  font.setSize(10);
+  // The leader line above is geometry and always draws; only the label waits
+  // on the typeface.
+  if (font === null) {
+    return;
+  }
+
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);
   textPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * flicker)));
@@ -895,11 +926,15 @@ function drawTelemetry(
   flicker: number,
   accent: string,
   accentAlt: string,
+  font: SkFont | null,
 ): void {
   "worklet";
+
+  if (font === null) {
+    return;
+  }
+
   const lines = coreTelemetryLines(elapsed, progress, yaw);
-  const font = Skia.Font();
-  font.setSize(TELEMETRY_FONT_SIZE);
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(accent, 0.7 * flicker)));
@@ -942,20 +977,18 @@ function drawStatusBanner(
   flicker: number,
   accent: string,
   accentAlt: string,
+  font: SkFont | null,
 ): void {
   "worklet";
+
+  if (font === null) {
+    return;
+  }
+
   const status = coreBootStatus(progress);
   const color = status.useAltColor ? accentAlt : accent;
   const blink = bannerBlinkAlpha(progress, elapsedSec);
   const text = `▸ ${status.text} ◂`;
-  // Default typeface at regular weight (no bold synthesis — the web banner is
-  // `bold 12px`; a deliberate minor cosmetic gap, not one of the deferred
-  // elements above). Build with no args + setSize rather than
-  // `Skia.Font(undefined, 12)`: passing `undefined` explicitly as the typeface
-  // throws "Value is undefined, expected an Object" on real iOS Skia (the jest
-  // mock tolerates it), firing every frame from this draw.
-  const font = Skia.Font();
-  font.setSize(12);
   const textWidth = font.getTextWidth(text);
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);

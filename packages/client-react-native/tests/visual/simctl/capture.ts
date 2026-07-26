@@ -15,6 +15,9 @@ const exec = promisify(execFile);
  * (rehaul amendment A2). NOT the release scheme (`rtcmobile`, used below for
  * the in-app scenario deep link once the dev client is already foregrounded). */
 const DEV_CLIENT_SCHEME = "exp+rtc-mobile";
+/** Terminated before every capture so each scenario starts from an identical
+ * cold launch — see `capture` below. */
+const APP_BUNDLE_ID = "io.bettersoftware.rtcmobile";
 
 /** Release/standalone deep-link scheme (`app.config.ts` `scheme`), used for
  * the in-app `__visual/<id>` navigation once the dev client has loaded the
@@ -50,6 +53,9 @@ const DEFAULT_POLL_INTERVAL_MS = 400;
  * itself (`VisualScenarioHost`, one frame after fonts load) is the real
  * readiness gate now, not a guessed fixed wait. */
 const DEFAULT_POST_READY_SETTLE_MS = 300;
+/** Bounded wait for the dev client's "Tools" hint to retract on its own.
+ * Measured on device: it clears between ~10s and ~15s after launch. */
+const DEFAULT_DEV_CHROME_TIMEOUT_MS = 25_000;
 
 const VISUAL_READY_ID = "visual-ready";
 const OPEN_CONFIRM_LABEL = "Open";
@@ -79,6 +85,20 @@ interface AXElement {
  * REJECTED: `shell/connection-banner` is pinned `classic`/`light`, so a
  * blanket light-background heuristic would misfire on a legitimately
  * passing capture — see `tests/visual/scenarios.tsx`'s skin×mode table. */
+/** Stock iOS home-screen icons, used to recognise SpringBoard. Deliberately
+ * first-party apps that cannot be uninstalled, so the signature holds on any
+ * simulator the goldens are captured on. */
+/** The expanded state of the dev client's floating menu button. */
+const DEV_TOOLS_HINT_LABEL = "Tools";
+
+const SPRINGBOARD_ICON_IDS: ReadonlySet<string> = new Set([
+  "Safari",
+  "Messages",
+  "Settings",
+  "Photos",
+  "spotlight-pill",
+]);
+
 const LAUNCHER_HOME_LABELS: ReadonlySet<string> = new Set([
   "DEVELOPMENT SERVERS",
   "RECENTLY OPENED",
@@ -115,6 +135,9 @@ export interface SimctlDriverConfig {
   pollIntervalMs?: number;
   /** Settle buffer (ms) after `visual-ready` is observed, before the shot. */
   postReadySettleMs?: number;
+  /** Bounded wait (ms) for the dev client's "Tools" hint to retract before
+   * the shot. */
+  devChromeTimeoutMs?: number;
 }
 
 /**
@@ -158,9 +181,20 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
   const postReadySettleMs =
     cfg.postReadySettleMs ?? DEFAULT_POST_READY_SETTLE_MS;
 
+  const devChromeTimeoutMs =
+    cfg.devChromeTimeoutMs ?? DEFAULT_DEV_CHROME_TIMEOUT_MS;
+
   return {
     name: "simctl",
     async capture(scenarioId: string): Promise<Buffer> {
+      // Cold-start every scenario. Re-opening the dev-client URL against an
+      // ALREADY-RUNNING app does not reliably re-navigate it: observed on
+      // device, the app instead tears down to the iOS home screen and never
+      // comes back, so every scenario after the first in a multi-scenario
+      // run was driving a dead app. Terminating first makes each capture
+      // independent of what the previous one left on screen — the property a
+      // golden harness needs anyway.
+      await terminateApp(cfg.udid);
       await openMetroBase(cfg.udid, metroPort);
       await waitForAppBoot(idbPath, cfg.udid, {
         timeoutMs: appBootTimeoutMs,
@@ -178,6 +212,10 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
         idbTapX,
         idbTapY,
       });
+      await waitForDevChromeRetracted(idbPath, cfg.udid, {
+        timeoutMs: devChromeTimeoutMs,
+        pollIntervalMs,
+      });
       await delay(postReadySettleMs);
 
       // Defence in depth: re-check the a11y tree at the moment of the shot,
@@ -190,6 +228,17 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
       return screenshot(cfg.udid, scenarioId);
     },
   };
+}
+
+/** Best-effort: `simctl terminate` exits non-zero when the app is not
+ * running, which is a perfectly normal state here (first scenario of a run,
+ * or a previous crash). Swallowed so a cold simulator is not an error. */
+async function terminateApp(udid: string): Promise<void> {
+  try {
+    await exec("xcrun", ["simctl", "terminate", udid, APP_BUNDLE_ID]);
+  } catch {
+    // Not running — nothing to terminate.
+  }
 }
 
 async function openMetroBase(udid: string, metroPort: string): Promise<void> {
@@ -258,6 +307,22 @@ function looksLikeLauncherHome(tree: AXElement[]): boolean {
   return hits >= 2;
 }
 
+/** True for the iOS home screen. Matched on the stock first-page app icons,
+ * which are present on a fresh simulator and survive the app being
+ * terminated — the state a capture must never mistake for a running app.
+ * Same 2+ hit threshold as `looksLikeLauncherHome`, for the same reason. */
+function looksLikeSpringBoard(tree: AXElement[]): boolean {
+  let hits = 0;
+
+  for (const el of tree) {
+    if (el.AXUniqueId !== null && SPRINGBOARD_ICON_IDS.has(el.AXUniqueId)) {
+      hits += 1;
+    }
+  }
+
+  return hits >= 2;
+}
+
 function assertNotLauncherShaped(tree: AXElement[], scenarioId: string): void {
   if (looksLikeLauncherHome(tree)) {
     throw new Error(
@@ -289,13 +354,6 @@ async function tapBlindFallback(
   await exec(idbPath, ["ui", "tap", "--udid", udid, String(x), String(y)]);
 }
 
-interface MarkerWaitConfig {
-  id: string;
-  timeoutMs: number;
-  pollIntervalMs: number;
-  describe: string;
-}
-
 /** Polls until the dev client has left its launcher home screen — i.e. OUR
  * app is on screen, whatever it is showing.
  *
@@ -306,9 +364,19 @@ interface MarkerWaitConfig {
  * a perfectly healthy app (observed: the tree carried `logout-button` and the
  * spot-tile ids instead).
  *
- * Inverting the launcher signature is the robust gate: it is true for every
- * app state — signed in, signed out, or the harness route — and false only
- * while the dev client is still on its own home screen. */
+ * An earlier version of this gate claimed that inverting the launcher
+ * signature is "false only while the dev client is still on its own home
+ * screen". That was wrong, and it cost a debugging session: the iOS
+ * SpringBoard home screen is not the Expo launcher either, so a terminated
+ * app read as "booted" and the scenario deep link went nowhere. The same
+ * mistake this harness exists to prevent — inferring a good state from the
+ * absence of one known-bad state — reproduced one level up.
+ *
+ * Both screens are now rejected. This gate remains a negative one (there is
+ * no app-side marker to assert before the scenario route mounts — the
+ * harness host, and so `visual-pending`, only exists under `__visual/`), but
+ * it can no longer pass on an app that is not running: `visual-ready` is
+ * still the only thing a capture ever proceeds on. */
 interface AppBootWaitConfig {
   timeoutMs: number;
   pollIntervalMs: number;
@@ -326,7 +394,7 @@ async function waitForAppBoot(
     try {
       const tree = await describeAll(idbPath, udid);
 
-      if (!looksLikeLauncherHome(tree)) {
+      if (!looksLikeLauncherHome(tree) && !looksLikeSpringBoard(tree)) {
         return;
       }
     } catch {
@@ -338,53 +406,62 @@ async function waitForAppBoot(
   }
 
   throw new Error(
-    `Timed out after ${timeoutMs}ms waiting for the app to leave the dev ` +
-      `client launcher for scenario "${scenarioId}" — it never loaded from ` +
-      `Metro. Refusing to return a screenshot (a capture failure is not the ` +
-      `same as a visual regression).`,
+    `Timed out after ${timeoutMs}ms waiting for the app to start for ` +
+      `scenario "${scenarioId}" — the simulator is still showing the Expo ` +
+      `dev-client launcher or the iOS home screen, so the app never loaded ` +
+      `from Metro. Refusing to return a screenshot (a capture failure is ` +
+      `not the same as a visual regression).`,
   );
 }
 
-/** Polls the accessibility tree until an element with `AXUniqueId === id`
- * appears, or throws once `timeoutMs` elapses. Never returns without either
- * finding the marker or throwing — a capture must not proceed on a guess. */
-async function waitForMarker(
+interface DevChromeWaitConfig {
+  timeoutMs: number;
+  pollIntervalMs: number;
+}
+
+/**
+ * Waits for the Expo dev client's floating "Tools" hint to retract to its
+ * bare gear.
+ *
+ * Cold-launching every scenario (see `capture`) means the shot now lands
+ * while that hint is still expanded — a large blue pill over the top-right
+ * of the frame, which would bake into the goldens. It is dev-client chrome
+ * with a launch-relative timer, so its state is a function of how fast the
+ * capture ran: precisely the kind of variability a golden must not carry.
+ *
+ * Waited for as a CONDITION rather than slept past. A fixed delay long
+ * enough to cover it is how this harness got into trouble the first time.
+ *
+ * Not fatal on timeout: the hint retracting is cosmetic, and failing an
+ * otherwise-good capture over dev chrome would be worse than a diff that
+ * says plainly what changed. The pixel comparison still catches it.
+ */
+async function waitForDevChromeRetracted(
   idbPath: string,
   udid: string,
-  { id, timeoutMs, pollIntervalMs, describe }: MarkerWaitConfig,
+  { timeoutMs, pollIntervalMs }: DevChromeWaitConfig,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  let lastError: unknown;
 
   while (Date.now() < deadline) {
     try {
       const tree = await describeAll(idbPath, udid);
 
-      if (findById(tree, id) !== undefined) {
+      if (!hasDevToolsHint(tree)) {
         return;
       }
-
-      lastError = undefined;
-    } catch (err) {
-      // `idb ui describe-all` can transiently fail while the app is mid
-      // relaunch/crash-recover; keep polling rather than failing on the
-      // first hiccup, but remember it so a genuine timeout can report it.
-      lastError = err;
+    } catch {
+      // Transient `idb` failure — keep polling.
     }
 
     await delay(pollIntervalMs);
   }
+}
 
-  const suffix =
-    lastError === undefined
-      ? ""
-      : ` Last "idb ui describe-all" error: ${String(lastError)}`;
-
-  throw new Error(
-    `Timed out after ${timeoutMs}ms waiting for the ${describe} — the app ` +
-      `never reached it. Refusing to return a screenshot (a capture ` +
-      `failure is not the same as a visual regression).${suffix}`,
-  );
+function hasDevToolsHint(tree: AXElement[]): boolean {
+  return tree.some((el) => {
+    return el.AXLabel === DEV_TOOLS_HINT_LABEL;
+  });
 }
 
 interface ReadyWaitConfig {

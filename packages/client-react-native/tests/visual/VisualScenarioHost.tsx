@@ -17,6 +17,7 @@ import {
 } from "@rtc/domain";
 import { createViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
+import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import { useAppFonts } from "#/ui/theme/fonts";
 import { ThemeProvider } from "#/ui/theme/ThemeProvider";
 
@@ -34,6 +35,11 @@ interface Props {
   children: ReactNode;
 }
 
+/** Readiness probe only — the font it builds is never drawn, so the size is
+ * arbitrary. `useBootSceneFonts` resolves both faces regardless of how many
+ * sites a caller declares, so one entry is enough to observe the load. */
+const HARNESS_FONT_PROBE = { probe: { size: 12 } } as const;
+
 /** Mounts one full, isolated app composition per scenario — sim ports only,
  * a skin×mode pinned via a seeded `PreferencesSimulator` (not the persisted
  * device preference), and no shared `reconnect$`/`incident$` wiring (each
@@ -43,9 +49,11 @@ interface Props {
  * pinning happens by SEEDING the preferences port, not by a ThemeProvider
  * override; no production touch was needed for the skin/mode axis.
  *
- * Sets `testID="visual-ready"` on the root one frame after the bundled fonts
- * finish loading, the same rendered-ready marker the capture drivers (Tasks
- * 1.x/2.x/3.x) wait on before taking the screenshot. */
+ * Sets `testID="visual-ready"` on the root one frame after BOTH font paths
+ * finish loading — the RN text families (`useAppFonts`) and the Skia
+ * typefaces the boot scenes draw with — the same rendered-ready marker the
+ * capture drivers (Tasks 1.x/2.x/3.x) wait on before taking the
+ * screenshot. */
 export function VisualScenarioHost({
   skin,
   mode,
@@ -53,13 +61,22 @@ export function VisualScenarioHost({
   children,
 }: Props): ReactNode {
   const fontsLoaded = useAppFonts();
+  // The Skia typefaces the boot scenes draw text with load on their OWN
+  // async path, separate from `useAppFonts` — so a scenario could otherwise
+  // be captured in the window where geometry has drawn and text has not, and
+  // that golden would then pin missing text as correct. That is exactly how
+  // the text this gate protects went unnoticed for weeks. Gated here for
+  // every scenario, not just `boot/*`: the wait is a few milliseconds, and a
+  // host that only guards the scenarios someone remembered to list is the
+  // same trap one level up.
+  const skiaFontsLoaded = useBootSceneFonts(HARNESS_FONT_PROBE) !== null;
   const [viewModel] = useState(() => {
     return buildScenarioViewModel(skin, mode, forceReduceMotion);
   });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!fontsLoaded) {
+    if (!fontsLoaded || !skiaFontsLoaded) {
       return undefined;
     }
 
@@ -70,7 +87,7 @@ export function VisualScenarioHost({
     return () => {
       cancelAnimationFrame(handle);
     };
-  }, [fontsLoaded]);
+  }, [fontsLoaded, skiaFontsLoaded]);
 
   return (
     <ViewModelProvider viewModel={viewModel}>

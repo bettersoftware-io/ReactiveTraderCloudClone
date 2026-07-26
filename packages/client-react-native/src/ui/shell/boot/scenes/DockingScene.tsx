@@ -18,6 +18,10 @@ import { BOOT_DURATION_MS } from "@rtc/client-core";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";
 import {
+  type BootFontSpec,
+  useBootSceneFonts,
+} from "#/ui/shell/boot/scenes/bootSceneFonts";
+import {
   bootProgress,
   ease,
   hexToRgba,
@@ -180,6 +184,11 @@ export function DockingScene({
     return buildHudGridPath(width, height);
   }, [width, height]);
 
+  // Null until the bundled faces load. Built here rather than in the recorder
+  // — `Skia.Font` is a host-object factory, and the bare `Skia.Font()` this
+  // replaces drew no glyphs at all on device (see `bootSceneFonts.ts`).
+  const fonts = useBootSceneFonts(DOCKING_FONTS);
+
   const picture = useDerivedValue(() => {
     return createPicture(
       (canvas) => {
@@ -227,6 +236,7 @@ export function DockingScene({
           accent,
           accentAlt,
           buy,
+          fonts,
         );
         drawRangeReadouts(
           canvas,
@@ -238,6 +248,7 @@ export function DockingScene({
           eased,
           accent,
           accentAlt,
+          fonts,
         );
         drawLockReticle(
           canvas,
@@ -251,8 +262,9 @@ export function DockingScene({
           elapsed,
           accent,
           accentAlt,
+          fonts,
         );
-        drawCrosshair(canvas, centerX, centerY, elapsed, accent);
+        drawCrosshair(canvas, centerX, centerY, elapsed, accent, fonts);
         drawScanSweep(canvas, width, height, elapsed, accentAlt);
         drawCornerLabels(
           canvas,
@@ -264,6 +276,7 @@ export function DockingScene({
           accent,
           accentAlt,
           sell,
+          fonts,
         );
         drawStatusBanner(
           canvas,
@@ -274,6 +287,7 @@ export function DockingScene({
           accent,
           accentAlt,
           buy,
+          fonts,
         );
         drawFinalFlash(
           canvas,
@@ -770,8 +784,7 @@ const RANGE_ATTITUDE_FONT_SIZE = 11;
  * (`bootCanvas.ts:729`); Skia has no baseline modes (only the default,
  * roughly "alphabetic"), so these draw with the same baseline-anchored
  * `drawText` every other label in this scene uses — a minor, accepted
- * vertical-position gap alongside the regular-weight one `drawRangeReadouts`
- * documents below. */
+ * vertical-position gap (open item P3). */
 function drawRangeRing(
   canvas: SkCanvas,
   centerX: number,
@@ -783,6 +796,7 @@ function drawRangeRing(
   accent: string,
   accentAlt: string,
   buy: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
   const rangeRadius = Math.min(width, height) * RANGE_RADIUS_FACTOR;
@@ -801,9 +815,14 @@ function drawRangeRing(
     ringPaint,
   );
 
+  // The two rings above are geometry and always draw; the attitude columns
+  // wait on the typeface.
+  if (fonts === null) {
+    return;
+  }
+
   const readouts = attitudeReadouts(elapsedSec, wobble);
-  const font = Skia.Font();
-  font.setSize(RANGE_ATTITUDE_FONT_SIZE);
+  const font = fonts.attitude;
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);
   textPaint.setColor(Skia.Color(hexToRgba(buy, 0.85)));
@@ -865,10 +884,10 @@ const RANGE_RATE_BASE = 34;
 const RANGE_RATE_PROGRESS_FACTOR = 6;
 
 /** RANGE / RANGE RATE captions at 9px plus the two large figures —
- * `bootCanvas.ts:773-799`. **Regular weight, where the web is `bold 18px`**
- * — the most visible instance of the Skia-has-no-bold-face gap in this
- * scene (repo-wide constraint 3, and `dockingGeometry.ts`'s own header);
- * no bold face is bundled, so no attempt is made to synthesize one. */
+ * `bootCanvas.ts:773-799`. The figures render `bold 18px` like the web: the
+ * real JetBrains Mono 700 face is loaded alongside the 400 (`bootSceneFonts
+ * .ts`), so no weight is synthesized. This helper is entirely text, so it
+ * draws nothing at all until the faces load. */
 function drawRangeReadouts(
   canvas: SkCanvas,
   centerX: number,
@@ -879,8 +898,14 @@ function drawRangeReadouts(
   easedProgress: number,
   accent: string,
   accentAlt: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
+
+  if (fonts === null) {
+    return;
+  }
+
   const rangeRadius = Math.min(width, height) * RANGE_RADIUS_FACTOR;
   const rangeMeters = Math.max(
     0,
@@ -888,8 +913,7 @@ function drawRangeReadouts(
   );
   const rangeRateText = `-0.${padTwo(RANGE_RATE_BASE - Math.round(progress * RANGE_RATE_PROGRESS_FACTOR))} m/s`;
 
-  const captionFont = Skia.Font();
-  captionFont.setSize(RANGE_CAPTION_FONT_SIZE);
+  const captionFont = fonts.caption;
   const captionPaint = Skia.Paint();
   captionPaint.setAntiAlias(true);
   captionPaint.setColor(Skia.Color(hexToRgba(accent, 0.5)));
@@ -911,8 +935,7 @@ function drawRangeReadouts(
     captionFont,
   );
 
-  const figureFont = Skia.Font();
-  figureFont.setSize(RANGE_FIGURE_FONT_SIZE);
+  const figureFont = fonts.figure;
   const figurePaint = Skia.Paint();
   figurePaint.setAntiAlias(true);
   figurePaint.setColor(Skia.Color(hexToRgba(accent, 0.95)));
@@ -968,6 +991,7 @@ function drawLockReticle(
   elapsedSec: number,
   accent: string,
   accentAlt: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
   const minDim = Math.min(width, height);
@@ -1036,8 +1060,13 @@ function drawLockReticle(
     elbowPaint,
   );
 
-  const calloutFont = Skia.Font();
-  calloutFont.setSize(LOCK_CALLOUT_FONT_SIZE);
+  // Brackets, ring, elbow and tether are geometry and always draw; only the
+  // callout text waits on the typeface.
+  if (fonts === null) {
+    return;
+  }
+
+  const calloutFont = fonts.callout;
   const calloutPaint = Skia.Paint();
   calloutPaint.setAntiAlias(true);
   calloutPaint.setColor(Skia.Color(hexToRgba(lockColor, 0.9)));
@@ -1081,6 +1110,7 @@ function drawCrosshair(
   centerY: number,
   elapsedSec: number,
   accent: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
   const crossPaint = Skia.Paint();
@@ -1129,8 +1159,7 @@ function drawCrosshair(
   const ladderTextPaint = Skia.Paint();
   ladderTextPaint.setAntiAlias(true);
   ladderTextPaint.setColor(Skia.Color(hexToRgba(accent, 0.4)));
-  const ladderFont = Skia.Font();
-  ladderFont.setSize(PIP_FONT_SIZE);
+  const ladderFont = fonts?.pip ?? null;
 
   canvas.save();
   canvas.translate(centerX, centerY + ladder.offsetY);
@@ -1150,13 +1179,16 @@ function drawCrosshair(
       tick.y,
       ladderStrokePaint,
     );
-    canvas.drawText(
-      tick.label,
-      PIP_LABEL_X,
-      tick.y + PIP_LABEL_Y_OFFSET,
-      ladderTextPaint,
-      ladderFont,
-    );
+
+    if (ladderFont !== null) {
+      canvas.drawText(
+        tick.label,
+        PIP_LABEL_X,
+        tick.y + PIP_LABEL_Y_OFFSET,
+        ladderTextPaint,
+        ladderFont,
+      );
+    }
   }
 
   canvas.restore();
@@ -1248,8 +1280,14 @@ function drawCornerLabels(
   accent: string,
   accentAlt: string,
   sell: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
+
+  if (fonts === null) {
+    return;
+  }
+
   const telemetry = dockingTelemetry(
     elapsedSec,
     progress,
@@ -1259,8 +1297,7 @@ function drawCornerLabels(
     height,
   );
   const labels = dockingLabels(telemetry);
-  const font = Skia.Font();
-  font.setSize(CORNER_LABEL_FONT_SIZE);
+  const font = fonts.cornerLabel;
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
 
@@ -1391,8 +1428,14 @@ function drawStatusBanner(
   accent: string,
   accentAlt: string,
   buy: string,
+  fonts: DockingFonts | null,
 ): void {
   "worklet";
+
+  if (fonts === null) {
+    return;
+  }
+
   const status = dockingStatus(progress);
   const color = resolveDockingColor(
     status.colorRole,
@@ -1403,8 +1446,7 @@ function drawStatusBanner(
   );
   const blink = dockingStatusBlink(elapsedSec, status.text);
   const text = `▸ ${status.text} ◂`;
-  const font = Skia.Font();
-  font.setSize(STATUS_BANNER_FONT_SIZE);
+  const font = fonts.banner;
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(color, STATUS_BANNER_ALPHA * blink)));
@@ -1458,3 +1500,44 @@ function drawFinalFlash(
   paint.setShader(shader);
   canvas.drawRect({ x: 0, y: 0, width, height }, paint);
 }
+
+/**
+ * The scene's seven text sites, each matching its web `ctx.font` string in
+ * `bootCanvas.ts`: the P/Y/R attitude columns (`11px`), the RANGE captions
+ * (`9px`) and figures (`bold 18px`), the lock callout (`11px`), the pip
+ * ladder (`9px`), the four corner blocks (`11px`) and the status banner
+ * (`bold 13px`).
+ *
+ * Declared last, after every `*_FONT_SIZE` it reads — a module-level `const`
+ * initializer runs in source order, so hoisting this to the top would hit
+ * the temporal dead zone. It is still a module constant by the time
+ * `DockingScene` first renders, which is what `useBootSceneFonts`'s memo
+ * needs for a stable identity.
+ */
+/** A `type`, not an `interface`, on purpose: only type aliases get an
+ * implicit index signature, which `useBootSceneFonts`'s
+ * `Record<string, BootFontSpec>` constraint requires. */
+type DockingFontSites = {
+  attitude: BootFontSpec;
+  caption: BootFontSpec;
+  figure: BootFontSpec;
+  callout: BootFontSpec;
+  pip: BootFontSpec;
+  cornerLabel: BootFontSpec;
+  banner: BootFontSpec;
+};
+
+const DOCKING_FONTS: DockingFontSites = {
+  attitude: { size: RANGE_ATTITUDE_FONT_SIZE },
+  caption: { size: RANGE_CAPTION_FONT_SIZE },
+  figure: { size: RANGE_FIGURE_FONT_SIZE, bold: true },
+  callout: { size: LOCK_CALLOUT_FONT_SIZE },
+  pip: { size: PIP_FONT_SIZE },
+  cornerLabel: { size: CORNER_LABEL_FONT_SIZE },
+  banner: { size: STATUS_BANNER_FONT_SIZE, bold: true },
+};
+
+/** Named so a mistyped site (`fonts.corner`) is a type error rather than an
+ * `undefined` handed to `drawText` — which Skia would take without
+ * complaint. */
+type DockingFonts = Readonly<Record<keyof DockingFontSites, SkFont>>;

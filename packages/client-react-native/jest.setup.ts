@@ -46,6 +46,31 @@ interface MockPaint {
   setPathEffect: () => void;
 }
 
+interface MockTextBounds {
+  width: number;
+}
+
+interface MockTypeface {
+  __mockTypeface: true;
+  /** The asset module id the face was loaded from, so a test can tell the
+   * regular and bold faces apart — they are otherwise identical stubs. */
+  source: unknown;
+}
+
+interface MockFont {
+  setSize: () => void;
+  getTextWidth: () => number;
+  measureText: () => MockTextBounds;
+  // P1 fix: `useBootSceneFonts` reads the typeface off a loaded font and
+  // re-sizes it per draw site.
+  getTypeface: () => MockTypeface;
+  /** Inputs recorded for assertions. A real `SkFont` exposes neither; jest
+   * cannot see rasterized glyphs, so what a font was BUILT from is the only
+   * checkable property here. */
+  __typeface: unknown;
+  __size: number | undefined;
+}
+
 interface MockCanvas {
   drawLine: () => void;
   drawCircle: () => void;
@@ -97,6 +122,25 @@ jest.mock("@shopify/react-native-skia", () => {
       setAlphaf: () => {},
       setShader: () => {},
       setPathEffect: () => {},
+    };
+  }
+
+  function createMockFont(typeface?: unknown, size?: number): MockFont {
+    return {
+      setSize: () => {},
+      getTextWidth: () => {
+        return 0;
+      },
+      measureText: () => {
+        return { width: 0 };
+      },
+      // `useBootSceneFonts` lifts the typeface off a loaded font and re-sizes
+      // it per draw site, so the mock must expose one.
+      getTypeface: () => {
+        return { __mockTypeface: true, source: typeface };
+      },
+      __typeface: typeface,
+      __size: size,
     };
   }
 
@@ -181,20 +225,25 @@ jest.mock("@shopify/react-native-skia", () => {
           };
         },
       },
-      Font: () => {
-        return {
-          // CoreScene builds the banner font as `Skia.Font()` + `setSize(12)`
-          // (real iOS Skia throws on `Skia.Font(undefined, 12)`); the mock font
-          // must carry `setSize` or the imperative recorder throws under jest.
-          setSize: () => {},
-          getTextWidth: () => {
-            return 0;
-          },
-          measureText: () => {
-            return { width: 0 };
-          },
-        };
+      // P1 fix: scenes now build fonts from a real bundled typeface, in
+      // React-land, via `useBootSceneFonts` — never as a bare `Skia.Font()`
+      // inside the draw worklet. The factory keeps its arity so the mock
+      // matches the real `(typeface?, size?)` signature.
+      //
+      // Note what this mock still CANNOT catch: a font with no typeface draws
+      // zero glyphs on device but "succeeds" here, which is precisely how the
+      // missing text shipped. jest proves the draw calls are well-formed and
+      // nothing more — the pixels are the device's and the goldens' business.
+      Font: (typeface?: unknown, size?: number) => {
+        return createMockFont(typeface, size);
       },
+    },
+    // The asset-backed typeface loader. Returns a ready font immediately so
+    // the text branches of every scene run under jest; the real hook resolves
+    // asynchronously and yields null first (a window the scenes and the
+    // visual harness both handle explicitly).
+    useFont: (source: unknown, size?: number) => {
+      return createMockFont(source, size);
     },
   };
 });
