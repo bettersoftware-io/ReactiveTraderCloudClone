@@ -26,13 +26,13 @@ const KEY_PAN_FRACTION = 0.1;
 const KEY_ZOOM_ANCHOR = 0.5;
 
 /** The hovered plot position, as fractions (0-1) of the plot box. */
-export interface ChartCursor {
+interface ChartCursor {
   readonly xFrac: number;
   readonly yFrac: number;
 }
 
 /** Event handlers to spread onto the plot wrapper div. */
-export interface ChartPlotProps {
+interface ChartPlotProps {
   readonly onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   readonly onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
   readonly onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
