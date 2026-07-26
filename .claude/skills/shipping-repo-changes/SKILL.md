@@ -1,13 +1,22 @@
 ---
 name: shipping-repo-changes
-description: Use when about to change anything in this repo — before editing, creating, or deleting any file, before committing, and before merging a PR to main. Triggers include any file modification, "commit", "push", "open a PR", "merge to main", concurrent Claude sessions sharing this checkout, and main auto-pushing to origin.
+description: Use when about to change anything in this repo — before editing, creating, or deleting any file, before committing, and before merging a PR to main. Triggers include any file modification, "commit", "push", "open a PR", "merge to main", and concurrent Claude sessions sharing this checkout.
 ---
 
 # Shipping Repo Changes
 
 ## Overview
 
-This repo is shared by **concurrent Claude Code sessions** working in the same checkout, and **local `main` auto-pushes to origin** the moment it advances. So every change must be isolated, proven on CI **against an up-to-date base**, and merged as an explicit merge commit — never improvised on `main`.
+This repo is shared by **concurrent Claude Code sessions** working in the same checkout, and the `main` ruleset admits changes only through a PR. So every change must be isolated, proven on CI **against an up-to-date base**, and merged as an explicit merge commit — never improvised on `main`.
+
+> **A note on "local `main` auto-pushes to origin."** Earlier revisions of this
+> skill justified Rule 1 that way. Verified 2026-07-26 in this checkout: it is
+> **not true here** — `.git/hooks` holds only Git LFS hooks, the sole Claude
+> hook is a `Stop` drift-check, and no repo script pushes `main`. It is an
+> artifact of the **sandbox** environment, recorded as if it were a repo fact.
+> Rule 1 is unaffected: concurrent sessions sharing one checkout justify
+> isolating first on their own, and the ruleset blocks direct pushes to `main`
+> regardless. Don't rely on the auto-push premise in either direction.
 
 **The six rules are non-negotiable. Violating the letter of a rule is violating its spirit.**
 
@@ -30,7 +39,7 @@ Create the worktree *before* the first edit, not after — and branch it off an 
 
 It fetches, then branches explicitly off `origin/main`, and prints the base commit it landed on. Works from the primary checkout or from inside another worktree.
 
-**Why a script and not "remember to fetch."** Every hand-rolled path branches off your **current `HEAD`**, which inherits however stale local `main` is — and local `main` is stale *by default* here, because `main` auto-pushes and concurrent sessions land commits continuously. This isn't theoretical: an audit on 2026-07-20 found local `main` 6 commits / 4h37m behind `origin/main`, with four of the five live worktrees sitting on that stale tip (one at **21 commits behind**). A stale base never fails loudly — it just silently inflates Rule 3's catch-up burden until a branch is too far behind to merge cheaply. Branching off `origin/main` by name removes the failure mode instead of asking you to remember.
+**Why a script and not "remember to fetch."** Every hand-rolled path branches off your **current `HEAD`**, which inherits however stale local `main` is — and local `main` is stale *by default* here, because concurrent sessions land merges on `origin/main` continuously while your local ref sits where it was last fetched. This isn't theoretical: an audit on 2026-07-20 found local `main` 6 commits / 4h37m behind `origin/main`, with four of the five live worktrees sitting on that stale tip (one at **21 commits behind**). A stale base never fails loudly — it just silently inflates Rule 3's catch-up burden until a branch is too far behind to merge cheaply. Branching off `origin/main` by name removes the failure mode instead of asking you to remember.
 
 - **Native tool (`EnterWorktree`)** — acceptable *only* when `worktree.baseRef` is `fresh` (the default) **and** you've fetched first; it branches off `origin/<default-branch>`, but only as fresh as your last fetch. If `baseRef` is `head` it inherits local `HEAD` and is unsafe. Prefer the script.
 - **Bare `git worktree add <path> -b <branch>`** — ❌ never. It branches off `HEAD`. If you must go manual, name the base: `git worktree add <path> -b <branch> origin/main` — after a `git fetch origin main`.
@@ -57,7 +66,18 @@ git push -u origin <branch>
 gh pr create --base main --head <branch> --title "<title>" --body "<body>"
 ```
 
-**Read CI with `gh run list` — NOT `gh pr checks`.** This repo's token is a fine-grained PAT that returns **403** on `gh pr checks` / `statusCheckRollup` / check-runs. The working signal is the Actions run list:
+**Read CI with `gh run list`.** It is the signal that works under *every* token this repo is driven with, which `gh pr checks` is not:
+
+| token | where it comes from | `gh run list` | `gh pr checks` / `statusCheckRollup` |
+|---|---|---|---|
+| `gho_…` OAuth (`repo` scope) | host keychain, `gh auth login` | ✅ | ✅ **works** |
+| `github_pat_…` fine-grained | `.github/.token`, injected as `GH_TOKEN` by the sandbox launcher | ✅ | ❌ 403 unless granted *Checks: read* + *Commit statuses: read* |
+
+**The blanket claim "this repo's PAT 403s on `gh pr checks`" was wrong** — corrected 2026-07-26. It was never a property of the repo or the API, only of *which token happened to be loaded*. Verified on the host OAuth token: `gh pr checks 370` exits 0 with all 7 checks, and `statusCheckRollup` returns `SUCCESS`. `gh run list` remains the standing recommendation because it is token-portable and `headSha`-matchable — not because the alternative is broken.
+
+> ⚠️ **The PAT in `.github/.token` is currently revoked** (verified 2026-07-26: `gh api user` → `401 Bad credentials`, not 403). The sandbox launcher prefers that file over the host keychain, so a **sandboxed session will fail every `gh` call**, not just check-rollup. Fix: delete `.github/.token` — the launcher then falls back to `gh auth token`, whose OAuth `repo` scope covers check-rollup too — or rotate it with *Checks: read* + *Commit statuses: read* granted.
+
+The run list:
 
 ```bash
 HEAD_SHA=$(git rev-parse HEAD)
@@ -105,7 +125,7 @@ Then classify the stuck step and act — don't just keep waiting:
 
 ## Rule 3 — Assess catch-up risk before merging
 
-Rule 2 proves your branch green against the base it *branched from*. But `main` auto-pushes and concurrent sessions land commits, so by the time you're green that base may have moved on — and `gh pr merge --merge` would then produce a `main` state (latest `main` + your changes) that **CI never tested**. Git blocks *textual* conflicts, so the only silent risk is a **semantic** conflict: a renamed export, a tightened lint rule, a changed fixture — each side fine alone, broken together.
+Rule 2 proves your branch green against the base it *branched from*. But concurrent sessions keep merging into `origin/main`, so by the time you're green that base may have moved on — and `gh pr merge --merge` would then produce a `main` state (latest `main` + your changes) that **CI never tested**. Git blocks *textual* conflicts, so the only silent risk is a **semantic** conflict: a renamed export, a tightened lint rule, a changed fixture — each side fine alone, broken together.
 
 The blanket "always catch up when behind" rule spins into cat-and-mouse against a fast-moving `main` (docs churn, sibling sessions): each catch-up costs a full ~10-min CI run, and `main` often advances *again* before it finishes. So **don't reflexively catch up — triage what landed.** The only question is: *can I cheaply convince myself the two changes can't collide?*
 
@@ -132,7 +152,7 @@ A **textual** conflict always forces a resolve regardless — git won't merge ot
 
 **Framing the risk.** A red `main` is bounded and recoverable — the post-merge `main` CI run is the backstop, and fixing forward is fine *as long as it's rare*. Optimize for throughput: pay the catch-up cycle only when overlap is real or the diff is too broad to judge, not on every advance. If you do land a break, fix it forward immediately.
 
-> **The residual risk, and the structural fix on the roadmap.** `strict_required_status_checks_policy` is `false` on the `main` ruleset, so a green-but-stale PR *can* merge into a `main` it was never tested against — this has caught exactly once (a green PR-CI that reddened `main` during the SolidJS port); post-merge `main` CI is the backstop. A **GitHub merge queue** would close this structurally — it would test the combined (`main` + your PR) state automatically and merge in order, dissolving this whole triage — deferred on cost for now: see [`docs/IDEAS.md`](../../../docs/IDEAS.md) and the [design spec](../../../docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md). Until it's adopted, this manual triage is the rule.
+> **The residual risk, and the structural fix on the roadmap.** `strict_required_status_checks_policy` is `false` on the `main` ruleset, so a green-but-stale PR *can* merge into a `main` it was never tested against — this has caught exactly once (a green PR-CI that reddened `main` during the SolidJS port); post-merge `main` CI is the backstop. A **GitHub merge queue** would close this structurally — it would test the combined (`main` + your PR) state automatically and merge in order, dissolving this whole triage — but it is **not available to this repo**: merge queue requires an **organization-owned** repository, and this one is owned by a *user* account (verified 2026-07-26). Public visibility is not sufficient. Adopting it would mean transferring the repo to an org first, so **this manual triage is the rule for the foreseeable future**, not a stopgap. See [`docs/IDEAS.md`](../../../docs/IDEAS.md) and the [design spec](../../../docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md).
 
 ## Rule 4 + 5 — Merge as a merge commit
 
@@ -179,7 +199,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | ❌ Never to isolate | bare `git worktree add <path> -b <branch>` (branches off stale local `HEAD`) |
 | Does this belong in the open PR? | Could a reviewer reject one part and approve the other? No → same PR |
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
-| ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
+| Prefer for CI status | `gh run list` — token-portable and `headSha`-matchable. `gh pr checks` works on the host OAuth token but 403s on an under-scoped fine-grained PAT |
 | **No** run exists for your SHA | `gh pr view <n> --json mergeable` **first** — `CONFLICTING` means no run will ever be created (the merge ref can't be built); fix the conflict. Only if `MERGEABLE` is an empty-commit re-trigger the answer |
 | Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
 | Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3: **prose-only overlap merges as-is**, catch up only on a real semantic-conflict path or a too-broad diff) |
@@ -194,12 +214,12 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 
 | Excuse | Reality |
 |--------|---------|
-| "It's a tiny/one-line change, I'll just edit main." | Another session may be mid-change and `main` auto-pushes. Isolate first — always. |
+| "It's a tiny/one-line change, I'll just edit main." | Another session may be mid-change in the same checkout, and the `main` ruleset rejects direct pushes anyway — the edit can only reach `main` through a PR. Isolate first — always. |
 | "`git worktree add -b foo` is the normal way to make a worktree." | It branches off your **current `HEAD`**, and local `main` is stale by default here. Use `./scripts/new-worktree.sh`. |
 | "I fetched recently, local `main` is fine." | An audit found it 6 commits behind after 4½ hours. Branch off `origin/main` by name; don't estimate freshness. |
 | "I'll do the doc/STATUS update once this PR lands." | That's sequencing, not a dependency. If the files don't overlap and neither change needs the other merged, it's one PR — you're paying an extra CI run for nothing. |
 | "These are separate concerns, so separate PRs is cleaner." | Apply the test: would a reviewer approve one and reject the other? If not, it's one reviewable unit. |
-| "`gh pr checks --watch` is the obvious way to wait for CI." | It returns 403 with this repo's PAT. Use `gh run list --workflow CI`. |
+| "`gh pr checks --watch` is the obvious way to wait for CI." | It works on the host OAuth token, but 403s under the sandbox's fine-grained PAT, and it can't be matched to your `headSha`. Use `gh run list --workflow CI` so the same loop works everywhere. |
 | "My branch CI is green, so I can merge." | Green proves your branch against the base it *branched from*. If `origin/main` advanced, triage the incoming diff first (Rule 3) — merge as-is when it's disjoint, catch up + re-green only on overlap or a too-broad diff. |
 | "`main` moved while I was green, so I have to catch up." | Only if the incoming diff overlaps your change **in code/config** or is too broad to judge. Plainly-disjoint advances (docs churn, another package) merge as-is — reflexive catch-up against a fast-moving `main` is the cat-and-mouse trap Rule 3 now avoids. |
 | "I'll rebase onto main to get up to date." | Rebase needs a force-push and discards CI history. Merge `origin/main` *into* the branch instead. |
@@ -218,7 +238,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 - About to merge while **behind** `origin/main` *without checking what landed* — triage first (Rule 3): merge as-is if disjoint, catch up + re-green only on overlap or a too-broad diff.
 - About to type `gh pr merge` with `--squash`, `--rebase`, or `--auto`.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
-- Reaching for `gh pr checks` to read CI.
+- Reading CI with `gh pr checks` instead of `gh run list` — it can't be matched to your `headSha`, so it may report a stale run, and it 403s under the sandbox's PAT.
 - Polling a run past ~25 min without once running `gh run view --json jobs` to find the stuck step.
 - Re-triggering a "missing" CI run without first checking `gh pr view --json mergeable` — a `CONFLICTING` PR never gets a run, so the re-trigger is guaranteed to be wasted.
 - PR is merged but your worktree is still on disk — Rule 6 isn't done until it's removed.
