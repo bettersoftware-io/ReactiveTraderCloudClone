@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { InspectorState, LiveHistory, LogRow } from "@rtc/devtools-core";
 
@@ -56,71 +56,47 @@ export function useTimeline(
   });
   const [filter, setFilter] = useState<TimelineFilter>(EMPTY_TIMELINE_FILTER);
 
-  const rows = useMemo(() => {
-    return filterLog(log, filter);
-  }, [log, filter]);
+  const rows = filterLog(log, filter);
 
-  const selectedRow = useMemo(() => {
-    if (selection.mode !== "pinned") {
-      return null;
-    }
-
-    const seq = selection.seq;
-
-    return (
-      log.find((row) => {
-        return row.seq === seq;
-      }) ?? null
-    );
-  }, [log, selection]);
+  const selectedRow = computeSelectedRow(log, selection);
 
   const agedOut =
     selection.mode === "pinned" &&
     history.oldestSeq > 0 &&
     selection.seq <= history.oldestSeq;
 
-  const reconstruction = useMemo((): Reconstruction => {
-    if (selection.mode !== "pinned" || agedOut) {
-      return { state: null, error: null };
-    }
+  const reconstruction = computeReconstruction(selection, agedOut, history);
 
-    try {
-      return { state: history.stateAt(selection.seq), error: null };
-    } catch (error) {
-      return { state: null, error: String(error) };
-    }
-  }, [selection, agedOut, history]);
-
-  const pin = useCallback((seq: number): void => {
+  function pin(seq: number): void {
     setSelection({ mode: "pinned", seq });
-  }, []);
+  }
 
-  const resume = useCallback((): void => {
+  function resume(): void {
     setSelection({ mode: "follow" });
-  }, []);
+  }
 
-  const selectPrev = useCallback((): void => {
+  function selectPrev(): void {
     setSelection((current) => {
       return stepped(rows, current, -1);
     });
-  }, [rows]);
+  }
 
-  const selectNext = useCallback((): void => {
+  function selectNext(): void {
     setSelection((current) => {
       return stepped(rows, current, 1);
     });
-  }, [rows]);
+  }
 
-  const toggleFamily = useCallback((family: TimelineFamily): void => {
+  function toggleFamily(family: TimelineFamily): void {
     setFilter((prev) => {
       return {
         ...prev,
         families: { ...prev.families, [family]: !prev.families[family] },
       };
     });
-  }, []);
+  }
 
-  const addPill = useCallback((pill: SourcePill): void => {
+  function addPill(pill: SourcePill): void {
     setFilter((prev) => {
       const exists = prev.pills.some((p) => {
         return pillKey(p) === pillKey(pill);
@@ -128,9 +104,9 @@ export function useTimeline(
 
       return exists ? prev : { ...prev, pills: [...prev.pills, pill] };
     });
-  }, []);
+  }
 
-  const removePill = useCallback((pill: SourcePill): void => {
+  function removePill(pill: SourcePill): void {
     setFilter((prev) => {
       return {
         ...prev,
@@ -139,28 +115,28 @@ export function useTimeline(
         }),
       };
     });
-  }, []);
+  }
 
-  const setText = useCallback((text: string): void => {
+  function setText(text: string): void {
     setFilter((prev) => {
       return { ...prev, text };
     });
-  }, []);
+  }
 
-  const setRadiusAround = useCallback((row: LogRow): void => {
+  function setRadiusAround(row: LogRow): void {
     setFilter((prev) => {
       return {
         ...prev,
         radius: { centerTs: row.ts, windowMs: RADIUS_WINDOW_MS },
       };
     });
-  }, []);
+  }
 
-  const clearRadius = useCallback((): void => {
+  function clearRadius(): void {
     setFilter((prev) => {
       return { ...prev, radius: null };
     });
-  }, []);
+  }
 
   return {
     selection,
@@ -212,4 +188,37 @@ function stepped(
   const next = rows[Math.max(0, Math.min(index + delta, rows.length - 1))];
 
   return next === undefined ? current : { mode: "pinned", seq: next.seq };
+}
+
+function computeSelectedRow(
+  log: readonly LogRow[],
+  selection: TimelineSelection,
+): LogRow | null {
+  if (selection.mode !== "pinned") {
+    return null;
+  }
+
+  const seq = selection.seq;
+
+  return (
+    log.find((row) => {
+      return row.seq === seq;
+    }) ?? null
+  );
+}
+
+function computeReconstruction(
+  selection: TimelineSelection,
+  agedOut: boolean,
+  history: LiveHistory,
+): Reconstruction {
+  if (selection.mode !== "pinned" || agedOut) {
+    return { state: null, error: null };
+  }
+
+  try {
+    return { state: history.stateAt(selection.seq), error: null };
+  } catch (error) {
+    return { state: null, error: String(error) };
+  }
 }

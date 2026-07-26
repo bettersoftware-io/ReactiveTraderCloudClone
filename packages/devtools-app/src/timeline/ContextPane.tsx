@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type {
   InspectorState,
@@ -234,17 +234,9 @@ function StateTab({
 }: StateTabProps): ReactElement {
   const [query, setQuery] = useState("");
 
-  const changedIds = useMemo((): ReadonlySet<string> => {
-    if (!marked) {
-      return new Set();
-    }
+  const changedIds = computeChangedIds(marked, state, presentState);
 
-    return changedStreamIds(state.streams, presentState.streams);
-  }, [marked, state, presentState]);
-
-  const visibleStreams = useMemo(() => {
-    return filterStreams(state.streams, query);
-  }, [state, query]);
+  const visibleStreams = computeVisibleStreams(state, query);
 
   function handleQuery(e: ChangeEvent<HTMLInputElement>): void {
     setQuery(e.target.value);
@@ -268,6 +260,25 @@ function StateTab({
       </div>
     </div>
   );
+}
+
+function computeChangedIds(
+  marked: boolean,
+  state: InspectorState,
+  presentState: InspectorState,
+): ReadonlySet<string> {
+  if (!marked) {
+    return new Set();
+  }
+
+  return changedStreamIds(state.streams, presentState.streams);
+}
+
+function computeVisibleStreams(
+  state: InspectorState,
+  query: string,
+): readonly StreamRow[] {
+  return filterStreams(state.streams, query);
 }
 
 interface MachineLineProps {
