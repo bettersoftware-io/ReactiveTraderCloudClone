@@ -3,7 +3,6 @@ import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { Candle } from "@rtc/domain";
-import { chartVm } from "@rtc/motion-core";
 
 afterEach(() => {
   cleanupMounted();
@@ -16,8 +15,16 @@ const CANDLES: readonly Candle[] = [
 
 describe("CandleChart", () => {
   it("renders one wrapper per candle, plus the fixed 4 grid lines and 4 price labels", () => {
-    const vm = chartVm(CANDLES, 96, false);
-    const chart = mount(CandleChart, { props: { vm } });
+    const chart = mount(CandleChart, {
+      props: {
+        candles: CANDLES,
+        liveRate: 96,
+        flashOn: false,
+        kind: "candles",
+        indicators: [],
+        defaultVisible: 2,
+      },
+    });
 
     expect(chart.candleCount()).toBe(2);
     expect(chart.gridLineCount()).toBe(4);
@@ -25,30 +32,35 @@ describe("CandleChart", () => {
   });
 
   it("marks the last candle's direction and glows it only when flashOn", () => {
-    const down = chartVm(CANDLES, 96, true);
-    const chart = mount(CandleChart, { props: { vm: down } });
+    const chart = mount(CandleChart, {
+      props: {
+        candles: CANDLES,
+        liveRate: 96,
+        flashOn: true,
+        kind: "candles",
+        indicators: [],
+        defaultVisible: 2,
+      },
+    });
 
-    // last candle: open=102, close=96 -> down.
+    // last candle: open=102, close overlaid with liveRate=96 -> down.
     expect(chart.lastCandleUp()).toBe(false);
     expect(chart.lastCandleGlows()).toBe(true);
 
-    const noFlash = chartVm(CANDLES, 96, false);
-    chart.setProps({ vm: noFlash });
+    chart.setProps({ flashOn: false });
 
     expect(chart.lastCandleGlows()).toBe(false);
   });
 
-  it("renders nothing for an empty vm", () => {
+  it("renders nothing for an empty candle series", () => {
     const chart = mount(CandleChart, {
       props: {
-        vm: {
-          candles: [],
-          grid: [],
-          labels: [],
-          linePoints: [],
-          timeLabels: [],
-          scale: { cmin: 0, cmax: 0 },
-        },
+        candles: [],
+        liveRate: 0,
+        flashOn: false,
+        kind: "candles",
+        indicators: [],
+        defaultVisible: 60,
       },
     });
 
