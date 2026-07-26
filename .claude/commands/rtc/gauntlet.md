@@ -37,6 +37,7 @@ pnpm check:manifest-drift               # presenter manifest, web ↔ RN
 pnpm check:image-tag-drift              # Playwright image pin
 pnpm check:versions                     # manypkg + syncpack
 pnpm check:scripts                      # every package wired to the gates
+pnpm check:compiler                     # React Compiler coverage (de-memoized files)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
 pnpm lint:dead                          # knip
 pnpm check:deps                         # dep-cruiser cycles + layering
