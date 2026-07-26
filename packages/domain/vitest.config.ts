@@ -22,7 +22,13 @@ export default defineConfig({
       // files, and v4's default exclude is empty, so exclude the __contracts__
       // convention explicitly — otherwise the broad src/** include counts these
       // test suites as covered source.
-      exclude: ["**/__contracts__/**"],
+      //
+      // src/__testUtils__/** is the same case one step further: helpers that
+      // only tests import. `defined.ts`'s throw path sat permanently uncovered
+      // and reported the file at 66% — writing a test that asserts a test
+      // helper throws would be measuring the ruler, so it is excluded from the
+      // denominator instead.
+      exclude: ["**/__contracts__/**", "**/__testUtils__/**"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
     },

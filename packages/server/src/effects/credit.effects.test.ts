@@ -124,6 +124,37 @@ describe("credit effects", () => {
     ]);
   });
 
+  it("maps the workflow stream's own SoW markers to bare-type DTOs", () => {
+    // The instrument/dealer SoW markers above are synthesised by the effect's
+    // fan-out. These two come from the WORKFLOW source itself and take a
+    // separate switch arm in transformWorkflowEvent — the only arm that drops
+    // `payload` entirely, so a mis-mapping here would emit `payload: undefined`
+    // and break the client's discriminated-union parse.
+    const ctx = {
+      workflow: {
+        events: vi.fn(() => {
+          return of(
+            { type: "startOfStateOfTheWorld" },
+            { type: "endOfStateOfTheWorld" },
+          );
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW, payload: {} });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.WORKFLOW_EVENT,
+        payload: { type: "startOfStateOfTheWorld" },
+      },
+      {
+        type: SERVER_MSG.WORKFLOW_EVENT,
+        payload: { type: "endOfStateOfTheWorld" },
+      },
+    ]);
+  });
+
   it("maps a quoteQuoted RfqEvent to the corresponding WorkflowEventDto", () => {
     const quote = {
       id: 1,

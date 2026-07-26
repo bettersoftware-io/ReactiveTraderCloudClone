@@ -5,12 +5,16 @@ import {
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   EQ_WATCHLIST_SORTS,
+  isPowerSaverLevel,
   nextEqWatchlistSort,
+  nextPowerSaverLevel,
   nextThemeModePreference,
+  POWER_SAVER_LEVELS,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,
   THEME_MODES,
@@ -86,5 +90,47 @@ describe("ambient style preference", () => {
 
   it("enumerates aurora and rays in selector order", () => {
     expect(AMBIENT_STYLES).toEqual(["aurora", "rays"]);
+  });
+});
+
+describe("power-saver preference", () => {
+  it("defaults to off and enumerates the header cycle in order", () => {
+    expect(DEFAULT_POWER_SAVER_LEVEL).toBe("off");
+    expect(POWER_SAVER_LEVELS).toEqual(["off", "calm", "freeze"]);
+  });
+
+  it("cycles off -> calm -> freeze and wraps back to off", () => {
+    // The wrap is the interesting arm: `(i + 1) % length` is what stops the
+    // header button dead-ending on freeze.
+    expect(nextPowerSaverLevel("off")).toBe("calm");
+    expect(nextPowerSaverLevel("calm")).toBe("freeze");
+    expect(nextPowerSaverLevel("freeze")).toBe("off");
+  });
+
+  it("returns to a valid level from every level in one full cycle", () => {
+    // Guards the ?? fallback staying unreachable for real inputs: three steps
+    // from any level must land back on itself.
+    for (const level of POWER_SAVER_LEVELS) {
+      const cycled = nextPowerSaverLevel(
+        nextPowerSaverLevel(nextPowerSaverLevel(level)),
+      );
+
+      expect(cycled).toBe(level);
+    }
+  });
+
+  it("accepts exactly the three stored level strings", () => {
+    for (const level of POWER_SAVER_LEVELS) {
+      expect(isPowerSaverLevel(level)).toBe(true);
+    }
+  });
+
+  it("rejects null, empty and legacy boolean strings", () => {
+    // Adapters migrate the legacy `"true"` boolean to `"calm"` before this
+    // guard sees it, so the guard itself must NOT accept it.
+    expect(isPowerSaverLevel(null)).toBe(false);
+    expect(isPowerSaverLevel("")).toBe(false);
+    expect(isPowerSaverLevel("true")).toBe(false);
+    expect(isPowerSaverLevel("Off")).toBe(false);
   });
 });
