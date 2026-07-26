@@ -11,6 +11,7 @@ import {
 import {
   AuthSimulator,
   type ConnectionEventsPort,
+  type PowerSaverLevel,
   PreferencesSimulator,
   type ThemeMode,
   type ThemeSkin,
@@ -32,6 +33,24 @@ interface Props {
    * collapses to (see `packages/domain/src/preferences/preferences.ts`), so
    * this needs no new ThemeProvider surface. */
   forceReduceMotion?: boolean;
+  /**
+   * Power-saver tier to seed, default `off` (production's default, so existing
+   * scenarios are unaffected).
+   *
+   * `forceReduceMotion` above does NOT cover every animation: it seeds
+   * `animatedBackground`, which gates the ambient layer only. Widget-level
+   * motion — the Analytics bars' and bubbles' entry tweens — is gated by
+   * `useShellMotionEnabled`, which reads the OS reduce-motion flag and this
+   * power-saver level, neither of which `animatedBackground` touches. A
+   * scenario containing those widgets must seed `freeze` or it can be captured
+   * mid-tween.
+   *
+   * Freeze is safe to pin a golden against because on React Native it feeds
+   * nothing but motion gates (`useShellMotionEnabled`, `useBootMotionEnabled`)
+   * — no badge, no alternative styling. The captured pixels are the resting
+   * state, which is exactly what a golden should hold.
+   */
+  powerSaverLevel?: PowerSaverLevel;
   children: ReactNode;
 }
 
@@ -58,6 +77,7 @@ export function VisualScenarioHost({
   skin,
   mode,
   forceReduceMotion = true,
+  powerSaverLevel = "off",
   children,
 }: Props): ReactNode {
   const fontsLoaded = useAppFonts();
@@ -71,7 +91,12 @@ export function VisualScenarioHost({
   // same trap one level up.
   const skiaFontsLoaded = useBootSceneFonts(HARNESS_FONT_PROBE) !== null;
   const [viewModel] = useState(() => {
-    return buildScenarioViewModel(skin, mode, forceReduceMotion);
+    return buildScenarioViewModel(
+      skin,
+      mode,
+      forceReduceMotion,
+      powerSaverLevel,
+    );
   });
   const [ready, setReady] = useState(false);
 
@@ -133,11 +158,13 @@ function buildScenarioViewModel(
   skin: ThemeSkin,
   mode: ThemeMode,
   forceReduceMotion: boolean,
+  powerSaverLevel: PowerSaverLevel,
 ): ReturnType<typeof createViewModel> {
   const preferences = new PreferencesSimulator({
     themeSkin: skin,
     themeMode: mode,
     animatedBackground: !forceReduceMotion,
+    powerSaverLevel,
   });
   // Never authenticated (chosen scenarios need no user session); the roster
   // lookup simply never succeeds since login is never called.
