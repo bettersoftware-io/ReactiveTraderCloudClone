@@ -1,7 +1,14 @@
 # ADR-003: React Compiler, and the end of manual memoization
 
-**Status:** Accepted (implemented). One scoped lint exception is **provisional —
-flagged for revisit**; see [Follow-up](#follow-up-to-revisit).
+**Status:** Accepted (implemented). Scope: `client-react`, `devtools-app`, and
+`client-react-native` all run the compiler, and manual memoization is banned by
+lint (`pnpm check:compiler` plus a `no-restricted-imports` ESLint rule) across
+all three — see [Measured coverage](#measured-coverage-2026-07-26). Two scoped
+lint exceptions remain: one **provisional — flagged for revisit** (see
+[Follow-up](#follow-up-to-revisit)); one **permanent by design**
+(`useHoldToUnlock.ts` — its two `useMemo`s carry semantics the compiler cannot
+supply, documented in the file's header comment and in the measured-coverage
+section below).
 
 > Sibling decision records. ADR-001 lives co-located with its concern at
 > `packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md`;
@@ -27,6 +34,23 @@ Before this change the UI carried **~35 manual-memoization call sites** across
 26 files (10 `useMemo`, 16 `useCallback`; no component-level `memo()` wrappers).
 The goal: turn the compiler on and delete the manual memoization, keeping render
 output byte-identical (the visual goldens and e2e suite are the safety net).
+
+**Scope, extended 2026-07-26.** The decision below was made and shipped for
+`client-react` alone. A later workstream (spec:
+[2026-07-26-manual-memoization-ban-design.md](../superpowers/specs/2026-07-26-manual-memoization-ban-design.md))
+found the same premise applied — and had gone unmeasured — in two more
+packages that also run the compiler: `devtools-app` (compiler on since it was
+built, never linted for it until then) and `client-react-native` (compiler not
+yet on; RN's `useMemo`/`useCallback` sites were load-bearing pre-compiler
+Reanimated idioms until it was enabled). That workstream turned the compiler on
+for `client-react-native`, extended the lint ban to all three packages, and
+replaced "manual memoization is gone from the UI" as a **convention** with a
+**lint-enforced** gate: `pnpm check:compiler` (a Babel harness asserting every
+de-memoized file still compiles `OPTIMIZED`) plus a `no-restricted-imports`
+ESLint rule banning `useMemo`/`useCallback`/`memo` imports from `react`, scoped
+to all three packages' source. See
+[Measured coverage](#measured-coverage-2026-07-26) below for what that
+workstream measured, and `docs/STATUS.md` for what it deliberately deferred.
 
 ## Decision
 
@@ -70,6 +94,21 @@ output byte-identical (the visual goldens and e2e suite are the safety net).
    inline `// eslint-disable`; the same mechanism the repo already uses to scope
    AST rules off for contract specs). This is the provisional part; the rest of
    the rule set, including `refs` everywhere else, stays on. See below for why.
+
+6. **(2026-07-26) Enable the compiler on `client-react-native`, extend the ban
+   to all three compiled packages, and enforce it by lint.** `client-react-native`
+   gained `experiments.reactCompiler: true`; `devtools-app` (compiler already on,
+   never linted for it) and `client-react-native` both joined the
+   `eslint-plugin-react-hooks` block from Decision item 3. A new
+   `no-restricted-imports` rule bans importing `useMemo`/`useCallback`/`memo`
+   from `react` across `client-react/src`, `client-react-native/{src,app}`, and
+   `devtools-app/src`. `pnpm check:compiler` (`scripts/react-compiler-healthcheck.mjs`,
+   wired into `ci.yml` and `/rtc:gauntlet`'s fast tier) asserts every
+   de-memoized file still compiles `OPTIMIZED` — the narrow anti-rot gate that
+   would have caught this ADR's original, unmeasured coverage assumption. One
+   file, `useHoldToUnlock.ts`, is exempted from the lint ban entirely (not a
+   `refs`-only override like item 5) because its two `useMemo`s are semantic,
+   not caching — see [Measured coverage](#measured-coverage-2026-07-26).
 
 ## Why the `refs` exception is necessary (and not a real bug)
 
@@ -134,12 +173,40 @@ the tools for instance-scoped state, and the compiler supports them. What you
 forgo for the seam files is the *automatic optimization* of those two
 components, not the ability to have an instance.
 
+## Measured coverage (2026-07-26)
+
+`pnpm check:compiler`'s underlying harness was run across `client-react/src`:
+
+| result | count |
+|---|---|
+| OPTIMIZED | 88 |
+| BAILED | 123 |
+
+**118 of the 123 bails are one diagnostic** — "Hooks must be the same function
+on every render" — and every one of them is the ViewModel seam
+(`const { useX } = useViewModel()`). React Compiler requires *static* hook
+identity; the seam (ADR-004) supplies hooks dynamically so that the swap-trio
+and framework replaceability work. Verified exhaustively: destructuring,
+member-calling (`vm.useX()`), and reading the bundle straight from
+`useContext` all bail; only statically-imported hooks compile. Non-hook values
+off the seam are fine.
+
+**This means the compiler does not memoize most data-bound components** — a
+material limitation of this ADR's premise, measured for the first time here.
+The ban is nonetheless safe: the repo has zero `React.memo` boundaries, so
+callback identity buys nothing, and the expensive-derivation sites (RN's Skia
+paths, fonts, themed styles) all measure OPTIMIZED. Tracked in `docs/STATUS.md`.
+
 ## Consequences
 
-- **Manual memoization is gone from the UI.** New code should not add
-  `useMemo`/`useCallback` for performance — write the plain value / function and
-  let the compiler memoize. (They remain legal where they carry *semantics*
-  rather than caching, but that is rare and should be reviewed.)
+- **Manual memoization is gone from the UI, and gone by lint, not convention**
+  (as of 2026-07-26 — see Decision item 6). New code cannot add
+  `useMemo`/`useCallback` for performance in `client-react`, `client-react-native`,
+  or `devtools-app`: `no-restricted-imports` rejects the import at lint time,
+  write the plain value / function and let the compiler memoize. They remain
+  legal where they carry *semantics* rather than caching — rare, and the one
+  known instance (`useHoldToUnlock.ts`) is a file-scoped lint exemption, not a
+  case-by-case review.
 - **The lint preset is the guardrail.** Rules-of-React violations that would
   make the compiler bail are caught at lint time, on `src` only.
 - **`func-style` interaction:** unwrapped callbacks are function *declarations*,
@@ -148,15 +215,22 @@ components, not the ability to have an instance.
   committed sets) and the full e2e suite (browser · presenter · fullstack) are
   the witnesses, the latter being the only faithful witness for the
   StrictMode-lifecycle seam.
-- **One provisional exception** (`refs` off for two files) is the only deviation
-  from a clean `recommended-latest`.
+- **Two scoped exceptions** to a clean `recommended-latest` + memo-ban lint
+  surface: one **provisional** (`refs` off for two files — `useMachine.ts` /
+  `AppRoot.tsx`, plus `InspectorApp.tsx` after 2026-07-26, see below); one
+  **permanent by design** (`useHoldToUnlock.ts`'s memo-ban exemption — its two
+  `useMemo`s are semantic, not caching; see
+  [Measured coverage](#measured-coverage-2026-07-26)).
 
 ## Follow-up (to revisit)
 
-The `react-hooks/refs` exception for `useMachine.ts` / `AppRoot.tsx` is
-**accepted for now, deliberately deferred for a later look** — at the user's
-request, not because a better answer is known to exist. Things that could change
-the calculus on a revisit:
+The `react-hooks/refs` exception for `useMachine.ts` / `AppRoot.tsx` — joined
+2026-07-26 by `devtools-app`'s `InspectorApp.tsx`, whose `liveHistory` converted
+from a `useMemo` to the same build-once-ref idiom (see
+[Measured coverage](#measured-coverage-2026-07-26)) — is **accepted for now,
+deliberately deferred for a later look** — at the user's request, not because a
+better answer is known to exist. Things that could change the calculus on a
+revisit:
 
 - A future `eslint-plugin-react-hooks` release that recognizes the
   build-once-stable-ref pattern (an allow-list for never-reassigned refs), which
@@ -167,5 +241,5 @@ the calculus on a revisit:
   composition root (it currently cannot without losing per-mount isolation —
   see [§3.6 The ViewModel Seam](../architecture/03-uml-class-diagrams.md#36-the-viewmodel-seam)).
 
-Until then: the exception stays scoped to those two files, with `refs` active
+Until then: the exception stays scoped to those three files, with `refs` active
 everywhere else.

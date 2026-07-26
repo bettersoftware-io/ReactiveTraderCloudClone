@@ -148,4 +148,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`\ncheck:compiler: ${TRACKED.length} files OK`);
+console.log(`\ncheck:compiler: ${TRACKED.length} tracked functions OK`);

@@ -62,7 +62,27 @@ limitation, not a defect to fix in this workstream** — reworking the seam woul
 touch ADR-004, both bindings packages, the contract swap-trio and every UI
 file. Logged to `docs/STATUS.md` instead.
 
-### Finding 2 — 38 of the 39 sites are pure caching; exactly one is semantic
+### Finding 2 — 38 of the 39 sites are pure caching; exactly one is semantic (corrected to 36/3 — see below)
+
+> **Corrected 2026-07-26, post-implementation.** This finding's classification
+> was wrong for one file. Measurement during implementation (Task 3) found that
+> `useHoldToUnlock.ts`'s two `useMemo`s, which this AST pass had classified as
+> pure caching, are load-bearing. **The true split is 36 pure caching (deleted
+> cleanly) and 3 semantic** — 1 converted to the build-once-ref idiom
+> (`InspectorApp`'s `liveHistory`) and 2 kept in `useHoldToUnlock`, with a
+> scoped lint exception (see the corrected "Result" line at the end of this
+> finding, and ADR-003's measured-coverage section). The reasoning below is
+> left as originally written, with the correction noted where it broke: the
+> static AST classifier could not have caught `useHoldToUnlock` because its
+> criteria (effect-dependency membership, constructed-instance return) are
+> properties of the file under analysis — but `useHoldToUnlock`'s memos are
+> necessary for a reason that lives **outside** that file: the compiler's
+> inferred memoization key for `gesture` is `onComplete`, a callback declared
+> in the caller (`LockScreen`), and `LockScreen` itself bails on the ViewModel
+> seam, so `onComplete` gets a new identity every render regardless of what
+> `useHoldToUnlock` does internally. Whether a given file's memo is necessary
+> can depend on its caller's compiler status — a fact no single-file static
+> pass can see.
 
 This repo has **zero `React.memo` boundaries** (ADR-003 recorded this too, and
 it still holds). `useCallback` only pays off when a memoized child compares
@@ -93,16 +113,24 @@ inspection: `useRecording`'s `startRecording` / `importRecording` construct
 objects *inside the callback body* (transient per invocation, not identity), and
 `ContextPane`'s `changedIds` returns a `new Set()` as a derived value.
 
-The remaining **38 are pure caching and delete cleanly.**
+The remaining **38 were believed to be pure caching and delete cleanly.**
+
+> **Corrected 2026-07-26, post-implementation:** false for one of the 38.
+> `useHoldToUnlock.ts`'s two memos looked like pure caching by this pass's
+> criteria (no effect-dependency membership on the memoized names beyond the
+> gesture object itself, no obviously-external instance) but proved semantic
+> once the fix below was actually attempted — see the corrected count above
+> Finding 2 and the table's `useHoldToUnlock.ts` row. **36**, not 38, delete
+> cleanly.
 
 Where memoization *does* pay — expensive derivation — the compiler measurably
 covers it. Every RN scene file (`DockingScene`, `LaserScene`, `bootSceneFonts`,
 `useThemedStyles`, `useShellTelemetry`) is **OPTIMIZED**. Only two in-scope
-files bail for a reason that isn't the seam, and both are fixable:
+files bail for a reason that isn't the seam, and both were believed fixable:
 
 | file | bail reason | resolution |
 |---|---|---|
-| `useHoldToUnlock.ts` | `Cannot access refs during render` | move `onCompleteRef.current = onComplete` into a `useEffect` — Rules-of-React-clean |
+| `useHoldToUnlock.ts` | `Cannot access refs during render` | ~~move `onCompleteRef.current = onComplete` into a `useEffect` — Rules-of-React-clean~~ **corrected:** this clears the ref-write bail, but a second bail remains — `runOnJS(fireComplete)()` closes over `onCompleteRef` (a `useRef`), which the compiler has no special case for, so it still bails. Dropping the ref instead does compile clean, but then the compiler's inferred memoization key for `gesture` becomes `onComplete` — a callback declared in `LockScreen`, which itself bails on the seam, so `onComplete` churns every render and the gesture would be rebuilt regardless. Not fixable within this file; kept as the one memo-ban exception (see Task 3's corrected treatment below and ADR-003's measured-coverage section) |
 | `ThemeProvider.tsx` | seam | make the memo unnecessary: resolve `skin × mode` at module scope |
 | `useRecording.ts` | value blocks in try/catch | none needed — its callbacks are event handlers with no memo boundary |
 
@@ -196,7 +224,7 @@ a gate gap, and gates here are meant to cover every package.
 | `devtools-app` `InspectorApp:35` | 1 | **semantic — convert, don't delete**: build-once-ref idiom (below) |
 | RN scenes | 8 (`DockingScene` 3, `LaserScene` 4, `bootSceneFonts` 1) | plain values — all measured OPTIMIZED |
 | RN `useThemedStyles`, `useShellTelemetry` | 2 | plain value / function declaration |
-| RN `useHoldToUnlock` | 2 | **fix the bail first** (ref write → `useEffect`), then delete both |
+| RN `useHoldToUnlock` | 2 | ~~fix the bail first (ref write → `useEffect`), then delete both~~ **corrected — became comment-only:** the ref-write fix cleared one bail but exposed a second (`runOnJS` closing over a ref), and removing the ref entirely made the memo's key `onComplete`, which churns because the caller (`LockScreen`) bails on the seam. Both memos are semantic, kept, and given a scoped lint exception; the file gained a header comment recording why, not a deletion |
 | RN `ThemeProvider` | 1 | **remove the need**: module-scope `skin × mode` lookup |
 
 `ThemeProvider` detail: `skin × mode` is a finite set, so `withPlatformMono` can
@@ -225,9 +253,24 @@ override alongside `useMachine.ts` and `AppRoot.tsx`, for the identical
 documented reason (a never-reassigned ref, which the rule cannot distinguish
 from a mutable one).
 
-**Result: zero memo exceptions.** No inline disables, no memo allowlist. The
-one semantic site is converted to a better idiom rather than exempted, at the
-cost of a third entry on the pre-existing `refs` override list.
+**Result (as designed): zero memo exceptions.** No inline disables, no memo
+allowlist. The one semantic site is converted to a better idiom rather than
+exempted, at the cost of a third entry on the pre-existing `refs` override
+list.
+
+> **Corrected 2026-07-26, post-implementation: this did not hold.** The design
+> above expected `useHoldToUnlock` to be fixable (see the corrected treatment
+> row above) and therefore predicted zero exceptions. Measurement disproved
+> it: `useHoldToUnlock.ts` keeps both `useMemo`s, with a scoped
+> `no-restricted-imports: "off"` override in `eslint.config.mjs` for that one
+> file. **Final tally: 36 pure caching sites deleted, 1 converted to a
+> build-once ref (`InspectorApp`), 2 kept as a documented exception
+> (`useHoldToUnlock`)** — one exception, not zero. See ADR-003's
+> measured-coverage section and the `docs/STATUS.md` follow-up
+> ("Revisit `useHoldToUnlock` with a clean architecture") for why it was kept
+> rather than forced out, and why this static classifier's design could not
+> have predicted it: necessity here turns on a fact about the *caller*
+> (`LockScreen`'s seam bail), invisible from `useHoldToUnlock.ts` alone.
 
 Every replacement callback becomes a **function declaration**, not
 `const x = () => …` — the repo's `func-style: ["error", "declaration"]` forbids
