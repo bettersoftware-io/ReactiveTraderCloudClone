@@ -1,5 +1,31 @@
-export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
-export { chartVm } from "./chartVm.js";
+export type { ChartViewport } from "./chartViewport.js";
+export {
+  clampViewport,
+  defaultViewport,
+  followLive,
+  isAtLiveEdge,
+  MIN_VIEWPORT_SPAN,
+  panBy,
+  zoomAt,
+} from "./chartViewport.js";
+export type {
+  ChartCandle,
+  ChartKind,
+  ChartPoint,
+  ChartScale,
+  ChartVarStyle,
+  ChartVm,
+  ChartVmOptions,
+  TimeLabelVm,
+  VolumeBarVm,
+} from "./chartVm.js";
+export {
+  chartVm,
+  formatTimeLabel,
+  volumeVm,
+  Y_SPAN,
+  Y_TOP,
+} from "./chartVm.js";
 export type { DragOffset, Size } from "./clampDragOffset.js";
 export { clampDragOffset } from "./clampDragOffset.js";
 export {
@@ -8,6 +34,8 @@ export {
   ringCircumference,
   ringDashOffset,
 } from "./countdownRing.js";
+export type { CrosshairVm } from "./crosshairVm.js";
+export { crosshairVm } from "./crosshairVm.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,
@@ -25,6 +53,12 @@ export {
   formatHeapMb,
   fpsTone,
 } from "./frameRate.js";
+export type { IndicatorDef, IndicatorId } from "./indicatorSeries.js";
+export {
+  INDICATOR_DEFS,
+  indicatorPoints,
+  indicatorValues,
+} from "./indicatorSeries.js";
 export type { Projected3dPoint, Projection3dParams } from "./project3d.js";
 export { project3d } from "./project3d.js";
 export type { CoalesceDecision, RankDirection } from "./rankGlide.js";
