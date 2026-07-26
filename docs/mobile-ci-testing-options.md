@@ -6,7 +6,7 @@ and e2e tiers gate nothing in CI, because iOS pixels need a Mac and every job in
 landscape — what the options are, what they cost, what they actually buy, what
 teams really do — and a staged recommendation for this repo.
 
-**Written 2026-07-25.**
+**Written 2026-07-25. Stage 2's environment probe ran 2026-07-26 — see [§7.0](#70-resolved-by-measurement--the-stage-2-probe-2026-07-26) for what it measured, including two figures that turned out wrong.**
 
 > **Every price on this page has a shelf life.** Vendor pricing, free tiers and
 > runner images change without notice, and a stale figure quoted confidently is
@@ -151,9 +151,11 @@ separate question (§5) — almost certainly they will not, at first.
 - Machine is discarded after each job — no state drift between runs.
 
 **Cons**
-- **14 GB of SSD is documented for macOS standard runners.** Xcode plus extra
-  simulator runtimes plus a `node_modules` tree plus an Expo dev build is a
-  real squeeze; expect to delete unused Xcodes/runtimes as a workflow step.
+- ~~**14 GB of SSD is documented for macOS standard runners.**~~ **MEASURED
+  2026-07-26 and the documented figure is not what you get: 97 GB free on
+  arrival**, falling to 90 GB after this monorepo's `pnpm install` (~2.7 GB).
+  Disk is not the constraint it was assumed to be, and a "delete unused Xcodes"
+  step is an optimisation rather than a necessity. See §7.
 - 3 cores / 7 GB RAM (arm64 standard). Booting a simulator, running Metro, and
   building a dev client on that is slow — budget **10–25 min** per run, not 2.
   *(That range is an estimate from the shape of the work, not a measurement —
@@ -756,13 +758,14 @@ committed golden. Total cost: one afternoon and zero pounds.
 
 1. **Pixels differ from the local goldens.** Near-certain (§5). The answer is a
    second golden bucket, not a wider tolerance.
-2. **`idb` does not install cleanly.** `fb-idb` needs Python ≤ 3.13 and
-   `idb-companion` comes from a Homebrew tap; neither is on the image. **Prefer
-   the Maestro tier for the CI spike** — BAKEOFF.md already rates it the more
-   robust, pin-agnostic tier, and its only extra dependency (JDK 17) is a
-   `brew install`. Leave simctl+idb as the Mac-local tier it was built to be.
-3. **14 GB of disk.** Deleting unused Xcodes and simulator runtimes may need to
-   be an explicit first step.
+2. **`idb` does not install cleanly.** **CONFIRMED 2026-07-26** — the image's
+   `python3` is 3.14.6, above `fb-idb`'s ≤ 3.13 ceiling, and `idb-companion`
+   comes from a Homebrew tap. **Prefer the Maestro tier for the CI spike** —
+   BAKEOFF.md already rates it the more robust, pin-agnostic tier, and its only
+   extra dependency (JDK 17) is a `brew install` (measured: 97 s, together with
+   Maestro itself). Leave simctl+idb as the Mac-local tier it was built to be.
+3. ~~**14 GB of disk.**~~ **NOT A PROBLEM — measured 97 GB free** (§7.0).
+   Deleting unused Xcodes is an optimisation, not a prerequisite.
 4. **Wall-clock.** A cold `expo prebuild` + native build on 3 cores could
    approach the interesting part of an hour. This is precisely why it is nightly
    and not per-PR.
@@ -820,16 +823,43 @@ rewrite).
 
 Listed so nobody mistakes an estimate for a quote.
 
+### 7.0 Resolved by measurement — the Stage 2 probe, 2026-07-26
+
+Stage 2's environment probe ran on a free `macos-26` runner
+([`ios-visual-spike.yml`](../.github/workflows/ios-visual-spike.yml), run
+`30199365091`, **green in 6 min 27 s**). These are now measurements, not
+inferences:
+
+| Question | Answer |
+|---|---|
+| **Is the golden pin reachable?** | **Yes.** `iPhone-17` device type × `iOS-26-5` runtime instantiated and booted. The runtime is an exact match for the local goldens' `ios-iphone17-26` pin (captured on iPhone 17 / iOS 26.5). |
+| Machine shape | Darwin 25.4.0 arm64, **3 cores, 7 GB RAM** — as §2.1 predicted |
+| **Free disk on arrival** | **97 GB**, not the documented 14 GB; 90 GB after `pnpm install` |
+| Default Xcode | **26.5** (build 17F42) — pin it explicitly anyway; the image default moves |
+| Simulator create + boot | **1 min 38 s** |
+| `pnpm install --frozen-lockfile` | **74 s**, ~2.7 GB |
+| JDK 17 + Maestro install | **97 s** |
+| Preinstalled Node | v24.18.0 (`setup-node` raised it to v26.5.0 without complaint) |
+| **Preinstalled Python** | **3.14.6** |
+
+Two of those change decisions rather than just filling blanks. **Disk was never
+the constraint** — the 14 GB figure is off by roughly 7×, so the "delete unused
+Xcodes" step §2.1 recommends is optional. And **the Python finding confirms the
+idb worry outright**: `fb-idb` needs Python ≤ 3.13, the image ships **3.14.6**,
+so idb would not have installed cleanly. Routing the spike through Maestro was
+correct, and is now correct *for a verified reason* rather than a cautious guess.
+
 **Estimates of ours, not vendor claims**
 
-- **"10–25 minutes per iOS run on a `macos-26` standard runner."** An estimate
-  from the shape of the work (prebuild + native build + sim boot + Metro on 3
-  cores / 7 GB), not a measurement. Stage 2's spike exists partly to replace it
-  with a real number.
-- **Whether `fb-idb` / `idb-companion` install cleanly on the `macos-26` arm64
-  image.** Not tested. The Python ≤ 3.13 constraint is from this repo's own
-  harness README; the runner image's default Python is unknown to us. This is
-  why §6 routes the spike through Maestro instead.
+- **"10–25 minutes per iOS run on a `macos-26` standard runner."** Still an
+  estimate for the *full* run. The probe's 6 min 27 s covers only setup — no
+  `expo prebuild`, no native build, no Metro, no flow — so it is a floor, not
+  the figure. The capture job replaces this one.
+- ~~**Whether `fb-idb` / `idb-companion` install cleanly on the `macos-26`
+  arm64 image.**~~ **RESOLVED 2026-07-26 — they would not.** The image's default
+  `python3` is **3.14.6**, above `fb-idb`'s ≤ 3.13 ceiling. Using idb on this
+  image would mean provisioning an older Python first. simctl + idb stays the
+  Mac-local tier; CI goes through Maestro.
 - **Whether the committed `ios-iphone17-26` goldens would pass on a GitHub
   runner.** Untested. §5 argues they almost certainly will not, but that is
   inference from the wider ecosystem, not a measurement of this suite.

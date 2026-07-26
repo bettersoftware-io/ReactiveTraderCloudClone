@@ -305,21 +305,15 @@ jobs:
       METRO_PORT: "8083"
 
     steps:
-      # macOS standard runners document ~14 GB free, and a full Xcode plus extra
-      # simulator runtimes plus node_modules plus DerivedData is a genuine
-      # squeeze. Reclaim before building rather than discovering it at link time.
-      - name: Reclaim disk
-        run: |
-          set -euo pipefail
-          echo "before:"; df -h /
-          KEEP="$(xcode-select -p | sed 's|/Contents/Developer||')"
-          echo "keeping: $KEEP"
-          for app in /Applications/Xcode_*.app; do
-            [ "$app" = "$KEEP" ] && continue
-            echo "removing $app"
-            sudo rm -rf "$app" || true
-          done
-          echo "after:"; df -h /
+      # NO disk reclamation. The first iteration of this job deleted the unused
+      # Xcode installs, on the options doc's "14 GB of SSD is documented for
+      # macOS standard runners" caution. The probe measured **97 GB free**, so
+      # that step was removed: it bought nothing and `sudo rm -rf` over several
+      # 20 GB app bundles is minutes of wall-clock. Report the figure instead,
+      # so a future image change that DOES tighten disk shows up in the log
+      # rather than as a mysterious link-stage failure.
+      - name: Disk headroom
+        run: df -h /
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
