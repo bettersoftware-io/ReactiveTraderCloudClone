@@ -8,7 +8,6 @@ import {
   Skia,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -66,25 +65,35 @@ import {
  *
  * Ported from `packages/boot-splash/src/variants/bootTopo.ts`.
  *
- * THE HEIGHTFIELD AND CONTOURS ARE BUILD-ONCE, and this is the scene where that
- * matters most. Together they are ~1,900 `heightAt` evaluations plus ~20,000
- * marching-squares cell tests. The web computes them once, before returning its
- * draw closure; doing it inside `createPicture` would repeat all of it every
- * frame at 60 fps. Jest cannot tell the difference — its mock runs the slow
- * version happily — so the `useMemo` below is load-bearing and untested by
- * anything except a device.
+ * THE HEIGHTFIELD AND CONTOURS STAY OUT OF THE WORKLET, and this is the scene
+ * where that matters most. Together they are ~1,900 `heightAt` evaluations plus
+ * ~20,000 marching-squares cell tests. The web computes them once, before
+ * returning its draw closure; doing it inside `createPicture` would repeat all
+ * of it every frame at 60 fps — that per-frame repeat is what this component
+ * must never do, `useMemo` or not. Jest cannot tell the difference — its mock
+ * runs the slow version happily either way — so this is untested by anything
+ * except a device. Post-ADR-003 (the manual-memoization ban) this now rebuilds
+ * on every React re-render of the component rather than once per mount, since
+ * it is read only inside the `useDerivedValue` closure below and never flows
+ * into JSX, so the compiler inserts no cache for it (verified against the
+ * compiled output). Acceptable only because `elapsedSec`/`drift` are Reanimated
+ * shared values that do not themselves trigger a re-render — this component
+ * re-renders on theme/dimension changes alone, not on the 60 fps tick.
  *
  * PRICE TICKS ARE DERIVED FROM TIME, not accumulated on the peak objects as the
  * web does — see `topoGeometry.ts`'s `peakTick`.
  *
- * THE WALL CLOCK IS SAMPLED ONCE, IN REACT-LAND. The web prints a live
- * timestamp bottom-left. A worklet must not call `new Date()`, and a ticking
- * clock makes a pinned visual golden unreproducible — this repo already dropped
- * `credit/rfq-tiles-empty` for exactly that class of non-determinism. Sampling
- * once at mount makes it stable for the whole boot, which is enough for the
- * live splash. **It is NOT enough for a golden**: two captures minutes apart
- * still differ. Registering `boot/topo` as a visual scenario therefore needs
- * the clock pinned, or the scenario left out with that reason recorded.
+ * THE WALL CLOCK IS READ IN REACT-LAND, NEVER THE WORKLET. The web prints a
+ * live timestamp bottom-left. A worklet must not call `new Date()`, and a
+ * ticking clock makes a pinned visual golden unreproducible — this repo
+ * already dropped `credit/rfq-tiles-empty` for exactly that class of
+ * non-determinism. Before ADR-003 this was sampled once at mount (`useMemo`,
+ * `[]`); post-ban it re-samples on every re-render for the same reason `world`
+ * above does (no compiler cache — see there), so a live theme/dimension change
+ * mid-boot now nudges the footer clock instead of leaving it pinned to mount
+ * time. Already **not enough for a golden** either way: two captures minutes
+ * apart still differ. Registering `boot/topo` as a visual scenario therefore
+ * needs the clock pinned, or the scenario left out with that reason recorded.
  *
  * PROJECTION. `perspectiveK` 0.26 with a clamped near plane.
  */
@@ -100,29 +109,25 @@ export function TopoScene({
   const positive = theme.accentPositive;
   const negative = theme.accentNegative;
   const fonts = useBootSceneFonts(TOPO_FONTS);
-  // The expensive tables — see the header. Built once, captured by the
-  // recorder, never rebuilt inside `createPicture`.
-  const world = useMemo(() => {
-    const heights = topoHeightfield();
-    return {
-      contours: topoContours(heights),
-      meshLines: topoMeshLines(heights),
-      motes: topoMotes(),
-    };
-  }, []);
+  // The expensive tables — see the header. Kept out of the worklet, never
+  // rebuilt inside `createPicture`; rebuilt per React re-render, not per mount.
+  const heights = topoHeightfield();
+  const world = {
+    contours: topoContours(heights),
+    meshLines: topoMeshLines(heights),
+    motes: topoMotes(),
+  };
 
-  // Sampled once at mount, never inside the worklet — see the header.
-  const stamp = useMemo(() => {
-    const now = new Date();
-    return topoTimestamp(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      now.getDate(),
-      now.getHours(),
-      now.getMinutes(),
-      now.getSeconds(),
-    );
-  }, []);
+  // Read in React-land, never inside the worklet — see the header.
+  const now = new Date();
+  const stamp = topoTimestamp(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+  );
 
   const picture = useDerivedValue(() => {
     return createPicture(

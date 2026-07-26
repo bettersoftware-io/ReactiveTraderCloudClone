@@ -8,7 +8,7 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 
 import type { HistoricPosition } from "@rtc/domain";
@@ -26,9 +26,11 @@ import { useTheme } from "#/ui/theme/useTheme";
  * WHY NOT THE `createPicture` RECORDER. The boot scenes record an `SkPicture`
  * inside a `useDerivedValue` worklet because they redraw at 60 fps from a
  * clock. This surface gains one point every **10 seconds** and is ~90 point
- * operations. The paths are therefore built in a plain `useMemo` on the JS
- * thread during the ordinary re-render and handed to declarative `<Path>`
- * elements. Restated here because the boot scenes make the recorder look like
+ * operations. The paths are therefore built as a plain derived value (compiler-
+ * memoized, ADR-003 — verified this component keys the cache on `history` and
+ * the two theme colours below) on the JS thread during the ordinary re-render,
+ * and handed to declarative `<Path>` elements. Restated here because the boot
+ * scenes make the recorder look like
  * the house style, and it is the wrong tool at this cadence.
  *
  * WIDTH. `buildChart` works in a fixed `CHART_WIDTH` coordinate space, which
@@ -52,13 +54,11 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
   const lastValue = history.length > 0 ? history[history.length - 1].usdPnl : 0;
   const stroke = lastValue >= 0 ? theme.accentPositive : theme.accentNegative;
 
-  const paths = useMemo(() => {
-    return {
-      line: path === "" ? null : Skia.Path.MakeFromSVGString(path),
-      area: areaPath === "" ? null : Skia.Path.MakeFromSVGString(areaPath),
-      baseline: zeroY === null ? null : zeroBaseline(zeroY),
-    };
-  }, [path, areaPath, zeroY]);
+  const paths = {
+    line: path === "" ? null : Skia.Path.MakeFromSVGString(path),
+    area: areaPath === "" ? null : Skia.Path.MakeFromSVGString(areaPath),
+    baseline: zeroY === null ? null : zeroBaseline(zeroY),
+  };
 
   return (
     <Canvas

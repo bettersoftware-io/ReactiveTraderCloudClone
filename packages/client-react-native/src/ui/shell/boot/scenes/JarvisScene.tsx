@@ -9,7 +9,6 @@ import {
   TileMode,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -92,9 +91,7 @@ export function JarvisScene({
   const accentAlt = theme.accent2;
   const positive = theme.accentPositive;
   const fonts = useBootSceneFonts(JARVIS_FONTS);
-  const world = useMemo(() => {
-    return { fragments: jarvisFragments(), particles: jarvisParticles() };
-  }, []);
+  const world = { fragments: jarvisFragments(), particles: jarvisParticles() };
 
   const picture = useDerivedValue(() => {
     return createPicture(

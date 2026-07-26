@@ -8,7 +8,6 @@ import {
   Skia,
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useMemo } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -77,13 +76,19 @@ import {
  * PROJECTION. `perspectiveK` 0.22 with **no near-plane clamp** — the camera
  * omits `minPerspectiveDenom` entirely.
  *
- * FOUR BUILD-ONCE TABLES, and they are the reason this scene is affordable.
- * `geoPointInside` is an even-odd test across 270 coastline points; the web
- * calls it per frame to seed the terrain mesh (~2,800 candidates) and to clip
- * the graticule (~640), which is on the order of 930,000 point comparisons
- * every frame. All of those inputs are fixed in world space — only the
- * projection moves — so they are computed once in `useMemo` and merely
- * projected per frame. Jest cannot see the difference; the simulator would.
+ * FOUR TABLES KEPT OUT OF THE WORKLET, and that is the reason this scene is
+ * affordable. `geoPointInside` is an even-odd test across 270 coastline
+ * points; the web calls it per frame to seed the terrain mesh (~2,800
+ * candidates) and to clip the graticule (~640), which is on the order of
+ * 930,000 point comparisons every frame. All of those inputs are fixed in
+ * world space — only the projection moves — so they are computed in
+ * React-land and merely projected per frame in the worklet. Jest cannot see
+ * the difference; the simulator would. Post-ADR-003 (the manual-memoization
+ * ban) these rebuild on every React re-render rather than once per mount —
+ * they are read only inside the `useDerivedValue` closure below, never JSX,
+ * so the compiler inserts no cache for them (verified against the compiled
+ * output). Acceptable only because `elapsedSec`/`drift` are Reanimated shared
+ * values that do not themselves trigger a re-render.
  *
  * The radar sweep is the deliberate exception: its X position depends on
  * `elapsedSec`, and it is only ~62 `inside` calls, so it stays per-frame and
@@ -105,18 +110,16 @@ export function GeoScene({
   const positive = theme.accentPositive;
   const negative = theme.accentNegative;
   const fonts = useBootSceneFonts(GEO_FONTS);
-  // The four build-once tables — see the header. `polys` feeds the other three,
-  // so they share one memo rather than four that each rebuild it.
-  const world = useMemo(() => {
-    const polys = geoPlanePolys();
-    return {
-      polys,
-      dots: geoTerrainDots(polys),
-      chords: geoGraticuleChords(polys),
-      cities: geoCityNodes(),
-      tracePoints: geoTotalTracePoints(polys),
-    };
-  }, []);
+  // The four tables — see the header. `polys` feeds the other three, so they
+  // share one computation rather than four that each rebuild it.
+  const polys = geoPlanePolys();
+  const world = {
+    polys,
+    dots: geoTerrainDots(polys),
+    chords: geoGraticuleChords(polys),
+    cities: geoCityNodes(),
+    tracePoints: geoTotalTracePoints(polys),
+  };
 
   const picture = useDerivedValue(() => {
     return createPicture(

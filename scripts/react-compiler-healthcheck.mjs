@@ -62,6 +62,22 @@ const TRACKED = [
     file: "packages/client-react-native/src/ui/theme/useThemedStyles.ts",
     fn: "useThemedStyles",
   },
+  {
+    file: "packages/client-react-native/src/ui/analytics/PnlChart.tsx",
+    fn: "PnlChart",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/GeoScene.tsx",
+    fn: "GeoScene",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/JarvisScene.tsx",
+    fn: "JarvisScene",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/TopoScene.tsx",
+    fn: "TopoScene",
+  },
 ];
 
 // Deliberately NOT tracked, each for a different reason:
@@ -73,10 +89,12 @@ const TRACKED = [
 //   module-scope lookup table, not by compiler memoization.
 // - `InspectorApp.tsx` holds a build-once INSTANCE via ref, not compiler-
 //   memoized derived state.
-// - `WatchlistPanel.tsx` CANNOT be protected: the component itself bails on the
-//   seam (ADR-004), so its deleted `useCallback` gets no compiler memoization
-//   at all. That deletion is justified instead by the fact that this repo has
-//   zero `React.memo` boundaries, so callback identity buys nothing at runtime.
+// - `WatchlistPanel.tsx` and `RfqCard.tsx` CANNOT be protected: the component
+//   itself bails on the seam (ADR-004) — `RfqCard` reads `useRfqCountdown` off
+//   `useViewModel()` — so their deleted `useCallback`s get no compiler
+//   memoization at all. That deletion is justified instead by the fact that
+//   this repo has zero `React.memo` boundaries, so callback identity buys
+//   nothing at runtime.
 //   Recorded here because "untracked" must never read as "forgotten".
 // - `useHoldToUnlock.ts` keeps semantic memos — the compiler cannot supply
 //   gesture identity, since it bails on `runOnJS(fireComplete)()` (no special
