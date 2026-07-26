@@ -13,10 +13,8 @@ export type ChartVarStyle = Readonly<Record<`--${string}`, string>>;
 /**
  * The candle fields chartVm reads — a structural subset of @rtc/domain's
  * `Candle` (which motion-core, being zero-dependency, cannot import). Domain
- * `Candle` values satisfy it as-is; `volume` is optional here because the
- * domain `Candle` type is gaining it in a sibling in-flight PR — until that
- * lands, callers passing today's volume-less `Candle` must keep typechecking.
- * Candles are keyed by array index; `time` drives the time-axis labels.
+ * `Candle` values satisfy it as-is. Candles are keyed by array index; `time`
+ * drives the time-axis labels, `volume` the volume-vm bar heights.
  */
 export interface ChartCandle {
   readonly time: number;
@@ -24,7 +22,7 @@ export interface ChartCandle {
   readonly high: number;
   readonly low: number;
   readonly close: number;
-  readonly volume?: number;
+  readonly volume: number;
 }
 
 /** Chart series' plot style: candlesticks, or a close-price line/area. */
@@ -219,14 +217,14 @@ export function volumeVm(
   const maxVolume =
     Math.max(
       ...visible.map((c) => {
-        return c.volume ?? 0;
+        return c.volume;
       }),
     ) || 1;
 
   return visible.map((cd, offset) => {
     const i = win.iFirst + offset;
     const x = xPct(i, win.vp, win.span);
-    const h = ((cd.volume ?? 0) / maxVolume) * 100;
+    const h = (cd.volume / maxVolume) * 100;
     const up = cd.close >= cd.open;
     const style = {
       "--x": `${x}%`,

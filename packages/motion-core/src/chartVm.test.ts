@@ -23,8 +23,8 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("pins x/top/h/wick percentages for a known two-candle series", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 12, low: 8, close: 11 },
-      { time: 60, open: 11, high: 14, low: 9, close: 13 },
+      { time: 0, open: 10, high: 12, low: 8, close: 11, volume: 1_000 },
+      { time: 60, open: 11, high: 14, low: 9, close: 13, volume: 2_000 },
     ];
 
     // liveRate === the stored close: the live-last overlay is a no-op here,
@@ -80,7 +80,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("glows only the last candle, and only when flashOn is true", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 11, low: 9, close: 10.5 },
+      { time: 0, open: 10, high: 11, low: 9, close: 10.5, volume: 1_000 },
     ];
 
     const glowing = chartVm(series, 10.5, true);
@@ -93,8 +93,8 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("falls back to a range of 1 when every OHLC value is flat (cmax === cmin)", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 10, low: 10, close: 10 },
-      { time: 60, open: 10, high: 10, low: 10, close: 10 },
+      { time: 0, open: 10, high: 10, low: 10, close: 10, volume: 1_000 },
+      { time: 60, open: 10, high: 10, low: 10, close: 10, volume: 1_000 },
     ];
 
     // liveRate === the flat price too, so withLiveLast is also a no-op: cmax
@@ -122,7 +122,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
 
   it("overlays the live price onto the last candle: close=liveRate, high/low stretch to include it", () => {
     const series: readonly Candle[] = [
-      { time: 0, open: 10, high: 12, low: 8, close: 11 },
+      { time: 0, open: 10, high: 12, low: 8, close: 11, volume: 1_000 },
     ];
 
     // liveRate above the stored high — the plot's range must stretch to it,
@@ -146,6 +146,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
       high: 12,
       low: 8,
       close: 11,
+      volume: 1_000,
     });
   });
 });
