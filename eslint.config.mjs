@@ -275,11 +275,12 @@ export default tseslint.config(
   },
   {
     // A function's own name must state its EFFECT — what it does, to what —
-    // never the occasion that triggers it. Slots are exempt BY SHAPE: a
-    // function-typed prop, or a method whose sole parameter is the callback,
-    // belongs to a declarer that must not know what gets attached. Prop types,
-    // JSX attributes, `vi.fn()` spies and uninitialised slot captures are legal
-    // by construction, so there is nothing to keep in sync.
+    // never the occasion that triggers it. Slots are exempt BY SHAPE:
+    // function-typed PROPERTY-syntax members, JSX attributes, `vi.fn()` spies
+    // and uninitialised slot captures are legal by construction, so there is
+    // nothing to keep in sync. A function-valued member written in METHOD
+    // syntax is treated as a command and IS flagged — a prop slot must be
+    // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
     //
     // Scope widens one package per commit until it reaches **/*.{ts,tsx} —
     // see docs/superpowers/plans/2026-07-26-name-functions-by-effect.md.

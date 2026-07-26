@@ -92,6 +92,22 @@ ruleTester.run("name-functions-by-effect", nameFunctionsByEffect, {
       name: "an effect verb plus a domain noun",
       code: "function dismissTicket() {}\n",
     },
+    {
+      name: "attach point via a union of callback types",
+      code: "interface A { onUnion(cb: TradeListener | undefined): void }\n",
+    },
+    {
+      name: "attach point via an intersection of callback types",
+      code: "interface A { onInter(cb: TradeListener & Meta): void }\n",
+    },
+    {
+      name: "attach point via a constructor type",
+      code: "interface A { onCtor(cb: new () => object): void }\n",
+    },
+    {
+      name: "attach-point exemption survives a defaulted callback param",
+      code: "function onSelect(cb: (t: Trade) => void = () => {}) {}\n",
+    },
   ],
   invalid: [
     {
@@ -189,6 +205,23 @@ ruleTester.run("name-functions-by-effect", nameFunctionsByEffect, {
       name: "attach-point exemption needs the SOLE param to be the callback",
       code: "interface A { onTrade(id: number, cb: TradeListener): void }\n",
       errors: [{ messageId: "nameByEffect", data: { name: "onTrade" } }],
+    },
+    {
+      name: "handle* class field arrow",
+      code: "class C {\n  private readonly handleClickField = (): void => {};\n}\n",
+      errors: [
+        { messageId: "nameByEffect", data: { name: "handleClickField" } },
+      ],
+    },
+    {
+      name: "bare event noun + Handler suffix: mouse",
+      code: "function mouseHandler() {}\n",
+      errors: [{ messageId: "nameByEffect", data: { name: "mouseHandler" } }],
+    },
+    {
+      name: "bare event noun + Callback suffix: scroll",
+      code: "const scrollCallback = () => {\n  reposition();\n};\n",
+      errors: [{ messageId: "nameByEffect", data: { name: "scrollCallback" } }],
     },
   ],
 });
