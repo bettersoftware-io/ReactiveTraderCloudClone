@@ -227,6 +227,7 @@ describe("equities effects", () => {
       close: 100.5,
       volume: 1_200_000,
     };
+
     const ctx = {
       marketData: {
         candles: vi.fn(() => {
@@ -261,6 +262,7 @@ describe("equities effects", () => {
       close: 100.5,
       volume: 1_200_000,
     };
+
     const ctx = {
       marketData: {
         candles: vi.fn(() => {

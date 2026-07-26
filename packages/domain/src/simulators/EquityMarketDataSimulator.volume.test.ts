@@ -9,6 +9,7 @@ describe("EquityMarketDataSimulator candle volume", () => {
     const series = await firstValueFrom(sim.candles("AAPL", "1D"));
 
     expect(series.length).toBeGreaterThan(0);
+
     for (const c of series) {
       expect(Number.isInteger(c.volume)).toBe(true);
       expect(c.volume).toBeGreaterThan(0);
@@ -19,14 +20,32 @@ describe("EquityMarketDataSimulator candle volume", () => {
     const a1 = await firstValueFrom(
       new EquityMarketDataSimulator().candles("AAPL", "1D"),
     );
+
     const a2 = await firstValueFrom(
       new EquityMarketDataSimulator().candles("AAPL", "1D"),
     );
+
     const m = await firstValueFrom(
       new EquityMarketDataSimulator().candles("MSFT", "1D"),
     );
 
-    expect(a1.map((c) => c.volume)).toEqual(a2.map((c) => c.volume));
-    expect(a1.map((c) => c.volume)).not.toEqual(m.map((c) => c.volume));
+    expect(
+      a1.map((c) => {
+        return c.volume;
+      }),
+    ).toEqual(
+      a2.map((c) => {
+        return c.volume;
+      }),
+    );
+    expect(
+      a1.map((c) => {
+        return c.volume;
+      }),
+    ).not.toEqual(
+      m.map((c) => {
+        return c.volume;
+      }),
+    );
   });
 });
