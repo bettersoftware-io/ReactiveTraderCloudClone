@@ -21,9 +21,9 @@ export async function expectSplitterDragResizes(
     "expected at least one draggable splitter handle in the FX layout",
   );
 
-  const before = await ctx.po.layout.firstHandleSize();
+  const before = await ctx.po.layout.firstResizeHandleSize();
   await ctx.po.layout.dragFirstHandleBy(DRAG_PX);
-  const after = await ctx.po.layout.firstHandleSize();
+  const after = await ctx.po.layout.firstResizeHandleSize();
 
   assertTrue(
     Math.abs(after - before) > MIN_FRACTION_DELTA,

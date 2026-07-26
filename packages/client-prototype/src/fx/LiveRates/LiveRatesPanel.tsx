@@ -281,7 +281,7 @@ function buildTileVm(
     isRfq,
     showCharts,
     onNotional: (v: string) => {
-      rates.setNotional(sym, v);
+      rates.setTileNotional(sym, v);
     },
     onReset: () => {
       rates.resetNotional(sym);

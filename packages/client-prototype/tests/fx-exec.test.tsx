@@ -41,7 +41,7 @@ describe("useFxRates exec machine", () => {
     });
 
     act(() => {
-      result.current.setNotional("EURUSD", "25m");
+      result.current.setTileNotional("EURUSD", "25m");
     });
     act(() => {
       result.current.buyPair("EURUSD");

@@ -16,7 +16,7 @@ export class PlaywrightLayout implements LayoutPO {
     return await this.page.locator(HANDLE).count();
   }
 
-  async firstHandleSize(): Promise<number> {
+  async firstResizeHandleSize(): Promise<number> {
     return Number(await this.first().getAttribute("aria-valuenow"));
   }
 

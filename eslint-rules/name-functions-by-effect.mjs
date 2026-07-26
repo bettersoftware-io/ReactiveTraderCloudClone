@@ -25,6 +25,14 @@
 // command. This is deliberate, not an oversight: a genuine prop slot must be
 // declared in property syntax; method syntax is reserved for things that run.
 //
+// HANDLERS GET NAMES EVEN WHEN THE BODY IS ONE LINE. The rule cannot enforce
+// extraction — it only sees the identifier a handler is already bound to —
+// but a reader arriving here from the error message should still extract and
+// name an inline arrow (`onChange={(e) => { setX(e.target.value); }}`) rather
+// than reach for `handleChange`. An inline arrow is maximally coupled to its
+// one call site: it cannot be reused from a different trigger at all, which
+// is the exact coupling this rule exists to remove.
+//
 // TWO KNOWN LIMITS, both deliberate:
 //
 // 1. It cannot verify the replacement. `handleClick` -> `handleClicked` passes
