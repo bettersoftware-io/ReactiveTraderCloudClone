@@ -41,6 +41,12 @@ is the one knip already rejected.
 
 Every task's requirements implicitly include this section.
 
+**0. No mutable state may cross a frame boundary.** All three of these scenes
+accumulate something in the web — `geo`'s trade array, `jarvis`'s `ringZPlane`,
+`topo`'s heightfield — and a worklet captures values rather than sharing a live
+closure. Derive from `elapsedSec` (see `coreArcs.ts`) or precompute build-once.
+Silent divergence, never a crash.
+
 **1. Worklet marking is transitive, and jest cannot see it.** Any function
 reached from inside a `createPicture` recorder must carry `"worklet"` itself —
 including functions it in turn calls. The jest Reanimated mock runs worklets as
@@ -152,6 +158,27 @@ own task, so the registry test never sits red between tasks.
 | 748 | trades: spawn + arc flight between cities |
 | 849 | city bars pulse up and down (far → near) |
 | 930 | corner telemetry + status banner |
+
+**`geo` also carries mutable per-frame state**, which this plan originally
+missed — it flagged `jarvis` and `topo` but not this. The web accumulates
+trades:
+
+```ts
+const trades: Trade[] = [];
+let lastSpawn = 0;
+let spawnSeed = 11;
+let tradeCount = 0;
+// …mutated inside the draw closure, every frame
+```
+
+A worklet cannot carry that: it runs on the UI thread and captures values, so a
+mutated capture does not reliably persist between frames. Port it as a pure
+function of time — `activeGeoTrades(elapsedSec)` — exactly as `coreArcs.ts`'s
+`activeFlowArcs` already does for `CoreScene`. Assert that the web's
+`trades.length < 9` cap never binds (longest flight 2.4 s against a 0.34 s
+interval ⇒ at most 8 overlap); **if it could bind, replaying from time alone
+would diverge from the web's accumulated array**, and the port would be an
+approximation rather than an equivalence.
 
 **The data is the risk here.** `MAIN`, `GB`, `IRE`, `DKZ`, `SIC`, `SAR`, `COR`
 (lines 73-370) are lon/lat polylines and `CITY` is a `[lon, lat, weight, name]`
