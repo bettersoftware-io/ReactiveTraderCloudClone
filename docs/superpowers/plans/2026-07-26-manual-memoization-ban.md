@@ -867,6 +867,27 @@ git commit -m "feat(lint): ban manual memoization in compiler-enabled packages"
 
 In `scripts/react-compiler-healthcheck.mjs`, the closing line reads `${TRACKED.length} files OK`, but `TRACKED` is keyed by function, not file. Change the wording to `${TRACKED.length} tracked functions OK` so it stays accurate if a second function in an already-tracked file is ever added.
 
+- [ ] **Step 0b: Correct the spec — it now asserts things that are false**
+
+`docs/superpowers/specs/2026-07-26-manual-memoization-ban-design.md` was written
+before implementation and three of its claims did not survive contact:
+
+1. **"Result: zero memo exceptions"** — false. `useHoldToUnlock.ts` keeps two
+   `useMemo`s and has a scoped lint exception. Correct this and say why.
+2. **The 38-pure-caching / 1-semantic split** — the AST pass classified
+   `useHoldToUnlock`'s two memos as caching. Measurement during implementation
+   proved otherwise. The true split is **36 pure caching deleted, 3 semantic**
+   (1 converted to a build-once ref in `InspectorApp`, 2 kept in
+   `useHoldToUnlock`). Correct the numbers and add a line explaining why the
+   static classifier could not have caught it: the memos' necessity depends on
+   the *caller's* compiler status (`LockScreen` bails on the seam), which is not
+   visible from the file under analysis.
+3. **Task 3's description as a refactor** — it became comment-only. Update the
+   spec's treatment table accordingly.
+
+Do not delete the original reasoning — mark what changed and why. A spec that
+quietly rewrites itself to match the outcome teaches nothing.
+
 - [ ] **Step 1: Extend ADR-003's scope**
 
 The ADR is written as a `client-react`-only decision. Update the Context and Decision sections to state that the compiler now runs in `client-react`, `devtools-app`, and `client-react-native`, and that manual memoization is **enforced by lint**, not convention. Reference the new `pnpm check:compiler` gate.
