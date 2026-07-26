@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Spec: [`docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md`](../specs/2026-07-26-catchup-triage-and-merge-queue-design.md). Every decision below is locked there.
-- The prose exemption is **exactly** `**/*.md` or `docs/**` — `CLAUDE.md` counts as prose, `.claude/settings.json` does **not**.
+- The prose exemption is **exactly** `**/*.md` — `CLAUDE.md` counts as prose, `.claude/settings.json` does **not**. (Amended 2026-07-26 after final review: `docs/**` was dropped — that directory holds deployed, ungated artifacts. See the spec's amendment note.)
 - `strict_required_status_checks_policy` stays `false`. Do not touch the `main` ruleset.
 - Rule 4 (merge when green, no human gate) and Rule 5 (merge commits only) are unchanged.
 - Phase B (the merge queue) is **not** built here. It is recorded as conditional.
@@ -38,13 +38,20 @@ In `.claude/skills/shipping-repo-changes/SKILL.md`, find the block beginning
 
 ```markdown
 - **Merge as-is (skip catch-up)** — the common case — when the incoming commits are plainly **disjoint** from your change: a different package, docs-only while you touched code, no shared exports / fixtures / lint / build config. `git merge-base --is-ancestor origin/main HEAD` may report "behind," but *behind ≠ risky*. Go straight to Rule 4.
-- **Merge as-is even when a file IS shared, if every shared file is prose** — i.e. every path in the overlap matches `**/*.md` or `docs/**`. Prose in different sections of a document has no semantic-conflict path to code, and git still blocks a genuine *textual* conflict regardless. `CLAUDE.md` counts as prose (instructions, not executable); `.claude/settings.json` does **not** (JSON that changes tool behaviour). **This is the single highest-value case:** measured over 59 merges (2026-07-26), 17 needed a catch-up and **9 of those 17 — 53% — shared only `docs/STATUS.md`**, every one of which auto-merged cleanly. They were not conflicts; they were this rule read too literally, at ~10 min of CI each.
+- **Merge as-is even when a file IS shared, if every shared file is prose** — i.e. every path in the overlap matches `**/*.md`. Prose in different sections of a document has no semantic-conflict path to code, and git still blocks a genuine *textual* conflict regardless. `CLAUDE.md` counts as prose (instructions, not executable); `.claude/settings.json` does **not** (JSON that changes tool behaviour). The glob is deliberately narrower than `docs/**`: that directory also holds 24 `.html`, 9 `.svg`, 6 `.js`, 5 `.css` and LFS media, and `docs/pages/`, `docs/presentations/`, `docs/showcase/` publish straight to gh-pages on push to `main` (`publish-site.yml`) while `docs/design/**/*.html` deploys to Vercel — none behind a CI gate, so "prose" there would be true of the wrong claim. A renamed heading or moved/renamed doc is *not* prose-safe either — `check:doc-links` validates cross-file anchors, so branch A renaming a heading + branch B linking the old one auto-merges clean and reds `main`; catch up in that case. Generated `.md` (e.g. `docs/lint-warnings.md`, drift-checked) is likewise not prose. **This is the single highest-value case:** measured over 59 merges (2026-07-26), 17 needed a catch-up and **9 of those 17 — 53% — shared only `docs/STATUS.md`**, every one of which auto-merged cleanly. They were not conflicts; they were this rule read too literally, at ~10 min of CI each.
 - **Catch up (merge `origin/main` *in* + re-enter the Rule 2 CI loop)** when **either**:
   - **(a) Overlap with a real semantic-conflict path** — the incoming diff touches code, a lockfile, config, fixtures, lint / tsconfig / `turbo.json`, CI workflows, exported symbols, or a package your branch also touches. `pnpm-lock.yaml` is the case that genuinely warrants it (4 of those 17); **or**
   - **(b) Too broad to cheaply assess** — the incoming diff spans more files than you can quickly eyeball for disjointness. Don't agonize over a big overlap analysis; just catch up. This is rare, so one extra catch-up is cheap.
-
-> **The residual risk, stated so it isn't forgotten:** `strict_required_status_checks_policy` is `false` on the `main` ruleset, so a green-but-stale PR *can* merge into a `main` it was never tested against. Post-merge `main` CI is the backstop, and it has caught exactly this once (a green PR-CI that reddened `main` during the SolidJS port). A **merge queue** would close it structurally — deferred on cost, see [`docs/IDEAS.md`](../../../docs/IDEAS.md) and the [design spec](../../../docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md).
 ```
+
+**Amended 2026-07-26 after final whole-branch review:** the residual-risk
+blockquote originally placed right after these bullets was moved below the
+`git merge origin/main` command block (it was severing that command from the
+bullets it implements) and folded together with the pre-existing "Structural
+fix on the roadmap" blockquote further down the Rule 3 section, so there is
+one merge-queue note, not two — it still carries every fact from both (the
+`strict_required_status_checks_policy: false` detail, the SolidJS-port
+anecdote, the spec link, and the `docs/IDEAS.md` pointer).
 
 - [ ] **Step 2: Update the Quick Reference row**
 

@@ -98,13 +98,28 @@ two changes can't collide?"* It then answers it with a file-overlap heuristic
 that is too coarse. The change names the dominant case:
 
 - **Prose-only overlap is not overlap.** When **every** shared file matches
-  `**/*.md` or `docs/**`, merge as-is. Different sections of `STATUS.md` cannot
+  `**/*.md`, merge as-is. Different sections of `STATUS.md` cannot
   break code, and a genuine textual conflict is still blocked by git regardless.
   The glob is stated exactly because the boundary matters: `CLAUDE.md` (3
   occurrences) counts as prose — it is instructions, not executable — while
   `.claude/settings.json` does **not**, being JSON that changes tool behaviour.
   This is deliberately the same prose set as `visual.yml`'s `paths-ignore`,
   minus `.claude/**` for that reason.
+
+  **Amended 2026-07-26 after final review:** originally `**/*.md` or
+  `docs/**`; `docs/**` was dropped because it contains deployed, ungated
+  artifacts — 24 `.html`, 9 `.svg`, 6 `.js`, 5 `.css` and LFS media, with
+  `docs/pages/`, `docs/presentations/`, `docs/showcase/` published to
+  gh-pages on push to `main` (`publish-site.yml`) and `docs/design/**/*.html`
+  deployed to Vercel, none behind a CI gate. The `docs/**` glob had been
+  borrowed from `visual.yml`'s `paths-ignore`, where the claim is "cannot move
+  a rendered pixel" — a different and weaker claim than "no semantic-conflict
+  path." Narrowing costs nothing measured: every catch-up in the data was
+  `docs/STATUS.md` (9) or `CLAUDE.md` (3), both already covered by `**/*.md`
+  alone. Also added: markdown is not exempt when `check:doc-links`-relevant
+  content changed (a renamed heading, or a moved/renamed doc) or when the
+  `.md` file is generated (e.g. `docs/lint-warnings.md`) — catch up in those
+  cases.
 - **Overlap still means catch up** when a shared file is code, a lockfile,
   config, a fixture, or CI — anything with a real semantic-conflict path.
   `pnpm-lock.yaml` (4 occurrences) is the case that genuinely warrants it.
