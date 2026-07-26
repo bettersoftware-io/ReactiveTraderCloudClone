@@ -30,10 +30,23 @@ Against base `f1dd8e07`:
 | `client-react` | **on** (`vite.config.ts:129`) | **1** | **88 optimized / 123 bailed** |
 | `devtools-app` | **on** (`vite.config.ts:10`) | **25** | mostly optimized; 2 bails |
 | `client-react-native` | **off** | **13** | n/a — no compiler in the pipeline |
-| `client-prototype` | off (isolated port) | 44 | out of scope (see Non-goals) |
+| `client-prototype` | off (isolated port) | ~~44~~ **34** (corrected 2026-07-26 — see below) | out of scope (see Non-goals) |
 | `client-solid`, `solid-bindings` | n/a | `createMemo` ×195 | out of scope — a reactivity primitive, not caching |
 
 **39 call sites are in scope** (1 + 13 + 25).
+
+> **Corrected 2026-07-26, post-implementation.** `client-prototype`'s original
+> count of 44 was wrong — the true count is **34**, across 10 files. The
+> regex behind the original measurement matched `useMemo`/`useCallback`
+> **anywhere on a line**, including `import { useMemo } from "react"`
+> statements and comment prose, rather than actual call expressions.
+> Re-counted three independent ways against real call sites (`useMemo(` /
+> `useCallback(`, excluding imports and comments): 34, confirmed. This is a
+> measurement error of exactly the kind this workstream exists to prevent —
+> it went unchallenged through this table, the Non-goals section below, and
+> `docs/STATUS.md` until a reviewer re-counted. The 1/25/13/39 in-scope
+> figures above used a stricter pattern from the start and were independently
+> re-verified against the same base commit (`f1dd8e07`); they hold.
 
 ### Finding 1 — the ViewModel seam defeats the compiler
 
@@ -154,9 +167,10 @@ Compiler handles this automatically."* RN's `useMemo`s are therefore
 ## Non-goals
 
 - **Reworking the ViewModel seam.** Finding 1 is documented, not fixed.
-- **`client-prototype`** (44 sites). Deliberately isolated readable port of the
-  v2 design prototype; churning it works against its purpose. Descoped
-  explicitly in `docs/STATUS.md`.
+- **`client-prototype`** (~~44~~ **34** sites — corrected 2026-07-26, see
+  Finding count above). Deliberately isolated readable port of the v2 design
+  prototype; churning it works against its purpose. Descoped explicitly in
+  `docs/STATUS.md`.
 - **Test harnesses.** `viewModelFromWorld.ts` and RN specs never go through the
   Babel transform, so nothing auto-memoizes them — their stable identity is
   real. Out of scope by file-glob construction.
@@ -296,7 +310,8 @@ sub-second Babel pass, no build required).
   packages; new **Measured coverage** section (88/123, 118 seam bails); the
   "no manual memoization" consequence upgraded from convention to enforced lint.
 - **`docs/STATUS.md`** (via the tracking skill): the seam-vs-compiler tension as
-  a known architectural limitation, and `client-prototype`'s 44 sites as
+  a known architectural limitation, and `client-prototype`'s 34 sites (corrected
+  2026-07-26; originally miscounted as 44 — see Finding count above) as
   explicitly descoped.
 
 ## Verification
