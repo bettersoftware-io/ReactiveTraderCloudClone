@@ -7,7 +7,7 @@ import {
   type SkFont,
   Skia,
 } from "@shopify/react-native-skia";
-import type { JSX } from "react";
+import { type JSX, useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -20,6 +20,7 @@ import {
 } from "#/ui/shell/boot/scenes/boot3dCamera";
 import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import { bootProgress, hexToRgba } from "#/ui/shell/boot/scenes/coreGeometry";
+import { cachedSceneGeometry } from "#/ui/shell/boot/scenes/sceneGeometryCache";
 import {
   beaconPhase,
   contourPhase,
@@ -72,13 +73,12 @@ import {
  * of it every frame at 60 fps — that per-frame repeat is what this component
  * must never do, `useMemo` or not. Jest cannot tell the difference — its mock
  * runs the slow version happily either way — so this is untested by anything
- * except a device. Post-ADR-003 (the manual-memoization ban) this now rebuilds
- * on every React re-render of the component rather than once per mount, since
- * it is read only inside the `useDerivedValue` closure below and never flows
- * into JSX, so the compiler inserts no cache for it (verified against the
- * compiled output). Acceptable only because `elapsedSec`/`drift` are Reanimated
- * shared values that do not themselves trigger a re-render — this component
- * re-renders on theme/dimension changes alone, not on the 60 fps tick.
+ * except a device. `world` is read only inside the `useDerivedValue` closure
+ * below and never flows into JSX, so the React Compiler inserts no cache for
+ * it (verified against the compiled output) — it is cached at module scope
+ * instead (`sceneGeometryCache.ts`), which is compiler-independent and, since
+ * neither `topoHeightfield` nor `topoMotes` take an input, never needs to
+ * recompute at all after the first call.
  *
  * PRICE TICKS ARE DERIVED FROM TIME, not accumulated on the peak objects as the
  * web does — see `topoGeometry.ts`'s `peakTick`.
@@ -87,13 +87,14 @@ import {
  * live timestamp bottom-left. A worklet must not call `new Date()`, and a
  * ticking clock makes a pinned visual golden unreproducible — this repo
  * already dropped `credit/rfq-tiles-empty` for exactly that class of
- * non-determinism. Before ADR-003 this was sampled once at mount (`useMemo`,
- * `[]`); post-ban it re-samples on every re-render for the same reason `world`
- * above does (no compiler cache — see there), so a live theme/dimension change
- * mid-boot now nudges the footer clock instead of leaving it pinned to mount
- * time. Already **not enough for a golden** either way: two captures minutes
- * apart still differ. Registering `boot/topo` as a visual scenario therefore
- * needs the clock pinned, or the scenario left out with that reason recorded.
+ * non-determinism. Sampled once per mount via a lazy `useRef` (not a
+ * `useMemo`, which the compiler cannot supply memoization for here either —
+ * see `world` above — and which React itself never guarantees to retain), so
+ * a theme/dimension change mid-boot leaves the footer clock pinned to mount
+ * time exactly as before. Already **not enough for a golden** either way: two
+ * mounts minutes apart still differ. Registering `boot/topo` as a visual
+ * scenario therefore needs the clock pinned, or the scenario left out with
+ * that reason recorded.
  *
  * PROJECTION. `perspectiveK` 0.26 with a clamped near plane.
  */
@@ -110,16 +111,36 @@ export function TopoScene({
   const negative = theme.accentNegative;
   const fonts = useBootSceneFonts(TOPO_FONTS);
   // The expensive tables — see the header. Kept out of the worklet, never
-  // rebuilt inside `createPicture`; rebuilt per React re-render, not per mount.
-  const heights = topoHeightfield();
-  const world = {
-    contours: topoContours(heights),
-    meshLines: topoMeshLines(heights),
-    motes: topoMotes(),
-  };
+  // rebuilt inside `createPicture`. `topoHeightfield`/`topoMotes` take no
+  // input (deterministic world-space data), so `world` has no real
+  // dependency to key on — an empty cache key means the first call computes
+  // it and every later render reuses the same object. Read only inside the
+  // `useDerivedValue` closure below, never JSX, so the React Compiler cannot
+  // cache it itself — see `sceneGeometryCache.ts`'s header.
+  const world = cachedSceneGeometry("topoScene:world", [], () => {
+    const heights = topoHeightfield();
 
-  // Read in React-land, never inside the worklet — see the header.
-  const now = new Date();
+    return {
+      contours: topoContours(heights),
+      meshLines: topoMeshLines(heights),
+      motes: topoMotes(),
+    };
+  });
+
+  // Read in React-land, never inside the worklet — see the header. This is
+  // a BUILD-ONCE-PER-MOUNT value, not a geometry cache: the footer clock
+  // must stay pinned to the moment this scene mounted, so a lazy ref (the
+  // same idiom `useMachine.ts`/`InspectorApp.tsx` use for a build-once
+  // instance) captures `Date.now()` exactly once and every later render
+  // reads the same captured value, regardless of how many times the
+  // component re-renders in between.
+  const mountTimeRef = useRef<Date | null>(null);
+
+  if (mountTimeRef.current === null) {
+    mountTimeRef.current = new Date();
+  }
+
+  const now = mountTimeRef.current;
   const stamp = topoTimestamp(
     now.getFullYear(),
     now.getMonth() + 1,

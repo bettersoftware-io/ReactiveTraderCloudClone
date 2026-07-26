@@ -59,6 +59,7 @@ import {
   spokeZPlane,
   wedgeStartAngle,
 } from "#/ui/shell/boot/scenes/jarvisGeometry";
+import { cachedSceneGeometry } from "#/ui/shell/boot/scenes/sceneGeometryCache";
 
 /**
  * `jarvis` boot scene — "HOLO CORE · RT / 3Dx.40A", the densest of the eight.
@@ -91,7 +92,15 @@ export function JarvisScene({
   const accentAlt = theme.accent2;
   const positive = theme.accentPositive;
   const fonts = useBootSceneFonts(JARVIS_FONTS);
-  const world = { fragments: jarvisFragments(), particles: jarvisParticles() };
+  // `jarvisFragments`/`jarvisParticles` take no input (deterministic,
+  // hand-placed world-space data), so `world` has no real dependency to key
+  // on — an empty cache key means the first call computes it and every
+  // later render reuses the same object. Read only inside the
+  // `useDerivedValue` closure below, never JSX, so the React Compiler
+  // cannot cache it itself — see `sceneGeometryCache.ts`'s header.
+  const world = cachedSceneGeometry("jarvisScene:world", [], () => {
+    return { fragments: jarvisFragments(), particles: jarvisParticles() };
+  });
 
   const picture = useDerivedValue(() => {
     return createPicture(

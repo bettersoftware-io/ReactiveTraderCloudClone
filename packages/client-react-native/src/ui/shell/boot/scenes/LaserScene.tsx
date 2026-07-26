@@ -33,6 +33,7 @@ import {
   contentScale,
   panelContentShapes,
 } from "#/ui/shell/boot/scenes/laserPanelContent";
+import { cachedSceneGeometry } from "#/ui/shell/boot/scenes/sceneGeometryCache";
 
 /**
  * `laser` boot scene — UI panels traced in by a sweeping laser: a fixed set
@@ -58,7 +59,10 @@ import {
  *     translate-scale-translate triple, the declarative form of the web's
  *     `translate(cx,cy); scale(s,s); translate(-cx,-cy)`) animate off
  *     `contentEase`/`contentScale` — the shapes themselves are built once per
- *     panel per viewport (memoized by the React Compiler), never per frame;
+ *     panel per viewport (cached by `sceneGeometryCache.ts` — read only
+ *     inside this JSX's own render, but off a fresh `rect` object every
+ *     render, so the compiler has no stable dependency to key on), never
+ *     per frame;
  *   - the laser draw-head: a scene-level (not per-panel) `<Line>` emitter
  *     beam plus a glow-dot/core-dot `<Circle>` pair, walking
  *     `perimeterPoint(rect, fraction)` for the single panel still tracing
@@ -252,8 +256,23 @@ function LaserPanelTrace({
   const path = rectTracePath(rect.x, rect.y, rect.width, rect.height);
   const tickPath = cornerTickPath(rect, CORNER_TICK_LENGTH);
 
-  const contentShapes = withPositionalKeys(
-    panelContentShapes(panel.kind, rect),
+  // Read only inside this JSX's own `<Group>` map below, but `rect` is a
+  // fresh object every render (`panelRectPx` returns a new literal each
+  // time), so the compiler cannot see it as a stable dependency — no cache
+  // guard appears in the compiled output (verified). Cached here instead,
+  // keyed on the actual values that determine the shapes (`panel.kind` plus
+  // `rect`'s four fields, not `rect`'s identity) — see
+  // `sceneGeometryCache.ts`'s header. Namespaced per panel via `panel.t0`
+  // (unique across `LASER_PANELS`, see `LaserScene`'s own key comment above)
+  // so the scene's 6 concurrently-live panels each get their own cache slot
+  // instead of thrashing a single shared one sized for "a handful of
+  // entries" per the viewport-rotation case the bound was set for.
+  const contentShapes = cachedSceneGeometry(
+    `laserScene:contentShapes:${panel.t0}`,
+    [panel.kind, rect.x, rect.y, rect.width, rect.height],
+    () => {
+      return withPositionalKeys(panelContentShapes(panel.kind, rect));
+    },
   );
 
   const end = useDerivedValue(() => {

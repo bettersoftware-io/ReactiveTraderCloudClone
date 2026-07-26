@@ -63,6 +63,7 @@ import {
   tradeArcLift,
   tradeArcPoint,
 } from "#/ui/shell/boot/scenes/geoGeometry";
+import { cachedSceneGeometry } from "#/ui/shell/boot/scenes/sceneGeometryCache";
 
 /**
  * `geo` boot scene — "GEO-FEED · EMEA WEST TACTICAL". A western-Europe
@@ -83,12 +84,12 @@ import {
  * 930,000 point comparisons every frame. All of those inputs are fixed in
  * world space — only the projection moves — so they are computed in
  * React-land and merely projected per frame in the worklet. Jest cannot see
- * the difference; the simulator would. Post-ADR-003 (the manual-memoization
- * ban) these rebuild on every React re-render rather than once per mount —
- * they are read only inside the `useDerivedValue` closure below, never JSX,
- * so the compiler inserts no cache for them (verified against the compiled
- * output). Acceptable only because `elapsedSec`/`drift` are Reanimated shared
- * values that do not themselves trigger a re-render.
+ * the difference; the simulator would. They are read only inside the
+ * `useDerivedValue` closure below, never JSX, so the React Compiler inserts
+ * no cache for them (verified against the compiled output) — `world` is
+ * cached at module scope instead (`sceneGeometryCache.ts`), which is
+ * compiler-independent and, since none of these tables take an input, never
+ * needs to recompute at all after the first call.
  *
  * The radar sweep is the deliberate exception: its X position depends on
  * `elapsedSec`, and it is only ~62 `inside` calls, so it stays per-frame and
@@ -111,15 +112,24 @@ export function GeoScene({
   const negative = theme.accentNegative;
   const fonts = useBootSceneFonts(GEO_FONTS);
   // The four tables — see the header. `polys` feeds the other three, so they
-  // share one computation rather than four that each rebuild it.
-  const polys = geoPlanePolys();
-  const world = {
-    polys,
-    dots: geoTerrainDots(polys),
-    chords: geoGraticuleChords(polys),
-    cities: geoCityNodes(),
-    tracePoints: geoTotalTracePoints(polys),
-  };
+  // share one computation rather than four that each rebuild it. None of
+  // these functions take any input (they're deterministic, hand-placed
+  // world-space data), so `world` has no real dependency to key on — the
+  // cache key is empty, meaning the first call ever computes it and every
+  // later render (any viewport, any theme) reuses the same object. Read
+  // only inside the `useDerivedValue` closure below, never JSX, so the
+  // compiler cannot cache it itself — see `sceneGeometryCache.ts`'s header.
+  const world = cachedSceneGeometry("geoScene:world", [], () => {
+    const polys = geoPlanePolys();
+
+    return {
+      polys,
+      dots: geoTerrainDots(polys),
+      chords: geoGraticuleChords(polys),
+      cities: geoCityNodes(),
+      tracePoints: geoTotalTracePoints(polys),
+    };
+  });
 
   const picture = useDerivedValue(() => {
     return createPicture(
