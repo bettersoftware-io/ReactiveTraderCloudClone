@@ -144,6 +144,50 @@ verb-plus-object; `Trade` is a domain noun and `Click` is an event.
 | `MethodDefinition` | `private handleLoginOutcome(…)` | flag on name match **unless** sole param is function-typed |
 | `TSMethodSignature` | `onSort(f: SortField): void` | flag on name match **unless** sole param is function-typed |
 | `TSPropertySignature` | `onBuy: () => void` | **never flagged** — a function-typed prop is a slot |
+| `PropertyDefinition` with a function initializer | `private handleX = () => {}` | flag on name match |
+
+### The parameter-shape discriminator has one blind spot: method syntax
+
+Parameter shape decides the **attach-point** case correctly (`onTrade(listener)`
+receives a function, so it is a slot). It cannot decide **slot vs command**,
+because the real criterion there is *who invokes*:
+
+- a **prop slot** is invoked by the declaring component (`Car` calls `onYellowLight`)
+- a **command** is invoked by the consumer (`api.onSort(col.field)`, `connectionLog.onConnect()`)
+
+That direction is invisible in a declaration, and in method syntax the two are
+byte-for-byte indistinguishable:
+
+```ts
+interface DealerChecklistProps { onToggleDealer(id: number): void }  // slot
+interface ConnectionLog        { onConnect(): void }                 // command
+```
+
+**Resolution — the syntax carries the distinction.** A function-valued member
+written in *property* syntax is a slot; written in *method* syntax it is a
+command:
+
+```ts
+interface DealerChecklistProps {
+  onToggleDealer: (id: number) => void;   // property syntax → slot → exempt
+}
+interface ConnectionLog {
+  recordConnect(): void;                  // method syntax → command → must state its effect
+}
+```
+
+This is not a new convention imposed on the codebase so much as a
+regularisation of the existing one: 283 function-valued members already use
+property syntax against 86 in method syntax. The migration converts the genuine
+prop slots among those 86 to property syntax — which also aligns them with the
+majority style and with `@typescript-eslint/method-signature-style`'s
+`"property"` mode — and renames the commands.
+
+**Failure mode to accept:** a command *written* in property syntax
+(`onConnect: () => void`) is exempt and slips through. The rule fails toward a
+false negative, which a reviewer can catch, rather than toward a false positive
+that would force the coupling inversion. That is the right direction to fail,
+but it means the rule is a habit-and-accident guard, not a proof.
 
 Everything else is out of scope, so these are legal *by construction* rather
 than by carve-out — which is what keeps the rule cheap and drift-free:
@@ -207,7 +251,11 @@ instances of the pattern in the repo. A hole there keeps seeding the habit.
 ## Migration — one branch, one commit per package
 
 ≈186 renames — 160 function declarations, 6 function-initialized bindings, 7
-class methods, 13 interface members. Treat it as an estimate: the exact set comes
+class methods, 13 method-syntax interface members that are commands — **plus
+~73 prop-slot members converted from method to property syntax** (see "The
+parameter-shape discriminator has one blind spot" above; 86 method-syntax
+members exist, and each must be classified as slot or command before it is
+touched). Treat it as an estimate: the exact set comes
 from the first real lint run, since a handful of the 160 declarations may take a
 callback as their sole parameter and so be slots. They are **~186 judgment calls,
 not a mechanical sweep** — which is the real cost and the reason for per-package

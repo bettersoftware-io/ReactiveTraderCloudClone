@@ -46,6 +46,29 @@ proven by typecheck + the full test suite staying green.
      `handleKeyDown` → `blurNotionalOnEnter`, not `keyDownHandler`.
   5. Never settle for a synonym: `processClick` / `doClick` / `handleClicked`
      all fail the same test the rule exists to enforce.
+- **Method-syntax members must be classified before they are touched.** A
+  function-valued interface/type member written in *method* syntax
+  (`onToggleDealer(id: number): void`) is flagged, but a member written in
+  *property* syntax (`onToggleDealer: (id: number) => void`) is exempt. The rule
+  cannot tell a prop slot from a command in method syntax, because the real
+  criterion is *who invokes* — the declaring component calls a prop slot, the
+  consumer calls a command — and a declaration does not show that. So for each
+  flagged member, decide:
+  - **Prop slot** (the declaring component invokes it; a parent supplies the
+    function) → **convert to property syntax**, do NOT rename. This also matches
+    the repo's majority style: 283 members already use property syntax against
+    86 in method syntax.
+    ```ts
+    // before                              after
+    onToggleDealer(id: number): void;   →   onToggleDealer: (id: number) => void;
+    ```
+  - **Command** (a consumer invokes it — `api.onSort(col.field)`,
+    `connectionLog.onConnect()`) → **rename** per the naming procedure, keep
+    method syntax.
+
+  The check is mechanical: grep the member name for call sites. `x.onSort(` at a
+  consumer means command; a JSX attribute `onSort={` or a call from inside the
+  declaring component means slot.
 
 ## Why some tasks list every rename and others don't
 
@@ -847,9 +870,18 @@ Widens rtc/name-functions-by-effect to devtools-app + devtools-extension."
 
 **Interfaces:**
 - Consumes: the rule id from Task 1.
-- Produces: nothing cross-package. All sites are component-local functions; the
-  `on*` **props** they are passed to are slots and do not change, so
+- Produces: nothing cross-package. All *handler* sites are component-local
+  functions, and prop **names** never change — prop slots in method syntax are
+  converted to property syntax, which is a type-level edit only. So
   `@rtc/ui-contract` specs and the visual goldens are untouched.
+
+**Known method-syntax prop slots in this package** (convert to property syntax,
+do not rename — verified as props, not commands):
+- `ui/credit/newRfq/DealerChecklist.tsx:58,59` — `onToggleDealer`, `onToggleAll`
+- `ui/credit/newRfq/InstrumentSelect.tsx:50,51,56`
+- `ui/credit/newRfq/NewRfqPanel.tsx:254` — `DirButtonProps.onSelect`
+
+Expect more; enumerate them in Step 2 with the rest.
 
 - [ ] **Step 1: Widen the glob**
 
@@ -859,8 +891,10 @@ Add `"packages/client-react/**/*.{ts,tsx}",` to the `files` array.
 
 Run: `pnpm exec eslint packages/client-react`
 
-List every violation as `file:line  currentName  →  proposedName` and **pause
-for review before editing**. Worked examples from known sites:
+List every violation as `file:line  currentName  →  proposedName` — and for each
+flagged **interface/type member**, classify it slot-vs-command per the Global
+Constraints and mark it `→ property syntax` or `→ <newName>`. **Pause for review
+before editing.** Worked examples from known handler sites:
 
 | site | current | proposed |
 |---|---|---|
@@ -918,13 +952,21 @@ Add `"packages/client-solid/**/*.{ts,tsx}",` to the `files` array.
 
 Run: `pnpm exec eslint packages/client-solid`
 
-List every violation as `file:line  currentName  →  proposedName` and pause for
-review. `client-solid` is a port of `client-react` at full parity, so **reuse
-Task 6's chosen names wherever the component is the same** — divergent names
-across the two clients would make the parity harder to audit. Known sites
-include `CreditViewProvider.tsx:17,19` (`exportHandler` is a `let` with no
-function initializer and is **not** flagged; `setExportCsvHandler` has a leading
-verb and is **not** flagged).
+List every violation as `file:line  currentName  →  proposedName`, classifying
+each interface/type member slot-vs-command per the Global Constraints, and pause
+for review. `client-solid` is a port of `client-react` at full parity, so
+**reuse Task 6's chosen names wherever the component is the same** — divergent
+names across the two clients would make the parity harder to audit.
+
+This package has **6 method-syntax members**, the mirror image of
+`client-react`'s and all verified prop slots — convert to property syntax, do
+not rename:
+- `ui/credit/newRfq/DealerChecklist.tsx:65,66`
+- `ui/credit/newRfq/InstrumentSelect.tsx:53,54,59`
+- `ui/credit/newRfq/NewRfqPanel.tsx:293`
+
+Note `CreditViewProvider.tsx:17,19` is **not** flagged: `exportHandler` is a
+`let` with no function initializer, and `setExportCsvHandler` has a leading verb.
 
 - [ ] **Step 3: Apply the approved renames**
 
@@ -1105,9 +1147,22 @@ Add `"packages/client-prototype/**/*.{ts,tsx}",` to the `files` array.
 
 Run: `pnpm exec eslint packages/client-prototype`
 
-Expected: ~40 errors. The 10 interface members are the interesting ones — they
-are **commands on a hook API**, read at call sites as `api.onSort(col.field)`,
-which is the vagueness the rule targets:
+Expected: ~40 handler errors **plus most of this package's 64 method-syntax
+members** — by far the largest classification job in the plan, so budget for it.
+Split them per the Global Constraints:
+
+- **52 sit in `.tsx` component files** — prop slots on `*Props` interfaces →
+  convert to property syntax, do not rename.
+- **12 sit in the five `use*.ts` hook files** — candidate commands. Ten are the
+  hook-API members tabled below (`useFxRates.ts` 5, `useFxBlotter.ts` 3,
+  `useCreditRfqs.ts` 2); the remaining two (`layout/useSplit.ts`,
+  `shell/Boot/useBootSequence.ts`) must be classified individually — a hook can
+  return a *slot* it merely forwards to a component, in which case it converts
+  to property syntax like any other slot.
+
+  The `.tsx`-vs-`use*.ts` split is a strong prior, not a rule: verify each by
+  grepping call sites, per the Global Constraints. The ten tabled members are
+  read as `api.onSort(col.field)`, which is the vagueness the rule targets:
 
 | type member | current | proposed |
 |---|---|---|
