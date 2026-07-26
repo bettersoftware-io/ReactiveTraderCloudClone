@@ -8,8 +8,18 @@ export {
   panBy,
   zoomAt,
 } from "./chartViewport.js";
-export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
-export { chartVm } from "./chartVm.js";
+export type {
+  ChartCandle,
+  ChartKind,
+  ChartPoint,
+  ChartScale,
+  ChartVarStyle,
+  ChartVm,
+  ChartVmOptions,
+  TimeLabelVm,
+  VolumeBarVm,
+} from "./chartVm.js";
+export { chartVm, volumeVm, Y_SPAN, Y_TOP } from "./chartVm.js";
 export type { DragOffset, Size } from "./clampDragOffset.js";
 export { clampDragOffset } from "./clampDragOffset.js";
 export {
