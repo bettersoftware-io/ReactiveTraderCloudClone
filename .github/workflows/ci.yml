@@ -24,6 +24,14 @@ on:
     branches: [main]
   # Manual escape hatch (mirrors visual.yml): lets a branch re-verify when a
   # pull_request synchronize event fails to materialize a run.
+  #
+  # Before reaching for it, check `gh pr view <n> --json mergeable`. If the PR is
+  # CONFLICTING, no run was ever created and none ever will be — pull_request
+  # workflows build the computed MERGE commit, and that ref cannot exist while the
+  # PR conflicts. (CodeQL still runs; it uses refs/pull/N/head.) Neither a dispatch
+  # nor an empty-commit re-trigger can help — resolve the conflict instead. A
+  # dispatch run also does not satisfy the required PR contexts (see #291), so this
+  # hatch is for genuinely-missing runs on a MERGEABLE PR only.
   workflow_dispatch:
 
 # A newer push to the same branch/PR cancels the in-flight run.
