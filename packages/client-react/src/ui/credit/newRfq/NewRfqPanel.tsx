@@ -113,6 +113,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
     });
   }
 
+  function toggleInstrumentDropdown(): void {
+    setInstrumentOpen((prev) => {
+      return !prev;
+    });
+  }
+
   function clearRfqDraft(): void {
     setValue(EMPTY_VALUE);
     setInstrumentOpen(false);
@@ -173,11 +179,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
         instruments={instruments}
         selected={selectedInstrument}
         open={instrumentOpen}
-        onToggle={() => {
-          setInstrumentOpen((prev) => {
-            return !prev;
-          });
-        }}
+        onToggle={toggleInstrumentDropdown}
         onSelect={selectInstrument}
       />
 
@@ -261,6 +263,10 @@ interface DirButtonProps {
 function DirButton(props: DirButtonProps): ReactElement {
   const { dir, active, onSelect } = props;
 
+  function selectDirection(): void {
+    onSelect(dir);
+  }
+
   return (
     <button
       type="button"
@@ -268,9 +274,7 @@ function DirButton(props: DirButtonProps): ReactElement {
       data-testid={`new-rfq-dir-${dir.toLowerCase()}`}
       data-dir={dir.toLowerCase()}
       data-active={String(active)}
-      onClick={() => {
-        onSelect(dir);
-      }}
+      onClick={selectDirection}
     >
       You {dir}
     </button>

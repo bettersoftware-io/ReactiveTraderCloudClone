@@ -35,6 +35,10 @@ export function FxBlotterHeadControls(
     onView("activity");
   }
 
+  function changeBlotterQuery(e: ChangeEvent<HTMLInputElement>): void {
+    api.setBlotterQuery(e.target.value);
+  }
+
   return (
     <>
       <button
@@ -59,9 +63,7 @@ export function FxBlotterHeadControls(
           <input
             className={styles.filter}
             value={api.query}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              api.setBlotterQuery(e.target.value);
-            }}
+            onChange={changeBlotterQuery}
             placeholder="Filter…"
           />
           <button

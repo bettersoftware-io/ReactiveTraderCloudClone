@@ -101,6 +101,14 @@ function TimelineRowView({
     }
   }
 
+  function pinTimelineRow(): void {
+    model.pin(row.seq);
+  }
+
+  function setTimelineRadius(): void {
+    model.setRadiusAround(row);
+  }
+
   return (
     <div
       data-testid="timeline-row"
@@ -108,13 +116,7 @@ function TimelineRowView({
       data-family={familyOf(row.kind)}
       className={rowClassName}
     >
-      <button
-        type="button"
-        className={styles.pinArea}
-        onClick={() => {
-          model.pin(row.seq);
-        }}
-      >
+      <button type="button" className={styles.pinArea} onClick={pinTimelineRow}>
         <span className={styles.time}>{formatLogTime(row.ts)}</span>
         <span className={styles.kindChip}>{row.kind}</span>
         <span className={styles.summary}>{row.summary}</span>
@@ -133,9 +135,7 @@ function TimelineRowView({
         type="button"
         title="Show events within ±100 ms"
         className={styles.radius}
-        onClick={() => {
-          model.setRadiusAround(row);
-        }}
+        onClick={setTimelineRadius}
       >
         ±100ms
       </button>

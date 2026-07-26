@@ -14,6 +14,10 @@ export interface WatchlistRowProps {
 export function WatchlistRow(props: WatchlistRowProps): ReactElement {
   const { row, onSelect } = props;
 
+  function selectWatchlistRow(): void {
+    onSelect(row.sym);
+  }
+
   return (
     <button
       type="button"
@@ -22,9 +26,7 @@ export function WatchlistRow(props: WatchlistRowProps): ReactElement {
       data-selected={String(row.selected)}
       data-flash={String(row.flashOn)}
       data-up={String(row.up)}
-      onClick={() => {
-        onSelect(row.sym);
-      }}
+      onClick={selectWatchlistRow}
     >
       <span className={styles.left}>
         <span className={styles.sym}>{row.sym}</span>

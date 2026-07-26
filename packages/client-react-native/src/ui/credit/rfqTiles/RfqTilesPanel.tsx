@@ -43,6 +43,10 @@ export function RfqTilesPanel(): JSX.Element {
     });
   }
 
+  function acceptRfqQuote(quoteId: number): void {
+    void acceptQuote(quoteId);
+  }
+
   return (
     <View style={styles.panel} testID="credit-tiles-panel">
       <RfqFilterTabs selected={filter} onChange={setFilter} />
@@ -59,9 +63,7 @@ export function RfqTilesPanel(): JSX.Element {
                 rfq={rfq}
                 instrumentMap={instrumentMap}
                 dealers={dealers}
-                onAccept={(quoteId: number) => {
-                  void acceptQuote(quoteId);
-                }}
+                onAccept={acceptRfqQuote}
                 onDismiss={removeRfq}
               />
             );

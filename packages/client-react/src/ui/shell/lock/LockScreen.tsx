@@ -39,6 +39,10 @@ export function LockScreen(): ReactElement | null {
     unlock(password);
   }
 
+  function changePassword(event: ChangeEvent<HTMLInputElement>): void {
+    setPassword(event.target.value);
+  }
+
   return (
     <div data-testid="lock-screen" className={styles.overlay}>
       <div className={styles.grid} aria-hidden="true" />
@@ -103,9 +107,7 @@ export function LockScreen(): ReactElement | null {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={(event: ChangeEvent<HTMLInputElement>): void => {
-                  setPassword(event.target.value);
-                }}
+                onChange={changePassword}
               />
             </label>
           </div>

@@ -45,6 +45,14 @@ export function RateTile(props: RateTileProps): ReactElement {
     "--move-color": vm.moveUp ? "var(--buy)" : "var(--sell)",
   } as CSSProperties;
 
+  function changeNotional(e: ChangeEvent<HTMLInputElement>): void {
+    vm.onNotional(e.target.value);
+  }
+
+  function selectNotionalText(e: FocusEvent<HTMLInputElement>): void {
+    e.target.select();
+  }
+
   return (
     <div
       className={styles.tile}
@@ -69,12 +77,8 @@ export function RateTile(props: RateTileProps): ReactElement {
             className={styles.notionalInput}
             data-invalid={String(vm.notionalInvalid)}
             value={vm.notional}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              vm.onNotional(e.target.value);
-            }}
-            onFocus={(e: FocusEvent<HTMLInputElement>) => {
-              e.target.select();
-            }}
+            onChange={changeNotional}
+            onFocus={selectNotionalText}
           />
           <button
             type="button"
