@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { AppToInspector, Recording } from "@rtc/devtools-core";
@@ -180,6 +181,41 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
   fireEvent.click(screen.getByTestId("context-tab-state"));
 
   expect(screen.getByText("m-pre")).toBeTruthy();
+});
+
+test("re-renders do not re-tap the store — liveHistory keeps its identity across renders", () => {
+  const tapSpy = vi.spyOn(InspectorStore.prototype, "tap");
+  const store = new InspectorStore({ coalesce: false });
+
+  const { rerender } = render(<InspectorApp store={store} />);
+
+  rerender(<InspectorApp store={store} />);
+  rerender(<InspectorApp store={store} />);
+
+  expect(tapSpy).toHaveBeenCalledTimes(1);
+
+  tapSpy.mockRestore();
+});
+
+test("does not re-tap the store inside React.StrictMode — liveHistory survives the double-render", () => {
+  const tapSpy = vi.spyOn(InspectorStore.prototype, "tap");
+  const store = new InspectorStore({ coalesce: false });
+
+  render(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
+
+  // React's own dev-mode effect check double-invokes the store-tap effect
+  // once (mount, cleanup, remount) for every component regardless of this
+  // fix — that pair is expected and not the regression under test. What the
+  // ref idiom prevents is a THIRD invocation: an unstable liveHistory would
+  // make the effect's dependency array change identity mid-mount and fire
+  // again beyond React's own built-in double-invoke.
+  expect(tapSpy).toHaveBeenCalledTimes(2);
+
+  tapSpy.mockRestore();
 });
 
 function sampleRecording(): Recording {
