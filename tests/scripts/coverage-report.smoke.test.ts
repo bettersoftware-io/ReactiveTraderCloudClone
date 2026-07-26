@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main, TIERS } from "./coverage-report";
 
 describe("coverage-report CLI", () => {
-  it("exposes the seven standalone coverage tiers, both clients framework-prefixed", () => {
+  it("exposes the eight standalone coverage tiers, both clients framework-prefixed and symmetric", () => {
     expect(
       TIERS.coverage.map((t) => {
         return t.name;
@@ -15,9 +15,10 @@ describe("coverage-report CLI", () => {
       "server",
       "react/app",
       "react/ui (contract)",
-      "react/ui (visual)",
+      "react/ui (visual reach)",
       "solid/app",
       "solid/ui (contract)",
+      "solid/ui (visual reach)",
     ]);
 
     // Both clients must be represented: a react-only report is what let
@@ -29,6 +30,12 @@ describe("coverage-report CLI", () => {
         }),
       ).toBe(true);
     }
+
+    // ...and represented IDENTICALLY. Being merely "present" is what the
+    // previous version asserted, and solid passed it while missing the
+    // visual-reach tier entirely — a whole instrument absent on one side, which
+    // reads in the report as "no such gap" rather than "never measured".
+    expect(clientTiers("solid")).toEqual(clientTiers("react"));
 
     // Each tier reads exactly one coverage-final.json (no union).
     for (const t of TIERS.coverage) {
@@ -54,3 +61,16 @@ describe("coverage-report CLI", () => {
     expect(md).toContain("```diff");
   });
 });
+
+/** The tier suffixes registered for one client, e.g. ["app", "ui (contract)",
+ * "ui (visual reach)"] — so the two clients can be compared for symmetry. */
+function clientTiers(client: string): string[] {
+  return TIERS.coverage
+    .filter((t) => {
+      return t.name.startsWith(`${client}/`);
+    })
+    .map((t) => {
+      return t.name.slice(client.length + 1);
+    })
+    .sort();
+}

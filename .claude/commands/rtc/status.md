@@ -9,23 +9,23 @@ Report where the repo stands. Argument: `$ARGUMENTS` — empty → both halves;
 
 ## Local state
 
-!`git rev-parse --abbrev-ref HEAD; git rev-parse --show-toplevel; git status --short | head -15; echo "--- dirty file count ---"; git status --short | wc -l`
+!`case "$ARGUMENTS" in backlog) echo "(skipped — backlog only)";; *) git rev-parse --abbrev-ref HEAD; git rev-parse --show-toplevel; git status --short | head -15; echo "--- dirty file count ---"; git status --short | wc -l;; esac`
 
 ## Position against origin/main
 
-!`git fetch origin main --quiet 2>/dev/null; git rev-list --left-right --count origin/main...HEAD 2>/dev/null | awk '{print "behind origin/main: "$1"   ahead: "$2}'`
+!`case "$ARGUMENTS" in backlog) echo "(skipped)";; *) git fetch origin main --quiet 2>/dev/null; git rev-list --left-right --count origin/main...HEAD 2>/dev/null | { read -r behind ahead; echo "behind origin/main: ${behind:-?}   ahead: ${ahead:-?}"; };; esac`
 
 ## Open PRs
 
-!`gh pr list --limit 15 --json number,title,headRefName,isDraft,createdAt --jq '.[] | "#\(.number)\t\(if .isDraft then "draft" else "open " end)\t\(.headRefName)\t\(.title)"' 2>&1 | head -20`
+!`case "$ARGUMENTS" in backlog) echo "(skipped)";; *) gh pr list --limit 15 --json number,title,headRefName,isDraft,createdAt --jq '.[] | "#\(.number)\t\(if .isDraft then "draft" else "open " end)\t\(.headRefName)\t\(.title)"' 2>&1 | head -20;; esac`
 
 ## Recent CI on main
 
-!`gh run list --workflow CI --branch main --limit 5 --json status,conclusion,headSha,createdAt --jq '.[] | "\(.createdAt[5:16])  \(.status)/\(.conclusion // "—")  \(.headSha[0:8])"' 2>&1`
+!`case "$ARGUMENTS" in backlog) echo "(skipped)";; *) gh run list --workflow CI --branch main --limit 5 --json status,conclusion,headSha,createdAt --jq '.[] | "\(.createdAt[5:16])  \(.status)/\(.conclusion // "—")  \(.headSha[0:8])"' 2>&1;; esac`
 
 ## Backlog skeleton — docs/STATUS.md
 
-!`grep -m1 'Last updated' docs/STATUS.md; echo; grep -oE '^## .*|^- \*\*[^*]+\*\*' docs/STATUS.md`
+!`case "$ARGUMENTS" in live) echo "(skipped — live only)";; *) grep -m1 'Last updated' docs/STATUS.md; echo; grep -oE '^## .*|^- \*\*[^*]+\*\*' docs/STATUS.md;; esac`
 
 ## What to render
 

@@ -57,4 +57,49 @@ describe("AuthService", () => {
       });
     }).not.toThrow();
   });
+
+  it("refuses a credential whose username is not in the roster", () => {
+    // AUTH_USERS and the committed roster are two separate sources: the env
+    // decides who may authenticate, the roster supplies the display user.
+    // A username in one but not the other must fail CLOSED — issuing a token
+    // with no user record would hand out a session the app cannot render.
+    const ghost = new AuthService({
+      secret: "s",
+      ttlMs: 60_000,
+      credentials: parseAuthUsers("ghost:correct-horse"),
+      now: (): number => {
+        return 1_000_000;
+      },
+    });
+
+    expect(ghost.login("ghost", "correct-horse")).toBeNull();
+  });
+
+  it("falls back to the wall clock when no clock is injected", () => {
+    // Every other spec injects `now`, leaving the production default — the one
+    // that actually stamps real tokens' expiry — unexercised.
+    const before = Date.now();
+    const wallClock = new AuthService({
+      secret: "s",
+      ttlMs: 60_000,
+      credentials: parseAuthUsers("demo:localpass"),
+    });
+
+    const result = wallClock.login("demo", "localpass");
+
+    expect(result).not.toBeNull();
+
+    const payload = JSON.parse(
+      Buffer.from(result?.token.split(".")[0] ?? "", "base64url").toString(
+        "utf8",
+      ),
+    ) as TokenPayload;
+
+    expect(payload.exp).toBeGreaterThanOrEqual(before + 60_000);
+    expect(payload.exp).toBeLessThanOrEqual(Date.now() + 60_000);
+  });
 });
+
+interface TokenPayload {
+  exp: number;
+}

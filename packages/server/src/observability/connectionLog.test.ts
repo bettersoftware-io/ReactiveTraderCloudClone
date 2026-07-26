@@ -58,6 +58,25 @@ describe("createConnectionLog", () => {
 
     expect(lines[0]).toContain("2026-07-25T00:00:00.000Z");
   });
+
+  it("stamps from the wall clock when no clock is injected", () => {
+    // Every other case injects a fixed clock, so the DEFAULT — the one that
+    // timestamps real production lines — was never executed. Assert the
+    // timestamp is a real, current ISO instant rather than a fixed string.
+    const lines: string[] = [];
+    const before = Date.now();
+    const log = createConnectionLog((l) => {
+      return lines.push(l);
+    });
+
+    log.onConnect();
+
+    const stamp = lines[0]?.match(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/)?.[0];
+
+    expect(stamp).toBeDefined();
+    expect(Date.parse(stamp ?? "")).toBeGreaterThanOrEqual(before);
+    expect(Date.parse(stamp ?? "")).toBeLessThanOrEqual(Date.now());
+  });
 });
 
 function fixedClock(): () => number {

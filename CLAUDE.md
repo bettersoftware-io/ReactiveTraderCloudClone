@@ -73,6 +73,8 @@ so every worktree and session gets them):
 |---|---|
 | `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 14 fast gates (~50s, no build). `full` adds typecheck, unit tests, both ≥95% coverage gates, type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` check (~8 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
 | `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it's ~59k). |
+| `/rtc:docs [keywords]` | Capture a session's findings into `docs/` — surveys the 298-file corpus, routes by finding type (STATUS.md goes via its own skill), proposes placement, then ships a PR through merge. |
+| `/rtc:backfill-test-coverage [filter]` | Rank **per-file** coverage gaps from a fresh local run (`pnpm coverage:gaps`), propose a shortlist, then backfill tests. Exists because the ≥95% gate asserts an *aggregate* and cannot surface one weak file — `client-solid` sat at 99.35% while a file was at 56%. |
 
 `/rtc:gauntlet` re-reads `ci.yml`'s step list on every run and warns if CI has
 gained a gate it doesn't know about, so it can't silently drift out of sync.
@@ -124,7 +126,7 @@ and dozens of merges old.
 
 | workflow | trigger | what goes stale |
 |---|---|---|
-| `coverage-report.yml` | **dispatch only** | the gh-pages coverage report (5 istanbul tiers) |
+| `coverage-report.yml` | **dispatch only** | the gh-pages coverage report (8 istanbul tiers) |
 | `update-visual-goldens.yml` | **dispatch only** | the committed x86 `react/` golden set |
 | `deploy.yml`, `deploy-proto.yml`, `deploy-cd-proto.yml` | **dispatch only** | the deployed sites |
 | `ci.yml` | PR + push to main | — |
@@ -140,23 +142,30 @@ gh workflow run coverage-report.yml --ref main         # dispatch on the tree yo
 ```
 
 Report: <https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/>
-— **seven** tiers: `domain`, `server`, `react/app`, `react/ui (contract)`,
-`react/ui (visual)`, `solid/app`, `solid/ui (contract)`. It is **report-only and
+— **eight** tiers: `domain`, `server`, then `app` / `ui (contract)` /
+`ui (visual reach)` for each of `react` and `solid`. It is **report-only and
 gates nothing**; the enforced bars are the `ui:contract` ≥95% gates in `ci.yml`
 (one per web client). Its per-tier `index.html` only lists directories, so
-finding gaps means crawling into them — or reading `coverage-final.json` from a
-local `--coverage` run instead.
+finding gaps means crawling into them — or run `pnpm coverage:gaps` for a
+ranked per-file list from a fresh local run.
 
-**`react/ui (visual)` is not what its name suggests.** It is *not* the pixel
-tier's own coverage. It is a vitest-browser instrument that walks the **same
-shared scenario matrix** as the playwright golden tier with the pixel assert
-compiled out (`__RTC_VISUAL_SKIP_DIFF__`), so its ~77% means *"~23% of `src/ui`
-is never rendered by any golden scenario"*. That is the guarantee the pixel tier
-isn't quietly testing less than assumed — work it DOWN by adding scenarios; do
-not dismiss it. `EqDepthDock` at 0% is why `equities/depth-dock-empty` exists.
-See `packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`. There is no
-`solid/ui (visual)` only because client-solid has no vitest-browser harness to
-instrument.
+**The `ui (visual reach)` tiers are not the pixel tiers' coverage.** Each is a
+vitest-browser instrument that walks the **same shared scenario matrix** as its
+client's playwright golden tier while istanbul watches, so react's ~77% means
+*"~23% of `src/ui` is never rendered by any golden scenario"*. That is the
+guarantee the pixel tier isn't quietly testing less than assumed — work it DOWN
+by adding scenarios; do not dismiss it. `EqDepthDock` at 0% is why
+`equities/depth-dock-empty` exists. See
+`packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`. These were named
+`ui (visual)` until 2026-07-26, which read as "the visual tier's own coverage"
+and got the metric written off as worthless once already; the URL slug is still
+`ui-visual` so old report links keep resolving.
+
+**Don't compare the two clients' reach percentages directly** — each
+denominator is its own compiled `src/ui`, and Solid's compiler emits a
+different statement count for equivalent JSX. The comparable signal is *which
+files* sit at 0% on one side but not the other: identical scenarios, so that
+means one client has a render path the other lacks.
 
 Three traps when reading the report:
 1. The ~88 `*.module.css` rows sit at 0% but carry **zero statements** (a v8

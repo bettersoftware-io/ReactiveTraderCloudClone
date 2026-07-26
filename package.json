@@ -9,6 +9,7 @@
     "test:coverage": "turbo run test:coverage",
     "test:ui:contract": "turbo run test:ui:contract",
     "test:ui:coverage": "turbo run test:ui:coverage",
+    "coverage:gaps": "node scripts/coverage-gaps.mjs",
     "test:e2e": "turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
     "goldens:regen": "node scripts/goldens-in-container.mjs regen",

@@ -17,6 +17,53 @@ describe("buildBrowserPorts (simulator branch)", () => {
     expect(ports.preferences).toBeInstanceOf(LocalStoragePreferencesAdapter);
   });
 
+  // The simulator branch rewrites the browser lifecycle stream: browserOnline
+  // is fanned out to ALSO emit a synthetic gatewayConnected (there is no real
+  // socket to report a reconnect), while every other browser event passes
+  // through untouched. Neither arm had a test — the whole ternary was reached
+  // only if something dispatched a window online/offline event, and nothing did.
+  it("fans browserOnline out to a synthetic gatewayConnected", () => {
+    const ports = buildBrowserPorts();
+    const seen: ConnectionEvent[] = [];
+    const sub = ports.connectionEvents.events().subscribe((e) => {
+      seen.push(e);
+    });
+
+    // ConnectionEventsSimulator emits its own events on subscribe, so measure
+    // only what the dispatch itself produced.
+    const before = seen.length;
+    window.dispatchEvent(new Event("online"));
+    sub.unsubscribe();
+
+    // Without the fan-out the app would come back online and sit in
+    // DISCONNECTED forever, because nothing else reports the recovery.
+    expect(
+      seen.slice(before).map((e) => {
+        return e.type;
+      }),
+    ).toEqual(["browserOnline", "gatewayConnected"]);
+  });
+
+  it("passes a non-online browser event through unchanged", () => {
+    const ports = buildBrowserPorts();
+    const seen: ConnectionEvent[] = [];
+    const sub = ports.connectionEvents.events().subscribe((e) => {
+      seen.push(e);
+    });
+
+    const before = seen.length;
+    window.dispatchEvent(new Event("offline"));
+    sub.unsubscribe();
+
+    // The other arm: browserOffline must NOT acquire a phantom
+    // gatewayConnected, which would flip the UI straight back to healthy.
+    expect(
+      seen.slice(before).map((e) => {
+        return e.type;
+      }),
+    ).toEqual(["browserOffline"]);
+  });
+
   it("returns a connectionEvents port with an events() function", () => {
     const ports = buildBrowserPorts();
     expect(typeof ports.connectionEvents.events).toBe("function");
