@@ -108,8 +108,11 @@ export function useHoldToUnlock({
   // absorb: it's the only thing decoupling `gesture`'s identity (stable, so
   // `GestureDetector`/the native `LongPressGesture` handler is never
   // reattached) from a caller whose callback identity churns for reasons this
-  // hook cannot fix. Rebuilding a `Gesture.LongPress()` reattaches its native
-  // handler and can drop an in-flight hold — see #340. Keep both memos.
+  // hook cannot fix. Reanimated's own docs recommend exactly this
+  // `useMemo`-around-a-`Gesture` pattern, because rebuilding the gesture
+  // object reattaches it on every render — normally something the React
+  // Compiler would handle for you, which is precisely the case this hook
+  // falls outside of. Keep both memos.
   const fireComplete = useMemo(() => {
     return () => {
       onCompleteRef.current();
