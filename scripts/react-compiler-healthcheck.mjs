@@ -14,10 +14,13 @@
 // dynamically. See the spec for the measurement.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 const require = createRequire(path.join(repoRoot, "packages/client-react/"));
 const babel = require("@babel/core");
 const compilerPath = require.resolve("babel-plugin-react-compiler");
@@ -25,18 +28,40 @@ const compilerPath = require.resolve("babel-plugin-react-compiler");
 // The FUNCTIONS that gave up a manual memo and now depend on the compiler.
 //
 // Granularity is per-function, not per-file, because the compiler bails per
-// function: `ContextPane.tsx` holds seven optimized components and one
-// unrelated bail (`DiffTab`, a ternary inside try/catch). A file-level gate
-// would read that file as failing and pressure someone into deleting the gate
-// rather than fixing anything.
+// function — a single unrelated bail elsewhere in a file (e.g. `DiffTab`
+// used to bail on a ternary inside try/catch, fixed by hoisting the
+// computation out of the JSX in `ContextPane.tsx`) would otherwise read the
+// WHOLE file as failing under a file-level gate and pressure someone into
+// deleting the gate rather than fixing anything.
 const TRACKED = [
-  { file: "packages/devtools-app/src/timeline/useTimeline.ts", fn: "useTimeline" },
-  { file: "packages/devtools-app/src/timeline/ContextPane.tsx", fn: "StateTab" },
-  { file: "packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.tsx", fn: "DockingScene" },
-  { file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx", fn: "LaserScene" },
-  { file: "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts", fn: "useBootSceneFonts" },
-  { file: "packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts", fn: "useShellTelemetry" },
-  { file: "packages/client-react-native/src/ui/theme/useThemedStyles.ts", fn: "useThemedStyles" },
+  {
+    file: "packages/devtools-app/src/timeline/useTimeline.ts",
+    fn: "useTimeline",
+  },
+  {
+    file: "packages/devtools-app/src/timeline/ContextPane.tsx",
+    fn: "StateTab",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.tsx",
+    fn: "DockingScene",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx",
+    fn: "LaserScene",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts",
+    fn: "useBootSceneFonts",
+  },
+  {
+    file: "packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts",
+    fn: "useShellTelemetry",
+  },
+  {
+    file: "packages/client-react-native/src/ui/theme/useThemedStyles.ts",
+    fn: "useThemedStyles",
+  },
 ];
 
 // Deliberately NOT tracked, each for a different reason:
@@ -71,10 +96,14 @@ for (const { file, fn } of TRACKED) {
     babelrc: false,
     configFile: false,
     parserOpts: { plugins: ["typescript", "jsx"] },
-    plugins: [[compilerPath, { logger: { logEvent: (_f, e) => events.push(e) } }]],
+    plugins: [
+      [compilerPath, { logger: { logEvent: (_f, e) => events.push(e) } }],
+    ],
   });
 
-  const win = events.find((e) => e.kind === "CompileSuccess" && e.fnName === fn);
+  const win = events.find(
+    (e) => e.kind === "CompileSuccess" && e.fnName === fn,
+  );
 
   if (win) {
     console.log(`ok  ${file}  ${fn}  (${win.memoSlots} memo slots)`);
@@ -94,20 +123,28 @@ for (const { file, fn } of TRACKED) {
     });
 
   if (bails.length > 0) {
-    failures.push(`${file}: ${fn} is NOT optimized. Bails in this file:\n      ${bails.join("\n      ")}`);
+    failures.push(
+      `${file}: ${fn} is NOT optimized. Bails in this file:\n      ${bails.join("\n      ")}`,
+    );
   } else {
-    failures.push(`${file}: ${fn} not found and nothing bailed — was it renamed or moved? Update TRACKED.`);
+    failures.push(
+      `${file}: ${fn} not found and nothing bailed — was it renamed or moved? Update TRACKED.`,
+    );
   }
 }
 
 if (failures.length > 0) {
-  console.error("\nReact Compiler regression — these files traded a manual memo for compiler memoization and no longer compile:\n");
+  console.error(
+    "\nReact Compiler regression — these files traded a manual memo for compiler memoization and no longer compile:\n",
+  );
 
   for (const failure of failures) {
     console.error(`  ${failure}`);
   }
 
-  console.error("\nEither restore the Rules-of-React compliance, or re-add an explicit memo and remove the file from TRACKED.\n");
+  console.error(
+    "\nEither restore the Rules-of-React compliance, or re-add an explicit memo and remove the file from TRACKED.\n",
+  );
   process.exit(1);
 }
 
