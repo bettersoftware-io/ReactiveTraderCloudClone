@@ -1,4 +1,5 @@
 import { NEVER, type Observable, of } from "rxjs";
+import { delay } from "rxjs/operators";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -147,6 +148,56 @@ describe("ScriptedJarvisAdapter", () => {
     });
     expect(fullText(events)).toBe(
       "Very good, sir. Bought 5,000,000 EUR at 1.0843 — the trade is on your blotter.",
+    );
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("execution is not bound by the 2s read-snapshot timeout — a fill delayed past it (e.g. EURJPY's 4s simulator delay) is still reported, not the timeout copy", async () => {
+    const trade: Trade = {
+      tradeId: 2,
+      tradeName: "t2",
+      currencyPair: "EURUSD",
+      notional: 1_000_000,
+      dealtCurrency: "EUR",
+      direction: Direction.Buy,
+      spotRate: 1.0843,
+      status: TradeStatus.Done,
+      tradeDate: "2026-07-27",
+      valueDate: "2026-07-29",
+    };
+
+    const { deps } = buildDeps({
+      // Longer than SNAPSHOT_TIMEOUT_MS (2s) but well within an execution
+      // budget — mirrors ExecutionSimulator's EURJPY-specific 4s delay.
+      executeTrade: () => {
+        return of(trade).pipe(delay(3_500));
+      },
+    });
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "buy 1M EURUSD");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const confirmRequest = events.find((e) => {
+      return e.type === "confirmRequest";
+    });
+
+    if (confirmRequest?.type !== "confirmRequest") {
+      throw new Error("expected a confirmRequest event");
+    }
+
+    adapter.confirm(confirmRequest.confirmationId, true);
+    await vi.advanceTimersByTimeAsync(3_500);
+    await done;
+
+    expect(
+      events.some((e) => {
+        return e.type === "error";
+      }),
+    ).toBe(false);
+    expect(fullText(events)).toBe(
+      "Very good, sir. Bought 1,000,000 EUR at 1.0843 — the trade is on your blotter.",
     );
     expect(events.at(-1)).toEqual({ type: "done" });
   });

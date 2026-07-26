@@ -113,21 +113,24 @@ describe("JarvisOverlay", () => {
     overlay.emitEvents([{ type: "done" }]);
   });
 
-  it("disables input and SEND while speaking, re-enables once done", async () => {
+  it("disables input, SEND, and suggestion chips while speaking, re-enables once done", async () => {
     const world = createWorld();
     const overlay = mountWith(world, JarvisOverlay);
     await overlay.pressHotkey();
 
     expect(overlay.isInputDisabled()).toBe(false);
     expect(overlay.isSendDisabled()).toBe(false);
+    expect(overlay.areSuggestionsDisabled()).toBe(false);
 
     await overlay.send("What's moving?");
     expect(overlay.isInputDisabled()).toBe(true);
     expect(overlay.isSendDisabled()).toBe(true);
+    expect(overlay.areSuggestionsDisabled()).toBe(true);
 
     overlay.emitEvents([{ type: "done" }]);
     expect(overlay.isInputDisabled()).toBe(false);
     expect(overlay.isSendDisabled()).toBe(false);
+    expect(overlay.areSuggestionsDisabled()).toBe(false);
   });
 
   it("renders a tool chip that transitions running -> done", async () => {

@@ -348,6 +348,11 @@
   color: var(--accent-primary);
 }
 
+.suggestion:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .inputRow {
   flex: none;
   display: flex;
@@ -398,4 +403,17 @@
   .caret {
     animation: none;
   }
+}
+
+/* Power-saver Freeze: `--fx-play` only PAUSES these four loops, leaving a
+ * permanent Animation object alive (the churn class the freeze contract's
+ * live-animation census exists to catch — see freezeContract.ts and the
+ * identical ConnectionStatusBar/HudLogo fixes). Same treatment as the
+ * reduced-motion block right above: drop the animation outright rather than
+ * merely pausing it. */
+:root[data-power-saver="freeze"] .coreHalo,
+:root[data-power-saver="freeze"] .coreRing,
+:root[data-power-saver="freeze"] .bar,
+:root[data-power-saver="freeze"] .caret {
+  animation: none;
 }

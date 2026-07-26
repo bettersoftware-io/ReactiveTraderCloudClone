@@ -211,6 +211,7 @@ export function JarvisOverlay(): JSX.Element {
                     type="button"
                     data-testid="jarvis-suggestion"
                     class={styles.suggestion}
+                    disabled={state().phase === "speaking"}
                     onClick={() => {
                       submit(text);
                     }}

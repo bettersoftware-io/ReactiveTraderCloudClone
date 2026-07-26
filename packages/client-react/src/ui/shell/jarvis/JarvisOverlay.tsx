@@ -200,6 +200,7 @@ export function JarvisOverlay(): ReactElement | null {
                 type="button"
                 data-testid="jarvis-suggestion"
                 className={styles.suggestion}
+                disabled={speaking}
                 onClick={() => {
                   submit(text);
                 }}

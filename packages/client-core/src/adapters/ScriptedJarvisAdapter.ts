@@ -44,6 +44,17 @@ const SNAPSHOT_TIMEOUT_MS = 2_000;
 const SNAPSHOT_ERROR_MESSAGE =
   "My apologies, sir — the desk didn't respond in time.";
 
+/**
+ * Trade EXECUTION gets a much more generous budget than a read snapshot:
+ * ExecutionSimulator delays EURJPY fills by a fixed 4s and every other pair
+ * uniformly 0-2s, so the 2s read-snapshot timeout would misreport a slow-but-
+ * real fill as a failure (always, for EURJPY) rather than time out only on a
+ * genuinely stuck execution. 30s is "effectively no timeout" for a
+ * human-scale confirm-then-execute flow while still bounding a truly hung
+ * call.
+ */
+const EXECUTION_TIMEOUT_MS = 30_000;
+
 const GREETING_REPLY =
   "At your service, sir. Markets, a desk briefing, or an execution — simply say the word.";
 
@@ -112,9 +123,12 @@ function findPair(
  * The ported v5 prototype "scripted brain": a JarvisPort backed by
  * `matchJarvisIntent` over the live domain use cases (no LLM, no network —
  * phase 2 swaps this for a `WsJarvisAdapter` behind the same port). Every
- * live-data read goes through `snapshot()` (take(1) + a 2s timeout); a
+ * live-data READ goes through `snapshot()` (take(1) + a 2s timeout); a
  * timeout or any other read failure surfaces as a single `error` event
- * instead of a delta/done pair, per the Task 3 ruling.
+ * instead of a delta/done pair, per the Task 3 ruling. Trade EXECUTION goes
+ * through the separate `executeSnapshot()` (take(1) + a 30s timeout) instead
+ * — see `EXECUTION_TIMEOUT_MS`'s doc comment for why it can't share the
+ * read budget.
  */
 export class ScriptedJarvisAdapter implements JarvisPort {
   private readonly pendingConfirmations = new Map<string, Subject<boolean>>();
@@ -165,8 +179,18 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     subject.complete();
   }
 
+  /** Read-path snapshot: take(1) + the tight SNAPSHOT_TIMEOUT_MS budget —
+   * for reference data / pricing / analytics / blotter reads, which the
+   * simulators never delay meaningfully. */
   private snapshot<T>(source$: Observable<T>): Promise<T> {
     return firstValueFrom(source$.pipe(take(1), timeout(SNAPSHOT_TIMEOUT_MS)));
+  }
+
+  /** Execution-path snapshot: take(1) + the generous EXECUTION_TIMEOUT_MS
+   * budget — see its doc comment for why execution must not share the read
+   * snapshot's 2s budget. */
+  private executeSnapshot<T>(source$: Observable<T>): Promise<T> {
+    return firstValueFrom(source$.pipe(take(1), timeout(EXECUTION_TIMEOUT_MS)));
   }
 
   private waitForConfirm(confirmationId: string): Promise<boolean> {
@@ -376,7 +400,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
       return;
     }
 
-    const result = await this.snapshot(
+    const result = await this.executeSnapshot(
       new ExecuteTradeUseCase(this.deps.execution).execute({
         pair,
         direction: intent.direction,

@@ -691,6 +691,13 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-chat",
   },
+  // Freeze-tier render of the completed chat turn, pinning how it looks with
+  // `data-power-saver="freeze"` applied — same reasoning as the
+  // login/wait-*-freeze scenarios above.
+  "jarvis/overlay-chat-freeze": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-chat-freeze",
+  },
   "jarvis/overlay-confirm": {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-confirm",

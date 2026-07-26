@@ -1,4 +1,4 @@
-import type { World } from "@ui-contract/harness/world";
+import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
@@ -122,8 +122,12 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
   let machine = jarvisMachines.get(world);
 
   if (!machine) {
+    // Typed explicitly (rather than left to inference) so this driver is a
+    // real consumer of World.jarvis's declared shape, not just a structural
+    // one — see world.ts's JarvisWorld doc comment.
+    const jarvisWorld: JarvisWorld = world.jarvis;
     machine = createJarvisMachine({
-      port: world.jarvis.port,
+      port: jarvisWorld.port,
       skin$: world.jarvisSkin,
       setSkin: (skin: JarvisSkin) => {
         world.jarvisSkin.next(skin);

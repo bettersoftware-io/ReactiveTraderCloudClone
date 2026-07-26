@@ -1938,6 +1938,17 @@ const jarvisStateChat: JarvisState = {
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
+// jarvis/overlay-chat-freeze: same completed chat turn as jarvis-chat above,
+// plus powerSaverLevel "freeze" (see login-wait-handshake-freeze's precedent)
+// — pins how the overlay's core/waveform/caret CSS renders under
+// `data-power-saver="freeze"`, since Freeze zeroes animation-duration but not
+// animation-delay (the same class of `backwards`-fill bug HandshakeConsole's
+// `.sealed` line shipped with).
+fixtures["jarvis-chat-freeze"] = makeAppData({
+  jarvis: jarvisStateChat,
+  powerSaverLevel: "freeze",
+});
+
 // jarvis/orb-attention + jarvis/overlay-confirm: a pending trade confirmation
 // with remainingFraction PINNED at 0.75 (never the live per-second countdown)
 // so JarvisConfirmCard's progress bar renders deterministically.

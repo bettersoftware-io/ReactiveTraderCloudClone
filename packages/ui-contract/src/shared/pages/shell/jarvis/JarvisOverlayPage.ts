@@ -258,6 +258,21 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
     return button.disabled;
   }
 
+  /** True while every suggestion chip is disabled (machine
+   * `phase === "speaking"`) — mirrors isInputDisabled/isSendDisabled. A turn
+   * in flight must not let a chip fire a second `send()` underneath it. */
+  areSuggestionsDisabled(): boolean {
+    const chips = within(this.requireOverlay()).getAllByTestId(
+      "jarvis-suggestion",
+    ) as HTMLButtonElement[];
+    return (
+      chips.length > 0 &&
+      chips.every((chip) => {
+        return chip.disabled;
+      })
+    );
+  }
+
   /** Push reply events onto the Jarvis fake's in-flight `ask()` turn — see
    * {@link MountedComponent.emitJarvis}. */
   emitEvents(events: readonly JarvisEvent[]): void {
