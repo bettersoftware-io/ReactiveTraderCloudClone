@@ -106,13 +106,13 @@ porting 6b-2a:
 | scene | `perspectiveK` | near-plane clamp | source |
 |---|---|---|---|
 | `hologram` | 0.26 | **none** | `bootHologram.ts:216` — `1 / (1 + depth * 0.26)` |
-| `geo` | 0.22 | **none** | *unverified — confirm before porting* |
+| `geo` | 0.22 | **none** | `bootGeo.ts:528` — `1 / (1 + depth * 0.22)` |
 | `layers` | 0.24 | 0.4 | `bootLayers.ts:202` — `1 / Math.max(0.4, 1 + z2 * 0.24)` |
-| `jarvis` | 0.30 | 0.4 | *unverified — confirm before porting* |
-| `topo` | 0.26 | 0.4 | *unverified — confirm before porting* |
+| `jarvis` | 0.30 | 0.4 | `bootJarvis.ts:166` — `1 / Math.max(0.4, 1 + depthZ * 0.3)` |
+| `topo` | 0.26 | 0.4 | `bootTopo.ts:381` — `1 / Math.max(0.4, 1 + z2 * 0.26)` |
 
-The two rows with a cited source line are confirmed; the other three are carried
-from the scope note and **must be checked against their sources** the same way.
+**All five rows are now read from source**, each with its line cited. Two of the
+five — `hologram` and `geo` — have no clamp at all.
 
 This is why [`boot3dCamera.ts`](../packages/client-react-native/src/ui/shell/boot/scenes/boot3dCamera.ts)
 makes `minPerspectiveDenom` optional and never defaults it. Defaulting the clamp
