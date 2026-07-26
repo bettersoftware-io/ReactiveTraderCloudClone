@@ -70,6 +70,19 @@ Loop until the run **whose `headSha` equals `$HEAD_SHA`** has `status == "comple
 
 Match on `headSha` so you never read a stale run from an earlier push. Poll on a sensible interval (CI here takes ~10 min); don't merge while the matching run is still `in_progress`/`queued`.
 
+### No run appears at all — check mergeability BEFORE re-triggering
+
+An **absent** run and a **slow** run look identical to a poll loop that only tests for `completed`. They are not the same problem, and the most common cause of an absent run is not a flake:
+
+```bash
+gh pr view <number> --json mergeable,mergeStateStatus
+```
+
+- **`mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` → no run will EVER be created.** `pull_request` workflows build the *computed merge commit*; when the PR conflicts that ref cannot be produced, so GitHub creates nothing — it does not queue, and it does not fail. CodeQL still runs, because it uses `refs/pull/N/head` instead, which needs no merge. **Re-triggering cannot help**: an empty commit produces another unmergeable head. Fix the conflict (`git merge origin/main`, resolve, push) and the run appears immediately.
+- **`mergeable: MERGEABLE` and still no run after a few minutes** → *then* it's the genuine synchronize-event flake, and an empty-commit re-trigger is the right move. Prefer that over `workflow_dispatch`: a dispatch run does not satisfy the required PR contexts (see #291).
+
+**Your poll loop must emit on the no-match branch.** A loop that prints only on completion is silent through both cases and looks exactly like "still running" — a real absent-run diagnosis was delayed by ~40 min this way (2026-07-26). Emit something after a few empty polls, and include the mergeability check in that message.
+
 ### Don't poll forever — budget, then diagnose
 
 Passive polling has a **wall-clock budget**. A normal full run here is ~10 min; the e2e job is the long pole and can stretch a run to ~20 min. **Once the matching run passes ~25 min (≈2× normal), STOP polling and diagnose — never poll for hours waiting on a hang.** "The run is slow" is not a diagnosis; find the *specific stuck step*:
@@ -167,6 +180,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | Does this belong in the open PR? | Could a reviewer reject one part and approve the other? No → same PR |
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
+| **No** run exists for your SHA | `gh pr view <n> --json mergeable` **first** — `CONFLICTING` means no run will ever be created (the merge ref can't be built); fix the conflict. Only if `MERGEABLE` is an empty-commit re-trigger the answer |
 | Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
 | Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3: **prose-only overlap merges as-is**, catch up only on a real semantic-conflict path or a too-broad diff) |
 | What landed on `main`? | `git diff --name-only HEAD...origin/main` vs. `git diff --name-only origin/main...HEAD` — disjoint → merge as-is |
@@ -206,6 +220,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
 - Reaching for `gh pr checks` to read CI.
 - Polling a run past ~25 min without once running `gh run view --json jobs` to find the stuck step.
+- Re-triggering a "missing" CI run without first checking `gh pr view --json mergeable` — a `CONFLICTING` PR never gets a run, so the re-trigger is guaranteed to be wasted.
 - PR is merged but your worktree is still on disk — Rule 6 isn't done until it's removed.
 
 **Each of these means: stop and follow the rule above.**
