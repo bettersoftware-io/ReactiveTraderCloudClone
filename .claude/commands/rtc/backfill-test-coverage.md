@@ -29,21 +29,36 @@ If the block above reported no coverage files, or they are older than the code
 you care about, run the tiers first:
 
 ```bash
-pnpm test:coverage        # unit tiers: domain, server, client-core, …
-pnpm test:ui:coverage     # contract/visual tiers
+pnpm test:coverage        # unit tiers: domain, server, client-core, boot-splash, …
+pnpm test:ui:coverage     # contract / visual-reach tiers
 ```
 
-This takes a few minutes. Do not substitute the **published gh-pages report** —
-it is dispatch-only and stale by default (last time: 10 days / 48 commits), and
-its per-tier `index.html` lists directories only.
+A few minutes. The analyser reads **`lcov.info`**, which every package emits, so
+this is sufficient — it does *not* need `coverage-final.json`. Most packages
+configure `reporter: ["text","html","lcov"]` with no `json`, which is why
+`coverage-report.yml` passes `--coverage.reporter=json` explicitly; when a tier
+does have json the analyser prefers it, since that matches the published report.
+
+Do not substitute the **published gh-pages report**. Two reasons, and the second
+matters more:
+
+1. It is dispatch-only and stale by default (last time: 10 days / 48 commits).
+2. **It only covers 8 tiers** — domain, server, and app/contract/visual-reach for
+   each web client. `boot-splash`, `client-core`, `devtools-core`, `motion-core`,
+   `ws-effects` and `devtools-relay` appear in **no** tier, so a gap there is
+   invisible in the report no matter how fresh it is. A local run sees all 12.
 
 ### 2. Rank the gaps
 
 ```bash
-node scripts/coverage-gaps.mjs --limit 40
+pnpm coverage:gaps -- --limit 40
 ```
 
-Ranked by uncovered statements + branches, each file shown at its **best** tier.
+Ranked by uncovered **statements**, each file shown at its **best** tier. Branch
+gaps are counted and summarised but deliberately **not ranked**: v8 over-counts
+branches on compiled Solid (its CI gate is branches ≥85% for exactly that
+reason), so branch-weighted ranking buries real react/domain gaps under
+compiled-Solid noise.
 
 ### 3. Propose, then stop
 
