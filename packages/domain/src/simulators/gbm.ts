@@ -9,7 +9,9 @@ export function gbmStep(price: number, rand: number, vol: number): number {
 }
 
 /** OHLC fold: extends `prev` if it shares `time`'s bucket, else opens a new
- * bar. `bucketMs` floors `time` to the bar boundary. */
+ * bar. `bucketMs` floors `time` to the bar boundary. `volume` is owned by
+ * the caller (the simulator assigns per-bucket volume after folding); 0 here
+ * is a placeholder, never rendered. */
 export function aggregateCandle(
   prev: Candle | null,
   price: number,
@@ -19,7 +21,14 @@ export function aggregateCandle(
   const bucket = Math.floor(time / bucketMs) * bucketMs;
 
   if (!prev || prev.time !== bucket) {
-    return { time: bucket, open: price, high: price, low: price, close: price };
+    return {
+      time: bucket,
+      open: price,
+      high: price,
+      low: price,
+      close: price,
+      volume: 0,
+    };
   }
 
   return {
@@ -28,5 +37,6 @@ export function aggregateCandle(
     high: Math.max(prev.high, price),
     low: Math.min(prev.low, price),
     close: price,
+    volume: 0,
   };
 }

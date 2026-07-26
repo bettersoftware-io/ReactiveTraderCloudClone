@@ -37,7 +37,9 @@ describe("marketData.candles", () => {
     await awaitPendingRpc(ws, CLIENT_MSG.GET_CANDLES);
     ws.nextRpcResponse(CLIENT_MSG.GET_CANDLES, {
       type: "ack",
-      payload: [{ time: 1, open: 1, high: 2, low: 0, close: 1 }],
+      payload: [
+        { time: 1, open: 1, high: 2, low: 0, close: 1, volume: 1_200_000 },
+      ],
     });
     await Promise.resolve();
 

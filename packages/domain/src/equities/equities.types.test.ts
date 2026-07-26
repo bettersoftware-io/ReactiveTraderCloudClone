@@ -38,6 +38,7 @@ describe("equities entities", () => {
       high: 190.5,
       low: 189.0,
       close: 190.0,
+      volume: 1_200_000,
     };
     const side: OrderSide = "buy";
     const type: OrderType = "limit";
