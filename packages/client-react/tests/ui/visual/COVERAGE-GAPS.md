@@ -45,9 +45,12 @@ darwin-arm64), full 5-skin × dark/light matrix, real app fonts, @1920×1080.
   path): dedicated unit test, all direction/null arms.
 - `fx/useFxView.ts` + `credit/useCreditView.ts` outside-provider throws: covered
   (the sibling `useViewModel`/`useTheme` guards stay documented-open below).
-- `equities/chart/chartVm.ts` flat-range `|| 1` arm; `ChartPanel` null-quote arm;
-  `watchlistVm` null-`last` price-sort arm; `DeskPnlGauge` NaN-P&L guard;
-  `OrderTicket` limit-price-clear → undefined arm + fill animIntent arm.
+- `equities/chart/chartVm.ts` flat-range `|| 1` arm (the file was `git mv`'d to
+  `@rtc/motion-core` shortly after this audit, per ADR-005 — pure view-layer
+  computation moved out of `src/ui`; the arm itself is unaffected); `ChartPanel`
+  null-quote arm; `watchlistVm` null-`last` price-sort arm; `DeskPnlGauge`
+  NaN-P&L guard; `OrderTicket` limit-price-clear → undefined arm + fill
+  animIntent arm.
 - `credit/newRfq/NewRfqPanel.tsx` dealer-deselect arm; `credit/rfqs/RfqCard.tsx`
   descendant-animation-bubble guards (animationend + native animationcancel);
   `credit/rfqs/RfqsPanel.tsx` exit-clears-orphaned-enter path.
@@ -289,11 +292,18 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 | File | Lines | Reason |
 |------|-------|--------|
 | `ui/fx/blotter/FxBlotter.tsx` line 63 | `if (col)` false branch in `activeFilterLabels` loop | Defensive dead code: `filters.keys()` yields only `keyof Trade` values and every `Trade` key has a matching `COLUMNS` entry. The false branch (unknown key) is type-impossible. |
-| `ui/fx/blotter/columnFilter/filterState.ts` line 87 | `return true` fallthrough | TypeScript-exhaustive: `ColumnFilter` is a discriminated union with three types (`set`/`number`/`date`). The fallthrough only fires for a value outside the union, which the type system prevents. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` line 45 | `if (!quote) return` after `rfqState.accept()` | The button renders only when `state.status === "received" && state.quote` (line 87). `quote` is captured before `accept()`. Structurally unreachable while `state.quote` is non-null at render. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
-| `src/ui/viewModel/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
-| `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
+| `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
+
+Two rows dropped from this table during the 2026-07-26 doc sweep, both moved
+out of `src/ui` entirely and so out of this document's scope (their own
+package's report-only tier tracks them now, not this one): `filterState.ts`'s
+`return true` fallthrough (`ColumnFilter` exhaustive switch) — the file is now
+`packages/client-core/src/blotter/filterState.ts`; and `useViewModel.ts`'s
+outside-provider throw — the file is now `packages/react-bindings/src/useViewModel.ts`
+(`src/ui/viewModel/useViewModel.ts` never existed in `client-react` after the
+bindings split).
 
 ### Visual tier — intentionally-open gaps (2026-06-25)
 
@@ -305,17 +315,14 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | File | Lines | Reason |
 |------|-------|--------|
 | `ui/fx/analytics/PairPnlBars.tsx` lines 56-59 | `hoveredSymbol === pos.symbol` hover branch | Requires a `hover` step type not present in `scenarioActions.ts`. Deferred. |
-| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `applySelectedValues` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
-| `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
-| `ui/credit/rfqTiles/RfqTilesPanel.tsx` lines 80-85 | `handleDismiss` + `handleAccept` | Dismiss and Accept buttons in QuoteCard have no testids. Production code unchanged. |
+| `ui/credit/rfqs/RfqCard.tsx` line 194 | terminated card's remove control (`onClick={onRemove}` passthrough) | Now carries a `data-testid` (`rfq-remove-<id>`), but no visual scenario clicks it — `scenarioActions.ts` has no step targeting it. (This file replaced the now-deleted `rfqTiles/RfqCard.tsx` during the credit-panel restructure.) |
+| `ui/credit/rfqs/RfqsPanel.tsx` lines 352-361 | `acceptRfqQuote` / `cancelRfqCard` / `removeRfqCard` | Same as above: the Accept/Cancel/Remove testids (`rfq-quote-accept-*`/`rfq-cancel-*`/`rfq-remove-*`) exist and are driven by the contract tier, but no visual scenario step clicks them. (Replaces the now-deleted `rfqTiles/RfqTilesPanel.tsx`.) |
 | `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `executeAtSide` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |
 | `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | input onChange, `blurNotionalOnEnter` (Enter-to-blur), onFocus (select-on-focus) | Interaction handlers for the notional input (onChange/onFocus are inline arrows; only Enter-to-blur is a named function). Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `executeAcceptedQuote` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
-| `ui/shell/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. |
-| `ui/credit/CreditWorkspace.tsx` line 17 | Router switch `default` fallback | Defensive fallthrough after all tabs handled. TypeScript-exhaustive. |
-| `ui/credit/newRfq/DealerSelection.tsx` lines 19-22, 36 | Checkbox onChange + deselect-all guard | No testids on individual dealer checkboxes. Same testid constraint. |
-| `ui/credit/newRfq/InstrumentSearch.tsx` lines 51-52 | "Change" button handler | No scenario seeds a pre-selected instrument. Clicking "Change" would produce the same empty-search view as the initial state — no new visual branch. |
-| `ui/credit/newRfq/NewRfqForm.tsx` lines 60-61 | `handleSubmit` `if (!canSubmit)` guard + `submit()` call | The fake `submit` is a noop. Clicking the enabled Submit button calls `noop()` — visual output stays identical to `credit/new-rfq-filled`. |
+| `ui/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. (File moved from `ui/shell/admin/` to `ui/admin/`; the gap itself is unchanged.) |
+| `ui/credit/newRfq/DealerChecklist.tsx` — `NewRfqPanel.tsx`'s `toggleDealer` | Individual dealer checkbox add/remove branches | Carries a `data-testid` (`new-rfq-dealer-<id>`) now, but `credit/new-rfq-filled` only clicks the "All Dealers" toggle (`new-rfq-dealer-all` → `toggleAllDealers`); no scenario clicks a single dealer row, so `toggleDealer`'s add/remove branches are unexercised. (File renamed from `newRfq/DealerSelection.tsx`.) |
+| `ui/credit/newRfq/NewRfqPanel.tsx` lines 134-147 | `submitRfq` `if (!canSubmit \|\| !selectedInstrument)` guard + `submit()` call | `credit/new-rfq-confirmed` seeds the confirmed state directly via fixture rather than by clicking SEND, so this body is never reached from a golden scenario; the guard itself is also documented in-code as runtime-unreachable while SEND stays `disabled`. (File renamed from `newRfq/NewRfqForm.tsx`.) |
 | `ui/fx/blotter/FxBlotter.tsx` lines 49, 82 | `else next.delete(column)` (filter clear) + `exportFxToCsv` onClick | Line 49 requires applying a filter then removing it (two-step interaction beyond current single-action schemes). Line 82 triggers a CSV download — no visual state change. |
 | `ui/fx/blotter/BlotterHeader.tsx` line 121 | `setOpenFilter(…null)` arm | Requires double-clicking the same filter toggle (open then close without applying). Not a visually distinct state from the closed toggle. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 72 | `return null` from `ConfirmationContent` | Fires when `state.status === "finished"` and `executionStatus === Done` but `trade` is undefined. Fixture always provides a trade when status is Done. A `trade`-less Done execution is not a valid production state. |
@@ -331,7 +338,25 @@ The six orphaned command hooks flagged here on 2026-06-25
 (`tests/ui/contract/react/viewModelFromWorld.ts`,
 `tests/ui/visual/react/buildFakeViewModel.ts`) were all reshaped during the redesign
 and carry none of them. **`useAcceptQuote`** remains the one live command hook
-(caller: `credit/rfqTiles/RfqTilesPanel.tsx`). Nothing to prune.
+(caller: `credit/rfqs/RfqsPanel.tsx`, renamed from `credit/rfqTiles/RfqTilesPanel.tsx`).
+Nothing to prune.
+
+**2026-07-26 doc sweep — three more rows dropped from the table above, all for
+files that no longer exist:** `ui/credit/newRfq/SetFilter.tsx` was always a
+mislabeled path (the `toggleValue`/`applySelectedValues` functions live in
+`ui/fx/blotter/columnFilter/SetFilter.tsx`, not under `newRfq/`) — and that real
+file's subset-apply arm is now closed anyway, exercised by the
+`fx-blotter/filter-set-applied` scenario (`set-filter-option-*` + `set-filter-apply`
+testids). `ui/credit/CreditWorkspace.tsx` (the router-switch `default` fallback)
+no longer exists at all — the tabbed workspace was replaced by the docked-panel
+`appPanelRegistry`/`InhouseLayoutEngine` (a `Record` lookup, not a switch, so
+there is no equivalent defensive-fallback branch to point this row at).
+`ui/credit/newRfq/InstrumentSearch.tsx`'s "Change button" gap has no current
+equivalent either: the redesigned `InstrumentSelect.tsx` has no "Change" button
+concept, and its only two conditionals (the toggle button's `selected ? ticker :
+placeholder` text, and the `open`-gated list) are each already exercised by
+`credit/new-rfq` (initial), `credit/new-rfq-open`, and `credit/new-rfq-filled` —
+no residual branch remains.
 
 **Two expected reds:**
 
@@ -367,12 +392,17 @@ are no longer listed:
   component was later restyled and renamed to `ui/fx/positions/PositionsPanel.tsx`;
   its own net-exposure bubbles are covered separately by `positions/*`)
 - `RfqCard.tsx` Done/Expired/Cancelled badge + dismiss arms → `credit/rfq-tiles-{done,expired,cancelled}`
-- `QuoteCard.tsx` accepted/passed/rejected colour arms → `credit/rfq-tiles-{accepted,passed}`
-- `RfqTilesPanel.tsx` empty-after-filter arm → `credit/rfq-tiles-empty`
+  (moved from `rfqTiles/` to `ui/credit/rfqs/` during the credit-panel restructure)
+- `QuoteCard.tsx` accepted/passed/rejected colour arms → `credit/rfq-tiles-{accepted,passed}` (the
+  quote-row component was later renamed to `ui/credit/rfqs/QuoteRow.tsx`)
+- `RfqTilesPanel.tsx` empty-after-filter arm → `credit/rfq-tiles-empty` (renamed to
+  `ui/credit/rfqs/RfqsPanel.tsx` during the credit-panel restructure)
 - `TradeTicket.tsx` active vs responded arms → `credit/sell-side-{active,responded}`
 - `SellSidePanel.tsx` empty arm → `credit/sell-side-empty`
 - `CreditBlotter.tsx` empty arm → `credit/blotter-empty`
 - `CreditWorkspace.tsx` new-rfq / sell-side view arms → `credit/workspace-{new-rfq,sell-side}`
+  (the tabbed workspace was later removed entirely, replaced by the docked-panel
+  `appPanelRegistry`/`InhouseLayoutEngine`; no direct successor file)
 - `AdminPanel.tsx` loaded slider arm → `admin/panel-loaded`
 
 ## Closed by the testid-gated interaction batch (2026-06-16)
@@ -386,8 +416,19 @@ now drives them and each has a dedicated golden across all three runners:
 - `fx/blotter/FxBlotter.tsx` "Filtered: …" badge + no-rows-match empty arm → `fx-blotter/filtered`, `fx-blotter/no-match`
 - `fx/blotter/columnFilter/{Date,Number,Set}Filter.tsx` popover render → `fx-blotter/filter-{date,number,set}` (+ NumberFilter apply via `fx-blotter/filtered`/`no-match`)
 - `credit/rfqTiles/RfqFilterTabs.tsx` + `RfqTilesPanel.tsx` "All" filter tab → `credit/rfq-tiles-all`
+  (files renamed to `credit/rfqs/RfqFilterPills.tsx` + `RfqsPanel.tsx`, and the
+  golden scenario names to `credit/rfqs-*`, during the later credit-panel
+  restructure)
 - `credit/newRfq/InstrumentSearch.tsx` open-results dropdown + selected summary → `credit/new-rfq-search-open`, `credit/new-rfq-instrument-selected`
+  (the component was later redesigned into `credit/newRfq/InstrumentSelect.tsx` —
+  a toggle button + dropdown rather than a search input — and the two goldens
+  above no longer exist by these names; see `credit/new-rfq-open` /
+  `credit/new-rfq-filled` in the current scenario matrix for the equivalent
+  states)
 - `credit/newRfq/NewRfqForm.tsx` + `QuantityInput.tsx` filled/valid + validation-error → `credit/new-rfq-filled`, `credit/new-rfq-invalid`
+  (`NewRfqForm.tsx` renamed to `NewRfqPanel.tsx`; `QuantityInput.tsx` was later
+  inlined directly into it, no longer a separate file; `credit/new-rfq-invalid`
+  no longer exists by that name in the current scenario matrix)
 
 ## Closed by Phase 9 (2026-06-17)
 
@@ -419,13 +460,22 @@ not. (A future testid-only batch could lift these into goldens.)
 | File | Uncovered visual state | Covered by |
 |---|---|---|
 | `fx/blotter/columnFilter/{Date,Number}Filter.tsx` | `inRange` two-input arm + Reset path | contract tier |
-| `fx/blotter/columnFilter/SetFilter.tsx` | checkbox toggle + apply (subset) arm | contract tier |
 | `fx/blotter/QuickFilter.tsx` | input `onChange` handler | contract tier |
-| `credit/newRfq/DealerSelection.tsx` | dealer checkbox checked/unchecked toggle arms | contract tier |
-| `credit/newRfq/NewRfqForm.tsx` | submit/confirmation success arm (timer + RPC) | contract tier |
+| `credit/newRfq/DealerChecklist.tsx` | individual dealer checkbox add/remove toggle arm (`toggleDealer`) | contract tier — `credit/new-rfq-filled` only exercises the "All Dealers" toggle visually |
+| `credit/newRfq/NewRfqPanel.tsx` | submit-click → confirmation transition (timer + RPC) | contract tier — `credit/new-rfq-confirmed` seeds the confirmed state via fixture, not by clicking SEND |
 | `fx/liveRates/tile/TilePrice.tsx` | buy/sell `onClick` handlers | contract tier |
 | `fx/liveRates/tile/TileNotional.tsx` | reset (↺) button + inline-error arms | contract tier |
 | `fx/liveRates/CurrencyFilter.tsx` | category-tab `onChange` handler | contract tier |
+
+`fx/blotter/columnFilter/SetFilter.tsx`'s checkbox-toggle + apply (subset) arm
+was dropped from this table (2026-07-26 doc sweep): it moved out of the
+testid-gated bucket entirely once `set-filter-option-*`/`set-filter-apply`
+testids were added — the `fx-blotter/filter-set-applied` golden scenario now
+exercises it directly, so it is covered by the **visual** tier, not just the
+contract tier. `credit/newRfq/DealerSelection.tsx` and
+`credit/newRfq/NewRfqForm.tsx` above were renamed to `DealerChecklist.tsx` and
+`NewRfqPanel.tsx` respectively; their reasons were re-derived against the
+current testids/scenarios rather than just path-swapped.
 
 ### Timer / transition / runtime-only states (non-deterministic)
 
@@ -468,8 +518,6 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 | File | Note |
 |---|---|
 | `fx/blotter/csvExport.ts` | CSV export (Blob/anchor click) — never invoked by a snapshot |
-| `fx/blotter/columnSort.ts` | sort-direction cycling + comparator logic |
-| `fx/blotter/columnFilter/filterState.ts` | filter predicate construction/application |
 | `fx/blotter/blotterColumns.ts` | `formatFxCell` fully covered by contract tier (all arms exercised — function renamed in Task 3; no gap) |
 
 > The per-tile React hooks that used to be listed here
@@ -477,4 +525,9 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 > `useStaleDetection` / `useNotional` / `useThroughput`) were removed by the
 > "Dumb-UI" refactor — their logic now lives in app-layer machines/presenters
 > behind the `ViewModel` seam, tested in the unit/contract tiers and (for the
-> render arms) snapshotted by Phase 9.
+> render arms) snapshotted by Phase 9. `columnSort.ts` (sort-direction cycling
+> + comparator logic) and `columnFilter/filterState.ts` (filter predicate
+> construction/application) — both formerly listed here too — moved the same
+> way, out to `packages/client-core/src/blotter/`; they are no longer part of
+> `client-react` at all, so they're out of this document's scope (`src/ui`)
+> entirely rather than merely uncovered by this tier.

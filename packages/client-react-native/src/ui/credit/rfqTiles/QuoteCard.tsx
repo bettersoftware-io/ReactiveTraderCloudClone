@@ -24,7 +24,7 @@ export function QuoteCard({
   const styles = useThemedStyles(makeStyles);
 
   function acceptPendingQuote(): void {
-    if (quote.state.type === "pendingWithPrice" && onAccept) {
+    if (canAccept && onAccept) {
       void onAccept(quote.id);
     }
   }

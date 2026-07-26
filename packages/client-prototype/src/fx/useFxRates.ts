@@ -47,7 +47,7 @@ export interface RatesApi {
   trades: Trade[];
   newRowId: number | null;
   pnl: number;
-  setNotional(sym: Sym, raw: string): void;
+  setTileNotional(sym: Sym, raw: string): void;
   resetNotional(sym: Sym): void;
   sellPair(sym: Sym): void;
   buyPair(sym: Sym): void;
@@ -352,7 +352,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     book(sym, side);
   }
 
-  function setNotional(sym: Sym, raw: string): void {
+  function setTileNotional(sym: Sym, raw: string): void {
     const n = parseNotional(raw);
 
     setNotionals((prev) => {
@@ -394,7 +394,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
     trades,
     newRowId,
     pnl,
-    setNotional,
+    setTileNotional,
     resetNotional,
     sellPair,
     buyPair,

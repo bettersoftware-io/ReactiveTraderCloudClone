@@ -8,7 +8,7 @@ export interface LayoutPO {
   /** How many draggable splitter handles are currently rendered. */
   resizeHandleCount(): Promise<number>;
   /** The first splitter handle's size fraction (its `aria-valuenow`, 0..1). */
-  firstHandleSize(): Promise<number>;
+  firstResizeHandleSize(): Promise<number>;
   /** Pointer-drag the first splitter handle along its axis by `dx` CSS pixels. */
   dragFirstHandleBy(dx: number): Promise<void>;
 }

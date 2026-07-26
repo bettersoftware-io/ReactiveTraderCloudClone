@@ -216,28 +216,12 @@ DOM-edge-driven computation is a pure function + injected signal, shared via
 
 ## Handler Naming
 
-A function's own name must state its **effect** — what it does, to what — never
-the occasion that triggers it. `rtc/name-functions-by-effect` enforces this on
-every `.ts`/`.tsx`: `handleClick`, `onMessage`, `processClick` and
-`frameCallback` (when the binding holds a function) all fail CI. **Slots are exempt and correct as `onX`** — a
-function-typed prop declared in property syntax (`onExecute: (d: Direction) =>
-void`), or a method whose sole parameter is the callback (`onTrade(listener:
-TradeListener)`) — because their declarer must not know what gets attached. So
-`<Car onYellowLight={prepare} />` is right and `<Car
-onYellowLight={handleYellowLight} />` is not. A function-valued member in
-*method* syntax is treated as a command and is flagged, so declare prop slots in
-property syntax. Design:
-`docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md`.
-
-**Handlers get names even when the body is one line.** An inline arrow
-(`onChange={(e) => { notional.change(e.target.value); }}`) is maximally
-coupled to its one call site — it cannot be reused from a different trigger
-at all, which is the exact coupling the rule exists to remove. Extract and
-name it instead: `onChange={changeNotional}` over the inline form.
-
-**A name is part of the contract.** When a diff — or a merge — widens a
-function's condition, guard, or set of effects, re-check that its name still
-describes them; the lint rule cannot, since a decayed name is still
-perfectly well-formed. `dismissOnReducedMotion` decayed exactly this way once
-a catch-up merge widened its condition to also cover power-saver Freeze, and
-was renamed to `dismissOnJumpCut`.
+Before naming a function or a prop callback, read **`docs/handler-naming.md`**
+— a function's own name must state its **effect** (what it does, to what),
+never the occasion that triggers it; `rtc/name-functions-by-effect` enforces
+this on every `.ts`/`.tsx` file. **Slots are exempt and correct as `onX`** — a
+function-typed prop or callback-only method parameter, because its declarer
+must not know what gets attached — but a concrete handler must be named for
+its effect, even when the body is one line. The doc covers the full
+slot-vs-handler doctrine (the `<Car>` example, the property-vs-method syntax
+consequence), the name-decay rule, and the two known limits.
