@@ -7,6 +7,7 @@ describe("speechChunks", () => {
     const text = "EURUSD is trading at 1.0842, up 12 pips since the open.";
     const chunks = speechChunks(text);
     expect(chunks.join("")).toBe(text);
+
     for (const c of chunks) {
       expect(c.length).toBeGreaterThanOrEqual(1); // final chunk may be short
       expect(c.length).toBeLessThanOrEqual(4);

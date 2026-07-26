@@ -14,11 +14,13 @@ export function speechChunks(text: string): readonly string[] {
   const chunks: string[] = [];
   let i = 0;
   let step = 0;
+
   while (i < text.length) {
     const size = CYCLE[step % CYCLE.length] ?? SPEECH_CHUNK_MAX_CHARS;
     chunks.push(text.slice(i, i + size));
     i += size;
     step += 1;
   }
+
   return chunks;
 }

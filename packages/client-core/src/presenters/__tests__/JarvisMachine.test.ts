@@ -13,60 +13,6 @@ import {
   type JarvisState,
 } from "../JarvisMachine";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-function fakePort(
-  ts: TestScheduler,
-  marbles: string,
-  values: Record<string, JarvisEvent>,
-): JarvisPort & { confirms: Array<[string, boolean]> } {
-  const confirms: Array<[string, boolean]> = [];
-  return {
-    confirms,
-    ask: () => {
-      return ts.createColdObservable<JarvisEvent>(marbles, values);
-    },
-    confirm: (id: string, approved: boolean) => {
-      confirms.push([id, approved]);
-    },
-  };
-}
-
-interface RunCtx {
-  machine: ReturnType<typeof createJarvisMachine>;
-  ts: TestScheduler;
-}
-
-/** Collect every emission of a machine's state$ as it runs, marble-driven. */
-function run(
-  buildDeps: (ts: TestScheduler) => JarvisDeps,
-  drive: (ctx: RunCtx) => void,
-): JarvisState[] {
-  const states: JarvisState[] = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    const machine = createJarvisMachine(buildDeps(ts));
-    const sub = machine.state$.subscribe((s) => {
-      states.push(s);
-    });
-    drive({ machine, ts });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return states;
-}
-
-function basePort(ts: TestScheduler): JarvisPort & {
-  confirms: Array<[string, boolean]>;
-} {
-  return fakePort(ts, "-", {});
-}
-
 describe("createJarvisMachine", () => {
   it("starts with the greeting, closed, idle, no pending confirmation, and the first skin$ value", () => {
     const ts = scheduler();
@@ -211,14 +157,16 @@ describe("createJarvisMachine", () => {
 
     const last = states.at(-1);
     // greeting, first-user, first-jarvis(done), second-user, second-jarvis(done)
-    expect(last?.entries.map((e) => e.text)).toEqual([
-      JARVIS_GREETING,
-      "first",
-      "",
-      "second",
-      "",
-    ]);
-    expect(last?.entries.every((e) => e.done)).toBe(true);
+    expect(
+      last?.entries.map((e) => {
+        return e.text;
+      }),
+    ).toEqual([JARVIS_GREETING, "first", "", "second", ""]);
+    expect(
+      last?.entries.every((e) => {
+        return e.done;
+      }),
+    ).toBe(true);
   });
 
   it("sets pendingConfirmation with remainingFraction 1 on a confirmRequest", () => {
@@ -271,7 +219,7 @@ describe("createJarvisMachine", () => {
       notional: 1_000_000,
       quotedPrice: 1.0925,
     };
-    let port: (JarvisPort & { confirms: Array<[string, boolean]> }) | undefined;
+    let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
         port = fakePort(ts, "a", { a: confirmEvent });
@@ -304,7 +252,7 @@ describe("createJarvisMachine", () => {
       notional: 1_000_000,
       quotedPrice: 1.0925,
     };
-    let port: (JarvisPort & { confirms: Array<[string, boolean]> }) | undefined;
+    let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
         port = fakePort(ts, "a", { a: confirmEvent });
@@ -342,7 +290,7 @@ describe("createJarvisMachine", () => {
       notional: 1_000_000,
       quotedPrice: 1.0925,
     };
-    let port: (JarvisPort & { confirms: Array<[string, boolean]> }) | undefined;
+    let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
         port = fakePort(ts, "a", { a: confirmEvent });
@@ -387,7 +335,11 @@ describe("createJarvisMachine", () => {
       sub.unsubscribe();
       machine.dispose();
       expect(port.confirms).toEqual([]);
-      expect(seen.every((s) => s.pendingConfirmation === null)).toBe(true);
+      expect(
+        seen.every((s) => {
+          return s.pendingConfirmation === null;
+        }),
+      ).toBe(true);
     });
   });
 
@@ -505,3 +457,60 @@ describe("createJarvisMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+function fakePort(
+  ts: TestScheduler,
+  marbles: string,
+  values: Record<string, JarvisEvent>,
+): FakeJarvisPort {
+  const confirms: Array<[string, boolean]> = [];
+  return {
+    confirms,
+    ask: () => {
+      return ts.createColdObservable<JarvisEvent>(marbles, values);
+    },
+    confirm: (id: string, approved: boolean) => {
+      confirms.push([id, approved]);
+    },
+  };
+}
+
+interface RunCtx {
+  machine: ReturnType<typeof createJarvisMachine>;
+  ts: TestScheduler;
+}
+
+/** Collect every emission of a machine's state$ as it runs, marble-driven. */
+function run(
+  buildDeps: (ts: TestScheduler) => JarvisDeps,
+  drive: (ctx: RunCtx) => void,
+): JarvisState[] {
+  const states: JarvisState[] = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    const machine = createJarvisMachine(buildDeps(ts));
+    const sub = machine.state$.subscribe((s) => {
+      states.push(s);
+    });
+    drive({ machine, ts });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return states;
+}
+
+function basePort(ts: TestScheduler): FakeJarvisPort {
+  return fakePort(ts, "-", {});
+}
+
+/** A JarvisPort test double that also records every confirm() call. */
+interface FakeJarvisPort extends JarvisPort {
+  readonly confirms: Array<[string, boolean]>;
+}

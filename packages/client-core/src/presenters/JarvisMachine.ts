@@ -105,11 +105,14 @@ function updateLastEntry(
   if (entries.length === 0) {
     return entries;
   }
+
   const lastIndex = entries.length - 1;
   const last = entries[lastIndex];
+
   if (!last) {
     return entries;
   }
+
   const next = [...entries];
   next[lastIndex] = fn(last);
   return next;
@@ -127,6 +130,7 @@ function eventPatch(event: JarvisEvent): Patch {
           }),
         };
       };
+
     case "toolEvent":
       return (s: JarvisState): JarvisState => {
         return {
@@ -136,6 +140,7 @@ function eventPatch(event: JarvisEvent): Patch {
           }),
         };
       };
+
     case "done":
       return (s: JarvisState): JarvisState => {
         return {
@@ -147,6 +152,7 @@ function eventPatch(event: JarvisEvent): Patch {
           }),
         };
       };
+
     case "error":
       return (s: JarvisState): JarvisState => {
         return {
@@ -158,6 +164,7 @@ function eventPatch(event: JarvisEvent): Patch {
           }),
         };
       };
+
     case "confirmRequest":
       return (s: JarvisState): JarvisState => {
         return {
@@ -172,8 +179,10 @@ function eventPatch(event: JarvisEvent): Patch {
           },
         };
       };
+
     default: {
       const _exhaustive: never = event;
+
       return (s: JarvisState): JarvisState => {
         return s;
       };
@@ -181,22 +190,35 @@ function eventPatch(event: JarvisEvent): Patch {
   }
 }
 
-function isConfirmRequest(
-  event: JarvisEvent,
-): event is Extract<JarvisEvent, { type: "confirmRequest" }> {
+// A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
+// so `Extract<JarvisEvent, ...>` never takes an inline object type argument —
+// the repo's `no-restricted-syntax` bans that even inside a type alias (see
+// eslint.config.mjs's `restrictedSyntax` comment).
+interface ConfirmRequestTag {
+  readonly type: "confirmRequest";
+}
+type ConfirmRequestEvent = Extract<JarvisEvent, ConfirmRequestTag>;
+
+function isConfirmRequest(event: JarvisEvent): event is ConfirmRequestEvent {
   return event.type === "confirmRequest";
 }
 
-/** One item flowing through a single `send()` turn: the synthetic "start" of
- * the turn (user entry + streaming jarvis stub appended, phase → speaking),
- * followed by whatever `port.ask(text)` emits. */
-type TurnItem =
-  | {
-      readonly kind: "start";
-      readonly userEntry: JarvisEntry;
-      readonly jarvisEntry: JarvisEntry;
-    }
-  | { readonly kind: "event"; readonly event: JarvisEvent };
+/** The synthetic "start" of a `send()` turn: user entry + streaming jarvis
+ * stub appended, phase → speaking. */
+interface TurnStartItem {
+  readonly kind: "start";
+  readonly userEntry: JarvisEntry;
+  readonly jarvisEntry: JarvisEntry;
+}
+
+/** One reply event forwarded from `port.ask(text)`. */
+interface TurnEventItem {
+  readonly kind: "event";
+  readonly event: JarvisEvent;
+}
+
+/** One item flowing through a single `send()` turn. */
+type TurnItem = TurnStartItem | TurnEventItem;
 
 export function createJarvisMachine(
   deps: JarvisDeps,
@@ -225,6 +247,7 @@ export function createJarvisMachine(
         text,
         done: true,
       };
+
       const jarvisEntry: JarvisEntry = {
         id: nextEntryId++,
         role: "jarvis",
@@ -254,14 +277,13 @@ export function createJarvisMachine(
           };
         };
       }
+
       return eventPatch(item.event);
     }),
   );
 
-  const confirmRequests$: Observable<
-    Extract<JarvisEvent, { type: "confirmRequest" }>
-  > = turnItems$.pipe(
-    filter((item): item is { kind: "event"; event: JarvisEvent } => {
+  const confirmRequests$: Observable<ConfirmRequestEvent> = turnItems$.pipe(
+    filter((item): item is TurnEventItem => {
       return item.kind === "event";
     }),
     map((item) => {
@@ -281,19 +303,24 @@ export function createJarvisMachine(
         take(totalTicks),
         map((tickIndex): Patch => {
           const ticksElapsed = tickIndex + 1;
+
           if (ticksElapsed >= totalTicks) {
             // Expiry: auto-decline and clear.
             deps.port.confirm(req.confirmationId, false);
+
             return (s: JarvisState): JarvisState => {
               if (
                 s.pendingConfirmation?.confirmationId !== req.confirmationId
               ) {
                 return s;
               }
+
               return { ...s, pendingConfirmation: null };
             };
           }
+
           const remainingFraction = 1 - ticksElapsed / totalTicks;
+
           return (s: JarvisState): JarvisState => {
             if (
               !s.pendingConfirmation ||
@@ -301,6 +328,7 @@ export function createJarvisMachine(
             ) {
               return s;
             }
+
             return {
               ...s,
               pendingConfirmation: {
@@ -321,6 +349,7 @@ export function createJarvisMachine(
         if (!s.pendingConfirmation) {
           return s;
         }
+
         deps.port.confirm(s.pendingConfirmation.confirmationId, true);
         return { ...s, pendingConfirmation: null };
       };
@@ -333,6 +362,7 @@ export function createJarvisMachine(
         if (!s.pendingConfirmation) {
           return s;
         }
+
         deps.port.confirm(s.pendingConfirmation.confirmationId, false);
         return { ...s, pendingConfirmation: null };
       };
