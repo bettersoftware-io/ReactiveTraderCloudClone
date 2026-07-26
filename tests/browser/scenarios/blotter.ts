@@ -127,12 +127,5 @@ export async function buyNTimesWithDismissals(
   // happened to sort first — so the rejection was never actually awaited here
   // and the caller's blotter assertion carried the whole race on its retry
   // budget.
-  await ctx.po.liveRatesTile.dismissPairConfirmationOnceSettled(
-    "GBPJPY",
-    SETTLE_TIMEOUT_MS,
-  );
+  await ctx.po.liveRatesTile.dismissPairConfirmationOnceSettled("GBPJPY");
 }
-
-// Generous next to the ≤2 s ExecutionSimulator settle; absorbs CPU contention
-// when every e2e suite runs at once without costing anything when idle.
-const SETTLE_TIMEOUT_MS = 15_000;

@@ -129,17 +129,13 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     return await this.firstTile().locator("input").isVisible();
   }
 
-  async dismissConfirmationOnceSettled(timeoutMs: number): Promise<void> {
-    await this.settleAndDismiss(this.firstTile(), timeoutMs);
+  async dismissConfirmationOnceSettled(): Promise<void> {
+    await this.settleAndDismiss(this.firstTile());
   }
 
-  async dismissPairConfirmationOnceSettled(
-    symbol: string,
-    timeoutMs: number,
-  ): Promise<void> {
+  async dismissPairConfirmationOnceSettled(symbol: string): Promise<void> {
     await this.settleAndDismiss(
       this.page.getByTestId(TESTIDS.liveRates.tile(symbol)),
-      timeoutMs,
     );
   }
 
@@ -155,21 +151,18 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   // The overlay therefore stayed up until the app's own 5 s auto-dismiss
   // (CONFIRMATION_DISMISS_MS) and blocked the NEXT buy click on actionability —
   // enough repeats and the step blew its 30 s cucumber timeout under load.
-  private async settleAndDismiss(
-    tile: Locator,
-    timeoutMs: number,
-  ): Promise<void> {
+  private async settleAndDismiss(tile: Locator): Promise<void> {
     const confirmation = tile.getByTestId(TESTIDS.liveRates.tradeConfirmation);
     // Assert presence first so the negated matcher below can only be satisfied
     // by a real status change, never by a missing element.
-    await expect(confirmation).toBeVisible({ timeout: timeoutMs });
+    await expect(confirmation).toBeVisible({ timeout: SETTLE_TIMEOUT_MS });
     await expect(confirmation).not.toHaveAttribute(
       "data-status",
       IN_FLIGHT_STATUS,
-      { timeout: timeoutMs },
+      { timeout: SETTLE_TIMEOUT_MS },
     );
     await this.dismissConfirmationIn(tile);
-    await expect(confirmation).toBeHidden({ timeout: timeoutMs });
+    await expect(confirmation).toBeHidden({ timeout: SETTLE_TIMEOUT_MS });
   }
 
   // A DONE confirmation is a card whose only dismiss affordance is its DISMISS
@@ -196,7 +189,7 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   async buyNTimesWithDismissals(n: number): Promise<void> {
     for (let i = 0; i < n; i++) {
       await this.clickBuyOnFirst();
-      await this.dismissConfirmationOnceSettled(SETTLE_TIMEOUT_MS);
+      await this.dismissConfirmationOnceSettled();
     }
   }
 }

@@ -46,13 +46,15 @@ export interface LiveRatesTilePO {
    * in-flight overlay carries the SAME testid as the terminal one, so a bare
    * visibility check reads true while nothing is dismissible yet. Every caller
    * that had one was racing.
+   *
+   * Takes no timeout: how long an execution may take is a property of the
+   * system under test, not of any caller's intent, so the implementation owns
+   * that budget. Contrast the `timeoutMs` on the methods above, which carry a
+   * bound the .feature text states out loud ("within 5 seconds").
    */
-  dismissConfirmationOnceSettled(timeoutMs: number): Promise<void>;
+  dismissConfirmationOnceSettled(): Promise<void>;
   /** Same, on a named pair's tile (e.g. "GBPJPY") rather than the first. */
-  dismissPairConfirmationOnceSettled(
-    symbol: string,
-    timeoutMs: number,
-  ): Promise<void>;
+  dismissPairConfirmationOnceSettled(symbol: string): Promise<void>;
 
   /** Notional input on the first tile. */
   fillFirstTileNotional(value: string): Promise<void>;
