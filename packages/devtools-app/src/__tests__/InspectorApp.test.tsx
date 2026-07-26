@@ -20,6 +20,9 @@ import {
 import { InspectorApp } from "#/InspectorApp";
 
 afterEach(cleanup);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 test("connection badge reads disconnected before any welcome arrives", () => {
   const store = new InspectorStore({ coalesce: false });
@@ -184,8 +187,8 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
 });
 
 test("re-renders do not re-tap the store — liveHistory keeps its identity across renders", () => {
-  const tapSpy = vi.spyOn(InspectorStore.prototype, "tap");
   const store = new InspectorStore({ coalesce: false });
+  const tapSpy = vi.spyOn(store, "tap");
 
   const { rerender } = render(<InspectorApp store={store} />);
 
@@ -193,29 +196,38 @@ test("re-renders do not re-tap the store — liveHistory keeps its identity acro
   rerender(<InspectorApp store={store} />);
 
   expect(tapSpy).toHaveBeenCalledTimes(1);
-
-  tapSpy.mockRestore();
 });
 
-test("does not re-tap the store inside React.StrictMode — liveHistory survives the double-render", () => {
-  const tapSpy = vi.spyOn(InspectorStore.prototype, "tap");
+test("re-renders inside React.StrictMode do not grow past its own double-invoke baseline", () => {
   const store = new InspectorStore({ coalesce: false });
+  const tapSpy = vi.spyOn(store, "tap");
 
-  render(
+  const { rerender } = render(
     <StrictMode>
       <InspectorApp store={store} />
     </StrictMode>,
   );
 
-  // React's own dev-mode effect check double-invokes the store-tap effect
-  // once (mount, cleanup, remount) for every component regardless of this
-  // fix — that pair is expected and not the regression under test. What the
-  // ref idiom prevents is a THIRD invocation: an unstable liveHistory would
-  // make the effect's dependency array change identity mid-mount and fire
-  // again beyond React's own built-in double-invoke.
-  expect(tapSpy).toHaveBeenCalledTimes(2);
+  // StrictMode's dev-only mount check (mount effect, synthetic cleanup,
+  // re-mount effect against the same committed closure) always tees this
+  // exact effect twice, independent of whether liveHistory's identity is
+  // stable — that pair alone can't distinguish the fix from the bug. What
+  // it CAN'T explain is growth from further re-renders: only a real
+  // re-render can hand the effect's dependency array a fresh liveHistory,
+  // so the regression this guards against is the count climbing past the
+  // StrictMode baseline as rerender() is called again.
+  rerender(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
+  rerender(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
 
-  tapSpy.mockRestore();
+  expect(tapSpy).toHaveBeenCalledTimes(2);
 });
 
 function sampleRecording(): Recording {
