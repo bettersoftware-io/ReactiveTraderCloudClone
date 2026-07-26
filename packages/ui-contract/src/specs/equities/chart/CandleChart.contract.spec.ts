@@ -10,8 +10,8 @@ afterEach(() => {
 });
 
 const CANDLES: readonly Candle[] = [
-  { time: 0, open: 100, high: 105, low: 98, close: 102 },
-  { time: 60, open: 102, high: 108, low: 101, close: 96 },
+  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
+  { time: 60, open: 102, high: 108, low: 101, close: 96, volume: 1_350_000 },
 ];
 
 describe("CandleChart", () => {

@@ -12,6 +12,13 @@
     "prices": [100, 102, 99, 101],
     "time0": 0,
     "bucketMs": 60000,
-    "expected": { "time": 0, "open": 100, "high": 102, "low": 99, "close": 101 }
+    "expected": {
+      "time": 0,
+      "open": 100,
+      "high": 102,
+      "low": 99,
+      "close": 101,
+      "volume": 0
+    }
   }
 }

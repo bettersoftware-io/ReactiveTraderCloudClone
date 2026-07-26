@@ -38,7 +38,16 @@ describeMarketDataPortContract("wsRealMarketData", () => {
         await awaitPendingRpc(ws, CLIENT_MSG.GET_CANDLES);
         ws.nextRpcResponse(CLIENT_MSG.GET_CANDLES, {
           type: "ack",
-          payload: [{ time: 0, open: 1, high: 2, low: 0.5, close: 1.5 }],
+          payload: [
+            {
+              time: 0,
+              open: 1,
+              high: 2,
+              low: 0.5,
+              close: 1.5,
+              volume: 1_200_000,
+            },
+          ],
         });
       },
       ackDepth: async () => {

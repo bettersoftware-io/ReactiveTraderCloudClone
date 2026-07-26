@@ -219,7 +219,15 @@ describe("equities effects", () => {
   });
 
   it("acks getCandles with the candles array", () => {
-    const candle = { time: 1, open: 100, high: 101, low: 99, close: 100.5 };
+    const candle = {
+      time: 1,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 1_200_000,
+    };
+
     const ctx = {
       marketData: {
         candles: vi.fn(() => {
@@ -246,7 +254,15 @@ describe("equities effects", () => {
   });
 
   it("acks getCandles with a timeframe, threading it through to the port", () => {
-    const candle = { time: 1, open: 100, high: 101, low: 99, close: 100.5 };
+    const candle = {
+      time: 1,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 1_200_000,
+    };
+
     const ctx = {
       marketData: {
         candles: vi.fn(() => {
