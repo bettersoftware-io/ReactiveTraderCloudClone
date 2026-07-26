@@ -303,7 +303,7 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
     return props.path.join(".");
   }
 
-  function onHandlePointerDown(index: number, e: PointerEvent): void {
+  function startResizeDrag(index: number, e: PointerEvent): void {
     e.preventDefault();
     const handle = e.currentTarget as HTMLElement;
 
@@ -600,7 +600,7 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
                   class={styles.handle}
                   tabIndex={0}
                   onPointerDown={(e: PointerEvent) => {
-                    onHandlePointerDown(i, e);
+                    startResizeDrag(i, e);
                   }}
                 />
               </Show>

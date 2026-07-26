@@ -16,11 +16,11 @@ export function AdminPanel(): JSX.Element {
   // onChange maps to native `change` only (fires on blur) — both wired here
   // so real typing (`input`) and a programmatic `change` dispatch both drive
   // this live (mirrors TileNotional's/NumberFilter's identical comment).
-  function handleSliderInput(e: SliderInputEvent): void {
+  function setThroughput(e: SliderInputEvent): void {
     setValue(Number(e.currentTarget.value));
   }
 
-  function handleNumberInput(e: NumberInputEvent): void {
+  function commitBoundedThroughput(e: NumberInputEvent): void {
     const n = Number(e.currentTarget.value);
 
     if (Number.isFinite(n) && n >= 0 && n <= 1000) {
@@ -51,8 +51,8 @@ export function AdminPanel(): JSX.Element {
             max={1000}
             step={10}
             value={value()}
-            onInput={handleSliderInput}
-            onChange={handleSliderInput}
+            onInput={setThroughput}
+            onChange={setThroughput}
             class={styles.slider}
           />
 
@@ -64,8 +64,8 @@ export function AdminPanel(): JSX.Element {
               max={1000}
               step={10}
               value={value()}
-              onInput={handleNumberInput}
-              onChange={handleNumberInput}
+              onInput={commitBoundedThroughput}
+              onChange={commitBoundedThroughput}
               class={styles.numberInput}
             />
             <span class={styles.unit}>Updates/sec</span>

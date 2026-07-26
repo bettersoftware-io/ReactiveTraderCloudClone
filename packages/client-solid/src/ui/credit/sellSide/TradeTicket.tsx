@@ -35,7 +35,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
     return ticket.state().submitted;
   });
 
-  function handleSubmit(): void {
+  function submitQuote(): void {
     const num = Number.parseFloat(price());
 
     if (Number.isNaN(num) || num <= 0) {
@@ -45,7 +45,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
     submitPrice(props.quote.id, num);
   }
 
-  function handlePass(): void {
+  function passOnRfq(): void {
     pass(props.quote.id);
   }
 
@@ -54,7 +54,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   // blur/commit) — both wired to this one handler so real typing (`input`,
   // what @testing-library/user-event's type() dispatches) and a
   // programmatic `change` both narrow live (mirrors QuickFilter.tsx).
-  function handlePriceEdit(e: InputChangeEvent): void {
+  function setPriceDraft(e: InputChangeEvent): void {
     setPrice(e.currentTarget.value);
   }
 
@@ -94,21 +94,21 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
                 type="number"
                 data-testid="trade-ticket-price"
                 value={price()}
-                onInput={handlePriceEdit}
-                onChange={handlePriceEdit}
+                onInput={setPriceDraft}
+                onChange={setPriceDraft}
                 placeholder="Price"
                 class={styles.priceInput}
               />
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={submitQuote}
                 disabled={!price()}
                 data-can-submit={price() ? "true" : "false"}
                 class={styles.submitBtn}
               >
                 Submit
               </button>
-              <button type="button" onClick={handlePass} class={styles.passBtn}>
+              <button type="button" onClick={passOnRfq} class={styles.passBtn}>
                 Pass
               </button>
             </div>

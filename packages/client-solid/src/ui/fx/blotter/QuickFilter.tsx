@@ -20,7 +20,7 @@ export function QuickFilter(props: QuickFilterProps): JSX.Element {
   // reproduces it: real callers (FxBlotterHead passes `onChange=
   // {setQuickFilter}`, which the same tick's `props.value` already reflects)
   // are unaffected — the reset is a no-op there.
-  function handleEdit(e: InputChangeEvent): void {
+  function applyQuickFilter(e: InputChangeEvent): void {
     props.onChange(e.currentTarget.value);
     e.currentTarget.value = props.value;
   }
@@ -30,8 +30,8 @@ export function QuickFilter(props: QuickFilterProps): JSX.Element {
       data-testid="quick-filter"
       type="text"
       value={props.value}
-      onInput={handleEdit}
-      onChange={handleEdit}
+      onInput={applyQuickFilter}
+      onChange={applyQuickFilter}
       placeholder="Quick filter..."
       class={styles.input}
     />

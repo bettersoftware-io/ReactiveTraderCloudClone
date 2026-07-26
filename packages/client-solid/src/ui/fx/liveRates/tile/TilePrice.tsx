@@ -101,7 +101,7 @@ function PriceButton(props: PriceButtonProps): JSX.Element {
     return splitPrice(props.value, props.ratePrecision, props.pipsPosition);
   });
 
-  function handleClick(): void {
+  function executeAtSide(): void {
     props.onExecute(props.side === "bid" ? Direction.Sell : Direction.Buy);
   }
 
@@ -110,7 +110,7 @@ function PriceButton(props: PriceButtonProps): JSX.Element {
       type="button"
       data-testid={props.side === "bid" ? "sell-btn" : "buy-btn"}
       data-side={props.side}
-      onClick={handleClick}
+      onClick={executeAtSide}
       disabled={props.disabled}
       class={styles.priceBox}
     >

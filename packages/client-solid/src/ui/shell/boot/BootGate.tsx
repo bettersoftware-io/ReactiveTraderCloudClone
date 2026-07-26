@@ -26,7 +26,7 @@ export function BootGate(props: ParentProps): JSX.Element {
   const { visible, dismiss } = useBootGate();
   const { enabled: forced } = useForceBootAnimation();
 
-  function handleDone(): void {
+  function dismissOnReducedMotion(): void {
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -34,13 +34,13 @@ export function BootGate(props: ParentProps): JSX.Element {
     // Reduced motion (and NOT forced): the splash jump-cuts to opacity 0 with
     // no transition, so no transitionend arrives — dismiss it directly. When
     // forced, the transition is restored (see BootSequence.module.css) and
-    // handleTransitionEnd dismisses instead.
+    // dismissOnOpacityEnd dismisses instead.
     if (reduce && !forced()) {
       dismiss();
     }
   }
 
-  function handleTransitionEnd(event: TransitionEvent): void {
+  function dismissOnOpacityEnd(event: TransitionEvent): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip
     // transitions that also bubble through this host.
     if (event.propertyName === "opacity") {
@@ -52,8 +52,8 @@ export function BootGate(props: ParentProps): JSX.Element {
     <>
       {props.children}
       <Show when={visible()}>
-        <div class={styles.host} onTransitionEnd={handleTransitionEnd}>
-          <BootSequence onDone={handleDone} />
+        <div class={styles.host} onTransitionEnd={dismissOnOpacityEnd}>
+          <BootSequence onDone={dismissOnReducedMotion} />
         </div>
       </Show>
     </>

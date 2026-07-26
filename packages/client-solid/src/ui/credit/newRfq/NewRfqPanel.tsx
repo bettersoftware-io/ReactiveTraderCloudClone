@@ -86,26 +86,20 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
     return currentState.status === "confirmed" ? currentState.rfqId : null;
   });
 
-  function handleDir(dir: Direction): void {
+  function setDirection(dir: Direction): void {
     setValue((prev) => {
       return { ...prev, dir };
     });
   }
 
-  function handleInstrumentToggle(): void {
-    setInstrumentOpen((prev) => {
-      return !prev;
-    });
-  }
-
-  function handleInstrumentSelect(instrument: Instrument): void {
+  function selectInstrument(instrument: Instrument): void {
     setValue((prev) => {
       return { ...prev, instrumentId: instrument.id };
     });
     setInstrumentOpen(false);
   }
 
-  function handleQty(qty: string): void {
+  function setQuantityDraft(qty: string): void {
     setValue((prev) => {
       return { ...prev, qty };
     });
@@ -116,11 +110,11 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   // blur/commit) — both wired to this one handler so real typing (`input`,
   // what @testing-library/user-event's type() dispatches) and a
   // programmatic `change` both narrow live (mirrors QuickFilter.tsx).
-  function handleQtyEdit(e: InputChangeEvent): void {
-    handleQty(e.currentTarget.value);
+  function setQuantityFromInput(e: InputChangeEvent): void {
+    setQuantityDraft(e.currentTarget.value);
   }
 
-  function handleToggleDealer(id: number): void {
+  function toggleDealer(id: number): void {
     setValue((prev) => {
       const has = prev.dealerIds.includes(id);
       return {
@@ -134,7 +128,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
     });
   }
 
-  function handleToggleAllDealers(): void {
+  function toggleAllDealers(): void {
     setValue((prev) => {
       const allSelected =
         dealers().length > 0 &&
@@ -152,12 +146,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
     });
   }
 
-  function handleClear(): void {
+  function clearRfqDraft(): void {
     setValue(EMPTY_VALUE);
     setInstrumentOpen(false);
   }
 
-  function handleSend(): void {
+  function submitRfq(): void {
     const instrument = selectedInstrument();
 
     if (!canSubmit() || !instrument) {
@@ -194,12 +188,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
           <DirButton
             dir={Direction.Buy}
             active={value().dir === Direction.Buy}
-            onSelect={handleDir}
+            onSelect={setDirection}
           />
           <DirButton
             dir={Direction.Sell}
             active={value().dir === Direction.Sell}
-            onSelect={handleDir}
+            onSelect={setDirection}
           />
         </div>
 
@@ -208,8 +202,12 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
           instruments={instruments()}
           selected={selectedInstrument()}
           open={instrumentOpen()}
-          onToggle={handleInstrumentToggle}
-          onSelect={handleInstrumentSelect}
+          onToggle={() => {
+            setInstrumentOpen((prev) => {
+              return !prev;
+            });
+          }}
+          onSelect={selectInstrument}
         />
 
         <div class={styles.fieldsRow}>
@@ -219,8 +217,8 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
               class={styles.qtyInput}
               data-testid="new-rfq-qty-input"
               value={value().qty}
-              onInput={handleQtyEdit}
-              onChange={handleQtyEdit}
+              onInput={setQuantityFromInput}
+              onChange={setQuantityFromInput}
               placeholder="0"
             />
           </div>
@@ -234,8 +232,8 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
         <DealerChecklist
           dealers={dealers()}
           selectedIds={value().dealerIds}
-          onToggleDealer={handleToggleDealer}
-          onToggleAll={handleToggleAllDealers}
+          onToggleDealer={toggleDealer}
+          onToggleAll={toggleAllDealers}
         />
 
         <div class={styles.actions}>
@@ -243,7 +241,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
             type="button"
             class={styles.clearBtn}
             data-testid="new-rfq-clear"
-            onClick={handleClear}
+            onClick={clearRfqDraft}
           >
             CLEAR
           </button>
@@ -253,7 +251,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
             data-testid="new-rfq-send"
             data-enabled={String(valid())}
             disabled={!canSubmit()}
-            onClick={handleSend}
+            onClick={submitRfq}
           >
             SEND RFQ
           </button>
@@ -290,14 +288,10 @@ export interface NewRfqPanelProps {
 interface DirButtonProps {
   dir: Direction;
   active: boolean;
-  onSelect(dir: Direction): void;
+  onSelect: (dir: Direction) => void;
 }
 
 function DirButton(props: DirButtonProps): JSX.Element {
-  function handleClick(): void {
-    props.onSelect(props.dir);
-  }
-
   return (
     <button
       type="button"
@@ -305,7 +299,9 @@ function DirButton(props: DirButtonProps): JSX.Element {
       data-testid={`new-rfq-dir-${props.dir.toLowerCase()}`}
       data-dir={props.dir.toLowerCase()}
       data-active={String(props.active)}
-      onClick={handleClick}
+      onClick={() => {
+        props.onSelect(props.dir);
+      }}
     >
       You {props.dir}
     </button>

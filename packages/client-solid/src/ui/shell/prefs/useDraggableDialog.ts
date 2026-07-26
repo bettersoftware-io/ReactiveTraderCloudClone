@@ -50,7 +50,7 @@ export function useDraggableDialog(
     dialogEl = el;
   }
 
-  function onPointerDown(event: PointerEvent): void {
+  function startDrag(event: PointerEvent): void {
     const target = event.target as HTMLElement;
 
     if (target.closest("[data-nodrag]")) {
@@ -66,7 +66,7 @@ export function useDraggableDialog(
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
-  function onPointerMove(event: PointerEvent): void {
+  function updateDragOffset(event: PointerEvent): void {
     if (!drag || drag.pointerId !== event.pointerId || !dialogEl) {
       return;
     }
@@ -108,8 +108,8 @@ export function useDraggableDialog(
     offset,
     dialogRef,
     headerProps: {
-      onPointerDown,
-      onPointerMove,
+      onPointerDown: startDrag,
+      onPointerMove: updateDragOffset,
       onPointerUp: endDrag,
       onPointerCancel: endDrag,
     },
