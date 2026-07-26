@@ -182,7 +182,13 @@ export class CreditRfqSimulator implements WorkflowPort {
       };
 
       this.rfqs.set(rfqId, rfq);
-      this.rfqQuotes.set(rfqId, []);
+      // Held by reference for the dealer loop below rather than re-read via
+      // this.rfqQuotes.get(rfqId) — the re-read forced a `if (!list) throw
+      // "Internal: …"` guard that could never fire (nothing removes the entry
+      // between here and there), i.e. permanently-dead code that existed only
+      // to narrow Map.get's `T | undefined`.
+      const rfqQuoteList: number[] = [];
+      this.rfqQuotes.set(rfqId, rfqQuoteList);
       this.events$.next({ type: "rfqCreated", payload: rfq });
 
       this.scheduleExpiry(rfqId, request.expirySecs);
@@ -206,12 +212,6 @@ export class CreditRfqSimulator implements WorkflowPort {
         };
 
         this.quotes.set(quoteId, quote);
-        const rfqQuoteList = this.rfqQuotes.get(rfqId);
-
-        if (!rfqQuoteList) {
-          throw new Error(`Internal: no quote list for rfqId ${rfqId}`);
-        }
-
         rfqQuoteList.push(quoteId);
         this.events$.next({ type: "quoteCreated", payload: quote });
 

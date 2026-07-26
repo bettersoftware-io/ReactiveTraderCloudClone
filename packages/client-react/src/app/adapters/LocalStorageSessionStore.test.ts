@@ -51,6 +51,56 @@ describe("LocalStorageSessionStore (jsdom localStorage)", () => {
     expect(store.read()).toBeNull();
   });
 
+  // "{not json" above is caught by JSON.parse's throw. These are the harder
+  // case: VALID JSON that is not a session. They reach the shape guards, which
+  // is what stands between a half-written storage entry and an app booting with
+  // a session object whose `user` is undefined.
+  it.each([
+    ["a bare string", '"just-a-string"'],
+    ["a number", "42"],
+    ["null", "null"],
+    ["an array", "[]"],
+  ])("returns null when the stored value is %s", (_label, raw) => {
+    localStorage.setItem(SESSION_STORAGE_KEY, raw);
+    const store = new LocalStorageSessionStore();
+
+    expect(store.read()).toBeNull();
+  });
+
+  it("returns null when the session is well-formed but the user is not an object", () => {
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        token: "t",
+        username: "demo",
+        exp: 1,
+        user: "not-a-user",
+      }),
+    );
+    const store = new LocalStorageSessionStore();
+
+    expect(store.read()).toBeNull();
+  });
+
+  it("returns null when the user object is missing a required field", () => {
+    // Drops `clearance` only — everything else is valid, so this pins that the
+    // guard checks every field rather than just probing one or two.
+    const { clearance: _dropped, ...partialUser } = testUser;
+
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        token: "t",
+        username: "demo",
+        exp: 1,
+        user: partialUser,
+      }),
+    );
+    const store = new LocalStorageSessionStore();
+
+    expect(store.read()).toBeNull();
+  });
+
   it("removes the stored session on clear", () => {
     const store = new LocalStorageSessionStore();
 
