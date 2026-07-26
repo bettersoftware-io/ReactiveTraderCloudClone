@@ -101,7 +101,7 @@ sequenceDiagram
    (`AuthService.ts:45-47`) if `AUTH_USERS` has entries but `AUTH_SECRET` is
    empty — a deploy can never silently serve unsigned/unverifiable tokens.
 7. **The client stores the session.** On a `{ ok: true, token, user }`
-   outcome, `AuthPresenter.handleLoginOutcome` writes
+   outcome, `AuthPresenter.commitLoginOutcome` writes
    `{ token, user, username, exp: now() + SESSION_TTL_MS }` to the injected
    `SessionStore` (`packages/client-core/src/adapters/sessionStore.ts`) —
    `SESSION_TTL_MS` is a client-side 8-hour constant
