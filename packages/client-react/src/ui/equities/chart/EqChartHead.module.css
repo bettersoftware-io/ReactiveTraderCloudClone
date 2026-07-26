@@ -1,8 +1,15 @@
 .head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
+  min-width: 0;
+}
+
+/* Lets the instrument-tab strip (which scrolls internally) absorb the
+   available width, so the pill groups after it stay clustered right
+   instead of space-between spreading them out across the whole bar. */
+.tabsWrap {
+  flex: 1 1 auto;
   min-width: 0;
 }
