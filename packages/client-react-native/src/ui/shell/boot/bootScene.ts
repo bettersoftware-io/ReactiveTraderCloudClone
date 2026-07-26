@@ -7,6 +7,7 @@ import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
 import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
 import { GeoScene } from "#/ui/shell/boot/scenes/GeoScene";
 import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
+import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
@@ -42,11 +43,11 @@ export interface BootSceneProps {
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 
 /**
- * Boot variant → scene component. `Partial` by design: six of eight variants
+ * Boot variant → scene component. `Partial` by design: seven of eight variants
  * are registered so far — `core` (phase 6a Task 6), `laser` (phase 6a Task 7),
- * `docking` (phase 6b-1 Task 9), `hologram` + `layers` (phase 6b-2a) and `geo`
- * (phase 6b-2b Task 1). The last three are built on the shared
- * `boot3dCamera` seam. `jarvis`/`topo` remain unported, later in 6b-2b.
+ * `docking` (phase 6b-1 Task 9), `hologram` + `layers` (phase 6b-2a) and
+ * `geo` + `jarvis` (phase 6b-2b). The last four are built on the shared
+ * `boot3dCamera` seam. Only `topo` remains unported.
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -57,6 +58,7 @@ export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   docking: DockingScene,
   geo: GeoScene,
   hologram: HologramScene,
+  jarvis: JarvisScene,
   laser: LaserScene,
   layers: LayersScene,
 };
