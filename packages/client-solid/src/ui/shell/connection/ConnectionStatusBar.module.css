@@ -67,3 +67,11 @@
     animation: none;
   }
 }
+
+/* Power-saver Freeze: same suppression as reduced motion — `--fx-play` only
+ * pauses the heartbeat, leaving a permanent Animation object alive; the pulse
+ * starts at opacity 1 (its natural style), so dropping it is pixel-identical
+ * to the paused hold. */
+:root[data-power-saver="freeze"] .dot {
+  animation: none;
+}

@@ -115,6 +115,14 @@
   animation: v2TickDown 0.9s ease-out;
 }
 
+/* Power-saver Freeze: drop the flash overlay's box entirely — the catch-all
+ * only shortens the animation, so every tick still spawned a 0.01ms Animation
+ * per pips element at quote rate. Base opacity is 0 and nothing listens for
+ * its animationend, so no resting state or choreography is lost. */
+:root[data-power-saver="freeze"] .pips[data-anim]::before {
+  content: none;
+}
+
 @keyframes v2TickUp {
   0%,
   72% {
