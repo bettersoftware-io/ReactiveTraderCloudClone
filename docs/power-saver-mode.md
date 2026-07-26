@@ -117,7 +117,9 @@ Two things Freeze deliberately does *not* take away:
   [data-power-saver="freeze"] *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
   ```
 
@@ -131,6 +133,28 @@ Two things Freeze deliberately does *not* take away:
   (fill confirmations, a countdown bar landing on "done"), and
   `animationend` / `transitionend` still fire — so any JS choreography
   waiting on those events does not hang.
+
+  **Zeroing the duration is not enough — the delays must go too.** An earlier
+  version of this rule set only the durations, and shipped a real bug: a
+  `backwards`-filled animation with a 350 ms `animation-delay` held its
+  invisible `from` state for the whole delay, so an element stayed at
+  `opacity: 0` on exactly the low-power machines Freeze exists to help. Duration
+  zero, delay untouched, element invisible. Any `delay` + `backwards` pair has
+  this shape, which is why the fix is global here rather than per component —
+  a per-component override would have papered over the class of bug and hidden
+  whether the catch-all works.
+
+  **The witness has to assert computed style, not pixels.** `freeze.spec.ts`
+  (both web clients) walks every element plus `::before`/`::after` in each
+  freeze scenario and fails on any non-zero delay, non-instant duration,
+  iteration count ≠ 1, or animated element stuck at `opacity: 0`. A screenshot
+  *cannot* catch this: `toHaveScreenshot({ animations: "disabled" })` calls
+  `animation.finish()`, which jumps past the delay, so the invisible window is
+  unobservable by capture — and jsdom runs no CSS animations at all, so the
+  unit tier can't see it either. The spec pins `data-power-saver="freeze"` as a
+  precondition so it cannot pass vacuously, and it is falsification-verified:
+  removing the `animation-delay` line above makes it fail on both the delay and
+  the resulting `opacity: 0`.
 - **JS gates (CSS can't reach imperative motion):**
   - **WAAPI** — `useFlipGrid` (tile/row FLIP glide, enter/exit) and
     `useRankGlide` (watchlist rank glide + highlight) already contained a
