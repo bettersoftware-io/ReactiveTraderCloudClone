@@ -17,10 +17,6 @@
   vector-effect: non-scaling-stroke;
 }
 
-.area {
-  fill: url(#eqAreaFill);
-}
-
 .gradTop {
   stop-color: var(--accent-primary);
   stop-opacity: 0.35;

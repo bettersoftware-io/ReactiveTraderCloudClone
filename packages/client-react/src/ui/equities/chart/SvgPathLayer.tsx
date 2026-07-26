@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { useId } from "react";
 
 import type { ChartKind, ChartPoint, IndicatorId } from "@rtc/motion-core";
 
@@ -19,6 +20,13 @@ export function SvgPathLayer({
   kind,
   indicatorPaths,
 }: SvgPathLayerProps): ReactElement {
+  // Same route as PnlChart.tsx/ThroughputChart.tsx for a gradient defs id
+  // referenced by fill: a build-time-stable literal CSS selector can't name
+  // a per-instance id, so the id is generated with useId() and threaded to
+  // the fill as a `url(#...)` JSX ATTRIBUTE (never a CSS rule) — the same
+  // "presentation attribute, not a CSS declaration" route as this file's own
+  // fill="none"/stroke="none" below.
+  const gradientId = useId();
   const pointsAttr = toPointsAttr(linePoints);
   const areaD = toAreaPath(linePoints);
 
@@ -30,7 +38,7 @@ export function SvgPathLayer({
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="eqAreaFill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" className={styles.gradTop} />
           <stop offset="100%" className={styles.gradBottom} />
         </linearGradient>
@@ -38,7 +46,7 @@ export function SvgPathLayer({
       {kind === "area" && linePoints.length > 1 && (
         <path
           data-testid="chart-path-area"
-          className={styles.area}
+          fill={`url(#${gradientId})`}
           stroke="none"
           d={areaD}
         />

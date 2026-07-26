@@ -248,6 +248,75 @@ describe("useChartGestures", () => {
     });
   });
 
+  it("pointerdown captures the pointer via setPointerCapture", () => {
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    });
+    const setPointerCapture = vi.fn();
+    const event = {
+      pointerId: 7,
+      clientX: 10,
+      clientY: 10,
+      currentTarget: {
+        setPointerCapture,
+        getBoundingClientRect: (): DOMRect => {
+          return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+        },
+      } as unknown as HTMLDivElement,
+    } as unknown as ReactPointerEvent<HTMLDivElement>;
+
+    act(() => {
+      result.current.plotProps.onPointerDown(event);
+    });
+
+    expect(setPointerCapture).toHaveBeenCalledWith(7);
+  });
+
+  it("onPointerCancel clears an in-flight drag and releases capture (same as onPointerUp)", () => {
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    });
+    const releasePointerCapture = vi.fn();
+    const hasPointerCapture = vi.fn().mockReturnValue(true);
+    const currentTarget = {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture,
+      releasePointerCapture,
+      getBoundingClientRect: (): DOMRect => {
+        return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+      },
+    } as unknown as HTMLDivElement;
+
+    act(() => {
+      result.current.plotProps.onPointerDown({
+        pointerId: 3,
+        clientX: 10,
+        clientY: 10,
+        currentTarget,
+      } as unknown as ReactPointerEvent<HTMLDivElement>);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerCancel({
+        pointerId: 3,
+        currentTarget,
+      } as unknown as ReactPointerEvent<HTMLDivElement>);
+    });
+
+    expect(releasePointerCapture).toHaveBeenCalledWith(3);
+
+    // The cancelled drag is gone — a subsequent move with the SAME pointerId
+    // (stable for a mouse) must be treated as plain cursor tracking, not a
+    // resumed phantom drag from the stale origin.
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+
+    expect(result.current.cursor).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+  });
+
   it("pointer move while NOT dragging sets the crosshair cursor fraction instead", () => {
     const { result } = renderHook(() => {
       return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
@@ -298,7 +367,7 @@ describe("useChartGestures", () => {
     expect(result.current.atLiveEdge).toBe(true);
   });
 
-  it("wheel zoom attaches a non-passive native listener that zooms toward the cursor", () => {
+  it("wheel zoom attaches a non-passive native listener that zooms toward the cursor and calls preventDefault", () => {
     // A real render (not just renderHook) so plotRef attaches to an actual
     // DOM node before the effect runs — the wheel listener is a native
     // addEventListener, not React's synthetic (passive) onWheel, so it only
@@ -314,21 +383,15 @@ describe("useChartGestures", () => {
       }),
     );
     const el = getByTestId("plot");
-    Object.defineProperty(el, "clientWidth", {
-      value: 500,
-      configurable: true,
-    });
+    stubPlotRect(el);
 
     const before = box.gestures?.viewport;
     expect(before).toBeDefined();
 
+    const event = wheelEvent({ deltaY: -100, clientX: 250 });
+
     act(() => {
-      el.dispatchEvent(
-        Object.assign(new Event("wheel", { cancelable: true }), {
-          deltaY: -100,
-          offsetX: 250,
-        }),
-      );
+      el.dispatchEvent(event);
     });
 
     const afterSpan = box.gestures
@@ -336,6 +399,9 @@ describe("useChartGestures", () => {
       : 0;
     const beforeSpan = before ? before.end - before.start : 0;
     expect(afterSpan).toBeLessThan(beforeSpan);
+    // Guards the passive:false seam — a plain onWheel prop would register
+    // passively and preventDefault() there would be a silent no-op.
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it("wheel-down (deltaY > 0) zooms out", () => {
@@ -348,19 +414,11 @@ describe("useChartGestures", () => {
       }),
     );
     const el = getByTestId("plot");
-    Object.defineProperty(el, "clientWidth", {
-      value: 500,
-      configurable: true,
-    });
+    stubPlotRect(el);
     const before = box.gestures?.viewport;
 
     act(() => {
-      el.dispatchEvent(
-        Object.assign(new Event("wheel", { cancelable: true }), {
-          deltaY: 100,
-          offsetX: 250,
-        }),
-      );
+      el.dispatchEvent(wheelEvent({ deltaY: 100, clientX: 250 }));
     });
 
     const afterSpan = box.gestures
@@ -370,6 +428,29 @@ describe("useChartGestures", () => {
     expect(afterSpan).toBeGreaterThan(beforeSpan);
   });
 });
+
+/** Stubs a 500×50 rect at the origin for the plot div, standing in for the
+ * real layout jsdom never computes (getBoundingClientRect() is all-zeros by
+ * default there). */
+function stubPlotRect(el: HTMLElement): void {
+  el.getBoundingClientRect = (): DOMRect => {
+    return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+  };
+}
+
+interface WheelEventInit {
+  deltaY: number;
+  clientX: number;
+}
+
+type FakeWheelEvent = Event & WheelEventInit;
+
+function wheelEvent(init: WheelEventInit): FakeWheelEvent {
+  return Object.assign(new Event("wheel", { cancelable: true }), {
+    deltaY: init.deltaY,
+    clientX: init.clientX,
+  });
+}
 
 interface GesturesBox {
   gestures: ChartGestures | null;
@@ -418,6 +499,10 @@ function pointerEvent(
   const rect = { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
   const currentTarget = {
     setPointerCapture: vi.fn(),
+    hasPointerCapture: (): boolean => {
+      return true;
+    },
+    releasePointerCapture: vi.fn(),
     getBoundingClientRect: () => {
       return rect;
     },

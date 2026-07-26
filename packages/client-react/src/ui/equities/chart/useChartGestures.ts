@@ -36,6 +36,7 @@ export interface ChartPlotProps {
   readonly onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   readonly onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
   readonly onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  readonly onPointerCancel: (e: ReactPointerEvent<HTMLDivElement>) => void;
   readonly onPointerLeave: () => void;
   readonly onDoubleClick: () => void;
   readonly onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
@@ -112,19 +113,25 @@ export function useChartGestures(
     // the closure type-check.
     const el: HTMLDivElement = maybeEl;
 
-    function zoomOnWheel(e: WheelEvent): void {
+    function zoomByWheelNotch(e: WheelEvent): void {
       e.preventDefault();
-      const anchorFrac = e.offsetX / el.clientWidth;
+      // `e.offsetX` is relative to `e.target` — since BackToLiveButton (and
+      // any other overlay) paints above this element, wheeling over it would
+      // read offsetX against the BUTTON's box, not the plot's, anchoring the
+      // zoom at the wrong point (typically the far left). Compute the
+      // fraction against the plot element's own rect instead.
+      const rect = el.getBoundingClientRect();
+      const anchorFrac = (e.clientX - rect.left) / rect.width;
       const factor = e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR;
       setViewport((vp) => {
         return zoomAt(vp, anchorFrac, factor, seriesLen);
       });
     }
 
-    el.addEventListener("wheel", zoomOnWheel, { passive: false });
+    el.addEventListener("wheel", zoomByWheelNotch, { passive: false });
 
     return () => {
-      el.removeEventListener("wheel", zoomOnWheel);
+      el.removeEventListener("wheel", zoomByWheelNotch);
     };
   }, [seriesLen]);
 
@@ -160,8 +167,14 @@ export function useChartGestures(
   }
 
   function endDrag(e: ReactPointerEvent<HTMLDivElement>): void {
-    if (dragRef.current?.pointerId === e.pointerId) {
-      dragRef.current = null;
+    if (dragRef.current?.pointerId !== e.pointerId) {
+      return;
+    }
+
+    dragRef.current = null;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
     }
   }
 
@@ -173,7 +186,7 @@ export function useChartGestures(
     setViewport(defaultViewport(seriesLen, defaultVisible));
   }
 
-  function panOrZoomOnKeyDown(e: ReactKeyboardEvent<HTMLDivElement>): void {
+  function panOrZoomByKey(e: ReactKeyboardEvent<HTMLDivElement>): void {
     switch (e.key) {
       case "ArrowLeft":
         e.preventDefault();
@@ -226,9 +239,14 @@ export function useChartGestures(
       onPointerDown: startDrag,
       onPointerMove: dragOrTrackCursor,
       onPointerUp: endDrag,
+      // A pointercancel (browser-initiated gesture takeover, e.g. a
+      // scroll/refresh gesture on a touchpad) never fires pointerup — without
+      // this, dragRef stays populated and the next hover (same, stable
+      // pointerId for a mouse) resumes a phantom drag from the stale origin.
+      onPointerCancel: endDrag,
       onPointerLeave: clearCursor,
       onDoubleClick: resetToLive,
-      onKeyDown: panOrZoomOnKeyDown,
+      onKeyDown: panOrZoomByKey,
     },
     plotRef,
     resetToLive,

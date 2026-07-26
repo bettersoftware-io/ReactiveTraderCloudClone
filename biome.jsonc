@@ -210,24 +210,6 @@
           }
         }
       }
-    },
-    {
-      // SvgPathLayer's area fill references its <linearGradient> via CSS
-      // (`fill: url(#eqAreaFill)` in the module stylesheet) — that reference
-      // has to be a build-time-known literal, which useId()'s runtime-
-      // generated id can't satisfy without falling back to a banned inline
-      // style object. Exactly one price-chart plot is ever mounted at a time
-      // (the equities workspace's single selected-symbol chart), so a fixed
-      // id never collides. Scoped across every web client's port of this
-      // component (React today; Solid lands at the analogous path).
-      "includes": ["packages/client-*/src/ui/equities/chart/SvgPathLayer.tsx"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "useUniqueElementIds": "off"
-          }
-        }
-      }
     }
   ]
 }
