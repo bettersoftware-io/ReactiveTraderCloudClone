@@ -37,7 +37,7 @@ export function Panel<TId extends string = string>(
   } = props;
   const isMax = maxPanel === id;
 
-  function toggleMaxPanel(): void {
+  function togglePanelMaximized(): void {
     onToggleMax?.(id);
   }
 
@@ -59,7 +59,7 @@ export function Panel<TId extends string = string>(
             className={styles.maxBtn}
             aria-label="Maximize"
             title="Maximize"
-            onClick={toggleMaxPanel}
+            onClick={togglePanelMaximized}
           >
             {isMax ? "⧉" : "⛶"}
           </button>

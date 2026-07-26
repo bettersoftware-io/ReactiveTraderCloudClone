@@ -105,7 +105,7 @@ function TimelineRowView({
     model.pin(row.seq);
   }
 
-  function setTimelineRadius(): void {
+  function narrowTimelineToRow(): void {
     model.setRadiusAround(row);
   }
 
@@ -135,7 +135,7 @@ function TimelineRowView({
         type="button"
         title="Show events within ±100 ms"
         className={styles.radius}
-        onClick={setTimelineRadius}
+        onClick={narrowTimelineToRow}
       >
         ±100ms
       </button>
