@@ -12,7 +12,8 @@
       "Bash(pnpm --filter @rtc/tests typecheck)",
       "Bash(pnpm --filter @rtc/client-react test)",
       "Bash(pnpm --filter @rtc/client-react test:e2e)",
-      "Bash(pnpm --filter @rtc/client-react typecheck)"
+      "Bash(pnpm --filter @rtc/client-react typecheck)",
+      "Bash(gh pr merge *)"
     ]
   },
   "hooks": {
