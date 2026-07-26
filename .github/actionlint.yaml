@@ -1,0 +1,20 @@
+# actionlint configuration.
+#
+# WHY THIS FILE EXISTS: actionlint validates `runs-on:` against a runner-label
+# list COMPILED INTO THE BINARY, so a label GitHub ships after the pinned
+# actionlint release reads as "unknown" even though it is generally available.
+# We pin actionlint v1.7.7 (scripts/install-actionlint.sh), whose list stops at
+# `macos-15`; `macos-26` went GA on GitHub-hosted runners in 2026 and is what
+# .github/workflows/ios-visual-spike.yml targets, because it is the image that
+# ships this repo's golden pin (iPhone 17 + iOS 26.x runtimes).
+#
+# `self-hosted-runner.labels` is the escape hatch actionlint's own error message
+# points at. Naming a GitHub-HOSTED label here is therefore slightly a misnomer
+# — it means "treat this label as known", not "this is a self-hosted runner".
+#
+# REVISIT when actionlint is bumped: if a newer release knows `macos-26`
+# natively, delete the entry (and this file, if it is then empty) rather than
+# leaving a permanent suppression that would also mask a genuine typo.
+self-hosted-runner:
+  labels:
+    - macos-26

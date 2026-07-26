@@ -2,7 +2,11 @@
 
 Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-native` — the net for RN paint bugs that jsdom/jest can't see.
 
-> **Not a CI gate.** iOS pixels need macOS and a running simulator + dev client + Metro; there are no macOS CI runners. This is a **Mac-local** suite — run it before merging any change that touches RN views. Never add its scripts to `.github/workflows/ci.yml`.
+> **Not a PR gate.** This is a **Mac-local** suite — run it before merging any change that touches RN views, and never add its scripts to `.github/workflows/ci.yml`.
+>
+> **The reason changed, because the old one was wrong.** This note used to say "there are no macOS CI runners". There are. This repo is **public**, so GitHub-hosted standard runners — macOS included — are free and unlimited, and the `macos-26` image ships this harness's exact golden pin (iPhone 17 + iOS 26.x runtimes). Access was never the blocker. What believing otherwise cost is on the record: **P1** — every boot scene drawing zero glyphs on real iOS — shipped unnoticed through the whole of Phase 6a, because nothing automated could see a device pixel.
+>
+> The *conclusion* survives the correction, for a different and more durable reason: device and simulator UI suites are the slowest and flakiest thing in any pipeline, which makes them poor merge gates — see [mobile-ci-testing-options.md §4](../../../../docs/mobile-ci-testing-options.md) for the published evidence. This repo already made exactly that call for the web, where [`visual.yml`](../../../../.github/workflows/visual.yml) runs post-merge only. Bringing these tiers to CI is tracked as **T1** in [rn-open-items.md](../../../../docs/rn-open-items.md); its destination is a scheduled, non-gating workflow, not `ci.yml`.
 
 ## What's here
 
