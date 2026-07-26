@@ -5,6 +5,7 @@ import type { BootVariant } from "@rtc/domain";
 
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
 import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
+import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import type { GyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -39,11 +40,12 @@ export interface BootSceneProps {
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 
 /**
- * Boot variant → scene component. `Partial` by design: three of eight
- * variants are registered so far — `core` (phase 6a Task 6), `laser` (phase
- * 6a Task 7) and `docking` (phase 6b-1 Task 9). `hologram`/`geo`/`layers`/
- * `jarvis`/`topo` remain deliberately unported until phase 6b-2 (they all
- * need the `project3d` camera kernel `docking` doesn't).
+ * Boot variant → scene component. `Partial` by design: four of eight variants
+ * are registered so far — `core` (phase 6a Task 6), `laser` (phase 6a Task 7),
+ * `docking` (phase 6b-1 Task 9) and `hologram` (phase 6b-2a Task 5, the first
+ * to use the shared `boot3dCamera` seam). `geo`/`layers`/`jarvis`/`topo`
+ * remain deliberately unported: `layers` lands later in 6b-2a, the other three
+ * in 6b-2b.
  *
  * A missing entry is an expected state, never an error: `BootCanvas` looks
  * up the current variant and, finding nothing, renders the chrome-only
@@ -52,6 +54,7 @@ export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
 export const BOOT_SCENES: Partial<Record<BootVariant, BootSceneComponent>> = {
   core: CoreScene,
   docking: DockingScene,
+  hologram: HologramScene,
   laser: LaserScene,
 };
 
