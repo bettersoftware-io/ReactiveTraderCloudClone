@@ -6,9 +6,9 @@ import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { createRateLimiter } from "#/auth/rateLimit";
 
 import {
+  authenticateLoginRequest,
   authorizeUpgrade,
   describeUpgrade,
-  authenticateLoginRequest,
 } from "./loginHandler.js";
 
 describe("authenticateLoginRequest", () => {
