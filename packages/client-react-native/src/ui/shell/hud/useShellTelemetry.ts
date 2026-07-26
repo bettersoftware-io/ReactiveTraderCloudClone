@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts
-import { useCallback, useContext, useState } from "react";
+import { useContext, useState } from "react";
 import {
   runOnJS,
   useFrameCallback,
@@ -41,9 +41,9 @@ export function useShellTelemetry(): ShellTelemetry {
   // Runtime". Hand the raw frame count + elapsed to the JS thread and compute
   // there. Jest can't catch this — it mocks reanimated, so the worklet runs as
   // ordinary JS where `computeFps` is directly callable.
-  const publishFps = useCallback((frames: number, elapsedMs: number): void => {
+  function publishFps(frames: number, elapsedMs: number): void {
     setFps(computeFps(frames, elapsedMs));
-  }, []);
+  }
 
   useFrameCallback((frame) => {
     "worklet";
