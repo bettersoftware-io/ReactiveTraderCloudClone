@@ -103,9 +103,12 @@ git diff --name-only origin/main...HEAD    # what your branch touched
 ```
 
 - **Merge as-is (skip catch-up)** — the common case — when the incoming commits are plainly **disjoint** from your change: a different package, docs-only while you touched code, no shared exports / fixtures / lint / build config. `git merge-base --is-ancestor origin/main HEAD` may report "behind," but *behind ≠ risky*. Go straight to Rule 4.
+- **Merge as-is even when a file IS shared, if every shared file is prose** — i.e. every path in the overlap matches `**/*.md` or `docs/**`. Prose in different sections of a document has no semantic-conflict path to code, and git still blocks a genuine *textual* conflict regardless. `CLAUDE.md` counts as prose (instructions, not executable); `.claude/settings.json` does **not** (JSON that changes tool behaviour). **This is the single highest-value case:** measured over 59 merges (2026-07-26), 17 needed a catch-up and **9 of those 17 — 53% — shared only `docs/STATUS.md`**, every one of which auto-merged cleanly. They were not conflicts; they were this rule read too literally, at ~10 min of CI each.
 - **Catch up (merge `origin/main` *in* + re-enter the Rule 2 CI loop)** when **either**:
-  - **(a) Overlap** — the incoming diff touches files, exported symbols, shared fixtures, lint / tsconfig / `turbo.json`, or a package your branch also touches — anything with a real semantic-conflict path; **or**
+  - **(a) Overlap with a real semantic-conflict path** — the incoming diff touches code, a lockfile, config, fixtures, lint / tsconfig / `turbo.json`, CI workflows, exported symbols, or a package your branch also touches. `pnpm-lock.yaml` is the case that genuinely warrants it (4 of those 17); **or**
   - **(b) Too broad to cheaply assess** — the incoming diff spans more files than you can quickly eyeball for disjointness. Don't agonize over a big overlap analysis; just catch up. This is rare, so one extra catch-up is cheap.
+
+> **The residual risk, stated so it isn't forgotten:** `strict_required_status_checks_policy` is `false` on the `main` ruleset, so a green-but-stale PR *can* merge into a `main` it was never tested against. Post-merge `main` CI is the backstop, and it has caught exactly this once (a green PR-CI that reddened `main` during the SolidJS port). A **merge queue** would close it structurally — deferred on cost, see [`docs/IDEAS.md`](../../../docs/IDEAS.md) and the [design spec](../../../docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md).
 
 ```bash
 git merge origin/main          # resolve any conflicts, commit the merge
@@ -167,7 +170,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
 | Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
-| Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3, catch up only on overlap / too-broad diff) |
+| Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3: **prose-only overlap merges as-is**, catch up only on a real semantic-conflict path or a too-broad diff) |
 | What landed on `main`? | `git diff --name-only HEAD...origin/main` vs. `git diff --name-only origin/main...HEAD` — disjoint → merge as-is |
 | Update a stale branch | `git merge origin/main` (✅ merge in) — **never** rebase/force-push |
 | Merge (merge commit) | `gh pr merge <n> --merge --subject "Merge PR #<n>: <title>"` |

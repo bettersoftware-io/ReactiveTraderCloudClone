@@ -42,16 +42,31 @@ ahead of you in the queue + your PR, runs the required checks against *that*
 combined state, and merges in order only if green. The cat-and-mouse loop
 disappears — it's pipelined, not retried.
 
-**What it would take / caveats for this repo:**
-- Requires **branch protection with required status checks** on `main`. That's a
-  policy shift: today there's no review gate and merges go through the API
-  immediately (Rule 4), and local `main` *auto-pushes to origin* — direct pushes
-  bypass a queue entirely, so we'd have to commit to "all changes to `main` go
-  through a PR + queue."
-- The repo's fine-grained PAT **403s on `gh pr checks` / `statusCheckRollup`**
-  (see Rule 2); merge queue leans on those same check-rollup APIs, so expect
-  tooling friction to resurface.
-- Merge queue is available for public repos and Team/Enterprise orgs.
+**Status (2026-07-26): brainstormed, and deliberately deferred.** See the
+[design spec](superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md).
+Measuring first inverted the case, and two caveats previously recorded here were
+found to be **stale**:
 
-**Next step if we pursue it:** a proper brainstorm — this is a workflow policy
-change, not a quick config toggle.
+- ~~"Requires branch protection with required status checks; today there's no
+  review gate"~~ — **already in place.** An active ruleset on `main` (no bypass
+  actors) requires a PR, restricts merges to `allowed_merge_methods: ["merge"]`,
+  and requires both CI jobs. `required_approving_review_count` is `0`, which
+  keeps Rule 4's no-human-gate policy working.
+- ~~"local `main` auto-pushes to origin, so direct pushes bypass a queue"~~ —
+  **not true in this checkout.** `.git/hooks` holds only Git LFS hooks; that
+  behaviour is specific to the sandbox environment. Direct pushes to `main` are
+  already impossible.
+
+**What actually deferred it:** a queue charges a CI run on *every* merge, where
+**71% of merges pay nothing today** (green branch, disjoint diff, merge as-is).
+The tax it would replace measured at only ~2.9 min/PR (17 of 59 merges needed a
+catch-up, median CI 10.1 min) — and **53% of that came from one file**,
+`docs/STATUS.md`, fixed for free by sharpening Rule 3 instead.
+
+**Still true, and still unanswered:** whether GitHub merge queue is available on
+a **user-owned** public repo (the docs emphasise orgs), and that this repo's
+fine-grained PAT `403`s on `gh pr checks` / `statusCheckRollup`, which merge
+queue leans on.
+
+**Revisit when:** the catch-up rate stays materially above ~15% after the Rule 3
+change, or `main` starts reddening from stale merges.
