@@ -54,13 +54,16 @@ export function aggregatePositionsByCurrency(
   const rawMin = magnitudes.length > 0 ? Math.min(...magnitudes) : 0;
   const minValue = rawMin !== maxValue ? rawMin : 0;
 
+  // Always > 0 wherever scaleRadius runs, so it never divides by zero: zero
+  // amounts are filtered out above, and when every magnitude is EQUAL the
+  // `rawMin !== maxValue ? rawMin : 0` line collapses minValue to 0 rather
+  // than to maxValue. A `span === 0` early-return used to sit in scaleRadius
+  // guarding this; it was unreachable for exactly that reason (and would have
+  // contradicted the live behaviour — see the all-equal case in the tests,
+  // which yields MAX radius, not MIN). Removed 2026-07-26.
   const span = maxValue - minValue;
 
   function scaleRadius(amount: number): number {
-    if (span === 0) {
-      return POSITION_MIN_RADIUS;
-    }
-
     const fraction = (Math.abs(amount) - minValue) / span;
     return (
       POSITION_MIN_RADIUS +

@@ -95,7 +95,7 @@ describe("appPanelRegistry", () => {
     const { props } = createdBy(appPanelRegistry["credit-new-rfq"]());
 
     expect(props).toHaveProperty("onCreated");
-    expect((props as { onCreated: unknown }).onCreated).toBeTypeOf("function");
+    expect((props as NewRfqProps).onCreated).toBeTypeOf("function");
   });
 
   it("returns a fresh result per call, never a cached node", () => {
@@ -109,6 +109,10 @@ describe("appPanelRegistry", () => {
 interface CreatedComponent {
   component: unknown;
   props: unknown;
+}
+
+interface NewRfqProps {
+  onCreated: unknown;
 }
 
 /** Unwraps the marker our mocked `createComponent` returns. Throws rather than

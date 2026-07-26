@@ -77,7 +77,7 @@ describe("EquityPositionSimulator marking", () => {
   });
 
   it("re-marks the position from a live quote", async () => {
-    const quotes = new Subject<{ last: number }>();
+    const quotes = new Subject<Tick>();
     const sim = new EquityPositionSimulator(stubMarketData(undefined, quotes));
 
     sim.onFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
@@ -110,15 +110,19 @@ describe("EquityPositionSimulator flat positions", () => {
   });
 });
 
+interface Tick {
+  last: number;
+}
+
 /** A MarketDataPort whose quote stream is inert unless one is supplied, so a
  * test observes only the fills it drives. `onSubscribe` counts subscriptions. */
 function stubMarketData(
   onSubscribe?: () => void,
-  quotes?: Subject<{ last: number }>,
+  quotes?: Subject<Tick>,
 ): MarketDataPort {
   return {
     quotes: () => {
-      return new Observable<{ last: number }>((subscriber) => {
+      return new Observable<Tick>((subscriber) => {
         onSubscribe?.();
 
         if (!quotes) {

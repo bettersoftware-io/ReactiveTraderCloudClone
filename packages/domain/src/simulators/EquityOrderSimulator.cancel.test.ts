@@ -55,12 +55,21 @@ describe("EquityOrderSimulator cancel", () => {
   });
 });
 
+interface PlacedOrder {
+  id: string;
+}
+
+interface BookRow {
+  id: string;
+  status: string;
+}
+
 /** Places a market order and settles its whole lifecycle, so the book holds a
  * terminal row before the test acts on it. */
 async function placed(
   sim: EquityOrderSimulator,
   symbol: string,
-): Promise<{ id: string }> {
+): Promise<PlacedOrder> {
   const pending = lastValueFrom(
     sim.place({ symbol, side: "buy", type: "market", qty: 100 }),
   );
@@ -70,10 +79,7 @@ async function placed(
   return pending;
 }
 
-function statusOf(
-  book: readonly { id: string; status: string }[],
-  id: string,
-): string | undefined {
+function statusOf(book: readonly BookRow[], id: string): string | undefined {
   return book.find((order) => {
     return order.id === id;
   })?.status;

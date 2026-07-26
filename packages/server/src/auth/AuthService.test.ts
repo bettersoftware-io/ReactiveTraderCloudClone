@@ -93,9 +93,13 @@ describe("AuthService", () => {
       Buffer.from(result?.token.split(".")[0] ?? "", "base64url").toString(
         "utf8",
       ),
-    ) as { exp: number };
+    ) as TokenPayload;
 
     expect(payload.exp).toBeGreaterThanOrEqual(before + 60_000);
     expect(payload.exp).toBeLessThanOrEqual(Date.now() + 60_000);
   });
 });
+
+interface TokenPayload {
+  exp: number;
+}
