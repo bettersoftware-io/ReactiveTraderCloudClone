@@ -98,7 +98,6 @@
         "jest.config.js",
         "jest.setup.ts",
         "jest.resolver.js",
-        "expo-env.d.ts",
         "scripts/liveWsSmoke.ts",
         "tests/visual/driver.ts",
         "tests/visual/maestro/generateFlows.ts"

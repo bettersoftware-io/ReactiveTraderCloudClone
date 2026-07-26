@@ -19,23 +19,27 @@ import { summarize, type TierResult } from "./lib/testResults";
 //     buildBrowserPorts.ts at 50% (the same gap its react twin had).
 // Tier names are framework-prefixed so the two are never conflated.
 //
-// WHAT "react/ui (visual)" ACTUALLY MEASURES — its ~77% is easy to misread as
-// a weak tier. It is not incidental coverage, and it is not the pixel tier's
-// own coverage. It is a purpose-built instrument: the vitest-browser spec walks
-// the SAME shared scenario matrix as the playwright golden tier
-// (@ui-visual-shared/scenarios) with the pixel assert compiled out via
-// __RTC_VISUAL_SKIP_DIFF__, so istanbul sees exactly what the visual scenarios
-// render. The number therefore answers "how much of src/ui does the golden
-// matrix actually exercise?" — it exists to find components and branches the
-// pixel tier never reaches. It has a track record: EqDepthDock showed 0% here,
-// which is why the equities/depth-dock-empty scenario was added. See
+// WHAT THE "ui (visual reach)" TIERS MEASURE — and why they are NOT named
+// "ui (visual)" any more. That older name read as "the visual tier's own
+// coverage", which invited exactly one wrong conclusion: that a ~77% here is
+// incidental fallout from taking screenshots, and therefore ignorable. It is
+// the opposite. These are purpose-built instruments: each client's
+// vitest-browser spec walks the SAME shared scenario matrix as its playwright
+// golden tier (@ui-visual-shared/scenarios) while istanbul watches, so the
+// number answers "how much of src/ui does the golden matrix actually REACH?"
+// A low number means unsnapshotted UI, and the fix is to add scenarios, not to
+// discount the tier. Track record: EqDepthDock read 0% here, which is why the
+// equities/depth-dock-empty scenario exists — see
 // client-react/tests/ui/visual/COVERAGE-GAPS.md.
 //
-// There is no solid equivalent because client-solid has no vitest-browser
-// harness at all (only tests/ui/visual/playwright/ + its render target) —
-// nothing to instrument, not a judgement that the metric is worthless. Porting
-// one would add real information (solid-specific branches the shared matrix
-// misses) and is tracked as a follow-up in docs/STATUS.md.
+// Both clients are instrumented as of 2026-07-26. The scenario matrix is
+// shared, so "which states are unsnapshotted" is common to both; what differs
+// is the CODE each client runs to render them, and solid-only paths (compiled
+// reactive-effect guards, hooks with no react counterpart such as
+// useNewestOrderId / useTickFlash) were previously measured by nothing. A
+// DIVERGENCE between the two numbers is the signal worth chasing: identical
+// scenarios, so a gap on one side means that client has a render path the
+// other lacks.
 export const TIERS = {
   coverage: [
     {
@@ -55,7 +59,7 @@ export const TIERS = {
       path: "packages/client-react/reports/ui/contract/coverage/coverage-final.json",
     },
     {
-      name: "react/ui (visual)",
+      name: "react/ui (visual reach)",
       path: "packages/client-react/reports/ui/visual/coverage/coverage-final.json",
     },
     {
@@ -65,6 +69,10 @@ export const TIERS = {
     {
       name: "solid/ui (contract)",
       path: "packages/client-solid/reports/ui/contract/coverage/coverage-final.json",
+    },
+    {
+      name: "solid/ui (visual reach)",
+      path: "packages/client-solid/reports/ui/visual/coverage/coverage-final.json",
     },
   ],
   results: [
@@ -89,6 +97,10 @@ export const TIERS = {
     {
       tier: "solid/contract",
       path: "packages/client-solid/reports/ui/contract/test-results.json",
+    },
+    {
+      tier: "solid/visual",
+      path: "packages/client-solid/reports/ui/visual/test-results.json",
     },
   ],
 } as const;

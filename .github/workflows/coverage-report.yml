@@ -7,7 +7,7 @@ name: Coverage Report
 #      with collapsible per-file diff snippets). Readable on mobile web from the
 #      run's Summary page.
 #   2. The FULL istanbul HTML report (colored, click-through, file-by-file) for
-#      all seven tiers, published to GitHub Pages at a stable URL you can open
+#      all eight tiers, published to GitHub Pages at a stable URL you can open
 #      and browse immediately on any device — no download, no unzip. The repo is
 #      public, so the report (which shows source lines) leaks nothing new.
 #
@@ -23,14 +23,21 @@ name: Coverage Report
 #
 # Still report-only — it gates nothing (see docs/STATUS.md).
 #
-# "react/ui (visual)" is NOT the pixel tier's own coverage, and its ~77% is not
-# incidental. The vitest-browser spec walks the SAME shared scenario matrix as
-# the playwright golden tier with the pixel assert compiled out
-# (__RTC_VISUAL_SKIP_DIFF__), so the number answers "how much of src/ui does the
-# golden matrix actually render?" — its job is finding components the pixel tier
-# never reaches (EqDepthDock at 0% is why equities/depth-dock-empty exists; see
-# client-react/tests/ui/visual/COVERAGE-GAPS.md). There is no solid counterpart
-# only because client-solid has no vitest-browser harness to instrument.
+# The "ui (visual reach)" tiers are NOT the pixel tiers' own coverage, and a
+# ~77-85% there is not incidental. Each client's vitest-browser spec walks the
+# SAME shared scenario matrix as its playwright golden tier while istanbul
+# watches, so the number answers "how much of src/ui does the golden matrix
+# actually REACH?" — its job is finding components the pixel tier never renders
+# (EqDepthDock at 0% is why equities/depth-dock-empty exists; see
+# client-react/tests/ui/visual/COVERAGE-GAPS.md). They were called
+# "ui (visual)" until 2026-07-26, a name that read as "the visual tier's own
+# coverage" and got the metric dismissed as worthless once already.
+#
+# Both clients are instrumented as of 2026-07-26 (client-solid had no
+# vitest-browser harness before that, which was the only reason it was
+# missing). The two percentages are NOT directly comparable — each client's
+# denominator is its own compiled src/ui — so read them per-client, and treat a
+# file at 0% on one side but covered on the other as the real signal.
 #
 # THIS WORKFLOW IS DISPATCH-ONLY. Nothing triggers it automatically, so the
 # published report serves whatever commit last dispatched it — check its date
@@ -169,10 +176,22 @@ jobs:
           --reporter=default --reporter=json
           --outputFile.json=reports/ui/contract/test-results.json
 
+      # Added 2026-07-26. Until then client-solid had no vitest-browser harness
+      # at all, which was the ONLY reason this tier was react-only. See the
+      # header for what "visual reach" measures.
+      - name: Coverage — solid UI (visual-reach tier)
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-solid exec vitest run
+          -c tests/ui/visual/vitest-browser/vitest-browser.coverage.config.ts --coverage
+          --coverage.reporter=json --coverage.reporter=html
+          --reporter=default --reporter=json
+          --outputFile.json=reports/ui/visual/test-results.json
+
       - name: Render report to job summary
         run: pnpm --filter @rtc/tests coverage:report
 
-      # Stitch the five tiers' istanbul HTML into one Pages site with a landing
+      # Stitch the eight tiers' istanbul HTML into one Pages site with a landing
       # index. Tiers that fell over (continue-on-error) simply produce no html dir
       # and are listed as "not generated" rather than breaking the build.
       - name: Assemble Pages site
@@ -184,17 +203,21 @@ jobs:
           mkdir -p "$site"
 
           # display-name | url-slug | istanbul html directory
-          # Slugs for the react tiers are kept as-is (client-app / ui-contract /
-          # ui-visual) so previously-shared report URLs keep resolving; only the
-          # display names gained a framework prefix.
+          # SLUGS ARE FROZEN, display names are not. The react slugs (client-app
+          # / ui-contract / ui-visual) predate the framework prefixes and are
+          # kept verbatim so previously-shared report URLs keep resolving — so
+          # `ui-visual` survives in the URL even though the tier is now
+          # displayed as "visual reach". Renaming the slug is the one change
+          # here that would break a link someone already has.
           tiers=(
             "domain|domain|packages/domain/reports/unit/coverage"
             "server|server|packages/server/reports/unit/coverage"
             "react/app|client-app|packages/client-react/reports/app/coverage"
             "react/ui (contract)|ui-contract|packages/client-react/reports/ui/contract/coverage"
-            "react/ui (visual)|ui-visual|packages/client-react/reports/ui/visual/coverage"
+            "react/ui (visual reach)|ui-visual|packages/client-react/reports/ui/visual/coverage"
             "solid/app|solid-app|packages/client-solid/reports/app/coverage"
             "solid/ui (contract)|solid-ui-contract|packages/client-solid/reports/ui/contract/coverage"
+            "solid/ui (visual reach)|solid-ui-visual|packages/client-solid/reports/ui/visual/coverage"
           )
 
           links=""
