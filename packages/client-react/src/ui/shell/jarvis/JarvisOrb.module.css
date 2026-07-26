@@ -1,0 +1,199 @@
+/* Header J.A.R.V.I.S orb (perf-checklist form, docs/performance.md).
+   `.core`/`.glow` are stacked spans painted ONCE (radial gradients baked
+   into the background) — the idle "breath" animates only `transform: scale`
+   on `.core` and only `opacity` on `.glow`: one animation, one property,
+   per element (T5), both HTML elements not SVG children (T3), no `var()`
+   inside the animated transform (T4), no animated box-shadow/filter (T2/T6).
+   Freeze needs no local rule: the global `[data-power-saver="freeze"]`
+   catch-all in index.css already zeroes every animation under it. */
+
+.button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-primary);
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+  overflow: visible;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.button[data-active="true"] {
+  border-color: var(--accent-primary);
+  box-shadow: var(--glow);
+}
+
+.core,
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.core {
+  inset: 7px;
+  background: radial-gradient(
+    circle at 35% 32%,
+    var(--accent-primary) 0%,
+    transparent 72%
+  );
+  animation: jarvis-core-breath 4s ease-in-out infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+.glow {
+  inset: -3px;
+  background: radial-gradient(
+    circle,
+    var(--accent-primary) 0%,
+    transparent 70%
+  );
+  opacity: 0.3;
+  animation: jarvis-glow-breath 4s ease-in-out infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+@keyframes jarvis-core-breath {
+  0%,
+  100% {
+    transform: scale(0.82);
+  }
+
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes jarvis-glow-breath {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+
+  50% {
+    opacity: 0.48;
+  }
+}
+
+/* Speaking — the same scale/opacity pair, sped up (a distinct keyframe name
+   so only one of idle/speaking/attention is ever selected per element —
+   still one animation per property, T5). */
+.button[data-jarvis-state="speaking"] .core {
+  animation-name: jarvis-core-speaking;
+  animation-duration: 0.85s;
+}
+
+.button[data-jarvis-state="speaking"] .glow {
+  animation-name: jarvis-glow-speaking;
+  animation-duration: 0.85s;
+}
+
+@keyframes jarvis-core-speaking {
+  0%,
+  100% {
+    transform: scale(0.88);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes jarvis-glow-speaking {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+
+  50% {
+    opacity: 0.62;
+  }
+}
+
+/* Attention (a confirmation is awaiting a decision) — urgent amber pulse,
+   recolored via var(--accent-aware) rather than a new gradient stop set. */
+.button[data-jarvis-state="attention"] .core {
+  background: radial-gradient(
+    circle at 35% 32%,
+    var(--accent-aware) 0%,
+    transparent 72%
+  );
+  animation-name: jarvis-core-attention;
+  animation-duration: 0.6s;
+}
+
+.button[data-jarvis-state="attention"] .glow {
+  background: radial-gradient(circle, var(--accent-aware) 0%, transparent 70%);
+  animation-name: jarvis-glow-attention;
+  animation-duration: 0.6s;
+}
+
+@keyframes jarvis-core-attention {
+  0%,
+  100% {
+    transform: scale(0.85);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes jarvis-glow-attention {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* Reactor skin — recolor the core/glow gradients via a class-scoped rule
+   (not an inline custom property, per the brief). Singularity keeps the
+   default accent-primary cyan above. */
+.button[data-skin="reactor"] .core {
+  background: radial-gradient(
+    circle at 35% 32%,
+    var(--accent-2) 0%,
+    transparent 72%
+  );
+}
+
+.button[data-skin="reactor"] .glow {
+  background: radial-gradient(circle, var(--accent-2) 0%, transparent 70%);
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-on-accent);
+  background-color: var(--accent-primary);
+  border-radius: 8px;
+  box-shadow: 0 0 8px var(--accent-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core,
+  .glow {
+    animation: none;
+  }
+}

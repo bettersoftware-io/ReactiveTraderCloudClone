@@ -1,0 +1,401 @@
+/* PreferencesModal overlay pattern: fixed scrim, no backdrop-filter (T6). */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: rgba(0, 0, 0, 0.62);
+  font-family: var(--font-display);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 94vw);
+  max-height: 90vh;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+}
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel-head);
+}
+
+.wordmark {
+  font-family: var(--font-logo);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  color: var(--text-primary);
+}
+
+.skinSwitch {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.skinButton {
+  padding: 5px 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.skinButton[data-active="true"] {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--chip);
+}
+
+.closeButton {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-primary);
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* Holo core — layered radial-gradient spans (perf-checklist form). Each
+   layer is painted once; `.coreRing` is the ONE slow rotate (transform
+   only, literal keyframe values, play-state gated); `.coreHalo` breathes
+   opacity only (a second element, so still one animation per property per
+   element, T5); `.coreCenter` is a static bright centre with no motion. */
+.core {
+  position: relative;
+  flex: none;
+  height: 130px;
+  margin: 18px auto 6px;
+  width: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coreHalo,
+.coreRing,
+.coreCenter {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.coreHalo {
+  background: radial-gradient(
+    circle,
+    var(--accent-primary) 0%,
+    transparent 68%
+  );
+  opacity: 0.25;
+  will-change: opacity;
+  animation: jarvis-halo-breath 5s ease-in-out infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+.coreRing {
+  inset: 14px;
+  background: conic-gradient(
+    from 0deg,
+    var(--accent-primary) 0deg,
+    transparent 110deg,
+    transparent 250deg,
+    var(--accent-primary) 360deg
+  );
+  opacity: 0.55;
+  will-change: transform;
+  animation: jarvis-ring-spin 14s linear infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+.coreCenter {
+  inset: 44px;
+  background: radial-gradient(
+    circle at 38% 34%,
+    var(--text-primary) 0%,
+    var(--accent-primary) 42%,
+    transparent 78%
+  );
+}
+
+@keyframes jarvis-halo-breath {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes jarvis-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.core[data-skin="reactor"] .coreHalo {
+  background: radial-gradient(circle, var(--accent-2) 0%, transparent 68%);
+}
+
+.core[data-skin="reactor"] .coreRing {
+  background: conic-gradient(
+    from 0deg,
+    var(--accent-2) 0deg,
+    transparent 110deg,
+    transparent 250deg,
+    var(--accent-2) 360deg
+  );
+}
+
+.core[data-skin="reactor"] .coreCenter {
+  background: radial-gradient(
+    circle at 38% 34%,
+    var(--text-primary) 0%,
+    var(--accent-2) 42%,
+    transparent 78%
+  );
+}
+
+.core[data-phase="speaking"] .coreHalo {
+  animation-name: jarvis-halo-speaking;
+  animation-duration: 1.1s;
+}
+
+@keyframes jarvis-halo-speaking {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.62;
+  }
+}
+
+/* Waveform — 5 bars, transform: scaleY() only, staggered via animation-delay
+   (a literal per-child value, not a var() inside the transform — T4). */
+.waveform {
+  position: absolute;
+  bottom: -22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 16px;
+}
+
+.bar {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background-color: var(--accent-primary);
+  transform-origin: bottom center;
+  will-change: transform;
+  animation: jarvis-wave-bar 0.7s ease-in-out infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+.bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.bar:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.bar:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+@keyframes jarvis-wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 26px 20px 10px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 84%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.entry[data-role="user"] {
+  align-self: flex-end;
+  color: var(--text-primary);
+  background: var(--chip);
+}
+
+.entry[data-role="jarvis"] {
+  align-self: flex-start;
+  color: var(--text-secondary);
+  background: var(--panel);
+  border: 1px solid var(--border-subtle);
+}
+
+.entryText {
+  white-space: pre-wrap;
+}
+
+.toolChip {
+  align-self: flex-start;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--accent-2);
+  border: 1px solid var(--accent-2);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+/* Typed-reveal caret — a bare opacity blink (one animation, one property). */
+.caret {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background-color: var(--accent-primary);
+  animation: jarvis-caret-blink 1s step-start infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+@keyframes jarvis-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.suggestions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 12px;
+}
+
+.suggestion {
+  padding: 6px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 14px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.suggestion:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.inputRow {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--border-primary);
+  background: var(--panel-head);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.input:disabled {
+  opacity: 0.6;
+}
+
+.sendButton {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.sendButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coreHalo,
+  .coreRing,
+  .bar,
+  .caret {
+    animation: none;
+  }
+}
