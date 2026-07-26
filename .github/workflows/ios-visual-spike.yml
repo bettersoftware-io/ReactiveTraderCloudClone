@@ -1,0 +1,261 @@
+name: iOS visual spike (T1)
+
+# A SPIKE, NOT A TIER. Its only job is to replace the estimates in
+# docs/mobile-ci-testing-options.md §7 with measurements, on the one question
+# that gates everything else: can a free GitHub-hosted macOS runner reach this
+# repo's golden pin (iPhone 17 / iOS 26) and host the Maestro visual tier?
+#
+# WHY THIS EXISTS AT ALL. docs/rn-open-items.md T1 recorded that the RN visual
+# and e2e tiers gate nothing in CI, on the premise that "iOS pixels need macOS
+# and there are no macOS CI runners". That premise is FALSE for this repo:
+# it is PUBLIC, and GitHub-hosted standard runners — macOS included — are free
+# and unlimited on public repositories. The blocker was never access. What that
+# premise cost is on the record: P1 (every boot scene drew ZERO glyphs on real
+# iOS) shipped unnoticed through the whole of Phase 6a, because no automated
+# eye could see a device pixel.
+#
+# WHY workflow_dispatch ONLY, AND WHY IT MUST NOT BECOME A PR GATE.
+# Two independent reasons, and the second outlives the first:
+#   1. It is a spike. It proves an environment; it asserts nothing about the UI.
+#   2. Even once promoted, device/simulator UI suites make bad merge gates —
+#      they are the slowest and flakiest thing in any pipeline. See
+#      docs/mobile-ci-testing-options.md §4 for the published evidence (Slack:
+#      57% of failing builds were test-job failures pre-suppression; Uber runs
+#      non-critical suites "in non-blocking mode as FYI only"). This repo
+#      already made exactly that call for the web: visual.yml is post-merge
+#      only. The eventual home for this work is the same shape — schedule: +
+#      push: main, non-gating — NOT ci.yml.
+#
+# STEP ORDER IS DELIBERATE: cheapest load-bearing assertion first. If this image
+# cannot create an iPhone 17 on an iOS 26 runtime, every downstream step is
+# moot, and learning that must cost ~2 minutes rather than the ~15 that a full
+# `pnpm install` would add first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      xcode:
+        description: "Xcode version to select (e.g. 26.5). Blank = image default."
+        required: false
+        default: ""
+      runtime:
+        description: "Preferred iOS runtime substring (e.g. 26.5). Blank = newest iOS 26.x available."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  # pnpm is provisioned by Corepack from the `packageManager` pin; silence its
+  # first-run download prompt so non-interactive CI never stalls. (Same as ci.yml.)
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  probe:
+    name: probe macos-26 environment
+    # Pinned explicitly, never `macos-latest`. GitHub is mid-migration to
+    # macOS 26 and is moving to Xcode-major-versioned images, so `latest` is a
+    # moving target that can move every golden pixel overnight.
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      # ---------------------------------------------------------------- facts
+      - name: Machine shape (cores, RAM, disk)
+        run: |
+          set -euo pipefail
+          echo "## Machine" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            uname -mrs
+            echo "cores:  $(sysctl -n hw.ncpu)"
+            echo "memory: $(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 )) GB"
+            echo "--- disk ---"
+            df -h / /Users 2>/dev/null || df -h /
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Xcode inventory and pin
+        # Dispatch inputs reach `run:` through env, never through `${{ }}`
+        # interpolation — the latter splices the raw string into the script
+        # before bash ever sees it, which is a shell-injection hole even when
+        # only write-access holders can dispatch the workflow.
+        env:
+          XCODE_INPUT: ${{ inputs.xcode }}
+        run: |
+          set -euo pipefail
+          echo "Installed Xcodes:"
+          ls -1 /Applications | grep -i '^Xcode' || true
+
+          # Pin explicitly when asked. §5 of the options doc is emphatic that the
+          # Xcode version belongs in the golden bucket name, because the image
+          # default WILL change under us.
+          if [ -n "$XCODE_INPUT" ]; then
+            APP="/Applications/Xcode_${XCODE_INPUT}.app"
+            if [ ! -d "$APP" ]; then
+              echo "::error title=Requested Xcode not on image::$APP does not exist. See the inventory above."
+              exit 1
+            fi
+            sudo xcode-select -s "$APP/Contents/Developer"
+          fi
+
+          echo "DEVELOPER_DIR now: $(xcode-select -p)"
+          xcodebuild -version
+          {
+            echo "## Xcode"
+            echo '```'
+            xcodebuild -version
+            echo "path: $(xcode-select -p)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------- the load-bearing test
+      # Everything downstream is pointless if the golden pin is unreachable, so
+      # this runs before anything expensive. `simctl list devices available`
+      # alone is NOT sufficient evidence: it lists pre-made device instances,
+      # while what the harness actually needs is a (device type × runtime) pair
+      # it can instantiate. So we instantiate one and boot it.
+      - name: Simulator inventory
+        run: |
+          set -euo pipefail
+          echo "--- iOS runtimes ---"
+          xcrun simctl list runtimes
+          echo "--- iPhone device types ---"
+          xcrun simctl list devicetypes | grep -i iphone || true
+
+      - name: Create and boot the golden pin (iPhone 17 / iOS 26.x)
+        id: sim
+        env:
+          RUNTIME_INPUT: ${{ inputs.runtime }}
+        run: |
+          set -euo pipefail
+
+          # Prefer an explicitly requested runtime, else the NEWEST available
+          # iOS 26.x. `select(.isAvailable)` matters — an image can list a
+          # runtime it cannot actually run.
+          WANT="$RUNTIME_INPUT"
+          if [ -n "$WANT" ]; then
+            RUNTIME=$(xcrun simctl list runtimes --json \
+              | jq -r --arg w "$WANT" '.runtimes[] | select(.isAvailable) | select(.version | contains($w)) | .identifier' \
+              | tail -1)
+          else
+            RUNTIME=$(xcrun simctl list runtimes --json \
+              | jq -r '.runtimes[] | select(.isAvailable) | select(.identifier | test("iOS-26")) | .identifier' \
+              | tail -1)
+          fi
+
+          DEVTYPE=$(xcrun simctl list devicetypes --json \
+            | jq -r '.devicetypes[] | select(.name == "iPhone 17") | .identifier' | head -1)
+
+          echo "runtime: ${RUNTIME:-<none>}"
+          echo "devtype: ${DEVTYPE:-<none>}"
+
+          if [ -z "$RUNTIME" ] || [ -z "$DEVTYPE" ]; then
+            echo "::error title=Golden pin unreachable::Could not resolve iPhone 17 + an available iOS 26.x runtime on this image. The whole T1 approach depends on this; see the inventory step above."
+            {
+              echo "## ❌ Golden pin UNREACHABLE"
+              echo "- iPhone 17 device type: \`${DEVTYPE:-not found}\`"
+              echo "- iOS 26.x runtime: \`${RUNTIME:-not found}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          UDID=$(xcrun simctl create rtc-probe "$DEVTYPE" "$RUNTIME")
+          echo "udid: $UDID"
+          xcrun simctl boot "$UDID"
+          # `bootstatus -b` blocks until the device finishes booting, which is
+          # what makes the timing below a real number rather than a lower bound.
+          time xcrun simctl bootstatus "$UDID" -b
+
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "runtime=$RUNTIME" >> "$GITHUB_OUTPUT"
+          {
+            echo "## ✅ Golden pin reachable"
+            echo "- device type: \`$DEVTYPE\`"
+            echo "- runtime: \`$RUNTIME\`"
+            echo "- udid: \`$UDID\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------ toolchain
+      - name: Preinstalled toolchain (node, python, java)
+        run: |
+          set -euo pipefail
+          # Python version is recorded for the idb question specifically: fb-idb
+          # needs Python <= 3.13 (harness README). We are deliberately NOT using
+          # idb here — the options doc rates its install the single most likely
+          # thing to sink a first attempt, and routes the spike through Maestro
+          # instead — but the fact is cheap to capture while we are here.
+          {
+            echo "## Preinstalled toolchain"
+            echo '```'
+            echo "node:    $(node --version 2>/dev/null || echo absent)"
+            echo "python3: $(python3 --version 2>&1 || echo absent)"
+            echo "java:    $(java -version 2>&1 | head -1 || echo absent)"
+            echo "brew:    $(brew --version 2>/dev/null | head -1 || echo absent)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack (pins pnpm from the packageManager field)
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Install JDK 17 + Maestro (timed)
+        run: |
+          set -euo pipefail
+          start=$SECONDS
+          brew install openjdk@17
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          export PATH="$HOME/.maestro/bin:$PATH"
+          export JAVA_HOME="$(brew --prefix openjdk@17)"
+          maestro --version
+          elapsed=$(( SECONDS - start ))
+          echo "maestro + jdk17 install: ${elapsed}s"
+          {
+            echo "## Maestro"
+            echo '```'
+            echo "install took: ${elapsed}s"
+            echo "maestro: $(maestro --version)"
+            echo "JAVA_HOME: $JAVA_HOME"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # --------------------------------------------------- repo + disk budget
+      # Last, because it is the most expensive step and answers the least
+      # load-bearing question. 14 GB of SSD is documented for macOS standard
+      # runners; this monorepo's install is the thing most likely to strain it.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: pnpm install (timed, with disk delta)
+        run: |
+          set -euo pipefail
+          before=$(df -k / | awk 'NR==2 {print $4}')
+          start=$SECONDS
+          pnpm install --frozen-lockfile
+          elapsed=$(( SECONDS - start ))
+          after=$(df -k / | awk 'NR==2 {print $4}')
+          used_mb=$(( (before - after) / 1024 ))
+          free_gb=$(( after / 1024 / 1024 ))
+          echo "install: ${elapsed}s, consumed ~${used_mb} MB, ${free_gb} GB free"
+          {
+            echo "## pnpm install"
+            echo '```'
+            echo "took:      ${elapsed}s"
+            echo "consumed:  ~${used_mb} MB"
+            echo "free after: ${free_gb} GB"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Teardown the probe simulator
+        if: always()
+        env:
+          PROBE_UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          UDID="$PROBE_UDID"
+          if [ -n "$UDID" ]; then
+            xcrun simctl shutdown "$UDID" 2>/dev/null || true
+            xcrun simctl delete "$UDID" 2>/dev/null || true
+          fi
