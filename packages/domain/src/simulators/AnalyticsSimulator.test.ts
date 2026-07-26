@@ -69,6 +69,98 @@ describe("AnalyticsSimulator", () => {
     expect(latest.usdPnl).toBeLessThan(17_120 * 1.6);
   });
 
+  // M6: every emission used to return the SAME frozen STATIC_POSITIONS object,
+  // initial and 10-second update alike. Two of the analytics surfaces read
+  // currentPositions — the exposure bubbles and the pair P&L bars — so both
+  // animated a constant. These four tests pin the fix and its one hard
+  // boundary: the FIRST emission must still be the calibrated values, because
+  // they are what make netExposureByCurrency land on the prototype's published
+  // figures (asserted above) and what every pinned golden was captured against.
+  it("drifts positions on later emissions rather than repeating the first", async () => {
+    vi.useFakeTimers();
+    const sim = new AnalyticsSimulator();
+    const promise = firstValueFrom(
+      sim.getAnalytics("USD").pipe(take(3), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    const snapshots: PositionUpdates[] = await promise;
+
+    expect(snapshots[1].currentPositions).not.toEqual(
+      snapshots[0].currentPositions,
+    );
+    expect(snapshots[2].currentPositions).not.toEqual(
+      snapshots[1].currentPositions,
+    );
+  });
+
+  // Emitting a mutated array would leave referential equality intact, so React
+  // would never re-render and the surfaces would still look frozen — a silent
+  // failure that the inequality test above cannot catch on its own.
+  it("emits a fresh positions array each time, never a mutated one", async () => {
+    vi.useFakeTimers();
+    const sim = new AnalyticsSimulator();
+    const promise = firstValueFrom(
+      sim.getAnalytics("USD").pipe(take(3), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    const snapshots: PositionUpdates[] = await promise;
+
+    expect(snapshots[1].currentPositions).not.toBe(
+      snapshots[0].currentPositions,
+    );
+    expect(snapshots[1].currentPositions[0]).not.toBe(
+      snapshots[0].currentPositions[0],
+    );
+  });
+
+  it("keeps the symbol set and its order stable while drifting", async () => {
+    vi.useFakeTimers();
+    const sim = new AnalyticsSimulator();
+    const promise = firstValueFrom(
+      sim.getAnalytics("USD").pipe(take(4), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    const snapshots: PositionUpdates[] = await promise;
+    const expected = snapshots[0].currentPositions.map((p) => {
+      return p.symbol;
+    });
+
+    for (const snapshot of snapshots) {
+      expect(
+        snapshot.currentPositions.map((p) => {
+          return p.symbol;
+        }),
+      ).toEqual(expected);
+    }
+  });
+
+  // An unbounded walk would eventually let one bubble swamp the layout and push
+  // the bars off scale. The drift is mean-reverting, so it stays near the
+  // calibrated book however long the app runs.
+  it("keeps drift bounded near the calibrated values over a long run", async () => {
+    vi.useFakeTimers();
+    const sim = new AnalyticsSimulator();
+    const promise = firstValueFrom(
+      sim.getAnalytics("USD").pipe(take(60), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(10_000 * 60);
+    const snapshots: PositionUpdates[] = await promise;
+    const origin = snapshots[0].currentPositions;
+
+    for (const snapshot of snapshots) {
+      for (let i = 0; i < snapshot.currentPositions.length; i++) {
+        const drifted = snapshot.currentPositions[i];
+
+        expect(Math.abs(drifted.basePnl)).toBeLessThan(
+          Math.abs(origin[i].basePnl) * 2,
+        );
+        expect(Math.abs(drifted.baseTradedAmount)).toBeLessThan(
+          Math.abs(origin[i].baseTradedAmount) * 2,
+        );
+      }
+    }
+  });
+
   it("emits initial snapshot then updates every 10s, capped at 90 entries", async () => {
     vi.useFakeTimers();
     const engine = new AnalyticsSimulator();

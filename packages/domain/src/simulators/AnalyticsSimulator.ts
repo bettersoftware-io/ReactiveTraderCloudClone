@@ -80,10 +80,69 @@ function randomWalkStep(value: number): number {
   return value * (1 + (Math.random() - 0.5) / 100);
 }
 
+/** Per-step noise, as a fraction of a position's calibrated magnitude. */
+const DRIFT_NOISE = 0.04;
+
+/** How strongly each step is pulled back toward the calibrated value. */
+const DRIFT_PULL = 0.15;
+
+/**
+ * One mean-reverting step for a position field.
+ *
+ * Mean-reverting rather than a free random walk on purpose: `STATIC_POSITIONS`
+ * is calibrated so `netExposureByCurrency()` lands on the prototype's published
+ * bubble figures, and an unbounded walk would eventually let one currency swamp
+ * the bubble layout and push the pair bars off scale. Pulling back toward the
+ * origin each step keeps the book recognisably the demo book however long the
+ * app runs — steady-state deviation settles around ±(DRIFT_NOISE / DRIFT_PULL)
+ * of the origin.
+ */
+function driftStep(current: number, origin: number): number {
+  const noise = (Math.random() - 0.5) * Math.abs(origin) * DRIFT_NOISE;
+  return current + (origin - current) * DRIFT_PULL + noise;
+}
+
+/**
+ * Advance the whole book one step, returning a NEW array of NEW objects.
+ *
+ * Freshness is load-bearing, not stylistic: `PositionUpdates` flows into React,
+ * so mutating the previous array in place would leave referential equality
+ * intact and nothing would re-render — the surfaces would look exactly as
+ * frozen as they did before this fix, with no error anywhere.
+ */
+function driftPositions(
+  current: readonly CurrencyPairPosition[],
+  origin: readonly CurrencyPairPosition[],
+): readonly CurrencyPairPosition[] {
+  return current.map((position, index) => {
+    const from = origin[index];
+    return {
+      symbol: position.symbol,
+      basePnl: driftStep(position.basePnl, from.basePnl),
+      baseTradedAmount: driftStep(
+        position.baseTradedAmount,
+        from.baseTradedAmount,
+      ),
+      counterTradedAmount: driftStep(
+        position.counterTradedAmount,
+        from.counterTradedAmount,
+      ),
+    };
+  });
+}
+
 export class AnalyticsSimulator implements AnalyticsPort {
   private history: HistoricPosition[] = [];
 
   private currentPrice: number;
+
+  /**
+   * The live book. Seeded from `STATIC_POSITIONS` so the FIRST emission is
+   * byte-identical to the calibrated values — every pinned visual golden and
+   * the prototype net-exposure assertions depend on that — and drifted only on
+   * subsequent ticks.
+   */
+  private positions: readonly CurrencyPairPosition[] = STATIC_POSITIONS;
 
   constructor() {
     // PROTO headline P&L seed (dc.html L816: pnl: 17120).
@@ -104,7 +163,7 @@ export class AnalyticsSimulator implements AnalyticsPort {
   getAnalytics(_currency: string): Observable<PositionUpdates> {
     return defer(() => {
       const initial: PositionUpdates = {
-        currentPositions: STATIC_POSITIONS,
+        currentPositions: this.positions,
         history: [...this.history],
       };
 
@@ -120,8 +179,10 @@ export class AnalyticsSimulator implements AnalyticsPort {
             this.history.shift();
           }
 
+          this.positions = driftPositions(this.positions, STATIC_POSITIONS);
+
           return {
-            currentPositions: STATIC_POSITIONS,
+            currentPositions: this.positions,
             history: [...this.history],
           };
         }),
