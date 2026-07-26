@@ -93,7 +93,12 @@ jobs:
         run: |
           set -euo pipefail
           echo "Installed Xcodes:"
-          ls -1 /Applications | grep -i '^Xcode' || true
+          # A glob, not `ls | grep` (SC2010) — an unmatched glob stays literal,
+          # hence the -e guard.
+          for app in /Applications/Xcode*.app; do
+            [ -e "$app" ] || continue
+            echo "$app"
+          done
 
           # Pin explicitly when asked. §5 of the options doc is emphatic that the
           # Xcode version belongs in the golden bucket name, because the image
@@ -217,7 +222,10 @@ jobs:
           brew install openjdk@17
           curl -fsSL https://get.maestro.mobile.dev | bash
           export PATH="$HOME/.maestro/bin:$PATH"
-          export JAVA_HOME="$(brew --prefix openjdk@17)"
+          # Declared and exported separately (SC2155): `export X="$(cmd)"` masks
+          # cmd's exit status behind export's, so a failing brew would pass.
+          JAVA_HOME="$(brew --prefix openjdk@17)"
+          export JAVA_HOME
           maestro --version
           elapsed=$(( SECONDS - start ))
           echo "maestro + jdk17 install: ${elapsed}s"
@@ -400,7 +408,14 @@ jobs:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
           set -euo pipefail
-          WS=$(ls -d ios/*.xcworkspace 2>/dev/null | head -1 || true)
+          # A glob, not `ls` (SC2012). An unmatched glob stays literal, so the
+          # -d guard is what actually detects "no workspace".
+          WS=""
+          for candidate in ios/*.xcworkspace; do
+            [ -d "$candidate" ] || continue
+            WS="$candidate"
+            break
+          done
           if [ -z "$WS" ]; then
             echo "::error title=No .xcworkspace::prebuild ran but CocoaPods did not — pods generate the workspace. Check the 'Install CocoaPods' step."
             ls -la ios/ || true
