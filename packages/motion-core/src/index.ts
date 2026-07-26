@@ -1,3 +1,13 @@
+export type { ChartViewport } from "./chartViewport.js";
+export {
+  clampViewport,
+  defaultViewport,
+  followLive,
+  isAtLiveEdge,
+  MIN_VIEWPORT_SPAN,
+  panBy,
+  zoomAt,
+} from "./chartViewport.js";
 export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
 export { chartVm } from "./chartVm.js";
 export type { DragOffset, Size } from "./clampDragOffset.js";
