@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { type CurrencyPairPosition, formatWithScale } from "@rtc/domain";
+import { type CurrencyPairPosition, formatPnlK } from "@rtc/domain";
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -48,7 +48,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
               testID={`pair-pnl-label-${pos.symbol}`}
               style={positive ? styles.labelPos : styles.labelNeg}
             >
-              {formatWithScale(pos.basePnl)}
+              {formatPnlK(pos.basePnl)}
             </Text>
           </View>
         );
