@@ -329,9 +329,15 @@ The evidence chain, verified with `babel-plugin-react-compiler@1.0.0`:
 
 So these memos carry **semantics, not caching**: they decouple the gesture's
 identity from a caller whose callback identity churns for reasons this
-workstream cannot fix. Rebuilding a `Gesture.LongPress()` reattaches a native
-handler and can drop in-flight gestures. This is exactly ADR-003's documented
-"legal where they carry semantics rather than caching" carve-out.
+workstream cannot fix. Rebuilding a `Gesture.LongPress()` reattaches it on every
+render — Reanimated's own performance guide is explicit that gesture objects
+should be memoized to avoid exactly that, and notes the React Compiler normally
+handles it. Here the compiler cannot. This is ADR-003's documented "legal where
+they carry semantics rather than caching" carve-out.
+
+(Do NOT claim this has caused an observed failure in this repo — it has not.
+An earlier revision of this plan asserted it could "drop in-flight gestures";
+that was extrapolation, and a reviewer correctly rejected a comment citing it.)
 
 - [ ] **Step 1: Record the reasoning in the file**
 
