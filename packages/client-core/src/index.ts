@@ -1,6 +1,7 @@
 export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
+export * from "#/adapters/jarvisPort";
 export * from "#/adapters/portFactory";
 export * from "#/adapters/sessionStore";
 export * from "#/adapters/WsAdapter";
