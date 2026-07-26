@@ -103,8 +103,9 @@ git diff --name-only origin/main...HEAD    # what your branch touched
 ```
 
 - **Merge as-is (skip catch-up)** — the common case — when the incoming commits are plainly **disjoint** from your change: a different package, docs-only while you touched code, no shared exports / fixtures / lint / build config. `git merge-base --is-ancestor origin/main HEAD` may report "behind," but *behind ≠ risky*. Go straight to Rule 4.
+- **Merge as-is even when a file IS shared, if every shared file is prose** — i.e. every path in the overlap matches `**/*.md`. Prose in different sections of a document has no semantic-conflict path to code, and git still blocks a genuine *textual* conflict regardless. `CLAUDE.md` counts as prose (instructions, not executable); `.claude/settings.json` does **not** (JSON that changes tool behaviour). The glob is deliberately narrower than `docs/**`: that directory also holds 24 `.html`, 9 `.svg`, 6 `.js`, 5 `.css` and LFS media, and `docs/pages/`, `docs/presentations/`, `docs/showcase/` publish straight to gh-pages on push to `main` (`publish-site.yml`) while `docs/design/**/*.html` deploys to Vercel — none behind a CI gate, so "prose" there would be true of the wrong claim. A renamed heading or moved/renamed doc is *not* prose-safe either — `check:doc-links` validates cross-file anchors, so branch A renaming a heading + branch B linking the old one auto-merges clean and reds `main`; catch up in that case. Generated `.md` (e.g. `docs/lint-warnings.md`, drift-checked) is likewise not prose. **This is the single highest-value case:** measured over 59 merges (2026-07-26), 17 needed a catch-up and **9 of those 17 — 53% — shared only `docs/STATUS.md`**, every one of which auto-merged cleanly. They were not conflicts; they were this rule read too literally, at ~10 min of CI each.
 - **Catch up (merge `origin/main` *in* + re-enter the Rule 2 CI loop)** when **either**:
-  - **(a) Overlap** — the incoming diff touches files, exported symbols, shared fixtures, lint / tsconfig / `turbo.json`, or a package your branch also touches — anything with a real semantic-conflict path; **or**
+  - **(a) Overlap with a real semantic-conflict path** — the incoming diff touches code, a lockfile, config, fixtures, lint / tsconfig / `turbo.json`, CI workflows, exported symbols, or a package your branch also touches. `pnpm-lock.yaml` is the case that genuinely warrants it (4 of those 17); **or**
   - **(b) Too broad to cheaply assess** — the incoming diff spans more files than you can quickly eyeball for disjointness. Don't agonize over a big overlap analysis; just catch up. This is rare, so one extra catch-up is cheap.
 
 ```bash
@@ -118,7 +119,7 @@ A **textual** conflict always forces a resolve regardless — git won't merge ot
 
 **Framing the risk.** A red `main` is bounded and recoverable — the post-merge `main` CI run is the backstop, and fixing forward is fine *as long as it's rare*. Optimize for throughput: pay the catch-up cycle only when overlap is real or the diff is too broad to judge, not on every advance. If you do land a break, fix it forward immediately.
 
-> **Structural fix on the roadmap:** a **GitHub merge queue** would test the combined (`main` + your PR) state automatically and merge in order, dissolving this whole triage — see [`docs/IDEAS.md`](../../../docs/IDEAS.md). Until it's adopted, this manual triage is the rule.
+> **The residual risk, and the structural fix on the roadmap.** `strict_required_status_checks_policy` is `false` on the `main` ruleset, so a green-but-stale PR *can* merge into a `main` it was never tested against — this has caught exactly once (a green PR-CI that reddened `main` during the SolidJS port); post-merge `main` CI is the backstop. A **GitHub merge queue** would close this structurally — it would test the combined (`main` + your PR) state automatically and merge in order, dissolving this whole triage — deferred on cost for now: see [`docs/IDEAS.md`](../../../docs/IDEAS.md) and the [design spec](../../../docs/superpowers/specs/2026-07-26-catchup-triage-and-merge-queue-design.md). Until it's adopted, this manual triage is the rule.
 
 ## Rule 4 + 5 — Merge as a merge commit
 
@@ -167,7 +168,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
 | Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
-| Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3, catch up only on overlap / too-broad diff) |
+| Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3: **prose-only overlap merges as-is**, catch up only on a real semantic-conflict path or a too-broad diff) |
 | What landed on `main`? | `git diff --name-only HEAD...origin/main` vs. `git diff --name-only origin/main...HEAD` — disjoint → merge as-is |
 | Update a stale branch | `git merge origin/main` (✅ merge in) — **never** rebase/force-push |
 | Merge (merge commit) | `gh pr merge <n> --merge --subject "Merge PR #<n>: <title>"` |
@@ -186,7 +187,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | "These are separate concerns, so separate PRs is cleaner." | Apply the test: would a reviewer approve one and reject the other? If not, it's one reviewable unit. |
 | "`gh pr checks --watch` is the obvious way to wait for CI." | It returns 403 with this repo's PAT. Use `gh run list --workflow CI`. |
 | "My branch CI is green, so I can merge." | Green proves your branch against the base it *branched from*. If `origin/main` advanced, triage the incoming diff first (Rule 3) — merge as-is when it's disjoint, catch up + re-green only on overlap or a too-broad diff. |
-| "`main` moved while I was green, so I have to catch up." | Only if the incoming diff overlaps your change or is too broad to judge. Plainly-disjoint advances (docs churn, another package) merge as-is — reflexive catch-up against a fast-moving `main` is the cat-and-mouse trap Rule 3 now avoids. |
+| "`main` moved while I was green, so I have to catch up." | Only if the incoming diff overlaps your change **in code/config** or is too broad to judge. Plainly-disjoint advances (docs churn, another package) merge as-is — reflexive catch-up against a fast-moving `main` is the cat-and-mouse trap Rule 3 now avoids. |
 | "I'll rebase onto main to get up to date." | Rebase needs a force-push and discards CI history. Merge `origin/main` *into* the branch instead. |
 | "Squash keeps history clean." | Rule 5 requires a merge commit. `--squash` is not a merge commit. Use `--merge`. |
 | "I'll rebase so history is linear." | Rebase/fast-forward is explicitly forbidden. `--merge` only. |
