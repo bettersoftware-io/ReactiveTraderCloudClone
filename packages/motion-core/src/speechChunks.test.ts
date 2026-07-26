@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "./speechChunks";
 
 describe("speechChunks", () => {
