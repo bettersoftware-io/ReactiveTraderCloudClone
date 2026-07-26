@@ -301,105 +301,75 @@ git commit -m "feat(ci): gate React Compiler coverage for de-memoized files"
 
 ---
 
-### Task 3: RN — useHoldToUnlock (fix the ref bail, drop 2 memos)
+### Task 3: RN — record why useHoldToUnlock keeps its memos
 
 **Files:**
-- Modify: `packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts:74-108`
-- Modify: `scripts/react-compiler-healthcheck.mjs` (re-add to `TRACKED` if removed in Task 2)
+- Modify: `packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts` (comments only — NO code change)
+- Modify: `scripts/react-compiler-healthcheck.mjs` (make the exclusion permanent)
 
 **Interfaces:**
-- Consumes: the compiler, live from Task 1.
-- Produces: unchanged public shape — `useHoldToUnlock({ onComplete })` still returns `{ gesture, progress }`.
+- Produces: no behavioural change. `gesture` and `progress` keep their current identities and semantics.
 
-**Why this file first:** it is the only RN file that currently bails, and it drives the lock ring — the exact component that produced a sim-only worklet crash in #340.
+**This task was originally a refactor. It is not any more.** The original plan
+assumed moving `onCompleteRef.current = onComplete` out of render would make the
+hook compiler-clean, after which both memos could go. That was **measured and
+disproved**. Do not attempt the refactor.
 
-- [ ] **Step 1: Verify the current bail**
+The evidence chain, verified with `babel-plugin-react-compiler@1.0.0`:
 
-Run: `node scripts/react-compiler-healthcheck.mjs` with `useHoldToUnlock.ts` in `TRACKED`.
-Expected: `BAILED — Cannot access refs during render`.
+1. Moving the ref write into a `useEffect` removes the first bail but leaves a
+   second: `runOnJS(fireComplete)()` closes over a ref, and the compiler has no
+   special case for `runOnJS`.
+2. Removing the ref entirely **does** make `useHoldToUnlock` compile
+   (`OPTIMIZED`) — but then its memoization keys on `onComplete`.
+3. `onComplete` is `submit`, declared inside `LockScreen`.
+4. **`LockScreen` bails** on the ViewModel seam (`useViewModel()`), so `submit`
+   gets a fresh identity on every render — and the gesture would be rebuilt on
+   every render regardless.
 
-- [ ] **Step 2: Move the ref write out of render**
+So these memos carry **semantics, not caching**: they decouple the gesture's
+identity from a caller whose callback identity churns for reasons this
+workstream cannot fix. Rebuilding a `Gesture.LongPress()` reattaches a native
+handler and can drop in-flight gestures. This is exactly ADR-003's documented
+"legal where they carry semantics rather than caching" carve-out.
 
-Replace:
+- [ ] **Step 1: Record the reasoning in the file**
 
-```ts
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+Add a comment above the two `useMemo`s in
+`packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts` capturing
+the four-step chain above in your own words. It must say plainly that these are
+**not** caching, that the React Compiler cannot replace them, and **why** —
+name `runOnJS`, the ref, and `LockScreen`'s seam bail. Anyone who later runs the
+memo-ban lint and sees the exception must be able to find this reasoning without
+re-deriving it.
+
+Do NOT change any executable line in this file.
+
+- [ ] **Step 2: Make the healthcheck exclusion permanent**
+
+`scripts/react-compiler-healthcheck.mjs` has a commented-out `TRACKED` entry for
+`useHoldToUnlock` marked `TODO(Task 3)`. **Delete that commented entry** and add
+`useHoldToUnlock.ts` to the script's documented exclusion list, with a one-line
+reason ("keeps semantic memos — the compiler cannot supply gesture identity; see
+the hook's header comment"). The gate must not track it, and must not look like
+it was forgotten.
+
+- [ ] **Step 3: Verify nothing changed behaviourally**
+
+```bash
+node scripts/react-compiler-healthcheck.mjs
+pnpm --filter @rtc/client-react-native test -- useHoldToUnlock
+git diff --stat
 ```
 
-with:
+Expected: gate passes; tests pass; `git diff` shows **comment-only** changes to
+`useHoldToUnlock.ts`. If the diff touches an executable line, revert it.
 
-```ts
-  const onCompleteRef = useRef(onComplete);
-
-  // Writing `.current` during render is a Rules-of-React violation that makes
-  // the compiler bail on this whole hook — which would cost the gesture object
-  // its stable identity and reattach the LongPress handler every render. The
-  // effect is late enough: `fireComplete` only reads `.current` from a gesture
-  // callback, long after commit.
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
-```
-
-- [ ] **Step 3: Delete both memos**
-
-Replace the `fireComplete` memo:
-
-```ts
-  const fireComplete = useMemo(() => {
-    return () => {
-      onCompleteRef.current();
-    };
-  }, []);
-```
-
-with a function declaration (arrows are banned by `func-style`):
-
-```ts
-  function fireComplete(): void {
-    onCompleteRef.current();
-  }
-```
-
-Then unwrap the `gesture` memo — delete the `useMemo(() => {` wrapper, the closing `}, [progress, motionEnabledShared, fireComplete]);`, and the `return` keyword, leaving:
-
-```ts
-  const gesture = Gesture.LongPress()
-    .minDuration(HOLD_MS)
-    .onBegin(() => {
-      fillProgress(progress, motionEnabledShared.value);
-    })
-    .onStart(() => {
-      completeProgressDiscrete(progress, motionEnabledShared.value);
-      runOnJS(fireComplete)();
-    })
-    .onFinalize(() => {
-      decayProgress(progress, motionEnabledShared.value);
-    });
-```
-
-Remove `useMemo` from the `react` import; keep `useEffect` and `useRef`.
-
-Update the block comment above the hook: the sentence describing the `useMemo` factory ("plain, non-hook functions, not inline arrows nested inside the `useMemo` factory") now refers to a structure that no longer exists — reword to say the mutation happens in plain functions called from gesture callbacks, and note that the compiler now supplies the memoization.
-
-- [ ] **Step 4: Verify the compiler now optimizes it**
-
-Run: `node scripts/react-compiler-healthcheck.mjs`
-Expected: `ok  packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts`.
-
-**This is the critical assertion of this task.** If it still bails, the gesture is rebuilt every render — stop and diagnose rather than proceeding.
-
-- [ ] **Step 5: Run the unit tests**
-
-Run: `pnpm --filter @rtc/client-react-native test -- useHoldToUnlock`
-Expected: PASS. Note these tests run against a mocked Reanimated and **cannot** witness worklet breakage — Task 10's simulator check is the real witness.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts scripts/react-compiler-healthcheck.mjs
-git commit -m "refactor(rn): make useHoldToUnlock compiler-clean, drop manual memos"
+git commit -m "docs(rn): record why useHoldToUnlock's memos are semantic, not caching"
 ```
 
 ---
@@ -786,6 +756,27 @@ In `eslint.config.mjs`, add a new block after the existing RN `react-hooks` bloc
   },
 ```
 
+- [ ] **Step 2b: Carve out the one semantic exception**
+
+`useHoldToUnlock.ts` keeps two `useMemo`s that the compiler cannot replace (see
+Task 3 for the measured evidence chain). Scope the ban off for that one file,
+using a config-scoped block — never an inline disable:
+
+```js
+  {
+    // The ONE exception to the memo ban. `useHoldToUnlock`'s two `useMemo`s
+    // carry semantics, not caching: they hold the `Gesture.LongPress()`
+    // identity stable so its native handler is not reattached every render.
+    // The compiler cannot supply that identity here — `runOnJS(fireComplete)()`
+    // closes over a ref (a bail), and even ref-free the memo would key on
+    // `onComplete`, which churns because `LockScreen` bails on the ViewModel
+    // seam. Full reasoning in the hook's header comment. A clean-architecture
+    // fix is tracked in docs/STATUS.md.
+    files: ["packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts"],
+    rules: { "no-restricted-imports": "off" },
+  },
+```
+
 - [ ] **Step 3: Extend the react-hooks block to devtools-app**
 
 `devtools-app` has run the compiler since day one and has never been linted by it. Add to the existing `client-react` react-hooks block's `files` array:
@@ -880,7 +871,16 @@ paths, fonts, themed styles) all measure OPTIMIZED. Tracked in `docs/STATUS.md`.
 Two entries, via the `tracking-workstream-status` skill:
 
 1. **ViewModel seam defeats React Compiler** — 118 bails in `client-react`; the seam and the compiler are mutually exclusive by construction. Fixing it would touch ADR-004, both bindings packages, the contract swap-trio and every UI file, so it is deliberately deferred. Cross-reference ADR-003's measured-coverage section and this spec.
-2. **`client-prototype` retains 44 manual memo sites** — explicitly descoped: it is the deliberately-isolated readable port of the v2 design prototype (`react`/`react-dom` only, no compiler), and churning it works against its purpose. Revisit only if it stops being a faithful port.
+2. **Revisit `useHoldToUnlock` with a clean architecture** — it is the single
+   exception to the memo ban, and the exception is a symptom rather than a
+   design. The gesture needs a stable identity; the compiler cannot give it one
+   because `runOnJS` + ref bails, and because `LockScreen` bails on the seam so
+   `onComplete` churns. There should be a clean solution (a stable-callback seam,
+   a gesture built outside the render path, or a `SharedValue`-mediated
+   completion signal); none was attempted here because it is a design change,
+   not a cleanup. Cross-reference the hook's header comment, ADR-003, and this
+   plan's Task 3.
+3. **`client-prototype` retains 44 manual memo sites** — explicitly descoped: it is the deliberately-isolated readable port of the v2 design prototype (`react`/`react-dom` only, no compiler), and churning it works against its purpose. Revisit only if it stops being a faithful port.
 
 - [ ] **Step 4: Verify links**
 
