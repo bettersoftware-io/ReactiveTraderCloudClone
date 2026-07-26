@@ -39,6 +39,12 @@ export {
   sameOrder,
 } from "./rankGlide.js";
 export { REDUCED_MOTION_QUERY } from "./reducedMotion.js";
+export {
+  SPEECH_CHUNK_INTERVAL_MS,
+  SPEECH_CHUNK_MAX_CHARS,
+  SPEECH_CHUNK_MIN_CHARS,
+  speechChunks,
+} from "./speechChunks.js";
 export type {
   TickDirection,
   TickFlashResult,
