@@ -12,10 +12,6 @@ export function FilterControls({
   model,
   textInputRef,
 }: FilterControlsProps): ReactElement {
-  function handleText(e: ChangeEvent<HTMLInputElement>): void {
-    model.setText(e.target.value);
-  }
-
   return (
     <div className={styles.controls}>
       <input
@@ -24,7 +20,9 @@ export function FilterControls({
         className={styles.text}
         placeholder="Filter… ( / )"
         value={model.filter.text}
-        onChange={handleText}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          model.setText(e.target.value);
+        }}
       />
       <div className={styles.families}>
         {FAMILIES.map((family) => {
@@ -70,16 +68,14 @@ interface FamilyCheckboxProps {
 }
 
 function FamilyCheckbox({ family, model }: FamilyCheckboxProps): ReactElement {
-  function handleToggle(): void {
-    model.toggleFamily(family);
-  }
-
   return (
     <label className={styles.family}>
       <input
         type="checkbox"
         checked={model.filter.families[family]}
-        onChange={handleToggle}
+        onChange={() => {
+          model.toggleFamily(family);
+        }}
       />
       {family}
     </label>
@@ -92,16 +88,14 @@ interface PillChipProps {
 }
 
 function PillChip({ pill, model }: PillChipProps): ReactElement {
-  function handleRemove(): void {
-    model.removePill(pill);
-  }
-
   return (
     <button
       type="button"
       className={styles.pill}
       title="Remove filter"
-      onClick={handleRemove}
+      onClick={() => {
+        model.removePill(pill);
+      }}
     >
       {`${pill.id} ✕`}
     </button>
