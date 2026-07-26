@@ -38,17 +38,29 @@ test("docking resolves to a scene now that phase 6b-1 has ported it", () => {
   expect(BOOT_SCENES.docking).toBeDefined();
 });
 
-test("the five scenes deferred to phase 6b-2 still resolve to nothing, without throwing", () => {
-  for (const variant of [
-    "hologram",
-    "geo",
-    "layers",
-    "jarvis",
-    "topo",
-  ] as const) {
-    expect(hasBootScene(variant)).toBe(false);
-    expect(BOOT_SCENES[variant]).toBeUndefined();
-  }
+test("hologram resolves to a scene now that phase 6b-2a has ported it", () => {
+  expect(hasBootScene("hologram")).toBe(true);
+  expect(BOOT_SCENES.hologram).toBeDefined();
+});
+
+test("layers resolves to a scene now that phase 6b-2a has ported it", () => {
+  expect(hasBootScene("layers")).toBe(true);
+  expect(BOOT_SCENES.layers).toBeDefined();
+});
+
+test("geo resolves to a scene now that phase 6b-2b has started", () => {
+  expect(hasBootScene("geo")).toBe(true);
+  expect(BOOT_SCENES.geo).toBeDefined();
+});
+
+test("jarvis resolves to a scene now that phase 6b-2b has ported it", () => {
+  expect(hasBootScene("jarvis")).toBe(true);
+  expect(BOOT_SCENES.jarvis).toBeDefined();
+});
+
+test("topo, the last deferred scene, resolves to nothing without throwing", () => {
+  expect(hasBootScene("topo")).toBe(false);
+  expect(BOOT_SCENES.topo).toBeUndefined();
 });
 
 test("every registered key is a real boot variant (guards a typo'd key)", () => {

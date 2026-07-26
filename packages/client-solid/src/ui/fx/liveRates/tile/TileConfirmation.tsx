@@ -193,6 +193,13 @@ type ConfirmationStatus =
 // status back to the colour token it asserts. Keeping the data-* hook semantic
 // (not a colour string) is what lets the markup + CSS port verbatim to another
 // View framework.
+//
+// Do NOT add a `default:` arm to the switch below. Covering every
+// ExecutionStatus explicitly leaves the end of the `if` block unreachable, so
+// TypeScript narrows "finished" out of the final `return state.status` — which
+// means a NEW ExecutionStatus member fails to compile here until it is given a
+// ConfirmationStatus. A `default: return "unknown"` would absorb that check and
+// silently render the new status as "unknown" instead.
 function statusKey(state: TileExecutionState): ConfirmationStatus {
   if (state.status === "finished") {
     switch (state.executionStatus) {
@@ -204,8 +211,6 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
         return "timedOut";
       case ExecutionStatus.CreditExceeded:
         return "creditExceeded";
-      default:
-        return "unknown";
     }
   }
 

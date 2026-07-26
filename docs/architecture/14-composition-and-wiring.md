@@ -128,7 +128,7 @@ sequenceDiagram
     Gate->>App: mount children immediately (streams warm underneath)
     Gate->>Gate: useBootGate().visible (seeded from ports.bootSplash?.shouldPlay())
     App-->>B: first tile paints, splash overlaid on top
-    Gate->>Gate: BootSequence machine completes or SKIP -> dismissOnReducedMotion/dismissOnOpacityEnd
+    Gate->>Gate: BootSequence machine completes or SKIP -> dismissOnJumpCut/dismissOnOpacityEnd
     Gate->>Gate: dismiss() -> visible=false
     Gate-->>B: splash removed, ConnectionOverlay/StatusBar fully interactive
 ```

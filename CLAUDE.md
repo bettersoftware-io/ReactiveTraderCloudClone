@@ -75,6 +75,7 @@ so every worktree and session gets them):
 | `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it's ~59k). |
 | `/rtc:docs [keywords]` | Capture a session's findings into `docs/` — surveys the 298-file corpus, routes by finding type (STATUS.md goes via its own skill), proposes placement, then ships a PR through merge. |
 | `/rtc:backfill-test-coverage [filter]` | Rank **per-file** coverage gaps from a fresh local run (`pnpm coverage:gaps`), propose a shortlist, then backfill tests. Exists because the ≥95% gate asserts an *aggregate* and cannot surface one weak file — `client-solid` sat at 99.35% while a file was at 56%. |
+| `/rtc:perf-audit [react\|solid\|both] [freeze\|all-levels]` | Repeatable motion audit (`pnpm perf:motion-audit[:solid]`): drives every workspace view per power-saver level, censuses `document.getAnimations()` + rAF registrations, and asserts freeze is motion-free. The instrument that found freeze's churn leaks (manufactured transitions, retriggered flashes) — see `docs/power-saver-mode.md`. |
 
 `/rtc:gauntlet` re-reads `ci.yml`'s step list on every run and warns if CI has
 gained a gate it doesn't know about, so it can't silently drift out of sync.

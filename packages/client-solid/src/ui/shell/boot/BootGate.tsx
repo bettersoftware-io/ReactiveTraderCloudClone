@@ -22,20 +22,23 @@ import { BootSequence } from "./BootSequence";
  * so its per-mount machine replays fresh (advancing the variant pointer).
  */
 export function BootGate(props: ParentProps): JSX.Element {
-  const { useBootGate, useForceBootAnimation } = useViewModel();
+  const { useBootGate, useForceBootAnimation, usePowerSaver } = useViewModel();
   const { visible, dismiss } = useBootGate();
   const { enabled: forced } = useForceBootAnimation();
+  const { isFreeze } = usePowerSaver();
 
-  function dismissOnReducedMotion(): void {
+  function dismissOnJumpCut(): void {
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    // Reduced motion (and NOT forced): the splash jump-cuts to opacity 0 with
-    // no transition, so no transitionend arrives — dismiss it directly. When
-    // forced, the transition is restored (see BootSequence.module.css) and
-    // dismissOnOpacityEnd dismisses instead.
-    if (reduce && !forced()) {
+    // Reduced motion (and NOT forced) or power-saver Freeze: the splash
+    // jump-cuts to opacity 0 with no transition (freeze's catch-all sets
+    // `transition-property: none`, so no transitionend ever arrives) — dismiss
+    // it directly. Freeze wins over forced, which overrides only the
+    // accessibility signal. Otherwise the transition runs (restored when
+    // forced — see BootSequence.module.css) and dismissOnOpacityEnd dismisses.
+    if (isFreeze() || (reduce && !forced())) {
       dismiss();
     }
   }
@@ -53,7 +56,7 @@ export function BootGate(props: ParentProps): JSX.Element {
       {props.children}
       <Show when={visible()}>
         <div class={styles.host} onTransitionEnd={dismissOnOpacityEnd}>
-          <BootSequence onDone={dismissOnReducedMotion} />
+          <BootSequence onDone={dismissOnJumpCut} />
         </div>
       </Show>
     </>
