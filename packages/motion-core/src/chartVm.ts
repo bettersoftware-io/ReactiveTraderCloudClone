@@ -235,6 +235,23 @@ export function volumeVm(
   });
 }
 
+/** Shared UTC time-label formatter: HH:MM when the series' candle bucket is
+ * under a day, DD-MMM (upper-case) otherwise. Exported (not just used by
+ * `buildTimeLabels` below) so crosshairVm (Task B3) formats its readout's
+ * time string with the exact same rule instead of a drifting second copy. */
+export function formatTimeLabel(timeMs: number, bucketMs: number): string {
+  const d = new Date(timeMs);
+
+  if (bucketMs < DAY_MS) {
+    const hh = String(d.getUTCHours()).padStart(2, "0");
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }
+
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${dd} ${MONTHS[d.getUTCMonth()]}`;
+}
+
 interface ChartWindow {
   readonly vp: ChartViewport;
   readonly iFirst: number;
@@ -370,17 +387,4 @@ function roundStepUp(x: number): number {
   }
 
   return STEP_CANDIDATES[STEP_CANDIDATES.length - 1] ?? 1;
-}
-
-function formatTimeLabel(timeMs: number, bucketMs: number): string {
-  const d = new Date(timeMs);
-
-  if (bucketMs < DAY_MS) {
-    const hh = String(d.getUTCHours()).padStart(2, "0");
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
-  }
-
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${dd} ${MONTHS[d.getUTCMonth()]}`;
 }

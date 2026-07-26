@@ -19,7 +19,13 @@ export type {
   TimeLabelVm,
   VolumeBarVm,
 } from "./chartVm.js";
-export { chartVm, volumeVm, Y_SPAN, Y_TOP } from "./chartVm.js";
+export {
+  chartVm,
+  formatTimeLabel,
+  volumeVm,
+  Y_SPAN,
+  Y_TOP,
+} from "./chartVm.js";
 export type { DragOffset, Size } from "./clampDragOffset.js";
 export { clampDragOffset } from "./clampDragOffset.js";
 export {
@@ -28,6 +34,8 @@ export {
   ringCircumference,
   ringDashOffset,
 } from "./countdownRing.js";
+export type { CrosshairVm } from "./crosshairVm.js";
+export { crosshairVm } from "./crosshairVm.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,
