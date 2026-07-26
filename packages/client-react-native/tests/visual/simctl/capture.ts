@@ -289,13 +289,6 @@ async function tapBlindFallback(
   await exec(idbPath, ["ui", "tap", "--udid", udid, String(x), String(y)]);
 }
 
-interface MarkerWaitConfig {
-  id: string;
-  timeoutMs: number;
-  pollIntervalMs: number;
-  describe: string;
-}
-
 /** Polls until the dev client has left its launcher home screen — i.e. OUR
  * app is on screen, whatever it is showing.
  *
@@ -342,48 +335,6 @@ async function waitForAppBoot(
       `client launcher for scenario "${scenarioId}" — it never loaded from ` +
       `Metro. Refusing to return a screenshot (a capture failure is not the ` +
       `same as a visual regression).`,
-  );
-}
-
-/** Polls the accessibility tree until an element with `AXUniqueId === id`
- * appears, or throws once `timeoutMs` elapses. Never returns without either
- * finding the marker or throwing — a capture must not proceed on a guess. */
-async function waitForMarker(
-  idbPath: string,
-  udid: string,
-  { id, timeoutMs, pollIntervalMs, describe }: MarkerWaitConfig,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastError: unknown;
-
-  while (Date.now() < deadline) {
-    try {
-      const tree = await describeAll(idbPath, udid);
-
-      if (findById(tree, id) !== undefined) {
-        return;
-      }
-
-      lastError = undefined;
-    } catch (err) {
-      // `idb ui describe-all` can transiently fail while the app is mid
-      // relaunch/crash-recover; keep polling rather than failing on the
-      // first hiccup, but remember it so a genuine timeout can report it.
-      lastError = err;
-    }
-
-    await delay(pollIntervalMs);
-  }
-
-  const suffix =
-    lastError === undefined
-      ? ""
-      : ` Last "idb ui describe-all" error: ${String(lastError)}`;
-
-  throw new Error(
-    `Timed out after ${timeoutMs}ms waiting for the ${describe} — the app ` +
-      `never reached it. Refusing to return a screenshot (a capture ` +
-      `failure is not the same as a visual regression).${suffix}`,
   );
 }
 
