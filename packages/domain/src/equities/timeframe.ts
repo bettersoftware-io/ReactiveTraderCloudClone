@@ -13,3 +13,19 @@ export const CANDLE_TIMEFRAMES: readonly CandleTimeframe[] = [
   "1M",
   "3M",
 ];
+
+/** Total candles generated per timeframe — the pan/zoom history depth. The
+ * newest CANDLE_DEFAULT_VISIBLE[tf] of these are byte-identical to the
+ * pre-deepening series (older candles are PREPENDED from an independent
+ * seeded walk; see EquityMarketDataSimulator). */
+export const CANDLE_HISTORY_TOTAL = 300;
+
+/** Default chart-viewport size per timeframe = the pre-deepening candle
+ * count, so the default view still spans the named period. */
+export const CANDLE_DEFAULT_VISIBLE: Readonly<Record<CandleTimeframe, number>> =
+  {
+    "1D": 60,
+    "1W": 44,
+    "1M": 48,
+    "3M": 52,
+  };

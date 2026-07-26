@@ -12,7 +12,10 @@ import type { Candle } from "../equities/candle.js";
 import type { DepthBook, DepthLevel } from "../equities/depth.js";
 import type { EquityInstrument } from "../equities/instrument.js";
 import type { EquityQuote } from "../equities/quote.js";
-import type { CandleTimeframe } from "../equities/timeframe.js";
+import {
+  CANDLE_HISTORY_TOTAL,
+  type CandleTimeframe,
+} from "../equities/timeframe.js";
 import type { MarketDataPort } from "../ports/marketDataPort.js";
 import { aggregateCandle, gbmStep } from "./gbm.js";
 import { hashString, mulberry32 } from "./seededRandom.js";
@@ -52,6 +55,22 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * independent steps), keeping each timeframe's overall level/character
  * close to its previous (single-step) shape. */
 const CANDLE_SUBSTEPS = 6;
+/** Distinct rng-stream offset for per-candle volume, kept far from the
+ * per-timeframe price seeds above (7/17/27/37) so the two streams never
+ * collide. Volume is drawn from its own mulberry32 stream AFTER the price
+ * walk completes — never interleaved with price draws — so it can't perturb
+ * the OHLC sequence the A1 pin test snapshots. */
+const VOLUME_SEED_OFFSET = 9973;
+/** Baseline shares per bucket; scaled by a random factor and by the bucket's
+ * relative high-low range so more volatile bars trade more volume. */
+const BASE_VOLUME = 1_000_000;
+/** Distinct rng-stream offset for the prepended back-walk (Task A3): far
+ * enough from VOLUME_SEED_OFFSET (9973) that `BACK_SEED_OFFSET +
+ * VOLUME_SEED_OFFSET` (the back walk's own volume stream) never collides
+ * with any forward-walk stream. Kept on its own seeded rng entirely — the
+ * back walk must never share a stream with the forward walk, or the A1 pin
+ * (newest-60 byte-identical snapshot) would go red. */
+const BACK_SEED_OFFSET = 4241;
 
 interface TimeframeConfig {
   /** Number of candles in the returned series. */
@@ -204,6 +223,72 @@ export class EquityMarketDataSimulator implements MarketDataPort {
         out.push(candle as Candle);
       }
 
+      // Volume: a separate rng stream, seeded independently of the price
+      // walk above and drawn only after that walk finishes — see the
+      // VOLUME_SEED_OFFSET comment. Volume is share count, not price, so it
+      // must survive the anchoring rescale below unchanged.
+      const volRng = mulberry32(seed + hashString(symbol) + VOLUME_SEED_OFFSET);
+      const withVolume: Candle[] = out.map((c) => {
+        const range = c.close > 0 ? (c.high - c.low) / c.close : 0;
+        return {
+          ...c,
+          volume: Math.round(BASE_VOLUME * (0.4 + volRng()) * (1 + 40 * range)),
+        };
+      });
+
+      // Deepen the history (Task A3): prepend CANDLE_HISTORY_TOTAL - count
+      // older candles from a SEPARATE seeded rng stream (BACK_SEED_OFFSET),
+      // walking the same substep shape into the past. This must never share
+      // an rng stream with the forward walk above — the A1 pin snapshots
+      // the newest 60 candles byte-for-byte, and any shared stream would
+      // perturb it.
+      const rngBack = mulberry32(seed + hashString(symbol) + BACK_SEED_OFFSET);
+      const volRngBack = mulberry32(
+        seed + hashString(symbol) + BACK_SEED_OFFSET + VOLUME_SEED_OFFSET,
+      );
+      let backPrice = s.open;
+      const back: Candle[] = [];
+
+      // i counts buckets back from "now": the forward walk owns [count-1 .. 0],
+      // the back walk owns [CANDLE_HISTORY_TOTAL-1 .. count] (older).
+      for (let i = CANDLE_HISTORY_TOTAL - 1; i >= count; i--) {
+        const bucketTime =
+          Math.floor((now - i * bucketMs) / bucketMs) * bucketMs;
+        let candle: Candle | null = null;
+
+        for (let sub = 0; sub < CANDLE_SUBSTEPS; sub++) {
+          backPrice = gbmStep(backPrice, rngBack(), substepVol);
+          candle = aggregateCandle(candle, backPrice, bucketTime, bucketMs);
+        }
+
+        const built = candle as Candle;
+        const range =
+          built.close > 0 ? (built.high - built.low) / built.close : 0;
+        back.push({
+          ...built,
+          volume: Math.round(
+            BASE_VOLUME * (0.4 + volRngBack()) * (1 + 40 * range),
+          ),
+        });
+      }
+
+      // Seam continuity: rescale the back block so its final close === s.open,
+      // the price the forward walk stepped away from.
+      const backEndClose = back.at(-1)?.close;
+      const backScale = backEndClose ? s.open / backEndClose : 1;
+      const backAnchored: Candle[] = back.map((c) => {
+        return {
+          time: c.time,
+          open: c.open * backScale,
+          high: c.high * backScale,
+          low: c.low * backScale,
+          close: c.close * backScale,
+          volume: c.volume,
+        };
+      });
+
+      const full = [...backAnchored, ...withVolume];
+
       // Anchor the series to the CURRENT live price (I1 fix, second half):
       // the walk above starts from `s.open` (frozen at construction) on its
       // own seeded RNG stream, completely independent of the live quote's
@@ -219,16 +304,17 @@ export class EquityMarketDataSimulator implements MarketDataPort {
       // live overlay then only has to bridge the (much smaller) gap accrued
       // since THIS series was generated, not since the simulator itself was
       // constructed.
-      const rawEndClose = out.at(-1)?.close;
+      const rawEndClose = withVolume.at(-1)?.close;
       const scale = rawEndClose ? s.price / rawEndClose : 1;
 
-      const anchored: Candle[] = out.map((c) => {
+      const anchored: Candle[] = full.map((c) => {
         return {
           time: c.time,
           open: c.open * scale,
           high: c.high * scale,
           low: c.low * scale,
           close: c.close * scale,
+          volume: c.volume,
         };
       });
 

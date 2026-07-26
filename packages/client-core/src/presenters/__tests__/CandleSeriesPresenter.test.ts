@@ -79,7 +79,16 @@ function series(symbol: string, timeframe: CandleTimeframe): readonly Candle[] {
   // One deterministic candle; the symbol+timeframe seed `open` so distinct
   // pairs yield distinguishable series.
   const seed = symbol.charCodeAt(0) + timeframe.charCodeAt(1);
-  return [{ time: 1, open: seed, high: seed + 1, low: seed - 1, close: seed }];
+  return [
+    {
+      time: 1,
+      open: seed,
+      high: seed + 1,
+      low: seed - 1,
+      close: seed,
+      volume: 1_200_000,
+    },
+  ];
 }
 
 /** Minimal MarketDataPort fake: only `candles` is exercised here (recording the

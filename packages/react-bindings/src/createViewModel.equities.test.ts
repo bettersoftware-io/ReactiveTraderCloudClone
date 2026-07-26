@@ -10,6 +10,7 @@ import {
 } from "@rtc/client-core";
 import {
   AuthSimulator,
+  CANDLE_HISTORY_TOTAL,
   ConnectionEventsSimulator,
   PreferencesSimulator,
 } from "@rtc/domain";
@@ -36,15 +37,15 @@ describe("createViewModel — equities hooks", () => {
     expect(typeof hooks.useCandles).toBe("function");
   });
 
-  it("useCandles defaults to '1D' (60 one-minute candles) when timeframe is omitted", () => {
+  it("useCandles defaults to '1D' (CANDLE_HISTORY_TOTAL deepened candles) when timeframe is omitted", () => {
     const hooks = makeHooks();
     const { result } = renderHook(() => {
       return hooks.useCandles("AAPL");
     });
-    expect(result.current).toHaveLength(60);
+    expect(result.current).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
-  it("useCandles threads an explicit timeframe through to a distinct series length", () => {
+  it("useCandles threads an explicit timeframe through — every timeframe generates CANDLE_HISTORY_TOTAL candles, at a bucket spacing distinct per timeframe", () => {
     const hooks = makeHooks();
     const { result: oneWeek } = renderHook(() => {
       return hooks.useCandles("AAPL", "1W");
@@ -57,9 +58,23 @@ describe("createViewModel — equities hooks", () => {
     const { result: threeMonths } = renderHook(() => {
       return hooks.useCandles("AAPL", "3M");
     });
-    expect(oneWeek.current).toHaveLength(44);
-    expect(oneMonth.current).toHaveLength(48);
-    expect(threeMonths.current).toHaveLength(52);
+    expect(oneWeek.current).toHaveLength(CANDLE_HISTORY_TOTAL);
+    expect(oneMonth.current).toHaveLength(CANDLE_HISTORY_TOTAL);
+    expect(threeMonths.current).toHaveLength(CANDLE_HISTORY_TOTAL);
+
+    // Length alone no longer discriminates timeframes (every series is now
+    // CANDLE_HISTORY_TOTAL long) — so if `tf` were silently ignored and
+    // useCandles always resolved "1D", the length assertions above would
+    // still pass. Bucket spacing (series[1].time - series[0].time) is
+    // per-timeframe (each TF_CONFIG entry has its own bucketMs) and proves
+    // the tf argument actually threaded through to the simulator.
+    const oneWeekSpacing = oneWeek.current[1].time - oneWeek.current[0].time;
+    const oneMonthSpacing = oneMonth.current[1].time - oneMonth.current[0].time;
+    const threeMonthsSpacing =
+      threeMonths.current[1].time - threeMonths.current[0].time;
+    expect(oneWeekSpacing).not.toBe(oneMonthSpacing);
+    expect(oneMonthSpacing).not.toBe(threeMonthsSpacing);
+    expect(oneWeekSpacing).not.toBe(threeMonthsSpacing);
   });
 
   it("useDepth is a function", () => {
