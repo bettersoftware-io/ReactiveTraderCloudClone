@@ -130,6 +130,7 @@ describe("ScriptedJarvisAdapter", () => {
       direction: Direction.Buy,
       notional: 5_000_000,
       quotedPrice: 1.0843,
+      ratePrecision: 5,
     });
 
     if (confirmRequest?.type !== "confirmRequest") {
@@ -239,7 +240,182 @@ describe("ScriptedJarvisAdapter", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.type).toBe("error");
   });
+
+  it("a pnl turn reads analytics + blotter behind a 'desk' toolEvent and formats the headline total", async () => {
+    const { deps } = buildDeps({
+      positions: {
+        currentPositions: [
+          {
+            symbol: "EURUSD",
+            basePnl: 150_000,
+            baseTradedAmount: 0,
+            counterTradedAmount: 0,
+          },
+          {
+            symbol: "GBPUSD",
+            basePnl: -25_000,
+            baseTradedAmount: 0,
+            counterTradedAmount: 0,
+          },
+        ],
+        history: [],
+      },
+      trades: [makeTrade(1), makeTrade(2)],
+    });
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "how am I doing?");
+    await done;
+
+    expect(events[0]).toEqual({
+      type: "toolEvent",
+      tool: "desk",
+      status: "running",
+    });
+    expect(events[1]).toEqual({
+      type: "toolEvent",
+      tool: "desk",
+      status: "done",
+    });
+    expect(fullText(events)).toBe(
+      "Session P&L stands at +$125.0k, sir. 2 FX trades on the blotter.",
+    );
+  });
+
+  it("a movers turn ranks by absolute pips delta, keeps the top 3, and signs losers with the typographic minus", async () => {
+    const { deps } = buildDeps({
+      pairs: [
+        EURUSD,
+        findPair("GBPUSD"),
+        findPair("USDJPY"),
+        findPair("AUDUSD"),
+      ],
+      history: {
+        EURUSD: [makeTick("EURUSD", 1.083), makeTick("EURUSD", 1.0842)],
+        GBPUSD: [makeTick("GBPUSD", 1.25), makeTick("GBPUSD", 1.247)],
+        USDJPY: [makeTick("USDJPY", 154.5), makeTick("USDJPY", 154.55)],
+        AUDUSD: [makeTick("AUDUSD", 0.66), makeTick("AUDUSD", 0.6602)],
+      },
+    });
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "what's moving?");
+    await done;
+
+    expect(events[0]).toEqual({
+      type: "toolEvent",
+      tool: "movers",
+      status: "running",
+    });
+    // GBPUSD −30 outranks EURUSD +12 outranks USDJPY +5; AUDUSD +2 is cut by
+    // the top-3 slice, and the loser is signed with U+2212, not a hyphen.
+    expect(fullText(events)).toBe(
+      "The board, sir: GBPUSD −30 pips · EURUSD +12 pips · USDJPY +5 pips.",
+    );
+  });
+
+  it("a spread turn surfaces the same 'quote' toolEvent as a quote turn around its pricing read", async () => {
+    const { deps } = buildDeps({});
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "what's the spread on EURUSD?");
+    await done;
+
+    expect(events[0]).toEqual({
+      type: "toolEvent",
+      tool: "quote",
+      status: "running",
+    });
+    expect(events[1]).toEqual({
+      type: "toolEvent",
+      tool: "quote",
+      status: "done",
+    });
+    expect(fullText(events)).toBe("EURUSD spread is currently 2 pips, sir.");
+  });
+
+  it("a help turn replies with the capability roster verbatim", async () => {
+    const { deps } = buildDeps({});
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "what can you do?");
+    await done;
+
+    expect(fullText(events)).toBe(
+      "At your service, sir. I can quote the majors, report the movers, " +
+        "brief you on the desk, or execute FX orders. Sentinels, widgets and " +
+        "drills arrive in a later build, sir.",
+    );
+  });
+
+  it("an unmatched turn replies with the fallback mandate verbatim", async () => {
+    const { deps } = buildDeps({});
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const { events, done } = runTurn(adapter, "make me a sandwich");
+    await done;
+
+    expect(fullText(events)).toBe(
+      "I'm afraid that request is outside my current mandate, sir. I can " +
+        "quote the majors, report the movers, brief you on the desk, or " +
+        "execute FX orders.",
+    );
+  });
+
+  it("tearing a turn down mid-confirmation cancels the pending Subject: a late confirm() is a no-op and never executes", async () => {
+    const { deps, executeTradeSpy } = buildDeps({});
+    const adapter = new ScriptedJarvisAdapter(deps);
+
+    const events: JarvisEvent[] = [];
+    const subscription = adapter.ask("buy 5M EURUSD").subscribe((event) => {
+      events.push(event);
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const confirmRequest = events.find((e) => {
+      return e.type === "confirmRequest";
+    });
+
+    if (confirmRequest?.type !== "confirmRequest") {
+      throw new Error("expected a confirmRequest event");
+    }
+
+    subscription.unsubscribe();
+
+    adapter.confirm(confirmRequest.confirmationId, true);
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(executeTradeSpy).not.toHaveBeenCalled();
+    expect(events.at(-1)?.type).toBe("confirmRequest");
+  });
 });
+
+function makeTrade(tradeId: number): Trade {
+  return {
+    tradeId,
+    tradeName: `t${tradeId}`,
+    currencyPair: "EURUSD",
+    notional: 5_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.0843,
+    status: TradeStatus.Done,
+    tradeDate: "2026-07-27",
+    valueDate: "2026-07-29",
+  };
+}
+
+function makeTick(symbol: string, mid: number): PriceTick {
+  return {
+    symbol,
+    bid: mid - 0.0001,
+    ask: mid + 0.0001,
+    mid,
+    valueDate: "2026-07-27",
+    creationTimestamp: 1,
+  };
+}
 
 function findPair(symbol: string): CurrencyPair {
   const pair = KNOWN_CURRENCY_PAIRS.find((p) => {

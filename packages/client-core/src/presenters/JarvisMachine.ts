@@ -46,6 +46,9 @@ export interface JarvisConfirmation {
   readonly direction: Direction;
   readonly notional: number;
   readonly quotedPrice: number;
+  /** Display precision for quotedPrice — CurrencyPair.ratePrecision, so the
+   * confirm card formats exactly like the price tiles. */
+  readonly ratePrecision: number;
   /** 1 → just requested, 0 → expired; ticks down once per second */
   readonly remainingFraction: number;
 }
@@ -182,6 +185,7 @@ function eventPatch(event: JarvisEvent): Patch {
             direction: event.direction,
             notional: event.notional,
             quotedPrice: event.quotedPrice,
+            ratePrecision: event.ratePrecision,
             remainingFraction: 1,
           },
         };

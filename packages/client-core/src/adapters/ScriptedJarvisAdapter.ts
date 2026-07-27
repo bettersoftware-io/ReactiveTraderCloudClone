@@ -140,6 +140,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
   ask(text: string): Observable<JarvisEvent> {
     return new Observable<JarvisEvent>((subscriber) => {
       let closed = false;
+      const turnConfirmationIds = new Set<string>();
 
       function push(event: JarvisEvent): void {
         if (!closed) {
@@ -147,7 +148,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
         }
       }
 
-      this.runTurn(text, push)
+      this.runTurn(text, push, turnConfirmationIds)
         .then(() => {
           if (!closed) {
             subscriber.next({ type: "done" });
@@ -163,6 +164,13 @@ export class ScriptedJarvisAdapter implements JarvisPort {
 
       return (): void => {
         closed = true;
+
+        // A turn torn down mid-trade (machine dispose, subscriber unsubscribe)
+        // would otherwise strand its Subject in pendingConfirmations forever —
+        // and leave runTurn dangling on waitForConfirm.
+        for (const id of turnConfirmationIds) {
+          this.cancelConfirmation(id);
+        }
       };
     });
   }
@@ -176,6 +184,22 @@ export class ScriptedJarvisAdapter implements JarvisPort {
 
     this.pendingConfirmations.delete(confirmationId);
     subject.next(approved);
+    subject.complete();
+  }
+
+  /** Teardown path for a confirmation whose turn died before confirm():
+   * completing the Subject WITHOUT a value makes waitForConfirm's
+   * firstValueFrom reject (EmptyError), which unblocks the dangling runTurn
+   * promise; ask()'s catch then no-ops because the turn is already closed.
+   * No-op when confirm() already resolved it. */
+  private cancelConfirmation(confirmationId: string): void {
+    const subject = this.pendingConfirmations.get(confirmationId);
+
+    if (!subject) {
+      return;
+    }
+
+    this.pendingConfirmations.delete(confirmationId);
     subject.complete();
   }
 
@@ -231,6 +255,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
   private async runTurn(
     text: string,
     push: (event: JarvisEvent) => void,
+    turnConfirmationIds: Set<string>,
   ): Promise<void> {
     const pairs = await this.snapshot(
       new CurrencyPairsUseCase(this.deps.referenceData).execute(),
@@ -264,7 +289,12 @@ export class ScriptedJarvisAdapter implements JarvisPort {
         await this.streamSpreadReply(pairs, intent.symbol, push);
         return;
       case "trade":
-        await this.executeConfirmedTrade(pairs, intent, push);
+        await this.executeConfirmedTrade(
+          pairs,
+          intent,
+          push,
+          turnConfirmationIds,
+        );
         return;
 
       default: {
@@ -362,9 +392,14 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     push: (event: JarvisEvent) => void,
   ): Promise<void> {
     const pair = findPair(pairs, symbol);
+    // Same live-pricing read as the quote turn, so it surfaces the same
+    // "quote" tool badge — a spread turn used to be the one read that ran
+    // silently, and the phase-3 tool registry wants every read attributed.
+    push({ type: "toolEvent", tool: "quote", status: "running" });
     const price = await this.snapshot(
       new PriceStreamUseCase(this.deps.pricing).execute(pair),
     );
+    push({ type: "toolEvent", tool: "quote", status: "done" });
     const spreadPips = Math.round(Number.parseFloat(price.spread));
     const reply = `${pair.symbol} spread is currently ${spreadPips} pips, sir.`;
     await this.reveal(reply, push);
@@ -374,8 +409,15 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     pairs: readonly CurrencyPair[],
     intent: JarvisTradeIntent,
     push: (event: JarvisEvent) => void,
+    turnConfirmationIds: Set<string>,
   ): Promise<void> {
     const pair = findPair(pairs, intent.symbol);
+    // ONE price snapshot serves the whole flow: the quoted price shown on the
+    // confirm card IS the price handed to ExecuteTradeUseCase below. By
+    // approval time it can be up to JARVIS_CONFIRM_TIMEOUT_MS (60 s) stale
+    // against the live stream — deliberate: "execute at the quoted price" is
+    // the contract the card advertises, and re-snapshotting after approval
+    // would execute at a price the user never saw.
     const price: Price = await this.snapshot(
       new PriceStreamUseCase(this.deps.pricing).execute(pair),
     );
@@ -383,6 +425,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
     const quotedPrice =
       intent.direction === Direction.Buy ? price.ask : price.bid;
     const confirmationId = `confirm-${++this.nextConfirmationId}`;
+    turnConfirmationIds.add(confirmationId);
 
     push({
       type: "confirmRequest",
@@ -391,6 +434,7 @@ export class ScriptedJarvisAdapter implements JarvisPort {
       direction: intent.direction,
       notional: intent.notional,
       quotedPrice,
+      ratePrecision: pair.ratePrecision,
     });
 
     const approved = await this.waitForConfirm(confirmationId);

@@ -16,6 +16,10 @@ export type JarvisEvent =
       readonly direction: Direction;
       readonly notional: number;
       readonly quotedPrice: number;
+      /** The pair's display precision (CurrencyPair.ratePrecision), carried so
+       * the confirm card can format quotedPrice exactly like the price tiles
+       * (toFixed(ratePrecision)) without a reference-data lookup UI-side. */
+      readonly ratePrecision: number;
     }
   | { readonly type: "done" }
   | { readonly type: "error"; readonly message: string };

@@ -2246,6 +2246,9 @@ const jarvisPendingConfirmation: JarvisConfirmation = {
   direction: Direction.Buy,
   notional: 5_000_000,
   quotedPrice: 1.09227,
+  // EURUSD's CurrencyPair.ratePrecision — renders "1.09227", byte-identical
+  // to the old toPrecision(6) output, so the pinned goldens don't move.
+  ratePrecision: 5,
   remainingFraction: 0.75,
 };
 
