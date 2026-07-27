@@ -13,7 +13,11 @@ import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
 
 import type { Scenario } from "./driver";
-import { BootSceneFixture, LockHoldFixture } from "./fixtures";
+import {
+  AnalyticsDashboardFixture,
+  BootSceneFixture,
+  LockHoldFixture,
+} from "./fixtures";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
 /**
@@ -75,8 +79,17 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   OFF — both keep the shot stable.
  *
  * Explicitly avoided: the Rates tab (`PricingSimulator` ticks with
- * `Math.random`) and Analytics (`AnalyticsSimulator`'s P&L history is seeded
- * with a `Math.random` walk at construction).
+ * `Math.random`).
+ *
+ * Analytics used to be on that list for the same reason — `AnalyticsSimulator`
+ * seeds its P&L history with a `Math.random` walk at construction, and since
+ * Phase 5c Task 1 it also drifts positions every 10 s. `analytics/dashboard`
+ * (below) does not mount the simulator at all: Phase 5c Task 7 split the cards
+ * out as `AnalyticsDashboard`, which takes its data as a prop, so the fixture
+ * feeds it a literal book. That removes the data non-determinism; the SECOND
+ * source — the bars' and bubbles' entry tweens — is removed by seeding
+ * power-saver `freeze`. Neither half alone is sufficient, which is why the
+ * scenario carries an explicit `powerSaverLevel` that the others do not.
  *
  * - `boot/core` / `boot/laser` — the two Phase 6a boot scenes, each pinned to
  *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSceneFixture`. **Their
@@ -249,6 +262,23 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <LockHoldFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "analytics/dashboard",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // `powerSaverLevel="freeze"` is load-bearing, not a stylistic choice:
+        // it is the only gate that stops the Analytics bars and bubbles from
+        // being captured part-way through their entry tweens.
+        // `forceReduceMotion` (on by default) does NOT cover them — it seeds
+        // `animatedBackground`, which gates the ambient layer alone.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <AnalyticsDashboardFixture />
         </VisualScenarioHost>
       );
     },
