@@ -11,14 +11,23 @@ import { useJarvisHotkey } from "./useJarvisHotkey";
 import styles from "./JarvisOverlay.module.css";
 
 /**
- * Full-screen cinematic J.A.R.V.I.S overlay — the PreferencesModal fixed-
- * overlay pattern (scrim, `<Show>`-gated body, no backdrop-filter). Owns the
- * global ⌘/Ctrl+J hotkey (`useJarvisHotkey`) so it's wired regardless of
- * open state, plus a scoped Escape listener and message-list auto-scroll —
- * ALL effects are set up unconditionally, above the `<Show when={state().open}>`
- * that gates the body, since Solid has no early-return-null-on-reactive-state
- * escape hatch (it would freeze the overlay at whatever it looked like on
- * first mount).
+ * Full-screen cinematic J.A.R.V.I.S overlay — a port of the v5 prototype's
+ * overlay (docs/design/web/v5): the desk stays visible behind a heavy dim,
+ * and a single centred column carries the holographic core, the wordmark,
+ * the status line, the voice waveform, the transcript, the suggestion chips
+ * and the input rail. It is deliberately NOT a bordered modal card.
+ *
+ * The prototype's `backdrop-filter: blur(9px)` is banned here
+ * (docs/performance.md T6), so the separation comes from a stronger dim plus
+ * layered static gradients — a vignette, an accent bloom behind the core and
+ * a scanline weave (all in the .module.css, all paint-once).
+ *
+ * Owns the global ⌘/Ctrl+J hotkey (`useJarvisHotkey`) so it is wired
+ * regardless of open state, plus a scoped Escape listener and message-list
+ * auto-scroll — ALL effects are set up unconditionally, above the
+ * `<Show when={state().open}>` that gates the body, since Solid has no
+ * early-return-null-on-reactive-state escape hatch (it would freeze the
+ * overlay at whatever it looked like on first mount).
  */
 export function JarvisOverlay(): JSX.Element {
   const { useJarvis } = useViewModel();
@@ -93,67 +102,192 @@ export function JarvisOverlay(): JSX.Element {
     }
   }
 
+  function status(): string {
+    if (state().pendingConfirmation !== null) {
+      return "◇ AWAITING AUTHORISATION";
+    }
+
+    return state().phase === "speaking" ? "● SPEAKING" : "◈ LISTENING";
+  }
+
+  function speaking(): boolean {
+    return state().phase === "speaking";
+  }
+
   return (
     <Show when={state().open}>
       <div data-testid="jarvis-overlay" class={styles.overlay}>
-        <div class={styles.dialog} data-skin={state().skin}>
-          <header class={styles.head}>
-            <span class={styles.wordmark}>JARVIS</span>
+        {/* The stage MUST stay the overlay's first element child — the shared
+            UI contract reads the active skin off it (JarvisOverlayPage). */}
+        <div
+          class={styles.stage}
+          data-skin={state().skin}
+          data-phase={state().phase}
+        >
+          <button
+            type="button"
+            data-testid="jarvis-close"
+            aria-label="Close J.A.R.V.I.S"
+            class={styles.closeButton}
+            onClick={close}
+          >
+            ✕
+          </button>
 
-            <div data-testid="jarvis-skin-switch" class={styles.skinSwitch}>
-              <For each={JARVIS_SKINS}>
-                {(skin: JarvisSkin) => {
-                  function active(): boolean {
-                    return skin === state().skin;
-                  }
+          {/* Holographic core — layered radial glows under counter-rotating
+              rings. The two skins are genuinely different objects: MK-I is a
+              smooth singularity inside three thin dashed orbits, MK-II is an
+              arc reactor (thick segmented coil, hard inner rim, index mark). */}
+          <div class={styles.core} aria-hidden="true">
+            <span class={styles.coreBloom} />
+            <span class={styles.coreSphere} />
 
-                  return (
-                    <button
-                      type="button"
-                      aria-pressed={active()}
-                      data-skin={skin}
-                      data-active={active() ? "true" : "false"}
-                      class={styles.skinButton}
-                      onClick={() => {
-                        setSkin(skin);
-                      }}
+            <Show
+              when={state().skin === "reactor"}
+              fallback={
+                <>
+                  <span class={styles.ringA}>
+                    <svg
+                      viewBox="0 0 132 132"
+                      class={styles.ringSvg}
+                      aria-hidden="true"
                     >
-                      {SKIN_LABEL[skin]}
-                    </button>
-                  );
-                }}
-              </For>
-            </div>
-
-            <button
-              type="button"
-              data-testid="jarvis-close"
-              aria-label="Close J.A.R.V.I.S"
-              class={styles.closeButton}
-              onClick={close}
+                      <circle
+                        cx="66"
+                        cy="66"
+                        r="60"
+                        fill="none"
+                        stroke="var(--accent-primary)"
+                        stroke-width="1"
+                        stroke-dasharray="6 10"
+                        opacity="0.7"
+                      />
+                      <circle cx="66" cy="6" r="2.6" fill="var(--accent-2)" />
+                    </svg>
+                  </span>
+                  <span class={styles.ringB}>
+                    <svg
+                      viewBox="0 0 132 132"
+                      class={styles.ringSvg}
+                      aria-hidden="true"
+                    >
+                      <circle
+                        cx="66"
+                        cy="66"
+                        r="48"
+                        fill="none"
+                        stroke="var(--accent-2)"
+                        stroke-width="1"
+                        stroke-dasharray="2 6"
+                        opacity="0.8"
+                      />
+                      <circle
+                        cx="114"
+                        cy="66"
+                        r="2"
+                        fill="var(--accent-primary)"
+                      />
+                    </svg>
+                  </span>
+                  <span class={styles.ringC}>
+                    <svg
+                      viewBox="0 0 132 132"
+                      class={styles.ringSvg}
+                      aria-hidden="true"
+                    >
+                      <circle
+                        cx="66"
+                        cy="66"
+                        r="38"
+                        fill="none"
+                        stroke="var(--accent-primary)"
+                        stroke-width="1"
+                        stroke-dasharray="20 9"
+                        opacity="0.5"
+                      />
+                    </svg>
+                  </span>
+                </>
+              }
             >
-              ✕
-            </button>
-          </header>
+              <span class={styles.ringA}>
+                <svg
+                  viewBox="0 0 132 132"
+                  class={styles.ringSvg}
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="66"
+                    cy="66"
+                    r="52"
+                    fill="none"
+                    stroke="var(--accent-primary)"
+                    stroke-width="9"
+                    stroke-dasharray="24 8"
+                    opacity="0.5"
+                  />
+                </svg>
+              </span>
+              <span class={styles.ringB}>
+                <svg
+                  viewBox="0 0 132 132"
+                  class={styles.ringSvg}
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="66"
+                    cy="66"
+                    r="61"
+                    fill="none"
+                    stroke="var(--accent-2)"
+                    stroke-width="1.6"
+                    stroke-dasharray="3 9"
+                    opacity="0.7"
+                  />
+                  <path
+                    d="M66 22 L74 36 L58 36 Z"
+                    fill="var(--accent-primary)"
+                    opacity="0.8"
+                  />
+                </svg>
+              </span>
+              <span class={styles.ringC}>
+                <svg
+                  viewBox="0 0 132 132"
+                  class={styles.ringSvg}
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="66"
+                    cy="66"
+                    r="36"
+                    fill="none"
+                    stroke="var(--accent-primary)"
+                    stroke-width="1.2"
+                    opacity="0.9"
+                  />
+                </svg>
+              </span>
+            </Show>
+          </div>
 
+          <div class={styles.wordmark}>J.A.R.V.I.S</div>
+          <div class={styles.status}>{status()}</div>
+
+          {/* Voice waveform — 26 bars, `transform: scaleY()` only, each with
+              its own literal duration/delay pair in the stylesheet (never a
+              var() inside the animated transform, T4). Flat and still while
+              idle. */}
           <div
-            class={styles.core}
-            data-skin={state().skin}
-            data-phase={state().phase}
+            class={styles.waveform}
+            data-speaking={speaking() ? "true" : "false"}
             aria-hidden="true"
           >
-            <span class={styles.coreHalo} />
-            <span class={styles.coreRing} />
-            <span class={styles.coreCenter} />
-            <Show when={state().phase === "speaking"}>
-              <div class={styles.waveform}>
-                <span class={styles.bar} />
-                <span class={styles.bar} />
-                <span class={styles.bar} />
-                <span class={styles.bar} />
-                <span class={styles.bar} />
-              </div>
-            </Show>
+            <For each={WAVE_BARS}>
+              {() => {
+                return <span class={styles.waveBar} />;
+              }}
+            </For>
           </div>
 
           <div ref={listRef} class={styles.messages}>
@@ -211,7 +345,7 @@ export function JarvisOverlay(): JSX.Element {
                     type="button"
                     data-testid="jarvis-suggestion"
                     class={styles.suggestion}
-                    disabled={state().phase === "speaking"}
+                    disabled={speaking()}
                     onClick={() => {
                       submit(text);
                     }}
@@ -224,13 +358,16 @@ export function JarvisOverlay(): JSX.Element {
           </div>
 
           <div class={styles.inputRow}>
+            <span class={styles.inputGlyph} aria-hidden="true">
+              ◈
+            </span>
             <input
               type="text"
               data-testid="jarvis-input"
               class={styles.input}
-              placeholder="Ask J.A.R.V.I.S…"
+              placeholder="Ask J.A.R.V.I.S — markets · trades · execution…"
               value={inputValue()}
-              disabled={state().phase === "speaking"}
+              disabled={speaking()}
               onInput={updateDraft}
               onChange={updateDraft}
               onKeyDown={sendDraftOnEnter}
@@ -239,11 +376,43 @@ export function JarvisOverlay(): JSX.Element {
               type="button"
               data-testid="jarvis-send"
               class={styles.sendButton}
-              disabled={state().phase === "speaking"}
+              disabled={speaking()}
               onClick={sendDraft}
             >
               SEND
             </button>
+          </div>
+
+          <div class={styles.footer}>
+            <span class={styles.hint}>ESC · CLOSE</span>
+            <span class={styles.hint}>⌘J · TOGGLE</span>
+
+            <div data-testid="jarvis-skin-switch" class={styles.skinSwitch}>
+              <span class={styles.hint}>CORE</span>
+              <For each={JARVIS_SKINS}>
+                {(skin: JarvisSkin) => {
+                  function active(): boolean {
+                    return skin === state().skin;
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      aria-pressed={active()}
+                      aria-label={SKIN_LABEL[skin]}
+                      data-skin={skin}
+                      data-active={active() ? "true" : "false"}
+                      class={styles.skinButton}
+                      onClick={() => {
+                        setSkin(skin);
+                      }}
+                    >
+                      {SKIN_MARK[skin]}
+                    </button>
+                  );
+                }}
+              </For>
+            </div>
           </div>
         </div>
       </div>
@@ -254,9 +423,18 @@ export function JarvisOverlay(): JSX.Element {
 type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
 type InputKeyDownEvent = KeyboardEvent & { currentTarget: HTMLInputElement };
 
+/** The accessible name of each skin control — the shared UI contract selects
+ * them by role+name, so these strings are load-bearing. */
 const SKIN_LABEL: Record<JarvisSkin, string> = {
   singularity: "Singularity",
   reactor: "Reactor",
+};
+
+/** The visible, cinematic label. PROTO renders the active core as
+ * "CORE MK-I SINGULARITY ▸ SWITCH"; the port shows both marks side by side. */
+const SKIN_MARK: Record<JarvisSkin, string> = {
+  singularity: "MK-I SINGULARITY",
+  reactor: "MK-II REACTOR",
 };
 
 // Static UI copy — one suggestion row, exact strings pinned by Task 9's
@@ -267,3 +445,10 @@ const SUGGESTIONS: readonly string[] = [
   "How am I doing?",
   "Buy 5M EURUSD",
 ];
+
+/** PROTO renders 26 waveform bars; each one's duration/delay pair lives in
+ * the stylesheet as an `:nth-child` rule (no inline style, no var() inside an
+ * animated transform). */
+const WAVE_BARS: readonly number[] = Array.from({ length: 26 }, (_, i) => {
+  return i;
+});
