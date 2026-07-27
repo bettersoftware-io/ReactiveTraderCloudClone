@@ -14,60 +14,6 @@ afterEach(() => {
   cleanup();
 });
 
-/** What the pointerdown landed on: the window body, a handle, or the bare
- * track — expressed through the `closest()` answers the hook's hit-test
- * makes (`[data-nav-edge]` first, then the window testid). */
-type HitTarget = "window" | "handle-left" | "handle-right" | "track";
-
-function hitTargetEl(hit: HitTarget): { closest: (sel: string) => unknown } {
-  return {
-    closest: (sel: string): unknown => {
-      if (sel === "[data-nav-edge]") {
-        if (hit === "handle-left") {
-          return { getAttribute: (): string => "start" };
-        }
-
-        if (hit === "handle-right") {
-          return { getAttribute: (): string => "end" };
-        }
-
-        return null;
-      }
-
-      if (sel === '[data-testid="navigator-window"]') {
-        return hit === "window" ? {} : null;
-      }
-
-      return null;
-    },
-  };
-}
-
-function brushEvent(
-  hit: HitTarget,
-  clientX: number,
-): ReactPointerEvent<HTMLDivElement> {
-  return {
-    pointerId: 1,
-    clientX,
-    target: hitTargetEl(hit),
-    currentTarget: {
-      setPointerCapture: vi.fn(),
-      hasPointerCapture: (): boolean => {
-        return true;
-      },
-      releasePointerCapture: vi.fn(),
-      getBoundingClientRect: (): DOMRect => {
-        return STRIP_RECT;
-      },
-    } as unknown as HTMLDivElement,
-  } as unknown as ReactPointerEvent<HTMLDivElement>;
-}
-
-function moveEvent(clientX: number): ReactPointerEvent<HTMLDivElement> {
-  return brushEvent("track", clientX);
-}
-
 describe("useNavigatorBrush", () => {
   it("dragging the window body pans the viewport WITH the pointer", () => {
     const applyViewport = vi.fn();
@@ -236,3 +182,71 @@ describe("useNavigatorBrush", () => {
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
   });
 });
+
+/** What the pointerdown landed on: the window body, a handle, or the bare
+ * track — expressed through the `closest()` answers the hook's hit-test
+ * makes (`[data-nav-edge]` first, then the window testid). */
+type HitTarget = "window" | "handle-left" | "handle-right" | "track";
+
+/** The return type of a closest() result, extracted to avoid inline object
+ * type annotations. */
+interface HitTargetElement {
+  readonly closest: (sel: string) => unknown;
+}
+
+function hitTargetEl(hit: HitTarget): HitTargetElement {
+  return {
+    closest: (sel: string): unknown => {
+      if (sel === "[data-nav-edge]") {
+        if (hit === "handle-left") {
+          return {
+            getAttribute: (): string => {
+              return "start";
+            },
+          };
+        }
+
+        if (hit === "handle-right") {
+          return {
+            getAttribute: (): string => {
+              return "end";
+            },
+          };
+        }
+
+        return null;
+      }
+
+      if (sel === '[data-testid="navigator-window"]') {
+        return hit === "window" ? {} : null;
+      }
+
+      return null;
+    },
+  };
+}
+
+function brushEvent(
+  hit: HitTarget,
+  clientX: number,
+): ReactPointerEvent<HTMLDivElement> {
+  return {
+    pointerId: 1,
+    clientX,
+    target: hitTargetEl(hit),
+    currentTarget: {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: (): boolean => {
+        return true;
+      },
+      releasePointerCapture: vi.fn(),
+      getBoundingClientRect: (): DOMRect => {
+        return STRIP_RECT;
+      },
+    } as unknown as HTMLDivElement,
+  } as unknown as ReactPointerEvent<HTMLDivElement>;
+}
+
+function moveEvent(clientX: number): ReactPointerEvent<HTMLDivElement> {
+  return brushEvent("track", clientX);
+}
