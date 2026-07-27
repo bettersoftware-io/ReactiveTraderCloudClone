@@ -69,14 +69,109 @@ describe("PreferencesModal", () => {
     expect(closed).toBe(1);
   });
 
-  it("renders the four catalogue sections", () => {
+  it("renders the five catalogue sections", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
     expect(page.hasSection("DISPLAY")).toBe(true);
+    expect(page.hasSection("MOTION")).toBe(true);
     expect(page.hasSection("TRADING")).toBe(true);
     expect(page.hasSection("NOTIFICATIONS")).toBe(true);
     expect(page.hasSection("DATA & PRIVACY")).toBe(true);
+  });
+
+  it("splits the sections across the two columns as looks | behaviour", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.sectionsInColumn(0)).toEqual(["DISPLAY", "MOTION"]);
+    expect(page.sectionsInColumn(1)).toEqual([
+      "TRADING",
+      "NOTIFICATIONS",
+      "DATA & PRIVACY",
+    ]);
+  });
+
+  it("keeps the two columns within one row of each other", () => {
+    // The regression guard for the imbalance that prompted MOTION: rows had
+    // accumulated in the left column until it ran 15 against the right's 9.
+    // A tolerance rather than exact counts, so adding ONE row stays legal and
+    // only real drift fails — the point is the property, not a snapshot.
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    const left = page.rowCountInColumn(0);
+    const right = page.rowCountInColumn(1);
+
+    expect(left).toBeGreaterThan(0);
+    expect(right).toBeGreaterThan(0);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+  });
+
+  it("groups every motion control under MOTION rather than DISPLAY", () => {
+    // "Reduce motion" moved out of DISPLAY when MOTION was introduced; this
+    // pins the intent (movement lives together) rather than the row order.
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.sectionsInColumn(0)).toContain("MOTION");
+    expect(page.hasToggle("reduceMotion")).toBe(true);
+    expect(page.hasToggle("forceBootAnimation")).toBe(true);
+  });
+
+  it("shows the login-wait style segment defaulting to Auto, and writes the pin on select", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.segmentActive("loginWaitStyle", "auto")).toBe(true);
+
+    await page.selectSegment("loginWaitStyle", "reactor");
+    expect(page.loginWaitStyleSets()).toEqual(["reactor"]);
+    expect(page.segmentActive("loginWaitStyle", "reactor")).toBe(true);
+    expect(page.segmentActive("loginWaitStyle", "auto")).toBe(false);
+  });
+
+  it("reflects a seeded login-wait style pin", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      loginWaitStyle: "handshake",
+    });
+    expect(page.segmentActive("loginWaitStyle", "handshake")).toBe(true);
+    expect(page.segmentActive("loginWaitStyle", "auto")).toBe(false);
+  });
+
+  it("shows the login-wait delay segment defaulting to Off, and writes the choice on select", async () => {
+    // Off by default matters: a stored preference must not slow anyone's
+    // sign-in until they ask it to.
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.segmentActive("loginWaitDelay", "off")).toBe(true);
+
+    await page.selectSegment("loginWaitDelay", "3s");
+    expect(page.loginWaitDelaySets()).toEqual(["3s"]);
+    expect(page.segmentActive("loginWaitDelay", "3s")).toBe(true);
+  });
+
+  it("reflects a seeded login-wait delay", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      loginWaitDelay: "6s",
+    });
+    expect(page.segmentActive("loginWaitDelay", "6s")).toBe(true);
+    expect(page.segmentActive("loginWaitDelay", "off")).toBe(false);
+  });
+
+  it("keeps the two login-wait rows independent of each other", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      loginWaitStyle: "reactor",
+      loginWaitDelay: "1s",
+    });
+    expect(page.segmentActive("loginWaitStyle", "reactor")).toBe(true);
+    expect(page.segmentActive("loginWaitDelay", "1s")).toBe(true);
+    expect(page.loginWaitStyleSets()).toEqual([]);
+    expect(page.loginWaitDelaySets()).toEqual([]);
   });
 
   it("flips a cosmetic toggle locally (decorative, not wired to any port)", async () => {

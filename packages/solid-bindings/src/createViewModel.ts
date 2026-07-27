@@ -50,6 +50,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -66,6 +68,8 @@ import {
   type Instrument,
   type JarvisSkin,
   type LogEvent,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type MetricSample,
   nextPowerSaverLevel,
   type PositionUpdates,
@@ -190,6 +194,13 @@ interface UseForceBootAnimationResult {
   toggle: () => void;
 }
 
+interface UseLoginWaitPreferencesResult {
+  style: Accessor<LoginWaitStyle>;
+  setStyle: (style: LoginWaitStyle) => void;
+  delay: Accessor<LoginWaitDelay>;
+  setDelay: (delay: LoginWaitDelay) => void;
+}
+
 interface UseViewModePreferenceResult {
   viewMode: Accessor<ViewMode>;
   setViewMode: (viewMode: ViewMode) => void;
@@ -285,6 +296,10 @@ export interface ViewModel {
   usePowerSaver: () => UsePowerSaverResult;
   /** Force the boot-splash animation to play under reduced motion — enabled flag plus write/toggle intents. */
   useForceBootAnimation: () => UseForceBootAnimationResult;
+  /** The two login-wait inspection preferences — which treatment to render
+   * ("auto" defers to the cycle) and how long to hold the outcome so it can
+   * actually be seen. */
+  useLoginWaitPreferences: () => UseLoginWaitPreferencesResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
   /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
@@ -484,6 +499,24 @@ export function createViewModel(
 
   function setForceBootAnimation(on: boolean): void {
     presenters.forceBootAnimation.set(on);
+  }
+
+  const loginWaitStyleState = state(
+    presenters.loginWaitPreferences.style$,
+    DEFAULT_LOGIN_WAIT_STYLE,
+  );
+
+  const loginWaitDelayState = state(
+    presenters.loginWaitPreferences.delay$,
+    DEFAULT_LOGIN_WAIT_DELAY,
+  );
+
+  function setLoginWaitStyle(style: LoginWaitStyle): void {
+    presenters.loginWaitPreferences.setStyle(style);
+  }
+
+  function setLoginWaitDelay(delay: LoginWaitDelay): void {
+    presenters.loginWaitPreferences.setDelay(delay);
   }
 
   const viewModeState = state(
@@ -859,6 +892,14 @@ export function createViewModel(
         toggle: () => {
           presenters.forceBootAnimation.toggle(enabled());
         },
+      };
+    },
+    useLoginWaitPreferences: () => {
+      return {
+        style: toSignal(loginWaitStyleState),
+        setStyle: setLoginWaitStyle,
+        delay: toSignal(loginWaitDelayState),
+        setDelay: setLoginWaitDelay,
       };
     },
     useViewModePreference: () => {

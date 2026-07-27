@@ -2,7 +2,7 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { AmbientStyle } from "@rtc/domain";
+import type { AmbientStyle, LoginWaitDelay, LoginWaitStyle } from "@rtc/domain";
 
 export interface PreferencesModalProps {
   open: boolean;
@@ -12,11 +12,12 @@ export interface PreferencesModalProps {
 const POWER_SAVER_LEVELS = ["off", "calm", "freeze"] as const;
 
 /**
- * Page object for PreferencesModal. FOUR rows are REAL controls: the
+ * Page object for PreferencesModal. SIX rows are REAL controls: the
  * Animated-background toggle (wired to useAnimatedBackground), the Power
  * saver segment (wired to usePowerSaver, 3-state Off/Calm/Freeze), the
  * Ambient style segment (wired to useAmbientStyle), and the
- * Always-play-boot-animation toggle (wired to useForceBootAnimation). The
+ * Always-play-boot-animation toggle (wired to useForceBootAnimation), and the
+ * two login-wait rows (wired to useLoginWaitPreferences). The
  * animated-background, power-saver, and force-boot seams record their written
  * values, asserted via `animatedBgSets()` / `powerSaverLevelSets()` /
  * `forceBootAnimationSets()` — the ambient-style segment is backed by the
@@ -148,10 +149,62 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     );
   }
 
+  /** Section headings per column, in document order — `[0]` is the left
+   * column. Lets a spec pin WHICH column a section lives in, which is what
+   * keeps the two-column split meaningful rather than incidental. */
+  sectionsInColumn(index: number): string[] {
+    return [...this.columnAt(index).querySelectorAll("*")]
+      .filter((el) => {
+        return SECTION_LABELS.has(el.textContent?.trim() ?? "");
+      })
+      .map((el) => {
+        return el.textContent?.trim() ?? "";
+      });
+  }
+
+  /** Number of preference ROWS in a column — toggles plus distinct segment
+   * groups. Segments carry a testid per OPTION rather than per row
+   * (`pref-segment-density-compact`), so the group prefix is what gets
+   * counted; otherwise a 4-option row would weigh four times a toggle. */
+  rowCountInColumn(index: number): number {
+    const column = this.columnAt(index);
+    const toggles = column.querySelectorAll('[data-testid^="pref-toggle-"]');
+    const segmentGroups = new Set(
+      [...column.querySelectorAll('[data-testid^="pref-segment-"]')].map(
+        (el) => {
+          const testid = el.getAttribute("data-testid") ?? "";
+          // "pref-segment-<group>-<value>" → "<group>"
+          return testid.split("-").slice(2, 3).join("");
+        },
+      ),
+    );
+    return toggles.length + segmentGroups.size;
+  }
+
+  private columnAt(index: number): HTMLElement {
+    const column = within(this.root).getAllByTestId("prefs-column")[index];
+
+    if (!column) {
+      throw new Error(`no preferences column at index ${index}`);
+    }
+
+    return column;
+  }
+
   /** True when the given ambient-style option is the active one in the REAL
    * "Ambient style" segment row (its `data-on`). */
   ambientStyleActive(style: AmbientStyle): boolean {
     return this.segmentActive("ambientStyle", style);
+  }
+
+  /** Each style written through useLoginWaitPreferences().setStyle, in order. */
+  loginWaitStyleSets(): LoginWaitStyle[] {
+    return this.commandLog().loginWaitStyleSets;
+  }
+
+  /** Each delay written through useLoginWaitPreferences().setDelay, in order. */
+  loginWaitDelaySets(): LoginWaitDelay[] {
+    return this.commandLog().loginWaitDelaySets;
   }
 
   /** Select an ambient-style option through the REAL "Ambient style" segment,
@@ -160,3 +213,14 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     await this.selectSegment("ambientStyle", style);
   }
 }
+
+/** The section headings the modal renders. Kept as a set so `sectionsInColumn`
+ * can pick heading elements out of a column without depending on the CSS
+ * module's hashed class name. */
+const SECTION_LABELS = new Set([
+  "DISPLAY",
+  "MOTION",
+  "TRADING",
+  "NOTIFICATIONS",
+  "DATA & PRIVACY",
+]);

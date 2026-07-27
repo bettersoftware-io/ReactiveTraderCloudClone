@@ -21,6 +21,8 @@ import {
   EQ_WATCHLIST_SORT_STORAGE_KEY,
   FORCE_BOOT_ANIMATION_STORAGE_KEY,
   JARVIS_SKIN_STORAGE_KEY,
+  LOGIN_WAIT_DELAY_STORAGE_KEY,
+  LOGIN_WAIT_STYLE_STORAGE_KEY,
   LOGIN_WAIT_VARIANT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   POWER_SAVER_STORAGE_KEY,
@@ -81,6 +83,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
           LOGIN_WAIT_VARIANT_STORAGE_KEY,
           seed.loginWaitVariant,
         );
+      }
+
+      if (seed.loginWaitStyle) {
+        localStorage.setItem(LOGIN_WAIT_STYLE_STORAGE_KEY, seed.loginWaitStyle);
+      }
+
+      if (seed.loginWaitDelay) {
+        localStorage.setItem(LOGIN_WAIT_DELAY_STORAGE_KEY, seed.loginWaitDelay);
       }
 
       if (seed.creditRfqFilter) {
@@ -205,6 +215,8 @@ function clearStorage(): void {
   localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
   localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
   localStorage.removeItem(LOGIN_WAIT_VARIANT_STORAGE_KEY);
+  localStorage.removeItem(LOGIN_WAIT_STYLE_STORAGE_KEY);
+  localStorage.removeItem(LOGIN_WAIT_DELAY_STORAGE_KEY);
   localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);

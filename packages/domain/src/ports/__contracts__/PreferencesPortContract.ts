@@ -11,6 +11,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
@@ -18,6 +20,8 @@ import {
   type EqBlotterView,
   type EqWatchlistSort,
   type JarvisSkin,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
@@ -37,6 +41,8 @@ export interface PreferencesSeed {
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   loginWaitVariant?: LoginWaitVariant;
+  loginWaitStyle?: LoginWaitStyle;
+  loginWaitDelay?: LoginWaitDelay;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
@@ -261,6 +267,67 @@ export function describePreferencesPortContract(
       it("reads back a seeded loginWaitVariant", async () => {
         const port = makeSeeded({ loginWaitVariant: "reactor" });
         expect(await firstValueFrom(port.loginWaitVariant$())).toBe("reactor");
+      });
+    });
+
+    describe("loginWaitStyle", () => {
+      it("empty store emits the default loginWaitStyle", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.loginWaitStyle$())).toBe(
+          DEFAULT_LOGIN_WAIT_STYLE,
+        );
+      });
+
+      it("setLoginWaitStyle pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: LoginWaitStyle[] = [];
+        const sub = port.loginWaitStyle$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setLoginWaitStyle("reactor");
+        sub.unsubscribe();
+        expect(seen).toEqual(["auto", "reactor"]);
+      });
+
+      it("reads back a seeded loginWaitStyle", async () => {
+        const port = makeSeeded({ loginWaitStyle: "handshake" });
+        expect(await firstValueFrom(port.loginWaitStyle$())).toBe("handshake");
+      });
+
+      it("keeps loginWaitStyle and loginWaitVariant independent", async () => {
+        // The style is the user's CHOICE; the variant is the cycle POINTER.
+        // Pinning a style must not rewrite the pointer, or switching back to
+        // "auto" would resume from somewhere the user never chose.
+        const port = makeSeeded({});
+        port.setLoginWaitStyle("reactor");
+        expect(await firstValueFrom(port.loginWaitVariant$())).toBe(
+          DEFAULT_LOGIN_WAIT_VARIANT,
+        );
+      });
+    });
+
+    describe("loginWaitDelay", () => {
+      it("empty store emits the default loginWaitDelay", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.loginWaitDelay$())).toBe(
+          DEFAULT_LOGIN_WAIT_DELAY,
+        );
+      });
+
+      it("setLoginWaitDelay pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: LoginWaitDelay[] = [];
+        const sub = port.loginWaitDelay$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setLoginWaitDelay("3s");
+        sub.unsubscribe();
+        expect(seen).toEqual(["off", "3s"]);
+      });
+
+      it("reads back a seeded loginWaitDelay", async () => {
+        const port = makeSeeded({ loginWaitDelay: "6s" });
+        expect(await firstValueFrom(port.loginWaitDelay$())).toBe("6s");
       });
     });
 

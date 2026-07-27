@@ -1,3 +1,4 @@
+export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";

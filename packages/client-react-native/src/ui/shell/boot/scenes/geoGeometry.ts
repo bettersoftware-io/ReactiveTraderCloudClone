@@ -120,17 +120,25 @@ export function geoPlanePolys(): readonly GeoPlanePoly[] {
 }
 
 /**
- * Even-odd point-in-polygon across every landmass. BUILD-ONCE ONLY.
+ * Even-odd point-in-polygon across every landmass.
  *
- * Exported so the terrain/graticule builders and the per-frame radar sweep can
- * share one implementation, but it is **not** worklet-marked: the only
- * per-frame caller is the sweep, which builds its own marked wrapper.
+ * Shared by the build-once terrain/graticule builders AND by the per-frame
+ * radar sweep, so it is worklet-marked: `GeoScene`'s `drawRadarSweep` calls it
+ * every frame from the UI thread. Marking it costs the build-once callers
+ * nothing — a worklet still runs normally on the JS thread.
+ *
+ * This header previously stated the sweep "builds its own marked wrapper". It
+ * does not; it calls this function directly (`GeoScene.tsx`, `drawRadarSweep`),
+ * so on device the call resolved to `undefined` — silently, and invisibly to
+ * jest, which runs everything on one thread. Corrected 2026-07-27.
  */
 export function geoPointInside(
   polys: readonly GeoPlanePoly[],
   x: number,
   z: number,
 ): boolean {
+  "worklet";
+
   for (const poly of polys) {
     let isInside = false;
     const points = poly.points;

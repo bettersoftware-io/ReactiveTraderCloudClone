@@ -52,10 +52,25 @@ export default defineConfig({
   // `visual` CI job), tipping a random text-heavy golden over a strict threshold
   // with no real change. Raised from 0.025 to 0.06: text-heavy fixed-dimension
   // goldens (e.g. fxBlotter populated/sorted) show ~0.04 ratio of sub-pixel AA
-  // jitter on x86 run-to-run; 0.025 was too tight. 0.06 still catches
-  // layout/structure regressions (which move >> 6%).
+  // jitter on x86 run-to-run; 0.025 was too tight.
   // See project_visual_goldens_dual_set / PR #40 (the now-retired playwright-ct
   // tier set this precedent first).
+  //
+  // KNOWN BLIND SPOT — this comment used to claim "0.06 still catches
+  // layout/structure regressions (which move >> 6%)". That is FALSE for the
+  // text-sparse surfaces in this HUD, and was measured, not guessed:
+  // restructuring PreferencesModal into two balanced columns (a new section,
+  // ~13 rows relocated, two rows added) moved only **0.02** of pixels — a third
+  // of the threshold — so the tier reported PASS against a golden of the old
+  // layout. Dark background dominates these captures; glyphs and toggles are a
+  // small pixel fraction, so even a total rearrangement stays under 6%.
+  //
+  // Consequence to remember: A PASSING VISUAL RUN IS NOT EVIDENCE THAT LAYOUT
+  // IS UNCHANGED on a sparse surface. After any deliberate layout change,
+  // regenerate the goldens and LOOK at them; do not infer from a green tier.
+  // The regen script passes `--update-snapshots=all` for exactly this reason —
+  // the default ("changed") rewrites nothing when the comparison passes, which
+  // silently no-op'd a targeted refresh of this very scenario.
   //
   // NOT A TEMPORARY MASK — DO NOT "tighten this away". Sub-pixel glyph AA is
   // non-deterministic ACROSS x86 CI runner instances (FreeType/HarfBuzz

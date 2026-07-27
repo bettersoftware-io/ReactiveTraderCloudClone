@@ -28,6 +28,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
@@ -43,6 +45,8 @@ import {
   type Instrument,
   type JarvisSkin,
   type LogEvent,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type MetricSample,
   type PlaceOrderRequest,
   type PositionUpdates,
@@ -261,6 +265,10 @@ export interface CommandLog {
   powerSaverLevelSets: PowerSaverLevel[];
   /** Each value written through useForceBootAnimation().setEnabled/toggle, in order. */
   forceBootAnimationSets: boolean[];
+  /** Each value written through useLoginWaitPreferences().setStyle, in order. */
+  loginWaitStyleSets: LoginWaitStyle[];
+  /** Each value written through useLoginWaitPreferences().setDelay, in order. */
+  loginWaitDelaySets: LoginWaitDelay[];
   /** Each incident kind injected via injectIncident(), in order. */
   injectedIncidents: IncidentKind[];
 }
@@ -325,6 +333,10 @@ export interface World {
   readonly powerSaverLevel: BehaviorSubject<PowerSaverLevel>;
   /** Reactive force-boot-animation preference backing useForceBootAnimation. */
   readonly forceBootAnimation: BehaviorSubject<boolean>;
+  /** Reactive login-wait style preference backing useLoginWaitPreferences. */
+  readonly loginWaitStyle: BehaviorSubject<LoginWaitStyle>;
+  /** Reactive login-wait delay preference backing useLoginWaitPreferences. */
+  readonly loginWaitDelay: BehaviorSubject<LoginWaitDelay>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
@@ -440,6 +452,8 @@ export function createWorld(
   powerSaverLevelSeed?: PowerSaverLevel,
   ambientStyleSeed?: AmbientStyle,
   forceBootAnimationSeed?: boolean,
+  loginWaitStyleSeed?: LoginWaitStyle,
+  loginWaitDelaySeed?: LoginWaitDelay,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -635,6 +649,14 @@ export function createWorld(
     forceBootAnimationSeed ?? false,
   );
 
+  const loginWaitStyle = new BehaviorSubject<LoginWaitStyle>(
+    loginWaitStyleSeed ?? DEFAULT_LOGIN_WAIT_STYLE,
+  );
+
+  const loginWaitDelay = new BehaviorSubject<LoginWaitDelay>(
+    loginWaitDelaySeed ?? DEFAULT_LOGIN_WAIT_DELAY,
+  );
+
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
@@ -733,6 +755,8 @@ export function createWorld(
     animatedBackgroundSets: [],
     powerSaverLevelSets: [],
     forceBootAnimationSets: [],
+    loginWaitStyleSets: [],
+    loginWaitDelaySets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
   };
@@ -752,6 +776,8 @@ export function createWorld(
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,
+    loginWaitStyle,
+    loginWaitDelay,
     viewMode,
     creditRfqFilter,
     setCreditRfqFilter: (filter: CreditRfqFilter) => {
