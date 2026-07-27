@@ -9,6 +9,7 @@ import {
   crosshairVm,
   defaultViewport,
   isAtLiveEdge,
+  navigatorVm,
   volumeVm,
 } from "@rtc/motion-core";
 
@@ -209,6 +210,7 @@ function ForcedChart(props: ForcedChartProps): JSX.Element {
       atLiveEdge={atLiveEdge()}
       volumeBars={volumeVm(CANDLES, props.viewport)}
       onBackToLive={() => {}}
+      nav={navigatorVm(CANDLES, props.viewport)}
     />
   );
 }

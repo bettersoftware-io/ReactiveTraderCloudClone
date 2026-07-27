@@ -9,11 +9,14 @@ import {
   crosshairVm,
   indicatorPoints,
   indicatorValues,
+  type NavigatorVm,
+  navigatorVm,
   volumeVm,
 } from "@rtc/motion-core";
 
 import { ChartPlot } from "./ChartPlot";
 import { type ChartGestures, createChartGestures } from "./createChartGestures";
+import { createNavigatorBrush } from "./createNavigatorBrush";
 import type { IndicatorPath } from "./SvgPathLayer";
 
 /**
@@ -66,6 +69,14 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     );
   });
 
+  const brush = createNavigatorBrush(g.viewport, g.applyViewport, () => {
+    return props.candles.length;
+  });
+
+  const nav = createMemo((): NavigatorVm => {
+    return navigatorVm(props.candles, g.viewport());
+  });
+
   return (
     <ChartPlot
       vm={vm()}
@@ -77,6 +88,8 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
       onBackToLive={g.resetToLive}
       plotProps={g.plotProps}
       plotRef={g.plotRef}
+      nav={nav()}
+      navProps={brush.stripProps}
     />
   );
 }
