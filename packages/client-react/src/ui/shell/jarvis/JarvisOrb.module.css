@@ -1,115 +1,173 @@
-/* Header J.A.R.V.I.S orb (perf-checklist form, docs/performance.md).
-   `.core`/`.glow` are stacked spans painted ONCE (radial gradients baked
-   into the background) — the idle "breath" animates only `transform: scale`
-   on `.core` and only `opacity` on `.glow`: one animation, one property,
-   per element (T5), both HTML elements not SVG children (T3), no `var()`
-   inside the animated transform (T4), no animated box-shadow/filter (T2/T6).
-   Freeze needs no local rule: the global `[data-power-saver="freeze"]`
-   catch-all in index.css already zeroes every animation under it. */
+/* Header J.A.R.V.I.S orb — the v5 prototype's header core (perf-checklist
+   form, docs/performance.md). The sphere, the halo and the two ring wrappers
+   are stacked HTML spans painted ONCE (radial gradients + STATIC box-shadow
+   glows baked into the background); motion is only `transform` (the ring
+   wrappers spin, the sphere breathes) and `opacity` (the halo) — one
+   animation per property per element (T5), HTML elements not SVG children
+   (T3, the SVGs sit INSIDE a span that carries the rotation), no `var()`
+   inside an animated transform (T4), no animated box-shadow/filter (T2/T6),
+   no backdrop-filter anywhere.
+
+   Freeze gets its own explicit `animation: none` block at the bottom: the
+   global `[data-power-saver="freeze"]` catch-all only collapses durations,
+   while `animation-play-state: var(--fx-play)` PAUSES these loops — a paused
+   animation is still a live Animation object, which is exactly what the
+   powerSaver e2e's `document.getAnimations()` census fails on. */
 
 .button {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-primary);
+  margin-right: 3px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background-color: transparent;
   cursor: pointer;
   overflow: visible;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
 }
 
-.button[data-active="true"] {
-  border-color: var(--accent-primary);
-  box-shadow: var(--glow);
-}
-
+.halo,
 .core,
-.glow {
+.ringOuter,
+.ringInner {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
-.core {
-  inset: 7px;
-  background: radial-gradient(
-    circle at 35% 32%,
-    var(--accent-primary) 0%,
-    transparent 72%
-  );
-  animation: jarvis-core-breath 4s ease-in-out infinite;
-  animation-play-state: var(--fx-play, running);
-}
-
-.glow {
-  inset: -3px;
+/* Ambient bloom that survives the loss of backdrop-filter: a soft radial
+   wash under the sphere, breathing on opacity alone. */
+.halo {
+  inset: -7px;
   background: radial-gradient(
     circle,
     var(--accent-primary) 0%,
-    transparent 70%
+    transparent 68%
   );
-  opacity: 0.3;
-  animation: jarvis-glow-breath 4s ease-in-out infinite;
+  opacity: 0.22;
+  will-change: opacity;
+  animation: jarvis-orb-halo 4s ease-in-out infinite;
   animation-play-state: var(--fx-play, running);
 }
 
-@keyframes jarvis-core-breath {
+/* The sphere. PROTO: inset 9px, accent2 core bleeding into accent, with a
+   two-stop static glow (0 0 12px / 0 0 26px). */
+.core {
+  inset: 9px;
+  background: radial-gradient(
+    circle at 36% 32%,
+    var(--accent-2) 0%,
+    var(--accent-primary) 58%,
+    transparent 80%
+  );
+  box-shadow:
+    0 0 12px var(--accent-primary),
+    0 0 26px var(--accent-primary);
+  will-change: transform;
+  animation: jarvis-orb-pulse 2.8s ease-in-out infinite;
+  animation-play-state: var(--fx-play, running);
+}
+
+/* Counter-rotating orbits. The wrapper span carries the transform so the
+   rotation composites (an SVG child's transform would not — T3). */
+.ringOuter,
+.ringInner {
+  inset: 0;
+  will-change: transform;
+  animation-play-state: var(--fx-play, running);
+}
+
+.ringOuter {
+  animation: jarvis-orb-spin 9s linear infinite;
+}
+
+.ringInner {
+  animation: jarvis-orb-spin-rev 14s linear infinite;
+}
+
+.ringSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@keyframes jarvis-orb-pulse {
   0%,
   100% {
-    transform: scale(0.82);
-  }
-
-  50% {
     transform: scale(1);
   }
+
+  50% {
+    transform: scale(1.12);
+  }
 }
 
-@keyframes jarvis-glow-breath {
+@keyframes jarvis-orb-halo {
   0%,
   100% {
-    opacity: 0.18;
+    opacity: 0.16;
   }
 
   50% {
-    opacity: 0.48;
+    opacity: 0.4;
   }
 }
 
-/* Speaking — the same scale/opacity pair, sped up (a distinct keyframe name
-   so only one of idle/speaking/attention is ever selected per element —
-   still one animation per property, T5). */
-.button[data-jarvis-state="speaking"] .core {
-  animation-name: jarvis-core-speaking;
-  animation-duration: 0.85s;
+@keyframes jarvis-orb-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.button[data-jarvis-state="speaking"] .glow {
-  animation-name: jarvis-glow-speaking;
-  animation-duration: 0.85s;
+@keyframes jarvis-orb-spin-rev {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
 }
 
-@keyframes jarvis-core-speaking {
+/* MK-II Reactor — a tighter, harder core: the sphere shrinks inside the thick
+   segmented coil and the outer ring spins faster; the inner rim is a STATIC
+   hoop (PROTO renders it with no animation at all). */
+.button[data-skin="reactor"] .core {
+  inset: 12px;
+  background: radial-gradient(
+    circle,
+    var(--accent-2) 0%,
+    var(--accent-primary) 62%,
+    transparent 82%
+  );
+}
+
+.button[data-skin="reactor"] .ringOuter {
+  animation-duration: 7s;
+}
+
+.button[data-skin="reactor"] .ringInner {
+  animation: none;
+}
+
+/* Open — the core is "engaged": a brighter standing halo behind it. */
+.button[data-active="true"] .halo {
+  animation-name: jarvis-orb-halo-active;
+}
+
+@keyframes jarvis-orb-halo-active {
   0%,
   100% {
-    transform: scale(0.88);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-@keyframes jarvis-glow-speaking {
-  0%,
-  100% {
-    opacity: 0.28;
+    opacity: 0.34;
   }
 
   50% {
@@ -117,83 +175,121 @@
   }
 }
 
-/* Attention (a confirmation is awaiting a decision) — urgent amber pulse,
-   recolored via var(--accent-aware) rather than a new gradient stop set. */
-.button[data-jarvis-state="attention"] .core {
-  background: radial-gradient(
-    circle at 35% 32%,
-    var(--accent-aware) 0%,
-    transparent 72%
-  );
-  animation-name: jarvis-core-attention;
-  animation-duration: 0.6s;
+/* Speaking — the same scale/opacity pair, sped up (distinct keyframe names so
+   only one of idle/speaking/attention is ever selected per element — still one
+   animation per property, T5). */
+.button[data-jarvis-state="speaking"] .core {
+  animation-name: jarvis-orb-pulse-speaking;
+  animation-duration: 0.85s;
 }
 
-.button[data-jarvis-state="attention"] .glow {
-  background: radial-gradient(circle, var(--accent-aware) 0%, transparent 70%);
-  animation-name: jarvis-glow-attention;
-  animation-duration: 0.6s;
+.button[data-jarvis-state="speaking"] .halo {
+  animation-name: jarvis-orb-halo-speaking;
+  animation-duration: 0.85s;
 }
 
-@keyframes jarvis-core-attention {
+@keyframes jarvis-orb-pulse-speaking {
   0%,
   100% {
-    transform: scale(0.85);
+    transform: scale(0.94);
   }
 
   50% {
-    transform: scale(1.1);
+    transform: scale(1.18);
   }
 }
 
-@keyframes jarvis-glow-attention {
+@keyframes jarvis-orb-halo-speaking {
   0%,
   100% {
     opacity: 0.3;
   }
 
   50% {
-    opacity: 0.75;
+    opacity: 0.68;
   }
 }
 
-/* Reactor skin — recolor the core/glow gradients via a class-scoped rule
-   (not an inline custom property, per the brief). Singularity keeps the
-   default accent-primary cyan above. */
-.button[data-skin="reactor"] .core {
+/* Attention (a confirmation is awaiting a decision) — urgent amber pulse,
+   recolored via var(--accent-aware) rather than a new gradient stop set. */
+.button[data-jarvis-state="attention"] .core {
   background: radial-gradient(
-    circle at 35% 32%,
-    var(--accent-2) 0%,
-    transparent 72%
+    circle at 36% 32%,
+    var(--text-primary) 0%,
+    var(--accent-aware) 58%,
+    transparent 80%
   );
+  box-shadow:
+    0 0 12px var(--accent-aware),
+    0 0 30px var(--accent-aware);
+  animation-name: jarvis-orb-pulse-attention;
+  animation-duration: 0.6s;
 }
 
-.button[data-skin="reactor"] .glow {
-  background: radial-gradient(circle, var(--accent-2) 0%, transparent 70%);
+.button[data-jarvis-state="attention"] .halo {
+  background: radial-gradient(circle, var(--accent-aware) 0%, transparent 68%);
+  animation-name: jarvis-orb-halo-attention;
+  animation-duration: 0.6s;
 }
 
+@keyframes jarvis-orb-pulse-attention {
+  0%,
+  100% {
+    transform: scale(0.9);
+  }
+
+  50% {
+    transform: scale(1.16);
+  }
+}
+
+@keyframes jarvis-orb-halo-attention {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Unread badge — PROTO paints it in accent2 with a static glow. */
 .badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 15px;
-  height: 15px;
+  top: -4px;
+  right: -4px;
+  z-index: 2;
+  min-width: 14px;
+  height: 14px;
   padding: 0 3px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--text-on-accent);
-  background-color: var(--accent-primary);
-  border-radius: 8px;
-  box-shadow: 0 0 8px var(--accent-primary);
+  background-color: var(--accent-2);
+  border-radius: 7px;
+  box-shadow: 0 0 8px var(--accent-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .halo,
   .core,
-  .glow {
+  .ringOuter,
+  .ringInner {
     animation: none;
   }
+}
+
+/* Power-saver Freeze — drop the animations outright rather than merely
+   pausing them (see the header comment). Every animated class in this file
+   is listed here. */
+:root[data-power-saver="freeze"] .halo,
+:root[data-power-saver="freeze"] .core,
+:root[data-power-saver="freeze"] .ringOuter,
+:root[data-power-saver="freeze"] .ringInner {
+  animation: none;
 }
