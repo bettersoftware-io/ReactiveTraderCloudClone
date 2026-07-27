@@ -13,6 +13,7 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -24,6 +25,8 @@ import {
   type EqBlotterView,
   type EqWatchlistSort,
   isPowerSaverLevel,
+  JARVIS_SKINS,
+  type JarvisSkin,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
   LOGIN_WAIT_VARIANTS,
@@ -52,6 +55,7 @@ export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
+export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 
 function isThemeModePreference(
   value: string | null,
@@ -63,6 +67,10 @@ function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
     value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
   );
+}
+
+function isJarvisSkin(value: string | null): value is JarvisSkin {
+  return value !== null && (JARVIS_SKINS as readonly string[]).includes(value);
 }
 
 function isThemeSkin(value: string | null): value is ThemeSkin {
@@ -210,6 +218,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
+  private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       readStored(
@@ -284,6 +294,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         isAmbientStyle,
         DEFAULT_AMBIENT_STYLE,
       ),
+    );
+    this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
+      readStored(JARVIS_SKIN_STORAGE_KEY, isJarvisSkin, DEFAULT_JARVIS_SKIN),
     );
   }
 
@@ -411,5 +424,14 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setAmbientStyle(style: AmbientStyle): void {
     writeStored(AMBIENT_STYLE_STORAGE_KEY, style);
     this.ambientStyle.next(style);
+  }
+
+  jarvisSkin$(): Observable<JarvisSkin> {
+    return this.jarvisSkin.pipe(distinctUntilChanged());
+  }
+
+  setJarvisSkin(skin: JarvisSkin): void {
+    writeStored(JARVIS_SKIN_STORAGE_KEY, skin);
+    this.jarvisSkin.next(skin);
   }
 }

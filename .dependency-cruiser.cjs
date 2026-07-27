@@ -154,11 +154,11 @@ module.exports = {
       name: "client-core-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core is the shared application core — it may depend only on domain/shared, never on bindings, a view-layer leaf, any client, or the server.",
+        "@rtc/client-core is the shared application core — it may depend only on domain/shared/motion-core (the ScriptedJarvisAdapter's typed-reveal chunk math), never on bindings, any client, or the server.",
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|domain|shared)/",
+        pathNot: "^packages/(client-core|domain|shared|motion-core)/",
       },
     },
     {

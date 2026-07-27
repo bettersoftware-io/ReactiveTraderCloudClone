@@ -35,6 +35,8 @@ import {
   IncidentControls,
   InstrumentHeader,
   InstrumentTabs,
+  JarvisOrb,
+  JarvisOverlay,
   KpiRow,
   LatencyHistogram,
   LayoutEngine,
@@ -206,6 +208,8 @@ import {
 import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
+import { JarvisOrb as JarvisOrbComponent } from "#/ui/shell/jarvis/JarvisOrb";
+import { JarvisOverlay as JarvisOverlayComponent } from "#/ui/shell/jarvis/JarvisOverlay";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { PowerSaverRoot as PowerSaverRootComponent } from "#/ui/shell/power/PowerSaverRoot";
 import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
@@ -787,6 +791,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     ThemeToggle,
     (): JSX.Element => {
       return <ThemeToggleComponent />;
+    },
+  ],
+  [
+    JarvisOrb,
+    (): JSX.Element => {
+      return <JarvisOrbComponent />;
+    },
+  ],
+  [
+    JarvisOverlay,
+    (): JSX.Element => {
+      return <JarvisOverlayComponent />;
     },
   ],
   [

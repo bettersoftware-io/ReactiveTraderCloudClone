@@ -6,6 +6,7 @@ import type {
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
+  JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
   LoginWaitVariant,
@@ -47,6 +48,9 @@ export interface PreferencesPort {
    * animatedBackground motion gate. */
   ambientStyle$(): Observable<AmbientStyle>;
   setAmbientStyle(style: AmbientStyle): void;
+  /** Replay-current J.A.R.V.I.S skin stream; emits synchronously on subscribe. */
+  jarvisSkin$(): Observable<JarvisSkin>;
+  setJarvisSkin(skin: JarvisSkin): void;
   /** Power-saver level; default "off". Ordered ladder off → calm → freeze
    * (Freeze ⊇ Calm). While not "off" the client forces the cheap rendering
    * path (still ambience, conflated price re-renders); "freeze" additionally

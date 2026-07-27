@@ -2,7 +2,12 @@ import { state } from "@rx-state/core";
 import { firstValueFrom } from "rxjs";
 import type { Accessor } from "solid-js";
 
-import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
+import type {
+  ActivityEntry,
+  AppCommands,
+  JarvisState,
+  Presenters,
+} from "@rtc/client-core";
 import {
   type AnimationIntent,
   type AuthViewState,
@@ -61,6 +66,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -120,6 +126,19 @@ type UseEqWorkspaceResult = {
  * of the singleton `presenters.incident.state$` (mirrors useAuth/useBootGate
  * below, not a per-mount `useMachine`), so it belongs to part 1. */
 type UseIncidentResult = { state: Accessor<IncidentState> } & IncidentIntents;
+
+/** Jarvis AI assistant state + intents (singleton, app-level). */
+export type UseJarvisResult = {
+  state: Accessor<JarvisState>;
+} & {
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+  send: (text: string) => void;
+  approveConfirmation: () => void;
+  declineConfirmation: () => void;
+  setSkin: (skin: JarvisSkin) => void;
+};
 
 /** The AdminPanel throughput view: slider/input value, initial-load flag, and
  * the optional confirmation/error banner — every read field as an accessor. */
@@ -342,6 +361,8 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** Jarvis AI assistant state + intents (singleton, app-level). */
+  useJarvis: () => UseJarvisResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -973,6 +994,12 @@ export function createViewModel(
         setTimeframe: setEqTimeframe,
         setChartType: setEqChartType,
         toggleIndicator: toggleEqIndicator,
+      };
+    },
+    useJarvis: () => {
+      return {
+        state: toSignal(presenters.jarvis.state$),
+        ...presenters.jarvis.intents,
       };
     },
     useMetrics: () => {

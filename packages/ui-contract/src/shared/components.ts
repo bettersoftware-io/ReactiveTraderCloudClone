@@ -172,6 +172,8 @@ import {
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
+import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
 import {
   LayoutEnginePage,
   type LayoutEngineProps,
@@ -453,6 +455,19 @@ export const ThemeToggle = component<Record<string, never>, ThemeTogglePage>(
     return new ThemeTogglePage(ctx);
   },
 );
+
+export const JarvisOrb = component<Record<string, never>, JarvisOrbPage>(
+  (ctx) => {
+    return new JarvisOrbPage(ctx);
+  },
+);
+
+export const JarvisOverlay = component<
+  Record<string, never>,
+  JarvisOverlayPage
+>((ctx) => {
+  return new JarvisOverlayPage(ctx);
+});
 
 export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
   (ctx) => {
