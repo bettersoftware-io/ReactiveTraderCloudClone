@@ -68,3 +68,23 @@ export async function expectTimeLabelsMatch(
     `time labels changed while panned away: before=${JSON.stringify(baseline)} after=${JSON.stringify(current)}`,
   );
 }
+
+export async function expectNavigatorVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitNavigatorVisible(seconds * 1_000);
+}
+
+export async function dragNavigatorWindowBy(
+  ctx: TestContext,
+  stripWidthFrac: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.dragNavigatorWindowBy(stripWidthFrac);
+}
+
+export async function dragNavigatorRightHandleToLiveEdge(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.equitiesChart.dragNavigatorRightHandleToLiveEdge();
+}
