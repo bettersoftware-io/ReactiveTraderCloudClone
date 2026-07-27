@@ -85,6 +85,13 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     const y = strip.y + strip.height / 2;
     await this.page.mouse.move(handle.x + handle.width / 2, y);
     await this.page.mouse.down();
+    // The -1px end point maps to (300 - 300/stripWidthPx) candles, which only
+    // registers as the live edge (isAtLiveEdge, EDGE_EPS = 0.5 of 300) while
+    // the strip is >=600px wide. At the current 1280px viewport / 290px right
+    // rail layout the strip renders ~933px, so this has ~1.56x margin — but
+    // that margin is a function of unrelated layout constants, not asserted
+    // here: a future layout change that shrinks the chart column below 600px
+    // would break this drag with a confusing failure signature.
     await this.page.mouse.move(strip.x + strip.width - 1, y, { steps: 5 });
     await this.page.mouse.up();
   }
