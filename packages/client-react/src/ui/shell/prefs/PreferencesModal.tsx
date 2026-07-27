@@ -169,7 +169,6 @@ export function PreferencesModal({
               />
               <PrefSegment
                 label="Login wait style"
-                description="Which sign-in waiting animation to show. Auto alternates between them."
                 options={LOGIN_WAIT_STYLE_OPTIONS}
                 value={loginWaitStyle}
                 onChange={(value: string) => {
@@ -179,7 +178,7 @@ export function PreferencesModal({
               />
               <PrefSegment
                 label="Login wait delay"
-                description="Holds the sign-in result back so the waiting animation is long enough to watch."
+                description="Holds sign-in back so the wait animation is visible."
                 options={LOGIN_WAIT_DELAY_OPTIONS}
                 value={loginWaitDelay}
                 onChange={(value: string) => {
