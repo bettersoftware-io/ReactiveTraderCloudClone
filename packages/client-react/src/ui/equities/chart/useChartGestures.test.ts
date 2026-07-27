@@ -492,6 +492,24 @@ describe("useChartGestures", () => {
     const beforeSpan = before ? before.end - before.start : 0;
     expect(afterSpan).toBeGreaterThan(beforeSpan);
   });
+
+  it("applyViewport sets the viewport (clamped), the navigator brush's write path", () => {
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    });
+
+    act(() => {
+      result.current.applyViewport({ start: 100, end: 150 });
+    });
+    expect(result.current.viewport).toEqual({ start: 100, end: 150 });
+    expect(result.current.atLiveEdge).toBe(false);
+
+    // Out-of-bounds input clamps rather than escaping the series.
+    act(() => {
+      result.current.applyViewport({ start: -10, end: 40 });
+    });
+    expect(result.current.viewport).toEqual({ start: 0, end: 50 });
+  });
 });
 
 /** Stubs a 500×50 rect at the origin for the plot div, standing in for the

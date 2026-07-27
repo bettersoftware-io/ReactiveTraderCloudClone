@@ -50,6 +50,9 @@ export interface ChartGestures {
   /** Attach to the plot wrapper — the wheel listener attaches here. */
   readonly plotRef: RefObject<HTMLDivElement | null>;
   readonly resetToLive: () => void;
+  /** Sets the viewport directly (clamped) — the navigator brush's write
+   * path into the plot's one viewport cell. */
+  readonly applyViewport: (vp: ChartViewport) => void;
 }
 
 /** The drag-in-flight bookkeeping cached at pointerdown: the viewport the
@@ -215,6 +218,10 @@ export function useChartGestures(
     setViewport(defaultViewport(seriesLen, defaultVisible));
   }
 
+  function applyViewport(vp: ChartViewport): void {
+    setViewport(clampViewport(vp, seriesLen));
+  }
+
   function panOrZoomByKey(e: ReactKeyboardEvent<HTMLDivElement>): void {
     switch (e.key) {
       case "ArrowLeft":
@@ -279,5 +286,6 @@ export function useChartGestures(
     },
     plotRef,
     resetToLive,
+    applyViewport,
   };
 }

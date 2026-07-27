@@ -51,6 +51,9 @@ export interface ChartGestures {
    *  attaches here. */
   readonly plotRef: (el: HTMLDivElement) => void;
   readonly resetToLive: () => void;
+  /** Sets the viewport directly (clamped) — the navigator brush's write
+   * path into the plot's one viewport cell. */
+  readonly applyViewport: (vp: ChartViewport) => void;
 }
 
 /** The drag-in-flight bookkeeping cached at pointerdown: the viewport the
@@ -238,6 +241,10 @@ export function createChartGestures(
     setViewport(defaultViewport(seriesLen(), defaultVisible()));
   }
 
+  function applyViewport(vp: ChartViewport): void {
+    setViewport(clampViewport(vp, seriesLen()));
+  }
+
   function panOrZoomByKey(e: KeyboardEvent): void {
     switch (e.key) {
       case "ArrowLeft":
@@ -306,5 +313,6 @@ export function createChartGestures(
     },
     plotRef,
     resetToLive,
+    applyViewport,
   };
 }

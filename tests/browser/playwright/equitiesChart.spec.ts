@@ -30,4 +30,22 @@ test.describe("Equities chart", () => {
     await equitiesChart.clickBackToLive(ctx);
     await equitiesChart.expectBackToLiveHiddenWithin(ctx, 3);
   });
+
+  test("navigator brush pans away; dragging its right handle to the edge resumes live", async ({
+    ctx,
+  }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+    await equitiesChart.expectNavigatorVisibleWithin(ctx, 3);
+
+    await equitiesChart.dragNavigatorWindowBy(ctx, -0.2);
+    await equitiesChart.expectBackToLiveVisibleWithin(ctx, 3);
+
+    await equitiesChart.recordTimeLabels(ctx, "brushed");
+    await common.waitSeconds(ctx, 1.5); // live ticks continue in the background
+    await equitiesChart.expectTimeLabelsMatch(ctx, "brushed");
+
+    await equitiesChart.dragNavigatorRightHandleToLiveEdge(ctx);
+    await equitiesChart.expectBackToLiveHiddenWithin(ctx, 3);
+  });
 });

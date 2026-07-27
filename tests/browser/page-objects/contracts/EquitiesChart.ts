@@ -17,4 +17,11 @@ export interface EquitiesChartPO {
   clickBackToLive(): Promise<void>;
   /** Ordered text of every rendered time-axis tick. */
   timeLabels(): Promise<string[]>;
+  waitNavigatorVisible(timeoutMs: number): Promise<void>;
+  /** Drags the navigator window body by a fraction of the strip's width
+   * (negative = toward older candles). */
+  dragNavigatorWindowBy(stripWidthFrac: number): Promise<void>;
+  /** Drags the right handle to the strip's right edge — re-enters
+   * live-follow. */
+  dragNavigatorRightHandleToLiveEdge(): Promise<void>;
 }

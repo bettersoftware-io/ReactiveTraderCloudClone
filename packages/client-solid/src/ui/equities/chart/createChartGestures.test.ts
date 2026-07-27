@@ -383,6 +383,19 @@ describe("createChartGestures", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it("applyViewport sets the viewport (clamped), the navigator brush's write path", () => {
+    const { result } = renderHook(() => {
+      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
+    });
+
+    result.applyViewport({ start: 100, end: 150 });
+    expect(result.viewport()).toEqual({ start: 100, end: 150 });
+    expect(result.atLiveEdge()).toBe(false);
+
+    result.applyViewport({ start: -10, end: 40 });
+    expect(result.viewport()).toEqual({ start: 0, end: 50 });
+  });
+
   it("wheel-down (deltaY > 0) zooms out", () => {
     const box: GesturesBox = { gestures: null };
     const { getByTestId } = render(() => {

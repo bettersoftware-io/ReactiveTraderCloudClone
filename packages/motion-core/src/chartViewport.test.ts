@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  centerViewportAt,
+  clampViewport,
   defaultViewport,
   followLive,
   isAtLiveEdge,
   MIN_VIEWPORT_SPAN,
   panBy,
+  resizeViewportEdge,
   zoomAt,
 } from "./chartViewport.js";
 
@@ -69,6 +72,120 @@ describe("live edge", () => {
     expect(followLive({ start: 100, end: 160 }, 300, 301)).toEqual({
       start: 100,
       end: 160,
+    });
+  });
+});
+
+describe("resizeViewportEdge", () => {
+  it("moves only the dragged edge", () => {
+    expect(
+      resizeViewportEdge("start", { start: 100, end: 160 }, -20, 300),
+    ).toEqual({ start: 80, end: 160 });
+    expect(
+      resizeViewportEdge("end", { start: 100, end: 160 }, 20, 300),
+    ).toEqual({ start: 100, end: 180 });
+  });
+
+  it("floors the span at MIN_VIEWPORT_SPAN instead of letting edges cross", () => {
+    expect(
+      resizeViewportEdge("start", { start: 100, end: 160 }, 200, 300),
+    ).toEqual({ start: 155, end: 160 });
+    expect(
+      resizeViewportEdge("end", { start: 100, end: 160 }, -200, 300),
+    ).toEqual({ start: 100, end: 105 });
+  });
+
+  it("clamps the moving edge at the series bounds WITHOUT moving the fixed edge", () => {
+    // clampViewport would return {0, 70} here (span-preserving); the resize must pin end at 60.
+    expect(
+      resizeViewportEdge("start", { start: 10, end: 60 }, -50, 300),
+    ).toEqual({ start: 0, end: 60 });
+    expect(
+      resizeViewportEdge("end", { start: 240, end: 290 }, 50, 300),
+    ).toEqual({ start: 240, end: 300 });
+  });
+
+  it("stays sane when the whole series is shorter than MIN_VIEWPORT_SPAN", () => {
+    expect(resizeViewportEdge("start", { start: 0, end: 3 }, 2, 3)).toEqual({
+      start: 0,
+      end: 3,
+    });
+    expect(resizeViewportEdge("end", { start: 0, end: 3 }, -2, 3)).toEqual({
+      start: 0,
+      end: 3,
+    });
+  });
+});
+
+describe("resizeViewportEdge output is a fixed point of clampViewport (applyViewport's re-clamp is a no-op)", () => {
+  it("start edge clamped at 0", () => {
+    const resized = resizeViewportEdge(
+      "start",
+      { start: 10, end: 60 },
+      -50,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("end edge clamped at seriesLen", () => {
+    const resized = resizeViewportEdge(
+      "end",
+      { start: 240, end: 290 },
+      50,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("start edge floored at MIN_VIEWPORT_SPAN", () => {
+    const resized = resizeViewportEdge(
+      "start",
+      { start: 100, end: 160 },
+      200,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("end edge floored at MIN_VIEWPORT_SPAN", () => {
+    const resized = resizeViewportEdge(
+      "end",
+      { start: 100, end: 160 },
+      -200,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+});
+
+describe("centerViewportAt", () => {
+  it("re-centres the window on the index, span preserved", () => {
+    expect(centerViewportAt(150, { start: 240, end: 300 }, 300)).toEqual({
+      start: 120,
+      end: 180,
+    });
+  });
+
+  it("clamps at both boundaries, span preserved", () => {
+    expect(centerViewportAt(0, { start: 240, end: 300 }, 300)).toEqual({
+      start: 0,
+      end: 60,
+    });
+    expect(centerViewportAt(300, { start: 100, end: 160 }, 300)).toEqual({
+      start: 240,
+      end: 300,
+    });
+  });
+
+  it("is a no-op when the index is already the centre", () => {
+    expect(centerViewportAt(270, { start: 240, end: 300 }, 300)).toEqual({
+      start: 240,
+      end: 300,
     });
   });
 });

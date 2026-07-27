@@ -23,9 +23,18 @@ export interface BackToLive {
   click(): void;
 }
 
+/** The navigator strip's WAI-ARIA contract — see {@link CandleChartPage.navigatorA11y}. */
+export interface NavigatorA11y {
+  readonly role: string | null;
+  readonly ariaLabel: string | null;
+  readonly hasTabIndex: boolean;
+}
+
 const PLOT_TESTID = "chart-plot";
 const BACK_TO_LIVE_TESTID = "chart-back-to-live";
 const CROSSHAIR_READOUT_TESTID = "chart-crosshair-readout";
+const NAVIGATOR_TESTID = "chart-navigator";
+const NAVIGATOR_WINDOW_TESTID = "navigator-window";
 
 /** Stand-in plot geometry for jsdom, whose getBoundingClientRect() is
  * all-zeros absent real layout — same 500×50-at-the-origin rect
@@ -38,6 +47,21 @@ const STUB_RECT: DOMRect = {
   height: 50,
   right: 500,
   bottom: 50,
+  x: 0,
+  y: 0,
+  toJSON: (): unknown => {
+    return {};
+  },
+} as DOMRect;
+
+/** 500×32-at-the-origin strip rect — same jsdom stand-in idea as STUB_RECT. */
+const STRIP_RECT: DOMRect = {
+  left: 0,
+  top: 0,
+  width: 500,
+  height: 32,
+  right: 500,
+  bottom: 32,
   x: 0,
   y: 0,
   toJSON: (): unknown => {
@@ -188,6 +212,103 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     fireEvent.pointerOut(plot);
     fireEvent.pointerLeave(plot);
     this.setProps({});
+  }
+
+  hasNavigator(): boolean {
+    return (
+      this.root.querySelector(`[data-testid="${NAVIGATOR_TESTID}"]`) !== null
+    );
+  }
+
+  /** The navigator strip's WAI-ARIA contract: its `role`/`aria-label`, and
+   * whether it carries a `tabindex` (it must not — the strip's own draggable
+   * window/handles are the interactive surface, not the group container). */
+  navigatorA11y(): NavigatorA11y {
+    const el = within(this.root).getByTestId(NAVIGATOR_TESTID);
+    return {
+      role: el.getAttribute("role"),
+      ariaLabel: el.getAttribute("aria-label"),
+      hasTabIndex: el.hasAttribute("tabindex"),
+    };
+  }
+
+  /** Drags the shaded window body from one strip-width fraction to another
+   * (down on the window, move + up on the strip — the handlers live on the
+   * strip and hit-test via the event target). */
+  dragNavigatorWindow(fromXFrac: number, toXFrac: number): void {
+    const window = within(this.root).getByTestId(NAVIGATOR_WINDOW_TESTID);
+    this.brushDrag(window, fromXFrac, toXFrac);
+  }
+
+  /** Drags one edge handle between strip-width fractions (a resize/zoom).
+   * `fromXFrac` must be the handle's CURRENT fraction (the caller computes
+   * it from the viewport it set up) — only the delta `to − from` matters,
+   * since hit-testing is by target element, not coordinates. */
+  dragNavigatorHandle(
+    side: "left" | "right",
+    fromXFrac: number,
+    toXFrac: number,
+  ): void {
+    const handle = within(this.root).getByTestId(
+      side === "left" ? "navigator-handle-left" : "navigator-handle-right",
+    );
+    this.brushDrag(handle, fromXFrac, toXFrac);
+  }
+
+  /** Presses the empty track at a strip-width fraction (recentres the
+   * window) and releases without moving. */
+  pressNavigatorTrack(xFrac: number): void {
+    const strip = this.navigatorStrip();
+    fireEvent.pointerDown(strip, {
+      pointerId: 1,
+      clientX: STRIP_RECT.left + xFrac * STRIP_RECT.width,
+      clientY: 16,
+    });
+    fireEvent.pointerUp(strip, { pointerId: 1 });
+    this.setProps({});
+  }
+
+  /** down on `target` → move + up on the strip, in strip-width fractions.
+   * fromXFrac only anchors the delta (hit-testing is by target, not
+   * coordinates). */
+  private brushDrag(
+    target: HTMLElement,
+    fromXFrac: number,
+    toXFrac: number,
+  ): void {
+    const strip = this.navigatorStrip();
+    fireEvent.pointerDown(target, {
+      pointerId: 1,
+      clientX: STRIP_RECT.left + fromXFrac * STRIP_RECT.width,
+      clientY: 16,
+    });
+    fireEvent.pointerMove(strip, {
+      pointerId: 1,
+      clientX: STRIP_RECT.left + toXFrac * STRIP_RECT.width,
+      clientY: 16,
+    });
+    fireEvent.pointerUp(strip, { pointerId: 1 });
+    this.setProps({});
+  }
+
+  /** The strip element with jsdom's holes stubbed: a concrete bounding rect
+   * plus the pointer-capture trio jsdom doesn't implement. */
+  private navigatorStrip(): HTMLElement {
+    const el = within(this.root).getByTestId(NAVIGATOR_TESTID);
+
+    el.getBoundingClientRect = (): DOMRect => {
+      return STRIP_RECT;
+    };
+
+    el.setPointerCapture = (): void => {};
+
+    el.hasPointerCapture = (): boolean => {
+      return false;
+    };
+
+    el.releasePointerCapture = (): void => {};
+
+    return el;
   }
 
   private plot(): HTMLElement {

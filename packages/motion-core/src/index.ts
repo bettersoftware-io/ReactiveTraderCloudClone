@@ -1,11 +1,13 @@
-export type { ChartViewport } from "./chartViewport.js";
+export type { ChartViewport, ViewportEdge } from "./chartViewport.js";
 export {
+  centerViewportAt,
   clampViewport,
   defaultViewport,
   followLive,
   isAtLiveEdge,
   MIN_VIEWPORT_SPAN,
   panBy,
+  resizeViewportEdge,
   zoomAt,
 } from "./chartViewport.js";
 export type {
@@ -59,6 +61,8 @@ export {
   indicatorPoints,
   indicatorValues,
 } from "./indicatorSeries.js";
+export type { NavigatorCandle, NavigatorVm } from "./navigatorVm.js";
+export { navigatorVm } from "./navigatorVm.js";
 export type { Projected3dPoint, Projection3dParams } from "./project3d.js";
 export { project3d } from "./project3d.js";
 export type { CoalesceDecision, RankDirection } from "./rankGlide.js";

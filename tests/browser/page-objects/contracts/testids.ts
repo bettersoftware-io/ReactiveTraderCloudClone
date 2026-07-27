@@ -114,6 +114,9 @@ export const TESTIDS = {
       plot: "chart-plot",
       backToLive: "chart-back-to-live",
       timeLabel: "chart-time-label",
+      navigator: "chart-navigator",
+      navigatorWindow: "navigator-window",
+      navigatorHandleRight: "navigator-handle-right",
     },
   },
   layout: {

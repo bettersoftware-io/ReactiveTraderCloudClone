@@ -7,12 +7,14 @@ import {
   crosshairVm,
   indicatorPoints,
   indicatorValues,
+  navigatorVm,
   volumeVm,
 } from "@rtc/motion-core";
 
 import { ChartPlot } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { type ChartGestures, useChartGestures } from "./useChartGestures";
+import { useNavigatorBrush } from "./useNavigatorBrush";
 
 /**
  * The interactive price plot's data/gesture join: owns the gesture hook
@@ -35,8 +37,15 @@ export function CandleChart({
   // returns `plotRef` (a real ref) alongside plain values, and reading them
   // back out via member access on the whole object trips react-hooks/refs'
   // "could be a ref" heuristic for every property, not just the ref one.
-  const { viewport, cursor, atLiveEdge, plotProps, plotRef, resetToLive } =
-    useChartGestures(candles.length, defaultVisible);
+  const {
+    viewport,
+    cursor,
+    atLiveEdge,
+    plotProps,
+    plotRef,
+    resetToLive,
+    applyViewport,
+  } = useChartGestures(candles.length, defaultVisible);
   const vm = chartVm(candles, liveRate, flashOn, { viewport, kind });
   const cross = cursor
     ? crosshairVm(cursor.xFrac, cursor.yFrac, candles, viewport, vm.scale)
@@ -49,6 +58,9 @@ export function CandleChart({
     vm.scale,
   );
 
+  const brush = useNavigatorBrush(viewport, applyViewport, candles.length);
+  const nav = navigatorVm(candles, viewport);
+
   return (
     <ChartPlot
       vm={vm}
@@ -60,6 +72,8 @@ export function CandleChart({
       onBackToLive={resetToLive}
       plotProps={plotProps}
       plotRef={plotRef}
+      nav={nav}
+      navProps={brush.stripProps}
     />
   );
 }
