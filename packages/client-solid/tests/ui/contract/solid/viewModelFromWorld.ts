@@ -37,6 +37,8 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   JarvisSkin,
+  LoginWaitDelay,
+  LoginWaitStyle,
   PlaceOrderRequest,
   PowerSaverLevel,
   RfqQuoteResult,
@@ -464,6 +466,23 @@ export function solidViewModel(world: World): ViewModel {
           const next = !enabled();
           world.commands.forceBootAnimationSets.push(next);
           world.forceBootAnimation.next(next);
+        },
+      };
+    },
+    // The two login-wait inspection preferences, same seam shape: reactive
+    // reads off the World subjects, writes recorded so a spec can assert what
+    // the user actually chose.
+    useLoginWaitPreferences: () => {
+      return {
+        style: wrapSubject(world.loginWaitStyle),
+        setStyle: (style: LoginWaitStyle) => {
+          world.commands.loginWaitStyleSets.push(style);
+          world.loginWaitStyle.next(style);
+        },
+        delay: wrapSubject(world.loginWaitDelay),
+        setDelay: (delay: LoginWaitDelay) => {
+          world.commands.loginWaitDelaySets.push(delay);
+          world.loginWaitDelay.next(delay);
         },
       };
     },

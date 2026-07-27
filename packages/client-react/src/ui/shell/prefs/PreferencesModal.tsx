@@ -1,6 +1,11 @@
 import { type ReactElement, useState } from "react";
 
-import type { AmbientStyle, PowerSaverLevel } from "@rtc/domain";
+import type {
+  AmbientStyle,
+  LoginWaitDelay,
+  LoginWaitStyle,
+  PowerSaverLevel,
+} from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
@@ -11,12 +16,20 @@ import styles from "./PreferencesModal.module.css";
 
 /**
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
- * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
- * rows. FOUR rows are wired to real ports — Animated background
+ * two-column DISPLAY / MOTION | TRADING / NOTIFICATIONS / DATA grid of toggle
+ * + segment rows.
+ *
+ * The columns are balanced by ROW COUNT (13 each), which is why MOTION exists:
+ * DISPLAY had grown to hold every movement-related control and left the grid
+ * lopsided 15/9. Splitting "how it looks" from "how it moves" evens the
+ * columns AND gives the login-wait rows an honest home.
+ *
+ * SIX rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
- * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), and Always
- * play boot animation (`useForceBootAnimation`); every other row is
- * decorative (see the comment on the catalogue above). Dumb component:
+ * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Always play
+ * boot animation (`useForceBootAnimation`), and the two login-wait rows
+ * (`useLoginWaitPreferences`); every other row is decorative (see the comment
+ * on the catalogue below). Dumb component:
  * consumes `useViewModel()` destructured only, holds no app-layer state /
  * persistence / transport / timers, and renders only when `open`.
  */
@@ -29,6 +42,7 @@ export function PreferencesModal({
     usePowerSaver,
     useAmbientStyle,
     useForceBootAnimation,
+    useLoginWaitPreferences,
   } = useViewModel();
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
@@ -40,6 +54,13 @@ export function PreferencesModal({
 
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
+
+  const {
+    style: loginWaitStyle,
+    setStyle: setLoginWaitStyle,
+    delay: loginWaitDelay,
+    setDelay: setLoginWaitDelay,
+  } = useLoginWaitPreferences();
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
@@ -77,7 +98,7 @@ export function PreferencesModal({
           <div>
             <div className={styles.title}>PREFERENCES</div>
             <div className={styles.subtitle}>
-              DISPLAY · TRADING · NOTIFICATIONS · DATA
+              DISPLAY · MOTION · TRADING · NOTIFICATIONS · DATA
             </div>
           </div>
           <button
@@ -94,8 +115,20 @@ export function PreferencesModal({
 
         <div className={styles.body}>
           <div className={styles.grid}>
-            <div className={styles.column}>
+            <div data-testid="prefs-column" className={styles.column}>
               <div className={styles.sectionHead}>DISPLAY</div>
+              <ToggleGroup
+                defs={DISPLAY_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
+              <SegmentGroup
+                defs={DISPLAY_SEGMENTS}
+                values={segments}
+                onSelect={selectSegment}
+              />
+
+              <div className={styles.sectionHead}>MOTION</div>
               <PrefSegment
                 label="Power saver"
                 options={POWER_SAVER_OPTIONS}
@@ -122,6 +155,11 @@ export function PreferencesModal({
                 }}
                 testid="pref-segment-ambientStyle"
               />
+              <ToggleGroup
+                defs={MOTION_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
               <PrefToggle
                 label="Always play boot animation"
                 description="Plays the startup animation even when your system asks for reduced motion (e.g. remote desktops / VDI)."
@@ -129,17 +167,28 @@ export function PreferencesModal({
                 onToggle={toggleForceBootAnimation}
                 testid="pref-toggle-forceBootAnimation"
               />
-              <ToggleGroup
-                defs={DISPLAY_TOGGLES}
-                values={toggles}
-                onToggle={toggleCosmetic}
+              <PrefSegment
+                label="Login wait style"
+                options={LOGIN_WAIT_STYLE_OPTIONS}
+                value={loginWaitStyle}
+                onChange={(value: string) => {
+                  setLoginWaitStyle(value as LoginWaitStyle);
+                }}
+                testid="pref-segment-loginWaitStyle"
               />
-              <SegmentGroup
-                defs={DISPLAY_SEGMENTS}
-                values={segments}
-                onSelect={selectSegment}
+              <PrefSegment
+                label="Login wait delay"
+                description="Holds sign-in back so the wait animation is visible."
+                options={LOGIN_WAIT_DELAY_OPTIONS}
+                value={loginWaitDelay}
+                onChange={(value: string) => {
+                  setLoginWaitDelay(value as LoginWaitDelay);
+                }}
+                testid="pref-segment-loginWaitDelay"
               />
+            </div>
 
+            <div data-testid="prefs-column" className={styles.column}>
               <div className={styles.sectionHead}>TRADING</div>
               <ToggleGroup
                 defs={TRADING_TOGGLES}
@@ -151,9 +200,7 @@ export function PreferencesModal({
                 values={segments}
                 onSelect={selectSegment}
               />
-            </div>
 
-            <div className={styles.column}>
               <div className={styles.sectionHead}>NOTIFICATIONS</div>
               <ToggleGroup
                 defs={NOTIFICATION_TOGGLES}
@@ -285,6 +332,21 @@ const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "rays", label: "Rays" },
 ];
 
+// Options for the two real login-wait rows (useLoginWaitPreferences). "Auto"
+// is the shipping behaviour — alternate the treatment per attempt.
+const LOGIN_WAIT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "auto", label: "Auto" },
+  { value: "handshake", label: "Handshake" },
+  { value: "reactor", label: "Reactor" },
+];
+
+const LOGIN_WAIT_DELAY_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "off", label: "Off" },
+  { value: "1s", label: "1s" },
+  { value: "3s", label: "3s" },
+  { value: "6s", label: "6s" },
+];
+
 const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "off", label: "Off" },
   { value: "calm", label: "Calm" },
@@ -299,17 +361,20 @@ const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
 // respond to clicks for the golden + contract tiers.
 const DISPLAY_TOGGLES: readonly ToggleDef[] = [
   {
-    key: "reduceMotion",
-    label: "Reduce motion",
-    description: "Disable all ambient animation.",
-  },
-  {
     key: "glassBlur",
     label: "Glass blur panels",
     description: "Frosted panel backdrop.",
   },
   { key: "showGrid", label: "Background grid" },
   { key: "scanlines", label: "Scanline overlay" },
+];
+
+const MOTION_TOGGLES: readonly ToggleDef[] = [
+  {
+    key: "reduceMotion",
+    label: "Reduce motion",
+    description: "Disable all ambient animation.",
+  },
 ];
 
 const TRADING_TOGGLES: readonly ToggleDef[] = [

@@ -4,6 +4,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   resolveThemeMode,
@@ -243,6 +245,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         enabled: false,
         setEnabled: noop,
         toggle: noop,
+      };
+    },
+    useLoginWaitPreferences: () => {
+      return {
+        style: DEFAULT_LOGIN_WAIT_STYLE,
+        setStyle: noop,
+        delay: DEFAULT_LOGIN_WAIT_DELAY,
+        setDelay: noop,
       };
     },
     useViewModePreference: () => {

@@ -74,6 +74,17 @@ function renderModal(
     useForceBootAnimation: () => {
       return { enabled: false, toggle: vi.fn() };
     },
+    // Not exercised here (the shared ui-contract tier covers the login-wait
+    // rows for both frameworks) — but the modal destructures it, so a fake
+    // that omits it fails to render at all.
+    useLoginWaitPreferences: () => {
+      return {
+        style: "auto",
+        setStyle: vi.fn(),
+        delay: "off",
+        setDelay: vi.fn(),
+      };
+    },
   } as unknown as ViewModel;
 
   return render(

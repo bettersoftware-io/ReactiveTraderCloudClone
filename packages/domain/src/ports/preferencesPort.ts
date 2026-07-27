@@ -7,6 +7,8 @@ import type {
   EqBlotterView,
   EqWatchlistSort,
   JarvisSkin,
+  LoginWaitDelay,
+  LoginWaitStyle,
   LoginWaitVariant,
   PowerSaverLevel,
   ThemeModePreference,
@@ -70,6 +72,17 @@ export interface PreferencesPort {
    * AuthPresenter at each login/unlock attempt start via setLoginWaitVariant. */
   loginWaitVariant$(): Observable<LoginWaitVariant>;
   setLoginWaitVariant(variant: LoginWaitVariant): void;
+  /** Replay-current login-wait STYLE stream — the user's choice, as opposed to
+   * `loginWaitVariant$`'s cycle position. `"auto"` defers to that cycle; a
+   * concrete value pins one treatment and leaves the pointer untouched. */
+  loginWaitStyle$(): Observable<LoginWaitStyle>;
+  setLoginWaitStyle(style: LoginWaitStyle): void;
+  /** Replay-current artificial login-delay stream; default `"off"`. Applied by
+   * a decorator around the AuthPort at composition, so it covers unlock as
+   * well as login and is independent of which AuthPort implementation (real WS
+   * or simulator) is in play. */
+  loginWaitDelay$(): Observable<LoginWaitDelay>;
+  setLoginWaitDelay(delay: LoginWaitDelay): void;
   /** Replay-current Credit RFQs filter stream; emits synchronously on subscribe.
    * Shared between the RFQs panel (reader) and its head's filter pills (writer). */
   creditRfqFilter$(): Observable<CreditRfqFilter>;
