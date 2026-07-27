@@ -58,8 +58,11 @@ export function navigatorVm(
     };
   });
 
-  const leftPct = Math.min(100, Math.max(0, (viewport.start / len) * 100));
-  const rightPct = Math.min(100, Math.max(0, (viewport.end / len) * 100));
+  // No clamp here: every viewport reaching this vm already satisfies
+  // 0 <= start <= end <= len (clampViewport et al. enforce it upstream), so
+  // start/len and end/len already land in [0, 1] without re-guarding.
+  const leftPct = (viewport.start / len) * 100;
+  const rightPct = (viewport.end / len) * 100;
   const windowStyle = {
     "--nav-left": `${leftPct}%`,
     "--nav-w": `${rightPct - leftPct}%`,

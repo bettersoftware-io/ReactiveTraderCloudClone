@@ -10,7 +10,7 @@ import {
 
 /** The hit-test attribute the strip's handle divs carry ("start" | "end"). */
 const NAV_EDGE_SELECTOR = "[data-nav-edge]";
-const NAV_WINDOW_SELECTOR = '[data-testid="navigator-window"]';
+const NAV_WINDOW_SELECTOR = "[data-nav-body]";
 
 type BrushMode = ViewportEdge | "move";
 

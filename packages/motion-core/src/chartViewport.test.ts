@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   centerViewportAt,
+  clampViewport,
   defaultViewport,
   followLive,
   isAtLiveEdge,
@@ -113,6 +114,52 @@ describe("resizeViewportEdge", () => {
       start: 0,
       end: 3,
     });
+  });
+});
+
+describe("resizeViewportEdge output is a fixed point of clampViewport (applyViewport's re-clamp is a no-op)", () => {
+  it("start edge clamped at 0", () => {
+    const resized = resizeViewportEdge(
+      "start",
+      { start: 10, end: 60 },
+      -50,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("end edge clamped at seriesLen", () => {
+    const resized = resizeViewportEdge(
+      "end",
+      { start: 240, end: 290 },
+      50,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("start edge floored at MIN_VIEWPORT_SPAN", () => {
+    const resized = resizeViewportEdge(
+      "start",
+      { start: 100, end: 160 },
+      200,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
+  });
+
+  it("end edge floored at MIN_VIEWPORT_SPAN", () => {
+    const resized = resizeViewportEdge(
+      "end",
+      { start: 100, end: 160 },
+      -200,
+      300,
+    );
+
+    expect(clampViewport(resized, 300)).toEqual(resized);
   });
 });
 

@@ -23,6 +23,13 @@ export interface BackToLive {
   click(): void;
 }
 
+/** The navigator strip's WAI-ARIA contract — see {@link CandleChartPage.navigatorA11y}. */
+export interface NavigatorA11y {
+  readonly role: string | null;
+  readonly ariaLabel: string | null;
+  readonly hasTabIndex: boolean;
+}
+
 const PLOT_TESTID = "chart-plot";
 const BACK_TO_LIVE_TESTID = "chart-back-to-live";
 const CROSSHAIR_READOUT_TESTID = "chart-crosshair-readout";
@@ -211,6 +218,18 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     return (
       this.root.querySelector(`[data-testid="${NAVIGATOR_TESTID}"]`) !== null
     );
+  }
+
+  /** The navigator strip's WAI-ARIA contract: its `role`/`aria-label`, and
+   * whether it carries a `tabindex` (it must not — the strip's own draggable
+   * window/handles are the interactive surface, not the group container). */
+  navigatorA11y(): NavigatorA11y {
+    const el = within(this.root).getByTestId(NAVIGATOR_TESTID);
+    return {
+      role: el.getAttribute("role"),
+      ariaLabel: el.getAttribute("aria-label"),
+      hasTabIndex: el.hasAttribute("tabindex"),
+    };
   }
 
   /** Drags the shaded window body from one strip-width fraction to another

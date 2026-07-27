@@ -185,7 +185,7 @@ describe("useNavigatorBrush", () => {
 
 /** What the pointerdown landed on: the window body, a handle, or the bare
  * track — expressed through the `closest()` answers the hook's hit-test
- * makes (`[data-nav-edge]` first, then the window testid). */
+ * makes (`[data-nav-edge]` first, then the window body's `[data-nav-body]`). */
 type HitTarget = "window" | "handle-left" | "handle-right" | "track";
 
 /** The return type of a closest() result, extracted to avoid inline object
@@ -217,7 +217,7 @@ function hitTargetEl(hit: HitTarget): HitTargetElement {
         return null;
       }
 
-      if (sel === '[data-testid="navigator-window"]') {
+      if (sel === "[data-nav-body]") {
         return hit === "window" ? {} : null;
       }
 

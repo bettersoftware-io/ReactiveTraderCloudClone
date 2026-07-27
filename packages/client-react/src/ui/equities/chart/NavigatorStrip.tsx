@@ -46,7 +46,11 @@ export function NavigatorStrip({
         <polyline className={styles.line} fill="none" points={pointsAttr} />
       </svg>
       <div className={styles.overlay} style={nav.windowStyle}>
-        <div className={styles.window} data-testid="navigator-window" />
+        <div
+          className={styles.window}
+          data-testid="navigator-window"
+          data-nav-body
+        />
         <div
           className={`${styles.handle} ${styles.handleStart}`}
           data-nav-edge="start"

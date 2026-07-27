@@ -22,6 +22,15 @@ describe("CandleChart — navigator brush", () => {
     expect(empty.hasNavigator()).toBe(false);
   });
 
+  it("the navigator strip carries a group role + label and stays out of the tab order", () => {
+    const chart = mountChart();
+    const a11y = chart.navigatorA11y();
+
+    expect(a11y.role).toBe("group");
+    expect(a11y.ariaLabel).toBe("Chart navigator");
+    expect(a11y.hasTabIndex).toBe(false);
+  });
+
   it("dragging the window body left pans away from the live edge and shifts the time window", () => {
     const chart = mountChart();
     const before = chart.timeLabels();
@@ -85,6 +94,38 @@ describe("CandleChart — navigator brush", () => {
 
     expect(chart.backToLive().visible).toBe(false);
     expect(chart.lastCandleUp()).toBe(LAST.close >= LAST.open);
+  });
+
+  it("labels frozen across new candles arriving while panned away", () => {
+    const panned = mountChart();
+    // Same pan as the first test above: {240,300} → {210,270}, off the live
+    // edge.
+    panned.dragNavigatorWindow(0.9, 0.8);
+    const before = panned.timeLabels();
+
+    // 5 new candles arrive (300 → 305) while the window sits away from the
+    // live edge: followLive must leave a panned-away viewport untouched, so
+    // the rendered labels — and BACK TO LIVE — don't move under the user.
+    panned.setProps({
+      candles: generateCandles(305),
+      liveRate: candleAt(304).close,
+    });
+
+    expect(panned.timeLabels()).toEqual(before);
+    expect(panned.backToLive().visible).toBe(true);
+
+    // The follow half, cheaply: a fresh mount left at the live edge sees the
+    // SAME new candles slide its window (labels change, BACK TO LIVE hides).
+    const atLiveEdge = mountChart();
+    const beforeAtEdge = atLiveEdge.timeLabels();
+
+    atLiveEdge.setProps({
+      candles: generateCandles(305),
+      liveRate: candleAt(304).close,
+    });
+
+    expect(atLiveEdge.timeLabels()).not.toEqual(beforeAtEdge);
+    expect(atLiveEdge.backToLive().visible).toBe(false);
   });
 });
 
