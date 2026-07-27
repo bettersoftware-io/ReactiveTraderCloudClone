@@ -85,14 +85,16 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     const y = strip.y + strip.height / 2;
     await this.page.mouse.move(handle.x + handle.width / 2, y);
     await this.page.mouse.down();
-    // The -1px end point is 1px shy of the strip's right edge, so it only
-    // registers as the live edge (isAtLiveEdge, EDGE_EPS = 0.5 candles) once
-    // the strip is wider than roughly 240px at the current 1280px viewport /
-    // 290px right-rail layout, not the ~600px an earlier version of this
-    // comment claimed. That layout renders the strip at ~933px — comfortably
-    // past the bound — but the margin is still a function of unrelated
-    // layout constants, not asserted here: a future column-width shrink
-    // could break this drag with a confusing failure signature.
+    // Resizing the "end" edge to this -1px point always lands the new end at
+    // seriesLen - seriesLen/stripWidthPx, regardless of the starting window
+    // (the starting position cancels out of the resize delta). So the -1px
+    // endpoint only registers as the live edge (isAtLiveEdge, EDGE_EPS = 0.5
+    // of seriesLen 300) once the strip is >=600px wide. At the current
+    // 1280px viewport / 290px right-rail layout the strip renders ~933px —
+    // ~1.55x margin — but that margin is a function of unrelated layout
+    // constants, not asserted here: a future layout change that shrinks the
+    // chart column below 600px would break this drag with a confusing
+    // failure signature.
     await this.page.mouse.move(strip.x + strip.width - 1, y, { steps: 5 });
     await this.page.mouse.up();
   }
