@@ -1,0 +1,17 @@
+.axis {
+  position: relative;
+  flex: none;
+  height: 14px;
+}
+
+.label {
+  position: absolute;
+  left: var(--tx);
+  top: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

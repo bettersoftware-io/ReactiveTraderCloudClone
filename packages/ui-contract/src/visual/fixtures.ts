@@ -1899,6 +1899,8 @@ const equitiesBase: EquitiesBaseFixture = {
     sel: "AAPL",
     openTabs: ["AAPL", "MSFT", "JPM"],
     timeframe: "1D",
+    chartType: "candles",
+    indicators: [],
   },
 };
 
@@ -1933,7 +1935,13 @@ fixtures["equities-loaded"] = makeAppData(equitiesBase);
 // placeholder arm (EqDepthDock; the seam's own sel:"" fallback).
 fixtures["equities-no-selection"] = makeAppData({
   ...equitiesBase,
-  equityWorkspace: { sel: "", openTabs: [], timeframe: "1D" },
+  equityWorkspace: {
+    sel: "",
+    openTabs: [],
+    timeframe: "1D",
+    chartType: "candles",
+    indicators: [],
+  },
 });
 fixtures["equities-ticket-editing"] = makeAppData({
   ...equitiesBase,

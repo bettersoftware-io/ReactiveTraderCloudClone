@@ -3,7 +3,7 @@ export const TESTIDS = {
     header: "header",
     themeToggle: "theme-toggle",
     powerSaverToggle: "power-saver-toggle",
-    tab: (tab: "fx" | "credit" | "admin") => {
+    tab: (tab: "fx" | "credit" | "admin" | "equities") => {
       return `tab-${tab}`;
     },
   },
@@ -101,6 +101,19 @@ export const TESTIDS = {
         return `incident-${kind}`;
       },
       clear: "incident-clear",
+    },
+  },
+  /**
+   * The equities interactive candle chart (CandleChart.tsx / TimeAxis.tsx /
+   * BackToLiveButton.tsx). Only the ids the e2e smoke needs — the fuller
+   * pixel/gesture surface (grid lines, crosshair, indicators…) is exercised
+   * by the ui-contract CandleChartPage instead.
+   */
+  equities: {
+    chart: {
+      plot: "chart-plot",
+      backToLive: "chart-back-to-live",
+      timeLabel: "chart-time-label",
     },
   },
   layout: {

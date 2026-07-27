@@ -643,6 +643,8 @@ export function solidViewModel(world: World): ViewModel {
         select: world.eqWorkspace.intents.select,
         closeTab: world.eqWorkspace.intents.closeTab,
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
+        setChartType: world.eqWorkspace.intents.setChartType,
+        toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World

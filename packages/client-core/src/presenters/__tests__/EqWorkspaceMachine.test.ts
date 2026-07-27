@@ -11,6 +11,8 @@ describe("EqWorkspaceMachine", () => {
       sel: "AAPL",
       openTabs: ["AAPL"],
       timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
     });
     m.dispose();
   });
@@ -81,6 +83,8 @@ describe("EqWorkspaceMachine", () => {
       sel: "AAPL",
       openTabs: ["AAPL"],
       timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
     });
     m.dispose();
   });
@@ -110,7 +114,13 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
   it("starts with no selection and NO phantom tab when initialSymbol is empty", async () => {
     const m = createEqWorkspaceMachine({ initialSymbol: "" });
     const state = await firstValueFrom(m.state$);
-    expect(state).toEqual({ sel: "", openTabs: [], timeframe: "1D" });
+    expect(state).toEqual({
+      sel: "",
+      openTabs: [],
+      timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
+    });
     m.dispose();
   });
 
@@ -122,11 +132,23 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
     const m = createEqWorkspaceMachine({ initialSymbol: "", seed$ });
 
     let state = await firstValueFrom(m.state$);
-    expect(state).toEqual({ sel: "", openTabs: [], timeframe: "1D" });
+    expect(state).toEqual({
+      sel: "",
+      openTabs: [],
+      timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
+    });
 
     seed$.next("AAPL");
     state = await firstValueFrom(m.state$);
-    expect(state).toEqual({ sel: "AAPL", openTabs: ["AAPL"], timeframe: "1D" });
+    expect(state).toEqual({
+      sel: "AAPL",
+      openTabs: ["AAPL"],
+      timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
+    });
     m.dispose();
   });
 
@@ -163,6 +185,78 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
     const state = await firstValueFrom(m.state$);
     expect(state.sel).toBe("AAPL");
     expect(state.openTabs).toEqual(["AAPL"]);
+    m.dispose();
+  });
+});
+
+describe("EqWorkspaceMachine — chartType + indicators (C1)", () => {
+  it("starts with chartType 'candles' and no indicators", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    const state = await firstValueFrom(m.state$);
+    expect(state.chartType).toBe("candles");
+    expect(state.indicators).toEqual([]);
+    m.dispose();
+  });
+
+  it("setChartType(kind) patches the chart type without touching selection/tabs/timeframe/indicators", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.select("MSFT");
+    m.intents.setTimeframe("1W");
+    m.intents.setChartType("area");
+    const state = await firstValueFrom(m.state$);
+    expect(state.chartType).toBe("area");
+    expect(state.sel).toBe("MSFT");
+    expect(state.openTabs).toEqual(["AAPL", "MSFT"]);
+    expect(state.timeframe).toBe("1W");
+    expect(state.indicators).toEqual([]);
+    m.dispose();
+  });
+
+  it("toggleIndicator(id) adds the indicator when absent", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.toggleIndicator("sma20");
+    const state = await firstValueFrom(m.state$);
+    expect(state.indicators).toEqual(["sma20"]);
+    m.dispose();
+  });
+
+  it("toggleIndicator(id) removes the indicator when already present", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.toggleIndicator("sma20");
+    m.intents.toggleIndicator("sma20");
+    const state = await firstValueFrom(m.state$);
+    expect(state.indicators).toEqual([]);
+    m.dispose();
+  });
+
+  it("toggleIndicator(id) tracks multiple indicators independently", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.toggleIndicator("sma20");
+    m.intents.toggleIndicator("ema50");
+    let state = await firstValueFrom(m.state$);
+    expect(state.indicators).toEqual(["sma20", "ema50"]);
+
+    m.intents.toggleIndicator("sma20");
+    state = await firstValueFrom(m.state$);
+    expect(state.indicators).toEqual(["ema50"]);
+    m.dispose();
+  });
+
+  it("chartType and indicators survive interleaved select()/setTimeframe() patches", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setChartType("line");
+    m.intents.toggleIndicator("sma20");
+    m.intents.select("MSFT");
+    m.intents.setTimeframe("1M");
+    m.intents.toggleIndicator("ema50");
+    m.intents.select("TSLA");
+
+    const state = await firstValueFrom(m.state$);
+    expect(state.sel).toBe("TSLA");
+    expect(state.openTabs).toEqual(["AAPL", "MSFT", "TSLA"]);
+    expect(state.timeframe).toBe("1M");
+    expect(state.chartType).toBe("line");
+    expect(state.indicators).toEqual(["sma20", "ema50"]);
     m.dispose();
   });
 });

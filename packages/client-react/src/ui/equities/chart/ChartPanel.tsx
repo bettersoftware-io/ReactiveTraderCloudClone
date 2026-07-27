@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { chartVm } from "@rtc/motion-core";
+import { CANDLE_DEFAULT_VISIBLE } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CandleChart } from "./CandleChart";
@@ -10,16 +10,18 @@ import { useTickFlash } from "./useTickFlash";
 import styles from "./ChartPanel.module.css";
 
 /**
- * The chart panel's body: the live instrument header over the candlestick
- * plot for the workspace's selected symbol. The control row (instrument
- * tabs + timeframe pills) is hoisted to EqChartHead, the panel's
- * headControls — mirroring the prototype's ChartPanelControls split.
+ * The chart panel's body: the live instrument header over the interactive
+ * candle plot for the workspace's selected symbol. The control row
+ * (instrument tabs + chart-type/indicator/timeframe pills) is hoisted to
+ * EqChartHead, the panel's headControls — mirroring the prototype's
+ * ChartPanelControls split. A pure data/join component: all chart geometry
+ * and gesture state live in CandleChart.
  */
 export function ChartPanel(): ReactElement {
   const { useEqWorkspace, useEquityQuote, useCandles, useWatchlist } =
     useViewModel();
   const { state } = useEqWorkspace();
-  const { sel, timeframe } = state;
+  const { sel, timeframe, chartType, indicators } = state;
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
   const instruments = useWatchlist();
@@ -35,7 +37,7 @@ export function ChartPanel(): ReactElement {
     return <div className={styles.empty}>SELECT AN INSTRUMENT</div>;
   }
 
-  const vm = chartVm(candles, quote?.last ?? 0, flashOn);
+  const defaultVisible = CANDLE_DEFAULT_VISIBLE[timeframe];
 
   return (
     <div className={styles.body}>
@@ -49,7 +51,20 @@ export function ChartPanel(): ReactElement {
           flashOn={flashOn}
           flashDir={dir}
         />
-        <CandleChart vm={vm} />
+        <CandleChart
+          // Remounts the gesture state (and so resets the viewport) on
+          // every symbol/timeframe switch — useChartGestures has no other
+          // way to know "the series means something different now" (a
+          // symbol swap keeps a similar seriesLen; a timeframe swap can
+          // even keep it identical), so a fresh mount is the reset signal.
+          key={`${sel}|${timeframe}`}
+          candles={candles}
+          liveRate={quote?.last ?? 0}
+          flashOn={flashOn}
+          kind={chartType}
+          indicators={indicators}
+          defaultVisible={defaultVisible}
+        />
       </div>
     </div>
   );

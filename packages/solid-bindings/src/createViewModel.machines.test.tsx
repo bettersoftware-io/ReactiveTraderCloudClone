@@ -221,6 +221,26 @@ describe("createViewModel — machine-backed members", () => {
     result.setTimeframe("1W");
     expect(result.state().timeframe).toBe("1W");
   });
+
+  it("useEqWorkspace's setChartType/toggleIndicator intents drive the shared workspace state", () => {
+    const vm = makeViewModel();
+
+    const { result } = renderHook(() => {
+      return vm.useEqWorkspace();
+    });
+
+    expect(result.state().chartType).toBe("candles");
+    expect(result.state().indicators).toEqual([]);
+
+    result.setChartType("line");
+    expect(result.state().chartType).toBe("line");
+
+    result.toggleIndicator("ema50");
+    expect(result.state().indicators).toEqual(["ema50"]);
+
+    result.toggleIndicator("ema50");
+    expect(result.state().indicators).toEqual([]);
+  });
 });
 
 function requireFirstPair(): (typeof KNOWN_CURRENCY_PAIRS)[number] {

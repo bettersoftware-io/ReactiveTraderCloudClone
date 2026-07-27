@@ -35,6 +35,36 @@ describe("EqChartHead", () => {
     expect(head.activeTf()).toBe("1M");
   });
 
+  it("defaults the chart type to candles with no indicators active", () => {
+    const head = mount(EqChartHead, { equities: { watchlist: INSTRUMENTS } });
+
+    expect(head.activeChartType()).toBe("candles");
+    expect(head.activeIndicators()).toEqual([]);
+  });
+
+  it("clicking a chart-type pill drives the real eqWorkspace machine's chart type", async () => {
+    const head = mount(EqChartHead, { equities: { watchlist: INSTRUMENTS } });
+
+    await head.selectChartType("line");
+    expect(head.activeChartType()).toBe("line");
+
+    await head.selectChartType("area");
+    expect(head.activeChartType()).toBe("area");
+  });
+
+  it("clicking an indicator pill toggles it on the real eqWorkspace machine, independently of the other", async () => {
+    const head = mount(EqChartHead, { equities: { watchlist: INSTRUMENTS } });
+
+    await head.toggleIndicator("sma20");
+    expect(head.activeIndicators()).toEqual(["sma20"]);
+
+    await head.toggleIndicator("ema50");
+    expect(head.activeIndicators()).toEqual(["sma20", "ema50"]);
+
+    await head.toggleIndicator("sma20");
+    expect(head.activeIndicators()).toEqual(["ema50"]);
+  });
+
   it("selecting a newly-opened tab and closing it both drive the REAL eqWorkspace machine", async () => {
     // Programmatically open a second tab (mirrors a watchlist-row click,
     // which lives outside EqChartHead) through the shared World's REAL

@@ -10,6 +10,7 @@ import { type Browser, chromium } from "@playwright/test";
 
 import { type DevServerHandle, startDevServer } from "#/scripts/devServer";
 
+import { classifyBrowserTeardown } from "./teardownPolicy";
 import type { PlaywrightWorld } from "./world";
 
 // Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy
@@ -29,40 +30,76 @@ BeforeAll({ timeout: 60_000 }, async () => {
   );
 });
 
-// Teardown is best-effort, and deliberately cannot fail the run. By the time it
-// runs every scenario has already reported its own result, so a slow shutdown
-// here says nothing about whether the suite passed — yet cucumber counts a
-// failed hook as a failed run, and hooks are not covered by `retry`. That is
-// exactly how this suite once went red with all 47 scenarios green: under the
-// parallel-suite load of run-all.ts, `browser.close()` (which waits for the
-// Chromium process to exit) overran the 30 s default hook timeout in both
-// workers. The budget below is well under the explicit 60 s so a stall is
-// reported as a warning rather than surfacing as a timeout.
+// Teardown judges the RESOURCE, not the clock. `browser.close()` not returning
+// in time is a proxy; what actually matters is whether this worker still holds a
+// live browser, and the two come apart — so each is handled on its own terms
+// below rather than collapsed into one "slow shutdown" warning.
+//
+// Measured baseline: with every e2e suite running at once (12-core box, 7 suites
+// via run-all.ts, ~7 Chromiums), `close()` settles in 27–325 ms and
+// `browser.contexts()` is already empty because the After hook closes each
+// scenario's context. The budget is ~60x that worst case, so exceeding it means
+// something is genuinely wrong rather than that we were impatient.
 const TEARDOWN_BUDGET_MS = 20_000;
 
 AfterAll({ timeout: 60_000 }, async () => {
-  await shutDownWithinBudget("browser.close()", browser?.close());
-  // The dev server is usually already a no-op here: with-server.ts starts one
-  // shared server and flags it via RTC_DEV_SERVER_SHARED, so each cucumber
-  // worker's startDevServer() adopts it and returns a no-op stop(). It only
-  // does real work when this suite is run directly, without that wrapper.
-  await shutDownWithinBudget("dev server stop()", dev?.stop());
+  await closeBrowserOrReportLeak();
+  // Usually already a no-op: with-server.ts starts one shared dev server and
+  // flags it via RTC_DEV_SERVER_SHARED, so each cucumber worker's
+  // startDevServer() adopts it and returns a no-op stop(). It only does real
+  // work when this suite is run directly, without that wrapper — and makeStop()
+  // escalates to SIGKILL on its own after 5 s, so the budget here is a backstop
+  // for a process that ignores even that.
+  await stopDevServerWithinBudget();
 });
 
-async function shutDownWithinBudget(
-  what: string,
-  shutdown: Promise<void> | undefined,
-): Promise<void> {
-  if (!shutdown) {
+async function closeBrowserOrReportLeak(): Promise<void> {
+  const target = browser;
+
+  if (!target) {
     return;
   }
 
-  // Absorb the rejection HERE rather than in a race arm. A shutdown that
-  // rejects after the budget has already expired would otherwise be a promise
-  // that rejects with no handler attached — an unhandled rejection, which Node
-  // treats as fatal by default and which would be a worse failure than the hook
-  // timeout this function exists to prevent.
-  const settled = shutdown.then(
+  // Ask the browser itself whether it is actually gone, rather than inferring
+  // from the clock. classifyBrowserTeardown owns the policy (and its tests).
+  const verdict = classifyBrowserTeardown({
+    failure: await settleWithinBudget(target.close()),
+    stillConnected: target.isConnected(),
+  });
+
+  if (verdict.kind === "clean") {
+    return;
+  }
+
+  if (verdict.kind === "leaked") {
+    throw new Error(`[playwright-cucumber] teardown: ${verdict.reason}`);
+  }
+
+  process.stderr.write(`[playwright-cucumber] teardown: ${verdict.reason}\n`);
+}
+
+async function stopDevServerWithinBudget(): Promise<void> {
+  if (!dev) {
+    return;
+  }
+
+  const failure = await settleWithinBudget(dev.stop());
+
+  if (failure) {
+    process.stderr.write(
+      `[playwright-cucumber] teardown: dev server stop() ${failure} — the ` +
+        `server may still hold its port.\n`,
+    );
+  }
+}
+
+/** Describes how `work` failed, or null when it completed cleanly in time. */
+async function settleWithinBudget(work: Promise<void>): Promise<string | null> {
+  // Absorb the rejection HERE rather than in a race arm. A shutdown that rejects
+  // after the budget expired would otherwise be a promise rejecting with no
+  // handler attached — an unhandled rejection, fatal by default in modern Node,
+  // and a worse outcome than anything this function guards against.
+  const settled = work.then(
     () => {
       return null;
     },
@@ -79,14 +116,7 @@ async function shutDownWithinBudget(
   });
 
   try {
-    const failure = await Promise.race([settled, budgetExpired]);
-
-    if (failure !== null) {
-      process.stderr.write(
-        `[playwright-cucumber] teardown: ${what} ${failure} — continuing so ` +
-          `the run keeps the result its scenarios earned.\n`,
-      );
-    }
+    return await Promise.race([settled, budgetExpired]);
   } finally {
     clearTimeout(budgetTimer);
   }

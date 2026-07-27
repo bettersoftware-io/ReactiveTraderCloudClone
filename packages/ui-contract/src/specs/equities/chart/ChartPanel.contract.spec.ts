@@ -2,7 +2,9 @@ import { ChartPanel } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Candle, EquityInstrument, EquityQuote } from "@rtc/domain";
+import type { EquityInstrument, EquityQuote } from "@rtc/domain";
+
+import { generateCandles } from "./candleFixture";
 
 afterEach(() => {
   cleanupMounted();
@@ -12,10 +14,12 @@ const INSTRUMENTS: readonly EquityInstrument[] = [
   { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
 ];
 
-const CANDLES: readonly Candle[] = [
-  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
-  { time: 60, open: 102, high: 108, low: 101, close: 104, volume: 1_350_000 },
-];
+// 300 candles (not just the 2 that were here before Task C4): CandleChart now
+// owns the pan/zoom viewport itself, so the panel's default render only shows
+// the newest CANDLE_DEFAULT_VISIBLE["1D"] (60) of them — a real (if small)
+// viewport-windowing behaviour that a 2-candle fixture couldn't exercise at
+// all. lastPrice()/bid() below stay pinned to quote()'s hand-written values.
+const CANDLES = generateCandles(300);
 
 describe("ChartPanel", () => {
   it("shows a select-an-instrument placeholder when the workspace has no selection", () => {
@@ -36,7 +40,8 @@ describe("ChartPanel", () => {
     expect(panel.isEmpty()).toBe(false);
     expect(panel.lastPrice()).toBe("104.00");
     expect(panel.bid()).toBe("103.90");
-    expect(panel.candleCount()).toBe(2);
+    // Windowed to the 1D default (60), not the full 300-candle series.
+    expect(panel.candleCount()).toBe(60);
   });
 
   // ChartPanel.tsx: `chartVm(candles, quote?.last ?? 0, flashOn)` — an
@@ -52,7 +57,7 @@ describe("ChartPanel", () => {
     });
 
     expect(panel.isEmpty()).toBe(false);
-    expect(panel.candleCount()).toBe(2);
+    expect(panel.candleCount()).toBe(60);
   });
 });
 

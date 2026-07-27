@@ -14,6 +14,8 @@ import {
   type BootSequenceIntents,
   type BootSequenceState,
   createRfqCountdownMachine,
+  type EqChartType,
+  type EqIndicatorId,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   type IncidentIntents,
@@ -687,6 +689,14 @@ export function createViewModel(
     presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
+  function setEqChartType(kind: EqChartType): void {
+    presenters.eqWorkspace.intents.setChartType(kind);
+  }
+
+  function toggleEqIndicator(id: EqIndicatorId): void {
+    presenters.eqWorkspace.intents.toggleIndicator(id);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -941,6 +951,8 @@ export function createViewModel(
         select: selectEqSymbol,
         closeTab: closeEqTab,
         setTimeframe: setEqTimeframe,
+        setChartType: setEqChartType,
+        toggleIndicator: toggleEqIndicator,
       };
     },
     useJarvis: () => {

@@ -50,4 +50,12 @@ export const SCENARIO_IDS = [
   "boot/static",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",
+  // Phase 5c Task 7: the three Analytics cards. Analytics was previously
+  // excluded from this harness outright — `AnalyticsSimulator` seeds its P&L
+  // history with a `Math.random` walk and (since 5c Task 1) drifts positions
+  // every 10 s. It qualifies now only because it is mounted as
+  // `AnalyticsDashboard` over a literal book, with power-saver `freeze` seeded
+  // so the bars' and bubbles' entry tweens hold at rest. Both halves are
+  // required; pinned data alone would still be captured mid-tween.
+  "analytics/dashboard",
 ] as const;
