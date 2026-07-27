@@ -5,7 +5,7 @@ import {
 import { Canvas, useFont } from "@shopify/react-native-skia";
 import type { JSX } from "react";
 import { useState } from "react";
-import type { LayoutChangeEvent } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
@@ -62,34 +62,43 @@ export function ExposureBubbles({
   const { entries, height } = buildBubbleDrawModel(positions, width);
 
   return (
-    <Canvas
+    // The measuring `onLayout` sits on a plain View, NOT on the Canvas: Skia's
+    // `<Canvas onLayout>` is deprecated and silently does nothing on the new
+    // architecture, so the width would stay pinned at `INITIAL_WIDTH` forever.
+    // Skia's own replacements (`onSize`, `useCanvasSize`) hand back a
+    // SharedValue, which suits UI-thread consumers — but this width feeds
+    // `computeBubbleLayout` during an ordinary React render, so a plain
+    // JS-thread measurement is the right tool.
+    <View
       testID="exposure-bubbles"
       style={{ width: "100%", height }}
       onLayout={(event: LayoutChangeEvent): void => {
         setWidth(event.nativeEvent.layout.width);
       }}
     >
-      {entries.map((entry) => {
-        const accent =
-          entry.sign === "pos" ? theme.accentPositive : theme.accentNegative;
+      <Canvas style={StyleSheet.absoluteFill}>
+        {entries.map((entry) => {
+          const accent =
+            entry.sign === "pos" ? theme.accentPositive : theme.accentNegative;
 
-        return (
-          <ExposureBubble
-            key={entry.currency}
-            entry={entry}
-            color={accent}
-            amountColor={theme.textMuted}
-            currencyFont={
-              entry.currencyFontSize === SMALL_LABEL_SIZE
-                ? currencySmall
-                : currencyLarge
-            }
-            amountFont={amountFont}
-            motionEnabled={motionEnabled}
-          />
-        );
-      })}
-    </Canvas>
+          return (
+            <ExposureBubble
+              key={entry.currency}
+              entry={entry}
+              color={accent}
+              amountColor={theme.textMuted}
+              currencyFont={
+                entry.currencyFontSize === SMALL_LABEL_SIZE
+                  ? currencySmall
+                  : currencyLarge
+              }
+              amountFont={amountFont}
+              motionEnabled={motionEnabled}
+            />
+          );
+        })}
+      </Canvas>
+    </View>
   );
 }
 
