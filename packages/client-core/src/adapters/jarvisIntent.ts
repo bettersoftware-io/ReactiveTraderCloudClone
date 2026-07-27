@@ -37,8 +37,13 @@ const DEFAULT_TRADE_NOTIONAL = 1_000_000;
  * `_jvNotional`.
  */
 export function parseNotional(text: string): number | null {
+  // The number is matched atomically — captured in a lookahead, then consumed
+  // by backreference — so the engine can never re-split a long digit run
+  // while scanning (CodeQL js/polynomial-redos on the naive `\d+` form).
+  // Behaviour is identical: a digit can never begin the suffix alternation,
+  // so shortening the greedy number match could never have helped anyway.
   const match = text.match(
-    /(\d+(?:\.\d+)?)\s*(million|mio|mm|thousand|k|m)\b/i,
+    /(?=(\d+(?:\.\d+)?))\1\s*(million|mio|mm|thousand|k|m)\b/i,
   );
 
   if (!match) {

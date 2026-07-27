@@ -215,6 +215,7 @@ describe("createJarvisMachine", () => {
               direction: Direction.Buy,
               notional: 1_000_000,
               quotedPrice: 1.0925,
+              ratePrecision: 5,
             },
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -240,6 +241,7 @@ describe("createJarvisMachine", () => {
       direction: Direction.Buy,
       notional: 1_000_000,
       quotedPrice: 1.0925,
+      ratePrecision: 5,
       remainingFraction: 1,
     });
   });
@@ -252,6 +254,7 @@ describe("createJarvisMachine", () => {
       direction: Direction.Buy,
       notional: 1_000_000,
       quotedPrice: 1.0925,
+      ratePrecision: 5,
     };
     let port: FakeJarvisPort | undefined;
     const states = run(
@@ -285,6 +288,7 @@ describe("createJarvisMachine", () => {
       direction: Direction.Buy,
       notional: 1_000_000,
       quotedPrice: 1.0925,
+      ratePrecision: 5,
     };
     let port: FakeJarvisPort | undefined;
     const states = run(
@@ -323,6 +327,7 @@ describe("createJarvisMachine", () => {
       direction: Direction.Buy,
       notional: 1_000_000,
       quotedPrice: 1.0925,
+      ratePrecision: 5,
     };
     let port: FakeJarvisPort | undefined;
     const states = run(

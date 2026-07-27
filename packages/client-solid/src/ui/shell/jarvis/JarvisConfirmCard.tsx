@@ -78,7 +78,10 @@ export function JarvisConfirmCard(props: JarvisConfirmCardProps): JSX.Element {
         <div class={styles.detailRow}>
           <span class={styles.detailLabel}>QUOTE</span>
           <span class={styles.detailValue}>
-            {formatPrice(props.confirmation.quotedPrice)}
+            {formatPrice(
+              props.confirmation.quotedPrice,
+              props.confirmation.ratePrecision,
+            )}
           </span>
         </div>
 
@@ -123,6 +126,9 @@ function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-function formatPrice(price: number): string {
-  return price.toPrecision(6);
+/** Same convention as the price tiles: toFixed(CurrencyPair.ratePrecision) —
+ * toPrecision(6) used to pad low-precision (JPY-style) pairs with trailing
+ * zeros beyond their 3-decimal display convention. */
+function formatPrice(price: number, ratePrecision: number): string {
+  return price.toFixed(ratePrecision);
 }

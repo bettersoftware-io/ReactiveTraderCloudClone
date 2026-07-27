@@ -73,6 +73,7 @@ describe("JarvisOrb", () => {
         direction: Direction.Buy,
         notional: 5_000_000,
         quotedPrice: 1.08123,
+        ratePrecision: 5,
       },
     ]);
 

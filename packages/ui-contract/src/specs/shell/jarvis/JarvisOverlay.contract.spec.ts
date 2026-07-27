@@ -166,6 +166,7 @@ describe("JarvisOverlay", () => {
         direction: Direction.Buy,
         notional: 5_000_000,
         quotedPrice: 1.08123,
+        ratePrecision: 5,
       },
     ]);
 
@@ -173,7 +174,7 @@ describe("JarvisOverlay", () => {
     expect(overlay.confirmDirection()).toBe("buy");
     expect(overlay.confirmSymbol()).toBe("EURUSD");
     expect(overlay.confirmNotional()).toBe("5,000,000");
-    expect(overlay.confirmPrice()).toBe((1.08123).toPrecision(6));
+    expect(overlay.confirmPrice()).toBe("1.08123");
     expect(overlay.hasCountdownRing()).toBe(true);
 
     await overlay.approveConfirm();
@@ -181,6 +182,30 @@ describe("JarvisOverlay", () => {
     expect(overlay.hasConfirmCard()).toBe(false);
     expect(world.jarvis.confirms).toEqual([["conf-approve", true]]);
 
+    overlay.emitEvents([{ type: "done" }]);
+  });
+
+  it("formats the quoted price at the pair's ratePrecision — a JPY-style 3-dp pair shows 3 decimals, not toPrecision(6)'s padded 4", async () => {
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    await overlay.send("Buy 1M AUDJPY");
+    overlay.emitEvents([
+      {
+        type: "confirmRequest",
+        confirmationId: "conf-jpy",
+        symbol: "AUDJPY",
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        quotedPrice: 82.5,
+        ratePrecision: 3,
+      },
+    ]);
+
+    expect(overlay.confirmPrice()).toBe("82.500");
+
+    await overlay.rejectConfirm();
     overlay.emitEvents([{ type: "done" }]);
   });
 
@@ -198,6 +223,7 @@ describe("JarvisOverlay", () => {
         direction: Direction.Sell,
         notional: 2_000_000,
         quotedPrice: 1.265,
+        ratePrecision: 5,
       },
     ]);
 
