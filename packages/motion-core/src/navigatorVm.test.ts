@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { navigatorVm } from "./navigatorVm";
 
-function closes(values: readonly number[]): { close: number }[] {
-  return values.map((close) => {
-    return { close };
-  });
-}
-
 describe("navigatorVm", () => {
   it("returns an empty vm for an empty series", () => {
     expect(navigatorVm([], { start: 0, end: 0 })).toEqual({
@@ -33,7 +27,11 @@ describe("navigatorVm", () => {
   });
 
   it("maps the viewport to window percentages of the series length", () => {
-    const series = closes(Array.from({ length: 300 }, (_, i) => i));
+    const series = closes(
+      Array.from({ length: 300 }, (_, i) => {
+        return i;
+      }),
+    );
 
     expect(navigatorVm(series, { start: 240, end: 300 }).windowStyle).toEqual({
       "--nav-left": "80%",
@@ -53,3 +51,13 @@ describe("navigatorVm", () => {
     }
   });
 });
+
+interface CloseOnly {
+  readonly close: number;
+}
+
+function closes(values: readonly number[]): CloseOnly[] {
+  return values.map((close) => {
+    return { close };
+  });
+}

@@ -18,13 +18,13 @@ import styles from "./NavigatorStrip.module.css";
 export function NavigatorStrip(
   props: NavigatorStripComponentProps,
 ): JSX.Element {
-  const pointsAttr = (): string => {
+  function pointsAttr(): string {
     return props.nav.linePoints
       .map((p) => {
         return `${p.x},${p.y}`;
       })
       .join(" ");
-  };
+  }
 
   return (
     <Show when={props.nav.linePoints.length > 0}>
