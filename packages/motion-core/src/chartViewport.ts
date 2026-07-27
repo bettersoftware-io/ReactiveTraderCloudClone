@@ -77,3 +77,38 @@ export function followLive(
   const d = newLen - prevLen;
   return { start: vp.start + d, end: vp.end + d };
 }
+
+export type ViewportEdge = "start" | "end";
+
+/** Moves ONE edge by dCandles (a navigator-handle resize); the other edge
+ * stays fixed. The moving edge clamps into [0, end − MIN] / [start + MIN,
+ * seriesLen] directly — deliberately NOT via `clampViewport`, whose
+ * span-preserving clamp would move the fixed edge at a series boundary. */
+export function resizeViewportEdge(
+  edge: ViewportEdge,
+  vp: ChartViewport,
+  dCandles: number,
+  seriesLen: number,
+): ChartViewport {
+  if (edge === "start") {
+    const maxStart = Math.max(0, vp.end - MIN_VIEWPORT_SPAN);
+    const start = Math.min(Math.max(vp.start + dCandles, 0), maxStart);
+    return { start, end: vp.end };
+  }
+
+  const minEnd = Math.min(seriesLen, vp.start + MIN_VIEWPORT_SPAN);
+  const end = Math.max(Math.min(vp.end + dCandles, seriesLen), minEnd);
+  return { start: vp.start, end };
+}
+
+/** Re-centres the window on a series index (a navigator track click), span
+ * preserved; `clampViewport`'s span-preserving clamp is exactly right here. */
+export function centerViewportAt(
+  idx: number,
+  vp: ChartViewport,
+  seriesLen: number,
+): ChartViewport {
+  const span = vp.end - vp.start;
+  const start = idx - span / 2;
+  return clampViewport({ start, end: start + span }, seriesLen);
+}

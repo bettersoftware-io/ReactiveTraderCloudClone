@@ -1,11 +1,13 @@
-export type { ChartViewport } from "./chartViewport.js";
+export type { ChartViewport, ViewportEdge } from "./chartViewport.js";
 export {
+  centerViewportAt,
   clampViewport,
   defaultViewport,
   followLive,
   isAtLiveEdge,
   MIN_VIEWPORT_SPAN,
   panBy,
+  resizeViewportEdge,
   zoomAt,
 } from "./chartViewport.js";
 export type {
