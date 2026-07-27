@@ -637,6 +637,8 @@ export function reactViewModel(world: World): ViewModel {
         select: world.eqWorkspace.intents.select,
         closeTab: world.eqWorkspace.intents.closeTab,
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
+        setChartType: world.eqWorkspace.intents.setChartType,
+        toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
       };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing

@@ -3,7 +3,8 @@ export interface WorkspacePO {
   openFx(): Promise<void>;
   openCredit(): Promise<void>;
   openAdmin(): Promise<void>;
-  clickTab(tab: "fx" | "credit" | "admin"): Promise<void>;
+  openEquities(): Promise<void>;
+  clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void>;
   reload(): Promise<void>;
   setOffline(offline: boolean): Promise<void>;
   rootBackgroundColor(): Promise<string>;

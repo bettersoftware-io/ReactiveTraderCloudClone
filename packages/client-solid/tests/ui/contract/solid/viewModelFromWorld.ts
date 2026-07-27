@@ -624,6 +624,8 @@ export function solidViewModel(world: World): ViewModel {
         select: world.eqWorkspace.intents.select,
         closeTab: world.eqWorkspace.intents.closeTab,
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
+        setChartType: world.eqWorkspace.intents.setChartType,
+        toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
       };
     },
     // Admin / telemetry: World-backed fakes that re-render subscribing

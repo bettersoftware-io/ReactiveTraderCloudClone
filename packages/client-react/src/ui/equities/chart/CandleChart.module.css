@@ -1,11 +1,32 @@
+.wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .plot {
   flex: 1;
   min-height: 0;
   position: relative;
+  overflow: hidden;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 5px;
-  overflow: hidden;
+  /* Gestures live here (wheel/drag/keys) — must be focusable to receive
+     keyboard pan/zoom, and touch-action none stops the browser's own
+     scroll/zoom from fighting the pointer-drag pan. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.plot:active {
+  cursor: grabbing;
+}
+
+.plot:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
 }
 
 .grid {

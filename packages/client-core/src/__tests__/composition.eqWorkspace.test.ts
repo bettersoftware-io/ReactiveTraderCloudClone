@@ -64,12 +64,24 @@ describe("composition — EqWorkspaceMachine wired to an async watchlist port (C
     });
 
     let state = await firstValueFrom(eqWorkspace.state$);
-    expect(state).toEqual({ sel: "", openTabs: [], timeframe: "1D" });
+    expect(state).toEqual({
+      sel: "",
+      openTabs: [],
+      timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
+    });
 
     source$.next([AAPL]);
 
     state = await firstValueFrom(eqWorkspace.state$);
-    expect(state).toEqual({ sel: "AAPL", openTabs: ["AAPL"], timeframe: "1D" });
+    expect(state).toEqual({
+      sel: "AAPL",
+      openTabs: ["AAPL"],
+      timeframe: "1D",
+      chartType: "candles",
+      indicators: [],
+    });
 
     eqWorkspace.dispose();
   });
