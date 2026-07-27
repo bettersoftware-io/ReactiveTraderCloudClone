@@ -4,6 +4,7 @@ import type {
   AnimationIntent,
   AuthViewState,
   IncidentKind,
+  JarvisEvent,
   ThroughputView,
 } from "@rtc/client-core";
 import type {
@@ -180,6 +181,11 @@ function buildContext<P>(
     setBootGateVisible: (visible: boolean) => {
       return flush(() => {
         return world.bootGate.next(visible);
+      });
+    },
+    emitJarvis: (events: readonly JarvisEvent[]) => {
+      return flush(() => {
+        return world.jarvis.emit(events);
       });
     },
     // Equities drivers (flush-wrapped, mirroring setPrice/setTopology above).

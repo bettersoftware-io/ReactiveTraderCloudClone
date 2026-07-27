@@ -122,6 +122,24 @@ export const TESTIDS = {
     handlePrefix: "handle-",
   },
   /**
+   * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,
+   * packages/client-{react,solid}/src/ui/shell/jarvis/). `entry` is shared by
+   * every message row (user and jarvis alike) — distinguish with the
+   * `data-role` attribute; the streaming reply is always the LAST entry with
+   * `data-role="jarvis"`, and its `data-done` attribute flips "false" →
+   * "true" once the scripted brain finishes revealing it.
+   */
+  jarvis: {
+    orb: "jarvis-orb",
+    overlay: "jarvis-overlay",
+    entry: "jarvis-entry",
+    input: "jarvis-input",
+    send: "jarvis-send",
+    confirmCard: "jarvis-confirm-card",
+    confirmApprove: "jarvis-confirm-approve",
+    confirmReject: "jarvis-confirm-reject",
+  },
+  /**
    * LoginScreen (packages/client-react/src/ui/shell/auth/LoginScreen.tsx),
    * rendered by AuthGate whenever `useAuth().state.status !== "authenticated"`.
    */

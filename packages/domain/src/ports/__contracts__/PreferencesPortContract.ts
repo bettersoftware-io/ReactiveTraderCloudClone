@@ -10,12 +10,14 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type JarvisSkin,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
@@ -39,6 +41,7 @@ export interface PreferencesSeed {
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
+  jarvisSkin?: JarvisSkin;
 }
 
 /**
@@ -350,6 +353,33 @@ export function describePreferencesPortContract(
     it("reads back a seeded ambientStyle", async () => {
       const port = makeSeeded({ ambientStyle: "rays" });
       expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
+    });
+
+    it("defaults jarvisSkin to singularity and round-trips a write", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe(
+        DEFAULT_JARVIS_SKIN,
+      );
+      port.setJarvisSkin("reactor");
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
+      // late subscriber sees the current value synchronously (replay-current)
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
+    });
+
+    it("setJarvisSkin persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: JarvisSkin[] = [];
+      const sub = port.jarvisSkin$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setJarvisSkin("reactor");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_JARVIS_SKIN, "reactor"]);
+    });
+
+    it("reads back a seeded jarvisSkin", async () => {
+      const port = makeSeeded({ jarvisSkin: "reactor" });
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
     });
   });
 }

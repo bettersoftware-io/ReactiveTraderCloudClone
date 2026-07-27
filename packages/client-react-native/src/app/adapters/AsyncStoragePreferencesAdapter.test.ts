@@ -282,6 +282,36 @@ test("setAmbientStyle writes through to AsyncStorage and emits", async () => {
   expect(store.get("rtc-ambient-style")).toBe("rays");
 });
 
+test("emits the default jarvisSkin (singularity) synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.jarvisSkin$());
+  expect(first).toBe("singularity");
+});
+
+test("hydrates a stored, non-default jarvisSkin after construction", async () => {
+  store.set("rtc-jarvis-skin", "reactor");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.jarvisSkin$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("reactor");
+});
+
+test("setJarvisSkin writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setJarvisSkin("reactor");
+  const next = await firstValueFrom(prefs.jarvisSkin$());
+  expect(next).toBe("reactor");
+  expect(store.get("rtc-jarvis-skin")).toBe("reactor");
+});
+
+test("falls back to the default jarvisSkin when the stored value is unknown", async () => {
+  store.set("rtc-jarvis-skin", "not-a-real-skin");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.jarvisSkin$());
+  expect(first).toBe("singularity");
+});
+
 test("emits the default login-wait variant synchronously on construction", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.loginWaitVariant$());

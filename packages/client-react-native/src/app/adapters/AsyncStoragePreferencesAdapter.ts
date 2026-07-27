@@ -13,6 +13,7 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -22,6 +23,8 @@ import {
   type EqBlotterView,
   type EqWatchlistSort,
   isPowerSaverLevel,
+  JARVIS_SKINS,
+  type JarvisSkin,
   LOGIN_WAIT_VARIANTS,
   type LoginWaitVariant,
   type PowerSaverLevel,
@@ -44,11 +47,16 @@ export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
+export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
     value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
   );
+}
+
+function isJarvisSkin(value: string | null): value is JarvisSkin {
+  return value !== null && (JARVIS_SKINS as readonly string[]).includes(value);
 }
 
 function isThemeModePreference(
@@ -106,6 +114,7 @@ interface StoredPreferences {
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
+  jarvisSkin?: JarvisSkin;
 }
 
 /** Read every preference key from AsyncStorage once and return the validated,
@@ -127,6 +136,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       eqWatchlistSort,
       eqBlotterView,
       ambientStyle,
+      jarvisSkin,
     ] = await Promise.all([
       AsyncStorage.getItem(THEME_STORAGE_KEY),
       AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -140,6 +150,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
+      AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
     ]);
 
     const stored: StoredPreferences = {};
@@ -196,6 +207,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
 
     if (isAmbientStyle(ambientStyle)) {
       stored.ambientStyle = ambientStyle;
+    }
+
+    if (isJarvisSkin(jarvisSkin)) {
+      stored.jarvisSkin = jarvisSkin;
     }
 
     return stored;
@@ -256,6 +271,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
+  private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
+
   /** When `seed` is provided (the `hydrate()` path) every subject starts on its
    * persisted value and NO async load runs. When omitted, subjects start on
    * defaults and `selfHydrate()` reads the store asynchronously. */
@@ -294,6 +311,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.ambientStyle = new BehaviorSubject<AmbientStyle>(
       s.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
+    );
+    this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
+      s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
     );
 
     if (seed === undefined) {
@@ -359,6 +379,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.ambientStyle !== undefined) {
       this.ambientStyle.next(s.ambientStyle);
+    }
+
+    if (s.jarvisSkin !== undefined) {
+      this.jarvisSkin.next(s.jarvisSkin);
     }
   }
 
@@ -486,5 +510,14 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   setAmbientStyle(style: AmbientStyle): void {
     void AsyncStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, style).catch(() => {});
     this.ambientStyle.next(style);
+  }
+
+  jarvisSkin$(): Observable<JarvisSkin> {
+    return this.jarvisSkin.pipe(distinctUntilChanged());
+  }
+
+  setJarvisSkin(skin: JarvisSkin): void {
+    void AsyncStorage.setItem(JARVIS_SKIN_STORAGE_KEY, skin).catch(() => {});
+    this.jarvisSkin.next(skin);
   }
 }

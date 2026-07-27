@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   EqWorkspaceState,
   IncidentKind,
+  JarvisState,
   NotionalView,
   OrderTicketState,
   RfqState,
@@ -144,6 +145,11 @@ export interface AppData {
   eqWatchlistSort?: EqWatchlistSort;
   /** Blotter tab preference (useEqBlotterView); defaults to DEFAULT_EQ_BLOTTER_VIEW ("orders"). */
   eqBlotterView?: EqBlotterView;
+  // ── J.A.R.V.I.S fields (Phase 1) ──────────────────────────────────────────
+  /** Full useJarvis() state snapshot (JarvisOrb / JarvisOverlay); defaults to
+   * the machine's closed/no-unread/idle/greeting-only INITIAL state. Intents
+   * are always no-ops in the visual fakes — see buildFakeViewModel.ts. */
+  jarvis?: JarvisState;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */
