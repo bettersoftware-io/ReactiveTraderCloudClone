@@ -814,9 +814,7 @@ export const registry = new Map<AnyToken, ElementFor>([
       // NOTE(C2->C4 handoff): CandleChart became the interactive plot in
       // Task C2 (owns useChartGestures; props are candles/liveRate/flashOn/
       // kind/indicators/defaultVisible, not a precomputed `vm`). This
-      // adapter is updated just enough to keep the registry type-checking —
-      // CandleChart.contract.spec.ts itself (which still mounts the old
-      // `{ vm }` shape) is Task C4's to rewrite against the new contract.
+      // adapter is updated just enough to keep the registry type-checking.
       return (
         <CandleChartComponent
           candles={(p.candles as readonly Candle[]) ?? []}

@@ -892,9 +892,7 @@ export const registry = new Map<AnyToken, ElementFor>([
       // Task C3 (mirroring React's C2) — owns createChartGestures; props are
       // candles/liveRate/flashOn/kind/indicators/defaultVisible, not a
       // precomputed `vm`. This adapter is updated just enough to keep the
-      // registry type-checking — CandleChart.contract.spec.ts itself (which
-      // still mounts the old `{ vm }` shape) is Task C4's to rewrite against
-      // the new contract.
+      // registry type-checking.
       return (
         <CandleChartComponent
           candles={(p().candles as readonly Candle[]) ?? []}
