@@ -50,6 +50,16 @@ import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
+import {
+  EquitiesChartArea,
+  EquitiesChartCrosshair,
+  EquitiesChartIndicators,
+  EquitiesChartLine,
+  EquitiesChartPanned,
+  EquitiesChartVolumeAxis,
+  EquitiesChartZoomed,
+} from "./EquitiesChartInteractive.visual";
+
 const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
 
 // The layout/fx-* scenarios test the ENGINE's geometry, not panel content, so
@@ -518,6 +528,32 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
         />
       </div>
     );
+  },
+  // --- Task C5: interactive chart scenarios (pan/zoom/crosshair/kind/
+  // indicators/volume-axis) — forced-state wrappers in
+  // EquitiesChartInteractive.visual.tsx (see that file's doc comment for
+  // why panned/zoomed/crosshair bypass useChartGestures while the rest
+  // mount the real CandleChart directly).
+  EquitiesChartPanned: () => {
+    return <EquitiesChartPanned />;
+  },
+  EquitiesChartZoomed: () => {
+    return <EquitiesChartZoomed />;
+  },
+  EquitiesChartCrosshair: () => {
+    return <EquitiesChartCrosshair />;
+  },
+  EquitiesChartLine: () => {
+    return <EquitiesChartLine />;
+  },
+  EquitiesChartArea: () => {
+    return <EquitiesChartArea />;
+  },
+  EquitiesChartIndicators: () => {
+    return <EquitiesChartIndicators />;
+  },
+  EquitiesChartVolumeAxis: () => {
+    return <EquitiesChartVolumeAxis />;
   },
   EquitiesWatchlistPanel: () => {
     return (

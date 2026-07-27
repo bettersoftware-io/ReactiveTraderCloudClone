@@ -5,7 +5,7 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers — a test-only leaf, not part of either client's runtime bundle |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `rxjs` |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `rxjs` |
 | **Consumed by** | `client-react`, `client-solid` — both as a **devDependency only**; it never appears in either client's `src/`, only in `tests/` |
 | **Must never import** | `client-react`, `client-solid`, or any other client/server package — dependencies flow the other way, from each client's test tree into this package |
 

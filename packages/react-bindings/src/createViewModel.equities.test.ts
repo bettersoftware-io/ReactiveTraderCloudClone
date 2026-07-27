@@ -188,6 +188,46 @@ describe("createViewModel — equities hooks", () => {
 
     expect(result.current.state.timeframe).toBe("1M");
   });
+
+  it("useEqWorkspace starts with chartType 'candles' and no indicators", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    expect(result.current.state.chartType).toBe("candles");
+    expect(result.current.state.indicators).toEqual([]);
+  });
+
+  it("useEqWorkspace().setChartType updates the shared chart type", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.setChartType("area");
+    });
+
+    expect(result.current.state.chartType).toBe("area");
+  });
+
+  it("useEqWorkspace().toggleIndicator adds then removes an indicator from the shared set", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.toggleIndicator("sma20");
+    });
+    expect(result.current.state.indicators).toEqual(["sma20"]);
+
+    act(() => {
+      result.current.toggleIndicator("sma20");
+    });
+    expect(result.current.state.indicators).toEqual([]);
+  });
 });
 
 function makeHooks(): ViewModel {

@@ -13,7 +13,12 @@ export async function openCreditWorkspace(ctx: TestContext): Promise<void> {
 }
 
 export async function clickTab(ctx: TestContext, tab: string): Promise<void> {
-  if (tab !== "fx" && tab !== "credit" && tab !== "admin") {
+  if (
+    tab !== "fx" &&
+    tab !== "credit" &&
+    tab !== "admin" &&
+    tab !== "equities"
+  ) {
     throw new Error(`unsupported tab: ${tab}`);
   }
 

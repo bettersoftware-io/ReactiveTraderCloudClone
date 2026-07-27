@@ -422,11 +422,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
             sel: "",
             openTabs: [],
             timeframe: "1D" as const,
+            chartType: "candles" as const,
+            indicators: [],
           },
         ),
         select: noop,
         closeTab: noop,
         setTimeframe: noop,
+        setChartType: noop,
+        toggleIndicator: noop,
       };
     },
   };
