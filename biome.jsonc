@@ -212,6 +212,27 @@
           }
         }
       }
+    },
+    {
+      // The chart navigator strip is `role="group"` — WAI-ARIA's generic
+      // grouping role for related UI elements (here: the mini-map polyline
+      // plus its draggable window/handles) that are NOT a form's fieldset.
+      // useSemanticElements' `<fieldset>` suggestion only fits form-control
+      // grouping, so it's a false positive for this non-form widget. Task
+      // 7's contract spec keys on the literal role="group" + aria-label
+      // strings, so the markup can't change to satisfy the rule. Scoped to
+      // `NavigatorStrip.tsx` across every web client (React today; the Solid
+      // port lands at the analogous path under client-solid).
+      "includes": [
+        "packages/client-*/src/ui/equities/chart/NavigatorStrip.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
     }
   ]
 }

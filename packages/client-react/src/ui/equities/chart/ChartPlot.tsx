@@ -1,15 +1,22 @@
 import type { ReactElement } from "react";
 
 import type { EqChartType } from "@rtc/client-core";
-import type { ChartVm, CrosshairVm, VolumeBarVm } from "@rtc/motion-core";
+import type {
+  ChartVm,
+  CrosshairVm,
+  NavigatorVm,
+  VolumeBarVm,
+} from "@rtc/motion-core";
 
 import { BackToLiveButton } from "./BackToLiveButton";
 import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
+import { NavigatorStrip } from "./NavigatorStrip";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { SvgPathLayer } from "./SvgPathLayer";
 import { TimeAxis } from "./TimeAxis";
 import type { ChartGestures } from "./useChartGestures";
+import type { NavigatorStripProps } from "./useNavigatorBrush";
 import { VolumePane } from "./VolumePane";
 
 import styles from "./CandleChart.module.css";
@@ -38,6 +45,8 @@ export function ChartPlot({
   onBackToLive,
   plotProps,
   plotRef,
+  nav,
+  navProps,
 }: ChartPlotProps): ReactElement {
   return (
     <div className={styles.wrap}>
@@ -83,6 +92,7 @@ export function ChartPlot({
       </div>
       <VolumePane bars={volumeBars} />
       <TimeAxis labels={vm.timeLabels} />
+      <NavigatorStrip nav={nav} brushProps={navProps} />
     </div>
   );
 }
@@ -98,4 +108,7 @@ export interface ChartPlotProps {
   /** Omit for a static/gesture-free mount — see the file doc above. */
   readonly plotProps?: ChartGestures["plotProps"];
   readonly plotRef?: ChartGestures["plotRef"];
+  readonly nav: NavigatorVm;
+  /** Omit for a static/brush-free navigator — same convention as plotProps. */
+  readonly navProps?: NavigatorStripProps;
 }
