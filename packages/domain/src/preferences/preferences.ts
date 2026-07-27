@@ -52,6 +52,23 @@ export type BootVariant =
  * AsyncStorage — the same constant on both). */
 export type LoginWaitVariant = "handshake" | "reactor";
 
+/** Which login-wait treatment to render, as a user CHOICE rather than a cycle
+ * position. `"auto"` defers to the persisted `LoginWaitVariant` cycle (the
+ * shipping behaviour); the two concrete values pin one treatment and leave the
+ * cycle pointer untouched, so switching back to `"auto"` resumes where it was.
+ *
+ * Exists because the wait treatments are timer-free by design — they mount on
+ * dispatch and unmount on outcome — so against a fast backend neither one is
+ * observable long enough to inspect, and which of the two you get is decided
+ * by a pointer you cannot see. Pairs with `LoginWaitDelay`. */
+export type LoginWaitStyle = "auto" | LoginWaitVariant;
+
+/** An artificial delay applied to login/unlock outcomes so the wait treatment
+ * is observable. Values are self-describing rather than opaque tiers, because
+ * the point of the setting is to choose a duration you can watch against.
+ * Default `"off"` — this changes no shipping behaviour unless asked for. */
+export type LoginWaitDelay = "off" | "1s" | "3s" | "6s";
+
 /** The equities Watchlist's sort mode — symbol (A–Z), % change, or last price.
  * Driven by the watchlist head's ⇅ cycle control. */
 export type EqWatchlistSort = "sym" | "chg" | "price";
@@ -84,6 +101,34 @@ export const LOGIN_WAIT_VARIANTS: readonly LoginWaitVariant[] = [
   "reactor",
 ];
 
+/** Selectable login-wait styles, in segment order. */
+export const LOGIN_WAIT_STYLES: readonly LoginWaitStyle[] = [
+  "auto",
+  ...LOGIN_WAIT_VARIANTS,
+];
+
+/** Selectable login-wait delays, in segment order. */
+export const LOGIN_WAIT_DELAYS: readonly LoginWaitDelay[] = [
+  "off",
+  "1s",
+  "3s",
+  "6s",
+];
+
+/**
+ * Milliseconds per delay choice. The non-zero values are sized against the
+ * treatments themselves, not picked round: the handshake's staged reveal
+ * settles at 0.85s and the reactor's slowest counter-rotation takes 2.3s per
+ * turn, so 1s catches the handshake once, 3s clears a full reactor turn, and
+ * 6s is unhurried inspection.
+ */
+export const LOGIN_WAIT_DELAY_MS: Readonly<Record<LoginWaitDelay, number>> = {
+  off: 0,
+  "1s": 1_000,
+  "3s": 3_000,
+  "6s": 6_000,
+};
+
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
@@ -104,6 +149,11 @@ export const DEFAULT_FORCE_BOOT_ANIMATION = false;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_LOGIN_WAIT_VARIANT: LoginWaitVariant = "handshake";
+/** Defer to the cycle — i.e. today's shipping behaviour, unchanged. */
+export const DEFAULT_LOGIN_WAIT_STYLE: LoginWaitStyle = "auto";
+/** No artificial delay: a stored preference must not slow anyone's sign-in
+ * until they ask it to. */
+export const DEFAULT_LOGIN_WAIT_DELAY: LoginWaitDelay = "off";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";
 export const DEFAULT_EQ_BLOTTER_VIEW: EqBlotterView = "orders";
 

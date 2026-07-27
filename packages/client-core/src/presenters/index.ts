@@ -26,6 +26,7 @@ export * from "#/presenters/IncidentMachine";
 export * from "#/presenters/InstrumentsPresenter";
 export * from "#/presenters/LatencyPresenter";
 export * from "#/presenters/LayoutMachine";
+export * from "#/presenters/LoginWaitPreferencesPresenter";
 export * from "#/presenters/machine";
 export * from "#/presenters/NotionalMachine";
 export * from "#/presenters/OrdersBlotterPresenter";

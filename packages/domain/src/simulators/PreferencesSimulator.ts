@@ -12,6 +12,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -19,6 +21,8 @@ import {
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
@@ -36,6 +40,8 @@ export interface PreferencesSeed {
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   loginWaitVariant?: LoginWaitVariant;
+  loginWaitStyle?: LoginWaitStyle;
+  loginWaitDelay?: LoginWaitDelay;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
@@ -64,6 +70,10 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
+
+  private readonly loginWaitStyleSubject: BehaviorSubject<LoginWaitStyle>;
+
+  private readonly loginWaitDelaySubject: BehaviorSubject<LoginWaitDelay>;
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
@@ -98,6 +108,12 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.loginWaitVariantSubject = new BehaviorSubject<LoginWaitVariant>(
       seed.loginWaitVariant ?? DEFAULT_LOGIN_WAIT_VARIANT,
+    );
+    this.loginWaitStyleSubject = new BehaviorSubject<LoginWaitStyle>(
+      seed.loginWaitStyle ?? DEFAULT_LOGIN_WAIT_STYLE,
+    );
+    this.loginWaitDelaySubject = new BehaviorSubject<LoginWaitDelay>(
+      seed.loginWaitDelay ?? DEFAULT_LOGIN_WAIT_DELAY,
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
       seed.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
@@ -180,6 +196,22 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setLoginWaitVariant(variant: LoginWaitVariant): void {
     this.loginWaitVariantSubject.next(variant);
+  }
+
+  loginWaitStyle$(): Observable<LoginWaitStyle> {
+    return this.loginWaitStyleSubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitStyle(style: LoginWaitStyle): void {
+    this.loginWaitStyleSubject.next(style);
+  }
+
+  loginWaitDelay$(): Observable<LoginWaitDelay> {
+    return this.loginWaitDelaySubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitDelay(delay: LoginWaitDelay): void {
+    this.loginWaitDelaySubject.next(delay);
   }
 
   creditRfqFilter$(): Observable<CreditRfqFilter> {

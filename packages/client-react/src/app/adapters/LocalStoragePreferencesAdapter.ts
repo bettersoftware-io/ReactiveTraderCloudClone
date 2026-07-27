@@ -13,6 +13,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -22,7 +24,11 @@ import {
   type EqBlotterView,
   type EqWatchlistSort,
   isPowerSaverLevel,
+  LOGIN_WAIT_DELAYS,
+  LOGIN_WAIT_STYLES,
   LOGIN_WAIT_VARIANTS,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type PreferencesPort,
@@ -40,6 +46,8 @@ export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
 export const FORCE_BOOT_ANIMATION_STORAGE_KEY = "rtc-force-boot-animation";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const LOGIN_WAIT_VARIANT_STORAGE_KEY = "rt-login-wait-variant";
+export const LOGIN_WAIT_STYLE_STORAGE_KEY = "rt-login-wait-style";
+export const LOGIN_WAIT_DELAY_STORAGE_KEY = "rt-login-wait-delay";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
@@ -72,6 +80,18 @@ function isBootVariant(value: string | null): value is BootVariant {
 function isLoginWaitVariant(value: string | null): value is LoginWaitVariant {
   return (
     value !== null && (LOGIN_WAIT_VARIANTS as readonly string[]).includes(value)
+  );
+}
+
+function isLoginWaitStyle(value: string | null): value is LoginWaitStyle {
+  return (
+    value !== null && (LOGIN_WAIT_STYLES as readonly string[]).includes(value)
+  );
+}
+
+function isLoginWaitDelay(value: string | null): value is LoginWaitDelay {
+  return (
+    value !== null && (LOGIN_WAIT_DELAYS as readonly string[]).includes(value)
   );
 }
 
@@ -178,6 +198,10 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
 
+  private readonly loginWaitStyleSubject: BehaviorSubject<LoginWaitStyle>;
+
+  private readonly loginWaitDelaySubject: BehaviorSubject<LoginWaitDelay>;
+
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
   private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
@@ -217,6 +241,20 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         LOGIN_WAIT_VARIANT_STORAGE_KEY,
         isLoginWaitVariant,
         DEFAULT_LOGIN_WAIT_VARIANT,
+      ),
+    );
+    this.loginWaitStyleSubject = new BehaviorSubject<LoginWaitStyle>(
+      readStored(
+        LOGIN_WAIT_STYLE_STORAGE_KEY,
+        isLoginWaitStyle,
+        DEFAULT_LOGIN_WAIT_STYLE,
+      ),
+    );
+    this.loginWaitDelaySubject = new BehaviorSubject<LoginWaitDelay>(
+      readStored(
+        LOGIN_WAIT_DELAY_STORAGE_KEY,
+        isLoginWaitDelay,
+        DEFAULT_LOGIN_WAIT_DELAY,
       ),
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
@@ -319,6 +357,24 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setLoginWaitVariant(variant: LoginWaitVariant): void {
     writeStored(LOGIN_WAIT_VARIANT_STORAGE_KEY, variant);
     this.loginWaitVariantSubject.next(variant);
+  }
+
+  loginWaitStyle$(): Observable<LoginWaitStyle> {
+    return this.loginWaitStyleSubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitStyle(style: LoginWaitStyle): void {
+    writeStored(LOGIN_WAIT_STYLE_STORAGE_KEY, style);
+    this.loginWaitStyleSubject.next(style);
+  }
+
+  loginWaitDelay$(): Observable<LoginWaitDelay> {
+    return this.loginWaitDelaySubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitDelay(delay: LoginWaitDelay): void {
+    writeStored(LOGIN_WAIT_DELAY_STORAGE_KEY, delay);
+    this.loginWaitDelaySubject.next(delay);
   }
 
   creditRfqFilter$(): Observable<CreditRfqFilter> {

@@ -9,8 +9,14 @@ import type {
   ExecuteTradeInput,
   LoginWaitVariant,
 } from "@rtc/domain";
-import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
+import {
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
+  DEFAULT_LOGIN_WAIT_VARIANT,
+  LOGIN_WAIT_DELAY_MS,
+} from "@rtc/domain";
 
+import { withLoginDelay } from "#/adapters/delayedAuthPort";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import {
@@ -53,6 +59,7 @@ import {
   type IncidentState,
   InstrumentsPresenter,
   LatencyPresenter,
+  LoginWaitPreferencesPresenter,
   type Machine,
   type MachineFactories,
   OrdersBlotterPresenter,
@@ -129,6 +136,8 @@ export interface Presenters {
   /** Boot-splash overlay visibility + the account menu's ⟳ Reboot HUD intent. */
   bootGate: BootGatePresenter;
   auth: AuthPresenter;
+  /** The two login-wait inspection preferences (style pin + artificial delay). */
+  loginWaitPreferences: LoginWaitPreferencesPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
   depth: DepthPresenter;
@@ -180,6 +189,25 @@ export const reconnect$ = new Subject<ReconnectIntent>();
  * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
  */
 export const incident$ = new Subject<ConnectionEvent>();
+
+/**
+ * Reads the current value of a replay-current preference stream synchronously.
+ *
+ * Every PreferencesPort adapter is BehaviorSubject-backed, so the value lands
+ * before `.subscribe()` returns. The `fallback` guards a hypothetical
+ * non-replaying implementation: without it the caller would see `undefined`,
+ * and for the login-wait cycle that meant `LOGIN_WAIT_VARIANTS.indexOf(undefined)`
+ * → -1 and a wait treatment that silently failed to render — precisely the
+ * no-feedback state these preferences exist to fix.
+ */
+function readPreferenceNow<T>(source$: Observable<T>, fallback: T): T {
+  let value: T | undefined;
+  const sub = source$.pipe(take(1)).subscribe((v) => {
+    value = v;
+  });
+  sub.unsubscribe();
+  return value ?? fallback;
+}
 
 /** One-shot synchronous peek at the watchlist's first symbol, used only to
  * seed EqWorkspaceMachine's initial tab/selection at composition time. The
@@ -304,30 +332,62 @@ export function createApp(ports: AppPorts): App {
     // decision (defaults to playing when no bootSplash port is supplied).
     bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
     // Login/lock/logout lifecycle over the injected AuthPort + SessionStore.
-    // The 4th argument is the persisted login-wait variant cycle, read and
-    // advanced through the preferences seam — same pattern as boot's variant.
-    auth: new AuthPresenter(ports.auth, ports.sessionStore, undefined, {
-      current: (): LoginWaitVariant => {
-        // All current PreferencesPort adapters are BehaviorSubject-backed, so
-        // this synchronous read always resolves before `.subscribe()`
-        // returns. The `?? DEFAULT_LOGIN_WAIT_VARIANT` is a guard against a
-        // hypothetical non-replaying implementation: without it, `value`
-        // would stay `undefined`, LOGIN_WAIT_VARIANTS.indexOf(undefined)
-        // would be -1, and the wait treatment would silently fail to render
-        // — exactly the no-feedback state this feature exists to fix.
-        let value: LoginWaitVariant | undefined;
-        ports.preferences
-          .loginWaitVariant$()
-          .pipe(take(1))
-          .subscribe((v) => {
-            value = v;
-          });
-        return value ?? DEFAULT_LOGIN_WAIT_VARIANT;
+    //
+    // The AuthPort is wrapped so the "Login wait delay" preference holds the
+    // outcome back; at "off" the wrapper passes through synchronously, so the
+    // default path is byte-for-byte today's behaviour.
+    //
+    // The 4th argument is the login-wait variant cycle, read and advanced
+    // through the preferences seam — same pattern as boot's variant. The
+    // "Login wait style" pin is resolved HERE rather than inside
+    // AuthPresenter: when a concrete style is chosen, `current` returns it and
+    // `advance` is a no-op, so the presenter keeps asking one question ("which
+    // treatment for this attempt?") and composition decides whether the answer
+    // comes from a cycle or from a pin. That also leaves the cycle pointer
+    // untouched while pinned, so switching back to "auto" resumes where the
+    // user left off instead of somewhere they never chose.
+    auth: new AuthPresenter(
+      withLoginDelay(ports.auth, () => {
+        return LOGIN_WAIT_DELAY_MS[
+          readPreferenceNow(
+            ports.preferences.loginWaitDelay$(),
+            DEFAULT_LOGIN_WAIT_DELAY,
+          )
+        ];
+      }),
+      ports.sessionStore,
+      undefined,
+      {
+        current: (): LoginWaitVariant => {
+          const style = readPreferenceNow(
+            ports.preferences.loginWaitStyle$(),
+            DEFAULT_LOGIN_WAIT_STYLE,
+          );
+
+          if (style !== "auto") {
+            return style;
+          }
+
+          return readPreferenceNow(
+            ports.preferences.loginWaitVariant$(),
+            DEFAULT_LOGIN_WAIT_VARIANT,
+          );
+        },
+        advance: (next: LoginWaitVariant): void => {
+          const style = readPreferenceNow(
+            ports.preferences.loginWaitStyle$(),
+            DEFAULT_LOGIN_WAIT_STYLE,
+          );
+
+          if (style !== "auto") {
+            return;
+          }
+
+          ports.preferences.setLoginWaitVariant(next);
+        },
       },
-      advance: (next: LoginWaitVariant): void => {
-        ports.preferences.setLoginWaitVariant(next);
-      },
-    }),
+    ),
+    loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),

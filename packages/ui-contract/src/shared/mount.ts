@@ -13,6 +13,8 @@ import type {
   EquityOrder,
   EquityQuote,
   LogEvent,
+  LoginWaitDelay,
+  LoginWaitStyle,
   MetricSample,
   PowerSaverLevel,
   Price,
@@ -62,6 +64,10 @@ export interface MountOptions<P> {
   powerSaverLevel?: PowerSaverLevel;
   /** Seed the initial force-boot-animation preference (useForceBootAnimation); defaults to false. */
   forceBootAnimation?: boolean;
+  /** Seed the initial login-wait style (useLoginWaitPreferences); defaults to "auto". */
+  loginWaitStyle?: LoginWaitStyle;
+  /** Seed the initial login-wait delay (useLoginWaitPreferences); defaults to "off". */
+  loginWaitDelay?: LoginWaitDelay;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
   viewMode?: ViewMode;
   /** Seed the initial auth view-state (useAuth); defaults to authenticated + demo user. */
@@ -232,6 +238,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.powerSaverLevel,
     opts.ambientStyle,
     opts.forceBootAnimation,
+    opts.loginWaitStyle,
+    opts.loginWaitDelay,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });
