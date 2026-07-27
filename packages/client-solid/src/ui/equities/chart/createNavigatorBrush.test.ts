@@ -128,6 +128,29 @@ describe("createNavigatorBrush", () => {
 
     expect(setPointerCapture).toHaveBeenCalledWith(1);
   });
+
+  it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
+    const applyViewport = vi.fn();
+    const { result } = renderHook(() => {
+      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
+    });
+
+    // No prior pointerdown at all: brushOrigin is null.
+    result.stripProps.onPointerUp(brushEvent("window", 450));
+
+    result.stripProps.onPointerDown(brushEvent("window", 450));
+    applyViewport.mockClear();
+
+    // A pointerup for a DIFFERENT pointerId than the active drag must not
+    // end it — the still-active drag (pointerId 1) keeps responding to moves.
+    result.stripProps.onPointerUp({
+      ...brushEvent("window", 450),
+      pointerId: 2,
+    });
+    result.stripProps.onPointerMove(moveEvent(400));
+
+    expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
+  });
 });
 
 function fixedViewport(): ChartViewport {

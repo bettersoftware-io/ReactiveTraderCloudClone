@@ -204,4 +204,35 @@ describe("useNavigatorBrush", () => {
 
     expect(event.currentTarget.setPointerCapture).toHaveBeenCalledWith(1);
   });
+
+  it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
+    const applyViewport = vi.fn();
+    const { result } = renderHook(() => {
+      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
+    });
+
+    // No prior pointerdown at all: originRef.current is null.
+    act(() => {
+      result.current.stripProps.onPointerUp(brushEvent("window", 450));
+    });
+
+    act(() => {
+      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    });
+    applyViewport.mockClear();
+
+    // A pointerup for a DIFFERENT pointerId than the active drag must not
+    // end it — the still-active drag (pointerId 1) keeps responding to moves.
+    act(() => {
+      result.current.stripProps.onPointerUp({
+        ...brushEvent("window", 450),
+        pointerId: 2,
+      });
+    });
+    act(() => {
+      result.current.stripProps.onPointerMove(moveEvent(400));
+    });
+
+    expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
+  });
 });
