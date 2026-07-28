@@ -12,7 +12,10 @@ name: Update visual goldens
 #   - SET (e.g. `aurora`, `credit/new-rfq-open`) → targeted refresh: SKIP the
 #     wipe and pass the pattern to the runner (playwright `-g`), so only the
 #     matching goldens are re-rendered — a one-scenario change costs seconds
-#     instead of ~11 minutes, and can't drag in unrelated in-flight golden work.
+#     instead of ~20 minutes, and can't drag in unrelated in-flight golden work.
+#     (A targeted refresh measured 2m01s; a full one ~19-20 min across five runs
+#     on 2026-07-28. The old "~11 min" figure predates the matrix reaching 1,462
+#     goldens.)
 #
 # It then AUTO-COMMITS the regenerated goldens straight to the dispatched branch
 # (scoped to the canonical react/ tree only — never a partial react-local/ set)
@@ -109,7 +112,7 @@ jobs:
       # a partial react-local/ set. The grep guard hard-fails if anything outside
       # react/ somehow staged.
       # Auto-commit is for PR-branch dispatches only. On main, pushing directly
-      # would (a) race concurrent merges (main moves during the ~11-min container
+      # would (a) race concurrent merges (main moves during the ~20-min container
       # run — observed rejected non-fast-forward 2026-07-19, when a full regen
       # still ran all three tiers) and (b) land unreviewed [skip ci] binary
       # changes outside the repo's PR/merge-commit discipline and the post-merge
