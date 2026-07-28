@@ -218,9 +218,18 @@ export default tseslint.config(
   },
   {
     // Manual memoization is banned — the React Compiler memoizes at build time
-    // (ADR-003). Scoped to the three packages that actually run the compiler;
-    // `client-prototype` (isolated design port) and test harnesses (never
-    // transformed) are deliberately out of scope.
+    // (ADR-003). Scoped to the packages that actually run the compiler.
+    //
+    // `devtools-extension` belongs here because `@rtc/devtools-app` exports
+    // `./src/index.ts` — raw source — so the extension's own Vite build
+    // compiles the inspector's components rather than consuming a prebuilt
+    // bundle. Its config therefore enables the compiler too; without that the
+    // extension would ship the same de-memoized source unoptimized.
+    //
+    // `client-prototype` is deliberately OUT of scope: it is an abandoned port
+    // of the design prototype, kept for reference, and is not worth churning.
+    // Test harnesses are also out of scope (never Babel-transformed, so their
+    // stable identities are real).
     //
     // `no-restricted-imports` rather than `no-restricted-syntax`: flat config
     // REPLACES a rule's options across matching blocks, which is why the shared
@@ -233,6 +242,7 @@ export default tseslint.config(
       "packages/client-react-native/src/**/*.{ts,tsx}",
       "packages/client-react-native/app/**/*.{ts,tsx}",
       "packages/devtools-app/src/**/*.{ts,tsx}",
+      "packages/devtools-extension/src/**/*.{ts,tsx}",
     ],
     // Test files are OUT of scope: they never go through the Babel transform,
     // so nothing auto-memoizes them and their stable identities are real.
@@ -269,6 +279,37 @@ export default tseslint.config(
       "packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts",
     ],
     rules: { "no-restricted-imports": "off" },
+  },
+  {
+    // `react-bindings` is banned too, but for a DIFFERENT reason than the block
+    // above — state it honestly rather than reusing that message. This package
+    // is built by `tsc` (`tsc --build && tsc-alias`), never by Babel, so the
+    // React Compiler does not and cannot run over it: nothing here is
+    // auto-memoized, and nothing will be.
+    //
+    // The ban is therefore "this seam stays memo-free by design", not "the
+    // compiler covers it". It holds today at zero call sites. The package is
+    // three thin files bridging React to RxJS; a `useMemo` appearing here is a
+    // signal the logic belongs in `client-core` (an RxJS machine) or in
+    // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
+    // rather than being cached at the binding layer.
+    files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              importNames: ["useMemo", "useCallback", "memo"],
+              message:
+                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005.",
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     // Newspaper order for test files: type/helper/vi.mock/jest.mock declarations

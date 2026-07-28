@@ -1,7 +1,8 @@
 import { copyFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 function here(p: string): string {
@@ -9,8 +10,18 @@ function here(p: string): string {
 }
 
 export default defineConfig({
+  // React Compiler (ADR-003) — REQUIRED here, not merely nice to have.
+  // `@rtc/devtools-app` exports `./src/index.ts`, i.e. raw source, so this
+  // build compiles the inspector's components itself rather than consuming a
+  // prebuilt bundle. Those components carry no manual memoization (the ban),
+  // and rely on the compiler to supply it. Without this preset the extension
+  // would ship the SAME source completely unmemoized while the standalone
+  // /devtools/ build got the optimized version — a divergence nothing else
+  // would surface, since `check:compiler` compiles files in isolation and
+  // cannot see which build consumes them.
   plugins: [
     react(),
+    babel({ presets: [reactCompilerPreset()] }),
     {
       name: "rtc-copy-extension-assets",
       closeBundle(): void {
