@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { AppToInspector, Recording } from "@rtc/devtools-core";
@@ -19,6 +20,9 @@ import {
 import { InspectorApp } from "#/InspectorApp";
 
 afterEach(cleanup);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 test("connection badge reads disconnected before any welcome arrives", () => {
   const store = new InspectorStore({ coalesce: false });
@@ -180,6 +184,50 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
   fireEvent.click(screen.getByTestId("context-tab-state"));
 
   expect(screen.getByText("m-pre")).toBeTruthy();
+});
+
+test("re-renders do not re-tap the store — liveHistory keeps its identity across renders", () => {
+  const store = new InspectorStore({ coalesce: false });
+  const tapSpy = vi.spyOn(store, "tap");
+
+  const { rerender } = render(<InspectorApp store={store} />);
+
+  rerender(<InspectorApp store={store} />);
+  rerender(<InspectorApp store={store} />);
+
+  expect(tapSpy).toHaveBeenCalledTimes(1);
+});
+
+test("re-renders inside React.StrictMode do not grow past its own double-invoke baseline", () => {
+  const store = new InspectorStore({ coalesce: false });
+  const tapSpy = vi.spyOn(store, "tap");
+
+  const { rerender } = render(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
+
+  // StrictMode's dev-only mount check (mount effect, synthetic cleanup,
+  // re-mount effect against the same committed closure) always tees this
+  // exact effect twice, independent of whether liveHistory's identity is
+  // stable — that pair alone can't distinguish the fix from the bug. What
+  // it CAN'T explain is growth from further re-renders: only a real
+  // re-render can hand the effect's dependency array a fresh liveHistory,
+  // so the regression this guards against is the count climbing past the
+  // StrictMode baseline as rerender() is called again.
+  rerender(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
+  rerender(
+    <StrictMode>
+      <InspectorApp store={store} />
+    </StrictMode>,
+  );
+
+  expect(tapSpy).toHaveBeenCalledTimes(2);
 });
 
 function sampleRecording(): Recording {

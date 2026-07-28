@@ -80,6 +80,39 @@ export function useHoldToUnlock({
     motionEnabledShared.value = motionEnabled;
   }, [motionEnabled, motionEnabledShared]);
 
+  // These two `useMemo`s are NOT caching — they carry semantics the React
+  // Compiler cannot supply, and this repo's memo ban does not apply to them.
+  // (See `scripts/react-compiler-healthcheck.mjs`, where this file is a
+  // documented exclusion, not a tracked/expected-optimized entry.) The chain,
+  // measured against `babel-plugin-react-compiler@1.0.0` while attempting the
+  // exact refactor this comment replaces:
+  //
+  // 1. Moving `onCompleteRef.current = onComplete` out of render and into a
+  //    `useEffect` clears the obvious "ref write during render" bail, but a
+  //    second one remains: `runOnJS(fireComplete)()` below closes over
+  //    `onCompleteRef` (a `useRef`), and the compiler has no special case for
+  //    `runOnJS` (it models `withTiming`/`withSpring`/`useSharedValue`/etc.
+  //    from `react-native-reanimated`, but not `runOnJS` — confirmed by
+  //    grepping the installed compiler bundle). It can't prove `.onStart(cb)`
+  //    defers `cb`'s execution, so it conservatively bails the whole hook.
+  // 2. Dropping the ref entirely (reading `onComplete` directly in the
+  //    worklet closure instead) DOES make this hook compile clean — measured,
+  //    `OPTIMIZED`. But then the compiler's inferred memoization key for
+  //    `gesture` becomes `onComplete` itself.
+  // 3. `onComplete` is `submit`, declared inside `LockScreen`.
+  // 4. `LockScreen` bails on the ViewModel seam (`useViewModel()`), so
+  //    `submit` gets a new identity every render — meaning the gesture would
+  //    be rebuilt every render regardless of what this hook does internally.
+  //
+  // So the ref indirection here isn't optional plumbing the compiler could
+  // absorb: it's the only thing decoupling `gesture`'s identity (stable, so
+  // `GestureDetector`/the native `LongPressGesture` handler is never
+  // reattached) from a caller whose callback identity churns for reasons this
+  // hook cannot fix. Reanimated's own docs recommend exactly this
+  // `useMemo`-around-a-`Gesture` pattern, because rebuilding the gesture
+  // object reattaches it on every render — normally something the React
+  // Compiler would handle for you, which is precisely the case this hook
+  // falls outside of. Keep both memos.
   const fireComplete = useMemo(() => {
     return () => {
       onCompleteRef.current();

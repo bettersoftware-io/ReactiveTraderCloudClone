@@ -1,10 +1,12 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type {
+  DiffEntry,
   InspectorState,
   LogRow,
   MachineRow,
+  SerializedValue,
   StreamRow,
 } from "@rtc/devtools-core";
 import { diffSerialized, serializeValue } from "@rtc/devtools-core";
@@ -204,20 +206,48 @@ function DiffTab({ row, log }: DiffTabProps): ReactElement {
     return <DiffView entries={[]} noPrior={true} />;
   }
 
+  const outcome = diffAgainstPredecessor(current, row, log);
+
+  if (outcome.kind === "error") {
+    return <ErrorCard message={`Diff failed: ${outcome.message}`} />;
+  }
+
+  if (outcome.kind === "noPrior") {
+    return <DiffView entries={[]} noPrior={true} />;
+  }
+
+  return <DiffView entries={outcome.entries} noPrior={false} />;
+}
+
+// The computation, not the JSX, is what can throw (`findPredecessorRow` /
+// `diffableValueOf` / `diffSerialized`) — react-hooks/error-boundaries is
+// right that a render error inside a try/catch escapes the catch, since React
+// doesn't construct the element until later. Hoisting the try/catch out of
+// JSX-construction keeps the SAME calls guarded while satisfying the rule:
+// this function returns a result the caller branches on, and only the caller
+// builds JSX.
+type DiffOutcome =
+  | { kind: "noPrior" }
+  | { kind: "entries"; entries: readonly DiffEntry[] }
+  | { kind: "error"; message: string };
+
+function diffAgainstPredecessor(
+  current: SerializedValue,
+  row: LogRow,
+  log: readonly LogRow[],
+): DiffOutcome {
   try {
     const predecessor = findPredecessorRow(log, row);
     const previous =
       predecessor === null ? null : diffableValueOf(predecessor.event);
 
     if (previous === null) {
-      return <DiffView entries={[]} noPrior={true} />;
+      return { kind: "noPrior" };
     }
 
-    return (
-      <DiffView entries={diffSerialized(previous, current)} noPrior={false} />
-    );
+    return { kind: "entries", entries: diffSerialized(previous, current) };
   } catch (error) {
-    return <ErrorCard message={`Diff failed: ${String(error)}`} />;
+    return { kind: "error", message: String(error) };
   }
 }
 
@@ -238,17 +268,9 @@ function StateTab({
     setQuery(e.target.value);
   }
 
-  const changedIds = useMemo((): ReadonlySet<string> => {
-    if (!marked) {
-      return new Set();
-    }
+  const changedIds = computeChangedIds(marked, state, presentState);
 
-    return changedStreamIds(state.streams, presentState.streams);
-  }, [marked, state, presentState]);
-
-  const visibleStreams = useMemo(() => {
-    return filterStreams(state.streams, query);
-  }, [state, query]);
+  const visibleStreams = computeVisibleStreams(state, query);
 
   return (
     <div className={styles.stateTab}>
@@ -268,6 +290,25 @@ function StateTab({
       </div>
     </div>
   );
+}
+
+function computeChangedIds(
+  marked: boolean,
+  state: InspectorState,
+  presentState: InspectorState,
+): ReadonlySet<string> {
+  if (!marked) {
+    return new Set();
+  }
+
+  return changedStreamIds(state.streams, presentState.streams);
+}
+
+function computeVisibleStreams(
+  state: InspectorState,
+  query: string,
+): readonly StreamRow[] {
+  return filterStreams(state.streams, query);
 }
 
 interface MachineLineProps {

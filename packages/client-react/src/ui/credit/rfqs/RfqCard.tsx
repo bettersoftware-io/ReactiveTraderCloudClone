@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -70,38 +70,45 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Settles this card's transition regardless of which of the two wirings
-  // below fired it — the JSX `onAnimationEnd` (React synthetic event) and
-  // the native `animationcancel` listener (see the doc comment below) share
-  // this one function rather than each getting their own, since their
-  // bodies are identical: ignore descendant-bubbled events, then report the
-  // currently-selected keyframe. The parameter is typed to the two fields
-  // actually read — `target`/`currentTarget` — rather than either event
-  // type by name, since React's synthetic `AnimationEvent<HTMLDivElement>`
-  // and the platform `AnimationEvent` used by the native listener aren't
-  // the same type; both satisfy this minimal structural shape. Wrapped in
-  // `useCallback` (deps: `anim`, `onAnimationEnd`) so the native-listener
-  // effect below can depend on a stable reference instead of re-binding the
-  // listener on every render.
-  const settleCardTransition = useCallback(
-    (event: CardTransitionEvent): void => {
-      // Ignore animations bubbling up from descendants (none currently
-      // exist, but this keeps the handler correct if one is added later).
-      if (event.target !== event.currentTarget) {
-        return;
-      }
+  // Settles this card's transition for the JSX `onAnimationEnd` wiring below
+  // (a React synthetic event — identity doesn't matter there, a fresh handler
+  // every render is ordinary React). The parameter is typed to the two fields
+  // actually read — `target`/`currentTarget` — rather than the React
+  // `AnimationEvent<HTMLDivElement>` type, since the native-listener effect
+  // below needs the same guard against the platform `AnimationEvent`, which
+  // isn't the same type; both satisfy this minimal structural shape.
+  //
+  // A plain function declaration rather than a `useCallback` (ADR-003): this
+  // component reads hooks off the ViewModel seam (`useViewModel()` above),
+  // which bails the React Compiler out of memoizing it, so this gets a new
+  // identity every render. That's fine here — this repo has zero
+  // `React.memo` boundaries, so no downstream memoized child depends on it —
+  // but it does mean this function cannot double as the native listener's
+  // callback (see below): a `useEffect` depending on it would re-subscribe
+  // the DOM listener every render instead of only when `anim`/`onAnimationEnd`
+  // change.
+  function settleCardTransition(event: CardTransitionEvent): void {
+    // Ignore animations bubbling up from descendants (none currently
+    // exist, but this keeps the handler correct if one is added later).
+    if (event.target !== event.currentTarget) {
+      return;
+    }
 
-      if (anim === "enter" || anim === "exit") {
-        onAnimationEnd(anim);
-      }
-    },
-    [anim, onAnimationEnd],
-  );
+    if (anim === "enter" || anim === "exit") {
+      onAnimationEnd(anim);
+    }
+  }
 
-  // See the doc comment above: no React synthetic event exists for
+  // The native `animationcancel` listener's own copy of the guard above — see
+  // the doc comment above: no React synthetic event exists for
   // "animationcancel", so it's subscribed natively. jsdom (this repo's test
   // DOM) dispatches plain "animationcancel" events fine via addEventListener
   // — unlike animationend, there's no vendor-prefix fallback to feature-detect.
+  // Duplicated rather than shared with `settleCardTransition` above: depending
+  // on that function here would re-subscribe on every render (see its doc
+  // comment); depending on `anim`/`onAnimationEnd` directly instead re-runs
+  // only when either actually changes, matching this effect's pre-ADR-003
+  // `useCallback` deps exactly.
   useEffect(() => {
     const el = cardRef.current;
 
@@ -109,12 +116,22 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       return;
     }
 
-    el.addEventListener("animationcancel", settleCardTransition);
+    function settleCardTransitionOnCancel(event: CardTransitionEvent): void {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      if (anim === "enter" || anim === "exit") {
+        onAnimationEnd(anim);
+      }
+    }
+
+    el.addEventListener("animationcancel", settleCardTransitionOnCancel);
 
     return () => {
-      el.removeEventListener("animationcancel", settleCardTransition);
+      el.removeEventListener("animationcancel", settleCardTransitionOnCancel);
     };
-  }, [settleCardTransition]);
+  }, [anim, onAnimationEnd]);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useRef, useState } from "react";
+import { type ReactElement, useRef, useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -37,24 +37,21 @@ export function WatchlistPanel(): ReactElement {
   const [quotes, setQuotes] = useState<Record<string, QuoteSnapshot>>({});
   const listRef = useRef<HTMLDivElement>(null);
 
-  const reportQuote = useCallback(
-    (symbol: string, last: number, changePct: number) => {
-      setQuotes((prev) => {
-        const existing = prev[symbol];
+  function reportQuote(symbol: string, last: number, changePct: number): void {
+    setQuotes((prev) => {
+      const existing = prev[symbol];
 
-        if (
-          existing &&
-          existing.last === last &&
-          existing.changePct === changePct
-        ) {
-          return prev;
-        }
+      if (
+        existing &&
+        existing.last === last &&
+        existing.changePct === changePct
+      ) {
+        return prev;
+      }
 
-        return { ...prev, [symbol]: { last, changePct } };
-      });
-    },
-    [],
-  );
+      return { ...prev, [symbol]: { last, changePct } };
+    });
+  }
 
   const rowInputs: readonly WatchlistRowInput[] = instruments.map((inst) => {
     const q = quotes[inst.symbol];

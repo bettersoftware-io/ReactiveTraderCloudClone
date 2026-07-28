@@ -3,6 +3,9 @@
   "ignore": [".remember/**", "docs/design/**"],
   "ignoreBinaries": ["scripts/install-actionlint.sh"],
   "workspaces": {
+    ".": {
+      "ignoreDependencies": ["@babel/core", "babel-plugin-react-compiler"]
+    },
     "packages/domain": {
       "entry": ["src/index.ts", "src/ports/__contracts__/*.ts"],
       "project": "src/**/*.ts"
@@ -109,7 +112,8 @@
         "babel-preset-expo",
         "expo-blur",
         "expo-haptics",
-        "expo-sensors"
+        "expo-sensors",
+        "babel-plugin-react-compiler"
       ]
     },
     "tests": {

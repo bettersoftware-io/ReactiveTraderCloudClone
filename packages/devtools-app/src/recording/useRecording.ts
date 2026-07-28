@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type InspectorState,
@@ -76,15 +76,15 @@ export function useRecording(
     };
   }, [isRecording, store]);
 
-  const startRecording = useCallback((): void => {
+  function startRecording(): void {
     const recorder = new Recorder();
     recorder.start(store.getSnapshot(), Date.now());
     recorderRef.current = recorder;
     setFrameCount(recorder.frameCount);
     setIsRecording(true);
-  }, [store]);
+  }
 
-  const stopRecording = useCallback((): void => {
+  function stopRecording(): void {
     const recorder = recorderRef.current;
 
     if (!recorder) {
@@ -94,21 +94,21 @@ export function useRecording(
     recorder.stop();
     setRecording(recorder.toRecording());
     setIsRecording(false);
-  }, []);
+  }
 
-  const exportRecording = useCallback((): void => {
+  function exportRecording(): void {
     if (recording) {
       downloadRecording(recording);
     }
-  }, [recording]);
+  }
 
-  const exportBuffer = useCallback((): void => {
+  function exportBuffer(): void {
     downloadRecording(
       history.toRecording(appId ?? "unknown", history.firstTs ?? Date.now()),
     );
-  }, [history, appId]);
+  }
 
-  const importRecording = useCallback(async (file: File): Promise<void> => {
+  async function importRecording(file: File): Promise<void> {
     const text = await file.text();
 
     try {
@@ -129,11 +129,11 @@ export function useRecording(
     } catch (error) {
       setImportError(String(error));
     }
-  }, []);
+  }
 
-  const backToLive = useCallback((): void => {
+  function backToLive(): void {
     setImported(null);
-  }, []);
+  }
 
   return {
     isRecording,
