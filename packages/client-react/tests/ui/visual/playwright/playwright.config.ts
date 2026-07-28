@@ -46,48 +46,46 @@ export default defineConfig({
   ...(process.env.SCENARIO_PATTERN
     ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
     : {}),
-  // Tolerate cross-CI-runner anti-aliasing jitter (~1-4% of pixels, byte-identical
-  // layout): glyph-edge AA varies between the runner that renders the goldens
-  // (update-visual-goldens workflow) and the runner that verifies them (the
-  // `visual` CI job), tipping a random text-heavy golden over a strict threshold
-  // with no real change. Raised from 0.025 to 0.06: text-heavy fixed-dimension
-  // goldens (e.g. fxBlotter populated/sorted) show ~0.04 ratio of sub-pixel AA
-  // jitter on x86 run-to-run; 0.025 was too tight.
-  // See project_visual_goldens_dual_set / PR #40 (the now-retired playwright-ct
-  // tier set this precedent first).
+  // Screenshot tolerance — MEASURED, not assumed. Re-derive with
+  // /rtc:visual-tolerance-audit rather than adjusting this by feel.
   //
-  // KNOWN BLIND SPOT — this comment used to claim "0.06 still catches
-  // layout/structure regressions (which move >> 6%)". That is FALSE for the
-  // text-sparse surfaces in this HUD, and was measured, not guessed:
-  // restructuring PreferencesModal into two balanced columns (a new section,
-  // ~13 rows relocated, two rows added) moved only **0.02** of pixels — a third
-  // of the threshold — so the tier reported PASS against a golden of the old
-  // layout. Dark background dominates these captures; glyphs and toggles are a
-  // small pixel fraction, so even a total rearrangement stays under 6%.
+  // Measurement (2026-07-28): five full golden regenerations of the same
+  // commit, landing on five distinct runner instances, compared pairwise —
+  // 1,462 goldens x 10 pairs = 14,620 comparisons. Cross-run jitter was
+  // **ZERO differing pixels**, and still zero with pixelmatch's anti-aliasing
+  // discount disabled (`includeAA: true`), so it is not an artifact of AA
+  // being ignored. The prior value of 0.06 was justified by "text-heavy
+  // goldens show ~0.04 AA jitter"; that could not be reproduced at all — not
+  // one dense-text golden differed, fxBlotter included.
   //
-  // Consequence to remember: A PASSING VISUAL RUN IS NOT EVIDENCE THAT LAYOUT
-  // IS UNCHANGED on a sparse surface. After any deliberate layout change,
-  // regenerate the goldens and LOOK at them; do not infer from a green tier.
-  // The regen script passes `--update-snapshots=all` for exactly this reason —
-  // the default ("changed") rewrites nothing when the comparison passes, which
-  // silently no-op'd a targeted refresh of this very scenario.
+  // Why 0.005 and not 0: N samples cannot prove the hosted runner pool is
+  // homogeneous (GitHub exposes instance names, never CPU models), so this
+  // keeps real headroom over a measured floor of zero — 10,368 px on a
+  // full-page 1920x1080 shot, 37 px on the smallest element capture
+  // (jarvis-orb-attention, 87x84). A ratio is harsher on small captures, which
+  // is why the floor is stated in pixels too.
   //
-  // NOT A TEMPORARY MASK — DO NOT "tighten this away". Sub-pixel glyph AA is
-  // non-deterministic ACROSS x86 CI runner instances (FreeType/HarfBuzz
-  // rasterization rounds differently per microarchitecture) even inside the
-  // byte-identical pinned Playwright container. A small pixel-ratio tolerance is
-  // the standard, correct way to compare pixel goldens across machines — it is
-  // the SOLUTION here, not a shortcut. The "fix it for good" alternative (force
-  // Chromium font-hinting off via launch flags, then regenerate BOTH committed
-  // golden sets — x86 `react/` via the update-visual-goldens workflow AND the
-  // local `react-local/<arch>/` set — and re-stabilise over several CI cycles)
-  // was evaluated and deliberately rejected: those flags only REDUCE, not
-  // eliminate, cross-microarch AA variance, so the payoff is a marginally
-  // tighter threshold at a high, CI-only, golden-churning cost. If AA jitter
-  // ever exceeds ~0.05, first check it is not a REAL regression (those move far
-  // past 6%); only then revisit. History: this is the settled decision after the
-  // HUD-redesign visual-flake saga (see project_hud_redesign_workstream).
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
+  // What the old value cost, concretely. A budget of 0.06 is not merely loose:
+  // it is larger than a REAL change on these surfaces, because a dark HUD is
+  // mostly background and glyphs are a small pixel fraction.
+  //   - A complete two-column restructure of PreferencesModal moved 0.017.
+  //   - The Jarvis feature shipped a header orb and a full overlay re-skin on
+  //     2026-07-27; 58 goldens went stale and the tier stayed GREEN, because
+  //     each change sat around 0.03. PR #422 refreshed 132 drifted goldens.
+  // 0.005 catches both classes with margin to spare.
+  //
+  // Still true, and the reason this is not 0: a small pixel-ratio tolerance is
+  // the correct way to compare goldens across machines (see PR #40 and the
+  // HUD-redesign flake saga, project_visual_goldens_dual_set). Forcing
+  // font-hinting off was evaluated and rejected — it reduces but does not
+  // eliminate cross-microarch AA variance, at a high golden-churning cost.
+  //
+  // If this ever starts flaking: run the audit before raising it. A raise
+  // without a measurement is what produced the blind spot above. And note a
+  // PASSING run is still not evidence that layout is unchanged on a sparse
+  // surface — structural assertions cover what pixels cannot (e.g.
+  // PreferencesModalPage.rowCountInColumn).
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [
