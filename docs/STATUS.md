@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-27**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-28**
 
 ## 🟡 In progress
 
@@ -36,6 +36,8 @@
 - **Atomic test-ID renames** — plan written, never executed. Plan: [superpowers/plans/2026-07-10-atomic-testid-renames.md](superpowers/plans/2026-07-10-atomic-testid-renames.md)
 
 ## ⚪ Optional / next step (no plan file yet)
+
+- **Vercel CLI: unpin the deploy workflows from `vercel@57` once 58's `vercel pull` regression is fixed (pinned 2026-07-28, PR #419).** CLI 58.0.0 (published 2026-07-27T20:26Z) breaks `vercel pull --environment=production` under env-var project linking (`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`, no `.vercel/` directory) with "Could not retrieve Project Settings" — Deploy run 30337004044 failed both client jobs this way, while the previous day's run passed on an identical tree with 57.0.0, so the CLI major is the only delta. The 58.0.0 release notes document **no** breaking change to `pull`/linking, and no upstream issue existed as of 2026-07-28 → treated as an unintentional regression, so there is nothing on our side to adapt to; all four install sites (`deploy.yml` ×2, `deploy-proto.yml`, `deploy-cd-proto.yml`) are pinned to the last proven major instead. To unpin: install a later 58.x locally, verify `VERCEL_ORG_ID=… VERCEL_PROJECT_ID=… vercel pull` resolves the project (or check the upstream fix landed), bump the four sites in one commit, and prove it by dispatching Deploy. The local dev-machine CLI is independent of this pin (deploys are CI-only) and can track latest separately. No plan file.
 
 - **"Login wait style" ships with NO description — revisit (PR #410, 2026-07-27).** Every other described row in the Preferences modal carries a one-line explanation; this one carries none, and that was a layout concession rather than a copy decision. The original text ("Which sign-in waiting animation to show. Auto alternates between them.") widened the label column enough to force the segment's three options — `Auto | Handshake | Reactor` — to stack vertically, which pushed the row below it ("Login wait delay") clean out of the modal's visible body. Dropping the description let both rows sit inline and the columns finish level. So the row currently relies on its label plus the option names to explain itself, and **"Auto" in particular does not communicate that it alternates per attempt** — the one fact a user needs to understand why the animation changes between sign-ins. Fix directions, in rough order of preference: widen the label column (or narrow the segment) in `PreferencesModal.module.css` so a described 3-option row fits; add a `title`/tooltip rather than a block description; or shorten to something like "Auto alternates." and re-measure. **Whatever the fix, re-render and LOOK at the golden** — the pixel tier cannot see this class of change (see the visual-golden blind-spot entry above: the whole restructure moved 0.02 of pixels against a 0.06 threshold). Not urgent; the control works and is contract-tested either way.
 
