@@ -138,6 +138,11 @@ jobs:
             if [ -n "$SCENARIO_PATTERN" ]; then
               MSG="$MSG (pattern: $SCENARIO_PATTERN)"
             fi
+            # NOTE: this marker makes GitHub skip CI for this commit — and it is
+            # matched ANYWHERE in a message, so do not quote it verbatim in an
+            # unrelated commit. Writing "the bot commits with <that marker>" in a
+            # normal commit silently skips that commit's own CI run, which then
+            # looks like GitHub failing to materialize a run (PR #422).
             git commit -m "$MSG [skip ci]"
             git push origin "HEAD:$GITHUB_REF_NAME"
           fi
