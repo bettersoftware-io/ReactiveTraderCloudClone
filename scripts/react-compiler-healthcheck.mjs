@@ -31,6 +31,13 @@
 // noise — the ViewModel seam (ADR-004) bails ~118 functions in client-react by
 // design, since React Compiler requires static hook identity and the seam
 // supplies hooks dynamically. See the spec for the measurement.
+// Dependency note: `@babel/core` and `babel-plugin-react-compiler` are resolved
+// via createRequire scoped to `packages/client-react/` — DELIBERATELY, so this
+// gate compiles with the exact compiler version the app builds with. Declaring
+// them at the repo root instead would let the two drift, and this gate silently
+// measuring a different compiler than the one that ships is precisely the class
+// of bug it exists to catch. knip cannot see through createRequire, so both are
+// listed under the root workspace's `ignoreDependencies` in knip.json.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
