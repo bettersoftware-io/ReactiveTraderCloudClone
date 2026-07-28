@@ -7,8 +7,7 @@ import {
   type SkFont,
   Skia,
 } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useMemo } from "react";
+import { type JSX, useRef } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/client-core";
@@ -21,6 +20,7 @@ import {
 } from "#/ui/shell/boot/scenes/boot3dCamera";
 import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import { bootProgress, hexToRgba } from "#/ui/shell/boot/scenes/coreGeometry";
+import { cachedSceneGeometry } from "#/ui/shell/boot/scenes/sceneGeometryCache";
 import {
   beaconPhase,
   contourPhase,
@@ -66,25 +66,35 @@ import {
  *
  * Ported from `packages/boot-splash/src/variants/bootTopo.ts`.
  *
- * THE HEIGHTFIELD AND CONTOURS ARE BUILD-ONCE, and this is the scene where that
- * matters most. Together they are ~1,900 `heightAt` evaluations plus ~20,000
- * marching-squares cell tests. The web computes them once, before returning its
- * draw closure; doing it inside `createPicture` would repeat all of it every
- * frame at 60 fps. Jest cannot tell the difference — its mock runs the slow
- * version happily — so the `useMemo` below is load-bearing and untested by
- * anything except a device.
+ * THE HEIGHTFIELD AND CONTOURS STAY OUT OF THE WORKLET, and this is the scene
+ * where that matters most. Together they are ~1,900 `heightAt` evaluations plus
+ * ~20,000 marching-squares cell tests. The web computes them once, before
+ * returning its draw closure; doing it inside `createPicture` would repeat all
+ * of it every frame at 60 fps — that per-frame repeat is what this component
+ * must never do, `useMemo` or not. Jest cannot tell the difference — its mock
+ * runs the slow version happily either way — so this is untested by anything
+ * except a device. `world` is read only inside the `useDerivedValue` closure
+ * below and never flows into JSX, so the React Compiler inserts no cache for
+ * it (verified against the compiled output) — it is cached at module scope
+ * instead (`sceneGeometryCache.ts`), which is compiler-independent and, since
+ * neither `topoHeightfield` nor `topoMotes` take an input, never needs to
+ * recompute at all after the first call.
  *
  * PRICE TICKS ARE DERIVED FROM TIME, not accumulated on the peak objects as the
  * web does — see `topoGeometry.ts`'s `peakTick`.
  *
- * THE WALL CLOCK IS SAMPLED ONCE, IN REACT-LAND. The web prints a live
- * timestamp bottom-left. A worklet must not call `new Date()`, and a ticking
- * clock makes a pinned visual golden unreproducible — this repo already dropped
- * `credit/rfq-tiles-empty` for exactly that class of non-determinism. Sampling
- * once at mount makes it stable for the whole boot, which is enough for the
- * live splash. **It is NOT enough for a golden**: two captures minutes apart
- * still differ. Registering `boot/topo` as a visual scenario therefore needs
- * the clock pinned, or the scenario left out with that reason recorded.
+ * THE WALL CLOCK IS READ IN REACT-LAND, NEVER THE WORKLET. The web prints a
+ * live timestamp bottom-left. A worklet must not call `new Date()`, and a
+ * ticking clock makes a pinned visual golden unreproducible — this repo
+ * already dropped `credit/rfq-tiles-empty` for exactly that class of
+ * non-determinism. Sampled once per mount via a lazy `useRef` (not a
+ * `useMemo`, which the compiler cannot supply memoization for here either —
+ * see `world` above — and which React itself never guarantees to retain), so
+ * a theme/dimension change mid-boot leaves the footer clock pinned to mount
+ * time exactly as before. Already **not enough for a golden** either way: two
+ * mounts minutes apart still differ. Registering `boot/topo` as a visual
+ * scenario therefore needs the clock pinned, or the scenario left out with
+ * that reason recorded.
  *
  * PROJECTION. `perspectiveK` 0.26 with a clamped near plane.
  */
@@ -100,29 +110,45 @@ export function TopoScene({
   const positive = theme.accentPositive;
   const negative = theme.accentNegative;
   const fonts = useBootSceneFonts(TOPO_FONTS);
-  // The expensive tables — see the header. Built once, captured by the
-  // recorder, never rebuilt inside `createPicture`.
-  const world = useMemo(() => {
+  // The expensive tables — see the header. Kept out of the worklet, never
+  // rebuilt inside `createPicture`. `topoHeightfield`/`topoMotes` take no
+  // input (deterministic world-space data), so `world` has no real
+  // dependency to key on — an empty cache key means the first call computes
+  // it and every later render reuses the same object. Read only inside the
+  // `useDerivedValue` closure below, never JSX, so the React Compiler cannot
+  // cache it itself — see `sceneGeometryCache.ts`'s header.
+  const world = cachedSceneGeometry("topoScene:world", [], () => {
     const heights = topoHeightfield();
+
     return {
       contours: topoContours(heights),
       meshLines: topoMeshLines(heights),
       motes: topoMotes(),
     };
-  }, []);
+  });
 
-  // Sampled once at mount, never inside the worklet — see the header.
-  const stamp = useMemo(() => {
-    const now = new Date();
-    return topoTimestamp(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      now.getDate(),
-      now.getHours(),
-      now.getMinutes(),
-      now.getSeconds(),
-    );
-  }, []);
+  // Read in React-land, never inside the worklet — see the header. This is
+  // a BUILD-ONCE-PER-MOUNT value, not a geometry cache: the footer clock
+  // must stay pinned to the moment this scene mounted, so a lazy ref (the
+  // same idiom `useMachine.ts`/`InspectorApp.tsx` use for a build-once
+  // instance) captures `Date.now()` exactly once and every later render
+  // reads the same captured value, regardless of how many times the
+  // component re-renders in between.
+  const mountTimeRef = useRef<Date | null>(null);
+
+  if (mountTimeRef.current === null) {
+    mountTimeRef.current = new Date();
+  }
+
+  const now = mountTimeRef.current;
+  const stamp = topoTimestamp(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+  );
 
   const picture = useDerivedValue(() => {
     return createPicture(

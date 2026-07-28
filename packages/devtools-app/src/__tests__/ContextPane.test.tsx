@@ -10,6 +10,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { AppToInspector, LogRow } from "@rtc/devtools-core";
+import * as devtoolsCore from "@rtc/devtools-core";
 import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
 import { ContextPane } from "#/timeline/ContextPane";
@@ -17,6 +18,12 @@ import styles from "#/timeline/ContextPane.module.css";
 import { useTimeline } from "#/timeline/useTimeline";
 
 afterEach(cleanup);
+
+// Restore in afterEach (not only after the assertion below) so a failing
+// assertion can never leak the mock into a later test.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 beforeEach(() => {
   Element.prototype.animate = vi.fn(() => {
@@ -73,6 +80,26 @@ test("resuming from a pinned Diff selection clears the stale tab highlight", () 
   expect(diffTab.classList.contains(styles.tabActive)).toBe(false);
   expect(diffTab.classList.contains(styles.tab)).toBe(true);
   expect(stateTab.classList.contains(styles.tabActive)).toBe(true);
+});
+
+// This is a plumbing test, not a real-failure scenario: findPredecessorRow /
+// diffableValueOf / diffSerialized are pure and cannot throw on well-formed
+// input. It only proves DiffTab's try/catch still routes a thrown error to
+// ErrorCard after the JSX-out-of-try/catch restructure.
+test("diff tab renders ErrorCard when the diff computation throws", () => {
+  vi.spyOn(devtoolsCore, "diffSerialized").mockImplementation(() => {
+    throw new Error("boom");
+  });
+
+  const harness = mount();
+
+  act(() => {
+    harness.pin(2);
+  });
+
+  fireEvent.click(screen.getByTestId("context-tab-diff"));
+
+  expect(screen.getByText("⚠ Diff failed: Error: boom")).toBeTruthy();
 });
 
 interface HarnessHandle {

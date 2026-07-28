@@ -1,3 +1,4 @@
+import type { ExpoConfig } from "expo/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Regression guard for the WS-mode wiring: `app.config.ts` must map
@@ -50,8 +51,24 @@ describe("app.config serverUrl resolution", () => {
   });
 });
 
+describe("app.config react compiler", () => {
+  it("enables the React Compiler experiment", async () => {
+    const config = await loadConfig();
+
+    expect(config.experiments?.reactCompiler).toBe(true);
+  });
+});
+
 async function resolveServerUrl(): Promise<unknown> {
   vi.resetModules();
   const mod = await import("./app.config");
   return mod.default.extra?.serverUrl;
+}
+
+async function loadConfig(): Promise<ExpoConfig> {
+  vi.resetModules();
+
+  const mod = await import("./app.config");
+
+  return mod.default;
 }
