@@ -108,6 +108,16 @@ Two things Freeze deliberately does *not* take away:
 - **`PowerSaverRoot`** (a document-effect component, React and Solid) writes
   the level string to `data-power-saver` on `<html>`, plus the inherited
   `--fx-play` custom property (`paused`/`running`) that Calm already used.
+
+  **Trap — the `animation` shorthand resets the gate.** The shorthand resets
+  every animation longhand it doesn't mention, *including*
+  `animation-play-state`, back to `running`. So
+  `animation-play-state: var(--fx-play)` declared in a shared rule is silently
+  discarded by a later same-specificity `animation: … infinite` shorthand
+  (the Jarvis orb/overlay ring spins shipped this way and kept spinning under
+  Calm). Always place the `animation-play-state` line **after** the shorthand,
+  in the same rule. No static gate can see this — the declaration exists and
+  lints clean; only the live census (`/rtc:perf-audit`) catches it.
 - **Global CSS catch-all (Approach A — not per-file gating):** each web
   client's non-module global stylesheet (`index.css`) carries:
 

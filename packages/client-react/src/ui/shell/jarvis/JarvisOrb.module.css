@@ -79,15 +79,19 @@
 .ringInner {
   inset: 0;
   will-change: transform;
-  animation-play-state: var(--fx-play, running);
 }
 
+/* The calm gate must FOLLOW each `animation` shorthand: the shorthand resets
+   animation-play-state to `running`, so a play-state declared in an earlier
+   rule is silently discarded. */
 .ringOuter {
   animation: jarvis-orb-spin 9s linear infinite;
+  animation-play-state: var(--fx-play, running);
 }
 
 .ringInner {
   animation: jarvis-orb-spin-rev 14s linear infinite;
+  animation-play-state: var(--fx-play, running);
 }
 
 .ringSvg {
