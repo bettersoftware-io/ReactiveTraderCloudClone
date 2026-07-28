@@ -29,6 +29,7 @@
     "coverage:report": "tsx scripts/coverage-report.ts",
     "test:report": "vitest run scripts/lib",
     "test:pages": "vitest run scripts/pages",
+    "test:hooks": "vitest run browser/playwright-cucumber",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

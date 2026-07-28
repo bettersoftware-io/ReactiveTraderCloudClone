@@ -2,13 +2,20 @@ import { state } from "@rx-state/core";
 import { firstValueFrom } from "rxjs";
 import type { Accessor } from "solid-js";
 
-import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
+import type {
+  ActivityEntry,
+  AppCommands,
+  JarvisState,
+  Presenters,
+} from "@rtc/client-core";
 import {
   type AnimationIntent,
   type AuthViewState,
   type BootSequenceIntents,
   type BootSequenceState,
   createRfqCountdownMachine,
+  type EqChartType,
+  type EqIndicatorId,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   type IncidentIntents,
@@ -43,6 +50,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -57,7 +66,10 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisSkin,
   type LogEvent,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type MetricSample,
   nextPowerSaverLevel,
   type PositionUpdates,
@@ -115,6 +127,19 @@ type UseEqWorkspaceResult = {
  * below, not a per-mount `useMachine`), so it belongs to part 1. */
 type UseIncidentResult = { state: Accessor<IncidentState> } & IncidentIntents;
 
+/** Jarvis AI assistant state + intents (singleton, app-level). */
+export type UseJarvisResult = {
+  state: Accessor<JarvisState>;
+} & {
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+  send: (text: string) => void;
+  approveConfirmation: () => void;
+  declineConfirmation: () => void;
+  setSkin: (skin: JarvisSkin) => void;
+};
+
 /** The AdminPanel throughput view: slider/input value, initial-load flag, and
  * the optional confirmation/error banner — every read field as an accessor. */
 interface UseThroughputResult {
@@ -167,6 +192,13 @@ interface UseForceBootAnimationResult {
   enabled: Accessor<boolean>;
   setEnabled: (on: boolean) => void;
   toggle: () => void;
+}
+
+interface UseLoginWaitPreferencesResult {
+  style: Accessor<LoginWaitStyle>;
+  setStyle: (style: LoginWaitStyle) => void;
+  delay: Accessor<LoginWaitDelay>;
+  setDelay: (delay: LoginWaitDelay) => void;
 }
 
 interface UseViewModePreferenceResult {
@@ -264,6 +296,10 @@ export interface ViewModel {
   usePowerSaver: () => UsePowerSaverResult;
   /** Force the boot-splash animation to play under reduced motion — enabled flag plus write/toggle intents. */
   useForceBootAnimation: () => UseForceBootAnimationResult;
+  /** The two login-wait inspection preferences — which treatment to render
+   * ("auto" defers to the cycle) and how long to hold the outcome so it can
+   * actually be seen. */
+  useLoginWaitPreferences: () => UseLoginWaitPreferencesResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
   /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
@@ -325,6 +361,8 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** Jarvis AI assistant state + intents (singleton, app-level). */
+  useJarvis: () => UseJarvisResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -461,6 +499,24 @@ export function createViewModel(
 
   function setForceBootAnimation(on: boolean): void {
     presenters.forceBootAnimation.set(on);
+  }
+
+  const loginWaitStyleState = state(
+    presenters.loginWaitPreferences.style$,
+    DEFAULT_LOGIN_WAIT_STYLE,
+  );
+
+  const loginWaitDelayState = state(
+    presenters.loginWaitPreferences.delay$,
+    DEFAULT_LOGIN_WAIT_DELAY,
+  );
+
+  function setLoginWaitStyle(style: LoginWaitStyle): void {
+    presenters.loginWaitPreferences.setStyle(style);
+  }
+
+  function setLoginWaitDelay(delay: LoginWaitDelay): void {
+    presenters.loginWaitPreferences.setDelay(delay);
   }
 
   const viewModeState = state(
@@ -666,6 +722,14 @@ export function createViewModel(
     presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
+  function setEqChartType(kind: EqChartType): void {
+    presenters.eqWorkspace.intents.setChartType(kind);
+  }
+
+  function toggleEqIndicator(id: EqIndicatorId): void {
+    presenters.eqWorkspace.intents.toggleIndicator(id);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -830,6 +894,14 @@ export function createViewModel(
         },
       };
     },
+    useLoginWaitPreferences: () => {
+      return {
+        style: toSignal(loginWaitStyleState),
+        setStyle: setLoginWaitStyle,
+        delay: toSignal(loginWaitDelayState),
+        setDelay: setLoginWaitDelay,
+      };
+    },
     useViewModePreference: () => {
       return {
         viewMode: toSignal(viewModeState),
@@ -920,6 +992,14 @@ export function createViewModel(
         select: selectEqSymbol,
         closeTab: closeEqTab,
         setTimeframe: setEqTimeframe,
+        setChartType: setEqChartType,
+        toggleIndicator: toggleEqIndicator,
+      };
+    },
+    useJarvis: () => {
+      return {
+        state: toSignal(presenters.jarvis.state$),
+        ...presenters.jarvis.intents,
       };
     },
     useMetrics: () => {

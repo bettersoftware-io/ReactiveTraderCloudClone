@@ -44,11 +44,23 @@ import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ThemePicker } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
+import { JarvisOrb } from "#/ui/shell/jarvis/JarvisOrb";
+import { JarvisOverlay } from "#/ui/shell/jarvis/JarvisOverlay";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
+
+import {
+  EquitiesChartArea,
+  EquitiesChartCrosshair,
+  EquitiesChartIndicators,
+  EquitiesChartLine,
+  EquitiesChartPanned,
+  EquitiesChartVolumeAxis,
+  EquitiesChartZoomed,
+} from "./EquitiesChartInteractive.visual";
 
 const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
 
@@ -519,6 +531,32 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </div>
     );
   },
+  // --- Task C5: interactive chart scenarios (pan/zoom/crosshair/kind/
+  // indicators/volume-axis) — forced-state wrappers in
+  // EquitiesChartInteractive.visual.tsx (see that file's doc comment for
+  // why panned/zoomed/crosshair bypass useChartGestures while the rest
+  // mount the real CandleChart directly).
+  EquitiesChartPanned: () => {
+    return <EquitiesChartPanned />;
+  },
+  EquitiesChartZoomed: () => {
+    return <EquitiesChartZoomed />;
+  },
+  EquitiesChartCrosshair: () => {
+    return <EquitiesChartCrosshair />;
+  },
+  EquitiesChartLine: () => {
+    return <EquitiesChartLine />;
+  },
+  EquitiesChartArea: () => {
+    return <EquitiesChartArea />;
+  },
+  EquitiesChartIndicators: () => {
+    return <EquitiesChartIndicators />;
+  },
+  EquitiesChartVolumeAxis: () => {
+    return <EquitiesChartVolumeAxis />;
+  },
   EquitiesWatchlistPanel: () => {
     return (
       <div style={{ width: 280, height: 420, display: "flex" }}>
@@ -574,6 +612,28 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
         }}
       >
         <PreferencesModal open={true} onClose={() => {}} />
+      </div>
+    );
+  },
+  // --- Phase 1: J.A.R.V.I.S ---
+  // Orb: a small header-affordance component (32px button), same bare-mount
+  // idiom as ConnectionStatusBar above — reads its own state via useJarvis().
+  JarvisOrb: () => {
+    return <JarvisOrb />;
+  },
+  // Overlay: reads its own open/entries/confirmation state via useJarvis() (no
+  // props), so the registry only supplies the same PreferencesModal backdrop
+  // wrapper — the overlay's own scrim is translucent (rgba(0,0,0,0.62)).
+  JarvisOverlay: () => {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "var(--bg-primary)",
+        }}
+      >
+        <JarvisOverlay />
       </div>
     );
   },

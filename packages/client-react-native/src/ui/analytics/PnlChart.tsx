@@ -9,7 +9,7 @@ import {
 } from "@shopify/react-native-skia";
 import type { JSX } from "react";
 import { useState } from "react";
-import type { LayoutChangeEvent } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 import type { HistoricPosition } from "@rtc/domain";
 
@@ -61,45 +61,54 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
   };
 
   return (
-    <Canvas
+    // The measuring `onLayout` sits on a plain View, NOT on the Canvas: Skia's
+    // `<Canvas onLayout>` is deprecated and silently does nothing on the new
+    // architecture — no throw, no warning in jest, just a width frozen at
+    // `CHART_WIDTH`. Caught only by running this on a device, where Skia logs
+    // the deprecation. Skia's replacements (`onSize`, `useCanvasSize`) return a
+    // SharedValue, which is right for UI-thread consumers; this width is read
+    // during an ordinary React render, so measure on the JS thread.
+    <View
       testID="pnl-chart"
       style={{ width: "100%", height: CHART_HEIGHT }}
       onLayout={(event: LayoutChangeEvent): void => {
         setWidth(event.nativeEvent.layout.width);
       }}
     >
-      <Group transform={[{ scaleX: width / CHART_WIDTH }]}>
-        {paths.baseline === null ? null : (
-          <Path
-            path={paths.baseline}
-            style="stroke"
-            strokeWidth={0.5}
-            color={theme.textMuted}
-          >
-            <DashPathEffect intervals={[4, 2]} />
-          </Path>
-        )}
-        {paths.area === null ? null : (
-          <Path path={paths.area} style="fill">
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(0, CHART_HEIGHT)}
-              colors={[withAlpha(stroke, AREA_TOP_ALPHA), TRANSPARENT]}
+      <Canvas style={StyleSheet.absoluteFill}>
+        <Group transform={[{ scaleX: width / CHART_WIDTH }]}>
+          {paths.baseline === null ? null : (
+            <Path
+              path={paths.baseline}
+              style="stroke"
+              strokeWidth={0.5}
+              color={theme.textMuted}
+            >
+              <DashPathEffect intervals={[4, 2]} />
+            </Path>
+          )}
+          {paths.area === null ? null : (
+            <Path path={paths.area} style="fill">
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(0, CHART_HEIGHT)}
+                colors={[withAlpha(stroke, AREA_TOP_ALPHA), TRANSPARENT]}
+              />
+            </Path>
+          )}
+          {paths.line === null ? null : (
+            <Path
+              path={paths.line}
+              style="stroke"
+              strokeWidth={1.5}
+              strokeJoin="round"
+              strokeCap="round"
+              color={stroke}
             />
-          </Path>
-        )}
-        {paths.line === null ? null : (
-          <Path
-            path={paths.line}
-            style="stroke"
-            strokeWidth={1.5}
-            strokeJoin="round"
-            strokeCap="round"
-            color={stroke}
-          />
-        )}
-      </Group>
-    </Canvas>
+          )}
+        </Group>
+      </Canvas>
+    </View>
   );
 }
 

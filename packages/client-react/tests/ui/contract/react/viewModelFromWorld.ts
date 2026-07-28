@@ -1,4 +1,4 @@
-import type { World } from "@ui-contract/harness/world";
+import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
@@ -10,6 +10,7 @@ import type {
 import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -18,6 +19,9 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  type JarvisIntents,
+  type JarvisState,
+  type Machine,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type {
@@ -29,6 +33,9 @@ import type {
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  JarvisSkin,
+  LoginWaitDelay,
+  LoginWaitStyle,
   PlaceOrderRequest,
   PowerSaverLevel,
   RfqQuoteResult,
@@ -100,6 +107,38 @@ function useMachineState<T>(state$: PeekableState<T>): T {
       return v;
     },
   );
+}
+
+/** The REAL createJarvisMachine, one shared instance PER WORLD — keyed by
+ * World identity (not built inside createWorld itself, since the machine is
+ * an application-layer concern; see world.ts's `JarvisWorld` doc comment).
+ * Every `reactViewModel(world)` call (one per `mountWith`/`mount`) reuses the
+ * same cached machine, mirroring world.eqWorkspace's per-World singleton so a
+ * co-mounted JarvisOrb + JarvisOverlay observe the same open/phase/entries. */
+const jarvisMachines = new WeakMap<
+  World,
+  Machine<JarvisState, JarvisIntents>
+>();
+
+function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
+  let machine = jarvisMachines.get(world);
+
+  if (!machine) {
+    // Typed explicitly (rather than left to inference) so this driver is a
+    // real consumer of World.jarvis's declared shape, not just a structural
+    // one — see world.ts's JarvisWorld doc comment.
+    const jarvisWorld: JarvisWorld = world.jarvis;
+    machine = createJarvisMachine({
+      port: jarvisWorld.port,
+      skin$: world.jarvisSkin,
+      setSkin: (skin: JarvisSkin) => {
+        world.jarvisSkin.next(skin);
+      },
+    });
+    jarvisMachines.set(world, machine);
+  }
+
+  return machine;
 }
 
 /** Build a reactive ViewModel backed by the neutral World. */
@@ -432,6 +471,23 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // The two login-wait inspection preferences, same seam shape: reactive
+    // reads off the World subjects, writes recorded so a spec can assert what
+    // the user actually chose.
+    useLoginWaitPreferences: () => {
+      return {
+        style: useSubject(world.loginWaitStyle),
+        setStyle: (style: LoginWaitStyle) => {
+          world.commands.loginWaitStyleSets.push(style);
+          world.loginWaitStyle.next(style);
+        },
+        delay: useSubject(world.loginWaitDelay),
+        setDelay: (delay: LoginWaitDelay) => {
+          world.commands.loginWaitDelaySets.push(delay);
+          world.loginWaitDelay.next(delay);
+        },
+      };
+    },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.
     useViewModePreference: () => {
@@ -618,7 +674,19 @@ export function reactViewModel(world: World): ViewModel {
         select: world.eqWorkspace.intents.select,
         closeTab: world.eqWorkspace.intents.closeTab,
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
+        setChartType: world.eqWorkspace.intents.setChartType,
+        toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
       };
+    },
+    // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
+    // (getJarvisMachine above) and bridged through useMachineState exactly
+    // like the shared eqWorkspace machine above — so JarvisOrb and
+    // JarvisOverlay, even mounted via separate mountWith() calls sharing one
+    // World, observe the same open/phase/entries/pendingConfirmation.
+    useJarvis: () => {
+      const machine = getJarvisMachine(world);
+      const state = useMachineState(machine.state$);
+      return { state, ...machine.intents };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

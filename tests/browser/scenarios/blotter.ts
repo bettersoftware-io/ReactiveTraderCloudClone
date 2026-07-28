@@ -122,11 +122,10 @@ export async function buyNTimesWithDismissals(
   }
 
   await ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
-  await new Promise((r) => {
-    return setTimeout(r, 1_500);
-  });
-
-  if (await ctx.po.liveRatesTile.isConfirmationVisible()) {
-    await ctx.po.liveRatesTile.dismissConfirmation();
-  }
+  // Settle-and-dismiss on GBPJPY's OWN tile. This used to sleep 1.5 s and then
+  // consult the FIRST tile's confirmation — the wrong tile unless GBPJPY
+  // happened to sort first — so the rejection was never actually awaited here
+  // and the caller's blotter assertion carried the whole race on its retry
+  // budget.
+  await ctx.po.liveRatesTile.dismissPairConfirmationOnceSettled("GBPJPY");
 }

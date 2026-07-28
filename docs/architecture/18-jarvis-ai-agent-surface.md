@@ -1,11 +1,14 @@
 # 18. The Jarvis AI Agent Surface
 
-> **Status: approved design, pre-implementation.** This section documents the
-> architecture of the Jarvis AI assistant workstream ahead of its build-out. The
-> authoritative decision record is the design spec at
+> **Status: Phase 1 (scripted core surface) SHIPPED — PR #405, 2026-07-27; the
+> server agent loop, `@rtc/agent-tools`, and MCP remain planned (P2–P4).** The
+> authoritative decision records are the phase-1 spec at
+> [`docs/superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md`](../superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md)
+> and the parent spec at
 > [`docs/superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md`](../superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md);
 > this section is the architecture-level view. Where a diagram shows a package or
-> module that does not exist yet, it is marked *(planned)*.
+> module that does not exist yet, it is marked *(planned)*. §18.11 records what
+> phase 1 proved.
 
 Jarvis is an AI presence in the HUD — a pulsating orb in the shell chrome that opens
 into a chat panel, answers questions about the live market by consulting the app's own
@@ -355,3 +358,47 @@ flowchart TD
 (`src/agent/`) and the MCP SDK (`src/mcp/`). Neither leaks past its directory; the
 registry and domain stay clean, so swapping either SDK touches one directory — the
 same replaceability contract as everything else in §8.
+
+## 18.11 Phase 1 shipped — the receipt
+
+Phase 1 (PR #405, 2026-07-27) delivered the scripted core surface in **both** web
+clients: the header orb (two skins), the full-screen cinematic overlay, scripted
+desk intelligence, and confirm-gated FX execution. There is no LLM yet — the
+"brain" is the v5 prototype's regex intent cascade, ported into a client-side
+`ScriptedJarvisAdapter` behind `JarvisPort`. The load-bearing observation:
+
+> **Everything Jarvis says and does runs against the live application.** "Where
+> is EURUSD?" reads the actual streaming price at that moment; the session P&L
+> and movers are computed from the real analytics and history streams; and "Buy
+> 5M EURUSD" quotes the live ask, raises the confirm card, and — on approval —
+> executes through the same `ExecuteTradeUseCase` the spot tile uses, landing a
+> genuine trade in the blotter. In `:ws:remote` mode the same conversation reads
+> and trades against the deployed server. Scripted intelligence, real hands.
+
+That is not a property of the Jarvis code; it is a property of the architecture
+it plugged into. Because trading logic lives in framework-free use cases behind
+ports — not inside `onClick` handlers — a chat adapter could *call the same
+capabilities the UI calls* without a single change to them. The §18.1 thesis had
+its first falsifiable test, and the counterfactual from the phase-1 spec (§7)
+held under review of the final diff:
+
+| Claim | Outcome (PR #405) |
+|---|---|
+| `@rtc/domain` stays byte-identical | Changed only by the `JarvisSkin` preference (a type + port methods) — zero domain logic touched |
+| `@rtc/server` untouched | Zero changes |
+| No new package | Zero; `@rtc/agent-tools` correctly deferred to P3 |
+| The feature is "adapters + one machine + dumb UI" | One port (`JarvisPort`), one adapter (`ScriptedJarvisAdapter`), one machine (`JarvisMachine`), one chunk-math module (`speechChunks`), two dumb UI trees at byte-identical CSS |
+| Deterministic testing of a chat feature | 19 shared contract specs pass against **both** frameworks via the swap-trio; the reveal cadence is TestScheduler-virtual-time; e2e runs keyless in sim mode on both clients |
+
+Two structural choices from phase 1 carry forward:
+
+- **The reveal is data, not animation.** The typed-out effect is the adapter
+  emitting `speechChunks`-paced delta events — the exact shape `JARVIS_DELTA`
+  will stream in P2 — so the machine and UI cannot tell the scripted brain from
+  the future wire, and the swap stays invisible.
+- **The port was constructed inside both port factories**, so every client in
+  every data-source mode received Jarvis with zero composition-root edits — the
+  same mechanism that will one day swap in the `WsJarvisAdapter`.
+
+Phase-1 deferred minors are tracked in [`docs/STATUS.md`](../STATUS.md) under the
+Jarvis entry.

@@ -94,6 +94,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
@@ -840,9 +843,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/motion-core':
-        specifier: workspace:*
-        version: link:../motion-core
       rxjs:
         specifier: ^7.8
         version: 7.8.2

@@ -24,6 +24,12 @@ const reportSuffix =
 
 export default {
   paths: ["specs/**/*.feature"],
+  // `browser/playwright-cucumber/*.ts` is single-level and unfiltered, so
+  // cucumber EXECUTES every .ts sitting directly in that folder. A vitest
+  // `*.test.ts` placed there is therefore loaded by cucumber too, and its
+  // top-level `describe()` throws outside a vitest run — taking the whole suite
+  // down before a single scenario executes. Unit tests for that folder live in
+  // its `__tests__/` subdirectory, which this glob does not reach.
   import: [
     "browser/testContext.ts",
     "browser/playwright-cucumber/*.ts",

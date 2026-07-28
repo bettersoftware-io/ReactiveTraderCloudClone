@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from "react";
 
+import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { HudLogo } from "../logo/HudLogo";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
@@ -72,6 +73,7 @@ export function HeaderChrome({
           <span className={styles.liveDot} />
           <span className={styles.liveLabel}>LIVE</span>
         </div>
+        <JarvisOrb />
         <EnvBadge />
         <PowerSaverToggle />
         <ThemePicker />

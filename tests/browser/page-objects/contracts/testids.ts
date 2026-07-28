@@ -3,7 +3,7 @@ export const TESTIDS = {
     header: "header",
     themeToggle: "theme-toggle",
     powerSaverToggle: "power-saver-toggle",
-    tab: (tab: "fx" | "credit" | "admin") => {
+    tab: (tab: "fx" | "credit" | "admin" | "equities") => {
       return `tab-${tab}`;
     },
   },
@@ -103,10 +103,44 @@ export const TESTIDS = {
       clear: "incident-clear",
     },
   },
+  /**
+   * The equities interactive candle chart (CandleChart.tsx / TimeAxis.tsx /
+   * BackToLiveButton.tsx). Only the ids the e2e smoke needs — the fuller
+   * pixel/gesture surface (grid lines, crosshair, indicators…) is exercised
+   * by the ui-contract CandleChartPage instead.
+   */
+  equities: {
+    chart: {
+      plot: "chart-plot",
+      backToLive: "chart-back-to-live",
+      timeLabel: "chart-time-label",
+      navigator: "chart-navigator",
+      navigatorWindow: "navigator-window",
+      navigatorHandleRight: "navigator-handle-right",
+    },
+  },
   layout: {
     // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
     // owns the full id, so consumers match on this stable prefix.
     handlePrefix: "handle-",
+  },
+  /**
+   * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,
+   * packages/client-{react,solid}/src/ui/shell/jarvis/). `entry` is shared by
+   * every message row (user and jarvis alike) — distinguish with the
+   * `data-role` attribute; the streaming reply is always the LAST entry with
+   * `data-role="jarvis"`, and its `data-done` attribute flips "false" →
+   * "true" once the scripted brain finishes revealing it.
+   */
+  jarvis: {
+    orb: "jarvis-orb",
+    overlay: "jarvis-overlay",
+    entry: "jarvis-entry",
+    input: "jarvis-input",
+    send: "jarvis-send",
+    confirmCard: "jarvis-confirm-card",
+    confirmApprove: "jarvis-confirm-approve",
+    confirmReject: "jarvis-confirm-reject",
   },
   /**
    * LoginScreen (packages/client-react/src/ui/shell/auth/LoginScreen.tsx),

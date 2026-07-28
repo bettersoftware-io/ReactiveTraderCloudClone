@@ -1,4 +1,4 @@
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, type Observable, Subject } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -7,6 +7,8 @@ import type {
   EqWorkspaceState,
   IncidentKind,
   IncidentState,
+  JarvisEvent,
+  JarvisPort,
   SessionUser,
   ThroughputView,
 } from "@rtc/client-core";
@@ -25,6 +27,9 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
@@ -38,7 +43,10 @@ import {
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
+  type JarvisSkin,
   type LogEvent,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type MetricSample,
   type PlaceOrderRequest,
   type PositionUpdates,
@@ -141,6 +149,64 @@ const DEFAULT_METRICS_VIEW: MetricsView = {
 
 const INITIAL_INCIDENT_STATE: IncidentState = { active: [] };
 
+/**
+ * A controllable fake `JarvisPort` (Task 9): each `ask()` call opens a fresh
+ * per-turn `Subject<JarvisEvent>` and returns it as the reply stream — mirrors
+ * the real port's "one Observable per turn, completes after done/error"
+ * contract, but lets a spec drive that stream from the outside via {@link
+ * JarvisWorld.emit}, exactly like ScriptedJarvisAdapter would push scripted
+ * reply events. `confirm()` just records into {@link JarvisWorld.confirms} —
+ * the REAL createJarvisMachine (built by each framework's viewModelFromWorld
+ * driver, once per World) is what turns approve/decline intents into confirm()
+ * calls, so this fake only needs to observe them.
+ */
+export interface JarvisWorld {
+  readonly port: JarvisPort;
+  /** Each `[confirmationId, approved]` pair `port.confirm()` was invoked with,
+   * in order — populated by the REAL JarvisMachine's approve/decline/timeout
+   * paths, not by this fake directly. */
+  readonly confirms: ReadonlyArray<readonly [string, boolean]>;
+  /** Push one or more reply events onto the turn most recently opened by
+   * `ask()`. Auto-completes that turn's stream once a `done`/`error` event is
+   * pushed, mirroring the real port's completion contract. Throws if called
+   * before any `ask()` has run (i.e. before `send()`). */
+  emit(events: readonly JarvisEvent[]): void;
+}
+
+function createJarvisWorld(): JarvisWorld {
+  const confirms: Array<[string, boolean]> = [];
+  let current: Subject<JarvisEvent> | null = null;
+
+  const port: JarvisPort = {
+    ask(_text: string): Observable<JarvisEvent> {
+      const turn = new Subject<JarvisEvent>();
+      current = turn;
+      return turn.asObservable();
+    },
+    confirm(confirmationId: string, approved: boolean): void {
+      confirms.push([confirmationId, approved]);
+    },
+  };
+
+  function emit(events: readonly JarvisEvent[]): void {
+    if (!current) {
+      throw new Error(
+        "world.jarvis.emit() called before ask() opened a turn — call send() first.",
+      );
+    }
+
+    for (const event of events) {
+      current.next(event);
+
+      if (event.type === "done" || event.type === "error") {
+        current.complete();
+      }
+    }
+  }
+
+  return { port, confirms, emit };
+}
+
 /** Seed values for the ADMIN / telemetry hooks (Phase 5). */
 export interface AdminSeed {
   topology?: ServiceTopology | null;
@@ -199,6 +265,10 @@ export interface CommandLog {
   powerSaverLevelSets: PowerSaverLevel[];
   /** Each value written through useForceBootAnimation().setEnabled/toggle, in order. */
   forceBootAnimationSets: boolean[];
+  /** Each value written through useLoginWaitPreferences().setStyle, in order. */
+  loginWaitStyleSets: LoginWaitStyle[];
+  /** Each value written through useLoginWaitPreferences().setDelay, in order. */
+  loginWaitDelaySets: LoginWaitDelay[];
   /** Each incident kind injected via injectIncident(), in order. */
   injectedIncidents: IncidentKind[];
 }
@@ -247,12 +317,26 @@ export interface World {
   /** Reactive ambient-style preference backing useAmbientStyle (drives AmbientBackground's
    * Aurora/Rays branch + PreferencesModal's "Ambient style" segment). */
   readonly ambientStyle: BehaviorSubject<AmbientStyle>;
+  /** Reactive Jarvis skin preference backing the REAL JarvisMachine's skin$ dep
+   * (drives JarvisOrb/JarvisOverlay's `data-skin`) — mirrors themeSkin above.
+   * Defaults to DEFAULT_JARVIS_SKIN ("singularity"), matching the app default. */
+  readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
+  /** The Jarvis fake (Task 9): a controllable JarvisPort plus a confirm() call
+   * log — see {@link JarvisWorld}. Each framework's viewModelFromWorld driver
+   * builds the REAL createJarvisMachine over `jarvis.port` + `jarvisSkin`,
+   * once per World, so every component reading useJarvis() through this World
+   * shares one machine instance (mirrors eqWorkspace's singleton wiring). */
+  readonly jarvis: JarvisWorld;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
   readonly powerSaverLevel: BehaviorSubject<PowerSaverLevel>;
   /** Reactive force-boot-animation preference backing useForceBootAnimation. */
   readonly forceBootAnimation: BehaviorSubject<boolean>;
+  /** Reactive login-wait style preference backing useLoginWaitPreferences. */
+  readonly loginWaitStyle: BehaviorSubject<LoginWaitStyle>;
+  /** Reactive login-wait delay preference backing useLoginWaitPreferences. */
+  readonly loginWaitDelay: BehaviorSubject<LoginWaitDelay>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
@@ -368,6 +452,8 @@ export function createWorld(
   powerSaverLevelSeed?: PowerSaverLevel,
   ambientStyleSeed?: AmbientStyle,
   forceBootAnimationSeed?: boolean,
+  loginWaitStyleSeed?: LoginWaitStyle,
+  loginWaitDelaySeed?: LoginWaitDelay,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -544,6 +630,13 @@ export function createWorld(
     ambientStyleSeed ?? "rays",
   );
 
+  // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
+  // themeSkin); the port fake is built once here and handed to each
+  // framework's viewModelFromWorld driver, which builds the REAL machine over
+  // it (once per World, cached by World identity — see that file).
+  const jarvisSkin = new BehaviorSubject<JarvisSkin>(DEFAULT_JARVIS_SKIN);
+  const jarvis = createJarvisWorld();
+
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
@@ -554,6 +647,14 @@ export function createWorld(
 
   const forceBootAnimation = new BehaviorSubject<boolean>(
     forceBootAnimationSeed ?? false,
+  );
+
+  const loginWaitStyle = new BehaviorSubject<LoginWaitStyle>(
+    loginWaitStyleSeed ?? DEFAULT_LOGIN_WAIT_STYLE,
+  );
+
+  const loginWaitDelay = new BehaviorSubject<LoginWaitDelay>(
+    loginWaitDelaySeed ?? DEFAULT_LOGIN_WAIT_DELAY,
   );
 
   const viewMode = new BehaviorSubject<ViewMode>(
@@ -654,6 +755,8 @@ export function createWorld(
     animatedBackgroundSets: [],
     powerSaverLevelSets: [],
     forceBootAnimationSets: [],
+    loginWaitStyleSets: [],
+    loginWaitDelaySets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
   };
@@ -668,9 +771,13 @@ export function createWorld(
     themeMode,
     themeSkin,
     ambientStyle,
+    jarvisSkin,
+    jarvis,
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,
+    loginWaitStyle,
+    loginWaitDelay,
     viewMode,
     creditRfqFilter,
     setCreditRfqFilter: (filter: CreditRfqFilter) => {

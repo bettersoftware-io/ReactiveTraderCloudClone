@@ -103,3 +103,12 @@
     transform: scale(1.25);
   }
 }
+
+/* Power-saver Freeze: every data-status flip re-matches the degraded/down
+   selectors and spawns a FRESH pulse animation — the global freeze catch-all
+   collapses its duration to 0.01ms but cannot stop the respawn, so each flip
+   still costs an Animation object + style recalc. Remove it at source; the
+   dot's status colour stays legible without the pulse. */
+:root[data-power-saver="freeze"] .nodeDotFill {
+  animation: none;
+}

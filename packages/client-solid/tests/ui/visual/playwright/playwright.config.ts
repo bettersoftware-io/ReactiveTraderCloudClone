@@ -76,6 +76,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Optional scenario filter — same seam as react's playwright.config.ts (see
+  // its comment for why an env var rather than a CLI `-g`: `pnpm run <script>
+  // -- -g X` double-dashes the arg and playwright ignores it). Without this
+  // the react/solid tiers diverged: SCENARIO_PATTERN narrowed react's run but
+  // silently ran solid's FULL 1363-test matrix, so a targeted solid check
+  // (e.g. the freeze-contract subset) could not be narrowed at all.
+  ...(process.env.SCENARIO_PATTERN
+    ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
+    : {}),
   // Cross-runner AA tolerance — copied verbatim from react's playwright.config.ts.
   // See that file for the full rationale (NOT a temporary mask; settled repo-wide
   // budget). This tier adds a framework swap on top of react's own cross-runner

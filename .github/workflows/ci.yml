@@ -126,6 +126,13 @@ jobs:
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
 
+      # The cucumber teardown policy decides whether a green run is allowed to go
+      # red. Its interesting branch only fires when a shutdown overruns its
+      # budget — a condition no run can summon on demand — so it is gated here
+      # rather than left to the e2e job, which would never exercise it.
+      - name: Cucumber hooks unit tests
+        run: pnpm --filter @rtc/tests test:hooks
+
       # The ui:contract coverage gate over the whole src/ui surface (≥95%). It
       # runs the neutral sociable contract specs AND the co-located src/ui unit
       # tests, so the percentage reflects their true combined coverage.

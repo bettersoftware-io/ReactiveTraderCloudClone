@@ -190,6 +190,49 @@
           }
         }
       }
+    },
+    {
+      // The equities chart plot follows the WAI-ARIA APG "application" widget
+      // pattern: the container itself carries role="application" +
+      // tabIndex={0} so it is the one focusable element, then owns ALL
+      // keyboard handling internally (arrow-key pan, +/-/Home/End zoom —
+      // useChartGestures) rather than exposing a tab stop per interactive
+      // child. `role="application"` isn't in aria-query's "widget" role
+      // subtree, so noNoninteractiveTabindex (mirroring jsx-a11y) flags it as
+      // a false positive for this specific, deliberate pattern. Scoped to the
+      // extracted, purely presentational `ChartPlot` (the plot div's actual
+      // owner post-Task-C5-fix — `CandleChart` itself no longer renders any
+      // DOM) across every web client (React today; the Solid port lands at
+      // the analogous path under client-solid).
+      "includes": ["packages/client-*/src/ui/equities/chart/ChartPlot.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noNoninteractiveTabindex": "off"
+          }
+        }
+      }
+    },
+    {
+      // The chart navigator strip is `role="group"` — WAI-ARIA's generic
+      // grouping role for related UI elements (here: the mini-map polyline
+      // plus its draggable window/handles) that are NOT a form's fieldset.
+      // useSemanticElements' `<fieldset>` suggestion only fits form-control
+      // grouping, so it's a false positive for this non-form widget. Task
+      // 7's contract spec keys on the literal role="group" + aria-label
+      // strings, so the markup can't change to satisfy the rule. Scoped to
+      // `NavigatorStrip.tsx` across every web client (React today; the Solid
+      // port lands at the analogous path under client-solid).
+      "includes": [
+        "packages/client-*/src/ui/equities/chart/NavigatorStrip.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
     }
   ]
 }

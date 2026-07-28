@@ -287,6 +287,22 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "AWAITING AUTH GRANT",
   },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
+
+  // --- Phase 1: J.A.R.V.I.S overlay --- fixed-position viewport overlay,
+  // same treatment as prefs/modal above — full-page capture, no interaction
+  // (both fixtures seed `open: true` through the seam).
+  "jarvis/overlay-chat": { fullPage: true },
+  // Freeze-tier render: same static full-page shot, seeded via powerSaverLevel
+  // "freeze" in the fixture instead of a click — mirrors the
+  // login/wait-*-freeze scenarios' action entries. Unlike those, this overlay
+  // renders no unique "waiting" copy, so waitForText targets the fixture's
+  // fixed jarvis reply text instead — freeze.spec.ts needs SOME waitForText
+  // here since this is a fullPage scenario with no `scenario-root` box.
+  "jarvis/overlay-chat-freeze": {
+    fullPage: true,
+    waitForText: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
+  },
+  "jarvis/overlay-confirm": { fullPage: true },
 };
 
 /** Resolve the capture action for a scenario, mapping matrix-expanded names

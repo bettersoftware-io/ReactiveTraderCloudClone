@@ -7,9 +7,11 @@ import { PlaywrightBoot } from "./Boot";
 import { PlaywrightConnectionOverlay } from "./ConnectionOverlay";
 import { PlaywrightCreditRfqForm } from "./CreditRfqForm";
 import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
+import { PlaywrightEquitiesChart } from "./EquitiesChart";
 import { PlaywrightFooter } from "./Footer";
 import { PlaywrightFxRfqForm } from "./FxRfqForm";
 import { PlaywrightInspector } from "./Inspector";
+import { PlaywrightJarvis } from "./Jarvis";
 import { PlaywrightLayout } from "./Layout";
 import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
 import { PlaywrightLoginScreen } from "./LoginScreen";
@@ -31,7 +33,9 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     creditRfqForm: new PlaywrightCreditRfqForm(page),
     creditRfqPanel: new PlaywrightCreditRfqPanel(page),
     blotterTable: new PlaywrightBlotterTable(page),
+    equitiesChart: new PlaywrightEquitiesChart(page),
     layout: new PlaywrightLayout(page),
+    jarvis: new PlaywrightJarvis(page),
     inspector: new PlaywrightInspector(page),
     login: new PlaywrightLoginScreen(page),
     powerSaver: new PlaywrightPowerSaver(page),

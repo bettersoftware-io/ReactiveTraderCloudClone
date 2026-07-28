@@ -5,6 +5,7 @@ import {
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_SKIN,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -19,6 +20,9 @@ import {
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
   FORCE_BOOT_ANIMATION_STORAGE_KEY,
+  JARVIS_SKIN_STORAGE_KEY,
+  LOGIN_WAIT_DELAY_STORAGE_KEY,
+  LOGIN_WAIT_STYLE_STORAGE_KEY,
   LOGIN_WAIT_VARIANT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   POWER_SAVER_STORAGE_KEY,
@@ -81,6 +85,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         );
       }
 
+      if (seed.loginWaitStyle) {
+        localStorage.setItem(LOGIN_WAIT_STYLE_STORAGE_KEY, seed.loginWaitStyle);
+      }
+
+      if (seed.loginWaitDelay) {
+        localStorage.setItem(LOGIN_WAIT_DELAY_STORAGE_KEY, seed.loginWaitDelay);
+      }
+
       if (seed.creditRfqFilter) {
         localStorage.setItem(
           CREDIT_RFQ_FILTER_STORAGE_KEY,
@@ -101,6 +113,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
 
       if (seed.ambientStyle) {
         localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, seed.ambientStyle);
+      }
+
+      if (seed.jarvisSkin) {
+        localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, seed.jarvisSkin);
       }
 
       return new LocalStoragePreferencesAdapter();
@@ -184,6 +200,12 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
       DEFAULT_AMBIENT_STYLE,
     );
   });
+
+  it("falls back to defaults for an invalid stored jarvisSkin", async () => {
+    localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisSkin$())).toBe(DEFAULT_JARVIS_SKIN);
+  });
 });
 
 function clearStorage(): void {
@@ -193,10 +215,13 @@ function clearStorage(): void {
   localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
   localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
   localStorage.removeItem(LOGIN_WAIT_VARIANT_STORAGE_KEY);
+  localStorage.removeItem(LOGIN_WAIT_STYLE_STORAGE_KEY);
+  localStorage.removeItem(LOGIN_WAIT_DELAY_STORAGE_KEY);
   localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
+  localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
 }

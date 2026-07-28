@@ -25,6 +25,10 @@ export class Scratchpad {
   creditRfq = {
     rfqId: undefined as number | undefined,
   };
+
+  equitiesChart = {
+    recordedTimeLabels: new Map<string, string[]>(),
+  };
 }
 
 /** What scenario functions accept. Driver-agnostic. */

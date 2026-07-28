@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js";
 import { createSignal } from "solid-js";
 
+import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { HudLogo } from "../logo/HudLogo";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
@@ -74,6 +75,7 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
           <span class={styles.liveDot} />
           <span class={styles.liveLabel}>LIVE</span>
         </div>
+        <JarvisOrb />
         <EnvBadge />
         <PowerSaverToggle />
         <ThemePicker />

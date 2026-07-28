@@ -12,6 +12,9 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -19,6 +22,9 @@ import {
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type JarvisSkin,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
@@ -36,9 +42,12 @@ export interface PreferencesSeed {
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   loginWaitVariant?: LoginWaitVariant;
+  loginWaitStyle?: LoginWaitStyle;
+  loginWaitDelay?: LoginWaitDelay;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
+  jarvisSkin?: JarvisSkin;
 }
 
 /**
@@ -57,6 +66,8 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
 
+  private readonly jarvisSkinSubject: BehaviorSubject<JarvisSkin>;
+
   private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
 
   private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
@@ -64,6 +75,10 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   private readonly loginWaitVariantSubject: BehaviorSubject<LoginWaitVariant>;
+
+  private readonly loginWaitStyleSubject: BehaviorSubject<LoginWaitStyle>;
+
+  private readonly loginWaitDelaySubject: BehaviorSubject<LoginWaitDelay>;
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
@@ -87,6 +102,9 @@ export class PreferencesSimulator implements PreferencesPort {
     this.ambientStyleSubject = new BehaviorSubject<AmbientStyle>(
       seed.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
     );
+    this.jarvisSkinSubject = new BehaviorSubject<JarvisSkin>(
+      seed.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
+    );
     this.powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
       seed.powerSaverLevel ?? DEFAULT_POWER_SAVER_LEVEL,
     );
@@ -98,6 +116,12 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.loginWaitVariantSubject = new BehaviorSubject<LoginWaitVariant>(
       seed.loginWaitVariant ?? DEFAULT_LOGIN_WAIT_VARIANT,
+    );
+    this.loginWaitStyleSubject = new BehaviorSubject<LoginWaitStyle>(
+      seed.loginWaitStyle ?? DEFAULT_LOGIN_WAIT_STYLE,
+    );
+    this.loginWaitDelaySubject = new BehaviorSubject<LoginWaitDelay>(
+      seed.loginWaitDelay ?? DEFAULT_LOGIN_WAIT_DELAY,
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
       seed.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
@@ -150,6 +174,14 @@ export class PreferencesSimulator implements PreferencesPort {
     this.ambientStyleSubject.next(style);
   }
 
+  jarvisSkin$(): Observable<JarvisSkin> {
+    return this.jarvisSkinSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisSkin(skin: JarvisSkin): void {
+    this.jarvisSkinSubject.next(skin);
+  }
+
   powerSaverLevel$(): Observable<PowerSaverLevel> {
     return this.powerSaverSubject.pipe(distinctUntilChanged());
   }
@@ -180,6 +212,22 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setLoginWaitVariant(variant: LoginWaitVariant): void {
     this.loginWaitVariantSubject.next(variant);
+  }
+
+  loginWaitStyle$(): Observable<LoginWaitStyle> {
+    return this.loginWaitStyleSubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitStyle(style: LoginWaitStyle): void {
+    this.loginWaitStyleSubject.next(style);
+  }
+
+  loginWaitDelay$(): Observable<LoginWaitDelay> {
+    return this.loginWaitDelaySubject.pipe(distinctUntilChanged());
+  }
+
+  setLoginWaitDelay(delay: LoginWaitDelay): void {
+    this.loginWaitDelaySubject.next(delay);
   }
 
   creditRfqFilter$(): Observable<CreditRfqFilter> {

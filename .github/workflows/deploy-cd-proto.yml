@@ -52,8 +52,10 @@ jobs:
         with:
           node-version: 26
 
+      # Pinned major: vercel@58 (2026-07-27) breaks `vercel pull` under env-var
+      # project linking (VERCEL_ORG_ID/VERCEL_PROJECT_ID) — bump deliberately.
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: npm install -g vercel@57
 
       - name: Guard mobile project id
         if: ${{ inputs.target == 'mobile' }}

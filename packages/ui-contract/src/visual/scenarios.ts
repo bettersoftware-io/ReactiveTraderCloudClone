@@ -361,6 +361,40 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesBlotterPanel",
     fixtureKey: "equities-blotter-positions",
   },
+  // --- Task C5: interactive chart scenarios ---
+  // Forced-state wrappers (EquitiesChartInteractive.visual.tsx in both
+  // clients) mount the plot with a LITERAL viewport/cursor instead of
+  // driving a real gesture sequence — see that file's doc comment. The
+  // fixtureKey is inert here (the wrappers are pure-props leaves, like
+  // EquitiesInstrumentHeader above), but every scenario still needs one.
+  "equities/chart-panned": {
+    componentKey: "EquitiesChartPanned",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-zoomed": {
+    componentKey: "EquitiesChartZoomed",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-crosshair": {
+    componentKey: "EquitiesChartCrosshair",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-line": {
+    componentKey: "EquitiesChartLine",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-area": {
+    componentKey: "EquitiesChartArea",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-indicators": {
+    componentKey: "EquitiesChartIndicators",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-volume-axis": {
+    componentKey: "EquitiesChartVolumeAxis",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 
@@ -675,6 +709,32 @@ const baseScenarios: Record<string, Scenario> = {
   "admin/head-incident": {
     componentKey: "AdminHead",
     fixtureKey: "admin-incident-active",
+  },
+
+  // --- Phase 1: J.A.R.V.I.S orb + overlay scenarios ---
+  // Orb: idle resting arm (closed, no unread) + the attention pulse (a
+  // pending confirmation, reusing the same fixture the overlay-confirm
+  // scenario below mounts). Overlay: a completed chat turn and the pending-
+  // confirmation card, both static (no mid-stream entry, no live countdown).
+  "jarvis/orb-idle": { componentKey: "JarvisOrb", fixtureKey: "jarvis-idle" },
+  "jarvis/orb-attention": {
+    componentKey: "JarvisOrb",
+    fixtureKey: "jarvis-confirm",
+  },
+  "jarvis/overlay-chat": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-chat",
+  },
+  // Freeze-tier render of the completed chat turn, pinning how it looks with
+  // `data-power-saver="freeze"` applied — same reasoning as the
+  // login/wait-*-freeze scenarios above.
+  "jarvis/overlay-chat-freeze": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-chat-freeze",
+  },
+  "jarvis/overlay-confirm": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-confirm",
   },
 };
 

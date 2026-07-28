@@ -10,12 +10,18 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_SKIN,
+  DEFAULT_LOGIN_WAIT_DELAY,
+  DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type JarvisSkin,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
   type LoginWaitVariant,
   type PowerSaverLevel,
   type ThemeModePreference,
@@ -35,10 +41,13 @@ export interface PreferencesSeed {
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   loginWaitVariant?: LoginWaitVariant;
+  loginWaitStyle?: LoginWaitStyle;
+  loginWaitDelay?: LoginWaitDelay;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
+  jarvisSkin?: JarvisSkin;
 }
 
 /**
@@ -261,6 +270,67 @@ export function describePreferencesPortContract(
       });
     });
 
+    describe("loginWaitStyle", () => {
+      it("empty store emits the default loginWaitStyle", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.loginWaitStyle$())).toBe(
+          DEFAULT_LOGIN_WAIT_STYLE,
+        );
+      });
+
+      it("setLoginWaitStyle pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: LoginWaitStyle[] = [];
+        const sub = port.loginWaitStyle$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setLoginWaitStyle("reactor");
+        sub.unsubscribe();
+        expect(seen).toEqual(["auto", "reactor"]);
+      });
+
+      it("reads back a seeded loginWaitStyle", async () => {
+        const port = makeSeeded({ loginWaitStyle: "handshake" });
+        expect(await firstValueFrom(port.loginWaitStyle$())).toBe("handshake");
+      });
+
+      it("keeps loginWaitStyle and loginWaitVariant independent", async () => {
+        // The style is the user's CHOICE; the variant is the cycle POINTER.
+        // Pinning a style must not rewrite the pointer, or switching back to
+        // "auto" would resume from somewhere the user never chose.
+        const port = makeSeeded({});
+        port.setLoginWaitStyle("reactor");
+        expect(await firstValueFrom(port.loginWaitVariant$())).toBe(
+          DEFAULT_LOGIN_WAIT_VARIANT,
+        );
+      });
+    });
+
+    describe("loginWaitDelay", () => {
+      it("empty store emits the default loginWaitDelay", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.loginWaitDelay$())).toBe(
+          DEFAULT_LOGIN_WAIT_DELAY,
+        );
+      });
+
+      it("setLoginWaitDelay pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: LoginWaitDelay[] = [];
+        const sub = port.loginWaitDelay$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setLoginWaitDelay("3s");
+        sub.unsubscribe();
+        expect(seen).toEqual(["off", "3s"]);
+      });
+
+      it("reads back a seeded loginWaitDelay", async () => {
+        const port = makeSeeded({ loginWaitDelay: "6s" });
+        expect(await firstValueFrom(port.loginWaitDelay$())).toBe("6s");
+      });
+    });
+
     it("empty store emits the default creditRfqFilter", async () => {
       const port = makeEmpty();
       expect(await firstValueFrom(port.creditRfqFilter$())).toBe(
@@ -350,6 +420,33 @@ export function describePreferencesPortContract(
     it("reads back a seeded ambientStyle", async () => {
       const port = makeSeeded({ ambientStyle: "rays" });
       expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
+    });
+
+    it("defaults jarvisSkin to singularity and round-trips a write", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe(
+        DEFAULT_JARVIS_SKIN,
+      );
+      port.setJarvisSkin("reactor");
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
+      // late subscriber sees the current value synchronously (replay-current)
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
+    });
+
+    it("setJarvisSkin persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: JarvisSkin[] = [];
+      const sub = port.jarvisSkin$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setJarvisSkin("reactor");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_JARVIS_SKIN, "reactor"]);
+    });
+
+    it("reads back a seeded jarvisSkin", async () => {
+      const port = makeSeeded({ jarvisSkin: "reactor" });
+      expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
     });
   });
 }

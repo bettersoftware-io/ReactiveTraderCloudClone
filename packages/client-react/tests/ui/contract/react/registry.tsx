@@ -35,6 +35,8 @@ import {
   IncidentControls,
   InstrumentHeader,
   InstrumentTabs,
+  JarvisOrb,
+  JarvisOverlay,
   KpiRow,
   LatencyHistogram,
   LayoutEngine,
@@ -93,6 +95,8 @@ import type { ReactElement } from "react";
 
 import type {
   ColumnFilter,
+  EqChartType,
+  EqIndicatorId,
   NotionalIntents,
   NotionalView,
   PanelId,
@@ -118,7 +122,6 @@ import type {
   Rfq,
   Trade,
 } from "@rtc/domain";
-import type { ChartVm } from "@rtc/motion-core";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
@@ -203,6 +206,8 @@ import {
 import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
+import { JarvisOrb as JarvisOrbComponent } from "#/ui/shell/jarvis/JarvisOrb";
+import { JarvisOverlay as JarvisOverlayComponent } from "#/ui/shell/jarvis/JarvisOverlay";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { PowerSaverRoot as PowerSaverRootComponent } from "#/ui/shell/power/PowerSaverRoot";
 import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
@@ -712,6 +717,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
+    JarvisOrb,
+    (): ReactElement => {
+      return <JarvisOrbComponent />;
+    },
+  ],
+  [
+    JarvisOverlay,
+    (): ReactElement => {
+      return <JarvisOverlayComponent />;
+    },
+  ],
+  [
     AdminPanel,
     (): ReactElement => {
       return <AdminPanelComponent />;
@@ -810,7 +827,20 @@ export const registry = new Map<AnyToken, ElementFor>([
   [
     CandleChart,
     (p: Record<string, unknown>): ReactElement => {
-      return <CandleChartComponent vm={p.vm as ChartVm} />;
+      // NOTE(C2->C4 handoff): CandleChart became the interactive plot in
+      // Task C2 (owns useChartGestures; props are candles/liveRate/flashOn/
+      // kind/indicators/defaultVisible, not a precomputed `vm`). This
+      // adapter is updated just enough to keep the registry type-checking.
+      return (
+        <CandleChartComponent
+          candles={(p.candles as readonly Candle[]) ?? []}
+          liveRate={(p.liveRate as number) ?? 0}
+          flashOn={(p.flashOn as boolean) ?? false}
+          kind={(p.kind as EqChartType) ?? "candles"}
+          indicators={(p.indicators as readonly EqIndicatorId[]) ?? []}
+          defaultVisible={(p.defaultVisible as number) ?? 50}
+        />
+      );
     },
   ],
   [

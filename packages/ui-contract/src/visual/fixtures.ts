@@ -1,15 +1,20 @@
 import type {
   ActivityEntry,
   EqWorkspaceState,
+  JarvisConfirmation,
+  JarvisEntry,
+  JarvisState,
   NotionalView,
   OrderTicketState,
   RfqQuote,
 } from "@rtc/client-core";
+import { JARVIS_GREETING } from "@rtc/client-core";
 import {
   ADAPTIVE_BANK_NAME,
   type Candle,
   ConnectionStatus,
   type CurrencyPair,
+  DEFAULT_JARVIS_SKIN,
   type Dealer,
   type DepthBook,
   Direction,
@@ -1894,6 +1899,8 @@ const equitiesBase: EquitiesBaseFixture = {
     sel: "AAPL",
     openTabs: ["AAPL", "MSFT", "JPM"],
     timeframe: "1D",
+    chartType: "candles",
+    indicators: [],
   },
 };
 
@@ -1928,7 +1935,13 @@ fixtures["equities-loaded"] = makeAppData(equitiesBase);
 // placeholder arm (EqDepthDock; the seam's own sel:"" fallback).
 fixtures["equities-no-selection"] = makeAppData({
   ...equitiesBase,
-  equityWorkspace: { sel: "", openTabs: [], timeframe: "1D" },
+  equityWorkspace: {
+    sel: "",
+    openTabs: [],
+    timeframe: "1D",
+    chartType: "candles",
+    indicators: [],
+  },
 });
 fixtures["equities-ticket-editing"] = makeAppData({
   ...equitiesBase,
@@ -2159,3 +2172,92 @@ const adminTopologyMixed: ServiceTopology = {
 fixtures["admin-service-mixed"] = makeAppData({
   adminTopology: adminTopologyMixed,
 });
+
+// ── Phase 1 J.A.R.V.I.S fixtures (jarvis/orb-*, jarvis/overlay-*) ──────────
+// All three snapshots are STATIC: no mid-stream entry (done: false), no
+// phase "speaking" (the waveform only renders then), and the confirmation
+// countdown is pinned rather than ticking — a golden must never race a timer.
+// See JarvisMachine.ts's JarvisState/JarvisEntry/JarvisConfirmation shapes.
+
+// The machine's own greeting entry (id 0) — reused verbatim so the fixture's
+// copy matches the real INITIAL state exactly.
+const jarvisGreetingEntry: JarvisEntry = {
+  id: 0,
+  role: "jarvis",
+  text: JARVIS_GREETING,
+  done: true,
+};
+
+// jarvis/orb-idle: closed, no unread badge, idle phase — the orb's neutral
+// resting arm (no attention pulse, no unread pill).
+const jarvisStateIdle: JarvisState = {
+  open: false,
+  skin: DEFAULT_JARVIS_SKIN,
+  unread: 0,
+  phase: "idle",
+  entries: [jarvisGreetingEntry],
+  pendingConfirmation: null,
+};
+fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
+
+// jarvis/overlay-chat: open, one completed user/jarvis turn appended after
+// the greeting — all entries `done: true` (no in-flight streaming caret).
+const jarvisChatUserEntry: JarvisEntry = {
+  id: 1,
+  role: "user",
+  text: "Where is EURUSD?",
+  done: true,
+};
+
+const jarvisChatReplyEntry: JarvisEntry = {
+  id: 2,
+  role: "jarvis",
+  text: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
+  done: true,
+};
+
+const jarvisStateChat: JarvisState = {
+  open: true,
+  skin: DEFAULT_JARVIS_SKIN,
+  unread: 0,
+  phase: "idle",
+  entries: [jarvisGreetingEntry, jarvisChatUserEntry, jarvisChatReplyEntry],
+  pendingConfirmation: null,
+};
+fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
+
+// jarvis/overlay-chat-freeze: same completed chat turn as jarvis-chat above,
+// plus powerSaverLevel "freeze" (see login-wait-handshake-freeze's precedent)
+// — pins how the overlay's core/waveform/caret CSS renders under
+// `data-power-saver="freeze"`, since Freeze zeroes animation-duration but not
+// animation-delay (the same class of `backwards`-fill bug HandshakeConsole's
+// `.sealed` line shipped with).
+fixtures["jarvis-chat-freeze"] = makeAppData({
+  jarvis: jarvisStateChat,
+  powerSaverLevel: "freeze",
+});
+
+// jarvis/orb-attention + jarvis/overlay-confirm: a pending trade confirmation
+// with remainingFraction PINNED at 0.75 (never the live per-second countdown)
+// so JarvisConfirmCard's progress bar renders deterministically.
+const jarvisPendingConfirmation: JarvisConfirmation = {
+  confirmationId: "conf-visual-1",
+  symbol: "EURUSD",
+  direction: Direction.Buy,
+  notional: 5_000_000,
+  quotedPrice: 1.09227,
+  // EURUSD's CurrencyPair.ratePrecision — renders "1.09227", byte-identical
+  // to the old toPrecision(6) output, so the pinned goldens don't move.
+  ratePrecision: 5,
+  remainingFraction: 0.75,
+};
+
+const jarvisStateConfirm: JarvisState = {
+  open: true,
+  skin: DEFAULT_JARVIS_SKIN,
+  unread: 0,
+  phase: "idle",
+  entries: [jarvisGreetingEntry],
+  pendingConfirmation: jarvisPendingConfirmation,
+};
+fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });

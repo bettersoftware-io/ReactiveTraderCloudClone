@@ -9,6 +9,7 @@ import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
+import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -37,6 +38,7 @@ export function App(): JSX.Element {
       <StatusBar />
       <ConnectionOverlay />
       <LockScreen />
+      <JarvisOverlay />
     </div>
   );
 }

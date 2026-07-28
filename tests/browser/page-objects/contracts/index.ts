@@ -4,9 +4,11 @@ import type { BootPO } from "./Boot";
 import type { ConnectionOverlayPO } from "./ConnectionOverlay";
 import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
+import type { EquitiesChartPO } from "./EquitiesChart";
 import type { FooterPO } from "./Footer";
 import type { FxRfqFormPO } from "./FxRfqForm";
 import type { InspectorPO } from "./Inspector";
+import type { JarvisPO } from "./Jarvis";
 import type { LayoutPO } from "./Layout";
 import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { LoginScreenPO } from "./LoginScreen";
@@ -27,7 +29,9 @@ export interface PageObjects {
   creditRfqForm: CreditRfqFormPO;
   creditRfqPanel: CreditRfqPanelPO;
   blotterTable: BlotterTablePO;
+  equitiesChart: EquitiesChartPO;
   layout: LayoutPO;
+  jarvis: JarvisPO;
   /** Optional: the same-origin DevTools inspector (a second page). Only the
    *  Playwright factory provides it. */
   inspector?: InspectorPO;

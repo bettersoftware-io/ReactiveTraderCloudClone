@@ -1,4 +1,4 @@
-import { Observable } from "rxjs";
+import { defer, map, Observable } from "rxjs";
 
 import {
   type AdminPort,
@@ -80,6 +80,8 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
 import type { IWsAdapter } from "./IWsAdapter";
+import type { JarvisPort } from "./jarvisPort";
+import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
 
 /** The subset of the transport the composition root drives from auth state.
@@ -100,6 +102,9 @@ export interface AppPorts {
   workflow: WorkflowPort;
   admin: AdminPort;
   preferences: PreferencesPort;
+  /** Scripted (phase 1) or WS-real (phase 2) J.A.R.V.I.S. chat backend —
+   * constructed internally by both port factories, never platform-supplied. */
+  jarvis: JarvisPort;
   connectionEvents: ConnectionEventsPort;
   marketData: MarketDataPort;
   orders: OrderPort;
@@ -156,17 +161,29 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
   const errorRate = new ErrorRateSimulator(2);
   const topology = new ServiceTopologySimulator(3);
   const eventLog = new EventLogSimulator(4);
+  const referenceData = new ReferenceDataSimulator();
+  const pricing = new PricingSimulator();
+  const blotter = new TradeStoreSimulator(execution);
+  const analytics = new AnalyticsSimulator();
   return {
-    referenceData: new ReferenceDataSimulator(),
-    pricing: new PricingSimulator(),
+    referenceData,
+    pricing,
     execution,
-    blotter: new TradeStoreSimulator(execution),
-    analytics: new AnalyticsSimulator(),
+    blotter,
+    analytics,
     instruments: new InstrumentSimulator(),
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
     admin,
     preferences: deps.preferences,
+    jarvis: new ScriptedJarvisAdapter({
+      referenceData,
+      pricing,
+      blotter,
+      analytics,
+      execution,
+      instantReveal$: createInstantReveal$(deps.preferences),
+    }),
     marketData,
     orders,
     positions: positionsSim,
@@ -178,6 +195,26 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     auth: deps.auth,
     sessionStore: deps.sessionStore,
   };
+}
+
+/** Freeze-only instant-reveal signal for `ScriptedJarvisAdapter`: reduced-motion
+ * is a DOM query the UI already handles itself (CSS-free full text), so the
+ * adapter only needs to collapse its paced reveal under Freeze. Same
+ * `level === "freeze"` idiom as `PowerSaverPresenter.isFreeze$`. Wrapped in
+ * `defer` so `powerSaverLevel$()` is only invoked on subscription — many
+ * unit tests pass a partial `{} as PreferencesPort` fake that only implements
+ * the preference methods they exercise, and an eager call here would throw
+ * for every one of them at port-factory construction time. */
+function createInstantReveal$(
+  preferences: PreferencesPort,
+): Observable<boolean> {
+  return defer(() => {
+    return preferences.powerSaverLevel$();
+  }).pipe(
+    map((level) => {
+      return level === "freeze";
+    }),
+  );
 }
 
 // ── Port Implementations ────────────────────────────────────────
@@ -1061,17 +1098,30 @@ export function createWsRealPorts(
   const eventLog = new EventLogSimulator(4);
   // Standalone ThroughputSimulator for telemetry sampling; admin port is WS-backed.
   const throughput = new ThroughputSimulator();
+  const referenceData = createReferenceDataPort(ws);
+  const pricing = createPricingPort(ws);
+  const execution = createExecutionPort(ws);
+  const blotter = createBlotterPort(ws);
+  const analytics = createAnalyticsPort(ws);
   return {
-    referenceData: createReferenceDataPort(ws),
-    pricing: createPricingPort(ws),
-    execution: createExecutionPort(ws),
-    blotter: createBlotterPort(ws),
-    analytics: createAnalyticsPort(ws),
+    referenceData,
+    pricing,
+    execution,
+    blotter,
+    analytics,
     instruments: createInstrumentPort(ws),
     dealers: createDealerPort(ws),
     workflow: createWorkflowPort(ws),
     admin: createAdminPort(ws),
     preferences: deps.preferences,
+    jarvis: new ScriptedJarvisAdapter({
+      referenceData,
+      pricing,
+      blotter,
+      analytics,
+      execution,
+      instantReveal$: createInstantReveal$(deps.preferences),
+    }),
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),
