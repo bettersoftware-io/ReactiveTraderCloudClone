@@ -152,7 +152,11 @@ function parseArgs(argv: readonly string[]): AuditArgs {
     const arg = argv[i];
     const value = argv[i + 1];
 
-    if (arg === "--url" && value !== undefined) {
+    if (arg === "--") {
+      // pnpm forwards the `run script -- --flag` separator verbatim, so the
+      // documented forwarding recipe delivers a literal "--" ahead of the
+      // real flags.
+    } else if (arg === "--url" && value !== undefined) {
       url = value;
       i += 1;
     } else if (arg === "--levels" && value !== undefined) {
