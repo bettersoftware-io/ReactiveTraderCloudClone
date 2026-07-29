@@ -13,6 +13,11 @@ and `opacity`, with literal keyframe values, one animation per property per
 element** — everything else runs on the main thread every frame it is
 active, no matter how small the element.
 
+Related instruments: `/rtc:perf-audit` (motion machinery census per
+power-saver level) and `pnpm perf:framework-compare` — the measured React vs
+Solid runtime comparison lives in
+[react-vs-solid-performance.md](react-vs-solid-performance.md).
+
 ---
 
 ## 1. The trap catalogue

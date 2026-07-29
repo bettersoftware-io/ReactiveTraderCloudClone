@@ -10,6 +10,7 @@
     "test:ui:contract": "turbo run test:ui:contract",
     "test:ui:coverage": "turbo run test:ui:coverage",
     "coverage:gaps": "node scripts/coverage-gaps.mjs",
+    "perf:framework-compare": "pnpm --filter @rtc/tests perf:framework-compare",
     "perf:motion-audit": "pnpm --filter @rtc/tests perf:motion-audit",
     "perf:motion-audit:solid": "pnpm --filter @rtc/tests perf:motion-audit:solid",
     "test:e2e": "turbo run test:e2e",

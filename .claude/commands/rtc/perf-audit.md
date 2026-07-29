@@ -71,6 +71,11 @@ expected (solid is a parity port); investigate any animation present in one
 client only, and any rAF-rate difference at `off` (both should sit at the
 display refresh rate while FLIP/live-metrics loops run).
 
+For the *CPU-cost* comparison (framework reconciliation, layout, heap — not
+motion machinery), use `pnpm perf:framework-compare` against production
+builds; methodology and the 2026-07-29 verdict live in
+`docs/react-vs-solid-performance.md`.
+
 ## Deeper traces
 
 This audit covers motion machinery only. For frame-time / compositor analysis
