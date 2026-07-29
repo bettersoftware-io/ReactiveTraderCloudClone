@@ -11,6 +11,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)",
     "coverage:report": "tsx scripts/coverage-report.ts",
     "gates": "tsx scripts/grep-gates.ts",
+    "perf:framework-compare": "tsx scripts/framework-compare.ts",
     "perf:motion-audit": "tsx scripts/with-server.ts tsx scripts/motion-audit.ts",
     "perf:motion-audit:solid": "RTC_CLIENT_PKG=@rtc/client-solid tsx scripts/with-server.ts tsx scripts/motion-audit.ts",
     "port:free": "tsx scripts/free-port.ts",
