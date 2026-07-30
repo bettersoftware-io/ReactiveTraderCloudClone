@@ -1,4 +1,4 @@
-import { For, type JSX } from "solid-js";
+import { type Accessor, Index, type JSX } from "solid-js";
 
 import type { TimeLabelVm } from "@rtc/motion-core";
 
@@ -12,19 +12,19 @@ import styles from "./TimeAxis.module.css";
 export function TimeAxis(props: TimeAxisProps): JSX.Element {
   return (
     <div class={styles.axis}>
-      <For each={props.labels}>
-        {(l: TimeLabelVm): JSX.Element => {
+      <Index each={props.labels}>
+        {(l: Accessor<TimeLabelVm>): JSX.Element => {
           return (
             <div
               class={styles.label}
-              style={l.style}
+              style={l().style}
               data-testid="chart-time-label"
             >
-              {l.txt}
+              {l().txt}
             </div>
           );
         }}
-      </For>
+      </Index>
     </div>
   );
 }

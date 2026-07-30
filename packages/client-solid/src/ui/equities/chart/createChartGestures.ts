@@ -93,6 +93,50 @@ export function createChartGestures(
   const [cursor, setCursor] = createSignal<ChartCursor | null>(null);
   let plotEl: HTMLDivElement | undefined;
   let dragOrigin: DragOrigin | null = null;
+  let pendingViewportWrite: (() => void) | null = null;
+  let viewportWriteFrame: number | null = null;
+
+  // Continuous (per-pointermove) viewport writes ride a leading-edge +
+  // trailing-frame throttle: latest-wins coalescing that engages exactly
+  // when the machine falls behind. On fast hardware frames outpace events,
+  // every write is a leading edge, and this is a no-op; on slow hardware
+  // (the GPU-less Citrix/VDI case) frames stretch, multiple moves land per
+  // frame window, and stale intermediate updates are dropped — the adaptive
+  // load-shedding React's ContinuousEventPriority scheduler does built-in,
+  // measured at 3.45x drag cost without it under 8x CPU throttle
+  // (docs/react-vs-solid-performance.md).
+  function writeViewportThrottled(write: () => void): void {
+    if (viewportWriteFrame !== null) {
+      pendingViewportWrite = write;
+      return;
+    }
+
+    write();
+    viewportWriteFrame = requestAnimationFrame(() => {
+      viewportWriteFrame = null;
+
+      const pending = pendingViewportWrite;
+
+      pendingViewportWrite = null;
+
+      if (pending) {
+        writeViewportThrottled(pending);
+      }
+    });
+  }
+
+  // Discrete writes (wheel notch, keys, reset) call this first so a pending
+  // coalesced drag write cannot land a frame later and overwrite them.
+  function dropPendingViewportWrite(): void {
+    if (viewportWriteFrame !== null) {
+      cancelAnimationFrame(viewportWriteFrame);
+      viewportWriteFrame = null;
+    }
+
+    pendingViewportWrite = null;
+  }
+
+  onCleanup(dropPendingViewportWrite);
 
   // New candles arriving (seriesLen grows tick-by-tick) fold in via a
   // createComputed watching the live length directly: a live-edge viewport
@@ -149,6 +193,7 @@ export function createChartGestures(
 
     function zoomByWheelNotch(e: WheelEvent): void {
       e.preventDefault();
+      dropPendingViewportWrite();
       // `e.offsetX` is relative to `e.target` — since BackToLiveButton (and
       // any other overlay) paints above this element, wheeling over it would
       // read offsetX against the BUTTON's box, not the plot's, anchoring the
@@ -205,9 +250,15 @@ export function createChartGestures(
     if (drag && drag.pointerId === e.pointerId) {
       const span = drag.startViewport.end - drag.startViewport.start;
       const dxPx = e.clientX - drag.startX;
-      setViewport(
-        panBy(drag.startViewport, -(dxPx / drag.rectWidth) * span, seriesLen()),
+      const next = panBy(
+        drag.startViewport,
+        -(dxPx / drag.rectWidth) * span,
+        seriesLen(),
       );
+
+      writeViewportThrottled(() => {
+        setViewport(next);
+      });
       return;
     }
 
@@ -238,14 +289,21 @@ export function createChartGestures(
   }
 
   function resetToLive(): void {
+    dropPendingViewportWrite();
     setViewport(defaultViewport(seriesLen(), defaultVisible()));
   }
 
   function applyViewport(vp: ChartViewport): void {
-    setViewport(clampViewport(vp, seriesLen()));
+    // The navigator brush's per-pointermove write path — continuous, so it
+    // rides the same frame throttle as the plot drag.
+    writeViewportThrottled(() => {
+      setViewport(clampViewport(vp, seriesLen()));
+    });
   }
 
   function panOrZoomByKey(e: KeyboardEvent): void {
+    dropPendingViewportWrite();
+
     switch (e.key) {
       case "ArrowLeft":
         e.preventDefault();
