@@ -384,16 +384,99 @@ describe("createChartGestures", () => {
   });
 
   it("applyViewport sets the viewport (clamped), the navigator brush's write path", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const frames = captureAnimationFrames();
 
-    result.applyViewport({ start: 100, end: 150 });
-    expect(result.viewport()).toEqual({ start: 100, end: 150 });
-    expect(result.atLiveEdge()).toBe(false);
+    try {
+      const { result } = renderHook(() => {
+        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
+      });
 
-    result.applyViewport({ start: -10, end: 40 });
-    expect(result.viewport()).toEqual({ start: 0, end: 50 });
+      result.applyViewport({ start: 100, end: 150 });
+      expect(result.viewport()).toEqual({ start: 100, end: 150 });
+      expect(result.atLiveEdge()).toBe(false);
+
+      // A second write inside the same frame window coalesces — flush the
+      // trailing frame before asserting the clamped result.
+      result.applyViewport({ start: -10, end: 40 });
+      frames.flush();
+      expect(result.viewport()).toEqual({ start: 0, end: 50 });
+    } finally {
+      frames.restore();
+    }
+  });
+
+  it("coalesces a drag burst: leading move applies synchronously, the rest collapse to one latest-wins write per frame", () => {
+    const frames = captureAnimationFrames();
+
+    try {
+      const { result } = renderHook(() => {
+        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
+      });
+
+      result.plotProps.onPointerDown(
+        pointerEvent({ clientX: 50, clientY: 50 }),
+      );
+      result.plotProps.onPointerMove(
+        pointerEvent({ clientX: 60, clientY: 50 }),
+      );
+
+      const afterLeading = result.viewport().start;
+
+      // Two more moves inside the same frame window: neither may write yet.
+      result.plotProps.onPointerMove(
+        pointerEvent({ clientX: 80, clientY: 50 }),
+      );
+      result.plotProps.onPointerMove(
+        pointerEvent({ clientX: 100, clientY: 50 }),
+      );
+      expect(result.viewport().start).toBe(afterLeading);
+
+      frames.flush();
+
+      // The trailing frame applies only the LAST move's viewport (dx = +50
+      // of 500px width against the drag-origin viewport).
+      const span = DEFAULT_VISIBLE;
+      expect(result.viewport().start).toBeCloseTo(
+        SERIES_LEN - DEFAULT_VISIBLE - (50 / 500) * span,
+        5,
+      );
+    } finally {
+      frames.restore();
+    }
+  });
+
+  it("a discrete reset drops the pending coalesced drag write instead of being overwritten a frame later", () => {
+    const frames = captureAnimationFrames();
+
+    try {
+      const { result } = renderHook(() => {
+        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
+      });
+
+      result.plotProps.onPointerDown(
+        pointerEvent({ clientX: 50, clientY: 50 }),
+      );
+      result.plotProps.onPointerMove(
+        pointerEvent({ clientX: 60, clientY: 50 }),
+      );
+      result.plotProps.onPointerMove(
+        pointerEvent({ clientX: 90, clientY: 50 }),
+      );
+      result.plotProps.onPointerUp(pointerEvent({ clientX: 90, clientY: 50 }));
+
+      result.resetToLive();
+      frames.flush();
+
+      // The reset stands: the pending move-to-90 write was dropped with the
+      // frame, not applied on top of the reset.
+      expect(result.viewport()).toEqual({
+        start: SERIES_LEN - DEFAULT_VISIBLE,
+        end: SERIES_LEN,
+      });
+      expect(result.atLiveEdge()).toBe(true);
+    } finally {
+      frames.restore();
+    }
   });
 
   it("wheel-down (deltaY > 0) zooms out", () => {
@@ -505,4 +588,46 @@ function pointerEvent(init: PointerEventInit): PointerEvent {
     clientY: init.clientY,
     currentTarget,
   } as unknown as PointerEvent;
+}
+
+interface CapturedFrames {
+  readonly flush: () => void;
+  readonly restore: () => void;
+}
+
+/** Replaces rAF with a manual queue so a test can flush the gesture seam's
+ * trailing coalesced write deterministically. */
+function captureAnimationFrames(): CapturedFrames {
+  const realRequest = globalThis.requestAnimationFrame;
+  const realCancel = globalThis.cancelAnimationFrame;
+  const queue = new Map<number, FrameRequestCallback>();
+  let nextHandle = 1;
+
+  globalThis.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+    const handle = nextHandle;
+
+    nextHandle += 1;
+    queue.set(handle, cb);
+
+    return handle;
+  };
+  globalThis.cancelAnimationFrame = (handle: number): void => {
+    queue.delete(handle);
+  };
+
+  return {
+    flush: (): void => {
+      const callbacks = [...queue.values()];
+
+      queue.clear();
+
+      for (const cb of callbacks) {
+        cb(performance.now());
+      }
+    },
+    restore: (): void => {
+      globalThis.requestAnimationFrame = realRequest;
+      globalThis.cancelAnimationFrame = realCancel;
+    },
+  };
 }

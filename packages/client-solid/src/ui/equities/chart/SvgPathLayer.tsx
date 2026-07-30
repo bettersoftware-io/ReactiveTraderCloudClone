@@ -1,4 +1,4 @@
-import { createUniqueId, For, type JSX, Show } from "solid-js";
+import { type Accessor, createUniqueId, Index, type JSX, Show } from "solid-js";
 
 import type { ChartKind, ChartPoint, IndicatorId } from "@rtc/motion-core";
 
@@ -53,19 +53,19 @@ export function SvgPathLayer(props: SvgPathLayerProps): JSX.Element {
           points={toPointsAttr(props.linePoints)}
         />
       </Show>
-      <For each={props.indicatorPaths}>
-        {(p: IndicatorPath): JSX.Element => {
+      <Index each={props.indicatorPaths}>
+        {(p: Accessor<IndicatorPath>): JSX.Element => {
           return (
             <polyline
               data-testid="chart-indicator-path"
-              data-ind={p.id}
+              data-ind={p().id}
               class={styles.indicator}
               fill="none"
-              points={p.pointsAttr}
+              points={p().pointsAttr}
             />
           );
         }}
-      </For>
+      </Index>
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { For, type JSX, Show } from "solid-js";
+import { type Accessor, Index, type JSX, Show } from "solid-js";
 
 import type { EqChartType } from "@rtc/client-core";
 import type {
@@ -60,30 +60,30 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onKeyDown={props.plotProps?.onKeyDown}
       >
-        <For each={props.vm.grid}>
-          {(gr: ChartVm["grid"][number]): JSX.Element => {
+        <Index each={props.vm.grid}>
+          {(gr: Accessor<ChartVm["grid"][number]>): JSX.Element => {
             return (
               <div
                 class={styles.grid}
-                style={gr.style}
+                style={gr().style}
                 data-testid="chart-grid-line"
               />
             );
           }}
-        </For>
-        <For each={props.vm.labels}>
-          {(l: ChartVm["labels"][number]): JSX.Element => {
+        </Index>
+        <Index each={props.vm.labels}>
+          {(l: Accessor<ChartVm["labels"][number]>): JSX.Element => {
             return (
               <div
                 class={styles.label}
-                style={l.style}
+                style={l().style}
                 data-testid="chart-price-label"
               >
-                {l.txt}
+                {l().txt}
               </div>
             );
           }}
-        </For>
+        </Index>
         <Show when={props.kind === "candles"}>
           <CandleBars candles={props.vm.candles} />
         </Show>

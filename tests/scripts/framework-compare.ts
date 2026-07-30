@@ -25,6 +25,7 @@
  * Usage:
  *   pnpm perf:framework-compare                  # both clients, freeze, 3 trials
  *   pnpm perf:framework-compare -- --levels freeze,off --trials 5 --seconds 10
+ *   pnpm perf:framework-compare -- --cpu-throttle 8   # emulate slow hardware
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import path from "node:path";
@@ -71,13 +72,7 @@ async function main(): Promise<void> {
           console.error(
             `[compare] ${client.name} · ${level} · trial ${trial + 1}/${args.trials}`,
           );
-          await runTrial(
-            client.name,
-            client.port,
-            level,
-            args.seconds,
-            results,
-          );
+          await runTrial(client.name, client.port, level, args, results);
         }
       }
     } finally {
@@ -93,7 +88,7 @@ async function runTrial(
   client: ClientName,
   port: number,
   level: Level,
-  seconds: number,
+  args: CompareArgs,
   results: Map<string, ScenarioSample[]>,
 ): Promise<void> {
   const browser = await chromium.launch();
@@ -130,6 +125,16 @@ async function runTrial(
 
   await cdp.send("Performance.enable");
 
+  if (args.cpuThrottle > 1) {
+    // Emulated slow hardware (the GPU-less Citrix/VDI case freeze exists
+    // for): every main-thread millisecond is multiplied, so policies that
+    // only matter under load — input-pressure coalescing, per-event update
+    // costs — actually engage.
+    await cdp.send("Emulation.setCPUThrottlingRate", {
+      rate: args.cpuThrottle,
+    });
+  }
+
   try {
     const url = `http://localhost:${port}/`;
 
@@ -147,7 +152,7 @@ async function runTrial(
     await page.waitForTimeout(1500);
 
     for (const scenario of SCENARIOS) {
-      const sample = await measure(cdp, page, seconds, scenario.run);
+      const sample = await measure(cdp, page, args.seconds, scenario.run);
 
       push(results, `${client}|${level}|${scenario.name}`, sample);
     }
@@ -546,6 +551,7 @@ interface CompareArgs {
   readonly levels: readonly Level[];
   readonly trials: number;
   readonly seconds: number;
+  readonly cpuThrottle: number;
 }
 
 function parseArgs(argv: readonly string[]): CompareArgs {
@@ -553,6 +559,7 @@ function parseArgs(argv: readonly string[]): CompareArgs {
   let levels: readonly Level[] = ["freeze"];
   let trials = 3;
   let seconds = 8;
+  let cpuThrottle = 1;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -588,14 +595,17 @@ function parseArgs(argv: readonly string[]): CompareArgs {
     } else if (arg === "--seconds" && value !== undefined) {
       seconds = Number.parseFloat(value);
       i += 1;
+    } else if (arg === "--cpu-throttle" && value !== undefined) {
+      cpuThrottle = Number.parseFloat(value);
+      i += 1;
     } else {
       throw new Error(
-        `unknown argument "${arg}" (use --clients, --levels, --trials, --seconds)`,
+        `unknown argument "${arg}" (use --clients, --levels, --trials, --seconds, --cpu-throttle)`,
       );
     }
   }
 
-  return { clients, levels, trials, seconds };
+  return { clients, levels, trials, seconds, cpuThrottle };
 }
 
 await main();

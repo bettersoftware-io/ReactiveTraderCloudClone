@@ -259,12 +259,15 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
    * window) and releases without moving. */
   pressNavigatorTrack(xFrac: number): void {
     const strip = this.navigatorStrip();
-    fireEvent.pointerDown(strip, {
-      pointerId: 1,
-      clientX: STRIP_RECT.left + xFrac * STRIP_RECT.width,
-      clientY: 16,
+
+    runGestureAndFlushCoalescedFrames(() => {
+      fireEvent.pointerDown(strip, {
+        pointerId: 1,
+        clientX: STRIP_RECT.left + xFrac * STRIP_RECT.width,
+        clientY: 16,
+      });
+      fireEvent.pointerUp(strip, { pointerId: 1 });
     });
-    fireEvent.pointerUp(strip, { pointerId: 1 });
     this.setProps({});
   }
 
@@ -277,17 +280,20 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     toXFrac: number,
   ): void {
     const strip = this.navigatorStrip();
-    fireEvent.pointerDown(target, {
-      pointerId: 1,
-      clientX: STRIP_RECT.left + fromXFrac * STRIP_RECT.width,
-      clientY: 16,
+
+    runGestureAndFlushCoalescedFrames(() => {
+      fireEvent.pointerDown(target, {
+        pointerId: 1,
+        clientX: STRIP_RECT.left + fromXFrac * STRIP_RECT.width,
+        clientY: 16,
+      });
+      fireEvent.pointerMove(strip, {
+        pointerId: 1,
+        clientX: STRIP_RECT.left + toXFrac * STRIP_RECT.width,
+        clientY: 16,
+      });
+      fireEvent.pointerUp(strip, { pointerId: 1 });
     });
-    fireEvent.pointerMove(strip, {
-      pointerId: 1,
-      clientX: STRIP_RECT.left + toXFrac * STRIP_RECT.width,
-      clientY: 16,
-    });
-    fireEvent.pointerUp(strip, { pointerId: 1 });
     this.setProps({});
   }
 
@@ -319,5 +325,54 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     };
 
     return el;
+  }
+}
+
+/**
+ * Runs a continuous pointer gesture and synchronously flushes any
+ * frame-coalesced viewport writes it scheduled. The Solid client's
+ * `createChartGestures` throttles per-pointermove writes to a leading edge +
+ * one trailing `requestAnimationFrame` (latest wins); jsdom's rAF is a real
+ * 16ms timer a synchronous spec body never yields to, so without this a
+ * SECOND drag in the same test would land inside the first drag's still-open
+ * frame window and never apply. React schedules no rAF during these gestures
+ * (its pointermove batching is scheduler-internal), so capturing frames is a
+ * no-op there.
+ */
+function runGestureAndFlushCoalescedFrames(gesture: () => void): void {
+  const realRequest = globalThis.requestAnimationFrame;
+  const realCancel = globalThis.cancelAnimationFrame;
+  const queue = new Map<number, FrameRequestCallback>();
+  let nextHandle = 1;
+
+  globalThis.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+    const handle = nextHandle;
+
+    nextHandle += 1;
+    queue.set(handle, cb);
+
+    return handle;
+  };
+  globalThis.cancelAnimationFrame = (handle: number): void => {
+    queue.delete(handle);
+  };
+
+  try {
+    gesture();
+
+    // A flushed trailing write re-opens the throttle window (one more empty
+    // frame), so drain until quiet — this terminates after two rounds.
+    while (queue.size > 0) {
+      const callbacks = [...queue.values()];
+
+      queue.clear();
+
+      for (const cb of callbacks) {
+        cb(performance.now());
+      }
+    }
+  } finally {
+    globalThis.requestAnimationFrame = realRequest;
+    globalThis.cancelAnimationFrame = realCancel;
   }
 }

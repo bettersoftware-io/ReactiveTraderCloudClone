@@ -1,4 +1,4 @@
-import { type Accessor, createMemo, For, type JSX, Show } from "solid-js";
+import { type Accessor, createMemo, Index, type JSX, Show } from "solid-js";
 
 import type { DepthBook, DepthLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -51,32 +51,32 @@ export function DepthLadder(props: DepthLadderProps): JSX.Element {
           <div class={styles.ladder}>
             <div class={styles.section}>
               <div class={styles.sectionLabel}>ASKS</div>
-              <For each={asks()}>
-                {(level: DepthLevel): JSX.Element => {
+              <Index each={asks()}>
+                {(level: Accessor<DepthLevel>): JSX.Element => {
                   return (
                     <DepthRow
-                      level={level}
+                      level={level()}
                       side="ask"
-                      depth={level.size / maxSize()}
+                      depth={level().size / maxSize()}
                     />
                   );
                 }}
-              </For>
+              </Index>
             </div>
             <div class={styles.spread}>SPREAD {spread()}</div>
             <div class={styles.section}>
               <div class={styles.sectionLabel}>BIDS</div>
-              <For each={bids()}>
-                {(level: DepthLevel): JSX.Element => {
+              <Index each={bids()}>
+                {(level: Accessor<DepthLevel>): JSX.Element => {
                   return (
                     <DepthRow
-                      level={level}
+                      level={level()}
                       side="bid"
-                      depth={level.size / maxSize()}
+                      depth={level().size / maxSize()}
                     />
                   );
                 }}
-              </For>
+              </Index>
             </div>
           </div>
         );
