@@ -84,11 +84,28 @@ crosshair script ratio 0.36).
    streaming and crosshair scenarios. But script is a minor slice of task
    time (layout + style recalc are similar in both), so the end-to-end gap
    mostly evaporates: totals within ±15% except the drag.
-3. **React wins the navigator drag outright** (0.6× total, 4–7× fewer layout
-   passes, both levels). Identically-ported brush logic (rect cached at
-   pointerdown in both), so the gap is the update model: React's batched
-   commits coalesce high-frequency pointermoves into few DOM writes; Solid
-   applies each move synchronously and pays a layout per applied change.
+3. **The navigator-drag gap is a fidelity difference, not an efficiency
+   one — root-caused 2026-07-30.** A live probe during the exact drag
+   (counting pointermoves, rAF firings, and `getBoundingClientRect` calls)
+   showed: 63 moves delivered, `getBoundingClientRect` called exactly once
+   (at pointerdown — no forced reflows anywhere), and Solid performing **one
+   update per delivered event** (67 layouts ≈ 63 moves), each costing
+   ~0.3ms — the same unit cost as React's (~0.39ms/layout). React's 9
+   layouts for the same 63 moves mean its scheduler coalesces
+   continuous-priority updates under sustained input pressure: **React
+   renders the drag at roughly 10Hz while Solid renders it at full frame
+   rate.** The 1.6× total-cost gap buys 7× smoother drag feedback at equal
+   per-update cost.
+
+   An rAF leading-edge/trailing-frame throttle for Solid's viewport writes
+   was implemented, measured, and **reverted as a no-op**: the probe showed
+   every trailing frame firing before the next pointermove arrived — event
+   cadence is at or below the 120Hz frame interval, and real browsers align
+   `pointermove` delivery to frames anyway, so there is nothing to coalesce.
+   Making Solid "win" this benchmark would require deliberately dropping its
+   update rate to React's ~10Hz — strictly worse UX for benchmark optics.
+   Neither client produces a single long task during the drag; both are
+   fine as they are.
 4. **Solid retains far more DOM nodes** (CDP live-node count 1.5–5× React's,
    spiking after chart interactions — 4,676 vs 1,065 after zoom). The metric
    counts detached-but-referenced nodes, so this smells like the solid chart
