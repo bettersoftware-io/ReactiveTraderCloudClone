@@ -611,6 +611,7 @@ function captureAnimationFrames(): CapturedFrames {
 
     return handle;
   };
+
   globalThis.cancelAnimationFrame = (handle: number): void => {
     queue.delete(handle);
   };

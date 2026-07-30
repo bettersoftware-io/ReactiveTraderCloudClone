@@ -303,6 +303,7 @@ export function createChartGestures(
 
   function panOrZoomByKey(e: KeyboardEvent): void {
     dropPendingViewportWrite();
+
     switch (e.key) {
       case "ArrowLeft":
         e.preventDefault();
