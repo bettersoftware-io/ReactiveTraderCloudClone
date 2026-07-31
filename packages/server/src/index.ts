@@ -6,9 +6,10 @@ import { WebSocketServer } from "ws";
 
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import { createAgentLoop } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
-import { allEffects } from "./effects/index.js";
+import { buildEffects } from "./effects/index.js";
 import {
   authenticateLoginRequest,
   describeUpgrade,
@@ -24,7 +25,11 @@ const LOGIN_RATE_LIMIT_MAX = 10;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000;
 
 const services = createServices();
-const listen = createWsListener(combineEffects(...allEffects), services);
+const agentLoop = createAgentLoop(process.env, services);
+const listen = createWsListener(
+  combineEffects(...buildEffects(agentLoop)),
+  services,
+);
 
 const auth = new AuthService({
   secret: process.env.AUTH_SECRET ?? "",
