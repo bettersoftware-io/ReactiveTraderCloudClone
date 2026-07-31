@@ -45,6 +45,32 @@ Judge any future change to it against that.
 
 ## Procedure
 
+0. **Enumerate every tolerance knob before measuring anything.** There is more
+   than one, and the first run of this audit (2026-07-28) tightened only the
+   one it happened to be looking at:
+
+   ```bash
+   grep -rn "maxDiffPixelRatio\|pixelmatch(" --include="*.ts" packages/ tests/ \
+     | grep -v node_modules | grep -v "/reports/" | grep -v "/dist/"
+   ```
+
+   | knob | gates CI? | notes |
+   |---|---|---|
+   | `client-react/.../playwright.config.ts` | **yes** (`visual.yml`) | the tier that WRITES the goldens |
+   | `client-solid/.../playwright.config.ts` | **yes** (`visual.yml`) | assert-only; judges solid's renders against **react's** goldens |
+   | `client-react-native/tests/visual/shared/diff.ts` | **no** — runs in no workflow | `DEFAULT_RATIO = 0.06`, per-pixel `threshold: 0.1`; local-only |
+
+   **Both web tiers read the same golden set, so the LOOSEST of the two is the
+   real gate** — tightening react alone buys nothing while solid tolerates 12x
+   more. That is not hypothetical: PR #424 lowered react to `0.005` and solid
+   sat at `0.06` for three days, its comment still claiming to be a verbatim
+   copy of react's. `pnpm visual:jitter` now prints both and shouts on
+   divergence, so step 3 surfaces this without anyone remembering to look.
+
+   Beware rationale stored **by reference**. "Copied verbatim from X, see X for
+   the full rationale" is true when written and false the moment X changes —
+   and X is exactly what an audit changes. Each knob states its own basis.
+
 1. **Dispatch N identical golden regenerations on the same commit.** Same code,
    same container — so any difference between two artifacts is pure
    cross-runner noise and nothing else.
@@ -142,3 +168,13 @@ Prefer, in order:
 - **This audits the react x86 `react/` set only** — the canonical one CI
   enforces. The `react-local/<platform>-<arch>/` sets are never rendered by CI
   and are out of scope.
+- **The jitter measurement is react-rendered.** Both web tiers' budgets are now
+  read and compared (step 0), but the artifacts being differenced come from
+  `update-visual-goldens.yml`, which renders react. So the measured noise floor
+  is react's; solid's budget is justified by the separate fact that a full
+  `visual.yml` at `0.005` passes, not by a solid-side jitter sample.
+- **The RN tier is unaudited and ungated.** `client-react-native`'s
+  `compareToGolden` keeps `DEFAULT_RATIO = 0.06` with per-pixel `threshold: 0.1`
+  (a different comparator from Playwright's). It runs in no workflow, so it
+  gates nothing today — but the number is unmeasured, and would need its own
+  sampling before anyone relies on it.
