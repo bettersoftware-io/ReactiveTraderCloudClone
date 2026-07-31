@@ -13,7 +13,7 @@ import type { JarvisPort } from "./jarvisPort";
 /** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
  * sends `jarvis.chat` collapses the turn into a synthetic offline error
  * instead of hanging forever. Once any frame lands, no further deadline
- * applies — see `subscribeToJarvisTurn`'s `timeout({ first })`. */
+ * applies — see `createJarvisTurnStream`'s `timeout({ first })`. */
 export const JARVIS_FIRST_EVENT_TIMEOUT_MS = 10_000;
 
 const JARVIS_OFFLINE_EVENT: JarvisEvent = {
@@ -84,11 +84,12 @@ function attachJarvisTurnListeners(
   ];
 }
 
-/** The cold source for one `ask(text)` turn: registers all five listeners
- * before sending `jarvis.chat`, so a same-tick reply can't be missed (the
- * `WsAdapter` buffers pre-open sends, so this also works while the socket is
- * still connecting). Teardown unregisters every listener. */
-function subscribeToJarvisTurn(
+/** Builds the cold source `Observable` for one `ask(text)` turn: registers
+ * all five listeners before sending `jarvis.chat`, so a same-tick reply
+ * can't be missed (the `WsAdapter` buffers pre-open sends, so this also
+ * works while the socket is still connecting). Teardown unregisters every
+ * listener. */
+function createJarvisTurnStream(
   ws: IWsAdapter,
   text: string,
 ): Observable<JarvisEvent> {
@@ -110,7 +111,18 @@ export class WsJarvisAdapter implements JarvisPort {
   constructor(private readonly ws: IWsAdapter) {}
 
   ask(text: string): Observable<JarvisEvent> {
-    return subscribeToJarvisTurn(this.ws, text).pipe(
+    return createJarvisTurnStream(this.ws, text).pipe(
+      // KNOWN P2 LIMITATION (accepted, not a bug to fix here): the wire
+      // carries no correlation id, so once this timeout fires and this
+      // turn's listeners are torn down, a server that is still streaming
+      // the now-orphaned turn (no cancel frame is ever sent) has its
+      // stragglers land on whichever turn subscribes NEXT — same class of
+      // cross-talk as the snapshot-dispatch bug above, just without a fix
+      // available at this layer. The root fix is a wire correlation field,
+      // explicitly out of scope for phase 2 (targeted for phase 3). Hard to
+      // hit in practice: JarvisMachine serializes turns (concatMap) and the
+      // UI disables input while speaking, so a straggler has nowhere to
+      // land until the user starts a new turn after an offline timeout.
       timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS }),
       catchError((error: unknown) => {
         if (error instanceof TimeoutError) {

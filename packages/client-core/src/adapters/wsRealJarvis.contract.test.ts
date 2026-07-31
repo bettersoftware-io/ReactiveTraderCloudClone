@@ -181,6 +181,61 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
 
     expect(received).toEqual([]);
   });
+
+  it("REGRESSION: a turn started synchronously from a prior turn's complete() is not killed by that turn's own done frame", () => {
+    // WsAdapter (and this fake, mirroring it) dispatch a server frame with
+    // `for (const handler of [...handlers])` — a SNAPSHOT of the per-type
+    // handler Set. Without the snapshot, this reproduces a real bug: turn
+    // 1's JARVIS_DONE handler calls subscriber.complete() synchronously,
+    // which (via JarvisMachine's concatMap) can synchronously start turn 2
+    // — and turn 2's ask() registers a NEW JARVIS_DONE handler on the SAME
+    // Set that dispatch is still mid-iteration over for THIS frame. ES Set
+    // iterators visit mid-iteration insertions, so the live-Set version
+    // would run turn 2's brand-new handler against turn 1's stale done
+    // payload and instantly (and wrongly) complete turn 2 before its own
+    // chat reply ever arrives — the reply then lands on turn 2's already
+    // torn-down handlers and is silently lost.
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    let turn1Completed = false;
+    const turn2Received: JarvisEvent[] = [];
+    let turn2Completed = false;
+
+    adapter.ask("first").subscribe({
+      next: () => {},
+      complete: () => {
+        turn1Completed = true;
+        // Simulates JarvisMachine's concatMap advancing synchronously to
+        // the next queued send() once the prior turn completes.
+        adapter.ask("second").subscribe({
+          next: (event: JarvisEvent) => {
+            turn2Received.push(event);
+          },
+          complete: () => {
+            turn2Completed = true;
+          },
+        });
+      },
+    });
+
+    ws.emit(SERVER_MSG.JARVIS_DONE, {});
+
+    expect(turn1Completed).toBe(true);
+    // Turn 2 must still be open — not killed by turn 1's frame.
+    expect(turn2Completed).toBe(false);
+    expect(turn2Received).toEqual([]);
+
+    // Turn 2's own reply reaches it normally.
+    ws.emit(SERVER_MSG.JARVIS_DELTA, { text: "hi" });
+    ws.emit(SERVER_MSG.JARVIS_DONE, {});
+
+    expect(turn2Received).toEqual([
+      { type: "delta", text: "hi" },
+      { type: "done" },
+    ]);
+    expect(turn2Completed).toBe(true);
+  });
 });
 
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
