@@ -122,6 +122,15 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
     await expect(lastJarvisEntry).toContainText("EURUSD is trading at", {
       timeout: 20_000,
     });
+    // toContainText above can resolve mid-stream (the full reply keeps
+    // revealing after this fragment lands), and the input stays disabled
+    // while speaking — wait for the reply to actually finish (mirrors
+    // waitForReplyDone() in tests/browser/page-objects/playwright/Jarvis.ts)
+    // before driving turn 2, rather than leaning on Playwright's implicit
+    // actionability retry against the disabled input.
+    await expect(lastJarvisEntry).toHaveAttribute("data-done", "true", {
+      timeout: 20_000,
+    });
 
     // Turn 2: a confirm-gated trade — approve, then assert the fill reply
     // (not just any terminal reply: the rejected/timeout copy also flips
