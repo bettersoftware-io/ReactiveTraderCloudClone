@@ -564,6 +564,19 @@ function drawRadarSweep(
   }
 }
 
+/** Project a point along a trade arc. */
+function projectArc(
+  camera: Boot3dCamera,
+  from: GeoCityNode,
+  to: GeoCityNode,
+  lift: number,
+  frac: number,
+): ProjectedBootPoint {
+  "worklet";
+  const world = tradeArcPoint(from, to, lift, frac);
+  return projectBootPoint(world.x, world.y, world.z, camera);
+}
+
 /** Buy/sell trades arcing between capitals. */
 function drawTrades(
   canvas: SkCanvas,
@@ -645,17 +658,59 @@ function drawTrades(
   }
 }
 
-/** Project a point along a trade arc. */
-function projectArc(
-  camera: Boot3dCamera,
-  from: GeoCityNode,
-  to: GeoCityNode,
-  lift: number,
-  frac: number,
-): ProjectedBootPoint {
+/**
+ * A hot capital's leader line and label.
+ *
+ * The leader draws unconditionally; only the two text sites wait on the font,
+ * so a null-font window loses labels but keeps the geometry.
+ */
+function drawCityLabel(
+  canvas: SkCanvas,
+  top: ProjectedBootPoint,
+  city: GeoCityNode,
+  elapsed: number,
+  alpha: number,
+  accent: string,
+  accentAlt: string,
+  font: SkFont | null,
+): void {
   "worklet";
-  const world = tradeArcPoint(from, to, lift, frac);
-  return projectBootPoint(world.x, world.y, world.z, camera);
+  const leaderPaint = Skia.Paint();
+  leaderPaint.setStyle(PaintStyle.Stroke);
+  leaderPaint.setStrokeWidth(1);
+  leaderPaint.setAntiAlias(true);
+  leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.4 * alpha)));
+  const leader = Skia.Path.Make();
+  leader.moveTo(top.x, top.y);
+  leader.lineTo(top.x + LABEL_ELBOW_DX, top.y + LABEL_ELBOW_DY);
+  leader.lineTo(top.x + LABEL_RUN_DX, top.y + LABEL_ELBOW_DY);
+  canvas.drawPath(leader, leaderPaint);
+
+  if (font === null) {
+    return;
+  }
+
+  const namePaint = Skia.Paint();
+  namePaint.setAntiAlias(true);
+  namePaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * alpha)));
+  canvas.drawText(
+    city.label,
+    top.x + LABEL_TEXT_DX,
+    top.y + LABEL_NAME_DY,
+    namePaint,
+    font,
+  );
+
+  const volumePaint = Skia.Paint();
+  volumePaint.setAntiAlias(true);
+  volumePaint.setColor(Skia.Color(hexToRgba(accent, 0.7 * alpha)));
+  canvas.drawText(
+    cityVolumeLabel(city, elapsed),
+    top.x + LABEL_TEXT_DX,
+    top.y + LABEL_VOLUME_DY,
+    volumePaint,
+    font,
+  );
 }
 
 /** The capitals' pulsing volume bars, drawn far→near. */
@@ -758,61 +813,6 @@ function drawCityBars(
       );
     }
   }
-}
-
-/**
- * A hot capital's leader line and label.
- *
- * The leader draws unconditionally; only the two text sites wait on the font,
- * so a null-font window loses labels but keeps the geometry.
- */
-function drawCityLabel(
-  canvas: SkCanvas,
-  top: ProjectedBootPoint,
-  city: GeoCityNode,
-  elapsed: number,
-  alpha: number,
-  accent: string,
-  accentAlt: string,
-  font: SkFont | null,
-): void {
-  "worklet";
-  const leaderPaint = Skia.Paint();
-  leaderPaint.setStyle(PaintStyle.Stroke);
-  leaderPaint.setStrokeWidth(1);
-  leaderPaint.setAntiAlias(true);
-  leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.4 * alpha)));
-  const leader = Skia.Path.Make();
-  leader.moveTo(top.x, top.y);
-  leader.lineTo(top.x + LABEL_ELBOW_DX, top.y + LABEL_ELBOW_DY);
-  leader.lineTo(top.x + LABEL_RUN_DX, top.y + LABEL_ELBOW_DY);
-  canvas.drawPath(leader, leaderPaint);
-
-  if (font === null) {
-    return;
-  }
-
-  const namePaint = Skia.Paint();
-  namePaint.setAntiAlias(true);
-  namePaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.9 * alpha)));
-  canvas.drawText(
-    city.label,
-    top.x + LABEL_TEXT_DX,
-    top.y + LABEL_NAME_DY,
-    namePaint,
-    font,
-  );
-
-  const volumePaint = Skia.Paint();
-  volumePaint.setAntiAlias(true);
-  volumePaint.setColor(Skia.Color(hexToRgba(accent, 0.7 * alpha)));
-  canvas.drawText(
-    cityVolumeLabel(city, elapsed),
-    top.x + LABEL_TEXT_DX,
-    top.y + LABEL_VOLUME_DY,
-    volumePaint,
-    font,
-  );
 }
 
 /** Corner telemetry: two left-aligned readouts, two right-aligned. */

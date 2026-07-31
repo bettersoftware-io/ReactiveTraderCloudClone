@@ -331,6 +331,24 @@ function drawRadarWedge(
   canvas.drawPath(path, paint);
 }
 
+/** One point on the spinning, bobbing core sphere. */
+function projectSpherePoint(
+  lat: number,
+  lon: number,
+  radius: number,
+  spin: number,
+  bob: number,
+  camera: Boot3dCamera,
+): ProjectedBootPoint {
+  "worklet";
+  return projectBootPoint(
+    Math.cos(lat) * Math.cos(lon + spin) * radius,
+    Math.sin(lat) * radius,
+    Math.cos(lat) * Math.sin(lon + spin) * radius + bob,
+    camera,
+  );
+}
+
 /** The wireframe core sphere — latitude rings, longitude meridians, core dot. */
 function drawCoreSphere(
   canvas: SkCanvas,
@@ -414,24 +432,6 @@ function drawCoreSphere(
   canvas.drawCircle(core.x, core.y, CORE_DOT_RADIUS, corePaint);
 }
 
-/** One point on the spinning, bobbing core sphere. */
-function projectSpherePoint(
-  lat: number,
-  lon: number,
-  radius: number,
-  spin: number,
-  bob: number,
-  camera: Boot3dCamera,
-): ProjectedBootPoint {
-  "worklet";
-  return projectBootPoint(
-    Math.cos(lat) * Math.cos(lon + spin) * radius,
-    Math.sin(lat) * radius,
-    Math.cos(lat) * Math.sin(lon + spin) * radius + bob,
-    camera,
-  );
-}
-
 /** Stroke an arc of a ring at its breathing Z plane. */
 function strokeRingArc(
   canvas: SkCanvas,
@@ -493,50 +493,6 @@ function drawRadialTick(
   const inner = projectPolar(angle, innerRadius, zPlane, camera);
   const outer = projectPolar(angle, outerRadius, zPlane, camera);
   canvas.drawLine(inner.x, inner.y, outer.x, outer.y, paint);
-}
-
-/** The six ring layers. */
-function drawRingMachinery(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  elapsed: number,
-  progress: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-  labelFont: SkFont | null,
-  rulerFont: SkFont | null,
-): void {
-  "worklet";
-
-  for (let ringIndex = 0; ringIndex < JARVIS_RINGS.length; ringIndex++) {
-    const ring = JARVIS_RINGS[ringIndex];
-    const phase = ringPhase(ring, progress);
-
-    if (phase <= 0) {
-      continue;
-    }
-
-    // Each ring breathes on its own plane — the web's shared mutable
-    // `ringZPlane`, recomputed rather than carried.
-    const zPlane = ringZPlane(elapsed, ringIndex);
-    const sweep = phase * 6.283;
-
-    drawRingLayer(
-      canvas,
-      camera,
-      ring,
-      zPlane,
-      phase,
-      sweep,
-      elapsed,
-      flicker,
-      accent,
-      accentAlt,
-      labelFont,
-      rulerFont,
-    );
-  }
 }
 
 /** One ring layer, dispatched on its kind. */
@@ -808,6 +764,50 @@ function drawRingLayer(
   }
 }
 
+/** The six ring layers. */
+function drawRingMachinery(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  elapsed: number,
+  progress: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+  labelFont: SkFont | null,
+  rulerFont: SkFont | null,
+): void {
+  "worklet";
+
+  for (let ringIndex = 0; ringIndex < JARVIS_RINGS.length; ringIndex++) {
+    const ring = JARVIS_RINGS[ringIndex];
+    const phase = ringPhase(ring, progress);
+
+    if (phase <= 0) {
+      continue;
+    }
+
+    // Each ring breathes on its own plane — the web's shared mutable
+    // `ringZPlane`, recomputed rather than carried.
+    const zPlane = ringZPlane(elapsed, ringIndex);
+    const sweep = phase * 6.283;
+
+    drawRingLayer(
+      canvas,
+      camera,
+      ring,
+      zPlane,
+      phase,
+      sweep,
+      elapsed,
+      flicker,
+      accent,
+      accentAlt,
+      labelFont,
+      rulerFont,
+    );
+  }
+}
+
 /** The eight radial spoke walkways. */
 function drawSpokes(
   canvas: SkCanvas,
@@ -857,78 +857,6 @@ function drawSpokes(
   }
 }
 
-/** The fourteen blueprint fragments. */
-function drawFragments(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  fragments: readonly JarvisFragment[],
-  elapsed: number,
-  progress: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-  positive: string,
-  labelFont: SkFont | null,
-): void {
-  "worklet";
-
-  for (let index = 0; index < fragments.length; index++) {
-    const fragment = fragments[index];
-    const reveal = fragmentRevealPhase(fragment, progress);
-
-    if (reveal <= 0) {
-      continue;
-    }
-
-    const z = fragmentZ(fragment, index, elapsed, progress);
-    const glitch = fragmentGlitch(index, reveal, elapsed);
-    const lunging = fragmentIsLunging(index, elapsed, progress);
-    const alpha = fragmentAlpha(z, reveal, lunging, elapsed) * flicker;
-
-    // Leader back to the outer ring.
-    const anchor = projectPolar(fragment.angle, 0.95, 0, camera);
-    const origin = projectFragmentUv(camera, fragment, z, glitch, 0, 0);
-    const leaderPaint = Skia.Paint();
-    leaderPaint.setStyle(PaintStyle.Stroke);
-    leaderPaint.setStrokeWidth(1);
-    leaderPaint.setAntiAlias(true);
-    leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.1 * reveal * flicker)));
-    const leader = Skia.Path.Make();
-    leader.moveTo(anchor.x, anchor.y);
-    leader.lineTo((anchor.x + origin.x) / 2, origin.y);
-    leader.lineTo(origin.x, origin.y);
-    canvas.drawPath(leader, leaderPaint);
-
-    drawFragmentCard(
-      canvas,
-      camera,
-      fragment,
-      z,
-      glitch,
-      alpha,
-      elapsed,
-      accent,
-      accentAlt,
-      positive,
-    );
-
-    if (reveal >= 1 && labelFont !== null) {
-      const label = fragmentLabel(fragment, z);
-      const point = projectFragmentUv(camera, fragment, z, glitch, 0, 1.5);
-      const paint = Skia.Paint();
-      paint.setAntiAlias(true);
-      paint.setColor(Skia.Color(hexToRgba(accent, 0.5 * flicker)));
-      canvas.drawText(
-        label,
-        point.x - labelFont.getTextWidth(label) / 2,
-        point.y + RULER_FONT_SIZE * 0.35,
-        paint,
-        labelFont,
-      );
-    }
-  }
-}
-
 /** Map a fragment-local UV coordinate onto the canvas. */
 function projectFragmentUv(
   camera: Boot3dCamera,
@@ -971,84 +899,6 @@ function strokeFragmentSeg(
   paint.setAntiAlias(true);
   paint.setColor(Skia.Color(hexToRgba(color, alpha)));
   canvas.drawLine(a.x, a.y, b.x, b.y, paint);
-}
-
-/** One fragment's card art, dispatched on its kind. */
-function drawFragmentCard(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  fragment: JarvisFragment,
-  z: number,
-  glitch: number,
-  alpha: number,
-  elapsed: number,
-  accent: string,
-  accentAlt: string,
-  positive: string,
-): void {
-  "worklet";
-
-  if (fragment.kind === 0) {
-    drawDataCard(canvas, camera, fragment, z, glitch, alpha, accent, accentAlt);
-    return;
-  }
-
-  if (fragment.kind === 1) {
-    drawDial(
-      canvas,
-      camera,
-      fragment,
-      z,
-      glitch,
-      alpha,
-      elapsed,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  if (fragment.kind === 2) {
-    drawHexCluster(
-      canvas,
-      camera,
-      fragment,
-      z,
-      glitch,
-      alpha,
-      elapsed,
-      accent,
-      positive,
-    );
-    return;
-  }
-
-  if (fragment.kind === 3) {
-    drawMeter(
-      canvas,
-      camera,
-      fragment,
-      z,
-      glitch,
-      alpha,
-      elapsed,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  drawWaveform(
-    canvas,
-    camera,
-    fragment,
-    z,
-    glitch,
-    alpha,
-    elapsed,
-    accent,
-    accentAlt,
-  );
 }
 
 /** Fragment kind 0 — a data card with rows and corner brackets. */
@@ -1478,6 +1328,156 @@ function drawWaveform(
   }
 
   canvas.drawPath(path, paint);
+}
+
+/** One fragment's card art, dispatched on its kind. */
+function drawFragmentCard(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  fragment: JarvisFragment,
+  z: number,
+  glitch: number,
+  alpha: number,
+  elapsed: number,
+  accent: string,
+  accentAlt: string,
+  positive: string,
+): void {
+  "worklet";
+
+  if (fragment.kind === 0) {
+    drawDataCard(canvas, camera, fragment, z, glitch, alpha, accent, accentAlt);
+    return;
+  }
+
+  if (fragment.kind === 1) {
+    drawDial(
+      canvas,
+      camera,
+      fragment,
+      z,
+      glitch,
+      alpha,
+      elapsed,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  if (fragment.kind === 2) {
+    drawHexCluster(
+      canvas,
+      camera,
+      fragment,
+      z,
+      glitch,
+      alpha,
+      elapsed,
+      accent,
+      positive,
+    );
+    return;
+  }
+
+  if (fragment.kind === 3) {
+    drawMeter(
+      canvas,
+      camera,
+      fragment,
+      z,
+      glitch,
+      alpha,
+      elapsed,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  drawWaveform(
+    canvas,
+    camera,
+    fragment,
+    z,
+    glitch,
+    alpha,
+    elapsed,
+    accent,
+    accentAlt,
+  );
+}
+
+/** The fourteen blueprint fragments. */
+function drawFragments(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  fragments: readonly JarvisFragment[],
+  elapsed: number,
+  progress: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+  positive: string,
+  labelFont: SkFont | null,
+): void {
+  "worklet";
+
+  for (let index = 0; index < fragments.length; index++) {
+    const fragment = fragments[index];
+    const reveal = fragmentRevealPhase(fragment, progress);
+
+    if (reveal <= 0) {
+      continue;
+    }
+
+    const z = fragmentZ(fragment, index, elapsed, progress);
+    const glitch = fragmentGlitch(index, reveal, elapsed);
+    const lunging = fragmentIsLunging(index, elapsed, progress);
+    const alpha = fragmentAlpha(z, reveal, lunging, elapsed) * flicker;
+
+    // Leader back to the outer ring.
+    const anchor = projectPolar(fragment.angle, 0.95, 0, camera);
+    const origin = projectFragmentUv(camera, fragment, z, glitch, 0, 0);
+    const leaderPaint = Skia.Paint();
+    leaderPaint.setStyle(PaintStyle.Stroke);
+    leaderPaint.setStrokeWidth(1);
+    leaderPaint.setAntiAlias(true);
+    leaderPaint.setColor(Skia.Color(hexToRgba(accent, 0.1 * reveal * flicker)));
+    const leader = Skia.Path.Make();
+    leader.moveTo(anchor.x, anchor.y);
+    leader.lineTo((anchor.x + origin.x) / 2, origin.y);
+    leader.lineTo(origin.x, origin.y);
+    canvas.drawPath(leader, leaderPaint);
+
+    drawFragmentCard(
+      canvas,
+      camera,
+      fragment,
+      z,
+      glitch,
+      alpha,
+      elapsed,
+      accent,
+      accentAlt,
+      positive,
+    );
+
+    if (reveal >= 1 && labelFont !== null) {
+      const label = fragmentLabel(fragment, z);
+      const point = projectFragmentUv(camera, fragment, z, glitch, 0, 1.5);
+      const paint = Skia.Paint();
+      paint.setAntiAlias(true);
+      paint.setColor(Skia.Color(hexToRgba(accent, 0.5 * flicker)));
+      canvas.drawText(
+        label,
+        point.x - labelFont.getTextWidth(label) / 2,
+        point.y + RULER_FONT_SIZE * 0.35,
+        paint,
+        labelFont,
+      );
+    }
+  }
 }
 
 /**

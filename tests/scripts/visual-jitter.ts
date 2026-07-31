@@ -50,10 +50,27 @@ import { PNG } from "pngjs";
 
 const PLAYWRIGHT_DEFAULT_PER_PIXEL_THRESHOLD = 0.2;
 
-const CONFIG_PATH = path.resolve(
-  import.meta.dirname,
-  "../../packages/client-react/tests/ui/visual/playwright/playwright.config.ts",
-);
+// EVERY tier that judges against the shared golden set, not just the one that
+// writes it. This list was react-only until 2026-07-31, and that omission is
+// exactly how client-solid sat at 0.06 for three days after PR #424 lowered
+// react to 0.005: the instrument built to audit the budget could not see half
+// of it. An audit tool that reads one config cannot report a divergence.
+const TIER_CONFIGS: readonly TierConfig[] = [
+  {
+    tier: "react",
+    configPath: path.resolve(
+      import.meta.dirname,
+      "../../packages/client-react/tests/ui/visual/playwright/playwright.config.ts",
+    ),
+  },
+  {
+    tier: "solid",
+    configPath: path.resolve(
+      import.meta.dirname,
+      "../../packages/client-solid/tests/ui/visual/playwright/playwright.config.ts",
+    ),
+  },
+];
 
 async function main(): Promise<void> {
   const { dirs, options } = parseArgs(process.argv.slice(2));
@@ -67,12 +84,17 @@ async function main(): Promise<void> {
     return;
   }
 
-  const configured = readConfiguredTolerances();
+  const tiers = readEveryTierTolerance();
+  const configured = tiers[0] ?? {};
   const perPixel =
     options.threshold ??
     configured.threshold ??
     PLAYWRIGHT_DEFAULT_PER_PIXEL_THRESHOLD;
-  const budget = options.budget ?? configured.maxDiffPixelRatio;
+  // Judge measured jitter against the TIGHTEST configured budget: that is the
+  // tier most likely to flake, so it is the binding constraint on headroom.
+  // The LOOSEST is reported separately below, because it is the one that
+  // decides how much real drift can hide.
+  const budget = options.budget ?? tightestBudget(tiers);
 
   console.log(`comparing ${dirs.length} golden trees`);
   dirs.forEach((d, i) => {
@@ -85,8 +107,10 @@ async function main(): Promise<void> {
         : " (--threshold)"),
   );
   console.log(
-    `configured budget  : ${budget === undefined ? "unknown" : budget}\n`,
+    `configured budget  : ${budget === undefined ? "unknown" : budget}` +
+      (options.budget === undefined ? " (tightest tier)" : " (--budget)"),
   );
+  reportTierBudgets(tiers);
 
   const trees = await Promise.all(dirs.map(collectPngs));
   const shared = sharedKeys(trees);
@@ -122,6 +146,16 @@ interface ParsedArgs {
 interface ConfiguredTolerances {
   threshold?: number;
   maxDiffPixelRatio?: number;
+  maxDiffPixels?: number;
+}
+
+interface TierConfig {
+  tier: string;
+  configPath: string;
+}
+
+interface TierTolerances extends ConfiguredTolerances {
+  tier: string;
 }
 
 function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -152,20 +186,99 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
   return { dirs, options };
 }
 
-/** Reads the tier's own settings so the audit judges against what actually
+/** Reads every golden-consuming tier's settings, so a divergence between them
+ * is visible rather than inferred from whichever config happened to be read. */
+function readEveryTierTolerance(): TierTolerances[] {
+  return TIER_CONFIGS.map((config) => {
+    return {
+      tier: config.tier,
+      ...readConfiguredTolerances(config.configPath),
+    };
+  });
+}
+
+/** Reads one tier's own settings so the audit judges against what actually
  * ships, not a number duplicated here that could silently drift. */
-function readConfiguredTolerances(): ConfiguredTolerances {
+function readConfiguredTolerances(configPath: string): ConfiguredTolerances {
   try {
-    const src = readFileSync(CONFIG_PATH, "utf8");
+    const src = readFileSync(configPath, "utf8");
     const ratio = /maxDiffPixelRatio:\s*([0-9.]+)/.exec(src);
     const threshold = /\bthreshold:\s*([0-9.]+)/.exec(src);
+    // \b stops this matching the "maxDiffPixels" inside "maxDiffPixelRatio" --
+    // that one is followed by "Ratio", never a colon, so the colon alone is
+    // already sufficient, but the boundary makes the intent explicit.
+    const absolute = /\bmaxDiffPixels:\s*(\d+)/.exec(src);
     return {
       maxDiffPixelRatio: ratio ? Number(ratio[1]) : undefined,
+      maxDiffPixels: absolute ? Number(absolute[1]) : undefined,
       threshold: threshold ? Number(threshold[1]) : undefined,
     };
   } catch {
     return {};
   }
+}
+
+/** The smallest configured budget — the tier likeliest to flake, so the one
+ * measured jitter has to clear. */
+function tightestBudget(tiers: readonly TierTolerances[]): number | undefined {
+  const budgets = tiers
+    .map((tier) => {
+      return tier.maxDiffPixelRatio;
+    })
+    .filter((budget): budget is number => {
+      return budget !== undefined;
+    });
+
+  if (budgets.length === 0) {
+    return undefined;
+  }
+
+  return Math.min(...budgets);
+}
+
+/** Prints every tier's budget and shouts when they disagree. Two clients judged
+ * against ONE golden set means the LOOSEST budget is the real drift gate — a
+ * tightened react tier buys nothing while solid still tolerates 12x more. */
+function reportTierBudgets(tiers: readonly TierTolerances[]): void {
+  for (const tier of tiers) {
+    const budget = tier.maxDiffPixelRatio;
+    // Playwright takes Math.min(maxDiffPixels, ratio x area), so the absolute
+    // cap is the binding budget on every capture larger than cap/ratio px.
+    const cap =
+      tier.maxDiffPixels === undefined
+        ? ""
+        : `  maxDiffPixels: ${tier.maxDiffPixels} (caps captures above ${
+            tier.maxDiffPixelRatio === undefined
+              ? "?"
+              : Math.round(tier.maxDiffPixels / tier.maxDiffPixelRatio)
+          } px)`;
+
+    console.log(
+      `  ${tier.tier.padEnd(6)} maxDiffPixelRatio: ${budget ?? "unreadable"}${cap}`,
+    );
+  }
+
+  const distinct = new Set(
+    tiers.map((tier) => {
+      return tier.maxDiffPixelRatio;
+    }),
+  );
+
+  if (distinct.size > 1) {
+    const loosest = Math.max(
+      ...tiers.map((tier) => {
+        return tier.maxDiffPixelRatio ?? 0;
+      }),
+    );
+
+    console.log(
+      `\n  !! TIERS DIVERGE — the effective drift gate is the LOOSEST: ${loosest}.\n` +
+        "     Both tiers assert against the same golden set, so the tighter\n" +
+        "     one does not constrain what the looser one lets through.",
+    );
+  }
+
+  console.log("");
 }
 
 async function collectPngs(dir: string): Promise<Map<string, string>> {
