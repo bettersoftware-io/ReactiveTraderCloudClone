@@ -132,8 +132,6 @@ function findPair(
 export class ScriptedJarvisEngine {
   private readonly pendingConfirmations = new Map<string, Subject<boolean>>();
 
-  private nextConfirmationId = 0;
-
   constructor(private readonly deps: ScriptedJarvisDeps) {}
 
   ask(text: string): Observable<JarvisEvent> {
@@ -423,7 +421,12 @@ export class ScriptedJarvisEngine {
 
     const quotedPrice =
       intent.direction === Direction.Buy ? price.ask : price.bid;
-    const confirmationId = `confirm-${++this.nextConfirmationId}`;
+    // Unguessable, not just unique: the server holds one process-wide
+    // pendingConfirmations map across every connected socket, so a
+    // sequential id ("confirm-1", "confirm-2", ...) would let one
+    // authenticated client approve another client's staged trade by
+    // guessing it.
+    const confirmationId = `confirm-${crypto.randomUUID()}`;
     turnConfirmationIds.add(confirmationId);
 
     push({

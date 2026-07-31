@@ -1,7 +1,12 @@
-import { Subject } from "rxjs";
+import { of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisChatPayload, JarvisConfirmPayload } from "@rtc/shared";
+import { Direction } from "@rtc/domain";
+import type {
+  JarvisChatPayload,
+  JarvisConfirmPayload,
+  JarvisEvent,
+} from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -23,6 +28,53 @@ const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.
 
 const FILL_REPLY =
   "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";
+
+/** One case per `JarvisEvent` variant, proving `WIRE_TYPE_BY_EVENT` end to
+ * end: mutating any one entry (e.g. error -> JARVIS_DONE) fails exactly its
+ * row here, even though the full-engine tests above never happen to reach
+ * every variant (nothing in the scripted brain currently emits `error`). */
+const WIRE_MAPPING_CASES: readonly WireMappingCase[] = [
+  {
+    event: { type: "delta", text: "hi" },
+    wireType: SERVER_MSG.JARVIS_DELTA,
+    body: { text: "hi" },
+  },
+  {
+    event: { type: "toolEvent", tool: "quote", status: "running" },
+    wireType: SERVER_MSG.JARVIS_TOOL_EVENT,
+    body: { tool: "quote", status: "running" },
+  },
+  {
+    event: {
+      type: "confirmRequest",
+      confirmationId: "confirm-abc",
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+      quotedPrice: 1.1,
+      ratePrecision: 5,
+    },
+    wireType: SERVER_MSG.JARVIS_CONFIRM_REQUEST,
+    body: {
+      confirmationId: "confirm-abc",
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+      quotedPrice: 1.1,
+      ratePrecision: 5,
+    },
+  },
+  {
+    event: { type: "done" },
+    wireType: SERVER_MSG.JARVIS_DONE,
+    body: {},
+  },
+  {
+    event: { type: "error", message: "boom" },
+    wireType: SERVER_MSG.JARVIS_ERROR,
+    body: { message: "boom" },
+  },
+];
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -188,6 +240,37 @@ describe("jarvis effects", () => {
   });
 });
 
+describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () => {
+  it.each(
+    WIRE_MAPPING_CASES,
+  )("maps a stubbed $event.type event to its wire type, minus the type field", ({
+    event,
+    wireType,
+    body,
+  }) => {
+    const loop: AgentLoop = {
+      runTurn: () => {
+        return of(event);
+      },
+      resolveConfirmation: vi.fn(),
+    };
+    const { messages$, sent } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "irrelevant" } satisfies JarvisChatPayload,
+    });
+
+    expect(sent).toEqual([{ type: wireType, payload: body }]);
+  });
+});
+
+interface WireMappingCase {
+  readonly event: JarvisEvent;
+  readonly wireType: string;
+  readonly body: Record<string, unknown>;
+}
+
 interface Harness {
   readonly services: ServiceContainer;
   readonly loop: AgentLoop;
@@ -238,6 +321,29 @@ function reassembleDeltas(sent: readonly Outbound[]): string {
       return (m.payload as DeltaPayload).text;
     })
     .join("");
+}
+
+interface StubHarness {
+  readonly messages$: Subject<Inbound>;
+  readonly sent: Outbound[];
+}
+
+/** Wires `jarvisEffects` to a caller-supplied stub `AgentLoop` — no
+ * `ServiceContainer` / fake timers, since a stub `runTurn` returning `of(…)`
+ * emits synchronously. Used only by the wire-type mapping table above. */
+function stubHarness(loop: AgentLoop): StubHarness {
+  const messages$ = new Subject<Inbound>();
+  const closed$ = new Subject<void>();
+  const sent: Outbound[] = [];
+  const socket: Socket = {
+    messages$,
+    closed$,
+    send: (m: Outbound) => {
+      sent.push(m);
+    },
+  };
+  createWsListener(combineEffects(...jarvisEffects(loop)), {} as Ctx)(socket);
+  return { messages$, sent };
 }
 
 function findConfirmRequest(sent: readonly Outbound[]): Outbound {

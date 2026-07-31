@@ -389,6 +389,47 @@ describe("ScriptedJarvisEngine", () => {
     expect(executeTradeSpy).not.toHaveBeenCalled();
     expect(events.at(-1)?.type).toBe("confirmRequest");
   });
+
+  it("two trade turns produce distinct, non-sequential confirmationIds — not a guessable 'confirm-1'/'confirm-2' counter", async () => {
+    const { deps } = buildDeps({
+      executeTrade: () => {
+        return of(makeTrade(1));
+      },
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const first = runTurn(adapter, "buy 5M EURUSD");
+    await Promise.resolve();
+    await Promise.resolve();
+    const firstConfirm = first.events.find((e) => {
+      return e.type === "confirmRequest";
+    });
+
+    if (firstConfirm?.type !== "confirmRequest") {
+      throw new Error("expected a confirmRequest event");
+    }
+
+    adapter.confirm(firstConfirm.confirmationId, true);
+    await first.done;
+
+    const second = runTurn(adapter, "buy 5M EURUSD");
+    await Promise.resolve();
+    await Promise.resolve();
+    const secondConfirm = second.events.find((e) => {
+      return e.type === "confirmRequest";
+    });
+
+    if (secondConfirm?.type !== "confirmRequest") {
+      throw new Error("expected a confirmRequest event");
+    }
+
+    adapter.confirm(secondConfirm.confirmationId, true);
+    await second.done;
+
+    expect(firstConfirm.confirmationId).toMatch(/^confirm-[0-9a-f-]{36}$/);
+    expect(secondConfirm.confirmationId).toMatch(/^confirm-[0-9a-f-]{36}$/);
+    expect(firstConfirm.confirmationId).not.toBe(secondConfirm.confirmationId);
+  });
 });
 
 function makeTrade(tradeId: number): Trade {
