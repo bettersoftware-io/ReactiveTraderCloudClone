@@ -30,6 +30,14 @@ export type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,
 } from "./fx/referenceDataDto.js";
+// Jarvis
+export type {
+  JarvisChatPayload,
+  JarvisConfirmPayload,
+  JarvisEvent,
+} from "./jarvis/jarvisEvent.js";
+export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
+export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
 export * from "./protocol/auth.js";
 export { CLIENT_MSG, SERVER_MSG } from "./protocol/messages.js";
 export type { RpcResponse } from "./protocol/rpc.js";

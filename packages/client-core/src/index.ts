@@ -2,7 +2,6 @@ export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
-export * from "#/adapters/jarvisIntent";
 export * from "#/adapters/jarvisPort";
 export * from "#/adapters/portFactory";
 export * from "#/adapters/ScriptedJarvisAdapter";

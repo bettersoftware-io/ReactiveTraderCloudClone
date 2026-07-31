@@ -13,6 +13,8 @@ import {
   createWsRealPorts,
   type PortFactoryDeps,
 } from "./portFactory";
+import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
+import { WsJarvisAdapter } from "./WsJarvisAdapter";
 
 describe("createSimulatorPorts dependency injection", () => {
   it("uses the injected preferences port (no internal localStorage)", () => {
@@ -53,6 +55,27 @@ describe("createSimulatorPorts", () => {
     const ports = createSimulatorPorts(deps());
     const first = await firstValueFrom(ports.blotter.getTradeStream());
     expect(Array.isArray(first)).toBe(true);
+  });
+});
+
+describe("jarvis port mode pinning", () => {
+  it("createSimulatorPorts wires the scripted (offline) JarvisPort", () => {
+    const ports = createSimulatorPorts({
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+    expect(ports.jarvis).toBeInstanceOf(ScriptedJarvisAdapter);
+  });
+
+  it("createWsRealPorts wires the wire-mode (WS-real) JarvisPort", () => {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+    expect(ports.jarvis).toBeInstanceOf(WsJarvisAdapter);
   });
 });
 
