@@ -119,6 +119,23 @@ export function projectBootPoint(
 }
 
 /**
+ * Clamp to `[-1, 1]`. PER-FRAME — worklet, because `gyroYawPitch` reaches it.
+ *
+ * DECLARED ABOVE ITS CALLER ON PURPOSE — do not "tidy" it back below.
+ * A worklet captures its closure by value at module evaluation, and the
+ * Worklets Babel plugin rewrites `function` declarations into non-hoisted
+ * bindings, so a worklet that calls a worklet declared LATER in the same file
+ * captures `undefined` and throws `TypeError: undefined is not a function` on
+ * the UI thread — with nothing failing in jest, which never transforms or runs
+ * a worklet at all. `pnpm check:worklet-order` gates the whole class.
+ */
+function clampUnit(value: number): number {
+  "worklet";
+
+  return Math.max(-1, Math.min(1, value));
+}
+
+/**
  * Map gyro drift onto a bounded yaw/pitch pair. PER-FRAME — worklet.
  *
  * Each axis is clamped to `[-1, 1]` IN THE BODY, never in a default-parameter
@@ -137,11 +154,4 @@ export function gyroYawPitch(
     yaw: clampUnit(drift.mx) * yawRange,
     pitch: clampUnit(drift.my) * pitchRange,
   };
-}
-
-/** Clamp to `[-1, 1]`. PER-FRAME — worklet, because `gyroYawPitch` reaches it. */
-function clampUnit(value: number): number {
-  "worklet";
-
-  return Math.max(-1, Math.min(1, value));
 }

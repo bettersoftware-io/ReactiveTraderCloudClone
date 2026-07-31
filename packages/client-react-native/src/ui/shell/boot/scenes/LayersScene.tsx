@@ -263,6 +263,575 @@ function drawArcRings(
   }
 }
 
+/** Map a panel-local UV coordinate onto the canvas at that panel's z-depth. */
+function panelUv(
+  rect: LayerWorldRect,
+  u: number,
+  v: number,
+  z: number,
+  camera: Boot3dCamera,
+): ProjectedBootPoint {
+  "worklet";
+  return projectBootPoint(
+    rect.x0 + u * rect.width,
+    rect.y0 + v * rect.height,
+    z,
+    camera,
+  );
+}
+/** Build the quad path for a UV sub-rect of a panel. */
+function uvQuadPath(
+  rect: LayerWorldRect,
+  u0: number,
+  v0: number,
+  u1: number,
+  v1: number,
+  z: number,
+  camera: Boot3dCamera,
+): ReturnType<typeof Skia.Path.Make> {
+  "worklet";
+  const a = panelUv(rect, u0, v0, z, camera);
+  const b = panelUv(rect, u1, v0, z, camera);
+  const c = panelUv(rect, u1, v1, z, camera);
+  const d = panelUv(rect, u0, v1, z, camera);
+  const path = Skia.Path.Make();
+  path.moveTo(a.x, a.y);
+  path.lineTo(b.x, b.y);
+  path.lineTo(c.x, c.y);
+  path.lineTo(d.x, d.y);
+  path.close();
+  return path;
+}
+/** The four panel corners, in UV.
+ *
+ * DECLARED ABOVE ITS FIRST WORKLET USER ON PURPOSE. A worklet captures every
+ * module-level binding it references BY VALUE at module evaluation — constants
+ * exactly as much as functions — so a `const` declared below a worklet that
+ * reads it arrives as `undefined` on the UI thread. This one sat below
+ * `drawGhostFrame` and was the second, independent cause of `layers` rendering
+ * blank on device. `pnpm check:worklet-order` covers bindings of both kinds. */
+const CORNER_UVS: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+];
+
+/**
+ * The dashed frame at the panel's ORIGINAL flat position, plus four tethers
+ * back to where it is now — the "this moved" affordance the whole scene rests
+ * on. Pinned to `z = 0`, never the panel's exploded z.
+ */
+function drawGhostFrame(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  spread: number,
+  flicker: number,
+  accent: string,
+): void {
+  "worklet";
+  const framePaint = Skia.Paint();
+  framePaint.setStyle(PaintStyle.Stroke);
+  framePaint.setStrokeWidth(1);
+  framePaint.setAntiAlias(true);
+  framePaint.setPathEffect(Skia.PathEffect.MakeDash([...GHOST_DASH], 0));
+  framePaint.setColor(Skia.Color(hexToRgba(accent, 0.13 * spread * flicker)));
+  canvas.drawPath(uvQuadPath(rect, 0, 0, 1, 1, 0, camera), framePaint);
+
+  const tetherPaint = Skia.Paint();
+  tetherPaint.setStyle(PaintStyle.Stroke);
+  tetherPaint.setStrokeWidth(1);
+  tetherPaint.setAntiAlias(true);
+  tetherPaint.setColor(Skia.Color(hexToRgba(accent, 0.1 * spread * flicker)));
+
+  for (const [u, v] of CORNER_UVS) {
+    const here = panelUv(rect, u, v, rect.z, camera);
+    const flat = panelUv(rect, u, v, 0, camera);
+    canvas.drawLine(here.x, here.y, flat.x, flat.y, tetherPaint);
+  }
+}
+/** Stroke a UV sub-rect of a panel. */
+function strokeUvQuad(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  u0: number,
+  v0: number,
+  u1: number,
+  v1: number,
+  color: string,
+  alpha: number,
+  lineWidth: number,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(lineWidth);
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
+  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
+}
+/** The backdrop layer draws as a grid, not a face — and carries no content. */
+function drawBackdropLayer(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  drawPhase: number,
+  spread: number,
+  flicker: number,
+  accent: string,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(1);
+  paint.setAntiAlias(true);
+  paint.setColor(
+    Skia.Color(hexToRgba(accent, 0.08 * drawPhase * spread * flicker)),
+  );
+
+  for (let u = 0; u <= 1.001; u += BG_GRID_STEP) {
+    const a = panelUv(rect, u, 0, rect.z, camera);
+    const b = panelUv(rect, u, 1, rect.z, camera);
+    canvas.drawLine(a.x, a.y, b.x, b.y, paint);
+  }
+
+  for (let v = 0; v <= 1.001; v += BG_GRID_STEP) {
+    const a = panelUv(rect, 0, v, rect.z, camera);
+    const b = panelUv(rect, 1, v, rect.z, camera);
+    canvas.drawLine(a.x, a.y, b.x, b.y, paint);
+  }
+
+  strokeUvQuad(
+    canvas,
+    camera,
+    rect,
+    0,
+    0,
+    1,
+    1,
+    accent,
+    0.15 * drawPhase * spread * flicker,
+    1,
+  );
+}
+/** Fill a UV sub-rect of a panel. */
+function fillUvQuad(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  u0: number,
+  v0: number,
+  u1: number,
+  v1: number,
+  color: string,
+  alpha: number,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
+  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
+}
+/** A panel's face, border, pull glow and corner grab-points. */
+function drawPanelFace(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  alpha: number,
+  pulled: boolean,
+  pull: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  fillUvQuad(
+    canvas,
+    camera,
+    rect,
+    0,
+    0,
+    1,
+    1,
+    PANEL_FACE_FILL,
+    0.42 * alpha * flicker,
+  );
+
+  const borderColor = pulled ? accentAlt : accent;
+
+  // The glow the web gets from `shadowBlur` — see the module header for why
+  // this is a wider dim stroke rather than a mask-filter blur.
+  if (pulled) {
+    strokeUvQuad(
+      canvas,
+      camera,
+      rect,
+      0,
+      0,
+      1,
+      1,
+      borderColor,
+      0.18 * pull * flicker,
+      6 * pull,
+    );
+  }
+
+  strokeUvQuad(
+    canvas,
+    camera,
+    rect,
+    0,
+    0,
+    1,
+    1,
+    borderColor,
+    Math.min(1, alpha + 0.25) * flicker,
+    pulled ? 1.8 : 1.2,
+  );
+
+  const grabPaint = Skia.Paint();
+  grabPaint.setAntiAlias(false);
+  grabPaint.setColor(Skia.Color(hexToRgba(borderColor, alpha * flicker)));
+
+  for (const [u, v] of CORNER_UVS) {
+    const corner = panelUv(rect, u, v, rect.z, camera);
+    canvas.drawRect(
+      {
+        x: corner.x - GRAB_POINT_HALF,
+        y: corner.y - GRAB_POINT_HALF,
+        width: GRAB_POINT_HALF * 2,
+        height: GRAB_POINT_HALF * 2,
+      },
+      grabPaint,
+    );
+  }
+}
+/** The pricing grid: four cells, each with a header band and a live sparkline. */
+function drawMainContent(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  contentAlpha: number,
+  elapsed: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  const sparkPaint = Skia.Paint();
+  sparkPaint.setStyle(PaintStyle.Stroke);
+  sparkPaint.setStrokeWidth(1.4);
+  sparkPaint.setAntiAlias(true);
+  sparkPaint.setColor(
+    Skia.Color(hexToRgba(accentAlt, contentAlpha * 0.85 * flicker)),
+  );
+
+  for (let i = 0; i < 2; i++) {
+    for (let j = 0; j < 2; j++) {
+      const u0 = 0.03 + i * 0.5;
+      const v0 = 0.04 + j * 0.5;
+      const u1 = u0 + 0.44;
+      const v1 = v0 + 0.42;
+      strokeUvQuad(
+        canvas,
+        camera,
+        rect,
+        u0,
+        v0,
+        u1,
+        v1,
+        accent,
+        contentAlpha * 0.6 * flicker,
+        1,
+      );
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        u0,
+        v0,
+        u1,
+        v0 + 0.12,
+        accent,
+        contentAlpha * 0.18 * flicker,
+      );
+
+      const path = Skia.Path.Make();
+
+      for (let sample = 0; sample <= 10; sample++) {
+        const u = u0 + 0.02 + (u1 - u0 - 0.04) * (sample / 10);
+        const v =
+          v1 -
+          0.06 -
+          Math.abs(Math.sin(sample * 0.9 + i * 2 + j + elapsed * 0.7)) *
+            (v1 - v0) *
+            0.24;
+        const point = panelUv(rect, u, v, rect.z, camera);
+
+        if (sample === 0) {
+          path.moveTo(point.x, point.y);
+        } else {
+          path.lineTo(point.x, point.y);
+        }
+      }
+
+      canvas.drawPath(path, sparkPaint);
+    }
+  }
+}
+/** The blotter: a header band and three rows of cells. */
+function drawBlotterContent(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  contentAlpha: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+  fillUvQuad(
+    canvas,
+    camera,
+    rect,
+    0.02,
+    0.06,
+    0.98,
+    0.24,
+    accentAlt,
+    contentAlpha * 0.4 * flicker,
+  );
+
+  const rulePaint = Skia.Paint();
+  rulePaint.setStyle(PaintStyle.Stroke);
+  rulePaint.setStrokeWidth(1);
+  rulePaint.setAntiAlias(true);
+  rulePaint.setColor(
+    Skia.Color(hexToRgba(accent, contentAlpha * 0.3 * flicker)),
+  );
+
+  for (let i = 1; i < 4; i++) {
+    const v = 0.24 + i * 0.24;
+    const a = panelUv(rect, 0.02, v, rect.z, camera);
+    const b = panelUv(rect, 0.98, v, rect.z, camera);
+    canvas.drawLine(a.x, a.y, b.x, b.y, rulePaint);
+
+    for (let cell = 0; cell < 5; cell++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.03 + cell * 0.19,
+        v - 0.16,
+        0.15 + cell * 0.19,
+        v - 0.04,
+        accent,
+        contentAlpha * 0.3 * flicker,
+      );
+    }
+  }
+}
+/** Each panel kind's in-plane content, drawn in the panel's own UV space. */
+function drawPanelContent(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  kind: LayerPanel["kind"],
+  contentAlpha: number,
+  elapsed: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+
+  if (kind === "header") {
+    for (let i = 0; i < 5; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.02 + i * 0.09,
+        0.28,
+        0.09 + i * 0.09,
+        0.72,
+        i === 0 ? accentAlt : accent,
+        contentAlpha * 0.5 * flicker,
+      );
+    }
+
+    fillUvQuad(
+      canvas,
+      camera,
+      rect,
+      0.78,
+      0.25,
+      0.98,
+      0.75,
+      accent,
+      contentAlpha * 0.25 * flicker,
+    );
+    return;
+  }
+
+  if (kind === "main") {
+    drawMainContent(
+      canvas,
+      camera,
+      rect,
+      contentAlpha,
+      elapsed,
+      flicker,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  if (kind === "list") {
+    for (let i = 0; i < 4; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.04,
+        0.08 + i * 0.24,
+        0.04 + (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(elapsed * 1.3 + i)),
+        0.22 + i * 0.24,
+        accent,
+        contentAlpha * (0.45 - i * 0.07) * flicker,
+      );
+    }
+
+    return;
+  }
+
+  if (kind === "blotter") {
+    drawBlotterContent(
+      canvas,
+      camera,
+      rect,
+      contentAlpha,
+      flicker,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  if (kind === "status") {
+    for (let i = 0; i < 9; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.02 + i * 0.11,
+        0.25,
+        0.08 + i * 0.11,
+        0.75,
+        i % 3 === 0 ? accentAlt : accent,
+        contentAlpha * 0.5 * flicker,
+      );
+    }
+  }
+}
+/**
+ * The `L0n` tag on a panel's left edge.
+ *
+ * Right-aligned and vertically centred in the web (`textBaseline = "middle"`).
+ * Skia draws from the alphabetic baseline only, so the centring is applied
+ * here as a cap-height offset rather than inherited from a baseline mode.
+ */
+function drawLayerTag(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  panel: LayerPanel,
+  spread: number,
+  flicker: number,
+  accent: string,
+  font: SkFont,
+): void {
+  "worklet";
+  const anchor = panelUv(rect, -0.005, 0.5, rect.z, camera);
+  const text = panel.label.slice(0, 3);
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(accent, 0.65 * spread * flicker)));
+  canvas.drawText(
+    text,
+    anchor.x - TAG_GAP - font.getTextWidth(text),
+    anchor.y + TAG_FONT_SIZE * 0.35,
+    paint,
+    font,
+  );
+}
+/** The inspected panel's scan sweep and its label/depth callout. */
+function drawPulledOverlay(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  panel: LayerPanel,
+  elapsed: number,
+  pull: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+  font: SkFont | null,
+): void {
+  "worklet";
+  const scanV = pullScanV(elapsed);
+  const scanPaint = Skia.Paint();
+  scanPaint.setStyle(PaintStyle.Stroke);
+  scanPaint.setStrokeWidth(1.2);
+  scanPaint.setAntiAlias(true);
+  scanPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.5 * pull * flicker)));
+  const scanA = panelUv(rect, 0, scanV, rect.z, camera);
+  const scanB = panelUv(rect, 1, scanV, rect.z, camera);
+  canvas.drawLine(scanA.x, scanA.y, scanB.x, scanB.y, scanPaint);
+
+  const topRight = panelUv(rect, 1, 0, rect.z, camera);
+  const leaderPaint = Skia.Paint();
+  leaderPaint.setStyle(PaintStyle.Stroke);
+  leaderPaint.setStrokeWidth(1);
+  leaderPaint.setAntiAlias(true);
+  leaderPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7 * pull * flicker)));
+  const leader = Skia.Path.Make();
+  leader.moveTo(topRight.x, topRight.y);
+  leader.lineTo(topRight.x + CALLOUT_ELBOW_DX, topRight.y + CALLOUT_ELBOW_DY);
+  leader.lineTo(topRight.x + CALLOUT_RUN_DX, topRight.y + CALLOUT_ELBOW_DY);
+  canvas.drawPath(leader, leaderPaint);
+
+  // Geometry above draws regardless; only the text waits on the font, so a
+  // null-font window loses labels but keeps the sweep and leader line.
+  if (font === null) {
+    return;
+  }
+
+  const labelPaint = Skia.Paint();
+  labelPaint.setAntiAlias(true);
+  labelPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.95 * pull * flicker)));
+  canvas.drawText(
+    panel.label,
+    topRight.x + CALLOUT_TEXT_DX,
+    topRight.y + CALLOUT_LABEL_DY,
+    labelPaint,
+    font,
+  );
+
+  const depthPaint = Skia.Paint();
+  depthPaint.setAntiAlias(true);
+  depthPaint.setColor(Skia.Color(hexToRgba(accent, 0.7 * pull * flicker)));
+  canvas.drawText(
+    panelDepthReadout(rect.z),
+    topRight.x + CALLOUT_TEXT_DX,
+    topRight.y + CALLOUT_DEPTH_DY,
+    depthPaint,
+    font,
+  );
+}
 /**
  * Every panel, back to front.
  *
@@ -384,580 +953,6 @@ function drawPanels(
       );
     }
   }
-}
-
-/** Map a panel-local UV coordinate onto the canvas at that panel's z-depth. */
-function panelUv(
-  rect: LayerWorldRect,
-  u: number,
-  v: number,
-  z: number,
-  camera: Boot3dCamera,
-): ProjectedBootPoint {
-  "worklet";
-  return projectBootPoint(
-    rect.x0 + u * rect.width,
-    rect.y0 + v * rect.height,
-    z,
-    camera,
-  );
-}
-
-/** Build the quad path for a UV sub-rect of a panel. */
-function uvQuadPath(
-  rect: LayerWorldRect,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  z: number,
-  camera: Boot3dCamera,
-): ReturnType<typeof Skia.Path.Make> {
-  "worklet";
-  const a = panelUv(rect, u0, v0, z, camera);
-  const b = panelUv(rect, u1, v0, z, camera);
-  const c = panelUv(rect, u1, v1, z, camera);
-  const d = panelUv(rect, u0, v1, z, camera);
-  const path = Skia.Path.Make();
-  path.moveTo(a.x, a.y);
-  path.lineTo(b.x, b.y);
-  path.lineTo(c.x, c.y);
-  path.lineTo(d.x, d.y);
-  path.close();
-  return path;
-}
-
-/** Fill a UV sub-rect of a panel. */
-function fillUvQuad(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  color: string,
-  alpha: number,
-): void {
-  "worklet";
-  const paint = Skia.Paint();
-  paint.setAntiAlias(true);
-  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
-  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
-}
-
-/** Stroke a UV sub-rect of a panel. */
-function strokeUvQuad(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  color: string,
-  alpha: number,
-  lineWidth: number,
-): void {
-  "worklet";
-  const paint = Skia.Paint();
-  paint.setStyle(PaintStyle.Stroke);
-  paint.setStrokeWidth(lineWidth);
-  paint.setAntiAlias(true);
-  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
-  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
-}
-
-/**
- * The dashed frame at the panel's ORIGINAL flat position, plus four tethers
- * back to where it is now — the "this moved" affordance the whole scene rests
- * on. Pinned to `z = 0`, never the panel's exploded z.
- */
-function drawGhostFrame(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  spread: number,
-  flicker: number,
-  accent: string,
-): void {
-  "worklet";
-  const framePaint = Skia.Paint();
-  framePaint.setStyle(PaintStyle.Stroke);
-  framePaint.setStrokeWidth(1);
-  framePaint.setAntiAlias(true);
-  framePaint.setPathEffect(Skia.PathEffect.MakeDash([...GHOST_DASH], 0));
-  framePaint.setColor(Skia.Color(hexToRgba(accent, 0.13 * spread * flicker)));
-  canvas.drawPath(uvQuadPath(rect, 0, 0, 1, 1, 0, camera), framePaint);
-
-  const tetherPaint = Skia.Paint();
-  tetherPaint.setStyle(PaintStyle.Stroke);
-  tetherPaint.setStrokeWidth(1);
-  tetherPaint.setAntiAlias(true);
-  tetherPaint.setColor(Skia.Color(hexToRgba(accent, 0.1 * spread * flicker)));
-
-  for (const [u, v] of CORNER_UVS) {
-    const here = panelUv(rect, u, v, rect.z, camera);
-    const flat = panelUv(rect, u, v, 0, camera);
-    canvas.drawLine(here.x, here.y, flat.x, flat.y, tetherPaint);
-  }
-}
-
-/** The four panel corners, in UV. */
-const CORNER_UVS: readonly (readonly [number, number])[] = [
-  [0, 0],
-  [1, 0],
-  [1, 1],
-  [0, 1],
-];
-
-/** The backdrop layer draws as a grid, not a face — and carries no content. */
-function drawBackdropLayer(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  drawPhase: number,
-  spread: number,
-  flicker: number,
-  accent: string,
-): void {
-  "worklet";
-  const paint = Skia.Paint();
-  paint.setStyle(PaintStyle.Stroke);
-  paint.setStrokeWidth(1);
-  paint.setAntiAlias(true);
-  paint.setColor(
-    Skia.Color(hexToRgba(accent, 0.08 * drawPhase * spread * flicker)),
-  );
-
-  for (let u = 0; u <= 1.001; u += BG_GRID_STEP) {
-    const a = panelUv(rect, u, 0, rect.z, camera);
-    const b = panelUv(rect, u, 1, rect.z, camera);
-    canvas.drawLine(a.x, a.y, b.x, b.y, paint);
-  }
-
-  for (let v = 0; v <= 1.001; v += BG_GRID_STEP) {
-    const a = panelUv(rect, 0, v, rect.z, camera);
-    const b = panelUv(rect, 1, v, rect.z, camera);
-    canvas.drawLine(a.x, a.y, b.x, b.y, paint);
-  }
-
-  strokeUvQuad(
-    canvas,
-    camera,
-    rect,
-    0,
-    0,
-    1,
-    1,
-    accent,
-    0.15 * drawPhase * spread * flicker,
-    1,
-  );
-}
-
-/** A panel's face, border, pull glow and corner grab-points. */
-function drawPanelFace(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  alpha: number,
-  pulled: boolean,
-  pull: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-): void {
-  "worklet";
-  fillUvQuad(
-    canvas,
-    camera,
-    rect,
-    0,
-    0,
-    1,
-    1,
-    PANEL_FACE_FILL,
-    0.42 * alpha * flicker,
-  );
-
-  const borderColor = pulled ? accentAlt : accent;
-
-  // The glow the web gets from `shadowBlur` — see the module header for why
-  // this is a wider dim stroke rather than a mask-filter blur.
-  if (pulled) {
-    strokeUvQuad(
-      canvas,
-      camera,
-      rect,
-      0,
-      0,
-      1,
-      1,
-      borderColor,
-      0.18 * pull * flicker,
-      6 * pull,
-    );
-  }
-
-  strokeUvQuad(
-    canvas,
-    camera,
-    rect,
-    0,
-    0,
-    1,
-    1,
-    borderColor,
-    Math.min(1, alpha + 0.25) * flicker,
-    pulled ? 1.8 : 1.2,
-  );
-
-  const grabPaint = Skia.Paint();
-  grabPaint.setAntiAlias(false);
-  grabPaint.setColor(Skia.Color(hexToRgba(borderColor, alpha * flicker)));
-
-  for (const [u, v] of CORNER_UVS) {
-    const corner = panelUv(rect, u, v, rect.z, camera);
-    canvas.drawRect(
-      {
-        x: corner.x - GRAB_POINT_HALF,
-        y: corner.y - GRAB_POINT_HALF,
-        width: GRAB_POINT_HALF * 2,
-        height: GRAB_POINT_HALF * 2,
-      },
-      grabPaint,
-    );
-  }
-}
-
-/** Each panel kind's in-plane content, drawn in the panel's own UV space. */
-function drawPanelContent(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  kind: LayerPanel["kind"],
-  contentAlpha: number,
-  elapsed: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-): void {
-  "worklet";
-
-  if (kind === "header") {
-    for (let i = 0; i < 5; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.02 + i * 0.09,
-        0.28,
-        0.09 + i * 0.09,
-        0.72,
-        i === 0 ? accentAlt : accent,
-        contentAlpha * 0.5 * flicker,
-      );
-    }
-
-    fillUvQuad(
-      canvas,
-      camera,
-      rect,
-      0.78,
-      0.25,
-      0.98,
-      0.75,
-      accent,
-      contentAlpha * 0.25 * flicker,
-    );
-    return;
-  }
-
-  if (kind === "main") {
-    drawMainContent(
-      canvas,
-      camera,
-      rect,
-      contentAlpha,
-      elapsed,
-      flicker,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  if (kind === "list") {
-    for (let i = 0; i < 4; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.04,
-        0.08 + i * 0.24,
-        0.04 + (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(elapsed * 1.3 + i)),
-        0.22 + i * 0.24,
-        accent,
-        contentAlpha * (0.45 - i * 0.07) * flicker,
-      );
-    }
-
-    return;
-  }
-
-  if (kind === "blotter") {
-    drawBlotterContent(
-      canvas,
-      camera,
-      rect,
-      contentAlpha,
-      flicker,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  if (kind === "status") {
-    for (let i = 0; i < 9; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.02 + i * 0.11,
-        0.25,
-        0.08 + i * 0.11,
-        0.75,
-        i % 3 === 0 ? accentAlt : accent,
-        contentAlpha * 0.5 * flicker,
-      );
-    }
-  }
-}
-
-/** The pricing grid: four cells, each with a header band and a live sparkline. */
-function drawMainContent(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  contentAlpha: number,
-  elapsed: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-): void {
-  "worklet";
-  const sparkPaint = Skia.Paint();
-  sparkPaint.setStyle(PaintStyle.Stroke);
-  sparkPaint.setStrokeWidth(1.4);
-  sparkPaint.setAntiAlias(true);
-  sparkPaint.setColor(
-    Skia.Color(hexToRgba(accentAlt, contentAlpha * 0.85 * flicker)),
-  );
-
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < 2; j++) {
-      const u0 = 0.03 + i * 0.5;
-      const v0 = 0.04 + j * 0.5;
-      const u1 = u0 + 0.44;
-      const v1 = v0 + 0.42;
-      strokeUvQuad(
-        canvas,
-        camera,
-        rect,
-        u0,
-        v0,
-        u1,
-        v1,
-        accent,
-        contentAlpha * 0.6 * flicker,
-        1,
-      );
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        u0,
-        v0,
-        u1,
-        v0 + 0.12,
-        accent,
-        contentAlpha * 0.18 * flicker,
-      );
-
-      const path = Skia.Path.Make();
-
-      for (let sample = 0; sample <= 10; sample++) {
-        const u = u0 + 0.02 + (u1 - u0 - 0.04) * (sample / 10);
-        const v =
-          v1 -
-          0.06 -
-          Math.abs(Math.sin(sample * 0.9 + i * 2 + j + elapsed * 0.7)) *
-            (v1 - v0) *
-            0.24;
-        const point = panelUv(rect, u, v, rect.z, camera);
-
-        if (sample === 0) {
-          path.moveTo(point.x, point.y);
-        } else {
-          path.lineTo(point.x, point.y);
-        }
-      }
-
-      canvas.drawPath(path, sparkPaint);
-    }
-  }
-}
-
-/** The blotter: a header band and three rows of cells. */
-function drawBlotterContent(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  contentAlpha: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-): void {
-  "worklet";
-  fillUvQuad(
-    canvas,
-    camera,
-    rect,
-    0.02,
-    0.06,
-    0.98,
-    0.24,
-    accentAlt,
-    contentAlpha * 0.4 * flicker,
-  );
-
-  const rulePaint = Skia.Paint();
-  rulePaint.setStyle(PaintStyle.Stroke);
-  rulePaint.setStrokeWidth(1);
-  rulePaint.setAntiAlias(true);
-  rulePaint.setColor(
-    Skia.Color(hexToRgba(accent, contentAlpha * 0.3 * flicker)),
-  );
-
-  for (let i = 1; i < 4; i++) {
-    const v = 0.24 + i * 0.24;
-    const a = panelUv(rect, 0.02, v, rect.z, camera);
-    const b = panelUv(rect, 0.98, v, rect.z, camera);
-    canvas.drawLine(a.x, a.y, b.x, b.y, rulePaint);
-
-    for (let cell = 0; cell < 5; cell++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.03 + cell * 0.19,
-        v - 0.16,
-        0.15 + cell * 0.19,
-        v - 0.04,
-        accent,
-        contentAlpha * 0.3 * flicker,
-      );
-    }
-  }
-}
-
-/**
- * The `L0n` tag on a panel's left edge.
- *
- * Right-aligned and vertically centred in the web (`textBaseline = "middle"`).
- * Skia draws from the alphabetic baseline only, so the centring is applied
- * here as a cap-height offset rather than inherited from a baseline mode.
- */
-function drawLayerTag(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  panel: LayerPanel,
-  spread: number,
-  flicker: number,
-  accent: string,
-  font: SkFont,
-): void {
-  "worklet";
-  const anchor = panelUv(rect, -0.005, 0.5, rect.z, camera);
-  const text = panel.label.slice(0, 3);
-  const paint = Skia.Paint();
-  paint.setAntiAlias(true);
-  paint.setColor(Skia.Color(hexToRgba(accent, 0.65 * spread * flicker)));
-  canvas.drawText(
-    text,
-    anchor.x - TAG_GAP - font.getTextWidth(text),
-    anchor.y + TAG_FONT_SIZE * 0.35,
-    paint,
-    font,
-  );
-}
-
-/** The inspected panel's scan sweep and its label/depth callout. */
-function drawPulledOverlay(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  panel: LayerPanel,
-  elapsed: number,
-  pull: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-  font: SkFont | null,
-): void {
-  "worklet";
-  const scanV = pullScanV(elapsed);
-  const scanPaint = Skia.Paint();
-  scanPaint.setStyle(PaintStyle.Stroke);
-  scanPaint.setStrokeWidth(1.2);
-  scanPaint.setAntiAlias(true);
-  scanPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.5 * pull * flicker)));
-  const scanA = panelUv(rect, 0, scanV, rect.z, camera);
-  const scanB = panelUv(rect, 1, scanV, rect.z, camera);
-  canvas.drawLine(scanA.x, scanA.y, scanB.x, scanB.y, scanPaint);
-
-  const topRight = panelUv(rect, 1, 0, rect.z, camera);
-  const leaderPaint = Skia.Paint();
-  leaderPaint.setStyle(PaintStyle.Stroke);
-  leaderPaint.setStrokeWidth(1);
-  leaderPaint.setAntiAlias(true);
-  leaderPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.7 * pull * flicker)));
-  const leader = Skia.Path.Make();
-  leader.moveTo(topRight.x, topRight.y);
-  leader.lineTo(topRight.x + CALLOUT_ELBOW_DX, topRight.y + CALLOUT_ELBOW_DY);
-  leader.lineTo(topRight.x + CALLOUT_RUN_DX, topRight.y + CALLOUT_ELBOW_DY);
-  canvas.drawPath(leader, leaderPaint);
-
-  // Geometry above draws regardless; only the text waits on the font, so a
-  // null-font window loses labels but keeps the sweep and leader line.
-  if (font === null) {
-    return;
-  }
-
-  const labelPaint = Skia.Paint();
-  labelPaint.setAntiAlias(true);
-  labelPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.95 * pull * flicker)));
-  canvas.drawText(
-    panel.label,
-    topRight.x + CALLOUT_TEXT_DX,
-    topRight.y + CALLOUT_LABEL_DY,
-    labelPaint,
-    font,
-  );
-
-  const depthPaint = Skia.Paint();
-  depthPaint.setAntiAlias(true);
-  depthPaint.setColor(Skia.Color(hexToRgba(accent, 0.7 * pull * flicker)));
-  canvas.drawText(
-    panelDepthReadout(rect.z),
-    topRight.x + CALLOUT_TEXT_DX,
-    topRight.y + CALLOUT_DEPTH_DY,
-    depthPaint,
-    font,
-  );
 }
 
 /** Corner telemetry: two left-aligned readouts, two right-aligned. */

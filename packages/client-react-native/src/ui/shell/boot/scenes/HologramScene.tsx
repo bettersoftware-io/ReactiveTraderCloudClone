@@ -415,6 +415,27 @@ function drawEmitterPad(
   }
 }
 
+/** One ground-grid vertex, scaled by the expansion phase.
+ *
+ * Declared above its caller on purpose — see `boot3dCamera.ts`'s `clampUnit`
+ * for why a worklet may never call a worklet declared later in the same file. */
+function gridPoint(
+  columns: readonly HologramColumn[],
+  camera: Boot3dCamera,
+  gx: number,
+  gz: number,
+  phase: number,
+): ProjectedBootPoint {
+  "worklet";
+  const column = columns[gx * HOLOGRAM_GRID_SIZE + gz];
+  return projectBootPoint(
+    column.normX * phase,
+    HOLOGRAM_PAD_Y,
+    column.normZ * phase,
+    camera,
+  );
+}
+
 /** The ground grid, expanding outward from the centre as the boot proceeds. */
 function drawGroundGrid(
   canvas: SkCanvas,
@@ -468,24 +489,6 @@ function drawGroundGrid(
 
     canvas.drawPath(path, paint);
   }
-}
-
-/** One ground-grid vertex, scaled by the expansion phase. */
-function gridPoint(
-  columns: readonly HologramColumn[],
-  camera: Boot3dCamera,
-  gx: number,
-  gz: number,
-  phase: number,
-): ProjectedBootPoint {
-  "worklet";
-  const column = columns[gx * HOLOGRAM_GRID_SIZE + gz];
-  return projectBootPoint(
-    column.normX * phase,
-    HOLOGRAM_PAD_Y,
-    column.normZ * phase,
-    camera,
-  );
 }
 
 /**
