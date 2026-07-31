@@ -296,16 +296,31 @@ zero `compositeFailed` events at steady state:
 
 ## 18.8 Wire protocol additions
 
-All additive; existing clients ignore unknown message types.
+All additive; existing clients ignore unknown message types. **Shipped in phase 2**
+(§18.12) — payloads below are the as-shipped shapes; a field not yet carried is
+marked *(P3)*, following the same convention the diagrams use for *(planned)*.
+
+Every `server → client` payload obeys one rule: it **is** the matching `JarvisEvent`
+variant minus its `type` discriminant (the message type carries the discriminant).
+See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of both.
 
 | Direction | Message | Payload |
 |---|---|---|
-| client → server | `JARVIS_CHAT` | `{ text, appContext }` |
+| client → server | `JARVIS_CHAT` | `{ text }` — *(P3: `+ appContext`, landing with the tool registry that consumes it)* |
 | client → server | `JARVIS_CONFIRM` | `{ confirmationId, approved }` |
-| server → client | `JARVIS_DELTA` | streamed assistant text |
+| server → client | `JARVIS_DELTA` | `{ text }` — one chunk of streamed assistant prose |
 | server → client | `JARVIS_TOOL_EVENT` | `{ tool, status: running \| done }` |
-| server → client | `JARVIS_CONFIRM_REQUEST` | `{ confirmationId, pair, direction, notional, quotedPrice }` |
-| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | turn end / error surface |
+| server → client | `JARVIS_CONFIRM_REQUEST` | `{ confirmationId, symbol, direction, notional, quotedPrice, ratePrecision }` |
+| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | `{}` / `{ message }` — turn end / error surface |
+
+`JARVIS_CONFIRM_REQUEST` carries `symbol` (the pair's symbol, matching every other
+message in the protocol) and `ratePrecision`, the pair's display precision — so the
+confirm card formats `quotedPrice` exactly like a spot tile
+(`toFixed(ratePrecision)`) without a reference-data lookup UI-side.
+
+**No turn correlation id, by design in P2** — `JarvisMachine` serializes turns, so
+at most one is in flight per connection. See §18.12 for the accepted limitation this
+carries and its P3 fix.
 
 ## 18.9 Determinism: the fake agent loop
 
@@ -321,11 +336,14 @@ calls and a confirm round-trip, which buys three things at once:
 3. **Offline demos** — no key, no network, five minutes before showtime: the fake
    still streams, still raises the confirm card.
 
+The gate is `createAgentLoop(env, services)`, which returns the loop or `null`; a
+`null` loop means the `JARVIS_*` effects are never registered.
+
 | Flag state | Behavior |
 |---|---|
-| `ANTHROPIC_API_KEY` set | real Jarvis + MCP endpoint enabled |
-| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` |
-| neither | Jarvis effects + MCP not registered; client hides the icon |
+| `ANTHROPIC_API_KEY` set | real Jarvis + MCP endpoint enabled *(P3)* |
+| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` — **shipped, P2** |
+| neither | Jarvis effects (+ MCP *(P4)*) not registered. **P2 behavior:** the client still shows the icon — there is no availability handshake, so a turn simply hits `WsJarvisAdapter`'s 10 s first-event timeout and degrades into one "Jarvis is offline, sir" error event. **Client-side hiding is *(P3)***, arriving with key detection. |
 
 ## 18.10 Package dependencies after slice 1
 
@@ -490,8 +508,8 @@ Documented deliberately, so nobody "fixes" them as bugs:
   degrades a dead turn into one synthetic `error` event ("Jarvis is offline, sir —
   the desk link is down.") and completes. Graceful degradation now; real gating
   arrives with **P3's key detection**, when "is Jarvis available" becomes a question
-  with a non-trivial answer (`ANTHROPIC_API_KEY` present or not). Note this also
-  makes §18.9's "client hides the icon" row a P3 statement, not a P2 one.
+  with a non-trivial answer (`ANTHROPIC_API_KEY` present or not); §18.9's flag table
+  marks the icon-hiding row accordingly.
 - **No turn correlation ids.** `JarvisMachine` serializes turns (`concatMap`) and
   `ask()` completes on `done`/`error`, so at most one turn is in flight per
   connection and untagged frames are unambiguous. **The documented limitation:** after
@@ -506,12 +524,10 @@ Documented deliberately, so nobody "fixes" them as bugs:
   and P3's real token stream will behave identically (tokens arrive when they arrive).
   Sim mode keeps instant-reveal for reduced-motion/Freeze, and since the contract specs
   and the power-saver e2e both run sim mode, nothing regressed.
-- **Wire shapes as shipped differ from §18.8's sketch in two places.** `JARVIS_CHAT`
-  carries `{ text }` only — `appContext` is P3, arriving with the tool registry that
-  would consume it. `JARVIS_CONFIRM_REQUEST` carries `{ confirmationId, symbol,
-  direction, notional, quotedPrice, ratePrecision }` — `symbol` rather than `pair`,
-  plus the display precision so the confirm card formats the price exactly like a spot
-  tile without a reference-data lookup UI-side.
+- **`appContext` is not on the wire yet.** §18.8's table carries the as-shipped
+  shapes; `JARVIS_CHAT` is `{ text }` alone, because the field exists to feed a tool
+  registry that does not exist until P3 — sending it now would be a payload no
+  consumer reads.
 
 ### What review hardening added
 
