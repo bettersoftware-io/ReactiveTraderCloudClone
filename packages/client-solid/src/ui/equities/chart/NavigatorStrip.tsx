@@ -1,4 +1,4 @@
-import { type JSX, Show } from "solid-js";
+import { createMemo, type JSX, Show } from "solid-js";
 
 import type { NavigatorVm } from "@rtc/motion-core";
 
@@ -18,13 +18,24 @@ import styles from "./NavigatorStrip.module.css";
 export function NavigatorStrip(
   props: NavigatorStripComponentProps,
 ): JSX.Element {
-  function pointsAttr(): string {
-    return props.nav.linePoints
+  // Equality-gated memo cut-point: `props.nav` is a fresh object per
+  // viewport change (every pointer move of a drag), but its `linePoints`
+  // REFERENCE only changes when the series does (CandleChart memoizes it on
+  // the candles alone). The first memo re-evaluates per move yet keeps
+  // returning the same reference, so — memos only notifying observers on
+  // output change (===) — the points-string join below never re-runs during
+  // a drag.
+  const linePoints = createMemo(() => {
+    return props.nav.linePoints;
+  });
+
+  const pointsAttr = createMemo((): string => {
+    return linePoints()
       .map((p) => {
         return `${p.x},${p.y}`;
       })
       .join(" ");
-  }
+  });
 
   return (
     <Show when={props.nav.linePoints.length > 0}>
