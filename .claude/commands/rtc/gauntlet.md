@@ -39,6 +39,7 @@ pnpm check:versions                     # manypkg + syncpack
 pnpm check:scripts                      # every package wired to the gates
 pnpm check:compiler                     # React Compiler coverage (de-memoized files)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
+pnpm --filter @rtc/tests test:hooks     # cucumber hooks units
 pnpm lint:dead                          # knip
 pnpm check:deps                         # dep-cruiser cycles + layering
 pnpm --filter @rtc/tests gates          # grep gates + pnpm audit --prod

@@ -10,6 +10,7 @@
   /* The brush lives here — stop the browser's own touch scroll/zoom from
      fighting the pointer drag. */
   touch-action: none;
+  user-select: none;
 }
 
 .mini {
@@ -60,6 +61,17 @@
   opacity: 0.7;
   pointer-events: auto;
   cursor: ew-resize;
+}
+
+/* Invisible grab-area extension: a pseudo box participates in its element's
+ * hit-testing but paints nothing, so the 6px handle presents an ~18px grab
+ * target — the painted UI (and the goldens) are untouched. A 6px target is
+ * genuinely hard to hit on VDI/remote-desktop setups (imprecise pointer +
+ * DPI scaling), which read as the brush "losing grip". */
+.handle::before {
+  content: "";
+  position: absolute;
+  inset: 0 -6px;
 }
 
 .handleStart {

@@ -3,6 +3,16 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+
+  /* The chart column must never create scrollable overflow in the layout
+   * engine's `.panelBody` (overflow: auto): the plot clips its own children,
+   * but the time-axis and volume strips are unclipped siblings whose
+   * rightmost label/bar can extend a few px past the panel edge at certain
+   * viewport positions. Each navigator-drag step walks them across that
+   * boundary, toggling a horizontal scrollbar per step - invisible with
+   * macOS overlay scrollbars, a constant flicker with Windows/Linux classic
+   * ones (measured: 8-12 toggles per drag at every window size and DPI). */
+  overflow: clip;
 }
 
 .chartArea {
