@@ -86,7 +86,7 @@ gained a gate it doesn't know about, so it can't silently drift out of sync.
 ```
 packages/
   domain/              @rtc/domain              — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
-  shared/              @rtc/shared              — DTOs, wire protocol (CLIENT_MSG/SERVER_MSG), envelopes, + the transport-neutral scripted Jarvis brain (src/jarvis/), shared by the sim-mode client adapter and the server's ScriptedAgentLoop. Depends on domain, motion-core.
+  shared/              @rtc/shared              — DTOs, wire protocol (CLIENT_MSG/SERVER_MSG), envelopes, + the transport-neutral scripted Jarvis brain (src/jarvis/), shared by the sim-mode client adapter and the server's ScriptedAgentLoop. Depends on domain, motion-core (+ rxjs).
   client-core/         @rtc/client-core         — Framework-free application core: composition root, presenters, state machines, WsAdapter + port factories. Depends on domain, shared (+ rxjs, @rx-state/core). No React/DOM/RN imports.
   react-bindings/      @rtc/react-bindings      — The React↔RxJS bridge: createViewModel, useMachine, ViewModelProvider/useViewModel. Depends on client-core, domain (+ @react-rxjs/core, react).
   solid-bindings/      @rtc/solid-bindings      — The Solid↔RxJS bridge (parallel to react-bindings): createViewModel, useMachine, ViewModelProvider/useViewModel. Depends on client-core, domain (+ @rx-state/core, rxjs, solid-js). No React.

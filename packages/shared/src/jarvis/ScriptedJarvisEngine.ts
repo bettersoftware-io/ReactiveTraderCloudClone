@@ -37,8 +37,8 @@ import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "@rtc/motion-core";
 
 import type { JarvisEvent } from "#/jarvis/jarvisEvent";
 
-import type { JarvisTradeIntent } from "./jarvisIntent";
-import { matchJarvisIntent } from "./jarvisIntent";
+import type { JarvisTradeIntent } from "./jarvisIntent.js";
+import { matchJarvisIntent } from "./jarvisIntent.js";
 
 const SNAPSHOT_TIMEOUT_MS = 2_000;
 const SNAPSHOT_ERROR_MESSAGE =
