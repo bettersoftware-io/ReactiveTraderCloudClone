@@ -263,129 +263,6 @@ function drawArcRings(
   }
 }
 
-/**
- * Every panel, back to front.
- *
- * The painter's sort is on the projected centre's depth and is load-bearing:
- * the whole point of the scene is that the layers occlude one another
- * correctly as the stack rotates.
- */
-function drawPanels(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  progress: number,
-  elapsed: number,
-  spread: number,
-  pull: number,
-  pulledPanel: LayerPanel | null,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-  tagFont: SkFont | null,
-  calloutFont: SkFont | null,
-): void {
-  "worklet";
-  const order: PanelDrawEntry[] = [];
-
-  for (let index = 0; index < LAYER_PANELS.length; index++) {
-    const panel = LAYER_PANELS[index];
-    const isPulled = panel === pulledPanel;
-    const rect = panelWorldRect(panel, spread, isPulled ? pull : 0);
-    const centre = projectBootPoint(
-      rect.x0 + rect.width / 2,
-      rect.y0 + rect.height / 2,
-      rect.z,
-      camera,
-    );
-    order.push({ panel, index, rect, centreZ: centre.z, isPulled });
-  }
-
-  order.sort((a, b) => {
-    return b.centreZ - a.centreZ;
-  });
-
-  for (const entry of order) {
-    const drawPhase = panelDrawPhase(entry.index, progress);
-
-    if (drawPhase <= 0) {
-      continue;
-    }
-
-    // "Pulled" means far enough out to earn the glow, sweep and callout — the
-    // web's `pullAmount > 0.05`, not merely "is the selected layer".
-    const pulled = entry.isPulled && pull > PULL_ACTIVE_THRESHOLD;
-    const alpha = panelAlpha(entry.centreZ, drawPhase, pulled);
-
-    if (spread > GHOST_FRAME_MIN_SPREAD && entry.panel.kind !== "bg") {
-      drawGhostFrame(canvas, camera, entry.rect, spread, flicker, accent);
-    }
-
-    if (entry.panel.kind === "bg") {
-      drawBackdropLayer(
-        canvas,
-        camera,
-        entry.rect,
-        drawPhase,
-        spread,
-        flicker,
-        accent,
-      );
-      continue;
-    }
-
-    drawPanelFace(
-      canvas,
-      camera,
-      entry.rect,
-      alpha,
-      pulled,
-      pull,
-      flicker,
-      accent,
-      accentAlt,
-    );
-    drawPanelContent(
-      canvas,
-      camera,
-      entry.rect,
-      entry.panel.kind,
-      alpha * 0.9,
-      elapsed,
-      flicker,
-      accent,
-      accentAlt,
-    );
-
-    if (spread > LAYER_TAG_MIN_SPREAD && tagFont !== null) {
-      drawLayerTag(
-        canvas,
-        camera,
-        entry.rect,
-        entry.panel,
-        spread,
-        flicker,
-        accent,
-        tagFont,
-      );
-    }
-
-    if (pulled) {
-      drawPulledOverlay(
-        canvas,
-        camera,
-        entry.rect,
-        entry.panel,
-        elapsed,
-        pull,
-        flicker,
-        accent,
-        accentAlt,
-        calloutFont,
-      );
-    }
-  }
-}
-
 /** Map a panel-local UV coordinate onto the canvas at that panel's z-depth. */
 function panelUv(
   rect: LayerWorldRect,
@@ -427,46 +304,20 @@ function uvQuadPath(
   return path;
 }
 
-/** Fill a UV sub-rect of a panel. */
-function fillUvQuad(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  color: string,
-  alpha: number,
-): void {
-  "worklet";
-  const paint = Skia.Paint();
-  paint.setAntiAlias(true);
-  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
-  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
-}
-
-/** Stroke a UV sub-rect of a panel. */
-function strokeUvQuad(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  u0: number,
-  v0: number,
-  u1: number,
-  v1: number,
-  color: string,
-  alpha: number,
-  lineWidth: number,
-): void {
-  "worklet";
-  const paint = Skia.Paint();
-  paint.setStyle(PaintStyle.Stroke);
-  paint.setStrokeWidth(lineWidth);
-  paint.setAntiAlias(true);
-  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
-  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
-}
+/** The four panel corners, in UV.
+ *
+ * DECLARED ABOVE ITS FIRST WORKLET USER ON PURPOSE. A worklet captures every
+ * module-level binding it references BY VALUE at module evaluation — constants
+ * exactly as much as functions — so a `const` declared below a worklet that
+ * reads it arrives as `undefined` on the UI thread. This one sat below
+ * `drawGhostFrame` and was the second, independent cause of `layers` rendering
+ * blank on device. `pnpm check:worklet-order` covers bindings of both kinds. */
+const CORNER_UVS: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+];
 
 /**
  * The dashed frame at the panel's ORIGINAL flat position, plus four tethers
@@ -503,13 +354,27 @@ function drawGhostFrame(
   }
 }
 
-/** The four panel corners, in UV. */
-const CORNER_UVS: readonly (readonly [number, number])[] = [
-  [0, 0],
-  [1, 0],
-  [1, 1],
-  [0, 1],
-];
+/** Stroke a UV sub-rect of a panel. */
+function strokeUvQuad(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  u0: number,
+  v0: number,
+  u1: number,
+  v1: number,
+  color: string,
+  alpha: number,
+  lineWidth: number,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(lineWidth);
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
+  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
+}
 
 /** The backdrop layer draws as a grid, not a face — and carries no content. */
 function drawBackdropLayer(
@@ -554,6 +419,25 @@ function drawBackdropLayer(
     0.15 * drawPhase * spread * flicker,
     1,
   );
+}
+
+/** Fill a UV sub-rect of a panel. */
+function fillUvQuad(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  u0: number,
+  v0: number,
+  u1: number,
+  v1: number,
+  color: string,
+  alpha: number,
+): void {
+  "worklet";
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(hexToRgba(color, alpha)));
+  canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
 }
 
 /** A panel's face, border, pull glow and corner grab-points. */
@@ -628,111 +512,6 @@ function drawPanelFace(
       },
       grabPaint,
     );
-  }
-}
-
-/** Each panel kind's in-plane content, drawn in the panel's own UV space. */
-function drawPanelContent(
-  canvas: SkCanvas,
-  camera: Boot3dCamera,
-  rect: LayerWorldRect,
-  kind: LayerPanel["kind"],
-  contentAlpha: number,
-  elapsed: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-): void {
-  "worklet";
-
-  if (kind === "header") {
-    for (let i = 0; i < 5; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.02 + i * 0.09,
-        0.28,
-        0.09 + i * 0.09,
-        0.72,
-        i === 0 ? accentAlt : accent,
-        contentAlpha * 0.5 * flicker,
-      );
-    }
-
-    fillUvQuad(
-      canvas,
-      camera,
-      rect,
-      0.78,
-      0.25,
-      0.98,
-      0.75,
-      accent,
-      contentAlpha * 0.25 * flicker,
-    );
-    return;
-  }
-
-  if (kind === "main") {
-    drawMainContent(
-      canvas,
-      camera,
-      rect,
-      contentAlpha,
-      elapsed,
-      flicker,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  if (kind === "list") {
-    for (let i = 0; i < 4; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.04,
-        0.08 + i * 0.24,
-        0.04 + (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(elapsed * 1.3 + i)),
-        0.22 + i * 0.24,
-        accent,
-        contentAlpha * (0.45 - i * 0.07) * flicker,
-      );
-    }
-
-    return;
-  }
-
-  if (kind === "blotter") {
-    drawBlotterContent(
-      canvas,
-      camera,
-      rect,
-      contentAlpha,
-      flicker,
-      accent,
-      accentAlt,
-    );
-    return;
-  }
-
-  if (kind === "status") {
-    for (let i = 0; i < 9; i++) {
-      fillUvQuad(
-        canvas,
-        camera,
-        rect,
-        0.02 + i * 0.11,
-        0.25,
-        0.08 + i * 0.11,
-        0.75,
-        i % 3 === 0 ? accentAlt : accent,
-        contentAlpha * 0.5 * flicker,
-      );
-    }
   }
 }
 
@@ -863,6 +642,111 @@ function drawBlotterContent(
   }
 }
 
+/** Each panel kind's in-plane content, drawn in the panel's own UV space. */
+function drawPanelContent(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  rect: LayerWorldRect,
+  kind: LayerPanel["kind"],
+  contentAlpha: number,
+  elapsed: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+): void {
+  "worklet";
+
+  if (kind === "header") {
+    for (let i = 0; i < 5; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.02 + i * 0.09,
+        0.28,
+        0.09 + i * 0.09,
+        0.72,
+        i === 0 ? accentAlt : accent,
+        contentAlpha * 0.5 * flicker,
+      );
+    }
+
+    fillUvQuad(
+      canvas,
+      camera,
+      rect,
+      0.78,
+      0.25,
+      0.98,
+      0.75,
+      accent,
+      contentAlpha * 0.25 * flicker,
+    );
+    return;
+  }
+
+  if (kind === "main") {
+    drawMainContent(
+      canvas,
+      camera,
+      rect,
+      contentAlpha,
+      elapsed,
+      flicker,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  if (kind === "list") {
+    for (let i = 0; i < 4; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.04,
+        0.08 + i * 0.24,
+        0.04 + (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(elapsed * 1.3 + i)),
+        0.22 + i * 0.24,
+        accent,
+        contentAlpha * (0.45 - i * 0.07) * flicker,
+      );
+    }
+
+    return;
+  }
+
+  if (kind === "blotter") {
+    drawBlotterContent(
+      canvas,
+      camera,
+      rect,
+      contentAlpha,
+      flicker,
+      accent,
+      accentAlt,
+    );
+    return;
+  }
+
+  if (kind === "status") {
+    for (let i = 0; i < 9; i++) {
+      fillUvQuad(
+        canvas,
+        camera,
+        rect,
+        0.02 + i * 0.11,
+        0.25,
+        0.08 + i * 0.11,
+        0.75,
+        i % 3 === 0 ? accentAlt : accent,
+        contentAlpha * 0.5 * flicker,
+      );
+    }
+  }
+}
+
 /**
  * The `L0n` tag on a panel's left edge.
  *
@@ -958,6 +842,129 @@ function drawPulledOverlay(
     depthPaint,
     font,
   );
+}
+
+/**
+ * Every panel, back to front.
+ *
+ * The painter's sort is on the projected centre's depth and is load-bearing:
+ * the whole point of the scene is that the layers occlude one another
+ * correctly as the stack rotates.
+ */
+function drawPanels(
+  canvas: SkCanvas,
+  camera: Boot3dCamera,
+  progress: number,
+  elapsed: number,
+  spread: number,
+  pull: number,
+  pulledPanel: LayerPanel | null,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+  tagFont: SkFont | null,
+  calloutFont: SkFont | null,
+): void {
+  "worklet";
+  const order: PanelDrawEntry[] = [];
+
+  for (let index = 0; index < LAYER_PANELS.length; index++) {
+    const panel = LAYER_PANELS[index];
+    const isPulled = panel === pulledPanel;
+    const rect = panelWorldRect(panel, spread, isPulled ? pull : 0);
+    const centre = projectBootPoint(
+      rect.x0 + rect.width / 2,
+      rect.y0 + rect.height / 2,
+      rect.z,
+      camera,
+    );
+    order.push({ panel, index, rect, centreZ: centre.z, isPulled });
+  }
+
+  order.sort((a, b) => {
+    return b.centreZ - a.centreZ;
+  });
+
+  for (const entry of order) {
+    const drawPhase = panelDrawPhase(entry.index, progress);
+
+    if (drawPhase <= 0) {
+      continue;
+    }
+
+    // "Pulled" means far enough out to earn the glow, sweep and callout — the
+    // web's `pullAmount > 0.05`, not merely "is the selected layer".
+    const pulled = entry.isPulled && pull > PULL_ACTIVE_THRESHOLD;
+    const alpha = panelAlpha(entry.centreZ, drawPhase, pulled);
+
+    if (spread > GHOST_FRAME_MIN_SPREAD && entry.panel.kind !== "bg") {
+      drawGhostFrame(canvas, camera, entry.rect, spread, flicker, accent);
+    }
+
+    if (entry.panel.kind === "bg") {
+      drawBackdropLayer(
+        canvas,
+        camera,
+        entry.rect,
+        drawPhase,
+        spread,
+        flicker,
+        accent,
+      );
+      continue;
+    }
+
+    drawPanelFace(
+      canvas,
+      camera,
+      entry.rect,
+      alpha,
+      pulled,
+      pull,
+      flicker,
+      accent,
+      accentAlt,
+    );
+    drawPanelContent(
+      canvas,
+      camera,
+      entry.rect,
+      entry.panel.kind,
+      alpha * 0.9,
+      elapsed,
+      flicker,
+      accent,
+      accentAlt,
+    );
+
+    if (spread > LAYER_TAG_MIN_SPREAD && tagFont !== null) {
+      drawLayerTag(
+        canvas,
+        camera,
+        entry.rect,
+        entry.panel,
+        spread,
+        flicker,
+        accent,
+        tagFont,
+      );
+    }
+
+    if (pulled) {
+      drawPulledOverlay(
+        canvas,
+        camera,
+        entry.rect,
+        entry.panel,
+        elapsed,
+        pull,
+        flicker,
+        accent,
+        accentAlt,
+        calloutFont,
+      );
+    }
+  }
 }
 
 /** Corner telemetry: two left-aligned readouts, two right-aligned. */
