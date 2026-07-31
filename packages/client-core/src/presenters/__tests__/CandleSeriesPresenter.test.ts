@@ -107,6 +107,9 @@ function fakeMarketData(
     depth: () => {
       return EMPTY;
     },
+    candleHistory: () => {
+      return of([]);
+    },
     candles: (
       symbol: string,
       timeframe: CandleTimeframe = "1D",

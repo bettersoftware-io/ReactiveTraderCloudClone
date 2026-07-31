@@ -15,4 +15,11 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.ORDER_LIFECYCLE).toBe("stream.orderLifecycle");
     expect(SERVER_MSG.POSITIONS).toBe("stream.positions");
   });
+
+  it("includes the candle-history backfill wire names", () => {
+    expect(CLIENT_MSG.GET_CANDLE_HISTORY).toBe("rpc.getCandleHistory");
+    expect(SERVER_MSG.CANDLE_HISTORY_RESPONSE).toBe(
+      "rpc.getCandleHistory.response",
+    );
+  });
 });

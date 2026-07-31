@@ -48,6 +48,7 @@ export const CLIENT_MSG = {
   // UNSUBSCRIBE_PRICING for the full rationale.
   UNSUBSCRIBE_EQ_QUOTES: "unsubscribe.eqQuotes",
   GET_CANDLES: "rpc.getCandles",
+  GET_CANDLE_HISTORY: "rpc.getCandleHistory",
   SUBSCRIBE_DEPTH: "subscribe.depth",
   UNSUBSCRIBE_DEPTH: "unsubscribe.depth",
   PLACE_ORDER: "rpc.placeOrder",
@@ -83,6 +84,7 @@ export const SERVER_MSG = {
   WATCHLIST: "stream.watchlist",
   EQ_QUOTE: "stream.eqQuote",
   CANDLES_RESPONSE: "rpc.getCandles.response",
+  CANDLE_HISTORY_RESPONSE: "rpc.getCandleHistory.response",
   DEPTH: "stream.depth",
   PLACE_ORDER_RESPONSE: "rpc.placeOrder.response",
   ORDER_LIFECYCLE: "stream.orderLifecycle",

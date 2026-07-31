@@ -42,6 +42,13 @@ interface CandlesPayload {
   readonly timeframe?: CandleTimeframe;
 }
 
+interface CandleHistoryPayload {
+  readonly symbol: string;
+  readonly timeframe: CandleTimeframe;
+  readonly beforeTime: number;
+  readonly count: number;
+}
+
 interface OrderIdPayload {
   readonly orderId: string;
 }
@@ -132,6 +139,18 @@ const getCandles$: WsEffect<Ctx> = rpc(
   },
 );
 
+// getCandleHistory — rpc; ack payload is the older-candles page, forwarded
+// as-is. A SHORT page is the exhaustion signal (spec: no hasMore field).
+const getCandleHistory$: WsEffect<Ctx> = rpc(
+  CLIENT_MSG.GET_CANDLE_HISTORY,
+  SERVER_MSG.CANDLE_HISTORY_RESPONSE,
+  (payload, ctx): Observable<readonly Candle[]> => {
+    const { symbol, timeframe, beforeTime, count } =
+      payload as CandleHistoryPayload;
+    return ctx.marketData.candleHistory(symbol, timeframe, beforeTime, count);
+  },
+);
+
 // cancelOrder — rpc; void ack.
 const cancelOrder$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.CANCEL_ORDER,
@@ -201,6 +220,7 @@ export const equitiesEffects: WsEffect<Ctx>[] = [
   orders$,
   positions$,
   getCandles$,
+  getCandleHistory$,
   cancelOrder$,
   placeOrder$,
 ];

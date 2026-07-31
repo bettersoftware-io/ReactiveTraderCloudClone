@@ -76,6 +76,9 @@ function makePort(
     candles: (_symbol: string): ReturnType<MarketDataPort["candles"]> => {
       return new Subject<readonly Candle[]>();
     },
+    candleHistory: (): ReturnType<MarketDataPort["candleHistory"]> => {
+      return of([]);
+    },
     depth: (_symbol: string): ReturnType<MarketDataPort["depth"]> => {
       return new Subject<DepthBook>();
     },
