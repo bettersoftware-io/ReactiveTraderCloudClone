@@ -45,6 +45,7 @@ export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
         // test-only secret + the `demo` roster credential (never a real secret).
         AUTH_SECRET: "e2e-secret",
         AUTH_USERS: "demo:demo",
+        RTC_JARVIS_FAKE: "1",
       },
     },
   );
