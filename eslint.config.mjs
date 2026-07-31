@@ -257,9 +257,18 @@ export default tseslint.config(
           paths: [
             {
               name: "react",
-              importNames: ["useMemo", "useCallback", "memo"],
+              // "default" closes the one hole the named list cannot see:
+              // `import React from "react"` then `React.useMemo(...)`.
+              // `no-restricted-imports` matches imported NAMES, and a
+              // default import names none of them, so the member access is
+              // invisible to it. A namespace import (`import * as React`)
+              // IS caught, because ESLint conservatively treats it as able
+              // to reach every restricted name. Banning the default import
+              // outright is effectively free: React 19's automatic JSX
+              // runtime makes it unnecessary and no file here uses one.
+              importNames: ["default", "useMemo", "useCallback", "memo"],
               message:
-                "Manual memoization is banned — the React Compiler memoizes (ADR-003). Write the plain value, or a function declaration for a callback. For a build-once INSTANCE (not a cache), use the useRef + `if (current === null)` idiom.",
+                "Manual memoization is banned — the React Compiler memoizes (ADR-003). Write the plain value, or a function declaration for a callback. For a build-once INSTANCE (not a cache), use the useRef + `if (current === null)` idiom. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
             },
           ],
         },
@@ -302,9 +311,18 @@ export default tseslint.config(
           paths: [
             {
               name: "react",
-              importNames: ["useMemo", "useCallback", "memo"],
+              // "default" closes the one hole the named list cannot see:
+              // `import React from "react"` then `React.useMemo(...)`.
+              // `no-restricted-imports` matches imported NAMES, and a
+              // default import names none of them, so the member access is
+              // invisible to it. A namespace import (`import * as React`)
+              // IS caught, because ESLint conservatively treats it as able
+              // to reach every restricted name. Banning the default import
+              // outright is effectively free: React 19's automatic JSX
+              // runtime makes it unnecessary and no file here uses one.
+              importNames: ["default", "useMemo", "useCallback", "memo"],
               message:
-                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005.",
+                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
             },
           ],
         },
