@@ -71,6 +71,28 @@ Judge any future change to it against that.
    the full rationale" is true when written and false the moment X changes —
    and X is exactly what an audit changes. Each knob states its own basis.
 
+   **A ratio alone is the wrong shape, and hides its worst case.** It scales
+   with area, so one number means very different sensitivity per golden. On
+   this set (1,462 goldens, measured 2026-07-31 at `0.005`):
+
+   | | absolute budget |
+   |---|---|
+   | smallest golden | 36 px |
+   | median | 631 px |
+   | 1920x1080 full-page (202 of them) | **10,368 px** — a 101x101 block |
+
+   So the ratio is loosest precisely on the big composed screens where a
+   regression hides best. Playwright takes
+   `Math.min(maxDiffPixels, maxDiffPixelRatio x area)` (verified in
+   playwright-core's `compareBuffers`, not from the docs), so pairing the ratio
+   with an absolute `maxDiffPixels` **only ever tightens** — it caps the large
+   captures while small ones stay on the ratio, and nothing needs
+   re-baselining. Both web tiers now carry `maxDiffPixels: 100`.
+
+   When judging a budget, compute the absolute px it grants on the LARGEST
+   golden, not the ratio. `node` over the PNG headers is enough — the ratio
+   number on its own tells you almost nothing about what can slip through.
+
 1. **Dispatch N identical golden regenerations on the same commit.** Same code,
    same container — so any difference between two artifacts is pure
    cross-runner noise and nothing else.
