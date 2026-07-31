@@ -80,8 +80,8 @@ Found by static audit, unrelated to §2.1 and NOT the cause of the blanking:
 - `topoGeometry.ts` → `topoHeightAt`, called per frame from three sites in
   `TopoScene`.
 
-The `geoPointInside` fix is on branch `rn-boot-worklets`. It is correct on its
-own terms and should ship, but **it does not make `geo` render**.
+The `geoPointInside` fix shipped on `main` in #413. It is correct on its own
+terms, but **it does not make `geo` render**.
 
 ### 2.3 Reordering does not violate the repo's lint rules
 
