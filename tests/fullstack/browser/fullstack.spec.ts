@@ -112,7 +112,7 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
     const input = page.getByTestId("jarvis-input");
     const send = page.getByTestId("jarvis-send");
     const lastJarvisEntry = page
-      .locator('[data-testid="jarvis-entry"][data-role="jarvis"]')
+      .locator("[data-testid='jarvis-entry'][data-role='jarvis']")
       .last();
 
     // Turn 1: a live-desk quote question, answered from real server-side
