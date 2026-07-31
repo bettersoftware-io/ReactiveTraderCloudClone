@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { Candle } from "#/equities/candle.js";
 import { CANDLE_TIMEFRAMES } from "#/equities/timeframe.js";
 
 import type { MarketDataPort } from "../marketDataPort.js";
@@ -83,6 +84,80 @@ export function describeMarketDataPortContract(
         for (const c of candles) {
           expect(c.high).toBeGreaterThanOrEqual(c.low);
         }
+      } finally {
+        teardown();
+      }
+    });
+
+    it("candleHistory returns a page strictly before beforeTime, chronological, at most count", async () => {
+      const { port, driver, teardown } = makeHarness();
+
+      try {
+        const seriesPromise = firstValueFrom(port.candles("AAPL"));
+        await driver.ackCandles("AAPL");
+        const series = await seriesPromise;
+        const oldest = series[0] as Candle;
+
+        const pagePromise = firstValueFrom(
+          port.candleHistory("AAPL", "1D", oldest.time, 5),
+        );
+        await driver.ackCandles("AAPL");
+        const page = await pagePromise;
+
+        expect(page.length).toBeLessThanOrEqual(5);
+
+        for (const c of page) {
+          expect(c.time).toBeLessThan(oldest.time);
+        }
+
+        for (let i = 1; i < page.length; i++) {
+          expect((page[i] as Candle).time).toBeGreaterThan(
+            (page[i - 1] as Candle).time,
+          );
+        }
+      } finally {
+        teardown();
+      }
+    });
+
+    it("candleHistory is deterministic: identical arguments yield identical candles", async () => {
+      const { port, driver, teardown } = makeHarness();
+
+      try {
+        const seriesPromise = firstValueFrom(port.candles("AAPL"));
+        await driver.ackCandles("AAPL");
+        const series = await seriesPromise;
+        const beforeTime = (series[0] as Candle).time;
+
+        const p1Promise = firstValueFrom(
+          port.candleHistory("AAPL", "1D", beforeTime, 5),
+        );
+        await driver.ackCandles("AAPL");
+        const p1 = await p1Promise;
+
+        const p2Promise = firstValueFrom(
+          port.candleHistory("AAPL", "1D", beforeTime, 5),
+        );
+        await driver.ackCandles("AAPL");
+        const p2 = await p2Promise;
+
+        expect(p2).toEqual(p1);
+      } finally {
+        teardown();
+      }
+    });
+
+    it("candleHistory returns an empty page once history is exhausted", async () => {
+      const { port, driver, teardown } = makeHarness();
+
+      try {
+        const pagePromise = firstValueFrom(
+          port.candleHistory("AAPL", "1D", Number.NEGATIVE_INFINITY, 5),
+        );
+        await driver.ackCandles("AAPL");
+        const page = await pagePromise;
+
+        expect(page).toEqual([]);
       } finally {
         teardown();
       }

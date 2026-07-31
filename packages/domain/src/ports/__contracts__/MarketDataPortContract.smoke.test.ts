@@ -34,6 +34,9 @@ describe("describeMarketDataPortContract :: smoke", () => {
           },
         ] as const);
       },
+      candleHistory: () => {
+        return of([] as const);
+      },
       depth: (symbol: string) => {
         return of({
           symbol,

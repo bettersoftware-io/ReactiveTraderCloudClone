@@ -74,6 +74,8 @@ export type { EquityQuote } from "./equities/quote.js";
 export type { CandleTimeframe } from "./equities/timeframe.js";
 export {
   CANDLE_DEFAULT_VISIBLE,
+  CANDLE_HISTORY_DEPTH_MAX,
+  CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_TOTAL,
   CANDLE_TIMEFRAMES,
 } from "./equities/timeframe.js";
