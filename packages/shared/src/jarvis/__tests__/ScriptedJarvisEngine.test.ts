@@ -18,11 +18,11 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { JarvisEvent } from "../jarvisPort";
+import type { JarvisEvent } from "../jarvisEvent";
 import {
-  ScriptedJarvisAdapter,
   type ScriptedJarvisDeps,
-} from "../ScriptedJarvisAdapter";
+  ScriptedJarvisEngine,
+} from "../ScriptedJarvisEngine";
 
 const EURUSD = findPair("EURUSD");
 
@@ -50,10 +50,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("ScriptedJarvisAdapter", () => {
+describe("ScriptedJarvisEngine", () => {
   it("a quote turn emits toolEvent running -> chunked deltas reassembling the full reply -> done", async () => {
     const { deps } = buildDeps({ instantReveal$: of(false) });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "where is EURUSD?");
     await vi.advanceTimersByTimeAsync(5_000);
@@ -78,7 +78,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("instantReveal -> exactly one delta", async () => {
     const { deps } = buildDeps({ instantReveal$: of(true) });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "hi");
     await done;
@@ -115,7 +115,7 @@ describe("ScriptedJarvisAdapter", () => {
         return of(trade);
       },
     });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "buy 5M EURUSD");
     await Promise.resolve();
@@ -174,7 +174,7 @@ describe("ScriptedJarvisAdapter", () => {
         return of(trade).pipe(delay(3_500));
       },
     });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "buy 1M EURUSD");
     await Promise.resolve();
@@ -205,7 +205,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("declining a confirmation reports the decline and never calls ExecutionPort", async () => {
     const { deps, executeTradeSpy } = buildDeps();
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "sell 2M eurusd");
     await Promise.resolve();
@@ -231,7 +231,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("a snapshot that never resolves times out into a single error event", async () => {
     const { deps } = buildDeps({ referenceData$: NEVER });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "hi");
     await vi.advanceTimersByTimeAsync(2_100);
@@ -262,7 +262,7 @@ describe("ScriptedJarvisAdapter", () => {
       },
       trades: [makeTrade(1), makeTrade(2)],
     });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "how am I doing?");
     await done;
@@ -297,7 +297,7 @@ describe("ScriptedJarvisAdapter", () => {
         AUDUSD: [makeTick("AUDUSD", 0.66), makeTick("AUDUSD", 0.6602)],
       },
     });
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "what's moving?");
     await done;
@@ -316,7 +316,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("a spread turn surfaces the same 'quote' toolEvent as a quote turn around its pricing read", async () => {
     const { deps } = buildDeps({});
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "what's the spread on EURUSD?");
     await done;
@@ -336,7 +336,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("a help turn replies with the capability roster verbatim", async () => {
     const { deps } = buildDeps({});
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "what can you do?");
     await done;
@@ -350,7 +350,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("an unmatched turn replies with the fallback mandate verbatim", async () => {
     const { deps } = buildDeps({});
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "make me a sandwich");
     await done;
@@ -364,7 +364,7 @@ describe("ScriptedJarvisAdapter", () => {
 
   it("tearing a turn down mid-confirmation cancels the pending Subject: a late confirm() is a no-op and never executes", async () => {
     const { deps, executeTradeSpy } = buildDeps({});
-    const adapter = new ScriptedJarvisAdapter(deps);
+    const adapter = new ScriptedJarvisEngine(deps);
 
     const events: JarvisEvent[] = [];
     const subscription = adapter.ask("buy 5M EURUSD").subscribe((event) => {
@@ -517,7 +517,7 @@ interface TurnRun {
 
 /** Subscribes to ask(text) and resolves once the turn completes, collecting
  * every emitted event in order. */
-function runTurn(adapter: ScriptedJarvisAdapter, text: string): TurnRun {
+function runTurn(adapter: ScriptedJarvisEngine, text: string): TurnRun {
   const events: JarvisEvent[] = [];
   let resolveDone!: () => void;
   const done = new Promise<void>((resolve) => {

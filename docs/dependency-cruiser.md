@@ -110,7 +110,7 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `no-circular` | anything | — (rejects any module forming a cycle) | No import loops (type-only edges excluded) |
 | `domain-stays-pure` | `^packages/domain/src` | nothing (`pathNot ^packages/domain/`) | Domain is the innermost layer — no internal deps |
 | `domain-no-node-builtins` | `^packages/domain/src` (tests and `__testUtils__` excepted) | — (rejects Node built-ins, `dependencyTypes: ["core"]`) | Domain runs in any JS environment — browser, RN, Node |
-| `shared-no-apps` | `^packages/shared/src` | `shared\|domain` | Shared may only reach inward to domain |
+| `shared-no-apps` | `^packages/shared/src` | `shared\|domain\|motion-core` | Shared may only reach inward to domain, plus motion-core for the scripted Jarvis brain's speech-chunk pacing |
 | `client-not-server` | `^packages/client-react/src` | — (rejects `^packages/server/`) | The two apps never couple |
 | `server-not-client` | `^packages/server/src` | — (rejects `^packages/client-react/`) | (mirror of the above) |
 | `ws-effects-stays-pure` | `^packages/ws-effects/src` | nothing (`pathNot ^packages/ws-effects/`) | The effects framework is domain-blind and app-agnostic (rxjs only) |
