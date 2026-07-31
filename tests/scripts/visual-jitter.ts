@@ -146,6 +146,7 @@ interface ParsedArgs {
 interface ConfiguredTolerances {
   threshold?: number;
   maxDiffPixelRatio?: number;
+  maxDiffPixels?: number;
 }
 
 interface TierConfig {
@@ -203,8 +204,13 @@ function readConfiguredTolerances(configPath: string): ConfiguredTolerances {
     const src = readFileSync(configPath, "utf8");
     const ratio = /maxDiffPixelRatio:\s*([0-9.]+)/.exec(src);
     const threshold = /\bthreshold:\s*([0-9.]+)/.exec(src);
+    // \b stops this matching the "maxDiffPixels" inside "maxDiffPixelRatio" --
+    // that one is followed by "Ratio", never a colon, so the colon alone is
+    // already sufficient, but the boundary makes the intent explicit.
+    const absolute = /\bmaxDiffPixels:\s*(\d+)/.exec(src);
     return {
       maxDiffPixelRatio: ratio ? Number(ratio[1]) : undefined,
+      maxDiffPixels: absolute ? Number(absolute[1]) : undefined,
       threshold: threshold ? Number(threshold[1]) : undefined,
     };
   } catch {
@@ -236,9 +242,19 @@ function tightestBudget(tiers: readonly TierTolerances[]): number | undefined {
 function reportTierBudgets(tiers: readonly TierTolerances[]): void {
   for (const tier of tiers) {
     const budget = tier.maxDiffPixelRatio;
+    // Playwright takes Math.min(maxDiffPixels, ratio x area), so the absolute
+    // cap is the binding budget on every capture larger than cap/ratio px.
+    const cap =
+      tier.maxDiffPixels === undefined
+        ? ""
+        : `  maxDiffPixels: ${tier.maxDiffPixels} (caps captures above ${
+            tier.maxDiffPixelRatio === undefined
+              ? "?"
+              : Math.round(tier.maxDiffPixels / tier.maxDiffPixelRatio)
+          } px)`;
 
     console.log(
-      `  ${tier.tier.padEnd(6)} maxDiffPixelRatio: ${budget ?? "unreadable"}`,
+      `  ${tier.tier.padEnd(6)} maxDiffPixelRatio: ${budget ?? "unreadable"}${cap}`,
     );
   }
 

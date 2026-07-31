@@ -109,7 +109,16 @@ export default defineConfig({
   //
   // Keep this in lockstep with react's config: they are two clients judged
   // against ONE golden set, and the looser of the two is the real gate.
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005 } },
+  //
+  // maxDiffPixels caps the ratio's worst case -- see react's config for the
+  // measurement (a ratio grants 10,368 px on a full-page 1920x1080 shot vs
+  // 36 px on the smallest, so it is loosest exactly where regressions hide
+  // best). Playwright applies Math.min(maxDiffPixels, ratio x area), so it only
+  // ever tightens. Stated here rather than referenced because that is precisely
+  // how this tier drifted to 12x react's budget in the first place.
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.005, maxDiffPixels: 100 },
+  },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ stay
   // INSIDE this package (never cross-package — only the golden read crosses).
   reporter: [

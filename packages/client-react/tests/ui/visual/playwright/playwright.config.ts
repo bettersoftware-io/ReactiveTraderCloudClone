@@ -85,7 +85,28 @@ export default defineConfig({
   // PASSING run is still not evidence that layout is unchanged on a sparse
   // surface — structural assertions cover what pixels cannot (e.g.
   // PreferencesModalPage.rowCountInColumn).
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005 } },
+  //
+  // maxDiffPixels caps the RATIO's worst case. A ratio scales with area, so a
+  // single number buys wildly different sensitivity across the 1,462 goldens
+  // (measured 2026-07-31): 36 px on the smallest, 631 px at the median, and
+  // 10,368 px on each of the 202 full-page 1920x1080 shots -- there, a 101x101
+  // block could change and still pass. That is the same class of miss as the
+  // Jarvis orb, merely 12x smaller, and it is worst exactly where regressions
+  // hide best. Playwright takes Math.min(maxDiffPixels, ratio x area)
+  // (playwright-core coreBundle.js, `compareBuffers`), so this only ever
+  // TIGHTENS: full-page drops 10,368 -> 100 px, while the smallest capture
+  // stays on its 36 px ratio budget and nothing needs re-baselining.
+  //
+  // Why 100 and not 0, given a measured floor of zero across ~20,500
+  // comparisons: those samples describe TODAY's runner pool, not a future
+  // container rebuild or microarch shift. The two failure directions are not
+  // symmetric -- too tight red-lines all 1,462 goldens at once (loud, and
+  // recoverable by regenerating), too loose hides a real change silently, which
+  // is what actually happened twice here. 100 px is ~0.005% of a full-page
+  // shot: negligible hiding power, real insurance.
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.005, maxDiffPixels: 100 },
+  },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [
