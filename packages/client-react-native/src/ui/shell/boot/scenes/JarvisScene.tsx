@@ -348,6 +348,7 @@ function projectSpherePoint(
     camera,
   );
 }
+
 /** The wireframe core sphere — latitude rings, longitude meridians, core dot. */
 function drawCoreSphere(
   canvas: SkCanvas,
@@ -762,6 +763,7 @@ function drawRingLayer(
     }
   }
 }
+
 /** The six ring layers. */
 function drawRingMachinery(
   canvas: SkCanvas,
@@ -872,6 +874,7 @@ function projectFragmentUv(
     camera,
   );
 }
+
 /** Stroke one segment in fragment-local UV space. */
 function strokeFragmentSeg(
   canvas: SkCanvas,
@@ -897,6 +900,7 @@ function strokeFragmentSeg(
   paint.setColor(Skia.Color(hexToRgba(color, alpha)));
   canvas.drawLine(a.x, a.y, b.x, b.y, paint);
 }
+
 /** Fragment kind 0 — a data card with rows and corner brackets. */
 function drawDataCard(
   canvas: SkCanvas,
@@ -996,6 +1000,7 @@ function drawDataCard(
     canvas.drawPath(path, paint);
   }
 }
+
 /** Fragment kind 1 — a dial with a sweeping needle arc. */
 function drawDial(
   canvas: SkCanvas,
@@ -1090,6 +1095,7 @@ function drawDial(
 
   canvas.drawPath(needlePath, needle);
 }
+
 /** Fragment kind 2 — a hex cluster with one live pulsing node. */
 function drawHexCluster(
   canvas: SkCanvas,
@@ -1158,6 +1164,7 @@ function drawHexCluster(
     canvas.drawPath(path, stroke);
   }
 }
+
 /** Fragment kind 3 — a vertical meter with a moving level. */
 function drawMeter(
   canvas: SkCanvas,
@@ -1259,6 +1266,7 @@ function drawMeter(
     );
   }
 }
+
 /** Fragment kind 4 — a waveform between two rails. */
 function drawWaveform(
   canvas: SkCanvas,
@@ -1321,6 +1329,7 @@ function drawWaveform(
 
   canvas.drawPath(path, paint);
 }
+
 /** One fragment's card art, dispatched on its kind. */
 function drawFragmentCard(
   canvas: SkCanvas,
@@ -1398,6 +1407,7 @@ function drawFragmentCard(
     accentAlt,
   );
 }
+
 /** The fourteen blueprint fragments. */
 function drawFragments(
   canvas: SkCanvas,

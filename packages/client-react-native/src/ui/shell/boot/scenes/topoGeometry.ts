@@ -557,6 +557,7 @@ function padTwo(value: number): string {
 
   return String(value).padStart(2, "0");
 }
+
 /**
  * The wall-clock stamp the web prints bottom-left.
  *

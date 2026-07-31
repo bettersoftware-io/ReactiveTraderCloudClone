@@ -32,24 +32,66 @@
  * bindings evaluated first and so are immune to classes 1 and 2. Class 3 does
  * resolve across files, because that is where it actually bites.
  *
- * Usage: node scripts/check-worklet-order.mjs [glob-root]
+ * Usage: node scripts/check-worklet-order.mjs [glob-root ...]
  * Exit code 1 on any finding — this IS a gate.
  */
 import { globSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const ROOT = process.argv[2] ?? "packages/client-react-native/src";
+/** Both trees that contain worklets. `motion-core` is included because it is
+ * where `ringDashOffset` shipped unmarked (#340) — the lock ring redboxed on
+ * every real device while jest stayed green — so scanning only the RN package
+ * would leave a known-live blind spot. */
+const DEFAULT_ROOTS = [
+  "packages/client-react-native/src",
+  "packages/motion-core/src",
+];
+const ROOTS = process.argv.length > 2 ? process.argv.slice(2) : DEFAULT_ROOTS;
 /** `#/` subpath alias -> the RN package's `src` (see `project_hash_alias_imports`). */
 const ALIAS_PREFIX = "#/";
 const ALIAS_TARGET = "packages/client-react-native/src";
 
 /** Globals and host objects a worklet may legitimately reach. */
 const AMBIENT = new Set([
-  "Math", "Object", "Number", "String", "Array", "JSON", "Boolean", "Date",
-  "isNaN", "parseFloat", "parseInt", "Infinity", "NaN", "undefined", "console",
-  "Set", "Map", "Symbol", "Error", "RegExp", "global", "globalThis",
-  "if", "for", "while", "switch", "return", "typeof", "new", "function",
-  "const", "let", "var", "else", "do", "catch", "try", "throw", "case",
+  "Math",
+  "Object",
+  "Number",
+  "String",
+  "Array",
+  "JSON",
+  "Boolean",
+  "Date",
+  "isNaN",
+  "parseFloat",
+  "parseInt",
+  "Infinity",
+  "NaN",
+  "undefined",
+  "console",
+  "Set",
+  "Map",
+  "Symbol",
+  "Error",
+  "RegExp",
+  "global",
+  "globalThis",
+  "if",
+  "for",
+  "while",
+  "switch",
+  "return",
+  "typeof",
+  "new",
+  "function",
+  "const",
+  "let",
+  "var",
+  "else",
+  "do",
+  "catch",
+  "try",
+  "throw",
+  "case",
 ]);
 
 /** Blank comment bodies, preserving line count and column offsets, so a name
@@ -65,24 +107,53 @@ function stripComments(source) {
     const next = source[i + 1];
 
     if (mode === "code") {
-      if (ch === "/" && next === "*") { mode = "block"; out += "  "; i++; continue; }
-      if (ch === "/" && next === "/") { mode = "line"; out += "  "; i++; continue; }
-      if (ch === '"' || ch === "'" || ch === "`") { mode = ch; out += ch; continue; }
+      if (ch === "/" && next === "*") {
+        mode = "block";
+        out += "  ";
+        i++;
+        continue;
+      }
+      if (ch === "/" && next === "/") {
+        mode = "line";
+        out += "  ";
+        i++;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === "`") {
+        mode = ch;
+        out += ch;
+        continue;
+      }
       out += ch;
       continue;
     }
     if (mode === "block") {
-      if (ch === "*" && next === "/") { mode = "code"; out += "  "; i++; continue; }
+      if (ch === "*" && next === "/") {
+        mode = "code";
+        out += "  ";
+        i++;
+        continue;
+      }
       out += ch === "\n" ? "\n" : " ";
       continue;
     }
     if (mode === "line") {
-      if (ch === "\n") { mode = "code"; out += "\n"; continue; }
+      if (ch === "\n") {
+        mode = "code";
+        out += "\n";
+        continue;
+      }
       out += " ";
       continue;
     }
-    if (ch === "\\") { out += "  "; i++; continue; }
-    if (ch === mode) { mode = "code"; }
+    if (ch === "\\") {
+      out += "  ";
+      i++;
+      continue;
+    }
+    if (ch === mode) {
+      mode = "code";
+    }
     out += ch;
   }
   return out;
@@ -93,33 +164,52 @@ function stripComments(source) {
  * and so never registered an exported worklet as a caller at all, which is
  * exactly how `boot3dCamera.ts`'s `gyroYawPitch -> clampUnit` went unreported
  * while `hologram` was declared "fixed but still blank". */
-const FN = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*[(<]/;
-const BINDING = /^(?:export\s+)?(?:const|let)\s+([A-Za-z_][A-Za-z0-9_]*)\s*[=:]/;
-const IMPORT = /^import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/;
+const FN =
+  /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*[(<]/;
+const BINDING =
+  /^(?:export\s+)?(?:const|let)\s+([A-Za-z_][A-Za-z0-9_]*)\s*[=:]/;
+/** Matched against the WHOLE source, not line by line: named imports here are
+ * overwhelmingly multi-line, and a line-anchored version silently saw none of
+ * them — which left the cross-file missing-directive check dead. */
+const IMPORT_ALL = /import\s+(type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
 
 function parseFile(file) {
-  const lines = stripComments(readFileSync(file, "utf8")).split("\n");
+  const source = stripComments(readFileSync(file, "utf8"));
+  const lines = source.split("\n");
   const decls = new Map(); // name -> { line, kind, isWorklet, end }
   const imports = new Map(); // local name -> module specifier
 
-  lines.forEach((line, index) => {
-    const imp = IMPORT.exec(line);
-    if (imp !== null) {
-      if (imp[1] === undefined) {
-        for (const raw of imp[2].split(",")) {
-          const name = raw.trim().split(/\s+as\s+/).pop()?.trim();
-          if (name) imports.set(name, imp[3]);
-        }
-      }
-      return;
+  for (const imp of source.matchAll(IMPORT_ALL)) {
+    if (imp[1] !== undefined) {
+      continue; // `import type { … }` is erased
     }
+    for (const raw of imp[2].split(",")) {
+      const trimmed = raw.trim();
+      // Per-specifier `type` marker, e.g. `{ type TopoPeak, topoHeightAt }`.
+      if (trimmed === "" || /^type\s/.test(trimmed)) {
+        continue;
+      }
+      const name = trimmed
+        .split(/\s+as\s+/)
+        .pop()
+        ?.trim();
+      if (name) {
+        imports.set(name, imp[3]);
+      }
+    }
+  }
 
+  lines.forEach((line, index) => {
     const fn = FN.exec(line);
     if (fn !== null) {
       let cursor = index;
-      while (cursor < lines.length && !lines[cursor].trimEnd().endsWith("{")) cursor++;
+      while (cursor < lines.length && !lines[cursor].trimEnd().endsWith("{")) {
+        cursor++;
+      }
       let end = index;
-      while (end < lines.length && lines[end] !== "}") end++;
+      while (end < lines.length && lines[end] !== "}") {
+        end++;
+      }
       decls.set(fn[1], {
         line: index,
         kind: "fn",
@@ -131,26 +221,39 @@ function parseFile(file) {
 
     const bind = BINDING.exec(line);
     if (bind !== null && !decls.has(bind[1])) {
-      decls.set(bind[1], { line: index, kind: "const", isWorklet: false, end: index });
+      decls.set(bind[1], {
+        line: index,
+        kind: "const",
+        isWorklet: false,
+        end: index,
+      });
     }
   });
 
   return { lines, decls, imports };
 }
 
-const files = globSync(`${ROOT}/**/*.{ts,tsx}`).filter((f) => !f.includes(".test."));
+const files = ROOTS.flatMap((root) => {
+  return globSync(`${root}/**/*.{ts,tsx}`);
+}).filter((f) => !f.includes(".test."));
 const parsed = new Map(files.map((f) => [resolve(f), parseFile(f)]));
 
 /** Resolve an import specifier to a parsed file, if it is inside the tree. */
 function resolveModule(fromFile, spec) {
   let base;
-  if (spec.startsWith(ALIAS_PREFIX)) base = join(ALIAS_TARGET, spec.slice(ALIAS_PREFIX.length));
-  else if (spec.startsWith(".")) base = join(dirname(fromFile), spec);
-  else return undefined;
+  if (spec.startsWith(ALIAS_PREFIX)) {
+    base = join(ALIAS_TARGET, spec.slice(ALIAS_PREFIX.length));
+  } else if (spec.startsWith(".")) {
+    base = join(dirname(fromFile), spec);
+  } else {
+    return undefined;
+  }
 
   for (const ext of [".ts", ".tsx", "/index.ts", "/index.tsx"]) {
     const cand = resolve(base + ext);
-    if (parsed.has(cand)) return parsed.get(cand);
+    if (parsed.has(cand)) {
+      return parsed.get(cand);
+    }
   }
   return undefined;
 }
@@ -162,22 +265,46 @@ for (const file of files) {
   const { lines, decls, imports } = parsed.get(abs);
 
   for (const [name, decl] of decls) {
-    if (decl.kind !== "fn" || !decl.isWorklet) continue;
+    if (decl.kind !== "fn" || !decl.isWorklet) {
+      continue;
+    }
 
     const body = lines.slice(decl.line, decl.end + 1).join("\n");
     // Names bound INSIDE the body shadow module scope — never a capture.
     const locals = new Set();
-    for (const [, l] of body.matchAll(/(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) locals.add(l);
-    for (const [, l] of body.matchAll(/(?:\(|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s*[:,)]/g)) locals.add(l);
+    for (const [, l] of body.matchAll(
+      /(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)/g,
+    )) {
+      locals.add(l);
+    }
+    for (const [, l] of body.matchAll(
+      /(?:\(|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s*[:,)]/g,
+    )) {
+      locals.add(l);
+    }
 
     const seen = new Set();
-    const report = (msg) => { console.log(msg); total += 1; };
+    const report = (msg) => {
+      console.log(msg);
+      total += 1;
+    };
 
     // Classes 1 + 2: any module-level binding declared later in this file.
-    for (const [, ref] of body.matchAll(/(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)/g)) {
-      if (ref === name || seen.has(ref) || locals.has(ref) || AMBIENT.has(ref)) continue;
+    for (const [, ref] of body.matchAll(
+      /(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)/g,
+    )) {
+      if (
+        ref === name ||
+        seen.has(ref) ||
+        locals.has(ref) ||
+        AMBIENT.has(ref)
+      ) {
+        continue;
+      }
       const target = decls.get(ref);
-      if (target === undefined || target.line <= decl.line) continue;
+      if (target === undefined || target.line <= decl.line) {
+        continue;
+      }
       seen.add(ref);
       report(
         `${file}:${decl.line + 1}  [late ${target.kind}] ${name} -> ${ref} ` +
@@ -186,8 +313,17 @@ for (const file of files) {
     }
 
     // Class 3: a call to a function that is not worklet-marked.
-    for (const [, callee] of body.matchAll(/(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)) {
-      if (callee === name || seen.has(callee) || locals.has(callee) || AMBIENT.has(callee)) continue;
+    for (const [, callee] of body.matchAll(
+      /(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)\s*\(/g,
+    )) {
+      if (
+        callee === name ||
+        seen.has(callee) ||
+        locals.has(callee) ||
+        AMBIENT.has(callee)
+      ) {
+        continue;
+      }
 
       const local = decls.get(callee);
       if (local !== undefined) {
@@ -202,10 +338,16 @@ for (const file of files) {
       }
 
       const spec = imports.get(callee);
-      if (spec === undefined) continue;
+      if (spec === undefined) {
+        continue;
+      }
       const mod = resolveModule(abs, spec);
       const exported = mod?.decls.get(callee);
-      if (exported !== undefined && exported.kind === "fn" && !exported.isWorklet) {
+      if (
+        exported !== undefined &&
+        exported.kind === "fn" &&
+        !exported.isWorklet
+      ) {
         seen.add(callee);
         report(
           `${file}:${decl.line + 1}  [no directive] ${name} -> ${callee} ` +

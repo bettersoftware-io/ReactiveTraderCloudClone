@@ -117,6 +117,13 @@ jobs:
       - name: React Compiler coverage
         run: pnpm check:compiler
 
+      # The ONLY automated guard on the Reanimated worklet class: jest disables
+      # the worklet Babel plugins and mocks reanimated wholesale, so a green
+      # suite says nothing about it. Five boot scenes shipped blank behind that
+      # blind spot (#413 → fixed 2026-07-31).
+      - name: Worklet capture safety (RN + motion-core)
+        run: pnpm check:worklet-order
+
       - name: Typecheck
         run: pnpm typecheck
 

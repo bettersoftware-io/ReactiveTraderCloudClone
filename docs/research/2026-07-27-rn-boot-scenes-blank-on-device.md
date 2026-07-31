@@ -1,12 +1,14 @@
 # Five RN boot scenes render blank on device — investigation handoff
 
-**Status: UNRESOLVED.** Root cause partially identified and proven; at least one
-further cause remains unfound. Nothing is fixed on `main`.
+**Status: RESOLVED 2026-07-31.** All eight boot variants render on device
+(iPhone 17 / iOS 26.5). There were **three** causes, not one; §9 records them
+and the measurement error that hid two of them. The rest of this document is
+kept as written on 2026-07-27, because its disproven table is still the reason
+not to re-run four dead theories.
 
-This is a handoff document. It records what is **proven**, what is **disproven**
-(with evidence, so nobody re-runs those experiments), and the exact reproduction
-loop. Read the disproven section — three plausible theories died here and each
-cost a device cycle.
+This was a handoff document. It records what is **proven**, what is
+**disproven** (with evidence, so nobody re-runs those experiments), and the
+exact reproduction loop.
 
 ---
 
@@ -174,3 +176,66 @@ before anyone looked at a device.
 The lesson is not "test more"; the suite cannot be made to see this. It is that
 a Skia/Reanimated scene has **no** meaningful verification short of running it,
 and should not merge without one.
+
+## 9. Resolution (2026-07-31)
+
+Three causes, all of the same family — *a worklet reaching something that is not
+yet initialised, or not a worklet at all* — but only one of them was visible to
+the detector as it stood.
+
+| # | Cause | Where | Symptom |
+|---|---|---|---|
+| 1 | worklet → worklet declared later in the same file | 24 sites across 5 files | `undefined is not a function` |
+| 2 | worklet → module-level **`const`** declared later | `LayersScene`'s `CORNER_UVS` | `Cannot convert undefined value to object` |
+| 3 | missing `"worklet"` directive | `topoGeometry.topoHeightAt`, 3 call sites | `Tried to synchronously call a Remote Function` |
+
+**Why §3's "reordering does not fix it" was wrong.** It was a measurement error,
+not a missing cause. `hologram` reaches *two* forward references: `gridPoint` in
+its own file, and `gyroYawPitch → clampUnit` in the shared `boot3dCamera.ts`.
+Only the first was reordered. The detector reported the file clean because its
+regex was anchored on `^function`, so an `export function` was never registered
+as a caller at all — and `gyroYawPitch` is exported. The scene had one cause
+fixed and one untouched, and the clean report was read as "no causes left".
+
+**The discarded bisect was right.** §4 records a step-marker bisect that
+produced `hstep=start` — failure before the first draw call — and discards it as
+buggy instrumentation. It was correct. `gyroYawPitch` is called at the *top* of
+every projected scene's draw, above the first draw call, so the marker was
+telling the truth. Instrument-distrust is usually the right instinct; here it
+cost the answer. Worth remembering that a result which contradicts a hypothesis
+is evidence about the hypothesis first.
+
+**Cause 2 is the structural one.** A worklet captures every module-level binding
+by value — constants exactly as much as functions. A function-only detector can
+therefore never be sufficient, no matter how many blind spots it closes, and the
+old header's "necessary but not sufficient" caveat was understating the problem:
+it was not measuring the right *kind* of thing. `layers` stayed blank through a
+complete function reorder for exactly this reason.
+
+**What now guards it.** `scripts/check-worklet-order.mjs` covers all three
+classes, resolves imports across the tree for class 3, strips comments (three
+phantom findings and one mis-attributed caller came from matching names inside
+JSDoc), and exits non-zero. It runs in CI's `checks` job and in
+`/rtc:gauntlet`'s fast tier. It was verified in both directions: clean on the
+fixed tree, and 28 findings — including the late `const` and all three
+`topoHeightAt` call sites — when run against the pre-fix sources.
+
+It is still **not** a substitute for running the app. It cannot see an
+arrow-function worklet, a function passed as a value, or anything dynamic, and
+no static check can prove a Skia scene draws what it should. It closes the class
+that produced this outage; the device remains the only witness that a scene
+renders.
+
+**Verified on device**, all eight variants, mean grey (>0.9 is blank):
+
+| scene | mean | | scene | mean |
+|---|---|---|---|---|
+| core | 0.751 | | hologram | 0.750 |
+| laser | 0.790 | | layers | 0.720 |
+| docking | 0.631 | | geo | 0.751 |
+| static | 0.992 (emblem, light by design) | | jarvis | 0.728 |
+| | | | topo | 0.727 |
+
+`topo` has no registered scenario (T10), so it was captured through a temporary
+local registration that was reverted afterwards — it is verified, but it is not
+covered by the harness.

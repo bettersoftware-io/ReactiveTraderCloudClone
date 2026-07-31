@@ -451,6 +451,7 @@ function summitPoint(
     camera,
   );
 }
+
 /** The route linking the summits, in peak order. */
 function drawRoute(
   canvas: SkCanvas,
@@ -568,6 +569,7 @@ function drawBeaconReadout(
     pairFont,
   );
 }
+
 /** Summit beacons, pair labels and ticking prices, drawn far→near. */
 function drawBeacons(
   canvas: SkCanvas,

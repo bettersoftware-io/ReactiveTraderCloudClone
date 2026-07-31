@@ -279,6 +279,7 @@ function panelUv(
     camera,
   );
 }
+
 /** Build the quad path for a UV sub-rect of a panel. */
 function uvQuadPath(
   rect: LayerWorldRect,
@@ -302,6 +303,7 @@ function uvQuadPath(
   path.close();
   return path;
 }
+
 /** The four panel corners, in UV.
  *
  * DECLARED ABOVE ITS FIRST WORKLET USER ON PURPOSE. A worklet captures every
@@ -351,6 +353,7 @@ function drawGhostFrame(
     canvas.drawLine(here.x, here.y, flat.x, flat.y, tetherPaint);
   }
 }
+
 /** Stroke a UV sub-rect of a panel. */
 function strokeUvQuad(
   canvas: SkCanvas,
@@ -372,6 +375,7 @@ function strokeUvQuad(
   paint.setColor(Skia.Color(hexToRgba(color, alpha)));
   canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
 }
+
 /** The backdrop layer draws as a grid, not a face — and carries no content. */
 function drawBackdropLayer(
   canvas: SkCanvas,
@@ -416,6 +420,7 @@ function drawBackdropLayer(
     1,
   );
 }
+
 /** Fill a UV sub-rect of a panel. */
 function fillUvQuad(
   canvas: SkCanvas,
@@ -434,6 +439,7 @@ function fillUvQuad(
   paint.setColor(Skia.Color(hexToRgba(color, alpha)));
   canvas.drawPath(uvQuadPath(rect, u0, v0, u1, v1, rect.z, camera), paint);
 }
+
 /** A panel's face, border, pull glow and corner grab-points. */
 function drawPanelFace(
   canvas: SkCanvas,
@@ -508,6 +514,7 @@ function drawPanelFace(
     );
   }
 }
+
 /** The pricing grid: four cells, each with a header band and a live sparkline. */
 function drawMainContent(
   canvas: SkCanvas,
@@ -581,6 +588,7 @@ function drawMainContent(
     }
   }
 }
+
 /** The blotter: a header band and three rows of cells. */
 function drawBlotterContent(
   canvas: SkCanvas,
@@ -633,6 +641,7 @@ function drawBlotterContent(
     }
   }
 }
+
 /** Each panel kind's in-plane content, drawn in the panel's own UV space. */
 function drawPanelContent(
   canvas: SkCanvas,
@@ -737,6 +746,7 @@ function drawPanelContent(
     }
   }
 }
+
 /**
  * The `L0n` tag on a panel's left edge.
  *
@@ -768,6 +778,7 @@ function drawLayerTag(
     font,
   );
 }
+
 /** The inspected panel's scan sweep and its label/depth callout. */
 function drawPulledOverlay(
   canvas: SkCanvas,
@@ -832,6 +843,7 @@ function drawPulledOverlay(
     font,
   );
 }
+
 /**
  * Every panel, back to front.
  *

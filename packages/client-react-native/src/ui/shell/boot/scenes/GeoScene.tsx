@@ -576,6 +576,7 @@ function projectArc(
   const world = tradeArcPoint(from, to, lift, frac);
   return projectBootPoint(world.x, world.y, world.z, camera);
 }
+
 /** Buy/sell trades arcing between capitals. */
 function drawTrades(
   canvas: SkCanvas,
@@ -711,6 +712,7 @@ function drawCityLabel(
     font,
   );
 }
+
 /** The capitals' pulsing volume bars, drawn far→near. */
 function drawCityBars(
   canvas: SkCanvas,
