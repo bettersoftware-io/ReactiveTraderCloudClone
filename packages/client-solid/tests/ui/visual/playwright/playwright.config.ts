@@ -85,11 +85,31 @@ export default defineConfig({
   ...(process.env.SCENARIO_PATTERN
     ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
     : {}),
-  // Cross-runner AA tolerance — copied verbatim from react's playwright.config.ts.
-  // See that file for the full rationale (NOT a temporary mask; settled repo-wide
-  // budget). This tier adds a framework swap on top of react's own cross-runner
-  // AA noise, so it needs at least as much headroom, never less.
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
+  // Cross-framework parity budget. State the number's basis HERE — do not
+  // delegate it to react's config. The previous comment said "copied verbatim
+  // from react's playwright.config.ts, see that file for the full rationale",
+  // which decayed into a lie the moment react's number moved: PR #424 lowered
+  // react to 0.005 on measurement and this tier stayed at 0.06, leaving the
+  // parity gate 12x looser than the tier it claimed to mirror. A pointer to
+  // someone else's rationale is not a rationale.
+  //
+  // What this tier actually asserts is not AA noise: it owns no goldens
+  // (snapshotDir is react's tree above), so every comparison is SOLID's render
+  // judged against REACT's committed golden. The budget is therefore the
+  // literal definition of how far the two clients may diverge before parity is
+  // declared broken. At 0.06 the solid UI could drift 6% of pixels from react
+  // and stay green -- the same blind spot #424 closed on the react side, where
+  // a whole Jarvis re-skin (~0.03) shipped unnoticed.
+  //
+  // The old comment's justification -- "adds a framework swap on top of
+  // react's cross-runner AA noise, so it needs at least as much headroom,
+  // never less" -- was a plausible hypothesis that had never been tested. It
+  // is false: a full visual.yml dispatch of this tier at 0.005 passes the
+  // entire matrix. Parity is exact, so the swap costs no headroom at all.
+  //
+  // Keep this in lockstep with react's config: they are two clients judged
+  // against ONE golden set, and the looser of the two is the real gate.
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ stay
   // INSIDE this package (never cross-package — only the golden read crosses).
   reporter: [
