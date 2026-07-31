@@ -5,7 +5,7 @@ import {
   type ChartVarStyle,
   chartVm,
   volumeVm,
-} from "./chartVm";
+} from "./chartVm.js";
 
 describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
   it("returns empty candles/grid/labels for an empty series", () => {

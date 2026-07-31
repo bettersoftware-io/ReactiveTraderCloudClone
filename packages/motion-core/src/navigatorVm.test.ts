@@ -4,7 +4,7 @@ import {
   navigatorLinePoints,
   navigatorVm,
   navigatorWindowStyle,
-} from "./navigatorVm";
+} from "./navigatorVm.js";
 
 describe("navigatorLinePoints", () => {
   it("returns no points for an empty series", () => {

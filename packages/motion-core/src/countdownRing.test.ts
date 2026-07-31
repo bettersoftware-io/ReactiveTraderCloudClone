@@ -5,7 +5,7 @@ import {
   countdownProgress,
   ringCircumference,
   ringDashOffset,
-} from "./countdownRing";
+} from "./countdownRing.js";
 
 describe("countdownProgress (remaining fraction)", () => {
   it("is 1 at start, 0 at expiry, clamped", () => {

@@ -2,8 +2,8 @@ import { of, throwError } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
-import { rpc } from "#/rpc";
-import type { Inbound } from "#/types";
+import { rpc } from "#/rpc.js";
+import type { Inbound } from "#/types.js";
 
 describe("rpc", () => {
   it("wraps a resolved observable value as an ack with the correlationId", async () => {

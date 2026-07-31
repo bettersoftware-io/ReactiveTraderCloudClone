@@ -2,9 +2,9 @@ import { of, Subject, throwError } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { keyedStream } from "#/keyedStream";
-import { out } from "#/operators";
-import type { Inbound, Outbound } from "#/types";
+import { keyedStream } from "#/keyedStream.js";
+import { out } from "#/operators.js";
+import type { Inbound, Outbound } from "#/types.js";
 
 const SUB = "subscribe.pricing";
 const UNSUB = "unsubscribe.pricing";
