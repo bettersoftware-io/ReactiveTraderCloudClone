@@ -15,4 +15,14 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.ORDER_LIFECYCLE).toBe("stream.orderLifecycle");
     expect(SERVER_MSG.POSITIONS).toBe("stream.positions");
   });
+
+  it("includes the Jarvis wire names", () => {
+    expect(CLIENT_MSG.JARVIS_CHAT).toBe("jarvis.chat");
+    expect(CLIENT_MSG.JARVIS_CONFIRM).toBe("jarvis.confirm");
+    expect(SERVER_MSG.JARVIS_DELTA).toBe("jarvis.delta");
+    expect(SERVER_MSG.JARVIS_TOOL_EVENT).toBe("jarvis.toolEvent");
+    expect(SERVER_MSG.JARVIS_CONFIRM_REQUEST).toBe("jarvis.confirmRequest");
+    expect(SERVER_MSG.JARVIS_DONE).toBe("jarvis.done");
+    expect(SERVER_MSG.JARVIS_ERROR).toBe("jarvis.error");
+  });
 });
