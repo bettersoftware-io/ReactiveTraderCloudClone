@@ -114,6 +114,9 @@ jobs:
       - name: Workspace script coverage (every package wired to the gates)
         run: pnpm check:scripts
 
+      - name: React package coverage (every React package has an explicit policy)
+        run: pnpm check:react-coverage
+
       - name: React Compiler coverage
         run: pnpm check:compiler
 
