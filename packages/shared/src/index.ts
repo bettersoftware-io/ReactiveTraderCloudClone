@@ -36,11 +36,6 @@ export type {
   JarvisConfirmPayload,
   JarvisEvent,
 } from "./jarvis/jarvisEvent.js";
-export type {
-  JarvisIntent,
-  JarvisTradeIntent,
-} from "./jarvis/jarvisIntent.js";
-export { matchJarvisIntent, parseNotional } from "./jarvis/jarvisIntent.js";
 export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
 export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
 export * from "./protocol/auth.js";
