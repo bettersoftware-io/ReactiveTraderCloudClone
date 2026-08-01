@@ -32,6 +32,14 @@ const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
   error: SERVER_MSG.JARVIS_ERROR,
 };
 
+/** `JarvisChatPayload.history` caps — the trust boundary for wire-supplied
+ * history sits here, at the parse seam, before it ever reaches an
+ * `AgentSession` (and, from Task 6, an Anthropic request's token cost).
+ * Deliberately local to this module rather than imported from server config:
+ * these are wire-payload bounds, not runtime tuning. */
+const JARVIS_WIRE_HISTORY_MAX_ENTRIES = 20;
+const JARVIS_WIRE_HISTORY_MAX_TEXT = 2_000;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -40,8 +48,21 @@ function isHistoryEntry(value: unknown): value is JarvisHistoryEntry {
   return (
     isRecord(value) &&
     (value.role === "user" || value.role === "jarvis") &&
-    typeof value.text === "string"
+    typeof value.text === "string" &&
+    value.text.length <= JARVIS_WIRE_HISTORY_MAX_TEXT
   );
+}
+
+/** Keeps only the most recent `JARVIS_WIRE_HISTORY_MAX_ENTRIES` entries —
+ * the tail, not the head, because the newest turns are the ones still
+ * relevant to the model; an over-long history silently drops its oldest
+ * context instead of being rejected outright. */
+function truncateHistory(
+  history: readonly JarvisHistoryEntry[],
+): readonly JarvisHistoryEntry[] {
+  return history.length > JARVIS_WIRE_HISTORY_MAX_ENTRIES
+    ? history.slice(-JARVIS_WIRE_HISTORY_MAX_ENTRIES)
+    : history;
 }
 
 /** Best-effort `turnId` extraction from an otherwise-malformed `jarvis.chat`
@@ -75,7 +96,10 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   return {
     text,
     turnId,
-    history: history as readonly JarvisHistoryEntry[] | undefined,
+    history:
+      history === undefined
+        ? undefined
+        : truncateHistory(history as readonly JarvisHistoryEntry[]),
   };
 }
 
@@ -138,6 +162,17 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
   ): Observable<Outbound> {
     const session = activeLoop.createSession();
 
+    // The turnId of whichever turn `session.runTurn()` currently has open —
+    // set at that turn's subscribe time, cleared in its own `finalize`.
+    // `session.cancelTurn()` is turnId-blind (it cancels whatever is
+    // running), so this is the effect-layer gate that keeps a cancel from
+    // one turn from reaching a DIFFERENT, later turn: the client sends
+    // `jarvis.cancel` on every teardown including normal completion (see
+    // `AgentSession.cancelTurn`'s doc comment), so a stale cancel for an
+    // already-finished turn arriving after a new turn has started must be a
+    // silent no-op rather than killing the new turn mid-stream.
+    let inFlightTurnId: string | undefined;
+
     const jarvisChat$: WsEffect<Ctx> = stream(
       CLIENT_MSG.JARVIS_CHAT,
       (payload): Observable<Outbound> => {
@@ -160,6 +195,8 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
             );
           }
 
+          inFlightTurnId = parsed.turnId;
+
           return session.runTurn(parsed.text, parsed.history ?? []).pipe(
             map((event): Outbound => {
               const { type, ...body } = event;
@@ -167,6 +204,11 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
                 ...body,
                 turnId: parsed.turnId,
               });
+            }),
+            finalize((): void => {
+              if (inFlightTurnId === parsed.turnId) {
+                inFlightTurnId = undefined;
+              }
             }),
           );
         });
@@ -201,7 +243,12 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
             return EMPTY;
           }
 
-          session.cancelTurn();
+          // Stale/mismatched cancel (already-completed or never-started
+          // turnId) — silent no-op, per the doc comment above.
+          if (parsed.turnId === inFlightTurnId) {
+            session.cancelTurn();
+          }
+
           return EMPTY;
         });
       },

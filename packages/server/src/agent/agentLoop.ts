@@ -18,7 +18,13 @@ export interface AgentSession {
     history: readonly JarvisHistoryEntry[],
   ): Observable<JarvisEvent>;
   resolveConfirmation(confirmationId: string, approved: boolean): void;
-  /** Abort the in-flight turn (cancel frame / socket close). Idempotent. */
+  /** Abort the in-flight turn (cancel frame / socket close). Idempotent.
+   * Cancelling emits no terminal frame for the cancelled turn — the client
+   * must have locally completed the turn before sending `jarvis.cancel`
+   * (the adapter completes first, cancels fire-and-forget). Turn
+   * correlation (only cancelling the turn a `jarvis.cancel` actually names)
+   * is the caller's responsibility — see `jarvisEffects`' in-flight-turnId
+   * gate — not this method's, which cancels whatever is currently running. */
   cancelTurn(): void;
   dispose(): void;
 }

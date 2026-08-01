@@ -1,4 +1,4 @@
-import { of, Subject } from "rxjs";
+import { type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Direction } from "@rtc/domain";
@@ -7,6 +7,7 @@ import type {
   JarvisChatPayload,
   JarvisConfirmPayload,
   JarvisEvent,
+  JarvisHistoryEntry,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound } from "@rtc/ws-effects";
@@ -284,6 +285,54 @@ describe("jarvis effects", () => {
     expect(tradeCounts.at(-1)).toBe(seededCount);
   });
 
+  it("a stale jarvis.cancel for an already-completed turn does not kill a later in-flight turn", async () => {
+    const { messages$, sent } = harness();
+
+    // Turn A completes normally.
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "hello", turnId: "turn-a" } satisfies JarvisChatPayload,
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(
+      sent.some((m) => {
+        return (
+          m.type === SERVER_MSG.JARVIS_DONE &&
+          (m.payload as TurnIdCarrier).turnId === "turn-a"
+        );
+      }),
+    ).toBe(true);
+
+    // Turn B starts and is still mid-stream (a quote turn takes several
+    // paced deltas to finish) when the stale cancel for the already-done A
+    // arrives — mirrors Task 7's client sending jarvis.cancel on EVERY
+    // teardown, including a turn that already completed normally.
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "where is EURUSD?",
+        turnId: "turn-b",
+      } satisfies JarvisChatPayload,
+    });
+    await vi.advanceTimersByTimeAsync(500);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CANCEL,
+      payload: { turnId: "turn-a" } satisfies JarvisCancelPayload,
+    });
+
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(
+      sent.some((m) => {
+        return (
+          m.type === SERVER_MSG.JARVIS_DONE &&
+          (m.payload as TurnIdCarrier).turnId === "turn-b"
+        );
+      }),
+    ).toBe(true);
+  });
+
   it("tearing down the outbound stream mid-confirmation makes a late jarvis.confirm a no-op", async () => {
     const { services, messages$, closed$, sent } = harness();
     const turnId = "turn-teardown";
@@ -471,6 +520,155 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
   });
 });
 
+describe("jarvis effects — jarvis.chat history payload handling (stub loop)", () => {
+  it("passes a valid history array through to session.runTurn verbatim", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$ } = stubHarness(loop);
+    const history: JarvisHistoryEntry[] = [{ role: "user", text: "hi" }];
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "irrelevant",
+        turnId: STUB_TURN_ID,
+        history,
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(runTurn).toHaveBeenCalledWith("irrelevant", history);
+  });
+
+  it("omitted history reaches session.runTurn as an empty array", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$ } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "irrelevant",
+        turnId: STUB_TURN_ID,
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(runTurn).toHaveBeenCalledWith("irrelevant", []);
+  });
+
+  it("a history entry with an invalid role is a malformed payload: JARVIS_ERROR carries the turnId, session.runTurn is never called", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "irrelevant",
+        turnId: STUB_TURN_ID,
+        history: [{ role: "nope" }],
+      },
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_ERROR,
+        payload: { turnId: STUB_TURN_ID, message: expect.any(String) },
+      },
+    ]);
+    expect(runTurn).not.toHaveBeenCalled();
+  });
+
+  it("a non-array history is a malformed payload: JARVIS_ERROR carries the turnId, session.runTurn is never called", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "irrelevant", turnId: STUB_TURN_ID, history: "x" },
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_ERROR,
+        payload: { turnId: STUB_TURN_ID, message: expect.any(String) },
+      },
+    ]);
+    expect(runTurn).not.toHaveBeenCalled();
+  });
+
+  it("truncates a history longer than the entry cap to the LAST entries (most recent)", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$ } = stubHarness(loop);
+    const longHistory: JarvisHistoryEntry[] = Array.from(
+      { length: 25 },
+      (_, i) => {
+        return { role: "user", text: `turn-${i}` };
+      },
+    );
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "irrelevant",
+        turnId: STUB_TURN_ID,
+        history: longHistory,
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(runTurn).toHaveBeenCalledWith("irrelevant", longHistory.slice(-20));
+  });
+
+  it("rejects a history entry whose text exceeds the per-entry text cap as a malformed payload", () => {
+    const { loop, runTurn } = createCapturingStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+    const oversized: JarvisHistoryEntry = {
+      role: "user",
+      text: "x".repeat(2_001),
+    };
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "irrelevant",
+        turnId: STUB_TURN_ID,
+        history: [oversized],
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_ERROR,
+        payload: { turnId: STUB_TURN_ID, message: expect.any(String) },
+      },
+    ]);
+    expect(runTurn).not.toHaveBeenCalled();
+  });
+});
+
+describe("jarvis effects — defer() keeps a synchronous session.runTurn throw from killing the connection's effect", () => {
+  it("a session.runTurn that throws synchronously on its first call does not kill the effect: a later turn on the same socket still reaches JARVIS_DONE", () => {
+    const loop = createOnceThrowingStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+
+    expect(() => {
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_CHAT,
+        payload: {
+          text: "first",
+          turnId: "turn-1",
+        } satisfies JarvisChatPayload,
+      });
+    }).not.toThrow();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "second", turnId: "turn-2" } satisfies JarvisChatPayload,
+    });
+
+    expect(sent).toContainEqual({
+      type: SERVER_MSG.JARVIS_DONE,
+      payload: { turnId: "turn-2" },
+    });
+  });
+});
+
 describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () => {
   it.each(
     WIRE_MAPPING_CASES,
@@ -638,6 +836,68 @@ function stubHarness(loop: AgentLoop): StubHarness {
   const socket = createSocket(sent);
   createWsListener(combineEffects(...jarvisEffects(loop)), {} as Ctx)(socket);
   return { messages$: socket.messages$, sent };
+}
+
+interface CapturingStubLoop {
+  readonly loop: AgentLoop;
+  /** The stub session's `runTurn`, so a test can assert exactly what
+   * `(text, history)` args `jarvisEffects` handed it. */
+  readonly runTurn: ReturnType<typeof vi.fn>;
+}
+
+/** A stub `AgentLoop` whose single session's `runTurn` records every call
+ * (args) and completes immediately — used by the history-payload-handling
+ * tests, which only care what reaches `session.runTurn`, not the streamed
+ * reply. */
+function createCapturingStubLoop(): CapturingStubLoop {
+  const runTurn = vi.fn(
+    (
+      _text: string,
+      _history: readonly JarvisHistoryEntry[],
+    ): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({ type: "done" });
+    },
+  );
+
+  const loop: AgentLoop = {
+    createSession: () => {
+      return {
+        runTurn,
+        resolveConfirmation: vi.fn(),
+        cancelTurn: vi.fn(),
+        dispose: vi.fn(),
+      };
+    },
+  };
+  return { loop, runTurn };
+}
+
+/** A stub `AgentLoop` whose single session's `runTurn` throws SYNCHRONOUSLY
+ * on its first call (as a naive, unguarded `AgentLoop` implementation
+ * might) and behaves normally on every later call — proves the `defer()`
+ * wrapper around `session.runTurn(...)` in `jarvisEffects` keeps that throw
+ * from tearing down the whole per-connection effect. */
+function createOnceThrowingStubLoop(): AgentLoop {
+  let calls = 0;
+
+  return {
+    createSession: () => {
+      return {
+        runTurn: (): Observable<JarvisEvent> => {
+          calls += 1;
+
+          if (calls === 1) {
+            throw new Error("boom");
+          }
+
+          return of<JarvisEvent>({ type: "done" });
+        },
+        resolveConfirmation: vi.fn(),
+        cancelTurn: vi.fn(),
+        dispose: vi.fn(),
+      };
+    },
+  };
 }
 
 function findConfirmRequest(sent: readonly Outbound[]): Outbound {
