@@ -21,6 +21,7 @@ import {
   authenticateLoginRequest,
   describeUpgrade,
 } from "./http/loginHandler.js";
+import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
 import {
   createServices,
@@ -86,6 +87,21 @@ const loginRateLimit = createRateLimiter(
   LOGIN_RATE_LIMIT_MAX,
   LOGIN_RATE_LIMIT_WINDOW_MS,
 );
+
+// ── MCP endpoint ────────────────────────────────────────────────
+
+/** MCP-side HITL is the external client's job (Claude Desktop/Code ask
+ * before every write tool), so our layer approves without prompting —
+ * parent spec §3.4's "ungated at our layer" decision. Satisfies `ConfirmGate`
+ * structurally — no explicit annotation needed on a function declaration. */
+function approveWithoutPrompt(): Promise<boolean> {
+  return Promise.resolve(true);
+}
+
+const serveMcp = createMcpRequestHandler({
+  auth,
+  tools: buildJarvisToolsFor(services, approveWithoutPrompt),
+});
 
 function clientIp(req: IncomingMessage): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -153,6 +169,11 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
+  if (req.url === "/mcp" || req.url?.startsWith("/mcp?") === true) {
+    serveMcp(req, res);
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 });
@@ -195,5 +216,6 @@ httpServer.listen(PORT, HOSTNAME, () => {
   console.log(`Server listening on ${HOSTNAME}:${PORT}`);
   console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/health`);
   console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/login`);
+  console.log(`  MCP:   http://${HOSTNAME}:${PORT}/mcp (Streamable HTTP)`);
   console.log(`  WS:    ws://${HOSTNAME}:${PORT}`);
 });
