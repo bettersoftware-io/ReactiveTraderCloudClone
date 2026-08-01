@@ -1043,9 +1043,12 @@ calls is those closures, which already close over the one process-wide
 
 ### Same-process is the point
 
-The tools handed to `buildJarvisMcpServer` are the exact array the WS path's
-`jarvisSessionEffect` closes over too — same `ServiceContainer`, same
-simulators, same blotter. An `execute_trade` call from Claude Code is not
+The tools handed to `buildJarvisMcpServer` come from the same
+`buildJarvisToolsFor` builder over the same `ServiceContainer` the WS path
+uses — same simulators, same blotter. (Not the same *array*: each WS session
+builds its own, because its `ConfirmGate` must close over that session's
+confirmation registry — collapsing the two builds into one shared array would
+break that per-session invariant.) An `execute_trade` call from Claude Code is not
 "an MCP client's own copy of the desk"; it lands in the running application's
 state, and the Task 2 test (`buildJarvisMcpServer.test.ts`, "execute_trade
 through MCP lands the trade on the SAME services' blotter") pins exactly that:
