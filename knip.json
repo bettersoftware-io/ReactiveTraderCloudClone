@@ -18,6 +18,11 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/agent-tools": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts",
+      "ignoreDependencies": ["rxjs"]
+    },
     "packages/devtools-core": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"

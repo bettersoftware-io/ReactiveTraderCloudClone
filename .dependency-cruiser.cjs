@@ -80,6 +80,17 @@ module.exports = {
       to: { path: "^packages/", pathNot: "^packages/ws-effects/" },
     },
     {
+      name: "agent-tools-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/agent-tools is the framework-neutral Jarvis desk-tool package — it may depend only on domain (+ rxjs), never on shared, client-core, a client, bindings, or the server.",
+      from: { path: "^packages/agent-tools/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(agent-tools|domain)/",
+      },
+    },
+    {
       name: "devtools-core-stays-pure",
       severity: "error",
       comment:
