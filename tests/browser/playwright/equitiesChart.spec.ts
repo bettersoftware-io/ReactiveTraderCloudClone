@@ -48,4 +48,16 @@ test.describe("Equities chart", () => {
     await equitiesChart.dragNavigatorRightHandleToLiveEdge(ctx);
     await equitiesChart.expectBackToLiveHiddenWithin(ctx, 3);
   });
+
+  test("panning to the left edge backfills an older page", async ({ ctx }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.recordOldestTimeLabel(ctx, "before");
+    await equitiesChart.focusPlot(ctx);
+    await equitiesChart.pressHome(ctx);
+    // The near-edge trigger fires; the chip may resolve fast in sim mode, so
+    // assert the OUTCOME (older labels), not the transient chip.
+    await equitiesChart.expectOldestTimeLabelOlderThanWithin(ctx, "before", 5);
+  });
 });

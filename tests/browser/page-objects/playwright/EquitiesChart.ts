@@ -30,6 +30,10 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await this.plot().press("ArrowLeft");
   }
 
+  async pressHome(): Promise<void> {
+    await this.plot().press("Home");
+  }
+
   async waitBackToLiveVisible(timeoutMs: number): Promise<void> {
     await expect(this.backToLive()).toBeVisible({ timeout: timeoutMs });
   }
@@ -46,6 +50,26 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     return await this.page
       .getByTestId(TESTIDS.equities.chart.timeLabel)
       .allTextContents();
+  }
+
+  async oldestTimeLabel(): Promise<string> {
+    const text = await this.page
+      .getByTestId(TESTIDS.equities.chart.timeLabel)
+      .first()
+      .textContent();
+    return text ?? "";
+  }
+
+  async waitLoadingOlderVisible(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.equities.chart.loadingOlder),
+    ).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async waitLoadingOlderHidden(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.equities.chart.loadingOlder),
+    ).toBeHidden({ timeout: timeoutMs });
   }
 
   async waitNavigatorVisible(timeoutMs: number): Promise<void> {
