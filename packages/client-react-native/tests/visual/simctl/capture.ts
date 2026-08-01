@@ -24,6 +24,9 @@ const APP_BUNDLE_ID = "io.bettersoftware.rtcmobile";
  * Metro bundle. */
 const APP_SCHEME = "rtcmobile";
 
+/** Pinned into the status bar before every capture — see `pinStatusBar`. */
+const STATUS_BAR_TIME = "09:41";
+
 const DEFAULT_METRO_PORT = "8083";
 const DEFAULT_IDB_PATH = "idb";
 
@@ -194,6 +197,7 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
       // run was driving a dead app. Terminating first makes each capture
       // independent of what the previous one left on screen — the property a
       // golden harness needs anyway.
+      await pinStatusBar(cfg.udid);
       await terminateApp(cfg.udid);
       await openMetroBase(cfg.udid, metroPort);
       await waitForAppBoot(idbPath, cfg.udid, {
@@ -228,6 +232,48 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
       return screenshot(cfg.udid, scenarioId);
     },
   };
+}
+
+/**
+ * Freeze the iOS status bar, which is IN FRAME on every capture.
+ *
+ * Its clock advances every minute, so each golden otherwise bakes in a
+ * wall-clock that can never reproduce — the same class of defect that kept
+ * `boot/topo` out of the harness entirely, sitting unnoticed in the chrome of
+ * all fourteen scenarios. Battery, wifi and cellular are pinned too: battery
+ * level drifts and the cellular glyph is not stable across boots.
+ *
+ * 9:41 is Apple's own screenshot convention, chosen here only because it is
+ * conventional and obviously deliberate to a reader.
+ *
+ * Best-effort: an older `simctl` without `status_bar` should degrade to a
+ * noisier golden, never to a failed run.
+ */
+async function pinStatusBar(udid: string): Promise<void> {
+  try {
+    await exec("xcrun", [
+      "simctl",
+      "status_bar",
+      udid,
+      "override",
+      "--time",
+      STATUS_BAR_TIME,
+      "--batteryState",
+      "charged",
+      "--batteryLevel",
+      "100",
+      "--cellularMode",
+      "active",
+      "--cellularBars",
+      "4",
+      "--wifiMode",
+      "active",
+      "--wifiBars",
+      "3",
+    ]);
+  } catch {
+    // Status-bar overrides are unavailable — capture anyway.
+  }
 }
 
 /** Best-effort: `simctl terminate` exits non-zero when the app is not

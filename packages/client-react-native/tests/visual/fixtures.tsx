@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { PositionUpdates } from "@rtc/domain";
 
@@ -48,8 +49,41 @@ export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
         width={width}
         height={height}
         theme={theme}
+        now={PINNED_WALL_CLOCK}
       />
     </Canvas>
+  );
+}
+
+/**
+ * Drops screen CONTENT below the status bar, the way `ShellHeader` does in the
+ * app.
+ *
+ * WRAP ANY SCENARIO THAT MOUNTS A SCREEN'S CONTENT. Every scenario renders
+ * under `VisualScenarioHost` alone — there is no `ShellHeader` above it — so a
+ * module mounted bare starts at y=0 and its first row lands under the clock
+ * and the dynamic island. Three goldens were captured that way and nobody
+ * noticed, because a diff against an equally-wrong baseline is green:
+ * `blotter/seeded` lost its filter chips and fills summary, and
+ * `shell/connection-banner` lost the "Live" pill behind the clock.
+ *
+ * DO NOT wrap a deliberately full-bleed surface: `boot/*` (the app's
+ * `BootCanvas` really is edge-to-edge behind the chrome), `lock/hold`
+ * (`LockScreen` centres its content over the whole screen) and
+ * `shell/appearance` (a modal overlay). Insetting those would make the golden
+ * assert a frame the app never draws — the same defect, mirrored.
+ */
+export function ScreenContentFixture({
+  children,
+}: ScreenContentProps): ReactNode {
+  const insets = useSafeAreaInsets();
+
+  // `flex: 1` is load-bearing, not tidiness. Without it this view takes its
+  // children's intrinsic height, and a module that fills its parent
+  // (`BlotterModule`'s list) collapses to nothing — the first capture with
+  // this wrapper came back an empty screen.
+  return (
+    <View style={[styles.fill, { paddingTop: insets.top }]}>{children}</View>
   );
 }
 
@@ -73,9 +107,11 @@ export function AnalyticsDashboardFixture(): ReactNode {
     // Mirrors `AnalyticsScreen`'s ScrollView `contentContainerStyle`. The one
     // thing this fixture restates rather than shares; the cards themselves are
     // the real component.
-    <View style={styles.content}>
-      <AnalyticsDashboard data={PINNED_BOOK} />
-    </View>
+    <ScreenContentFixture>
+      <View style={styles.content}>
+        <AnalyticsDashboard data={PINNED_BOOK} />
+      </View>
+    </ScreenContentFixture>
   );
 }
 
@@ -86,17 +122,29 @@ export function LockHoldFixture(): ReactNode {
   // `gesture` prop.
   const gesture = Gesture.LongPress();
 
+  // Centred, mirroring `LockScreen`'s `scrollContent`. Without it the ring
+  // renders at the top of the screen and the dynamic island covers all but a
+  // sliver of the arc — which is what the previous golden pinned, defeating
+  // the whole point of `LOCK_HOLD_PROGRESS` being a PARTIAL fill. `LockScreen`
+  // itself cannot be mounted here: it renders null unless the session is
+  // locked, and locking it would need a real auth round-trip.
   return (
-    <HoldToUnlockRing
-      gesture={gesture}
-      progress={progress}
-      onPress={(): void => {}}
-    />
+    <View style={styles.centred}>
+      <HoldToUnlockRing
+        gesture={gesture}
+        progress={progress}
+        onPress={(): void => {}}
+      />
+    </View>
   );
 }
 
 interface BootSceneFixtureProps {
   readonly Scene: BootSceneComponent;
+}
+
+interface ScreenContentProps {
+  readonly children: ReactNode;
 }
 
 /** A representative mid-boot instant — 60% of `BOOT_DURATION_MS` (4200ms) —
@@ -107,13 +155,31 @@ interface BootSceneFixtureProps {
  * shows settled geometry, not a blank first frame. */
 const BOOT_SCENE_ELAPSED_SEC = 2.52;
 
+/** The wall clock every boot scene is captured against.
+ *
+ * Only `TopoScene` draws it (a footer stamp), and it is the sole reason
+ * `boot/topo` could not be a golden: the scene samples `new Date()` at mount,
+ * so two captures minutes apart differ and the golden could never reproduce
+ * itself. Passed to every scene rather than just `topo` — a scene that starts
+ * printing the clock later then inherits a pinned one instead of silently
+ * becoming unreproducible.
+ *
+ * Constructed from explicit LOCAL-time components, never a UTC string: the
+ * scene renders via `getFullYear`/`getHours`/…, so a `Date` parsed from
+ * `"…Z"` would stamp differently on a runner in another timezone and the
+ * golden would be machine-dependent — a subtler version of the very
+ * non-determinism this pin removes. */
+const PINNED_WALL_CLOCK = new Date(2026, 6, 27, 9, 41, 7);
+
 /** A representative mid-hold fill — clear of both the empty and the complete
  * edge values, so the golden actually proves the ring's dash-offset math
  * paints a partial arc rather than an all-or-nothing state. */
 const LOCK_HOLD_PROGRESS = 0.55;
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   content: { flex: 1, padding: 16, gap: 20 },
+  centred: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
 
 /**
