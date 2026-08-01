@@ -104,6 +104,7 @@ export function TopoScene({
   width,
   height,
   theme,
+  now: pinnedNow,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
@@ -134,13 +135,16 @@ export function TopoScene({
   // instance) captures `Date.now()` exactly once and every later render
   // reads the same captured value, regardless of how many times the
   // component re-renders in between.
+  // A pinned `now` (the visual harness) wins outright and is never sampled
+  // from, so a capture is reproducible; production passes nothing and gets the
+  // mount-time sample.
   const mountTimeRef = useRef<Date | null>(null);
 
   if (mountTimeRef.current === null) {
     mountTimeRef.current = new Date();
   }
 
-  const now = mountTimeRef.current;
+  const now = pinnedNow ?? mountTimeRef.current;
   const stamp = topoTimestamp(
     now.getFullYear(),
     now.getMonth() + 1,

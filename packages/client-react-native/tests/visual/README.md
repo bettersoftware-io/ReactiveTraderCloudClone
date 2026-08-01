@@ -82,6 +82,32 @@ Debugging a single scenario without touching goldens: `tsx tests/visual/simctl/r
 
 See **`BAKEOFF.md`** for the full three-tier comparison (owl is not viable on SDK 57 / RN 0.86 / React 19 / new-arch), the injected-paint-bug detection proof, and known capture artifacts (status-bar clock, dev-tools gear).
 
+## Adding a scenario: two things that make a golden assert nothing
+
+Both were found on 2026-08-01 by *looking at* the PNGs, after a year of green
+diffs. A diff against an equally-wrong baseline is green, so neither the tier
+nor its reproduction percentage can surface them — only eyes can.
+
+**1. Wrap screen content in `ScreenContentFixture`.** A scenario mounts under
+`VisualScenarioHost` alone; there is no `ShellHeader` above it, so a module
+mounted bare starts at `y=0` and its first row lands under the status bar and
+the dynamic island. `blotter/seeded` was captured for months with its
+**`PENDING` filter chip entirely hidden** — the golden asserted a blotter with
+three filters instead of four. `shell/connection-banner` lost its "Live" pill,
+and `analytics/dashboard` lost its "P&L" title.
+
+Do **not** wrap a genuinely full-bleed surface — `boot/*` (the app's
+`BootCanvas` really is edge-to-edge), `lock/hold` (`LockScreen` centres over
+the whole screen) or `shell/appearance` (a modal overlay). Insetting those
+would pin a frame the app never draws: the same defect mirrored.
+
+**2. Mount the leaf where the app puts it.** `LockHoldFixture` mounted the
+progress ring bare, so it rendered at the top of the screen with the dynamic
+island covering all but a sliver of the arc — while `LOCK_HOLD_PROGRESS = 0.55`
+exists precisely so the golden proves a *partial* fill. The fixture now centres
+it the way `LockScreen` does. When a fixture mounts a leaf instead of a screen,
+restate the container's layout, not just its data.
+
 ## Troubleshooting
 
 **Metro red box `[Worklets] Babel plugin exception: … reading 'length'`** while

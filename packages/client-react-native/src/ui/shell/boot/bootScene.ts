@@ -39,6 +39,21 @@ export interface BootSceneProps {
    * View). `BootCanvas` reads the theme outside the Canvas and threads it in.
    */
   readonly theme: RnTheme;
+  /**
+   * Wall-clock instant a scene may print, injected so a capture can pin it.
+   *
+   * Only `TopoScene` reads it — its footer stamp is the one place any scene
+   * shows the real clock. Omitted in production: `BootCanvas` never passes it
+   * and the scene falls back to sampling `new Date()` once at mount, which is
+   * what a live boot should show.
+   *
+   * It exists because a live clock was the ONE thing that made a scene
+   * ungoldenable — two captures minutes apart differ, so `boot/topo` sat out
+   * of `SCENARIO_IDS` entirely. Pinning it keeps the port faithful; the
+   * alternative considered was dropping the footer stamp from the scenario,
+   * which would have made the golden assert a frame the app never draws.
+   */
+  readonly now?: Date;
 }
 
 export type BootSceneComponent = (props: BootSceneProps) => JSX.Element;
