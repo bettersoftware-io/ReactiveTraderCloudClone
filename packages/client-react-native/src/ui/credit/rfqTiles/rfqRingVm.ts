@@ -5,8 +5,10 @@ import { ringDashOffset } from "@rtc/motion-core";
  * why that literal never appears in our code. */
 export const RFQ_RING_RADIUS = 13;
 
-/** The prototype flips the ring to the negative accent under ten seconds. */
-export const RFQ_RING_URGENT_MS = 10_000;
+/** The prototype flips the ring to the negative accent under ten seconds.
+ * Module-local: the threshold is `rfqRingVm`'s business, and every caller wants
+ * the resulting `isUrgent` rather than the number. */
+const RFQ_RING_URGENT_MS = 10_000;
 
 export interface RfqRingVm {
   readonly dashOffset: number;
