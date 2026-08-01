@@ -60,4 +60,14 @@ export const SCENARIO_IDS = [
   // so the bars' and bubbles' entry tweens hold at rest. Both halves are
   // required; pinned data alone would still be captured mid-tween.
   "analytics/dashboard",
+  // Phase 5a Task 10: the rebuilt Credit surfaces. `credit/rfq-tiles-empty`
+  // was dropped above for non-determinism; these two qualify because they pin
+  // BOTH halves of it — literal RFQs/quotes (mounting `RfqCard`/
+  // `SellSideTicket`, not the seam-reading panels) AND `pinnedRemainingMs`,
+  // which overrides the live `useRfqCountdown` clock that would otherwise make
+  // the ring and its seconds readout differ between any two captures. Each
+  // also seeds power-saver `freeze`, without which the ring's 1s glide and the
+  // ACCEPT halo can be caught mid-flight.
+  "credit/rfq-tiles",
+  "credit/sell-side",
 ] as const;

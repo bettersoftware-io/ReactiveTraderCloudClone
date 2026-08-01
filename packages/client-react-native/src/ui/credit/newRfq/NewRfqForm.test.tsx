@@ -30,24 +30,19 @@ const DEALERS: readonly Dealer[] = [
   { id: 2, name: "Bank B" },
 ];
 
-test("submit is disabled until an instrument and a positive quantity are set", async () => {
+test("broadcast is inert until an instrument and a quantity chip are chosen", async () => {
   const submit = jest.fn<SubmitFn>();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(submit, { status: "editing" })}>
-      <NewRfqForm onCreated={(): void => {}} />
-    </ViewModelProvider>,
-  );
+  await renderEditingForm(submit);
+
   // No instrument / no quantity yet.
   void fireEvent.press(screen.getByTestId("rfq-submit"));
   expect(submit).not.toHaveBeenCalled();
 
-  // Pick an instrument + a quantity.
-  await fireEvent.changeText(
-    screen.getByTestId("instrument-search-input"),
-    "acme",
-  );
-  await fireEvent.press(screen.getByTestId("instrument-result-1"));
-  await fireEvent.changeText(screen.getByTestId("quantity-input"), "25");
+  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  expect(submit).not.toHaveBeenCalled();
+
+  await fireEvent.press(screen.getByTestId("quantity-chip-5000000"));
   void fireEvent.press(screen.getByTestId("rfq-submit"));
 
   expect(submit).toHaveBeenCalledTimes(1);
@@ -55,9 +50,36 @@ test("submit is disabled until an instrument and a positive quantity are set", a
   expect(input).toEqual({
     instrumentId: 1,
     dealerIds: [1, 2],
-    quantity: 25,
+    quantity: 5_000_000,
     direction: Direction.Buy,
   });
+});
+
+// The dealer picker is gone (Phase 5 design §5a) — every RFQ streams to the
+// whole panel. This is the assertion that would catch an empty `dealerIds`
+// slipping through, which the seam would reject.
+test("broadcasts to every dealer with no picker in the form", async () => {
+  const submit = jest.fn<SubmitFn>();
+  await renderEditingForm(submit);
+
+  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
+  await fireEvent.press(screen.getByTestId("quantity-chip-1000000"));
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+
+  expect(submit.mock.calls[0][0].dealerIds).toEqual([1, 2]);
+  expect(screen.getByText("STREAMS TO 2 DEALERS · 45S WINDOW")).toBeTruthy();
+});
+
+test("sell direction rides through to the submitted rfq", async () => {
+  const submit = jest.fn<SubmitFn>();
+  await renderEditingForm(submit);
+
+  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
+  await fireEvent.press(screen.getByTestId("quantity-chip-1000000"));
+  await fireEvent.press(screen.getByTestId(`rfq-direction-${Direction.Sell}`));
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+
+  expect(submit.mock.calls[0][0].direction).toBe(Direction.Sell);
 });
 
 test("renders the confirmed card in the confirmed state", async () => {
@@ -73,6 +95,14 @@ test("renders the confirmed card in the confirmed state", async () => {
     exact: false,
   });
 });
+
+function renderEditingForm(submit: SubmitFn): Promise<unknown> {
+  return renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(submit, { status: "editing" })}>
+      <NewRfqForm onCreated={(): void => {}} />
+    </ViewModelProvider>,
+  );
+}
 
 type SubmitFn = (
   input: CreateRfqInput,

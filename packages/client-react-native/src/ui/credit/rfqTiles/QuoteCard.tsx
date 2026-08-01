@@ -10,17 +10,25 @@ import {
 
 import type { Dealer, Quote } from "@rtc/domain";
 
-import { SurfaceCard } from "#/ui/SurfaceCard";
-import { SPACING } from "#/ui/theme/spacing";
+import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
+import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
+/** One dealer's line inside an RFQ card. The prototype draws these as flat rows
+ * separated by a hairline rather than nested cards (dc.html:241-250), with the
+ * winning row tinted and its ACCEPT button haloed — `isBest` is decided once
+ * per RFQ by `findBestQuoteId`, not re-derived here, so both clients agree on
+ * the winner. Unpriced dealers show a breathing `AWAITING…` instead of a
+ * price, which is what makes a slow dealer visibly distinct from a passed one. */
 export function QuoteCard({
   quote,
   dealer,
+  isBest = false,
   onAccept,
 }: QuoteCardProps): JSX.Element {
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept != null;
+  const awaiting = quote.state.type === "pendingWithoutPrice";
   const styles = useThemedStyles(makeStyles);
 
   function acceptPendingQuote(): void {
@@ -30,33 +38,43 @@ export function QuoteCard({
   }
 
   return (
-    <SurfaceCard
-      variant="panel"
-      style={styles.quoteCard}
+    <View
+      style={[styles.row, isBest ? styles.rowBest : null]}
       testID={`quote-card-${quote.id}`}
     >
-      <View style={styles.info}>
-        <Text style={styles.dealerName}>
-          {dealer?.name ?? `Dealer ${quote.dealerId}`}
+      <Text style={styles.dealerName} numberOfLines={1}>
+        {dealer?.name ?? `Dealer ${quote.dealerId}`}
+      </Text>
+      {awaiting ? (
+        <AwaitingLabel />
+      ) : (
+        <Text style={isBest ? styles.priceBest : styles.priceText}>
+          {displayText(quote.state)}
         </Text>
-        <Text style={styles.priceText}>{displayText(quote.state)}</Text>
-      </View>
+      )}
       {canAccept ? (
-        <Pressable
-          testID={`quote-accept-${quote.id}`}
-          style={styles.acceptBtn}
-          onPress={acceptPendingQuote}
-        >
-          <Text style={styles.acceptLabel}>Accept</Text>
-        </Pressable>
+        <View style={styles.acceptWrap}>
+          {isBest ? <AcceptPulse /> : null}
+          <Pressable
+            testID={`quote-accept-${quote.id}`}
+            style={isBest ? styles.acceptBtnBest : styles.acceptBtn}
+            onPress={acceptPendingQuote}
+          >
+            <Text style={isBest ? styles.acceptLabelBest : styles.acceptLabel}>
+              ACCEPT
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
-    </SurfaceCard>
+    </View>
   );
 }
 
 interface QuoteCardProps {
   quote: Quote;
   dealer: Dealer | undefined;
+  /** Best price for this RFQ's direction — tinted row + haloed ACCEPT. */
+  isBest?: boolean;
   onAccept?: (quoteId: number) => void | Promise<void>;
 }
 
@@ -75,40 +93,70 @@ function displayText(state: Quote["state"]): string {
 }
 
 interface QuoteCardStyles {
-  quoteCard: ViewStyle;
-  info: ViewStyle;
+  row: ViewStyle;
+  rowBest: ViewStyle;
   dealerName: TextStyle;
   priceText: TextStyle;
+  priceBest: TextStyle;
+  acceptWrap: ViewStyle;
   acceptBtn: ViewStyle;
+  acceptBtnBest: ViewStyle;
   acceptLabel: TextStyle;
+  acceptLabelBest: TextStyle;
 }
 
 function makeStyles(t: RnTheme): QuoteCardStyles {
+  // dc.html:242 — `padding: 6px 0 5px`, a `--border-sub` top rule, and the
+  // row bled to the card's edges. `ACCEPT` is 8.5px/700/ls 1.5 with
+  // `padding: 7px 11px` and `radius 7` (dc.html:246).
+  const price: TextStyle = {
+    fontSize: 12,
+    fontWeight: "600",
+    color: t.textSecondary,
+    fontFamily: t.fontMono,
+  };
+
+  const acceptBtn: ViewStyle = {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 7,
+    backgroundColor: t.bgSecondary,
+  };
+
+  const acceptLabel: TextStyle = {
+    fontSize: 8.5,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    fontFamily: t.fontMono,
+    color: t.textSecondary,
+  };
+
   return StyleSheet.create({
-    quoteCard: {
+    row: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: SPACING.sm,
-      paddingHorizontal: 10,
+      gap: 8,
+      paddingTop: 6,
+      paddingBottom: 5,
+      paddingHorizontal: 12,
+      marginHorizontal: -12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.borderSubtle,
     },
-    info: { gap: 2 },
+    rowBest: { backgroundColor: t.bgSecondary },
     dealerName: {
-      fontSize: 13,
-      color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      flex: 1,
+      fontSize: 9,
+      letterSpacing: 0.8,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
     },
-    priceText: { fontSize: 13, color: t.textSecondary, fontFamily: t.fontMono },
-    acceptBtn: {
-      paddingHorizontal: SPACING.md,
-      paddingVertical: 6,
-      borderRadius: 6,
-      backgroundColor: t.accentPositive,
-    },
-    acceptLabel: {
-      fontSize: 12,
-      color: t.textOnAccent,
-      fontFamily: t.fontDisplay,
-    },
+    priceText: price,
+    priceBest: { ...price, color: t.accentPositive },
+    acceptWrap: { position: "relative" },
+    acceptBtn,
+    acceptBtnBest: { ...acceptBtn, backgroundColor: t.accentPositive },
+    acceptLabel,
+    acceptLabelBest: { ...acceptLabel, color: t.textOnAccent },
   });
 }

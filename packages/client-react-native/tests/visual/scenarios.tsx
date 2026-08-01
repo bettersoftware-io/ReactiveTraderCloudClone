@@ -17,6 +17,8 @@ import type { Scenario } from "./driver";
 import {
   AnalyticsDashboardFixture,
   BootSceneFixture,
+  CreditRfqTilesFixture,
+  CreditSellSideFixture,
   LockHoldFixture,
   ScreenContentFixture,
 } from "./fixtures";
@@ -297,6 +299,35 @@ export const SCENARIOS: readonly Scenario[] = [
         // `animatedBackground`, which gates the ambient layer alone.
         <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
           <AnalyticsDashboardFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "credit/rfq-tiles",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // `powerSaverLevel="freeze"` is load-bearing, exactly as for
+        // `analytics/dashboard`: it is the only gate that holds the countdown
+        // ring's 1s glide and the best-quote ACCEPT halo at rest.
+        // `forceReduceMotion` seeds `animatedBackground`, which gates the
+        // ambient layer alone and touches neither.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <CreditRfqTilesFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "credit/sell-side",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <CreditSellSideFixture />
         </VisualScenarioHost>
       );
     },

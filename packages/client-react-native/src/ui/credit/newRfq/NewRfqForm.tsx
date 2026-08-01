@@ -10,12 +10,11 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Direction, type Instrument } from "@rtc/domain";
+import { Direction } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
-import { DealerSelection } from "#/ui/credit/newRfq/DealerSelection";
-import { InstrumentSearch } from "#/ui/credit/newRfq/InstrumentSearch";
-import { QuantityInput } from "#/ui/credit/newRfq/QuantityInput";
+import { InstrumentChipGrid } from "#/ui/credit/newRfq/InstrumentChipGrid";
+import { QuantityChips } from "#/ui/credit/newRfq/QuantityChips";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -28,42 +27,39 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
   const { submit } = submission;
   const styles = useThemedStyles(makeStyles);
 
-  const [instrument, setInstrument] = useState<Instrument | null>(null);
+  const [instrumentId, setInstrumentId] = useState<number | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
-  const [quantity, setQuantity] = useState("");
-  const [dealerOverride, setDealerOverride] = useState<Set<number> | null>(
-    null,
-  );
+  const [quantity, setQuantity] = useState<number | null>(null);
 
   const submitting = submission.state.status === "submitting";
+  const instrument =
+    instruments.find((i) => {
+      return i.id === instrumentId;
+    }) ?? null;
 
-  const allDealerIds = new Set(
-    dealers.map((d) => {
-      return d.id;
-    }),
-  );
+  // The prototype broadcasts to the whole dealer panel — there is no picker
+  // (Phase 5 design §5a). The seam still requires a non-empty `dealerIds`, so
+  // "every dealer" is sent explicitly rather than left to a server default.
+  const allDealerIds = dealers.map((d) => {
+    return d.id;
+  });
 
-  const selectedDealerIds =
-    dealerOverride && dealerOverride.size > 0 ? dealerOverride : allDealerIds;
-
-  const quantityNum = parseFloat(quantity);
   const canSubmit =
     instrument !== null &&
-    !Number.isNaN(quantityNum) &&
-    quantityNum > 0 &&
-    selectedDealerIds.size > 0 &&
+    quantity !== null &&
+    allDealerIds.length > 0 &&
     !submitting;
 
   function submitRfq(): void {
-    if (!canSubmit || !instrument) {
+    if (!canSubmit || instrument === null || quantity === null) {
       return;
     }
 
     submit(
       {
         instrumentId: instrument.id,
-        dealerIds: [...selectedDealerIds],
-        quantity: quantityNum,
+        dealerIds: allDealerIds,
+        quantity,
         direction,
       },
       onCreated,
@@ -89,14 +85,14 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
     >
       <Text style={styles.formTitle}>New RFQ</Text>
 
-      <InstrumentSearch
+      <InstrumentChipGrid
         instruments={instruments}
-        selected={instrument}
-        onSelect={setInstrument}
+        selectedId={instrumentId}
+        onSelect={setInstrumentId}
       />
 
       <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Direction</Text>
+        <Text style={styles.fieldLabel}>DIRECTION</Text>
         <View style={styles.directionRow}>
           {DIRECTIONS.map((dir) => {
             const active = direction === dir;
@@ -122,24 +118,23 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
         </View>
       </View>
 
-      <QuantityInput value={quantity} onChange={setQuantity} />
+      <QuantityChips selected={quantity} onSelect={setQuantity} />
 
-      <DealerSelection
-        dealers={dealers}
-        selectedIds={selectedDealerIds}
-        onChange={setDealerOverride}
-      />
-
-      <Pressable
-        testID="rfq-submit"
-        disabled={!canSubmit}
-        style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
-        onPress={submitRfq}
-      >
-        <Text style={styles.submitLabel}>
-          {submitting ? "Submitting..." : "Submit RFQ"}
+      <View style={styles.broadcast}>
+        <Pressable
+          testID="rfq-submit"
+          disabled={!canSubmit}
+          style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
+          onPress={submitRfq}
+        >
+          <Text style={styles.submitLabel}>
+            {submitting ? "BROADCASTING…" : "⟟ BROADCAST RFQ"}
+          </Text>
+        </Pressable>
+        <Text style={styles.broadcastNote}>
+          STREAMS TO {allDealerIds.length} DEALERS · {RFQ_WINDOW_SECS}S WINDOW
         </Text>
-      </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -150,8 +145,15 @@ interface NewRfqFormProps {
 
 const DIRECTIONS: readonly Direction[] = [Direction.Buy, Direction.Sell];
 
+/** The quote window the desk broadcasts on, shown in the footer note
+ * (dc.html:285). The server owns the real expiry; this is the copy that tells
+ * the operator what they are committing to. */
+const RFQ_WINDOW_SECS = 45;
+
 interface NewRfqFormStyles {
   form: ViewStyle;
+  broadcast: ViewStyle;
+  broadcastNote: TextStyle;
   content: ViewStyle;
   formTitle: TextStyle;
   field: ViewStyle;
@@ -172,6 +174,14 @@ interface NewRfqFormStyles {
 function makeStyles(t: RnTheme): NewRfqFormStyles {
   return StyleSheet.create({
     form: { flex: 1, backgroundColor: t.bgPrimary },
+    broadcast: { gap: 10 },
+    broadcastNote: {
+      fontSize: 8.5,
+      letterSpacing: 1,
+      textAlign: "center",
+      color: t.textMuted,
+      fontFamily: t.fontMono,
+    },
     content: { padding: 16, gap: 16 },
     formTitle: {
       fontSize: 16,
@@ -217,21 +227,23 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     },
     submitBtn: {
       alignItems: "center",
-      paddingVertical: SPACING.lg,
-      borderRadius: 6,
+      paddingVertical: 14,
+      borderRadius: 11,
       backgroundColor: t.accentPrimary,
     },
     submitBtnDisabled: {
       alignItems: "center",
-      paddingVertical: SPACING.lg,
-      borderRadius: 6,
+      paddingVertical: 14,
+      borderRadius: 11,
       backgroundColor: t.bgSecondary,
       opacity: 0.5,
     },
     submitLabel: {
-      fontSize: 14,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 3,
       color: t.textOnAccent,
-      fontFamily: t.fontDisplay,
+      fontFamily: t.fontMono,
     },
     confirmedCard: {
       margin: 16,

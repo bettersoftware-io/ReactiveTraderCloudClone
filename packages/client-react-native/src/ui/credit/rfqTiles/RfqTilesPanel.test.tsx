@@ -1,7 +1,10 @@
 import { expect, test } from "@jest/globals";
 import { fireEvent, screen } from "@testing-library/react-native";
+import type { JSX } from "react";
+import { useState } from "react";
 
 import {
+  type CreditRfqFilter,
   type Dealer,
   Direction,
   type Instrument,
@@ -34,9 +37,9 @@ test("defaults to the Live filter and lists open RFQs", async () => {
   expect(screen.queryByTestId("rfq-card-2")).toBeNull();
 });
 
-test("switching to All reveals closed RFQs", async () => {
+test("switching to ALL reveals closed RFQs", async () => {
   await renderPanel({ rfqs: [rfq(1, RfqState.Open), rfq(2, RfqState.Closed)] });
-  await fireEvent.press(screen.getByTestId("rfq-filter-All"));
+  await fireEvent.press(screen.getByTestId("rfq-filter-all"));
   expect(screen.getByTestId("rfq-card-2")).toBeTruthy();
 });
 
@@ -45,9 +48,16 @@ test("empty state when no RFQs match", async () => {
   expect(screen.getByTestId("credit-tiles-empty")).toBeTruthy();
 });
 
+test("renders one card per matching rfq", async () => {
+  await renderPanel({
+    rfqs: [rfq(1, RfqState.Open), rfq(2, RfqState.Open), rfq(3, RfqState.Open)],
+  });
+  expect(screen.getAllByTestId(/^rfq-card-/)).toHaveLength(3);
+});
+
 test("dismissing a closed RFQ removes it from the list", async () => {
   await renderPanel({ rfqs: [rfq(2, RfqState.Closed)] });
-  await fireEvent.press(screen.getByTestId("rfq-filter-All"));
+  await fireEvent.press(screen.getByTestId("rfq-filter-all"));
   expect(screen.getByTestId("rfq-card-2")).toBeTruthy();
   await fireEvent.press(screen.getByTestId("rfq-dismiss-2"));
   expect(screen.queryByTestId("rfq-card-2")).toBeNull();
@@ -68,9 +78,13 @@ function rfq(id: number, state: RfqState): Rfq {
 interface FakeOpts {
   rfqs: readonly Rfq[];
   accept?: (id: number) => Promise<void>;
+  filter?: CreditRfqFilter;
 }
 
-function fakeViewModel(opts: FakeOpts): ViewModel {
+function fakeViewModel(
+  opts: FakeOpts,
+  filterPref: CreditRfqFilterPref,
+): ViewModel {
   return {
     useRfqs: () => {
       return opts.rfqs;
@@ -95,13 +109,42 @@ function fakeViewModel(opts: FakeOpts): ViewModel {
     useRfqCountdown: () => {
       return 60_000;
     },
+    // The countdown ring's motion gate reads power-saver off the same seam.
+    usePowerSaver: () => {
+      return { isFreeze: false };
+    },
+    // The RFQ filter is a shared preference now, not panel-local state. Both
+    // the panel and its tabs call this hook, so the fake must hand them the
+    // SAME value — a per-call `useState` would give each its own copy and the
+    // tabs would silently stop driving the list.
+    useCreditRfqFilterPreference: () => {
+      return filterPref;
+    },
   } as unknown as ViewModel;
 }
 
+interface CreditRfqFilterPref {
+  filter: CreditRfqFilter;
+  setFilter: (next: CreditRfqFilter) => void;
+}
+
+/** Holds the shared filter in real React state so a tab press re-renders the
+ * whole subtree, exactly as the preference stream does in the app. */
 function renderPanel(opts: FakeOpts): Promise<unknown> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(opts)}>
-      <RfqTilesPanel />
-    </ViewModelProvider>,
-  );
+  // Declared INSIDE the helper, as `useRowInsertFlash.test.tsx` does: Biome's
+  // `useComponentExportOnlyModules` rejects a top-level unexported component in
+  // a module that also holds non-components, which every test file does.
+  function PanelHarness(): JSX.Element {
+    const [filter, setFilter] = useState<CreditRfqFilter>(
+      opts.filter ?? "live",
+    );
+
+    return (
+      <ViewModelProvider viewModel={fakeViewModel(opts, { filter, setFilter })}>
+        <RfqTilesPanel />
+      </ViewModelProvider>
+    );
+  }
+
+  return renderWithTheme(<PanelHarness />);
 }
