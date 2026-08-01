@@ -71,6 +71,9 @@ function fakeViewModel(): ViewModel {
     usePowerSaver: () => {
       return { isFreeze: false };
     },
+    useCreditRfqFilterPreference: () => {
+      return { filter: "live", setFilter: () => {} };
+    },
   } as unknown as ViewModel;
 }
 

@@ -19,19 +19,24 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
-import { filterRfqs, type RfqFilter } from "#/ui/credit/rfqTiles/rfqTileFilter";
+import { filterRfqs } from "#/ui/credit/rfqTiles/rfqTileFilter";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 export function RfqTilesPanel(): JSX.Element {
-  const { useRfqs, useInstruments, useDealers, useAcceptQuote } =
-    useViewModel();
+  const {
+    useRfqs,
+    useInstruments,
+    useDealers,
+    useAcceptQuote,
+    useCreditRfqFilterPreference,
+  } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
   const acceptQuote = useAcceptQuote();
-  const [filter, setFilter] = useState<RfqFilter>("Live");
+  const { filter } = useCreditRfqFilterPreference();
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
   const motionEnabled = useShellMotionEnabled();
   const styles = useThemedStyles(makeStyles);
@@ -56,7 +61,7 @@ export function RfqTilesPanel(): JSX.Element {
 
   return (
     <View style={styles.panel} testID="credit-tiles-panel">
-      <RfqFilterTabs selected={filter} onChange={setFilter} />
+      <RfqFilterTabs />
       {visible.length === 0 ? (
         <Text style={styles.empty} testID="credit-tiles-empty">
           No RFQs to display
