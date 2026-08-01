@@ -45,6 +45,13 @@ test("empty state when no RFQs match", async () => {
   expect(screen.getByTestId("credit-tiles-empty")).toBeTruthy();
 });
 
+test("renders one card per matching rfq", async () => {
+  await renderPanel({
+    rfqs: [rfq(1, RfqState.Open), rfq(2, RfqState.Open), rfq(3, RfqState.Open)],
+  });
+  expect(screen.getAllByTestId(/^rfq-card-/)).toHaveLength(3);
+});
+
 test("dismissing a closed RFQ removes it from the list", async () => {
   await renderPanel({ rfqs: [rfq(2, RfqState.Closed)] });
   await fireEvent.press(screen.getByTestId("rfq-filter-All"));

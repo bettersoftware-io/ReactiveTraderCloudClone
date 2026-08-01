@@ -67,6 +67,10 @@ function fakeViewModel(): ViewModel {
         },
       };
     },
+    // The tiles cascade and countdown ring both gate on power-saver.
+    usePowerSaver: () => {
+      return { isFreeze: false };
+    },
   } as unknown as ViewModel;
 }
 
