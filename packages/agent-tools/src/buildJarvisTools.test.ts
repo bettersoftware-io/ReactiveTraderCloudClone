@@ -6,6 +6,7 @@ import {
   Direction,
   ExecutionSimulator,
   type PositionUpdates,
+  type PriceTick,
   type PricingPort,
   PricingSimulator,
   type ReferenceDataPort,
@@ -19,6 +20,18 @@ import {
   JARVIS_TOOL_TIMEOUT_MS,
 } from "./buildJarvisTools.js";
 import type { JarvisToolDeps } from "./jarvisToolDefinition.js";
+
+/** A fixed, distinct bid/ask so a confirm-gate payload assertion can pin
+ * quotedPrice to a known value (ask for Buy, bid for Sell) — the real
+ * PricingSimulator's random-walk history makes that assertion impossible. */
+const FIXED_TICK: PriceTick = {
+  symbol: "EURUSD",
+  bid: 1.0841,
+  ask: 1.0843,
+  mid: 1.0842,
+  valueDate: "2026-07-27",
+  creationTimestamp: 1,
+};
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -370,6 +383,92 @@ describe("buildJarvisTools", () => {
           return trade.tradeId === parsed.tradeId;
         }),
       ).toBe(true);
+    });
+
+    it("a Buy sends the confirm gate the ask as quotedPrice, with the exact payload", async () => {
+      const confirmTrade = vi.fn(async () => {
+        return true;
+      });
+
+      const { deps } = buildDeps({
+        pricing: {
+          getPriceUpdates: () => {
+            return of(FIXED_TICK);
+          },
+          getPriceHistory: () => {
+            return of([FIXED_TICK]);
+          },
+          getRfqQuote: () => {
+            return of({
+              bid: FIXED_TICK.bid,
+              ask: FIXED_TICK.ask,
+              mid: FIXED_TICK.mid,
+            });
+          },
+        },
+        confirmTrade,
+      });
+      const tool = findTool(buildJarvisTools(deps), "execute_trade");
+
+      const resultPromise = tool.run({
+        symbol: "EURUSD",
+        direction: Direction.Buy,
+        notional: 1_000_000,
+      });
+      // 1s reference-data delay + up to 2s execution fill.
+      await vi.advanceTimersByTimeAsync(3_500);
+      await resultPromise;
+
+      expect(confirmTrade).toHaveBeenCalledWith({
+        symbol: "EURUSD",
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        quotedPrice: FIXED_TICK.ask,
+        ratePrecision: 5,
+      });
+    });
+
+    it("a Sell sends the confirm gate the bid as quotedPrice, with the exact payload", async () => {
+      const confirmTrade = vi.fn(async () => {
+        return true;
+      });
+
+      const { deps } = buildDeps({
+        pricing: {
+          getPriceUpdates: () => {
+            return of(FIXED_TICK);
+          },
+          getPriceHistory: () => {
+            return of([FIXED_TICK]);
+          },
+          getRfqQuote: () => {
+            return of({
+              bid: FIXED_TICK.bid,
+              ask: FIXED_TICK.ask,
+              mid: FIXED_TICK.mid,
+            });
+          },
+        },
+        confirmTrade,
+      });
+      const tool = findTool(buildJarvisTools(deps), "execute_trade");
+
+      const resultPromise = tool.run({
+        symbol: "EURUSD",
+        direction: Direction.Sell,
+        notional: 2_500_000,
+      });
+      // 1s reference-data delay + up to 2s execution fill.
+      await vi.advanceTimersByTimeAsync(3_500);
+      await resultPromise;
+
+      expect(confirmTrade).toHaveBeenCalledWith({
+        symbol: "EURUSD",
+        direction: Direction.Sell,
+        notional: 2_500_000,
+        quotedPrice: FIXED_TICK.bid,
+        ratePrecision: 5,
+      });
     });
 
     it("a price snapshot that never resolves times out into an error string", async () => {

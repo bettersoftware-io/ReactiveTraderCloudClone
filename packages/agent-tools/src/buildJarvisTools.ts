@@ -141,7 +141,9 @@ function buildListCurrencyPairsTool(
   return {
     name: "list_currency_pairs",
     description:
-      "List every tradeable FX currency pair, with its display precision.",
+      "List every tradeable FX currency pair, with its display precision. " +
+      "Call this when the user asks what pairs or instruments are available, " +
+      "or before resolving a pair name you're unsure about.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -179,7 +181,9 @@ function buildGetPriceTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "get_price",
     description:
-      "Get the current bid/ask/mid price and spread for one FX currency pair.",
+      "Get the live bid/ask/mid price and spread for one FX currency pair. " +
+      "Call this whenever the user asks for a quote, a rate, or where a pair " +
+      "is trading right now.",
     inputSchema: {
       type: "object",
       properties: {
@@ -243,7 +247,9 @@ function buildGetPriceHistoryTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "get_price_history",
     description:
-      "Get recent price history for one FX currency pair, as timestamp/mid points.",
+      "Get recent price history for one FX currency pair, as timestamp/mid " +
+      "points. Call this when the user asks how a pair has moved, its trend, " +
+      "or wants a chart-style view rather than the single current price.",
     inputSchema: {
       type: "object",
       properties: {
@@ -294,7 +300,10 @@ function buildGetPriceHistoryTool(deps: JarvisToolDeps): JarvisToolDefinition {
 function buildGetBlotterTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "get_blotter",
-    description: `List recent trades from the blotter, newest first (default ${DEFAULT_BLOTTER_LIMIT}, max ${MAX_BLOTTER_LIMIT}).`,
+    description:
+      `List recent trades from the blotter, newest first (default ${DEFAULT_BLOTTER_LIMIT}, ` +
+      `max ${MAX_BLOTTER_LIMIT}). Call this when the user asks about recent ` +
+      "trades, trade history, or what's on the blotter.",
     inputSchema: {
       type: "object",
       properties: {
@@ -343,7 +352,9 @@ function buildGetAnalyticsTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "get_analytics",
     description:
-      "Get current per-pair P&L positions and the session P&L headline.",
+      "Get current per-pair P&L positions and the session P&L headline. Call " +
+      "this when the user asks how they're doing, their P&L, or their " +
+      "exposure by pair.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -383,7 +394,10 @@ function buildGetAnalyticsTool(deps: JarvisToolDeps): JarvisToolDefinition {
 function buildGetServiceHealthTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "get_service_health",
-    description: "Get the live status of every backend desk service.",
+    description:
+      "Get the live status of every backend desk service. Call this when " +
+      "the user asks whether the desk/systems are healthy or something " +
+      "seems down.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -418,7 +432,9 @@ function buildExecuteTradeTool(deps: JarvisToolDeps): JarvisToolDefinition {
   return {
     name: "execute_trade",
     description:
-      "Execute an FX trade. Asks the user to confirm before anything is sent to the venue.",
+      "Execute an FX trade. Call this ONLY when the user explicitly asks to " +
+      "buy or sell; a confirmation gate will ask the user to approve before " +
+      "anything executes.",
     inputSchema: {
       type: "object",
       properties: {
