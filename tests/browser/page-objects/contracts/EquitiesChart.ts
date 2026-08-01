@@ -22,11 +22,6 @@ export interface EquitiesChartPO {
   timeLabels(): Promise<string[]>;
   /** Text of the FIRST (leftmost/oldest) rendered time-axis tick. */
   oldestTimeLabel(): Promise<string>;
-  /** BackfillChips' transient "loading older" chip. In sim mode the fetch
-   * resolves fast enough that this can flicker past a poll — prefer
-   * asserting the backfill's outcome (see `oldestTimeLabel`) over this. */
-  waitLoadingOlderVisible(timeoutMs: number): Promise<void>;
-  waitLoadingOlderHidden(timeoutMs: number): Promise<void>;
   waitNavigatorVisible(timeoutMs: number): Promise<void>;
   /** Drags the navigator window body by a fraction of the strip's width
    * (negative = toward older candles). */

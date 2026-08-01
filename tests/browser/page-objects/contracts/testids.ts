@@ -117,13 +117,6 @@ export const TESTIDS = {
       navigator: "chart-navigator",
       navigatorWindow: "navigator-window",
       navigatorHandleRight: "navigator-handle-right",
-      /** BackfillChips' transient "loading older" chip — resolves fast in
-       * sim mode, so the e2e journey asserts the backfill's OUTCOME (older
-       * time labels) rather than catching this chip mid-flight. */
-      loadingOlder: "chart-loading-older",
-      /** BackfillChips' "start of history" chip, shown once the oldest page
-       * has been fetched and the viewport sits at index 0. */
-      historyStart: "chart-history-start",
     },
   },
   layout: {

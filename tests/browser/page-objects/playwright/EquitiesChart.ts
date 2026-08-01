@@ -60,18 +60,6 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     return text ?? "";
   }
 
-  async waitLoadingOlderVisible(timeoutMs: number): Promise<void> {
-    await expect(
-      this.page.getByTestId(TESTIDS.equities.chart.loadingOlder),
-    ).toBeVisible({ timeout: timeoutMs });
-  }
-
-  async waitLoadingOlderHidden(timeoutMs: number): Promise<void> {
-    await expect(
-      this.page.getByTestId(TESTIDS.equities.chart.loadingOlder),
-    ).toBeHidden({ timeout: timeoutMs });
-  }
-
   async waitNavigatorVisible(timeoutMs: number): Promise<void> {
     await expect(this.navigator()).toBeVisible({ timeout: timeoutMs });
   }
