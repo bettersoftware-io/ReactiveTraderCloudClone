@@ -25,4 +25,10 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.JARVIS_DONE).toBe("jarvis.done");
     expect(SERVER_MSG.JARVIS_ERROR).toBe("jarvis.error");
   });
+
+  it("includes the Jarvis P3 wire names (turn correlation, cancel, availability)", () => {
+    expect(CLIENT_MSG.JARVIS_CANCEL).toBe("jarvis.cancel");
+    expect(CLIENT_MSG.JARVIS_SUBSCRIBE).toBe("jarvis.subscribe");
+    expect(SERVER_MSG.JARVIS_AVAILABILITY).toBe("jarvis.availability");
+  });
 });

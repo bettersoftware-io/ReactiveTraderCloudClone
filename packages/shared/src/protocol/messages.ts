@@ -57,6 +57,10 @@ export const CLIENT_MSG = {
   // Jarvis
   JARVIS_CHAT: "jarvis.chat",
   JARVIS_CONFIRM: "jarvis.confirm",
+  // Cancels an in-flight turn by turnId (see JarvisCancelPayload).
+  JARVIS_CANCEL: "jarvis.cancel",
+  // Subscribes to availability pushes (see SERVER_MSG.JARVIS_AVAILABILITY).
+  JARVIS_SUBSCRIBE: "jarvis.subscribe",
 } as const;
 
 // ── Server → Client ─────────────────────────────────────────────
@@ -98,4 +102,7 @@ export const SERVER_MSG = {
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
   JARVIS_DONE: "jarvis.done",
   JARVIS_ERROR: "jarvis.error",
+  // Pushed whenever the Jarvis backend's availability changes (see
+  // JarvisAvailabilityPayload) — not turn-scoped, carries no turnId.
+  JARVIS_AVAILABILITY: "jarvis.availability",
 } as const;
