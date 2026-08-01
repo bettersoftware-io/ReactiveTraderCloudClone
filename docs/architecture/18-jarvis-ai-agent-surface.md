@@ -3,19 +3,21 @@
 > **Status: Phase 1 (scripted core surface) SHIPPED — PR #405, 2026-07-27.
 > Phase 2 (the `JARVIS_*` WS wire + the server's scripted agent loop) SHIPPED —
 > PR #440, 2026-07-31. Phase 3 (`@rtc/agent-tools` + the real Anthropic
-> tool-runner loop) SHIPPED — 2026-08-01. Next is P4: the MCP endpoint.** The
-> authoritative decision records are the phase-1 spec
+> tool-runner loop) SHIPPED — 2026-08-01. Phase 4 (the MCP endpoint at `/mcp`)
+> SHIPPED — 2026-08-01. Next is P5+: the roadmap in §10 of the parent spec.**
+> The authoritative decision records are the phase-1 spec
 > at
 > [`docs/superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md`](../superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md)
 > and the parent spec at
 > [`docs/superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md`](../superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md);
 > this section is the architecture-level view. Where a diagram shows a package or
 > module that does not exist yet, it is marked *(planned)*. §18.11 records what
-> phase 1 proved; §18.12 records what phase 2 proved; **§18.13 records what
+> phase 1 proved; §18.12 records what phase 2 proved; §18.13 records what
 > phase 3 proved — and closes, one by one, the accepted limitations §18.12
-> logged.** Earlier sections still carry their as-of-P2 prose; where P3 changed
-> the answer, the line points forward to §18.13 rather than being rewritten, so
-> the sequence of decisions stays legible.
+> logged; **§18.14 records what phase 4 proved.** Earlier sections still carry
+> their as-of-P2 prose; where a later phase changed the answer, the line points
+> forward rather than being rewritten, so the sequence of decisions stays
+> legible.
 
 Jarvis is an AI presence in the HUD — a pulsating orb in the shell chrome that opens
 into a chat panel, answers questions about the live market by consulting the app's own
@@ -985,12 +987,192 @@ witness usually witnesses the wrong thing.
 - **`get_app_context`** — the eighth tool from §18.3, and the only one not
   shipped. It depends on a client→server app-context channel the chat payload does
   not carry and the UI does not yet produce (§18.12's `appContext` note). Shipping
-  the tool against a field nobody populates would be a tool that lies. It moves to
-  P4 with the MCP work, and is logged in [`docs/STATUS.md`](../STATUS.md).
-- **The MCP endpoint (§18.6)** — unchanged and still P4. Note that P3 makes it
+  the tool against a field nobody populates would be a tool that lies. This note
+  originally moved it to P4 with the MCP work; **revised in
+  [§18.14](#1814-p4--the-mcp-endpoint-second-transport)** — it turned out to be a
+  WS-chat-surface tool with nothing for an external MCP client to read, so it
+  stays deferred past P4 too. Logged in [`docs/STATUS.md`](../STATUS.md).
+- ~~**The MCP endpoint (§18.6)** — unchanged and still P4.~~ **SHIPPED in P4**
+  ([§18.14](#1814-p4--the-mcp-endpoint-second-transport)). Note that P3 made it
   cheaper, not harder: `@rtc/agent-tools` is the registry both transports were
   always meant to share, and it landed SDK-free precisely so the MCP adapter can
   convert at its own edge.
 
 Phase-3 open items, deferred minors, and the deployed-server key decision are
 tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis entry.
+
+## 18.14 P4 — the MCP endpoint (second transport)
+
+Phase 4 (2026-08-01) gave the desk a second transport. `packages/server/src/mcp/`
+holds two files: `buildJarvisMcpServer` (`@rtc/agent-tools`' registry → an MCP
+`Server`) and `createMcpRequestHandler` (Bearer auth → a stateless Streamable
+HTTP transport), and `index.ts` mounts the result at `/mcp` on the same
+`node:http` server that already answers `/health`, `/login` and the WS upgrade.
+Nothing about the WS path changed; §18.6's plan diagram is now shipped code.
+
+`buildJarvisMcpServer` deliberately uses the SDK's **low-level** `Server`, not
+the Zod-first `McpServer`. The registry already stores raw JSON Schema
+(§18.13), and the low-level `setRequestHandler(ListToolsRequestSchema, …)`
+passes it through verbatim — routing it through `McpServer.registerTool`
+would force a Zod round-trip a JSON-Schema-native registry has no business
+paying for. `CallToolRequestSchema`'s handler looks the tool up by name and
+calls `run(arguments)`; a caught rejection becomes `{ isError: true, content }`
+the same way every tool already reports its own failures (§18.13's "every
+failure is a descriptive string" table), so a bad trade or a stale symbol
+reads to the model exactly like it would over the WS wire. `Server` and
+`StreamableHTTPServerTransport` are built **fresh per POST**
+(`sessionIdGenerator: undefined`) — there is no session table to leak and no
+cross-request state beyond the tool closures themselves, so any request can
+land on any process. `buildJarvisMcpServer(tools)`'s only shared state across
+calls is those closures, which already close over the one process-wide
+`ServiceContainer`.
+
+### Same-process is the point
+
+The tools handed to `buildJarvisMcpServer` are the exact array the WS path's
+`jarvisSessionEffect` closes over too — same `ServiceContainer`, same
+simulators, same blotter. An `execute_trade` call from Claude Code is not
+"an MCP client's own copy of the desk"; it lands in the running application's
+state, and the Task 2 test (`buildJarvisMcpServer.test.ts`, "execute_trade
+through MCP lands the trade on the SAME services' blotter") pins exactly that:
+it trades through the MCP server, then reads the same services' `get_blotter`
+tool and asserts the trade is in it. A colleague who is also watching the web
+HUD sees the fill arrive over the WS blotter stream, live, from a trade they
+did not place through the UI at all.
+
+### Auth
+
+`Authorization: Bearer <token>` is checked against the same `AuthService`
+session tokens `POST /login` already issues — one credential system for both
+transports, not a second one to provision and rotate. `bearerToken()` matches
+the scheme case-insensitively (`Bearer`/`bearer`/`BEARER` all name the same
+scheme per RFC 9110 §11.1) but takes the token itself verbatim, since only the
+scheme name is case-folded. A missing or invalid token gets a generic 401 that
+never echoes the presented credential — the two failure modes ("no header"
+and "wrong token") are indistinguishable to the caller by design, the same
+posture the WS upgrade takes. Every rejection, 401 and 405 alike, is a
+JSON-RPC-shaped body (`{jsonrpc, error: {code: -32000, message}, id: null}`)
+rather than a bare status line, so an MCP client's own error surface has
+something readable to show. A non-`POST` method gets 405 with an `Allow: POST`
+header (RFC 9110 §15.5.6) — this endpoint is stateless-only, so `GET` (session
+resumption) and `DELETE` (session teardown) have nothing to attach to.
+
+Two lines get an MCP client talking to a local server:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:4000/login -H 'Content-Type: application/json' \
+  -d '{"username":"demo","password":"mcdc2026"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+claude mcp add --transport http rtc-desk http://localhost:4000/mcp --header "Authorization: Bearer $TOKEN"
+```
+
+Point the first line at `https://rtc-clone-server.fly.dev/login` instead for
+the deployed server (subject to whichever `RTC_JARVIS_FAKE`/`ANTHROPIC_API_KEY`
+decision STATUS.md's Jarvis entry records at the time — the tools work either
+way, since they read the desk's live simulators, not the loop). Both the
+`token` field name and the `claude mcp add --transport http <name> <url>
+--header "..."` flag syntax were verified against a real login response and
+the installed CLI's `--help` while implementing this (Task 4's report has the
+verbatim server log and login JSON).
+
+### `execute_trade` ungated here
+
+The MCP path installs `approveWithoutPrompt` as the `execute_trade` tool's
+`ConfirmGate` — every trade is approved the instant the model calls the tool,
+with no server-side confirm round-trip at all. That is not a shortcut; it is
+the correct place to put the decision. Claude Desktop and Claude Code both ask
+their own user before running a tool the model has proposed, and that
+tool-approval surface is the architecturally honest human-in-the-loop layer
+for this transport (parent §3.4) — a second confirm card behind ours would be
+approval theatre over a decision an external client's user already made. The
+WS path keeps its own confirm-card round-trip (§18.5) because there the
+"client" *is* our UI and we own the only approval surface that exists. The
+injected `approveWithoutPrompt` (built once, at `index.ts`'s composition root,
+with a doc comment naming the decision) makes that explicit in code rather
+than leaving a reader to wonder why `execute_trade` looks ungated.
+
+### Recorded deviations from parent §3.4
+
+- **Seven tools, not eight.** `get_app_context` stays deferred — see
+  "Deferred, and why" below; it was never a P4 candidate to begin with.
+- **Mounted unconditionally**, not behind the `RTC_JARVIS_FAKE`/
+  `ANTHROPIC_API_KEY` availability gate that decides whether the *orb* renders
+  (§18.13). MCP brings its own model — an external client like Claude Code
+  supplies the reasoning loop, so `/mcp` needs no `ANTHROPIC_API_KEY` on this
+  server at all. Auth stays mandatory regardless: an unauthenticated `/mcp` is
+  a bigger hole than an unauthenticated WS connection, because every tool
+  including `execute_trade` is reachable from the first `tools/call`.
+- **Session tokens, not the spec's static shared token.** The parent spec
+  predates the auth overhaul (#210/#226/#234); by the time P4 landed there was
+  already a real per-user `AuthService` issuing real tokens, and inventing a
+  second static credential would have meant two credential systems answering
+  the same question. Reusing `AuthService` was the smaller, more honest move.
+- **Unknown-tool errors are `ErrorCode.InvalidParams`, not the plan's literal
+  `MethodNotFound`.** The `tools/call` *method* is implemented; it is the
+  `name` argument that is bad, and `MethodNotFound` (-32601) would tell a
+  strict client the method itself is unsupported — potentially disabling tool
+  use for the whole session rather than just the one bad call. This matches
+  the SDK's own high-level `McpServer`, which reports an unregistered tool the
+  same way.
+- **No input validation at the MCP boundary**, by registry convention rather
+  than oversight. The low-level `Server` does not validate `arguments` against
+  `inputSchema` the way the Zod-first `McpServer` would; a malformed call
+  reaches `run()` as-is, and `@rtc/agent-tools` already treats a validation
+  failure as an ordinary **success** — a descriptive string like `"Invalid
+  input: …"` — the identical contract the Anthropic loop's tool runner sees
+  (§18.13). That means MCP is not silently laxer than the WS path; both
+  transports hand the same tool the same unchecked input and get the same
+  kind of answer back. Externally visible at this boundary and accepted, not
+  a defect to fix later.
+- **The verified identity is not plumbed into the SDK's `req.auth`/
+  `extra.authInfo` channel.** `verifyToken`'s `{ username }` is checked — a
+  bad or missing token still gets a 401 — and then discarded; no tool sees
+  *who* called it. The whole server is shared singletons behind one
+  `ServiceContainer` (auth Phase 2's per-user isolation is still un-spec'd —
+  see the auth workstream entry in `docs/STATUS.md`), and no WS-path trade
+  carries a user identity either, so plumbing identity into MCP alone would
+  add a capability the WS transport does not have and nothing downstream
+  could consume yet. It lands with the isolation phase, on both transports
+  together. Recorded here so it is not rediscovered as a bug in review.
+
+### Token TTL caveat
+
+Tokens expire (`AUTH_TTL_MS`, default 8 hours) like any other `AuthService`
+token. An MCP client configured once and left running will eventually start
+getting 401s from a token that quietly aged out mid-session — the fix is the
+same two-line recipe above, a fresh `/login` call, not a bug in the endpoint.
+
+### One pre-existing hardening flag, widened by this phase
+
+`AUTH_SECRET` already defaulted to `""` when unset (`index.ts`, predating P4)
+— under a bare, unconfigured boot every token is forgeable. That was already
+true for the WS path; `/mcp` raises what an attacker with a forged token can
+do from "read the live data feed" to "call every desk tool including
+`execute_trade`". Fly and the `dev:*` scripts always set a real
+`AUTH_SECRET`, so this is a known pre-existing item, not a new one — recorded
+here because P4 is the phase that makes an unset secret matter more.
+
+### Stateless by design
+
+Every `/mcp` POST gets its own `Server` + `StreamableHTTPServerTransport`
+pair, closed on `res`'s `"close"` event. There is no session id, no
+connection-scoped state, and therefore nothing an unauthenticated caller
+could probe or collide with across requests — a deliberate trade against a
+publicly reachable endpoint with no session affinity requirement (unlike the
+WS path, where one socket really does need one long-lived `AgentSession`).
+The cost is a fresh `Server` per call; at desk-tool volumes that is not
+worth optimizing away.
+
+### Deferred, and why (unchanged from P3, now revised)
+
+`get_app_context` does not ride along after all. §18.13 deferred it to "the
+phase with the MCP work" on the assumption that P4 was the natural place for
+an eighth tool; in practice it is a WS-chat-surface tool — it reads
+`appContext`, a value only the in-app chat UI could ever populate, and an
+external MCP client has no app attached to read from. Bundling the
+client→server app-context wire change into a transport phase would also
+couple two unrelated deliverables. It stays deferred to whichever phase
+builds that channel; `docs/STATUS.md`'s Jarvis entry carries the current
+wording.
+
+Phase-4 open items are tracked in [`docs/STATUS.md`](../STATUS.md) under the
+Jarvis entry.
