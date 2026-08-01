@@ -4,7 +4,7 @@ import {
   nextTickFlash,
   TICK_FLASH_DURATION_MS,
   tickDirection,
-} from "./tickFlash";
+} from "./tickFlash.js";
 
 describe("tickDirection", () => {
   it("returns flat for the first value and for sub-epsilon moves", () => {

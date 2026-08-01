@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CLIENT_MSG, SERVER_MSG } from "#/protocol/messages";
+import { CLIENT_MSG, SERVER_MSG } from "#/protocol/messages.js";
 
 describe("protocol messages", () => {
   it("keeps the FX/Credit/Admin wire names stable", () => {

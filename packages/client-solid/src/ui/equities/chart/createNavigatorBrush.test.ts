@@ -135,8 +135,10 @@ describe("createNavigatorBrush", () => {
       return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
     });
 
-    // No prior pointerdown at all: brushOrigin is null.
+    // No prior pointerdown at all: brushOrigin is null — the up must be a
+    // complete no-op, not just "didn't crash".
     result.stripProps.onPointerUp(brushEvent("window", 450));
+    expect(applyViewport).not.toHaveBeenCalled();
 
     result.stripProps.onPointerDown(brushEvent("window", 450));
     applyViewport.mockClear();

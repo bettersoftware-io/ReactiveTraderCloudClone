@@ -2,9 +2,9 @@ import { map, of, Subject, throwError } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { out } from "#/operators";
-import { stream } from "#/stream";
-import type { Inbound, Outbound } from "#/types";
+import { out } from "#/operators.js";
+import { stream } from "#/stream.js";
+import type { Inbound, Outbound } from "#/types.js";
 
 describe("stream", () => {
   let scheduler: TestScheduler;
