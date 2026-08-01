@@ -33,6 +33,7 @@ describe("createJarvisMachine", () => {
         phase: "idle",
         entries: [{ id: 0, role: "jarvis", text: JARVIS_GREETING, done: true }],
         pendingConfirmation: null,
+        available: true,
       });
       sub.unsubscribe();
       machine.dispose();
@@ -495,6 +496,86 @@ describe("createJarvisMachine", () => {
       expect(seen.length).toBe(beforeDispose);
     });
   });
+
+  describe("availability", () => {
+    it("defaults to available when deps.availability$ is absent (sim mode, legacy callers)", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+        });
+        const seen: boolean[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s.available);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        expect(seen.length).toBeGreaterThan(0);
+        expect(
+          seen.every((available) => {
+            return available === true;
+          }),
+        ).toBe(true);
+      });
+    });
+
+    it("folds availability$ into state.available: goes false, then flips back true", () => {
+      const ts = scheduler();
+      ts.run(({ cold, flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: cold<boolean>("f-t", { f: false, t: true }),
+        });
+        const seen: boolean[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s.available);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        // seen[0] is INITIAL.available (true), delivered synchronously at
+        // subscribe time, before the cold availability$'s own frame-0 "f"
+        // patch (same duplicate-first-value shape as the skin$ fold test
+        // above).
+        expect(seen).toEqual([true, false, true]);
+      });
+    });
+
+    it("send() while unavailable is a no-op: no user entry appended, port.ask not called", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<boolean>("f", {
+              f: false,
+            }),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.phase).toBe("idle");
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      ]);
+      expect(port?.asks).toEqual([]);
+    });
+  });
 });
 
 function scheduler(): TestScheduler {
@@ -509,9 +590,12 @@ function fakePort(
   values: Record<string, JarvisEvent>,
 ): FakeJarvisPort {
   const confirms: Array<[string, boolean]> = [];
+  const asks: string[] = [];
   return {
     confirms,
-    ask: () => {
+    asks,
+    ask: (text: string) => {
+      asks.push(text);
       return ts.createColdObservable<JarvisEvent>(marbles, values);
     },
     confirm: (id: string, approved: boolean) => {
@@ -549,7 +633,9 @@ function basePort(ts: TestScheduler): FakeJarvisPort {
   return fakePort(ts, "-", {});
 }
 
-/** A JarvisPort test double that also records every confirm() call. */
+/** A JarvisPort test double that also records every confirm() and ask() call
+ * (`asks` — the raw text of each turn actually sent to the port). */
 interface FakeJarvisPort extends JarvisPort {
   readonly confirms: Array<[string, boolean]>;
+  readonly asks: string[];
 }

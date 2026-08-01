@@ -42,6 +42,7 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   phase: "idle",
   entries: [],
   pendingConfirmation: null,
+  available: true,
 };
 
 import type { AppData } from "@ui-visual-shared/appData";

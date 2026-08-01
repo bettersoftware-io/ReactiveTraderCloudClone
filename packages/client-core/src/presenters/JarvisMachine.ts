@@ -1,5 +1,13 @@
 import { type StateObservable, state } from "@rx-state/core";
-import { concat, interval, merge, type Observable, of, Subject } from "rxjs";
+import {
+  concat,
+  EMPTY,
+  interval,
+  merge,
+  type Observable,
+  of,
+  Subject,
+} from "rxjs";
 import {
   concatMap,
   filter,
@@ -60,6 +68,11 @@ export interface JarvisState {
   readonly phase: "idle" | "speaking";
   readonly entries: readonly JarvisEntry[];
   readonly pendingConfirmation: JarvisConfirmation | null;
+  /** Live availability of the Jarvis backend; always true in sim mode
+   * (deps.availability$ defaults to `of(true)`). `send()` while false is a
+   * silent no-op — no user entry is appended and `port.ask` is never
+   * called. The UI doesn't read this yet (a later task surfaces it). */
+  readonly available: boolean;
 }
 
 export interface JarvisIntents {
@@ -76,6 +89,11 @@ export interface JarvisDeps {
   port: JarvisPort;
   skin$: Observable<JarvisSkin>;
   setSkin: (skin: JarvisSkin) => void;
+  /** Live availability of the Jarvis backend. Defaults to `of(true)` —
+   * simulator mode (`ScriptedJarvisAdapter`) and any legacy caller that
+   * doesn't wire this in are always available. WS-real mode threads in
+   * `WsJarvisAdapter.availability$()` (see composition.ts). */
+  availability$?: Observable<boolean>;
   /** Injectable for tests; defaults to JARVIS_CONFIRM_TIMEOUT_MS. */
   confirmTimeoutMs?: number;
 }
@@ -96,6 +114,7 @@ const INITIAL: JarvisState = {
   phase: "idle",
   entries: [GREETING_ENTRY],
   pendingConfirmation: null,
+  available: true,
 };
 
 /** Replace the last entry (the one currently streaming/accumulating) with the
@@ -235,6 +254,17 @@ export function createJarvisMachine(
   deps: JarvisDeps,
 ): Machine<JarvisState, JarvisIntents> {
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
+  const availabilitySource$: Observable<boolean> =
+    deps.availability$ ?? of(true);
+
+  // Cached alongside INITIAL.available and kept in lockstep by
+  // availabilityPatches$ below (the only subscriber of availabilitySource$,
+  // active from construction via the `warm` state$ subscription). send()
+  // needs the CURRENT value at call time, not a stream to fold into a
+  // patch — and, per wireJarvisHistorySource's doc in composition.ts,
+  // state$'s getValue() isn't reliably synchronous, so a mutable cache
+  // updated by the one live subscription is the same pattern used there.
+  let available = true;
 
   const send$ = new Subject<string>();
   const open$ = new Subject<void>();
@@ -252,6 +282,12 @@ export function createJarvisMachine(
   // subscription (and its own port.ask() call + entry-id allocation).
   const turnItems$: Observable<TurnItem> = send$.pipe(
     concatMap((text) => {
+      // Unavailable → silent no-op: no user entry appended (the "start"
+      // item below is never built) and port.ask is never called.
+      if (!available) {
+        return EMPTY;
+      }
+
       const userEntry: JarvisEntry = {
         id: nextEntryId++,
         role: "user",
@@ -416,6 +452,19 @@ export function createJarvisMachine(
     }),
   );
 
+  // The single live subscriber of availabilitySource$ (via stream$'s `warm`
+  // subscription below): folds the value into state AND refreshes the
+  // `available` cache that turnItems$'s concatMap reads synchronously.
+  const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
+    map((value): Patch => {
+      available = value;
+
+      return (s: JarvisState): JarvisState => {
+        return { ...s, available: value };
+      };
+    }),
+  );
+
   const stream$ = merge(
     entryPatches$,
     timerPatches$,
@@ -425,6 +474,7 @@ export function createJarvisMachine(
     closePatches$,
     togglePatches$,
     skinPatches$,
+    availabilityPatches$,
   ).pipe(
     scan((s, patch) => {
       return patch(s);

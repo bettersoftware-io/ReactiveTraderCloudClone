@@ -529,6 +529,16 @@ export function createApp(ports: AppPorts): App {
       setSkin: (s: JarvisSkin): void => {
         ports.preferences.setJarvisSkin(s);
       },
+      // Only WsJarvisAdapter (WS-real mode) exposes availability$ — see
+      // wireJarvisHistorySource's doc above for why this is an instanceof
+      // check rather than a JarvisPort method (jarvisPort.ts's surface stays
+      // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
+      // needs none: createJarvisMachine defaults an absent availability$ to
+      // `of(true)`, so sim stays permanently available.
+      availability$:
+        ports.jarvis instanceof WsJarvisAdapter
+          ? ports.jarvis.availability$()
+          : undefined,
     }),
   };
 
