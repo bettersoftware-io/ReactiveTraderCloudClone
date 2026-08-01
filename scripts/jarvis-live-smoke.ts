@@ -23,15 +23,32 @@
  *   3. One trade turn ("Buy 1M EURUSD") that DECLINES the confirmation
  *      (`jarvis.confirm { approved: false }` as soon as a confirmRequest
  *      arrives) — asserts the declined tool-result still produces a reply.
- *   4. A second quote turn carrying turns 1-3 as wire history.
+ *   4. A FRESH WebSocket connection (same login token, new server-side
+ *      `AgentSession` — `jarvisEffects`' `jarvisSessionEffect` mints one per
+ *      socket) carrying turns 1-3 as wire `history`, stretched with synthetic
+ *      filler so the server's own 20-entry wire cap
+ *      (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in jarvis.effects.ts) truncates it
+ *      into an assistant-first array *before* it ever reaches
+ *      `AnthropicAgentSession`.
  *
- * Turns 3-4 exist specifically to exercise, against the real API, the two
+ * Turn 4 exists specifically to exercise, against the real API, the two
  * mechanisms the Task 6 reviewer flagged as "documented but cannot verify
  * without a live key": `AnthropicAgentSession.capMessages`'s assistant-first
- * `400` guard (a history ending on a "jarvis"/assistant turn, replayed as
- * the START of the next request's prior-messages array, must not brick the
- * session) and `JARVIS_HISTORY_MAX_MESSAGES` token-pressure trimming under a
- * real, growing conversation.
+ * `400` guard, and `JARVIS_HISTORY_MAX_MESSAGES` token-pressure trimming.
+ * Both need a FRESH connection to matter: `AnthropicAgentSession` only
+ * consults the wire's `history` param on a session's first turn (once its own
+ * `this.history` is non-empty, later turns use that instead — see the doc
+ * comment on `runTurn`) — reusing turns 1-3's connection for turn 4 would
+ * make the constructed `history` payload below silently ignored, so this
+ * check would pass even with the guard deleted. A fresh connection = a fresh
+ * session = the wire history is genuinely consulted, which is exactly the
+ * reconnect-mid-conversation scenario the guard's own doc comment describes.
+ * The fixture itself is engineered so the guard strips exactly two leading
+ * "jarvis" entries (not one) — see `buildReconnectHistoryFixture`'s comment
+ * for why an even count matters: an odd count would leave a kept array that
+ * ends on "user", and appending the new turn's own user message would then
+ * trip the Anthropic API's *separate* "roles must alternate" 400 — a
+ * different failure this check must not be confused by.
  *
  * This is deliberately dependency-free (no `@rtc/*` import): the
  * `CLIENT_MSG` / `SERVER_MSG` / `JarvisEvent` wire vocabulary below is a
@@ -492,6 +509,65 @@ function runChatTurn(
   });
 }
 
+// ── Reconnect history fixture (check 4) ─────────────────────────
+
+/**
+ * Builds the wire `history` for check 4's fresh-connection quote turn.
+ * Deliberately 21 entries — one more than `JARVIS_WIRE_HISTORY_MAX_ENTRIES`
+ * (20, see jarvis.effects.ts) — so the server's own `truncateHistory` drops
+ * exactly the leading synthetic entry below and hands
+ * `AnthropicAgentSession` a 20-entry array whose first TWO entries are
+ * "jarvis" (assistant).
+ *
+ * Two leading assistant entries, not one: `capMessages`' guard
+ * (`while (capped[0]?.role === "assistant") capped.shift()`) removes both,
+ * leaving an 18-entry kept array. 18 is EVEN, so — since it starts on
+ * "user" — it still ends on "jarvis" (an alternating sequence flips role
+ * every step; odd length flips the edges, even length doesn't). That matters
+ * because `AnthropicAgentSession.runTurn` appends the new turn's OWN "user"
+ * message straight onto whatever capMessages returns: if the guard had only
+ * had ONE leading assistant entry to strip, the kept array would be
+ * ODD-length and would end on "user" — and appending another "user" message
+ * after that would trip the Anthropic API's separate "roles must alternate"
+ * 400 (confirmed live behavior, not just this repo's own guard), which is a
+ * DIFFERENT failure than the one this check exists to rule out. Ending on
+ * "jarvis" keeps the tail valid so a 400 here can only mean the
+ * assistant-first guard itself regressed.
+ *
+ * The real conversation from checks 2-3 (turns 1 and 3 below) closes out the
+ * array, so the fixture is a superset of real Jarvis output, not a purely
+ * synthetic one.
+ */
+function buildReconnectHistoryFixture(
+  quoteReplyText: string,
+  tradeReplyText: string,
+): HistoryEntry[] {
+  const fixture: HistoryEntry[] = [
+    // Dropped entirely by the server's own 20-entry wire cap — exists only
+    // to push this array to 21 entries so the cap's slice(-20) removes
+    // exactly this one entry and nothing else.
+    { role: "user", text: "(stale pre-cap context, expected to be dropped)" },
+    // Survive the cap and land at the front of the kept 20-entry window —
+    // the assistant-first array `capMessages`' guard exists for.
+    { role: "jarvis", text: "(stray reply A — pre-guard artifact)" },
+    { role: "jarvis", text: "(stray reply B — pre-guard artifact)" },
+  ];
+
+  for (let i = 0; i < 7; i += 1) {
+    fixture.push({ role: "user", text: `(filler question ${i})` });
+    fixture.push({ role: "jarvis", text: `(filler reply ${i})` });
+  }
+
+  fixture.push(
+    { role: "user", text: "Where is EURUSD?" },
+    { role: "jarvis", text: quoteReplyText },
+    { role: "user", text: "Buy 1M EURUSD" },
+    { role: "jarvis", text: tradeReplyText },
+  );
+
+  return fixture;
+}
+
 // ── Checks ───────────────────────────────────────────────────────
 
 interface CheckResult {
@@ -533,15 +609,16 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
 
   await waitForHealth(`${httpBase}/health`, 30_000);
   const login = await loginForToken(httpBase);
-  const ws = await openSocket(
-    `ws://${HOST}:${PORT}/?access=${encodeURIComponent(login.token)}`,
-    15_000,
-  );
-  const bus = createFrameBus(ws);
+  const wsUrl = `ws://${HOST}:${PORT}/?access=${encodeURIComponent(login.token)}`;
+
+  const ws1 = await openSocket(wsUrl, 15_000);
+  const bus1 = createFrameBus(ws1);
+  let quoteReplyText = "";
+  let tradeReplyText = "";
 
   try {
     // 1. Availability handshake.
-    const available = await checkAvailability(bus, ws);
+    const available = await checkAvailability(bus1, ws1);
     check(
       results,
       "availability: jarvis.subscribe reports available=true",
@@ -549,27 +626,26 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
     );
 
     // 2. Quote turn.
-    const quote = await runChatTurn(bus, ws, "quote", "Where is EURUSD?", []);
+    const quote = await runChatTurn(bus1, ws1, "quote", "Where is EURUSD?", []);
     check(
       results,
       "quote turn: terminated with done and a non-empty reply",
       quote.terminal === "done" && quote.replyText.length > 0,
     );
-
-    const historyAfterQuote: HistoryEntry[] = [
-      { role: "user", text: "Where is EURUSD?" },
-      { role: "jarvis", text: quote.replyText },
-    ];
+    quoteReplyText = quote.replyText;
 
     // 3. Trade turn — decline the confirmation as soon as it arrives.
     const trade = await runChatTurn(
-      bus,
-      ws,
+      bus1,
+      ws1,
       "trade (declined)",
       "Buy 1M EURUSD",
-      historyAfterQuote,
+      [
+        { role: "user", text: "Where is EURUSD?" },
+        { role: "jarvis", text: quoteReplyText },
+      ],
       (payload) => {
-        sendFrame(ws, CLIENT_MSG.JARVIS_CONFIRM, {
+        sendFrame(ws1, CLIENT_MSG.JARVIS_CONFIRM, {
           confirmationId: payload.confirmationId,
           approved: false,
         });
@@ -585,31 +661,40 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
       "trade turn: declined tool-result still produced a done reply",
       trade.terminal === "done" && trade.replyText.length > 0,
     );
+    tradeReplyText = trade.replyText;
+  } finally {
+    ws1.close();
+  }
 
-    // 4. Multi-turn history check — the wire history sent below ends on a
-    // "jarvis" (assistant) entry, exercising AnthropicAgentSession.capMessages'
-    // assistant-first-400 guard live, plus JARVIS_HISTORY_MAX_MESSAGES token
-    // pressure as the conversation grows.
-    const historyAfterTrade: HistoryEntry[] = [
-      ...historyAfterQuote,
-      { role: "user", text: "Buy 1M EURUSD" },
-      { role: "jarvis", text: trade.replyText },
-    ];
+  // 4. Reconnect (fresh WebSocket = fresh server-side AgentSession) and send
+  // a quote turn carrying a wire history built to force an assistant-first
+  // array through the 20-entry wire cap — see buildReconnectHistoryFixture's
+  // doc comment. Reuses the same login token; a new session never needs a
+  // fresh one.
+  const ws2 = await openSocket(wsUrl, 15_000);
+  const bus2 = createFrameBus(ws2);
+
+  try {
+    const reconnectHistory = buildReconnectHistoryFixture(
+      quoteReplyText,
+      tradeReplyText,
+    );
 
     const followUp = await runChatTurn(
-      bus,
-      ws,
-      "quote with history",
+      bus2,
+      ws2,
+      "quote on fresh session with assistant-first-forcing history",
       "Where is EURUSD now?",
-      historyAfterTrade,
+      reconnectHistory,
     );
     check(
       results,
-      "history turn: second quote WITH prior history terminated with done",
+      "reconnect history turn: fresh session with a wire-cap-forced " +
+        "assistant-first history still terminated with done (capMessages guard held)",
       followUp.terminal === "done" && followUp.replyText.length > 0,
     );
   } finally {
-    ws.close();
+    ws2.close();
   }
 }
 
