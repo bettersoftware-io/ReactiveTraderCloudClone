@@ -627,6 +627,18 @@ export function solidViewModel(world: World): ViewModel {
     useCandles: (symbol: string, _timeframe?: CandleTimeframe) => {
       return wrapSubject(world.candlesFor(symbol));
     },
+    // Candle backfill: static default — no current contract spec drives
+    // backfill through World (ChartBackfill.contract.spec.ts mounts
+    // CandleChart directly with props instead), so a constant accessor plus
+    // a no-op command is sufficient to satisfy the interface.
+    useCandleBackfill: (_symbol: string, _timeframe?: CandleTimeframe) => {
+      return () => {
+        return { loadingOlder: false, historyExhausted: false };
+      };
+    },
+    loadOlderCandles: (): void => {
+      return;
+    },
     useDepth: (symbol: string) => {
       return wrapSubject(world.depthFor(symbol));
     },
