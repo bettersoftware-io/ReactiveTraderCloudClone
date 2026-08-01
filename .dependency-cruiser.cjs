@@ -99,6 +99,14 @@ module.exports = {
       to: { path: "node_modules/@anthropic-ai/" },
     },
     {
+      name: "no-mcp-sdk-outside-server",
+      severity: "error",
+      comment:
+        "@modelcontextprotocol/sdk is a server-only dependency (Jarvis phase 4) — the MCP endpoint lives in packages/server/src/mcp/ and every OTHER package stays free of the SDK, exactly like no-anthropic-sdk-in-inner-packages above: an allowlist over the single permitted importer, not a blocklist of packages that happened to matter when this was written. @rtc/agent-tools in particular must stay SDK-free — its whole design point is that the registry is transport-neutral raw JSON Schema.",
+      from: { path: "^packages/", pathNot: "^packages/server/" },
+      to: { path: "node_modules/@modelcontextprotocol/" },
+    },
+    {
       name: "devtools-core-stays-pure",
       severity: "error",
       comment:

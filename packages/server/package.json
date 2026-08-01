@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.115.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
