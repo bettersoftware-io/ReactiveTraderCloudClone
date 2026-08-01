@@ -41,10 +41,12 @@ export function RfqCard({
   dealers,
   onAccept,
   onDismiss,
+  pinnedRemainingMs,
 }: RfqCardProps): JSX.Element {
   const totalMs = rfq.expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
-  const remainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const liveRemainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const remainingMs = pinnedRemainingMs ?? liveRemainingMs;
   const styles = useThemedStyles(makeStyles);
 
   const dealerMap = new Map<number, Dealer>();
@@ -125,6 +127,10 @@ interface RfqCardProps {
   dealers: readonly Dealer[];
   onAccept: (quoteId: number) => void | Promise<void>;
   onDismiss: (rfqId: number) => void;
+  /** Visual-harness only: freezes the countdown at one instant so a golden can
+   * reproduce itself. Omitted in production, where the live seam wins — the
+   * same injected-clock shape `BootSceneProps.now` uses for `boot/topo`. */
+  pinnedRemainingMs?: number;
 }
 
 /** Private: the `ACCEPTED` stamp that lands on a card the moment its RFQ

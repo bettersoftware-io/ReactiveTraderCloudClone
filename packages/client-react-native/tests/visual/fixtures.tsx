@@ -5,9 +5,21 @@ import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { PositionUpdates } from "@rtc/domain";
+import {
+  ADAPTIVE_BANK_NAME,
+  type Dealer,
+  Direction,
+  type Instrument,
+  type PositionUpdates,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 
 import { AnalyticsDashboard } from "#/ui/analytics/AnalyticsDashboard";
+import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
+import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
+import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import type { BootSceneComponent } from "#/ui/shell/boot/bootScene";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
@@ -114,6 +126,181 @@ export function AnalyticsDashboardFixture(): ReactNode {
     </ScreenContentFixture>
   );
 }
+
+/**
+ * The Credit RFQ tiles over a literal book, in place of the live `useRfqs()`
+ * seam.
+ *
+ * `credit/rfq-tiles-empty` was dropped once for exactly the reason this fixture
+ * exists: `CreditRfqSimulator` emits new Live RFQs over time, so a capture of
+ * the live panel is a race — re-captures swung 0.7% to 11.9% against a fixed
+ * golden. Two things have to be pinned, not one:
+ *
+ *  1. THE DATA — literal RFQs and quotes, mounting `RfqCard` (which takes them
+ *     as props) rather than `RfqTilesPanel` (which reads the seam).
+ *  2. THE COUNTDOWN — `RfqCard` still calls `useRfqCountdown`, a live clock, so
+ *     the ring and its seconds readout would differ between any two captures.
+ *     `pinnedRemainingMs` overrides it, the same injected-clock move
+ *     `BootSceneProps.now` makes for `boot/topo`.
+ *
+ * The scenario must ALSO seed power-saver `freeze` (see `scenarios.tsx`): the
+ * ring's 1 s glide and the ACCEPT halo are gated by `useShellMotionEnabled`,
+ * which `forceReduceMotion` does not touch. Pinned data alone would still be
+ * captured mid-tween.
+ *
+ * Two cards deliberately: one live (ring, best-quote tint, ACCEPT halo,
+ * AWAITING pulse) and one traded (the ACCEPTED stamp), so the golden covers
+ * both halves of the accept ceremony.
+ */
+export function CreditRfqTilesFixture(): ReactNode {
+  return (
+    <ScreenContentFixture>
+      <RfqFilterTabs />
+      <RfqCard
+        rfq={PINNED_LIVE_RFQ}
+        quotes={PINNED_QUOTES}
+        instrument={PINNED_INSTRUMENTS[0]}
+        dealers={PINNED_DEALERS}
+        pinnedRemainingMs={PINNED_REMAINING_MS}
+        onAccept={NOOP_ACCEPT}
+        onDismiss={NOOP_DISMISS}
+      />
+      <RfqCard
+        rfq={PINNED_TRADED_RFQ}
+        quotes={PINNED_TRADED_QUOTES}
+        instrument={PINNED_INSTRUMENTS[1]}
+        dealers={PINNED_DEALERS}
+        pinnedRemainingMs={0}
+        onAccept={NOOP_ACCEPT}
+        onDismiss={NOOP_DISMISS}
+      />
+    </ScreenContentFixture>
+  );
+}
+
+/**
+ * One sell-side ticket over a literal RFQ — same two pins as
+ * `CreditRfqTilesFixture` (literal data, `pinnedRemainingMs`), for the same
+ * reasons.
+ *
+ * Mounts `SellSideTicket` rather than `SellSidePanel` so the price stepper
+ * starts at the instrument's reference price rather than wherever a live
+ * simulator happened to be.
+ */
+export function CreditSellSideFixture(): ReactNode {
+  return (
+    <ScreenContentFixture>
+      <SellSideTicket
+        rfq={PINNED_SELL_SIDE_RFQ}
+        quote={PINNED_SELL_SIDE_QUOTE}
+        instrument={PINNED_INSTRUMENTS[0]}
+        pinnedRemainingMs={PINNED_REMAINING_MS}
+      />
+    </ScreenContentFixture>
+  );
+}
+
+/** Mid-window, and above the ten-second urgent threshold — so the golden pins
+ * the ring's normal accent rather than its alarm state. */
+const PINNED_REMAINING_MS = 42_000;
+
+const PINNED_INSTRUMENTS: readonly Instrument[] = [
+  {
+    id: 1,
+    name: "Acme 5.5% 2030",
+    cusip: "000000AA1",
+    ticker: "ACME",
+    maturity: "2030",
+    interestRate: 5.5,
+    benchmark: "T 4.0 2030",
+    refPrice: 98.4,
+  },
+  {
+    id: 2,
+    name: "Vertex 4.25% 2028",
+    cusip: "000000BB2",
+    ticker: "VRTX",
+    maturity: "2028",
+    interestRate: 4.25,
+    benchmark: "T 3.5 2028",
+    refPrice: 101.2,
+  },
+];
+
+const PINNED_DEALERS: readonly Dealer[] = [
+  { id: 1, name: "Bank A" },
+  { id: 2, name: "Bank B" },
+  { id: 3, name: "Bank C" },
+  { id: 9, name: ADAPTIVE_BANK_NAME },
+];
+
+const PINNED_LIVE_RFQ: Rfq = {
+  id: 101,
+  instrumentId: 1,
+  quantity: 5_000_000,
+  direction: Direction.Buy,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 0,
+};
+
+const PINNED_TRADED_RFQ: Rfq = {
+  id: 102,
+  instrumentId: 2,
+  quantity: 1_000_000,
+  direction: Direction.Sell,
+  state: RfqState.Closed,
+  expirySecs: 120,
+  creationTimestamp: 0,
+};
+
+/** A Buy, so the LOWEST price wins: 97.85 takes the tint and the halo. The
+ * third dealer is unpriced, which is what puts an `AWAITING…` on screen. */
+const PINNED_QUOTES: readonly Quote[] = [
+  {
+    id: 1001,
+    rfqId: 101,
+    dealerId: 1,
+    state: { type: "pendingWithPrice", price: 98.4 },
+  },
+  {
+    id: 1002,
+    rfqId: 101,
+    dealerId: 2,
+    state: { type: "pendingWithPrice", price: 97.85 },
+  },
+  { id: 1003, rfqId: 101, dealerId: 3, state: { type: "pendingWithoutPrice" } },
+];
+
+const PINNED_TRADED_QUOTES: readonly Quote[] = [
+  {
+    id: 1004,
+    rfqId: 102,
+    dealerId: 1,
+    state: { type: "accepted", price: 101.35 },
+  },
+];
+
+const PINNED_SELL_SIDE_RFQ: Rfq = {
+  id: 201,
+  instrumentId: 1,
+  quantity: 2_000_000,
+  direction: Direction.Sell,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 0,
+};
+
+const PINNED_SELL_SIDE_QUOTE: Quote = {
+  id: 2001,
+  rfqId: 201,
+  dealerId: 9,
+  state: { type: "pendingWithoutPrice" },
+};
+
+function NOOP_ACCEPT(): void {}
+
+function NOOP_DISMISS(): void {}
 
 export function LockHoldFixture(): ReactNode {
   const progress = useSharedValue(LOCK_HOLD_PROGRESS);

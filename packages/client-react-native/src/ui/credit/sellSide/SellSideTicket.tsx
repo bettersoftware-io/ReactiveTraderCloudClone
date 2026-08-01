@@ -37,10 +37,12 @@ export function SellSideTicket({
   rfq,
   quote,
   instrument,
+  pinnedRemainingMs,
 }: SellSideTicketProps): JSX.Element {
   const { useRfqCountdown, useTicketSubmission } = useViewModel();
   const totalMs = rfq.expirySecs * 1000;
-  const remainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const liveRemainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const remainingMs = pinnedRemainingMs ?? liveRemainingMs;
   const { submitPrice, pass } = useTicketSubmission();
   const styles = useThemedStyles(makeStyles);
 
@@ -128,6 +130,8 @@ export interface SellSideTicketProps {
   readonly rfq: Rfq;
   readonly quote: Quote;
   readonly instrument: Instrument | undefined;
+  /** Visual-harness only — see `RfqCardProps.pinnedRemainingMs`. */
+  readonly pinnedRemainingMs?: number;
 }
 
 /** `rfq.direction` is the CLIENT's side, so the desk takes the other one: a
