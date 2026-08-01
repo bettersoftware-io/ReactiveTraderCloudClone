@@ -1,9 +1,12 @@
 import { catchError, Observable, of, TimeoutError, timeout } from "rxjs";
 
 import type {
+  JarvisAvailabilityPayload,
+  JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
   JarvisEvent,
+  JarvisHistoryEntry,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
@@ -13,8 +16,15 @@ import type { JarvisPort } from "./jarvisPort";
 /** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
  * sends `jarvis.chat` collapses the turn into a synthetic offline error
  * instead of hanging forever. Once any frame lands, no further deadline
- * applies — see `createJarvisTurnStream`'s `timeout({ first })`. */
+ * applies — see `createJarvisTurnStream`'s `timeout({ first })`. Reused by
+ * `availability$()` for the same "the server never answered" case. */
 export const JARVIS_FIRST_EVENT_TIMEOUT_MS = 10_000;
+
+/** Caps what `ask()` sends as `JarvisChatPayload.history` — belt-and-suspenders
+ * with the server's own truncation (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in
+ * `jarvis.effects.ts`, also 20): keeping the outbound frame itself small
+ * doesn't rely on the server being the only thing enforcing the wire cap. */
+const JARVIS_HISTORY_SEND_MAX_ENTRIES = 20;
 
 const JARVIS_OFFLINE_EVENT: JarvisEvent = {
   type: "error",
@@ -37,13 +47,27 @@ interface ErrorTag {
   readonly type: "error";
 }
 
-type DeltaFramePayload = Omit<Extract<JarvisEvent, DeltaTag>, "type">;
-type ToolEventFramePayload = Omit<Extract<JarvisEvent, ToolEventTag>, "type">;
+/** Every turn-scoped `SERVER_MSG.JARVIS_*` payload carries `turnId` alongside
+ * the `JarvisEvent` variant's own remaining fields (see the wire rule
+ * documented on `JarvisEvent` in `#/jarvis/jarvisEvent`) — the listeners
+ * below filter on it before stripping it back off. */
+type DeltaFramePayload = Omit<Extract<JarvisEvent, DeltaTag>, "type"> & {
+  readonly turnId: string;
+};
+type ToolEventFramePayload = Omit<
+  Extract<JarvisEvent, ToolEventTag>,
+  "type"
+> & { readonly turnId: string };
 type ConfirmRequestFramePayload = Omit<
   Extract<JarvisEvent, ConfirmRequestTag>,
   "type"
->;
-type ErrorFramePayload = Omit<Extract<JarvisEvent, ErrorTag>, "type">;
+> & { readonly turnId: string };
+type ErrorFramePayload = Omit<Extract<JarvisEvent, ErrorTag>, "type"> & {
+  readonly turnId: string;
+};
+interface DoneFramePayload {
+  readonly turnId: string;
+}
 
 /** The minimal `Subscriber<JarvisEvent>` surface the turn listeners need. */
 interface JarvisTurnSubscriber {
@@ -53,54 +77,114 @@ interface JarvisTurnSubscriber {
 
 /** Attach the five `SERVER_MSG.JARVIS_*` listeners that feed one turn's
  * `JarvisEvent`s to `subscriber`, re-attaching the `type` discriminant the
- * wire strips off. `done`/`error` frames also complete the subscriber.
- * Returns the five `ws.on()` unregister functions for teardown. */
+ * wire strips off. Every frame is filtered to `payload.turnId === turnId`
+ * first — a frame belonging to a different turn (a P2-era straggler arriving
+ * after this turn's own listeners replaced a torn-down turn's) is ignored
+ * silently rather than misdelivered. `done`/`error` frames also complete the
+ * subscriber. Returns the five `ws.on()` unregister functions for teardown. */
 function attachJarvisTurnListeners(
   ws: IWsAdapter,
+  turnId: string,
   subscriber: JarvisTurnSubscriber,
 ): Array<() => void> {
   return [
     ws.on(SERVER_MSG.JARVIS_DELTA, (payload) => {
-      const { text } = payload as DeltaFramePayload;
-      subscriber.next({ type: "delta", text });
+      const p = payload as DeltaFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "delta", text: p.text });
     }),
     ws.on(SERVER_MSG.JARVIS_TOOL_EVENT, (payload) => {
-      const { tool, status } = payload as ToolEventFramePayload;
-      subscriber.next({ type: "toolEvent", tool, status });
+      const p = payload as ToolEventFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "toolEvent", tool: p.tool, status: p.status });
     }),
     ws.on(SERVER_MSG.JARVIS_CONFIRM_REQUEST, (payload) => {
       const p = payload as ConfirmRequestFramePayload;
-      subscriber.next({ type: "confirmRequest", ...p });
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      const { turnId: _turnId, ...rest } = p;
+      subscriber.next({ type: "confirmRequest", ...rest });
     }),
-    ws.on(SERVER_MSG.JARVIS_DONE, () => {
+    ws.on(SERVER_MSG.JARVIS_DONE, (payload) => {
+      const p = payload as DoneFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
       subscriber.next({ type: "done" });
       subscriber.complete();
     }),
     ws.on(SERVER_MSG.JARVIS_ERROR, (payload) => {
-      const { message } = payload as ErrorFramePayload;
-      subscriber.next({ type: "error", message });
+      const p = payload as ErrorFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "error", message: p.message });
       subscriber.complete();
     }),
   ];
 }
 
+/** Builds the `JarvisChatPayload`, capping `history` at
+ * `JARVIS_HISTORY_SEND_MAX_ENTRIES` and omitting the field entirely when
+ * there's nothing to replay (keeps the common no-history frame shape the
+ * same as before turnId/history existed). */
+function buildChatPayload(
+  text: string,
+  turnId: string,
+  history: readonly JarvisHistoryEntry[],
+): JarvisChatPayload {
+  const capped = history.slice(-JARVIS_HISTORY_SEND_MAX_ENTRIES);
+  return capped.length > 0
+    ? { text, turnId, history: capped }
+    : { text, turnId };
+}
+
 /** Builds the cold source `Observable` for one `ask(text)` turn: registers
- * all five listeners before sending `jarvis.chat`, so a same-tick reply
- * can't be missed (the `WsAdapter` buffers pre-open sends, so this also
- * works while the socket is still connecting). Teardown unregisters every
- * listener. */
+ * all five turnId-filtered listeners before sending `jarvis.chat`, so a
+ * same-tick reply can't be missed (the `WsAdapter` buffers pre-open sends, so
+ * this also works while the socket is still connecting). Teardown
+ * unregisters every listener AND fires `JARVIS_CANCEL {turnId}` — covering
+ * every way this stream stops: the caller unsubscribing early, normal
+ * completion (done/error already delivered — the server ignores a cancel for
+ * a turnId that isn't in flight, so this is a harmless no-op), and the
+ * offline-timeout path in `ask()` below (whose `timeout()` operator
+ * unsubscribes this source when it fires, running this same teardown). The
+ * adapter always completes the turn locally FIRST in every case — the cancel
+ * is best-effort server-side cleanup the client never waits on, and a
+ * cancelled turn gets no terminal frame back. */
 function createJarvisTurnStream(
   ws: IWsAdapter,
   text: string,
+  turnId: string,
+  history: readonly JarvisHistoryEntry[],
 ): Observable<JarvisEvent> {
   return new Observable<JarvisEvent>((subscriber) => {
-    const unregisterFns = attachJarvisTurnListeners(ws, subscriber);
-    ws.send(CLIENT_MSG.JARVIS_CHAT, { text } satisfies JarvisChatPayload);
+    const unregisterFns = attachJarvisTurnListeners(ws, turnId, subscriber);
+    ws.send(CLIENT_MSG.JARVIS_CHAT, buildChatPayload(text, turnId, history));
 
     return (): void => {
       for (const unregister of unregisterFns) {
         unregister();
       }
+
+      ws.send(CLIENT_MSG.JARVIS_CANCEL, {
+        turnId,
+      } satisfies JarvisCancelPayload);
     };
   });
 }
@@ -108,21 +192,37 @@ function createJarvisTurnStream(
 /** Wire-mode `JarvisPort`: turns `ask`/`confirm` into the `jarvis.*`
  * CLIENT_MSG/SERVER_MSG frames over an `IWsAdapter`. */
 export class WsJarvisAdapter implements JarvisPort {
+  /** Late-bound by composition once `JarvisMachine` exists: the history this
+   * adapter needs to replay is that machine's own state, but the machine is
+   * built FROM this port, so the source can't be injected at construction
+   * time without a cycle. A mutable setter breaks the cycle (the same
+   * late-binding shape `portFactory.createSimulatorPorts` uses for
+   * `createInstantReveal$`, which is threaded in as an already-built
+   * Observable rather than needing a setter because preferences has no such
+   * cycle). Defaults to `() => []` so `ask()` works before composition wires
+   * it, and in any test/composition path that never calls `setHistorySource`
+   * (e.g. `ui-contract`'s WS-real fixtures). */
+  private historySource: () => readonly JarvisHistoryEntry[] = () => {
+    return [];
+  };
+
   constructor(private readonly ws: IWsAdapter) {}
 
+  /** Injects the live history snapshot source. See the field doc above for
+   * why this is a setter rather than a constructor parameter. */
+  setHistorySource(source: () => readonly JarvisHistoryEntry[]): void {
+    this.historySource = source;
+  }
+
   ask(text: string): Observable<JarvisEvent> {
-    return createJarvisTurnStream(this.ws, text).pipe(
-      // KNOWN P2 LIMITATION (accepted, not a bug to fix here): the wire
-      // carries no correlation id, so once this timeout fires and this
-      // turn's listeners are torn down, a server that is still streaming
-      // the now-orphaned turn (no cancel frame is ever sent) has its
-      // stragglers land on whichever turn subscribes NEXT — same class of
-      // cross-talk as the snapshot-dispatch bug above, just without a fix
-      // available at this layer. The root fix is a wire correlation field,
-      // explicitly out of scope for phase 2 (targeted for phase 3). Hard to
-      // hit in practice: JarvisMachine serializes turns (concatMap) and the
-      // UI disables input while speaking, so a straggler has nowhere to
-      // land until the user starts a new turn after an offline timeout.
+    const turnId = crypto.randomUUID();
+
+    return createJarvisTurnStream(
+      this.ws,
+      text,
+      turnId,
+      this.historySource(),
+    ).pipe(
       timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS }),
       catchError((error: unknown) => {
         if (error instanceof TimeoutError) {
@@ -139,5 +239,39 @@ export class WsJarvisAdapter implements JarvisPort {
       confirmationId,
       approved,
     } satisfies JarvisConfirmPayload);
+  }
+
+  /** Not turn-scoped and not part of `JarvisPort` (see `jarvisPort.ts` — its
+   * surface stays unchanged for this task): a query/push channel for the
+   * Jarvis backend's live availability. On subscribe, registers the
+   * `JARVIS_AVAILABILITY` handler and sends `jarvis.subscribe`, emitting
+   * `payload.available` for every push; re-queries the server on each
+   * (re)subscribe (no caching/sharing). Reuses the same first-event timeout
+   * as `ask()` — a server that never answers is exactly the "offline, so
+   * unavailable" case. */
+  availability$(): Observable<boolean> {
+    return new Observable<boolean>((subscriber) => {
+      const unregister = this.ws.on(
+        SERVER_MSG.JARVIS_AVAILABILITY,
+        (payload) => {
+          const { available } = payload as JarvisAvailabilityPayload;
+          subscriber.next(available);
+        },
+      );
+      this.ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
+
+      return (): void => {
+        unregister();
+      };
+    }).pipe(
+      timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS }),
+      catchError((error: unknown) => {
+        if (error instanceof TimeoutError) {
+          return of(false);
+        }
+
+        throw error;
+      }),
+    );
   }
 }

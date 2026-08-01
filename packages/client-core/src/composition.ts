@@ -16,10 +16,12 @@ import {
   DEFAULT_LOGIN_WAIT_VARIANT,
   LOGIN_WAIT_DELAY_MS,
 } from "@rtc/domain";
+import type { JarvisHistoryEntry } from "@rtc/shared";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
+import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
 import {
   createDefaultLayoutPort,
   type WorkspaceTab,
@@ -60,6 +62,7 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
+  type JarvisEntry,
   type JarvisIntents,
   type JarvisState,
   LatencyPresenter,
@@ -261,6 +264,71 @@ export function firstWatchlistSymbol$(
   );
 }
 
+/**
+ * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
+ * chat-history replay source — only when `ports.jarvis` is a
+ * `WsJarvisAdapter` (WS-real mode; `jarvisPort.ts`'s surface stays unchanged,
+ * so this is an instanceof check rather than a port-interface method).
+ * Simulator mode's `ScriptedJarvisAdapter` has no `setHistorySource` and
+ * needs none — its brain already runs against the live application state
+ * directly, with no wire history to replay.
+ *
+ * Late-bound rather than constructor-injected: `JarvisMachine` (built here,
+ * in `createApp`) is constructed FROM `ports.jarvis`, so the machine's state
+ * can't reach the adapter at port-factory time without a cycle. `state$` has
+ * no synchronous `getValue()` in its public `Machine` typing (it's declared
+ * as the un-defaulted `StateObservable`, whose `getValue()` types as
+ * `T | StatePromise<T>`), so this subscribes once here instead — same shape
+ * as `gateTransportOnAuth`'s un-torn-down auth subscription below, kept
+ * alive for the app's lifetime rather than tied to an explicit dispose (there
+ * is none at this layer).
+ */
+/**
+ * `JarvisMachine.send()`'s `concatMap` appends the new turn's `[userEntry
+ * (done), jarvisEntry stub (not done)]` pair to `state.entries` — via the
+ * synchronous "start" patch — BEFORE it calls `port.ask(text)` for that same
+ * turn (see `createJarvisMachine`'s `concat(of({kind:"start", …}), …)`). So
+ * a history snapshot read from live state at `ask()`-call time already
+ * contains THIS turn's own user message. `WsJarvisAdapter.ask()` sends that
+ * same text separately as `JarvisChatPayload.text`, so echoing it back
+ * inside `history` too would hand the model its own newest message twice.
+ * While a turn is in flight the tail is always exactly that pair (the stub
+ * is not done), so dropping the last two entries whenever the array doesn't
+ * end on a completed entry excludes only the in-flight turn's own pair —
+ * every earlier, already-finished turn stays.
+ */
+function historyEntriesExcludingInFlightTurn(
+  entries: readonly JarvisEntry[],
+): readonly JarvisEntry[] {
+  const last = entries[entries.length - 1];
+  return last && !last.done ? entries.slice(0, -2) : entries;
+}
+
+function wireJarvisHistorySource(
+  jarvisPort: AppPorts["jarvis"],
+  jarvisState$: Presenters["jarvis"]["state$"],
+): void {
+  if (!(jarvisPort instanceof WsJarvisAdapter)) {
+    return;
+  }
+
+  let historyCache: readonly JarvisHistoryEntry[] = [];
+
+  jarvisState$.subscribe((state) => {
+    historyCache = historyEntriesExcludingInFlightTurn(state.entries)
+      .filter((entry) => {
+        return entry.done && entry.text.length > 0;
+      })
+      .map((entry): JarvisHistoryEntry => {
+        return { role: entry.role, text: entry.text };
+      });
+  });
+
+  jarvisPort.setHistorySource(() => {
+    return historyCache;
+  });
+}
+
 export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
@@ -425,6 +493,7 @@ export function createApp(ports: AppPorts): App {
     }),
   };
 
+  wireJarvisHistorySource(ports.jarvis, presenters.jarvis.state$);
   gateTransportOnAuth(ports.transport, presenters.auth);
 
   const commands: AppCommands = {
