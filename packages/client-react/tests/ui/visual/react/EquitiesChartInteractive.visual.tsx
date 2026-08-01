@@ -115,6 +115,9 @@ export function EquitiesChartLine(): ReactElement {
         kind="line"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -130,6 +133,9 @@ export function EquitiesChartArea(): ReactElement {
         kind="area"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -145,6 +151,9 @@ export function EquitiesChartIndicators(): ReactElement {
         kind="candles"
         indicators={CHART_INDICATORS}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -160,6 +169,9 @@ export function EquitiesChartVolumeAxis(): ReactElement {
         kind="candles"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -193,6 +205,8 @@ function ForcedChart({ viewport, cursor }: ForcedChartProps): ReactElement {
       volumeBars={volumeVm(CANDLES, viewport)}
       onBackToLive={() => {}}
       nav={navigatorVm(CANDLES, viewport)}
+      loadingOlder={false}
+      historyStart={false}
     />
   );
 }

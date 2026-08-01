@@ -18,12 +18,19 @@ import styles from "./ChartPanel.module.css";
  * and gesture state live in CandleChart.
  */
 export function ChartPanel(): ReactElement {
-  const { useEqWorkspace, useEquityQuote, useCandles, useWatchlist } =
-    useViewModel();
+  const {
+    useEqWorkspace,
+    useEquityQuote,
+    useCandles,
+    useCandleBackfill,
+    useWatchlist,
+    loadOlderCandles,
+  } = useViewModel();
   const { state } = useEqWorkspace();
   const { sel, timeframe, chartType, indicators } = state;
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
+  const backfill = useCandleBackfill(sel, timeframe);
   const instruments = useWatchlist();
   const instrument = instruments.find((i) => {
     return i.symbol === sel;
@@ -38,6 +45,10 @@ export function ChartPanel(): ReactElement {
   }
 
   const defaultVisible = CANDLE_DEFAULT_VISIBLE[timeframe];
+
+  function loadOlderForSelected(): void {
+    loadOlderCandles(sel, timeframe);
+  }
 
   return (
     <div className={styles.body}>
@@ -64,6 +75,9 @@ export function ChartPanel(): ReactElement {
           kind={chartType}
           indicators={indicators}
           defaultVisible={defaultVisible}
+          loadingOlder={backfill.loadingOlder}
+          historyExhausted={backfill.historyExhausted}
+          onLoadOlder={loadOlderForSelected}
         />
       </div>
     </div>

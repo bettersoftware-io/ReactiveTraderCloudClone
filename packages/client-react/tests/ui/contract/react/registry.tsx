@@ -831,6 +831,10 @@ export const registry = new Map<AnyToken, ElementFor>([
       // Task C2 (owns useChartGestures; props are candles/liveRate/flashOn/
       // kind/indicators/defaultVisible, not a precomputed `vm`). This
       // adapter is updated just enough to keep the registry type-checking.
+      // loadingOlder/historyExhausted/onLoadOlder (Task 7) are literals here,
+      // not yet read off `p` — the ChartBackfill contract spec (Task 9)
+      // drives CandleChart directly rather than through this registry, so
+      // this adapter only needs to stay green, not exercise the new props.
       return (
         <CandleChartComponent
           candles={(p.candles as readonly Candle[]) ?? []}
@@ -839,6 +843,9 @@ export const registry = new Map<AnyToken, ElementFor>([
           kind={(p.kind as EqChartType) ?? "candles"}
           indicators={(p.indicators as readonly EqIndicatorId[]) ?? []}
           defaultVisible={(p.defaultVisible as number) ?? 50}
+          loadingOlder={false}
+          historyExhausted={false}
+          onLoadOlder={() => {}}
         />
       );
     },

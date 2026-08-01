@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { type ReactElement, useEffect } from "react";
 
 import type { EqChartType, EqIndicatorId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
@@ -31,6 +31,9 @@ export function CandleChart({
   kind,
   indicators,
   defaultVisible,
+  loadingOlder,
+  historyExhausted,
+  onLoadOlder,
 }: CandleChartProps): ReactElement {
   // Destructured (not kept as one `g.foo` object) so each field's own type
   // drives the plugin's ref-safety analysis individually — `useChartGestures`
@@ -45,7 +48,25 @@ export function CandleChart({
     plotRef,
     resetToLive,
     applyViewport,
-  } = useChartGestures(candles.length, defaultVisible);
+  } = useChartGestures(candles.length, defaultVisible, candles[0]?.time);
+
+  // The near-edge fetch trigger — deliberately an EFFECT, the only one in
+  // the chart shells: syncing view state (the viewport nearing the loaded
+  // series' left edge) to an external data request is exactly what effects
+  // are for (ADR-005), unlike the brush shells' gesture translation which
+  // stays effect-free. One window of margin: fetch before the user can hit
+  // the wall at normal pan speed, never fetch on an idle chart.
+  const span = viewport.end - viewport.start;
+  const nearLeftEdge = viewport.start < span;
+
+  useEffect(() => {
+    if (nearLeftEdge && !loadingOlder && !historyExhausted) {
+      onLoadOlder();
+    }
+  }, [nearLeftEdge, loadingOlder, historyExhausted, onLoadOlder]);
+
+  const historyStart = historyExhausted && viewport.start === 0;
+
   const vm = chartVm(candles, liveRate, flashOn, { viewport, kind });
   const cross = cursor
     ? crosshairVm(cursor.xFrac, cursor.yFrac, candles, viewport, vm.scale)
@@ -74,6 +95,8 @@ export function CandleChart({
       plotRef={plotRef}
       nav={nav}
       navProps={brush.stripProps}
+      loadingOlder={loadingOlder}
+      historyStart={historyStart}
     />
   );
 }
@@ -88,6 +111,16 @@ export interface CandleChartProps {
    * — seeds `useChartGestures`' initial/reset viewport. ChartPanel already
    * computes this from the selected timeframe. */
   defaultVisible: number;
+  /** Whether an older history page is currently in flight for this series —
+   * drives the LOADING OLDER… chip and gates re-triggering. */
+  loadingOlder: boolean;
+  /** Whether the series has reached the true start of history — combined
+   * with the viewport sitting at index 0 to derive the START OF HISTORY
+   * chip. */
+  historyExhausted: boolean;
+  /** Fetches one older history page — the near-edge trigger's intent.
+   * Slot: the caller decides what "load older" means for this series. */
+  onLoadOlder: () => void;
 }
 
 /** Projects each active indicator's value series into the visible viewport,
