@@ -57,6 +57,10 @@ export const CLIENT_MSG = {
   // Jarvis
   JARVIS_CHAT: "jarvis.chat",
   JARVIS_CONFIRM: "jarvis.confirm",
+  // Cancels an in-flight turn by turnId (see JarvisCancelPayload).
+  JARVIS_CANCEL: "jarvis.cancel",
+  // Subscribes to availability pushes (see SERVER_MSG.JARVIS_AVAILABILITY).
+  JARVIS_SUBSCRIBE: "jarvis.subscribe",
 } as const;
 
 // ── Server → Client ─────────────────────────────────────────────
@@ -98,4 +102,12 @@ export const SERVER_MSG = {
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
   JARVIS_DONE: "jarvis.done",
   JARVIS_ERROR: "jarvis.error",
+  // Sent only in reply to CLIENT_MSG.JARVIS_SUBSCRIBE (see
+  // JarvisAvailabilityPayload) — not turn-scoped, carries no turnId.
+  // Availability is static per server process (it reflects whether an
+  // AgentLoop was constructed at boot), so this is a query/reply, not a
+  // live push: there is no server-side watcher that re-sends it later on
+  // its own. A client that wants a fresh answer (e.g. after a reconnect)
+  // re-sends JARVIS_SUBSCRIBE — see WsJarvisAdapter.availability$().
+  JARVIS_AVAILABILITY: "jarvis.availability",
 } as const;

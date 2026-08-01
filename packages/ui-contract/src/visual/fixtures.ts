@@ -2197,6 +2197,7 @@ const jarvisStateIdle: JarvisState = {
   phase: "idle",
   entries: [jarvisGreetingEntry],
   pendingConfirmation: null,
+  available: true,
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
@@ -2223,6 +2224,7 @@ const jarvisStateChat: JarvisState = {
   phase: "idle",
   entries: [jarvisGreetingEntry, jarvisChatUserEntry, jarvisChatReplyEntry],
   pendingConfirmation: null,
+  available: true,
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2259,5 +2261,6 @@ const jarvisStateConfirm: JarvisState = {
   phase: "idle",
   entries: [jarvisGreetingEntry],
   pendingConfirmation: jarvisPendingConfirmation,
+  available: true,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });

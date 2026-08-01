@@ -41,6 +41,7 @@
     "packages/*/*.config.ts",
     "packages/*/*.config.test.ts",
     "eslint-rules/*.ts",
+    "scripts/*.ts",
     "tests/**/*.ts"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**"]

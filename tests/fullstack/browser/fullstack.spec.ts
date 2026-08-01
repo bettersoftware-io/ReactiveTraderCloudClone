@@ -106,7 +106,23 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
   }) => {
     await page.goto("/");
 
-    await page.getByTestId("jarvis-orb").click();
+    // NOT a proof of the subscribe -> availability round-trip: JarvisMachine's
+    // INITIAL.available is `true` (see packages/client-core's JarvisMachine),
+    // so the orb renders on mount regardless of whether jarvis.subscribe /
+    // jarvis.availability ever complete — this assertion only proves the orb
+    // isn't hidden by an EARLY `available:false` landing before the click
+    // below. The positive handshake (a real jarvis.subscribe ->
+    // jarvis.availability {available:true} against the server's
+    // ScriptedAgentLoop, RTC_JARVIS_FAKE=1) is witnessed at the
+    // adapter/machine layers instead (see WsJarvisAdapter's and
+    // JarvisMachine's own unit tests). The true wire-drives-UI witness this
+    // spec is missing — a negative-path fullstack case where the server
+    // reports unavailable and the orb actually hides — is tracked as a
+    // follow-up in docs/STATUS.md's Jarvis P3 entry.
+    const orb = page.getByTestId("jarvis-orb");
+    await expect(orb).toBeVisible({ timeout: 20_000 });
+
+    await orb.click();
     await expect(page.getByTestId("jarvis-overlay")).toBeVisible();
 
     const input = page.getByTestId("jarvis-input");

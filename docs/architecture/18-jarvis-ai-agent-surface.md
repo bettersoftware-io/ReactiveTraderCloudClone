@@ -2,15 +2,20 @@
 
 > **Status: Phase 1 (scripted core surface) SHIPPED — PR #405, 2026-07-27.
 > Phase 2 (the `JARVIS_*` WS wire + the server's scripted agent loop) SHIPPED —
-> 2026-07-31. Next is P3: `@rtc/agent-tools` + the real Anthropic tool-runner
-> loop, then MCP (P4).** The authoritative decision records are the phase-1 spec
+> PR #440, 2026-07-31. Phase 3 (`@rtc/agent-tools` + the real Anthropic
+> tool-runner loop) SHIPPED — 2026-08-01. Next is P4: the MCP endpoint.** The
+> authoritative decision records are the phase-1 spec
 > at
 > [`docs/superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md`](../superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md)
 > and the parent spec at
 > [`docs/superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md`](../superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md);
 > this section is the architecture-level view. Where a diagram shows a package or
 > module that does not exist yet, it is marked *(planned)*. §18.11 records what
-> phase 1 proved; §18.12 records what phase 2 proved.
+> phase 1 proved; §18.12 records what phase 2 proved; **§18.13 records what
+> phase 3 proved — and closes, one by one, the accepted limitations §18.12
+> logged.** Earlier sections still carry their as-of-P2 prose; where P3 changed
+> the answer, the line points forward to §18.13 rather than being rewritten, so
+> the sequence of decisions stays legible.
 
 Jarvis is an AI presence in the HUD — a pulsating orb in the shell chrome that opens
 into a chat panel, answers questions about the live market by consulting the app's own
@@ -60,8 +65,8 @@ flowchart TD
         UC["Use cases<br/>PriceStream / ExecuteTrade<br/>TradeBlotter / Analytics / ..."]
     end
 
-    subgraph tools["@rtc/agent-tools (planned)"]
-        REG["Tool registry<br/>8 tool definitions<br/>JSON Schema + handlers over a ToolContext"]
+    subgraph tools["@rtc/agent-tools (shipped, P3 — §18.13)"]
+        REG["Tool registry<br/>7 tool definitions<br/>JSON Schema + handlers over injected ports"]
     end
 
     subgraph server["@rtc/server"]
@@ -97,7 +102,12 @@ Reading order for the dependency rule: arrows into `@rtc/domain` never exist; th
 registry depends on domain use cases; both transports depend on the registry; neither
 the registry nor the domain knows either transport exists.
 
-## 18.3 The tool registry (planned package: `@rtc/agent-tools`)
+## 18.3 The tool registry (`@rtc/agent-tools`)
+
+> **Shipped in P3** — see [§18.13](#1813-phase-3-shipped--the-real-loop) for the
+> as-built shape. The design below held; the two deviations are `ToolContext`
+> (built as an injected `JarvisToolDeps` of *ports* plus a `confirmTrade` gate,
+> not a bag of use-case instances) and `get_app_context` (deferred to P4).
 
 The registry is *the port* of the whole surface — a framework-free catalogue of what
 an AI may do to this application:
@@ -157,7 +167,7 @@ The slice-1 tool set:
 | `get_analytics` | `AnalyticsUseCase` (positions, PnL) | read |
 | `get_service_health` | service-health port | read |
 | `execute_trade` | `ExecuteTradeUseCase` | **gated** |
-| `get_app_context` | tab/theme snapshot sent by the client per turn | read |
+| `get_app_context` | tab/theme snapshot sent by the client per turn | read — **deferred to P4** (§18.13) |
 
 ## 18.4 A chat turn, end to end
 
@@ -296,31 +306,39 @@ zero `compositeFailed` events at steady state:
 
 ## 18.8 Wire protocol additions
 
-All additive; existing clients ignore unknown message types. **Shipped in phase 2**
-(§18.12) — payloads below are the as-shipped shapes; a field not yet carried is
-marked *(P3)*, following the same convention the diagrams use for *(planned)*.
+All additive; existing clients ignore unknown message types. Shipped in phase 2
+(§18.12) and **extended in phase 3** (§18.13) with turn correlation, cancel, and
+the availability handshake — the table below is the current as-shipped set.
 
-Every `server → client` payload obeys one rule: it **is** the matching `JarvisEvent`
-variant minus its `type` discriminant (the message type carries the discriminant).
-See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of both.
+Every turn-scoped `server → client` payload obeys one rule: it **is** the matching
+`JarvisEvent` variant minus its `type` discriminant (the message type carries the
+discriminant), **plus** a `turnId` correlating it to the client-generated turn.
+`JARVIS_AVAILABILITY` is the one non-turn-scoped frame and carries no `turnId`.
+See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of all of it.
 
 | Direction | Message | Payload |
 |---|---|---|
-| client → server | `JARVIS_CHAT` | `{ text }` — *(P3: `+ appContext`, landing with the tool registry that consumes it)* |
+| client → server | `JARVIS_CHAT` | `{ text, turnId, history? }` — *(`appContext` deferred to P4, with the `get_app_context` tool that consumes it)* |
 | client → server | `JARVIS_CONFIRM` | `{ confirmationId, approved }` |
-| server → client | `JARVIS_DELTA` | `{ text }` — one chunk of streamed assistant prose |
-| server → client | `JARVIS_TOOL_EVENT` | `{ tool, status: running \| done }` |
-| server → client | `JARVIS_CONFIRM_REQUEST` | `{ confirmationId, symbol, direction, notional, quotedPrice, ratePrecision }` |
-| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | `{}` / `{ message }` — turn end / error surface |
+| client → server | `JARVIS_CANCEL` | `{ turnId }` — **P3**; abandons the named in-flight turn |
+| client → server | `JARVIS_SUBSCRIBE` | `{}` — **P3**; opens the availability channel |
+| server → client | `JARVIS_DELTA` | `{ turnId, text }` — one chunk of streamed assistant prose |
+| server → client | `JARVIS_TOOL_EVENT` | `{ turnId, tool, status: running \| done }` |
+| server → client | `JARVIS_CONFIRM_REQUEST` | `{ turnId, confirmationId, symbol, direction, notional, quotedPrice, ratePrecision }` |
+| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | `{ turnId }` / `{ turnId, message }` — turn end / error surface |
+| server → client | `JARVIS_AVAILABILITY` | `{ available }` — **P3**; answered on subscribe, pushed on change |
 
 `JARVIS_CONFIRM_REQUEST` carries `symbol` (the pair's symbol, matching every other
 message in the protocol) and `ratePrecision`, the pair's display precision — so the
 confirm card formats `quotedPrice` exactly like a spot tile
 (`toFixed(ratePrecision)`) without a reference-data lookup UI-side.
 
-**No turn correlation id, by design in P2** — `JarvisMachine` serializes turns, so
-at most one is in flight per connection. See §18.12 for the accepted limitation this
-carries and its P3 fix.
+~~**No turn correlation id, by design in P2**~~ — **CLOSED by P3.** Every
+turn-scoped frame now carries the client-generated `turnId`, the client filters on
+it before delivering, and `JARVIS_CANCEL` names the turn it abandons. §18.12 keeps
+the original reasoning; [§18.13](#1813-phase-3-shipped--the-real-loop) records the
+fix and the effect-layer gate that keeps a *stale* cancel from killing the wrong
+turn.
 
 ## 18.9 Determinism: the fake agent loop
 
@@ -336,26 +354,29 @@ calls and a confirm round-trip, which buys three things at once:
 3. **Offline demos** — no key, no network, five minutes before showtime: the fake
    still streams, still raises the confirm card.
 
-The gate is `createAgentLoop(env, services)`, which returns the loop or `null`; a
-`null` loop means the `JARVIS_*` effects are never registered.
+The gate is `createAgentLoop(env, services, buildAnthropicLoop)`, which returns the
+loop or `null`. A `null` loop means the per-connection **session** effect is never
+registered — but since P3 the **availability** responder registers regardless, so
+the client's handshake always gets an answer instead of hanging (§18.13).
 
 | Flag state | Behavior |
 |---|---|
-| `ANTHROPIC_API_KEY` set | real Jarvis + MCP endpoint enabled *(P3)* |
-| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` — **shipped, P2** |
-| neither | Jarvis effects (+ MCP *(P4)*) not registered. **P2 behavior:** the client still shows the icon — there is no availability handshake, so a turn simply hits `WsJarvisAdapter`'s 10 s first-event timeout and degrades into one "Jarvis is offline, sir" error event. **Client-side hiding is *(P3)***, arriving with key detection. |
+| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` — **shipped, P2**. Deliberately checked **first**, so it wins even when a key is also set (§18.13, "FAKE wins"). |
+| `ANTHROPIC_API_KEY` set (and no `RTC_JARVIS_FAKE`) | real Jarvis on `AnthropicAgentLoop` — **shipped, P3** (MCP endpoint still *(P4)*) |
+| neither | Only the availability responder registers; the session effect does not. **P3 behavior:** `JARVIS_AVAILABILITY {available:false}` answers the handshake, and the client **hides the orb and disarms the hotkey**. (~~P2 behavior: the icon stayed, and a turn degraded into one "Jarvis is offline, sir" error after `WsJarvisAdapter`'s 10 s first-event timeout~~ — that timeout still exists as the belt-and-braces path for a server that never answers at all.) |
 
 ## 18.10 Package dependencies after slice 1
 
-Additions to the §6 graph (planned edges dashed conceptually — `agent-tools` follows
-the same rxjs-only rule as `ws-effects` and `motion-core`):
+Additions to the §6 graph, **as shipped in P3** — `agent-tools` follows the same
+`domain`-plus-`rxjs` rule the package table describes, and `server` is the only
+package allowed to see the Anthropic SDK:
 
 ```mermaid
 flowchart TD
     RXJS(["rxjs (the single runtime dep exception)"])
 
     DOM["@rtc/domain"]
-    AGT["@rtc/agent-tools (planned)"]
+    AGT["@rtc/agent-tools"]
     SHD["@rtc/shared"]
     WSE["@rtc/ws-effects"]
     SRV["@rtc/server"]
@@ -369,15 +390,19 @@ flowchart TD
     SRV --> DOM
     SRV --> SHD
     SRV --> WSE
-    SRV -.-> AGT
+    SRV --> AGT
     CC --> DOM
     CC --> SHD
 ```
 
 `@rtc/server` gains two confined third-party deps: the Anthropic SDK
-(`src/agent/`) and the MCP SDK (`src/mcp/`). Neither leaks past its directory; the
-registry and domain stay clean, so swapping either SDK touches one directory — the
-same replaceability contract as everything else in §8.
+(`src/agent/`, **shipped P3** — `@anthropic-ai/sdk`) and the MCP SDK (`src/mcp/`,
+*(P4)*). Neither leaks past its directory; the registry and domain stay clean, so
+swapping either SDK touches one directory — the same replaceability contract as
+everything else in §8. Two dependency-cruiser rules make that machine-checked
+rather than aspirational: `agent-tools-stays-inner` (agent-tools may import only
+`domain`) and `no-anthropic-sdk-in-inner-packages` (see §18.13 for why that one is
+written as an allowlist over `server`, not a blocklist of today's inner packages).
 
 ## 18.11 Phase 1 shipped — the receipt
 
@@ -499,9 +524,14 @@ could call the domain's real capabilities with no domain changes; this one prove
 
 ### Accepted phase-2 constraints
 
-Documented deliberately, so nobody "fixes" them as bugs:
+Documented deliberately, so nobody "fixes" them as bugs. **Three of the four are
+now CLOSED by phase 3** — each is annotated below and kept rather than deleted, so
+the reasoning that made them acceptable at the time is still readable next to the
+fix that retired them. The one that stands is `instantReveal` staying sim-only.
 
-- **No availability handshake.** The orb renders in ws mode even against a server
+- ~~**No availability handshake.**~~ **CLOSED by P3** ([§18.13](#1813-phase-3-shipped--the-real-loop)):
+  `JARVIS_SUBSCRIBE`/`JARVIS_AVAILABILITY` gate the orb and the hotkey end to end.
+  The original P2 reasoning: the orb renders in ws mode even against a server
   running without `RTC_JARVIS_FAKE` (where `createAgentLoop` returns `null` and the
   `JARVIS_*` effects are never registered). Rather than hang, `WsJarvisAdapter`'s
   first-event timeout — `timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS })`, 10 s —
@@ -510,7 +540,11 @@ Documented deliberately, so nobody "fixes" them as bugs:
   arrives with **P3's key detection**, when "is Jarvis available" becomes a question
   with a non-trivial answer (`ANTHROPIC_API_KEY` present or not); §18.9's flag table
   marks the icon-hiding row accordingly.
-- **No turn correlation ids.** `JarvisMachine` serializes turns (`concatMap`) and
+- ~~**No turn correlation ids.**~~ **CLOSED by P3** ([§18.13](#1813-phase-3-shipped--the-real-loop)):
+  `turnId` is on every turn-scoped frame, `JARVIS_CANCEL` exists, and the adapter
+  fires one on *every* teardown path. Note the P2 prescription below — "unfixable
+  at the adapter layer" — is now spent, and the P3 fix landed at the wire exactly
+  as predicted. The original P2 reasoning: `JarvisMachine` serializes turns (`concatMap`) and
   `ask()` completes on `done`/`error`, so at most one turn is in flight per
   connection and untagged frames are unambiguous. **The documented limitation:** after
   an offline timeout the client tears its listeners down but sends no cancel frame, so
@@ -524,10 +558,12 @@ Documented deliberately, so nobody "fixes" them as bugs:
   and P3's real token stream will behave identically (tokens arrive when they arrive).
   Sim mode keeps instant-reveal for reduced-motion/Freeze, and since the contract specs
   and the power-saver e2e both run sim mode, nothing regressed.
-- **`appContext` is not on the wire yet.** §18.8's table carries the as-shipped
-  shapes; `JARVIS_CHAT` is `{ text }` alone, because the field exists to feed a tool
-  registry that does not exist until P3 — sending it now would be a payload no
-  consumer reads.
+- **`appContext` is not on the wire yet.** Still true after P3, for the same
+  reason, now pointed at P4: `JARVIS_CHAT` gained `turnId` and `history` but not
+  `appContext`, because `get_app_context` — the only tool that would read it —
+  needs a client→server app-context channel neither the chat payload carries nor
+  the UI yet produces. Half-shipping it would put a payload on the wire no
+  consumer reads. §18.13 records the deferral; `docs/STATUS.md` tracks it.
 
 ### What review hardening added
 
@@ -582,5 +618,379 @@ gating, turn correlation ids, session history). The determinism guarantee of §1
 survives intact, because `ScriptedAgentLoop` does not go away when the real loop
 arrives — it stays as the CI path and the offline-demo path.
 
+**What actually landed** (P3, §18.13): the prediction held on the outside — same
+event union, same frames, an untouched client above the port — but `AgentLoop`
+itself split in two. It is now **one method**, `createSession(): AgentSession`, and
+the turn-serving methods moved onto the per-connection `AgentSession`
+(`runTurn(text, history)`, `resolveConfirmation`, `cancelTurn`, `dispose`). Per-
+socket state, not a process-wide loop, is what a real conversation needs.
+
 Phase-2 open items are tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis
 entry.
+
+## 18.13 Phase 3 shipped — the real loop
+
+Phase 3 (2026-08-01) put a real model behind the orb. `@rtc/agent-tools` is the
+registry §18.3 described; `AnthropicAgentLoop` is the `AgentLoop` implementation
+§18.12's seam was cut for; and the three deferrals P2 logged as accepted
+constraints — availability gating, turn correlation, session history — are closed
+at the wire rather than worked around above it. Everything the previous two phases
+proved about the *shape* stayed true: `@rtc/domain` is untouched again, the client
+above `JarvisPort` still cannot tell which brain answered, and the scripted loop is
+still the CI path.
+
+What is genuinely new is the class of problem. P1 and P2 moved deterministic code
+between processes. P3 hands the desk's real capabilities to a nondeterministic
+consumer that can be wrong, can loop, can cost money per sentence, and can be
+asked to trade. Most of this section is about what that costs in guard rails.
+
+### The package: seven tools, no SDK
+
+`@rtc/agent-tools` is a `domain`-plus-`rxjs` package (dependency-cruiser
+`agent-tools-stays-inner`), and it has never heard of Anthropic. A tool is four
+fields — `name`, `description`, a raw-JSON-Schema `inputSchema`, and
+`run(input): Promise<string>` — so the whole registry is testable by calling `run`
+against the domain simulators, with no SDK and no network anywhere in the suite.
+The server's `adaptTool` is the only place that knows what a `betaTool` is.
+
+| Tool | Reads | Notes |
+|---|---|---|
+| `list_currency_pairs` | `CurrencyPairsUseCase` | symbol + `ratePrecision` + `pipsPosition` |
+| `get_price` | `PriceStreamUseCase` | bid/ask/mid as **strings** |
+| `get_price_history` | `PricingPort.getPriceHistory` | the accumulated buffer, capped at 100 points |
+| `get_blotter` | `TradeBlotterUseCase` | newest first, default 20 / max 50 |
+| `get_analytics` | `AnalyticsUseCase` | per-pair positions + the session P&L headline |
+| `get_service_health` | `ServiceHealthPort` | a `ServiceTopologySimulator(3)` added to the server's container for this tool — the server has no service-health *effect*, so this is its own instance, not the one a client's status strip reads |
+| `execute_trade` | `ExecuteTradeUseCase` | **gated** — suspends on the injected `ConfirmGate` |
+
+Three decisions in that table are worth naming:
+
+- **Prices are pair-precision strings, not JSON numbers.** The persona instructs
+  Jarvis to state every price "exactly as the tools return it" — which a bare JSON
+  number makes unsatisfiable, because `1.08700` serialises as `1.087` and the model
+  can only then re-derive the trailing zeros by guessing. Each price field is
+  `toFixed(pair.ratePrecision)` at the source, with `ratePrecision` alongside it.
+  Formatting at the boundary is the same reason the confirm card carries
+  `ratePrecision` (§18.8): whoever knows the precision should apply it.
+- **`get_price_history` binds the raw port, not `PriceHistoryUseCase`.** That use
+  case folds *live* ticks into a caller-owned window, so a one-shot `take(1)`
+  snapshot of it yields a degenerate single-tick "history". The port method returns
+  the already-accumulated buffer — which is what the tool name promises.
+- **Every failure is a descriptive string, never a rejected promise.** A timed-out
+  read returns `"Could not get a price for EURUSD: the desk didn't respond in
+  time."`. The model needs to be *told* the desk is down so it can say so; a thrown
+  exception would surface as a generic turn failure and invite it to fill the gap
+  from memory.
+
+`ConfirmGate` — `(details) => Promise<boolean>` — lives in `agent-tools` because
+`execute_trade` needs the type, and is *injected* per session, which is the hinge
+the next subsection turns on.
+
+### The seam moved down: one session per socket
+
+P2's `AgentLoop` served turns directly. P3 splits it: `AgentLoop` is now one
+method, `createSession(): AgentSession`, and every WS connection gets its own
+session. The mechanism is not a registry or a map keyed by connection id — it is
+where the code sits:
+
+```ts
+function jarvisSessionEffect(in$, ctx) {
+  const session = activeLoop.createSession();   // once per socket
+  // ... chat / confirm / cancel sub-streams over THIS session
+  return merge(...).pipe(finalize(() => session.dispose()));
+}
+```
+
+`jarvisEffects` returns that **function** rather than a constant `WsEffect[]`, and
+`createWsListener` invokes each effect body once per socket. So the session's
+lifetime *is* the socket's lifetime — allocated on connect, disposed by the
+`finalize` on disconnect — with no bookkeeping to leak and no id to forge. Two
+consequences the design leans on:
+
+- **`createSession()` is allocation-only.** It constructs a session object and its
+  `betaTool` wrappers; it opens no connection and makes no API call. The `Anthropic`
+  client is built **once**, in `AnthropicAgentLoop`'s constructor, and shared. That
+  matters because every socket mints a session, including the ones that never chat.
+- **Tools are built per session, not per loop.** `AnthropicAgentLoopOptions` takes
+  a `buildTools(confirmTrade)` callback rather than a tool array, because
+  `execute_trade`'s gate closes over *this* session's event stream and pending-
+  confirmation table. A shared array would put every connection's confirmations in
+  one closure — precisely the cross-socket hole P2's review found and fixed.
+
+### The loop: `AnthropicAgentSession`
+
+One class, one connection's conversation. It drives the SDK's **streaming tool
+runner** (`client.beta.messages.toolRunner(params, { signal })`) and translates
+what comes back into the same five `JarvisEvent` variants P1 invented:
+
+| SDK stream event | `JarvisEvent` pushed |
+|---|---|
+| `content_block_start` (`tool_use`) | `toolEvent {tool, status: "running"}` |
+| `content_block_stop` for that index | `toolEvent {tool, status: "done"}` |
+| `content_block_delta` (`text_delta`) | `delta {text}` |
+| `stop_reason: "refusal"` | `error {message}` — one fixed line |
+| natural end of the runner's loop | `done` |
+
+The chip labels are a **separate** map (`JARVIS_TOOL_FRIENDLY_NAMES`:
+`get_analytics → "desk"`, `execute_trade → "trade"`) rather than the tool
+descriptions, because a UI chip wants one word and the model wants a sentence;
+conflating them would either bloat the prompt with UI concerns or truncate the
+model-facing description to fit a chip.
+
+Four behaviours in that loop are deliberate, and each exists because the honest
+answer is more useful than a tidy one:
+
+- **`pause_turn` is resumed, not surfaced.** The runner does not auto-resume a
+  paused turn, so the loop pushes the paused assistant message back with
+  `pushMessages` and lets its own `for await` pick up the next iteration —
+  bounded by `max_iterations` so a model that keeps pausing cannot spin forever.
+- **Truncation is announced.** `stop_reason: "max_tokens"` appends "…that's as far
+  as I can go this turn, sir", and a runner cut off by the iteration ceiling while
+  still mid-task appends "I ran out of runway mid-task, sir — the answer above may
+  be incomplete." Falling through to a clean `done` would report a truncated answer
+  as a complete one.
+- **SDK errors are sanitized at the boundary.** The client always gets the same
+  line ("The desk link faltered, sir — do try again."). The server log gets the
+  error's **constructor name** plus an HTTP status if the thrown value carries one
+  — enough to tell auth from rate-limit from malformed-request — and never
+  `error.message`, which can quote request content, and never anything key-shaped.
+- **Model choice is pinned, not floated.** `JARVIS_MODEL_ID = "claude-opus-5"` is a
+  constant, not an env var and not a `-latest` alias. A silent upstream swap would
+  change latency and per-token cost, and — since model behaviour shifts under the
+  same system prompt — could regress the confirmation-before-execution guarantee.
+  (The P3 plan was written against `claude-opus-4-8`; the shipped pin is
+  `claude-opus-5` per current API guidance. Recorded here because a pinned model is
+  a reviewed decision with an expiry date, not a constant nobody should touch.)
+
+### Cost hygiene: four caps and a cached prefix
+
+The scripted branch is free; every live turn is metered. `jarvisRunnerConfig.ts`
+exists purely to bound what an unbounded chat can cost — these are ceilings, not
+quality tuning:
+
+| Cap | Value | Bounds |
+|---|---|---|
+| `JARVIS_MAX_TOKENS_PER_TURN` | 4,096 | one reply's own generation cost |
+| `JARVIS_EFFORT` | `"medium"` | how much of that budget goes to thinking |
+| `JARVIS_MAX_TURNS_PER_SESSION` | 40 | a session that never ends |
+| `JARVIS_HISTORY_MAX_MESSAGES` | 30 | replayed context, billed on *every* later turn |
+
+`JARVIS_EFFORT` deserves its own line: thinking is adaptive-by-default at `"high"`
+on this model and draws from the **same** `max_tokens` ceiling as the visible
+reply, so an unbounded-effort tool-heavy turn can burn the entire budget thinking
+and deliver nothing but a truncation notice. `"medium"` is a cost/quality tradeoff
+for a terse desk assistant — not a sampling parameter, so it does not trade away
+repeatability the way temperature would. A fifth, narrower ceiling
+(`JARVIS_RUNNER_MAX_ITERATIONS`, 8) caps tool round-trips *within* one turn, kept
+deliberately distinct from the per-session cap: conflating the two axes would
+either let one turn eat the session's budget or starve a legitimate
+"quote, then trade" turn.
+
+Against that, one cheap saving: the system prompt carries an ephemeral
+`cache_control` breakpoint, and the tools are **sorted by name** (plain code-point
+order, not `localeCompare`, whose result depends on the ICU build). Persona plus
+seven schemas is comfortably over the model's minimum cacheable prefix, so every
+turn after the first re-hits the cache instead of re-billing the prefix as fresh
+input. The sort is load-bearing: an unstable tool order makes the prefix a
+different prefix, and the cache never hits.
+
+### Availability, end to end
+
+P2's orb rendered whether or not a brain existed. P3 makes "is Jarvis available"
+a real question with a real answer, threaded from the server's env all the way to
+a DOM node that is simply absent:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as WsJarvisAdapter
+    participant S as jarvisEffects
+    participant M as JarvisMachine
+    participant O as Orb + hotkey
+
+    W->>S: JARVIS_SUBSCRIBE (on every gatewayConnected)
+    S-->>W: JARVIS_AVAILABILITY {available}
+    W->>M: availability$ (distinctUntilChanged)
+    M->>O: state.available
+    Note over O: false: orb renders null,<br/>hotkey is a no-op,<br/>send() is a silent no-op
+```
+
+Four details make it hold up:
+
+- **The responder always registers.** `jarvisEffects(null)` still returns the
+  availability effect — only the session effect is conditional. A server with no
+  brain answers `false` instead of leaving the handshake to time out.
+- **It re-queries per connection, not once.** `availability$()` hangs off
+  `ws.connectionEvents()`, filtered to `gatewayConnected` and `switchMap`ped, so a
+  reconnect (including one after a server restart that *gained* a key) re-asks. The
+  first implementation subscribed once; a login slower than ten seconds latched it
+  to `false` for the life of the tab, and nothing ever re-asked.
+- **The per-connection deadline does not complete the stream.** `ask()` can use
+  RxJS `timeout()` because a turn is one-shot; availability is a live push channel,
+  so a plain `setTimeout` pushes a synthetic `false` and a real answer landing late
+  still reaches subscribers.
+- **The machine keeps a mutable cache beside the state.** `send()` needs the
+  *current* value synchronously at call time, and `state$`'s `getValue()` is not
+  reliably synchronous — so the one live availability subscription updates both the
+  folded state and a local `available` flag the `concatMap` reads. Unavailable
+  sends append no user entry and never call `port.ask`.
+
+Simulator mode wires no `availability$` at all and the machine defaults it to
+`of(true)`, so sim, contract specs and every golden are unaffected — which is why
+the visual tier needed no re-pin.
+
+### `turnId` and cancel — P2's limitation, closed
+
+P2 recorded the straggler problem and named the fix ("a wire correlation field").
+P3 shipped exactly that, plus the piece the P2 note did not anticipate:
+
+1. **`turnId` on every turn-scoped frame.** The client mints it
+   (`crypto.randomUUID()`), sends it on `JARVIS_CHAT`, and each of the five turn
+   listeners drops any payload whose `turnId` is not its own. A straggler from an
+   abandoned turn is now silently ignored instead of landing on whichever turn
+   subscribed next.
+2. **`JARVIS_CANCEL {turnId}` on every teardown path.** The adapter fires it from
+   the turn stream's teardown — early unsubscribe, offline timeout, *and* normal
+   completion. The client always completes locally first; the cancel is
+   best-effort server-side cleanup it never waits on, and a cancelled turn gets no
+   terminal frame back. That is why "Cancelled, sir." is safe to emit server-side:
+   the client's turnId filter has already stopped listening.
+3. **The turn-correlated cancel gate.** `session.cancelTurn()` is turnId-blind — it
+   aborts whatever is running. Since the client sends a cancel on *normal
+   completion* too, a stale cancel arriving just after the next turn started would
+   have killed the new turn mid-stream. `jarvisEffects` tracks the currently-open
+   `inFlightTurnId` (set at subscribe, cleared in that turn's own `finalize`) and
+   ignores a cancel that does not name it. This is the defect P2's framing could
+   not have predicted, because P2 had no cancel frame to get stale.
+
+### What review hardening added
+
+Five defects reached review as green, passing code. Each one is a pattern worth
+keeping, and the common thread is that **none of them was reachable by the tests
+that existed** — the failure modes live in sequences (two turns, a reconnect, a
+cancel mid-confirmation) that a single-path suite never assembles.
+
+1. **Assistant-first history bricked the session permanently.** The Messages API
+   requires `messages[0].role === "user"`. Two independent truncations can violate
+   that — the wire layer's 20-entry cap and the session's own 30-message cap — e.g.
+   a reconnect mid-conversation whose window happens to start on a Jarvis reply.
+   Unguarded it is not a bad turn, it is a **bricked session**: the 400 is caught as
+   a generic error, an errored turn appends nothing to history, so every later turn
+   resends the same bad prefix forever. `capMessages` now drops leading assistant
+   entries on every call, not only when trimming removed something.
+2. **Concurrent turns corrupted the session's single slot.** The generic `stream()`
+   helper is hardwired to `mergeMap`, so two rapid `jarvis.chat` frames on one
+   socket ran concurrently: turn B's `confirmRequest` could land on turn A's open
+   stream, and whichever finished first nulled the *other* turn's
+   `currentPush`/`currentAbort`. The chat sub-stream is now hand-rolled on
+   `concatMap` — matching the client's own machine — while confirm and cancel stay
+   merge-live, because they must reach the *running* turn even with a chat frame
+   queued behind it.
+3. **Cancel-while-confirming deadlocked the turn.** `controller.abort()` cancels
+   the SDK's network request; it does not touch this session's separate,
+   signal-unaware confirmation `Promise`. A cancel arriving while the confirm card
+   was open left `runOneTurn` awaiting a tool call awaiting a confirmation nothing
+   would ever resolve. `cancelTurn()` now also releases every pending confirmation
+   as declined — as does the Observable's own teardown, for a socket drop that
+   bypasses `cancelTurn()` entirely.
+4. **A stale cancel killed the wrong turn** — the `inFlightTurnId` gate above.
+5. **Availability latched false and never re-asked** — the connection-driven
+   re-query above.
+
+Two smaller ones are worth the line: the dep-cruiser rule banning the Anthropic SDK
+from inner packages was first written as a **blocklist** of the four packages that
+happened to matter, which silently left the browser clients uncovered — an SDK
+import there could ship a key-bearing code path into a bundle. It is now an
+**allowlist inversion**: everything except `packages/server/` is forbidden, so a
+package invented tomorrow is covered by default. And every tool *description* was
+rewritten to carry an explicit when-to-call trigger clause ("Call this whenever the
+user asks for a quote, a rate, or where a pair is trading right now") — nothing
+else in the system routes a user's question to a tool, so a description that says
+only what a tool *is* has no backstop.
+
+### Doctrine: what "per-session" means for the scripted engine
+
+The scripted branch did **not** get a per-session engine. `ScriptedJarvisEngine`
+stays one process-wide instance with one pending-confirmation table, and
+`ScriptedAgentSession` is a thin per-socket wrapper that tracks the confirmation
+ids **its own** `runTurn` stream emitted, forwarding `resolveConfirmation` only for
+those. Anything else is a silent no-op.
+
+That is the deliberate shape, adjudicated during review rather than left implicit:
+*the scripted engine keeps one process-wide pending-confirmation table; isolation
+comes from a per-session ownership guard.* It is worth stating because the
+Anthropic session achieves the same property differently — it owns its table
+outright — so a reader comparing the two branches will find one that looks
+"properly" isolated and one that looks like a workaround. Both are correct; they
+sit at different points on the same trade. The guard is cheap, it is the only thing
+standing between connection B and connection A's staged trade, and it should not be
+"simplified away" on the grounds that the ids are UUIDs. If the scripted engine is
+ever made per-session, the guard becomes redundant — until then it is load-bearing.
+
+### `RTC_JARVIS_FAKE` wins
+
+`createAgentLoop` checks the fake flag **first**:
+
+```ts
+if (env.RTC_JARVIS_FAKE === "1") { return new ScriptedAgentLoop(services); }
+if (env.ANTHROPIC_API_KEY)       { return buildAnthropicLoop(env, services); }
+return null;                     // availability responder only
+```
+
+The spec left the both-set case undefined. Rehearsal-override was chosen
+deliberately: it makes the offline demo one env var away without unsetting a key
+from the shell. That is the §18.9 determinism promise growing a second job — the
+scripted loop is now the CI path, the offline-demo path, **and** the deliberate
+fallback when the real thing must not be used (a flaky conference network, a
+rehearsal, a cost-sensitive walkthrough). A key present with no builder wired logs
+one warning and falls through to `null` rather than pretending to be online.
+
+### The one surface that touches a real key
+
+No test, anywhere, calls the Anthropic API. The runner-factory seam means the whole
+loop is exercised against fakes, and CI has no key to leak. The compile-time
+witness is that `AnthropicAgentLoop`'s default factory assigns
+`client.beta.messages.toolRunner(...)` straight onto `AnthropicRunnerFactory` with
+**no cast** — if the SDK changes shape under us, that assignment stops compiling.
+
+What a fake cannot witness is whether the real API agrees with our reading of it.
+That is `scripts/jarvis-live-smoke.ts` (`pnpm jarvis:smoke:live`) — manual,
+key-gated, refusing to run without `ANTHROPIC_API_KEY`, dependency-free (it
+hand-mirrors the wire vocabulary so it needs no build), and never run by CI because
+every turn is a real metered call. It boots the real server on a scratch port, logs
+in for a real token, and drives raw WebSocket frames through four checks:
+
+1. `jarvis.subscribe` reports `available: true`;
+2. a quote turn streams deltas, tool chips, and a terminal frame;
+3. a trade turn raises the confirm card and, **declined**, still produces a reply;
+4. a **fresh WebSocket** replays turns 1–3 as wire `history`, padded so the
+   server's own 20-entry cap truncates it into an assistant-first array before it
+   reaches the session.
+
+Check 4 is the one to understand, because its first version was a false witness.
+The session consults the wire's `history` **only on its first turn** (after that it
+grows its own copy), so reusing the earlier connection made the constructed history
+silently ignored — the check passed with the guard deleted. A fresh socket is a
+fresh session, which is exactly the reconnect-mid-conversation scenario the guard
+describes. The fixture is engineered to strip exactly **two** leading Jarvis
+entries: an odd count would leave an array ending on `"user"`, and appending the
+new turn's user message would then trip the API's *separate* roles-must-alternate
+400 — a different failure the check must not be fooled by.
+
+That is the shape of the general problem with testing an LLM feature: the cheap
+witness usually witnesses the wrong thing.
+
+### Deferred, and why
+
+- **`get_app_context`** — the eighth tool from §18.3, and the only one not
+  shipped. It depends on a client→server app-context channel the chat payload does
+  not carry and the UI does not yet produce (§18.12's `appContext` note). Shipping
+  the tool against a field nobody populates would be a tool that lies. It moves to
+  P4 with the MCP work, and is logged in [`docs/STATUS.md`](../STATUS.md).
+- **The MCP endpoint (§18.6)** — unchanged and still P4. Note that P3 makes it
+  cheaper, not harder: `@rtc/agent-tools` is the registry both transports were
+  always meant to share, and it landed SDK-free precisely so the MCP adapter can
+  convert at its own edge.
+
+Phase-3 open items, deferred minors, and the deployed-server key decision are
+tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis entry.
