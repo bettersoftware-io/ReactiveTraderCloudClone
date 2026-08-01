@@ -1,4 +1,5 @@
 import {
+  defer,
   EMPTY,
   firstValueFrom,
   type Observable,
@@ -184,10 +185,11 @@ describe("CandleSeriesPresenter", () => {
     expect(historyCalls.length).toBe(1);
   });
 
-  it("a candleHistory error clears loadingOlder$ WITHOUT latching exhaustion; a subsequent loadOlder retries the port", async () => {
+  it("a candleHistory error clears loadingOlder$ WITHOUT latching exhaustion; a subsequent loadOlder AFTER the cooldown retries the port", async () => {
     const base = [candle(200, 20)];
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     let attempt = 0;
+    let currentNow = 0;
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
         candles: () => {
@@ -208,6 +210,9 @@ describe("CandleSeriesPresenter", () => {
             : of([]);
         },
       }),
+      () => {
+        return currentNow;
+      },
     );
     presenter.candles$("AAPL").subscribe();
 
@@ -223,8 +228,118 @@ describe("CandleSeriesPresenter", () => {
       false,
     );
 
+    // Past the M1 cooldown (ERROR_RETRY_COOLDOWN_MS = 1000) — retries.
+    currentNow += 1000;
     presenter.loadOlder("AAPL");
     expect(historyCalls.length).toBe(2);
+  });
+
+  it("M1: a loadOlder retry WITHIN the error cooldown is a no-op — no port call", () => {
+    const base = [candle(200, 20)];
+    const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
+    let currentNow = 0;
+    const presenter = new CandleSeriesPresenter(
+      scriptedMarketData({
+        candles: () => {
+          return of(base);
+        },
+        candleHistory: (
+          symbol: string,
+          timeframe: CandleTimeframe,
+          beforeTime: number,
+          count: number,
+        ) => {
+          historyCalls.push([symbol, timeframe, beforeTime, count]);
+          return throwError(() => {
+            return new Error("boom");
+          });
+        },
+      }),
+      () => {
+        return currentNow;
+      },
+    );
+    presenter.candles$("AAPL").subscribe();
+
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(1);
+
+    // Still within the 1000ms cooldown — a retry now must no-op.
+    currentNow += 999;
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(1);
+
+    // Past the cooldown — retries.
+    currentNow += 1;
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(2);
+  });
+
+  it("M1: a successful page clears the error cooldown timestamp (not just the in-flight flag)", () => {
+    // Distinguishing a real clear from "the old error is just far enough in
+    // the past to no longer block" needs a clock that can move BACKWARDS
+    // (an NTP-style correction) — under a monotonic clock, once an old
+    // error's cooldown has lapsed it can never re-block on its own, so a
+    // stale (uncleared) timestamp and a properly cleared one would look
+    // identical to every other test here. Sequence: error at t=5000 →
+    // advance past its cooldown to t=6000 and succeed (clearing the
+    // timestamp, if implemented) → jump the clock BACK to t=5500. An
+    // uncleared timestamp (5000) would read `5500 - 5000 = 500 < 1000` and
+    // wrongly block; a cleared one has no timestamp to compare against.
+    const base = [candle(300, 30)];
+    const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
+    let attempt = 0;
+    let currentNow = 5000;
+    const presenter = new CandleSeriesPresenter(
+      scriptedMarketData({
+        candles: () => {
+          return of(base);
+        },
+        candleHistory: (
+          symbol: string,
+          timeframe: CandleTimeframe,
+          beforeTime: number,
+          count: number,
+        ) => {
+          historyCalls.push([symbol, timeframe, beforeTime, count]);
+          attempt += 1;
+
+          if (attempt === 1) {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          }
+
+          // A full page (no gap to CANDLE_HISTORY_PAGE) so it doesn't latch
+          // exhaustion and block the third loadOlder call.
+          return of([
+            candle(200, 20),
+            ...Array.from({ length: CANDLE_HISTORY_PAGE - 1 }, (_, i) => {
+              return candle(250, i);
+            }),
+          ]);
+        },
+      }),
+      () => {
+        return currentNow;
+      },
+    );
+    presenter.candles$("AAPL").subscribe();
+
+    // Attempt 1 errors at t=5000 — sets the cooldown timestamp.
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(1);
+
+    // Past that error's cooldown — attempt 2 succeeds, clearing it.
+    currentNow = 6000;
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(2);
+
+    // Clock corrected BACKWARDS to 500ms after the ORIGINAL (5000) error —
+    // only reachable via the stale timestamp, since attempt 2 never errored.
+    currentNow = 5500;
+    presenter.loadOlder("AAPL");
+    expect(historyCalls.length).toBe(3);
   });
 
   it("contiguity guard: a page whose last candle's time >= the current first candle's time has the overlap dropped", () => {
@@ -258,6 +373,119 @@ describe("CandleSeriesPresenter", () => {
     presenter.loadOlder("AAPL");
 
     expect(emissions).toEqual([base, [candle(100, 10), ...base]]);
+  });
+
+  it("M2: a double-prepend of the same page (e.g. a retried/duplicate fetch) survives in the stitched output exactly once", () => {
+    const base = [candle(1000, 100)];
+    // A FULL page (length === CANDLE_HISTORY_PAGE) so the first loadOlder
+    // doesn't latch exhaustion and block the second.
+    const page = Array.from({ length: CANDLE_HISTORY_PAGE }, (_, i) => {
+      return candle(i, i);
+    });
+
+    const presenter = new CandleSeriesPresenter(
+      scriptedMarketData({
+        candles: () => {
+          return of(base);
+        },
+        // Deliberately ignores `beforeTime` and always returns the SAME
+        // page — modelling a duplicate/retried fetch landing twice
+        // regardless of which anchor it was requested against.
+        candleHistory: () => {
+          return of(page);
+        },
+      }),
+    );
+
+    const emissions: Array<readonly Candle[]> = [];
+    presenter.candles$("AAPL").subscribe((s) => {
+      emissions.push(s);
+    });
+
+    presenter.loadOlder("AAPL");
+    const afterFirst = emissions[emissions.length - 1];
+    expect(afterFirst).toHaveLength(CANDLE_HISTORY_PAGE + 1);
+
+    presenter.loadOlder("AAPL");
+    const afterSecond = emissions[emissions.length - 1];
+
+    // The second (duplicate) page adds NOTHING new to the visible series —
+    // every one of its candle times was already present.
+    expect(afterSecond).toEqual(afterFirst);
+    expect(afterSecond).toHaveLength(CANDLE_HISTORY_PAGE + 1);
+  });
+
+  it("I1: a fresh subscription cycle (refCount teardown → resubscribe) resets a key's backfill state — no stale pages stitch onto the new base, exhausted$ resets, and a fresh loadOlder anchors on the NEW base's oldest", async () => {
+    // Models EquityMarketDataSimulator's cold-generator characteristic: the
+    // base stream regenerates fresh data (as if from a new Date.now()) on
+    // every subscription — `baseCallCount` stands in for "which wall-clock
+    // moment this subscription saw".
+    let baseCallCount = 0;
+    const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
+    const presenter = new CandleSeriesPresenter(
+      scriptedMarketData({
+        candles: () => {
+          return defer(() => {
+            baseCallCount += 1;
+            return of([candle(1000 * baseCallCount, 10 * baseCallCount)]);
+          });
+        },
+        candleHistory: (
+          symbol: string,
+          timeframe: CandleTimeframe,
+          beforeTime: number,
+          count: number,
+        ) => {
+          historyCalls.push([symbol, timeframe, beforeTime, count]);
+          // A SHORT page (latches exhaustion) so cycle 2's reset of
+          // exhausted$ back to false is actually observable.
+          return of([candle(beforeTime - 500, 5)]);
+        },
+      }),
+    );
+
+    // --- Cycle 1: subscribe, load an older (short, exhausting) page. ---
+    const emissions1: Array<readonly Candle[]> = [];
+    const sub1 = presenter.candles$("AAPL").subscribe((s) => {
+      emissions1.push(s);
+    });
+
+    expect(emissions1).toEqual([[candle(1000, 10)]]);
+
+    presenter.loadOlder("AAPL");
+
+    expect(historyCalls).toEqual([["AAPL", "1D", 1000, CANDLE_HISTORY_PAGE]]);
+    expect(emissions1[emissions1.length - 1]).toEqual([
+      candle(500, 5),
+      candle(1000, 10),
+    ]);
+    expect(await firstValueFrom(presenter.historyExhausted$("AAPL"))).toBe(
+      true,
+    );
+
+    // --- Teardown: refCount drops to 0. ---
+    sub1.unsubscribe();
+
+    // --- Cycle 2: resubscribe (the SAME cached candles$() stream). ---
+    const emissions2: Array<readonly Candle[]> = [];
+    presenter.candles$("AAPL").subscribe((s) => {
+      emissions2.push(s);
+    });
+
+    // A brand-new base (baseCallCount advanced) — and NEITHER the stale
+    // {500,5} page NOR the old {1000,10} base survive; only the fresh base.
+    expect(emissions2).toEqual([[candle(2000, 20)]]);
+    expect(await firstValueFrom(presenter.historyExhausted$("AAPL"))).toBe(
+      false,
+    );
+
+    // A fresh loadOlder anchors on the NEW base's oldest (2000), not the
+    // torn-down cycle's (1000).
+    presenter.loadOlder("AAPL");
+    expect(historyCalls).toEqual([
+      ["AAPL", "1D", 1000, CANDLE_HISTORY_PAGE],
+      ["AAPL", "1D", 2000, CANDLE_HISTORY_PAGE],
+    ]);
   });
 
   it("per-key independence: loadOlder for (AAPL,1D) leaves (AAPL,1W)'s stitched stream and flags untouched", async () => {
