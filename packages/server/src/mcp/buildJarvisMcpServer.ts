@@ -53,8 +53,12 @@ export function buildJarvisMcpServer(
     });
 
     if (tool === undefined) {
+      // InvalidParams, not MethodNotFound: the JSON-RPC *method* (tools/call)
+      // is implemented — it's the tool name argument that's bad. MethodNotFound
+      // (-32601) would tell a strict client that tools/call itself is
+      // unsupported. Matches the SDK's own McpServer's "Tool X not found".
       throw new McpError(
-        ErrorCode.MethodNotFound,
+        ErrorCode.InvalidParams,
         `Unknown tool: ${request.params.name}`,
       );
     }

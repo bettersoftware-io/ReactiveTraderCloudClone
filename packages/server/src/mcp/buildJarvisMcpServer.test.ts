@@ -5,17 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJarvisTools } from "@rtc/agent-tools";
 
 import { createServices } from "../services/serviceContainer.js";
-import { buildJarvisMcpServer } from "./buildJarvisMcpServer.js";
+import {
+  buildJarvisMcpServer,
+  JARVIS_MCP_SERVER_NAME,
+  JARVIS_MCP_SERVER_VERSION,
+} from "./buildJarvisMcpServer.js";
 
 describe("buildJarvisMcpServer", () => {
+  let connections: ConnectedClient[] = [];
+
   beforeEach(() => {
+    connections = [];
     // ExecutionSimulator fills after Math.random() * 2000 ms; pin to zero so
     // the execute_trade round-trip is instant under real timers (fake timers
     // would stall the transport's internal promises).
     vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    for (const connection of connections) {
+      await connection.client.close();
+      await connection.server.close();
+    }
+
     vi.restoreAllMocks();
   });
 
@@ -24,7 +36,7 @@ describe("buildJarvisMcpServer", () => {
       ...createServices(),
       confirmTrade: approveWithoutPrompt,
     });
-    const { client } = await connectClient(tools);
+    const { client } = await connect(connections, tools);
 
     const listed = await client.listTools();
 
@@ -42,15 +54,22 @@ describe("buildJarvisMcpServer", () => {
       "get_service_health",
       "list_currency_pairs",
     ]);
-    const getPrice = listed.tools.find((tool) => {
-      return tool.name === "get_price";
-    });
 
-    const source = tools.find((tool) => {
-      return tool.name === "get_price";
+    // Every tool's JSON Schema and description must pass through verbatim —
+    // execute_trade's direction enum array is the construct most worth
+    // pinning, since it's the one place a lossy round-trip would show up.
+    for (const source of tools) {
+      const listedTool = listed.tools.find((tool) => {
+        return tool.name === source.name;
+      });
+      expect(listedTool?.inputSchema).toEqual(source.inputSchema);
+      expect(listedTool?.description).toBe(source.description);
+    }
+
+    expect(client.getServerVersion()).toEqual({
+      name: JARVIS_MCP_SERVER_NAME,
+      version: JARVIS_MCP_SERVER_VERSION,
     });
-    expect(getPrice?.inputSchema).toEqual(source?.inputSchema);
-    expect(getPrice?.description).toBe(source?.description);
   });
 
   it("dispatches tools/call to the tool's run and returns its string as text content", async () => {
@@ -58,7 +77,7 @@ describe("buildJarvisMcpServer", () => {
       ...createServices(),
       confirmTrade: approveWithoutPrompt,
     });
-    const { client } = await connectClient(tools);
+    const { client } = await connect(connections, tools);
 
     const result = await client.callTool({
       name: "list_currency_pairs",
@@ -76,7 +95,7 @@ describe("buildJarvisMcpServer", () => {
       ...createServices(),
       confirmTrade: approveWithoutPrompt,
     });
-    const { client } = await connectClient(tools);
+    const { client } = await connect(connections, tools);
 
     await expect(
       client.callTool({ name: "drop_all_tables", arguments: {} }),
@@ -92,7 +111,7 @@ describe("buildJarvisMcpServer", () => {
         return Promise.reject(new Error("boom"));
       },
     };
-    const { client } = await connectClient([explodingTool]);
+    const { client } = await connect(connections, [explodingTool]);
 
     const result = await client.callTool({ name: "explode", arguments: {} });
 
@@ -107,7 +126,7 @@ describe("buildJarvisMcpServer", () => {
       ...services,
       confirmTrade: approveWithoutPrompt,
     });
-    const { client } = await connectClient(tools);
+    const { client } = await connect(connections, tools);
 
     const result = await client.callTool({
       name: "execute_trade",
@@ -147,7 +166,12 @@ interface ConnectedClient {
   readonly server: ReturnType<typeof buildJarvisMcpServer>;
 }
 
-async function connectClient(
+/** Connects a fresh in-memory client/server pair and registers it in
+ * `connections` so the describe block's `afterEach` closes both sides —
+ * neither transport self-closes, so an unclosed pair would leak past its
+ * test. */
+async function connect(
+  connections: ConnectedClient[],
   tools: ReturnType<typeof buildJarvisTools>,
 ): Promise<ConnectedClient> {
   const server = buildJarvisMcpServer(tools);
@@ -156,7 +180,9 @@ async function connectClient(
   await server.connect(serverTransport);
   const client = new Client({ name: "vitest", version: "0.0.0" });
   await client.connect(clientTransport);
-  return { client, server };
+  const connection = { client, server };
+  connections.push(connection);
+  return connection;
 }
 
 interface TextContent {
