@@ -124,6 +124,26 @@ export function useChartGestures(
         firstCandleTime < prevFirstTime;
 
       if (prepended) {
+        // C1: a prepend landing MID-DRAG must also shift the drag's cached
+        // origin, or the next pointermove's
+        // panBy(dragRef.current.startViewport, ...) recomputes from a
+        // viewport that no longer matches reality — snapping the view back
+        // by `grewBy` candles and re-triggering the near-edge fetch on
+        // every subsequent move, draining the whole depth cap in one
+        // continuous drag. A ref write during render is safe here: it's the
+        // same "adjust state during render" seam the setViewport calls
+        // above already use (this whole block only runs when
+        // seriesLen/firstCandleTime changed since the last render).
+        if (dragRef.current) {
+          dragRef.current = {
+            ...dragRef.current,
+            startViewport: shiftForPrepend(
+              dragRef.current.startViewport,
+              grewBy,
+            ),
+          };
+        }
+
         return shiftForPrepend(vp, grewBy);
       }
 

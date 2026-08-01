@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ChartViewport } from "@rtc/motion-core";
+import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
 import { useNavigatorBrush } from "./useNavigatorBrush";
 
@@ -151,6 +151,46 @@ describe("useNavigatorBrush", () => {
     expect(event.currentTarget.setPointerCapture).toHaveBeenCalledWith(1);
   });
 
+  it("C1: a prepend landing MID-DRAG shifts the cached brush origin, so the next move lands where the same drag delta would in the shifted frame (no snap-back)", () => {
+    const GREW_BY = 300;
+    const NEW_SERIES_LEN = SERIES_LEN + GREW_BY;
+    const applyViewport = vi.fn();
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useNavigatorBrush(
+          VIEWPORT,
+          applyViewport,
+          props.seriesLen,
+          props.firstCandleTime,
+        );
+      },
+      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
+    );
+
+    act(() => {
+      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    });
+
+    // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
+    // length grew by 300.
+    rerender({ seriesLen: NEW_SERIES_LEN, firstCandleTime: 700_000 });
+
+    act(() => {
+      result.current.stripProps.onPointerMove(moveEvent(400));
+    });
+
+    // The shifted origin (VIEWPORT translated by +GREW_BY) fed through the
+    // exact same panBy the hook itself uses, at the post-prepend seriesLen —
+    // i.e. "what the same drag delta gives in the shifted frame", not a
+    // hand-derived magic number. Without the C1 fix the hook would instead
+    // pan from the STALE (unshifted) VIEWPORT, landing 300 candles further
+    // back.
+    const shiftedOrigin = shiftForPrepend(VIEWPORT, GREW_BY);
+    const dCandles = ((400 - 450) / STRIP_RECT.width) * NEW_SERIES_LEN;
+    const expected = panBy(shiftedOrigin, dCandles, NEW_SERIES_LEN);
+    expect(applyViewport).toHaveBeenLastCalledWith(expected);
+  });
+
   it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
     const applyViewport = vi.fn();
     const { result } = renderHook(() => {
@@ -184,6 +224,14 @@ describe("useNavigatorBrush", () => {
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
   });
 });
+
+/** The C1 prepend-shift regression's rerender props: a growing seriesLen
+ * (real number) alongside an optional firstCandleTime, same shape as
+ * useChartGestures.test.ts's own HookProps. */
+interface HookProps {
+  seriesLen: number;
+  firstCandleTime?: number;
+}
 
 /** What the pointerdown landed on: the window body, a handle, or the bare
  * track — expressed through the `closest()` answers the hook's hit-test

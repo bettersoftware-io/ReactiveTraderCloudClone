@@ -1,10 +1,15 @@
-import { type PointerEvent as ReactPointerEvent, useRef } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useRef,
+  useState,
+} from "react";
 
 import {
   type ChartViewport,
   centerViewportAt,
   panBy,
   resizeViewportEdge,
+  shiftForPrepend,
   type ViewportEdge,
 } from "@rtc/motion-core";
 
@@ -50,8 +55,51 @@ export function useNavigatorBrush(
   viewport: ChartViewport,
   applyViewport: (vp: ChartViewport) => void,
   seriesLen: number,
+  firstCandleTime?: number,
 ): NavigatorBrush {
   const originRef = useRef<BrushOrigin | null>(null);
+
+  // C1 (mirrors useChartGestures' own render-adjust bookkeeping): a
+  // backfill prepend growing the series mid-drag must shift the CACHED
+  // brush origin by the same amount, or the next pointermove's
+  // panBy/resizeViewportEdge(origin.startViewport, ...) recomputes from a
+  // viewport that no longer matches reality. `firstCandleTime` is OPTIONAL
+  // and defaults to undefined on every render for an existing 3-arg
+  // caller, so `seriesLen !== prevLen` alone can still flip true (a plain
+  // append) without ever satisfying the `prepended` check below — the
+  // no-firstCandleTime path collapses to exactly today's behaviour. The
+  // ref write happens INSIDE the `setPrevFirstTime` updater callback, not
+  // as a bare statement in the render body — same "adjust state during
+  // render" seam useChartGestures' own ref write rides (there, nested in
+  // its `setViewport` updater); react-hooks/refs' static analysis only
+  // recognises a ref access as render-safe when it's inside a state
+  // updater function, not a plain conditional in the render body.
+  const [prevLen, setPrevLen] = useState(seriesLen);
+  const [prevFirstTime, setPrevFirstTime] = useState(firstCandleTime);
+
+  if (seriesLen !== prevLen || firstCandleTime !== prevFirstTime) {
+    setPrevLen(seriesLen);
+    setPrevFirstTime((prevStoredFirstTime) => {
+      const grewBy = seriesLen - prevLen;
+      const prepended =
+        grewBy > 0 &&
+        prevStoredFirstTime !== undefined &&
+        firstCandleTime !== undefined &&
+        firstCandleTime < prevStoredFirstTime;
+
+      if (prepended && originRef.current) {
+        originRef.current = {
+          ...originRef.current,
+          startViewport: shiftForPrepend(
+            originRef.current.startViewport,
+            grewBy,
+          ),
+        };
+      }
+
+      return firstCandleTime;
+    });
+  }
 
   function startBrush(e: ReactPointerEvent<HTMLDivElement>): void {
     const rect = e.currentTarget.getBoundingClientRect();

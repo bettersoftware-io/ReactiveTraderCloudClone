@@ -188,6 +188,27 @@ export function createChartGestures(
             firstTime < prev.firstTime;
 
           if (prepended) {
+            // C1: a prepend landing MID-DRAG must also shift the drag's
+            // cached origin, or the next pointermove's
+            // panBy(dragOrigin.startViewport, ...) recomputes from a
+            // viewport that no longer matches reality — snapping the view
+            // back by `grewBy` candles and re-triggering the near-edge
+            // fetch on every subsequent move, draining the whole depth cap
+            // in one continuous drag. `dragOrigin` is a plain `let`, so
+            // reassigning it here (inside this createComputed, which already
+            // runs synchronously before dependents observe the new
+            // viewport) is the direct analogue of the React shell's
+            // render-time ref write.
+            if (dragOrigin) {
+              dragOrigin = {
+                ...dragOrigin,
+                startViewport: shiftForPrepend(
+                  dragOrigin.startViewport,
+                  grewBy,
+                ),
+              };
+            }
+
             return shiftForPrepend(vp, grewBy);
           }
 

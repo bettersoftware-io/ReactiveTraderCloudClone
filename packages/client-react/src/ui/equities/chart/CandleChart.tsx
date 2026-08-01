@@ -80,7 +80,13 @@ export function CandleChart({
     vm.scale,
   );
 
-  const brush = useNavigatorBrush(viewport, applyViewport, candles.length);
+  const brush = useNavigatorBrush(
+    viewport,
+    applyViewport,
+    candles.length,
+    candles[0]?.time,
+  );
+
   // The two navigator halves change at very different rates, so they're
   // called separately (not via the composed `navigatorVm`): the Compiler
   // memoizes `navigatorLinePoints(candles)` on the series alone, so a

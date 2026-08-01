@@ -93,9 +93,16 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     );
   });
 
-  const brush = createNavigatorBrush(g.viewport, g.applyViewport, () => {
-    return props.candles.length;
-  });
+  const brush = createNavigatorBrush(
+    g.viewport,
+    g.applyViewport,
+    () => {
+      return props.candles.length;
+    },
+    () => {
+      return props.candles[0]?.time;
+    },
+  );
 
   // The two navigator halves change at very different rates, so the line is
   // its own memo keyed on the series alone: a continuous brush drag

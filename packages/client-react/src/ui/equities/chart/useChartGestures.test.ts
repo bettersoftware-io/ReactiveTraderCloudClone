@@ -314,6 +314,57 @@ describe("useChartGestures", () => {
     });
   });
 
+  it("C1: a prepend landing MID-DRAG shifts the cached drag origin, so the next move lands where the same drag delta would in the shifted frame (no snap-back)", () => {
+    // Regression: the render-adjust `prepended` branch used to shift the
+    // live `viewport` state by +grewBy but leave `dragRef.current.startViewport`
+    // untouched. The next pointermove's panBy(dragRef.current.startViewport, ...)
+    // then recomputed an ABSOLUTE viewport from the STALE (unshifted) origin,
+    // snapping the view back by `grewBy` candles and re-triggering the
+    // near-edge fetch on every subsequent move of one continuous drag.
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useChartGestures(
+          props.seriesLen,
+          DEFAULT_VISIBLE,
+          props.firstCandleTime,
+        );
+      },
+      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
+    );
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 50, clientY: 50 }),
+      );
+    });
+
+    // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
+    // length grew by 300 — the same growth-direction fork as the render-time
+    // series-growth tests above.
+    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+
+    act(() => {
+      // Same drag delta as "pointer drag pans the viewport..." above (+50px
+      // of 500px width) — dragging right pans backward (earlier).
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 100, clientY: 50 }),
+      );
+    });
+
+    // Expected: the SAME candles stay under the drag (the shifted-frame
+    // delta), not a snap back by 300 candles from the stale origin.
+    const span = DEFAULT_VISIBLE;
+    const expectedStart =
+      SERIES_LEN + 300 - DEFAULT_VISIBLE - (50 / 500) * span;
+    expect(result.current.viewport.start).toBeCloseTo(expectedStart, 5);
+
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 100, clientY: 50 }),
+      );
+    });
+  });
+
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
     const { result } = renderHook(() => {
       return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);

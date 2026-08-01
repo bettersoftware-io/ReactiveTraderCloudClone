@@ -1,7 +1,8 @@
 import { renderHook } from "@solidjs/testing-library";
+import { batch, createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ChartViewport } from "@rtc/motion-core";
+import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
 import { createNavigatorBrush } from "./createNavigatorBrush";
 
@@ -127,6 +128,48 @@ describe("createNavigatorBrush", () => {
     result.stripProps.onPointerDown(event);
 
     expect(setPointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it("C1: a prepend landing MID-DRAG shifts the cached brush origin, so the next move lands where the same drag delta would in the shifted frame (no snap-back)", () => {
+    const GREW_BY = 300;
+    const NEW_SERIES_LEN = SERIES_LEN + GREW_BY;
+    const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
+    const [firstCandleTime, setFirstCandleTime] = createSignal<
+      number | undefined
+    >(1_000_000);
+    const applyViewport = vi.fn();
+    const { result } = renderHook(() => {
+      return createNavigatorBrush(
+        fixedViewport,
+        applyViewport,
+        seriesLen,
+        firstCandleTime,
+      );
+    });
+
+    result.stripProps.onPointerDown(brushEvent("window", 450));
+
+    // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
+    // length grew by 300. Batched so createComputed observes both signals'
+    // new values in the same run, matching React's single simultaneous
+    // rerender.
+    batch(() => {
+      setSeriesLen(NEW_SERIES_LEN);
+      setFirstCandleTime(700_000);
+    });
+
+    result.stripProps.onPointerMove(moveEvent(400));
+
+    // The shifted origin (VIEWPORT translated by +GREW_BY) fed through the
+    // exact same panBy the factory itself uses, at the post-prepend
+    // seriesLen — i.e. "what the same drag delta gives in the shifted
+    // frame", not a hand-derived magic number. Without the C1 fix the
+    // factory would instead pan from the STALE (unshifted) VIEWPORT,
+    // landing 300 candles further back.
+    const shiftedOrigin = shiftForPrepend(VIEWPORT, GREW_BY);
+    const dCandles = ((400 - 450) / STRIP_RECT.width) * NEW_SERIES_LEN;
+    const expected = panBy(shiftedOrigin, dCandles, NEW_SERIES_LEN);
+    expect(applyViewport).toHaveBeenLastCalledWith(expected);
   });
 
   it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
