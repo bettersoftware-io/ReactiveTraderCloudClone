@@ -14,6 +14,7 @@ import {
   followLive,
   isAtLiveEdge,
   panBy,
+  shiftForPrepend,
   zoomAt,
 } from "@rtc/motion-core";
 
@@ -66,6 +67,14 @@ interface DragOrigin {
   readonly startViewport: ChartViewport;
 }
 
+/** The series-growth `createComputed`'s seeded accumulator: the previous
+ * length and first-candle-time, compared fresh against the accessors on
+ * every run to fork on the growth DIRECTION (append vs. backfill prepend). */
+interface SeriesGrowthSnapshot {
+  readonly len: number;
+  readonly firstTime: number | undefined;
+}
+
 /**
  * The equities chart plot's one stateful unit (ADR-005: a framework hook for
  * the DOM-edge-driven gesture seam, delegating all viewport math to the pure
@@ -86,6 +95,7 @@ interface DragOrigin {
 export function createChartGestures(
   seriesLen: Accessor<number>,
   defaultVisible: Accessor<number>,
+  firstCandleTime?: Accessor<number | undefined>,
 ): ChartGestures {
   const [viewport, setViewport] = createSignal<ChartViewport>(
     defaultViewport(seriesLen(), defaultVisible()),
@@ -141,33 +151,54 @@ export function createChartGestures(
   // New candles arriving (seriesLen grows tick-by-tick) fold in via a
   // createComputed watching the live length directly: a live-edge viewport
   // slides with the new bars; a panned-away one holds still so the user's
-  // view doesn't jump. Seeded with the CURRENT seriesLen() so the first run
-  // (prevLen === len) is a no-op, matching the initial state above.
-  createComputed((prevLen: number) => {
-    const len = seriesLen();
+  // view doesn't jump. Seeded with the CURRENT seriesLen()/firstCandleTime()
+  // so the first run (prev.len === len) is a no-op, matching the initial
+  // state above.
+  createComputed(
+    (prev: SeriesGrowthSnapshot) => {
+      const len = seriesLen();
+      const firstTime = firstCandleTime?.();
 
-    if (len !== prevLen) {
-      setViewport((vp) => {
-        // prevLen === 0 is the solid-bindings placeholder before the
-        // candle presenter's real emission lands — not a genuine one-tick
-        // delta. Treating it as one via `followLive` slides the degenerate
-        // {0,0} initial viewport by the FULL new length, landing on a
-        // zero-width window exactly at the series end: `resolveWindow`
-        // then renders nothing (empty candles/labels/NaN prices) and
-        // `isAtLiveEdge` reads permanently true, so the plot can never pan
-        // away from "live" at all. Snap straight to the real default
-        // window instead — this is the very first time real data exists,
-        // so there is no panned-away position to preserve yet.
-        if (prevLen === 0) {
-          return defaultViewport(len, defaultVisible());
-        }
+      if (len !== prev.len || firstTime !== prev.firstTime) {
+        setViewport((vp) => {
+          // prev.len === 0 is the solid-bindings placeholder before the
+          // candle presenter's real emission lands — not a genuine one-tick
+          // delta. Treating it as one via `followLive` slides the degenerate
+          // {0,0} initial viewport by the FULL new length, landing on a
+          // zero-width window exactly at the series end: `resolveWindow`
+          // then renders nothing (empty candles/labels/NaN prices) and
+          // `isAtLiveEdge` reads permanently true, so the plot can never pan
+          // away from "live" at all. Snap straight to the real default
+          // window instead — this is the very first time real data exists,
+          // so there is no panned-away position to preserve yet.
+          if (prev.len === 0) {
+            return defaultViewport(len, defaultVisible());
+          }
 
-        return followLive(vp, prevLen, len);
-      });
-    }
+          // Growth DIRECTION fork: the series growing while its first
+          // candle got OLDER is a backfill prepend — every index shifted,
+          // so the viewport translates with them (holds a panned-away view
+          // still AND keeps an at-edge view at the edge, one code path).
+          // Anything else is the live append fold, unchanged.
+          const grewBy = len - prev.len;
+          const prepended =
+            grewBy > 0 &&
+            prev.firstTime !== undefined &&
+            firstTime !== undefined &&
+            firstTime < prev.firstTime;
 
-    return len;
-  }, seriesLen());
+          if (prepended) {
+            return shiftForPrepend(vp, grewBy);
+          }
+
+          return followLive(vp, prev.len, len);
+        });
+      }
+
+      return { len, firstTime };
+    },
+    { len: seriesLen(), firstTime: firstCandleTime?.() },
+  );
 
   // A native listener (not Solid's `on:wheel`, which is just as passive as
   // React's synthetic onWheel) is the only way to actually block the page

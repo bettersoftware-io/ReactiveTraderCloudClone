@@ -1,5 +1,5 @@
 import { render, renderHook } from "@solidjs/testing-library";
-import { createSignal } from "solid-js";
+import { batch, createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { type ChartGestures, createChartGestures } from "./createChartGestures";
@@ -204,6 +204,83 @@ describe("createChartGestures", () => {
       DEFAULT_VISIBLE,
     );
     expect(result.atLiveEdge()).toBe(true);
+  });
+
+  it("prepended candles shift a panned-away viewport so the same candles stay in view", () => {
+    const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
+    const [firstCandleTime, setFirstCandleTime] = createSignal<
+      number | undefined
+    >(1_000_000);
+
+    const { result } = renderHook(() => {
+      return createChartGestures(
+        seriesLen,
+        fixedDefaultVisible,
+        firstCandleTime,
+      );
+    });
+
+    result.plotProps.onKeyDown(keyEvent("Home"));
+    const panned = result.viewport();
+
+    // 300 older candles arrive: first time got OLDER, length grew by 300.
+    // Batched so createComputed observes both signals' new values in the
+    // same run, matching React's single simultaneous rerender.
+    batch(() => {
+      setSeriesLen(SERIES_LEN + 300);
+      setFirstCandleTime(700_000);
+    });
+
+    expect(result.viewport()).toEqual({
+      start: panned.start + 300,
+      end: panned.end + 300,
+    });
+    expect(result.atLiveEdge()).toBe(false);
+  });
+
+  it("prepended candles keep an at-live-edge viewport at the edge", () => {
+    const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
+    const [firstCandleTime, setFirstCandleTime] = createSignal<
+      number | undefined
+    >(1_000_000);
+
+    const { result } = renderHook(() => {
+      return createChartGestures(
+        seriesLen,
+        fixedDefaultVisible,
+        firstCandleTime,
+      );
+    });
+
+    batch(() => {
+      setSeriesLen(SERIES_LEN + 300);
+      setFirstCandleTime(700_000);
+    });
+
+    expect(result.viewport()).toEqual({
+      start: SERIES_LEN + 300 - DEFAULT_VISIBLE,
+      end: SERIES_LEN + 300,
+    });
+    expect(result.atLiveEdge()).toBe(true);
+  });
+
+  it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
+    const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
+    const [firstCandleTime] = createSignal<number | undefined>(1_000_000);
+    const { result } = renderHook(() => {
+      return createChartGestures(
+        seriesLen,
+        fixedDefaultVisible,
+        firstCandleTime,
+      );
+    });
+
+    setSeriesLen(SERIES_LEN + 5);
+
+    expect(result.viewport()).toEqual({
+      start: SERIES_LEN - DEFAULT_VISIBLE + 5,
+      end: SERIES_LEN + 5,
+    });
   });
 
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
