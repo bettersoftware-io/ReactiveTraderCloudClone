@@ -12,14 +12,26 @@ export interface McpHandlerDeps {
   readonly tools: readonly JarvisToolDefinition[];
 }
 
+const BEARER_SCHEME_LENGTH: number = "Bearer ".length;
+
+/** RFC 9110 §11.1: the auth *scheme* name is case-insensitive (`bearer`,
+ * `BEARER`, `Bearer` all name the same scheme) — only the token that follows
+ * is case-sensitive, so it's sliced from the original (not lower-cased)
+ * header. */
 function bearerToken(req: IncomingMessage): string | null {
   const header = req.headers.authorization;
 
-  if (typeof header !== "string" || !header.startsWith("Bearer ")) {
+  if (typeof header !== "string") {
     return null;
   }
 
-  return header.slice("Bearer ".length);
+  const scheme = header.slice(0, BEARER_SCHEME_LENGTH);
+
+  if (scheme.toLowerCase() !== "bearer ") {
+    return null;
+  }
+
+  return header.slice(BEARER_SCHEME_LENGTH);
 }
 
 /** Writes a JSON-RPC-shaped error so MCP clients surface a readable reason
@@ -28,8 +40,9 @@ function rejectRequest(
   res: ServerResponse,
   status: number,
   message: string,
+  headers?: Record<string, string>,
 ): void {
-  res.writeHead(status, { "Content-Type": "application/json" });
+  res.writeHead(status, { "Content-Type": "application/json", ...headers });
   res.end(
     JSON.stringify({
       jsonrpc: "2.0",
@@ -50,7 +63,7 @@ async function serveMcpRequest(
     rejectRequest(
       res,
       401,
-      "401 Unauthorized: pass 'Authorization: Bearer <token>' using a session token from POST /login.",
+      "Unauthorized: pass 'Authorization: Bearer <token>' using a session token from POST /login.",
     );
     return;
   }
@@ -60,6 +73,7 @@ async function serveMcpRequest(
       res,
       405,
       "Method not allowed: this MCP endpoint is stateless and accepts POST only.",
+      { Allow: "POST" },
     );
     return;
   }

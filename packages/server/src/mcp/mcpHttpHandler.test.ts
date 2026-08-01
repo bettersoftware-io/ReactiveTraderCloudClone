@@ -45,9 +45,12 @@ describe("createMcpRequestHandler", () => {
     });
   });
 
-  function authedTransport(token: string): StreamableHTTPClientTransport {
+  function authedTransport(
+    token: string,
+    scheme = "Bearer",
+  ): StreamableHTTPClientTransport {
     return new StreamableHTTPClientTransport(new URL(baseUrl), {
-      requestInit: { headers: { Authorization: `Bearer ${token}` } },
+      requestInit: { headers: { Authorization: `${scheme} ${token}` } },
     });
   }
 
@@ -68,27 +71,38 @@ describe("createMcpRequestHandler", () => {
     await client.close();
   });
 
+  it("a valid token with a lowercase 'bearer' scheme still lists tools", async () => {
+    const login = auth.login("demo", "mcdc2026");
+    const client = new Client({ name: "vitest", version: "0.0.0" });
+    await client.connect(authedTransport(login?.token ?? "", "bearer"));
+
+    const listed = await client.listTools();
+    expect(listed.tools).toHaveLength(7);
+    await client.close();
+  });
+
   it("a missing Authorization header is rejected 401 before any MCP handling", async () => {
     const client = new Client({ name: "vitest", version: "0.0.0" });
     await expect(
       client.connect(new StreamableHTTPClientTransport(new URL(baseUrl))),
-    ).rejects.toThrow(/401/);
+    ).rejects.toMatchObject({ code: 401 });
   });
 
   it("an invalid token is rejected 401", async () => {
     const client = new Client({ name: "vitest", version: "0.0.0" });
     await expect(
       client.connect(authedTransport("not-a-real-token")),
-    ).rejects.toThrow(/401/);
+    ).rejects.toMatchObject({ code: 401 });
   });
 
-  it("non-POST methods are rejected 405 (stateless endpoint)", async () => {
+  it("non-POST methods are rejected 405 (stateless endpoint) with an Allow header", async () => {
     const login = auth.login("demo", "mcdc2026");
     const response = await fetch(baseUrl, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${login?.token ?? ""}` },
     });
     expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST");
   });
 });
 
