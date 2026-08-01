@@ -25,6 +25,20 @@ export const JARVIS_MODEL_ID = "claude-opus-5";
 export const JARVIS_MAX_TOKENS_PER_TURN = 4_096;
 
 /**
+ * Caps the model's own reasoning effort (`output_config.effort`) —
+ * distinct from `JARVIS_MAX_TOKENS_PER_TURN`, which caps generation length,
+ * not how much of that budget goes to thinking before generation starts.
+ * Thinking is adaptive-by-default on this model at effort `"high"`, and
+ * thinking tokens draw from the SAME `max_tokens` ceiling as the visible
+ * reply: an unbounded-effort, tool-heavy turn can burn the whole budget
+ * thinking and deliver nothing but the `max_tokens` truncation notice.
+ * `"medium"` is a deliberate cost/quality tradeoff for a terse,
+ * 2–4-sentence desk-assistant persona, not a sampling parameter (doesn't
+ * affect determinism/repeatability the way temperature would).
+ */
+export const JARVIS_EFFORT = "medium";
+
+/**
  * Caps how many agentic turns (tool-call round-trips) one session may run
  * before the loop force-stops it. Bounds a session that gets stuck
  * re-calling tools in a loop (a misbehaving model, a persistently failing

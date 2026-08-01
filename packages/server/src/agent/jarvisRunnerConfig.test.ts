@@ -13,6 +13,7 @@ import {
 } from "@rtc/domain";
 
 import {
+  JARVIS_EFFORT,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
@@ -27,6 +28,10 @@ describe("jarvisRunnerConfig", () => {
 
   it("pins the per-turn token cap", () => {
     expect(JARVIS_MAX_TOKENS_PER_TURN).toBe(4_096);
+  });
+
+  it("pins the reasoning effort", () => {
+    expect(JARVIS_EFFORT).toBe("medium");
   });
 
   it("pins the per-session turn cap", () => {

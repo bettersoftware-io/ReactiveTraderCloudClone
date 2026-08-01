@@ -703,6 +703,85 @@ describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () =
   });
 });
 
+describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)", () => {
+  it("a second rapid jarvis.chat does not even start (runTurn is not invoked) until the first turn's stream completes", () => {
+    const { loop, turnSubjects } = createControllableStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "first", turnId: "turn-A" } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "second", turnId: "turn-B" } satisfies JarvisChatPayload,
+    });
+
+    // mergeMap would have subscribed turn B's stream immediately on the
+    // second jarvis.chat frame; concatMap queues it — only turn A's
+    // runTurn has been called so far.
+    expect(turnSubjects).toHaveLength(1);
+
+    turnSubjects[0]?.next({ type: "delta", text: "A-delta" });
+    turnSubjects[0]?.next({ type: "done" });
+    turnSubjects[0]?.complete();
+
+    // Only NOW does turn B's stream subscribe.
+    expect(turnSubjects).toHaveLength(2);
+
+    turnSubjects[1]?.next({ type: "delta", text: "B-delta" });
+    turnSubjects[1]?.next({ type: "done" });
+    turnSubjects[1]?.complete();
+
+    const doneAIndex = sent.findIndex((m) => {
+      return (
+        m.type === SERVER_MSG.JARVIS_DONE &&
+        (m.payload as TurnIdCarrier).turnId === "turn-A"
+      );
+    });
+
+    const firstBIndex = sent.findIndex((m) => {
+      return (m.payload as Partial<TurnIdCarrier>).turnId === "turn-B";
+    });
+
+    expect(doneAIndex).toBeGreaterThanOrEqual(0);
+    expect(firstBIndex).toBeGreaterThan(doneAIndex);
+  });
+
+  it("a confirmRequest emitted mid-turn-A is tagged with turn A's turnId even while turn B sits queued behind it", () => {
+    const { loop, turnSubjects } = createControllableStubLoop();
+    const { messages$, sent } = stubHarness(loop);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "buy 1m EURUSD",
+        turnId: "turn-A",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "second", turnId: "turn-B" } satisfies JarvisChatPayload,
+    });
+
+    turnSubjects[0]?.next({
+      type: "confirmRequest",
+      confirmationId: "confirm-1",
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+      quotedPrice: 1.1,
+      ratePrecision: 4,
+    });
+
+    const confirmRequest = findConfirmRequest(sent);
+    expect((confirmRequest.payload as TurnIdCarrier).turnId).toBe("turn-A");
+    // Turn B's stream genuinely doesn't exist yet — the correlation isn't
+    // "coincidentally right", there's nothing else in flight to collide.
+    expect(turnSubjects).toHaveLength(1);
+  });
+});
+
 interface WireMappingCase {
   readonly event: JarvisEvent;
   readonly wireType: string;
@@ -870,6 +949,43 @@ function createCapturingStubLoop(): CapturingStubLoop {
     },
   };
   return { loop, runTurn };
+}
+
+interface ControllableStubLoop {
+  readonly loop: AgentLoop;
+  /** One `Subject` per `runTurn()` call, in call order — a test drives a
+   * turn's events by pushing to `turnSubjects[n]` directly and asserts
+   * queuing by checking `turnSubjects.length` (a later turn's `Subject`
+   * doesn't exist until `runTurn` is actually called for it). */
+  readonly turnSubjects: Subject<JarvisEvent>[];
+}
+
+/** A stub `AgentLoop` whose single session's `runTurn` returns a fresh,
+ * test-controlled `Subject` per call instead of completing on its own —
+ * used to prove `jarvisChat$`'s `concatMap` serialization: a `mergeMap`
+ * implementation would subscribe every turn's stream immediately, so
+ * `turnSubjects` would grow to N on N `jarvis.chat` frames sent back to
+ * back; `concatMap` only subscribes the next one once the previous
+ * `Subject` completes. */
+function createControllableStubLoop(): ControllableStubLoop {
+  const turnSubjects: Subject<JarvisEvent>[] = [];
+
+  const loop: AgentLoop = {
+    createSession: () => {
+      return {
+        runTurn: (): Observable<JarvisEvent> => {
+          const subject = new Subject<JarvisEvent>();
+          turnSubjects.push(subject);
+          return subject.asObservable();
+        },
+        resolveConfirmation: vi.fn(),
+        cancelTurn: vi.fn(),
+        dispose: vi.fn(),
+      };
+    },
+  };
+
+  return { loop, turnSubjects };
 }
 
 /** A stub `AgentLoop` whose single session's `runTurn` throws SYNCHRONOUSLY

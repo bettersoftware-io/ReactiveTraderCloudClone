@@ -94,8 +94,8 @@ module.exports = {
       name: "no-anthropic-sdk-in-inner-packages",
       severity: "error",
       comment:
-        "@anthropic-ai/sdk is a server-only dependency (Task 6, Jarvis phase 3) — agent-tools/domain/shared/client-core stay framework-free of it, same as the react/react-dom/react-native bans above; only @rtc/server may import it.",
-      from: { path: "^packages/(agent-tools|domain|shared|client-core)/src" },
+        "@anthropic-ai/sdk is a server-only dependency (Task 6, Jarvis phase 3) — every OTHER package stays framework-free of it, same as the react/react-dom/react-native bans above. Deliberately an allowlist over the single permitted importer (mirrors agent-tools-stays-inner's closed-allowlist shape) rather than an enumerated blocklist of the four packages that happened to matter at the time this rule was written — a blocklist would silently miss the browser clients, where an SDK import could ship a key-bearing code path into a bundle.",
+      from: { path: "^packages/", pathNot: "^packages/server/" },
       to: { path: "node_modules/@anthropic-ai/" },
     },
     {

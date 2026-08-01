@@ -1,4 +1,14 @@
-import { defer, EMPTY, finalize, map, merge, type Observable, of } from "rxjs";
+import {
+  catchError,
+  concatMap,
+  defer,
+  EMPTY,
+  finalize,
+  map,
+  merge,
+  type Observable,
+  of,
+} from "rxjs";
 
 import type {
   JarvisAvailabilityPayload,
@@ -11,6 +21,7 @@ import type {
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   type Inbound,
+  matchType,
   type Outbound,
   out,
   stream,
@@ -173,47 +184,78 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
     // silent no-op rather than killing the new turn mid-stream.
     let inFlightTurnId: string | undefined;
 
-    const jarvisChat$: WsEffect<Ctx> = stream(
-      CLIENT_MSG.JARVIS_CHAT,
-      (payload): Observable<Outbound> => {
-        return defer((): Observable<Outbound> => {
-          const parsed = parseChatPayload(payload);
+    function projectChatTurn(payload: unknown): Observable<Outbound> {
+      return defer((): Observable<Outbound> => {
+        const parsed = parseChatPayload(payload);
 
-          if (!parsed) {
-            const turnId = extractTurnId(payload);
+        if (!parsed) {
+          const turnId = extractTurnId(payload);
 
-            if (!turnId) {
-              console.warn("jarvis.chat: dropping malformed payload", payload);
-              return EMPTY;
-            }
-
-            return of(
-              out(SERVER_MSG.JARVIS_ERROR, {
-                turnId,
-                message: "Malformed jarvis.chat payload.",
-              }),
-            );
+          if (!turnId) {
+            console.warn("jarvis.chat: dropping malformed payload", payload);
+            return EMPTY;
           }
 
-          inFlightTurnId = parsed.turnId;
-
-          return session.runTurn(parsed.text, parsed.history ?? []).pipe(
-            map((event): Outbound => {
-              const { type, ...body } = event;
-              return out(WIRE_TYPE_BY_EVENT[type], {
-                ...body,
-                turnId: parsed.turnId,
-              });
-            }),
-            finalize((): void => {
-              if (inFlightTurnId === parsed.turnId) {
-                inFlightTurnId = undefined;
-              }
+          return of(
+            out(SERVER_MSG.JARVIS_ERROR, {
+              turnId,
+              message: "Malformed jarvis.chat payload.",
             }),
           );
-        });
-      },
-    );
+        }
+
+        inFlightTurnId = parsed.turnId;
+
+        return session.runTurn(parsed.text, parsed.history ?? []).pipe(
+          map((event): Outbound => {
+            const { type, ...body } = event;
+            return out(WIRE_TYPE_BY_EVENT[type], {
+              ...body,
+              turnId: parsed.turnId,
+            });
+          }),
+          finalize((): void => {
+            if (inFlightTurnId === parsed.turnId) {
+              inFlightTurnId = undefined;
+            }
+          }),
+        );
+      });
+    }
+
+    /**
+     * Deliberately hand-rolled instead of the generic `stream()` helper:
+     * `stream()` is hardwired to `mergeMap`, which would let two rapid
+     * `jarvis.chat` frames on the same socket run CONCURRENTLY — turn B's
+     * `confirmRequest` could then land on turn A's still-open wire stream
+     * (both interleaved through the same `session`), the first turn to
+     * finish would null the OTHER turn's `currentPush`/`currentAbort`
+     * (`AnthropicAgentSession` is single-slot per session, not per turn),
+     * and a stray `jarvis.cancel` could abort the wrong turn's controller.
+     * `concatMap` queues turn B's projection until turn A's stream
+     * completes — matching the client's own `JarvisMachine`, which already
+     * serializes chat turns the same way. `inFlightTurnId` only becomes
+     * "in flight" once a turn's stream actually subscribes, and `concatMap`
+     * doesn't subscribe the next inner observable until the previous one
+     * completes, so the turnId-correlation gate below still tracks exactly
+     * one real in-flight turn at a time. The confirm/cancel sub-streams
+     * stay on the ordinary `stream()` (still effectively merge-live): a
+     * cancel or confirm must reach the CURRENTLY RUNNING turn immediately,
+     * even while a second chat frame sits queued behind it.
+     */
+    function jarvisChat$(chatIn$: Observable<Inbound>): Observable<Outbound> {
+      return chatIn$.pipe(
+        matchType(CLIENT_MSG.JARVIS_CHAT),
+        concatMap((msg) => {
+          return projectChatTurn(msg.payload).pipe(
+            catchError((err: unknown): Observable<never> => {
+              console.error("ws-effects: stream effect error", err);
+              return EMPTY;
+            }),
+          );
+        }),
+      );
+    }
 
     const jarvisConfirm$: WsEffect<Ctx> = stream(
       CLIENT_MSG.JARVIS_CONFIRM,
@@ -255,7 +297,7 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
     );
 
     return merge(
-      jarvisChat$(in$, ctx),
+      jarvisChat$(in$),
       jarvisConfirm$(in$, ctx),
       jarvisCancel$(in$, ctx),
     ).pipe(

@@ -21,6 +21,7 @@ import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 import type { AgentSession } from "./agentLoop.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
+  JARVIS_EFFORT,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
@@ -63,6 +64,12 @@ const CANCELLED_MESSAGE = "Cancelled, sir.";
 
 const TRUNCATION_NOTICE =
   " …that's as far as I can go this turn, sir — do ask me to continue.";
+
+/** Appended when `JARVIS_RUNNER_MAX_ITERATIONS` cuts the runner off while
+ * the model still wanted to call a tool or was mid `pause_turn` — see the
+ * post-loop check in `runOneTurn`. */
+const RUNWAY_EXHAUSTED_NOTICE =
+  " I ran out of runway mid-task, sir — the answer above may be incomplete.";
 
 const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
   {
@@ -173,11 +180,25 @@ function friendlyToolName(name: string): string {
   return JARVIS_TOOL_FRIENDLY_NAMES[name] ?? name;
 }
 
+/** Plain code-point order, not `localeCompare` — the cache-prefix
+ * determinism this sort exists for (see `SYSTEM_BLOCKS`' doc comment) needs
+ * a byte-stable order for the exact same tool-name set every time; a
+ * locale-aware compare depends on the ICU/Node build's default locale,
+ * which is not guaranteed identical across environments (dev machine vs.
+ * the deployed container) the way simple `<`/`>` on ASCII tool names is. */
 function toolNameOrder(
   a: BetaRunnableTool<unknown>,
   b: BetaRunnableTool<unknown>,
 ): number {
-  return a.name.localeCompare(b.name);
+  if (a.name < b.name) {
+    return -1;
+  }
+
+  if (a.name > b.name) {
+    return 1;
+  }
+
+  return 0;
 }
 
 function mapHistoryEntry(entry: JarvisHistoryEntry): BetaMessageParam {
@@ -187,16 +208,67 @@ function mapHistoryEntry(entry: JarvisHistoryEntry): BetaMessageParam {
   };
 }
 
-/** Keeps only the newest `JARVIS_HISTORY_MAX_MESSAGES` messages — every
+interface StatusCarrier {
+  readonly status: unknown;
+}
+
+interface NumericStatusCarrier {
+  readonly status: number;
+}
+
+function hasNumericStatus(value: unknown): value is NumericStatusCarrier {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "status" in value &&
+    typeof (value as StatusCarrier).status === "number"
+  );
+}
+
+/** Server-log-only summary of a thrown SDK/network error: the constructor
+ * name (duck-typed, not an `instanceof` check against a specific SDK error
+ * class — every failure mode here, including a plain network `TypeError`,
+ * should still produce SOMETHING useful) plus an HTTP status if the thrown
+ * value carries one (the SDK's own `APIError` does). Never reads
+ * `error.message` — that can quote request content — and never anything
+ * key-shaped. */
+function describeSdkErrorForLogging(error: unknown): string {
+  const name = error instanceof Error ? error.constructor.name : typeof error;
+
+  return hasNumericStatus(error) ? `${name} (status ${error.status})` : name;
+}
+
+/**
+ * Keeps only the newest `JARVIS_HISTORY_MAX_MESSAGES` messages — every
  * history message replayed is billed input tokens on every subsequent turn
  * (see `JARVIS_HISTORY_MAX_MESSAGES`'s doc comment), so an over-long history
- * is trimmed from the front (oldest first) rather than rejected outright. */
+ * is trimmed from the front (oldest first) rather than rejected outright —
+ * then drops any now-leading `"assistant"` entries: the Messages API
+ * requires `messages[0].role === "user"`, and either the trim boundary
+ * above OR the wire layer's OWN 20-entry cap (`JARVIS_WIRE_HISTORY_MAX_ENTRIES`
+ * in `jarvis.effects.ts`, applied before this ever runs — e.g. a reconnect
+ * mid-conversation truncating to a window that happens to start on a
+ * "jarvis" reply) can leave an assistant-first array. Left unguarded that's
+ * a PERMANENT session brick: the resulting 400 is caught as a generic
+ * sanitized error, and since an errored turn appends nothing to history
+ * (see `runTurn`'s `.then`), every later turn on this session resends the
+ * exact same bad prefix. Runs on every call, not just when trimming
+ * actually removed something, since the assistant-first array can arrive
+ * already capped (short history, wire-truncated to start wrong).
+ */
 function capMessages(
   messages: readonly BetaMessageParam[],
 ): BetaMessageParam[] {
-  return messages.length > JARVIS_HISTORY_MAX_MESSAGES
-    ? messages.slice(-JARVIS_HISTORY_MAX_MESSAGES)
-    : [...messages];
+  const capped =
+    messages.length > JARVIS_HISTORY_MAX_MESSAGES
+      ? messages.slice(-JARVIS_HISTORY_MAX_MESSAGES)
+      : [...messages];
+
+  while (capped[0]?.role === "assistant") {
+    capped.shift();
+  }
+
+  return capped;
 }
 
 type TurnOutcome =
@@ -247,11 +319,27 @@ export class AnthropicAgentSession implements AgentSession {
   }
 
   private requestConfirmation(details: JarvisConfirmDetails): Promise<boolean> {
+    const push = this.currentPush;
+
+    if (!push) {
+      // No turn is currently open to receive this confirmRequest.
+      // Registering a resolver here anyway would leak a Promise nothing can
+      // ever settle: `resolveConfirmation` and `releasePendingConfirmations`
+      // both act on `this.pendingConfirmations`, but nothing would ever push
+      // the `confirmRequest` event a client could react to, and no cancel is
+      // "in flight" to release it either. Not reachable in the normal
+      // single-turn-at-a-time flow — kept as defense in depth against
+      // exactly the kind of concurrent-turn race `jarvis.chat`'s `concatMap`
+      // serialization (see `jarvis.effects.ts`) now rules out at the wire
+      // layer.
+      return Promise.resolve(false);
+    }
+
     const confirmationId = `confirm-${crypto.randomUUID()}`;
 
     return new Promise<boolean>((resolve) => {
       this.pendingConfirmations.set(confirmationId, resolve);
-      this.currentPush?.({
+      push({
         type: "confirmRequest",
         confirmationId,
         symbol: details.symbol,
@@ -389,12 +477,22 @@ export class AnthropicAgentSession implements AgentSession {
       model: JARVIS_MODEL_ID,
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
       max_iterations: JARVIS_RUNNER_MAX_ITERATIONS,
+      // Not a sampling param (doesn't affect determinism the way temperature
+      // would) — see JARVIS_EFFORT's doc comment for why an explicit cap is
+      // needed on a model where thinking is adaptive-by-default at "high"
+      // and draws from the same max_tokens budget as the visible reply.
+      output_config: { effort: JARVIS_EFFORT },
       system: SYSTEM_BLOCKS as BetaTextBlockParam[],
       tools: [...this.tools],
       messages,
       stream: true,
     };
     let finalText = "";
+    // Tracks the LAST iteration's stop_reason so a fall-through completion
+    // (the loop just ends — no refusal/max_tokens early return) can tell
+    // apart a genuine end_turn from `max_iterations` cutting the runner off
+    // mid-task (see the post-loop check below).
+    let lastStopReason: string | null = null;
 
     try {
       const runner = this.runnerFactory(params, { signal });
@@ -436,6 +534,7 @@ export class AnthropicAgentSession implements AgentSession {
         }
 
         const message = await messageStream.finalMessage();
+        lastStopReason = message.stop_reason;
 
         if (message.stop_reason === "refusal") {
           push({ type: "error", message: REFUSAL_MESSAGE });
@@ -459,19 +558,38 @@ export class AnthropicAgentSession implements AgentSession {
         }
       }
 
+      // The runner's OWN loop ended without a refusal/max_tokens early
+      // return — normally because the model reached a natural end_turn, but
+      // also when `max_iterations`/`JARVIS_RUNNER_MAX_ITERATIONS` cuts it
+      // off while the model still wanted to call a tool or was mid
+      // `pause_turn` continuation. Falling straight through to `done` in
+      // that case reports a truncated answer as a clean success — flag it
+      // instead.
+      if (lastStopReason === "tool_use" || lastStopReason === "pause_turn") {
+        finalText += RUNWAY_EXHAUSTED_NOTICE;
+        push({ type: "delta", text: RUNWAY_EXHAUSTED_NOTICE });
+      }
+
       push({ type: "done" });
 
       return { kind: "completed", finalText };
-    } catch {
+    } catch (error) {
       if (signal.aborted) {
         push({ type: "error", message: CANCELLED_MESSAGE });
 
         return { kind: "aborted" };
       }
 
-      // Never leak SDK/network error internals (message text, stack, the
-      // key) to the client — a single sanitized event covers every failure
-      // mode here (auth, rate limit, timeout, malformed response, …).
+      // Server-side only, and deliberately narrow: the error constructor
+      // name (e.g. "RateLimitError") + HTTP status if the SDK's own error
+      // class carries one — enough to tell auth/rate-limit/malformed-request
+      // apart in production logs — but NEVER `error.message` (may quote
+      // request content) and NEVER anything key-shaped. The client-facing
+      // event stays the single sanitized message below regardless.
+      console.error(
+        "AnthropicAgentSession: turn failed —",
+        describeSdkErrorForLogging(error),
+      );
       push({ type: "error", message: DESK_LINK_FALTERED_MESSAGE });
 
       return { kind: "errored" };

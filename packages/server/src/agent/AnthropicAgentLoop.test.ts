@@ -544,7 +544,11 @@ describe("AnthropicAgentLoop", () => {
     });
     const session = loop.createSession();
 
-    const oversized = 35;
+    // Deliberately EVEN (JARVIS_HISTORY_MAX_MESSAGES is also even), so the
+    // numeric trim boundary lands on an already-"user" entry and this test
+    // isolates the CAP behaviour from the leading-assistant guard (that
+    // guard gets its own dedicated tests below).
+    const oversized = 34;
     const history: JarvisHistoryEntry[] = Array.from(
       { length: oversized },
       (_unused, i) => {
@@ -562,21 +566,220 @@ describe("AnthropicAgentLoop", () => {
     // JARVIS_HISTORY_MAX_MESSAGES of replayed history + the new user turn.
     expect(messages).toHaveLength(JARVIS_HISTORY_MAX_MESSAGES + 1);
     // Oldest-kept entry is the one JARVIS_HISTORY_MAX_MESSAGES back from the
-    // end of the wire history — everything older was trimmed. entry-5 is odd
-    // (role "jarvis" → "assistant"); entry-34 is even (role "user").
+    // end of the wire history — everything older was trimmed. entry-4 is
+    // even (role "user"); entry-33 is odd (role "jarvis" → "assistant").
     const oldestKeptIndex = oversized - JARVIS_HISTORY_MAX_MESSAGES;
     expect(messages[0]).toEqual({
-      role: "assistant",
+      role: "user",
       content: `entry-${oldestKeptIndex}`,
     });
     expect(messages[JARVIS_HISTORY_MAX_MESSAGES - 1]).toEqual({
-      role: "user",
+      role: "assistant",
       content: `entry-${oversized - 1}`,
     });
     expect(messages[JARVIS_HISTORY_MAX_MESSAGES]).toEqual({
       role: "user",
       content: "new question",
     });
+  });
+
+  it("(critical 1a) an assistant-first seeded history is trimmed to user-first before reaching the runner", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "noted")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "noted" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    // A stray leading "jarvis" entry — e.g. a reconnect mid-conversation
+    // whose wire-truncated window happened to start on an assistant reply.
+    const history: JarvisHistoryEntry[] = [
+      { role: "jarvis", text: "stray reply" },
+      { role: "user", text: "hello" },
+    ];
+
+    await runTurnCollecting(session, "new question", history);
+
+    expect(calls).toHaveLength(1);
+    const messages: BetaMessageParam[] = calls[0]?.params.messages ?? [];
+    expect(messages[0]?.role).toBe("user");
+    expect(messages).toEqual([
+      { role: "user", content: "hello" },
+      { role: "user", content: "new question" },
+    ]);
+  });
+
+  it("(critical 1b) every leading assistant entry is dropped, not just the first, leaving an odd-length user-first array", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "noted")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "noted" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const history: JarvisHistoryEntry[] = [
+      { role: "jarvis", text: "a" },
+      { role: "jarvis", text: "b" },
+      { role: "user", text: "c" },
+      { role: "jarvis", text: "d" },
+      { role: "user", text: "e" },
+    ];
+
+    await runTurnCollecting(session, "new question", history);
+
+    expect(calls).toHaveLength(1);
+    const messages: BetaMessageParam[] = calls[0]?.params.messages ?? [];
+    // Both leading assistant entries dropped, leaving an odd-length
+    // (3-entry) user-first history + the new turn's user message.
+    expect(messages).toEqual([
+      { role: "user", content: "c" },
+      { role: "assistant", content: "d" },
+      { role: "user", content: "e" },
+      { role: "user", content: "new question" },
+    ]);
+  });
+
+  it("(mandated i) a pause_turn stop_reason pushes the paused assistant content back and continues to the next runner iteration", async () => {
+    const pausedContent = [{ type: "text", text: "still thinking..." }];
+    const firstStream = fakeStream([textDeltaEvent(0, "still thinking...")], {
+      stop_reason: "pause_turn",
+      content: pausedContent,
+    });
+
+    const secondStream = fakeStream([textDeltaEvent(0, " done now.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "done now." }],
+    });
+    const pushed: BetaMessageParam[] = [];
+    let callCount = 0;
+
+    function factory(): AnthropicRunner {
+      callCount += 1;
+
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield firstStream;
+          yield secondStream;
+        },
+        pushMessages: (message: BetaMessageParam): void => {
+          pushed.push(message);
+        },
+      };
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "keep going");
+
+    // One runnerFactory call for the whole turn — pause_turn resumes on the
+    // SAME runner via pushMessages, not a fresh factory call.
+    expect(callCount).toBe(1);
+    expect(pushed).toEqual([{ role: "assistant", content: pausedContent }]);
+    expect(events).toEqual([
+      { type: "delta", text: "still thinking..." },
+      { type: "delta", text: " done now." },
+      { type: "done" },
+    ]);
+    expect(
+      events.filter((event) => {
+        return event.type === "done";
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("(important 4) falling out of the runner loop after a tool_use stop_reason reports the truncation honestly instead of a clean done", async () => {
+    const stream = fakeStream(
+      [
+        toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" }),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "get_price",
+            input: { symbol: "EURUSD" },
+          },
+        ],
+      },
+    );
+    // Only ONE stream — the runner's own async iterator ends right after,
+    // mirroring what `max_iterations` cutting the SDK's internal loop off
+    // looks like from this session's side: the last thing it saw was a
+    // tool_use iteration, and nothing further ever arrives.
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "what's EURUSD?");
+
+    expect(calls).toHaveLength(1);
+    expect(events).toEqual([
+      { type: "toolEvent", tool: "quote", status: "running" },
+      { type: "toolEvent", tool: "quote", status: "done" },
+      {
+        type: "delta",
+        text: " I ran out of runway mid-task, sir — the answer above may be incomplete.",
+      },
+      { type: "done" },
+    ]);
+  });
+
+  it("(mandated ii) requestConfirmation resolves false immediately when no turn is open — defense in depth for the important-2 concurrent-turn race", async () => {
+    let capturedConfirmTrade: ConfirmGate | undefined;
+
+    function buildFixtureTools(
+      confirmTrade: ConfirmGate,
+    ): readonly JarvisToolDefinition[] {
+      capturedConfirmTrade = confirmTrade;
+      return [];
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(buildFixtureTools),
+      runnerFactory: throwingRunner(),
+    });
+    // Constructing the session captures `confirmTrade` (buildTools runs in
+    // the constructor) but never starts a turn — `currentPush` stays null,
+    // exactly the state a stray/late confirm gate call would see.
+    loop.createSession();
+
+    expect(capturedConfirmTrade).toBeDefined();
+
+    const approved = await capturedConfirmTrade?.({
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+      quotedPrice: 1.1,
+      ratePrecision: 4,
+    });
+
+    expect(approved).toBe(false);
   });
 });
 
