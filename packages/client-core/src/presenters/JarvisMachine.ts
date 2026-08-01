@@ -71,7 +71,8 @@ export interface JarvisState {
   /** Live availability of the Jarvis backend; always true in sim mode
    * (deps.availability$ defaults to `of(true)`). `send()` while false is a
    * silent no-op — no user entry is appended and `port.ask` is never
-   * called. The UI doesn't read this yet (a later task surfaces it). */
+   * called. Both web clients read it: `JarvisOrb` renders `null` and
+   * `useJarvisHotkey` disarms ⌘/Ctrl+J while it is false. */
   readonly available: boolean;
 }
 

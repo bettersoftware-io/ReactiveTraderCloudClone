@@ -6,7 +6,7 @@
 
 ### 13.1 L0 -- The System On One Screen
 
-Eleven workspace packages plus `tests`, drawn as five "buildings": three shipping client apps, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. `@rtc/motion-core` *does* appear (as `motion`) since `client-react` and `client-solid` both genuinely depend on it. `@rtc/ui-contract` and the devtools packages are omitted from this L0 view for the same reason as `client-prototype` -- they exist to test/instrument the graph below, not to run inside it; both get their own L1 cards.
+Twelve workspace packages plus `tests`, drawn as five "buildings": three shipping client apps, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. `@rtc/motion-core` *does* appear (as `motion`) since `client-react` and `client-solid` both genuinely depend on it. `@rtc/ui-contract` and the devtools packages are omitted from this L0 view for the same reason as `client-prototype` -- they exist to test/instrument the graph below, not to run inside it; both get their own L1 cards.
 
 ```mermaid
 flowchart TB
@@ -41,6 +41,7 @@ flowchart TB
         direction TB
         srv["24 effects + services<br/>Node.js + ws"]:::server
         wse["ws-effects<br/>dispatch framework"]:::server
+        agt["agent-tools<br/>seven Jarvis desk tools<br/>domain + rxjs only"]:::domain
     end
 
     webUi --> rb
@@ -57,8 +58,10 @@ flowchart TB
     core -. "live mode: WS JSON" .-> srv
     core -. "sim mode: in-process" .-> domain
     srv --> wse
+    srv --> agt
     srv --> domain
     srv --> shared
+    agt --> domain
 
     classDef ui fill:#1f6feb,stroke:#79c0ff,color:#ffffff
     classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
@@ -86,7 +89,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | Entities, use cases, port interfaces, and simulators -- pure TypeScript, the innermost package. |
 | **Ring** | ①② Entities & Use Cases -- the yolk |
 | **Depends on** | `rxjs` only (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server`, `tests` -- every workspace package except the three zero-`@rtc`-dependency islands (`ws-effects`, `client-prototype`, `motion-core`) lists `@rtc/domain` directly |
+| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server`, `agent-tools`, `tests` -- every workspace package except the three zero-`@rtc`-dependency islands (`ws-effects`, `client-prototype`, `motion-core`) lists `@rtc/domain` directly |
 | **Non-obvious** | `src/simulators/` is ring ③ (gateways), not ring ①②, even though it lives inside this package -- and they're production code, not test doubles ([§10](10-key-design-decisions.md#10-key-design-decisions)). The single-dependency constraint (`rxjs` only) is enforced by pnpm strict mode, not just convention. |
 | **README** | [`packages/domain/README.md`](../../packages/domain/README.md) |
 
@@ -233,18 +236,29 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what makes a future Chrome-extension shell a thin wrapper around the same bundle ([§20.8](20-devtools.md#208-future-extensions)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
 | **README** | [`packages/devtools-app/README.md`](../../packages/devtools-app/README.md) |
 
+#### `@rtc/agent-tools`
+
+| | |
+|---|---|
+| **What it is** | The framework-neutral Jarvis desk-tool registry: the seven tools an AI may call over the app's own capabilities (`list_currency_pairs`, `get_price`, `get_price_history`, `get_blotter`, `get_analytics`, `get_service_health`, and the confirm-gated `execute_trade`), each a `name` + `description` + raw-JSON-Schema `inputSchema` + `run(input): Promise<string>`. |
+| **Ring** | ③ Interface Adapters -- it adapts domain use cases/ports to an LLM's tool-call idiom, the same way a presenter adapts them to a view |
+| **Depends on** | `@rtc/domain` (+ `rxjs`) (`packages/agent-tools/package.json` `dependencies`) |
+| **Consumed by** | `server` only (`packages/server/package.json` lists `@rtc/agent-tools`; no client package does) |
+| **Non-obvious** | **SDK-free by design** -- no Anthropic SDK, no MCP SDK, no transport imports, so the identical registry serves the WS agent loop and (P4) the MCP endpoint, and its 24 tests call `run` straight against the domain simulators with no network anywhere. Every failure returns a *descriptive string*, never a rejected promise: the model must be told "the desk didn't respond in time" so it can say so, rather than being handed a generic turn failure and left to fill the gap from memory. Prices are returned as `toFixed(ratePrecision)` **strings** (plus the `ratePrecision`), because a JSON number drops trailing zeros and makes the persona's "state the price exactly as the tools return it" unsatisfiable. Machine-pinned by dependency-cruiser's `agent-tools-stays-inner` ([§6](06-package-dependencies.md#6-package-dependencies)); see [§18.13](18-jarvis-ai-agent-surface.md#1813-phase-3-shipped--the-real-loop). |
+| **README** | — (none yet; the package is two source files, `buildJarvisTools.ts` + `jarvisToolDefinition.ts`) |
+
 #### `@rtc/server`
 
 | | |
 |---|---|
-| **What it is** | The WebSocket server: a thin Node.js host composed of 24 declarative effects over `@rtc/ws-effects`. |
-| **Ring** | ④ host (`src/index.ts`, `node:http` + `ws`) + ③ effects/gateways (`src/effects/`, `src/socket/`'s `toSocket`) |
-| **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
+| **What it is** | The WebSocket server: a thin Node.js host composed of 24 declarative effects over `@rtc/ws-effects`, plus the `JARVIS_*` effects and the Anthropic-backed agent loop in `src/agent/`. |
+| **Ring** | ④ host (`src/index.ts`, `node:http` + `ws`) + ③ effects/gateways (`src/effects/`, `src/agent/`, `src/socket/`'s `toSocket`) |
+| **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `@rtc/agent-tools`, `@anthropic-ai/sdk`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` |
-| **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-orchestration; the server drives simulators directly. |
+| **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` still returns nothing) -- use cases are client-orchestration; the server drives simulators directly, and where Jarvis *does* need them it reaches them through `@rtc/agent-tools`, not directly. It is the **only** package allowed to import `@anthropic-ai/sdk` (dependency-cruiser `no-anthropic-sdk-in-inner-packages`, an allowlist over `packages/server/`), and the SDK stays confined to `src/agent/`. |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
 
-#### `tests` (the 16th card -- not a package, the behavioural-insurance layer)
+#### `tests` (the 17th card -- not a package, the behavioural-insurance layer)
 
 | | |
 |---|---|
