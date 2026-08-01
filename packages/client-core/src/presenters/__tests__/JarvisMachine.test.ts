@@ -33,6 +33,7 @@ describe("createJarvisMachine", () => {
         phase: "idle",
         entries: [{ id: 0, role: "jarvis", text: JARVIS_GREETING, done: true }],
         pendingConfirmation: null,
+        available: true,
       });
       sub.unsubscribe();
       machine.dispose();
@@ -495,6 +496,165 @@ describe("createJarvisMachine", () => {
       expect(seen.length).toBe(beforeDispose);
     });
   });
+
+  describe("availability", () => {
+    it("defaults to available when deps.availability$ is absent (sim mode, legacy callers)", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+        });
+        const seen: boolean[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s.available);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        expect(seen.length).toBeGreaterThan(0);
+        expect(
+          seen.every((available) => {
+            return available === true;
+          }),
+        ).toBe(true);
+      });
+    });
+
+    it("folds availability$ into state.available: goes false, then flips back true", () => {
+      const ts = scheduler();
+      ts.run(({ cold, flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: cold<boolean>("f-t", { f: false, t: true }),
+        });
+        const seen: boolean[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s.available);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        // seen[0] is INITIAL.available (true), delivered synchronously at
+        // subscribe time, before the cold availability$'s own frame-0 "f"
+        // patch (same duplicate-first-value shape as the skin$ fold test
+        // above).
+        expect(seen).toEqual([true, false, true]);
+      });
+    });
+
+    it("send() while unavailable is a no-op: no user entry appended, port.ask not called", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<boolean>("f", {
+              f: false,
+            }),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.phase).toBe("idle");
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      ]);
+      expect(port?.asks).toEqual([]);
+    });
+
+    it("a turn already streaming when availability$ flips false is NOT torn down — the in-flight turn's deltas/done still fold normally; only the NEXT send is suppressed", () => {
+      // Guards against the tempting `takeWhile(available)`-style refactor of
+      // turnItems$/entryPatches$: that would tear a LIVE turn down the
+      // instant availability flips, discarding an already-billed, in-flight
+      // reply. The actual (correct) gate only reads the `available` cache at
+      // concatMap's projector — i.e. only when a NEW send() is about to
+      // start a turn — so a turn already running rides out to its own
+      // done/error untouched.
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a-b-c-(d|)", {
+            a: { type: "delta", text: "EUR" },
+            b: { type: "delta", text: "USD" },
+            c: { type: "delta", text: " is up" },
+            d: { type: "done" },
+          });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Flips false mid-turn: relative to the turn's own ask()
+            // subscription (frame 1, from the send() schedule below), "a"
+            // lands at frame 1, "b" at frame 3, "c" at frame 5, done at
+            // frame 7 — so "false" at frame 4 lands strictly between the
+            // "b" delta and the "c" delta, mid-stream. No leading "true"
+            // frame needed: INITIAL.available / the local `available` cache
+            // both already default to true.
+            availability$: ts.createColdObservable<boolean>("----f", {
+              f: false,
+            }),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          // Sent once availability has already flipped false. The first
+          // turn is still in flight (concatMap queues this rather than
+          // projecting it immediately), so this only proves out once the
+          // first turn completes at frame 7 — by which point availability
+          // is still false, so it must still be suppressed.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 6);
+        },
+      );
+
+      // Mid-turn: availability has just flipped false, but the still-open
+      // turn (waiting on the " is up" delta and done) must not have been
+      // reset or finalized early.
+      const midTurn = states.find((s) => {
+        return !s.available;
+      });
+      expect(midTurn?.phase).toBe("speaking");
+      expect(midTurn?.entries.at(-1)).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: false,
+      });
+
+      // The in-flight turn folds its remaining delta and done exactly as if
+      // availability had never changed.
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.phase).toBe("idle");
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "user", text: "first", done: true },
+        { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+      ]);
+
+      // "second" never reached port.ask(): the unavailable gate suppressed
+      // it at concatMap's projector rather than starting and then
+      // cancelling it.
+      expect(port?.asks).toEqual(["first"]);
+    });
+  });
 });
 
 function scheduler(): TestScheduler {
@@ -509,9 +669,12 @@ function fakePort(
   values: Record<string, JarvisEvent>,
 ): FakeJarvisPort {
   const confirms: Array<[string, boolean]> = [];
+  const asks: string[] = [];
   return {
     confirms,
-    ask: () => {
+    asks,
+    ask: (text: string) => {
+      asks.push(text);
       return ts.createColdObservable<JarvisEvent>(marbles, values);
     },
     confirm: (id: string, approved: boolean) => {
@@ -549,7 +712,9 @@ function basePort(ts: TestScheduler): FakeJarvisPort {
   return fakePort(ts, "-", {});
 }
 
-/** A JarvisPort test double that also records every confirm() call. */
+/** A JarvisPort test double that also records every confirm() and ask() call
+ * (`asks` — the raw text of each turn actually sent to the port). */
 interface FakeJarvisPort extends JarvisPort {
   readonly confirms: Array<[string, boolean]>;
+  readonly asks: string[];
 }

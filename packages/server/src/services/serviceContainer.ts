@@ -14,6 +14,8 @@ import {
   type PositionPort,
   PricingSimulator,
   ReferenceDataSimulator,
+  type ServiceHealthPort,
+  ServiceTopologySimulator,
   TradeStoreSimulator,
 } from "@rtc/domain";
 
@@ -25,6 +27,7 @@ export interface ServiceContainer {
   readonly execution: ExecutionSimulator;
   readonly blotter: TradeStoreSimulator;
   readonly analytics: AnalyticsSimulator;
+  readonly serviceHealth: ServiceHealthPort;
   readonly instruments: InstrumentSimulator;
   readonly dealers: DealerSimulator;
   readonly workflow: CreditRfqSimulator;
@@ -40,6 +43,9 @@ export function createServices(): ServiceContainer {
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
   const analytics = new AnalyticsSimulator();
+  // Fixed dev seed (3) — mirrors how client-core's simulator composition
+  // seeds the same class (see `createSimulatorPorts` in `portFactory.ts`).
+  const serviceHealth = new ServiceTopologySimulator(3);
   const instruments = new InstrumentSimulator();
   const dealers = new DealerSimulator();
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
@@ -61,6 +67,7 @@ export function createServices(): ServiceContainer {
     execution,
     blotter,
     analytics,
+    serviceHealth,
     instruments,
     dealers,
     workflow,

@@ -328,6 +328,14 @@ export interface World {
    * once per World, so every component reading useJarvis() through this World
    * shares one machine instance (mirrors eqWorkspace's singleton wiring). */
   readonly jarvis: JarvisWorld;
+  /** Live availability of the Jarvis backend, threaded into the REAL
+   * createJarvisMachine's `availability$` dep (mirrors jarvisSkin above) —
+   * drives `state.available`, which JarvisOrb reads to hide itself and
+   * useJarvisHotkey reads to no-op ⌘/Ctrl+J (Task 9 of Phase 3). Defaults to
+   * true, matching every seeded fixture and the machine's own default, so no
+   * existing spec observes a change; a spec seeds `false` via createWorld's
+   * `jarvisAvailabilitySeed` to exercise the unavailable path. */
+  readonly jarvisAvailability: BehaviorSubject<boolean>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -466,6 +474,8 @@ export function createWorld(
   forceBootAnimationSeed?: boolean,
   loginWaitStyleSeed?: LoginWaitStyle,
   loginWaitDelaySeed?: LoginWaitDelay,
+  /** Seeds `World.jarvisAvailability` (Task 9 of Phase 3); defaults to true. */
+  jarvisAvailabilitySeed?: boolean,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -648,6 +658,9 @@ export function createWorld(
   // it (once per World, cached by World identity — see that file).
   const jarvisSkin = new BehaviorSubject<JarvisSkin>(DEFAULT_JARVIS_SKIN);
   const jarvis = createJarvisWorld();
+  const jarvisAvailability = new BehaviorSubject<boolean>(
+    jarvisAvailabilitySeed ?? true,
+  );
 
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
@@ -785,6 +798,7 @@ export function createWorld(
     ambientStyle,
     jarvisSkin,
     jarvis,
+    jarvisAvailability,
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,

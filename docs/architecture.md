@@ -76,10 +76,10 @@ This document is split into one file per section under
     - [The Motion Toolbox](architecture/17-web-client-up-close.md#173-the-motion-toolbox)
     - [The Boot Splash](architecture/17-web-client-up-close.md#174-the-boot-splash)
     - [The Session Lock](architecture/17-web-client-up-close.md#175-the-session-lock)
-18. [The Jarvis AI Agent Surface](architecture/18-jarvis-ai-agent-surface.md) *(approved design, pre-implementation)*
+18. [The Jarvis AI Agent Surface](architecture/18-jarvis-ai-agent-surface.md) *(P1–P3 shipped; MCP is P4)*
     - [The Thesis: AI as the Third Client](architecture/18-jarvis-ai-agent-surface.md#181-the-thesis-ai-as-the-third-client)
     - [The Agent Surface at a Glance](architecture/18-jarvis-ai-agent-surface.md#182-the-agent-surface-at-a-glance)
-    - [The Tool Registry](architecture/18-jarvis-ai-agent-surface.md#183-the-tool-registry-planned-package-rtcagent-tools)
+    - [The Tool Registry](architecture/18-jarvis-ai-agent-surface.md#183-the-tool-registry-rtcagent-tools)
     - [A Chat Turn, End to End](architecture/18-jarvis-ai-agent-surface.md#184-a-chat-turn-end-to-end)
     - [Confirm-Gated Trade Execution](architecture/18-jarvis-ai-agent-surface.md#185-confirm-gated-trade-execution)
     - [An External AI Trades over MCP](architecture/18-jarvis-ai-agent-surface.md#186-an-external-ai-trades-over-mcp)
@@ -87,6 +87,9 @@ This document is split into one file per section under
     - [Wire Protocol Additions](architecture/18-jarvis-ai-agent-surface.md#188-wire-protocol-additions)
     - [Determinism: the Fake Agent Loop](architecture/18-jarvis-ai-agent-surface.md#189-determinism-the-fake-agent-loop)
     - [Package Dependencies after Slice 1](architecture/18-jarvis-ai-agent-surface.md#1810-package-dependencies-after-slice-1)
+    - [Phase 1 Shipped — the Receipt](architecture/18-jarvis-ai-agent-surface.md#1811-phase-1-shipped--the-receipt)
+    - [Phase 2 Shipped — the Wire](architecture/18-jarvis-ai-agent-surface.md#1812-phase-2-shipped--the-wire)
+    - [Phase 3 Shipped — the Real Loop](architecture/18-jarvis-ai-agent-surface.md#1813-phase-3-shipped--the-real-loop)
 19. [The AI Capability Roadmap](architecture/19-ai-capability-roadmap.md) *(forward-looking)*
     - [Tier 1 — Jaw-Droppers](architecture/19-ai-capability-roadmap.md#191-tier-1--jaw-droppers)
     - [Tier 2 — Deep-Cut Engineering Wow](architecture/19-ai-capability-roadmap.md#192-tier-2--deep-cut-engineering-wow)

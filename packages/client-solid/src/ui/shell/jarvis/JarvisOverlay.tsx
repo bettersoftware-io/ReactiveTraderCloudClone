@@ -43,7 +43,9 @@ export function JarvisOverlay(): JSX.Element {
   const [inputValue, setInputValue] = createSignal("");
   let listRef: HTMLDivElement | undefined;
 
-  useJarvisHotkey(toggle);
+  useJarvisHotkey(toggle, () => {
+    return state().available;
+  });
 
   createEffect(() => {
     if (!state().open) {

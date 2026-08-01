@@ -20,6 +20,35 @@ afterEach(() => {
 });
 
 describe("JarvisOrb", () => {
+  it("renders nothing when the Jarvis backend reports unavailable", () => {
+    // createWorld's positional seeds, up to the 18th (jarvisAvailabilitySeed)
+    // — mirrors OrderTicket.contract.spec.ts's own long-undefined-run form,
+    // the existing convention for reaching a late positional seed.
+    const world = createWorld(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+    );
+    const orb = mountWith(world, JarvisOrb);
+
+    expect(orb.isPresent()).toBe(false);
+  });
+
   it("renders idle with no unread badge before any interaction", () => {
     const world = createWorld();
     const orb = mountWith(world, JarvisOrb);

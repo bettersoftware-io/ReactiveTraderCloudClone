@@ -15,9 +15,10 @@ export const allEffects: WsEffect<Ctx>[] = [
   ...equitiesEffects,
 ];
 
-/** `allEffects` plus the JARVIS_* effects when `loop` is present. `loop` is
- * null unless RTC_JARVIS_FAKE=1 (see `createAgentLoop`), so the Jarvis wire
- * handlers are simply absent — not registered-but-inert — when it's off. */
+/** `allEffects` plus the JARVIS_* effects. `jarvisEffects` itself always
+ * registers the availability responder — even with `loop === null` — and
+ * adds the per-connection session effect only when a loop is present (see
+ * `createAgentLoop`'s env precedence). */
 export function buildEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
-  return loop === null ? allEffects : [...allEffects, ...jarvisEffects(loop)];
+  return [...allEffects, ...jarvisEffects(loop)];
 }

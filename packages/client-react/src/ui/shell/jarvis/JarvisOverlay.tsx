@@ -44,7 +44,7 @@ export function JarvisOverlay(): ReactElement | null {
   const [inputValue, setInputValue] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
-  useJarvisHotkey(toggle);
+  useJarvisHotkey(toggle, state.available);
 
   useEffect(() => {
     if (!state.open) {

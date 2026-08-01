@@ -32,9 +32,12 @@ export type {
 } from "./fx/referenceDataDto.js";
 // Jarvis
 export type {
+  JarvisAvailabilityPayload,
+  JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
   JarvisEvent,
+  JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
 export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
 export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
