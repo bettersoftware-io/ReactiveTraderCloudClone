@@ -17,6 +17,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { findBestQuoteId } from "#/ui/credit/rfqTiles/bestQuote";
 import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCountdownRing } from "#/ui/credit/rfqTiles/RfqCountdownRing";
 import { SurfaceCard } from "#/ui/SurfaceCard";
@@ -44,6 +45,7 @@ export function RfqCard({
   }
 
   const canDismiss = rfq.state !== RfqState.Open;
+  const bestQuoteId = findBestQuoteId(rfq, quotes);
 
   return (
     <SurfaceCard
@@ -89,6 +91,7 @@ export function RfqCard({
               key={quote.id}
               quote={quote}
               dealer={dealerMap.get(quote.dealerId)}
+              isBest={quote.id === bestQuoteId}
               onAccept={rfq.state === RfqState.Open ? onAccept : undefined}
             />
           );
