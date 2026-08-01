@@ -1,4 +1,13 @@
-import { catchError, Observable, of, TimeoutError, timeout } from "rxjs";
+import {
+  catchError,
+  distinctUntilChanged,
+  filter,
+  Observable,
+  of,
+  switchMap,
+  TimeoutError,
+  timeout,
+} from "rxjs";
 
 import type {
   JarvisAvailabilityPayload,
@@ -189,6 +198,44 @@ function createJarvisTurnStream(
   });
 }
 
+/** One connection's live `SERVER_MSG.JARVIS_AVAILABILITY` feed: registers the
+ * handler, sends `jarvis.subscribe`, and forwards every push for as long as
+ * this source stays subscribed. A soft first-event deadline pushes a
+ * synthetic `false` if the server hasn't answered within
+ * `JARVIS_FIRST_EVENT_TIMEOUT_MS` — but, unlike `ask()`'s use of the RxJS
+ * `timeout()` operator (which errors, and therefore completes, the source —
+ * fine for a one-shot turn), this is a plain `setTimeout` that does NOT
+ * complete the source: `JARVIS_AVAILABILITY` is a live push channel, so a
+ * real answer that lands late (after the synthetic `false`) must still reach
+ * the subscriber. Torn down (handler unregistered, timer cleared) when
+ * `availability$()`'s outer `switchMap` moves to the NEXT connection, or the
+ * caller unsubscribes. */
+function createConnectionAvailabilityStream(
+  ws: IWsAdapter,
+): Observable<boolean> {
+  return new Observable<boolean>((subscriber) => {
+    let answered = false;
+    const timer = setTimeout(() => {
+      if (!answered) {
+        subscriber.next(false);
+      }
+    }, JARVIS_FIRST_EVENT_TIMEOUT_MS);
+
+    const unregister = ws.on(SERVER_MSG.JARVIS_AVAILABILITY, (payload) => {
+      answered = true;
+      clearTimeout(timer);
+      const { available } = payload as JarvisAvailabilityPayload;
+      subscriber.next(available);
+    });
+    ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
+
+    return (): void => {
+      clearTimeout(timer);
+      unregister();
+    };
+  });
+}
+
 /** Wire-mode `JarvisPort`: turns `ask`/`confirm` into the `jarvis.*`
  * CLIENT_MSG/SERVER_MSG frames over an `IWsAdapter`. */
 export class WsJarvisAdapter implements JarvisPort {
@@ -243,35 +290,29 @@ export class WsJarvisAdapter implements JarvisPort {
 
   /** Not turn-scoped and not part of `JarvisPort` (see `jarvisPort.ts` — its
    * surface stays unchanged for this task): a query/push channel for the
-   * Jarvis backend's live availability. On subscribe, registers the
-   * `JARVIS_AVAILABILITY` handler and sends `jarvis.subscribe`, emitting
-   * `payload.available` for every push; re-queries the server on each
-   * (re)subscribe (no caching/sharing). Reuses the same first-event timeout
-   * as `ask()` — a server that never answers is exactly the "offline, so
-   * unavailable" case. */
+   * Jarvis backend's live availability.
+   *
+   * Re-queries on every `gatewayConnected` event from `ws.connectionEvents()`
+   * (a `ReplaySubject(1)` — a subscribe that lands while already connected
+   * gets the replayed event immediately, so this fires right away in the
+   * common case), NOT just once at subscribe time: a `jarvis.subscribe` sent
+   * on a since-dropped socket reaches nobody, so a subscriber that outlives
+   * one connection (the normal case — a UI badge, say) needs to re-arm on
+   * every reconnect, including the one after a server restart. `switchMap`
+   * tears down the previous connection's `JARVIS_AVAILABILITY` listener
+   * before arming the new one. `distinctUntilChanged` collapses a
+   * reconnect's re-query landing on the same boolean into a no-op for
+   * subscribers. See `createConnectionAvailabilityStream` for the per-
+   * connection deadline-without-completing behaviour. */
   availability$(): Observable<boolean> {
-    return new Observable<boolean>((subscriber) => {
-      const unregister = this.ws.on(
-        SERVER_MSG.JARVIS_AVAILABILITY,
-        (payload) => {
-          const { available } = payload as JarvisAvailabilityPayload;
-          subscriber.next(available);
-        },
-      );
-      this.ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
-
-      return (): void => {
-        unregister();
-      };
-    }).pipe(
-      timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS }),
-      catchError((error: unknown) => {
-        if (error instanceof TimeoutError) {
-          return of(false);
-        }
-
-        throw error;
+    return this.ws.connectionEvents().pipe(
+      filter((event) => {
+        return event.type === "gatewayConnected";
       }),
+      switchMap(() => {
+        return createConnectionAvailabilityStream(this.ws);
+      }),
+      distinctUntilChanged(),
     );
   }
 }

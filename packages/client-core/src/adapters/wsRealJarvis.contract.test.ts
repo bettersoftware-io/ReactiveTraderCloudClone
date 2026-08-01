@@ -402,13 +402,17 @@ describe("WsJarvisAdapter.availability$()", () => {
     vi.useRealTimers();
   });
 
-  it("registers the handler and sends jarvis.subscribe before emitting anything", () => {
+  it("does nothing until a gatewayConnected event, then registers the handler and sends jarvis.subscribe", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
     const received: boolean[] = [];
     adapter.availability$().subscribe((available) => {
       received.push(available);
     });
+
+    expect(ws.sentMessages()).toEqual([]);
+
+    ws.emitConnectionEvent("gatewayConnected");
 
     expect(ws.sentMessages()).toEqual([
       { type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: undefined },
@@ -424,6 +428,7 @@ describe("WsJarvisAdapter.availability$()", () => {
       received.push(available);
     });
 
+    ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
     expect(received).toEqual([true]);
   });
@@ -436,11 +441,20 @@ describe("WsJarvisAdapter.availability$()", () => {
       received.push(available);
     });
 
+    ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: false });
     expect(received).toEqual([false]);
   });
 
-  it("emits false and completes when the server never answers within the first-event timeout", () => {
+  it("SLOW FIRST RESPONSE: emits false after the deadline WITHOUT completing, then a late real answer still lands", () => {
+    // The bug this pins: the previous implementation used the RxJS
+    // `timeout()` operator, whose catchError->of(false) both emits AND
+    // completes the outer stream — a subscriber that stayed open past login
+    // (>10s to the first response) latched `false` forever, even once the
+    // server did answer. `createConnectionAvailabilityStream` uses a plain
+    // `setTimeout` instead: the deadline fires a synthetic `false` but never
+    // unregisters the handler, so a late real frame on the SAME connection
+    // still reaches the subscriber.
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
     const received: boolean[] = [];
@@ -453,6 +467,7 @@ describe("WsJarvisAdapter.availability$()", () => {
         completed = true;
       },
     });
+    ws.emitConnectionEvent("gatewayConnected");
 
     vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS - 1);
     expect(received).toEqual([]);
@@ -460,25 +475,27 @@ describe("WsJarvisAdapter.availability$()", () => {
 
     vi.advanceTimersByTime(1);
     expect(received).toEqual([false]);
-    expect(completed).toBe(true);
+    expect(completed).toBe(false);
+
+    // The stream is still alive: a real (late) answer still lands.
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+    expect(received).toEqual([false, true]);
+    expect(completed).toBe(false);
   });
 
-  it("re-queries the server with a fresh jarvis.subscribe on every (re)subscribe", () => {
+  it("RECONNECT REGRESSION: a NEW gatewayConnected event re-sends jarvis.subscribe and re-queries", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const availability$ = adapter.availability$();
-
-    const first: boolean[] = [];
-    const sub1 = availability$.subscribe((available) => {
-      first.push(available);
+    const received: boolean[] = [];
+    adapter.availability$().subscribe((available) => {
+      received.push(available);
     });
+
+    ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
-    sub1.unsubscribe();
 
-    const second: boolean[] = [];
-    availability$.subscribe((available) => {
-      second.push(available);
-    });
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: false });
 
     expect(
@@ -486,20 +503,59 @@ describe("WsJarvisAdapter.availability$()", () => {
         return m.type === CLIENT_MSG.JARVIS_SUBSCRIBE;
       }),
     ).toHaveLength(2);
-    expect(first).toEqual([true]);
-    expect(second).toEqual([false]);
+    expect(received).toEqual([true, false]);
   });
 
-  it("unsubscribing tears down the JARVIS_AVAILABILITY handler", () => {
+  it("SERVER-RESTART REGRESSION: the reconnect after a restart flips a stale false to true", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: boolean[] = [];
+    adapter.availability$().subscribe((available) => {
+      received.push(available);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: false });
+
+    // The server restarts: the socket drops and reconnects, and the
+    // restarted server now reports available.
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+
+    expect(received).toEqual([false, true]);
+  });
+
+  it("distinctUntilChanged: a reconnect that lands on the same boolean does not re-emit", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: boolean[] = [];
+    adapter.availability$().subscribe((available) => {
+      received.push(available);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+
+    expect(received).toEqual([true]);
+  });
+
+  it("unsubscribing tears down the handler — a later frame or reconnect emits nothing further", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
     const received: boolean[] = [];
     const subscription = adapter.availability$().subscribe((available) => {
       received.push(available);
     });
+    ws.emitConnectionEvent("gatewayConnected");
     subscription.unsubscribe();
 
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+    ws.emitConnectionEvent("gatewayConnected");
     expect(received).toEqual([]);
   });
 });

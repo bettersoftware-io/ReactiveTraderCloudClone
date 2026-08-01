@@ -265,6 +265,38 @@ export function firstWatchlistSymbol$(
 }
 
 /**
+ * Defensive guard, currently UNREACHABLE in production — kept so a natural
+ * future refactor doesn't silently reintroduce a double-send bug. Read
+ * `wireJarvisHistorySource`'s doc first for why `ask()`'s `historySource()`
+ * read is EAGER (runs before `JarvisMachine`'s "start" patch ever appends the
+ * new turn's own `[userEntry, jarvisEntry stub]` pair to `state.entries`), so
+ * in today's call shape this function's `slice` branch never actually fires:
+ * proven by the direct unit test next to this function in
+ * `composition.jarvisHistory.test.ts`, which is the ONLY thing currently
+ * exercising it (mutate this function and that test goes red; nothing else
+ * would notice).
+ *
+ * Why keep it: `ask()`'s eager read is an incidental consequence of today's
+ * call shape, not a documented contract of `WsJarvisAdapter` — wrapping
+ * `ask()`'s body in `defer(() => …)` (so `historySource()` is read at
+ * SUBSCRIBE time instead, matching how `createJarvisTurnStream` already
+ * defers its `ws.send()`) is a natural-looking refactor that would flip the
+ * ordering and make this exclusion load-bearing: a history snapshot read at
+ * that later point WOULD contain the in-flight turn's own pair, and
+ * `WsJarvisAdapter.ask()` already sends that same text separately as
+ * `JarvisChatPayload.text` — so echoing it back inside `history` too would
+ * hand the model its own newest message twice. Cheaper to keep a guard that
+ * costs one array slice per turn than to silently reintroduce that bug the
+ * day someone makes `ask()` lazy.
+ */
+export function historyEntriesExcludingInFlightTurn(
+  entries: readonly JarvisEntry[],
+): readonly JarvisEntry[] {
+  const last = entries[entries.length - 1];
+  return last && !last.done ? entries.slice(0, -2) : entries;
+}
+
+/**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
  * chat-history replay source — only when `ports.jarvis` is a
  * `WsJarvisAdapter` (WS-real mode; `jarvisPort.ts`'s surface stays unchanged,
@@ -278,44 +310,48 @@ export function firstWatchlistSymbol$(
  * can't reach the adapter at port-factory time without a cycle. `state$` has
  * no synchronous `getValue()` in its public `Machine` typing (it's declared
  * as the un-defaulted `StateObservable`, whose `getValue()` types as
- * `T | StatePromise<T>`), so this subscribes once here instead — same shape
- * as `gateTransportOnAuth`'s un-torn-down auth subscription below, kept
- * alive for the app's lifetime rather than tied to an explicit dispose (there
- * is none at this layer).
+ * `T | StatePromise<T>`), so this subscribes once here instead.
+ *
+ * The subscribe callback only CACHES the raw `entries` reference (O(1)) — it
+ * does NOT filter/map on every emission. `state$` re-emits on every delta,
+ * toolEvent, and confirmation-countdown tick, and this is a permanently
+ * animated HUD (see `docs/performance.md`); doing the filter+map work there
+ * would repeat O(entries) work on every one of those ticks for a value only
+ * ever read once per `ask()` call. Instead the filter+map is pushed inside
+ * the `setHistorySource` closure itself, so it runs exactly once per turn —
+ * the only time it's actually needed.
+ *
+ * `ask()` reads `historySource()` EAGERLY at CALL time (see
+ * `historyEntriesExcludingInFlightTurn`'s doc) — before `JarvisMachine`'s
+ * "start" patch (also driven off this same `state$`) has appended the new
+ * turn's own pair — so the cached `entries` snapshot never includes the
+ * in-flight turn's own message in practice.
+ *
+ * The subscription this creates would otherwise permanently pin `state$`'s
+ * refCount above zero even after `presenters.jarvis.dispose()` unsubscribes
+ * its own internal `warm` subscriber (`state()`'s doc: "the shared
+ * subscription is closed as soon as there are no subscribers"), silently
+ * defeating `dispose()` in WS-real mode. So `dispose` is wrapped here to also
+ * unsubscribe this one — the only "permanent" subscription this function
+ * owns, torn down through the one disposal path that exists for this
+ * machine (there is no separate app-level disposal hook to join instead).
  */
-/**
- * `JarvisMachine.send()`'s `concatMap` appends the new turn's `[userEntry
- * (done), jarvisEntry stub (not done)]` pair to `state.entries` — via the
- * synchronous "start" patch — BEFORE it calls `port.ask(text)` for that same
- * turn (see `createJarvisMachine`'s `concat(of({kind:"start", …}), …)`). So
- * a history snapshot read from live state at `ask()`-call time already
- * contains THIS turn's own user message. `WsJarvisAdapter.ask()` sends that
- * same text separately as `JarvisChatPayload.text`, so echoing it back
- * inside `history` too would hand the model its own newest message twice.
- * While a turn is in flight the tail is always exactly that pair (the stub
- * is not done), so dropping the last two entries whenever the array doesn't
- * end on a completed entry excludes only the in-flight turn's own pair —
- * every earlier, already-finished turn stays.
- */
-function historyEntriesExcludingInFlightTurn(
-  entries: readonly JarvisEntry[],
-): readonly JarvisEntry[] {
-  const last = entries[entries.length - 1];
-  return last && !last.done ? entries.slice(0, -2) : entries;
-}
-
 function wireJarvisHistorySource(
   jarvisPort: AppPorts["jarvis"],
-  jarvisState$: Presenters["jarvis"]["state$"],
+  jarvisMachine: Presenters["jarvis"],
 ): void {
   if (!(jarvisPort instanceof WsJarvisAdapter)) {
     return;
   }
 
-  let historyCache: readonly JarvisHistoryEntry[] = [];
+  let latestEntries: readonly JarvisEntry[] = [];
 
-  jarvisState$.subscribe((state) => {
-    historyCache = historyEntriesExcludingInFlightTurn(state.entries)
+  const subscription = jarvisMachine.state$.subscribe((state) => {
+    latestEntries = state.entries;
+  });
+
+  jarvisPort.setHistorySource(() => {
+    return historyEntriesExcludingInFlightTurn(latestEntries)
       .filter((entry) => {
         return entry.done && entry.text.length > 0;
       })
@@ -324,9 +360,12 @@ function wireJarvisHistorySource(
       });
   });
 
-  jarvisPort.setHistorySource(() => {
-    return historyCache;
-  });
+  const disposeMachine = jarvisMachine.dispose;
+
+  jarvisMachine.dispose = (): void => {
+    subscription.unsubscribe();
+    disposeMachine();
+  };
 }
 
 export function createApp(ports: AppPorts): App {
@@ -493,7 +532,7 @@ export function createApp(ports: AppPorts): App {
     }),
   };
 
-  wireJarvisHistorySource(ports.jarvis, presenters.jarvis.state$);
+  wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
   gateTransportOnAuth(ports.transport, presenters.auth);
 
   const commands: AppCommands = {
