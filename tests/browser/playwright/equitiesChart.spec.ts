@@ -53,11 +53,19 @@ test.describe("Equities chart", () => {
     await equitiesChart.openEquitiesWorkspace(ctx);
     await equitiesChart.expectPlotVisibleWithin(ctx, 5);
 
-    await equitiesChart.recordOldestTimeLabel(ctx, "before");
     await equitiesChart.focusPlot(ctx);
+    // One Home already reaches index 0 of the 300 candles preloaded at
+    // mount, with zero fetching — record THAT as the baseline (the deepest
+    // label reachable without a genuine backfill), not the live edge.
     await equitiesChart.pressHome(ctx);
+    await equitiesChart.recordOldestTimeLabel(ctx, "afterFirstHome");
     // The near-edge trigger fires; the chip may resolve fast in sim mode, so
-    // assert the OUTCOME (older labels), not the transient chip.
-    await equitiesChart.expectOldestTimeLabelOlderThanWithin(ctx, "before", 5);
+    // assert the OUTCOME — a FRESH Home reaching a label older than the
+    // baseline, which only a delivered page can produce.
+    await equitiesChart.expectHomeToReachOlderHistoryWithin(
+      ctx,
+      "afterFirstHome",
+      5,
+    );
   });
 });

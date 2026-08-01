@@ -129,16 +129,31 @@ function isOlderTimeLabel(current: string, before: string): boolean {
 }
 
 /**
- * Polls (bounded, hand-rolled loop mirroring `connection.ts`'s
- * `expectConnectionStatusFooterShows` — expect.poll's role, kept
- * driver-free) until the CURRENT oldest time-axis label reads older than
- * the `key` snapshot taken by {@link recordOldestTimeLabel}. Deliberately
- * ignores the transient "loading older" chip (see `loadingOlder` testid
- * doc) — sim mode's candleHistory resolves fast enough that the chip can
- * come and go between polls, so this asserts the backfill's OUTCOME
- * instead.
+ * Repeatedly presses Home and polls (bounded, hand-rolled loop mirroring
+ * `connection.ts`'s `expectConnectionStatusFooterShows` — expect.poll's
+ * role, kept driver-free) until the oldest time-axis label reads older
+ * than the `key` snapshot taken by {@link recordOldestTimeLabel} — which
+ * must have been recorded AFTER an initial Home already landed the
+ * viewport at the loaded series' left edge (`{0, span}`).
+ *
+ * Why press Home again on every iteration, not just wait: a single Home
+ * only reaches index 0 of whatever the series ALREADY holds — with 300
+ * candles preloaded at mount, that's trivially reachable with zero
+ * fetching, so a baseline recorded before any Home (at the live edge) or a
+ * check that never re-presses Home would pass even with backfill
+ * completely broken. Only once a fetched page has been PREPENDED does
+ * `shiftForPrepend` translate the viewport forward (e.g. `{0,60} →
+ * {300,360}` for a 300-candle page), so a FRESH Home — recomputing
+ * `{0, span}` off the then-current viewport — lands on the newly
+ * delivered (genuinely older) candles instead of re-showing the same
+ * ones. Pressing Home on every poll iteration is what lets this test
+ * observe that transition instead of asserting on data that was already
+ * in memory. Deliberately ignores the transient "loading older" chip (see
+ * `loadingOlder` testid doc) — sim mode's candleHistory resolves fast
+ * enough that the chip can come and go between polls, so this asserts the
+ * backfill's OUTCOME instead.
  */
-export async function expectOldestTimeLabelOlderThanWithin(
+export async function expectHomeToReachOlderHistoryWithin(
   ctx: TestContext,
   key: string,
   seconds: number,
@@ -153,6 +168,7 @@ export async function expectOldestTimeLabelOlderThanWithin(
   let last = before;
 
   while (Date.now() < deadline) {
+    await ctx.po.equitiesChart.pressHome();
     last = await ctx.po.equitiesChart.oldestTimeLabel();
 
     if (isOlderTimeLabel(last, before)) {
@@ -163,7 +179,7 @@ export async function expectOldestTimeLabelOlderThanWithin(
   }
 
   throw new Error(
-    `expected the oldest time label to age past ${JSON.stringify(before)} within ${seconds}s; last seen: ${JSON.stringify(last)}`,
+    `expected a fresh Home to reach a label older than ${JSON.stringify(before)} within ${seconds}s; last seen: ${JSON.stringify(last)}`,
   );
 }
 
