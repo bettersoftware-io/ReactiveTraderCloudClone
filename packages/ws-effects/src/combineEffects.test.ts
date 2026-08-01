@@ -1,9 +1,9 @@
 import { map, type Observable, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { combineEffects } from "#/combineEffects";
-import { matchType, out } from "#/operators";
-import type { Inbound, Outbound } from "#/types";
+import { combineEffects } from "#/combineEffects.js";
+import { matchType, out } from "#/operators.js";
+import type { Inbound, Outbound } from "#/types.js";
 
 describe("combineEffects", () => {
   it("merges outputs of all effects over one inbound stream", () => {

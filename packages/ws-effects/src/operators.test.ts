@@ -2,8 +2,8 @@ import { type Observable, of } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
-import { matchType, out } from "#/operators";
-import type { Inbound } from "#/types";
+import { matchType, out } from "#/operators.js";
+import type { Inbound } from "#/types.js";
 
 describe("out", () => {
   it("omits correlationId when not supplied", () => {

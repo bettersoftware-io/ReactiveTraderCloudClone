@@ -1,10 +1,10 @@
 import { map, type Observable, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
-import { combineEffects } from "#/combineEffects";
-import { createWsListener } from "#/createWsListener";
-import { matchType, out } from "#/operators";
-import type { Inbound, Outbound, Socket } from "#/types";
+import { combineEffects } from "#/combineEffects.js";
+import { createWsListener } from "#/createWsListener.js";
+import { matchType, out } from "#/operators.js";
+import type { Inbound, Outbound, Socket } from "#/types.js";
 
 describe("createWsListener", () => {
   it("sends effect output to the socket", () => {

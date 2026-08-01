@@ -35,7 +35,7 @@ import {
 } from "@rtc/domain";
 import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "@rtc/motion-core";
 
-import type { JarvisEvent } from "#/jarvis/jarvisEvent";
+import type { JarvisEvent } from "#/jarvis/jarvisEvent.js";
 
 import type { JarvisTradeIntent } from "./jarvisIntent.js";
 import { matchJarvisIntent } from "./jarvisIntent.js";

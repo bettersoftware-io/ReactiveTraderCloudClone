@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isLoginRequestDto } from "#/protocol/auth";
+import { isLoginRequestDto } from "#/protocol/auth.js";
 
 describe("isLoginRequestDto", () => {
   it("accepts a well-formed login body", () => {

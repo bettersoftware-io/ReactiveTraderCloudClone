@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 
-import { matchJarvisIntent, parseNotional } from "../jarvisIntent";
+import { matchJarvisIntent, parseNotional } from "../jarvisIntent.js";
 
 const knownSymbols = KNOWN_CURRENCY_PAIRS.map((p) => {
   return p.symbol;

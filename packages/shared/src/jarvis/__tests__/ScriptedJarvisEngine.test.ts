@@ -18,11 +18,11 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { JarvisEvent } from "../jarvisEvent";
+import type { JarvisEvent } from "../jarvisEvent.js";
 import {
   type ScriptedJarvisDeps,
   ScriptedJarvisEngine,
-} from "../ScriptedJarvisEngine";
+} from "../ScriptedJarvisEngine.js";
 
 const EURUSD = findPair("EURUSD");
 

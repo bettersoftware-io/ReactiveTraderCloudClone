@@ -157,10 +157,12 @@ describe("useNavigatorBrush", () => {
       return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
     });
 
-    // No prior pointerdown at all: originRef.current is null.
+    // No prior pointerdown at all: originRef.current is null — the up must
+    // be a complete no-op, not just "didn't crash".
     act(() => {
       result.current.stripProps.onPointerUp(brushEvent("window", 450));
     });
+    expect(applyViewport).not.toHaveBeenCalled();
 
     act(() => {
       result.current.stripProps.onPointerDown(brushEvent("window", 450));
