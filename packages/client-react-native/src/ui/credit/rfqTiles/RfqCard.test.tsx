@@ -43,6 +43,23 @@ test("an open RFQ shows the countdown ring in place of a state badge", async () 
   expect(screen.queryByTestId("rfq-badge-3")).toBeNull();
 });
 
+// "Accepted" is not an `RfqState` member: the domain models a traded RFQ as
+// `Closed` (the web client's `rfqCardVm` derives `accepted` the same way).
+test("shows the ACCEPTED stamp once the rfq has traded", async () => {
+  await renderCard(rfq(RfqState.Closed), []);
+  expect(screen.getByText("ACCEPTED")).toBeTruthy();
+});
+
+test("does not render the stamp while the rfq is live", async () => {
+  await renderCard(rfq(RfqState.Open), []);
+  expect(screen.queryByText("ACCEPTED")).toBeNull();
+});
+
+test("does not render the stamp for an expired rfq", async () => {
+  await renderCard(rfq(RfqState.Expired), []);
+  expect(screen.queryByText("ACCEPTED")).toBeNull();
+});
+
 test("a closed RFQ shows the state badge and a dismiss button, no ring", async () => {
   await renderCard(rfq(RfqState.Closed), []);
   expect(screen.queryByTestId("rfq-countdown-ring")).toBeNull();
