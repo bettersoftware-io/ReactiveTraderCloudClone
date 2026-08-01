@@ -109,7 +109,8 @@ the registry nor the domain knows either transport exists.
 > **Shipped in P3** — see [§18.13](#1813-phase-3-shipped--the-real-loop) for the
 > as-built shape. The design below held; the two deviations are `ToolContext`
 > (built as an injected `JarvisToolDeps` of *ports* plus a `confirmTrade` gate,
-> not a bag of use-case instances) and `get_app_context` (deferred to P4).
+> not a bag of use-case instances) and `get_app_context` (still deferred past
+> P4 — see [§18.14](#1814-p4--the-mcp-endpoint-second-transport)).
 
 The registry is *the port* of the whole surface — a framework-free catalogue of what
 an AI may do to this application:
@@ -169,7 +170,7 @@ The slice-1 tool set:
 | `get_analytics` | `AnalyticsUseCase` (positions, PnL) | read |
 | `get_service_health` | service-health port | read |
 | `execute_trade` | `ExecuteTradeUseCase` | **gated** |
-| `get_app_context` | tab/theme snapshot sent by the client per turn | read — **deferred to P4** (§18.13) |
+| `get_app_context` | tab/theme snapshot sent by the client per turn | read — **still deferred past P4** ([§18.14](#1814-p4--the-mcp-endpoint-second-transport)) |
 
 ## 18.4 A chat turn, end to end
 
@@ -240,10 +241,13 @@ sequenceDiagram
 
 ## 18.6 An external AI trades over MCP
 
-The MCP endpoint is mounted **in the same Node process** as the WS server — a
-correctness decision, not a convenience: a separate stdio process would own separate
-simulator instances and a different blotter. In-process, a trade executed from Claude
-Desktop lands in the same live state the HUD is streaming.
+**Shipped in P4** — see [§18.14](#1814-p4--the-mcp-endpoint-second-transport)
+for the receipt; this section is the original plan-level diagram, corrected
+where P4 shipped a different number. The MCP endpoint is mounted **in the
+same Node process** as the WS server — a correctness decision, not a
+convenience: a separate stdio process would own separate simulator instances
+and a different blotter. In-process, a trade executed from Claude Desktop
+lands in the same live state the HUD is streaming.
 
 ```mermaid
 sequenceDiagram
@@ -256,7 +260,7 @@ sequenceDiagram
 
     C->>D: "buy 2M GBP/USD on my trading app"
     D->>M: tools/list
-    M-->>D: 8 tools (JSON Schema)
+    M-->>D: 7 tools (JSON Schema)
     D->>C: tool-approval prompt (client-side HITL)
     C->>D: approve
     D->>M: tools/call execute_trade
@@ -265,6 +269,11 @@ sequenceDiagram
     M-->>D: tool result
     Note over H: blotter stream pushes the new trade —<br/>it appears live in the HUD
 ```
+
+Seven, not the eight this diagram originally showed — `get_app_context` stays
+deferred (§18.13's decision, revised again in §18.14: it is a WS-chat-surface
+tool with nothing for an external client to read, so it does not arrive with
+a later MCP-adjacent phase either).
 
 Human-in-the-loop lives at the architecturally honest layer per transport: the in-app
 chat renders our confirm card (§18.5); external MCP clients enforce approval through
@@ -320,7 +329,7 @@ See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of all of 
 
 | Direction | Message | Payload |
 |---|---|---|
-| client → server | `JARVIS_CHAT` | `{ text, turnId, history? }` — *(`appContext` deferred to P4, with the `get_app_context` tool that consumes it)* |
+| client → server | `JARVIS_CHAT` | `{ text, turnId, history? }` — *(`appContext` still not on the wire — the `get_app_context` tool that would consume it stays deferred past P4 too, [§18.14](#1814-p4--the-mcp-endpoint-second-transport))* |
 | client → server | `JARVIS_CONFIRM` | `{ confirmationId, approved }` |
 | client → server | `JARVIS_CANCEL` | `{ turnId }` — **P3**; abandons the named in-flight turn |
 | client → server | `JARVIS_SUBSCRIBE` | `{}` — **P3**; opens the availability channel |
@@ -364,14 +373,14 @@ the client's handshake always gets an answer instead of hanging (§18.13).
 | Flag state | Behavior |
 |---|---|
 | `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` — **shipped, P2**. Deliberately checked **first**, so it wins even when a key is also set (§18.13, "FAKE wins"). |
-| `ANTHROPIC_API_KEY` set (and no `RTC_JARVIS_FAKE`) | real Jarvis on `AnthropicAgentLoop` — **shipped, P3** (MCP endpoint still *(P4)*) |
+| `ANTHROPIC_API_KEY` set (and no `RTC_JARVIS_FAKE`) | real Jarvis on `AnthropicAgentLoop` — **shipped, P3** (the `/mcp` endpoint is a separate, unconditional mount — **shipped, P4**, [§18.14](#1814-p4--the-mcp-endpoint-second-transport)) |
 | neither | Only the availability responder registers; the session effect does not. **P3 behavior:** `JARVIS_AVAILABILITY {available:false}` answers the handshake, and the client **hides the orb and disarms the hotkey**. (~~P2 behavior: the icon stayed, and a turn degraded into one "Jarvis is offline, sir" error after `WsJarvisAdapter`'s 10 s first-event timeout~~ — that timeout still exists as the belt-and-braces path for a server that never answers at all.) |
 
 ## 18.10 Package dependencies after slice 1
 
-Additions to the §6 graph, **as shipped in P3** — `agent-tools` follows the same
-`domain`-plus-`rxjs` rule the package table describes, and `server` is the only
-package allowed to see the Anthropic SDK:
+Additions to the §6 graph, **as shipped in P3 and P4** — `agent-tools` follows
+the same `domain`-plus-`rxjs` rule the package table describes, and `server` is
+the only package allowed to see the Anthropic SDK **or** the MCP SDK:
 
 ```mermaid
 flowchart TD
@@ -398,13 +407,17 @@ flowchart TD
 ```
 
 `@rtc/server` gains two confined third-party deps: the Anthropic SDK
-(`src/agent/`, **shipped P3** — `@anthropic-ai/sdk`) and the MCP SDK (`src/mcp/`,
-*(P4)*). Neither leaks past its directory; the registry and domain stay clean, so
-swapping either SDK touches one directory — the same replaceability contract as
-everything else in §8. Two dependency-cruiser rules make that machine-checked
-rather than aspirational: `agent-tools-stays-inner` (agent-tools may import only
-`domain`) and `no-anthropic-sdk-in-inner-packages` (see §18.13 for why that one is
-written as an allowlist over `server`, not a blocklist of today's inner packages).
+(`src/agent/`, **shipped P3** — `@anthropic-ai/sdk`) and the MCP SDK
+(`src/mcp/`, **shipped P4** — `@modelcontextprotocol/sdk`,
+[§18.14](#1814-p4--the-mcp-endpoint-second-transport)). Neither leaks past its
+directory; the registry and domain stay clean, so swapping either SDK touches
+one directory — the same replaceability contract as everything else in §8.
+Three dependency-cruiser rules make that machine-checked rather than
+aspirational: `agent-tools-stays-inner` (agent-tools may import only
+`domain`), `no-anthropic-sdk-in-inner-packages`, and `no-mcp-sdk-outside-server`
+(see §18.13 for why the Anthropic rule is written as an allowlist over
+`server` rather than a blocklist of today's inner packages — the MCP rule
+mirrors that same allowlist shape).
 
 ## 18.11 Phase 1 shipped — the receipt
 
@@ -560,12 +573,13 @@ fix that retired them. The one that stands is `instantReveal` staying sim-only.
   and P3's real token stream will behave identically (tokens arrive when they arrive).
   Sim mode keeps instant-reveal for reduced-motion/Freeze, and since the contract specs
   and the power-saver e2e both run sim mode, nothing regressed.
-- **`appContext` is not on the wire yet.** Still true after P3, for the same
-  reason, now pointed at P4: `JARVIS_CHAT` gained `turnId` and `history` but not
+- **`appContext` is not on the wire yet.** Still true after P3 and after P4,
+  for the same reason: `JARVIS_CHAT` gained `turnId` and `history` but not
   `appContext`, because `get_app_context` — the only tool that would read it —
   needs a client→server app-context channel neither the chat payload carries nor
   the UI yet produces. Half-shipping it would put a payload on the wire no
-  consumer reads. §18.13 records the deferral; `docs/STATUS.md` tracks it.
+  consumer reads. §18.13 records the deferral; [§18.14](#1814-p4--the-mcp-endpoint-second-transport)
+  explains why it did not ride along with P4 either; `docs/STATUS.md` tracks it.
 
 ### What review hardening added
 
