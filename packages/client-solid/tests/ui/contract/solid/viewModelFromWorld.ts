@@ -116,6 +116,7 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
       setSkin: (skin: JarvisSkin) => {
         world.jarvisSkin.next(skin);
       },
+      availability$: world.jarvisAvailability,
     });
     jarvisMachines.set(world, machine);
   }

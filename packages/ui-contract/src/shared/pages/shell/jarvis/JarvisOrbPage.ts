@@ -19,6 +19,14 @@ export class JarvisOrbPage extends MountedComponent<Record<string, never>> {
     return within(this.root).getByTestId("jarvis-orb");
   }
 
+  /** True while the orb is rendered at all — false once the machine's
+   * `state.available` flips false (Task 9 of Phase 3: the orb renders
+   * nothing rather than a disabled button). Every other accessor below
+   * assumes presence; check this first when a spec seeds unavailability. */
+  isPresent(): boolean {
+    return within(this.root).queryByTestId("jarvis-orb") !== null;
+  }
+
   /** `data-jarvis-state`: "idle" | "speaking" | "attention". */
   state(): string {
     return this.orb().getAttribute("data-jarvis-state") ?? "";

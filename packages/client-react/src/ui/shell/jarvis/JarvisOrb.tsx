@@ -14,10 +14,20 @@ import styles from "./JarvisOrb.module.css";
  * `data-jarvis-state` selects the idle breath / speaking pulse / pending-
  * confirmation attention-pulse keyframe variant; `data-skin` recolors and
  * reshapes the core (see .module.css + the per-skin SVG sets below).
+ *
+ * Renders nothing while `state.available` is false (Task 9 of Phase 3): the
+ * affordance for a backend that has no brain would be a dead button, so the
+ * orb hides itself rather than rendering disabled. Always true in sim mode
+ * and everywhere except a live ws-real server reporting unavailable.
  */
-export function JarvisOrb(): ReactElement {
+export function JarvisOrb(): ReactElement | null {
   const { useJarvis } = useViewModel();
   const { state, toggle } = useJarvis();
+
+  if (!state.available) {
+    return null;
+  }
+
   const jarvisState =
     state.pendingConfirmation !== null
       ? "attention"
