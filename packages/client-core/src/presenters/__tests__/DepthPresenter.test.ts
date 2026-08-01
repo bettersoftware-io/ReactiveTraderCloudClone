@@ -54,6 +54,9 @@ function fakeMarketData(depthCalls: string[]): MarketDataPort {
     candles: () => {
       return EMPTY;
     },
+    candleHistory: () => {
+      return of([]);
+    },
     depth: (symbol: string): Observable<DepthBook> => {
       depthCalls.push(symbol);
       return of(book(symbol));

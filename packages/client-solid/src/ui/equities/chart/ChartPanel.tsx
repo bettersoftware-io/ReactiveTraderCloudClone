@@ -55,13 +55,21 @@ interface ChartBodyProps {
 }
 
 function ChartBody(props: ChartBodyProps): JSX.Element {
-  const { useEqWorkspace, useEquityQuote, useCandles, useWatchlist } =
-    useViewModel();
+  const {
+    useEqWorkspace,
+    useEquityQuote,
+    useCandles,
+    useCandleBackfill,
+    useWatchlist,
+    loadOlderCandles,
+  } = useViewModel();
   const { state } = useEqWorkspace();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const candles = useCandles(props.symbol, props.timeframe);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  const backfill = useCandleBackfill(props.symbol, props.timeframe);
   const instruments = useWatchlist();
   const instrument = createMemo(() => {
     return instruments().find((i) => {
@@ -79,6 +87,10 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
   const defaultVisible = createMemo(() => {
     return CANDLE_DEFAULT_VISIBLE[props.timeframe];
   });
+
+  function loadOlderForSelected(): void {
+    loadOlderCandles(props.symbol, props.timeframe);
+  }
 
   return (
     <div class={styles.body}>
@@ -99,6 +111,9 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           kind={state().chartType}
           indicators={state().indicators}
           defaultVisible={defaultVisible()}
+          loadingOlder={backfill().loadingOlder}
+          historyExhausted={backfill().historyExhausted}
+          onLoadOlder={loadOlderForSelected}
         />
       </div>
     </div>

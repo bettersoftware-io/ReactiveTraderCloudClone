@@ -15,6 +15,16 @@ export interface CandleChartProps {
   kind: EqChartType;
   indicators: readonly EqIndicatorId[];
   defaultVisible: number;
+  /** Whether an older history page is currently in flight for this series —
+   * drives the LOADING OLDER… chip and gates re-triggering. */
+  loadingOlder: boolean;
+  /** Whether the series has reached the true start of history — combined
+   * with the viewport sitting at index 0 to derive the START OF HISTORY
+   * chip. */
+  historyExhausted: boolean;
+  /** Fetches one older history page — the near-edge trigger's intent.
+   * Slot: the caller decides what "load older" means for this series. */
+  onLoadOlder: () => void;
 }
 
 /** The BACK TO LIVE pill's presence + a click helper. */
@@ -99,6 +109,22 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
 
   candleCount(): number {
     return this.root.querySelectorAll("[data-candle]").length;
+  }
+
+  /** The "LOADING OLDER…" chip's presence — shown while a history page is
+   * in flight for this series. */
+  loadingOlderChip(): boolean {
+    return (
+      this.root.querySelector('[data-testid="chart-loading-older"]') !== null
+    );
+  }
+
+  /** The "START OF HISTORY" chip's presence — shown once the series is
+   * exhausted AND the viewport sits hard against index 0. */
+  historyStartChip(): boolean {
+    return (
+      this.root.querySelector('[data-testid="chart-history-start"]') !== null
+    );
   }
 
   lastCandleUp(): boolean | null {

@@ -8,6 +8,7 @@ import type {
   VolumeBarVm,
 } from "@rtc/motion-core";
 
+import { BackfillChips } from "./BackfillChips";
 import { BackToLiveButton } from "./BackToLiveButton";
 import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
@@ -93,6 +94,10 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           indicatorPaths={props.indicatorPaths}
         />
         <CrosshairOverlay vm={props.cross} />
+        <BackfillChips
+          loadingOlder={props.loadingOlder}
+          historyStart={props.historyStart}
+        />
         <Show when={!props.atLiveEdge}>
           <BackToLiveButton onClick={props.onBackToLive} />
         </Show>
@@ -118,4 +123,6 @@ export interface ChartPlotProps {
   readonly nav: NavigatorVm;
   /** Omit for a static/brush-free navigator — same convention as plotProps. */
   readonly navProps?: NavigatorStripProps;
+  readonly loadingOlder: boolean;
+  readonly historyStart: boolean;
 }

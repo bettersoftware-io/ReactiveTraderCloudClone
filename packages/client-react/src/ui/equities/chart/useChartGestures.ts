@@ -14,6 +14,7 @@ import {
   followLive,
   isAtLiveEdge,
   panBy,
+  shiftForPrepend,
   zoomAt,
 } from "@rtc/motion-core";
 
@@ -75,6 +76,7 @@ interface DragOrigin {
 export function useChartGestures(
   seriesLen: number,
   defaultVisible: number,
+  firstCandleTime?: number,
 ): ChartGestures {
   const [viewport, setViewport] = useState<ChartViewport>(() => {
     return defaultViewport(seriesLen, defaultVisible);
@@ -88,9 +90,11 @@ export function useChartGestures(
   // documented recipe), not an effect: a live-edge viewport slides with the
   // new bars; a panned-away one holds still so the user's view doesn't jump.
   const [prevLen, setPrevLen] = useState(seriesLen);
+  const [prevFirstTime, setPrevFirstTime] = useState(firstCandleTime);
 
-  if (seriesLen !== prevLen) {
+  if (seriesLen !== prevLen || firstCandleTime !== prevFirstTime) {
     setPrevLen(seriesLen);
+    setPrevFirstTime(firstCandleTime);
     setViewport((vp) => {
       // prevLen === 0 is the react-rxjs bind() placeholder before the
       // candle presenter's (synchronous, but not yet delivered on this
@@ -105,6 +109,42 @@ export function useChartGestures(
       // is no panned-away position to preserve yet.
       if (prevLen === 0) {
         return defaultViewport(seriesLen, defaultVisible);
+      }
+
+      // Growth DIRECTION fork: the series growing while its first candle
+      // got OLDER is a backfill prepend — every index shifted, so the
+      // viewport translates with them (holds a panned-away view still AND
+      // keeps an at-edge view at the edge, one code path). Anything else
+      // is the live append fold, unchanged.
+      const grewBy = seriesLen - prevLen;
+      const prepended =
+        grewBy > 0 &&
+        prevFirstTime !== undefined &&
+        firstCandleTime !== undefined &&
+        firstCandleTime < prevFirstTime;
+
+      if (prepended) {
+        // C1: a prepend landing MID-DRAG must also shift the drag's cached
+        // origin, or the next pointermove's
+        // panBy(dragRef.current.startViewport, ...) recomputes from a
+        // viewport that no longer matches reality — snapping the view back
+        // by `grewBy` candles and re-triggering the near-edge fetch on
+        // every subsequent move, draining the whole depth cap in one
+        // continuous drag. A ref write during render is safe here: it's the
+        // same "adjust state during render" seam the setViewport calls
+        // above already use (this whole block only runs when
+        // seriesLen/firstCandleTime changed since the last render).
+        if (dragRef.current) {
+          dragRef.current = {
+            ...dragRef.current,
+            startViewport: shiftForPrepend(
+              dragRef.current.startViewport,
+              grewBy,
+            ),
+          };
+        }
+
+        return shiftForPrepend(vp, grewBy);
       }
 
       return followLive(vp, prevLen, seriesLen);

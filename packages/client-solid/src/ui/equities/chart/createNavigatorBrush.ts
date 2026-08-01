@@ -1,10 +1,11 @@
-import type { Accessor } from "solid-js";
+import { type Accessor, createComputed } from "solid-js";
 
 import {
   type ChartViewport,
   centerViewportAt,
   panBy,
   resizeViewportEdge,
+  shiftForPrepend,
   type ViewportEdge,
 } from "@rtc/motion-core";
 
@@ -38,6 +39,13 @@ interface BrushOrigin {
   readonly startViewport: ChartViewport;
 }
 
+/** The series-growth `createComputed`'s seeded accumulator — mirrors
+ * createChartGestures' own SeriesGrowthSnapshot (C1). */
+interface SeriesGrowthSnapshot {
+  readonly len: number;
+  readonly firstTime: number | undefined;
+}
+
 /**
  * The navigator strip's brush shell (ADR-005, spec §3.2): translates strip
  * pointer gestures into the pure @rtc/motion-core viewport ops and writes
@@ -50,8 +58,44 @@ export function createNavigatorBrush(
   viewport: Accessor<ChartViewport>,
   applyViewport: (vp: ChartViewport) => void,
   seriesLen: Accessor<number>,
+  firstCandleTime?: Accessor<number | undefined>,
 ): NavigatorBrush {
   let brushOrigin: BrushOrigin | null = null;
+
+  // C1 (mirrors createChartGestures' own prepend-shift bookkeeping): a
+  // backfill prepend growing the series mid-drag must shift the CACHED
+  // brush origin by the same amount, or the next pointermove's
+  // panBy/resizeViewportEdge(origin.startViewport, ...) recomputes from a
+  // viewport that no longer matches reality. `firstCandleTime` is OPTIONAL:
+  // an existing 3-arg caller reads `firstTime` as `undefined` on every run,
+  // so `prepended` below can never satisfy its `!== undefined` guards —
+  // collapsing to exactly today's behaviour. Seeded with the CURRENT
+  // seriesLen()/firstCandleTime() so the first run is a no-op.
+  createComputed(
+    (prev: SeriesGrowthSnapshot) => {
+      const len = seriesLen();
+      const firstTime = firstCandleTime?.();
+
+      if (len !== prev.len || firstTime !== prev.firstTime) {
+        const grewBy = len - prev.len;
+        const prepended =
+          grewBy > 0 &&
+          prev.firstTime !== undefined &&
+          firstTime !== undefined &&
+          firstTime < prev.firstTime;
+
+        if (prepended && brushOrigin) {
+          brushOrigin = {
+            ...brushOrigin,
+            startViewport: shiftForPrepend(brushOrigin.startViewport, grewBy),
+          };
+        }
+      }
+
+      return { len, firstTime };
+    },
+    { len: seriesLen(), firstTime: firstCandleTime?.() },
+  );
 
   function startBrush(e: PointerEvent): void {
     const target = e.currentTarget as HTMLDivElement;

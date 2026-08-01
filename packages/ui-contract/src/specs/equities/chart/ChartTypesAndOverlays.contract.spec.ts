@@ -22,6 +22,9 @@ describe("CandleChart — chart-type pills (candles/line/area)", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -51,6 +54,9 @@ describe("CandleChart — chart-type pills (candles/line/area)", () => {
         kind: "area",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -68,6 +74,9 @@ describe("CandleChart — indicator overlays (SMA 20 / EMA 50)", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -98,6 +107,9 @@ describe("CandleChart — volume pane", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -118,6 +130,9 @@ describe("CandleChart — time axis", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 

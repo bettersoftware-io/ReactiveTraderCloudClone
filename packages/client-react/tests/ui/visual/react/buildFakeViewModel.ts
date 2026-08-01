@@ -361,6 +361,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useCandles: (symbol: string) => {
       return data.equityCandles?.[symbol] ?? [];
     },
+    // Candle backfill: static screenshots never trigger a near-edge load, so
+    // both flags stay at their default false — no AppData field backs this
+    // (no fixture needs a non-default value; ChartBackfill's visual scenarios
+    // drive CandleChart's props directly, bypassing the ViewModel).
+    useCandleBackfill: () => {
+      return { loadingOlder: false, historyExhausted: false };
+    },
+    loadOlderCandles: noop,
     useDepth: (symbol: string) => {
       return data.equityDepth?.[symbol] ?? null;
     },

@@ -27,6 +27,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -43,6 +46,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -62,6 +68,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -85,6 +94,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -99,6 +111,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -124,6 +139,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -151,6 +169,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -176,6 +197,9 @@ describe("CandleChart — keyboard interaction", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: DEFAULT_VISIBLE,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 

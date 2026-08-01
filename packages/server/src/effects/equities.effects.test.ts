@@ -286,6 +286,44 @@ describe("equities effects", () => {
     expect(ctx.marketData.candles).toHaveBeenCalledWith("AAPL", "1W");
   });
 
+  it("acks getCandleHistory with the simulator's page", () => {
+    const candle = {
+      time: -1,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 1_200_000,
+    };
+
+    const ctx = {
+      marketData: {
+        candleHistory: vi.fn(() => {
+          return of([candle]);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+    messages$.next({
+      type: CLIENT_MSG.GET_CANDLE_HISTORY,
+      payload: { symbol: "AAPL", timeframe: "1D", beforeTime: 0, count: 300 },
+      correlationId: "1",
+    });
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.CANDLE_HISTORY_RESPONSE,
+        payload: { type: "ack", payload: [candle] },
+        correlationId: "1",
+      },
+    ]);
+    expect(ctx.marketData.candleHistory).toHaveBeenCalledWith(
+      "AAPL",
+      "1D",
+      0,
+      300,
+    );
+  });
+
   it("acks cancelOrder", () => {
     const ctx = {
       orders: {

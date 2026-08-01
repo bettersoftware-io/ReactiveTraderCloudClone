@@ -20,6 +20,14 @@ export const CANDLE_TIMEFRAMES: readonly CandleTimeframe[] = [
  * seeded walk; see EquityMarketDataSimulator). */
 export const CANDLE_HISTORY_TOTAL = 300;
 
+/** Candles per backfill page — what the client requests per near-edge fetch. */
+export const CANDLE_HISTORY_PAGE = 300;
+
+/** Total obtainable history per (symbol, timeframe): the live
+ * CANDLE_HISTORY_TOTAL plus 9 backfill pages. Requests beyond it return
+ * short/empty pages — the exhaustion signal. */
+export const CANDLE_HISTORY_DEPTH_MAX = 3000;
+
 /** Default chart-viewport size per timeframe = the pre-deepening candle
  * count, so the default view still spans the named period. */
 export const CANDLE_DEFAULT_VISIBLE: Readonly<Record<CandleTimeframe, number>> =

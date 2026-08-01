@@ -395,6 +395,19 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartVolumeAxis",
     fixtureKey: "equities-loaded",
   },
+  // Backfill paging chips (ChartPlot's BackfillChips, left-edge overlay):
+  // the passive "LOADING OLDER…" chip during an in-flight older-page fetch,
+  // and the terminal "START OF HISTORY" chip once exhaustion is reached AND
+  // the viewport sits hard against index 0 — same ForcedChart bypass as the
+  // panned/zoomed/crosshair scenarios above.
+  "equities/chart-loading-older": {
+    componentKey: "EquitiesChartLoadingOlder",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-history-start": {
+    componentKey: "EquitiesChartHistoryStart",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 

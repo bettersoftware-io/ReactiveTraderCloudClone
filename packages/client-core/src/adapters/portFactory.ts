@@ -937,6 +937,56 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
       });
     },
 
+    candleHistory(
+      symbol: string,
+      timeframe: CandleTimeframe,
+      beforeTime: number,
+      count: number,
+    ): Observable<readonly Candle[]> {
+      return new Observable<readonly Candle[]>((subscriber) => {
+        let cancelled = false;
+
+        void (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.GET_CANDLE_HISTORY, {
+              symbol,
+              timeframe,
+              beforeTime,
+              count,
+            })) as RpcResponse<readonly Candle[]>;
+
+            if (cancelled) {
+              return;
+            }
+
+            if (resp.type === "nack") {
+              subscriber.error(
+                new Error(`Failed to get candle history for ${symbol}`),
+              );
+              return;
+            }
+
+            const candles = resp.payload;
+
+            if (!candles) {
+              throw new Error("ack response missing payload");
+            }
+
+            subscriber.next(candles);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) {
+              subscriber.error(e);
+            }
+          }
+        })();
+
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+
     depth(symbol: string): Observable<DepthBook> {
       return new Observable<DepthBook>((subscriber) => {
         const unsub = ws.on(SERVER_MSG.DEPTH, (payload) => {

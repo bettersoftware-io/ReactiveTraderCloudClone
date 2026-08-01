@@ -1,0 +1,19 @@
+/* Backfill status chips, pinned to the plot's LEFT edge — the BACK TO LIVE
+   pill's family (same typography/radius), toned down: these are passive
+   status, not a call to action. Static by design — nothing animates, so
+   power-saver has nothing to gate. */
+.chip {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: 3px;
+  pointer-events: none;
+}

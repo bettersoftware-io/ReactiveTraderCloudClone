@@ -28,6 +28,10 @@ export class Scratchpad {
 
   equitiesChart = {
     recordedTimeLabels: new Map<string, string[]>(),
+    /** Oldest (first) time-axis label recorded before a Home-key backfill
+     * pan, keyed by the caller's snapshot label — read back by
+     * `expectOldestTimeLabelOlderThanWithin`. */
+    recordedOldestLabels: new Map<string, string>(),
   };
 }
 

@@ -8,8 +8,8 @@
 // in createViewModel.machines.test.tsx / createViewModel.eqWorkspace.firstRender.test.tsx.
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
-import { type Observable, of } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { BehaviorSubject, type Observable, of } from "rxjs";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type AppPorts,
@@ -17,6 +17,7 @@ import {
   createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
+  type Presenters,
 } from "@rtc/client-core";
 import {
   type AuthOutcome,
@@ -450,6 +451,39 @@ describe("createViewModel — equities streams", () => {
   });
 });
 
+describe("createViewModel — candle backfill", () => {
+  it("loadOlderCandles forwards to presenters.candleSeries.loadOlder with the exact args", () => {
+    const { vm, loadOlder } = makeViewModelWithFakeCandleSeries();
+
+    vm.loadOlderCandles("AAPL", "1W");
+
+    expect(loadOlder).toHaveBeenCalledWith("AAPL", "1W");
+  });
+
+  it("useCandleBackfill defaults to loadingOlder/historyExhausted both false", () => {
+    const { vm } = makeViewModelWithFakeCandleSeries();
+    const { result } = renderHook(() => {
+      return vm.useCandleBackfill("AAPL", "1D");
+    });
+
+    expect(result()).toEqual({ loadingOlder: false, historyExhausted: false });
+  });
+
+  it("useCandleBackfill reflects the presenter's loadingOlder$/historyExhausted$ values", () => {
+    const { vm, loading$, exhausted$ } = makeViewModelWithFakeCandleSeries();
+    const { result } = renderHook(() => {
+      return vm.useCandleBackfill("AAPL", "1D");
+    });
+
+    loading$.next(true);
+    expect(result()).toEqual({ loadingOlder: true, historyExhausted: false });
+
+    loading$.next(false);
+    exhausted$.next(true);
+    expect(result()).toEqual({ loadingOlder: false, historyExhausted: true });
+  });
+});
+
 describe("createViewModel — admin/telemetry streams", () => {
   it("useMetrics exposes throughput/latency/errorRate as accessors over the seeded rolling windows", () => {
     const vm = makeViewModel();
@@ -521,6 +555,47 @@ function makeViewModel(options: MakeViewModelOptions = {}): ViewModel {
     createMachineFactories(presenters),
     commands,
   );
+}
+
+interface FakeCandleSeriesHarness {
+  vm: ViewModel;
+  loadOlder: ReturnType<typeof vi.fn>;
+  loading$: BehaviorSubject<boolean>;
+  exhausted$: BehaviorSubject<boolean>;
+}
+
+/** Builds a real composition root (same simulator world as makeViewModel)
+ * but swaps in a fake candleSeries presenter — a spy for loadOlder plus
+ * caller-driven BehaviorSubjects for loadingOlder$/historyExhausted$ — so
+ * the backfill flag tests aren't at the mercy of the simulator's synchronous
+ * candleHistory() resolving before the assertion runs. */
+function makeViewModelWithFakeCandleSeries(): FakeCandleSeriesHarness {
+  const { presenters, commands } = createApp(createSimPorts({}));
+  const loadOlder = vi.fn();
+  const loading$ = new BehaviorSubject(false);
+  const exhausted$ = new BehaviorSubject(false);
+
+  const fakePresenters: Presenters = {
+    ...presenters,
+    candleSeries: {
+      candles$: presenters.candleSeries.candles$.bind(presenters.candleSeries),
+      loadOlder,
+      loadingOlder$: () => {
+        return loading$;
+      },
+      historyExhausted$: () => {
+        return exhausted$;
+      },
+    } as unknown as Presenters["candleSeries"],
+  };
+
+  const vm = createViewModel(
+    fakePresenters,
+    createMachineFactories(fakePresenters),
+    commands,
+  );
+
+  return { vm, loadOlder, loading$, exhausted$ };
 }
 
 function createSimPorts(options: MakeViewModelOptions): AppPorts {

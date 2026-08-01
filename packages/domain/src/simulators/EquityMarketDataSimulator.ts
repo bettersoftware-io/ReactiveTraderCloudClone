@@ -13,6 +13,7 @@ import type { DepthBook, DepthLevel } from "../equities/depth.js";
 import type { EquityInstrument } from "../equities/instrument.js";
 import type { EquityQuote } from "../equities/quote.js";
 import {
+  CANDLE_HISTORY_DEPTH_MAX,
   CANDLE_HISTORY_TOTAL,
   type CandleTimeframe,
 } from "../equities/timeframe.js";
@@ -71,6 +72,11 @@ const BASE_VOLUME = 1_000_000;
  * back walk must never share a stream with the forward walk, or the A1 pin
  * (newest-60 byte-identical snapshot) would go red. */
 const BACK_SEED_OFFSET = 4241;
+/** Distinct rng-stream offset for the DEEP backfill walk (beyond the
+ * Phase-A prepend). Far from every other offset so no stream collides —
+ * the A1 pin (newest-60 byte-identical) and the Phase-A back block both
+ * stay untouched. */
+const DEEP_SEED_OFFSET = 15013;
 
 interface TimeframeConfig {
   /** Number of candles in the returned series. */
@@ -122,8 +128,36 @@ interface SymbolState {
   rng: () => number;
 }
 
+/** Per `symbol|timeframe`: the {unscaled oldest close, live-anchor scale} of
+ * the most recent candles() emission — what the deep cache must chain to. */
+interface BaseAnchor {
+  readonly backStartUnscaled: number;
+  readonly liveScale: number;
+  readonly oldestTime: number;
+  readonly bucketMs: number;
+}
+
 export class EquityMarketDataSimulator implements MarketDataPort {
   private readonly states = new Map<string, SymbolState>();
+
+  /** Deep-history cache per `symbol|timeframe`: built ONCE on first
+   * candleHistory request by snapshotting `now` and walking
+   * CANDLE_HISTORY_DEPTH_MAX − CANDLE_HISTORY_TOTAL buckets further back
+   * from where candles()' own back walk stops, on yet another independent
+   * rng stream (DEEP_SEED_OFFSET — the Phase-A pin must never move).
+   * Pages are slices of this cache, which is what makes the determinism
+   * and page-continuity laws hold structurally. The cache chains to the
+   * base series via the same seam-rescale trick as the Phase-A back walk,
+   * multiplied by the live-anchor factor the last candles() call used
+   * (stored per key below); if candles() re-runs later with a new anchor
+   * the seam drifts by the sub-percent price move since — the same
+   * accepted gap class as the live overlay itself. */
+  private readonly deepHistory = new Map<string, readonly Candle[]>();
+
+  /** Per `symbol|timeframe`: the {unscaled oldest close, live-anchor scale}
+   * of the most recent candles() emission — what the deep cache must chain
+   * to. */
+  private readonly baseAnchors = new Map<string, BaseAnchor>();
 
   constructor(seed = 1) {
     WATCHLIST.forEach((inst, i) => {
@@ -318,7 +352,126 @@ export class EquityMarketDataSimulator implements MarketDataPort {
         };
       });
 
+      this.baseAnchors.set(`${symbol}|${timeframe}`, {
+        backStartUnscaled: backAnchored[0]?.open ?? s.open,
+        liveScale: scale,
+        oldestTime: anchored[0]?.time ?? now,
+        bucketMs,
+      });
+
       return of(anchored as readonly Candle[]);
+    });
+  }
+
+  candleHistory(
+    symbol: string,
+    timeframe: CandleTimeframe,
+    beforeTime: number,
+    count: number,
+  ): Observable<readonly Candle[]> {
+    return defer(() => {
+      const s = this.getState(symbol);
+
+      if (!s) {
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
+      }
+
+      const key = `${symbol}|${timeframe}`;
+      const deep =
+        this.deepHistory.get(key) ?? this.buildDeepHistory(symbol, timeframe);
+      this.deepHistory.set(key, deep);
+
+      // Slice strictly-before beforeTime, newest `count` of what qualifies.
+      let end = deep.length;
+
+      while (end > 0 && (deep[end - 1] as Candle).time >= beforeTime) {
+        end--;
+      }
+
+      return of(deep.slice(Math.max(0, end - count), end));
+    });
+  }
+
+  /** Walks CANDLE_HISTORY_DEPTH_MAX − CANDLE_HISTORY_TOTAL buckets further
+   * into the past from the base series' oldest candle, seam-rescaled to
+   * chain into it — see the deepHistory field doc. */
+  private buildDeepHistory(
+    symbol: string,
+    timeframe: CandleTimeframe,
+  ): readonly Candle[] {
+    const anchor = this.baseAnchors.get(`${symbol}|${timeframe}`);
+
+    // No candles() emission yet for this key: nothing to chain to. Build
+    // the anchor by generating the base series once (subscribing our own
+    // candles() — synchronous via of()) and re-reading.
+    if (!anchor) {
+      this.candles(symbol, timeframe).subscribe().unsubscribe();
+      const built = this.baseAnchors.get(`${symbol}|${timeframe}`);
+
+      if (!built) {
+        return [];
+      }
+
+      return this.walkDeepHistory(symbol, timeframe, built);
+    }
+
+    return this.walkDeepHistory(symbol, timeframe, anchor);
+  }
+
+  private walkDeepHistory(
+    symbol: string,
+    timeframe: CandleTimeframe,
+    anchor: BaseAnchor,
+  ): readonly Candle[] {
+    const { vol, seed } = TF_CONFIG[timeframe];
+    const substepVol = vol / Math.sqrt(CANDLE_SUBSTEPS);
+    const depth = CANDLE_HISTORY_DEPTH_MAX - CANDLE_HISTORY_TOTAL;
+    const rngDeep = mulberry32(seed + hashString(symbol) + DEEP_SEED_OFFSET);
+    const volRngDeep = mulberry32(
+      seed + hashString(symbol) + DEEP_SEED_OFFSET + VOLUME_SEED_OFFSET,
+    );
+    let price = anchor.backStartUnscaled;
+    const out: Candle[] = [];
+
+    // Oldest-first bucket times: depth buckets ending just before oldestTime.
+    for (let i = depth; i >= 1; i--) {
+      const bucketTime = anchor.oldestTime - i * anchor.bucketMs;
+      let candle: Candle | null = null;
+
+      for (let sub = 0; sub < CANDLE_SUBSTEPS; sub++) {
+        price = gbmStep(price, rngDeep(), substepVol);
+        candle = aggregateCandle(candle, price, bucketTime, anchor.bucketMs);
+      }
+
+      const built = candle as Candle;
+      const range =
+        built.close > 0 ? (built.high - built.low) / built.close : 0;
+      out.push({
+        ...built,
+        volume: Math.round(
+          BASE_VOLUME * (0.4 + volRngDeep()) * (1 + 40 * range),
+        ),
+      });
+    }
+
+    // Seam-rescale so the deep block's final close chains into the base
+    // series' unscaled start, then apply the base's live-anchor scale so
+    // the whole block lives in the same price space the client received.
+    const endClose = out.at(-1)?.close;
+    const seamScale = endClose ? anchor.backStartUnscaled / endClose : 1;
+    const scale = seamScale * anchor.liveScale;
+
+    return out.map((c) => {
+      return {
+        time: c.time,
+        open: c.open * scale,
+        high: c.high * scale,
+        low: c.low * scale,
+        close: c.close * scale,
+        volume: c.volume,
+      };
     });
   }
 

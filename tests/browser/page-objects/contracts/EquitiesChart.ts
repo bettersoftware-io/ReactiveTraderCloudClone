@@ -12,11 +12,16 @@ export interface EquitiesChartPO {
   waitPlotVisible(timeoutMs: number): Promise<void>;
   focusPlot(): Promise<void>;
   pressArrowLeft(): Promise<void>;
+  /** Pans all the way to the series' oldest fetched candle (the left-edge
+   * trigger point) — the near-edge-of-history backfill trigger. */
+  pressHome(): Promise<void>;
   waitBackToLiveVisible(timeoutMs: number): Promise<void>;
   waitBackToLiveHidden(timeoutMs: number): Promise<void>;
   clickBackToLive(): Promise<void>;
   /** Ordered text of every rendered time-axis tick. */
   timeLabels(): Promise<string[]>;
+  /** Text of the FIRST (leftmost/oldest) rendered time-axis tick. */
+  oldestTimeLabel(): Promise<string>;
   waitNavigatorVisible(timeoutMs: number): Promise<void>;
   /** Drags the navigator window body by a fraction of the strip's width
    * (negative = toward older candles). */

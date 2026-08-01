@@ -1,5 +1,5 @@
 import { bind, useStateObservable } from "@react-rxjs/core";
-import { firstValueFrom } from "rxjs";
+import { combineLatest, firstValueFrom, map } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -212,6 +212,14 @@ interface UseBootGateResult {
   dismiss: () => void;
 }
 
+/** Combined candle backfill flags for a (symbol|timeframe) key — mirrors
+ * CandleSeriesPresenter's per-key BackfillState, reflected via its
+ * loadingOlder$/historyExhausted$ streams. Defaults to both false. */
+export interface CandleBackfillState {
+  loadingOlder: boolean;
+  historyExhausted: boolean;
+}
+
 export interface ViewModel {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -316,6 +324,18 @@ export interface ViewModel {
     symbol: string,
     timeframe?: CandleTimeframe,
   ) => readonly Candle[];
+  /** Combined backfill flags (loadingOlder/historyExhausted) for a candle
+   * series — a bound stream of CandleSeriesPresenter's loadingOlder$ +
+   * historyExhausted$, defaulting to both false. */
+  useCandleBackfill: (
+    symbol: string,
+    timeframe?: CandleTimeframe,
+  ) => CandleBackfillState;
+  /** Fetch one older page for a candle series (the near-edge trigger's
+   * intent) — a stable pre-bound command forwarding to
+   * CandleSeriesPresenter.loadOlder. Single-flight; no-ops while a page is
+   * already in flight, after exhaustion, or before candles$ has emitted. */
+  loadOlderCandles: (symbol: string, timeframe?: CandleTimeframe) => void;
   /** Depth book for a symbol — null until the first depth update arrives. */
   useDepth: (symbol: string) => DepthBook | null;
   /** All open/filled equity orders — starts empty. */
@@ -611,6 +631,24 @@ export function createViewModel(
     },
     [] as readonly Candle[],
   );
+
+  const [useCandleBackfill] = bind(
+    (symbol: string, timeframe?: CandleTimeframe) => {
+      return combineLatest([
+        presenters.candleSeries.loadingOlder$(symbol, timeframe),
+        presenters.candleSeries.historyExhausted$(symbol, timeframe),
+      ]).pipe(
+        map(([loadingOlder, historyExhausted]) => {
+          return { loadingOlder, historyExhausted };
+        }),
+      );
+    },
+    { loadingOlder: false, historyExhausted: false } as CandleBackfillState,
+  );
+
+  function loadOlderCandles(symbol: string, timeframe?: CandleTimeframe): void {
+    presenters.candleSeries.loadOlder(symbol, timeframe);
+  }
 
   const [useDepth] = bind(
     (symbol: string) => {
@@ -927,6 +965,8 @@ export function createViewModel(
     useWatchlist,
     useEquityQuote,
     useCandles,
+    useCandleBackfill,
+    loadOlderCandles,
     useDepth,
     useEquityOrders,
     useEquityPositions,

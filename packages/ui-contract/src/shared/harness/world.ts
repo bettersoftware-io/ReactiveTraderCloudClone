@@ -1,4 +1,4 @@
-import { BehaviorSubject, type Observable, Subject } from "rxjs";
+import { BehaviorSubject, type Observable, of, Subject } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -20,6 +20,7 @@ import {
 import {
   type AmbientStyle,
   type Candle,
+  type CandleTimeframe,
   ConnectionStatus,
   type CreateRfqInput,
   type CreditRfqFilter,
@@ -384,6 +385,17 @@ export interface World {
   equityQuoteFor(symbol: string): BehaviorSubject<EquityQuote | null>;
   /** Per-symbol subject for useCandles(symbol). */
   candlesFor(symbol: string): BehaviorSubject<readonly Candle[]>;
+  /** Fake MarketDataPort.candleHistory: a one-shot older-candles page.
+   * Default: instantly exhausted (empty page). Specs that exercise paging
+   * drive CandleChart directly with props (see ChartBackfill.contract.spec.ts)
+   * — this default exists so mounting the full app never hangs on a missing
+   * implementation. */
+  candleHistory(
+    symbol: string,
+    timeframe: CandleTimeframe,
+    beforeTime: number,
+    count: number,
+  ): Observable<readonly Candle[]>;
   /** Per-symbol subject for useDepth(symbol). */
   depthFor(symbol: string): BehaviorSubject<DepthBook | null>;
   /** Push a new watchlist (drives the watchlist-backed panels' re-render). */
@@ -821,6 +833,18 @@ export function createWorld(
     orderLifecycle,
     equityQuoteFor,
     candlesFor,
+    candleHistory(
+      _symbol: string,
+      _timeframe: CandleTimeframe,
+      _beforeTime: number,
+      _count: number,
+    ): Observable<readonly Candle[]> {
+      // Default: instantly exhausted (empty page). Specs that exercise
+      // paging drive CandleChart directly with props (see
+      // ChartBackfill.contract.spec.ts) — this default exists so mounting
+      // the full app never hangs on a missing implementation.
+      return of([] as readonly Candle[]);
+    },
     depthFor,
     setWatchlist: (value: readonly EquityInstrument[]) => {
       return watchlist.next(value);

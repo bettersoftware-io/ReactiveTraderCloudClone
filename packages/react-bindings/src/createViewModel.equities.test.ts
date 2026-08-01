@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { BehaviorSubject } from "rxjs";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type AppPorts,
@@ -7,6 +8,7 @@ import {
   createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
+  type Presenters,
 } from "@rtc/client-core";
 import {
   AuthSimulator,
@@ -230,6 +232,93 @@ describe("createViewModel — equities hooks", () => {
   });
 });
 
+describe("createViewModel — candle backfill", () => {
+  it("loadOlderCandles forwards to presenters.candleSeries.loadOlder with the exact args", () => {
+    const { hooks, loadOlder } = makeHooksWithFakeCandleSeries();
+
+    hooks.loadOlderCandles("AAPL", "1W");
+
+    expect(loadOlder).toHaveBeenCalledWith("AAPL", "1W");
+  });
+
+  it("useCandleBackfill defaults to loadingOlder/historyExhausted both false", () => {
+    const { hooks } = makeHooksWithFakeCandleSeries();
+    const { result } = renderHook(() => {
+      return hooks.useCandleBackfill("AAPL", "1D");
+    });
+
+    expect(result.current).toEqual({
+      loadingOlder: false,
+      historyExhausted: false,
+    });
+  });
+
+  it("useCandleBackfill reflects the presenter's loadingOlder$/historyExhausted$ values", () => {
+    const { hooks, loading$, exhausted$ } = makeHooksWithFakeCandleSeries();
+    const { result } = renderHook(() => {
+      return hooks.useCandleBackfill("AAPL", "1D");
+    });
+
+    act(() => {
+      loading$.next(true);
+    });
+    expect(result.current).toEqual({
+      loadingOlder: true,
+      historyExhausted: false,
+    });
+
+    act(() => {
+      loading$.next(false);
+      exhausted$.next(true);
+    });
+    expect(result.current).toEqual({
+      loadingOlder: false,
+      historyExhausted: true,
+    });
+  });
+});
+
+interface FakeCandleSeriesHarness {
+  hooks: ViewModel;
+  loadOlder: ReturnType<typeof vi.fn>;
+  loading$: BehaviorSubject<boolean>;
+  exhausted$: BehaviorSubject<boolean>;
+}
+
+/** Builds a real composition root (same simulator world as makeHooks) but
+ * swaps in a fake candleSeries presenter — a spy for loadOlder plus
+ * caller-driven BehaviorSubjects for loadingOlder$/historyExhausted$ — so the
+ * backfill flag tests aren't at the mercy of the simulator's synchronous
+ * candleHistory() resolving before the assertion runs. */
+function makeHooksWithFakeCandleSeries(): FakeCandleSeriesHarness {
+  const { presenters, commands } = createApp(createSimPorts());
+  const loadOlder = vi.fn();
+  const loading$ = new BehaviorSubject(false);
+  const exhausted$ = new BehaviorSubject(false);
+
+  const fakePresenters: Presenters = {
+    ...presenters,
+    candleSeries: {
+      candles$: presenters.candleSeries.candles$.bind(presenters.candleSeries),
+      loadOlder,
+      loadingOlder$: () => {
+        return loading$;
+      },
+      historyExhausted$: () => {
+        return exhausted$;
+      },
+    } as unknown as Presenters["candleSeries"],
+  };
+
+  const hooks = createViewModel(
+    fakePresenters,
+    createMachineFactories(fakePresenters),
+    commands,
+  );
+
+  return { hooks, loadOlder, loading$, exhausted$ };
+}
+
 function makeHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
@@ -237,15 +326,15 @@ function makeHooks(): ViewModel {
     createMachineFactories(presenters),
     commands,
   );
+}
 
-  function createSimPorts(): AppPorts {
-    return {
-      ...createSimulatorPorts({
-        preferences: new PreferencesSimulator(),
-        auth: new AuthSimulator({}),
-        sessionStore: new InMemorySessionStore(),
-      }),
-      connectionEvents: new ConnectionEventsSimulator(),
-    };
-  }
+function createSimPorts(): AppPorts {
+  return {
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    }),
+    connectionEvents: new ConnectionEventsSimulator(),
+  };
 }

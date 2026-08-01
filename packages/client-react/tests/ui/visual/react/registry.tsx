@@ -55,8 +55,10 @@ import { StatusBar } from "#/ui/shell/status/StatusBar";
 import {
   EquitiesChartArea,
   EquitiesChartCrosshair,
+  EquitiesChartHistoryStart,
   EquitiesChartIndicators,
   EquitiesChartLine,
+  EquitiesChartLoadingOlder,
   EquitiesChartPanned,
   EquitiesChartVolumeAxis,
   EquitiesChartZoomed,
@@ -556,6 +558,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   EquitiesChartVolumeAxis: () => {
     return <EquitiesChartVolumeAxis />;
+  },
+  // --- Task 10: backfill-paging chip scenarios ---
+  EquitiesChartLoadingOlder: () => {
+    return <EquitiesChartLoadingOlder />;
+  },
+  EquitiesChartHistoryStart: () => {
+    return <EquitiesChartHistoryStart />;
   },
   EquitiesWatchlistPanel: () => {
     return (

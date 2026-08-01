@@ -26,6 +26,7 @@ import {
 } from "@rtc/client-core";
 import type {
   AmbientStyle,
+  CandleTimeframe,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
@@ -637,6 +638,16 @@ export function reactViewModel(world: World): ViewModel {
     },
     useCandles: (symbol: string) => {
       return useSubject(world.candlesFor(symbol));
+    },
+    // Candle backfill: static default — no current contract spec drives
+    // backfill through World (ChartBackfill.contract.spec.ts mounts
+    // CandleChart directly with props instead), so a constant value plus a
+    // no-op command is sufficient to satisfy the interface.
+    useCandleBackfill: (_symbol: string, _timeframe?: CandleTimeframe) => {
+      return { loadingOlder: false, historyExhausted: false };
+    },
+    loadOlderCandles: (): void => {
+      return;
     },
     useDepth: (symbol: string) => {
       return useSubject(world.depthFor(symbol));

@@ -8,6 +8,7 @@ import type {
   VolumeBarVm,
 } from "@rtc/motion-core";
 
+import { BackfillChips } from "./BackfillChips";
 import { BackToLiveButton } from "./BackToLiveButton";
 import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
@@ -47,6 +48,8 @@ export function ChartPlot({
   plotRef,
   nav,
   navProps,
+  loadingOlder,
+  historyStart,
 }: ChartPlotProps): ReactElement {
   return (
     <div className={styles.wrap}>
@@ -88,6 +91,10 @@ export function ChartPlot({
           indicatorPaths={indicatorPaths}
         />
         <CrosshairOverlay vm={cross} />
+        <BackfillChips
+          loadingOlder={loadingOlder}
+          historyStart={historyStart}
+        />
         {!atLiveEdge && <BackToLiveButton onClick={onBackToLive} />}
       </div>
       <VolumePane bars={volumeBars} />
@@ -111,4 +118,6 @@ export interface ChartPlotProps {
   readonly nav: NavigatorVm;
   /** Omit for a static/brush-free navigator — same convention as plotProps. */
   readonly navProps?: NavigatorStripProps;
+  readonly loadingOlder: boolean;
+  readonly historyStart: boolean;
 }

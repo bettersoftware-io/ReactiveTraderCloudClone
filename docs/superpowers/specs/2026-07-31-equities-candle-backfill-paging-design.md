@@ -52,12 +52,15 @@ candleHistory(
   parameter so the contract doesn't hard-code it.
 
 **Simulator** (`EquityMarketDataSimulator`): the Phase-A backwards walk
-generalizes into an on-demand deep-history cache per (symbol, timeframe): a
-request whose `beforeTime` implies depth D extends the cached backwards
-series to D (seeded, seam-rescaled exactly like the Phase-A prepend, with the
-independent volume PRNG) and slices the requested window. Since `beforeTime`
-fully determines depth, any request sequence produces identical candles —
-the determinism law holds structurally.
+generalizes into an on-demand deep-history cache per (symbol, timeframe),
+built EAGERLY — the full remaining depth (`CANDLE_HISTORY_DEPTH_MAX −
+CANDLE_HISTORY_TOTAL` buckets) is walked ONCE, on the first `candleHistory`
+request for that key, and cached; every later request for that key (any
+`beforeTime`) is a slice of the same cached array, at no further generation
+cost (seeded, seam-rescaled exactly like the Phase-A prepend, with the
+independent volume PRNG). Since the whole depth is fixed by that one build,
+any request sequence produces identical candles — the determinism and
+page-continuity laws hold structurally, not just for a single walk direction.
 
 **Wire + server:** `CLIENT_MSG.GET_CANDLE_HISTORY` ("rpc.getCandleHistory")
 with payload `{symbol, timeframe, beforeTime, count}` and its
