@@ -138,6 +138,9 @@ function mountChart(candles = CANDLES): CandleChartPage {
       kind: "candles" as const,
       indicators: [],
       defaultVisible: DEFAULT_VISIBLE,
+      loadingOlder: false,
+      historyExhausted: false,
+      onLoadOlder: () => {},
     },
   });
 }

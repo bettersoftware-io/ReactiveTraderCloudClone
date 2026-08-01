@@ -23,6 +23,9 @@ describe("CandleChart", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: 2,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -40,6 +43,9 @@ describe("CandleChart", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: 2,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 
@@ -61,6 +67,9 @@ describe("CandleChart", () => {
         kind: "candles",
         indicators: [],
         defaultVisible: 60,
+        loadingOlder: false,
+        historyExhausted: false,
+        onLoadOlder: () => {},
       },
     });
 

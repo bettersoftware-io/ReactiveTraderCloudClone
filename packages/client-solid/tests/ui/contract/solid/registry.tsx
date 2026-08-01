@@ -910,10 +910,10 @@ export const registry = new Map<AnyToken, ElementFor>([
       // precomputed `vm`. This adapter is updated just enough to keep the
       // registry type-checking.
       // loadingOlder/historyExhausted/onLoadOlder (Task 8, mirroring
-      // React's Task 7) are literals here, not yet read off `p` — the
-      // ChartBackfill contract spec (Task 9) drives CandleChart directly
-      // rather than through this registry, so this adapter only needs to
-      // stay green, not exercise the new props.
+      // React's Task 7) are FORWARDED off `p()` (Task 9) — the ChartBackfill
+      // contract spec mounts this same CandleChart token and drives the
+      // near-edge trigger/chips/spy through this adapter, so it must pass
+      // the real values through rather than hardcode them.
       return (
         <CandleChartComponent
           candles={(p().candles as readonly Candle[]) ?? []}
@@ -922,9 +922,9 @@ export const registry = new Map<AnyToken, ElementFor>([
           kind={(p().kind as EqChartType) ?? "candles"}
           indicators={(p().indicators as readonly EqIndicatorId[]) ?? []}
           defaultVisible={(p().defaultVisible as number) ?? 50}
-          loadingOlder={false}
-          historyExhausted={false}
-          onLoadOlder={() => {}}
+          loadingOlder={(p().loadingOlder as boolean) ?? false}
+          historyExhausted={(p().historyExhausted as boolean) ?? false}
+          onLoadOlder={(p().onLoadOlder as () => void) ?? ((): void => {})}
         />
       );
     },
