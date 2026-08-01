@@ -14,10 +14,23 @@ const HELP_REPLY =
 
 beforeEach(() => {
   vi.useFakeTimers();
+  // ExecutionSimulator's fill delay derives from Math.random() — left
+  // unmocked here it was genuinely random (0-2000ms) every run. Pinning it
+  // closes a real intermittent HANG (not just a slow pass): the fill delay
+  // plus the fill reply's speech-reveal pacing (FILL_REPLY paces at ~700ms,
+  // 27 chunks x 26ms) can together exceed a test's fixed
+  // `advanceTimersByTimeAsync` window on an unlucky high draw (worst case
+  // ~2000ms + ~700ms = ~2700ms against a 2500ms window) — the still-pending
+  // reveal timer is then registered with nothing left to advance the fake
+  // clock to reach it, so `await done` hangs for real until vitest's test
+  // timeout kills it. See jarvis.effects.test.ts's identical pin for the
+  // same rationale applied to the effects-layer equivalent of these tests.
+  vi.spyOn(Math, "random").mockReturnValue(0.5);
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("createAgentLoop", () => {
