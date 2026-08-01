@@ -39,8 +39,8 @@ test("keeps two decimals rather than float noise", async () => {
 });
 
 test("shows the current price to two decimals", async () => {
-  await renderWithTheme(<PriceStepper value={98.4} onChange={NOOP} />);
+  await renderWithTheme(<PriceStepper value={98.4} onChange={noop} />);
   expect(screen.getByText("98.40")).toBeTruthy();
 });
 
-function NOOP(): void {}
+function noop(): void {}

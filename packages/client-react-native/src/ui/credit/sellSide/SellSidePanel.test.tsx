@@ -116,7 +116,7 @@ test("a client Buy asks the desk for an OFFER, a client Sell for a BID", async (
 test("an accepted quote reads WON and a rejected one LOST", async () => {
   await renderPanel({
     rfqs: [settledRfq(5), settledRfq(6)],
-    quoteFor: (rfqId) => {
+    quoteFor: (rfqId: number): Quote => {
       return {
         id: rfqId,
         rfqId,
@@ -203,8 +203,8 @@ function renderPanel(opts: Fake): Promise<unknown> {
     useTicketSubmission: () => {
       return {
         state: { submitted: false },
-        submitPrice: opts.submitPrice ?? NOOP_SUBMIT,
-        pass: NOOP_PASS,
+        submitPrice: opts.submitPrice ?? noopSubmit,
+        pass: noopPass,
       };
     },
   } as unknown as ViewModel;
@@ -216,6 +216,6 @@ function renderPanel(opts: Fake): Promise<unknown> {
   );
 }
 
-function NOOP_SUBMIT(): void {}
+function noopSubmit(): void {}
 
-function NOOP_PASS(): void {}
+function noopPass(): void {}

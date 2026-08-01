@@ -31,7 +31,7 @@ test("renders every instrument when there are more than six", async () => {
     <InstrumentChipGrid
       instruments={instruments(9)}
       selectedId={null}
-      onSelect={NOOP}
+      onSelect={noop}
     />,
   );
 
@@ -43,7 +43,7 @@ test("marks the selected chip and no other", async () => {
     <InstrumentChipGrid
       instruments={instruments(3)}
       selectedId={2}
-      onSelect={NOOP}
+      onSelect={noop}
     />,
   );
 
@@ -53,13 +53,13 @@ test("marks the selected chip and no other", async () => {
 
 test("renders nothing but stays mounted with no instruments yet", async () => {
   await renderWithTheme(
-    <InstrumentChipGrid instruments={[]} selectedId={null} onSelect={NOOP} />,
+    <InstrumentChipGrid instruments={[]} selectedId={null} onSelect={noop} />,
   );
 
   expect(screen.queryAllByTestId(/^instrument-chip-/)).toHaveLength(0);
 });
 
-function NOOP(): void {}
+function noop(): void {}
 
 /** RNTL v13 dropped `toHaveAccessibilityState`, so read the prop directly. */
 function selectedState(

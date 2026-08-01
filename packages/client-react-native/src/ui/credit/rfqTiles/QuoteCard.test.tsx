@@ -77,10 +77,10 @@ const VIEW_MODEL = {
   },
 } as unknown as ViewModel;
 
-function NOOP_ACCEPT(): void {}
+function noopAccept(): void {}
 
 function renderQuote(
-  { state, isBest = false, acceptSlot = NOOP_ACCEPT }: RenderOptions,
+  { state, isBest = false, acceptSlot = noopAccept }: RenderOptions,
   theme?: RnTheme,
 ): Promise<unknown> {
   return renderWithTheme(

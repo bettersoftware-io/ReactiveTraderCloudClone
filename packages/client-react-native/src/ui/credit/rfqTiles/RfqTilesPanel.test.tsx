@@ -130,20 +130,21 @@ interface CreditRfqFilterPref {
 
 /** Holds the shared filter in real React state so a tab press re-renders the
  * whole subtree, exactly as the preference stream does in the app. */
-interface PanelHarnessProps {
-  opts: FakeOpts;
-}
-
-function PanelHarness({ opts }: PanelHarnessProps): JSX.Element {
-  const [filter, setFilter] = useState<CreditRfqFilter>(opts.filter ?? "live");
-
-  return (
-    <ViewModelProvider viewModel={fakeViewModel(opts, { filter, setFilter })}>
-      <RfqTilesPanel />
-    </ViewModelProvider>
-  );
-}
-
 function renderPanel(opts: FakeOpts): Promise<unknown> {
-  return renderWithTheme(<PanelHarness opts={opts} />);
+  // Declared INSIDE the helper, as `useRowInsertFlash.test.tsx` does: Biome's
+  // `useComponentExportOnlyModules` rejects a top-level unexported component in
+  // a module that also holds non-components, which every test file does.
+  function PanelHarness(): JSX.Element {
+    const [filter, setFilter] = useState<CreditRfqFilter>(
+      opts.filter ?? "live",
+    );
+
+    return (
+      <ViewModelProvider viewModel={fakeViewModel(opts, { filter, setFilter })}>
+        <RfqTilesPanel />
+      </ViewModelProvider>
+    );
+  }
+
+  return renderWithTheme(<PanelHarness />);
 }

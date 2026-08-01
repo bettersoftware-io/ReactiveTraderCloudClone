@@ -9,6 +9,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import {
+  millionsLabel,
+  RFQ_QUANTITY_CHIPS,
+} from "#/ui/credit/newRfq/rfqQuantities";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -55,16 +59,6 @@ export function QuantityChips({
 export interface QuantityChipsProps {
   readonly selected: number | null;
   readonly onSelect: (quantity: number) => void;
-}
-
-/** dc.html:2181 — the desk's four standard clip sizes. */
-export const RFQ_QUANTITY_CHIPS: readonly number[] = [
-  1_000_000, 2_000_000, 5_000_000, 10_000_000,
-];
-
-/** dc.html:2182 — `v / 1000000 + 'M'`. */
-function millionsLabel(quantity: number): string {
-  return `${quantity / 1_000_000}M`;
 }
 
 interface QuantityChipsStyles {
