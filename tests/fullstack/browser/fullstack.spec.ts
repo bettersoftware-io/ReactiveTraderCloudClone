@@ -106,7 +106,17 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
   }) => {
     await page.goto("/");
 
-    await page.getByTestId("jarvis-orb").click();
+    // The orb only renders once the machine's availability state flips true
+    // (see packages/client-core's jarvis availability wiring) — reached here
+    // via a real jarvis.subscribe → jarvis.availability round-trip against
+    // the server's ScriptedAgentLoop (RTC_JARVIS_FAKE=1), not a client-side
+    // default. Asserting visibility here, before interacting with it, proves
+    // that whole handshake end to end rather than just riding Playwright's
+    // implicit actionability wait on the click below.
+    const orb = page.getByTestId("jarvis-orb");
+    await expect(orb).toBeVisible({ timeout: 20_000 });
+
+    await orb.click();
     await expect(page.getByTestId("jarvis-overlay")).toBeVisible();
 
     const input = page.getByTestId("jarvis-input");

@@ -65,7 +65,8 @@
     "lint:eslint": "eslint .",
     "lint:eslint:types": "eslint . --config eslint.config.typed.mjs",
     "lint:css": "stylelint \"packages/*/src/**/*.css\"",
-    "visual:jitter": "pnpm --filter @rtc/tests visual:jitter"
+    "visual:jitter": "pnpm --filter @rtc/tests visual:jitter",
+    "jarvis:smoke:live": "tsx scripts/jarvis-live-smoke.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",
@@ -80,6 +81,7 @@
     "stylelint": "^17.13.0",
     "stylelint-declaration-strict-value": "^1.11.1",
     "syncpack": "^15.3.2",
+    "tsx": "^4",
     "turbo": "^2.4",
     "typescript": "^6",
     "typescript-eslint": "^8.61.1",
