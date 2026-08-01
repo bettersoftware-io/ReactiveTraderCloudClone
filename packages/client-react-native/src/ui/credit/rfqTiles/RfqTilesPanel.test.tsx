@@ -95,6 +95,10 @@ function fakeViewModel(opts: FakeOpts): ViewModel {
     useRfqCountdown: () => {
       return 60_000;
     },
+    // The countdown ring's motion gate reads power-saver off the same seam.
+    usePowerSaver: () => {
+      return { isFreeze: false };
+    },
   } as unknown as ViewModel;
 }
 

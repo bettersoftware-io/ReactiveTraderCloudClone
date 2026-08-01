@@ -27,22 +27,26 @@ const INSTRUMENT: Instrument = {
 };
 const DEALERS: readonly Dealer[] = [{ id: 7, name: "Bank A" }];
 
-test("shows instrument, direction/qty and a Live badge for an open RFQ", async () => {
+test("shows instrument and direction/qty", async () => {
   await renderCard(rfq(RfqState.Open), []);
   expect(screen.getByTestId("rfq-card-3")).toBeTruthy();
   expect(screen.getByText("Acme 5.5% 2030")).toBeTruthy();
   expect(screen.getByText("Buy | Qty: 25")).toBeTruthy();
-  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("Live");
 });
 
-test("renders the countdown only while open", async () => {
+// The prototype's header slot is exclusive: a live RFQ shows the countdown
+// ring, a closed one shows the state pill (dc.html:228-237). A live card needs
+// no "Live" badge — the running ring already says so.
+test("an open RFQ shows the countdown ring in place of a state badge", async () => {
   await renderCard(rfq(RfqState.Open), []);
-  expect(screen.getByTestId("rfq-countdown-fill")).toBeTruthy();
+  expect(screen.getByTestId("rfq-countdown-ring")).toBeTruthy();
+  expect(screen.queryByTestId("rfq-badge-3")).toBeNull();
 });
 
-test("no countdown and a dismiss button when closed", async () => {
+test("a closed RFQ shows the state badge and a dismiss button, no ring", async () => {
   await renderCard(rfq(RfqState.Closed), []);
-  expect(screen.queryByTestId("rfq-countdown-fill")).toBeNull();
+  expect(screen.queryByTestId("rfq-countdown-ring")).toBeNull();
+  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("Done");
   expect(screen.getByTestId("rfq-dismiss-3")).toBeTruthy();
 });
 
@@ -86,6 +90,10 @@ function fakeViewModel(remainingMs: number): ViewModel {
   return {
     useRfqCountdown: () => {
       return remainingMs;
+    },
+    // The ring's motion gate reads power-saver off the same seam.
+    usePowerSaver: () => {
+      return { isFreeze: false };
     },
   } as unknown as ViewModel;
 }

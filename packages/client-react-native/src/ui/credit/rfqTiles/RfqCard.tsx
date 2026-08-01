@@ -18,7 +18,7 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
-import { RfqCountdownBar } from "#/ui/credit/rfqTiles/RfqCountdownBar";
+import { RfqCountdownRing } from "#/ui/credit/rfqTiles/RfqCountdownRing";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -61,9 +61,13 @@ export function RfqCard({
           </Text>
         </View>
         <View style={styles.headerRight}>
-          <Text style={styles.badge} testID={`rfq-badge-${rfq.id}`}>
-            {stateLabel(rfq.state)}
-          </Text>
+          {rfq.state === RfqState.Open ? (
+            <RfqCountdownRing remainingMs={remainingMs} totalMs={totalMs} />
+          ) : (
+            <Text style={styles.badge} testID={`rfq-badge-${rfq.id}`}>
+              {stateLabel(rfq.state)}
+            </Text>
+          )}
           {canDismiss ? (
             <Pressable
               testID={`rfq-dismiss-${rfq.id}`}
@@ -77,10 +81,6 @@ export function RfqCard({
           ) : null}
         </View>
       </View>
-
-      {rfq.state === RfqState.Open ? (
-        <RfqCountdownBar remainingMs={remainingMs} totalMs={totalMs} />
-      ) : null}
 
       <View style={styles.quoteList}>
         {quotes.map((quote) => {
