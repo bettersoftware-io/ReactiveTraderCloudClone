@@ -1,24 +1,68 @@
 import type { Observable } from "rxjs";
 
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
 
-/** The P3 seam: AnthropicAgentLoop implements this same surface. */
-export interface AgentLoop {
-  runTurn(text: string): Observable<JarvisEvent>;
+/**
+ * One turn-serving handle over a single WS connection's conversation.
+ * `AgentLoop.createSession()` mints a fresh `AgentSession` per socket — the
+ * P3 fix for the P2 cross-socket confirmation-forgery risk, since each
+ * session now owns its own pending-confirmation state instead of sharing one
+ * process-wide map keyed only by an unguessable id.
+ */
+export interface AgentSession {
+  runTurn(
+    text: string,
+    history: readonly JarvisHistoryEntry[],
+  ): Observable<JarvisEvent>;
   resolveConfirmation(confirmationId: string, approved: boolean): void;
+  /** Abort the in-flight turn (cancel frame / socket close). Idempotent. */
+  cancelTurn(): void;
+  dispose(): void;
 }
 
-/** RTC_JARVIS_FAKE=1 → scripted loop; otherwise Jarvis is absent (effects
- * not registered). P3 adds the ANTHROPIC_API_KEY branch here. */
+/** The P3 seam: `AnthropicAgentLoop` implements this same surface. */
+export interface AgentLoop {
+  createSession(): AgentSession;
+}
+
+/** Builds a real `AgentLoop` for the Anthropic branch of `createAgentLoop`'s
+ * env precedence — injected rather than imported directly so this module
+ * (and its tests) never need the Anthropic SDK. `undefined` until Task 6
+ * wires the real builder in from `index.ts`. */
+export type AnthropicLoopBuilder = (
+  env: NodeJS.ProcessEnv,
+  services: ServiceContainer,
+) => AgentLoop;
+
+/**
+ * Env precedence: `RTC_JARVIS_FAKE=1` wins even when `ANTHROPIC_API_KEY` is
+ * also set (an explicit rehearsal override, e.g. a demo fallback one env var
+ * away without unsetting the key); otherwise a present key selects the
+ * Anthropic branch; otherwise Jarvis is absent (only the availability
+ * responder registers — see `jarvisEffects`).
+ *
+ * `buildAnthropicLoop` is the Task 6 seam: undefined here, so a present key
+ * without a builder falls through to null with a single warning instead of
+ * silently pretending to be online.
+ */
 export function createAgentLoop(
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
+  buildAnthropicLoop?: AnthropicLoopBuilder,
 ): AgentLoop | null {
   if (env.RTC_JARVIS_FAKE === "1") {
     return new ScriptedAgentLoop(services);
+  }
+
+  if (env.ANTHROPIC_API_KEY) {
+    if (buildAnthropicLoop) {
+      return buildAnthropicLoop(env, services);
+    }
+
+    console.warn("ANTHROPIC_API_KEY set but the Anthropic loop is not wired");
   }
 
   return null;

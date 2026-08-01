@@ -5,7 +5,7 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
-import type { AgentLoop } from "../agent/agentLoop.js";
+import type { AgentLoop, AgentSession } from "../agent/agentLoop.js";
 import type { Ctx } from "./context.js";
 import { allEffects, buildEffects } from "./index.js";
 
@@ -74,14 +74,24 @@ describe("allEffects composition", () => {
 });
 
 describe("buildEffects", () => {
-  it("is allEffects, unchanged, when no agent loop is present", () => {
-    expect(buildEffects(null)).toBe(allEffects);
+  it("appends only the availability effect when no agent loop is present", () => {
+    const built = buildEffects(null);
+    expect(built.length).toBe(allEffects.length + 1);
+    expect(built.slice(0, allEffects.length)).toEqual(allEffects);
   });
 
-  it("appends the JARVIS_* effects when an agent loop is present", () => {
-    const loop: AgentLoop = {
+  it("appends the availability effect plus the per-connection session effect when an agent loop is present", () => {
+    const session: AgentSession = {
       runTurn: vi.fn(),
       resolveConfirmation: vi.fn(),
+      cancelTurn: vi.fn(),
+      dispose: vi.fn(),
+    };
+
+    const loop: AgentLoop = {
+      createSession: vi.fn(() => {
+        return session;
+      }),
     };
     const built = buildEffects(loop);
     expect(built.length).toBe(allEffects.length + 2);

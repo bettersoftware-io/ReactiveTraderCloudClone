@@ -12,6 +12,7 @@ describe("createServices", () => {
     expect(services.execution).toBeDefined();
     expect(services.blotter).toBeDefined();
     expect(services.analytics).toBeDefined();
+    expect(services.serviceHealth).toBeDefined();
     expect(services.instruments).toBeDefined();
     expect(services.dealers).toBeDefined();
     expect(services.workflow).toBeDefined();
@@ -40,5 +41,13 @@ describe("createServices", () => {
     const positions = await firstValueFrom(services.positions.positions());
 
     expect(Array.isArray(positions)).toBe(true);
+  });
+
+  it("subscribes to serviceHealth.topology$() and receives an emission", async () => {
+    const services = createServices();
+
+    const topology = await firstValueFrom(services.serviceHealth.topology$());
+
+    expect(topology).toBeDefined();
   });
 });
