@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type AnalyticsPort,
+  calculateSpread,
   Direction,
   ExecutionSimulator,
   type PositionUpdates,
@@ -31,6 +32,19 @@ const FIXED_TICK: PriceTick = {
   mid: 1.0842,
   valueDate: "2026-07-27",
   creationTimestamp: 1,
+};
+
+/** bid and mid land exactly on a value whose EURUSD-precision (5) decimal
+ * representation ends in a trailing zero (1.087 -> "1.08700") — JSON.stringify
+ * of a bare number silently drops that zero, which is exactly the defect this
+ * fixture proves the tools no longer have (prices are formatted strings). */
+const TRAILING_ZERO_TICK: PriceTick = {
+  symbol: "EURUSD",
+  bid: 1.087,
+  ask: 1.0874,
+  mid: 1.087,
+  valueDate: "2026-07-27",
+  creationTimestamp: 7,
 };
 
 beforeEach(() => {
@@ -104,8 +118,24 @@ describe("buildJarvisTools", () => {
   });
 
   describe("get_price", () => {
-    it("looks up the pair, then reports bid/ask/mid/spread", async () => {
-      const { deps } = buildDeps();
+    it("reports bid/ask/mid as pair-precision strings, trailing zeros included", async () => {
+      const { deps } = buildDeps({
+        pricing: {
+          getPriceUpdates: () => {
+            return of(TRAILING_ZERO_TICK);
+          },
+          getPriceHistory: () => {
+            return of([TRAILING_ZERO_TICK]);
+          },
+          getRfqQuote: () => {
+            return of({
+              bid: TRAILING_ZERO_TICK.bid,
+              ask: TRAILING_ZERO_TICK.ask,
+              mid: TRAILING_ZERO_TICK.mid,
+            });
+          },
+        },
+      });
       const tool = findTool(buildJarvisTools(deps), "get_price");
 
       const resultPromise = tool.run({ symbol: "EURUSD" });
@@ -113,9 +143,20 @@ describe("buildJarvisTools", () => {
       const result = await resultPromise;
 
       const parsed = JSON.parse(result) as GetPriceResult;
-      expect(parsed.symbol).toBe("EURUSD");
-      expect(parsed.ask).toBeGreaterThan(parsed.bid);
-      expect(parsed.mid).toBeGreaterThan(0);
+      expect(parsed).toEqual({
+        symbol: "EURUSD",
+        bid: "1.08700",
+        ask: "1.08740",
+        mid: "1.08700",
+        ratePrecision: 5,
+        spread: calculateSpread(
+          TRAILING_ZERO_TICK.bid,
+          TRAILING_ZERO_TICK.ask,
+          4,
+          5,
+        ),
+        movement: "NONE",
+      });
     });
 
     it("an unknown symbol resolves to a descriptive error string, never a rejection", async () => {
@@ -163,8 +204,24 @@ describe("buildJarvisTools", () => {
   });
 
   describe("get_price_history", () => {
-    it("returns a capped timestamp/mid series", async () => {
-      const { deps } = buildDeps();
+    it("returns a capped timestamp/mid series, mid as a pair-precision string with trailing zeros included", async () => {
+      const { deps } = buildDeps({
+        pricing: {
+          getPriceUpdates: () => {
+            return of(TRAILING_ZERO_TICK);
+          },
+          getPriceHistory: () => {
+            return of([TRAILING_ZERO_TICK]);
+          },
+          getRfqQuote: () => {
+            return of({
+              bid: TRAILING_ZERO_TICK.bid,
+              ask: TRAILING_ZERO_TICK.ask,
+              mid: TRAILING_ZERO_TICK.mid,
+            });
+          },
+        },
+      });
       const tool = findTool(buildJarvisTools(deps), "get_price_history");
 
       const resultPromise = tool.run({ symbol: "EURUSD" });
@@ -173,10 +230,11 @@ describe("buildJarvisTools", () => {
 
       const parsed = JSON.parse(result) as GetPriceHistoryResult;
       expect(parsed.symbol).toBe("EURUSD");
+      expect(parsed.ratePrecision).toBe(5);
       expect(parsed.points.length).toBeGreaterThan(0);
       expect(parsed.points.length).toBeLessThanOrEqual(100);
       expect(typeof parsed.points[0]?.timestamp).toBe("number");
-      expect(typeof parsed.points[0]?.mid).toBe("number");
+      expect(parsed.points[0]?.mid).toBe("1.08700");
     });
 
     it("an unknown symbol resolves to a descriptive error string", async () => {
@@ -514,14 +572,18 @@ interface ListCurrencyPairsResult {
 
 interface GetPriceResult {
   readonly symbol: string;
-  readonly bid: number;
-  readonly ask: number;
-  readonly mid: number;
+  readonly bid: string;
+  readonly ask: string;
+  readonly mid: string;
+  readonly ratePrecision: number;
+  readonly spread: string;
+  readonly movement: string;
 }
 
 interface GetPriceHistoryResult {
   readonly symbol: string;
-  readonly points: readonly { timestamp: number; mid: number }[];
+  readonly ratePrecision: number;
+  readonly points: readonly { timestamp: number; mid: string }[];
 }
 
 interface GetBlotterResult {

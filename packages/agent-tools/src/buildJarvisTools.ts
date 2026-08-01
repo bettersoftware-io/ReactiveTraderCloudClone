@@ -221,9 +221,10 @@ function buildGetPriceTool(deps: JarvisToolDeps): JarvisToolDefinition {
         );
         return JSON.stringify({
           symbol: pair.symbol,
-          bid: price.bid,
-          ask: price.ask,
-          mid: price.mid,
+          bid: price.bid.toFixed(pair.ratePrecision),
+          ask: price.ask.toFixed(pair.ratePrecision),
+          mid: price.mid.toFixed(pair.ratePrecision),
+          ratePrecision: pair.ratePrecision,
           spread: price.spread,
           movement: price.movementType,
         });
@@ -287,9 +288,16 @@ function buildGetPriceHistoryTool(deps: JarvisToolDeps): JarvisToolDefinition {
         );
 
         const points = history.slice(-MAX_HISTORY_POINTS).map((tick) => {
-          return { timestamp: tick.creationTimestamp, mid: tick.mid };
+          return {
+            timestamp: tick.creationTimestamp,
+            mid: tick.mid.toFixed(pair.ratePrecision),
+          };
         });
-        return JSON.stringify({ symbol: pair.symbol, points });
+        return JSON.stringify({
+          symbol: pair.symbol,
+          ratePrecision: pair.ratePrecision,
+          points,
+        });
       } catch (error) {
         return `Could not get price history for ${symbol}: ${describeReadFailure(error)}`;
       }
