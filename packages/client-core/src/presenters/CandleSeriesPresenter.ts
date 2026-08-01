@@ -34,6 +34,7 @@ export class CandleSeriesPresenter {
     string,
     Observable<readonly Candle[]>
   >();
+
   private readonly backfill = new Map<string, BackfillState>();
 
   constructor(private readonly marketData: MarketDataPort) {}

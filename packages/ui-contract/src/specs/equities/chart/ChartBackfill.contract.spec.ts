@@ -19,46 +19,6 @@ const CANDLES = generateCandles(300);
 const DEFAULT_VISIBLE = 60;
 const LAST = candleAt(299);
 
-/**
- * `count` candles chronologically BEFORE CANDLES[0] (time 0): the same
- * candleAt-shaped OHLCV, but with `time` shifted so every one predates the
- * series — `(i - count) * 60_000` puts the last of them one bucket before
- * time 0 and the rest walking further back, chronological throughout.
- * Prepending these to CANDLES simulates one delivered older-history page.
- */
-function olderCandles(count: number): readonly Candle[] {
-  return Array.from({ length: count }, (_, i) => {
-    return { ...candleAt(i), time: (i - count) * 60_000 };
-  });
-}
-
-interface MountBackfillOptions {
-  loadingOlder?: boolean;
-  historyExhausted?: boolean;
-}
-
-/** Mounts CandleChart with the established ChartInteraction props plus the
- * three backfill props — `onLoadOlder` is a fresh `vi.fn()` spy unless the
- * caller wants a shared one. */
-function mountChart(
-  onLoadOlder: () => void,
-  { loadingOlder = false, historyExhausted = false }: MountBackfillOptions = {},
-): CandleChartPage {
-  return mount(CandleChart, {
-    props: {
-      candles: CANDLES,
-      liveRate: LAST.close,
-      flashOn: false,
-      kind: "candles",
-      indicators: [],
-      defaultVisible: DEFAULT_VISIBLE,
-      loadingOlder,
-      historyExhausted,
-      onLoadOlder,
-    },
-  });
-}
-
 describe("CandleChart — backfill (near-edge trigger, prepend-hold, exhaustion)", () => {
   it("idle at the live edge: never fetches, no chips", () => {
     const onLoadOlder = vi.fn();
@@ -164,3 +124,43 @@ describe("CandleChart — backfill (near-edge trigger, prepend-hold, exhaustion)
     expect(onLoadOlder).toHaveBeenCalledTimes(2);
   });
 });
+
+/**
+ * `count` candles chronologically BEFORE CANDLES[0] (time 0): the same
+ * candleAt-shaped OHLCV, but with `time` shifted so every one predates the
+ * series — `(i - count) * 60_000` puts the last of them one bucket before
+ * time 0 and the rest walking further back, chronological throughout.
+ * Prepending these to CANDLES simulates one delivered older-history page.
+ */
+function olderCandles(count: number): readonly Candle[] {
+  return Array.from({ length: count }, (_, i) => {
+    return { ...candleAt(i), time: (i - count) * 60_000 };
+  });
+}
+
+interface MountBackfillOptions {
+  loadingOlder?: boolean;
+  historyExhausted?: boolean;
+}
+
+/** Mounts CandleChart with the established ChartInteraction props plus the
+ * three backfill props — `onLoadOlder` is a fresh `vi.fn()` spy unless the
+ * caller wants a shared one. */
+function mountChart(
+  onLoadOlder: () => void,
+  { loadingOlder = false, historyExhausted = false }: MountBackfillOptions = {},
+): CandleChartPage {
+  return mount(CandleChart, {
+    props: {
+      candles: CANDLES,
+      liveRate: LAST.close,
+      flashOn: false,
+      kind: "candles",
+      indicators: [],
+      defaultVisible: DEFAULT_VISIBLE,
+      loadingOlder,
+      historyExhausted,
+      onLoadOlder,
+    },
+  });
+}

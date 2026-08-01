@@ -92,7 +92,9 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -123,7 +125,9 @@ describe("CandleSeriesPresenter", () => {
     const pending = new Subject<readonly Candle[]>();
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -152,7 +156,9 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -184,7 +190,9 @@ describe("CandleSeriesPresenter", () => {
     let attempt = 0;
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -193,7 +201,11 @@ describe("CandleSeriesPresenter", () => {
         ) => {
           historyCalls.push([symbol, timeframe, beforeTime, count]);
           attempt += 1;
-          return attempt === 1 ? throwError(() => new Error("boom")) : of([]);
+          return attempt === 1
+            ? throwError(() => {
+                return new Error("boom");
+              })
+            : of([]);
         },
       }),
     );
@@ -223,7 +235,9 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -306,7 +320,9 @@ describe("CandleSeriesPresenter", () => {
     let call = 0;
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of(base),
+        candles: () => {
+          return of(base);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -334,7 +350,9 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
       scriptedMarketData({
-        candles: () => of([candle(200, 20)]),
+        candles: () => {
+          return of([candle(200, 20)]);
+        },
         candleHistory: (
           symbol: string,
           timeframe: CandleTimeframe,
@@ -413,12 +431,10 @@ function candle(time: number, seed: number): Candle {
   };
 }
 
-/** A fully scripted MarketDataPort fake for the backfill-stitching tests
- * below: both `candles` and `candleHistory` are supplied per-case so each
- * test controls its own base series / history pages and can record the
- * exact calls made to either. `watchlist`/`quotes`/`depth` are never
- * exercised by this presenter, so they return EMPTY. */
-function scriptedMarketData(overrides: {
+/** Overrides accepted by {@link scriptedMarketData}: both `candles` and
+ * `candleHistory` are supplied per-case so each test controls its own base
+ * series / history pages and can record the exact calls made to either. */
+interface ScriptedMarketDataOverrides {
   candles: (
     symbol: string,
     timeframe: CandleTimeframe,
@@ -429,7 +445,14 @@ function scriptedMarketData(overrides: {
     beforeTime: number,
     count: number,
   ) => Observable<readonly Candle[]>;
-}): MarketDataPort {
+}
+
+/** A fully scripted MarketDataPort fake for the backfill-stitching tests
+ * below — see {@link ScriptedMarketDataOverrides}. `watchlist`/`quotes`/
+ * `depth` are never exercised by this presenter, so they return EMPTY. */
+function scriptedMarketData(
+  overrides: ScriptedMarketDataOverrides,
+): MarketDataPort {
   return {
     watchlist: () => {
       return EMPTY;
