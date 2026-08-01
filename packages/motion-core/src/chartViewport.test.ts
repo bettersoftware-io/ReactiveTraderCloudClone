@@ -9,6 +9,7 @@ import {
   MIN_VIEWPORT_SPAN,
   panBy,
   resizeViewportEdge,
+  shiftForPrepend,
   zoomAt,
 } from "./chartViewport.js";
 
@@ -72,6 +73,19 @@ describe("live edge", () => {
     expect(followLive({ start: 100, end: 160 }, 300, 301)).toEqual({
       start: 100,
       end: 160,
+    });
+  });
+});
+
+describe("shiftForPrepend", () => {
+  it("translates both edges by the prepended count (panned-away and at-edge alike)", () => {
+    expect(shiftForPrepend({ start: 40, end: 100 }, 300)).toEqual({
+      start: 340,
+      end: 400,
+    });
+    expect(shiftForPrepend({ start: 0, end: 60 }, 300)).toEqual({
+      start: 300,
+      end: 360,
     });
   });
 });

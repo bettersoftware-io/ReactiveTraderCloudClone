@@ -78,6 +78,17 @@ export function followLive(
   return { start: vp.start + d, end: vp.end + d };
 }
 
+/** Older candles were PREPENDED (k of them): every index shifted by +k, so
+ * the viewport translates with them — the view keeps showing the same
+ * candles. Pure translation, no clamp: in-bounds by construction (the
+ * series grew by exactly k at the front). The mirror image of followLive. */
+export function shiftForPrepend(
+  vp: ChartViewport,
+  prependedCount: number,
+): ChartViewport {
+  return { start: vp.start + prependedCount, end: vp.end + prependedCount };
+}
+
 export type ViewportEdge = "start" | "end";
 
 /** Moves ONE edge by dCandles (a navigator-handle resize); the other edge

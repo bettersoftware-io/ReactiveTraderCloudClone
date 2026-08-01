@@ -14,6 +14,7 @@ import {
   followLive,
   isAtLiveEdge,
   panBy,
+  shiftForPrepend,
   zoomAt,
 } from "@rtc/motion-core";
 
@@ -75,6 +76,7 @@ interface DragOrigin {
 export function useChartGestures(
   seriesLen: number,
   defaultVisible: number,
+  firstCandleTime?: number,
 ): ChartGestures {
   const [viewport, setViewport] = useState<ChartViewport>(() => {
     return defaultViewport(seriesLen, defaultVisible);
@@ -88,9 +90,11 @@ export function useChartGestures(
   // documented recipe), not an effect: a live-edge viewport slides with the
   // new bars; a panned-away one holds still so the user's view doesn't jump.
   const [prevLen, setPrevLen] = useState(seriesLen);
+  const [prevFirstTime, setPrevFirstTime] = useState(firstCandleTime);
 
-  if (seriesLen !== prevLen) {
+  if (seriesLen !== prevLen || firstCandleTime !== prevFirstTime) {
     setPrevLen(seriesLen);
+    setPrevFirstTime(firstCandleTime);
     setViewport((vp) => {
       // prevLen === 0 is the react-rxjs bind() placeholder before the
       // candle presenter's (synchronous, but not yet delivered on this
@@ -105,6 +109,22 @@ export function useChartGestures(
       // is no panned-away position to preserve yet.
       if (prevLen === 0) {
         return defaultViewport(seriesLen, defaultVisible);
+      }
+
+      // Growth DIRECTION fork: the series growing while its first candle
+      // got OLDER is a backfill prepend — every index shifted, so the
+      // viewport translates with them (holds a panned-away view still AND
+      // keeps an at-edge view at the edge, one code path). Anything else
+      // is the live append fold, unchanged.
+      const grewBy = seriesLen - prevLen;
+      const prepended =
+        grewBy > 0 &&
+        prevFirstTime !== undefined &&
+        firstCandleTime !== undefined &&
+        firstCandleTime < prevFirstTime;
+
+      if (prepended) {
+        return shiftForPrepend(vp, grewBy);
       }
 
       return followLive(vp, prevLen, seriesLen);

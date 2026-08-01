@@ -8,6 +8,7 @@ export {
   MIN_VIEWPORT_SPAN,
   panBy,
   resizeViewportEdge,
+  shiftForPrepend,
   zoomAt,
 } from "./chartViewport.js";
 export type {

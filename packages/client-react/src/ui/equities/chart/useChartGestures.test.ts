@@ -246,6 +246,74 @@ describe("useChartGestures", () => {
     expect(result.current.atLiveEdge).toBe(true);
   });
 
+  it("prepended candles shift a panned-away viewport so the same candles stay in view", () => {
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useChartGestures(
+          props.seriesLen,
+          DEFAULT_VISIBLE,
+          props.firstCandleTime,
+        );
+      },
+      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
+    );
+
+    act(() => {
+      result.current.plotProps.onKeyDown(keyEvent("Home"));
+    });
+    const panned = result.current.viewport;
+
+    // 300 older candles arrive: first time got OLDER, length grew by 300.
+    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+
+    expect(result.current.viewport).toEqual({
+      start: panned.start + 300,
+      end: panned.end + 300,
+    });
+    expect(result.current.atLiveEdge).toBe(false);
+  });
+
+  it("prepended candles keep an at-live-edge viewport at the edge", () => {
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useChartGestures(
+          props.seriesLen,
+          DEFAULT_VISIBLE,
+          props.firstCandleTime,
+        );
+      },
+      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
+    );
+
+    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+
+    expect(result.current.viewport).toEqual({
+      start: SERIES_LEN + 300 - DEFAULT_VISIBLE,
+      end: SERIES_LEN + 300,
+    });
+    expect(result.current.atLiveEdge).toBe(true);
+  });
+
+  it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useChartGestures(
+          props.seriesLen,
+          DEFAULT_VISIBLE,
+          props.firstCandleTime,
+        );
+      },
+      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
+    );
+
+    rerender({ seriesLen: SERIES_LEN + 5, firstCandleTime: 1_000_000 });
+
+    expect(result.current.viewport).toEqual({
+      start: SERIES_LEN - DEFAULT_VISIBLE + 5,
+      end: SERIES_LEN + 5,
+    });
+  });
+
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
     const { result } = renderHook(() => {
       return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
@@ -562,6 +630,7 @@ function ChartGesturesHarness({
 
 interface HookProps {
   seriesLen: number;
+  firstCandleTime?: number;
 }
 
 function keyEvent(key: string): ReactKeyboardEvent<HTMLDivElement> {
