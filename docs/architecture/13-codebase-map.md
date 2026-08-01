@@ -94,9 +94,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | Wire-protocol DTOs and the `CLIENT_MSG`/`SERVER_MSG` envelope types shared by client and server. |
+| **What it is** | Wire-protocol DTOs and the `CLIENT_MSG`/`SERVER_MSG` envelope types shared by client and server, plus the transport-neutral scripted Jarvis brain (`src/jarvis/`) -- shared by the sim-mode client adapter and the server's `ScriptedAgentLoop`. |
 | **Ring** | ③ Interface Adapters -- boundary DTOs |
-| **Depends on** | `@rtc/domain` only (`packages/shared/package.json` `dependencies`) |
+| **Depends on** | `@rtc/domain`, `@rtc/motion-core` (+ `rxjs`) (`packages/shared/package.json` `dependencies`) |
 | **Consumed by** | `client-core`, `server` -- *not* `client-react` or `client-react-native` directly (neither lists it; see the wire-protocol row of [§13.4](#134-the-reuse-matrix)) |
 | **Non-obvious** | Ships a second public entry point, `./__fixtures__/wireFrames` (`packages/shared/package.json` `exports`) -- wire-format test fixtures are a first-class export, not a buried internal helper. |
 | **README** | [`packages/shared/README.md`](../../packages/shared/README.md) |
@@ -276,6 +276,7 @@ src/
 ├── fx/            DTOs — pricing · execution · analytics · blotter · reference data
 ├── credit/         DTOs — dealer · instrument · workflow
 ├── protocol/        wire envelope — CLIENT_MSG/SERVER_MSG · rpc correlation · sow
+├── jarvis/           scripted Jarvis brain — ScriptedJarvisEngine, jarvisIntent, jarvisEvent wire types
 └── __fixtures__/     wireFrames — public fixture export for consumers
 ```
 

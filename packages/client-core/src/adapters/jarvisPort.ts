@@ -1,28 +1,8 @@
 import type { Observable } from "rxjs";
 
-import type { Direction } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
-export type JarvisEvent =
-  | { readonly type: "delta"; readonly text: string }
-  | {
-      readonly type: "toolEvent";
-      readonly tool: string;
-      readonly status: "running" | "done";
-    }
-  | {
-      readonly type: "confirmRequest";
-      readonly confirmationId: string;
-      readonly symbol: string;
-      readonly direction: Direction;
-      readonly notional: number;
-      readonly quotedPrice: number;
-      /** The pair's display precision (CurrencyPair.ratePrecision), carried so
-       * the confirm card can format quotedPrice exactly like the price tiles
-       * (toFixed(ratePrecision)) without a reference-data lookup UI-side. */
-      readonly ratePrecision: number;
-    }
-  | { readonly type: "done" }
-  | { readonly type: "error"; readonly message: string };
+export type { JarvisEvent } from "@rtc/shared";
 
 /**
  * Application-layer chat port (deliberately NOT in domain/ports — chat is an

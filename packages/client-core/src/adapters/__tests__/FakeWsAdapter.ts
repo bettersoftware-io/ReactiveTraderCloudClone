@@ -110,9 +110,13 @@ export class FakeWsAdapter implements IWsAdapter {
 
   // ── Test-only API ─────────────────────────────────────────
 
-  /** Drive a fake server frame to all subscribers of `type`. */
+  /** Drive a fake server frame to all subscribers of `type`. Snapshots the
+   * listener set before iterating — mirrors `WsAdapter`'s dispatch loop, so
+   * this fake can reproduce (rather than mask) bugs where a handler
+   * synchronously registers a new same-type listener mid-dispatch (ES `Set`
+   * iterators visit mid-iteration insertions). */
   emit(type: string, payload: unknown): void {
-    for (const handler of this.listeners.get(type) ?? []) {
+    for (const handler of [...(this.listeners.get(type) ?? [])]) {
       handler(payload);
     }
   }

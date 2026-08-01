@@ -37,7 +37,9 @@ pnpm check:manifest-drift               # presenter manifest, web ↔ RN
 pnpm check:image-tag-drift              # Playwright image pin
 pnpm check:versions                     # manypkg + syncpack
 pnpm check:scripts                      # every package wired to the gates
+pnpm check:react-coverage               # every React package has an explicit policy
 pnpm check:compiler                     # React Compiler coverage (de-memoized files)
+pnpm check:worklet-order                # worklet capture safety (RN + motion-core)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
 pnpm --filter @rtc/tests test:hooks     # cucumber hooks units
 pnpm lint:dead                          # knip

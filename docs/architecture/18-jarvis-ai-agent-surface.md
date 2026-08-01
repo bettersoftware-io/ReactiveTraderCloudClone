@@ -1,14 +1,16 @@
 # 18. The Jarvis AI Agent Surface
 
-> **Status: Phase 1 (scripted core surface) SHIPPED — PR #405, 2026-07-27; the
-> server agent loop, `@rtc/agent-tools`, and MCP remain planned (P2–P4).** The
-> authoritative decision records are the phase-1 spec at
+> **Status: Phase 1 (scripted core surface) SHIPPED — PR #405, 2026-07-27.
+> Phase 2 (the `JARVIS_*` WS wire + the server's scripted agent loop) SHIPPED —
+> 2026-07-31. Next is P3: `@rtc/agent-tools` + the real Anthropic tool-runner
+> loop, then MCP (P4).** The authoritative decision records are the phase-1 spec
+> at
 > [`docs/superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md`](../superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md)
 > and the parent spec at
 > [`docs/superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md`](../superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md);
 > this section is the architecture-level view. Where a diagram shows a package or
 > module that does not exist yet, it is marked *(planned)*. §18.11 records what
-> phase 1 proved.
+> phase 1 proved; §18.12 records what phase 2 proved.
 
 Jarvis is an AI presence in the HUD — a pulsating orb in the shell chrome that opens
 into a chat panel, answers questions about the live market by consulting the app's own
@@ -294,16 +296,31 @@ zero `compositeFailed` events at steady state:
 
 ## 18.8 Wire protocol additions
 
-All additive; existing clients ignore unknown message types.
+All additive; existing clients ignore unknown message types. **Shipped in phase 2**
+(§18.12) — payloads below are the as-shipped shapes; a field not yet carried is
+marked *(P3)*, following the same convention the diagrams use for *(planned)*.
+
+Every `server → client` payload obeys one rule: it **is** the matching `JarvisEvent`
+variant minus its `type` discriminant (the message type carries the discriminant).
+See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of both.
 
 | Direction | Message | Payload |
 |---|---|---|
-| client → server | `JARVIS_CHAT` | `{ text, appContext }` |
+| client → server | `JARVIS_CHAT` | `{ text }` — *(P3: `+ appContext`, landing with the tool registry that consumes it)* |
 | client → server | `JARVIS_CONFIRM` | `{ confirmationId, approved }` |
-| server → client | `JARVIS_DELTA` | streamed assistant text |
+| server → client | `JARVIS_DELTA` | `{ text }` — one chunk of streamed assistant prose |
 | server → client | `JARVIS_TOOL_EVENT` | `{ tool, status: running \| done }` |
-| server → client | `JARVIS_CONFIRM_REQUEST` | `{ confirmationId, pair, direction, notional, quotedPrice }` |
-| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | turn end / error surface |
+| server → client | `JARVIS_CONFIRM_REQUEST` | `{ confirmationId, symbol, direction, notional, quotedPrice, ratePrecision }` |
+| server → client | `JARVIS_DONE` / `JARVIS_ERROR` | `{}` / `{ message }` — turn end / error surface |
+
+`JARVIS_CONFIRM_REQUEST` carries `symbol` (the pair's symbol, matching every other
+message in the protocol) and `ratePrecision`, the pair's display precision — so the
+confirm card formats `quotedPrice` exactly like a spot tile
+(`toFixed(ratePrecision)`) without a reference-data lookup UI-side.
+
+**No turn correlation id, by design in P2** — `JarvisMachine` serializes turns, so
+at most one is in flight per connection. See §18.12 for the accepted limitation this
+carries and its P3 fix.
 
 ## 18.9 Determinism: the fake agent loop
 
@@ -319,11 +336,14 @@ calls and a confirm round-trip, which buys three things at once:
 3. **Offline demos** — no key, no network, five minutes before showtime: the fake
    still streams, still raises the confirm card.
 
+The gate is `createAgentLoop(env, services)`, which returns the loop or `null`; a
+`null` loop means the `JARVIS_*` effects are never registered.
+
 | Flag state | Behavior |
 |---|---|
-| `ANTHROPIC_API_KEY` set | real Jarvis + MCP endpoint enabled |
-| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` |
-| neither | Jarvis effects + MCP not registered; client hides the icon |
+| `ANTHROPIC_API_KEY` set | real Jarvis + MCP endpoint enabled *(P3)* |
+| `RTC_JARVIS_FAKE=1` | Jarvis enabled with `ScriptedAgentLoop` — **shipped, P2** |
+| neither | Jarvis effects (+ MCP *(P4)*) not registered. **P2 behavior:** the client still shows the icon — there is no availability handshake, so a turn simply hits `WsJarvisAdapter`'s 10 s first-event timeout and degrades into one "Jarvis is offline, sir" error event. **Client-side hiding is *(P3)***, arriving with key detection. |
 
 ## 18.10 Package dependencies after slice 1
 
@@ -402,3 +422,165 @@ Two structural choices from phase 1 carry forward:
 
 Phase-1 deferred minors are tracked in [`docs/STATUS.md`](../STATUS.md) under the
 Jarvis entry.
+
+## 18.12 Phase 2 shipped — the wire
+
+Phase 2 (2026-07-31) put Jarvis on the WebSocket. The scripted brain that phase 1
+ran in the browser now also runs **on the server**, behind the `AgentLoop` seam
+where `AnthropicAgentLoop` will slot in; the client gained a second `JarvisPort`
+implementation that speaks `JARVIS_*` frames instead of calling the brain
+in-process. Still no LLM — the point of this phase was the *transport*, proved
+against a brain whose output is already deterministic.
+
+### The move: one brain, three consumers
+
+The scripted engine did not get reimplemented server-side. It **moved** —
+`ScriptedJarvisAdapter`'s body relocated verbatim to `@rtc/shared`
+(`src/jarvis/`: `jarvisEvent.ts`, `jarvisIntent.ts`, `ScriptedJarvisEngine.ts`),
+where both a client and the server can reach it. `@rtc/shared` is the right home
+for the same reason the `CLIENT_MSG`/`SERVER_MSG` envelopes live there: it is the
+one package **both sides of the wire already depend on**, and it is transport-neutral
+by construction. Putting the brain in `client-core` would have forced the server to
+import a client package; putting it in `domain` would have put chat — an application
+concern — inside the domain and broken the rxjs-only rule (the engine needs
+`motion-core`'s `speechChunks` to pace its reveal). `shared` was already the seam
+where "vocabulary both processes agree on" lives, and the brain is exactly that.
+
+```mermaid
+flowchart TD
+    ENG["@rtc/shared · src/jarvis/<br/>ScriptedJarvisEngine<br/>+ JarvisEvent + jarvisIntent"]
+
+    C1["client-core<br/>ScriptedJarvisAdapter<br/>(sim mode)"]
+    C2["server<br/>ScriptedAgentLoop<br/>(RTC_JARVIS_FAKE=1)"]
+    C3["the wire itself<br/>JARVIS_* payload shapes"]
+
+    ENG --> C1
+    ENG --> C2
+    ENG --> C3
+
+    C1 --> USE1["sim-mode JarvisPort —<br/>brain called in-process"]
+    C2 --> USE2["ws-effects jarvisChat$ /<br/>jarvisConfirm$ over the<br/>ServiceContainer simulators"]
+    C3 --> USE3["WsJarvisAdapter maps<br/>frames back to JarvisEvent"]
+```
+
+The third consumer is the interesting one. `JarvisEvent` is not merely *similar to*
+the wire vocabulary — it **is** the wire vocabulary, under one rule stated on the
+type itself:
+
+> **Each `SERVER_MSG.JARVIS_*` payload IS the matching `JarvisEvent` variant minus
+> its `type` discriminant** — the message type carries the discriminant, so the
+> payload only needs the variant's remaining fields.
+
+That collapses what is normally a hand-written DTO layer into a single five-row
+lookup (`WIRE_TYPE_BY_EVENT`) plus object rest/spread in each direction: the server
+effect does `const { type, ...body } = event`, and `WsJarvisAdapter` re-attaches the
+discriminant. There is no serializer to drift, because there is no serializer.
+
+### The payoff: the port swap was invisible
+
+Phase 1 predicted this in §18.11 ("the reveal is data, not animation"; "the port was
+constructed inside both port factories"). Phase 2 is the falsification test, and the
+diff is the receipt:
+
+| Layer | Phase-2 changes |
+|---|---|
+| `JarvisMachine` | **zero** |
+| Both dumb UI trees (React + Solid) | **zero** |
+| `@rtc/ui-contract` specs (the 19 shared behavioural specs) | **zero** |
+| Visual goldens | **zero** |
+| `@rtc/domain` | **zero** |
+| Composition roots | one line per factory — `new WsJarvisAdapter(ws)` in the ws-real branch |
+
+A chat feature changed its brain's *process* — browser to server, in-process call to
+streamed WebSocket frames — and everything above the port could not tell. That is the
+§18.1 thesis's second falsifiable test: the first (P1) proved an AI-shaped consumer
+could call the domain's real capabilities with no domain changes; this one proves the
+*transport* under a consumer is a port swap, exactly as it is for prices and trades.
+
+### Accepted phase-2 constraints
+
+Documented deliberately, so nobody "fixes" them as bugs:
+
+- **No availability handshake.** The orb renders in ws mode even against a server
+  running without `RTC_JARVIS_FAKE` (where `createAgentLoop` returns `null` and the
+  `JARVIS_*` effects are never registered). Rather than hang, `WsJarvisAdapter`'s
+  first-event timeout — `timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS })`, 10 s —
+  degrades a dead turn into one synthetic `error` event ("Jarvis is offline, sir —
+  the desk link is down.") and completes. Graceful degradation now; real gating
+  arrives with **P3's key detection**, when "is Jarvis available" becomes a question
+  with a non-trivial answer (`ANTHROPIC_API_KEY` present or not); §18.9's flag table
+  marks the icon-hiding row accordingly.
+- **No turn correlation ids.** `JarvisMachine` serializes turns (`concatMap`) and
+  `ask()` completes on `done`/`error`, so at most one turn is in flight per
+  connection and untagged frames are unambiguous. **The documented limitation:** after
+  an offline timeout the client tears its listeners down but sends no cancel frame, so
+  a server still streaming the now-orphaned turn has its stragglers land on whichever
+  turn subscribes *next*. Hard to reach in practice (the machine serializes; the UI
+  disables input while speaking), and unfixable at the adapter layer — **the root fix
+  is a wire correlation field, explicitly deferred to P3.** The limitation is recorded
+  in `WsJarvisAdapter.ask()` at the code, and in `docs/STATUS.md`.
+- **Ws mode always paces; `instantReveal` is sim-only.** `ScriptedAgentLoop` passes
+  `instantReveal$: of(false)` — the server cannot know a client's motion preferences,
+  and P3's real token stream will behave identically (tokens arrive when they arrive).
+  Sim mode keeps instant-reveal for reduced-motion/Freeze, and since the contract specs
+  and the power-saver e2e both run sim mode, nothing regressed.
+- **`appContext` is not on the wire yet.** §18.8's table carries the as-shipped
+  shapes; `JARVIS_CHAT` is `{ text }` alone, because the field exists to feed a tool
+  registry that does not exist until P3 — sending it now would be a payload no
+  consumer reads.
+
+### What review hardening added
+
+Four fixes emerged from the review rounds, and each is worth keeping as a pattern:
+
+1. **`.js` ESM specifiers on the moved engine's relative imports.** The relocated file
+   imported `./jarvisIntent` extensionless. `tsc`/`tsc-alias` emit that verbatim under
+   `"moduleResolution": "bundler"`, and plain Node — which the production server
+   Dockerfile runs against `dist/index.js` — fails with `ERR_MODULE_NOT_FOUND`. **No
+   suite could have caught it**: vitest and tsx both resolve extensionless specifiers,
+   so the entire test tree stays green while the shipped server dist refuses to boot.
+   The witness had to be a direct Node ESM import of the rebuilt `dist`.
+2. **`crypto.randomUUID()` confirmation ids.** The engine minted them from a sequential
+   counter (`confirm-1`, `confirm-2`, …). Harmless in phase 1, where each browser owned
+   its own engine — but the server's loop is **process-wide across every connected
+   socket**, so an authenticated client B could approve client A's staged trade by
+   guessing the next id. The same code moving from a per-tab to a per-process lifetime
+   is what turned a naming detail into a cross-socket auth hole; a relocation review
+   should ask "what was single-tenant that is now shared?".
+3. **Snapshot handler dispatch in `WsAdapter`.** Its per-type handler dispatch iterated
+   the live `Set`. A `done` handler completing its Rx subscriber can *synchronously*
+   start the next turn (the machine's `concatMap`), which registers a fresh same-type
+   handler — and **ES `Set` iterators visit mid-iteration insertions**, so the new turn's
+   `done` handler fired against the *old* turn's payload and killed it before its own
+   reply arrived. Both dispatch loops now iterate `[...handlers]`. Only a two-turn
+   sequence exposes it; a single-turn test tree never would.
+4. **A five-variant mutation-proof table test on the wire map.** `WIRE_TYPE_BY_EVENT`'s
+   `error → JARVIS_ERROR` row was reachable by no test — mutating it to `JARVIS_DONE`
+   left the whole server suite green. A table test drives `jarvisEffects` with a stub
+   `AgentLoop` over all five `JarvisEvent` variants, asserting each maps to its exact
+   wire type with a type-stripped body. The lesson generalises to any exhaustive
+   `Record<Union, …>`: whole-system choreography tests reach the *common* rows, and
+   silently leave the rest unpinned.
+
+### The P3 seam
+
+`createAgentLoop(env, services)` is the one function P3 edits:
+
+```ts
+export function createAgentLoop(env, services): AgentLoop | null {
+  if (env.RTC_JARVIS_FAKE === "1") { return new ScriptedAgentLoop(services); }
+  return null;   // P3 adds the ANTHROPIC_API_KEY branch → new AnthropicAgentLoop(...)
+}
+```
+
+`AgentLoop` is two methods — `runTurn(text): Observable<JarvisEvent>` and
+`resolveConfirmation(confirmationId, approved)` — so `AnthropicAgentLoop` owes the
+wire nothing new: same event union, same frames, same client. What P3 adds is
+`@rtc/agent-tools` (the registry §18.3 describes) plus the Anthropic SDK confined to
+`server/src/agent/`, and the deferrals listed above (`appContext`, availability
+gating, turn correlation ids, session history). The determinism guarantee of §18.9
+survives intact, because `ScriptedAgentLoop` does not go away when the real loop
+arrives — it stays as the CI path and the offline-demo path.
+
+Phase-2 open items are tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis
+entry.

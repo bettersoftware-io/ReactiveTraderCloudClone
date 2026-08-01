@@ -158,7 +158,15 @@ export class WsAdapter implements IWsAdapter {
       const handlers = this.handlers.get(msg.type);
 
       if (handlers) {
-        for (const handler of handlers) {
+        // Snapshot before iterating: a handler can synchronously complete an
+        // Rx subscriber whose downstream (e.g. JarvisMachine's concatMap)
+        // starts a new turn that registers a fresh handler for this same
+        // `msg.type` — and ES `Set` iterators DO visit mid-iteration
+        // insertions. Iterating the live Set would let that new handler run
+        // against THIS frame (a stale/foreign payload) and, if it's a
+        // done/error handler, instantly complete the new turn before its own
+        // reply ever arrives.
+        for (const handler of [...handlers]) {
           handler(msg.payload);
         }
       }
