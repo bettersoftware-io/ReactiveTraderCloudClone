@@ -18,6 +18,8 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.115.0",
+    "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
     "@rtc/ws-effects": "workspace:*",
@@ -25,7 +27,6 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@rtc/agent-tools": "workspace:*",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",

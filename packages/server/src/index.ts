@@ -4,8 +4,15 @@ import { createServer } from "node:http";
 import type { VerifyClientCallbackSync } from "ws";
 import { WebSocketServer } from "ws";
 
+import {
+  buildJarvisTools,
+  type ConfirmGate,
+  type JarvisToolDefinition,
+} from "@rtc/agent-tools";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
+import type { AgentLoop } from "./agent/agentLoop.js";
 import { createAgentLoop } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
@@ -15,7 +22,10 @@ import {
   describeUpgrade,
 } from "./http/loginHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
-import { createServices } from "./services/serviceContainer.js";
+import {
+  createServices,
+  type ServiceContainer,
+} from "./services/serviceContainer.js";
 import { toSocket } from "./socket/toSocket.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -24,8 +34,43 @@ const AUTH_TTL_MS = Number(process.env.AUTH_TTL_MS ?? 8 * 60 * 60 * 1000);
 const LOGIN_RATE_LIMIT_MAX = 10;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000;
 
+function buildJarvisToolsFor(
+  services: ServiceContainer,
+  confirmTrade: ConfirmGate,
+): readonly JarvisToolDefinition[] {
+  return buildJarvisTools({
+    referenceData: services.referenceData,
+    pricing: services.pricing,
+    blotter: services.blotter,
+    analytics: services.analytics,
+    execution: services.execution,
+    serviceHealth: services.serviceHealth,
+    confirmTrade,
+  });
+}
+
+/** The Task 6 seam `createAgentLoop` warns and falls through without: builds
+ * the real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
+ * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
+ * must happen per session, not once here). `createAgentLoop` only invokes
+ * this when `env.ANTHROPIC_API_KEY` is already known truthy, hence the `?? ""`
+ * fallback below is unreachable in practice, not a silent-empty-key path.
+ * Satisfies `AnthropicLoopBuilder` structurally — no explicit annotation
+ * needed on a function declaration. */
+function buildAnthropicLoop(
+  env: NodeJS.ProcessEnv,
+  services: ServiceContainer,
+): AgentLoop {
+  return new AnthropicAgentLoop({
+    apiKey: env.ANTHROPIC_API_KEY ?? "",
+    buildTools: (confirmTrade: ConfirmGate) => {
+      return buildJarvisToolsFor(services, confirmTrade);
+    },
+  });
+}
+
 const services = createServices();
-const agentLoop = createAgentLoop(process.env, services);
+const agentLoop = createAgentLoop(process.env, services, buildAnthropicLoop);
 const listen = createWsListener(
   combineEffects(...buildEffects(agentLoop)),
   services,

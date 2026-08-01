@@ -91,6 +91,14 @@ module.exports = {
       },
     },
     {
+      name: "no-anthropic-sdk-in-inner-packages",
+      severity: "error",
+      comment:
+        "@anthropic-ai/sdk is a server-only dependency (Task 6, Jarvis phase 3) — agent-tools/domain/shared/client-core stay framework-free of it, same as the react/react-dom/react-native bans above; only @rtc/server may import it.",
+      from: { path: "^packages/(agent-tools|domain|shared|client-core)/src" },
+      to: { path: "node_modules/@anthropic-ai/" },
+    },
+    {
       name: "devtools-core-stays-pure",
       severity: "error",
       comment:

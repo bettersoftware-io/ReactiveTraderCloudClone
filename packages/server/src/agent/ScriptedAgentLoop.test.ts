@@ -68,6 +68,24 @@ describe("createAgentLoop", () => {
     expect(buildAnthropicLoop).not.toHaveBeenCalled();
   });
 
+  it("ANTHROPIC_API_KEY alone (no RTC_JARVIS_FAKE) invokes the injected builder and returns its loop — Task 6's key branch", () => {
+    const services = createServices();
+    const fakeLoop = { createSession: vi.fn() };
+    const buildAnthropicLoop = vi.fn().mockReturnValue(fakeLoop);
+
+    const loop = createAgentLoop(
+      { ANTHROPIC_API_KEY: "sk-test" },
+      services,
+      buildAnthropicLoop,
+    );
+
+    expect(buildAnthropicLoop).toHaveBeenCalledExactlyOnceWith(
+      { ANTHROPIC_API_KEY: "sk-test" },
+      services,
+    );
+    expect(loop).toBe(fakeLoop);
+  });
+
   it("returns a scripted loop when RTC_JARVIS_FAKE=1, streaming the paced help reply then completing", async () => {
     const services = createServices();
     const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
