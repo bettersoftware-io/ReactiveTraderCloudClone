@@ -116,6 +116,9 @@ export function EquitiesChartLine(): JSX.Element {
         kind="line"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -131,6 +134,9 @@ export function EquitiesChartArea(): JSX.Element {
         kind="area"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -146,6 +152,9 @@ export function EquitiesChartIndicators(): JSX.Element {
         kind="candles"
         indicators={CHART_INDICATORS}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -161,6 +170,9 @@ export function EquitiesChartVolumeAxis(): JSX.Element {
         kind="candles"
         indicators={[]}
         defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
       />
     </div>
   );
@@ -211,6 +223,8 @@ function ForcedChart(props: ForcedChartProps): JSX.Element {
       volumeBars={volumeVm(CANDLES, props.viewport)}
       onBackToLive={() => {}}
       nav={navigatorVm(CANDLES, props.viewport)}
+      loadingOlder={false}
+      historyStart={false}
     />
   );
 }
