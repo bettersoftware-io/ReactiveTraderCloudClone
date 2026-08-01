@@ -190,11 +190,16 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       fontFamily: t.fontDisplay,
     },
     field: { gap: 6 },
+    // dc.html:269 styles DIRECTION identically to INSTRUMENT and QUANTITY.
+    // Those two labels live inside the chip components and already match; this
+    // one was left on the old display-font style when its text was
+    // uppercased, so on device it read a size and a family apart from its
+    // siblings.
     fieldLabel: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: t.textSecondary,
-      fontFamily: t.fontDisplay,
+      fontSize: 8.5,
+      letterSpacing: 2,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
     },
     directionRow: { flexDirection: "row", gap: SPACING.sm },
     directionBtn: {
