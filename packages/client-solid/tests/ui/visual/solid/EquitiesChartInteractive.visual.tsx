@@ -20,15 +20,17 @@ import { ChartPlot } from "#/ui/equities/chart/ChartPlot";
  * Golden-only wrapper components for the interactive equities chart's
  * forced, gesture-unreachable states (Task C5: panned/zoomed viewport, a
  * pinned crosshair, the line/area kinds, indicator overlays, and the
- * volume/time-axis pair). `CandleChart` owns its viewport/cursor via
- * `createChartGestures` — an internal primitive with no prop seam — so
- * `EquitiesChartPanned`/`Zoomed`/`Crosshair` mount the extracted, purely
+ * volume/time-axis pair; Task 10: the backfill-paging chips). `CandleChart`
+ * owns its viewport/cursor via `createChartGestures` — an internal
+ * primitive with no prop seam — so `EquitiesChartPanned`/`Zoomed`/
+ * `Crosshair`/`LoadingOlder`/`HistoryStart` mount the extracted, purely
  * presentational `ChartPlot` (the real production DOM tree — see
- * `ChartPlot.tsx`) directly with a LITERAL viewport/cursor computed via the
- * same `@rtc/motion-core` functions `CandleChart` itself calls, instead of
- * driving a real gesture sequence with synthetic pointer events (out of
- * scope for the visual tier). `plotProps`/`plotRef` are omitted, yielding a
- * static, gesture-free mount. The other four scenarios (`Line`/`Area`/
+ * `ChartPlot.tsx`) directly with a LITERAL viewport/cursor/loadingOlder/
+ * historyStart computed via the same `@rtc/motion-core` functions
+ * `CandleChart` itself calls, instead of driving a real gesture sequence
+ * (or a real backfill fetch) with synthetic events (out of scope for the
+ * visual tier). `plotProps`/`plotRef` are omitted, yielding a static,
+ * gesture-free mount. The other four scenarios (`Line`/`Area`/
  * `Indicators`/`VolumeAxis`) need no such bypass — `kind`/`indicators` are
  * already real `CandleChart` props — so those mount the genuine component
  * at its default (initial, untouched) gesture state: fully deterministic,
@@ -102,6 +104,32 @@ export function EquitiesChartCrosshair(): JSX.Element {
         viewport={defaultViewport(CANDLE_COUNT, DEFAULT_VISIBLE)}
         cursor={{ xFrac: 0.5, yFrac: 0.4 }}
       />
+    </div>
+  );
+}
+
+// Backfill paging chips (BackfillChips, left-edge overlay of ChartPlot):
+// the passive "LOADING OLDER…" chip during an in-flight older-page fetch,
+// at the default (live-edge) viewport, and the terminal "START OF HISTORY"
+// chip once exhaustion is reached AND the viewport sits hard against index
+// 0 — both forced via ForcedChart's loadingOlder/historyStart flags rather
+// than a real fetch/exhaustion sequence, same bypass as panned/zoomed/
+// crosshair above.
+export function EquitiesChartLoadingOlder(): JSX.Element {
+  return (
+    <div style={STAGE_STYLE}>
+      <ForcedChart
+        viewport={defaultViewport(CANDLE_COUNT, DEFAULT_VISIBLE)}
+        loadingOlder={true}
+      />
+    </div>
+  );
+}
+
+export function EquitiesChartHistoryStart(): JSX.Element {
+  return (
+    <div style={STAGE_STYLE}>
+      <ForcedChart viewport={{ start: 0, end: 60 }} historyStart={true} />
     </div>
   );
 }
@@ -181,10 +209,14 @@ export function EquitiesChartVolumeAxis(): JSX.Element {
 interface ForcedChartProps {
   readonly viewport: ChartViewport;
   readonly cursor?: { readonly xFrac: number; readonly yFrac: number };
+  readonly loadingOlder?: boolean;
+  readonly historyStart?: boolean;
 }
 
 /** Mounts the real `ChartPlot` (the extracted production DOM tree) around a
- * literal viewport/cursor — see the file doc above. */
+ * literal viewport/cursor — see the file doc above. `loadingOlder`/
+ * `historyStart` default to `false` so the panned/zoomed/crosshair callers
+ * above stay untouched. */
 function ForcedChart(props: ForcedChartProps): JSX.Element {
   const vm = createMemo((): ChartVm => {
     return chartVm(CANDLES, LIVE_RATE, false, {
@@ -223,8 +255,8 @@ function ForcedChart(props: ForcedChartProps): JSX.Element {
       volumeBars={volumeVm(CANDLES, props.viewport)}
       onBackToLive={() => {}}
       nav={navigatorVm(CANDLES, props.viewport)}
-      loadingOlder={false}
-      historyStart={false}
+      loadingOlder={props.loadingOlder ?? false}
+      historyStart={props.historyStart ?? false}
     />
   );
 }
