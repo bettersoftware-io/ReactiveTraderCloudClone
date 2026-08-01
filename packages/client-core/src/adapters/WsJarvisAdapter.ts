@@ -25,9 +25,24 @@ import type { JarvisPort } from "./jarvisPort";
 /** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
  * sends `jarvis.chat` collapses the turn into a synthetic offline error
  * instead of hanging forever. Once any frame lands, no further deadline
- * applies — see `createJarvisTurnStream`'s `timeout({ first })`. Reused by
- * `availability$()` for the same "the server never answered" case. */
-export const JARVIS_FIRST_EVENT_TIMEOUT_MS = 10_000;
+ * applies — see `createJarvisTurnStream`'s `timeout({ first })`. Set well
+ * above `JARVIS_AVAILABILITY_TIMEOUT_MS`: this covers the model's own
+ * thinking phase before the first visible event (delta/toolEvent/etc.),
+ * which the Anthropic loop's adaptive, effort-driven thinking can push past
+ * 10s on a legitimately busy turn — the original 10s value predated that
+ * loop (it was tuned against the scripted stand-in, which never thinks) and
+ * would otherwise fabricate an offline error AND cancel a healthy, already
+ * billed turn out from under it. */
+export const JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS = 30_000;
+
+/** No `SERVER_MSG.JARVIS_AVAILABILITY` reply within this window after
+ * `jarvis.subscribe` is sent falls back to a synthetic `false` (see
+ * `createConnectionAvailabilityStream`) — the "the server never answered"
+ * case for the availability handshake specifically. Kept short and distinct
+ * from `JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS`: an availability reply is a
+ * same-process, non-LLM lookup (see `jarvisEffects`' `availability$` in
+ * `jarvis.effects.ts`), so it never has a thinking phase to wait out. */
+export const JARVIS_AVAILABILITY_TIMEOUT_MS = 10_000;
 
 /** Caps what `ask()` sends as `JarvisChatPayload.history` — belt-and-suspenders
  * with the server's own truncation (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in
@@ -202,7 +217,7 @@ function createJarvisTurnStream(
  * handler, sends `jarvis.subscribe`, and forwards every push for as long as
  * this source stays subscribed. A soft first-event deadline pushes a
  * synthetic `false` if the server hasn't answered within
- * `JARVIS_FIRST_EVENT_TIMEOUT_MS` — but, unlike `ask()`'s use of the RxJS
+ * `JARVIS_AVAILABILITY_TIMEOUT_MS` — but, unlike `ask()`'s use of the RxJS
  * `timeout()` operator (which errors, and therefore completes, the source —
  * fine for a one-shot turn), this is a plain `setTimeout` that does NOT
  * complete the source: `JARVIS_AVAILABILITY` is a live push channel, so a
@@ -219,7 +234,7 @@ function createConnectionAvailabilityStream(
       if (!answered) {
         subscriber.next(false);
       }
-    }, JARVIS_FIRST_EVENT_TIMEOUT_MS);
+    }, JARVIS_AVAILABILITY_TIMEOUT_MS);
 
     const unregister = ws.on(SERVER_MSG.JARVIS_AVAILABILITY, (payload) => {
       answered = true;
@@ -270,7 +285,7 @@ export class WsJarvisAdapter implements JarvisPort {
       turnId,
       this.historySource(),
     ).pipe(
-      timeout({ first: JARVIS_FIRST_EVENT_TIMEOUT_MS }),
+      timeout({ first: JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS }),
       catchError((error: unknown) => {
         if (error instanceof TimeoutError) {
           return of(JARVIS_OFFLINE_EVENT);

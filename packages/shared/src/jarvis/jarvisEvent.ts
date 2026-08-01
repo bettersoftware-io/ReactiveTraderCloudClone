@@ -64,8 +64,10 @@ export interface JarvisCancelPayload {
   readonly turnId: string;
 }
 
-/** `SERVER_MSG.JARVIS_AVAILABILITY` payload — not turn-scoped; pushed whenever
- * the Jarvis backend's availability changes. */
+/** `SERVER_MSG.JARVIS_AVAILABILITY` payload — not turn-scoped; sent only in
+ * reply to `CLIENT_MSG.JARVIS_SUBSCRIBE`. Availability is static per server
+ * process, so there is no server-side push on change — a client re-sends
+ * `JARVIS_SUBSCRIBE` (e.g. on every reconnect) to get a fresh answer. */
 export interface JarvisAvailabilityPayload {
   readonly available: boolean;
 }

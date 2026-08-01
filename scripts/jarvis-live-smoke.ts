@@ -379,6 +379,15 @@ interface ChatTurnOutcome {
   readonly confirmationSeen: boolean;
   readonly terminal: "done" | "error";
   readonly errorMessage?: string;
+  /** `Date.now()` delta from sending `jarvis.chat` to the first
+   * `SERVER_MSG.JARVIS_*` frame for this turnId (delta/toolEvent/
+   * confirmRequest/done/error, whichever lands first) — the real-world
+   * datum the P3 final review asked for: adaptive thinking on the Anthropic
+   * loop can push this past the old 10s deadline on a legitimately busy
+   * turn, which is why `JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS` (client-core's
+   * `WsJarvisAdapter`) now sits at 30s instead. `undefined` if no frame
+   * ever arrived (the turn hit `TURN_TIMEOUT_MS` first). */
+  readonly firstEventMs: number | undefined;
 }
 
 function buildChatPayload(
@@ -413,6 +422,26 @@ function runChatTurn(
     let replyText = "";
     const toolEvents: string[] = [];
     let confirmationSeen = false;
+    // Captured right before sendFrame() below, so every handler's
+    // markFirstEvent() call measures against the actual wire send, not
+    // turnId minting (crypto.randomUUID() is negligible but this keeps the
+    // datum honest regardless).
+    let sentAtMs = 0;
+    let firstEventMs: number | undefined;
+
+    // Records the time-to-first-event once, off whichever of the five
+    // SERVER_MSG.JARVIS_* frames for this turnId lands first — the latency
+    // datum the P3 final review asked a live run to produce, now that the
+    // Anthropic loop's adaptive thinking can legitimately take a while
+    // before anything visible comes back (see JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS
+    // in client-core's WsJarvisAdapter). Idempotent: only the first call
+    // per turn has any effect.
+    function markFirstEvent(): void {
+      if (firstEventMs === undefined) {
+        firstEventMs = Date.now() - sentAtMs;
+        console.log(`  [first event: ${firstEventMs}ms]`);
+      }
+    }
 
     const timer = setTimeout(() => {
       cleanup();
@@ -427,6 +456,7 @@ function runChatTurn(
       const p = payload as DeltaFramePayload;
 
       if (p.turnId === turnId) {
+        markFirstEvent();
         replyText += p.text;
       }
     });
@@ -438,6 +468,7 @@ function runChatTurn(
         return;
       }
 
+      markFirstEvent();
       const line = `[${p.tool}:${p.status}]`;
       toolEvents.push(line);
       console.log(`  ${line}`);
@@ -452,6 +483,7 @@ function runChatTurn(
           return;
         }
 
+        markFirstEvent();
         confirmationSeen = true;
         console.log(
           `  [confirmRequest] ${p.direction} ${p.notional} ${p.symbol} @ ${p.quotedPrice.toFixed(p.ratePrecision)} (id=${p.confirmationId})`,
@@ -467,11 +499,18 @@ function runChatTurn(
         return;
       }
 
+      markFirstEvent();
       clearTimeout(timer);
       cleanup();
       console.log(`  < ${replyText}`);
       console.log("  [done]");
-      resolve({ replyText, toolEvents, confirmationSeen, terminal: "done" });
+      resolve({
+        replyText,
+        toolEvents,
+        confirmationSeen,
+        terminal: "done",
+        firstEventMs,
+      });
     });
 
     const unsubError = bus.on(SERVER_MSG.JARVIS_ERROR, (payload) => {
@@ -481,6 +520,7 @@ function runChatTurn(
         return;
       }
 
+      markFirstEvent();
       clearTimeout(timer);
       cleanup();
       console.log(`  [error] ${p.message}`);
@@ -490,6 +530,7 @@ function runChatTurn(
         confirmationSeen,
         terminal: "error",
         errorMessage: p.message,
+        firstEventMs,
       });
     });
 
@@ -501,6 +542,7 @@ function runChatTurn(
       unsubError();
     }
 
+    sentAtMs = Date.now();
     sendFrame(
       ws,
       CLIENT_MSG.JARVIS_CHAT,

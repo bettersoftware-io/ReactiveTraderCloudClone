@@ -455,11 +455,21 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
-      payload: { text: "no turn id here" },
+      payload: {
+        text: "no turn id here, and this text must never reach the log",
+      },
     });
 
     expect(sent).toEqual([]);
     expect(warn).toHaveBeenCalled();
+    // Log-hygiene: the warn must summarize the frame (type + best-effort
+    // turnId), never echo the payload body — an authenticated peer can send
+    // arbitrary content on a malformed frame, and there is no ws
+    // `maxPayload` cap upstream of this handler.
+    const warnArgs = warn.mock.calls.flat().join(" ");
+    expect(warnArgs).toContain("type=jarvis.chat");
+    expect(warnArgs).toContain("payload omitted");
+    expect(warnArgs).not.toContain("no turn id here");
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -505,6 +515,12 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
     expect(sent).toEqual([]);
     expect(warn).toHaveBeenCalled();
+    // Log-hygiene: same summarize-don't-echo contract as the jarvis.chat
+    // case above.
+    const warnArgs = warn.mock.calls.flat().join(" ");
+    expect(warnArgs).toContain("type=jarvis.confirm");
+    expect(warnArgs).toContain("payload omitted");
+    expect(warnArgs).not.toContain("confirmationId");
   });
 
   it("jarvis.cancel with a malformed payload is dropped without throwing", () => {
@@ -517,6 +533,11 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
     expect(sent).toEqual([]);
     expect(warn).toHaveBeenCalled();
+    // Log-hygiene: same summarize-don't-echo contract as the jarvis.chat
+    // case above.
+    const warnArgs = warn.mock.calls.flat().join(" ");
+    expect(warnArgs).toContain("type=jarvis.cancel");
+    expect(warnArgs).toContain("payload omitted");
   });
 });
 

@@ -86,6 +86,18 @@ function extractTurnId(payload: unknown): string | undefined {
     : undefined;
 }
 
+/** Summarizes a dropped, malformed inbound frame for a `console.warn` site
+ * WITHOUT ever including the payload body itself — an authenticated
+ * connection can otherwise flood the server log with arbitrary attacker-
+ * chosen content on every malformed `jarvis.*` frame it sends, and there is
+ * no `ws` `maxPayload` cap upstream of this to bound it. `frameType` is the
+ * `CLIENT_MSG.JARVIS_*` wire constant; `turnId` is best-effort (via
+ * `extractTurnId`) since a malformed frame may not carry one. */
+function describeMalformedFrame(frameType: string, payload: unknown): string {
+  const turnId = extractTurnId(payload);
+  return `type=${frameType} turnId=${turnId ?? "<none>"} payload omitted`;
+}
+
 function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   if (!isRecord(payload)) {
     return undefined;
@@ -192,7 +204,10 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
           const turnId = extractTurnId(payload);
 
           if (!turnId) {
-            console.warn("jarvis.chat: dropping malformed payload", payload);
+            console.warn(
+              "jarvis.chat: dropping malformed payload",
+              describeMalformedFrame(CLIENT_MSG.JARVIS_CHAT, payload),
+            );
             return EMPTY;
           }
 
@@ -264,7 +279,10 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
           const parsed = parseConfirmPayload(payload);
 
           if (!parsed) {
-            console.warn("jarvis.confirm: dropping malformed payload", payload);
+            console.warn(
+              "jarvis.confirm: dropping malformed payload",
+              describeMalformedFrame(CLIENT_MSG.JARVIS_CONFIRM, payload),
+            );
             return EMPTY;
           }
 
@@ -281,7 +299,10 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
           const parsed = parseCancelPayload(payload);
 
           if (!parsed) {
-            console.warn("jarvis.cancel: dropping malformed payload", payload);
+            console.warn(
+              "jarvis.cancel: dropping malformed payload",
+              describeMalformedFrame(CLIENT_MSG.JARVIS_CANCEL, payload),
+            );
             return EMPTY;
           }
 

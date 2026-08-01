@@ -575,6 +575,85 @@ describe("createJarvisMachine", () => {
       ]);
       expect(port?.asks).toEqual([]);
     });
+
+    it("a turn already streaming when availability$ flips false is NOT torn down — the in-flight turn's deltas/done still fold normally; only the NEXT send is suppressed", () => {
+      // Guards against the tempting `takeWhile(available)`-style refactor of
+      // turnItems$/entryPatches$: that would tear a LIVE turn down the
+      // instant availability flips, discarding an already-billed, in-flight
+      // reply. The actual (correct) gate only reads the `available` cache at
+      // concatMap's projector — i.e. only when a NEW send() is about to
+      // start a turn — so a turn already running rides out to its own
+      // done/error untouched.
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a-b-c-(d|)", {
+            a: { type: "delta", text: "EUR" },
+            b: { type: "delta", text: "USD" },
+            c: { type: "delta", text: " is up" },
+            d: { type: "done" },
+          });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Flips false mid-turn: relative to the turn's own ask()
+            // subscription (frame 1, from the send() schedule below), "a"
+            // lands at frame 1, "b" at frame 3, "c" at frame 5, done at
+            // frame 7 — so "false" at frame 4 lands strictly between the
+            // "b" delta and the "c" delta, mid-stream. No leading "true"
+            // frame needed: INITIAL.available / the local `available` cache
+            // both already default to true.
+            availability$: ts.createColdObservable<boolean>("----f", {
+              f: false,
+            }),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          // Sent once availability has already flipped false. The first
+          // turn is still in flight (concatMap queues this rather than
+          // projecting it immediately), so this only proves out once the
+          // first turn completes at frame 7 — by which point availability
+          // is still false, so it must still be suppressed.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 6);
+        },
+      );
+
+      // Mid-turn: availability has just flipped false, but the still-open
+      // turn (waiting on the " is up" delta and done) must not have been
+      // reset or finalized early.
+      const midTurn = states.find((s) => {
+        return !s.available;
+      });
+      expect(midTurn?.phase).toBe("speaking");
+      expect(midTurn?.entries.at(-1)).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: false,
+      });
+
+      // The in-flight turn folds its remaining delta and done exactly as if
+      // availability had never changed.
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.phase).toBe("idle");
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "user", text: "first", done: true },
+        { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+      ]);
+
+      // "second" never reached port.ask(): the unavailable gate suppressed
+      // it at concatMap's projector rather than starting and then
+      // cancelling it.
+      expect(port?.asks).toEqual(["first"]);
+    });
   });
 });
 

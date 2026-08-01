@@ -39,10 +39,11 @@ export const JARVIS_MAX_TOKENS_PER_TURN = 4_096;
 export const JARVIS_EFFORT = "medium";
 
 /**
- * Caps how many agentic turns (tool-call round-trips) one session may run
- * before the loop force-stops it. Bounds a session that gets stuck
- * re-calling tools in a loop (a misbehaving model, a persistently failing
- * tool) from turning into an unbounded string of billed API calls.
+ * Caps how many user-message turns one session may run before the loop
+ * force-stops it (distinct from `JARVIS_RUNNER_MAX_ITERATIONS`, which caps
+ * the tool-call round-trips *within* a single turn). Bounds a session that
+ * gets stuck re-calling tools in a loop (a misbehaving model, a persistently
+ * failing tool) from turning into an unbounded string of billed API calls.
  */
 export const JARVIS_MAX_TURNS_PER_SESSION = 40;
 

@@ -10,7 +10,8 @@ import {
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import {
-  JARVIS_FIRST_EVENT_TIMEOUT_MS,
+  JARVIS_AVAILABILITY_TIMEOUT_MS,
+  JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS,
   WsJarvisAdapter,
 } from "./WsJarvisAdapter";
 
@@ -164,7 +165,7 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
       },
     });
 
-    vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS - 1);
+    vi.advanceTimersByTime(JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS - 1);
     expect(received).toEqual([]);
     expect(completed).toBe(false);
 
@@ -188,7 +189,7 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
 
     const turnId = sentTurnId(ws);
     ws.emit(SERVER_MSG.JARVIS_DELTA, { turnId, text: "EUR" });
-    vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS * 2);
+    vi.advanceTimersByTime(JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS * 2);
     ws.emit(SERVER_MSG.JARVIS_DONE, { turnId });
 
     expect(received).toEqual([
@@ -243,7 +244,7 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     adapter.ask("hello").subscribe();
     const turnId = sentTurnId(ws);
 
-    vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS);
+    vi.advanceTimersByTime(JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS);
 
     expect(ws.sentMessages()).toEqual([
       { type: CLIENT_MSG.JARVIS_CHAT, payload: { text: "hello", turnId } },
@@ -270,7 +271,7 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
 
     // Turn A times out — its listeners tear down (no cancel-side effect on
     // the fake server, so it could still be "streaming" turn A for real).
-    vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS);
+    vi.advanceTimersByTime(JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS);
     expect(turnAReceived).toEqual([
       {
         type: "error",
@@ -469,7 +470,7 @@ describe("WsJarvisAdapter.availability$()", () => {
     });
     ws.emitConnectionEvent("gatewayConnected");
 
-    vi.advanceTimersByTime(JARVIS_FIRST_EVENT_TIMEOUT_MS - 1);
+    vi.advanceTimersByTime(JARVIS_AVAILABILITY_TIMEOUT_MS - 1);
     expect(received).toEqual([]);
     expect(completed).toBe(false);
 
