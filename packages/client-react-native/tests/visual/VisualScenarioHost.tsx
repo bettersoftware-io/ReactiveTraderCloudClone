@@ -21,6 +21,7 @@ import { createViewModel, ViewModelProvider } from "@rtc/react-bindings";
 import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import { useAppFonts } from "#/ui/theme/fonts";
 import { ThemeProvider } from "#/ui/theme/ThemeProvider";
+import { useTheme } from "#/ui/theme/useTheme";
 
 interface Props {
   skin: ThemeSkin;
@@ -117,41 +118,75 @@ export function VisualScenarioHost({
   return (
     <ViewModelProvider viewModel={viewModel}>
       <ThemeProvider>
-        <View style={{ flex: 1 }}>
-          {children}
-          {/* Readiness marker for the simctl capture driver.
-           *
-           * It must be its OWN accessibility element, not an attribute of the
-           * wrapper: iOS only exposes `testID` (as `accessibilityIdentifier`)
-           * for nodes that are themselves accessibility elements, so a plain
-           * container View never appears in `idb ui describe-all` at all —
-           * which is exactly why the driver's readiness poll timed out
-           * against a perfectly healthy app.
-           *
-           * It is also deliberately a SIBLING rather than `accessible` on the
-           * wrapper. Marking the wrapper accessible does surface the marker,
-           * but it collapses the whole subtree into one element (measured:
-           * 41 accessibility nodes -> 3), which would blind the Maestro tier
-           * to the scenario's own content.
-           *
-           * 1x1 and empty, so it paints nothing and cannot shift a golden. */}
-          <View
-            testID={ready ? "visual-ready" : "visual-pending"}
-            accessible={true}
-            accessibilityLabel={ready ? "visual-ready" : "visual-pending"}
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-            }}
-          />
-        </View>
+        <ScenarioSurface ready={ready}>{children}</ScenarioSurface>
       </ThemeProvider>
     </ViewModelProvider>
   );
+}
+
+/**
+ * The themed surface every scenario is captured against.
+ *
+ * WHY THIS EXISTS AS ITS OWN COMPONENT. `backgroundColor` has to come from
+ * `useTheme()`, which only resolves BELOW `ThemeProvider` — so the root view
+ * cannot be inline in `VisualScenarioHost`'s own tree.
+ *
+ * WHY IT PAINTS A BACKGROUND AT ALL. Every fixture that mounts a LEAF rather
+ * than a screen — `BootSceneFixture` (a bare `<Canvas>`), `LockHoldFixture`
+ * (the ring alone), `AnalyticsDashboardFixture` (the cards alone) — leaves
+ * behind whatever the harness root is, and RN's default is white. The real
+ * app never shows that: `BootSequence` and `LockScreen` both paint
+ * `t.bgPrimary`. Six of the eight committed simctl goldens were captured over
+ * white as a result, which is why #353's "reproducing at 0.01-0.05%" was true
+ * and meaningless — they reproduced a wrong background faithfully.
+ *
+ * Full-screen scenarios (`shell/appearance`) paint over this and are
+ * unaffected. Deliberately `bgPrimary` rather than a fixed colour, so a
+ * light-pinned scenario (`shell/connection-banner` is classic/light) gets its
+ * own theme's light background instead of RN's white.
+ */
+function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
+  const theme = useTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.bgPrimary }}>
+      {children}
+      {/* Readiness marker for the simctl capture driver.
+       *
+       * It must be its OWN accessibility element, not an attribute of the
+       * wrapper: iOS only exposes `testID` (as `accessibilityIdentifier`)
+       * for nodes that are themselves accessibility elements, so a plain
+       * container View never appears in `idb ui describe-all` at all —
+       * which is exactly why the driver's readiness poll timed out
+       * against a perfectly healthy app.
+       *
+       * It is also deliberately a SIBLING rather than `accessible` on the
+       * wrapper. Marking the wrapper accessible does surface the marker,
+       * but it collapses the whole subtree into one element (measured:
+       * 41 accessibility nodes -> 3), which would blind the Maestro tier
+       * to the scenario's own content.
+       *
+       * 1x1 and empty, so it paints nothing and cannot shift a golden. */}
+      <View
+        testID={ready ? "visual-ready" : "visual-pending"}
+        accessible={true}
+        accessibilityLabel={ready ? "visual-ready" : "visual-pending"}
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 1,
+          height: 1,
+        }}
+      />
+    </View>
+  );
+}
+
+interface SurfaceProps {
+  readonly ready: boolean;
+  readonly children: ReactNode;
 }
 
 function buildScenarioViewModel(

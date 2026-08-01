@@ -5,8 +5,9 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import type { AgentLoop } from "../agent/agentLoop.js";
 import type { Ctx } from "./context.js";
-import { allEffects } from "./index.js";
+import { allEffects, buildEffects } from "./index.js";
 
 describe("allEffects composition", () => {
   it("routes one representative message from each domain (fx, credit, admin, equities) to an outbound frame", () => {
@@ -69,6 +70,22 @@ describe("allEffects composition", () => {
       type: SERVER_MSG.WATCHLIST,
       payload: watchlist,
     });
+  });
+});
+
+describe("buildEffects", () => {
+  it("is allEffects, unchanged, when no agent loop is present", () => {
+    expect(buildEffects(null)).toBe(allEffects);
+  });
+
+  it("appends the JARVIS_* effects when an agent loop is present", () => {
+    const loop: AgentLoop = {
+      runTurn: vi.fn(),
+      resolveConfirmation: vi.fn(),
+    };
+    const built = buildEffects(loop);
+    expect(built.length).toBe(allEffects.length + 2);
+    expect(built.slice(0, allEffects.length)).toEqual(allEffects);
   });
 });
 

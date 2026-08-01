@@ -155,6 +155,32 @@
   },
   "overrides": [
     {
+      // The four nodenext-resolution tsc-built libs import relative modules
+      // WITH the .js extension (domain/shared/ws-effects are already 100%
+      // consistent; motion-core was 46-vs-5 with the 5 all in test files).
+      // This pins the convention so extensionless strays can't creep back in
+      // via test files, where vitest resolves either form and nothing else
+      // complains. The bundler-resolution packages (client-*, devtools-*,
+      // ui-contract, boot-splash) are deliberately extensionless and stay
+      // out of scope.
+      "includes": [
+        "packages/domain/**",
+        "packages/shared/**",
+        "packages/ws-effects/**",
+        "packages/motion-core/**"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useImportExtensions": {
+              "level": "error",
+              "options": { "forceJsExtensions": true }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/tsconfig*.json"],
       "json": {
         "parser": {

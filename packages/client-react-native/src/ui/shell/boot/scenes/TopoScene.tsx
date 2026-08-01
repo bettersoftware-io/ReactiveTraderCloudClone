@@ -104,6 +104,7 @@ export function TopoScene({
   width,
   height,
   theme,
+  now: pinnedNow,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
   const accentAlt = theme.accent2;
@@ -134,13 +135,16 @@ export function TopoScene({
   // instance) captures `Date.now()` exactly once and every later render
   // reads the same captured value, regardless of how many times the
   // component re-renders in between.
+  // A pinned `now` (the visual harness) wins outright and is never sampled
+  // from, so a capture is reproducible; production passes nothing and gets the
+  // mount-time sample.
   const mountTimeRef = useRef<Date | null>(null);
 
   if (mountTimeRef.current === null) {
     mountTimeRef.current = new Date();
   }
 
-  const now = mountTimeRef.current;
+  const now = pinnedNow ?? mountTimeRef.current;
   const stamp = topoTimestamp(
     now.getFullYear(),
     now.getMonth() + 1,
@@ -437,6 +441,21 @@ function drawContours(
   }
 }
 
+/** A peak's summit, projected. */
+function summitPoint(
+  camera: Boot3dCamera,
+  peak: TopoPeak,
+  rise: number,
+): ProjectedBootPoint {
+  "worklet";
+  return projectBootPoint(
+    peak.x,
+    TOPO_GROUND_Y - topoHeightAt(peak.x, peak.z) * rise,
+    peak.z,
+    camera,
+  );
+}
+
 /** The route linking the summits, in peak order. */
 function drawRoute(
   canvas: SkCanvas,
@@ -473,18 +492,85 @@ function drawRoute(
   canvas.drawPath(path, paint);
 }
 
-/** A peak's summit, projected. */
-function summitPoint(
-  camera: Boot3dCamera,
+/**
+ * One beacon's pair label and ticking price.
+ *
+ * The mast and stem above draw unconditionally; only the text waits on a font,
+ * so a null-font window keeps the beacons and loses the readouts.
+ */
+function drawBeaconReadout(
+  canvas: SkCanvas,
+  top: ProjectedBootPoint,
   peak: TopoPeak,
-  rise: number,
-): ProjectedBootPoint {
+  elapsed: number,
+  phase: number,
+  flicker: number,
+  accent: string,
+  accentAlt: string,
+  positive: string,
+  negative: string,
+  pairFont: SkFont | null,
+  priceFont: SkFont | null,
+): void {
   "worklet";
-  return projectBootPoint(
-    peak.x,
-    TOPO_GROUND_Y - topoHeightAt(peak.x, peak.z) * rise,
-    peak.z,
-    camera,
+  const stem = Skia.Paint();
+  stem.setStyle(PaintStyle.Stroke);
+  stem.setStrokeWidth(1);
+  stem.setAntiAlias(true);
+  stem.setColor(Skia.Color(hexToRgba(accent, 0.4 * phase * flicker)));
+  canvas.drawLine(top.x, top.y - 8, top.x, top.y - 21, stem);
+
+  if (priceFont === null) {
+    return;
+  }
+
+  const tick = peakTick(peak, elapsed);
+  const priceText = peakPriceText(peak, tick.value);
+  const tickColor = tick.rising ? positive : negative;
+  const priceWidth = priceFont.getTextWidth(priceText);
+
+  // The flash behind a fresh tick — this is what reads as "the price moved".
+  if (tick.flash > 0) {
+    const flashPaint = Skia.Paint();
+    flashPaint.setAntiAlias(true);
+    flashPaint.setColor(
+      Skia.Color(hexToRgba(tickColor, 0.22 * tick.flash * phase * flicker)),
+    );
+    canvas.drawRect(
+      {
+        x: top.x - priceWidth / 2 - 5,
+        y: top.y - 36,
+        width: priceWidth + 10,
+        height: 14,
+      },
+      flashPaint,
+    );
+  }
+
+  const pricePaint = Skia.Paint();
+  pricePaint.setAntiAlias(true);
+  pricePaint.setColor(Skia.Color(hexToRgba(tickColor, 0.95 * phase * flicker)));
+  canvas.drawText(
+    priceText,
+    top.x - priceWidth / 2,
+    top.y - 25,
+    pricePaint,
+    priceFont,
+  );
+
+  if (pairFont === null) {
+    return;
+  }
+
+  const pairPaint = Skia.Paint();
+  pairPaint.setAntiAlias(true);
+  pairPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.85 * phase * flicker)));
+  canvas.drawText(
+    peak.pair,
+    top.x - pairFont.getTextWidth(peak.pair) / 2,
+    top.y - 40,
+    pairPaint,
+    pairFont,
   );
 }
 
@@ -604,88 +690,6 @@ function drawBeacons(
       priceFont,
     );
   }
-}
-
-/**
- * One beacon's pair label and ticking price.
- *
- * The mast and stem above draw unconditionally; only the text waits on a font,
- * so a null-font window keeps the beacons and loses the readouts.
- */
-function drawBeaconReadout(
-  canvas: SkCanvas,
-  top: ProjectedBootPoint,
-  peak: TopoPeak,
-  elapsed: number,
-  phase: number,
-  flicker: number,
-  accent: string,
-  accentAlt: string,
-  positive: string,
-  negative: string,
-  pairFont: SkFont | null,
-  priceFont: SkFont | null,
-): void {
-  "worklet";
-  const stem = Skia.Paint();
-  stem.setStyle(PaintStyle.Stroke);
-  stem.setStrokeWidth(1);
-  stem.setAntiAlias(true);
-  stem.setColor(Skia.Color(hexToRgba(accent, 0.4 * phase * flicker)));
-  canvas.drawLine(top.x, top.y - 8, top.x, top.y - 21, stem);
-
-  if (priceFont === null) {
-    return;
-  }
-
-  const tick = peakTick(peak, elapsed);
-  const priceText = peakPriceText(peak, tick.value);
-  const tickColor = tick.rising ? positive : negative;
-  const priceWidth = priceFont.getTextWidth(priceText);
-
-  // The flash behind a fresh tick — this is what reads as "the price moved".
-  if (tick.flash > 0) {
-    const flashPaint = Skia.Paint();
-    flashPaint.setAntiAlias(true);
-    flashPaint.setColor(
-      Skia.Color(hexToRgba(tickColor, 0.22 * tick.flash * phase * flicker)),
-    );
-    canvas.drawRect(
-      {
-        x: top.x - priceWidth / 2 - 5,
-        y: top.y - 36,
-        width: priceWidth + 10,
-        height: 14,
-      },
-      flashPaint,
-    );
-  }
-
-  const pricePaint = Skia.Paint();
-  pricePaint.setAntiAlias(true);
-  pricePaint.setColor(Skia.Color(hexToRgba(tickColor, 0.95 * phase * flicker)));
-  canvas.drawText(
-    priceText,
-    top.x - priceWidth / 2,
-    top.y - 25,
-    pricePaint,
-    priceFont,
-  );
-
-  if (pairFont === null) {
-    return;
-  }
-
-  const pairPaint = Skia.Paint();
-  pairPaint.setAntiAlias(true);
-  pairPaint.setColor(Skia.Color(hexToRgba(accentAlt, 0.85 * phase * flicker)));
-  canvas.drawText(
-    peak.pair,
-    top.x - pairFont.getTextWidth(peak.pair) / 2,
-    top.y - 40,
-    pairPaint,
-    pairFont,
-  );
 }
 
 /** The drifting survey motes. */

@@ -10,7 +10,8 @@ import {
   indicatorPoints,
   indicatorValues,
   type NavigatorVm,
-  navigatorVm,
+  navigatorLinePoints,
+  navigatorWindowStyle,
   volumeVm,
 } from "@rtc/motion-core";
 
@@ -96,8 +97,21 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     return props.candles.length;
   });
 
+  // The two navigator halves change at very different rates, so the line is
+  // its own memo keyed on the series alone: a continuous brush drag
+  // (viewport changing per pointer move) re-runs only the cheap window
+  // style, never the full-history point mapping. `navLinePoints`' stable
+  // output reference is also what lets NavigatorStrip's own memo cut-point
+  // skip re-joining the SVG points string per frame.
+  const navLinePoints = createMemo(() => {
+    return navigatorLinePoints(props.candles);
+  });
+
   const nav = createMemo((): NavigatorVm => {
-    return navigatorVm(props.candles, g.viewport());
+    return {
+      linePoints: navLinePoints(),
+      windowStyle: navigatorWindowStyle(g.viewport(), props.candles.length),
+    };
   });
 
   return (

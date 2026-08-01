@@ -11,12 +11,14 @@ import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
 import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
 import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
 import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
+import { TopoScene } from "#/ui/shell/boot/scenes/TopoScene";
 
 import type { Scenario } from "./driver";
 import {
   AnalyticsDashboardFixture,
   BootSceneFixture,
   LockHoldFixture,
+  ScreenContentFixture,
 } from "./fixtures";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
@@ -129,7 +131,9 @@ export const SCENARIOS: readonly Scenario[] = [
     build: (): ReactNode => {
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
-          <BlotterModule />
+          <ScreenContentFixture>
+            <BlotterModule />
+          </ScreenContentFixture>
         </VisualScenarioHost>
       );
     },
@@ -141,7 +145,9 @@ export const SCENARIOS: readonly Scenario[] = [
     build: (): ReactNode => {
       return (
         <VisualScenarioHost skin="classic" mode="light">
-          <ConnectionBanner />
+          <ScreenContentFixture>
+            <ConnectionBanner />
+          </ScreenContentFixture>
         </VisualScenarioHost>
       );
     },
@@ -238,6 +244,18 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <BootSceneFixture Scene={JarvisScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "boot/topo",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <BootSceneFixture Scene={TopoScene} />
         </VisualScenarioHost>
       );
     },

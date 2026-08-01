@@ -39,14 +39,16 @@ export const SCENARIO_IDS = [
   // quieter instant would leave most of both scenes uncovered by the golden.
   "boot/hologram",
   "boot/layers",
-  // Phase 6b-2b: `geo` and `jarvis`. `boot/topo` is DELIBERATELY ABSENT even
-  // though the scene is ported and registered — it prints a live wall-clock
-  // timestamp, so two captures minutes apart differ and the golden could never
-  // reproduce itself. Same class as `credit/rfq-tiles-empty`, dropped above.
-  // Restoring it needs a harness that can freeze the clock; see
-  // `TopoScene.tsx`'s header and `rn-open-items.md`.
+  // Phase 6b-2b: `geo`, `jarvis` and `topo`. `topo` was DELIBERATELY ABSENT
+  // until 2026-08-01 — it prints a live wall-clock timestamp, so two captures
+  // minutes apart differed and the golden could never reproduce itself (same
+  // class as `credit/rfq-tiles-empty`, dropped above). It qualifies now that
+  // `BootSceneFixture` injects a pinned `now` via `BootSceneProps`, which the
+  // scene prefers over its mount-time `new Date()`. The footer stamp is kept
+  // rather than dropped, so the golden asserts the frame the app really draws.
   "boot/geo",
   "boot/jarvis",
+  "boot/topo",
   "boot/static",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",

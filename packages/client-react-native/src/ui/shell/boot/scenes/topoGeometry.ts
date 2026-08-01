@@ -192,8 +192,15 @@ const MARCHING_SQUARES: Record<number, readonly (readonly [number, number])[]> =
 /**
  * Terrain height at a world coordinate — six gaussians, ripple noise, and an
  * edge falloff that pulls the surface back to zero at the table's rim.
+ *
+ * PER-FRAME — worklet. `TopoScene` reaches it from three draw sites, so an
+ * unmarked version throws `[Worklets] Tried to synchronously call a Remote
+ * Function` on any real device. jest is blind to it (the Reanimated mock runs
+ * worklets as plain JS), so the simulator is the only witness.
  */
 export function topoHeightAt(x: number, z: number): number {
+  "worklet";
+
   let height = 0;
 
   for (const peak of TOPO_PEAKS) {
@@ -544,6 +551,13 @@ export function topoTelemetry(progress: number, yaw: number): TopoTelemetry {
   };
 }
 
+/** Zero-pad to two digits. Verbatim from the web's `padTwo`. */
+function padTwo(value: number): string {
+  "worklet";
+
+  return String(value).padStart(2, "0");
+}
+
 /**
  * The wall-clock stamp the web prints bottom-left.
  *
@@ -564,13 +578,6 @@ export function topoTimestamp(
   "worklet";
 
   return `${year}-${padTwo(month)}-${padTwo(day)} ${padTwo(hours)}:${padTwo(minutes)}:${padTwo(seconds)}`;
-}
-
-/** Zero-pad to two digits. Verbatim from the web's `padTwo`. */
-function padTwo(value: number): string {
-  "worklet";
-
-  return String(value).padStart(2, "0");
 }
 
 /** The status banner's text and whether it takes the alt accent. */

@@ -5,7 +5,13 @@
   margin-top: 4px;
   overflow: hidden;
   background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  /* An inset shadow, NOT a real border: a border would make the brush
+     hooks' getBoundingClientRect() base (border box) 2px wider than the box
+     the window's --nav-left/--nav-w percentages resolve against (the
+     overlay = padding box), skewing every drag fraction by ~2px. The inset
+     line paints identically with zero layout footprint, so both bases are
+     the same box. */
+  box-shadow: inset 0 0 0 1px var(--border);
   border-radius: 3px;
   /* The brush lives here — stop the browser's own touch scroll/zoom from
      fighting the pointer drag. */
@@ -74,10 +80,18 @@
   inset: 0 -6px;
 }
 
+/* Handles centre on their window edge but clamp fully inside the strip:
+   unclamped, `overflow: hidden` halves a handle to 3px whenever the window
+   pins to either end — which is the DEFAULT live-edge view for the right
+   handle. */
 .handleStart {
-  left: calc(var(--nav-left) - 3px);
+  left: clamp(0px, calc(var(--nav-left) - 3px), calc(100% - 6px));
 }
 
 .handleEnd {
-  left: calc(var(--nav-left) + var(--nav-w) - 3px);
+  left: clamp(
+    0px,
+    calc(var(--nav-left) + var(--nav-w) - 3px),
+    calc(100% - 6px)
+  );
 }

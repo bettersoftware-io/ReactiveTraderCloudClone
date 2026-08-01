@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CLIENT_MSG, SERVER_MSG } from "#/protocol/messages";
+import { CLIENT_MSG, SERVER_MSG } from "#/protocol/messages.js";
 
 describe("protocol messages", () => {
   it("keeps the FX/Credit/Admin wire names stable", () => {
@@ -21,5 +21,15 @@ describe("protocol messages", () => {
     expect(SERVER_MSG.CANDLE_HISTORY_RESPONSE).toBe(
       "rpc.getCandleHistory.response",
     );
+  });
+
+  it("includes the Jarvis wire names", () => {
+    expect(CLIENT_MSG.JARVIS_CHAT).toBe("jarvis.chat");
+    expect(CLIENT_MSG.JARVIS_CONFIRM).toBe("jarvis.confirm");
+    expect(SERVER_MSG.JARVIS_DELTA).toBe("jarvis.delta");
+    expect(SERVER_MSG.JARVIS_TOOL_EVENT).toBe("jarvis.toolEvent");
+    expect(SERVER_MSG.JARVIS_CONFIRM_REQUEST).toBe("jarvis.confirmRequest");
+    expect(SERVER_MSG.JARVIS_DONE).toBe("jarvis.done");
+    expect(SERVER_MSG.JARVIS_ERROR).toBe("jarvis.error");
   });
 });

@@ -7,7 +7,8 @@ import {
   crosshairVm,
   indicatorPoints,
   indicatorValues,
-  navigatorVm,
+  navigatorLinePoints,
+  navigatorWindowStyle,
   volumeVm,
 } from "@rtc/motion-core";
 
@@ -80,7 +81,16 @@ export function CandleChart({
   );
 
   const brush = useNavigatorBrush(viewport, applyViewport, candles.length);
-  const nav = navigatorVm(candles, viewport);
+  // The two navigator halves change at very different rates, so they're
+  // called separately (not via the composed `navigatorVm`): the Compiler
+  // memoizes `navigatorLinePoints(candles)` on the series alone, so a
+  // continuous brush drag (viewport changing per pointer move) never re-maps
+  // the full 300-candle history per frame — only the cheap window style
+  // recomputes.
+  const nav = {
+    linePoints: navigatorLinePoints(candles),
+    windowStyle: navigatorWindowStyle(viewport, candles.length),
+  };
 
   return (
     <ChartPlot

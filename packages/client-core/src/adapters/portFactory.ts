@@ -83,6 +83,7 @@ import type { IWsAdapter } from "./IWsAdapter";
 import type { JarvisPort } from "./jarvisPort";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
+import { WsJarvisAdapter } from "./WsJarvisAdapter";
 
 /** The subset of the transport the composition root drives from auth state.
  * Structural, so both `WsAdapter` and test fakes satisfy it. */
@@ -102,8 +103,10 @@ export interface AppPorts {
   workflow: WorkflowPort;
   admin: AdminPort;
   preferences: PreferencesPort;
-  /** Scripted (phase 1) or WS-real (phase 2) J.A.R.V.I.S. chat backend —
-   * constructed internally by both port factories, never platform-supplied. */
+  /** J.A.R.V.I.S. chat backend — constructed internally by both port
+   * factories, never platform-supplied. Simulator mode gets the scripted
+   * (offline) brain (`ScriptedJarvisAdapter`); WS-real mode speaks the
+   * `JARVIS_*` wire protocol over the live socket (`WsJarvisAdapter`). */
   jarvis: JarvisPort;
   connectionEvents: ConnectionEventsPort;
   marketData: MarketDataPort;
@@ -1164,14 +1167,7 @@ export function createWsRealPorts(
     workflow: createWorkflowPort(ws),
     admin: createAdminPort(ws),
     preferences: deps.preferences,
-    jarvis: new ScriptedJarvisAdapter({
-      referenceData,
-      pricing,
-      blotter,
-      analytics,
-      execution,
-      instantReveal$: createInstantReveal$(deps.preferences),
-    }),
+    jarvis: new WsJarvisAdapter(ws),
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

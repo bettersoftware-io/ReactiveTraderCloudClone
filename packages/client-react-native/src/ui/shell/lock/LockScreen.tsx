@@ -59,7 +59,11 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * `ringDashOffset`, which lacked the `"worklet"` directive), so the ring
  * redboxed the moment this screen mounted on hardware. That is now fixed
  * (motion-core `countdownRing.ts`) and the ring renders + fills correctly on
- * the simulator (see the `lock/hold` visual golden). The harmless double-fire
+ * the simulator (see the `lock/hold` visual golden — which until 2026-08-01
+ * did NOT show that: its fixture mounted the ring uncentred over an unpainted
+ * root, so the dynamic island covered all but a sliver of the arc and the
+ * golden asserted almost nothing. The citation was right about the fix and
+ * wrong about the evidence). The harmless double-fire
  * remains a theoretical edge case; we keep the a11y-preserving dual mechanism
  * (the `Pressable` carries the VoiceOver "activate" action a raw
  * `Gesture.Tap` would lose). `Gesture.Race(LongPress, Tap)` stays a documented

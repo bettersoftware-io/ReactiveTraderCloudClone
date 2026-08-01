@@ -55,6 +55,9 @@ export const CLIENT_MSG = {
   CANCEL_ORDER: "rpc.cancelOrder",
   SUBSCRIBE_ORDERS: "subscribe.orders",
   SUBSCRIBE_POSITIONS: "subscribe.positions",
+  // Jarvis
+  JARVIS_CHAT: "jarvis.chat",
+  JARVIS_CONFIRM: "jarvis.confirm",
 } as const;
 
 // ── Server → Client ─────────────────────────────────────────────
@@ -91,4 +94,10 @@ export const SERVER_MSG = {
   CANCEL_ORDER_RESPONSE: "rpc.cancelOrder.response",
   ORDERS: "stream.orders",
   POSITIONS: "stream.positions",
+  // Jarvis
+  JARVIS_DELTA: "jarvis.delta",
+  JARVIS_TOOL_EVENT: "jarvis.toolEvent",
+  JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
+  JARVIS_DONE: "jarvis.done",
+  JARVIS_ERROR: "jarvis.error",
 } as const;

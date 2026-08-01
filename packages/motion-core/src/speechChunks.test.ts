@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "./speechChunks";
+import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "./speechChunks.js";
 
 describe("speechChunks", () => {
   it("splits text into 2-4 char chunks that reassemble exactly", () => {

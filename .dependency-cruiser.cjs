@@ -50,9 +50,13 @@ module.exports = {
     {
       name: "shared-no-apps",
       severity: "error",
-      comment: "@rtc/shared depends only on domain — no other @rtc package.",
+      comment:
+        "@rtc/shared depends only on domain/motion-core (the scripted Jarvis brain's typed-reveal chunk math) — no other @rtc package.",
       from: { path: "^packages/shared/src" },
-      to: { path: "^packages/", pathNot: "^packages/(shared|domain)/" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(shared|domain|motion-core)/",
+      },
     },
     {
       name: "client-not-server",
@@ -154,11 +158,11 @@ module.exports = {
       name: "client-core-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core is the shared application core — it may depend only on domain/shared/motion-core (the ScriptedJarvisAdapter's typed-reveal chunk math), never on bindings, any client, or the server.",
+        "@rtc/client-core is the shared application core — it may depend only on domain/shared, never on bindings, any client, or the server.",
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|domain|shared|motion-core)/",
+        pathNot: "^packages/(client-core|domain|shared)/",
       },
     },
     {

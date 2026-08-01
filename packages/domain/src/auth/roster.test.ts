@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findRosterUser, ROSTER } from "#/auth/roster";
+import { findRosterUser, ROSTER } from "#/auth/roster.js";
 
 describe("roster", () => {
   it("contains only public profiles (no password fields)", () => {
