@@ -712,6 +712,19 @@ export function solidViewModel(world: World): ViewModel {
       const machine = getJarvisMachine(world);
       return { state: toSignal(machine.state$), ...machine.intents };
     },
+    // No brain-picker preference seeded on World yet (Task 10) — a stable
+    // placeholder (matching getJarvisMachine's own preferredBrain$/effort$)
+    // satisfies the ViewModel shape until that lands.
+    useJarvisPreferences: () => {
+      const [brain] = createSignal<JarvisBrain>("scripted");
+      const [effort] = createSignal<JarvisEffort>("medium");
+      return {
+        brain,
+        setBrain: () => {},
+        effort,
+        setEffort: () => {},
+      };
+    },
     // Admin / telemetry: World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors
     // the real IncidentMachine's connection-status asymmetry via

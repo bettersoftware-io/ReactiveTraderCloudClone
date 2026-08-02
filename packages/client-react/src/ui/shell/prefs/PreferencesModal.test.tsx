@@ -9,7 +9,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AmbientStyle } from "@rtc/domain";
+import type { AmbientStyle, JarvisBrain, JarvisEffort } from "@rtc/domain";
+import { JARVIS_BRAINS } from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelContext } from "@rtc/react-bindings";
 
@@ -52,15 +53,88 @@ describe("PreferencesModal — ambient style row", () => {
   });
 });
 
+describe("PreferencesModal — JARVIS brain/effort rows", () => {
+  it("disables real-model brain options the server isn't currently offering", () => {
+    renderModal({ jarvisBrains: ["scripted"] });
+
+    expect(
+      screen.getByTestId("pref-segment-jarvisBrain-scripted"),
+    ).not.toHaveProperty("disabled", true);
+    expect(
+      screen.getByTestId("pref-segment-jarvisBrain-claude-haiku-4-5"),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.getByTestId("pref-segment-jarvisBrain-claude-sonnet-5"),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.getByTestId("pref-segment-jarvisBrain-claude-opus-5"),
+    ).toHaveProperty("disabled", true);
+  });
+
+  it("selecting an offered brain calls setBrain", () => {
+    const setBrain = vi.fn();
+    renderModal({ jarvisBrains: JARVIS_BRAINS, setJarvisBrain: setBrain });
+
+    fireEvent.click(
+      screen.getByTestId("pref-segment-jarvisBrain-claude-sonnet-5"),
+    );
+
+    expect(setBrain).toHaveBeenCalledWith("claude-sonnet-5");
+  });
+
+  it("disables the whole effort row when the selected brain is scripted", () => {
+    renderModal({ jarvisBrain: "scripted" });
+
+    expect(screen.getByTestId("pref-segment-jarvisEffort-low")).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(
+      screen.getByTestId("pref-segment-jarvisEffort-medium"),
+    ).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("pref-segment-jarvisEffort-high")).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("enables the effort row for a real brain and selecting an effort calls setEffort", () => {
+    const setEffort = vi.fn();
+    renderModal({ jarvisBrain: "claude-opus-5", setJarvisEffort: setEffort });
+
+    expect(
+      screen.getByTestId("pref-segment-jarvisEffort-high"),
+    ).not.toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByTestId("pref-segment-jarvisEffort-high"));
+
+    expect(setEffort).toHaveBeenCalledWith("high");
+  });
+});
+
 interface RenderModalOptions {
   ambientStyle?: AmbientStyle;
   setAmbientStyle?: (style: AmbientStyle) => void;
+  jarvisBrains?: readonly JarvisBrain[];
+  jarvisBrain?: JarvisBrain;
+  setJarvisBrain?: (brain: JarvisBrain) => void;
+  jarvisEffort?: JarvisEffort;
+  setJarvisEffort?: (effort: JarvisEffort) => void;
 }
 
 function renderModal(
   options: RenderModalOptions = {},
 ): ReturnType<typeof render> {
-  const { ambientStyle = "aurora", setAmbientStyle = vi.fn() } = options;
+  const {
+    ambientStyle = "aurora",
+    setAmbientStyle = vi.fn(),
+    jarvisBrains = [],
+    jarvisBrain = "scripted",
+    setJarvisBrain = vi.fn(),
+    jarvisEffort = "medium",
+    setJarvisEffort = vi.fn(),
+  } = options;
+
   const hooks = {
     useAnimatedBackground: () => {
       return { enabled: true, toggle: vi.fn() };
@@ -83,6 +157,23 @@ function renderModal(
         setStyle: vi.fn(),
         delay: "off",
         setDelay: vi.fn(),
+      };
+    },
+    useJarvis: () => {
+      return {
+        state: {
+          available: true,
+          brains: jarvisBrains,
+          effectiveBrain: jarvisBrain,
+        },
+      };
+    },
+    useJarvisPreferences: () => {
+      return {
+        brain: jarvisBrain,
+        setBrain: setJarvisBrain,
+        effort: jarvisEffort,
+        setEffort: setJarvisEffort,
       };
     },
   } as unknown as ViewModel;

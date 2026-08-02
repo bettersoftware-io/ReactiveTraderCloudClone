@@ -51,6 +51,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -67,6 +69,8 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -200,6 +204,18 @@ interface UseLoginWaitPreferencesResult {
   setStyle: (style: LoginWaitStyle) => void;
   delay: Accessor<LoginWaitDelay>;
   setDelay: (delay: LoginWaitDelay) => void;
+}
+
+/** The two Jarvis desk-assistant preferences — which brain to use and the
+ * thinking-effort budget forwarded to a live brain. The STORED preference,
+ * not the resolved one: `useJarvis().state().effectiveBrain` folds in live
+ * availability (a preferred-but-unoffered brain falls back there), while
+ * `brain` here always reflects what the user picked. */
+interface UseJarvisPreferencesResult {
+  brain: Accessor<JarvisBrain>;
+  setBrain: (brain: JarvisBrain) => void;
+  effort: Accessor<JarvisEffort>;
+  setEffort: (effort: JarvisEffort) => void;
 }
 
 interface UseViewModePreferenceResult {
@@ -384,6 +400,9 @@ export interface ViewModel {
   useEqWorkspace: () => UseEqWorkspaceResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
+  /** The two Jarvis desk-assistant preferences (brain + effort) — the
+   * Preferences modal's JARVIS section writer. */
+  useJarvisPreferences: () => UseJarvisPreferencesResult;
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => Accessor<JarvisUsageSnapshot | null>;
@@ -541,6 +560,24 @@ export function createViewModel(
 
   function setLoginWaitDelay(delay: LoginWaitDelay): void {
     presenters.loginWaitPreferences.setDelay(delay);
+  }
+
+  const jarvisBrainPreferenceState = state(
+    presenters.jarvisPreferences.brain$,
+    DEFAULT_JARVIS_BRAIN,
+  );
+
+  const jarvisEffortPreferenceState = state(
+    presenters.jarvisPreferences.effort$,
+    DEFAULT_JARVIS_EFFORT,
+  );
+
+  function setJarvisBrainPreference(brain: JarvisBrain): void {
+    presenters.jarvisPreferences.setBrain(brain);
+  }
+
+  function setJarvisEffortPreference(effort: JarvisEffort): void {
+    presenters.jarvisPreferences.setEffort(effort);
   }
 
   const viewModeState = state(
@@ -1051,6 +1088,14 @@ export function createViewModel(
       return {
         state: toSignal(presenters.jarvis.state$),
         ...presenters.jarvis.intents,
+      };
+    },
+    useJarvisPreferences: () => {
+      return {
+        brain: toSignal(jarvisBrainPreferenceState),
+        setBrain: setJarvisBrainPreference,
+        effort: toSignal(jarvisEffortPreferenceState),
+        setEffort: setJarvisEffortPreference,
       };
     },
     useJarvisUsage: () => {

@@ -721,6 +721,17 @@ export function reactViewModel(world: World): ViewModel {
       const state = useMachineState(machine.state$);
       return { state, ...machine.intents };
     },
+    // No brain-picker preference seeded on World yet (Task 10) — a stable
+    // placeholder (matching getJarvisMachine's own preferredBrain$/effort$
+    // above) satisfies the ViewModel shape until that lands.
+    useJarvisPreferences: () => {
+      return {
+        brain: "scripted",
+        setBrain: () => {},
+        effort: "medium",
+        setEffort: () => {},
+      };
+    },
     // No jarvisUsage source on World yet (Task 10) — a stable null
     // placeholder satisfies the ViewModel shape until that lands.
     useJarvisUsage: () => {

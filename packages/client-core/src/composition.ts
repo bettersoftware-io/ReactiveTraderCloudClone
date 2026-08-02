@@ -64,6 +64,7 @@ import {
   InstrumentsPresenter,
   type JarvisEntry,
   type JarvisIntents,
+  JarvisPreferencesPresenter,
   type JarvisState,
   JarvisUsagePresenter,
   LatencyPresenter,
@@ -146,6 +147,8 @@ export interface Presenters {
   auth: AuthPresenter;
   /** The two login-wait inspection preferences (style pin + artificial delay). */
   loginWaitPreferences: LoginWaitPreferencesPresenter;
+  /** The two Jarvis desk-assistant preferences (brain + thinking-effort budget). */
+  jarvisPreferences: JarvisPreferencesPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
   depth: DepthPresenter;
@@ -505,6 +508,7 @@ export function createApp(ports: AppPorts): App {
       },
     ),
     loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
+    jarvisPreferences: new JarvisPreferencesPresenter(ports.preferences),
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),

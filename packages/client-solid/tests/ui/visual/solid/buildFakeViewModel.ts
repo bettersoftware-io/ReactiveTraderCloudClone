@@ -497,6 +497,17 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setSkin: noop,
       };
     },
+    // No jarvis-preference AppData field yet (Task 10) — static defaults
+    // matching JarvisMachine's own INITIAL/DEFAULT_JARVIS_EFFORT; no-op
+    // setters (static screenshots never fire them).
+    useJarvisPreferences: () => {
+      return {
+        brain: at("scripted"),
+        setBrain: noop,
+        effort: at("medium"),
+        setEffort: noop,
+      };
+    },
     // No jarvisUsage AppData field yet (Task 10) — no pre-existing golden
     // renders a usage card, so a static null accessor is pixel-neutral.
     useJarvisUsage: () => {

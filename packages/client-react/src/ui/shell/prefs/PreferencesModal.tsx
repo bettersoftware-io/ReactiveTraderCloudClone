@@ -2,9 +2,16 @@ import { type ReactElement, useState } from "react";
 
 import type {
   AmbientStyle,
+  JarvisBrain,
+  JarvisEffort,
   LoginWaitDelay,
   LoginWaitStyle,
   PowerSaverLevel,
+} from "@rtc/domain";
+import {
+  JARVIS_BRAIN_LABELS,
+  JARVIS_BRAINS,
+  JARVIS_EFFORTS,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -16,22 +23,26 @@ import styles from "./PreferencesModal.module.css";
 
 /**
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
- * two-column DISPLAY / MOTION | TRADING / NOTIFICATIONS / DATA grid of toggle
- * + segment rows.
+ * two-column DISPLAY / MOTION | TRADING / NOTIFICATIONS / DATA / JARVIS grid
+ * of toggle + segment rows.
  *
  * The columns are balanced by ROW COUNT (13 each), which is why MOTION exists:
  * DISPLAY had grown to hold every movement-related control and left the grid
  * lopsided 15/9. Splitting "how it looks" from "how it moves" evens the
- * columns AND gives the login-wait rows an honest home.
+ * columns AND gives the login-wait rows an honest home. The JARVIS section
+ * (added later) sits at the foot of column 2, so it doesn't reopen that
+ * balance.
  *
- * SIX rows are wired to real ports — Animated background
+ * EIGHT rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Always play
- * boot animation (`useForceBootAnimation`), and the two login-wait rows
- * (`useLoginWaitPreferences`); every other row is decorative (see the comment
- * on the catalogue below). Dumb component:
- * consumes `useViewModel()` destructured only, holds no app-layer state /
- * persistence / transport / timers, and renders only when `open`.
+ * boot animation (`useForceBootAnimation`), the two login-wait rows
+ * (`useLoginWaitPreferences`), and the two Jarvis rows (`useJarvisPreferences`
+ * for the stored brain/effort, `useJarvis` read-only for which brains the
+ * server is currently offering); every other row is decorative (see the
+ * comment on the catalogue below). Dumb component: consumes `useViewModel()`
+ * destructured only, holds no app-layer state / persistence / transport /
+ * timers, and renders only when `open`.
  */
 export function PreferencesModal({
   open,
@@ -43,6 +54,8 @@ export function PreferencesModal({
     useAmbientStyle,
     useForceBootAnimation,
     useLoginWaitPreferences,
+    useJarvis,
+    useJarvisPreferences,
   } = useViewModel();
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
@@ -61,6 +74,29 @@ export function PreferencesModal({
     delay: loginWaitDelay,
     setDelay: setLoginWaitDelay,
   } = useLoginWaitPreferences();
+
+  const { state: jarvisState } = useJarvis();
+  const {
+    brain: jarvisBrain,
+    setBrain: setJarvisBrain,
+    effort: jarvisEffort,
+    setEffort: setJarvisEffort,
+  } = useJarvisPreferences();
+
+  // Real (non-"scripted") brain options are disabled when the server isn't
+  // currently offering them (jarvisState.brains — an empty array is a normal
+  // "nothing offered right now" value, not a loading sentinel, so it disables
+  // every real option same as any other not-offered case). "scripted" is
+  // always selectable — it's the offline fallback, not a server-side model.
+  const jarvisBrainOptions: readonly PrefSegmentOption[] = JARVIS_BRAINS.map(
+    (brain): PrefSegmentOption => {
+      return {
+        value: brain,
+        label: JARVIS_BRAIN_LABELS[brain],
+        disabled: brain !== "scripted" && !jarvisState.brains.includes(brain),
+      };
+    },
+  );
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
@@ -219,6 +255,29 @@ export function PreferencesModal({
                 values={toggles}
                 onToggle={toggleCosmetic}
               />
+
+              <div className={styles.sectionHead}>JARVIS</div>
+              <PrefSegment
+                label="Brain"
+                description="Which AI powers the desk assistant."
+                options={jarvisBrainOptions}
+                value={jarvisBrain}
+                onChange={(value: string) => {
+                  setJarvisBrain(value as JarvisBrain);
+                }}
+                testid="pref-segment-jarvisBrain"
+              />
+              <PrefSegment
+                label="Effort"
+                description="Thinking-effort budget for a live brain. No effect on scripted."
+                options={JARVIS_EFFORT_OPTIONS}
+                value={jarvisEffort}
+                onChange={(value: string) => {
+                  setJarvisEffort(value as JarvisEffort);
+                }}
+                testid="pref-segment-jarvisEffort"
+                disabled={jarvisBrain === "scripted"}
+              />
             </div>
           </div>
         </div>
@@ -352,6 +411,18 @@ const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "calm", label: "Calm" },
   { value: "freeze", label: "Freeze" },
 ];
+
+// Options for the real "Effort" row (useJarvisPreferences). Labels are
+// JARVIS_EFFORTS title-cased; the brain row's options are built inside the
+// component (per-option `disabled` depends on live jarvisState.brains).
+const JARVIS_EFFORT_OPTIONS: readonly PrefSegmentOption[] = JARVIS_EFFORTS.map(
+  (effort): PrefSegmentOption => {
+    return {
+      value: effort,
+      label: effort.charAt(0).toUpperCase() + effort.slice(1),
+    };
+  },
+);
 
 // DECORATIVE — cosmetic HUD setting, intentionally not wired to any port (spec:
 // decorative-but-dead is allowed and explicit). The REAL controls in this
