@@ -508,10 +508,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setEffort: noop,
       };
     },
-    // No jarvisUsage AppData field yet (Task 10) — no pre-existing golden
-    // renders a usage card, so a static null accessor is pixel-neutral.
+    // Jarvis token-usage/cost telemetry (Task 10) — data-driven off
+    // AppData.jarvisUsage; fixtures that don't set it fall back to null (the
+    // card's "NO USAGE DATA" placeholder), pixel-neutral for every existing
+    // golden that never mounts JarvisUsageCard.
     useJarvisUsage: () => {
-      return at(null);
+      return at(data.jarvisUsage ?? null);
     },
   };
 }

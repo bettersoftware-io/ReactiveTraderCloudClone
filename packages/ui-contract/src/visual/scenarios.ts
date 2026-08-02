@@ -757,6 +757,23 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-confirm",
   },
+  // Task 10 (Phase 3, brain picker): the footer status chip, reused off the
+  // full StatusBar component (there's no standalone chip token) — the
+  // scripted vs. default-brain (haiku) label is the only visible delta.
+  "jarvis/status-chip-scripted": {
+    componentKey: "StatusBar",
+    fixtureKey: "jarvis-status-chip-scripted",
+  },
+  "jarvis/status-chip-haiku": {
+    componentKey: "StatusBar",
+    fixtureKey: "jarvis-status-chip-haiku",
+  },
+  // Admin usage/cost telemetry card, isolated (mirrors admin/service-health's
+  // standalone-card precedent above) — two brains across both windows.
+  "admin/jarvis-usage-card": {
+    componentKey: "JarvisUsageCard",
+    fixtureKey: "admin-jarvis-usage",
+  },
 };
 
 // The theme matrix: every skin except neon × dark/light. Every base scenario is

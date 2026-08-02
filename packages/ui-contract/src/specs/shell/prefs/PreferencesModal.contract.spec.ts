@@ -2,6 +2,8 @@ import { PreferencesModal } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { JARVIS_BRAINS } from "@rtc/domain";
+
 afterEach(() => {
   cleanupMounted();
 });
@@ -69,7 +71,7 @@ describe("PreferencesModal", () => {
     expect(closed).toBe(1);
   });
 
-  it("renders the five catalogue sections", () => {
+  it("renders the six catalogue sections", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
@@ -78,6 +80,7 @@ describe("PreferencesModal", () => {
     expect(page.hasSection("TRADING")).toBe(true);
     expect(page.hasSection("NOTIFICATIONS")).toBe(true);
     expect(page.hasSection("DATA & PRIVACY")).toBe(true);
+    expect(page.hasSection("JARVIS")).toBe(true);
   });
 
   it("splits the sections across the two columns as looks | behaviour", () => {
@@ -89,19 +92,28 @@ describe("PreferencesModal", () => {
       "TRADING",
       "NOTIFICATIONS",
       "DATA & PRIVACY",
+      "JARVIS",
     ]);
   });
 
-  it("keeps the two columns within one row of each other", () => {
+  it("keeps the two columns within one row of each other, aside from the deliberately-appended JARVIS section", () => {
     // The regression guard for the imbalance that prompted MOTION: rows had
     // accumulated in the left column until it ran 15 against the right's 9.
     // A tolerance rather than exact counts, so adding ONE row stays legal and
     // only real drift fails — the point is the property, not a snapshot.
+    //
+    // The JARVIS section (brain + effort segments) was appended later at the
+    // foot of column 2 WITHOUT rebalancing — PreferencesModal.tsx's own doc
+    // comment: "sits at the foot of column 2, so it doesn't reopen that
+    // balance". Its 2 rows are carved out of the comparison below so this
+    // guard still catches real drift in the ORIGINAL catalogue, rather than
+    // needing a permanently wider tolerance for one intentional exception.
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
+    const JARVIS_ROW_COUNT = 2; // pref-segment-jarvisBrain, pref-segment-jarvisEffort
     const left = page.rowCountInColumn(0);
-    const right = page.rowCountInColumn(1);
+    const right = page.rowCountInColumn(1) - JARVIS_ROW_COUNT;
 
     expect(left).toBeGreaterThan(0);
     expect(right).toBeGreaterThan(0);
@@ -212,5 +224,91 @@ describe("PreferencesModal", () => {
     // The seam pushed the new value back, so the segment now reflects it.
     expect(page.ambientStyleActive("rays")).toBe(true);
     expect(page.ambientStyleActive("aurora")).toBe(false);
+  });
+
+  it("renders the Jarvis brain segment with all four options", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(JARVIS_BRAINS).toHaveLength(4);
+
+    // jarvisBrainDisabled() reads the option's testid via getByTestId, which
+    // throws if the button isn't rendered — so a clean pass over all four
+    // proves every option is present, independent of its disabled state.
+    for (const brain of JARVIS_BRAINS) {
+      expect(() => {
+        page.jarvisBrainDisabled(brain);
+      }).not.toThrow();
+    }
+  });
+
+  it("disables real (non-scripted) brain options when the server offers only scripted, but never disables scripted itself", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+      },
+    });
+
+    expect(page.jarvisBrainDisabled("scripted")).toBe(false);
+    expect(page.jarvisBrainDisabled("claude-haiku-4-5")).toBe(true);
+    expect(page.jarvisBrainDisabled("claude-sonnet-5")).toBe(true);
+    expect(page.jarvisBrainDisabled("claude-opus-5")).toBe(true);
+  });
+
+  it("does not disable any brain option when the server offers every brain", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: "claude-haiku-4-5",
+      },
+    });
+
+    for (const brain of JARVIS_BRAINS) {
+      expect(page.jarvisBrainDisabled(brain)).toBe(false);
+    }
+  });
+
+  it("selecting a brain writes through the useJarvisPreferences seam and reflects it", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: "claude-haiku-4-5",
+      },
+      jarvisBrain: "scripted",
+    });
+    expect(page.segmentActive("jarvisBrain", "scripted")).toBe(true);
+
+    await page.selectSegment("jarvisBrain", "claude-opus-5");
+    expect(page.jarvisBrainSets()).toEqual(["claude-opus-5"]);
+    expect(page.segmentActive("jarvisBrain", "claude-opus-5")).toBe(true);
+    expect(page.segmentActive("jarvisBrain", "scripted")).toBe(false);
+  });
+
+  it("disables the Effort row entirely when the stored brain is scripted", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisBrain: "scripted",
+    });
+    expect(page.jarvisEffortDisabled()).toBe(true);
+  });
+
+  it("leaves the Effort row enabled and writes through the seam when the stored brain is a real model", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisBrain: "claude-haiku-4-5",
+    });
+    expect(page.jarvisEffortDisabled()).toBe(false);
+    expect(page.segmentActive("jarvisEffort", "medium")).toBe(true);
+
+    await page.selectSegment("jarvisEffort", "high");
+    expect(page.jarvisEffortSets()).toEqual(["high"]);
+    expect(page.segmentActive("jarvisEffort", "high")).toBe(true);
   });
 });

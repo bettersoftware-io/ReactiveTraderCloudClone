@@ -1,10 +1,9 @@
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { BehaviorSubject } from "rxjs";
-import { EMPTY, map, type Observable, of, throwError } from "rxjs";
+import { EMPTY, type Observable, of, throwError } from "rxjs";
 
 import type {
-  JarvisAvailability,
   RfqSubmissionState,
   TicketSubmissionState,
 } from "@rtc/client-core";
@@ -138,25 +137,15 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
       setSkin: (skin: JarvisSkin) => {
         world.jarvisSkin.next(skin);
       },
-      // World.jarvisAvailability is still the pre-brain-picker plain
-      // boolean (Task 10 replaces it with the structured
-      // JarvisAvailability directly on World) — until then, this driver
-      // maps it the same way JarvisMachine's own sim-mode default does:
-      // available -> the scripted brain only offered.
-      availability$: world.jarvisAvailability.pipe(
-        map((available): JarvisAvailability => {
-          return {
-            available,
-            brains: available ? ["scripted"] : [],
-            defaultBrain: "scripted",
-          };
-        }),
-      ),
-      // No brain-picker preference seeded on World yet (Task 10) — the
-      // scripted brain is always among the brains offered above, so this
-      // resolves predictably to "scripted".
-      preferredBrain$: of<JarvisBrain>("scripted"),
-      effort$: of<JarvisEffort>("medium"),
+      // World.jarvisAvailability is the structured JarvisAvailability
+      // directly (Task 10) — no mapping needed.
+      availability$: world.jarvisAvailability,
+      // The STORED brain/effort preferences (Task 10) — threaded straight
+      // from World so a spec's mount({ jarvisBrain, jarvisEffort }) seed (or
+      // a live write through useJarvisPreferences().setBrain/setEffort)
+      // actually resolves the machine's effectiveBrain / turn options.
+      preferredBrain$: world.jarvisBrain,
+      effort$: world.jarvisEffort,
     });
     jarvisMachines.set(world, machine);
   }
@@ -721,21 +710,30 @@ export function reactViewModel(world: World): ViewModel {
       const state = useMachineState(machine.state$);
       return { state, ...machine.intents };
     },
-    // No brain-picker preference seeded on World yet (Task 10) — a stable
-    // placeholder (matching getJarvisMachine's own preferredBrain$/effort$
-    // above) satisfies the ViewModel shape until that lands.
+    // The two Jarvis desk-assistant preferences (Task 10): reactive reads
+    // off World.jarvisBrain/jarvisEffort, writes recorded so a spec can
+    // assert what the user actually chose — mirrors useLoginWaitPreferences
+    // exactly, and feeds the SAME subjects getJarvisMachine's
+    // preferredBrain$/effort$ read above, so a write through this seam
+    // re-resolves the real machine's effectiveBrain.
     useJarvisPreferences: () => {
       return {
-        brain: "scripted",
-        setBrain: () => {},
-        effort: "medium",
-        setEffort: () => {},
+        brain: useSubject(world.jarvisBrain),
+        setBrain: (brain: JarvisBrain) => {
+          world.commands.jarvisBrainSets.push(brain);
+          world.jarvisBrain.next(brain);
+        },
+        effort: useSubject(world.jarvisEffort),
+        setEffort: (effort: JarvisEffort) => {
+          world.commands.jarvisEffortSets.push(effort);
+          world.jarvisEffort.next(effort);
+        },
       };
     },
-    // No jarvisUsage source on World yet (Task 10) — a stable null
-    // placeholder satisfies the ViewModel shape until that lands.
+    // Jarvis token-usage/cost telemetry (Task 10): reactive view backed by
+    // the World subject, mirroring useTopology.
     useJarvisUsage: () => {
-      return null;
+      return useSubject(world.jarvisUsage$);
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

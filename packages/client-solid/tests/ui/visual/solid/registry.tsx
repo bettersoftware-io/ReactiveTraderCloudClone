@@ -9,6 +9,7 @@ import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AdminHead } from "#/ui/admin/AdminHead";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { IncidentControls } from "#/ui/admin/IncidentControls";
+import { JarvisUsageCard } from "#/ui/admin/jarvis/JarvisUsageCard";
 import { KpiRow } from "#/ui/admin/kpis/KpiRow";
 import { LiveEventLog } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
@@ -393,6 +394,15 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
     return (
       <div style={{ width: "360px", height: "280px" }}>
         <ServiceHealth />
+      </div>
+    );
+  },
+  // JarvisUsageCard: same `.card { height: 100% }` shape as ServiceHealth
+  // above — an isolated shot needs an explicit parent height too.
+  JarvisUsageCard: () => {
+    return (
+      <div style={{ width: "360px", height: "320px" }}>
+        <JarvisUsageCard />
       </div>
     );
   },
