@@ -189,6 +189,26 @@ interface SurfaceProps {
   readonly children: ReactNode;
 }
 
+/**
+ * The instant `blotter/seeded`'s five trade dates are measured back from.
+ *
+ * Without it those dates come from `Date.now()`, so the golden re-dated itself
+ * every calendar day — found 2026-08-02 when a verify pass showed all five rows
+ * byte-identical to the golden except every date, each shifted forward by one
+ * (T32). It passed regardless: five short date strings are ~0.1% of the frame
+ * against a 6% tolerance, so the tier could never report it.
+ *
+ * **Noon, and UTC, deliberately** — and so NOT `fixtures.tsx`'s
+ * `PINNED_WALL_CLOCK`, which is local-time on purpose. That one feeds
+ * `boot/topo`, which *renders* a wall-clock stamp and must therefore be pinned
+ * in the timezone the pixels are captured in. These are date-only strings taken
+ * through `toISOString()`, so they must be pinned in the timezone the
+ * derivation happens in instead: noon UTC yields the same ISO date everywhere
+ * from UTC-11 to UTC+12, where a local-morning base would slide a day for
+ * anyone far enough east. Same word, opposite construction.
+ */
+const BLOTTER_SEED_BASE_MS = Date.UTC(2026, 6, 27, 12, 0, 0);
+
 function buildScenarioViewModel(
   skin: ThemeSkin,
   mode: ThemeMode,
@@ -215,7 +235,12 @@ function buildScenarioViewModel(
   };
 
   const { presenters, commands } = createApp({
-    ...createSimulatorPorts({ preferences, auth, sessionStore }),
+    ...createSimulatorPorts({
+      preferences,
+      auth,
+      sessionStore,
+      blotterSeedBaseMs: BLOTTER_SEED_BASE_MS,
+    }),
     connectionEvents,
   });
   return createViewModel(

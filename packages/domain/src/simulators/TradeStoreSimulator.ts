@@ -81,7 +81,7 @@ const SEED_TRADES: readonly SeedSpec[] = [
   },
 ];
 
-function seedTrade(spec: SeedSpec): Trade {
+function seedTrade(spec: SeedSpec, baseMs: number): Trade {
   return {
     tradeId: spec.tradeId,
     tradeName: spec.tradeName,
@@ -91,8 +91,11 @@ function seedTrade(spec: SeedSpec): Trade {
     direction: spec.direction,
     spotRate: spec.spotRate,
     status: spec.status,
-    tradeDate: isoDaysFromNow(-spec.daysAgo),
-    valueDate: isoDaysFromNow(-spec.daysAgo + SPOT_VALUE_DATE_OFFSET_DAYS),
+    tradeDate: isoDaysFromNow(-spec.daysAgo, baseMs),
+    valueDate: isoDaysFromNow(
+      -spec.daysAgo + SPOT_VALUE_DATE_OFFSET_DAYS,
+      baseMs,
+    ),
   };
 }
 
@@ -106,11 +109,23 @@ export class TradeStoreSimulator implements BlotterPort {
 
   private readonly snapshots$ = new Subject<readonly Trade[]>();
 
-  constructor(executionEngine: ExecutionSimulator) {
+  /**
+   * @param seedBaseMs The instant the seed trades' `daysAgo` offsets are
+   * measured back from. Defaults to now, which is what the running app wants —
+   * a blotter whose history stays a few days old however long the process
+   * lives. Pin it wherever those dates must reproduce: a pixel golden of the
+   * blotter re-dates itself every calendar day otherwise, silently, because
+   * every other field of a seed trade is a literal and only these two are
+   * derived from the clock.
+   */
+  constructor(
+    executionEngine: ExecutionSimulator,
+    seedBaseMs: number = Date.now(),
+  ) {
     for (const spec of [...SEED_TRADES].sort((a, b) => {
       return a.tradeId - b.tradeId;
     })) {
-      this.trades.set(spec.tradeId, seedTrade(spec));
+      this.trades.set(spec.tradeId, seedTrade(spec, seedBaseMs));
     }
 
     executionEngine.onTrade((trade) => {
