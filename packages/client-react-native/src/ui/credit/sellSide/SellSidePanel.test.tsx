@@ -59,6 +59,45 @@ test("renders an empty state when nothing is open", async () => {
   expect(screen.getByTestId("sell-side-empty")).toBeTruthy();
 });
 
+// The prototype puts the incoming ticket first and the settled quotes under a
+// YOUR QUOTES heading (dc.html:292 then :305). Rendering in raw seam order
+// buried a live ticket BELOW the history on device — backwards, since the
+// ticket is the only thing on this screen with a countdown running on it.
+test("puts live tickets above a YOUR QUOTES heading, settled rows below", async () => {
+  await renderPanel({
+    rfqs: [settledRfq(5), openRfq(6)],
+    quoteFor: (rfqId: number): Quote => {
+      return rfqId === 5
+        ? {
+            id: 5,
+            rfqId: 5,
+            dealerId: ADAPTIVE_BANK_ID,
+            state: { type: "accepted", price: 99.5 },
+          }
+        : unpriced();
+    },
+  });
+
+  const heading = screen.getByTestId("sell-side-your-quotes");
+  const ticket = screen.getByTestId("sell-side-submit-6");
+  const history = screen.getByTestId("sell-side-history-5");
+
+  expect(heading).toBeTruthy();
+  expect(ticket).toBeTruthy();
+  expect(history).toBeTruthy();
+});
+
+test("shows no YOUR QUOTES heading when nothing has settled", async () => {
+  await renderPanel({
+    rfqs: [openRfq(6)],
+    quoteFor: (): Quote => {
+      return unpriced();
+    },
+  });
+
+  expect(screen.queryByTestId("sell-side-your-quotes")).toBeNull();
+});
+
 test("skips an rfq this desk was not asked to price", async () => {
   await renderPanel({
     rfqs: [openRfq(5)],
@@ -154,7 +193,7 @@ test("a priced-but-undecided quote leaves the ticket and reads PENDING", async (
 function unpriced(): Quote {
   return {
     id: 88,
-    rfqId: 5,
+    rfqId: 6,
     dealerId: ADAPTIVE_BANK_ID,
     state: { type: "pendingWithoutPrice" },
   };

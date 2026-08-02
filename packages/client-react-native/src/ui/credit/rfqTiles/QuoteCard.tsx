@@ -86,7 +86,11 @@ function displayText(state: Quote["state"]): string {
     case "pendingWithPrice":
     case "accepted":
     case "rejectedWithPrice":
-      return `$${state.price}`;
+      // Fixed 2dp: raw interpolation put `$99.8` and `$99.47` in the same
+      // column on device, so the decimal points did not line up and the eye
+      // could not compare the two prices at a glance — which is the entire job
+      // of this column.
+      return `$${state.price.toFixed(2)}`;
     case "passed":
       return "Passed";
   }

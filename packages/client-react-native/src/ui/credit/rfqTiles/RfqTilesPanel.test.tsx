@@ -31,9 +31,22 @@ const INSTRUMENTS: readonly Instrument[] = [
 ];
 const DEALERS: readonly Dealer[] = [{ id: 7, name: "Bank A" }];
 
-test("defaults to the Live filter and lists open RFQs", async () => {
-  await renderPanel({ rfqs: [rfq(1, RfqState.Open), rfq(2, RfqState.Closed)] });
+test("defaults to the Live filter, which hides settled-but-untraded RFQs", async () => {
+  await renderPanel({
+    rfqs: [rfq(1, RfqState.Open), rfq(3, RfqState.Expired)],
+  });
   expect(screen.getByTestId("rfq-card-1")).toBeTruthy();
+  expect(screen.queryByTestId("rfq-card-3")).toBeNull();
+});
+
+// The accept linger, seen from the panel: a traded rfq stays put under LIVE so
+// its ACCEPTED stamp can be read, and leaves only when dismissed.
+test("a traded RFQ stays under Live until it is dismissed", async () => {
+  await renderPanel({ rfqs: [rfq(1, RfqState.Open), rfq(2, RfqState.Closed)] });
+  expect(screen.getByTestId("rfq-card-2")).toBeTruthy();
+
+  await fireEvent.press(screen.getByTestId("rfq-dismiss-2"));
+
   expect(screen.queryByTestId("rfq-card-2")).toBeNull();
 });
 
@@ -44,7 +57,8 @@ test("switching to ALL reveals closed RFQs", async () => {
 });
 
 test("empty state when no RFQs match", async () => {
-  await renderPanel({ rfqs: [rfq(2, RfqState.Closed)] });
+  // Expired, not Closed: a traded rfq deliberately survives the Live filter.
+  await renderPanel({ rfqs: [rfq(3, RfqState.Expired)] });
   expect(screen.getByTestId("credit-tiles-empty")).toBeTruthy();
 });
 
@@ -55,12 +69,12 @@ test("renders one card per matching rfq", async () => {
   expect(screen.getAllByTestId(/^rfq-card-/)).toHaveLength(3);
 });
 
-test("dismissing a closed RFQ removes it from the list", async () => {
-  await renderPanel({ rfqs: [rfq(2, RfqState.Closed)] });
+test("dismissing a settled RFQ removes it from the list", async () => {
+  await renderPanel({ rfqs: [rfq(3, RfqState.Expired)] });
   await fireEvent.press(screen.getByTestId("rfq-filter-all"));
-  expect(screen.getByTestId("rfq-card-2")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("rfq-dismiss-2"));
-  expect(screen.queryByTestId("rfq-card-2")).toBeNull();
+  expect(screen.getByTestId("rfq-card-3")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("rfq-dismiss-3"));
+  expect(screen.queryByTestId("rfq-card-3")).toBeNull();
 });
 
 function rfq(id: number, state: RfqState): Rfq {

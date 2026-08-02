@@ -14,7 +14,7 @@ test("shows dealer name and price for a priced quote", async () => {
   await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
   expect(screen.getByTestId("quote-card-42")).toBeTruthy();
   expect(screen.getByText("Bank A")).toBeTruthy();
-  expect(screen.getByText("$99")).toBeTruthy();
+  expect(screen.getByText("$99.00")).toBeTruthy();
 });
 
 test("Accept fires onAccept with the quote id for a priced pending quote", async () => {

@@ -57,10 +57,36 @@ export function SellSidePanel(): JSX.Element {
     );
   }
 
+  // Incoming tickets first, settled quotes under a YOUR QUOTES heading —
+  // the prototype's order (dc.html:292 then :305). Rendering `rfqs` in seam
+  // order instead buried a live ticket below the history, which is backwards:
+  // the ticket is the only thing on this screen with a countdown on it.
+  const live: Rfq[] = [];
+  const settled: Rfq[] = [];
+
+  for (const rfq of rfqs) {
+    (rfq.state === RfqState.Open ? live : settled).push(rfq);
+  }
+
   return (
     <View style={styles.panel} testID="sell-side-panel">
       <ScrollView contentContainerStyle={styles.list}>
-        {rfqs.map((rfq) => {
+        {live.map((rfq) => {
+          return (
+            <SellSideRow
+              key={rfq.id}
+              rfq={rfq}
+              adaptiveBankId={adaptiveBankId}
+              instrumentMap={instrumentMap}
+            />
+          );
+        })}
+        {settled.length > 0 ? (
+          <Text style={styles.sectionLabel} testID="sell-side-your-quotes">
+            YOUR QUOTES
+          </Text>
+        ) : null}
+        {settled.map((rfq) => {
           return (
             <SellSideRow
               key={rfq.id}
@@ -214,6 +240,7 @@ function quotedPriceText(quote: Quote): string {
 interface SellSidePanelStyles {
   panel: ViewStyle;
   list: ViewStyle;
+  sectionLabel: TextStyle;
   empty: TextStyle;
   historyRow: ViewStyle;
   historyLeft: ViewStyle;
@@ -244,6 +271,17 @@ function makeStyles(t: RnTheme): SellSidePanelStyles {
   return StyleSheet.create({
     panel: { flex: 1, backgroundColor: t.bgPrimary },
     list: { paddingVertical: 12 },
+    // dc.html:305 — `8.5px`, `letter-spacing: 2`, `--faint`, sitting just above
+    // the settled rows.
+    sectionLabel: {
+      fontSize: 8.5,
+      letterSpacing: 2,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
+      marginHorizontal: 14,
+      marginTop: 2,
+      marginBottom: 7,
+    },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontDisplay },
     historyRow: {
       flexDirection: "row",
