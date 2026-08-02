@@ -149,13 +149,26 @@ numeric `foo`.
 
 ## 5. Canvas spike
 
-- `packages/client-react/src/ui/equities/chart/canvas/drawChartScene.ts` —
-  a framework-free function
+> **Placement refinement (discovered at planning, supersedes the draft's
+> client-react placement):** the visual scenario matrix is framework-
+> neutral — both clients enumerate the same shared `scenarios` object, and
+> each client's `registryCoverage.test.ts` asserts every `componentKey`
+> resolves in *its* registry. A react-only shared-matrix scenario is
+> therefore impossible. The engine moves to `@rtc/ui-contract` (the
+> established home of the shared visual harness; DOM lib already enabled;
+> already references motion-core), and each client gains a ~15-line
+> canvas *test host*. This strengthens the proof: the same framework-free
+> engine drives two framework shells to the same golden.
+
+- `packages/ui-contract/src/visual/canvas/drawChartScene.ts` — a
+  framework-free function
   `drawChartScene(ctx: CanvasRenderingContext2D, scene: ChartScene, palette: ChartPalette, size: {w: number; h: number}): void`
-  drawing candle bodies, wicks, and grid lines. It lives in `client-react`
+  drawing candle bodies, wicks, and grid lines. It lives in `ui-contract`
   (not motion-core) purely because it types against
   `CanvasRenderingContext2D`; it imports geometry types from motion-core
-  and **no chart logic**.
+  and **no chart logic**. Each client mounts it via a small canvas host in
+  its visual test tree (`tests/ui/visual/react/` / `tests/ui/visual/solid/`)
+  registered under one shared scenario.
 - `ChartPalette` is a plain injected colors object `{bodyUp, bodyDown,
   wick, grid}`. Recorded finding: a production canvas renderer needs a
   **palette port** — canvas cannot read the CSS custom-property cascade the
@@ -190,9 +203,10 @@ numeric `foo`.
   label-text `string` fields; a compile-time check (a type test that a
   `` `--${string}` ``-keyed field fails to satisfy the scene types) plus
   the equivalence fixtures enforce it.
-- **Spike golden:** the new scenario's PNG(s), regenerated through the
-  standard dual-set golden flow (react writes, solid unaffected — the
-  scenario is react-only since the spike is).
+- **Spike golden:** the new scenario's PNGs through the standard dual-set
+  golden flow — react writes (arm64 `react-local` in-branch, canonical x86
+  via post-merge dispatch + sync PR), solid asserts, same as every
+  scenario.
 
 ## 7. Documentation deliverables
 
@@ -231,5 +245,6 @@ CI-canonical set.
   signatures and outputs.
 - Scene types: numbers/booleans/label-text only; percent (0–100) plot-box
   coordinates.
-- Solid untouched; RN untouched; no user-facing toggle; no charting
-  library.
+- Solid `src/` untouched (its visual **test tree** gains only the ~15-line
+  canvas host the shared scenario matrix requires); RN untouched; no
+  user-facing toggle; no charting library; no new workspace package.
