@@ -116,3 +116,46 @@ Aggregate, window-based server-side metering (usage gating, scripted
 fallback on exhaustion, footer/Admin surfacing, per-user model preference)
 is a designed-but-not-built workstream — see the entry in
 [STATUS.md](STATUS.md).
+
+## Rate limits, and how Jarvis behaves when any limit trips
+
+Beyond spend, the Console has genuinely fine-grained rate machinery
+(Settings → Limits): org-level requests/min + input-tokens/min +
+output-tokens/min **per model class** (token-bucket enforced, generous even
+on the Start tier), plus **custom per-workspace rate AND spend limits** an
+admin can set lower than the org's. Two operational notes:
+
+- **Limits cannot be set on the default workspace** — another reason the
+  Jarvis key must be scoped to its own workspace.
+- **A deliberately low workspace ITPM/OTPM doubles as an abuse throttle**
+  while the deployed login is the public demo roster: a credential-borrowing
+  token-burner hits 429s instead of draining the prepaid balance quickly.
+
+What the shipped code does when a limit trips (all P3 review-hardened —
+nothing crashes, leaks, or retry-storms):
+
+| Trip | Behavior |
+|---|---|
+| **429 rate-limited** | The SDK auto-retries a bounded number of times honoring `retry-after`; if exhausted, `AnthropicAgentSession` sanitizes the error (name/status only — never the raw message) and the turn fails with the in-character copy ("The desk link faltered, sir…"). The session survives; the next turn works once the bucket refills. A `retry-after` past the client's 30s first-event deadline makes the client show offline copy and fire its turn-correlated cancel — harmless (429'd requests aren't billed; the stale-cancel gate can't kill a later turn). |
+| **Spend cap hit / credits depleted** | Non-retryable billing error → the same sanitized per-turn failure. Known rough edge: the orb stays visible (availability tests "loop configured", not "key can bill"), so users see polite failures, not a fallback — the graceful scripted-fallback + footer notice is the governance workstream. |
+| **529 overloaded** | Bounded SDK retries, then the same sanitized error path. |
+
+Every API response carries `anthropic-ratelimit-*` headers (limit, remaining,
+reset, per requests/input/output — reflecting whichever limit is currently
+most restrictive, workspace or org). The future usage-governance metering can
+read quota state from these for free, without extra API calls.
+
+## Model cost note (assessed 2026-08-02)
+
+`JARVIS_MODEL_ID` pins `claude-opus-5` ($5/$25 per Mtok). Jarvis's workload —
+seven flat-schema snapshot tools, trigger-clause descriptions, 2–4 sentence
+replies — is the easy end of tool use, and **Haiku 4.5 ($1/$5, ~5× cheaper
+both sides, faster TTFE) is expected to be sufficient**; per-turn cost is
+dominated by the persona+tools prefix and history re-sent as input, so the 5×
+applies almost directly. Sonnet 5 ($3/$15) is the middle option. A switch is
+one constant plus two per-model-family knobs to re-check (`effort` support,
+prompt-cache minimum prefix), verified by re-running `pnpm jarvis:smoke:live`.
+The interim step on the table (see the STATUS governance entry): make the
+model **env-selectable with a server-side allowlist** (`RTC_JARVIS_MODEL`,
+Haiku default) so Fly can flip models via a secret change, as the stepping
+stone to the Preferences-modal picker.
