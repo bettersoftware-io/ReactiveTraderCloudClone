@@ -1,12 +1,24 @@
-export { chartVmFromScene, volumeBarsFromScene } from "./chartCssVars.js";
+export {
+  chartVmFromScene,
+  crosshairVmFromScene,
+  navigatorWindowStyleFromScene,
+  volumeBarsFromScene,
+} from "./chartCssVars.js";
 export type {
   ChartScene,
+  CrosshairScene,
+  NavigatorWindowScene,
   SceneCandle,
   SceneGridLine,
   SceneLabel,
   VolumeSceneBar,
 } from "./chartScene.js";
-export { chartScene, volumeScene } from "./chartScene.js";
+export {
+  chartScene,
+  crosshairScene,
+  navigatorWindowScene,
+  volumeScene,
+} from "./chartScene.js";
 export type { ChartViewport, ViewportEdge } from "./chartViewport.js";
 export {
   centerViewportAt,

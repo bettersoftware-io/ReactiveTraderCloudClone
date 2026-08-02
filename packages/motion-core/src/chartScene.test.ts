@@ -4,9 +4,12 @@ import {
   type ChartCandle,
   type ChartScene,
   chartScene,
+  crosshairScene,
+  navigatorWindowScene,
   type SceneCandle,
   volumeScene,
 } from "./chartScene.js";
+import type { ChartViewport } from "./chartViewport.js";
 
 /** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
  * ChartCandle is the structural subset chartScene reads). */
@@ -60,6 +63,75 @@ describe("chartScene / volumeScene: CSS-neutral numeric output", () => {
   it("volumeScene carries no % / calc( strings and no --keyed fields", () => {
     const bars = volumeScene(TWELVE_MIXED, { start: 2.4, end: 9.6 });
     assertSceneNeutral(bars, "bars");
+  });
+
+  it("crosshairScene carries no % / calc( strings and no --keyed fields", () => {
+    const vp: ChartViewport = { start: 2.4, end: 9.6 };
+    const scene = crosshairScene(0.5, 0.5, TWELVE_MIXED, vp, {
+      cmin: 90,
+      cmax: 120,
+    });
+    assertSceneNeutral(scene, "scene");
+  });
+
+  it("navigatorWindowScene carries no % / calc( strings and no --keyed fields", () => {
+    const scene = navigatorWindowScene({ start: 2, end: 9 }, 12);
+    assertSceneNeutral(scene, "scene");
+  });
+});
+
+describe("crosshairScene", () => {
+  it("returns null on an empty series", () => {
+    expect(
+      crosshairScene(0.5, 0.5, [], { start: 0, end: 0 }, { cmin: 0, cmax: 0 }),
+    ).toBeNull();
+  });
+
+  it("snaps a center hit to the middle candle", () => {
+    // span=12, xFrac=0.5 -> rawIdx = 0.5*12 - 0.5 = 5.5, rounds to 6.
+    const vp: ChartViewport = { start: 0, end: 12 };
+    const scene = crosshairScene(0.5, 0.5, TWELVE_MIXED, vp, {
+      cmin: 90,
+      cmax: 120,
+    });
+
+    expect(scene?.idx).toBe(6);
+  });
+
+  it("clamps xFrac 0 to the first candle", () => {
+    const vp: ChartViewport = { start: 0, end: 12 };
+    const scene = crosshairScene(0, 0.5, TWELVE_MIXED, vp, {
+      cmin: 90,
+      cmax: 120,
+    });
+
+    expect(scene?.idx).toBe(0);
+  });
+
+  it("clamps xFrac 1 to the last candle", () => {
+    const vp: ChartViewport = { start: 0, end: 12 };
+    const scene = crosshairScene(1, 0.5, TWELVE_MIXED, vp, {
+      cmin: 90,
+      cmax: 120,
+    });
+
+    expect(scene?.idx).toBe(11);
+  });
+});
+
+describe("navigatorWindowScene", () => {
+  it("maps a populated viewport to numeric left/w percentages", () => {
+    expect(navigatorWindowScene({ start: 3, end: 9 }, 12)).toEqual({
+      left: 25,
+      w: 50,
+    });
+  });
+
+  it("covers the whole strip for an empty series", () => {
+    expect(navigatorWindowScene({ start: 0, end: 0 }, 0)).toEqual({
+      left: 0,
+      w: 100,
+    });
   });
 });
 

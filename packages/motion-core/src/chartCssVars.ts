@@ -1,6 +1,8 @@
 import type {
   ChartScene,
   ChartVarStyle,
+  CrosshairScene,
+  NavigatorWindowScene,
   SceneCandle,
   VolumeSceneBar,
 } from "./chartScene.js";
@@ -12,6 +14,10 @@ import type {
 // PriceLabelVm interfaces into chartScene.ts and re-export them from
 // chartVm.ts like every other moved export.
 import type { ChartVm, VolumeBarVm } from "./chartVm.js";
+// Same type-only cycle-safety as above: crosshairVm.ts has a runtime import
+// of this module's `crosshairVmFromScene`, so this edge back to it must stay
+// type-only.
+import type { CrosshairVm } from "./crosshairVm.js";
 
 /**
  * Projects a numeric {@link ChartScene} into the string-keyed CSS custom
@@ -80,4 +86,42 @@ export function volumeBarsFromScene(
       } as ChartVarStyle,
     };
   });
+}
+
+/**
+ * Projects a numeric {@link CrosshairScene} into the string-keyed
+ * `--chx`/`--chy` CSS custom properties `crosshairVm` has always returned;
+ * `price`/`readout` are already preformatted label text on the scene (see
+ * {@link CrosshairScene}'s doc comment) and pass through unchanged.
+ */
+export function crosshairVmFromScene(
+  scene: CrosshairScene | null,
+): CrosshairVm | null {
+  if (!scene) {
+    return null;
+  }
+
+  return {
+    idx: scene.idx,
+    style: {
+      "--chx": `${scene.x}%`,
+      "--chy": `${scene.y}%`,
+    } as ChartVarStyle,
+    price: scene.price,
+    readout: scene.readout,
+  };
+}
+
+/**
+ * Projects a numeric {@link NavigatorWindowScene} into the string-keyed
+ * `--nav-left`/`--nav-w` CSS custom properties `navigatorWindowStyle` has
+ * always returned.
+ */
+export function navigatorWindowStyleFromScene(
+  win: NavigatorWindowScene,
+): ChartVarStyle {
+  return {
+    "--nav-left": `${win.left}%`,
+    "--nav-w": `${win.w}%`,
+  } as ChartVarStyle;
 }

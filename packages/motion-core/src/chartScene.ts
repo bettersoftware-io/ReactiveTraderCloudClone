@@ -364,6 +364,136 @@ export function chartScene(
   };
 }
 
+/** Compact-volume threshold: at/above one million, render as "N.NM". */
+const VOLUME_MILLION = 1_000_000;
+/** Compact-volume threshold: at/above one thousand (and below one million),
+ * render as "NK". */
+const VOLUME_THOUSAND = 1_000;
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.min(Math.max(v, lo), hi);
+}
+
+function bucketMsOf(series: readonly ChartCandle[]): number {
+  const first = series[0];
+  const second = series[1];
+  return first && second ? second.time - first.time : 0;
+}
+
+function compactVolume(v: number): string {
+  if (v >= VOLUME_MILLION) {
+    return `${(v / VOLUME_MILLION).toFixed(1)}M`;
+  }
+
+  if (v >= VOLUME_THOUSAND) {
+    return `${(v / VOLUME_THOUSAND).toFixed(0)}K`;
+  }
+
+  return `${Math.round(v)}`;
+}
+
+/** The crosshair's snapped position, in numeric plot-percent coordinates,
+ * plus its preformatted OHLCV readout — the scene-side twin of
+ * `CrosshairVm`/`--chx`/`--chy`, before any CSS-var projection. `price` and
+ * `readout`'s fields are preformatted label text (2dp price/OHLC, HH:MM or
+ * DD-MMM time, compact volume) rather than raw numbers: they are the
+ * candle's *display* values, already rounded/compacted for a fixed-width
+ * readout, so keeping them as scene content (not projection output) avoids a
+ * second copy of that formatting rule at the projection layer. Neither
+ * contains `%` or `calc(`, so the CSS-neutrality rule still holds. */
+export interface CrosshairScene {
+  readonly idx: number;
+  readonly x: number; // column center, % of plot box
+  readonly y: number; // % of plot box
+  readonly price: string;
+  readonly readout: {
+    readonly time: string;
+    readonly open: string;
+    readonly high: string;
+    readonly low: string;
+    readonly close: string;
+    readonly volume: string;
+  };
+}
+
+// Snaps the pointer's fractional plot position onto the nearest candle
+// centre and reads its OHLCV back out, inverting the same Y_TOP/Y_SPAN
+// mapping chartScene's yPct uses to place candle bodies. `viewport.end -
+// viewport.start` is used unclamped (mirroring chartScene's resolveWindow),
+// so a partially-scrolled viewport still maps xFrac correctly; the snapped
+// index is separately clamped into the series so it never reads out of
+// bounds.
+export function crosshairScene(
+  xFrac: number,
+  yFrac: number,
+  series: readonly ChartCandle[],
+  viewport: ChartViewport,
+  scale: ChartScale,
+): CrosshairScene | null {
+  if (series.length === 0) {
+    return null;
+  }
+
+  const span = viewport.end - viewport.start || 1;
+  const rawIdx = viewport.start + xFrac * span - 0.5;
+  const idx = clamp(Math.round(rawIdx), 0, series.length - 1);
+  const candle = series[idx];
+
+  if (!candle) {
+    return null;
+  }
+
+  const x = ((idx + 0.5 - viewport.start) / span) * 100;
+  const y = yFrac * 100;
+  const crng = scale.cmax - scale.cmin || 1;
+  const price = scale.cmax - ((y - Y_TOP) / Y_SPAN) * crng;
+  const bucketMs = series.length >= 2 ? bucketMsOf(series) : 0;
+
+  return {
+    idx,
+    x,
+    y,
+    price: price.toFixed(2),
+    readout: {
+      time: formatTimeLabel(candle.time, bucketMs),
+      open: candle.open.toFixed(2),
+      high: candle.high.toFixed(2),
+      low: candle.low.toFixed(2),
+      close: candle.close.toFixed(2),
+      volume: compactVolume(candle.volume),
+    },
+  };
+}
+
+/** The navigator strip's viewport window, in numeric percentages of the
+ * series length — the scene-side twin of `--nav-left`/`--nav-w`, before any
+ * CSS-var projection. */
+export interface NavigatorWindowScene {
+  readonly left: number;
+  readonly w: number;
+}
+
+/**
+ * The viewport window as numeric percentages of the series length in
+ * candle-slot space (`start / len`, `(end − start) / len`), so the window
+ * covers exactly the candles the plot shows. No clamp here: every viewport
+ * reaching this fn already satisfies `0 <= start <= end <= len`
+ * (`clampViewport` et al. enforce it upstream), so `start/len` and `end/len`
+ * already land in [0, 1] without re-guarding.
+ */
+export function navigatorWindowScene(
+  viewport: ChartViewport,
+  seriesLen: number,
+): NavigatorWindowScene {
+  if (seriesLen === 0) {
+    return { left: 0, w: 100 };
+  }
+
+  const leftPct = (viewport.start / seriesLen) * 100;
+  const rightPct = (viewport.end / seriesLen) * 100;
+  return { left: leftPct, w: rightPct - leftPct };
+}
+
 export function volumeScene(
   series: readonly ChartCandle[],
   viewport?: ChartViewport,
