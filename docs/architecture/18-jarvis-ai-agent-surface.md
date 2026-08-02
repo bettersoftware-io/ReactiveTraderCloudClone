@@ -1191,5 +1191,25 @@ couple two unrelated deliverables. It stays deferred to whichever phase
 builds that channel; `docs/STATUS.md`'s Jarvis entry carries the current
 wording.
 
+### SDK version posture (assessed 2026-08-02)
+
+The endpoint pins `@modelcontextprotocol/sdk` **^1.30.0** — npm's `latest`,
+and the registry's ONLY dist-tag (no `next`/`beta` exists). The repo's main
+branch carries **2.0.0-alpha** work: web-standard `Request`/`Response`
+transports (portable to Bun/Deno/edge), a scoped-package monorepo split, and
+higher-level handler factories (`createMcpHandler`) with the
+stateless-per-POST pattern this endpoint hand-rolls. Assessed and DECIDED:
+**stay on 1.x, revisit at 2.0 GA** — v2 is ergonomics and portability, not
+capability (nothing our endpoint lacks); the SDK version is invisible to MCP
+clients (they speak the *protocol*, which 1.30 tracks); and an unpublished
+alpha fails the repo's supply-chain posture (24h cooldown, stable ranges).
+The migration cost is deliberately tiny by architecture: the SDK touches
+exactly two files behind our own seam (`buildJarvisMcpServer`,
+`mcpHttpHandler`), the registry is SDK-free raw JSON Schema, and the P4
+tests pin behavior, not SDK shape — a 2.0 adoption is roughly a transport
+class swap. That upgrade path being cheap is not luck; it is what the
+`no-mcp-sdk-outside-server` confinement and the transport-neutral registry
+were for.
+
 Phase-4 open items are tracked in [`docs/STATUS.md`](../STATUS.md) under the
 Jarvis entry.
