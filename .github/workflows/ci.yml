@@ -102,6 +102,9 @@ jobs:
       - name: Presenter manifest drift (web ↔ React Native)
         run: pnpm check:manifest-drift
 
+      - name: Prototype deviation corpus (manifest ↔ tree)
+        run: pnpm check:prototype-shots
+
       - name: Playwright container image tag drift (single-source pin)
         run: pnpm check:image-tag-drift
 
