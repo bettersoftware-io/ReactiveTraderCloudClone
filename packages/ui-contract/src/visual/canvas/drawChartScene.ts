@@ -21,6 +21,12 @@ export const SPIKE_PALETTE: ChartPalette = {
   grid: "#2b2d42",
 };
 
+/** Pixel dimensions of the canvas `drawChartScene` renders into. */
+export interface CanvasSize {
+  readonly w: number;
+  readonly h: number;
+}
+
 /**
  * Framework-free Canvas-2D chart renderer: draws a ChartScene's geometry
  * (grid lines, candle wicks, candle bodies) onto a 2D context. Geometry
@@ -34,7 +40,7 @@ export function drawChartScene(
   ctx: CanvasRenderingContext2D,
   scene: ChartScene,
   palette: ChartPalette,
-  size: { readonly w: number; readonly h: number },
+  size: CanvasSize,
 ): void {
   ctx.clearRect(0, 0, size.w, size.h);
   ctx.strokeStyle = palette.grid;
