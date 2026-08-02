@@ -1,3 +1,12 @@
+export { chartVmFromScene, volumeBarsFromScene } from "./chartCssVars.js";
+export type {
+  ChartScene,
+  SceneCandle,
+  SceneGridLine,
+  SceneLabel,
+  VolumeSceneBar,
+} from "./chartScene.js";
+export { chartScene, volumeScene } from "./chartScene.js";
 export type { ChartViewport, ViewportEdge } from "./chartViewport.js";
 export {
   centerViewportAt,
