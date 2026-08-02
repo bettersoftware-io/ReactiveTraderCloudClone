@@ -89,6 +89,20 @@ export {
   navigatorVm,
   navigatorWindowStyle,
 } from "./navigatorVm.js";
+export type {
+  EqPaneKind,
+  PaneBar,
+  PaneGuide,
+  PaneLine,
+  PaneReadoutRow,
+  PaneScene,
+} from "./paneScene.js";
+export {
+  PANE_Y_SPAN,
+  PANE_Y_TOP,
+  paneReadout,
+  paneScene,
+} from "./paneScene.js";
 export type { MacdSeries } from "./paneSeries.js";
 export {
   MACD_FAST,
