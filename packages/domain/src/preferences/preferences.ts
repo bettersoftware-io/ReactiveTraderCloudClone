@@ -262,3 +262,55 @@ export function isPowerSaverLevel(
 ): value is PowerSaverLevel {
   return value === "off" || value === "calm" || value === "freeze";
 }
+
+/** Which AI brain powers the Jarvis desk assistant. `"scripted"` is the
+ * transport-neutral scripted brain (`@rtc/shared`'s `ScriptedAgentLoop`,
+ * timer-driven canned responses, no network call); the `claude-*` entries
+ * select a live Claude model via the server's Anthropic-backed agent loop. */
+export type JarvisBrain =
+  | "scripted"
+  | "claude-haiku-4-5"
+  | "claude-sonnet-5"
+  | "claude-opus-5";
+
+/** Selectable Jarvis brains, in picker order (cheapest/offline first). */
+export const JARVIS_BRAINS: readonly JarvisBrain[] = [
+  "scripted",
+  "claude-haiku-4-5",
+  "claude-sonnet-5",
+  "claude-opus-5",
+];
+
+export const DEFAULT_JARVIS_BRAIN: JarvisBrain = "claude-haiku-4-5";
+
+/** Storage/type guard — a valid stored brain string. */
+export function isJarvisBrain(value: unknown): value is JarvisBrain {
+  return (JARVIS_BRAINS as readonly unknown[]).includes(value);
+}
+
+/** The thinking-effort budget passed to a live Claude brain (Anthropic's
+ * `effort` request parameter). Ignored by the `"scripted"` brain, which has
+ * no notion of effort. */
+export type JarvisEffort = "low" | "medium" | "high";
+
+/** Selectable Jarvis effort levels, in picker order. */
+export const JARVIS_EFFORTS: readonly JarvisEffort[] = [
+  "low",
+  "medium",
+  "high",
+];
+
+export const DEFAULT_JARVIS_EFFORT: JarvisEffort = "medium";
+
+/** Storage/type guard — a valid stored effort string. */
+export function isJarvisEffort(value: unknown): value is JarvisEffort {
+  return (JARVIS_EFFORTS as readonly unknown[]).includes(value);
+}
+
+/** UI/footer display names — the wire and storage always use the id. */
+export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
+  scripted: "scripted",
+  "claude-haiku-4-5": "Haiku 4.5",
+  "claude-sonnet-5": "Sonnet 5",
+  "claude-opus-5": "Opus 5",
+};

@@ -21,9 +21,11 @@ afterEach(() => {
 
 describe("JarvisOrb", () => {
   it("renders nothing when the Jarvis backend reports unavailable", () => {
-    // createWorld's positional seeds, up to the 18th (jarvisAvailabilitySeed)
-    // — mirrors OrderTicket.contract.spec.ts's own long-undefined-run form,
-    // the existing convention for reaching a late positional seed.
+    // createWorld's positional seeds, up to the 18th (jarvisAvailabilitySeed
+    // — the structured JarvisAvailability since Task 10, not a plain
+    // boolean) — mirrors OrderTicket.contract.spec.ts's own
+    // long-undefined-run form, the existing convention for reaching a late
+    // positional seed.
     const world = createWorld(
       undefined,
       undefined,
@@ -42,7 +44,7 @@ describe("JarvisOrb", () => {
       undefined,
       undefined,
       undefined,
-      false,
+      { available: false, brains: [], defaultBrain: "scripted" },
     );
     const orb = mountWith(world, JarvisOrb);
 

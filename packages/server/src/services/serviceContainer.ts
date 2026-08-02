@@ -20,6 +20,7 @@ import {
 } from "@rtc/domain";
 
 import { ThroughputService } from "./ThroughputService.js";
+import { UsageMeter } from "./UsageMeter.js";
 
 export interface ServiceContainer {
   readonly referenceData: ReferenceDataSimulator;
@@ -35,6 +36,7 @@ export interface ServiceContainer {
   readonly marketData: MarketDataPort;
   readonly orders: OrderPort;
   readonly positions: PositionPort;
+  readonly usageMeter: UsageMeter;
 }
 
 export function createServices(): ServiceContainer {
@@ -50,6 +52,7 @@ export function createServices(): ServiceContainer {
   const dealers = new DealerSimulator();
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
   const throughput = new ThroughputService();
+  const usageMeter = new UsageMeter();
   const marketData = new EquityMarketDataSimulator();
   const positions = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
@@ -75,5 +78,6 @@ export function createServices(): ServiceContainer {
     marketData,
     orders,
     positions,
+    usageMeter,
   };
 }

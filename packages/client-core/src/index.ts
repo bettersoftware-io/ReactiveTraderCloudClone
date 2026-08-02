@@ -3,6 +3,7 @@ export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/jarvisPort";
+export * from "#/adapters/jarvisUsagePort";
 export * from "#/adapters/portFactory";
 export * from "#/adapters/ScriptedJarvisAdapter";
 export * from "#/adapters/sessionStore";

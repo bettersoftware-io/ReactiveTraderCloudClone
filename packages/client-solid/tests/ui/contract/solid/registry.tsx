@@ -37,6 +37,7 @@ import {
   InstrumentTabs,
   JarvisOrb,
   JarvisOverlay,
+  JarvisUsageCard,
   KpiRow,
   LatencyHistogram,
   LayoutEngine,
@@ -129,6 +130,7 @@ import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashb
 import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
 import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { JarvisUsageCard as JarvisUsageCardComponent } from "#/ui/admin/jarvis/JarvisUsageCard";
 import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
 import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
 import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
@@ -1110,6 +1112,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     AdminHead,
     (): JSX.Element => {
       return <AdminHeadComponent />;
+    },
+  ],
+  [
+    JarvisUsageCard,
+    (): JSX.Element => {
+      return <JarvisUsageCardComponent />;
     },
   ],
 ]);

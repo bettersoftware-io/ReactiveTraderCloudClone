@@ -34,11 +34,11 @@
 }
 
 /* Retained row — real-app extras the prototype never modelled (topology,
-   sessions, incident controls, throughput control), as four equal-width
-   prototype-grade cards. */
+   sessions, incident controls, throughput control, Jarvis usage), as five
+   equal-width prototype-grade cards. */
 .retained {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   grid-auto-rows: minmax(220px, auto);
   gap: 12px;
 }

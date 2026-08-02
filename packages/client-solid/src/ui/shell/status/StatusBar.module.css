@@ -19,6 +19,11 @@
   color: var(--text-muted);
 }
 
+.jarvisChip {
+  color: var(--accent-primary);
+  white-space: nowrap;
+}
+
 .metrics {
   display: flex;
   align-items: center;

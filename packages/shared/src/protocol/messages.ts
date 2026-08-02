@@ -39,6 +39,8 @@ export const CLIENT_MSG = {
   // Admin
   GET_THROUGHPUT: "admin.getThroughput",
   SET_THROUGHPUT: "admin.setThroughput",
+  // Subscribes to periodic JarvisUsageSnapshot pushes (see SERVER_MSG.ADMIN_JARVIS_USAGE).
+  ADMIN_JARVIS_USAGE_SUBSCRIBE: "admin.jarvisUsage.subscribe",
   // Equities
   SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
   SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
@@ -87,6 +89,8 @@ export const SERVER_MSG = {
   // Admin
   THROUGHPUT_RESPONSE: "admin.getThroughput.response",
   SET_THROUGHPUT_RESPONSE: "admin.setThroughput.response",
+  // JarvisUsageSnapshot push, sent in reply to CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE.
+  ADMIN_JARVIS_USAGE: "admin.jarvisUsage",
   // Equities
   WATCHLIST: "stream.watchlist",
   EQ_QUOTE: "stream.eqQuote",

@@ -2,7 +2,13 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { AmbientStyle, LoginWaitDelay, LoginWaitStyle } from "@rtc/domain";
+import type {
+  AmbientStyle,
+  JarvisBrain,
+  JarvisEffort,
+  LoginWaitDelay,
+  LoginWaitStyle,
+} from "@rtc/domain";
 
 export interface PreferencesModalProps {
   open: boolean;
@@ -212,6 +218,35 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   async selectAmbientStyle(style: AmbientStyle): Promise<void> {
     await this.selectSegment("ambientStyle", style);
   }
+
+  /** True when the given Jarvis brain option is disabled (native `disabled`
+   * attribute — a real brain the server isn't currently offering; "scripted"
+   * is never disabled). */
+  jarvisBrainDisabled(brain: JarvisBrain): boolean {
+    return within(this.root)
+      .getByTestId(`pref-segment-jarvisBrain-${brain}`)
+      .hasAttribute("disabled");
+  }
+
+  /** True when the whole Jarvis "Effort" row is disabled (every option's
+   * native `disabled` — the row-level disable while the stored brain is
+   * "scripted"). Checked via one option since the row-level `disabled` prop
+   * applies uniformly to all of them. */
+  jarvisEffortDisabled(): boolean {
+    return within(this.root)
+      .getByTestId("pref-segment-jarvisEffort-low")
+      .hasAttribute("disabled");
+  }
+
+  /** Each brain written through useJarvisPreferences().setBrain, in order. */
+  jarvisBrainSets(): JarvisBrain[] {
+    return this.commandLog().jarvisBrainSets;
+  }
+
+  /** Each effort written through useJarvisPreferences().setEffort, in order. */
+  jarvisEffortSets(): JarvisEffort[] {
+    return this.commandLog().jarvisEffortSets;
+  }
 }
 
 /** The section headings the modal renders. Kept as a set so `sectionsInColumn`
@@ -223,4 +258,5 @@ const SECTION_LABELS = new Set([
   "TRADING",
   "NOTIFICATIONS",
   "DATA & PRIVACY",
+  "JARVIS",
 ]);

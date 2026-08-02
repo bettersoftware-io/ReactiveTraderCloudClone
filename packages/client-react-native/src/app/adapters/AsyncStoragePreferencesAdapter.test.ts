@@ -8,6 +8,8 @@ import {
   DEFAULT_BOOT_VARIANT,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_VIEW_MODE,
   LOGIN_WAIT_VARIANTS,
@@ -310,6 +312,57 @@ test("falls back to the default jarvisSkin when the stored value is unknown", as
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.jarvisSkin$());
   expect(first).toBe("singularity");
+});
+
+test("emits the default jarvisBrain and jarvisEffort synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.jarvisBrain$())).toBe(DEFAULT_JARVIS_BRAIN);
+  expect(await firstValueFrom(prefs.jarvisEffort$())).toBe(
+    DEFAULT_JARVIS_EFFORT,
+  );
+});
+
+test("hydrates a stored, non-default jarvisBrain and jarvisEffort after construction", async () => {
+  store.set("rt-jarvis-brain", "claude-opus-5");
+  store.set("rt-jarvis-effort", "high");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydratedBrain$ = firstValueFrom(
+    prefs.jarvisBrain$().pipe(skip(1), take(1)),
+  );
+
+  const hydratedEffort$ = firstValueFrom(
+    prefs.jarvisEffort$().pipe(skip(1), take(1)),
+  );
+  expect(await hydratedBrain$).toBe("claude-opus-5");
+  expect(await hydratedEffort$).toBe("high");
+});
+
+test("setJarvisBrain/setJarvisEffort write through to AsyncStorage and emit", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setJarvisBrain("claude-sonnet-5");
+  prefs.setJarvisEffort("low");
+  expect(await firstValueFrom(prefs.jarvisBrain$())).toBe("claude-sonnet-5");
+  expect(await firstValueFrom(prefs.jarvisEffort$())).toBe("low");
+  expect(store.get("rt-jarvis-brain")).toBe("claude-sonnet-5");
+  expect(store.get("rt-jarvis-effort")).toBe("low");
+});
+
+test("falls back to the default jarvisBrain and jarvisEffort when the stored values are unknown", async () => {
+  store.set("rt-jarvis-brain", "not-a-real-brain");
+  store.set("rt-jarvis-effort", "not-a-real-effort");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.jarvisBrain$())).toBe(DEFAULT_JARVIS_BRAIN);
+  expect(await firstValueFrom(prefs.jarvisEffort$())).toBe(
+    DEFAULT_JARVIS_EFFORT,
+  );
+});
+
+test("hydrate() seeds a stored jarvisBrain and jarvisEffort on the first emission", async () => {
+  store.set("rt-jarvis-brain", "claude-opus-5");
+  store.set("rt-jarvis-effort", "high");
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.jarvisBrain$())).toBe("claude-opus-5");
+  expect(await firstValueFrom(prefs.jarvisEffort$())).toBe("high");
 });
 
 test("emits the default login-wait variant synchronously on construction", async () => {

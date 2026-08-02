@@ -13,6 +13,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -24,8 +26,12 @@ import {
   EQ_WATCHLIST_SORTS,
   type EqBlotterView,
   type EqWatchlistSort,
+  isJarvisBrain,
+  isJarvisEffort,
   isPowerSaverLevel,
   JARVIS_SKINS,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
@@ -56,6 +62,8 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
+export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
+export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
 
 function isThemeModePreference(
   value: string | null,
@@ -220,6 +228,10 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
+  private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
+
+  private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       readStored(
@@ -297,6 +309,16 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       readStored(JARVIS_SKIN_STORAGE_KEY, isJarvisSkin, DEFAULT_JARVIS_SKIN),
+    );
+    this.jarvisBrainSubject = new BehaviorSubject<JarvisBrain>(
+      readStored(JARVIS_BRAIN_STORAGE_KEY, isJarvisBrain, DEFAULT_JARVIS_BRAIN),
+    );
+    this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
+      readStored(
+        JARVIS_EFFORT_STORAGE_KEY,
+        isJarvisEffort,
+        DEFAULT_JARVIS_EFFORT,
+      ),
     );
   }
 
@@ -433,5 +455,23 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setJarvisSkin(skin: JarvisSkin): void {
     writeStored(JARVIS_SKIN_STORAGE_KEY, skin);
     this.jarvisSkin.next(skin);
+  }
+
+  jarvisBrain$(): Observable<JarvisBrain> {
+    return this.jarvisBrainSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisBrain(brain: JarvisBrain): void {
+    writeStored(JARVIS_BRAIN_STORAGE_KEY, brain);
+    this.jarvisBrainSubject.next(brain);
+  }
+
+  jarvisEffort$(): Observable<JarvisEffort> {
+    return this.jarvisEffortSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisEffort(effort: JarvisEffort): void {
+    writeStored(JARVIS_EFFORT_STORAGE_KEY, effort);
+    this.jarvisEffortSubject.next(effort);
   }
 }

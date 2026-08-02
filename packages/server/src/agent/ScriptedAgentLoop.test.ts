@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_JARVIS_BRAIN, JARVIS_BRAINS } from "@rtc/domain";
 import type { JarvisEvent } from "@rtc/shared";
 
 import {
   createServices,
   type ServiceContainer,
 } from "../services/serviceContainer.js";
-import { createAgentLoop } from "./agentLoop.js";
+import { createJarvisLoops } from "./agentLoop.js";
 
 const HELP_REPLY =
   "At your service, sir. I can quote the majors, report the movers, brief you on the desk, " +
@@ -33,20 +34,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("createAgentLoop", () => {
+describe("createJarvisLoops", () => {
   it("returns null when neither RTC_JARVIS_FAKE nor ANTHROPIC_API_KEY is set", () => {
     const services = createServices();
 
-    expect(createAgentLoop({}, services)).toBeNull();
+    expect(createJarvisLoops({}, services)).toBeNull();
   });
 
   it("returns null and warns once when ANTHROPIC_API_KEY is set but no builder is wired", () => {
     const services = createServices();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const loop = createAgentLoop({ ANTHROPIC_API_KEY: "sk-test" }, services);
+    const loops = createJarvisLoops({ ANTHROPIC_API_KEY: "sk-test" }, services);
 
-    expect(loop).toBeNull();
+    expect(loops).toBeNull();
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       "ANTHROPIC_API_KEY set but the Anthropic loop is not wired",
@@ -54,26 +55,29 @@ describe("createAgentLoop", () => {
     warn.mockRestore();
   });
 
-  it("RTC_JARVIS_FAKE=1 wins even when ANTHROPIC_API_KEY is also set", () => {
+  it("RTC_JARVIS_FAKE=1 wins even when ANTHROPIC_API_KEY is also set, yielding the scripted-only shape", () => {
     const services = createServices();
     const buildAnthropicLoop = vi.fn();
 
-    const loop = createAgentLoop(
+    const loops = createJarvisLoops(
       { RTC_JARVIS_FAKE: "1", ANTHROPIC_API_KEY: "sk-test" },
       services,
       buildAnthropicLoop,
     );
 
-    expect(loop).not.toBeNull();
+    expect(loops).not.toBeNull();
     expect(buildAnthropicLoop).not.toHaveBeenCalled();
+    expect(loops?.anthropic).toBeNull();
+    expect(loops?.brains).toEqual(["scripted"]);
+    expect(loops?.defaultBrain).toBe("scripted");
   });
 
-  it("ANTHROPIC_API_KEY alone (no RTC_JARVIS_FAKE) invokes the injected builder and returns its loop — Task 6's key branch", () => {
+  it("ANTHROPIC_API_KEY alone (no RTC_JARVIS_FAKE) invokes the injected builder and returns the dual-loop shape", () => {
     const services = createServices();
     const fakeLoop = { createSession: vi.fn() };
     const buildAnthropicLoop = vi.fn().mockReturnValue(fakeLoop);
 
-    const loop = createAgentLoop(
+    const loops = createJarvisLoops(
       { ANTHROPIC_API_KEY: "sk-test" },
       services,
       buildAnthropicLoop,
@@ -83,20 +87,23 @@ describe("createAgentLoop", () => {
       { ANTHROPIC_API_KEY: "sk-test" },
       services,
     );
-    expect(loop).toBe(fakeLoop);
+    expect(loops?.anthropic).toBe(fakeLoop);
+    expect(loops?.scripted).toBeDefined();
+    expect(loops?.brains).toEqual(JARVIS_BRAINS);
+    expect(loops?.defaultBrain).toBe(DEFAULT_JARVIS_BRAIN);
   });
 
   it("returns a scripted loop when RTC_JARVIS_FAKE=1, streaming the paced help reply then completing", async () => {
     const services = createServices();
-    const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+    const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    expect(loop).not.toBeNull();
+    expect(loops).not.toBeNull();
 
-    if (!loop) {
-      throw new Error("expected a non-null AgentLoop");
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
     }
 
-    const session = loop.createSession();
+    const session = loops.scripted.createSession();
     const events: JarvisEvent[] = [];
     const done = new Promise<void>((resolve) => {
       session.runTurn("what can you do?", []).subscribe({
@@ -121,13 +128,13 @@ describe("createAgentLoop", () => {
 
   it("a trade turn's confirmRequest, once resolved true, executes through the container and grows the blotter's trade stream", async () => {
     const services: ServiceContainer = createServices();
-    const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+    const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    if (!loop) {
-      throw new Error("expected a non-null AgentLoop");
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
     }
 
-    const session = loop.createSession();
+    const session = loops.scripted.createSession();
     const tradeCounts: number[] = [];
     services.blotter.getTradeStream().subscribe((trades) => {
       tradeCounts.push(trades.length);
@@ -169,14 +176,14 @@ describe("createAgentLoop", () => {
 
   it("a confirmation issued by one session cannot be resolved via a different session from the same loop (P2 cross-socket-forgery guard)", async () => {
     const services: ServiceContainer = createServices();
-    const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+    const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    if (!loop) {
-      throw new Error("expected a non-null AgentLoop");
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
     }
 
-    const sessionA = loop.createSession();
-    const sessionB = loop.createSession();
+    const sessionA = loops.scripted.createSession();
+    const sessionB = loops.scripted.createSession();
     const tradeCounts: number[] = [];
     services.blotter.getTradeStream().subscribe((trades) => {
       tradeCounts.push(trades.length);
@@ -222,13 +229,13 @@ describe("createAgentLoop", () => {
 
   it("cancelTurn makes a late resolveConfirmation a no-op and does not execute", async () => {
     const services: ServiceContainer = createServices();
-    const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+    const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-    if (!loop) {
-      throw new Error("expected a non-null AgentLoop");
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
     }
 
-    const session = loop.createSession();
+    const session = loops.scripted.createSession();
     const tradeCounts: number[] = [];
     services.blotter.getTradeStream().subscribe((trades) => {
       tradeCounts.push(trades.length);
