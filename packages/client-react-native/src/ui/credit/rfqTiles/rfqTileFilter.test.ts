@@ -8,8 +8,33 @@ test("RFQ_FILTERS lists the three shared tabs in order", () => {
   expect(RFQ_FILTERS).toEqual(["live", "closed", "all"]);
 });
 
-test("live keeps only Open RFQs", () => {
+test("live keeps Open RFQs", () => {
+  const rfqs = [rfq(1, RfqState.Open, 1), rfq(3, RfqState.Expired, 3)];
+  expect(ids(filterRfqs(rfqs, "live", new Set()))).toEqual([1]);
+});
+
+// THE ACCEPT LINGER, and the only place it can be asserted. Encoding it as an
+// exit-animation duration cannot work — the exiting element is the pre-accept
+// snapshot — so the linger lives here, as a filter property, with no timer and
+// nothing for jest to be blind to.
+test("live KEEPS a traded rfq so its ACCEPTED stamp can be read", () => {
   const rfqs = [rfq(1, RfqState.Open, 1), rfq(2, RfqState.Closed, 2)];
+  expect([...ids(filterRfqs(rfqs, "live", new Set()))].sort()).toEqual([1, 2]);
+});
+
+test("live drops a traded rfq once it is dismissed", () => {
+  const rfqs = [rfq(1, RfqState.Open, 1), rfq(2, RfqState.Closed, 2)];
+  expect(ids(filterRfqs(rfqs, "live", new Set([2])))).toEqual([1]);
+});
+
+// Only a TRADE earns the acknowledgement. An expired or cancelled rfq has
+// nothing to stamp, so it leaves immediately.
+test("live drops expired and cancelled rfqs immediately", () => {
+  const rfqs = [
+    rfq(1, RfqState.Open, 1),
+    rfq(3, RfqState.Expired, 3),
+    rfq(4, RfqState.Cancelled, 4),
+  ];
   expect(ids(filterRfqs(rfqs, "live", new Set()))).toEqual([1]);
 });
 

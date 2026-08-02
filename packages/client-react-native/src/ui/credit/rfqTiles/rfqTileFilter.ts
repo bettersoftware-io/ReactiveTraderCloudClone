@@ -24,7 +24,17 @@ function filterMatches(state: RfqState, filter: CreditRfqFilter): boolean {
     case "all":
       return true;
     case "live":
-      return state === RfqState.Open;
+      // A TRADED rfq stays in LIVE until it is dismissed — the prototype's own
+      // rule (dc.html:2127-2129: "freshly-accepted cards linger in LIVE so the
+      // ACCEPTED stamp reads before they leave"), and the only way the stamp is
+      // ever seen. Encoding the linger as the exit animation's duration cannot
+      // work: React drops the card from this list the instant its state turns
+      // Closed, so the element Reanimated animates out is the PRE-ACCEPT
+      // snapshot — it carries no stamp, and it reads the Open branch of
+      // `exitMsFor`. Measured on device: a 200ms fade of a card still showing
+      // ACCEPT buttons. Expired and Cancelled are NOT kept; only a trade earns
+      // an acknowledgement.
+      return state === RfqState.Open || state === RfqState.Closed;
     case "closed":
       return state !== RfqState.Open;
   }
