@@ -38,4 +38,18 @@ describe("protocol messages", () => {
     expect(CLIENT_MSG.JARVIS_SUBSCRIBE).toBe("jarvis.subscribe");
     expect(SERVER_MSG.JARVIS_AVAILABILITY).toBe("jarvis.availability");
   });
+
+  it("includes the Jarvis usage-snapshot wire names", () => {
+    expect(CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE).toBe(
+      "admin.jarvisUsage.subscribe",
+    );
+    expect(SERVER_MSG.ADMIN_JARVIS_USAGE).toBe("admin.jarvisUsage");
+  });
+
+  it("keeps every CLIENT_MSG and SERVER_MSG wire name unique within its own map", () => {
+    const clientValues = Object.values(CLIENT_MSG);
+    const serverValues = Object.values(SERVER_MSG);
+    expect(new Set(clientValues).size).toBe(clientValues.length);
+    expect(new Set(serverValues).size).toBe(serverValues.length);
+  });
 });
