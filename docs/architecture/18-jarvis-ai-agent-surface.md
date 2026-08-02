@@ -796,7 +796,7 @@ quality tuning:
 | `JARVIS_MAX_TURNS_PER_SESSION` | 40 | a session that never ends |
 | `JARVIS_HISTORY_MAX_MESSAGES` | 30 | replayed context, billed on *every* later turn |
 
-`JARVIS_EFFORT` deserves its own line: thinking is adaptive-by-default at `"high"`
+`JARVIS_EFFORT` deserves its own line (**superseded** — the constant is gone; effort now comes from the user preference, defaulting to domain's `DEFAULT_JARVIS_EFFORT`, and is sent only to effort-capable brains — see [§18.15](#1815-the-brain-picker--usage-display-round--the-receipt)): thinking is adaptive-by-default at `"high"`
 on this model and draws from the **same** `max_tokens` ceiling as the visible
 reply, so an unbounded-effort tool-heavy turn can burn the entire budget thinking
 and deliver nothing but a truncation notice. `"medium"` is a cost/quality tradeoff

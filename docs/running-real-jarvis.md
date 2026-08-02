@@ -12,7 +12,7 @@ bill-safety knobs that exist today. The architecture behind all of this is
 
 | Env | Effect |
 |---|---|
-| `ANTHROPIC_API_KEY` set | `AnthropicAgentLoop` — the real `claude-opus-5` tool-runner loop |
+| `ANTHROPIC_API_KEY` set | `AnthropicAgentLoop` — the real tool-runner loop (default brain `claude-haiku-4-5`; per-user model choice via Preferences → JARVIS, see §18.15) |
 | `RTC_JARVIS_FAKE=1` | `ScriptedAgentLoop` — **wins over the key** (deliberate rehearsal override) |
 | neither | Jarvis unavailable: server answers `available:false`, the orb hides |
 
