@@ -327,8 +327,28 @@ export function createJarvisMachine(
   // a patch — and, per wireJarvisHistorySource's doc in composition.ts,
   // state$'s getValue() isn't reliably synchronous, so a mutable cache
   // updated by the one live subscription is the same pattern used there.
+  // Seeded to match INITIAL (available, every selectable brain offered),
+  // NOT DEFAULT_AVAILABILITY (the sim-mode scripted-only fallback) — this
+  // cache is what a same-tick send() reads before the FIRST
+  // availabilityPatches$ emission lands, and in WS-real mode that first
+  // emission is a genuine round-trip (availability$ emits nothing until
+  // JARVIS_AVAILABILITY replies, unbounded while the socket is still
+  // connecting — WsAdapter buffers pre-open sends, so a send() in that
+  // window is real, not hypothetical). Seeding this with the scripted-only
+  // shape would silently pin brain:"scripted" onto that first turn even
+  // though the desk's real brain roster hasn't been ruled out yet — the
+  // server honors the brain a keyed turn carries, so the user would get a
+  // canned scripted reply instead of the real model. Sim mode is
+  // unaffected: `availabilitySource$`'s `of(DEFAULT_AVAILABILITY)` fallback
+  // still emits synchronously and corrects this cache (see
+  // availabilityPatches$ below) before the machine is even returned to the
+  // caller, well before any send() can fire.
   let available = true;
-  let availability: JarvisAvailability = DEFAULT_AVAILABILITY;
+  let availability: JarvisAvailability = {
+    available: true,
+    brains: JARVIS_BRAINS,
+    defaultBrain: DEFAULT_JARVIS_BRAIN,
+  };
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
   let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;
   let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;

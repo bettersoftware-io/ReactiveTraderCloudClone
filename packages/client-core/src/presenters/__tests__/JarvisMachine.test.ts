@@ -1,4 +1,4 @@
-import { of } from "rxjs";
+import { NEVER, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
@@ -785,6 +785,48 @@ describe("createJarvisMachine", () => {
       });
     });
 
+    it("REGRESSION: a send() before availability$ has EVER emitted (WS-real's pre-round-trip window) carries the preferred brain, not a scripted-only cache seed", () => {
+      // The bug this pins: the synchronous `availability`/`preferredBrain`
+      // caches send() reads at call time were previously seeded from
+      // DEFAULT_AVAILABILITY (sim mode's scripted-only fallback), NOT from
+      // INITIAL — inconsistent with the visible INITIAL state, and wrong
+      // for WS-real mode specifically: availability$ emits nothing until
+      // the JARVIS_AVAILABILITY round-trip replies, which is unbounded
+      // while the socket is still connecting (WsAdapter buffers pre-open
+      // sends, so a send() in that window is real, not hypothetical). A
+      // scripted-only seed would silently pin brain:"scripted" onto that
+      // first turn — the server honors the brain a keyed turn carries, so
+      // the user would get a canned scripted reply where, pre-round, they
+      // got the real model. `availability$: NEVER` reproduces exactly that
+      // window: it never emits, so the cache is never corrected before
+      // send() reads it.
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: NEVER,
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["claude-opus-5"]);
+    });
+
     it("an availability flip mid-session re-resolves effectiveBrain against the same preferred brain", () => {
       const ts = scheduler();
       ts.run(({ cold, flush }) => {
@@ -818,13 +860,15 @@ describe("createJarvisMachine", () => {
         // (a cold marble, not yet fired at subscribe time), preferredBrain$
         // is a plain synchronous `of(...)` — it already folds during
         // machine construction, before this test's own subscribe, resolving
-        // against the (still-default) availability cache. "claude-opus-5"
-        // isn't offered by the DEFAULT_AVAILABILITY sim-default
-        // (["scripted"] only), so it's already "scripted" by subscribe
-        // time. The cold availability$'s own frame-0 "a" patch re-resolves
-        // to the same "scripted" (still not offered); frame "b" finally
-        // offers "claude-opus-5" and the preferred brain wins.
-        expect(seen).toEqual(["scripted", "scripted", "claude-opus-5"]);
+        // against the availability CACHE's own seed. That seed matches
+        // INITIAL (every selectable brain offered — see the "before
+        // availability$ has EVER emitted" regression test above for why),
+        // so "claude-opus-5" already resolves at this point. The cold
+        // availability$'s own frame-0 "a" patch then NARROWS the offering
+        // to `["scripted"]` — "claude-opus-5" is no longer offered, so it
+        // falls back to "scripted"; frame "b" widens it back and the
+        // preferred brain wins again.
+        expect(seen).toEqual(["claude-opus-5", "scripted", "claude-opus-5"]);
       });
     });
 
@@ -894,6 +938,84 @@ describe("createJarvisMachine", () => {
           }, 3);
         },
       );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["scripted", "claude-opus-5"]);
+    });
+
+    it("REGRESSION: a queued turn resolves brain/effort at DEQUEUE time, not enqueue time — a preference flip while turn 1 is in flight re-prices the already-queued turn 2", () => {
+      // Real-money consequence this pins: the user starts turn 1 on the
+      // cheap/scripted brain, queues turn 2 while turn 1 is still
+      // streaming, then flips their brain preference before turn 1
+      // finishes. concatMap only PROJECTS (and this machine only
+      // RESOLVES effectiveBrain) once the queue actually dequeues — same
+      // "read the live cache at projector time" semantics the P3
+      // `available` gate already relies on — so the already-queued turn 2
+      // is billed at the NEW brain, not the one that was preferred when it
+      // was enqueued.
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a-b-c-(d|)", {
+            a: { type: "delta", text: "EUR" },
+            b: { type: "delta", text: "USD" },
+            c: { type: "delta", text: " is up" },
+            d: { type: "done" },
+          });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-opus-5"],
+              defaultBrain: "scripted",
+            }),
+            // Relative to ITS OWN subscribe at machine-construction time
+            // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
+            // at frame 0, flips to "claude-opus-5" at frame 6 — strictly
+            // between turn 2's frame-4 enqueue and turn 1's frame-7 done,
+            // so the flip lands while turn 2 is queued but not yet
+            // dequeued.
+            preferredBrain$: ts.createColdObservable<JarvisBrain>("a-----b", {
+              a: "scripted",
+              b: "claude-opus-5",
+            }),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          // Turn 1's own deltas land at frames 1/3/5 and done at frame 7
+          // (see the mid-turn availability test above for the same frame
+          // math) — frame 4 is strictly between the "USD" delta (frame 3)
+          // and the " is up" delta (frame 5), so turn 1 is genuinely still
+          // in flight and concatMap actually queues this rather than
+          // starting it immediately.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 4);
+        },
+      );
+
+      // Turn 2 only starts (phase -> speaking for its own entry pair)
+      // once turn 1's done has folded — proving it was truly queued, not
+      // run concurrently.
+      const turn1Done = states.findIndex((s) => {
+        return s.entries.at(-1)?.text === "EURUSD is up";
+      });
+
+      const turn2Started = states.findIndex((s) => {
+        return s.entries.some((e) => {
+          return e.role === "user" && e.text === "second";
+        });
+      });
+      expect(turn2Started).toBeGreaterThan(turn1Done);
 
       expect(
         port?.askCalls.map((c) => {
