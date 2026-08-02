@@ -26,16 +26,19 @@ function pngIds(dir: string): string[] {
   }
 
   const out: string[] = [];
-  const walk = (current: string): void => {
+
+  function walk(current: string): void {
     for (const name of readdirSync(current)) {
       const full = join(current, name);
+
       if (statSync(full).isDirectory()) {
         walk(full);
       } else if (name.endsWith(".png")) {
         out.push(relative(SHOTS_DIR, full).replace(/\.png$/, ""));
       }
     }
-  };
+  }
+
   walk(dir);
 
   return out;
@@ -49,13 +52,23 @@ function expectedPath(shot: Shot): string {
 const expected = new Set(SHOTS.map(expectedPath));
 const found = new Set(pngIds(SHOTS_DIR));
 
-const missing = [...expected].filter((id) => !found.has(id)).sort();
-const orphaned = [...found].filter((id) => !expected.has(id)).sort();
+const missing = [...expected]
+  .filter((id) => {
+    return !found.has(id);
+  })
+  .sort();
+
+const orphaned = [...found]
+  .filter((id) => {
+    return !expected.has(id);
+  })
+  .sort();
 
 if (missing.length > 0) {
   console.error(
     `check-prototype-shots: ${missing.length} manifest entries have no PNG:`,
   );
+
   for (const id of missing) {
     console.error(`  - ${id}`);
   }
@@ -65,6 +78,7 @@ if (orphaned.length > 0) {
   console.error(
     `check-prototype-shots: ${orphaned.length} PNGs have no manifest entry:`,
   );
+
   for (const id of orphaned) {
     console.error(`  - ${id}`);
   }

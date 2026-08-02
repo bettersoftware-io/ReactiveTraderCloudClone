@@ -34,12 +34,25 @@ const DOCK_FAB = "button.scp4";
  * elements on that screen. Not exported, for the same reason as DOCK_FAB. */
 const SPOT_TILE = "[data-flip]";
 
-/** What proves the shot actually arrived. A positive assertion — never "the
- * launcher isn't showing". See the spec's §7 (T2/T7).
+/** What proves the shot actually arrived. Always a POSITIVE assertion — never
+ * "the launcher isn't showing". See the spec's §7 (T2/T7).
+ *
+ * Every field set is checked, and at least one must be.
  *
  * Not exported: it is reachable structurally through `Shot["arrival"]`, so an
  * exported alias nothing imports by name would just be dead surface. */
-type Arrival = { readonly text: string };
+type Arrival = {
+  /** Visible DOM text. Unusable for boot shots — the scenes are painted into a
+   * canvas, so their names exist only as pixels. */
+  readonly text?: string;
+  /** A selector that must be present. */
+  readonly selector?: string;
+  /** A localStorage entry the prototype must have SETTLED ON by itself. For
+   * boot this is the real proof of variant: we seed `(N+7)%8` and the prototype
+   * writes back `N` (dc.html:1032), so reading `N` back means the intended
+   * scene is the one actually drawing. */
+  readonly storage?: readonly [key: string, value: string];
+};
 
 export type Shot = {
   readonly id: string;
@@ -60,31 +73,43 @@ const THEME = { rtm_theme: "holo3d", rtm_mode: "dark" } as const;
 
 /** The prototype advances `(stored + 1) % 8` on load (dc.html:1032), so to land
  * on variant N we store N-1. */
-const bootSeed = (variant: number) =>
-  ({ ...THEME, rtm_bootSeq: String((variant + 7) % 8) }) as const;
+function bootSeed(variant: number): Readonly<Record<string, string>> {
+  return { ...THEME, rtm_bootSeq: String((variant + 7) % 8) };
+}
 
-/** seq → app id, read from the prototype's own NAMES array (dc.html:1035):
+/** seq → app id, in the prototype's own NAMES order (dc.html:1035):
  * CORE SYNC, UI DRAW-IN, DOCKING CAM, HOLO PROJECTOR, GEO TACTICAL,
- * LAYER COMPOSITOR, SCHEMATIC CORE, VOL TERRAIN. */
-const BOOT_VARIANTS: readonly (readonly [string, number, string])[] = [
-  ["boot/core", 0, "CORE SYNC"],
-  ["boot/laser", 1, "UI DRAW-IN"],
-  ["boot/docking", 2, "DOCKING CAM"],
-  ["boot/hologram", 3, "HOLO PROJECTOR"],
-  ["boot/geo", 4, "GEO TACTICAL"],
-  ["boot/layers", 5, "LAYER COMPOSITOR"],
-  ["boot/jarvis", 6, "SCHEMATIC CORE"],
-  ["boot/topo", 7, "VOL TERRAIN"],
+ * LAYER COMPOSITOR, SCHEMATIC CORE, VOL TERRAIN.
+ *
+ * Those names are NOT usable as arrival text — they are painted into the boot
+ * canvas, so they exist only as pixels. */
+const BOOT_VARIANTS: readonly (readonly [string, number])[] = [
+  ["boot/core", 0],
+  ["boot/laser", 1],
+  ["boot/docking", 2],
+  ["boot/hologram", 3],
+  ["boot/geo", 4],
+  ["boot/layers", 5],
+  ["boot/jarvis", 6],
+  ["boot/topo", 7],
 ];
 
-const bootShots: readonly Shot[] = BOOT_VARIANTS.map(([id, seq, name]) => ({
-  id,
-  seed: bootSeed(seq),
-  afterBoot: false,
-  steps: [],
-  arrival: { text: name },
-  appTwin: true,
-}));
+const bootShots: readonly Shot[] = BOOT_VARIANTS.map(([id, seq]) => {
+  return {
+    id,
+    seed: bootSeed(seq),
+    afterBoot: false,
+    steps: [],
+    // Two positive facts: the boot canvas is mounted (so we are not looking at
+    // the settled app), and the prototype has settled on the intended variant of
+    // the eight (it writes the resolved seq back to localStorage).
+    arrival: {
+      selector: "[data-boot-canvas]",
+      storage: ["rtm_bootSeq", String(seq)] as const,
+    },
+    appTwin: true,
+  };
+});
 
 export const SHOTS: readonly Shot[] = [
   ...bootShots,
