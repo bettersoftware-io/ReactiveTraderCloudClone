@@ -48,6 +48,11 @@ flowchart TD
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
 - [`boot-splash-animations.md`](boot-splash-animations.md) — the boot-splash
   3D scenes, documented with diagrams.
+- [`rn-motion-architecture.md`](rn-motion-architecture.md) — **read before
+  writing anything that moves in React Native.** Which of Skia / Reanimated owns
+  what and why, the New-Architecture baseline, and the frozen-boot case study —
+  a hook-identity trap that React Compiler cannot solve and that all three test
+  tiers reported as passing.
 
 ## Product & design artifacts
 
