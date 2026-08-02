@@ -239,8 +239,8 @@ CI-canonical set.
 - Zero visual change to existing goldens; zero behavioral change to either
   client.
 - `@rtc/motion-core` stays zero-dependency and no-DOM (`chartCssVars.ts`
-  is string math; `drawChartScene` lives in client-react because it types
-  against canvas).
+  is string math; `drawChartScene` lives in ui-contract because it types
+  against CanvasRenderingContext2D).
 - `chartVm`/`volumeVm`/`crosshairVm`/`navigatorVm` keep their exact public
   signatures and outputs.
 - Scene types: numbers/booleans/label-text only; percent (0–100) plot-box

@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   type ChartCandle,
   type ChartScene,
+  type CrosshairScene,
   chartScene,
   crosshairScene,
+  type NavigatorWindowScene,
   navigatorWindowScene,
   type SceneCandle,
+  type VolumeSceneBar,
   volumeScene,
 } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
@@ -144,3 +147,6 @@ type CssVarKeys<T> = {
 type AssertNever<T extends never> = T;
 type _CandleClean = AssertNever<CssVarKeys<SceneCandle>>;
 type _SceneClean = AssertNever<CssVarKeys<ChartScene>>;
+type _CrosshairClean = AssertNever<CssVarKeys<CrosshairScene>>;
+type _NavWindowClean = AssertNever<CssVarKeys<NavigatorWindowScene>>;
+type _VolumeBarClean = AssertNever<CssVarKeys<VolumeSceneBar>>;
