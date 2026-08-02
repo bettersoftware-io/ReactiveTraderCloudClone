@@ -487,9 +487,9 @@ contract: percent (0–100) plot-box coordinates, `number`/`boolean`/label-
 text fields only, no CSS syntax (a neutrality walker and a type-level
 check in motion-core enforce this). `drawChartScene`
 (`@rtc/ui-contract`) proves the seam: a framework-free Canvas-2D engine
-renders the same scene both clients' DOM shells consume, pinned by the
-`equities/chart-canvas-spike` golden driven by hosts in both clients'
-visual trees.
+renders the same `ChartScene` whose projection (`chartVm`) both clients'
+DOM shells consume, pinned by the `equities/chart-canvas-spike` golden
+driven by hosts in both clients' visual trees.
 
 **What "prerequisite for the TradingView tier" means.** The TradingView
 tier (drawing tools, indicator panes, thousands of bars) is achievable on
