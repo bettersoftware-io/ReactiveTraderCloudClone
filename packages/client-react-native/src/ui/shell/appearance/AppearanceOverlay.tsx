@@ -7,6 +7,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -21,6 +22,13 @@ export function AppearanceOverlay({
   onClose,
 }: AppearanceOverlayProps): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
+  // `StyleSheet.absoluteFill` pins this overlay to the PHYSICAL screen, status
+  // bar and dynamic island included, so the header drew "APPEARANCE" straight
+  // under the clock. `ShellHeader` already owns the same inset for the same
+  // reason; a full-bleed overlay has to pay it too. The committed
+  // `shell/appearance` golden has shown the collision since Phase 2 and passed
+  // every run — a golden answers "did this change?", never "is this right?".
+  const insets = useSafeAreaInsets();
 
   if (!open) {
     return null;
@@ -28,13 +36,13 @@ export function AppearanceOverlay({
 
   return (
     <View testID="appearance-overlay" style={styles.overlay}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + HEADER_PAD_Y }]}>
         <Text style={styles.title}>APPEARANCE</Text>
         <Pressable testID="appearance-close" onPress={onClose}>
           <Text style={styles.close}>CLOSE ✕</Text>
         </Pressable>
       </View>
-      <AppearanceScreen />
+      <AppearanceScreen onReplayBoot={onClose} />
     </View>
   );
 }
@@ -51,6 +59,9 @@ interface AppearanceOverlayStyles {
   close: TextStyle;
 }
 
+/** The header's own vertical padding, added on top of the safe-area inset. */
+const HEADER_PAD_Y = 12;
+
 function makeStyles(t: RnTheme): AppearanceOverlayStyles {
   return StyleSheet.create({
     overlay: {
@@ -64,7 +75,7 @@ function makeStyles(t: RnTheme): AppearanceOverlayStyles {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingBottom: HEADER_PAD_Y,
       backgroundColor: t.bgHeader,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.borderSubtle,

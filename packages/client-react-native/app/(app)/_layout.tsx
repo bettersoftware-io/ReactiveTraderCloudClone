@@ -11,7 +11,6 @@ import type { PreferencesPort } from "@rtc/domain";
 import { AppRoot } from "#/app/AppRoot";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
 import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
-import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
@@ -46,7 +45,6 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * here would double-pad the top edge. */
 export default function AppGroupLayout(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
-  const [bootDone, setBootDone] = useState(false);
   const [sessionStore, setSessionStore] = useState<SessionStore | null>(null);
   const [preferences, setPreferences] = useState<PreferencesPort | null>(null);
   const fontsLoaded = useAppFonts();
@@ -77,8 +75,6 @@ export default function AppGroupLayout(): JSX.Element {
     );
   }
 
-  const playSplash = shouldPlayBootSplash();
-
   return (
     <GestureHandlerRootView style={styles.screen}>
       <View style={styles.screen}>
@@ -92,13 +88,13 @@ export default function AppGroupLayout(): JSX.Element {
             <AuthGate simulator={simulator} onToggleSimulator={setSimulator}>
               <Chrome simulator={simulator} onToggle={setSimulator} />
             </AuthGate>
-            {playSplash && !bootDone ? (
-              <BootGate
-                onFinished={(): void => {
-                  setBootDone(true);
-                }}
-              />
-            ) : null}
+            {/* Visibility is the `useBootGate` seam's, not this layout's — see
+                BootGate.tsx. It was a `bootDone` useState here, which silently
+                made ⟳ Replay Boot a no-op: `reboot()` re-raised the presenter
+                and nothing subscribed. `shouldPlayBootSplash()` still decides
+                whether it plays at all, now seeded into the presenter at
+                composition through the `bootSplash` port. */}
+            <BootGate />
           </ThemeProvider>
         </AppRoot>
         {process.env.EXPO_PUBLIC_MOTION_PROBE === "1" ? <MotionProbe /> : null}

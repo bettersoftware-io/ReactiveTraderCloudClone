@@ -45,25 +45,36 @@ test("an open RFQ shows the countdown ring in place of a state badge", async () 
 
 // "Accepted" is not an `RfqState` member: the domain models a traded RFQ as
 // `Closed` (the web client's `rfqCardVm` derives `accepted` the same way).
-test("shows the ACCEPTED stamp once the rfq has traded", async () => {
+test("stamps a traded rfq in the header slot, not below the quote rows", async () => {
   await renderCard(rfq(RfqState.Closed), []);
-  expect(screen.getByText("ACCEPTED")).toBeTruthy();
+  // The prototype's header slot is exclusive: a countdown ring while live, one
+  // animated state pill once settled (dc.html:238). We used to render BOTH a
+  // static `Done` here AND a boxed `ACCEPTED` banner under the rows — two
+  // elements for one fact, spending a row of the scarcest resource on a phone.
+  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("✓ ACCEPTED");
+  // Exactly one element says it. `getBy*` throws on multiple matches, so this
+  // is the assertion that actually pins the merge — a second banner would fail
+  // here even if the header pill were correct.
+  expect(screen.getByText("✓ ACCEPTED")).toBeTruthy();
 });
 
 test("does not render the stamp while the rfq is live", async () => {
   await renderCard(rfq(RfqState.Open), []);
-  expect(screen.queryByText("ACCEPTED")).toBeNull();
+  expect(screen.queryByText("✓ ACCEPTED")).toBeNull();
+  // A live card's header holds the ring instead — the slot is one-or-the-other.
+  expect(screen.getByTestId("rfq-countdown-ring")).toBeTruthy();
 });
 
-test("does not render the stamp for an expired rfq", async () => {
+test("an expired rfq gets the neutral pill, never the accepted one", async () => {
   await renderCard(rfq(RfqState.Expired), []);
-  expect(screen.queryByText("ACCEPTED")).toBeNull();
+  expect(screen.queryByText("✓ ACCEPTED")).toBeNull();
+  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("Expired");
 });
 
 test("a closed RFQ shows the state badge and a dismiss button, no ring", async () => {
   await renderCard(rfq(RfqState.Closed), []);
   expect(screen.queryByTestId("rfq-countdown-ring")).toBeNull();
-  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("Done");
+  expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("✓ ACCEPTED");
   expect(screen.getByTestId("rfq-dismiss-3")).toBeTruthy();
 });
 

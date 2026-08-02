@@ -28,7 +28,9 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * skins, ambient + power-saver toggles, and a replay-boot action. All state
  * and every write is behind the ViewModel; this only renders view state and
  * dispatches the exposed intents — no direct storage, no domain writes. */
-export function AppearanceScreen(): JSX.Element {
+export function AppearanceScreen({
+  onReplayBoot,
+}: AppearanceScreenProps = {}): JSX.Element {
   const {
     useThemePreference,
     useThemeSkinPreference,
@@ -236,6 +238,11 @@ export function AppearanceScreen(): JSX.Element {
             style={styles.replayButton}
             onPress={() => {
               reboot();
+              // The splash renders BEHIND this sheet, which is an opaque
+              // full-screen overlay — raise it without telling the host and the
+              // whole boot sequence plays, and finishes, unseen. That is what
+              // "Replay Boot never worked" actually looked like.
+              onReplayBoot?.();
             }}
           >
             <Text style={styles.replayButtonText}>⟳ Replay Boot</Text>
@@ -248,6 +255,13 @@ export function AppearanceScreen(): JSX.Element {
 
 /** Number of forward zero-arg cycle() steps (dark → light → system → dark)
  * needed to land the live preference on `target`, from `current`. */
+interface AppearanceScreenProps {
+  /** Slot: fired after the boot splash is re-raised, so a host that covers the
+   * screen (the Appearance overlay) can get out of its way. Optional — the
+   * screen is also mounted standalone, where there is nothing to dismiss. */
+  readonly onReplayBoot?: () => void;
+}
+
 function cyclesToReach(
   current: ThemeModePreference,
   target: "dark" | "light",
