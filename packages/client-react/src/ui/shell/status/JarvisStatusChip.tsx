@@ -10,6 +10,8 @@ import styles from "./StatusBar.module.css";
  * (`ConnectionStatusBar` idiom — a small dumb reflection of one machine
  * field). Renders nothing while Jarvis is unavailable (`state.available`):
  * an offline desk assistant has no brain worth advertising in the footer.
+ * The leading `│` separator lives INSIDE this component so a jarvis-less
+ * server never leaves a dangling double separator in the footer.
  */
 export function JarvisStatusChip(): ReactElement | null {
   const { useJarvis } = useViewModel();
@@ -20,12 +22,15 @@ export function JarvisStatusChip(): ReactElement | null {
   }
 
   return (
-    <span
-      data-testid="jarvis-status-chip"
-      data-brain={state.effectiveBrain}
-      className={styles.jarvisChip}
-    >
-      JARVIS · {JARVIS_BRAIN_LABELS[state.effectiveBrain]}
-    </span>
+    <>
+      <span className={styles.metricSep}>│</span>
+      <span
+        data-testid="jarvis-status-chip"
+        data-brain={state.effectiveBrain}
+        className={styles.jarvisChip}
+      >
+        JARVIS · {JARVIS_BRAIN_LABELS[state.effectiveBrain]}
+      </span>
+    </>
   );
 }

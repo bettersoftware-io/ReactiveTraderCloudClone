@@ -28,7 +28,6 @@ export function StatusBar(): ReactElement {
       <span className={styles.operator} data-testid="status-operator">
         {state.user?.id ?? ""}
       </span>
-      <span className={styles.metricSep}>│</span>
       <JarvisStatusChip />
       <CosmeticMetrics />
     </footer>

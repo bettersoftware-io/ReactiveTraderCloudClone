@@ -28,7 +28,6 @@ export function StatusBar(): JSX.Element {
       <span class={styles.operator} data-testid="status-operator">
         {state().user?.id ?? ""}
       </span>
-      <span class={styles.metricSep}>│</span>
       <JarvisStatusChip />
       <CosmeticMetrics />
     </footer>

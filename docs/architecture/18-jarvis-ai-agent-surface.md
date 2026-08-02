@@ -792,7 +792,7 @@ quality tuning:
 | Cap | Value | Bounds |
 |---|---|---|
 | `JARVIS_MAX_TOKENS_PER_TURN` | 4,096 | one reply's own generation cost |
-| `JARVIS_EFFORT` | `"medium"` | how much of that budget goes to thinking |
+| ~~`JARVIS_EFFORT`~~ | `"medium"` | how much of that budget goes to thinking — **superseded**: now the per-user effort preference, capability-gated ([§18.15](#1815-the-brain-picker--usage-display-round--the-receipt)) |
 | `JARVIS_MAX_TURNS_PER_SESSION` | 40 | a session that never ends |
 | `JARVIS_HISTORY_MAX_MESSAGES` | 30 | replayed context, billed on *every* later turn |
 
