@@ -12,7 +12,7 @@
 // manifest — which works only on runtimes that strip types natively, a silent
 // dependency on the Node version rather than on anything this repo declares.
 
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { SHOTS, type Shot } from "./shots";
@@ -47,6 +47,39 @@ function pngIds(dir: string): string[] {
 /** A filmstrip shot writes to filmstrips/<id>.png; a still writes to <id>.png. */
 function expectedPath(shot: Shot): string {
   return shot.filmstrip === undefined ? shot.id : `filmstrips/${shot.id}`;
+}
+
+/** Every path DRIFT.md points at — `<img src>` as well as markdown links.
+ *
+ * Checked HERE rather than left to `check:doc-links`, which cannot see either:
+ * its scope is an explicit allow-list of globs that excludes `docs/design/**`
+ * entirely, and even in scope it validates markdown links only, never `<img
+ * src>` inside inline HTML — which is what every image on that page is. Both
+ * gaps were confirmed by deliberate breakage: a wrong `../` depth and a
+ * dangling markdown link each passed `check:doc-links` cleanly. */
+function unresolvedDriftRefs(): string[] {
+  const page = join(SHOTS_DIR, "DRIFT.md");
+
+  if (!existsSync(page)) {
+    return [];
+  }
+
+  const text = readFileSync(page, "utf8");
+  const refs = new Set<string>();
+
+  for (const [, src] of text.matchAll(/src="([^"]+)"/g)) {
+    refs.add(src);
+  }
+
+  for (const [, href] of text.matchAll(/\]\(([^)]+)\)/g)) {
+    refs.add(href);
+  }
+
+  return [...refs]
+    .filter((ref) => {
+      return !/^[a-z]+:/.test(ref) && !existsSync(join(SHOTS_DIR, ref));
+    })
+    .sort();
 }
 
 const expected = new Set(SHOTS.map(expectedPath));
@@ -84,10 +117,22 @@ if (orphaned.length > 0) {
   }
 }
 
-if (missing.length > 0 || orphaned.length > 0) {
+const dangling = unresolvedDriftRefs();
+
+if (dangling.length > 0) {
+  console.error(
+    `check-prototype-shots: ${dangling.length} DRIFT.md references do not resolve:`,
+  );
+
+  for (const ref of dangling) {
+    console.error(`  - ${ref}`);
+  }
+}
+
+if (missing.length > 0 || orphaned.length > 0 || dangling.length > 0) {
   process.exit(1);
 }
 
 console.log(
-  `check-prototype-shots: ${expected.size} shots, manifest and tree agree`,
+  `check-prototype-shots: ${expected.size} shots, manifest and tree agree; DRIFT.md references all resolve`,
 );

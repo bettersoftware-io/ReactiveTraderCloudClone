@@ -193,10 +193,17 @@ function screenOf(page: Page): Locator {
  * duplicate it: a second copy of the boot wait and the step replay would drift
  * from this one silently, and the filmstrips would stop showing what the stills
  * show. The CALLER owns closing `page.context()`. */
+/** Options for driving a page to a shot's state. */
+export type DriveOptions = {
+  /** Skip the post-steps settle. Filmstrips set this because their sample
+   * instants are measured from the trigger. */
+  readonly skipSettle?: boolean;
+};
+
 export async function driveToShot(
   browser: Browser,
   shot: Shot,
-  opts: { readonly skipSettle?: boolean } = {},
+  opts: DriveOptions = {},
 ): Promise<Page> {
   const page = await openShot(browser, shot);
 
