@@ -56,6 +56,7 @@
     "check:worklet-order": "node scripts/check-worklet-order.mjs",
     "check:manifest-drift": "node scripts/check-manifest-drift.mjs",
     "prototype-shots:capture": "tsx scripts/prototype-shots/capture.ts",
+    "prototype-shots:filmstrips": "tsx scripts/prototype-shots/filmstrip.ts",
     "prototype-shots:sheet": "tsx scripts/prototype-shots/contact-sheet.ts",
     "check:prototype-shots": "tsx scripts/prototype-shots/check.ts",
     "check:image-tag-drift": "node scripts/check-image-tag-drift.mjs",

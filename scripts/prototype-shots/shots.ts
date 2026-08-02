@@ -294,7 +294,7 @@ export const SHOTS: readonly Shot[] = [
     steps: [{ tapSelector: SPOT_TILE }, { tapText: "BUY" }],
     arrival: { text: "NOTIONAL" },
     appTwin: false,
-    filmstrip: [0, 0.6, 1.4, 2.4],
+    filmstrip: [0, 0.35, 0.75, 1.6],
   },
   {
     // Every open RFQ card carries an ACCEPT button; the first is enough.
@@ -308,7 +308,7 @@ export const SHOTS: readonly Shot[] = [
     ],
     arrival: { text: "RFQS" },
     appTwin: false,
-    filmstrip: [0, 0.5, 1.1, 2.0],
+    filmstrip: [0, 0.4, 0.9, 1.8],
   },
   {
     // No interaction: the ring is already counting down on arrival. Samples are

@@ -41,6 +41,17 @@ const BOOT_COMPLETE_MS = 7000;
 /** Transitions in the prototype are ~200ms; settle past them before shooting. */
 const SETTLE_MS = 500;
 
+/** Pause BETWEEN steps (never after the last one).
+ *
+ * Without it a multi-step shot races its own transitions: tapping a spot tile
+ * starts the trade sheet's ~300ms entry animation, and an immediate
+ * `getByText("BUY")` can resolve against a DOM that does not contain the
+ * sheet's button yet, silently matching a tile's BUY price label instead. That
+ * produced a filmstrip whose third frame showed a ready ticket between two
+ * frames of the ceremony it was supposed to be sampling. Not applied after the
+ * final step, so a filmstrip's instants stay measured from the trigger. */
+const INTER_STEP_MS = 400;
+
 /** Hold the page until the prototype's boot animation reaches `seconds`.
  *
  * The boot loop runs on requestAnimationFrame against performance.now()
@@ -182,14 +193,22 @@ function screenOf(page: Page): Locator {
  * duplicate it: a second copy of the boot wait and the step replay would drift
  * from this one silently, and the filmstrips would stop showing what the stills
  * show. The CALLER owns closing `page.context()`. */
-export async function driveToShot(browser: Browser, shot: Shot): Promise<Page> {
+export async function driveToShot(
+  browser: Browser,
+  shot: Shot,
+  opts: { readonly skipSettle?: boolean } = {},
+): Promise<Page> {
   const page = await openShot(browser, shot);
 
   if (shot.afterBoot) {
     await page.waitForTimeout(BOOT_COMPLETE_MS);
 
-    for (const step of shot.steps) {
+    for (const [index, step] of shot.steps.entries()) {
       await runStep(page, step);
+
+      if (index < shot.steps.length - 1) {
+        await page.waitForTimeout(INTER_STEP_MS);
+      }
     }
 
     // No settle after a HOLD. Settling assumes a transition converging to rest,
@@ -199,7 +218,14 @@ export async function driveToShot(browser: Browser, shot: Shot): Promise<Page> {
     // unlock and leaves the lock screen entirely.
     const last = shot.steps.at(-1);
 
-    if (last === undefined || !("holdSelector" in last)) {
+    // Filmstrips skip the settle too, for a different reason: their sample
+    // instants are measured from the TRIGGER, and a fixed 500ms pause would
+    // shift every frame of a ceremony that only lasts ~2s.
+    const settle =
+      opts.skipSettle !== true &&
+      (last === undefined || !("holdSelector" in last));
+
+    if (settle) {
       await page.waitForTimeout(SETTLE_MS);
     }
   } else {
