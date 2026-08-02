@@ -22,6 +22,29 @@ describe("crosshairVm", () => {
     expect(pct(cross?.style["--chx"])).toBeCloseTo(55, 5);
   });
 
+  it("pins the exact --chx/--chy CSS-var strings (bit-for-bit, incl. float noise)", () => {
+    const series = makeSeries(10);
+    const vp: ChartViewport = { start: 0, end: 10 };
+    const cross = crosshairVm(0.55, 0.5, series, vp, { cmin: 0, cmax: 100 });
+
+    expect(cross?.style).toEqual({
+      "--chx": "55.00000000000001%",
+      "--chy": "50%",
+    });
+  });
+
+  it("pins the exact price string for a fractional-viewport candle", () => {
+    const series = makeSeries(3);
+    const vp: ChartViewport = { start: 0, end: 3 };
+    const cross = crosshairVm(0, 0.5, series, vp, { cmin: 8, cmax: 13 });
+
+    expect(cross?.style).toEqual({
+      "--chx": "16.666666666666664%",
+      "--chy": "50%",
+    });
+    expect(cross?.price).toBe("10.44");
+  });
+
   it("clamps the snapped index to 0 on a viewport scrolled before the series start", () => {
     const series = makeSeries(10);
     // span = 10, scrolled 7 candles before index 0: xFrac=0 -> rawIdx = -7-0.5

@@ -475,3 +475,31 @@ This is a correction worth stating plainly, since the shipped visual (below) can
 **The presenter, not the UI, owns the backfill stitching seam.** `CandleSeriesPresenter.candles$` (`packages/client-core/src/presenters/CandleSeriesPresenter.ts`) keeps a per-`symbol|timeframe` `older$` accumulator ahead of the live `base$` stream from `MarketDataPort.candles`, and re-stitches the two with `combineLatest([older$, base$])` on every emission from either side — a contiguity filter drops anything not strictly older than `base`'s first candle, so a page can never overlap what is already showing. `loadOlder` is single-flight (an in-flight guard no-ops a concurrent call), latches `historyExhausted$` once a page comes back shorter than `CANDLE_HISTORY_PAGE`, and — deliberately asymmetric — clears the in-flight flag *without* latching exhaustion on a port error, so the next near-edge trigger retries rather than giving up permanently. `CandleChart` sees none of this bookkeeping: it only reads `loadingOlder`/`historyExhausted` off the presenter and calls one command, `onLoadOlder()`.
 
 **One new effect, and it doesn't reopen the zero-effect doctrine above.** `CandleChart` derives `nearLeftEdge` from the committed viewport (`viewport.start < span`) and, in its one `useEffect`, calls `onLoadOlder()` whenever the pane is near the left edge, nothing is already loading, and history isn't exhausted. This looks like exactly the kind of framework-layer state the brush shells were just praised for having none of, but it is a different kind of logic in the ADR-005 sense: the brush shells only translate a gesture into state, synchronously, inside the same pointer handler that received it — there is no external system to synchronize with. The backfill trigger's job *is* synchronizing with an external system — invoking the presenter's `candleHistory` port call — from a condition (proximity to the loaded edge) that only exists once the viewport has committed to a render. That is precisely the case a `useEffect` exists for, and precisely why the logic it triggers already lives in `client-core` per ADR-005's external-I/O branch rather than in the hook itself: the effect is the minimal glue between "a rendered fact changed" and "call the one command that already knows how to act on it," not new business logic finding its way back into the view.
+
+### 17.7 The renderer seam (`ChartScene` → substrate)
+
+Every chart vm computes a pure-numeric scene first — `chartScene` /
+`volumeScene` / `crosshairScene` / `navigatorWindowScene` in
+`@rtc/motion-core` — and the CSS-custom-property records the DOM shells
+consume (`chartVm` et al.) are a *projection* of that scene
+(`chartCssVars.ts`), applied at the edge. The scene is the renderer
+contract: percent (0–100) plot-box coordinates, `number`/`boolean`/label-
+text fields only, no CSS syntax (a neutrality walker and a type-level
+check in motion-core enforce this). `drawChartScene`
+(`@rtc/ui-contract`) proves the seam: a framework-free Canvas-2D engine
+renders the same `ChartScene` whose projection (`chartVm`) both clients'
+DOM shells consume, pinned by the `equities/chart-canvas-spike` golden
+driven by hosts in both clients' visual trees.
+
+**What "prerequisite for the TradingView tier" means.** The TradingView
+tier (drawing tools, indicator panes, thousands of bars) is achievable on
+DOM/SVG at modest scale — but its features must be built against
+`ChartScene`, never against DOM shapes, so the substrate stays swappable.
+Retained-mode costs scale with node count (three DOM nodes per candle
+today) while canvas scales with pixels drawn; under this repo's
+performance doctrine the combination of deep history × indicator panes ×
+per-mousemove crosshair × permanent ambient animation eventually exceeds
+what retained DOM affords. Canvas is the escape hatch to pull when
+node-count costs actually bite — not a precondition for starting the
+tier. See
+[the renderer-seam spec](../superpowers/specs/2026-08-02-pluggable-chart-renderer-design.md).

@@ -52,6 +52,7 @@ import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
+import { EquitiesChartCanvasSpike } from "./EquitiesChartCanvasSpike.visual";
 import {
   EquitiesChartArea,
   EquitiesChartCrosshair,
@@ -565,6 +566,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   EquitiesChartHistoryStart: () => {
     return <EquitiesChartHistoryStart />;
+  },
+  // Renderer-seam proof (spec 2026-08-02): the framework-free drawChartScene
+  // engine painting spikeScene() onto a bare <canvas>. See
+  // EquitiesChartCanvasSpike.visual.tsx's doc comment for why the draw runs
+  // in useLayoutEffect rather than useEffect.
+  EquitiesChartCanvasSpike: () => {
+    return <EquitiesChartCanvasSpike />;
   },
   EquitiesWatchlistPanel: () => {
     return (

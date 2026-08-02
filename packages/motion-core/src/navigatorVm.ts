@@ -1,5 +1,7 @@
+import { navigatorWindowStyleFromScene } from "./chartCssVars.js";
+import type { ChartPoint, ChartVarStyle } from "./chartScene.js";
+import { navigatorWindowScene } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
-import type { ChartPoint, ChartVarStyle } from "./chartVm.js";
 
 /** The candle fields the navigator vm reads — a structural subset of
  * @rtc/domain's `Candle` (motion-core is zero-dependency); only the close
@@ -77,19 +79,9 @@ export function navigatorWindowStyle(
   viewport: ChartViewport,
   seriesLen: number,
 ): ChartVarStyle {
-  if (seriesLen === 0) {
-    return { "--nav-left": "0%", "--nav-w": "100%" } as ChartVarStyle;
-  }
-
-  // No clamp here: every viewport reaching this vm already satisfies
-  // 0 <= start <= end <= len (clampViewport et al. enforce it upstream), so
-  // start/len and end/len already land in [0, 1] without re-guarding.
-  const leftPct = (viewport.start / seriesLen) * 100;
-  const rightPct = (viewport.end / seriesLen) * 100;
-  return {
-    "--nav-left": `${leftPct}%`,
-    "--nav-w": `${rightPct - leftPct}%`,
-  } as ChartVarStyle;
+  return navigatorWindowStyleFromScene(
+    navigatorWindowScene(viewport, seriesLen),
+  );
 }
 
 /** The composed navigator vm — {@link navigatorLinePoints} +
