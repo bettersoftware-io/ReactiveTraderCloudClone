@@ -165,9 +165,11 @@ function parseCancelPayload(payload: unknown): JarvisCancelPayload | undefined {
  * `availability$` always registers — even with `loops === null` — so the
  * client's `JARVIS_SUBSCRIBE` handshake always gets an answer instead of
  * hanging when Jarvis is absent (RTC_JARVIS_FAKE off, no Anthropic key).
- * `brains`/`defaultBrain` mirror `JarvisLoops` when present, or the
- * scripted-only fallback (`[]`/`"scripted"`) when Jarvis is absent entirely
- * — a client never sees an empty picker with no default.
+ * `brains`/`defaultBrain` mirror `JarvisLoops` when present; when Jarvis is
+ * absent entirely the payload is `available: false` with `brains: []` — the
+ * `available` flag is what a client must key off (the orb hides, so no
+ * picker renders); an empty `brains` array is NOT a nullish sentinel and
+ * must never be read as "all brains offered".
  *
  * The session effect is a factory rather than a constant `WsEffect[]` (like
  * `fxEffects`): each `AgentLoop.createSession()` call runs inside the effect
@@ -305,9 +307,11 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
         inFlightTurnId = parsed.turnId;
 
         const resolvedBrain = resolveBrain(parsed);
-        // Once per ACCEPTED (parsed-valid) chat frame, before the turn even
-        // starts running — a turn that errors or gets cancelled mid-stream
-        // still counted as an attempt against the brain it was routed to.
+        // Once per DEQUEUED (parsed-valid) chat frame: this defer runs when
+        // the concatMap queue reaches the turn, not at frame arrival — a
+        // frame still queued when the socket closes is never counted (it
+        // never ran). A dequeued turn that errors or gets cancelled
+        // mid-stream still counts against the brain it was routed to.
         ctx.usageMeter.recordTurn(resolvedBrain);
 
         return runTurnFor(resolvedBrain, parsed).pipe(
