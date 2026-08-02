@@ -3,6 +3,7 @@ import type { BetaToolRunnerRequestOptions } from "@anthropic-ai/sdk/lib/tools/B
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 
+import type { UsageMeter } from "../services/UsageMeter.js";
 import {
   AnthropicAgentSession,
   type AnthropicRunner,
@@ -42,6 +43,15 @@ export interface AnthropicAgentLoopOptions {
    * (`AnthropicAgentSession.ts`). Omitted in production, where the default
    * factory wraps a real `Anthropic` client built ONCE below. */
   readonly runnerFactory?: AnthropicRunnerFactory;
+  /**
+   * Narrowed to the one method every session needs (`recordTokens`) rather
+   * than the full `UsageMeter` — the loop has no business calling
+   * `recordTurn` or reading `snapshot$` on a session's behalf, and a `Pick`
+   * keeps a test spy's fixture to exactly the one method it must fake.
+   * Optional: a loop built without one (e.g. a test that doesn't care about
+   * usage accounting) just means every session's usage tap is a no-op.
+   */
+  readonly usageMeter?: Pick<UsageMeter, "recordTokens">;
 }
 
 /**
@@ -58,14 +68,21 @@ export class AnthropicAgentLoop implements AgentLoop {
     confirmTrade: ConfirmGate,
   ) => readonly JarvisToolDefinition[];
 
+  private readonly usageMeter?: Pick<UsageMeter, "recordTokens">;
+
   constructor(options: AnthropicAgentLoopOptions) {
     this.buildTools = options.buildTools;
+    this.usageMeter = options.usageMeter;
     this.runnerFactory =
       options.runnerFactory ??
       buildDefaultRunnerFactory(new Anthropic({ apiKey: options.apiKey }));
   }
 
   createSession(): AgentSession {
-    return new AnthropicAgentSession(this.runnerFactory, this.buildTools);
+    return new AnthropicAgentSession(
+      this.runnerFactory,
+      this.buildTools,
+      this.usageMeter,
+    );
   }
 }

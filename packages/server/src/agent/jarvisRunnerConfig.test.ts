@@ -14,24 +14,27 @@ import {
 
 import {
   JARVIS_EFFORT,
+  JARVIS_EFFORT_CAPABLE_BRAINS,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
-  JARVIS_MODEL_ID,
   JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
 
 describe("jarvisRunnerConfig", () => {
-  it("pins the model id", () => {
-    expect(JARVIS_MODEL_ID).toBe("claude-opus-5");
-  });
-
   it("pins the per-turn token cap", () => {
     expect(JARVIS_MAX_TOKENS_PER_TURN).toBe(4_096);
   });
 
   it("pins the reasoning effort", () => {
     expect(JARVIS_EFFORT).toBe("medium");
+  });
+
+  it("marks sonnet and opus, but not haiku or scripted, as effort-capable", () => {
+    expect(JARVIS_EFFORT_CAPABLE_BRAINS.has("claude-sonnet-5")).toBe(true);
+    expect(JARVIS_EFFORT_CAPABLE_BRAINS.has("claude-opus-5")).toBe(true);
+    expect(JARVIS_EFFORT_CAPABLE_BRAINS.has("claude-haiku-4-5")).toBe(false);
+    expect(JARVIS_EFFORT_CAPABLE_BRAINS.has("scripted")).toBe(false);
   });
 
   it("pins the per-session turn cap", () => {

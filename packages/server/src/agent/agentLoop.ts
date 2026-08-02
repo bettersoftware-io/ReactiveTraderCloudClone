@@ -1,9 +1,27 @@
 import type { Observable } from "rxjs";
 
+import type { JarvisBrain, JarvisEffort } from "@rtc/domain";
 import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
+
+/**
+ * Per-turn brain/effort selection, threaded from the wire's `jarvis.chat`
+ * payload down to whichever `AgentSession` is serving the connection.
+ * `brain` excludes `"scripted"` — resolving to "scripted" means the turn
+ * never reaches an `AnthropicAgentSession` at all: `createAgentLoop`'s env
+ * precedence routes a scripted pick to `ScriptedAgentLoop` instead, so by
+ * the time an `AnthropicAgentSession` sees this, the brain has already been
+ * resolved and validated to a live Claude model upstream (the wire layer's
+ * job, not this seam's). `ScriptedAgentSession` accepts this param only to
+ * satisfy the shared `AgentSession` surface — it ignores it entirely, since
+ * the scripted engine has no notion of model or effort.
+ */
+export interface JarvisTurnOptions {
+  readonly brain?: Exclude<JarvisBrain, "scripted">;
+  readonly effort?: JarvisEffort;
+}
 
 /**
  * One turn-serving handle over a single WS connection's conversation.
@@ -16,6 +34,7 @@ export interface AgentSession {
   runTurn(
     text: string,
     history: readonly JarvisHistoryEntry[],
+    options?: JarvisTurnOptions,
   ): Observable<JarvisEvent>;
   resolveConfirmation(confirmationId: string, approved: boolean): void;
   /** Abort the in-flight turn (cancel frame / socket close). Idempotent.
