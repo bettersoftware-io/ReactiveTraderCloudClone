@@ -13,7 +13,6 @@ import {
 } from "@rtc/domain";
 
 import {
-  JARVIS_EFFORT,
   JARVIS_EFFORT_CAPABLE_BRAINS,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
@@ -26,9 +25,11 @@ describe("jarvisRunnerConfig", () => {
     expect(JARVIS_MAX_TOKENS_PER_TURN).toBe(4_096);
   });
 
-  it("pins the reasoning effort", () => {
-    expect(JARVIS_EFFORT).toBe("medium");
-  });
+  // The default effort value ("medium") is no longer pinned in this file —
+  // it has exactly one source of truth now, `@rtc/domain`'s
+  // `DEFAULT_JARVIS_EFFORT`, which owns its own pinning test
+  // (PreferencesPortContract / domain's own suite). Re-pinning it here too
+  // would be a second source of truth for the same default.
 
   it("marks sonnet and opus, but not haiku or scripted, as effort-capable", () => {
     expect(JARVIS_EFFORT_CAPABLE_BRAINS.has("claude-sonnet-5")).toBe(true);

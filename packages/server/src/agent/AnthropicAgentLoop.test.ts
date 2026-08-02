@@ -974,6 +974,90 @@ describe("AnthropicAgentLoop", () => {
 
     expect(events).toEqual([{ type: "delta", text: "ok" }, { type: "done" }]);
   });
+
+  it("(Task 5 usage) a meter whose recordTokens throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
+    const first = fakeStream([textDeltaEvent(0, "Good morning, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Good morning, sir." }],
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+      },
+    });
+
+    const second = fakeStream([textDeltaEvent(0, "Indeed.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Indeed." }],
+    });
+    let callIndex = 0;
+    const calls: RunnerCall[] = [];
+
+    function factory(
+      params: FactoryParams,
+      options: FactoryOptions,
+    ): AnthropicRunner {
+      calls.push({ params, options });
+      const stream = callIndex === 0 ? first : second;
+      callIndex += 1;
+
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield stream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const recordTokens = vi.fn(() => {
+      throw new Error("usage meter exploded — must never corrupt the turn");
+    });
+
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      usageMeter: { recordTokens },
+    });
+    const session = loop.createSession();
+
+    const events1 = await runTurnCollecting(session, "good morning");
+
+    // The turn completes exactly as if the meter had never thrown: the full
+    // reply, terminated with "done" — NOT the sanitized "desk link
+    // faltered" error the outer catch would have produced had the throw
+    // been allowed to propagate there.
+    expect(events1).toEqual([
+      { type: "delta", text: "Good morning, sir." },
+      { type: "done" },
+    ]);
+    expect(recordTokens).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "AnthropicAgentSession: usageMeter.recordTokens threw —",
+      expect.stringContaining("Error"),
+    );
+
+    // History still grew after the "completed" outcome — proof the throw
+    // never reached the outer catch (which would have produced an
+    // "errored" outcome, and `runTurn`'s `.then` only appends to history on
+    // "completed"). Turn 2's request replays turn 1's user + assistant
+    // messages, exactly like the unthrottled case in test (a).
+    await runTurnCollecting(session, "thanks");
+
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.params.messages).toEqual([
+      { role: "user", content: "good morning" },
+      { role: "assistant", content: "Good morning, sir." },
+      { role: "user", content: "thanks" },
+    ]);
+
+    consoleErrorSpy.mockRestore();
+  });
 });
 
 // ── fake-runner scripting helpers ──────────────────────────────────────
