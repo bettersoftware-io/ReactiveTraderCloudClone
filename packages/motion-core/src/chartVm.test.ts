@@ -45,6 +45,12 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
     expect(pct(c0.style, "--w")).toBeCloseTo(32, 5); // cw(50) * BODY_FRAC(0.64)
     expect(pct(c0.wickStyle, "--wtop")).toBeCloseTo(34.666667, 5); // yPct(high=12)
     expect(pct(c0.wickStyle, "--wh")).toBeCloseTo(57.333333, 5); // yPct(8)-yPct(12)
+    // Exact ChartVarStyle strings (characterization pins): --w and
+    // --wleft-offset are both derived from cw alone (candle-agnostic), and
+    // --wx carries the `calc(...% - 0.5px)` 1px-nudge format verbatim.
+    expect(cssVar(c0.style, "--w")).toBe("32%");
+    expect(cssVar(c0.style, "--wleft-offset")).toBe("16%"); // cw(50) * HALF_BODY_FRAC(0.32)
+    expect(cssVar(c0.wickStyle, "--wx")).toBe("calc(25% - 0.5px)");
 
     // c1: x=75%, up (13>=11), the last candle.
     expect(c1.up).toBe(true);
@@ -55,6 +61,9 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
     expect(pct(c1.style, "--h")).toBeCloseTo(28.666667, 5); // |49-20.33|
     expect(pct(c1.wickStyle, "--wtop")).toBeCloseTo(6, 5); // yPct(high=14)=6 (top of plot)
     expect(pct(c1.wickStyle, "--wh")).toBeCloseTo(71.666667, 5); // yPct(9)-yPct(14)
+    expect(cssVar(c1.style, "--w")).toBe("32%");
+    expect(cssVar(c1.style, "--wleft-offset")).toBe("16%");
+    expect(cssVar(c1.wickStyle, "--wx")).toBe("calc(75% - 0.5px)");
 
     // Grid: 4 fixed fractions, each carrying only --gtop.
     expect(vm.grid).toHaveLength(4);
@@ -75,6 +84,17 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
       (14 - 0.37 * 6).toFixed(2),
       (14 - 0.62 * 6).toFixed(2),
       (14 - 0.87 * 6).toFixed(2),
+    ]);
+    // Exact --ltop calc(...% - 6px) strings for the same 4 fixed fractions.
+    expect(
+      vm.labels.map((l) => {
+        return cssVar(l.style, "--ltop");
+      }),
+    ).toEqual([
+      "calc(12% - 6px)",
+      "calc(37% - 6px)",
+      "calc(62% - 6px)",
+      "calc(87% - 6px)",
     ]);
   });
 
@@ -201,6 +221,19 @@ describe("chartVm (viewport slicing, chart kinds, time axis, volume vm)", () => 
     }
   });
 
+  it("kind area behaves identically to line: linePoints populated, candles empty", () => {
+    const lineVm = chartVm(SERIES, 0, false, {
+      viewport: { start: 240, end: 300 },
+      kind: "line",
+    });
+    const areaVm = chartVm(SERIES, 0, false, {
+      viewport: { start: 240, end: 300 },
+      kind: "area",
+    });
+    expect(areaVm.candles).toHaveLength(0);
+    expect(areaVm.linePoints).toEqual(lineVm.linePoints);
+  });
+
   it("time labels are stable under panning (keyed to series indices)", () => {
     const a = chartVm(SERIES, 0, false, { viewport: { start: 240, end: 300 } });
     const b = chartVm(SERIES, 0, false, { viewport: { start: 239, end: 299 } });
@@ -241,6 +274,99 @@ describe("chartVm (viewport slicing, chart kinds, time axis, volume vm)", () => 
     });
     expect(Math.max(...hs)).toBeCloseTo(100, 1);
   });
+
+  it("pins exact geometry for a clamped fractional viewport (iFirst/iLast clamp)", () => {
+    // start=2.4 floors to iFirst=2; end=9.6 ceils-then-minus-1 to iLast=9 —
+    // the unclamped span (7.2) still drives x/width, so edge candles land at
+    // fractional (non-grid-aligned) x/wick positions instead of snapping to
+    // whole percents. These exact strings were captured from the (unsplit)
+    // implementation and re-verified for both split halves in
+    // chartCssVars.test.ts's equivalence pins.
+    const vp = { start: 2.4, end: 9.6 };
+    const vm = chartVm(TWELVE_CANDLES, 0, false, { viewport: vp });
+
+    expect(vm.candles).toHaveLength(8); // indices 2..9 inclusive
+    expect(vm.scale).toEqual({ cmin: 85, cmax: 115 });
+
+    const first = vm.candles[0];
+    const last = vm.candles[vm.candles.length - 1];
+
+    if (!first || !last) {
+      throw new Error("expected first and last candles");
+    }
+
+    expect(first.key).toBe(2);
+    expect(first.up).toBe(false);
+    expect(cssVar(first.style, "--x")).toBe("1.3888888888888902%");
+    expect(cssVar(first.style, "--top")).toBe("43.266666666666666%");
+    expect(cssVar(first.style, "--h")).toBe("8.600000000000001%");
+    expect(cssVar(first.style, "--w")).toBe("8.888888888888891%");
+    expect(cssVar(first.style, "--wleft-offset")).toBe("4.4444444444444455%");
+    expect(cssVar(first.wickStyle, "--wx")).toBe(
+      "calc(1.3888888888888902% - 0.5px)",
+    );
+    expect(cssVar(first.wickStyle, "--wtop")).toBe("26.066666666666666%");
+    expect(cssVar(first.wickStyle, "--wh")).toBe("45.866666666666674%");
+
+    expect(last.key).toBe(9);
+    expect(last.up).toBe(true);
+    expect(cssVar(last.style, "--x")).toBe("98.61111111111111%");
+    expect(cssVar(last.wickStyle, "--wtop")).toBe("6%");
+    expect(cssVar(last.wickStyle, "--wh")).toBe("86%");
+
+    // Grid/labels' formats are viewport-independent (fixed fractions); only
+    // the label prices (via cmax/crng) move with the visible slice's range.
+    expect(
+      vm.labels.map((l) => {
+        return l.txt;
+      }),
+    ).toEqual(["111.40", "103.90", "96.40", "88.90"]);
+
+    // Time labels are keyed to absolute series indices, exact --tx strings.
+    expect(vm.timeLabels).toHaveLength(4);
+    expect(
+      vm.timeLabels.map((l) => {
+        return { key: l.key, txt: l.txt, tx: cssVar(l.style, "--tx") };
+      }),
+    ).toEqual([
+      { key: 2, txt: "00:02", tx: "1.3888888888888902%" },
+      { key: 4, txt: "00:04", tx: "29.166666666666668%" },
+      { key: 6, txt: "00:06", tx: "56.94444444444444%" },
+      { key: 8, txt: "00:08", tx: "84.72222222222221%" },
+    ]);
+
+    const bars = volumeVm(TWELVE_CANDLES, vp);
+    expect(bars).toHaveLength(8);
+    expect(
+      bars.map((b) => {
+        return { key: b.key, up: b.up, x: cssVar(b.style, "--x") };
+      }),
+    ).toEqual([
+      { key: 2, up: false, x: "1.3888888888888902%" },
+      { key: 3, up: true, x: "15.277777777777782%" },
+      { key: 4, up: false, x: "29.166666666666668%" },
+      { key: 5, up: true, x: "43.055555555555564%" },
+      { key: 6, up: false, x: "56.94444444444444%" },
+      { key: 7, up: true, x: "70.83333333333334%" },
+      { key: 8, up: false, x: "84.72222222222221%" },
+      { key: 9, up: true, x: "98.61111111111111%" },
+    ]);
+    expect(cssVar(bars[bars.length - 1]?.style ?? {}, "--h")).toBe("100%");
+  });
+});
+
+/** 12 mixed (alternating up/down) candles, 1-minute buckets — shared with
+ * chartCssVars.test.ts's equivalence pins for the same viewport fixture. */
+const TWELVE_CANDLES: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
+  const dir = i % 2 === 0 ? 1 : -1;
+  return {
+    time: 1_782_864_000_000 + i * 60_000,
+    open: 100 + dir * i,
+    high: 106 + i,
+    low: 94 - i,
+    close: 100 - dir * i * 0.5,
+    volume: 1_000 + i * 137,
+  };
 });
 
 const SERIES: readonly Candle[] = Array.from({ length: 300 }, (_, i) => {
