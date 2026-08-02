@@ -48,6 +48,11 @@ flowchart TD
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
 - [`boot-splash-animations.md`](boot-splash-animations.md) — the boot-splash
   3D scenes, documented with diagrams.
+- [`rn-running-on-a-real-iphone.md`](rn-running-on-a-real-iphone.md) — installing
+  the RN app on your own iPhone with a **free** Apple ID (no paid program, no
+  EAS). Do this whenever you touch motion, Skia or worklets: the simulator has
+  no gyroscope and draws Skia on the Mac's GPU, so it cannot show you a whole
+  class of behaviour. Includes every failure hit walking it end-to-end.
 - [`rn-motion-architecture.md`](rn-motion-architecture.md) — **read before
   writing anything that moves in React Native.** Which of Skia / Reanimated owns
   what and why, the New-Architecture baseline, and the frozen-boot case study —
