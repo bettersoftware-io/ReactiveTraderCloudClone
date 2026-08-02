@@ -65,6 +65,7 @@ import {
   type JarvisEntry,
   type JarvisIntents,
   type JarvisState,
+  JarvisUsagePresenter,
   LatencyPresenter,
   LoginWaitPreferencesPresenter,
   type Machine,
@@ -169,6 +170,9 @@ export interface Presenters {
   sessionsKpi: SessionsKpiPresenter;
   /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase. */
   jarvis: Machine<JarvisState, JarvisIntents>;
+  /** J.A.R.V.I.S. usage/cost telemetry (Admin surface) — null until the
+   * first snapshot. */
+  jarvisUsage: JarvisUsagePresenter;
 }
 
 export interface AppCommands {
@@ -534,12 +538,16 @@ export function createApp(ports: AppPorts): App {
       // check rather than a JarvisPort method (jarvisPort.ts's surface stays
       // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
       // needs none: createJarvisMachine defaults an absent availability$ to
-      // `of(true)`, so sim stays permanently available.
+      // an always-available, scripted-only value, so sim stays permanently
+      // available offering only the scripted brain.
       availability$:
         ports.jarvis instanceof WsJarvisAdapter
           ? ports.jarvis.availability$()
           : undefined,
+      preferredBrain$: ports.preferences.jarvisBrain$(),
+      effort$: ports.preferences.jarvisEffort$(),
     }),
+    jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
   };
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);

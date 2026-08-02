@@ -1,11 +1,13 @@
 import { state } from "@rx-state/core";
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import type { BehaviorSubject } from "rxjs";
-import { EMPTY, type Observable, of, throwError } from "rxjs";
+import { EMPTY, map, type Observable, of, throwError } from "rxjs";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type {
+  JarvisAvailability,
+  JarvisUsageSnapshot,
   RfqSubmissionState,
   TicketSubmissionState,
   WorkspaceTab,
@@ -36,6 +38,8 @@ import type {
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  JarvisBrain,
+  JarvisEffort,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -116,7 +120,25 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
       setSkin: (skin: JarvisSkin) => {
         world.jarvisSkin.next(skin);
       },
-      availability$: world.jarvisAvailability,
+      // World.jarvisAvailability is still the pre-brain-picker plain
+      // boolean (Task 10 replaces it with the structured
+      // JarvisAvailability directly on World) — until then, this driver
+      // maps it the same way JarvisMachine's own sim-mode default does:
+      // available -> the scripted brain only offered.
+      availability$: world.jarvisAvailability.pipe(
+        map((available): JarvisAvailability => {
+          return {
+            available,
+            brains: available ? ["scripted"] : [],
+            defaultBrain: "scripted",
+          };
+        }),
+      ),
+      // No brain-picker preference seeded on World yet (Task 10) — the
+      // scripted brain is always among the brains offered above, so this
+      // resolves predictably to "scripted".
+      preferredBrain$: of<JarvisBrain>("scripted"),
+      effort$: of<JarvisEffort>("medium"),
     });
     jarvisMachines.set(world, machine);
   }
@@ -707,6 +729,12 @@ export function solidViewModel(world: World): ViewModel {
           return view().errorRate;
         },
       };
+    },
+    // No jarvisUsage source on World yet (Task 10) — a stable null
+    // placeholder satisfies the ViewModel shape until that lands.
+    useJarvisUsage: () => {
+      const [value] = createSignal<JarvisUsageSnapshot | null>(null);
+      return value;
     },
     useTopology: () => {
       return wrapSubject(world.topology$);

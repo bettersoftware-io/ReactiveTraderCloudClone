@@ -2,9 +2,20 @@ import { of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_JARVIS_SKIN, Direction, type JarvisSkin } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_SKIN,
+  Direction,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisSkin,
+} from "@rtc/domain";
 
-import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
+import type {
+  JarvisAskOptions,
+  JarvisAvailability,
+  JarvisEvent,
+  JarvisPort,
+} from "#/adapters/jarvisPort";
 
 import {
   createJarvisMachine,
@@ -14,13 +25,14 @@ import {
 } from "../JarvisMachine";
 
 describe("createJarvisMachine", () => {
-  it("starts with the greeting, closed, idle, no pending confirmation, and the first skin$ value", () => {
+  it("starts with the greeting, closed, idle, no pending confirmation, the first skin$ value, and the sim-default scripted-only brain", () => {
     const ts = scheduler();
     ts.run(() => {
       const machine = createJarvisMachine({
         port: basePort(ts),
         skin$: of<JarvisSkin>("reactor"),
         setSkin: () => {},
+        ...baseBrainDeps(),
       });
       let current: JarvisState | undefined;
       const sub = machine.state$.subscribe((s) => {
@@ -34,6 +46,8 @@ describe("createJarvisMachine", () => {
         entries: [{ id: 0, role: "jarvis", text: JARVIS_GREETING, done: true }],
         pendingConfirmation: null,
         available: true,
+        brains: ["scripted"],
+        effectiveBrain: "scripted",
       });
       sub.unsubscribe();
       machine.dispose();
@@ -52,6 +66,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -88,6 +103,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -118,6 +134,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -152,6 +169,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -178,6 +196,7 @@ describe("createJarvisMachine", () => {
           port: fakePort(ts, "5ms (a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -221,6 +240,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -266,6 +286,7 @@ describe("createJarvisMachine", () => {
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
+          ...baseBrainDeps(),
         };
         return deps;
       },
@@ -300,6 +321,7 @@ describe("createJarvisMachine", () => {
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
+          ...baseBrainDeps(),
         };
         return deps;
       },
@@ -339,6 +361,7 @@ describe("createJarvisMachine", () => {
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
+          ...baseBrainDeps(),
         };
         return deps;
       },
@@ -364,6 +387,7 @@ describe("createJarvisMachine", () => {
         port,
         skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
         setSkin: () => {},
+        ...baseBrainDeps(),
       });
       const seen: JarvisState[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -390,6 +414,7 @@ describe("createJarvisMachine", () => {
           port: fakePort(ts, "(a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -420,6 +445,7 @@ describe("createJarvisMachine", () => {
           port: fakePort(ts, "(a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -455,6 +481,7 @@ describe("createJarvisMachine", () => {
         setSkin: (s: JarvisSkin) => {
           setSkinCalls.push(s);
         },
+        ...baseBrainDeps(),
       });
       const seen: JarvisSkin[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -477,6 +504,7 @@ describe("createJarvisMachine", () => {
         port,
         skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
         setSkin: () => {},
+        ...baseBrainDeps(),
       });
       const seen: JarvisState[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -498,38 +526,48 @@ describe("createJarvisMachine", () => {
   });
 
   describe("availability", () => {
-    it("defaults to available when deps.availability$ is absent (sim mode, legacy callers)", () => {
+    it("defaults to available, scripted-only when deps.availability$ is absent (sim mode, legacy callers)", () => {
       const ts = scheduler();
       ts.run(({ flush }) => {
         const machine = createJarvisMachine({
           port: basePort(ts),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
+          ...baseBrainDeps(),
         });
-        const seen: boolean[] = [];
+        const seen: JarvisState[] = [];
         const sub = machine.state$.subscribe((s) => {
-          seen.push(s.available);
+          seen.push(s);
         });
         flush();
         sub.unsubscribe();
         machine.dispose();
         expect(seen.length).toBeGreaterThan(0);
         expect(
-          seen.every((available) => {
-            return available === true;
+          seen.every((s) => {
+            return s.available === true;
           }),
         ).toBe(true);
+        expect(seen.at(-1)?.brains).toEqual(["scripted"]);
       });
     });
 
-    it("folds availability$ into state.available: goes false, then flips back true", () => {
+    it("folds availability$ into state.available/state.brains: goes false/empty, then flips back true/offered", () => {
       const ts = scheduler();
       ts.run(({ cold, flush }) => {
         const machine = createJarvisMachine({
           port: basePort(ts),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          availability$: cold<boolean>("f-t", { f: false, t: true }),
+          availability$: cold<JarvisAvailability>("f-t", {
+            f: { available: false, brains: [], defaultBrain: "scripted" },
+            t: {
+              available: true,
+              brains: ["scripted"],
+              defaultBrain: "scripted",
+            },
+          }),
+          ...baseBrainDeps(),
         });
         const seen: boolean[] = [];
         const sub = machine.state$.subscribe((s) => {
@@ -555,9 +593,10 @@ describe("createJarvisMachine", () => {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            availability$: ts.createColdObservable<boolean>("f", {
-              f: false,
+            availability$: ts.createColdObservable<JarvisAvailability>("f", {
+              f: { available: false, brains: [], defaultBrain: "scripted" },
             }),
+            ...baseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -604,9 +643,17 @@ describe("createJarvisMachine", () => {
             // "b" delta and the "c" delta, mid-stream. No leading "true"
             // frame needed: INITIAL.available / the local `available` cache
             // both already default to true.
-            availability$: ts.createColdObservable<boolean>("----f", {
-              f: false,
-            }),
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "----f",
+              {
+                f: {
+                  available: false,
+                  brains: [],
+                  defaultBrain: "scripted",
+                },
+              },
+            ),
+            ...baseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -655,12 +702,228 @@ describe("createJarvisMachine", () => {
       expect(port?.asks).toEqual(["first"]);
     });
   });
+
+  describe("brain + effort resolution", () => {
+    it("resolves effectiveBrain to the preferred brain when it is among the offered brains", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: of<JarvisAvailability>({
+            available: true,
+            brains: ["scripted", "claude-sonnet-5"],
+            defaultBrain: "scripted",
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
+          effort$: of<JarvisEffort>("high"),
+        });
+        let current: JarvisState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        expect(current?.brains).toEqual(["scripted", "claude-sonnet-5"]);
+        expect(current?.effectiveBrain).toBe("claude-sonnet-5");
+      });
+    });
+
+    it("falls back to availability.defaultBrain when the preferred brain is NOT among the offered brains", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: of<JarvisAvailability>({
+            available: true,
+            brains: ["scripted"],
+            defaultBrain: "scripted",
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+          effort$: of<JarvisEffort>("medium"),
+        });
+        let current: JarvisState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        expect(current?.effectiveBrain).toBe("scripted");
+      });
+    });
+
+    it("an empty offered-brains array (available:false transient) is not treated as a nullish sentinel — resolution still falls back to defaultBrain cleanly", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: of<JarvisAvailability>({
+            available: false,
+            brains: [],
+            defaultBrain: "claude-haiku-4-5",
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+          effort$: of<JarvisEffort>("medium"),
+        });
+        let current: JarvisState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        expect(current?.available).toBe(false);
+        expect(current?.brains).toEqual([]);
+        expect(current?.effectiveBrain).toBe("claude-haiku-4-5");
+      });
+    });
+
+    it("an availability flip mid-session re-resolves effectiveBrain against the same preferred brain", () => {
+      const ts = scheduler();
+      ts.run(({ cold, flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: cold<JarvisAvailability>("a-b", {
+            a: {
+              available: true,
+              brains: ["scripted"],
+              defaultBrain: "scripted",
+            },
+            b: {
+              available: true,
+              brains: ["scripted", "claude-opus-5"],
+              defaultBrain: "scripted",
+            },
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+          effort$: of<JarvisEffort>("medium"),
+        });
+        const seen: JarvisBrain[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s.effectiveBrain);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+        // seen[0] is NOT INITIAL.effectiveBrain: unlike availability$ here
+        // (a cold marble, not yet fired at subscribe time), preferredBrain$
+        // is a plain synchronous `of(...)` — it already folds during
+        // machine construction, before this test's own subscribe, resolving
+        // against the (still-default) availability cache. "claude-opus-5"
+        // isn't offered by the DEFAULT_AVAILABILITY sim-default
+        // (["scripted"] only), so it's already "scripted" by subscribe
+        // time. The cold availability$'s own frame-0 "a" patch re-resolves
+        // to the same "scripted" (still not offered); frame "b" finally
+        // offers "claude-opus-5" and the preferred brain wins.
+        expect(seen).toEqual(["scripted", "scripted", "claude-opus-5"]);
+      });
+    });
+
+    it("send() calls port.ask with the resolved effective brain and the current effort", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-sonnet-5"],
+              defaultBrain: "scripted",
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
+            effort$: of<JarvisEffort>("high"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      expect(port?.askCalls).toEqual([
+        {
+          text: "hello",
+          options: { brain: "claude-sonnet-5", effort: "high" },
+        },
+      ]);
+    });
+
+    it("a preferredBrain$ change mid-session is reflected in the NEXT send()'s effective brain", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-opus-5"],
+              defaultBrain: "scripted",
+            }),
+            preferredBrain$: ts.createColdObservable<JarvisBrain>("a-b", {
+              a: "scripted",
+              b: "claude-opus-5",
+            }),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          // Sent after preferredBrain$'s frame-2 "b" — the first turn's
+          // "(a|)" port response completes synchronously relative to its own
+          // (frame-1) subscribe, so this is genuinely a second, later turn.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 3);
+        },
+      );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["scripted", "claude-opus-5"]);
+    });
+  });
 });
 
 function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });
+}
+
+/** The default `preferredBrain$`/`effort$` most tests don't care about:
+ * "scripted" is always among the sim-default's offered brains, so
+ * effectiveBrain resolves predictably without every unrelated test needing
+ * to reason about brain-picker semantics. */
+function baseBrainDeps(): Pick<JarvisDeps, "preferredBrain$" | "effort$"> {
+  return {
+    preferredBrain$: of<JarvisBrain>("scripted"),
+    effort$: of<JarvisEffort>("medium"),
+  };
+}
+
+interface AskCall {
+  readonly text: string;
+  readonly options: JarvisAskOptions | undefined;
 }
 
 function fakePort(
@@ -670,11 +933,14 @@ function fakePort(
 ): FakeJarvisPort {
   const confirms: Array<[string, boolean]> = [];
   const asks: string[] = [];
+  const askCalls: AskCall[] = [];
   return {
     confirms,
     asks,
-    ask: (text: string) => {
+    askCalls,
+    ask: (text: string, options?: JarvisAskOptions) => {
       asks.push(text);
+      askCalls.push({ text, options });
       return ts.createColdObservable<JarvisEvent>(marbles, values);
     },
     confirm: (id: string, approved: boolean) => {
@@ -713,8 +979,10 @@ function basePort(ts: TestScheduler): FakeJarvisPort {
 }
 
 /** A JarvisPort test double that also records every confirm() and ask() call
- * (`asks` — the raw text of each turn actually sent to the port). */
+ * (`asks` — the raw text of each turn; `askCalls` — text + the full
+ * `options` argument, for asserting brain/effort forwarding). */
 interface FakeJarvisPort extends JarvisPort {
   readonly confirms: Array<[string, boolean]>;
   readonly asks: string[];
+  readonly askCalls: AskCall[];
 }

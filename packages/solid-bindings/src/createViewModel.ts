@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   AppCommands,
   JarvisState,
+  JarvisUsageSnapshot,
   Presenters,
 } from "@rtc/client-core";
 import {
@@ -383,6 +384,9 @@ export interface ViewModel {
   useEqWorkspace: () => UseEqWorkspaceResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
+  /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
+   * first snapshot. */
+  useJarvisUsage: () => Accessor<JarvisUsageSnapshot | null>;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -718,6 +722,11 @@ export function createViewModel(
     null as ServiceTopology | null,
   );
 
+  const jarvisUsageState = state(
+    presenters.jarvisUsage.usage$,
+    null as JarvisUsageSnapshot | null,
+  );
+
   const eventLogState = state(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
@@ -1043,6 +1052,9 @@ export function createViewModel(
         state: toSignal(presenters.jarvis.state$),
         ...presenters.jarvis.intents,
       };
+    },
+    useJarvisUsage: () => {
+      return toSignal(jarvisUsageState);
     },
     useMetrics: () => {
       return {

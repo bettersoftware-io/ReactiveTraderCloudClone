@@ -47,6 +47,23 @@ describe("createViewModel — admin hooks", () => {
     });
     expect(result.current.at(-1)?.value).toBeGreaterThanOrEqual(0);
   });
+
+  it("useJarvisUsage reads the sim port's always-empty snapshot", async () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useJarvisUsage();
+    });
+
+    await waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+    expect(result.current).toEqual({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+    });
+  });
 });
 
 function makeHooks(): ViewModel {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Direction } from "@rtc/domain";
+import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import {
   CLIENT_MSG,
   type JarvisEvent,
@@ -9,6 +9,7 @@ import {
 } from "@rtc/shared";
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import type { JarvisAvailability } from "./jarvisPort";
 import {
   JARVIS_AVAILABILITY_TIMEOUT_MS,
   JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS,
@@ -336,6 +337,41 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     ]);
   });
 
+  it("(j) ask(text, options) forwards brain/effort onto the CLIENT_MSG.JARVIS_CHAT payload", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    adapter
+      .ask("hello", { brain: "claude-opus-5", effort: "high" })
+      .subscribe();
+
+    const turnId = sentTurnId(ws);
+    expect(ws.sentMessages()).toEqual([
+      {
+        type: CLIENT_MSG.JARVIS_CHAT,
+        payload: {
+          text: "hello",
+          turnId,
+          brain: "claude-opus-5",
+          effort: "high",
+        },
+      },
+    ]);
+  });
+
+  it("(j) ask(text) with no options omits brain/effort entirely, not as undefined-valued keys", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+
+    adapter.ask("hello").subscribe();
+
+    const turnId = sentTurnId(ws);
+    const payload = ws.sentMessages()[0]?.payload as Record<string, unknown>;
+    expect(payload).toEqual({ text: "hello", turnId });
+    expect("brain" in payload).toBe(false);
+    expect("effort" in payload).toBe(false);
+  });
+
   it("REGRESSION: a turn started synchronously from a prior turn's complete() is not killed by that turn's own done frame", () => {
     // WsAdapter (and this fake, mirroring it) dispatch a server frame with
     // `for (const handler of [...handlers])` — a SNAPSHOT of the per-type
@@ -406,9 +442,9 @@ describe("WsJarvisAdapter.availability$()", () => {
   it("does nothing until a gatewayConnected event, then registers the handler and sends jarvis.subscribe", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     expect(ws.sentMessages()).toEqual([]);
@@ -421,48 +457,98 @@ describe("WsJarvisAdapter.availability$()", () => {
     expect(received).toEqual([]);
   });
 
-  it("emits true when the server reports available", () => {
+  it("NEW SHAPE: available:true with brains/defaultBrain passes them through unchanged", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted", "claude-haiku-4-5"],
+      defaultBrain: "claude-haiku-4-5",
+    });
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+      },
+    ]);
+  });
+
+  it("NEW SHAPE: available:false carries whatever brains/defaultBrain the server sent", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: false,
+      brains: [],
+      defaultBrain: "claude-haiku-4-5",
+    });
+    expect(received).toEqual([
+      { available: false, brains: [], defaultBrain: "claude-haiku-4-5" },
+    ]);
+  });
+
+  it("OLD SHAPE COMPAT: available:true with brains/defaultBrain absent maps to every selectable brain and the client's own default", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
-    expect(received).toEqual([true]);
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+      },
+    ]);
   });
 
-  it("emits false when the server reports unavailable", () => {
+  it("OLD SHAPE COMPAT: available:false with brains/defaultBrain absent maps to no brains offered and the client's own default", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: false });
-    expect(received).toEqual([false]);
+    expect(received).toEqual([
+      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+    ]);
   });
 
-  it("SLOW FIRST RESPONSE: emits false after the deadline WITHOUT completing, then a late real answer still lands", () => {
+  it("SLOW FIRST RESPONSE: emits an unavailable value with empty brains after the deadline WITHOUT completing, then a late real answer still lands", () => {
     // The bug this pins: the previous implementation used the RxJS
     // `timeout()` operator, whose catchError->of(false) both emits AND
     // completes the outer stream — a subscriber that stayed open past login
     // (>10s to the first response) latched `false` forever, even once the
     // server did answer. `createConnectionAvailabilityStream` uses a plain
-    // `setTimeout` instead: the deadline fires a synthetic `false` but never
-    // unregisters the handler, so a late real frame on the SAME connection
-    // still reaches the subscriber.
+    // `setTimeout` instead: the deadline fires a synthetic unavailable value
+    // but never unregisters the handler, so a late real frame on the SAME
+    // connection still reaches the subscriber.
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
+    const received: JarvisAvailability[] = [];
     let completed = false;
     adapter.availability$().subscribe({
-      next: (available: boolean) => {
-        received.push(available);
+      next: (availability: JarvisAvailability) => {
+        received.push(availability);
       },
       complete: () => {
         completed = true;
@@ -475,21 +561,30 @@ describe("WsJarvisAdapter.availability$()", () => {
     expect(completed).toBe(false);
 
     vi.advanceTimersByTime(1);
-    expect(received).toEqual([false]);
+    expect(received).toEqual([
+      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+    ]);
     expect(completed).toBe(false);
 
     // The stream is still alive: a real (late) answer still lands.
-    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
-    expect(received).toEqual([false, true]);
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+    });
+    expect(received).toEqual([
+      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      { available: true, brains: ["scripted"], defaultBrain: "scripted" },
+    ]);
     expect(completed).toBe(false);
   });
 
   it("RECONNECT REGRESSION: a NEW gatewayConnected event re-sends jarvis.subscribe and re-queries", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     ws.emitConnectionEvent("gatewayConnected");
@@ -504,15 +599,22 @@ describe("WsJarvisAdapter.availability$()", () => {
         return m.type === CLIENT_MSG.JARVIS_SUBSCRIBE;
       }),
     ).toHaveLength(2);
-    expect(received).toEqual([true, false]);
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+      },
+      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+    ]);
   });
 
-  it("SERVER-RESTART REGRESSION: the reconnect after a restart flips a stale false to true", () => {
+  it("SERVER-RESTART REGRESSION: the reconnect after a restart flips a stale unavailable value back to available", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     ws.emitConnectionEvent("gatewayConnected");
@@ -524,33 +626,78 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
 
-    expect(received).toEqual([false, true]);
+    expect(received).toEqual([
+      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+      },
+    ]);
   });
 
-  it("distinctUntilChanged: a reconnect that lands on the same boolean does not re-emit", () => {
+  it("distinctUntilChanged: a reconnect that lands on a structurally-equal availability value does not re-emit", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
 
     ws.emitConnectionEvent("gatewayConnected");
-    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+    });
 
     ws.emitConnectionEvent("gatewayDisconnected");
     ws.emitConnectionEvent("gatewayConnected");
-    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
+    // A brand-new array instance with the same elements in the same order —
+    // distinctUntilChanged must compare structurally, not by reference.
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+    });
 
-    expect(received).toEqual([true]);
+    expect(received).toEqual([
+      { available: true, brains: ["scripted"], defaultBrain: "scripted" },
+    ]);
+  });
+
+  it("distinctUntilChanged: a differing brains array (same length, different order) DOES re-emit", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted", "claude-haiku-4-5"],
+      defaultBrain: "scripted",
+    });
+
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["claude-haiku-4-5", "scripted"],
+      defaultBrain: "scripted",
+    });
+
+    expect(received).toHaveLength(2);
   });
 
   it("unsubscribing tears down the handler — a later frame or reconnect emits nothing further", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
-    const received: boolean[] = [];
-    const subscription = adapter.availability$().subscribe((available) => {
-      received.push(available);
+    const received: JarvisAvailability[] = [];
+    const subscription = adapter.availability$().subscribe((availability) => {
+      received.push(availability);
     });
     ws.emitConnectionEvent("gatewayConnected");
     subscription.unsubscribe();

@@ -3,11 +3,13 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
+  JARVIS_BRAINS,
   resolveThemeMode,
 } from "@rtc/domain";
 
@@ -43,6 +45,12 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   entries: [],
   pendingConfirmation: null,
   available: true,
+  // Neither field is read by any pre-Task-10 component (JarvisOrb/
+  // JarvisOverlay don't render a brain picker yet), so any consistent,
+  // offered value keeps every existing golden pixel-identical. Mirrors the
+  // react driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 
 import type { AppData } from "@ui-visual-shared/appData";
@@ -488,6 +496,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         declineConfirmation: noop,
         setSkin: noop,
       };
+    },
+    // No jarvisUsage AppData field yet (Task 10) — no pre-existing golden
+    // renders a usage card, so a static null accessor is pixel-neutral.
+    useJarvisUsage: () => {
+      return at(null);
     },
   };
 }

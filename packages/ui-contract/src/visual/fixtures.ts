@@ -14,6 +14,7 @@ import {
   type Candle,
   ConnectionStatus,
   type CurrencyPair,
+  DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
   type Dealer,
   type DepthBook,
@@ -24,6 +25,7 @@ import {
   type EquityQuote,
   ExecutionStatus,
   type Instrument,
+  JARVIS_BRAINS,
   type LogEvent,
   type MetricSample,
   type PositionUpdates,
@@ -2201,6 +2203,11 @@ const jarvisStateIdle: JarvisState = {
   entries: [jarvisGreetingEntry],
   pendingConfirmation: null,
   available: true,
+  // Every selectable brain offered, resolving to the client default — none
+  // of these three fixtures render the (not-yet-built) brain picker UI, so
+  // any consistent, offered value keeps the goldens byte-identical.
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
@@ -2228,6 +2235,8 @@ const jarvisStateChat: JarvisState = {
   entries: [jarvisGreetingEntry, jarvisChatUserEntry, jarvisChatReplyEntry],
   pendingConfirmation: null,
   available: true,
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2265,5 +2274,7 @@ const jarvisStateConfirm: JarvisState = {
   entries: [jarvisGreetingEntry],
   pendingConfirmation: jarvisPendingConfirmation,
   available: true,
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });
