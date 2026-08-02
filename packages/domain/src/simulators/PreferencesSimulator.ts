@@ -12,6 +12,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -22,6 +24,8 @@ import {
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -48,6 +52,8 @@ export interface PreferencesSeed {
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   jarvisSkin?: JarvisSkin;
+  jarvisBrain?: JarvisBrain;
+  jarvisEffort?: JarvisEffort;
 }
 
 /**
@@ -85,6 +91,10 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
 
   private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
+
+  private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
+
+  private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
 
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
@@ -131,6 +141,12 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
       seed.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+    );
+    this.jarvisBrainSubject = new BehaviorSubject<JarvisBrain>(
+      seed.jarvisBrain ?? DEFAULT_JARVIS_BRAIN,
+    );
+    this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
+      seed.jarvisEffort ?? DEFAULT_JARVIS_EFFORT,
     );
   }
 
@@ -252,5 +268,21 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setEqBlotterView(view: EqBlotterView): void {
     this.eqBlotterViewSubject.next(view);
+  }
+
+  jarvisBrain$(): Observable<JarvisBrain> {
+    return this.jarvisBrainSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisBrain(brain: JarvisBrain): void {
+    this.jarvisBrainSubject.next(brain);
+  }
+
+  jarvisEffort$(): Observable<JarvisEffort> {
+    return this.jarvisEffortSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisEffort(effort: JarvisEffort): void {
+    this.jarvisEffortSubject.next(effort);
   }
 }
