@@ -134,7 +134,7 @@ export function PreferencesModal({
           <div>
             <div className={styles.title}>PREFERENCES</div>
             <div className={styles.subtitle}>
-              DISPLAY · MOTION · TRADING · NOTIFICATIONS · DATA
+              DISPLAY · MOTION · JARVIS · TRADING · NOTIFICATIONS · DATA
             </div>
           </div>
           <button
