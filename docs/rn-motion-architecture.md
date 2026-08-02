@@ -208,3 +208,9 @@ Before merging anything that animates in the RN client:
       a deliberate decision about static-end-state vs render-nothing.
 - [ ] **Run it on the simulator.** For anything time-driven this is not optional:
       jest stubs the clock, and the goldens pin it.
+- [ ] **Run it on a real phone** if it involves Skia, the gyro camera, or a
+      release-only code path — see
+      [rn-running-on-a-real-iphone.md](rn-running-on-a-real-iphone.md). The
+      simulator has no gyroscope (so `useGyroDrift` reads a flat `0.0°` and that
+      path is never exercised) and draws Skia on the Mac's GPU. It is free and
+      takes minutes.
