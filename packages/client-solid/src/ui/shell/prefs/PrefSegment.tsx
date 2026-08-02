@@ -25,10 +25,15 @@ export function PrefSegment(props: PrefSegmentProps): JSX.Element {
               return option.value === props.value;
             }
 
+            function optionDisabled(): boolean {
+              return props.disabled === true || option.disabled === true;
+            }
+
             return (
               <button
                 type="button"
                 aria-pressed={active()}
+                disabled={optionDisabled()}
                 data-testid={`${props.testid}-${option.value}`}
                 data-on={active() ? "true" : "false"}
                 class={styles.segButton}
@@ -51,6 +56,10 @@ export interface PrefSegmentOption {
   value: string;
   /** Visible label. */
   label: string;
+  /** Disables just this option's button (native `disabled`, no `onChange`
+   * on click), independent of the row-level `disabled` prop — e.g. a
+   * brain the server isn't currently offering. */
+  disabled?: boolean;
 }
 
 interface PrefSegmentProps {
@@ -66,4 +75,7 @@ interface PrefSegmentProps {
   onChange: (value: string) => void;
   /** Stable testid prefix; each button gets `${testid}-${option.value}`. */
   testid: string;
+  /** Disables every option in the row — e.g. the effort row while the
+   * selected brain is "scripted" (which has no notion of effort). */
+  disabled?: boolean;
 }
