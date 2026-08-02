@@ -408,6 +408,14 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartHistoryStart",
     fixtureKey: "equities-loaded",
   },
+  // Canvas-spike (renderer-seam proof, spec 2026-08-02): the framework-free
+  // drawChartScene engine rendering the numeric ChartScene onto a <canvas> —
+  // the same scene drives both frameworks' hosts to one golden. Geometry
+  // only (no text): font rasterization is the nondeterminism trap.
+  "equities/chart-canvas-spike": {
+    componentKey: "EquitiesChartCanvasSpike",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 
