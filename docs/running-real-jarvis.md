@@ -112,10 +112,20 @@ mode.
   independent of the committed roster; the public demo login stops working,
   which is the trade.
 
-Aggregate, window-based server-side metering (usage gating, scripted
-fallback on exhaustion, footer/Admin surfacing, per-user model preference)
-is a designed-but-not-built workstream — see the entry in
-[STATUS.md](STATUS.md).
+**Per-user model preference and usage surfacing shipped 2026-08-02** — see
+[architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
+Every signed-in user now picks their own brain (including Scripted) in
+Preferences, and both the footer chip and an Admin-tab card show which brain
+is live and what it has cost. That gives every user a **manual** run-dry
+escape hatch already: flipping to Scripted in Preferences is a client-side
+preference write, live on the next message, no server restart and no env
+change — a different mechanism from `RTC_JARVIS_FAKE` above, which is a
+server-wide rehearsal override, not a per-user choice. What is still missing
+is *automatic* aggregate gating: nothing yet swaps a depleted connection to
+Scripted on its own, so running dry still surfaces as failed turns (the
+sanitized error copy) until the user flips the preference themselves or the
+key is topped up. That auto-gating (item (2) of the workstream) is a
+designed-but-not-built follow-on — see the entry in [STATUS.md](STATUS.md).
 
 ## Rate limits, and how Jarvis behaves when any limit trips
 
@@ -137,25 +147,38 @@ nothing crashes, leaks, or retry-storms):
 | Trip | Behavior |
 |---|---|
 | **429 rate-limited** | The SDK auto-retries a bounded number of times honoring `retry-after`; if exhausted, `AnthropicAgentSession` sanitizes the error (name/status only — never the raw message) and the turn fails with the in-character copy ("The desk link faltered, sir…"). The session survives; the next turn works once the bucket refills. A `retry-after` past the client's 30s first-event deadline makes the client show offline copy and fire its turn-correlated cancel — harmless (429'd requests aren't billed; the stale-cancel gate can't kill a later turn). |
-| **Spend cap hit / credits depleted** | Non-retryable billing error → the same sanitized per-turn failure. Known rough edge: the orb stays visible (availability tests "loop configured", not "key can bill"), so users see polite failures, not a fallback — the graceful scripted-fallback + footer notice is the governance workstream. |
+| **Spend cap hit / credits depleted** | Non-retryable billing error → the same sanitized per-turn failure. Known rough edge: the orb stays visible and the footer chip keeps naming the depleted brain (availability tests "loop configured", not "key can bill"), so users see polite failures, not an automatic fallback — flipping to Scripted in Preferences (see above) is the manual workaround today; the graceful *automatic* scripted-fallback on exhaustion is the still-pending governance item (2). |
 | **529 overloaded** | Bounded SDK retries, then the same sanitized error path. |
 
 Every API response carries `anthropic-ratelimit-*` headers (limit, remaining,
 reset, per requests/input/output — reflecting whichever limit is currently
-most restrictive, workspace or org). The future usage-governance metering can
-read quota state from these for free, without extra API calls.
+most restrictive, workspace or org). `UsageMeter` (below) does not read
+these yet — it accumulates from the SDK's per-message `usage` alone — so
+they remain a free, unused input for a future metering refinement.
 
-## Model cost note (assessed 2026-08-02)
+## Model cost note (assessed 2026-08-02, superseded 2026-08-02)
 
-`JARVIS_MODEL_ID` pins `claude-opus-5` ($5/$25 per Mtok). Jarvis's workload —
-seven flat-schema snapshot tools, trigger-clause descriptions, 2–4 sentence
-replies — is the easy end of tool use, and **Haiku 4.5 ($1/$5, ~5× cheaper
-both sides, faster TTFE) is expected to be sufficient**; per-turn cost is
-dominated by the persona+tools prefix and history re-sent as input, so the 5×
-applies almost directly. Sonnet 5 ($3/$15) is the middle option. A switch is
-one constant plus two per-model-family knobs to re-check (`effort` support,
-prompt-cache minimum prefix), verified by re-running `pnpm jarvis:smoke:live`.
-The interim step on the table (see the STATUS governance entry): make the
-model **env-selectable with a server-side allowlist** (`RTC_JARVIS_MODEL`,
-Haiku default) so Fly can flip models via a secret change, as the stepping
-stone to the Preferences-modal picker.
+**Update: this note's own conclusion shipped the same day it was written.**
+`JARVIS_MODEL_ID` — the old pinned-`claude-opus-5` constant this note was
+originally written against — is deleted. Model choice is now per-turn and
+per-user: every signed-in user picks their brain (Scripted, Haiku 4.5,
+Sonnet 5, or Opus 5) in Preferences, with **`claude-haiku-4-5` ($1/$5 per
+Mtok) as the new server-side default** for anyone who never opens
+Preferences (including pre-round clients). The `RTC_JARVIS_MODEL`
+env-selectable interim step this note originally proposed — a stepping stone
+toward a picker — was never built; the picker superseded it directly. Full
+receipt: [architecture
+§18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
+
+The reasoning that motivated the flip is unchanged and still worth keeping:
+Jarvis's workload — seven flat-schema snapshot tools, trigger-clause
+descriptions, 2–4 sentence replies — is the easy end of tool use, and Haiku
+4.5 (~5× cheaper both sides than Opus, faster TTFE) is sufficient for it;
+per-turn cost is dominated by the persona+tools prefix and history re-sent
+as input, so the 5× saving applies almost directly. Sonnet 5 ($3/$15) sits
+as the offered middle option. One caveat the picker surfaces that this note
+didn't originally anticipate: Haiku 4.5's minimum cacheable prefix is 4,096
+tokens (vs. 512 on Sonnet/Opus), comfortably above today's ~1.3k-token
+persona+tools prefix — so `cacheReadTokens: 0` on every Haiku turn, visible
+in the Admin usage card, is expected, not a broken cache (§18.15 has the
+full explanation).
