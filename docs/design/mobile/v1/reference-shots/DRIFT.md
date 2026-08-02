@@ -19,10 +19,6 @@ in for hardware.
 
 ## Paired — 14 scenarios
 
-> **2 of these have no app golden yet** — `credit/rfq-tiles`, `credit/sell-side`. They are registered in the app's `SCENARIO_IDS` with
-> Maestro flows generated, but the PNGs were never captured (Phase 5a, Task 11).
-> Until they are, this page cannot show the comparison for them.
-
 | scenario | app | prototype |
 |---|---|---|
 | **boot/core** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/boot/core.png" width="300"> | <img src="./boot/core.png" width="300"> |
@@ -35,8 +31,8 @@ in for hardware.
 | **boot/topo** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/boot/topo.png" width="300"> | <img src="./boot/topo.png" width="300"> |
 | **blotter/seeded** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/blotter/seeded.png" width="300"> | <img src="./blotter/seeded.png" width="300"> |
 | **analytics/dashboard** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/analytics/dashboard.png" width="300"> | <img src="./analytics/dashboard.png" width="300"> |
-| **credit/rfq-tiles** | _app golden not captured yet_ | <img src="./credit/rfq-tiles.png" width="300"> |
-| **credit/sell-side** | _app golden not captured yet_ | <img src="./credit/sell-side.png" width="300"> |
+| **credit/rfq-tiles** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/credit/rfq-tiles.png" width="300"> | <img src="./credit/rfq-tiles.png" width="300"> |
+| **credit/sell-side** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/credit/sell-side.png" width="300"> | <img src="./credit/sell-side.png" width="300"> |
 | **shell/appearance** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/shell/appearance.png" width="300"> | <img src="./shell/appearance.png" width="300"> |
 | **lock/hold** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/lock/hold.png" width="300"> | <img src="./lock/hold.png" width="300"> |
 
