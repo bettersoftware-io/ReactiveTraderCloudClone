@@ -241,6 +241,25 @@ describe("createViewModel — machine-backed members", () => {
     result.toggleIndicator("ema50");
     expect(result.state().indicators).toEqual([]);
   });
+
+  it("useEqWorkspace's togglePane intent drives the shared workspace state, independently of indicators", () => {
+    const vm = makeViewModel();
+
+    const { result } = renderHook(() => {
+      return vm.useEqWorkspace();
+    });
+
+    expect(result.state().panes).toEqual([]);
+
+    result.toggleIndicator("ema50");
+    result.togglePane("rsi");
+    expect(result.state().indicators).toEqual(["ema50"]);
+    expect(result.state().panes).toEqual(["rsi"]);
+
+    result.togglePane("rsi");
+    expect(result.state().indicators).toEqual(["ema50"]);
+    expect(result.state().panes).toEqual([]);
+  });
 });
 
 function requireFirstPair(): (typeof KNOWN_CURRENCY_PAIRS)[number] {

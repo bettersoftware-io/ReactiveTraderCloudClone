@@ -437,12 +437,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           timeframe: "1D",
           chartType: "candles",
           indicators: [],
+          panes: [],
         },
         select: noop,
         closeTab: noop,
         setTimeframe: noop,
         setChartType: noop,
         toggleIndicator: noop,
+        togglePane: noop,
       };
     },
     // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a

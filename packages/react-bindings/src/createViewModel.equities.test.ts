@@ -230,6 +230,35 @@ describe("createViewModel — equities hooks", () => {
     });
     expect(result.current.state.indicators).toEqual([]);
   });
+
+  it("useEqWorkspace starts with no panes", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    expect(result.current.state.panes).toEqual([]);
+  });
+
+  it("useEqWorkspace().togglePane adds then removes a pane from the shared set, independently of indicators", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.toggleIndicator("sma20");
+      result.current.togglePane("rsi");
+    });
+    expect(result.current.state.indicators).toEqual(["sma20"]);
+    expect(result.current.state.panes).toEqual(["rsi"]);
+
+    act(() => {
+      result.current.togglePane("rsi");
+    });
+    expect(result.current.state.indicators).toEqual(["sma20"]);
+    expect(result.current.state.panes).toEqual([]);
+  });
 });
 
 describe("createViewModel — candle backfill", () => {
