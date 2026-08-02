@@ -10,6 +10,7 @@ import {
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
+import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 const INSTRUMENTS: readonly Instrument[] = [
@@ -42,7 +43,9 @@ test("broadcast is inert until an instrument and a quantity chip are chosen", as
   void fireEvent.press(screen.getByTestId("rfq-submit"));
   expect(submit).not.toHaveBeenCalled();
 
-  await fireEvent.press(screen.getByTestId("quantity-chip-5000000"));
+  await fireEvent.press(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`),
+  );
   void fireEvent.press(screen.getByTestId("rfq-submit"));
 
   expect(submit).toHaveBeenCalledTimes(1);
@@ -50,7 +53,10 @@ test("broadcast is inert until an instrument and a quantity chip are chosen", as
   expect(input).toEqual({
     instrumentId: 1,
     dealerIds: [1, 2],
-    quantity: 5_000_000,
+    // UI-SCALE, not notional: `CreateRfqUseCase` multiplies by
+    // CREDIT_QUANTITY_MULTIPLIER on the way to the port. Asserting the literal
+    // notional here is what let a 1000x error reach a device.
+    quantity: RFQ_QUANTITY_CHIPS[2],
     direction: Direction.Buy,
   });
 });
@@ -63,7 +69,9 @@ test("broadcasts to every dealer with no picker in the form", async () => {
   await renderEditingForm(submit);
 
   await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  await fireEvent.press(screen.getByTestId("quantity-chip-1000000"));
+  await fireEvent.press(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
+  );
   void fireEvent.press(screen.getByTestId("rfq-submit"));
 
   expect(submit.mock.calls[0][0].dealerIds).toEqual([1, 2]);
@@ -75,7 +83,9 @@ test("sell direction rides through to the submitted rfq", async () => {
   await renderEditingForm(submit);
 
   await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  await fireEvent.press(screen.getByTestId("quantity-chip-1000000"));
+  await fireEvent.press(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
+  );
   await fireEvent.press(screen.getByTestId(`rfq-direction-${Direction.Sell}`));
   void fireEvent.press(screen.getByTestId("rfq-submit"));
 

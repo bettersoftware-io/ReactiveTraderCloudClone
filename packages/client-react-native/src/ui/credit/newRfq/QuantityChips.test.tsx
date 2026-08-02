@@ -13,9 +13,11 @@ test("renders the fixed quantity chips and reports the pressed one", async () =>
     RFQ_QUANTITY_CHIPS.length,
   );
 
-  await fireEvent.press(screen.getByTestId("quantity-chip-2000000"));
+  await fireEvent.press(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[1]}`),
+  );
 
-  expect(onSelect).toHaveBeenCalledWith(2_000_000);
+  expect(onSelect).toHaveBeenCalledWith(RFQ_QUANTITY_CHIPS[1]);
 });
 
 // dc.html:2182 — `v / 1000000 + 'M'`. A chip reading "2000000" would be
@@ -28,10 +30,13 @@ test("labels each chip in millions", async () => {
 });
 
 test("marks the selected chip and no other", async () => {
-  await renderWithTheme(<QuantityChips selected={5_000_000} onSelect={noop} />);
+  const [first, , third] = RFQ_QUANTITY_CHIPS;
+  await renderWithTheme(<QuantityChips selected={third} onSelect={noop} />);
 
-  expect(selectedState(screen.getByTestId("quantity-chip-5000000"))).toBe(true);
-  expect(selectedState(screen.getByTestId("quantity-chip-1000000"))).toBe(
+  expect(selectedState(screen.getByTestId(`quantity-chip-${third}`))).toBe(
+    true,
+  );
+  expect(selectedState(screen.getByTestId(`quantity-chip-${first}`))).toBe(
     false,
   );
 });
