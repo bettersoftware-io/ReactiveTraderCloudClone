@@ -40,14 +40,6 @@ export interface ChartScale {
   readonly cmax: number;
 }
 
-/** A time-axis tick, keyed to the series index it labels (stable while
- * panning) rather than to its position within the current viewport. */
-export interface TimeLabelVm {
-  readonly key: number;
-  readonly txt: string;
-  readonly style: ChartVarStyle;
-}
-
 export interface ChartVmOptions {
   /** Visible candle-index window; default: the whole series (back-compat). */
   readonly viewport?: ChartViewport;
