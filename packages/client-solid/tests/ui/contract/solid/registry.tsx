@@ -97,6 +97,7 @@ import type {
   ColumnFilter,
   EqChartType,
   EqIndicatorId,
+  EqPaneId,
   NotionalIntents,
   NotionalView,
   PanelId,
@@ -921,6 +922,7 @@ export const registry = new Map<AnyToken, ElementFor>([
           flashOn={(p().flashOn as boolean) ?? false}
           kind={(p().kind as EqChartType) ?? "candles"}
           indicators={(p().indicators as readonly EqIndicatorId[]) ?? []}
+          panes={(p().panes as readonly EqPaneId[]) ?? []}
           defaultVisible={(p().defaultVisible as number) ?? 50}
           loadingOlder={(p().loadingOlder as boolean) ?? false}
           historyExhausted={(p().historyExhausted as boolean) ?? false}

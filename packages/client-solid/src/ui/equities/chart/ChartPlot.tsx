@@ -2,9 +2,13 @@ import { type Accessor, Index, type JSX, Show } from "solid-js";
 
 import type { EqChartType } from "@rtc/client-core";
 import type {
+  ChartVarStyle,
   ChartVm,
   CrosshairVm,
+  EqPaneKind,
   NavigatorVm,
+  PaneReadoutRow,
+  PaneScene,
   VolumeBarVm,
 } from "@rtc/motion-core";
 
@@ -12,8 +16,9 @@ import { BackfillChips } from "./BackfillChips";
 import { BackToLiveButton } from "./BackToLiveButton";
 import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
-import type { ChartGestures } from "./createChartGestures";
+import type { ChartGestures, PaneHoverProps } from "./createChartGestures";
 import type { NavigatorStripProps } from "./createNavigatorBrush";
+import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { SvgPathLayer } from "./SvgPathLayer";
@@ -38,7 +43,7 @@ import styles from "./CandleChart.module.css";
  */
 export function ChartPlot(props: ChartPlotProps): JSX.Element {
   return (
-    <div class={styles.wrap}>
+    <div class={styles.wrap} data-panes={(props.panes ?? []).length}>
       <div
         class={styles.plot}
         data-testid="chart-plot"
@@ -93,7 +98,10 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           kind={props.kind}
           indicatorPaths={props.indicatorPaths}
         />
-        <CrosshairOverlay vm={props.cross} />
+        <CrosshairOverlay
+          vm={props.cross}
+          showHorizontal={props.showHorizontal ?? true}
+        />
         <BackfillChips
           loadingOlder={props.loadingOlder}
           historyStart={props.historyStart}
@@ -103,10 +111,41 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         </Show>
       </div>
       <VolumePane bars={props.volumeBars} />
+      <Index each={props.panes ?? []}>
+        {(p: Accessor<PaneVm>): JSX.Element => {
+          return (
+            <IndicatorPane
+              kind={p().kind}
+              scene={p().scene}
+              readout={p().readout}
+              crosshairStyle={props.paneCrosshairStyle ?? null}
+              hoverProps={props.paneHoverProps ?? NOOP_PANE_HOVER_PROPS}
+            />
+          );
+        }}
+      </Index>
       <TimeAxis labels={props.vm.timeLabels} />
       <NavigatorStrip nav={props.nav} brushProps={props.navProps} />
     </div>
   );
+}
+
+/** A no-op fallback for the visual tier's forced-state wrappers, which
+ * mount `ChartPlot` directly without going through `createChartGestures`
+ * (see `EquitiesChartInteractive.visual.tsx`) — never reached in the real
+ * app, where `CandleChart` always supplies the live `paneHoverProps`. */
+const NOOP_PANE_HOVER_PROPS: PaneHoverProps = {
+  onPointerMove: () => {},
+  onPointerLeave: () => {},
+};
+
+/** One active pane's projected geometry + live readout — `CandleChart`
+ * computes this per entry in the workspace's `panes` set via `paneScene`/
+ * `paneReadout`; `ChartPlot` just maps it onto `IndicatorPane`. */
+export interface PaneVm {
+  readonly kind: EqPaneKind;
+  readonly scene: PaneScene;
+  readonly readout: readonly PaneReadoutRow[] | null;
 }
 
 export interface ChartPlotProps {
@@ -125,4 +164,18 @@ export interface ChartPlotProps {
   readonly navProps?: NavigatorStripProps;
   readonly loadingOlder: boolean;
   readonly historyStart: boolean;
+  /** The active RSI/MACD panes, in order — omit for a pane-free mount (the
+   * visual tier's forced-state wrappers construct `ChartPlot` directly with
+   * no pane data; see the file doc above). */
+  readonly panes?: readonly PaneVm[];
+  /** The shared crosshair echo style (`cross?.style ?? null`), rendered as
+   * each pane's own vertical hairline — omit alongside `panes`. */
+  readonly paneCrosshairStyle?: ChartVarStyle | null;
+  /** Whether the main plot's own horizontal hairline should show — false
+   * while the hover has moved into a pane instead. Defaults to true so a
+   * `ChartPlot` built without pane wiring (same forced-state wrappers) keeps
+   * its pre-pane crosshair behaviour unchanged. */
+  readonly showHorizontal?: boolean;
+  /** Forwarded onto every rendered `IndicatorPane` — omit alongside `panes`. */
+  readonly paneHoverProps?: PaneHoverProps;
 }

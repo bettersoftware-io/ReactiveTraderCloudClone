@@ -436,7 +436,11 @@ describe("createChartGestures", () => {
     // resumed phantom drag from the stale origin.
     result.plotProps.onPointerMove(pointerEvent({ clientX: 250, clientY: 25 }));
 
-    expect(result.cursor()).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+    expect(result.cursor()).toEqual({
+      xFrac: 0.5,
+      yFrac: 0.5,
+      inPlot: true,
+    });
   });
 
   it("pointer move while NOT dragging sets the crosshair cursor fraction instead", () => {
@@ -446,7 +450,11 @@ describe("createChartGestures", () => {
 
     result.plotProps.onPointerMove(pointerEvent({ clientX: 250, clientY: 25 }));
 
-    expect(result.cursor()).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+    expect(result.cursor()).toEqual({
+      xFrac: 0.5,
+      yFrac: 0.5,
+      inPlot: true,
+    });
   });
 
   it("onPointerLeave clears the crosshair cursor", () => {

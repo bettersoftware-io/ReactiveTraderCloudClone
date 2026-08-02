@@ -143,6 +143,7 @@ export function EquitiesChartLine(): JSX.Element {
         flashOn={false}
         kind="line"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -161,6 +162,7 @@ export function EquitiesChartArea(): JSX.Element {
         flashOn={false}
         kind="area"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -179,6 +181,7 @@ export function EquitiesChartIndicators(): JSX.Element {
         flashOn={false}
         kind="candles"
         indicators={CHART_INDICATORS}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -197,6 +200,7 @@ export function EquitiesChartVolumeAxis(): JSX.Element {
         flashOn={false}
         kind="candles"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
