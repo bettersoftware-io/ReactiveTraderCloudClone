@@ -5,6 +5,8 @@ import {
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
@@ -20,6 +22,8 @@ import {
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
   FORCE_BOOT_ANIMATION_STORAGE_KEY,
+  JARVIS_BRAIN_STORAGE_KEY,
+  JARVIS_EFFORT_STORAGE_KEY,
   JARVIS_SKIN_STORAGE_KEY,
   LOGIN_WAIT_DELAY_STORAGE_KEY,
   LOGIN_WAIT_STYLE_STORAGE_KEY,
@@ -119,6 +123,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, seed.jarvisSkin);
       }
 
+      if (seed.jarvisBrain) {
+        localStorage.setItem(JARVIS_BRAIN_STORAGE_KEY, seed.jarvisBrain);
+      }
+
+      if (seed.jarvisEffort) {
+        localStorage.setItem(JARVIS_EFFORT_STORAGE_KEY, seed.jarvisEffort);
+      }
+
       return new LocalStoragePreferencesAdapter();
     },
   );
@@ -206,6 +218,22 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     const port = new LocalStoragePreferencesAdapter();
     expect(await firstValueFrom(port.jarvisSkin$())).toBe(DEFAULT_JARVIS_SKIN);
   });
+
+  it("falls back to defaults for an invalid stored jarvisBrain", async () => {
+    localStorage.setItem(JARVIS_BRAIN_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisBrain$())).toBe(
+      DEFAULT_JARVIS_BRAIN,
+    );
+  });
+
+  it("falls back to defaults for an invalid stored jarvisEffort", async () => {
+    localStorage.setItem(JARVIS_EFFORT_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisEffort$())).toBe(
+      DEFAULT_JARVIS_EFFORT,
+    );
+  });
 });
 
 function clearStorage(): void {
@@ -224,4 +252,6 @@ function clearStorage(): void {
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
   localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
+  localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);
+  localStorage.removeItem(JARVIS_EFFORT_STORAGE_KEY);
 }
