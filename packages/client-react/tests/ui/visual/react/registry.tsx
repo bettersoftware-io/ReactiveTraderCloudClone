@@ -64,6 +64,10 @@ import {
   EquitiesChartVolumeAxis,
   EquitiesChartZoomed,
 } from "./EquitiesChartInteractive.visual";
+import {
+  EquitiesChartPaneRsi,
+  EquitiesChartPanesBoth,
+} from "./EquitiesChartPanes.visual";
 
 const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
 
@@ -566,6 +570,15 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   EquitiesChartHistoryStart: () => {
     return <EquitiesChartHistoryStart />;
+  },
+  // Indicator panes (Task 7): forced-state wrappers in
+  // EquitiesChartPanes.visual.tsx (see that file's doc comment for why RSI
+  // solo goes crosshair-free while the both-panes scenario forces one).
+  EquitiesChartPaneRsi: () => {
+    return <EquitiesChartPaneRsi />;
+  },
+  EquitiesChartPanesBoth: () => {
+    return <EquitiesChartPanesBoth />;
   },
   // Renderer-seam proof (spec 2026-08-02): the framework-free drawChartScene
   // engine painting spikeScene() onto a bare <canvas>. See
