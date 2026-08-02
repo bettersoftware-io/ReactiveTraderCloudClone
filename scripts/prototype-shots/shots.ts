@@ -17,9 +17,15 @@
  * is FROZEN — its labels and its runtime-generated class names can never
  * change, so neither locator can rot. */
 export type ShotStep =
-  | { readonly tapText: string }
+  /** Click by visible text. `exact` matters more than it looks: the wordmark
+   * "REACTIVE TRADER" contains "TRADE", so a substring match for the Equities
+   * TRADE tab silently clicks the logo instead — which produced a
+   * `equities/trade` shot that was really the Markets tab. */
+  | { readonly tapText: string; readonly exact?: boolean }
   | { readonly tapSelector: string }
-  | { readonly holdText: string; readonly ms: number };
+  /** Press and HOLD without releasing, addressed by selector rather than text:
+   * the thing to press is the ring button, not the label beneath it. */
+  | { readonly holdSelector: string; readonly ms: number };
 
 /** The radial dock's hex FAB. Addressed by class because its GLYPH is the
  * active module's icon (⇅ on Rates, ◈ on Credit) and becomes ✕ once open — so
@@ -33,6 +39,25 @@ const DOCK_FAB = "button.scp4";
 /** A spot tile on the Rates grid. Verified: tiles are the only `[data-flip]`
  * elements on that screen. Not exported, for the same reason as DOCK_FAB. */
 const SPOT_TILE = "[data-flip]";
+
+/** The hold-to-unlock ring (dc.html:605) — the 112px round button carrying the
+ * pointer handlers. The "HOLD TO UNLOCK" caption is a SIBLING div, so pressing
+ * the caption does nothing at all.
+ *
+ * Matched by \ rather than by its inline style: the runtime
+ * re-serializes style attributes with spaces (\), so a
+ * style-substring selector written from the template source silently matches
+ * nothing. Verified unique — it is the only button on the page holding an SVG. */
+const UNLOCK_RING = "button:has(svg)";
+
+/** MEASURED, not derived. dc.html:2521 advances holdP by 0.022 per animation
+ * frame, which at 60fps would imply ~750ms to fill — but headless Chrome drives
+ * rAF faster, and a 420ms hold completed the unlock outright, leaving the lock
+ * screen entirely. Sampling the ring's stroke-dashoffset gave 120ms -> 0.33,
+ * 160ms -> 0.42, 200ms -> 0.53, 240ms -> 0.64, so ~208ms lands on the 0.55 the
+ * app golden pins via LOCK_HOLD_PROGRESS. A partial arc is the entire point of
+ * this shot; a full one is a different screen. */
+const UNLOCK_HOLD_MS = 208;
 
 /** What proves the shot actually arrived. Always a POSITIVE assertion — never
  * "the launcher isn't showing". See the spec's §7 (T2/T7).
@@ -164,8 +189,15 @@ export const SHOTS: readonly Shot[] = [
     id: "lock/hold",
     seed: THEME,
     afterBoot: true,
-    steps: [{ tapText: "⌖" }, { holdText: "HOLD TO UNLOCK", ms: 900 }],
-    arrival: { text: "HOLD TO UNLOCK" },
+    steps: [
+      { tapText: "⌖" },
+      { holdSelector: UNLOCK_RING, ms: UNLOCK_HOLD_MS },
+    ],
+    // "HOLD TO UNLOCK" would be the WRONG assertion — it is the idle caption,
+    // present precisely when the hold has NOT engaged. The caption flips to
+    // "AUTHENTICATING…" the moment holdP > 0 (dc.html:2600), so this asserts
+    // the state we came for rather than the one we are trying to leave.
+    arrival: { text: "AUTHENTICATING" },
     appTwin: true,
   },
 
@@ -193,8 +225,11 @@ export const SHOTS: readonly Shot[] = [
     steps: [
       { tapSelector: DOCK_FAB },
       { tapText: "EQUITIES" },
-      { tapText: "MARKETS" },
+      { tapText: "MARKETS", exact: true },
     ],
+    // Deliberately the tab label here, which would be a weak assertion anywhere
+    // else: Markets is the DEFAULT tab, so a click that failed to land still
+    // leaves the correct screen. Nothing stronger is needed.
     arrival: { text: "MARKETS" },
     appTwin: false,
   },
@@ -205,9 +240,12 @@ export const SHOTS: readonly Shot[] = [
     steps: [
       { tapSelector: DOCK_FAB },
       { tapText: "EQUITIES" },
-      { tapText: "TRADE" },
+      { tapText: "TRADE", exact: true },
     ],
-    arrival: { text: "TRADE" },
+    // Content unique to this tab, not the tab label. "TRADE" is on screen
+    // whichever tab is active, so it cannot witness the click landing — and
+    // did not: the first capture of this shot was really the Markets tab.
+    arrival: { text: "LIMIT PX" },
     appTwin: false,
   },
   {
@@ -217,9 +255,11 @@ export const SHOTS: readonly Shot[] = [
     steps: [
       { tapSelector: DOCK_FAB },
       { tapText: "EQUITIES" },
-      { tapText: "BLOTTER" },
+      { tapText: "BLOTTER", exact: true },
     ],
-    arrival: { text: "BLOTTER" },
+    // "ORDERS" rather than "POSITIONS": the Trade tab also lists positions, so
+    // only the orders table is unique to the Blotter tab.
+    arrival: { text: "ORDERS" },
     appTwin: false,
   },
   {

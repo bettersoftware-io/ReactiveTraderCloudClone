@@ -72,18 +72,21 @@ export async function waitForBootInstant(
 
 async function runStep(page: Page, step: ShotStep): Promise<void> {
   if ("tapText" in step) {
-    // Not `exact`: the dock satellites render glyph + label in one button
-    // ("⇅\n RATES"), so an exact match would find nothing.
-    await page.getByText(step.tapText).first().click();
+    // Substring by DEFAULT because the dock satellites render glyph + label in
+    // one button ("⇅\n RATES"), which an exact match would miss. Opt into
+    // `exact` wherever a shorter label is a substring of a longer one.
+    await page
+      .getByText(step.tapText, { exact: step.exact ?? false })
+      .first()
+      .click();
   } else if ("tapSelector" in step) {
     await page.locator(step.tapSelector).first().click();
   } else {
-    const target = page.getByText(step.holdText).first();
-    await target.hover();
+    await page.locator(step.holdSelector).first().hover();
     await page.mouse.down();
     await page.waitForTimeout(step.ms);
-    // Deliberately NOT released: the hold-to-unlock ring must be captured
-    // mid-fill, which is the whole point of the app's LOCK_HOLD_PROGRESS 0.55.
+    // Deliberately NOT released: the ring must be captured mid-fill, which is
+    // the whole point of the app's LOCK_HOLD_PROGRESS 0.55.
   }
 }
 
@@ -189,7 +192,16 @@ export async function driveToShot(browser: Browser, shot: Shot): Promise<Page> {
       await runStep(page, step);
     }
 
-    await page.waitForTimeout(SETTLE_MS);
+    // No settle after a HOLD. Settling assumes a transition converging to rest,
+    // but a hold is a live interaction still running under a pressed pointer —
+    // extra time is a DIFFERENT state, not a calmer one. A 500ms settle turned
+    // a measured 208ms hold (ring at 0.55) into 708ms, which completes the
+    // unlock and leaves the lock screen entirely.
+    const last = shot.steps.at(-1);
+
+    if (last === undefined || !("holdSelector" in last)) {
+      await page.waitForTimeout(SETTLE_MS);
+    }
   } else {
     await waitForBootInstant(page, BOOT_INSTANT_SEC);
   }
