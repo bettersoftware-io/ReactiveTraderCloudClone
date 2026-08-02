@@ -13,7 +13,7 @@ import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import type { AgentLoop } from "./agent/agentLoop.js";
-import { createAgentLoop } from "./agent/agentLoop.js";
+import { createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
 import { buildEffects } from "./effects/index.js";
@@ -50,14 +50,15 @@ function buildJarvisToolsFor(
   });
 }
 
-/** The Task 6 seam `createAgentLoop` warns and falls through without: builds
- * the real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
+/** The seam `createJarvisLoops` warns and falls through without: builds the
+ * real `AnthropicAgentLoop`, wiring each session's own `buildJarvisTools`
  * call (see `AnthropicAgentLoopOptions.buildTools`'s doc comment for why that
- * must happen per session, not once here). `createAgentLoop` only invokes
- * this when `env.ANTHROPIC_API_KEY` is already known truthy, hence the `?? ""`
- * fallback below is unreachable in practice, not a silent-empty-key path.
- * Satisfies `AnthropicLoopBuilder` structurally — no explicit annotation
- * needed on a function declaration. */
+ * must happen per session, not once here) and `services.usageMeter` so every
+ * real Claude turn's token usage reaches the admin usage dock.
+ * `createJarvisLoops` only invokes this when `env.ANTHROPIC_API_KEY` is
+ * already known truthy, hence the `?? ""` fallback below is unreachable in
+ * practice, not a silent-empty-key path. Satisfies `AnthropicLoopBuilder`
+ * structurally — no explicit annotation needed on a function declaration. */
 function buildAnthropicLoop(
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
@@ -67,13 +68,19 @@ function buildAnthropicLoop(
     buildTools: (confirmTrade: ConfirmGate) => {
       return buildJarvisToolsFor(services, confirmTrade);
     },
+    usageMeter: services.usageMeter,
   });
 }
 
 const services = createServices();
-const agentLoop = createAgentLoop(process.env, services, buildAnthropicLoop);
+const jarvisLoops = createJarvisLoops(
+  process.env,
+  services,
+  buildAnthropicLoop,
+);
+
 const listen = createWsListener(
-  combineEffects(...buildEffects(agentLoop)),
+  combineEffects(...buildEffects(jarvisLoops)),
   services,
 );
 

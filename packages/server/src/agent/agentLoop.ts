@@ -1,6 +1,11 @@
 import type { Observable } from "rxjs";
 
-import type { JarvisBrain, JarvisEffort } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  JARVIS_BRAINS,
+  type JarvisBrain,
+  type JarvisEffort,
+} from "@rtc/domain";
 import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
@@ -10,13 +15,13 @@ import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";
  * Per-turn brain/effort selection, threaded from the wire's `jarvis.chat`
  * payload down to whichever `AgentSession` is serving the connection.
  * `brain` excludes `"scripted"` — resolving to "scripted" means the turn
- * never reaches an `AnthropicAgentSession` at all: `createAgentLoop`'s env
- * precedence routes a scripted pick to `ScriptedAgentLoop` instead, so by
- * the time an `AnthropicAgentSession` sees this, the brain has already been
- * resolved and validated to a live Claude model upstream (the wire layer's
- * job, not this seam's). `ScriptedAgentSession` accepts this param only to
- * satisfy the shared `AgentSession` surface — it ignores it entirely, since
- * the scripted engine has no notion of model or effort.
+ * never reaches an `AnthropicAgentSession` at all: `jarvisEffects`' routing
+ * sends a scripted pick to `JarvisLoops.scripted` instead, so by the time an
+ * `AnthropicAgentSession` sees this, the brain has already been resolved and
+ * validated to a live Claude model upstream (the wire layer's job, not this
+ * seam's). `ScriptedAgentSession` accepts this param only to satisfy the
+ * shared `AgentSession` surface — it ignores it entirely, since the scripted
+ * engine has no notion of model or effort.
  */
 export interface JarvisTurnOptions {
   readonly brain?: Exclude<JarvisBrain, "scripted">;
@@ -53,38 +58,68 @@ export interface AgentLoop {
   createSession(): AgentSession;
 }
 
-/** Builds a real `AgentLoop` for the Anthropic branch of `createAgentLoop`'s
+/** Builds a real `AgentLoop` for the Anthropic branch of `createJarvisLoops`'s
  * env precedence — injected rather than imported directly so this module
- * (and its tests) never need the Anthropic SDK. `undefined` until Task 6
- * wires the real builder in from `index.ts`. */
+ * (and its tests) never need the Anthropic SDK. `undefined` until `index.ts`
+ * wires the real builder in. */
 export type AnthropicLoopBuilder = (
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
 ) => AgentLoop;
 
 /**
+ * The two brain-serving `AgentLoop`s a connection can route a `jarvis.chat`
+ * turn to, plus the picker metadata `jarvisEffects`' availability responder
+ * and routing both need. `scripted` is always present — it's free (no
+ * network call, no API key) — while `anthropic` is `null` whenever no live
+ * Claude model is reachable (`RTC_JARVIS_FAKE=1`, or no `ANTHROPIC_API_KEY`).
+ * `brains`/`defaultBrain` are the picker's offered set: `["scripted"]` alone
+ * when `anthropic` is absent, or all four `JARVIS_BRAINS` (in picker order)
+ * once a live model is wired.
+ */
+export interface JarvisLoops {
+  readonly scripted: AgentLoop;
+  readonly anthropic: AgentLoop | null;
+  readonly brains: readonly JarvisBrain[];
+  readonly defaultBrain: JarvisBrain;
+}
+
+/**
  * Env precedence: `RTC_JARVIS_FAKE=1` wins even when `ANTHROPIC_API_KEY` is
  * also set (an explicit rehearsal override, e.g. a demo fallback one env var
- * away without unsetting the key); otherwise a present key selects the
- * Anthropic branch; otherwise Jarvis is absent (only the availability
+ * away without unsetting the key) — the scripted-only shape, offering only
+ * `"scripted"`; otherwise a present key selects the dual-loop shape, offering
+ * every `JARVIS_BRAINS` entry with `DEFAULT_JARVIS_BRAIN` as the picker
+ * default; otherwise Jarvis is absent entirely (only the availability
  * responder registers — see `jarvisEffects`).
  *
- * `buildAnthropicLoop` is the Task 6 seam: undefined here, so a present key
- * without a builder falls through to null with a single warning instead of
- * silently pretending to be online.
+ * `buildAnthropicLoop` is the seam that keeps this module (and its tests)
+ * free of the Anthropic SDK: `undefined` here, so a present key without a
+ * builder falls through to `null` with a single warning instead of silently
+ * pretending to be online.
  */
-export function createAgentLoop(
+export function createJarvisLoops(
   env: NodeJS.ProcessEnv,
   services: ServiceContainer,
   buildAnthropicLoop?: AnthropicLoopBuilder,
-): AgentLoop | null {
+): JarvisLoops | null {
   if (env.RTC_JARVIS_FAKE === "1") {
-    return new ScriptedAgentLoop(services);
+    return {
+      scripted: new ScriptedAgentLoop(services),
+      anthropic: null,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+    };
   }
 
   if (env.ANTHROPIC_API_KEY) {
     if (buildAnthropicLoop) {
-      return buildAnthropicLoop(env, services);
+      return {
+        scripted: new ScriptedAgentLoop(services),
+        anthropic: buildAnthropicLoop(env, services),
+        brains: JARVIS_BRAINS,
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+      };
     }
 
     console.warn("ANTHROPIC_API_KEY set but the Anthropic loop is not wired");
