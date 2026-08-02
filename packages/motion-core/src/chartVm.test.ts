@@ -226,6 +226,7 @@ describe("chartVm (viewport slicing, chart kinds, time axis, volume vm)", () => 
       viewport: { start: 240, end: 300 },
       kind: "line",
     });
+
     const areaVm = chartVm(SERIES, 0, false, {
       viewport: { start: 240, end: 300 },
       kind: "area",

@@ -4,46 +4,6 @@ import type { ChartScene, SceneCandle, SceneGridLine } from "@rtc/motion-core";
 
 import { drawChartScene, SPIKE_PALETTE, spikeScene } from "./drawChartScene.js";
 
-interface RecordedCall {
-  readonly op: string;
-  readonly args: readonly (number | string)[];
-}
-
-// Fake CanvasRenderingContext2D: records every call it sees instead of
-// touching a real canvas, so the engine's geometry can be pinned without a
-// DOM/jsdom canvas backend (jsdom's canvas is unimplemented anyway).
-function recorderCtx(): {
-  ctx: CanvasRenderingContext2D;
-  calls: RecordedCall[];
-} {
-  const calls: RecordedCall[] = [];
-  let fillStyle = "";
-  const target = {
-    set fillStyle(v: string) {
-      fillStyle = v;
-      calls.push({ op: "fillStyle", args: [v] });
-    },
-    get fillStyle(): string {
-      return fillStyle;
-    },
-  } as Record<string, unknown>;
-  for (const op of [
-    "clearRect",
-    "fillRect",
-    "beginPath",
-    "moveTo",
-    "lineTo",
-    "stroke",
-  ]) {
-    target[op] = (...args: number[]): void => {
-      calls.push({ op, args });
-    };
-  }
-  target.strokeStyle = "";
-  target.lineWidth = 0;
-  return { ctx: target as unknown as CanvasRenderingContext2D, calls };
-}
-
 const gridLine: SceneGridLine = { key: 0, top: 40 };
 
 const upCandle: SceneCandle = {
@@ -156,7 +116,9 @@ describe("drawChartScene", () => {
     const { ctx, calls } = recorderCtx();
     drawChartScene(ctx, twoCandleScene, SPIKE_PALETTE, SIZE);
     expect(
-      calls.some((c) => c.op === "fillText" || c.op === "strokeText"),
+      calls.some((c) => {
+        return c.op === "fillText" || c.op === "strokeText";
+      }),
     ).toBe(false);
   });
 });
@@ -171,3 +133,47 @@ describe("spikeScene", () => {
     expect(spikeScene()).toEqual(spikeScene());
   });
 });
+
+interface RecordedCall {
+  readonly op: string;
+  readonly args: readonly (number | string)[];
+}
+
+interface RecorderCtx {
+  ctx: CanvasRenderingContext2D;
+  calls: RecordedCall[];
+}
+
+// Fake CanvasRenderingContext2D: records every call it sees instead of
+// touching a real canvas, so the engine's geometry can be pinned without a
+// DOM/jsdom canvas backend (jsdom's canvas is unimplemented anyway).
+function recorderCtx(): RecorderCtx {
+  const calls: RecordedCall[] = [];
+  let fillStyle = "";
+  const target = {
+    set fillStyle(v: string) {
+      fillStyle = v;
+      calls.push({ op: "fillStyle", args: [v] });
+    },
+    get fillStyle(): string {
+      return fillStyle;
+    },
+  } as Record<string, unknown>;
+
+  for (const op of [
+    "clearRect",
+    "fillRect",
+    "beginPath",
+    "moveTo",
+    "lineTo",
+    "stroke",
+  ]) {
+    target[op] = (...args: number[]): void => {
+      calls.push({ op, args });
+    };
+  }
+
+  target.strokeStyle = "";
+  target.lineWidth = 0;
+  return { ctx: target as unknown as CanvasRenderingContext2D, calls };
+}

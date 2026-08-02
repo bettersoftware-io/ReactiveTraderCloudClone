@@ -18,10 +18,6 @@ import { chartVm, volumeVm } from "./chartVm.js";
 import { crosshairVm } from "./crosshairVm.js";
 import { navigatorWindowStyle } from "./navigatorVm.js";
 
-/** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
- * ChartCandle is the structural subset chartVm/chartScene read). */
-type Candle = ChartCandle & { readonly time: number };
-
 const EMPTY: readonly Candle[] = [];
 
 const SINGLE: readonly Candle[] = [
@@ -41,15 +37,6 @@ const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
 });
 
 const MIXED_VIEWPORT: ChartViewport = { start: 2.4, end: 9.6 };
-
-interface Fixture {
-  readonly name: string;
-  readonly series: readonly Candle[];
-  readonly liveRate: number;
-  readonly flashOn: boolean;
-  readonly viewport?: ChartViewport;
-  readonly kind?: "candles" | "line" | "area";
-}
 
 const FIXTURES: readonly Fixture[] = [
   { name: "empty series", series: EMPTY, liveRate: 0, flashOn: false },
@@ -116,15 +103,6 @@ describe("chartCssVars: volumeBarsFromScene(volumeScene(...)) === volumeVm(...)"
   }
 });
 
-interface CrosshairFixture {
-  readonly name: string;
-  readonly series: readonly Candle[];
-  readonly xFrac: number;
-  readonly yFrac: number;
-  readonly viewport: ChartViewport;
-  readonly scale: { readonly cmin: number; readonly cmax: number };
-}
-
 const CROSSHAIR_FIXTURES: readonly CrosshairFixture[] = [
   {
     name: "empty series",
@@ -166,6 +144,7 @@ describe("chartCssVars: crosshairVmFromScene(crosshairScene(...)) === crosshairV
       const viaScene = crosshairVmFromScene(
         crosshairScene(f.xFrac, f.yFrac, f.series, f.viewport, f.scale),
       );
+
       const direct = crosshairVm(
         f.xFrac,
         f.yFrac,
@@ -177,12 +156,6 @@ describe("chartCssVars: crosshairVmFromScene(crosshairScene(...)) === crosshairV
     });
   }
 });
-
-interface NavigatorFixture {
-  readonly name: string;
-  readonly viewport: ChartViewport;
-  readonly seriesLen: number;
-}
 
 const NAVIGATOR_FIXTURES: readonly NavigatorFixture[] = [
   { name: "normal window", viewport: { start: 3, end: 9 }, seriesLen: 12 },
@@ -200,3 +173,31 @@ describe("chartCssVars: navigatorWindowStyleFromScene(navigatorWindowScene(...))
     });
   }
 });
+
+/** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
+ * ChartCandle is the structural subset chartVm/chartScene read). */
+type Candle = ChartCandle & { readonly time: number };
+
+interface Fixture {
+  readonly name: string;
+  readonly series: readonly Candle[];
+  readonly liveRate: number;
+  readonly flashOn: boolean;
+  readonly viewport?: ChartViewport;
+  readonly kind?: "candles" | "line" | "area";
+}
+
+interface CrosshairFixture {
+  readonly name: string;
+  readonly series: readonly Candle[];
+  readonly xFrac: number;
+  readonly yFrac: number;
+  readonly viewport: ChartViewport;
+  readonly scale: { readonly cmin: number; readonly cmax: number };
+}
+
+interface NavigatorFixture {
+  readonly name: string;
+  readonly viewport: ChartViewport;
+  readonly seriesLen: number;
+}
