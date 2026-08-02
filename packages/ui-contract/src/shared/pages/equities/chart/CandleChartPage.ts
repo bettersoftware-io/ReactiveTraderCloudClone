@@ -1,7 +1,7 @@
 import { fireEvent, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EqChartType, EqIndicatorId } from "@rtc/client-core";
+import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
 
 /** Props CandleChart reads (Task C2/C3's interactive-plot contract: the
@@ -14,6 +14,11 @@ export interface CandleChartProps {
   flashOn: boolean;
   kind: EqChartType;
   indicators: readonly EqIndicatorId[];
+  /** The active RSI/MACD panes, in render order (empty/omitted renders
+   * none) — optional so every spec mounting CandleChart before Task 6
+   * keeps compiling; the react/solid registry adapters already default a
+   * missing value to `[]`. */
+  panes?: readonly EqPaneId[];
   defaultVisible: number;
   /** Whether an older history page is currently in flight for this series —
    * drives the LOADING OLDER… chip and gates re-triggering. */
@@ -240,6 +245,62 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     this.setProps({});
   }
 
+  /** Whether the given RSI/MACD pane is currently rendered below the plot. */
+  paneVisible(kind: EqPaneId): boolean {
+    return (
+      this.root.querySelector(`[data-testid="chart-pane-${kind}"]`) !== null
+    );
+  }
+
+  /** Every rendered pane's kind, in DOM order — proves activation ORDER
+   * (rsi before macd), not just which panes are present. querySelectorAll
+   * always returns matches in document order, never the selector list's
+   * own order, so listing "rsi, macd" here doesn't bias the result. */
+  paneOrder(): EqPaneId[] {
+    return Array.from(
+      this.root.querySelectorAll<HTMLElement>(
+        '[data-testid="chart-pane-rsi"], [data-testid="chart-pane-macd"]',
+      ),
+    ).map((el) => {
+      return el
+        .getAttribute("data-testid")
+        ?.replace("chart-pane-", "") as EqPaneId;
+    });
+  }
+
+  /** The pane's live readout rows, one per `<span>` under its
+   * `chart-pane-readout` — RSI's single row, or MACD's MACD/SIG/HIST
+   * triple, each already formatted as "LABEL value". `[]` while no
+   * crosshair is present (IndicatorPane renders no readout node at all
+   * until then). */
+  paneReadoutText(kind: EqPaneId): string[] {
+    const readout = this.root.querySelector(
+      `[data-testid="chart-pane-${kind}"] [data-testid="chart-pane-readout"]`,
+    );
+
+    if (!readout) {
+      return [];
+    }
+
+    return Array.from(readout.querySelectorAll("span")).map((el) => {
+      return el.textContent ?? "";
+    });
+  }
+
+  /** The chart wrap's `data-panes` count — mirrors ChartPlot's own
+   * `data-panes={panes.length}`, letting a spec assert the count tracks
+   * activation without counting pane DOM nodes itself. */
+  panesAttr(): number {
+    return Number(this.root.getAttribute("data-panes") ?? "0");
+  }
+
+  /** Total DOM node count under the chart wrap root (`this.root` IS the
+   * wrap when CandleChart is mounted directly) — the node-budget
+   * tripwire's raw signal. See ChartPanes.contract.spec.ts for the WHY. */
+  wrapNodeCount(): number {
+    return this.root.querySelectorAll("*").length;
+  }
+
   hasNavigator(): boolean {
     return (
       this.root.querySelector(`[data-testid="${NAVIGATOR_TESTID}"]`) !== null
@@ -345,6 +406,33 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
 
   private plot(): HTMLElement {
     const el = within(this.root).getByTestId(PLOT_TESTID);
+
+    el.getBoundingClientRect = (): DOMRect => {
+      return STUB_RECT;
+    };
+
+    return el;
+  }
+
+  /** Dispatches a pointermove on the given pane at an x-fraction of its
+   * (stubbed) bounding rect — drives `trackPaneCursor`'s crosshair
+   * CONTINUATION path (a pane's own hover extends the shared xFrac cursor
+   * with `inPlot: false`, per useChartGestures.ts), the pane counterpart of
+   * {@link setPointer}. `yFrac` is irrelevant here: `trackPaneCursor` pins it
+   * to 0.5 itself (panes have no meaningful vertical crosshair position). */
+  setPanePointer(kind: EqPaneId, xFrac: number): void {
+    const pane = this.paneEl(kind);
+    const rect = pane.getBoundingClientRect();
+    fireEvent.pointerMove(pane, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + rect.height / 2,
+    });
+    this.setProps({});
+  }
+
+  private paneEl(kind: EqPaneId): HTMLElement {
+    const el = within(this.root).getByTestId(`chart-pane-${kind}`);
 
     el.getBoundingClientRect = (): DOMRect => {
       return STUB_RECT;
