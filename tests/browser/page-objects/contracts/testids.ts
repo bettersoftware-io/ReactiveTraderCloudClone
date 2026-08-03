@@ -117,6 +117,18 @@ export const TESTIDS = {
       navigator: "chart-navigator",
       navigatorWindow: "navigator-window",
       navigatorHandleRight: "navigator-handle-right",
+      /** The RSI/MACD indicator-pane toggle pill (IndicatorPills.tsx) — one
+       * shared testid for both, disambiguated by the `data-pane` attribute
+       * (see `PlaywrightEquitiesChart.panePill`, which composes the two via
+       * `Locator.and`). */
+      panePill: "chart-pane-pill",
+      /** An active RSI/MACD indicator pane's root (IndicatorPane.tsx). */
+      pane: (kind: "rsi" | "macd") => {
+        return `chart-pane-${kind}`;
+      },
+      /** The pane's live crosshair readout row — rendered only while the
+       * shared crosshair cursor is active over the plot or a pane. */
+      paneReadout: "chart-pane-readout",
     },
   },
   layout: {

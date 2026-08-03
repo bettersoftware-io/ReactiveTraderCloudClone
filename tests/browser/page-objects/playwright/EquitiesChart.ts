@@ -1,6 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { EquitiesChartPO } from "../contracts/EquitiesChart";
+import type {
+  EquitiesChartPO,
+  EquitiesPaneKind,
+} from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightEquitiesChart implements EquitiesChartPO {
@@ -16,6 +19,24 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
 
   private navigator(): Locator {
     return this.page.getByTestId(TESTIDS.equities.chart.navigator);
+  }
+
+  // The pill's data-testid is shared by both panes (IndicatorPills.tsx) —
+  // narrowed to one via the sibling `data-pane` attribute, combined with
+  // `.and` rather than a raw compound selector so the testid half still
+  // routes through the TESTIDS constant (grep-gates #1/#4).
+  private panePill(kind: EquitiesPaneKind): Locator {
+    return this.page
+      .getByTestId(TESTIDS.equities.chart.panePill)
+      .and(this.page.locator(`[data-pane="${kind}"]`));
+  }
+
+  private pane(kind: EquitiesPaneKind): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.pane(kind));
+  }
+
+  private paneReadout(kind: EquitiesPaneKind): Locator {
+    return this.pane(kind).getByTestId(TESTIDS.equities.chart.paneReadout);
   }
 
   async waitPlotVisible(timeoutMs: number): Promise<void> {
@@ -109,5 +130,36 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     // failure signature.
     await this.page.mouse.move(strip.x + strip.width - 1, y, { steps: 5 });
     await this.page.mouse.up();
+  }
+
+  async clickPanePill(kind: EquitiesPaneKind): Promise<void> {
+    await this.panePill(kind).click();
+  }
+
+  async waitPaneVisible(
+    kind: EquitiesPaneKind,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.pane(kind)).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async hoverPlotCenter(): Promise<void> {
+    // Locator.hover moves the mouse via real OS-level input (not a
+    // dispatched synthetic event), so it fires the genuine pointermove jsdom
+    // can't produce — the one lifecycle useChartGestures' trackPaneCursor
+    // needs to see to populate the shared crosshair cursor.
+    await this.plot().hover();
+  }
+
+  async waitPaneReadoutVisible(
+    kind: EquitiesPaneKind,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.paneReadout(kind)).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async paneReadoutText(kind: EquitiesPaneKind): Promise<string> {
+    const text = await this.paneReadout(kind).textContent();
+    return text ?? "";
   }
 }
