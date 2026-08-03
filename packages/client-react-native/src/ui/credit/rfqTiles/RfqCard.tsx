@@ -114,7 +114,6 @@ export function RfqCard({
           );
         })}
       </View>
-
     </SurfaceCard>
   );
 }

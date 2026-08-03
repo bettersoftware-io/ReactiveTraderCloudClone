@@ -1,6 +1,6 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
-import type { JSX } from "react";
 import { act, screen, waitFor } from "@testing-library/react-native";
+import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated } from "react-native";
 
