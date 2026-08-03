@@ -20,12 +20,21 @@ import {
 } from "rxjs/operators";
 
 import {
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   type Direction,
+  JARVIS_BRAINS,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
 
-import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
+import type {
+  JarvisAvailability,
+  JarvisEvent,
+  JarvisPort,
+} from "#/adapters/jarvisPort";
 
 import type { Machine } from "./machine";
 
@@ -69,11 +78,24 @@ export interface JarvisState {
   readonly entries: readonly JarvisEntry[];
   readonly pendingConfirmation: JarvisConfirmation | null;
   /** Live availability of the Jarvis backend; always true in sim mode
-   * (deps.availability$ defaults to `of(true)`). `send()` while false is a
-   * silent no-op — no user entry is appended and `port.ask` is never
-   * called. Both web clients read it: `JarvisOrb` renders `null` and
-   * `useJarvisHotkey` disarms ⌘/Ctrl+J while it is false. */
+   * (deps.availability$ defaults to an always-available, scripted-only
+   * value — see `createJarvisMachine`). `send()` while false is a silent
+   * no-op — no user entry is appended and `port.ask` is never called. Both
+   * web clients read it: `JarvisOrb` renders `null` and `useJarvisHotkey`
+   * disarms ⌘/Ctrl+J while it is false. */
   readonly available: boolean;
+  /** Brains currently on offer, per the live `availability$` feed (or the
+   * sim-mode default's scripted-only offering). An empty array is a normal
+   * value (nothing offered right now), not a nullish sentinel — see
+   * `JarvisAvailability`'s doc. */
+  readonly brains: readonly JarvisBrain[];
+  /** The brain this session's turns actually run with: the user's
+   * preferred brain (`JarvisDeps.preferredBrain$`) when it's among
+   * `brains`, else `availability`'s own `defaultBrain`. Re-resolved on
+   * every `preferredBrain$` emission AND every `availability$` emission
+   * (an availability flip can un-offer the currently-preferred brain
+   * mid-session). */
+  readonly effectiveBrain: JarvisBrain;
 }
 
 export interface JarvisIntents {
@@ -90,11 +112,20 @@ export interface JarvisDeps {
   port: JarvisPort;
   skin$: Observable<JarvisSkin>;
   setSkin: (skin: JarvisSkin) => void;
-  /** Live availability of the Jarvis backend. Defaults to `of(true)` —
-   * simulator mode (`ScriptedJarvisAdapter`) and any legacy caller that
-   * doesn't wire this in are always available. WS-real mode threads in
-   * `WsJarvisAdapter.availability$()` (see composition.ts). */
-  availability$?: Observable<boolean>;
+  /** Live availability of the Jarvis backend. Defaults to an
+   * always-available, scripted-only value — simulator mode
+   * (`ScriptedJarvisAdapter`) and any legacy caller that doesn't wire this
+   * in are always available, offering only the `"scripted"` brain. WS-real
+   * mode threads in `WsJarvisAdapter.availability$()` (see composition.ts). */
+  availability$?: Observable<JarvisAvailability>;
+  /** The user's preferred brain (a preferences-port pass-through). Folded
+   * with `availability$` to resolve `state.effectiveBrain` — see
+   * `JarvisState.effectiveBrain`'s doc. */
+  preferredBrain$: Observable<JarvisBrain>;
+  /** The user's preferred thinking-effort budget, forwarded on every
+   * `port.ask()` call alongside the resolved effective brain. Not itself
+   * reflected in `JarvisState` — only `ask()`'s wire payload reads it. */
+  effort$: Observable<JarvisEffort>;
   /** Injectable for tests; defaults to JARVIS_CONFIRM_TIMEOUT_MS. */
   confirmTimeoutMs?: number;
 }
@@ -116,7 +147,37 @@ const INITIAL: JarvisState = {
   entries: [GREETING_ENTRY],
   pendingConfirmation: null,
   available: true,
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
+
+/** Sim-mode / legacy-caller default for `JarvisDeps.availability$`: always
+ * available, offering only the scripted (offline) brain — matches
+ * `ScriptedJarvisAdapter`'s actual capability, unlike `INITIAL.brains`
+ * (which offers every selectable brain before any real availability
+ * feed has resolved). */
+const DEFAULT_AVAILABILITY: JarvisAvailability = {
+  available: true,
+  brains: ["scripted"],
+  defaultBrain: "scripted",
+};
+
+/** Resolves which brain a turn actually runs with: the preferred brain when
+ * it's among the ones currently on offer, else the availability feed's own
+ * default. `availability.brains` is trusted as-is — an empty array (nothing
+ * offered) falls through to `defaultBrain` the same as any other
+ * not-offered case; no separate check on `availability.available` is
+ * needed here (see `JarvisAvailability`'s "key everything off `available`"
+ * doc — that's a caution for CONSUMERS of `state.available`, not a
+ * precondition this resolver needs to duplicate). */
+function resolveEffectiveBrain(
+  preferredBrain: JarvisBrain,
+  availability: JarvisAvailability,
+): JarvisBrain {
+  return availability.brains.includes(preferredBrain)
+    ? preferredBrain
+    : availability.defaultBrain;
+}
 
 /** Replace the last entry (the one currently streaming/accumulating) with the
  * result of `fn`. Turns run sequentially (concatMap), so at any point at most
@@ -255,17 +316,42 @@ export function createJarvisMachine(
   deps: JarvisDeps,
 ): Machine<JarvisState, JarvisIntents> {
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
-  const availabilitySource$: Observable<boolean> =
-    deps.availability$ ?? of(true);
+  const availabilitySource$: Observable<JarvisAvailability> =
+    deps.availability$ ?? of(DEFAULT_AVAILABILITY);
 
-  // Cached alongside INITIAL.available and kept in lockstep by
-  // availabilityPatches$ below (the only subscriber of availabilitySource$,
-  // active from construction via the `warm` state$ subscription). send()
-  // needs the CURRENT value at call time, not a stream to fold into a
-  // patch — and, per wireJarvisHistorySource's doc in composition.ts,
+  // Synchronous mutable caches, kept in lockstep by availabilityPatches$ /
+  // preferredBrainPatches$ / effortSubscription below (the only
+  // subscribers of their respective sources, active from construction via
+  // the `warm` state$ subscription / the dedicated effort$ subscription).
+  // send() needs the CURRENT values at call time, not a stream to fold into
+  // a patch — and, per wireJarvisHistorySource's doc in composition.ts,
   // state$'s getValue() isn't reliably synchronous, so a mutable cache
   // updated by the one live subscription is the same pattern used there.
+  // Seeded to match INITIAL (available, every selectable brain offered),
+  // NOT DEFAULT_AVAILABILITY (the sim-mode scripted-only fallback) — this
+  // cache is what a same-tick send() reads before the FIRST
+  // availabilityPatches$ emission lands, and in WS-real mode that first
+  // emission is a genuine round-trip (availability$ emits nothing until
+  // JARVIS_AVAILABILITY replies, unbounded while the socket is still
+  // connecting — WsAdapter buffers pre-open sends, so a send() in that
+  // window is real, not hypothetical). Seeding this with the scripted-only
+  // shape would silently pin brain:"scripted" onto that first turn even
+  // though the desk's real brain roster hasn't been ruled out yet — the
+  // server honors the brain a keyed turn carries, so the user would get a
+  // canned scripted reply instead of the real model. Sim mode is
+  // unaffected: `availabilitySource$`'s `of(DEFAULT_AVAILABILITY)` fallback
+  // still emits synchronously and corrects this cache (see
+  // availabilityPatches$ below) before the machine is even returned to the
+  // caller, well before any send() can fire.
   let available = true;
+  let availability: JarvisAvailability = {
+    available: true,
+    brains: JARVIS_BRAINS,
+    defaultBrain: DEFAULT_JARVIS_BRAIN,
+  };
+  let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
+  let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;
+  let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;
 
   const send$ = new Subject<string>();
   const open$ = new Subject<void>();
@@ -304,7 +390,7 @@ export function createJarvisMachine(
       };
       return concat(
         of<TurnItem>({ kind: "start", userEntry, jarvisEntry }),
-        deps.port.ask(text).pipe(
+        deps.port.ask(text, { brain: effectiveBrain, effort }).pipe(
           map((event): TurnItem => {
             return { kind: "event", event };
           }),
@@ -455,16 +541,51 @@ export function createJarvisMachine(
 
   // The single live subscriber of availabilitySource$ (via stream$'s `warm`
   // subscription below): folds the value into state AND refreshes the
-  // `available` cache that turnItems$'s concatMap reads synchronously.
+  // `available`/`availability` caches that turnItems$'s concatMap reads
+  // synchronously. Also re-resolves `effectiveBrain` — an availability flip
+  // can un-offer the currently-preferred brain mid-session, so this must
+  // recompute it here too, not only on preferredBrain$'s own emissions.
   const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
     map((value): Patch => {
-      available = value;
+      available = value.available;
+      availability = value;
+      effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
 
       return (s: JarvisState): JarvisState => {
-        return { ...s, available: value };
+        return {
+          ...s,
+          available: value.available,
+          brains: value.brains,
+          effectiveBrain,
+        };
       };
     }),
   );
+
+  // The single live subscriber of deps.preferredBrain$ (via stream$'s `warm`
+  // subscription below): refreshes the `preferredBrain` cache and
+  // re-resolves `effectiveBrain` against the CURRENT availability cache — a
+  // preference change mid-session must be reflected in the very next
+  // send(), per JarvisState.effectiveBrain's doc.
+  const preferredBrainPatches$: Observable<Patch> = deps.preferredBrain$.pipe(
+    map((value): Patch => {
+      preferredBrain = value;
+      effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
+
+      return (s: JarvisState): JarvisState => {
+        return { ...s, effectiveBrain };
+      };
+    }),
+  );
+
+  // effort$ has no visible JarvisState field of its own (see
+  // JarvisDeps.effort$'s doc) — only ask()'s wire payload reads the cache —
+  // so this is a plain side-channel subscription rather than a patch folded
+  // into stream$'s scan, torn down alongside the other subscriptions in
+  // dispose() below.
+  const effortSubscription = deps.effort$.subscribe((value) => {
+    effort = value;
+  });
 
   const stream$ = merge(
     entryPatches$,
@@ -476,6 +597,7 @@ export function createJarvisMachine(
     togglePatches$,
     skinPatches$,
     availabilityPatches$,
+    preferredBrainPatches$,
   ).pipe(
     scan((s, patch) => {
       return patch(s);
@@ -516,7 +638,8 @@ export function createJarvisMachine(
     dispose: () => {
       // Complete the source Subjects first so the merged stream — and the
       // react-rxjs state$ derived from it — completes, then release the warm
-      // subscription that was keeping state$ alive.
+      // subscription that was keeping state$ alive, and the side-channel
+      // effort$ subscription alongside it.
       send$.complete();
       open$.complete();
       close$.complete();
@@ -524,6 +647,7 @@ export function createJarvisMachine(
       approve$.complete();
       decline$.complete();
       warm.unsubscribe();
+      effortSubscription.unsubscribe();
     },
   };
 }

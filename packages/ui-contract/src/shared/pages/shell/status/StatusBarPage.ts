@@ -40,4 +40,25 @@ export class StatusBarPage extends MountedComponent<Record<string, never>> {
         .textContent?.trim() ?? ""
     );
   }
+
+  /** True when the JarvisStatusChip is rendered — false while Jarvis is
+   * unavailable (the chip renders nothing). */
+  jarvisChipPresent(): boolean {
+    return within(this.root).queryByTestId("jarvis-status-chip") !== null;
+  }
+
+  /** The chip's `data-brain` attribute — the machine's effective brain. */
+  jarvisChipBrain(): string | null {
+    return within(this.root)
+      .getByTestId("jarvis-status-chip")
+      .getAttribute("data-brain");
+  }
+
+  /** The chip's rendered text (e.g. "JARVIS · Opus 5"). */
+  jarvisChipText(): string {
+    return (
+      within(this.root).getByTestId("jarvis-status-chip").textContent?.trim() ??
+      ""
+    );
+  }
 }

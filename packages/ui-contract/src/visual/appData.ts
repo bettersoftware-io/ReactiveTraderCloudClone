@@ -7,6 +7,7 @@ import type {
   EqWorkspaceState,
   IncidentKind,
   JarvisState,
+  JarvisUsageSnapshot,
   NotionalView,
   OrderTicketState,
   RfqState,
@@ -150,6 +151,11 @@ export interface AppData {
    * the machine's closed/no-unread/idle/greeting-only INITIAL state. Intents
    * are always no-ops in the visual fakes — see buildFakeViewModel.ts. */
   jarvis?: JarvisState;
+  /** Jarvis token-usage/cost telemetry (useJarvisUsage; JarvisUsageCard,
+   * Task 10 of Phase 3); defaults to null (the card's "NO USAGE DATA"
+   * placeholder) — routed alongside `jarvis` above so a fixture that seeds
+   * this actually reaches the card instead of silently capturing empty. */
+  jarvisUsage?: JarvisUsageSnapshot | null;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

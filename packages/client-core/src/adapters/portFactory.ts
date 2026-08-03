@@ -1,4 +1,4 @@
-import { defer, map, Observable } from "rxjs";
+import { defer, map, Observable, of } from "rxjs";
 
 import {
   type AdminPort,
@@ -69,6 +69,7 @@ import type {
   ExecutionRequestDto,
   ExecutionResponseDto,
   InstrumentEvent,
+  JarvisUsageSnapshot,
   PriceHistoryDto,
   PriceTickDto,
   ReferenceDataMessage,
@@ -81,9 +82,11 @@ import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
 import type { IWsAdapter } from "./IWsAdapter";
 import type { JarvisPort } from "./jarvisPort";
+import type { JarvisUsagePort } from "./jarvisUsagePort";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
+import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
 /** The subset of the transport the composition root drives from auth state.
  * Structural, so both `WsAdapter` and test fakes satisfy it. */
@@ -108,6 +111,11 @@ export interface AppPorts {
    * (offline) brain (`ScriptedJarvisAdapter`); WS-real mode speaks the
    * `JARVIS_*` wire protocol over the live socket (`WsJarvisAdapter`). */
   jarvis: JarvisPort;
+  /** Rolling Jarvis usage/cost telemetry (Admin surface) — constructed
+   * internally by both port factories, never platform-supplied, mirroring
+   * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
+   * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
+  jarvisUsage: JarvisUsagePort;
   connectionEvents: ConnectionEventsPort;
   marketData: MarketDataPort;
   orders: OrderPort;
@@ -143,6 +151,14 @@ export interface PortFactoryDeps {
   preferences: PreferencesPort;
   auth: AuthPort;
   sessionStore: SessionStore;
+  /**
+   * The instant the seeded blotter's trade dates are measured back from.
+   * Omitted everywhere in the app — the default is now, which is what a
+   * running desk wants. A pixel-golden harness must pass one: those dates are
+   * the only clock-derived fields on an otherwise literal seed, so an
+   * un-pinned blotter golden re-dates itself every calendar day.
+   */
+  blotterSeedBaseMs?: number;
 }
 
 export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
@@ -166,7 +182,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
   const eventLog = new EventLogSimulator(4);
   const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
-  const blotter = new TradeStoreSimulator(execution);
+  const blotter = new TradeStoreSimulator(execution, deps.blotterSeedBaseMs);
   const analytics = new AnalyticsSimulator();
   return {
     referenceData,
@@ -187,6 +203,16 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
       execution,
       instantReveal$: createInstantReveal$(deps.preferences),
     }),
+    jarvisUsage: {
+      usage$(): Observable<JarvisUsageSnapshot> {
+        return of({
+          windowStartMs: 0,
+          windowEndMs: 0,
+          currentWindow: [],
+          sinceBoot: [],
+        });
+      },
+    },
     marketData,
     orders,
     positions: positionsSim,
@@ -1168,6 +1194,7 @@ export function createWsRealPorts(
     admin: createAdminPort(ws),
     preferences: deps.preferences,
     jarvis: new WsJarvisAdapter(ws),
+    jarvisUsage: new WsJarvisUsageAdapter(ws),
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

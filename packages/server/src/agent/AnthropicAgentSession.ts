@@ -16,16 +16,17 @@ import type {
   JarvisConfirmDetails,
   JarvisToolDefinition,
 } from "@rtc/agent-tools";
+import { DEFAULT_JARVIS_BRAIN, DEFAULT_JARVIS_EFFORT } from "@rtc/domain";
 import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
-import type { AgentSession } from "./agentLoop.js";
+import type { UsageMeter } from "../services/UsageMeter.js";
+import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
-  JARVIS_EFFORT,
+  JARVIS_EFFORT_CAPABLE_BRAINS,
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TOKENS_PER_TURN,
   JARVIS_MAX_TURNS_PER_SESSION,
-  JARVIS_MODEL_ID,
   JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
 
@@ -76,11 +77,23 @@ const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
     type: "text",
     text: JARVIS_SYSTEM_PROMPT,
     // Ephemeral cache breakpoint on the persona block: paired with sorting
-    // tools by name below, the system+tools prefix is stable turn-to-turn
-    // (the model guidance's minimum cacheable prefix on this model is 512
-    // tokens, comfortably under the persona+seven-tool-schema prefix), so
-    // every turn after the first re-hits the cache instead of re-billing the
-    // full prefix as fresh input tokens.
+    // tools by name below, the system+tools prefix is stable turn-to-turn,
+    // so every turn after the first CAN re-hit the cache instead of
+    // re-billing the full prefix as fresh input tokens — "can", not "always
+    // does": the minimum cacheable prefix length is MODEL-SPECIFIC, not a
+    // single number for "this model". It's 512 tokens on the sonnet/opus-
+    // class models but 4,096 tokens on Haiku 4.5 (the brain
+    // `DEFAULT_JARVIS_BRAIN` now defaults to) — a much higher bar. Today's
+    // persona+seven-tool-schema prefix is only ~1.3k tokens: comfortably
+    // over 512 (sonnet/opus cache turn-to-turn as intended) but under 4,096
+    // (Haiku's breakpoint is a silent no-op — the API just serves the
+    // request uncached, no error). That's an accepted tradeoff, not a bug:
+    // Haiku's per-token input price is already ~5x cheaper than the cache
+    // discount would save, and `cacheReadTokens: 0` on every Haiku turn
+    // (visible in the usage display this cache_control feeds) is the
+    // EXPECTED signature of "prefix under the model's own minimum", not a
+    // broken tap. Left in place unconditionally (not gated on the resolved
+    // brain) because it's harmless on Haiku and load-bearing on sonnet/opus.
     cache_control: { type: "ephemeral" },
   },
 ];
@@ -99,10 +112,27 @@ export type AnthropicToolRunnerRequest = BetaToolRunnerParams & {
  * (`Promise<BetaMessage>`) is directly assignable to this — structurally a
  * strict superset — so the production default factory
  * (`AnthropicAgentLoop`'s `buildDefaultRunnerFactory`) needs no cast.
+ *
+ * `usage` is optional (mirroring the fixture-friendliness above), and its
+ * cache fields are `| null` — matching the real SDK's `BetaUsage`, which
+ * reports `cache_read_input_tokens`/`cache_creation_input_tokens` as
+ * `number | null` (not just `number`) when a turn used no cache at all; a
+ * narrower `number | undefined` here would make the real
+ * `BetaMessageStream.finalMessage()` return no longer structurally
+ * assignable to this type, forcing the very cast this seam exists to avoid
+ * (see the doc comment above). `?? 0` at the read site (`runOneTurn`'s
+ * post-`finalMessage()` usage tap) treats every one of `undefined`/`null`/
+ * omitted-`usage`-entirely as zero rather than throwing.
  */
 export interface AnthropicFinalMessage {
   readonly stop_reason: string | null;
   readonly content: readonly unknown[];
+  readonly usage?: {
+    readonly input_tokens?: number;
+    readonly output_tokens?: number;
+    readonly cache_read_input_tokens?: number | null;
+    readonly cache_creation_input_tokens?: number | null;
+  };
 }
 
 /**
@@ -305,6 +335,11 @@ export class AnthropicAgentSession implements AgentSession {
   constructor(
     private readonly runnerFactory: AnthropicRunnerFactory,
     buildTools: (confirmTrade: ConfirmGate) => readonly JarvisToolDefinition[],
+    // Injected the same way `runnerFactory`/`buildTools` are — omitted in
+    // tests that don't care about usage accounting, so the meter tap below
+    // is a no-op unless a real `UsageMeter` (or a test spy satisfying this
+    // narrow `Pick`) is actually wired in.
+    private readonly usageMeter?: Pick<UsageMeter, "recordTokens">,
   ) {
     const confirmTrade: ConfirmGate = (details: JarvisConfirmDetails) => {
       return this.requestConfirmation(details);
@@ -365,6 +400,7 @@ export class AnthropicAgentSession implements AgentSession {
   runTurn(
     text: string,
     history: readonly JarvisHistoryEntry[],
+    options?: JarvisTurnOptions,
   ): Observable<JarvisEvent> {
     return new Observable<JarvisEvent>((subscriber) => {
       let closed = false;
@@ -411,7 +447,7 @@ export class AnthropicAgentSession implements AgentSession {
       // `await` context of its own): runOneTurn never rejects — its own
       // try/catch turns every failure into a pushed error event — so `void`
       // here just opts out of an unneeded await, not error handling.
-      void this.runOneTurn(requestMessages, controller.signal, push)
+      void this.runOneTurn(requestMessages, controller.signal, push, options)
         .then((outcome) => {
           if (outcome.kind === "completed") {
             this.history = capMessages([
@@ -472,16 +508,41 @@ export class AnthropicAgentSession implements AgentSession {
     messages: BetaMessageParam[],
     signal: AbortSignal,
     push: (event: JarvisEvent) => void,
+    options: JarvisTurnOptions | undefined,
   ): Promise<TurnOutcome> {
+    // `options?.brain` is resolved+validated upstream (see `JarvisTurnOptions`'
+    // doc comment) — this is the one place that turns "no explicit pick" into
+    // the actual default, so every call site below (the request params AND
+    // the usage tap) shares one resolved model rather than each re-deriving
+    // it and risking drift.
+    const model = options?.brain ?? DEFAULT_JARVIS_BRAIN;
     const params: AnthropicToolRunnerRequest = {
-      model: JARVIS_MODEL_ID,
+      model,
       max_tokens: JARVIS_MAX_TOKENS_PER_TURN,
       max_iterations: JARVIS_RUNNER_MAX_ITERATIONS,
-      // Not a sampling param (doesn't affect determinism the way temperature
-      // would) — see JARVIS_EFFORT's doc comment for why an explicit cap is
-      // needed on a model where thinking is adaptive-by-default at "high"
-      // and draws from the same max_tokens budget as the visible reply.
-      output_config: { effort: JARVIS_EFFORT },
+      // Effort is omitted entirely (not just defaulted) for a brain outside
+      // `JARVIS_EFFORT_CAPABLE_BRAINS` — see that constant's doc comment for
+      // why sending it there would be an unvalidated request shape, not a
+      // harmless no-op. `DEFAULT_JARVIS_EFFORT` (`@rtc/domain` — the same
+      // constant the preferences UI defaults to, so there is exactly one
+      // source of truth for "medium") is not a sampling param (doesn't
+      // affect determinism the way temperature would): it caps the model's
+      // own reasoning effort, distinct from `JARVIS_MAX_TOKENS_PER_TURN`
+      // (which caps generation length, not how much of that budget goes to
+      // thinking before generation starts). Thinking is adaptive-by-default
+      // on the effort-capable brains at effort `"high"`, and thinking
+      // tokens draw from the SAME `max_tokens` ceiling as the visible
+      // reply: an unbounded-effort, tool-heavy turn can burn the whole
+      // budget thinking and deliver nothing but the `max_tokens` truncation
+      // notice. `"medium"` is a deliberate cost/quality tradeoff for a
+      // terse, 2–4-sentence desk-assistant persona.
+      ...(JARVIS_EFFORT_CAPABLE_BRAINS.has(model)
+        ? {
+            output_config: {
+              effort: options?.effort ?? DEFAULT_JARVIS_EFFORT,
+            },
+          }
+        : {}),
       system: SYSTEM_BLOCKS as BetaTextBlockParam[],
       tools: [...this.tools],
       messages,
@@ -535,6 +596,40 @@ export class AnthropicAgentSession implements AgentSession {
 
         const message = await messageStream.finalMessage();
         lastStopReason = message.stop_reason;
+
+        // Recorded once per RUNNER iteration (not once per turn) — a
+        // multi-iteration turn (tool round-trips, a pause_turn resume) bills
+        // the API once per iteration, so the meter's counts need to match
+        // that, not collapse to the turn's final iteration alone. `?? 0`
+        // defaults cover both a fixture that omits `usage` and any one of
+        // its four sub-counts the real SDK response might not carry.
+        //
+        // Own try/catch, deliberately separate from the outer one: this
+        // turn's tokens were already billed by Anthropic and its reply
+        // already streamed to the client by the time this runs, so a
+        // throwing meter (a bug in `UsageMeter`, an injected test double
+        // gone wrong) must never be allowed to fall into the outer
+        // catch — that would turn an already-served turn into a sanitized
+        // "desk link faltered" error AND drop it from `this.history` (the
+        // outer `.then` in `runTurn` never appends on a non-"completed"
+        // outcome), corrupting the NEXT turn's context for a failure that
+        // has nothing to do with the model or the conversation.
+        if (this.usageMeter) {
+          try {
+            this.usageMeter.recordTokens(model, {
+              inputTokens: message.usage?.input_tokens ?? 0,
+              outputTokens: message.usage?.output_tokens ?? 0,
+              cacheReadTokens: message.usage?.cache_read_input_tokens ?? 0,
+              cacheCreationTokens:
+                message.usage?.cache_creation_input_tokens ?? 0,
+            });
+          } catch (usageError) {
+            console.error(
+              "AnthropicAgentSession: usageMeter.recordTokens threw —",
+              describeSdkErrorForLogging(usageError),
+            );
+          }
+        }
 
         if (message.stop_reason === "refusal") {
           push({ type: "error", message: REFUSAL_MESSAGE });

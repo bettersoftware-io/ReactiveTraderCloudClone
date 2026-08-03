@@ -4,6 +4,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { ConnectionStatusBar } from "../connection/ConnectionStatusBar";
 import { CosmeticMetrics } from "./CosmeticMetrics";
+import { JarvisStatusChip } from "./JarvisStatusChip";
 
 import styles from "./StatusBar.module.css";
 
@@ -12,8 +13,9 @@ import styles from "./StatusBar.module.css";
  * (Reactive Trader.dc.html:720-730). The connection segment reuses the real
  * `ConnectionStatusBar` (carries the `connection-status` e2e testid, driven by
  * `useConnectionStatus`); the operator segment is wired to the auth seam
- * (`useAuth`); the latency/FPS/MEM/POS/P&L + build + clock readouts are
- * decorative (see CosmeticMetrics).
+ * (`useAuth`); `JarvisStatusChip` reports the active brain (hidden while
+ * Jarvis is unavailable); the latency/FPS/MEM/POS/P&L + build + clock
+ * readouts are decorative (see CosmeticMetrics).
  */
 export function StatusBar(): ReactElement {
   const { useAuth } = useViewModel();
@@ -26,6 +28,7 @@ export function StatusBar(): ReactElement {
       <span className={styles.operator} data-testid="status-operator">
         {state.user?.id ?? ""}
       </span>
+      <JarvisStatusChip />
       <CosmeticMetrics />
     </footer>
   );

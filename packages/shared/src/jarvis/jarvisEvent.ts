@@ -1,4 +1,4 @@
-import type { Direction } from "@rtc/domain";
+import type { Direction, JarvisBrain, JarvisEffort } from "@rtc/domain";
 
 /**
  * Jarvis chat wire vocabulary.
@@ -51,6 +51,10 @@ export interface JarvisChatPayload {
   readonly turnId: string;
   /** Optional prior turns, oldest first, capped client-side at 20 entries. */
   readonly history?: readonly JarvisHistoryEntry[];
+  /** Absent on pre-round clients — server falls back to DEFAULT_JARVIS_BRAIN. */
+  readonly brain?: JarvisBrain;
+  /** Absent on pre-round clients — server falls back to DEFAULT_JARVIS_EFFORT. */
+  readonly effort?: JarvisEffort;
 }
 
 /** `CLIENT_MSG.JARVIS_CONFIRM` payload — resolves a pending confirmRequest. */
@@ -70,4 +74,7 @@ export interface JarvisCancelPayload {
  * `JARVIS_SUBSCRIBE` (e.g. on every reconnect) to get a fresh answer. */
 export interface JarvisAvailabilityPayload {
   readonly available: boolean;
+  /** Absent on pre-round servers — consumers treat absent as "all offered". */
+  readonly brains?: readonly JarvisBrain[];
+  readonly defaultBrain?: JarvisBrain;
 }

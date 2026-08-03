@@ -7,8 +7,10 @@ import type {
   EqWorkspaceState,
   IncidentKind,
   IncidentState,
+  JarvisAvailability,
   JarvisEvent,
   JarvisPort,
+  JarvisUsageSnapshot,
   SessionUser,
   ThroughputView,
 } from "@rtc/client-core";
@@ -28,6 +30,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -44,6 +48,9 @@ import {
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
+  JARVIS_BRAINS,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -215,6 +222,10 @@ export interface AdminSeed {
   sessions?: readonly SessionInfo[];
   sessionCountSeries?: readonly MetricSample[];
   metrics?: Partial<MetricsView>;
+  /** Seeds `World.jarvisUsage$` (Task 10 of Phase 3) — the JarvisUsageCard's
+   * useJarvisUsage() snapshot. Defaults to null (the card's "NO USAGE DATA"
+   * placeholder), mirroring `topology`'s null-until-first-push default. */
+  jarvisUsage?: JarvisUsageSnapshot | null;
 }
 
 /**
@@ -272,6 +283,10 @@ export interface CommandLog {
   loginWaitDelaySets: LoginWaitDelay[];
   /** Each incident kind injected via injectIncident(), in order. */
   injectedIncidents: IncidentKind[];
+  /** Each brain written through useJarvisPreferences().setBrain, in order. */
+  jarvisBrainSets: JarvisBrain[];
+  /** Each effort written through useJarvisPreferences().setEffort, in order. */
+  jarvisEffortSets: JarvisEffort[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -328,14 +343,36 @@ export interface World {
    * once per World, so every component reading useJarvis() through this World
    * shares one machine instance (mirrors eqWorkspace's singleton wiring). */
   readonly jarvis: JarvisWorld;
-  /** Live availability of the Jarvis backend, threaded into the REAL
+  /** Live availability of the Jarvis backend, threaded DIRECTLY into the REAL
    * createJarvisMachine's `availability$` dep (mirrors jarvisSkin above) —
-   * drives `state.available`, which JarvisOrb reads to hide itself and
-   * useJarvisHotkey reads to no-op ⌘/Ctrl+J (Task 9 of Phase 3). Defaults to
-   * true, matching every seeded fixture and the machine's own default, so no
-   * existing spec observes a change; a spec seeds `false` via createWorld's
-   * `jarvisAvailabilitySeed` to exercise the unavailable path. */
-  readonly jarvisAvailability: BehaviorSubject<boolean>;
+   * drives `state.available` (JarvisOrb hides itself, useJarvisHotkey no-ops
+   * ⌘/Ctrl+J), `state.brains` (which brains the PreferencesModal brain
+   * segment offers), and `state.defaultBrain` (the brain-picker fallback).
+   * The structured `JarvisAvailability` (Task 10 of Phase 3 — replaces the
+   * pre-brain-picker plain boolean); `brains: []` is a normal "nothing
+   * offered" value, not a loading sentinel. Defaults to every brain offered
+   * (matching the machine's own INITIAL/DEFAULT_JARVIS_BRAIN), so no
+   * existing spec observes a change; a spec seeds a narrower value via
+   * createWorld's `jarvisAvailabilitySeed` to exercise the unavailable /
+   * not-offered paths. */
+  readonly jarvisAvailability: BehaviorSubject<JarvisAvailability>;
+  /** The STORED Jarvis brain preference (Task 10 of Phase 3), threaded into
+   * the REAL createJarvisMachine's `preferredBrain$` dep — mirrors
+   * `loginWaitStyle`'s shape. `state.effectiveBrain` (read via useJarvis())
+   * folds this against live availability; this subject always reflects what
+   * was picked, not what's actually in effect. Defaults to
+   * DEFAULT_JARVIS_BRAIN, matching the real PreferencesPort's default. */
+  readonly jarvisBrain: BehaviorSubject<JarvisBrain>;
+  /** The STORED Jarvis thinking-effort preference (Task 10 of Phase 3),
+   * threaded into the REAL createJarvisMachine's `effort$` dep — mirrors
+   * `jarvisBrain` above. Defaults to DEFAULT_JARVIS_EFFORT. */
+  readonly jarvisEffort: BehaviorSubject<JarvisEffort>;
+  /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
+   * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
+   * above (null until first push / not seeded). */
+  readonly jarvisUsage$: BehaviorSubject<JarvisUsageSnapshot | null>;
+  /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
+  setJarvisUsage(value: JarvisUsageSnapshot | null): void;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -474,8 +511,17 @@ export function createWorld(
   forceBootAnimationSeed?: boolean,
   loginWaitStyleSeed?: LoginWaitStyle,
   loginWaitDelaySeed?: LoginWaitDelay,
-  /** Seeds `World.jarvisAvailability` (Task 9 of Phase 3); defaults to true. */
-  jarvisAvailabilitySeed?: boolean,
+  /** Seeds `World.jarvisAvailability` (Task 10 of Phase 3 — now the
+   * structured `JarvisAvailability`, not a plain boolean); defaults to every
+   * brain offered (available: true, brains: JARVIS_BRAINS, defaultBrain:
+   * DEFAULT_JARVIS_BRAIN), matching the real machine's INITIAL. */
+  jarvisAvailabilitySeed?: JarvisAvailability,
+  /** Seeds `World.jarvisBrain` (Task 10 of Phase 3); defaults to
+   * DEFAULT_JARVIS_BRAIN. */
+  jarvisBrainSeed?: JarvisBrain,
+  /** Seeds `World.jarvisEffort` (Task 10 of Phase 3); defaults to
+   * DEFAULT_JARVIS_EFFORT. */
+  jarvisEffortSeed?: JarvisEffort,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -658,8 +704,24 @@ export function createWorld(
   // it (once per World, cached by World identity — see that file).
   const jarvisSkin = new BehaviorSubject<JarvisSkin>(DEFAULT_JARVIS_SKIN);
   const jarvis = createJarvisWorld();
-  const jarvisAvailability = new BehaviorSubject<boolean>(
-    jarvisAvailabilitySeed ?? true,
+  const jarvisAvailability = new BehaviorSubject<JarvisAvailability>(
+    jarvisAvailabilitySeed ?? {
+      available: true,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    },
+  );
+
+  const jarvisBrain = new BehaviorSubject<JarvisBrain>(
+    jarvisBrainSeed ?? DEFAULT_JARVIS_BRAIN,
+  );
+
+  const jarvisEffort = new BehaviorSubject<JarvisEffort>(
+    jarvisEffortSeed ?? DEFAULT_JARVIS_EFFORT,
+  );
+
+  const jarvisUsage$ = new BehaviorSubject<JarvisUsageSnapshot | null>(
+    adminSeed.jarvisUsage ?? null,
   );
 
   const animatedBackground = new BehaviorSubject<boolean>(
@@ -784,6 +846,8 @@ export function createWorld(
     loginWaitDelaySets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
+    jarvisBrainSets: [],
+    jarvisEffortSets: [],
   };
 
   return {
@@ -799,6 +863,12 @@ export function createWorld(
     jarvisSkin,
     jarvis,
     jarvisAvailability,
+    jarvisBrain,
+    jarvisEffort,
+    jarvisUsage$,
+    setJarvisUsage: (value: JarvisUsageSnapshot | null) => {
+      return jarvisUsage$.next(value);
+    },
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,

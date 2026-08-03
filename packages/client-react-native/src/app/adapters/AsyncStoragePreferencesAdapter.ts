@@ -13,6 +13,8 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -24,8 +26,12 @@ import {
   EQ_WATCHLIST_SORTS,
   type EqBlotterView,
   type EqWatchlistSort,
+  isJarvisBrain,
+  isJarvisEffort,
   isPowerSaverLevel,
   JARVIS_SKINS,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
@@ -56,6 +62,8 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
+export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
+export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
 
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
@@ -137,6 +145,8 @@ interface StoredPreferences {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   jarvisSkin?: JarvisSkin;
+  jarvisBrain?: JarvisBrain;
+  jarvisEffort?: JarvisEffort;
 }
 
 /** Read every preference key from AsyncStorage once and return the validated,
@@ -161,6 +171,8 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       eqBlotterView,
       ambientStyle,
       jarvisSkin,
+      jarvisBrain,
+      jarvisEffort,
     ] = await Promise.all([
       AsyncStorage.getItem(THEME_STORAGE_KEY),
       AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -177,6 +189,8 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
+      AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
+      AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
     ]);
 
     const stored: StoredPreferences = {};
@@ -247,6 +261,14 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       stored.jarvisSkin = jarvisSkin;
     }
 
+    if (isJarvisBrain(jarvisBrain)) {
+      stored.jarvisBrain = jarvisBrain;
+    }
+
+    if (isJarvisEffort(jarvisEffort)) {
+      stored.jarvisEffort = jarvisEffort;
+    }
+
     return stored;
   } catch {
     // AsyncStorage may be unavailable — fall back to all defaults.
@@ -311,6 +333,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
+  private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
+
+  private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
+
   /** When `seed` is provided (the `hydrate()` path) every subject starts on its
    * persisted value and NO async load runs. When omitted, subjects start on
    * defaults and `selfHydrate()` reads the store asynchronously. */
@@ -358,6 +384,12 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
+    );
+    this.jarvisBrainSubject = new BehaviorSubject<JarvisBrain>(
+      s.jarvisBrain ?? DEFAULT_JARVIS_BRAIN,
+    );
+    this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
+      s.jarvisEffort ?? DEFAULT_JARVIS_EFFORT,
     );
 
     if (seed === undefined) {
@@ -427,6 +459,14 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.jarvisSkin !== undefined) {
       this.jarvisSkin.next(s.jarvisSkin);
+    }
+
+    if (s.jarvisBrain !== undefined) {
+      this.jarvisBrainSubject.next(s.jarvisBrain);
+    }
+
+    if (s.jarvisEffort !== undefined) {
+      this.jarvisEffortSubject.next(s.jarvisEffort);
     }
   }
 
@@ -585,5 +625,25 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   setJarvisSkin(skin: JarvisSkin): void {
     void AsyncStorage.setItem(JARVIS_SKIN_STORAGE_KEY, skin).catch(() => {});
     this.jarvisSkin.next(skin);
+  }
+
+  jarvisBrain$(): Observable<JarvisBrain> {
+    return this.jarvisBrainSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisBrain(brain: JarvisBrain): void {
+    void AsyncStorage.setItem(JARVIS_BRAIN_STORAGE_KEY, brain).catch(() => {});
+    this.jarvisBrainSubject.next(brain);
+  }
+
+  jarvisEffort$(): Observable<JarvisEffort> {
+    return this.jarvisEffortSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisEffort(effort: JarvisEffort): void {
+    void AsyncStorage.setItem(JARVIS_EFFORT_STORAGE_KEY, effort).catch(
+      () => {},
+    );
+    this.jarvisEffortSubject.next(effort);
   }
 }

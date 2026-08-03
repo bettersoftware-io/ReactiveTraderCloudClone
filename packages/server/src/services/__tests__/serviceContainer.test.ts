@@ -17,6 +17,7 @@ describe("createServices", () => {
     expect(services.dealers).toBeDefined();
     expect(services.workflow).toBeDefined();
     expect(services.throughput).toBeDefined();
+    expect(services.usageMeter).toBeDefined();
   });
 
   it("wires equity marketData, orders, and positions ports", () => {

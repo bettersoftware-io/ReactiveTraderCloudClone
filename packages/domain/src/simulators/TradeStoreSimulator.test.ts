@@ -45,6 +45,66 @@ describe("TradeStoreSimulator", () => {
     }
   });
 
+  it("dates the seed trades from an injected base, not the wall clock", async () => {
+    // Noon UTC, so the derived ISO *date* is the same in every timezone from
+    // UTC-11 to UTC+12 — the seed dates are date-only strings, and a base at
+    // local midnight would land on the previous or next day across the dateline.
+    const base = Date.UTC(2026, 6, 27, 12, 0, 0);
+    const store = new TradeStoreSimulator(new ExecutionSimulator(), base);
+    const snapshot = await firstValueFrom(store.getTradeStream());
+
+    const byId = new Map(
+      snapshot.map((t): readonly [number, Trade] => {
+        return [t.tradeId, t];
+      }),
+    );
+    // 1042 is `daysAgo: 3`, 1038 is `daysAgo: 6` — the ends of the seed range.
+    expect(byId.get(1042)?.tradeDate).toBe("2026-07-24");
+    expect(byId.get(1038)?.tradeDate).toBe("2026-07-21");
+    // value date = trade date + SPOT_VALUE_DATE_OFFSET_DAYS, off the same base
+    expect(byId.get(1042)?.valueDate).toBe("2026-07-26");
+  });
+
+  it("re-seeds identically on a later day, given the same base", async () => {
+    // The regression this pins: without an injected base the seed dates come
+    // from `Date.now()`, so two stores built on different calendar days
+    // disagree — which silently re-dated the RN `blotter/seeded` golden every
+    // day (T32). Both halves matter: the pinned store must be stable across a
+    // day boundary, and the un-pinned one must genuinely move, or this test
+    // would pass against an implementation that ignores the argument.
+    const base = Date.UTC(2026, 6, 27, 12, 0, 0);
+    const dayMs = 86_400_000;
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(base));
+    const pinnedOnDayOne = await firstValueFrom(
+      new TradeStoreSimulator(new ExecutionSimulator(), base).getTradeStream(),
+    );
+
+    const liveOnDayOne = await firstValueFrom(
+      new TradeStoreSimulator(new ExecutionSimulator()).getTradeStream(),
+    );
+
+    vi.setSystemTime(new Date(base + dayMs));
+
+    const pinnedOnDayTwo = await firstValueFrom(
+      new TradeStoreSimulator(new ExecutionSimulator(), base).getTradeStream(),
+    );
+
+    const liveOnDayTwo = await firstValueFrom(
+      new TradeStoreSimulator(new ExecutionSimulator()).getTradeStream(),
+    );
+
+    function dates(trades: readonly Trade[]): readonly string[] {
+      return trades.map((t) => {
+        return t.tradeDate;
+      });
+    }
+
+    expect(dates(pinnedOnDayTwo)).toEqual(dates(pinnedOnDayOne));
+    expect(dates(liveOnDayTwo)).not.toEqual(dates(liveOnDayOne));
+  });
+
   it("live executed trades get ids continuing from 1043", async () => {
     vi.useFakeTimers();
     const engine = new ExecutionSimulator();

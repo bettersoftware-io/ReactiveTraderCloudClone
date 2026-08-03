@@ -9,6 +9,7 @@ import {
   timeout,
 } from "rxjs";
 
+import { DEFAULT_JARVIS_BRAIN, JARVIS_BRAINS } from "@rtc/domain";
 import type {
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
@@ -20,7 +21,11 @@ import type {
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type { IWsAdapter } from "./IWsAdapter";
-import type { JarvisPort } from "./jarvisPort";
+import type {
+  JarvisAskOptions,
+  JarvisAvailability,
+  JarvisPort,
+} from "./jarvisPort";
 
 /** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
  * sends `jarvis.chat` collapses the turn into a synthetic offline error
@@ -166,16 +171,22 @@ function attachJarvisTurnListeners(
 /** Builds the `JarvisChatPayload`, capping `history` at
  * `JARVIS_HISTORY_SEND_MAX_ENTRIES` and omitting the field entirely when
  * there's nothing to replay (keeps the common no-history frame shape the
- * same as before turnId/history existed). */
+ * same as before turnId/history existed). `options`, when supplied, adds
+ * `brain`/`effort` to the frame — likewise omitted entirely rather than set
+ * to `undefined` when absent, matching `history`'s shape. */
 function buildChatPayload(
   text: string,
   turnId: string,
   history: readonly JarvisHistoryEntry[],
+  options?: JarvisAskOptions,
 ): JarvisChatPayload {
   const capped = history.slice(-JARVIS_HISTORY_SEND_MAX_ENTRIES);
-  return capped.length > 0
-    ? { text, turnId, history: capped }
-    : { text, turnId };
+  return {
+    text,
+    turnId,
+    ...(capped.length > 0 ? { history: capped } : {}),
+    ...(options ? { brain: options.brain, effort: options.effort } : {}),
+  };
 }
 
 /** Builds the cold source `Observable` for one `ask(text)` turn: registers
@@ -196,10 +207,14 @@ function createJarvisTurnStream(
   text: string,
   turnId: string,
   history: readonly JarvisHistoryEntry[],
+  options?: JarvisAskOptions,
 ): Observable<JarvisEvent> {
   return new Observable<JarvisEvent>((subscriber) => {
     const unregisterFns = attachJarvisTurnListeners(ws, turnId, subscriber);
-    ws.send(CLIENT_MSG.JARVIS_CHAT, buildChatPayload(text, turnId, history));
+    ws.send(
+      CLIENT_MSG.JARVIS_CHAT,
+      buildChatPayload(text, turnId, history, options),
+    );
 
     return (): void => {
       for (const unregister of unregisterFns) {
@@ -213,34 +228,72 @@ function createJarvisTurnStream(
   });
 }
 
+/** Normalizes a wire `JarvisAvailabilityPayload` into the client-core
+ * `JarvisAvailability` shape: `brains`/`defaultBrain` are OPTIONAL on the
+ * wire (a pre-round server never sends them), so an absent `brains` maps to
+ * "every selectable brain offered" when available, else none, and an absent
+ * `defaultBrain` maps to `DEFAULT_JARVIS_BRAIN`. Applying this same function
+ * to a bare `{ available: false }` also produces the synthetic
+ * offline-timeout shape (`brains: []`, since `available` is false) —
+ * `createConnectionAvailabilityStream`'s deadline branch below reuses it
+ * rather than duplicating the fallback rule. */
+function parseAvailability(
+  payload: JarvisAvailabilityPayload,
+): JarvisAvailability {
+  return {
+    available: payload.available,
+    brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
+    defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
+  };
+}
+
+/** Structural equality for `JarvisAvailability` — `distinctUntilChanged`'s
+ * default `===` never matches two freshly-parsed objects, even when their
+ * contents are identical (every `JARVIS_AVAILABILITY` push builds a new
+ * object). `brains` is compared element-by-element in order rather than by
+ * reference: `JARVIS_BRAINS` is a fixed, order-stable list, so index
+ * comparison is sufficient and avoids a set/sort allocation per compare. */
+function jarvisAvailabilityEquals(
+  a: JarvisAvailability,
+  b: JarvisAvailability,
+): boolean {
+  return (
+    a.available === b.available &&
+    a.defaultBrain === b.defaultBrain &&
+    a.brains.length === b.brains.length &&
+    a.brains.every((brain, index) => {
+      return brain === b.brains[index];
+    })
+  );
+}
+
 /** One connection's live `SERVER_MSG.JARVIS_AVAILABILITY` feed: registers the
  * handler, sends `jarvis.subscribe`, and forwards every push for as long as
  * this source stays subscribed. A soft first-event deadline pushes a
- * synthetic `false` if the server hasn't answered within
+ * synthetic unavailable value if the server hasn't answered within
  * `JARVIS_AVAILABILITY_TIMEOUT_MS` — but, unlike `ask()`'s use of the RxJS
  * `timeout()` operator (which errors, and therefore completes, the source —
  * fine for a one-shot turn), this is a plain `setTimeout` that does NOT
  * complete the source: `JARVIS_AVAILABILITY` is a live push channel, so a
- * real answer that lands late (after the synthetic `false`) must still reach
+ * real answer that lands late (after the synthetic value) must still reach
  * the subscriber. Torn down (handler unregistered, timer cleared) when
  * `availability$()`'s outer `switchMap` moves to the NEXT connection, or the
  * caller unsubscribes. */
 function createConnectionAvailabilityStream(
   ws: IWsAdapter,
-): Observable<boolean> {
-  return new Observable<boolean>((subscriber) => {
+): Observable<JarvisAvailability> {
+  return new Observable<JarvisAvailability>((subscriber) => {
     let answered = false;
     const timer = setTimeout(() => {
       if (!answered) {
-        subscriber.next(false);
+        subscriber.next(parseAvailability({ available: false }));
       }
     }, JARVIS_AVAILABILITY_TIMEOUT_MS);
 
     const unregister = ws.on(SERVER_MSG.JARVIS_AVAILABILITY, (payload) => {
       answered = true;
       clearTimeout(timer);
-      const { available } = payload as JarvisAvailabilityPayload;
-      subscriber.next(available);
+      subscriber.next(parseAvailability(payload as JarvisAvailabilityPayload));
     });
     ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
 
@@ -276,7 +329,7 @@ export class WsJarvisAdapter implements JarvisPort {
     this.historySource = source;
   }
 
-  ask(text: string): Observable<JarvisEvent> {
+  ask(text: string, options?: JarvisAskOptions): Observable<JarvisEvent> {
     const turnId = crypto.randomUUID();
 
     return createJarvisTurnStream(
@@ -284,6 +337,7 @@ export class WsJarvisAdapter implements JarvisPort {
       text,
       turnId,
       this.historySource(),
+      options,
     ).pipe(
       timeout({ first: JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS }),
       catchError((error: unknown) => {
@@ -315,11 +369,13 @@ export class WsJarvisAdapter implements JarvisPort {
    * one connection (the normal case — a UI badge, say) needs to re-arm on
    * every reconnect, including the one after a server restart. `switchMap`
    * tears down the previous connection's `JARVIS_AVAILABILITY` listener
-   * before arming the new one. `distinctUntilChanged` collapses a
-   * reconnect's re-query landing on the same boolean into a no-op for
+   * before arming the new one. `distinctUntilChanged` (structural, via
+   * `jarvisAvailabilityEquals`) collapses a reconnect's re-query landing on
+   * an equal `available`/`brains`/`defaultBrain` triple into a no-op for
    * subscribers. See `createConnectionAvailabilityStream` for the per-
-   * connection deadline-without-completing behaviour. */
-  availability$(): Observable<boolean> {
+   * connection deadline-without-completing behaviour, and `parseAvailability`
+   * for how the optional `brains`/`defaultBrain` wire fields are defaulted. */
+  availability$(): Observable<JarvisAvailability> {
     return this.ws.connectionEvents().pipe(
       filter((event) => {
         return event.type === "gatewayConnected";
@@ -327,7 +383,7 @@ export class WsJarvisAdapter implements JarvisPort {
       switchMap(() => {
         return createConnectionAvailabilityStream(this.ws);
       }),
-      distinctUntilChanged(),
+      distinctUntilChanged(jarvisAvailabilityEquals),
     );
   }
 }

@@ -1,3 +1,5 @@
+import type { JarvisBrain } from "@rtc/domain";
+
 /**
  * Cost-hygiene knobs for the Anthropic-backed Jarvis loop (Task 6+). Every
  * live turn is a real, metered API call — unlike the scripted
@@ -5,15 +7,6 @@
  * ceiling on what an unbounded chat session or a runaway tool loop can cost,
  * not to tune quality.
  */
-
-/**
- * Pinned rather than left to an env var or a "latest" alias: a silent
- * upstream model swap would silently change both latency and per-token cost
- * (and, since a system-prompt tweak can shift model behavior, could also
- * regress the confirmation-before-execution guarantee), so the model in use
- * is a deliberate, reviewed choice, not floating.
- */
-export const JARVIS_MODEL_ID = "claude-opus-5";
 
 /**
  * Caps the API's own `max_tokens` per turn. Without a ceiling a single reply
@@ -25,18 +18,26 @@ export const JARVIS_MODEL_ID = "claude-opus-5";
 export const JARVIS_MAX_TOKENS_PER_TURN = 4_096;
 
 /**
- * Caps the model's own reasoning effort (`output_config.effort`) —
- * distinct from `JARVIS_MAX_TOKENS_PER_TURN`, which caps generation length,
- * not how much of that budget goes to thinking before generation starts.
- * Thinking is adaptive-by-default on this model at effort `"high"`, and
- * thinking tokens draw from the SAME `max_tokens` ceiling as the visible
- * reply: an unbounded-effort, tool-heavy turn can burn the whole budget
- * thinking and deliver nothing but the `max_tokens` truncation notice.
- * `"medium"` is a deliberate cost/quality tradeoff for a terse,
- * 2–4-sentence desk-assistant persona, not a sampling parameter (doesn't
- * affect determinism/repeatability the way temperature would).
+ * Brains whose Anthropic request may carry `output_config.effort` — a
+ * capability SET rather than a per-model-name conditional in
+ * `AnthropicAgentSession`, so a future brain that also supports adaptive
+ * effort is added here once instead of at every call site that branches on
+ * it. `"claude-haiku-4-5"` is deliberately excluded: it predates the
+ * `effort` request parameter, so sending one to the API for that model
+ * would be an unvalidated request-shape change, not a harmlessly-ignored
+ * no-op — `@rtc/domain`'s `DEFAULT_JARVIS_EFFORT` (the default effort
+ * value, used at the one call site that reads this set —
+ * `AnthropicAgentSession.runOneTurn`) stays applicable only to the brains
+ * listed here. No local `JARVIS_EFFORT` constant lives in this file: the
+ * default effort value has exactly one source of truth, `@rtc/domain`'s
+ * `DEFAULT_JARVIS_EFFORT` (the same constant the preferences UI defaults
+ * to), imported directly at its one consumption site rather than re-pinned
+ * here under a second name.
  */
-export const JARVIS_EFFORT = "medium";
+export const JARVIS_EFFORT_CAPABLE_BRAINS: ReadonlySet<JarvisBrain> = new Set([
+  "claude-sonnet-5",
+  "claude-opus-5",
+]);
 
 /**
  * Caps how many user-message turns one session may run before the loop

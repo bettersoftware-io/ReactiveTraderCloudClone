@@ -1,7 +1,7 @@
 import { type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Direction } from "@rtc/domain";
+import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import type {
   JarvisCancelPayload,
   JarvisChatPayload,
@@ -13,8 +13,13 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
-import type { AgentLoop } from "../agent/agentLoop.js";
-import { createAgentLoop } from "../agent/agentLoop.js";
+import type {
+  AgentLoop,
+  AgentSession,
+  JarvisLoops,
+  JarvisTurnOptions,
+} from "../agent/agentLoop.js";
+import { createJarvisLoops } from "../agent/agentLoop.js";
 import {
   createServices,
   type ServiceContainer,
@@ -97,7 +102,7 @@ afterEach(() => {
 });
 
 describe("jarvis availability", () => {
-  it("responds { available: false } to jarvis.subscribe when no agent loop is present", () => {
+  it("responds { available: false, brains: [], defaultBrain: 'scripted' } to jarvis.subscribe when no loops are present", () => {
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
     createWsListener(combineEffects(...jarvisEffects(null)), {} as Ctx)(socket);
@@ -105,17 +110,59 @@ describe("jarvis availability", () => {
     socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.JARVIS_AVAILABILITY, payload: { available: false } },
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: { available: false, brains: [], defaultBrain: "scripted" },
+      },
     ]);
   });
 
-  it("responds { available: true } to jarvis.subscribe when a scripted loop is present", () => {
+  it("responds { available: true, brains: ['scripted'], defaultBrain: 'scripted' } when only the scripted loop is present (RTC_JARVIS_FAKE=1)", () => {
     const { messages$, sent } = harness();
 
     messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.JARVIS_AVAILABILITY, payload: { available: true } },
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: ["scripted"],
+          defaultBrain: "scripted",
+        },
+      },
+    ]);
+  });
+
+  it("responds with every JARVIS_BRAINS entry and DEFAULT_JARVIS_BRAIN when a live anthropic loop is present too", () => {
+    const services = createServices();
+    const loops = createJarvisLoops(
+      { ANTHROPIC_API_KEY: "sk-test" },
+      services,
+      () => {
+        return { createSession: vi.fn() };
+      },
+    );
+
+    if (!loops) {
+      throw new Error("expected a non-null JarvisLoops");
+    }
+
+    const sent: Outbound[] = [];
+    const socket = createSocket(sent);
+    createWsListener(combineEffects(...jarvisEffects(loops)), services)(socket);
+
+    socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: JARVIS_BRAINS,
+          defaultBrain: DEFAULT_JARVIS_BRAIN,
+        },
+      },
     ]);
   });
 });
@@ -803,6 +850,338 @@ describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)
   });
 });
 
+describe("jarvis effects — dual-brain routing (spy loops)", () => {
+  it("no brain in the payload routes to loops.defaultBrain, reaching the anthropic session with resolved options", () => {
+    const { loops, scriptedSpy, anthropicSpy, messages$, sent } =
+      dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "hi", turnId: STUB_TURN_ID } satisfies JarvisChatPayload,
+    });
+
+    expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+    expect(anthropicSpy.createSession).toHaveBeenCalledTimes(1);
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: loops.defaultBrain,
+      effort: undefined,
+    });
+    expect(sent).toEqual([
+      { type: SERVER_MSG.JARVIS_DONE, payload: { turnId: STUB_TURN_ID } },
+    ]);
+  });
+
+  it("brain: 'scripted' routes to the scripted session; the anthropic spy is never touched", () => {
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(scriptedSpy.createSession).toHaveBeenCalledTimes(1);
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("an explicit real-model brain + effort routes to the anthropic session carrying both", () => {
+    const { anthropicSpy, messages$ } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-opus-5",
+        effort: "high",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: "claude-opus-5",
+      effort: "high",
+    });
+  });
+
+  it("an unrecognized brain string falls back to the default brain (lenient parse seam, not a rejected frame)", () => {
+    const { loops, anthropicSpy, messages$, sent } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { text: "hi", turnId: STUB_TURN_ID, brain: "gpt-5" },
+    });
+
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: loops.defaultBrain,
+      effort: undefined,
+    });
+    // Not treated as malformed: no JARVIS_ERROR, the turn still completes.
+    expect(sent).toEqual([
+      { type: SERVER_MSG.JARVIS_DONE, payload: { turnId: STUB_TURN_ID } },
+    ]);
+  });
+
+  it("a recognized but un-offered brain (not a member of loops.brains) falls back to the default brain", () => {
+    const scriptedSpy = createSpyLoop();
+    const anthropicSpy = createSpyLoop();
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: anthropicSpy.loop,
+      // "claude-opus-5" is a valid JarvisBrain but not offered by this loop set.
+      brains: ["scripted", "claude-haiku-4-5"],
+      defaultBrain: "claude-haiku-4-5",
+    };
+    const { messages$ } = wireDualLoops(loops);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-opus-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: "claude-haiku-4-5",
+      effort: undefined,
+    });
+  });
+
+  it("a scripted-only conversation never constructs the anthropic session (laziness)", () => {
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "one",
+        turnId: "t1",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "two",
+        turnId: "t2",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(scriptedSpy.createSession).toHaveBeenCalledTimes(1);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("an anthropic-only conversation never constructs the scripted session (laziness)", () => {
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "one",
+        turnId: "t1",
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(anthropicSpy.createSession).toHaveBeenCalledTimes(1);
+    expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("records ctx.usageMeter.recordTurn(resolvedBrain) exactly once per accepted chat frame, in order", () => {
+    const recordTurn = vi.fn();
+    const { messages$ } = dualLoopsHarness(recordTurn);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: "t1",
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi again",
+        turnId: "t2",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(recordTurn).toHaveBeenCalledTimes(2);
+    expect(recordTurn).toHaveBeenNthCalledWith(1, "claude-sonnet-5");
+    expect(recordTurn).toHaveBeenNthCalledWith(2, "scripted");
+  });
+
+  it("recordTurn is NOT called for a malformed chat frame — never an accepted turn", () => {
+    const recordTurn = vi.fn();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { messages$ } = dualLoopsHarness(recordTurn);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: { turnId: "bad-frame" },
+    });
+
+    expect(recordTurn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("jarvis.confirm forwards to BOTH live sessions — cross-talk is a no-op only because each session's own ownership guard gates it, not the effect layer", () => {
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
+
+    // Bring both sessions to life first (both default runTurn impls
+    // complete immediately, so both chat frames finish synchronously).
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "s",
+        turnId: "t-s",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "a",
+        turnId: "t-a",
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CONFIRM,
+      payload: {
+        confirmationId: "confirm-x",
+        approved: true,
+      } satisfies JarvisConfirmPayload,
+    });
+
+    expect(scriptedSpy.sessions[0]?.resolveConfirmation).toHaveBeenCalledWith(
+      "confirm-x",
+      true,
+    );
+    expect(anthropicSpy.sessions[0]?.resolveConfirmation).toHaveBeenCalledWith(
+      "confirm-x",
+      true,
+    );
+  });
+
+  it("jarvis.confirm before either session exists creates NEITHER — never conjures a session just to deliver a confirm", () => {
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CONFIRM,
+      payload: {
+        confirmationId: "confirm-x",
+        approved: true,
+      } satisfies JarvisConfirmPayload,
+    });
+
+    expect(scriptedSpy.createSession).not.toHaveBeenCalled();
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+
+  it("jarvis.cancel forwards to every EXISTING session when it matches the in-flight turnId, even an idle one", () => {
+    const scriptedSpy = createSpyLoop();
+    const turnSubjects: Subject<JarvisEvent>[] = [];
+    const anthropicSpy = createSpyLoop((): Observable<JarvisEvent> => {
+      const subject = new Subject<JarvisEvent>();
+      turnSubjects.push(subject);
+      return subject.asObservable();
+    });
+
+    const loops: JarvisLoops = {
+      scripted: scriptedSpy.loop,
+      anthropic: anthropicSpy.loop,
+      brains: JARVIS_BRAINS,
+      defaultBrain: DEFAULT_JARVIS_BRAIN,
+    };
+    const { messages$ } = wireDualLoops(loops);
+
+    // Scripted turn completes immediately, bringing that session to life.
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "s",
+        turnId: "t-s",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+    // Anthropic turn stays open — a controllable Subject, never completes.
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "a",
+        turnId: "t-a",
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CANCEL,
+      payload: { turnId: "t-a" } satisfies JarvisCancelPayload,
+    });
+
+    expect(anthropicSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
+    expect(scriptedSpy.sessions[0]?.cancelTurn).toHaveBeenCalledTimes(1);
+  });
+
+  it("finalize disposes every session that was actually created for the connection", () => {
+    const { scriptedSpy, anthropicSpy, messages$, closed$ } =
+      dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "s",
+        turnId: "t-s",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "a",
+        turnId: "t-a",
+        brain: "claude-sonnet-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(scriptedSpy.sessions[0]?.dispose).not.toHaveBeenCalled();
+    expect(anthropicSpy.sessions[0]?.dispose).not.toHaveBeenCalled();
+
+    closed$.next();
+
+    expect(scriptedSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+    expect(anthropicSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("finalize never disposes a session that was never created", () => {
+    const { scriptedSpy, anthropicSpy, messages$, closed$ } =
+      dualLoopsHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "s",
+        turnId: "t-s",
+        brain: "scripted",
+      } satisfies JarvisChatPayload,
+    });
+
+    closed$.next();
+
+    expect(scriptedSpy.sessions[0]?.dispose).toHaveBeenCalledTimes(1);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+});
+
 interface WireMappingCase {
   readonly event: JarvisEvent;
   readonly wireType: string;
@@ -854,15 +1233,15 @@ function createSocket(sent: Outbound[]): TestSocket {
 
 function harness(): Harness {
   const services = createServices();
-  const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+  const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-  if (!loop) {
-    throw new Error("expected a non-null AgentLoop");
+  if (!loops) {
+    throw new Error("expected a non-null JarvisLoops");
   }
 
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loop)), {} as Ctx)(socket);
+  createWsListener(combineEffects(...jarvisEffects(loops)), services)(socket);
   return {
     services,
     messages$: socket.messages$,
@@ -882,21 +1261,21 @@ interface SocketHandle {
   readonly sent: Outbound[];
 }
 
-/** Wires ONE `jarvisEffects(loop)` array to TWO separately-`listen()`ed
+/** Wires ONE `jarvisEffects(loops)` array to TWO separately-`listen()`ed
  * sockets, mirroring how `server/src/index.ts` calls the same listener once
  * per accepted connection — each call runs the session effect's body again,
- * so each socket gets its own `AgentSession` via `loop.createSession()`. */
+ * so each socket gets its own `AgentSession` via `loops.scripted.createSession()`. */
 function twoSocketHarness(): TwoSocketHarness {
   const services = createServices();
-  const loop = createAgentLoop({ RTC_JARVIS_FAKE: "1" }, services);
+  const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
-  if (!loop) {
-    throw new Error("expected a non-null AgentLoop");
+  if (!loops) {
+    throw new Error("expected a non-null JarvisLoops");
   }
 
   const listen = createWsListener(
-    combineEffects(...jarvisEffects(loop)),
-    {} as Ctx,
+    combineEffects(...jarvisEffects(loops)),
+    services,
   );
   const sentA: Outbound[] = [];
   const socketA = createSocket(sentA);
@@ -928,14 +1307,122 @@ interface StubHarness {
   readonly sent: Outbound[];
 }
 
-/** Wires `jarvisEffects` to a caller-supplied stub `AgentLoop` — no
- * `ServiceContainer` / fake timers, since a stub `runTurn` returning `of(…)`
- * emits synchronously. Used only by the wire-type mapping table above. */
+/** Wires `jarvisEffects` to a caller-supplied stub `AgentLoop` as the
+ * scripted-only `JarvisLoops` shape (`anthropic: null` — every stub test
+ * below sends no `brain`, so routing always resolves to `"scripted"` and
+ * reaches this loop) — no `ServiceContainer` / fake timers, since a stub
+ * `runTurn` returning `of(…)` emits synchronously. A minimal stub `ctx`
+ * supplies just `usageMeter.recordTurn` (a no-op spy), the only `Ctx` member
+ * `jarvisEffects` reads. */
 function stubHarness(loop: AgentLoop): StubHarness {
+  const loops: JarvisLoops = {
+    scripted: loop,
+    anthropic: null,
+    brains: ["scripted"],
+    defaultBrain: "scripted",
+  };
+  const ctx = { usageMeter: { recordTurn: vi.fn() } } as unknown as Ctx;
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
-  createWsListener(combineEffects(...jarvisEffects(loop)), {} as Ctx)(socket);
+  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
   return { messages$: socket.messages$, sent };
+}
+
+interface SpySession {
+  readonly runTurn: ReturnType<typeof vi.fn>;
+  readonly resolveConfirmation: ReturnType<typeof vi.fn>;
+  readonly cancelTurn: ReturnType<typeof vi.fn>;
+  readonly dispose: ReturnType<typeof vi.fn>;
+}
+
+interface SpyLoop {
+  readonly loop: AgentLoop;
+  /** Spies on the loop's own `createSession()` — the laziness contract
+   * (a brain a connection never uses must never have this called). */
+  readonly createSession: ReturnType<typeof vi.fn>;
+  /** Every session this loop has minted so far, in call order. */
+  readonly sessions: SpySession[];
+}
+
+/** A spy `AgentLoop` for the dual-brain routing tests below: `createSession`
+ * is itself a spy, and every session it mints records every call made to it.
+ * `runTurnImpl` defaults to a turn that completes immediately with `done` —
+ * pass a custom one (e.g. one backed by a held-open `Subject`, the same
+ * technique `createControllableStubLoop` below uses) for a test that needs
+ * the turn to stay "in flight" (e.g. to exercise `jarvis.cancel`). */
+function createSpyLoop(
+  runTurnImpl: () => Observable<JarvisEvent> = (): Observable<JarvisEvent> => {
+    return of<JarvisEvent>({ type: "done" });
+  },
+): SpyLoop {
+  const sessions: SpySession[] = [];
+  const createSession = vi.fn((): AgentSession => {
+    // Built from precisely-typed locals (not a `SpySession`-annotated
+    // literal) — annotating the literal directly would push vi.fn()'s
+    // generic inference for `runTurn` through the loose `ReturnType<typeof
+    // vi.fn>` field type instead of the specific lambda below, and the
+    // resulting untyped mock then fails `AgentSession`'s structural check.
+    const runTurn = vi.fn(
+      (
+        _text: string,
+        _history: readonly JarvisHistoryEntry[],
+        _options?: JarvisTurnOptions,
+      ): Observable<JarvisEvent> => {
+        return runTurnImpl();
+      },
+    );
+    const resolveConfirmation = vi.fn();
+    const cancelTurn = vi.fn();
+    const dispose = vi.fn();
+    const session = { runTurn, resolveConfirmation, cancelTurn, dispose };
+    sessions.push(session);
+    return session;
+  });
+  return { loop: { createSession }, createSession, sessions };
+}
+
+interface DualLoopsHarness {
+  readonly messages$: Subject<Inbound>;
+  readonly closed$: Subject<void>;
+  readonly sent: Outbound[];
+}
+
+/** Wires `jarvisEffects` to a caller-supplied `JarvisLoops`, with an
+ * injectable `recordTurn` spy standing in for `ctx.usageMeter.recordTurn` —
+ * the only `Ctx` member `jarvisEffects` reads. */
+function wireDualLoops(
+  loops: JarvisLoops,
+  recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
+): DualLoopsHarness {
+  const ctx = { usageMeter: { recordTurn } } as unknown as Ctx;
+  const sent: Outbound[] = [];
+  const socket = createSocket(sent);
+  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  return { messages$: socket.messages$, closed$: socket.closed$, sent };
+}
+
+interface DualSpyHarness extends DualLoopsHarness {
+  readonly loops: JarvisLoops;
+  readonly scriptedSpy: SpyLoop;
+  readonly anthropicSpy: SpyLoop;
+}
+
+/** The common case for the dual-brain routing tests: a full `JarvisLoops`
+ * (all four `JARVIS_BRAINS`, `DEFAULT_JARVIS_BRAIN`) built from two fresh
+ * `createSpyLoop()`s, wired via `wireDualLoops`. */
+function dualLoopsHarness(
+  recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
+): DualSpyHarness {
+  const scriptedSpy = createSpyLoop();
+  const anthropicSpy = createSpyLoop();
+  const loops: JarvisLoops = {
+    scripted: scriptedSpy.loop,
+    anthropic: anthropicSpy.loop,
+    brains: JARVIS_BRAINS,
+    defaultBrain: DEFAULT_JARVIS_BRAIN,
+  };
+  const { messages$, closed$, sent } = wireDualLoops(loops, recordTurn);
+  return { loops, scriptedSpy, anthropicSpy, messages$, closed$, sent };
 }
 
 interface CapturingStubLoop {

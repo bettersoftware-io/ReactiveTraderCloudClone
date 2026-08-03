@@ -34,6 +34,8 @@ import type {
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  JarvisBrain,
+  JarvisEffort,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -135,7 +137,15 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
       setSkin: (skin: JarvisSkin) => {
         world.jarvisSkin.next(skin);
       },
+      // World.jarvisAvailability is the structured JarvisAvailability
+      // directly (Task 10) — no mapping needed.
       availability$: world.jarvisAvailability,
+      // The STORED brain/effort preferences (Task 10) — threaded straight
+      // from World so a spec's mount({ jarvisBrain, jarvisEffort }) seed (or
+      // a live write through useJarvisPreferences().setBrain/setEffort)
+      // actually resolves the machine's effectiveBrain / turn options.
+      preferredBrain$: world.jarvisBrain,
+      effort$: world.jarvisEffort,
     });
     jarvisMachines.set(world, machine);
   }
@@ -700,6 +710,31 @@ export function reactViewModel(world: World): ViewModel {
       const machine = getJarvisMachine(world);
       const state = useMachineState(machine.state$);
       return { state, ...machine.intents };
+    },
+    // The two Jarvis desk-assistant preferences (Task 10): reactive reads
+    // off World.jarvisBrain/jarvisEffort, writes recorded so a spec can
+    // assert what the user actually chose — mirrors useLoginWaitPreferences
+    // exactly, and feeds the SAME subjects getJarvisMachine's
+    // preferredBrain$/effort$ read above, so a write through this seam
+    // re-resolves the real machine's effectiveBrain.
+    useJarvisPreferences: () => {
+      return {
+        brain: useSubject(world.jarvisBrain),
+        setBrain: (brain: JarvisBrain) => {
+          world.commands.jarvisBrainSets.push(brain);
+          world.jarvisBrain.next(brain);
+        },
+        effort: useSubject(world.jarvisEffort),
+        setEffort: (effort: JarvisEffort) => {
+          world.commands.jarvisEffortSets.push(effort);
+          world.jarvisEffort.next(effort);
+        },
+      };
+    },
+    // Jarvis token-usage/cost telemetry (Task 10): reactive view backed by
+    // the World subject, mirroring useTopology.
+    useJarvisUsage: () => {
+      return useSubject(world.jarvisUsage$);
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { AdminPanel } from "./AdminPanel";
 import { IncidentControls } from "./IncidentControls";
+import { JarvisUsageCard } from "./jarvis/JarvisUsageCard";
 import { KpiRow } from "./kpis/KpiRow";
 import { LatencyHistogram } from "./LatencyHistogram";
 import { LiveEventLog } from "./LiveEventLog";
@@ -29,7 +30,9 @@ import styles from "./AdminDashboard.module.css";
  * AdminPanel already render their own low-key label, restyled to the same
  * card-head tone in AdminPanel's case), so `RetainedCard` gives them a
  * shared shell — with an explicit title only for ServiceTopologyGraph,
- * which is the one that would otherwise be unlabeled.
+ * which is the one that would otherwise be unlabeled. `JarvisUsageCard`
+ * (Task 8) joins the same row bare instead — like the charts/bottom-row
+ * components, it already renders its own "JARVIS USAGE" head/chrome.
  */
 export function AdminDashboard(): ReactElement {
   return (
@@ -56,6 +59,7 @@ export function AdminDashboard(): ReactElement {
         <RetainedCard className={styles.controlCard}>
           <AdminPanel />
         </RetainedCard>
+        <JarvisUsageCard />
       </div>
     </div>
   );

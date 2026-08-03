@@ -7,7 +7,7 @@ import type {
   ScriptedJarvisEngine,
 } from "@rtc/shared";
 
-import type { AgentSession } from "./agentLoop.js";
+import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 
 /**
  * Thin per-connection session over the ONE shared `ScriptedJarvisEngine`:
@@ -41,6 +41,9 @@ export class ScriptedAgentSession implements AgentSession {
   runTurn(
     text: string,
     _history: readonly JarvisHistoryEntry[],
+    // Signature-only: satisfies `AgentSession`, but the scripted engine has
+    // no notion of model or effort, so this is always ignored.
+    _options?: JarvisTurnOptions,
   ): Observable<JarvisEvent> {
     return this.engine.ask(text).pipe(
       tap((event: JarvisEvent): void => {

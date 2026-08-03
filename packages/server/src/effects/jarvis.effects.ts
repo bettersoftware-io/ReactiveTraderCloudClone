@@ -10,6 +10,7 @@ import {
   of,
 } from "rxjs";
 
+import { isJarvisBrain, isJarvisEffort, type JarvisBrain } from "@rtc/domain";
 import type {
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
@@ -28,7 +29,7 @@ import {
   type WsEffect,
 } from "@rtc/ws-effects";
 
-import type { AgentLoop } from "../agent/agentLoop.js";
+import type { AgentSession, JarvisLoops } from "../agent/agentLoop.js";
 import type { Ctx } from "./context.js";
 
 /** SERVER_MSG for each `JarvisEvent` variant — the wire rule documented on
@@ -98,12 +99,20 @@ function describeMalformedFrame(frameType: string, payload: unknown): string {
   return `type=${frameType} turnId=${turnId ?? "<none>"} payload omitted`;
 }
 
+/**
+ * `text`/`turnId`/`history` stay strict (malformed → the whole frame is
+ * rejected, per the JARVIS_ERROR/drop paths below). `brain`/`effort` are
+ * OPTIONAL wire fields with a well-defined fallback (the routing default,
+ * the session's own default), so an invalid or absent value is treated as
+ * simply absent rather than failing the frame — a stale client sending an
+ * unrecognized `brain` string still gets served, just on the default brain.
+ */
 function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   if (!isRecord(payload)) {
     return undefined;
   }
 
-  const { text, turnId, history } = payload;
+  const { text, turnId, history, brain, effort } = payload;
 
   if (typeof text !== "string" || typeof turnId !== "string") {
     return undefined;
@@ -123,6 +132,8 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
       history === undefined
         ? undefined
         : truncateHistory(history as readonly JarvisHistoryEntry[]),
+    brain: isJarvisBrain(brain) ? brain : undefined,
+    effort: isJarvisEffort(effort) ? effort : undefined,
   };
 }
 
@@ -149,51 +160,125 @@ function parseCancelPayload(payload: unknown): JarvisCancelPayload | undefined {
 }
 
 /**
- * Produces the JARVIS_* wire effects, closing over the given `loop`.
+ * Produces the JARVIS_* wire effects, closing over the given `loops`.
  *
- * `availability$` always registers — even with `loop === null` — so the
+ * `availability$` always registers — even with `loops === null` — so the
  * client's `JARVIS_SUBSCRIBE` handshake always gets an answer instead of
  * hanging when Jarvis is absent (RTC_JARVIS_FAKE off, no Anthropic key).
+ * `brains`/`defaultBrain` mirror `JarvisLoops` when present; when Jarvis is
+ * absent entirely the payload is `available: false` with `brains: []` — the
+ * `available` flag is what a client must key off (the orb hides, so no
+ * picker renders); an empty `brains` array is NOT a nullish sentinel and
+ * must never be read as "all brains offered".
  *
  * The session effect is a factory rather than a constant `WsEffect[]` (like
- * `fxEffects`): `loop.createSession()` runs inside the effect body itself,
- * which `createWsListener` invokes once per socket — so every connection
- * gets its own `AgentSession` with its own pending-confirmation state, the
- * P3 fix for the P2 cross-socket confirmation-forgery risk.
+ * `fxEffects`): each `AgentLoop.createSession()` call runs inside the effect
+ * body itself, which `createWsListener` invokes once per socket — so every
+ * connection gets its own `AgentSession`(s) with their own pending-
+ * confirmation state, the P3 fix for the P2 cross-socket confirmation-forgery
+ * risk. `loops.scripted` and `loops.anthropic` are each lazily sessioned on
+ * FIRST use by that connection: a connection that only ever picks scripted
+ * brains never calls `loops.anthropic.createSession()` (no wasted Anthropic
+ * client-side session state), and vice versa.
  */
-export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
+export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
   const availability$: WsEffect<Ctx> = stream(
     CLIENT_MSG.JARVIS_SUBSCRIBE,
     (): Observable<Outbound> => {
       return of(
         out(SERVER_MSG.JARVIS_AVAILABILITY, {
-          available: loop !== null,
+          available: loops !== null,
+          brains: loops?.brains ?? [],
+          defaultBrain: loops?.defaultBrain ?? "scripted",
         } satisfies JarvisAvailabilityPayload),
       );
     },
   );
 
-  if (loop === null) {
+  if (loops === null) {
     return [availability$];
   }
 
-  const activeLoop: AgentLoop = loop;
+  const activeLoops: JarvisLoops = loops;
 
   function jarvisSessionEffect(
     in$: Observable<Inbound>,
     ctx: Ctx,
   ): Observable<Outbound> {
-    const session = activeLoop.createSession();
+    // Lazily created on first use — see the laziness note on `jarvisEffects`
+    // above. `null` means "not yet created for this connection", not "no
+    // loop available" (that's `activeLoops.anthropic === null`, checked
+    // separately in `runTurnFor`).
+    let scriptedSession: AgentSession | null = null;
+    let anthropicSession: AgentSession | null = null;
 
-    // The turnId of whichever turn `session.runTurn()` currently has open —
-    // set at that turn's subscribe time, cleared in its own `finalize`.
-    // `session.cancelTurn()` is turnId-blind (it cancels whatever is
-    // running), so this is the effect-layer gate that keeps a cancel from
-    // one turn from reaching a DIFFERENT, later turn: the client sends
-    // `jarvis.cancel` on every teardown including normal completion (see
-    // `AgentSession.cancelTurn`'s doc comment), so a stale cancel for an
-    // already-finished turn arriving after a new turn has started must be a
-    // silent no-op rather than killing the new turn mid-stream.
+    function getScriptedSession(): AgentSession {
+      scriptedSession ??= activeLoops.scripted.createSession();
+      return scriptedSession;
+    }
+
+    /** `null` only when `activeLoops.anthropic` itself is `null` — no live
+     * Claude model wired for this process at all. */
+    function getAnthropicSession(): AgentSession | null {
+      if (!activeLoops.anthropic) {
+        return null;
+      }
+
+      anthropicSession ??= activeLoops.anthropic.createSession();
+      return anthropicSession;
+    }
+
+    /** `payload.brain` if it's both a recognized brain AND one of the
+     * brains this loop set actually offers, else `activeLoops.defaultBrain`
+     * — the same "invalid/un-offered input silently falls back to the
+     * default" posture as the parse seam above, not a rejected frame. */
+    function resolveBrain(payload: JarvisChatPayload): JarvisBrain {
+      if (payload.brain && activeLoops.brains.includes(payload.brain)) {
+        return payload.brain;
+      }
+
+      return activeLoops.defaultBrain;
+    }
+
+    function runTurnFor(
+      brain: JarvisBrain,
+      payload: JarvisChatPayload,
+    ): Observable<JarvisEvent> {
+      const history = payload.history ?? [];
+
+      if (brain === "scripted") {
+        return getScriptedSession().runTurn(payload.text, history);
+      }
+
+      const session = getAnthropicSession();
+
+      if (!session) {
+        // Cannot happen by construction: `resolveBrain` only ever returns a
+        // real-model brain when it's a member of `activeLoops.brains`, and
+        // that set only ever lists real models when `activeLoops.anthropic`
+        // is non-null (see `createJarvisLoops`). Defended anyway, with a
+        // sanitized log (brain id only, never the turn's text/history).
+        console.error(
+          `jarvis.chat: resolved brain "${brain}" has no live anthropic session; falling back to scripted`,
+        );
+        return getScriptedSession().runTurn(payload.text, history);
+      }
+
+      return session.runTurn(payload.text, history, {
+        brain,
+        effort: payload.effort,
+      });
+    }
+
+    // The turnId of whichever turn is currently open — set at that turn's
+    // subscribe time, cleared in its own `finalize`. `AgentSession.cancelTurn()`
+    // is turnId-blind (it cancels whatever is running), so this is the
+    // effect-layer gate that keeps a cancel from one turn from reaching a
+    // DIFFERENT, later turn: the client sends `jarvis.cancel` on every
+    // teardown including normal completion (see `AgentSession.cancelTurn`'s
+    // doc comment), so a stale cancel for an already-finished turn arriving
+    // after a new turn has started must be a silent no-op rather than
+    // killing the new turn mid-stream.
     let inFlightTurnId: string | undefined;
 
     function projectChatTurn(payload: unknown): Observable<Outbound> {
@@ -221,7 +306,15 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
 
         inFlightTurnId = parsed.turnId;
 
-        return session.runTurn(parsed.text, parsed.history ?? []).pipe(
+        const resolvedBrain = resolveBrain(parsed);
+        // Once per DEQUEUED (parsed-valid) chat frame: this defer runs when
+        // the concatMap queue reaches the turn, not at frame arrival — a
+        // frame still queued when the socket closes is never counted (it
+        // never ran). A dequeued turn that errors or gets cancelled
+        // mid-stream still counts against the brain it was routed to.
+        ctx.usageMeter.recordTurn(resolvedBrain);
+
+        return runTurnFor(resolvedBrain, parsed).pipe(
           map((event): Outbound => {
             const { type, ...body } = event;
             return out(WIRE_TYPE_BY_EVENT[type], {
@@ -286,7 +379,21 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
             return EMPTY;
           }
 
-          session.resolveConfirmation(parsed.confirmationId, parsed.approved);
+          // Forwarded to every session that EXISTS for this connection, not
+          // "the" session — there are up to two live brains per connection.
+          // Each session's own `ownedConfirmationIds` guard (P3) means only
+          // the session that actually issued this `confirmationId` acts on
+          // it; the other's call is a harmless no-op. Never CREATES a
+          // session just to deliver a confirm (would break the laziness
+          // guarantee for a connection that never used that brain).
+          scriptedSession?.resolveConfirmation(
+            parsed.confirmationId,
+            parsed.approved,
+          );
+          anthropicSession?.resolveConfirmation(
+            parsed.confirmationId,
+            parsed.approved,
+          );
           return EMPTY;
         });
       },
@@ -307,9 +414,14 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
           }
 
           // Stale/mismatched cancel (already-completed or never-started
-          // turnId) — silent no-op, per the doc comment above.
+          // turnId) — silent no-op, per the doc comment above. Forwarded to
+          // every EXISTING session (same rationale as jarvis.confirm above):
+          // only the session with the actually-running turn has anything to
+          // cancel — `AgentSession.cancelTurn()` on an idle session is a
+          // documented no-op.
           if (parsed.turnId === inFlightTurnId) {
-            session.cancelTurn();
+            scriptedSession?.cancelTurn();
+            anthropicSession?.cancelTurn();
           }
 
           return EMPTY;
@@ -323,7 +435,10 @@ export function jarvisEffects(loop: AgentLoop | null): WsEffect<Ctx>[] {
       jarvisCancel$(in$, ctx),
     ).pipe(
       finalize((): void => {
-        session.dispose();
+        // Only the sessions this connection actually created — never
+        // conjures the other brain's session just to dispose it.
+        scriptedSession?.dispose();
+        anthropicSession?.dispose();
       }),
     );
   }

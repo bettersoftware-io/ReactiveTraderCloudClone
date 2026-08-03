@@ -6,6 +6,8 @@ import type {
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
+  JarvisBrain,
+  JarvisEffort,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -95,4 +97,15 @@ export interface PreferencesPort {
    * subscribe. Consumed by the Orders/Positions blotter (Task 5). */
   eqBlotterView$(): Observable<EqBlotterView>;
   setEqBlotterView(view: EqBlotterView): void;
+  /** Replay-current Jarvis brain stream; emits synchronously on subscribe.
+   * Selects which AI powers the desk assistant — `"scripted"` is the
+   * built-in scripted brain; the `claude-*` entries select a live Claude
+   * model via the server's Anthropic-backed agent loop. */
+  jarvisBrain$(): Observable<JarvisBrain>;
+  setJarvisBrain(brain: JarvisBrain): void;
+  /** Replay-current Jarvis effort stream; emits synchronously on subscribe.
+   * The thinking-effort budget passed to a live Claude brain; ignored by the
+   * `"scripted"` brain. */
+  jarvisEffort$(): Observable<JarvisEffort>;
+  setJarvisEffort(effort: JarvisEffort): void;
 }

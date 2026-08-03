@@ -3,6 +3,7 @@ import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminHeadPage } from "./pages/admin/AdminHeadPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
 import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
+import { JarvisUsageCardPage } from "./pages/admin/JarvisUsageCardPage";
 import { KpiRowPage } from "./pages/admin/KpiRowPage";
 import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
 import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
@@ -729,6 +730,13 @@ export const AdminDashboard = component<
   AdminDashboardPage
 >((ctx) => {
   return new AdminDashboardPage(ctx);
+});
+
+export const JarvisUsageCard = component<
+  Record<string, never>,
+  JarvisUsageCardPage
+>((ctx) => {
+  return new JarvisUsageCardPage(ctx);
 });
 
 export const AdminHead = component<Record<string, never>, AdminHeadPage>(

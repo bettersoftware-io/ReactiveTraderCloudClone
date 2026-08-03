@@ -39,6 +39,10 @@ export type {
   JarvisEvent,
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
+export type {
+  JarvisBrainUsageRow,
+  JarvisUsageSnapshot,
+} from "./jarvis/jarvisUsage.js";
 export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
 export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
 export * from "./protocol/auth.js";

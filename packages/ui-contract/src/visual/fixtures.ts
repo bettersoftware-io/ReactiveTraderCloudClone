@@ -4,6 +4,7 @@ import type {
   JarvisConfirmation,
   JarvisEntry,
   JarvisState,
+  JarvisUsageSnapshot,
   NotionalView,
   OrderTicketState,
   RfqQuote,
@@ -14,6 +15,7 @@ import {
   type Candle,
   ConnectionStatus,
   type CurrencyPair,
+  DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
   type Dealer,
   type DepthBook,
@@ -24,6 +26,7 @@ import {
   type EquityQuote,
   ExecutionStatus,
   type Instrument,
+  JARVIS_BRAINS,
   type LogEvent,
   type MetricSample,
   type PositionUpdates,
@@ -2203,6 +2206,11 @@ const jarvisStateIdle: JarvisState = {
   entries: [jarvisGreetingEntry],
   pendingConfirmation: null,
   available: true,
+  // Every selectable brain offered, resolving to the client default — none
+  // of these three fixtures render the (not-yet-built) brain picker UI, so
+  // any consistent, offered value keeps the goldens byte-identical.
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
@@ -2230,6 +2238,8 @@ const jarvisStateChat: JarvisState = {
   entries: [jarvisGreetingEntry, jarvisChatUserEntry, jarvisChatReplyEntry],
   pendingConfirmation: null,
   available: true,
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2267,5 +2277,74 @@ const jarvisStateConfirm: JarvisState = {
   entries: [jarvisGreetingEntry],
   pendingConfirmation: jarvisPendingConfirmation,
   available: true,
+  brains: JARVIS_BRAINS,
+  effectiveBrain: DEFAULT_JARVIS_BRAIN,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });
+
+// ── Task 10 (Phase 3, brain picker): status-chip + usage-card fixtures ────
+// jarvis/status-chip-haiku: the StatusBar's footer chip with the default
+// (DEFAULT_JARVIS_BRAIN = haiku) effective brain — jarvisStateIdle already
+// carries that value, so it's reused verbatim.
+fixtures["jarvis-status-chip-haiku"] = makeAppData({ jarvis: jarvisStateIdle });
+
+// jarvis/status-chip-scripted: same chip, but the effective brain is the
+// offline "scripted" fallback (a visibly distinct label — "JARVIS ·
+// scripted" vs "JARVIS · Haiku 4.5" — since it's the one non-Claude brain).
+fixtures["jarvis-status-chip-scripted"] = makeAppData({
+  jarvis: { ...jarvisStateIdle, effectiveBrain: "scripted" },
+});
+
+// admin/jarvis-usage-card: two brains populated across BOTH windows, with
+// cost strings the golden pins visually. windowEndMs is pinned to the
+// snapshot's own "no turn recorded yet" sentinel (0 → renders "—") rather
+// than a real epoch — a real epoch would render the local machine's
+// timezone-of-capture into the golden, which the react-local/x86 dual-set
+// (captured on different machines) must never depend on.
+const jarvisUsageSnapshot: JarvisUsageSnapshot = {
+  windowStartMs: 0,
+  windowEndMs: 0,
+  currentWindow: [
+    {
+      brain: "claude-haiku-4-5",
+      turns: 12,
+      inputTokens: 3400,
+      outputTokens: 980,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCostUsd: 1,
+    },
+    {
+      brain: "claude-opus-5",
+      turns: 3,
+      inputTokens: 5200,
+      outputTokens: 2100,
+      cacheReadTokens: 1024,
+      cacheCreationTokens: 512,
+      estimatedCostUsd: 4.5,
+    },
+  ],
+  sinceBoot: [
+    {
+      brain: "claude-haiku-4-5",
+      turns: 120,
+      inputTokens: 34_000,
+      outputTokens: 9800,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCostUsd: 10,
+    },
+    {
+      brain: "claude-opus-5",
+      turns: 30,
+      inputTokens: 52_000,
+      outputTokens: 21_000,
+      cacheReadTokens: 10_240,
+      cacheCreationTokens: 5120,
+      estimatedCostUsd: 45,
+    },
+  ],
+};
+fixtures["admin-jarvis-usage"] = makeAppData({
+  jarvisUsage: jarvisUsageSnapshot,
+});

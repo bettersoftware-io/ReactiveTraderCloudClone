@@ -4,6 +4,7 @@ import type {
   AnimationIntent,
   AuthViewState,
   IncidentKind,
+  JarvisAvailability,
   JarvisEvent,
   ThroughputView,
 } from "@rtc/client-core";
@@ -13,6 +14,8 @@ import type {
   EquityInstrument,
   EquityOrder,
   EquityQuote,
+  JarvisBrain,
+  JarvisEffort,
   LogEvent,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -79,6 +82,15 @@ export interface MountOptions<P> {
   admin?: AdminSeed;
   /** Seed the initial Credit RFQs filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER. */
   creditRfqFilter?: CreditRfqFilter;
+  /** Seed the initial Jarvis backend availability (useJarvis's `state.available`
+   * / `.brains` / `.defaultBrain`); defaults to every brain offered. */
+  jarvisAvailability?: JarvisAvailability;
+  /** Seed the initial STORED Jarvis brain preference (useJarvisPreferences);
+   * defaults to DEFAULT_JARVIS_BRAIN. */
+  jarvisBrain?: JarvisBrain;
+  /** Seed the initial Jarvis thinking-effort preference (useJarvisPreferences);
+   * defaults to DEFAULT_JARVIS_EFFORT. */
+  jarvisEffort?: JarvisEffort;
 }
 
 const mounted: MountedRoot[] = [];
@@ -246,6 +258,9 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.forceBootAnimation,
     opts.loginWaitStyle,
     opts.loginWaitDelay,
+    opts.jarvisAvailability,
+    opts.jarvisBrain,
+    opts.jarvisEffort,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

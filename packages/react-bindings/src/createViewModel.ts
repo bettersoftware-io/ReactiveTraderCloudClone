@@ -5,6 +5,7 @@ import type {
   ActivityEntry,
   AppCommands,
   JarvisState,
+  JarvisUsageSnapshot,
   Presenters,
 } from "@rtc/client-core";
 import {
@@ -50,6 +51,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -66,6 +69,8 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -120,6 +125,18 @@ export interface UseJarvisResult {
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
+}
+
+/** The two Jarvis desk-assistant preferences — which brain to use and the
+ * thinking-effort budget forwarded to a live brain. The STORED preference,
+ * not the resolved one: `useJarvis().state.effectiveBrain` folds in live
+ * availability (a preferred-but-unoffered brain falls back there), while
+ * `brain` here always reflects what the user picked. */
+export interface UseJarvisPreferencesResult {
+  brain: JarvisBrain;
+  setBrain: (brain: JarvisBrain) => void;
+  effort: JarvisEffort;
+  setEffort: (effort: JarvisEffort) => void;
 }
 
 interface MetricsView {
@@ -353,6 +370,12 @@ export interface ViewModel {
   useEqWorkspace: () => UseEqWorkspaceResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
+  /** The two Jarvis desk-assistant preferences (brain + effort) — the
+   * Preferences modal's JARVIS section writer. */
+  useJarvisPreferences: () => UseJarvisPreferencesResult;
+  /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
+   * first snapshot. */
+  useJarvisUsage: () => JarvisUsageSnapshot | null;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -507,6 +530,24 @@ export function createViewModel(
 
   function setLoginWaitDelay(delay: LoginWaitDelay): void {
     presenters.loginWaitPreferences.setDelay(delay);
+  }
+
+  const [useJarvisBrainPreferenceValue] = bind(
+    presenters.jarvisPreferences.brain$,
+    DEFAULT_JARVIS_BRAIN,
+  );
+
+  const [useJarvisEffortPreferenceValue] = bind(
+    presenters.jarvisPreferences.effort$,
+    DEFAULT_JARVIS_EFFORT,
+  );
+
+  function setJarvisBrainPreference(brain: JarvisBrain): void {
+    presenters.jarvisPreferences.setBrain(brain);
+  }
+
+  function setJarvisEffortPreference(effort: JarvisEffort): void {
+    presenters.jarvisPreferences.setEffort(effort);
   }
 
   const [useViewModeValue] = bind(
@@ -687,6 +728,11 @@ export function createViewModel(
   const [useTopologyValue] = bind(
     presenters.topology.topology$,
     null as ServiceTopology | null,
+  );
+
+  const [useJarvisUsageValue] = bind(
+    presenters.jarvisUsage.usage$,
+    null as JarvisUsageSnapshot | null,
   );
 
   const [useEventLogValue] = bind(
@@ -997,6 +1043,15 @@ export function createViewModel(
         ...presenters.jarvis.intents,
       };
     },
+    useJarvisPreferences: () => {
+      return {
+        brain: useJarvisBrainPreferenceValue(),
+        setBrain: setJarvisBrainPreference,
+        effort: useJarvisEffortPreferenceValue(),
+        setEffort: setJarvisEffortPreference,
+      };
+    },
+    useJarvisUsage: useJarvisUsageValue,
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),

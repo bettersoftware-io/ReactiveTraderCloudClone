@@ -506,6 +506,23 @@ describe("createViewModel — admin/telemetry streams", () => {
     expect(Array.isArray(result()?.nodes)).toBe(true);
   });
 
+  it("useJarvisUsage starts null and reads the sim port's always-empty snapshot once it lands", async () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useJarvisUsage();
+    });
+
+    await waitFor(() => {
+      expect(result()).not.toBeNull();
+    });
+    expect(result()).toEqual({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+    });
+  });
+
   it("useEventLog reads the seeded rolling event log", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {

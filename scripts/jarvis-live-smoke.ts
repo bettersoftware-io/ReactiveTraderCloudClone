@@ -143,6 +143,12 @@ interface ChatPayload {
   readonly text: string;
   readonly turnId: string;
   readonly history?: readonly HistoryEntry[];
+  /** Hand-mirrors `JarvisBrain` (see the header comment on why this file
+   * stays `@rtc/*`-import-free rather than importing the real type) — the
+   * quote turn below sends the default brain's id explicitly to exercise
+   * the wire's `brain` field against the real server, not just its
+   * omitted-means-default path (already covered by every other turn here). */
+  readonly brain?: string;
 }
 
 // ── Config ───────────────────────────────────────────────────────
@@ -394,8 +400,14 @@ function buildChatPayload(
   text: string,
   turnId: string,
   history: readonly HistoryEntry[],
+  brain?: string,
 ): ChatPayload {
-  return history.length > 0 ? { text, turnId, history } : { text, turnId };
+  return {
+    text,
+    turnId,
+    ...(history.length > 0 ? { history } : {}),
+    ...(brain !== undefined ? { brain } : {}),
+  };
 }
 
 /**
@@ -412,6 +424,7 @@ function runChatTurn(
   text: string,
   history: readonly HistoryEntry[],
   onConfirmRequest?: (payload: ConfirmRequestPayload) => void,
+  brain?: string,
 ): Promise<ChatTurnOutcome> {
   const turnId = crypto.randomUUID();
 
@@ -546,7 +559,7 @@ function runChatTurn(
     sendFrame(
       ws,
       CLIENT_MSG.JARVIS_CHAT,
-      buildChatPayload(text, turnId, history),
+      buildChatPayload(text, turnId, history, brain),
     );
   });
 }
@@ -667,8 +680,19 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
       available,
     );
 
-    // 2. Quote turn.
-    const quote = await runChatTurn(bus1, ws1, "quote", "Where is EURUSD?", []);
+    // 2. Quote turn — sends `brain` explicitly (the default brain's own id,
+    // "claude-haiku-4-5") rather than omitting it, so this check exercises
+    // the wire's `brain` field against the real server at least once; every
+    // other turn here omits it and relies on the server's own default.
+    const quote = await runChatTurn(
+      bus1,
+      ws1,
+      "quote",
+      "Where is EURUSD?",
+      [],
+      undefined,
+      "claude-haiku-4-5",
+    );
     check(
       results,
       "quote turn: terminated with done and a non-empty reply",

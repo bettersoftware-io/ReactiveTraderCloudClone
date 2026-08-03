@@ -777,6 +777,11 @@ answer is more useful than a tidy one:
   (The P3 plan was written against `claude-opus-4-8`; the shipped pin is
   `claude-opus-5` per current API guidance. Recorded here because a pinned model is
   a reviewed decision with an expiry date, not a constant nobody should touch.)
+  **Superseded by the brain-picker round — see
+  [§18.15](#1815-the-brain-picker--usage-display-round--the-receipt).**
+  `JARVIS_MODEL_ID` is deleted; model choice is now per-turn, selected by a
+  validated user preference against a server-side allowlist, with
+  `claude-haiku-4-5` as the new default.
 
 ### Cost hygiene: four caps and a cached prefix
 
@@ -787,11 +792,11 @@ quality tuning:
 | Cap | Value | Bounds |
 |---|---|---|
 | `JARVIS_MAX_TOKENS_PER_TURN` | 4,096 | one reply's own generation cost |
-| `JARVIS_EFFORT` | `"medium"` | how much of that budget goes to thinking |
+| ~~`JARVIS_EFFORT`~~ | `"medium"` | how much of that budget goes to thinking — **superseded**: now the per-user effort preference, capability-gated ([§18.15](#1815-the-brain-picker--usage-display-round--the-receipt)) |
 | `JARVIS_MAX_TURNS_PER_SESSION` | 40 | a session that never ends |
 | `JARVIS_HISTORY_MAX_MESSAGES` | 30 | replayed context, billed on *every* later turn |
 
-`JARVIS_EFFORT` deserves its own line: thinking is adaptive-by-default at `"high"`
+`JARVIS_EFFORT` deserves its own line (**superseded** — the constant is gone; effort now comes from the user preference, defaulting to domain's `DEFAULT_JARVIS_EFFORT`, and is sent only to effort-capable brains — see [§18.15](#1815-the-brain-picker--usage-display-round--the-receipt)): thinking is adaptive-by-default at `"high"`
 on this model and draws from the **same** `max_tokens` ceiling as the visible
 reply, so an unbounded-effort tool-heavy turn can burn the entire budget thinking
 and deliver nothing but a truncation notice. `"medium"` is a cost/quality tradeoff
@@ -1213,3 +1218,268 @@ were for.
 
 Phase-4 open items are tracked in [`docs/STATUS.md`](../STATUS.md) under the
 Jarvis entry.
+
+## 18.15 The brain picker + usage display round — the receipt
+
+Round 1 (2026-08-02) of the "Jarvis LLM usage governance + model preferences"
+workstream — the `docs/STATUS.md` ⚪ entry P3 opened. It builds items (1)
+server-side usage metering, (3) footer/Admin surfacing, and (4) model+effort
+preference, plus a brain picker with Scripted as a first-class choice — the
+run-out-of-credits demo escape hatch. **Display-only, by design:** usage is
+measured and shown; nothing automatically swaps the loop. Item (2)
+(Claude-Code-style usage-window auto-gating) and item (5) (multi-provider,
+bring-your-own-key) are explicitly out — the closing subsection below records
+what (2) inherits from this round's plumbing.
+
+### The brain vocabulary lives in domain — a deliberate departure
+
+```ts
+type JarvisBrain = "scripted" | "claude-haiku-4-5" | "claude-sonnet-5" | "claude-opus-5";
+type JarvisEffort = "low" | "medium" | "high";
+```
+
+Both live in `@rtc/domain`'s `preferences.ts`, alongside every other stored
+preference — `jarvisBrain` (default `claude-haiku-4-5`) and `jarvisEffort`
+(default `medium`) are ordinary persisted preferences, not a special case,
+carried through the same `PreferencesPort` contract, the same three storage
+adapters (localStorage ×2, AsyncStorage), and the same ~10-site blast radius
+every preference change pays (type + both storage adapters + contract +
+presenter + both bindings + ui-contract fixtures).
+
+This is a **deliberate departure**, named as one in the design spec: earlier
+phases' "`@rtc/domain` stays byte-identical" headline was a constraint on the
+Jarvis *transport* — P1 through P4 never had to touch domain to move the
+chat/tool/session machinery between processes — not a blanket law that domain
+can never change for Jarvis. A brain choice is exactly what the preference
+model already exists for: a stored user setting, no different in kind from
+login-wait style or the equities watchlist sort.
+
+What domain does **not** gain: any notion of what `"claude-opus-5"` *is*.
+The union is four opaque identifiers plus a label map
+(`JARVIS_BRAIN_LABELS`, UI display names only — wire and storage always use
+the id) and a type guard (`isJarvisBrain`); domain has no idea these strings
+name Anthropic models, imports no SDK, and imports nothing from
+`@rtc/agent-tools`. The id-to-live-model mapping happens entirely inside
+`packages/server/src/agent/`, where a resolved `JarvisBrain` becomes a
+request's `model` field. The two dep-cruiser allowlists this workstream
+already leans on — `agent-tools-stays-inner` and the
+`no-anthropic-sdk-in-inner-packages` / `no-mcp-sdk-outside-server` pair
+(§18.13, §18.14) — are **unaffected**: domain gained no new edge toward
+either the SDK or the tool registry, because the brain identifier is inert
+data until it reaches the server's own routing layer, described next.
+
+### Per-turn routing, dual lazy sessions per connection
+
+`jarvisEffects` now takes `loops: JarvisLoops | null` (`createJarvisLoops`'s
+return shape: `scripted: AgentLoop`, `anthropic: AgentLoop | null`, `brains:
+readonly JarvisBrain[]`, `defaultBrain: JarvisBrain`) in place of P3's single
+`AgentLoop | null`. Per connection, the session effect lazily mints **at
+most one session of each kind**, on first use — `getScriptedSession()` /
+`getAnthropicSession()` — not eagerly on connect the way P3's one-session-
+per-socket allocation worked. A connection that only ever asks
+`jarvis.subscribe` and never sends `jarvis.chat` now mints **zero** sessions
+— strictly better than P3, where every socket minted a (cheap,
+allocation-only, no-network) session regardless of whether it chatted at
+all.
+
+`resolveBrain` picks `payload.brain` only when it is a member of
+`loops.brains` — that array **is** the server-side allowlist the design spec
+calls `JARVIS_BRAIN_ALLOWLIST`, realized as a `JarvisLoops` field rather than
+a standalone constant — falling back to `loops.defaultBrain` otherwise, the
+same lenient-fallback posture the wire parse already uses for an
+unrecognized string. `runTurnFor` then routes `"scripted"` to the scripted
+session and any real model to the Anthropic session with `{brain, effort}`
+applied **per turn**. Each session keeps its own history — two genuinely
+separate conversations, not one conversation relabeled — which is what the
+context-drop semantics below rest on.
+
+Turn serialization is unchanged in shape but now covers more ground: the one
+hand-rolled `concatMap` queue (§18.13's fix for concurrent-turn corruption)
+covers the **connection**, not the session, so a chat frame naming brain A
+queued behind one naming brain B still cannot run concurrently with it — no
+two turns run at once regardless of which brain each names.
+`jarvis.confirm` / `jarvis.cancel` fan out to **every session that already
+exists** (never conjure one just to deliver either), each still protected by
+its own per-session ownership guard — the scripted engine's one process-wide
+confirmation table with the per-connection ownership check (§18.13's
+"Doctrine" subsection), and the Anthropic session's own outright-owned
+table. Both sessions dispose in the same `finalize` as before.
+
+### Default flip, the effort capability set, and the cache truth
+
+`JARVIS_MODEL_ID` — the P3 pinned constant — is deleted outright.
+`DEFAULT_JARVIS_BRAIN = "claude-haiku-4-5"` lives in `@rtc/domain` now, 5×
+cheaper both directions than the old Opus pin ($1/$5 vs. $5/$25 per Mtok),
+so even a pre-round client that never sends `brain` gets the saving purely
+from the server-side default.
+
+`output_config.effort` is sent only when the resolved model is a member of
+`JARVIS_EFFORT_CAPABLE_BRAINS = {claude-sonnet-5, claude-opus-5}` — Haiku
+4.5 **predates** the `effort` request parameter entirely, so sending it
+would be an unvalidated request shape, not a harmless no-op. That is a
+per-model *capability* gate checked once at the call site, deliberately not
+a model-name conditional sprinkled wherever effort is read.
+
+The cache truth, because the usage display now makes it directly visible:
+the system-prompt `cache_control` breakpoint stays **unconditional** —
+harmless on Haiku, load-bearing on Sonnet/Opus — but a model's *minimum*
+cacheable prefix is model-specific: 512 tokens on the Sonnet/Opus class,
+**4,096 on Haiku 4.5**. Today's persona-plus-seven-tool-schema prefix is
+~1.3k tokens — comfortably over the Sonnet/Opus floor, comfortably under
+Haiku's. So `cacheReadTokens: 0` on every Haiku turn — the exact figure the
+Admin usage card now surfaces per-brain — is the **expected** signature of
+"prefix under this model's minimum," not a broken cache tap. This was a real
+review finding: a stale comment (dating to the single-pinned-model era)
+claimed a flat 512-token floor for every model; corrected, comment-only, in
+the same round that made the model selectable.
+
+### `UsageMeter`
+
+`packages/server/src/services/UsageMeter.ts`, one instance in
+`serviceContainer` — **in-memory only**; a server restart zeroes it, and the
+Admin card's own copy says so ("resets on server restart") rather than
+implying persistence exists. Rolling **5h windows**
+(`JARVIS_USAGE_WINDOW_MS = 18_000_000` ms) anchor lazily — re-set at the
+first `recordTurn`/`recordTokens` call *after* expiry, not on a timer;
+rolling clears only `currentWindow`, `sinceBoot` never clears. The price
+table ($/Mtok per brain — Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 in/out;
+cache-read at 10% of input, cache-creation at 1.25× input) types `"scripted"`
+out entirely (`Exclude<JarvisBrain, "scripted">`) and short-circuits it to
+`$0` before ever touching the table — display-only estimate, labelled as
+such.
+
+**The tap is isolated from the served turn.** `recordTokens` is called
+inside its **own** `try`/`catch` in `AnthropicAgentSession`, not the turn's
+outer one. Before the fix, a throwing meter would have been caught by the
+turn's own error handler — reporting the sanitized "the desk link faltered"
+message for a reply that had **already fully streamed** to the client, and
+silently dropping that exchange from the session's history (history only
+appends on a `"completed"` outcome). Found in review, fixed in the same
+round: a meter failure is now logged (the existing constructor-name/status
+convention, never the thrown message) and the turn's own `stop_reason`
+handling proceeds exactly as if the meter had never been called.
+
+**`recordTurn` fires at dequeue time**, inside the same `defer` the
+connection's `concatMap` queue runs when it actually reaches a frame, not
+when the frame arrives on the wire. A frame still queued when the socket
+closes is never counted — it never ran. A dequeued turn that errors or gets
+cancelled mid-stream still counts against the brain it was routed to, since
+it already cost the round-trip.
+
+### Recorded semantics worth knowing
+
+1. **Queued-turn brain resolves at dequeue, on both sides.** `JarvisMachine`'s
+   client-side `concatMap` projector and the server's own `defer` both read
+   the *live* preference/routing state at the moment a queued turn is
+   actually pulled off the queue, not at the moment it was enqueued — so a
+   preference flip while turn 1 is still in flight **re-prices** an
+   already-typed turn 2 to the new brain. Latest intent wins. Pinned by a
+   client-side regression test (`JarvisMachine.test.ts`); the server side
+   follows the identical `defer`-inside-`concatMap` shape.
+2. **Brain-switch mid-conversation drops the other brain's interlude from
+   the model's context.** Because each session keeps its own honest
+   history, a user who asks the scripted brain something, switches to
+   Haiku, and asks a follow-up gets a Haiku session that has never heard the
+   scripted exchange. Deliberate and spec'd (§5: "each session keeps its own
+   history — honest: the scripted transcript is its own conversation"), not
+   a bug to fix.
+3. **Cancelling a queued turn is dropped by design** — pre-existing P3
+   semantics (§18.13's turnId/cancel closure): the client always completes
+   locally first, and `JARVIS_CANCEL` is best-effort server-side cleanup it
+   never waits on. Before this round that only wasted a *free* scripted
+   turn's server-side completion; now a queued-then-cancelled **Anthropic**
+   turn still runs to completion server-side and costs real tokens, because
+   the `concatMap` queue has already committed to running it once dequeued.
+   A candidate follow-up — parallel to P3's existing "multi-orphan reconnect
+   burns tokens" item in `docs/STATUS.md` — not fixed in this round.
+4. **The admin usage stream is auth-gated but role-less**, like every other
+   `ADMIN_*` effect: `ADMIN_JARVIS_USAGE_SUBSCRIBE` requires an
+   authenticated connection but checks no separate "admin" role — one
+   doesn't exist in this system — so any of the four demo-roster users can
+   subscribe, exactly like `GET_THROUGHPUT` and the rest of the admin
+   surface.
+5. **The pre-handshake availability-cache seed fix.** `JarvisMachine` keeps
+   a mutable "current availability" cache so `send()` can read it
+   *synchronously* (`state$.getValue()` is not reliably synchronous — see
+   §18.13). That cache was seeded from the sim-mode fallback shape (`brains:
+   ["scripted"]`) rather than the real machine's `INITIAL` (every brain
+   offered) — so in WS-real mode, any `send()` fired before the first
+   `JARVIS_AVAILABILITY` round-trip landed (`WsAdapter` buffers pre-open
+   sends, so this window is unbounded while the socket is still connecting)
+   silently carried `brain: "scripted"` to a keyed server, which **honors**
+   it: the user got a canned scripted reply where they'd have gotten the
+   real model, pre-round. Fixed in review, pinned by a regression test
+   naming the exact failure mode.
+
+### Wire compat, both skew directions
+
+- **Old client → new server.** `brain`/`effort` are optional `JARVIS_CHAT`
+  fields; a pre-round client that never sends them gets `undefined` at the
+  parse seam, which resolves to the connection's `defaultBrain` (now
+  Haiku) — the same lenient-parse posture the wire has always used for
+  optional fields.
+- **New client → a pre-round server.** `JARVIS_AVAILABILITY`'s
+  `brains`/`defaultBrain` are likewise optional. The client-core parse
+  (`parseAvailability` in `WsJarvisAdapter`) treats an *absent*
+  `brains`/`defaultBrain` as "every brain offered"
+  (`available ? JARVIS_BRAINS : []`), not "none offered" — a deliberate,
+  **accepted** transitional mislabel: a new client talking to an old,
+  single-loop server would show all four brain options as selectable even
+  though the old server can only actually route to whichever one loop it
+  had configured. Accepted because the skew window is short-lived (both
+  sides deploy together in practice), and the alternative — reading
+  "absent" as "none offered" — would make a brand-new client's picker show
+  nothing against an old-but-functioning server, which is worse.
+
+### The footer chip + Admin card + Preferences group
+
+- **Footer:** `JarvisStatusChip` (testid `jarvis-status-chip`,
+  `data-brain={effectiveBrain}`) mounts in `StatusBar` after the operator
+  segment, rendering `null` (the segment fully absent) when unavailable —
+  mirrors the orb's own gating. Text is
+  `` `JARVIS · ${JARVIS_BRAIN_LABELS[effectiveBrain]}` ``.
+- **Preferences:** a new JARVIS section — `pref-segment-jarvisBrain` /
+  `pref-segment-jarvisEffort` — with real models individually disabled when
+  not in the availability `brains` list (`"scripted"` itself is never
+  disabled; it is the offline fallback, not a server-side offering), and the
+  effort row disabled wholesale when the **stored** brain preference (not
+  the resolved *effective* one) is `"scripted"`.
+- **Admin:** `JarvisUsageCard` (testid `admin-jarvis-usage-card`) —
+  current-window and since-boot sections, one row per brain with activity,
+  the literal caveat line "resets on server restart", and a window-reset
+  clock with a `"—"` special case for `windowEndMs === 0` (the snapshot's
+  own "nothing recorded yet" sentinel) so it never prints a misleading
+  epoch-zero time.
+
+Both web clients ship byte-parallel components — `PrefSegment`'s per-option
+`disabled` is a shared prop extension both frameworks picked up — driven by
+the same `@rtc/ui-contract` specs: 706/706 passing on both clients (up from
+692 before this round). Goldens: 30 new (the chip in scripted/Haiku states
+plus the usage card, ×10 skins) and 92 resynced, including an **82-golden
+Tasks-8/9 catch-up** — `AdminDashboard`'s new five-column grid and
+`StatusBar`'s new chip had shipped in earlier tasks' production code but
+were never captured against the local goldens, because nobody had run the
+full local visual suite on this branch until the ui-contract task did.
+Surfaced and fixed as a workstream-process gap, not a regression in that
+task's own change.
+
+### What auto-gating (item 2) builds on
+
+Item (2) — Claude-Code-style usage windows, where exhausting the budget
+swaps the live loop to scripted until the window rolls — was explicitly out
+of this round's display-only scope. Everything it needs already exists.
+`UsageMeter`'s rolling windows are the accounting. The `brains` vocabulary is
+the *same* mechanism `JARVIS_AVAILABILITY` already uses for "which brains
+can this connection pick from" — `RTC_JARVIS_FAKE` already demonstrates the
+collapse (`brains` narrows to `["scripted"]`, `defaultBrain` to
+`"scripted"`, when the process isn't running the Anthropic loop at all).
+Auto-gating on exhaustion is that same collapse, computed from `UsageMeter`'s
+own numbers instead of an env flag, pushed as a fresh `JARVIS_AVAILABILITY`
+frame the client already knows how to react to — `JarvisMachine` already
+re-resolves `effectiveBrain` on every `availability$` emission. Item (5)
+(multi-provider, bring-your-own-key) stays gated on real per-user accounts
+replacing the committed demo roster, unrelated to what this round built.
+
+Round-1 open items and the interim PAYG billing decision are tracked in
+[`docs/STATUS.md`](../STATUS.md) under the Jarvis LLM usage governance ⚪
+entry.

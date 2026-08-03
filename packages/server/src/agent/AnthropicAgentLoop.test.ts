@@ -5,7 +5,7 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
-import { Direction } from "@rtc/domain";
+import { DEFAULT_JARVIS_BRAIN, Direction } from "@rtc/domain";
 import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
@@ -15,7 +15,7 @@ import type {
   AnthropicRunner,
   AnthropicRunnerFactory,
 } from "./AnthropicAgentSession.js";
-import type { AgentSession } from "./agentLoop.js";
+import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 import {
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TURNS_PER_SESSION,
@@ -781,6 +781,283 @@ describe("AnthropicAgentLoop", () => {
 
     expect(approved).toBe(false);
   });
+
+  it("(Task 5 model) options.brain reaches the runner as `model`, and options absent defaults to the domain default (Haiku)", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+    const { factory, calls } = scriptedRunner([stream, stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi", [], undefined, {
+      brain: "claude-sonnet-5",
+    });
+    await runTurnCollecting(session, "hi again");
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.params.model).toBe("claude-sonnet-5");
+    expect(calls[1]?.params.model).toBe(DEFAULT_JARVIS_BRAIN);
+  });
+
+  it("(Task 5 effort) output_config.effort is present for sonnet/opus but ABSENT for haiku, even when options.effort is explicitly set", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+    const { factory, calls } = scriptedRunner([stream, stream, stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "sonnet turn", [], undefined, {
+      brain: "claude-sonnet-5",
+      effort: "high",
+    });
+    await runTurnCollecting(session, "opus turn", [], undefined, {
+      brain: "claude-opus-5",
+      effort: "low",
+    });
+    await runTurnCollecting(session, "haiku turn", [], undefined, {
+      brain: "claude-haiku-4-5",
+      effort: "high",
+    });
+
+    expect(calls).toHaveLength(3);
+    expect(calls[0]?.params.output_config).toEqual({ effort: "high" });
+    expect(calls[1]?.params.output_config).toEqual({ effort: "low" });
+    expect(calls[2]?.params.output_config).toBeUndefined();
+  });
+
+  it("(Task 5 default model) options absent → default model (Haiku) with no output_config at all", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.params.model).toBe(DEFAULT_JARVIS_BRAIN);
+    expect(calls[0]?.params.output_config).toBeUndefined();
+  });
+
+  it("(Task 5 usage) per-iteration usage is recorded into the meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
+    const first = fakeStream([textDeltaEvent(0, "part 1")], {
+      stop_reason: "pause_turn",
+      content: [{ type: "text", text: "part 1" }],
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        cache_read_input_tokens: 5,
+        cache_creation_input_tokens: 1,
+      },
+    });
+
+    const second = fakeStream([textDeltaEvent(0, " part 2")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "part 2" }],
+      usage: {
+        input_tokens: 50,
+        output_tokens: 10,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+      },
+    });
+
+    function factory(): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield first;
+          yield second;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const recordTokens = vi.fn();
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      usageMeter: { recordTokens },
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi", [], undefined, {
+      brain: "claude-sonnet-5",
+    });
+
+    expect(recordTokens).toHaveBeenCalledTimes(2);
+    expect(recordTokens).toHaveBeenNthCalledWith(1, "claude-sonnet-5", {
+      inputTokens: 100,
+      outputTokens: 20,
+      cacheReadTokens: 5,
+      cacheCreationTokens: 1,
+    });
+    expect(recordTokens).toHaveBeenNthCalledWith(2, "claude-sonnet-5", {
+      inputTokens: 50,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(Task 5 usage) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+      // usage omitted entirely — mirrors a fixture that doesn't care to set it.
+    });
+    const { factory } = scriptedRunner([stream]);
+    const recordTokens = vi.fn();
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      usageMeter: { recordTokens },
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi");
+
+    expect(recordTokens).toHaveBeenCalledExactlyOnceWith(DEFAULT_JARVIS_BRAIN, {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("(Task 5 usage) no meter injected → the turn still completes normally, with no error and no crash", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "ok" }],
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+      },
+    });
+    const { factory } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      // usageMeter deliberately omitted.
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "hi");
+
+    expect(events).toEqual([{ type: "delta", text: "ok" }, { type: "done" }]);
+  });
+
+  it("(Task 5 usage) a meter whose recordTokens throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
+    const first = fakeStream([textDeltaEvent(0, "Good morning, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Good morning, sir." }],
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+      },
+    });
+
+    const second = fakeStream([textDeltaEvent(0, "Indeed.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Indeed." }],
+    });
+    let callIndex = 0;
+    const calls: RunnerCall[] = [];
+
+    function factory(
+      params: FactoryParams,
+      options: FactoryOptions,
+    ): AnthropicRunner {
+      calls.push({ params, options });
+      const stream = callIndex === 0 ? first : second;
+      callIndex += 1;
+
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield stream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const recordTokens = vi.fn(() => {
+      throw new Error("usage meter exploded — must never corrupt the turn");
+    });
+
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      usageMeter: { recordTokens },
+    });
+    const session = loop.createSession();
+
+    const events1 = await runTurnCollecting(session, "good morning");
+
+    // The turn completes exactly as if the meter had never thrown: the full
+    // reply, terminated with "done" — NOT the sanitized "desk link
+    // faltered" error the outer catch would have produced had the throw
+    // been allowed to propagate there.
+    expect(events1).toEqual([
+      { type: "delta", text: "Good morning, sir." },
+      { type: "done" },
+    ]);
+    expect(recordTokens).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "AnthropicAgentSession: usageMeter.recordTokens threw —",
+      expect.stringContaining("Error"),
+    );
+
+    // History still grew after the "completed" outcome — proof the throw
+    // never reached the outer catch (which would have produced an
+    // "errored" outcome, and `runTurn`'s `.then` only appends to history on
+    // "completed"). Turn 2's request replays turn 1's user + assistant
+    // messages, exactly like the unthrottled case in test (a).
+    await runTurnCollecting(session, "thanks");
+
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.params.messages).toEqual([
+      { role: "user", content: "good morning" },
+      { role: "assistant", content: "Good morning, sir." },
+      { role: "user", content: "thanks" },
+    ]);
+
+    consoleErrorSpy.mockRestore();
+  });
 });
 
 // ── fake-runner scripting helpers ──────────────────────────────────────
@@ -928,10 +1205,11 @@ function runTurnCollecting(
   text: string,
   history: readonly JarvisHistoryEntry[] = [],
   onEvent?: (event: JarvisEvent) => void,
+  options?: JarvisTurnOptions,
 ): Promise<JarvisEvent[]> {
   return new Promise((resolve, reject) => {
     const events: JarvisEvent[] = [];
-    session.runTurn(text, history).subscribe({
+    session.runTurn(text, history, options).subscribe({
       next: (event: JarvisEvent): void => {
         events.push(event);
         onEvent?.(event);

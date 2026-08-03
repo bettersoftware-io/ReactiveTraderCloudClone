@@ -10,6 +10,8 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -19,6 +21,8 @@ import {
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type JarvisBrain,
+  type JarvisEffort,
   type JarvisSkin,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -48,6 +52,8 @@ export interface PreferencesSeed {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   jarvisSkin?: JarvisSkin;
+  jarvisBrain?: JarvisBrain;
+  jarvisEffort?: JarvisEffort;
 }
 
 /**
@@ -447,6 +453,58 @@ export function describePreferencesPortContract(
     it("reads back a seeded jarvisSkin", async () => {
       const port = makeSeeded({ jarvisSkin: "reactor" });
       expect(await firstValueFrom(port.jarvisSkin$())).toBe("reactor");
+    });
+
+    describe("jarvisBrain", () => {
+      it("empty store emits the default jarvisBrain", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.jarvisBrain$())).toBe(
+          DEFAULT_JARVIS_BRAIN,
+        );
+      });
+
+      it("setJarvisBrain pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: JarvisBrain[] = [];
+        const sub = port.jarvisBrain$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setJarvisBrain("claude-opus-5");
+        sub.unsubscribe();
+        expect(seen).toEqual([DEFAULT_JARVIS_BRAIN, "claude-opus-5"]);
+      });
+
+      it("reads back a seeded jarvisBrain", async () => {
+        const port = makeSeeded({ jarvisBrain: "claude-sonnet-5" });
+        expect(await firstValueFrom(port.jarvisBrain$())).toBe(
+          "claude-sonnet-5",
+        );
+      });
+    });
+
+    describe("jarvisEffort", () => {
+      it("empty store emits the default jarvisEffort", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.jarvisEffort$())).toBe(
+          DEFAULT_JARVIS_EFFORT,
+        );
+      });
+
+      it("setJarvisEffort pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: JarvisEffort[] = [];
+        const sub = port.jarvisEffort$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setJarvisEffort("high");
+        sub.unsubscribe();
+        expect(seen).toEqual([DEFAULT_JARVIS_EFFORT, "high"]);
+      });
+
+      it("reads back a seeded jarvisEffort", async () => {
+        const port = makeSeeded({ jarvisEffort: "low" });
+        expect(await firstValueFrom(port.jarvisEffort$())).toBe("low");
+      });
     });
   });
 }

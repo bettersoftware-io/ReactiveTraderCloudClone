@@ -64,7 +64,9 @@ import {
   InstrumentsPresenter,
   type JarvisEntry,
   type JarvisIntents,
+  JarvisPreferencesPresenter,
   type JarvisState,
+  JarvisUsagePresenter,
   LatencyPresenter,
   LoginWaitPreferencesPresenter,
   type Machine,
@@ -145,6 +147,8 @@ export interface Presenters {
   auth: AuthPresenter;
   /** The two login-wait inspection preferences (style pin + artificial delay). */
   loginWaitPreferences: LoginWaitPreferencesPresenter;
+  /** The two Jarvis desk-assistant preferences (brain + thinking-effort budget). */
+  jarvisPreferences: JarvisPreferencesPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
   depth: DepthPresenter;
@@ -169,6 +173,9 @@ export interface Presenters {
   sessionsKpi: SessionsKpiPresenter;
   /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase. */
   jarvis: Machine<JarvisState, JarvisIntents>;
+  /** J.A.R.V.I.S. usage/cost telemetry (Admin surface) — null until the
+   * first snapshot. */
+  jarvisUsage: JarvisUsagePresenter;
 }
 
 export interface AppCommands {
@@ -501,6 +508,7 @@ export function createApp(ports: AppPorts): App {
       },
     ),
     loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
+    jarvisPreferences: new JarvisPreferencesPresenter(ports.preferences),
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),
@@ -534,12 +542,16 @@ export function createApp(ports: AppPorts): App {
       // check rather than a JarvisPort method (jarvisPort.ts's surface stays
       // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
       // needs none: createJarvisMachine defaults an absent availability$ to
-      // `of(true)`, so sim stays permanently available.
+      // an always-available, scripted-only value, so sim stays permanently
+      // available offering only the scripted brain.
       availability$:
         ports.jarvis instanceof WsJarvisAdapter
           ? ports.jarvis.availability$()
           : undefined,
+      preferredBrain$: ports.preferences.jarvisBrain$(),
+      effort$: ports.preferences.jarvisEffort$(),
     }),
+    jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
   };
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
