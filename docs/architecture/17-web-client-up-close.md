@@ -503,3 +503,37 @@ what retained DOM affords. Canvas is the escape hatch to pull when
 node-count costs actually bite — not a precondition for starting the
 tier. See
 [the renderer-seam spec](../superpowers/specs/2026-08-02-pluggable-chart-renderer-design.md).
+
+**Indicator panes — the TradingView tier's first slice, built against the
+seam.** RSI and MACD panes (`EqWorkspaceMachine`'s `panes: readonly
+EqPaneId[]` state plus `togglePane`, symmetric with the existing overlay
+`indicators`/`toggleIndicator` pair) are the first TradingView-tier feature
+actually built under this section's discipline. All indicator math and
+geometry stays in `@rtc/motion-core`: `paneSeries.ts` computes `rsiValues`
+(RSI 14, Wilder smoothing) and `macdValues` (MACD 12/26/9) as pure
+functions over closes, and `paneScene.ts` projects them into a numeric
+`PaneScene` per pane (`lines`, a batched `histogram`, and `guides`, mapped
+into the `PANE_Y_TOP`/`PANE_Y_SPAN` band) plus a separate `paneReadout`
+function for the crosshair's per-pane value rows — the same "scene is a
+plain data object, readout is not a scene method" split `chartScene`'s
+family already uses. Unlike the `chartVm` path, panes have no
+CSS-custom-property projection layer of their own: each client's
+`IndicatorPane` shell (React and Solid twins, in each client's chart
+directory) consumes `PaneScene` directly, turning its numbers straight
+into SVG attributes — a points-string per polyline, one batched `<path>`
+for the whole MACD histogram (never one node per bar) — so the shell still
+does no computation of its own, projection only, the same discipline
+`SvgPathLayer` established one layer up for the overlay lines. The
+crosshair extends the same way: the gesture hook's `paneHoverProps` drive
+a shared vertical rule through the panes, while its `cursor.inPlot` flag
+gates the main plot's horizontal hairline off whenever a pane, rather than
+the plot itself, is hovered. A contract test
+(`packages/ui-contract/src/specs/equities/chart/ChartPanes.contract.spec.ts`)
+pins the design's pre-registered perf tripwire: total chart-column node
+count with both panes active must stay within +40 nodes of the no-panes
+baseline, measured in the same test — the batched histogram path is what
+keeps that budget holdable, and a regression back to per-bar nodes fails
+it loudly. Two visual scenarios (`equities/chart-pane-rsi`,
+`equities/chart-panes-both`) and one e2e journey (toggling the RSI pill
+through to a live readout) round out the coverage. Design:
+[Indicator Panes — TradingView Tier, Sub-project 1](../superpowers/specs/2026-08-02-indicator-panes-design.md).
