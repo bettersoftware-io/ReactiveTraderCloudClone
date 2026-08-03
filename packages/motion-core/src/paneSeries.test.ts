@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { macdValues, rsiValues } from "./paneSeries.js";
+import { macdValues, RSI_WINDOW, rsiValues } from "./paneSeries.js";
 
 describe("rsiValues", () => {
   it("is null through the warm-up and lands at index 14", () => {
@@ -17,6 +17,14 @@ describe("rsiValues", () => {
   it("is 0 when every delta is a loss", () => {
     const values = rsiValues(rampDown(30));
     expect(values[20]).toBe(0);
+  });
+
+  it("is exactly 50 for a flat series (the both-averages-zero arm)", () => {
+    const values = rsiValues(Array(30).fill(100));
+
+    for (let i = 14; i < 30; i++) {
+      expect(values[i]).toBe(50);
+    }
   });
 
   it("is exactly 50 at the seed, then oscillates near 50 for alternating ±1 deltas", () => {
@@ -41,6 +49,10 @@ describe("rsiValues", () => {
   it("is empty for an empty input and all-null when shorter than the window", () => {
     expect(rsiValues([])).toEqual([]);
     expect(rsiValues(rampUp(10))).toEqual(Array(10).fill(null));
+  });
+
+  it("is all-null when length is exactly the window (the <= boundary)", () => {
+    expect(rsiValues(rampUp(RSI_WINDOW))).toEqual(Array(RSI_WINDOW).fill(null));
   });
 });
 

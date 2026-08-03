@@ -183,6 +183,14 @@ describe("Indicator panes — chart-column rendering (CandleChart mounted direct
     chart.setProps({ panes: ["rsi", "macd"] });
 
     expect(chart.wrapNodeCount()).toBeLessThanOrEqual(base + 40);
+
+    // Worst case isn't idle panes — it's panes PLUS the crosshair driving
+    // both readouts (RSI's label+number, MACD's 3 rows), the same route the
+    // "forced crosshair state" case above uses. Re-measure after that so the
+    // tripwire covers the readout nodes too, not just the empty pane shells.
+    chart.setPointer(0.5, 0.5);
+
+    expect(chart.wrapNodeCount()).toBeLessThanOrEqual(base + 40);
   });
 });
 
