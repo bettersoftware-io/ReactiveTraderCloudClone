@@ -1,5 +1,6 @@
+import type { EquitiesPaneKind } from "../page-objects/contracts/EquitiesChart";
 import type { TestContext } from "../testContext";
-import { assertEquals } from "./assert";
+import { assertEquals, assertTrue } from "./assert";
 
 export async function openEquitiesWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.openEquities();
@@ -201,4 +202,46 @@ export async function dragNavigatorRightHandleToLiveEdge(
   ctx: TestContext,
 ): Promise<void> {
   await ctx.po.equitiesChart.dragNavigatorRightHandleToLiveEdge();
+}
+
+export async function clickPanePill(
+  ctx: TestContext,
+  kind: EquitiesPaneKind,
+): Promise<void> {
+  await ctx.po.equitiesChart.clickPanePill(kind);
+}
+
+export async function expectPaneVisibleWithin(
+  ctx: TestContext,
+  kind: EquitiesPaneKind,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitPaneVisible(kind, seconds * 1_000);
+}
+
+export async function hoverPlotCenter(ctx: TestContext): Promise<void> {
+  await ctx.po.equitiesChart.hoverPlotCenter();
+}
+
+/** A real number, e.g. "RSI 63.2" — never the pre-warm-up/no-cursor
+ * placeholder "RSI —" (see paneScene.ts's `paneReadout`/`formatReadoutValue`). */
+const RSI_READOUT_PATTERN = /RSI\s+\d/;
+
+/**
+ * Waits for the RSI pane's live readout row to render (only true once the
+ * shared crosshair cursor is active, see `hoverPlotCenter`), then asserts its
+ * text is a genuine number — the tamper-proof half of this journey: a broken
+ * `rsiValues` renders every index `null`, so `paneReadout` falls back to the
+ * "—" placeholder and this regex misses.
+ */
+export async function expectRsiReadoutShowsRealValueWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitPaneReadoutVisible("rsi", seconds * 1_000);
+  const text = await ctx.po.equitiesChart.paneReadoutText("rsi");
+  assertTrue(
+    RSI_READOUT_PATTERN.test(text),
+    `expected the RSI pane readout to show a real number, got ${JSON.stringify(text)}`,
+  );
 }

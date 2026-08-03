@@ -408,6 +408,22 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartHistoryStart",
     fixtureKey: "equities-loaded",
   },
+  // Indicator panes (Task 7 of the indicator-panes plan, design spec
+  // 2026-08-02-indicator-panes-design.md): forced-state wrappers
+  // (EquitiesChartPanes.visual.tsx in both clients) mount ChartPlot with a
+  // literal viewport and panes projected via paneScene/paneReadout, same
+  // bypass as the chart-panned/zoomed/crosshair scenarios above. RSI solo
+  // (no crosshair — the pane's plotted geometry alone, readout null) and
+  // RSI+MACD together with a forced crosshair so both panes' live readouts
+  // render.
+  "equities/chart-pane-rsi": {
+    componentKey: "EquitiesChartPaneRsi",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-panes-both": {
+    componentKey: "EquitiesChartPanesBoth",
+    fixtureKey: "equities-loaded",
+  },
   // Canvas-spike (renderer-seam proof, spec 2026-08-02): the framework-free
   // drawChartScene engine rendering the numeric ChartScene onto a <canvas> —
   // the same scene drives both frameworks' hosts to one golden. Geometry

@@ -13,6 +13,13 @@ import {
   volumeScene,
 } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
+import {
+  type PaneBar,
+  type PaneGuide,
+  type PaneLine,
+  type PaneScene,
+  paneScene,
+} from "./paneScene.js";
 
 const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
   const dir = i % 2 === 0 ? 1 : -1;
@@ -24,6 +31,12 @@ const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
     close: 100 - dir * i * 0.5,
     volume: 1_000 + i * 137,
   };
+});
+
+// A close series long enough to clear both RSI's and MACD's warm-ups, for
+// the paneScene neutrality checks below.
+const PANE_CLOSES: readonly number[] = Array.from({ length: 60 }, (_, i) => {
+  return 100 + Math.sin(i / 3) * 5;
 });
 
 describe("chartScene / volumeScene: CSS-neutral numeric output", () => {
@@ -50,6 +63,16 @@ describe("chartScene / volumeScene: CSS-neutral numeric output", () => {
 
   it("navigatorWindowScene carries no % / calc( strings and no --keyed fields", () => {
     const scene = navigatorWindowScene({ start: 2, end: 9 }, 12);
+    assertSceneNeutral(scene, "scene");
+  });
+
+  it("paneScene (rsi) carries no % / calc( strings and no --keyed fields", () => {
+    const scene = paneScene("rsi", PANE_CLOSES, { start: 0, end: 60 });
+    assertSceneNeutral(scene, "scene");
+  });
+
+  it("paneScene (macd) carries no % / calc( strings and no --keyed fields", () => {
+    const scene = paneScene("macd", PANE_CLOSES, { start: 0, end: 60 });
     assertSceneNeutral(scene, "scene");
   });
 });
@@ -121,6 +144,10 @@ type _SceneClean = AssertNever<CssVarKeys<ChartScene>>;
 type _CrosshairClean = AssertNever<CssVarKeys<CrosshairScene>>;
 type _NavWindowClean = AssertNever<CssVarKeys<NavigatorWindowScene>>;
 type _VolumeBarClean = AssertNever<CssVarKeys<VolumeSceneBar>>;
+type _PaneSceneClean = AssertNever<CssVarKeys<PaneScene>>;
+type _PaneLineClean = AssertNever<CssVarKeys<PaneLine>>;
+type _PaneBarClean = AssertNever<CssVarKeys<PaneBar>>;
+type _PaneGuideClean = AssertNever<CssVarKeys<PaneGuide>>;
 
 /** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
  * ChartCandle is the structural subset chartScene reads). */

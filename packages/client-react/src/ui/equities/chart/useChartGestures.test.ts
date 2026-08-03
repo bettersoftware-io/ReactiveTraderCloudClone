@@ -498,7 +498,11 @@ describe("useChartGestures", () => {
       );
     });
 
-    expect(result.current.cursor).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+    expect(result.current.cursor).toEqual({
+      xFrac: 0.5,
+      yFrac: 0.5,
+      inPlot: true,
+    });
   });
 
   it("pointer move while NOT dragging sets the crosshair cursor fraction instead", () => {
@@ -512,7 +516,11 @@ describe("useChartGestures", () => {
       );
     });
 
-    expect(result.current.cursor).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+    expect(result.current.cursor).toEqual({
+      xFrac: 0.5,
+      yFrac: 0.5,
+      inPlot: true,
+    });
   });
 
   it("onPointerLeave clears the crosshair cursor", () => {

@@ -1907,6 +1907,7 @@ const equitiesBase: EquitiesBaseFixture = {
     timeframe: "1D",
     chartType: "candles",
     indicators: [],
+    panes: [],
   },
 };
 
@@ -1947,6 +1948,7 @@ fixtures["equities-no-selection"] = makeAppData({
     timeframe: "1D",
     chartType: "candles",
     indicators: [],
+    panes: [],
   },
 });
 fixtures["equities-ticket-editing"] = makeAppData({

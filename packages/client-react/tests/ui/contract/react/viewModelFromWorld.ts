@@ -698,6 +698,7 @@ export function reactViewModel(world: World): ViewModel {
         setTimeframe: world.eqWorkspace.intents.setTimeframe,
         setChartType: world.eqWorkspace.intents.setChartType,
         toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
+        togglePane: world.eqWorkspace.intents.togglePane,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World

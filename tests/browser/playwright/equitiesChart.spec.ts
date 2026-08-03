@@ -1,9 +1,11 @@
-// The one lifecycle jsdom can't witness (see CandleChartPage/useChartGestures'
+// The lifecycles jsdom can't witness (see CandleChartPage/useChartGestures'
 // unit coverage for the rest of the gesture contract): panning away from the
 // live edge freezes the visible time window while real wall-clock ticks keep
-// arriving in the background, and clicking BACK TO LIVE resumes following.
-// Runs pre-authenticated like every other spec in this suite (no per-tab
-// beforeEach hook — a single test doesn't need one, mirrors
+// arriving in the background, and clicking BACK TO LIVE resumes following;
+// plus an indicator pane's live RSI/MACD readout, which only updates from a
+// REAL pointermove (jsdom can't dispatch one) over the shared crosshair
+// cursor. Runs pre-authenticated like every other spec in this suite (no
+// per-tab beforeEach hook — a single test doesn't need one, mirrors
 // forceBootAnimation.spec.ts's direct openBoot(ctx) call).
 //
 // All assertions delegate to scenario helpers — gates 9-11 compliant (no raw
@@ -67,5 +69,18 @@ test.describe("Equities chart", () => {
       "afterFirstHome",
       5,
     );
+  });
+
+  test("RSI pane pill reveals the pane; hovering the plot shows a live RSI readout", async ({
+    ctx,
+  }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.clickPanePill(ctx, "rsi");
+    await equitiesChart.expectPaneVisibleWithin(ctx, "rsi", 3);
+
+    await equitiesChart.hoverPlotCenter(ctx);
+    await equitiesChart.expectRsiReadoutShowsRealValueWithin(ctx, 3);
   });
 });

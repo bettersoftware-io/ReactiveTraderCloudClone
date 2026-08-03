@@ -2,7 +2,7 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EqChartType, EqIndicatorId } from "@rtc/client-core";
+import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
 
 const TAB_PREFIX = "instrument-tab-";
 
@@ -89,6 +89,26 @@ export class EqChartHeadPage extends MountedComponent<Record<string, never>> {
    * eqWorkspace machine's toggleIndicator intent. */
   async toggleIndicator(id: EqIndicatorId): Promise<void> {
     await this.user.click(this.pillFor("chart-indicator-pill", "data-ind", id));
+  }
+
+  /** Every pane id whose pill is currently active — mirrors
+   * {@link activeIndicators} for the RSI/MACD indicator panes (a separate
+   * active set, independent of `indicators`). */
+  activePanes(): EqPaneId[] {
+    return within(this.root)
+      .queryAllByTestId("chart-pane-pill")
+      .filter((el) => {
+        return el.getAttribute("data-active") === "true";
+      })
+      .map((el) => {
+        return el.getAttribute("data-pane") as EqPaneId;
+      });
+  }
+
+  /** Clicks the pane pill for the given id — drives the real eqWorkspace
+   * machine's togglePane intent. */
+  async togglePane(id: EqPaneId): Promise<void> {
+    await this.user.click(this.pillFor("chart-pane-pill", "data-pane", id));
   }
 
   /** Finds the single pill of `testid` whose `attr` matches `value` (e.g. the

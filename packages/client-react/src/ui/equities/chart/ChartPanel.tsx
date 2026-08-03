@@ -27,7 +27,7 @@ export function ChartPanel(): ReactElement {
     loadOlderCandles,
   } = useViewModel();
   const { state } = useEqWorkspace();
-  const { sel, timeframe, chartType, indicators } = state;
+  const { sel, timeframe, chartType, indicators, panes } = state;
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
   const backfill = useCandleBackfill(sel, timeframe);
@@ -74,6 +74,7 @@ export function ChartPanel(): ReactElement {
           flashOn={flashOn}
           kind={chartType}
           indicators={indicators}
+          panes={panes}
           defaultVisible={defaultVisible}
           loadingOlder={backfill.loadingOlder}
           historyExhausted={backfill.historyExhausted}

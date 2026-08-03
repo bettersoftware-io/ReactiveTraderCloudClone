@@ -17,6 +17,7 @@ import {
   createRfqCountdownMachine,
   type EqChartType,
   type EqIndicatorId,
+  type EqPaneId,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   type IncidentIntents,
@@ -814,6 +815,10 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleIndicator(id);
   }
 
+  function toggleEqPane(id: EqPaneId): void {
+    presenters.eqWorkspace.intents.togglePane(id);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -1082,6 +1087,7 @@ export function createViewModel(
         setTimeframe: setEqTimeframe,
         setChartType: setEqChartType,
         toggleIndicator: toggleEqIndicator,
+        togglePane: toggleEqPane,
       };
     },
     useJarvis: () => {

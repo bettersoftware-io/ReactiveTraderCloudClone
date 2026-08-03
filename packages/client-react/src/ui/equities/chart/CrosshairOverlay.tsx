@@ -10,10 +10,14 @@ import styles from "./CrosshairOverlay.module.css";
  * properties) plus a small OHLCV + time readout chip pinned top-left of the
  * plot. Pure props leaf — `pointer-events: none` throughout (module css) so
  * the overlay never intercepts the plot's own gesture handlers. Renders
- * nothing while no candle is hovered (`vm` null).
+ * nothing while no candle is hovered (`vm` null). `showHorizontal` hides
+ * just the `.h` hairline while the hover has moved into an indicator pane
+ * instead (see `ChartPlot`'s `showHorizontal={cursor?.inPlot}` wiring) — the
+ * vertical line and readout chip are unaffected.
  */
 export function CrosshairOverlay({
   vm,
+  showHorizontal,
 }: CrosshairOverlayProps): ReactElement | null {
   if (!vm) {
     return null;
@@ -26,11 +30,13 @@ export function CrosshairOverlay({
         style={vm.style}
         data-testid="chart-crosshair-v"
       />
-      <div
-        className={styles.h}
-        style={vm.style}
-        data-testid="chart-crosshair-h"
-      />
+      {showHorizontal ? (
+        <div
+          className={styles.h}
+          style={vm.style}
+          data-testid="chart-crosshair-h"
+        />
+      ) : null}
       <div className={styles.readout} data-testid="chart-crosshair-readout">
         <span>{vm.readout.time}</span>
         <span>O {vm.readout.open}</span>
@@ -45,4 +51,5 @@ export function CrosshairOverlay({
 
 export interface CrosshairOverlayProps {
   readonly vm: CrosshairVm | null;
+  readonly showHorizontal: boolean;
 }

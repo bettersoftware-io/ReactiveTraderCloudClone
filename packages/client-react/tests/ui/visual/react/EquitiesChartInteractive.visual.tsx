@@ -141,6 +141,7 @@ export function EquitiesChartLine(): ReactElement {
         flashOn={false}
         kind="line"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -159,6 +160,7 @@ export function EquitiesChartArea(): ReactElement {
         flashOn={false}
         kind="area"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -177,6 +179,7 @@ export function EquitiesChartIndicators(): ReactElement {
         flashOn={false}
         kind="candles"
         indicators={CHART_INDICATORS}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}
@@ -195,6 +198,7 @@ export function EquitiesChartVolumeAxis(): ReactElement {
         flashOn={false}
         kind="candles"
         indicators={[]}
+        panes={[]}
         defaultVisible={DEFAULT_VISIBLE}
         loadingOlder={false}
         historyExhausted={false}

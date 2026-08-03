@@ -13,6 +13,7 @@ describe("EqWorkspaceMachine", () => {
       timeframe: "1D",
       chartType: "candles",
       indicators: [],
+      panes: [],
     });
     m.dispose();
   });
@@ -85,6 +86,7 @@ describe("EqWorkspaceMachine", () => {
       timeframe: "1D",
       chartType: "candles",
       indicators: [],
+      panes: [],
     });
     m.dispose();
   });
@@ -120,6 +122,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       timeframe: "1D",
       chartType: "candles",
       indicators: [],
+      panes: [],
     });
     m.dispose();
   });
@@ -138,6 +141,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       timeframe: "1D",
       chartType: "candles",
       indicators: [],
+      panes: [],
     });
 
     seed$.next("AAPL");
@@ -148,6 +152,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       timeframe: "1D",
       chartType: "candles",
       indicators: [],
+      panes: [],
     });
     m.dispose();
   });
@@ -209,6 +214,7 @@ describe("EqWorkspaceMachine — chartType + indicators (C1)", () => {
     expect(state.openTabs).toEqual(["AAPL", "MSFT"]);
     expect(state.timeframe).toBe("1W");
     expect(state.indicators).toEqual([]);
+    expect(state.panes).toEqual([]);
     m.dispose();
   });
 
@@ -257,6 +263,56 @@ describe("EqWorkspaceMachine — chartType + indicators (C1)", () => {
     expect(state.timeframe).toBe("1M");
     expect(state.chartType).toBe("line");
     expect(state.indicators).toEqual(["sma20", "ema50"]);
+    expect(state.panes).toEqual([]);
+    m.dispose();
+  });
+});
+
+describe("EqWorkspaceMachine — indicator panes (RSI/MACD)", () => {
+  it("starts with no panes", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    const state = await firstValueFrom(m.state$);
+    expect(state.panes).toEqual([]);
+    m.dispose();
+  });
+
+  it("togglePane(id) adds the pane when absent", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.togglePane("rsi");
+    const state = await firstValueFrom(m.state$);
+    expect(state.panes).toEqual(["rsi"]);
+    m.dispose();
+  });
+
+  it("togglePane(id) removes the pane when already present", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.togglePane("rsi");
+    m.intents.togglePane("rsi");
+    const state = await firstValueFrom(m.state$);
+    expect(state.panes).toEqual([]);
+    m.dispose();
+  });
+
+  it("preserves activation order: rsi then macd, then macd alone after removing rsi", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.togglePane("rsi");
+    m.intents.togglePane("macd");
+    let state = await firstValueFrom(m.state$);
+    expect(state.panes).toEqual(["rsi", "macd"]);
+
+    m.intents.togglePane("rsi");
+    state = await firstValueFrom(m.state$);
+    expect(state.panes).toEqual(["macd"]);
+    m.dispose();
+  });
+
+  it("is independent of indicators — toggling one never touches the other", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.toggleIndicator("sma20");
+    m.intents.togglePane("rsi");
+    const state = await firstValueFrom(m.state$);
+    expect(state.indicators).toEqual(["sma20"]);
+    expect(state.panes).toEqual(["rsi"]);
     m.dispose();
   });
 });

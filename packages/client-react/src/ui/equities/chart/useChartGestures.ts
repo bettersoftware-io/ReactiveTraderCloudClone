@@ -26,10 +26,26 @@ const KEY_PAN_FRACTION = 0.1;
 /** Keyboard zoom always anchors at the plot's centre (no cursor position). */
 const KEY_ZOOM_ANCHOR = 0.5;
 
-/** The hovered plot position, as fractions (0-1) of the plot box. */
+/** The hovered plot position, as fractions (0-1) of the plot box.
+ * `inPlot` is true only while the hover is over the main price plot itself
+ * (never a pane) — it drives `CrosshairOverlay`'s `showHorizontal`, so the
+ * main plot's horizontal hairline hides while a pane hover echoes the
+ * crosshair's vertical line instead (`paneHoverProps` below always sets it
+ * false). */
 interface ChartCursor {
   readonly xFrac: number;
   readonly yFrac: number;
+  readonly inPlot: boolean;
+}
+
+/** Event handlers for an indicator pane's root — pointermove tracks the
+ * shared crosshair from the pane's own rect (fixed mid-height, `inPlot:
+ * false`); pointerleave clears it, same as the main plot's own
+ * `onPointerLeave`. Exported so `IndicatorPane` can type the prop it
+ * receives via `ChartPlot`. */
+export interface PaneHoverProps {
+  readonly onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  readonly onPointerLeave: () => void;
 }
 
 /** Event handlers to spread onto the plot wrapper div. */
@@ -54,6 +70,8 @@ export interface ChartGestures {
   /** Sets the viewport directly (clamped) — the navigator brush's write
    * path into the plot's one viewport cell. */
   readonly applyViewport: (vp: ChartViewport) => void;
+  /** Attach to each indicator pane's root — see `PaneHoverProps`. */
+  readonly paneHoverProps: PaneHoverProps;
 }
 
 /** The drag-in-flight bookkeeping cached at pointerdown: the viewport the
@@ -235,6 +253,21 @@ export function useChartGestures(
     setCursor({
       xFrac: (e.clientX - rect.left) / rect.width,
       yFrac: (e.clientY - rect.top) / rect.height,
+      inPlot: true,
+    });
+  }
+
+  // A pane's own hover: `yFrac` is pinned to mid-height (panes don't have a
+  // meaningful vertical crosshair position) and `inPlot` is always false, so
+  // the main plot's horizontal hairline hides in favour of the pane's own
+  // crosshair echo. No wheel/drag gesture binds here — panes only ever
+  // extend the shared xFrac cursor, never the viewport itself.
+  function trackPaneCursor(e: ReactPointerEvent<HTMLDivElement>): void {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCursor({
+      xFrac: (e.clientX - rect.left) / rect.width,
+      yFrac: 0.5,
+      inPlot: false,
     });
   }
 
@@ -327,5 +360,9 @@ export function useChartGestures(
     plotRef,
     resetToLive,
     applyViewport,
+    paneHoverProps: {
+      onPointerMove: trackPaneCursor,
+      onPointerLeave: clearCursor,
+    },
   };
 }

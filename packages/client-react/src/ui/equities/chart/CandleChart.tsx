@@ -1,6 +1,6 @@
 import { type ReactElement, useEffect } from "react";
 
-import type { EqChartType, EqIndicatorId } from "@rtc/client-core";
+import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
 import {
   chartVm,
@@ -9,9 +9,12 @@ import {
   indicatorValues,
   navigatorLinePoints,
   navigatorWindowStyle,
+  paneReadout,
+  paneScene,
   volumeVm,
 } from "@rtc/motion-core";
 
+import type { PaneVm } from "./ChartPlot";
 import { ChartPlot } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { type ChartGestures, useChartGestures } from "./useChartGestures";
@@ -31,6 +34,7 @@ export function CandleChart({
   flashOn,
   kind,
   indicators,
+  panes,
   defaultVisible,
   loadingOlder,
   historyExhausted,
@@ -49,6 +53,7 @@ export function CandleChart({
     plotRef,
     resetToLive,
     applyViewport,
+    paneHoverProps,
   } = useChartGestures(candles.length, defaultVisible, candles[0]?.time);
 
   // The near-edge fetch trigger — deliberately an EFFECT, the only one in
@@ -73,12 +78,19 @@ export function CandleChart({
     ? crosshairVm(cursor.xFrac, cursor.yFrac, candles, viewport, vm.scale)
     : null;
 
+  // Hoisted once — both the indicator overlays and the RSI/MACD panes derive
+  // from the same close series.
+  const closes = candles.map((c) => {
+    return c.close;
+  });
+
   const indicatorPaths = toIndicatorPaths(
-    candles,
+    closes,
     indicators,
     viewport,
     vm.scale,
   );
+  const paneVms = toPaneVms(panes, closes, viewport, cross);
 
   const brush = useNavigatorBrush(
     viewport,
@@ -113,6 +125,10 @@ export function CandleChart({
       navProps={brush.stripProps}
       loadingOlder={loadingOlder}
       historyStart={historyStart}
+      panes={paneVms}
+      paneCrosshairStyle={cross?.style ?? null}
+      showHorizontal={cursor?.inPlot ?? false}
+      paneHoverProps={paneHoverProps}
     />
   );
 }
@@ -123,6 +139,8 @@ export interface CandleChartProps {
   flashOn: boolean;
   kind: EqChartType;
   indicators: readonly EqIndicatorId[];
+  /** The active RSI/MACD panes, in render order (empty renders none). */
+  panes: readonly EqPaneId[];
   /** The timeframe's default visible-candle count (`CANDLE_DEFAULT_VISIBLE`)
    * — seeds `useChartGestures`' initial/reset viewport. ChartPanel already
    * computes this from the selected timeframe. */
@@ -143,15 +161,11 @@ export interface CandleChartProps {
  * pre-joined into the SVG `points` string SvgPathLayer renders verbatim
  * (vm owns numbers, shell owns markup strings). */
 function toIndicatorPaths(
-  candles: readonly Candle[],
+  closes: readonly number[],
   indicators: readonly EqIndicatorId[],
   viewport: ChartGestures["viewport"],
   scale: Parameters<typeof indicatorPoints>[2],
 ): readonly IndicatorPath[] {
-  const closes = candles.map((c) => {
-    return c.close;
-  });
-
   return indicators.map((id) => {
     const values = indicatorValues(closes, id);
     const points = indicatorPoints(values, viewport, scale);
@@ -161,5 +175,22 @@ function toIndicatorPaths(
       })
       .join(" ");
     return { id, pointsAttr };
+  });
+}
+
+/** Projects each active pane's geometry + live readout — the readout is
+ * `null` until a crosshair is present (no candle hovered yet to read out). */
+function toPaneVms(
+  panes: readonly EqPaneId[],
+  closes: readonly number[],
+  viewport: ChartGestures["viewport"],
+  cross: ReturnType<typeof crosshairVm>,
+): readonly PaneVm[] {
+  return panes.map((kind) => {
+    return {
+      kind,
+      scene: paneScene(kind, closes, viewport),
+      readout: cross ? paneReadout(kind, closes, cross.idx) : null,
+    };
   });
 }

@@ -18,7 +18,7 @@ import styles from "./EqChartHead.module.css";
  */
 export function EqChartHead(): ReactElement {
   const { useEqWorkspace } = useViewModel();
-  const { state, setTimeframe, setChartType, toggleIndicator } =
+  const { state, setTimeframe, setChartType, toggleIndicator, togglePane } =
     useEqWorkspace();
 
   return (
@@ -27,7 +27,12 @@ export function EqChartHead(): ReactElement {
         <InstrumentTabs />
       </div>
       <ChartTypePills kind={state.chartType} onSet={setChartType} />
-      <IndicatorPills active={state.indicators} onToggle={toggleIndicator} />
+      <IndicatorPills
+        active={state.indicators}
+        onToggle={toggleIndicator}
+        activePanes={state.panes}
+        onTogglePane={togglePane}
+      />
       <TimeframePills tf={state.timeframe} onSet={setTimeframe} />
     </div>
   );

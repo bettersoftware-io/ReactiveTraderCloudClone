@@ -11,6 +11,7 @@ import type { Machine } from "./machine";
 // structurally with motion-core's ChartKind/IndicatorId equivalents.
 export type EqChartType = "candles" | "line" | "area";
 export type EqIndicatorId = "sma20" | "ema50";
+export type EqPaneId = "rsi" | "macd";
 
 export interface EqWorkspaceState {
   readonly sel: string;
@@ -18,6 +19,7 @@ export interface EqWorkspaceState {
   readonly timeframe: CandleTimeframe;
   readonly chartType: EqChartType;
   readonly indicators: readonly EqIndicatorId[];
+  readonly panes: readonly EqPaneId[];
 }
 
 export interface EqWorkspaceIntents {
@@ -26,6 +28,7 @@ export interface EqWorkspaceIntents {
   setTimeframe(tf: CandleTimeframe): void;
   setChartType(kind: EqChartType): void;
   toggleIndicator(id: EqIndicatorId): void;
+  togglePane(id: EqPaneId): void;
 }
 
 export interface EqWorkspaceDeps {
@@ -71,6 +74,7 @@ export function createEqWorkspaceMachine(
   const setTimeframe$ = new Subject<CandleTimeframe>();
   const setChartType$ = new Subject<EqChartType>();
   const toggleIndicator$ = new Subject<EqIndicatorId>();
+  const togglePane$ = new Subject<EqPaneId>();
 
   // An empty initialSymbol means no tab is open yet (WS-real, watchlist not
   // arrived synchronously) — NOT a phantom "" tab. InstrumentTabs then simply
@@ -81,6 +85,7 @@ export function createEqWorkspaceMachine(
     timeframe: "1D",
     chartType: "candles",
     indicators: [],
+    panes: [],
   };
 
   // select: adds the symbol to openTabs if it isn't already there, then
@@ -159,6 +164,22 @@ export function createEqWorkspaceMachine(
     }),
   );
 
+  // togglePane: adds the pane to the shared workspace's active set when
+  // absent, removes it when already present — independent of `indicators`
+  // (a separate active set with its own subject/patch pair, same shape).
+  const togglePanePatch$ = togglePane$.pipe(
+    map((id): Patch => {
+      return (s: EqWorkspaceState): EqWorkspaceState => {
+        const panes = s.panes.includes(id)
+          ? s.panes.filter((existing) => {
+              return existing !== id;
+            })
+          : [...s.panes, id];
+        return { ...s, panes };
+      };
+    }),
+  );
+
   // Recovery patch: takes exactly one emission from seed$ (or never emits,
   // when seed$ is omitted) and seeds sel/openTabs — but only while sel is
   // still "", so a synchronous initialSymbol or an intervening user select()
@@ -183,6 +204,7 @@ export function createEqWorkspaceMachine(
     setTimeframePatch$,
     setChartTypePatch$,
     toggleIndicatorPatch$,
+    togglePanePatch$,
     seedPatch$,
   ).pipe(
     scan((s, patch) => {
@@ -215,6 +237,9 @@ export function createEqWorkspaceMachine(
       toggleIndicator: (id: EqIndicatorId): void => {
         toggleIndicator$.next(id);
       },
+      togglePane: (id: EqPaneId): void => {
+        togglePane$.next(id);
+      },
     },
     dispose: () => {
       select$.complete();
@@ -222,6 +247,7 @@ export function createEqWorkspaceMachine(
       setTimeframe$.complete();
       setChartType$.complete();
       toggleIndicator$.complete();
+      togglePane$.complete();
       warm.unsubscribe();
     },
   };

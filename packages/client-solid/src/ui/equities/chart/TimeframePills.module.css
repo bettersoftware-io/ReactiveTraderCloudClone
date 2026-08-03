@@ -29,3 +29,11 @@
   background: var(--chip);
   border-color: var(--border-strong);
 }
+
+/* Separates two independent pill groups sharing one `.pills` row — see
+   IndicatorPills' overlay/pane split. */
+.divider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--border);
+}
