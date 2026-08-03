@@ -24,6 +24,7 @@ import {
 
 import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
+import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { DEV_CREDENTIALS } from "#/app/nativeAuthConfig";
 
 interface BuildNativePortsOptions {
@@ -111,6 +112,7 @@ export function buildNativePorts(
         ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
         connectionEvents,
         colorScheme,
+        bootSplash: { shouldPlay: shouldPlayBootSplash },
         transport: ws,
       },
       dispose: () => {
@@ -142,6 +144,7 @@ export function buildNativePorts(
       ...createSimulatorPorts({ preferences, auth, sessionStore }),
       connectionEvents,
       colorScheme,
+      bootSplash: { shouldPlay: shouldPlayBootSplash },
     },
     dispose: () => {},
   };

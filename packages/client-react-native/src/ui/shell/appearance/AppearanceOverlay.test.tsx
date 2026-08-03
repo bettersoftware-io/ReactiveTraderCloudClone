@@ -64,3 +64,14 @@ function vm(): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+// Same shape ShellHeader.test.tsx uses: the overlay is `absoluteFill`, so it
+// owns a top safe-area inset (the header used to draw under the status bar).
+// iPhone 17 values, so the pad is a realistic number rather than 0.
+jest.mock("react-native-safe-area-context", () => {
+  return {
+    useSafeAreaInsets: (): unknown => {
+      return { top: 47, bottom: 34, left: 0, right: 0 };
+    },
+  };
+});

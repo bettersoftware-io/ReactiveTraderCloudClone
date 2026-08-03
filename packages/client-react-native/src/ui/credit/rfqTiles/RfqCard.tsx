@@ -83,9 +83,9 @@ export function RfqCard({
           {live ? (
             <RfqCountdownRing remainingMs={remainingMs} totalMs={totalMs} />
           ) : (
-            <Text style={styles.badge} testID={`rfq-badge-${rfq.id}`}>
-              {stateLabel(rfq.state)}
-            </Text>
+            <SettledStatePill accepted={accepted} rfqId={rfq.id}>
+              {accepted ? ACCEPTED_LABEL : stateLabel(rfq.state)}
+            </SettledStatePill>
           )}
           {canDismiss ? (
             <Pressable
@@ -114,8 +114,6 @@ export function RfqCard({
           );
         })}
       </View>
-
-      {accepted ? <AcceptedStamp /> : null}
     </SurfaceCard>
   );
 }
@@ -133,20 +131,43 @@ interface RfqCardProps {
   pinnedRemainingMs?: number;
 }
 
-/** Private: the `ACCEPTED` stamp that lands on a card the moment its RFQ
- * trades. Reproduces the prototype's `kfStamp` (dc.html:37) — an overshoot from
- * `scale(1.7) rotate(-7deg)` through `scale(0.96) rotate(1deg)` at 55% — with a
- * spring rather than a keyframe track, sharing `ExecutionCeremony`'s
- * `{ damping: 11, stiffness: 160 }` so both of the app's confirmations land with
- * the same weight. Text renders regardless of the motion gate; only the landing
- * is animated. */
-function AcceptedStamp(): JSX.Element {
+/** The prototype's settled-state label: a check plus the word, not the word
+ * alone (dc.html:2170 — `q.state === 'accepted' ? '✓ ACCEPTED' : 'EXPIRED'`). */
+const ACCEPTED_LABEL = "✓ ACCEPTED";
+
+/** Private: the header's settled-state pill — the ONE thing the prototype's
+ * header slot holds once an RFQ stops being live (dc.html:238), opposite the
+ * countdown ring it replaces.
+ *
+ * It used to be two elements: a static `Done` here AND a large boxed `ACCEPTED`
+ * stamp below the quote rows. That stamp was modelled on the wrong prototype
+ * element — dc.html:543, the *Rates* execution ceremony (26px, letter-spacing 5,
+ * a 2px border), not this card. The design's RFQ pill is small and inline:
+ * mono 8px, letter-spacing 1, a 1px 45%-transparent border, `3px 7px` padding,
+ * radius 5. Merging them is a fidelity fix and a space one — vertical space is
+ * the scarce resource on a phone, and a whole row was being spent to repeat
+ * what the header already said.
+ *
+ * Only the *accepted* landing animates (dc.html:2173 gates `kfStamp` on
+ * `state === 'accepted'`); an expired or cancelled RFQ simply is what it is and
+ * gets no flourish. The landing reproduces `kfStamp` (dc.html:37) — an
+ * overshoot from `scale(1.7) rotate(-7deg)` through `scale(0.96) rotate(1deg)`
+ * at 55% — with a spring rather than a keyframe track, sharing
+ * `ExecutionCeremony`'s `{ damping: 11, stiffness: 160 }` so both of the app's
+ * confirmations land with the same weight. Text renders regardless of the
+ * motion gate; only the landing is animated. */
+function SettledStatePill({
+  accepted,
+  rfqId,
+  children,
+}: SettledStatePillProps): JSX.Element {
   const enabled = useShellMotionEnabled();
   const styles = useThemedStyles(makeStampStyles);
-  const progress = useSharedValue(enabled ? 0 : 1);
+  const animate = enabled && accepted;
+  const progress = useSharedValue(animate ? 0 : 1);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!animate) {
       cancelAnimation(progress);
       progress.value = 1;
       return;
@@ -157,7 +178,7 @@ function AcceptedStamp(): JSX.Element {
     return () => {
       cancelAnimation(progress);
     };
-  }, [enabled, progress]);
+  }, [animate, progress]);
 
   const stampStyle = useAnimatedStyle(() => {
     return {
@@ -178,36 +199,56 @@ function AcceptedStamp(): JSX.Element {
   });
 
   return (
-    <View style={styles.stampRow} pointerEvents="none">
-      <Animated.View style={stampStyle}>
-        <Text style={styles.stamp}>ACCEPTED</Text>
-      </Animated.View>
-    </View>
+    <Animated.View style={stampStyle} pointerEvents="none">
+      <Text
+        style={[styles.stamp, accepted ? styles.stampAccepted : null]}
+        testID={`rfq-badge-${rfqId}`}
+      >
+        {children}
+      </Text>
+    </Animated.View>
   );
+}
+
+interface SettledStatePillProps {
+  /** Traded, as opposed to expired/cancelled — drives both the positive
+   * colourway and whether the landing animates at all (dc.html:2171-2173). */
+  readonly accepted: boolean;
+  /** Kept on the same `rfq-badge-<id>` testID the static badge used, so the
+   * settled state stays addressable by every existing spec and Maestro flow. */
+  readonly rfqId: number;
+  readonly children: string;
 }
 
 /** `kfStamp` reaches its settled reading at 55% (dc.html:37). */
 const STAMP_LAND_AT = 0.55;
 
 interface RfqStampStyles {
-  stampRow: ViewStyle;
   stamp: TextStyle;
+  stampAccepted: TextStyle;
 }
 
 function makeStampStyles(t: RnTheme): RfqStampStyles {
   return StyleSheet.create({
-    stampRow: { alignItems: "center", paddingTop: 4 },
+    // dc.html:238 — mono 8px, letter-spacing 1, a 1px border, `3px 7px`
+    // padding, radius 5. Sized to sit in the header opposite the countdown
+    // ring, NOT as a banner across the card.
     stamp: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 2.5,
-      color: t.accentPositive,
-      borderColor: t.accentPositive,
+      fontSize: 9,
+      letterSpacing: 1,
+      color: t.textMuted,
+      borderColor: t.borderSubtle,
       borderWidth: 1,
       borderRadius: 5,
-      paddingHorizontal: 9,
+      paddingHorizontal: 7,
       paddingVertical: 3,
       fontFamily: t.fontMono,
+    },
+    // The traded colourway (dc.html:2171-2172): positive accent, and a border
+    // of the same hue rather than the neutral rule an expired card keeps.
+    stampAccepted: {
+      color: t.accentPositive,
+      borderColor: t.accentPositive,
     },
   });
 }
