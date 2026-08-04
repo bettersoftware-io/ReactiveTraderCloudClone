@@ -537,3 +537,5 @@ it loudly. Two visual scenarios (`equities/chart-pane-rsi`,
 `equities/chart-panes-both`) and one e2e journey (toggling the RSI pill
 through to a live readout) round out the coverage. Design:
 [Indicator Panes — TradingView Tier, Sub-project 1](../superpowers/specs/2026-08-02-indicator-panes-design.md).
+
+The log price axis (spec 2026-08-04) is the seam's second proof point at one level deeper: the scale *mode* lives inside `ChartScale` itself (`yScale?: "log"`), and every consumer — candle geometry, crosshair inversion, indicator overlays — projects through the shared `priceToY`/`yToPrice` pair, so a mode flip cannot desynchronize them; a future percent scale (comparison series) is a third branch behind the same two functions.
