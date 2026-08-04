@@ -43,6 +43,25 @@ export type {
   JarvisBrainUsageRow,
   JarvisUsageSnapshot,
 } from "./jarvis/jarvisUsage.js";
+export type {
+  PanelAnnotation,
+  PanelAnnotationTone,
+  PanelSource,
+  PanelSpecV1,
+  PanelTransform,
+  PanelViz,
+  ParsePanelSpecResult,
+} from "./jarvis/panelSpec.js";
+export {
+  PANEL_ANNOTATION_KINDS,
+  PANEL_ANNOTATION_TONES,
+  PANEL_SOURCE_KINDS,
+  PANEL_SPEC_JSON_SCHEMA,
+  PANEL_TOPN_BY_VALUES,
+  PANEL_TRANSFORM_KINDS,
+  PANEL_VIZ_KINDS,
+  parsePanelSpec,
+} from "./jarvis/panelSpec.js";
 export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
 export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
 export * from "./protocol/auth.js";
