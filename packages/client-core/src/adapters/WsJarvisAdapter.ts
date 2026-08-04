@@ -18,7 +18,9 @@ import type {
   JarvisEvent,
   JarvisHistoryEntry,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
+import { CLIENT_MSG, parsePanelSpec, SERVER_MSG } from "@rtc/shared";
+
+import { UNSUPPORTED_SENTINEL_SPEC } from "#/presenters/JarvisPanelsMachine";
 
 import type { IWsAdapter } from "./IWsAdapter";
 import type {
@@ -97,6 +99,16 @@ type ErrorFramePayload = Omit<Extract<JarvisEvent, ErrorTag>, "type"> & {
 interface DoneFramePayload {
   readonly turnId: string;
 }
+/** Unlike the other frame payloads above, `panelId`/`spec` are typed `unknown`
+ * rather than derived from `JarvisEvent`'s `panel` variant: the wire value
+ * hasn't been validated yet at this point, so it must not be trusted as
+ * already matching `PanelSpecV1` — that's exactly what `buildPanelEvent`
+ * below checks via `parsePanelSpec`. */
+interface PanelFramePayload {
+  readonly turnId: string;
+  readonly panelId: unknown;
+  readonly spec: unknown;
+}
 
 /** The minimal `Subscriber<JarvisEvent>` surface the turn listeners need. */
 interface JarvisTurnSubscriber {
@@ -104,13 +116,53 @@ interface JarvisTurnSubscriber {
   complete(): void;
 }
 
-/** Attach the five `SERVER_MSG.JARVIS_*` listeners that feed one turn's
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+/** Monotonic across the module's lifetime (every adapter instance shares it)
+ * rather than per-turn or per-instance, so two garbage `panelId`s can never
+ * collide even across turns and reconnects — see `buildPanelEvent`. */
+let invalidPanelIdSeq = 0;
+
+function nextInvalidPanelId(): string {
+  invalidPanelIdSeq += 1;
+  return `panel-invalid-${invalidPanelIdSeq}`;
+}
+
+/** Normalizes one `SERVER_MSG.JARVIS_PANEL` frame's `panelId`/`spec` into a
+ * `panel` `JarvisEvent` — never dropped silently and never throws, even on a
+ * fully malformed frame. `spec` is re-validated client-side via
+ * `parsePanelSpec` (with `knownSymbols: []`, i.e. roster check skipped: this
+ * adapter has no reference-data access of its own); a failing spec — or a
+ * `panelId` that isn't a non-empty string — is substituted with
+ * `UNSUPPORTED_SENTINEL_SPEC`, which `JarvisPanelsMachine` detects BY
+ * REFERENCE and maps to `status: "unsupported"`. A garbage `panelId` still
+ * gets a usable, synthesized id (`nextInvalidPanelId`) so the resulting
+ * event is never dropped outright. */
+function buildPanelEvent(panelId: unknown, spec: unknown): JarvisEvent {
+  const panelIdValid = isNonEmptyString(panelId);
+  const resolvedPanelId = panelIdValid ? panelId : nextInvalidPanelId();
+  const result = parsePanelSpec(spec, []);
+
+  if (!panelIdValid || !result.ok) {
+    return {
+      type: "panel",
+      panelId: resolvedPanelId,
+      spec: UNSUPPORTED_SENTINEL_SPEC,
+    };
+  }
+
+  return { type: "panel", panelId: resolvedPanelId, spec: result.spec };
+}
+
+/** Attach the six `SERVER_MSG.JARVIS_*` listeners that feed one turn's
  * `JarvisEvent`s to `subscriber`, re-attaching the `type` discriminant the
  * wire strips off. Every frame is filtered to `payload.turnId === turnId`
  * first — a frame belonging to a different turn (a P2-era straggler arriving
  * after this turn's own listeners replaced a torn-down turn's) is ignored
  * silently rather than misdelivered. `done`/`error` frames also complete the
- * subscriber. Returns the five `ws.on()` unregister functions for teardown. */
+ * subscriber. Returns the six `ws.on()` unregister functions for teardown. */
 function attachJarvisTurnListeners(
   ws: IWsAdapter,
   turnId: string,
@@ -144,6 +196,15 @@ function attachJarvisTurnListeners(
 
       const { turnId: _turnId, ...rest } = p;
       subscriber.next({ type: "confirmRequest", ...rest });
+    }),
+    ws.on(SERVER_MSG.JARVIS_PANEL, (payload) => {
+      const p = payload as PanelFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next(buildPanelEvent(p.panelId, p.spec));
     }),
     ws.on(SERVER_MSG.JARVIS_DONE, (payload) => {
       const p = payload as DoneFramePayload;
@@ -190,7 +251,7 @@ function buildChatPayload(
 }
 
 /** Builds the cold source `Observable` for one `ask(text)` turn: registers
- * all five turnId-filtered listeners before sending `jarvis.chat`, so a
+ * all six turnId-filtered listeners before sending `jarvis.chat`, so a
  * same-tick reply can't be missed (the `WsAdapter` buffers pre-open sends, so
  * this also works while the socket is still connecting). Teardown
  * unregisters every listener AND fires `JARVIS_CANCEL {turnId}` — covering

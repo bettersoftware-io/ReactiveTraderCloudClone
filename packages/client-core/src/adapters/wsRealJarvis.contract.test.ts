@@ -5,8 +5,11 @@ import {
   CLIENT_MSG,
   type JarvisEvent,
   type JarvisHistoryEntry,
+  type PanelSpecV1,
   SERVER_MSG,
 } from "@rtc/shared";
+
+import { UNSUPPORTED_SENTINEL_SPEC } from "#/presenters/JarvisPanelsMachine";
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import type { JarvisAvailability } from "./jarvisPort";
@@ -199,7 +202,7 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     ]);
   });
 
-  it("(f) unsubscribe detaches all five handlers; a later injected frame emits nothing", () => {
+  it("(f) unsubscribe detaches all six handlers; a later injected frame emits nothing", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
     const received: JarvisEvent[] = [];
@@ -218,6 +221,11 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
     ws.emit(SERVER_MSG.JARVIS_CONFIRM_REQUEST, {
       turnId,
       ...CONFIRM_REQUEST_PAYLOAD,
+    });
+    ws.emit(SERVER_MSG.JARVIS_PANEL, {
+      turnId,
+      panelId: "p1",
+      spec: VALID_PANEL_SPEC,
     });
     ws.emit(SERVER_MSG.JARVIS_DONE, { turnId });
     ws.emit(SERVER_MSG.JARVIS_ERROR, { turnId, message: "should not arrive" });
@@ -427,6 +435,136 @@ describe("WsJarvisAdapter (wire-mode JarvisPort)", () => {
       { type: "done" },
     ]);
     expect(turn2Completed).toBe(true);
+  });
+});
+
+describe("WsJarvisAdapter panel events", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a VALID panel payload is parsed and re-emitted with the normalized spec", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("show me GBP volatility").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_PANEL, {
+      turnId,
+      panelId: "panel-1",
+      spec: VALID_PANEL_SPEC,
+    });
+
+    expect(received).toEqual([
+      { type: "panel", panelId: "panel-1", spec: VALID_PANEL_SPEC },
+    ]);
+  });
+
+  it("an INVALID spec substitutes UNSUPPORTED_SENTINEL_SPEC (by reference), keeping the wire panelId", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("show me GBP volatility").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_PANEL, {
+      turnId,
+      panelId: "panel-1",
+      spec: {
+        v: 1,
+        title: "",
+        source: { kind: "blotter" },
+        viz: { kind: "table" },
+      },
+    });
+
+    expect(received).toHaveLength(1);
+    const event = received[0];
+
+    if (event?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(event.panelId).toBe("panel-1");
+    expect(event.spec).toBe(UNSUPPORTED_SENTINEL_SPEC);
+  });
+
+  it("a garbage panelId (empty string) is replaced by a synthesized panel-invalid-<n> id, sentinel spec", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("show me GBP volatility").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_PANEL, {
+      turnId,
+      panelId: "",
+      spec: VALID_PANEL_SPEC,
+    });
+
+    expect(received).toHaveLength(1);
+    const event = received[0];
+
+    if (event?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(event.panelId).toMatch(/^panel-invalid-\d+$/);
+    expect(event.spec).toBe(UNSUPPORTED_SENTINEL_SPEC);
+  });
+
+  it("a missing panelId (non-string) is likewise synthesized, sentinel spec, and never throws", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("show me GBP volatility").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    expect(() => {
+      ws.emit(SERVER_MSG.JARVIS_PANEL, {
+        turnId,
+        panelId: undefined,
+        spec: VALID_PANEL_SPEC,
+      });
+    }).not.toThrow();
+
+    expect(received).toHaveLength(1);
+    const event = received[0];
+
+    if (event?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(event.panelId).toMatch(/^panel-invalid-\d+$/);
+    expect(event.spec).toBe(UNSUPPORTED_SENTINEL_SPEC);
+  });
+
+  it("REGRESSION: an unrelated/unknown wire message type is ignored (no panel event emitted)", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("hello").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit("some.unknown.type", { turnId, whatever: true });
+    ws.emit(SERVER_MSG.JARVIS_DONE, { turnId });
+
+    expect(received).toEqual([{ type: "done" }]);
   });
 });
 
@@ -727,6 +865,17 @@ const CONFIRM_REQUEST_PAYLOAD: ConfirmRequestPayload = {
   notional: 1_000_000,
   quotedPrice: 1.0851,
   ratePrecision: 4,
+};
+
+/** A structurally-valid `PanelSpecV1` — passes `parsePanelSpec` with
+ * `knownSymbols: []` (roster check skipped), matching the wire panel tests'
+ * "happy path" fixture. */
+const VALID_PANEL_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "GBP Volatility",
+  source: { kind: "priceHistory", symbols: ["GBPUSD"] },
+  transforms: [],
+  viz: { kind: "line" },
 };
 
 /** The shape of a sent `CLIENT_MSG.JARVIS_CHAT` frame's payload — named
