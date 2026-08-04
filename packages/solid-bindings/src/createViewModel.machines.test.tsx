@@ -260,6 +260,22 @@ describe("createViewModel — machine-backed members", () => {
     expect(result.state().indicators).toEqual(["ema50"]);
     expect(result.state().panes).toEqual([]);
   });
+
+  it("useEqWorkspace's toggleYScale intent flips linear <-> log, starting linear", () => {
+    const vm = makeViewModel();
+
+    const { result } = renderHook(() => {
+      return vm.useEqWorkspace();
+    });
+
+    expect(result.state().yScale).toBe("linear");
+
+    result.toggleYScale();
+    expect(result.state().yScale).toBe("log");
+
+    result.toggleYScale();
+    expect(result.state().yScale).toBe("linear");
+  });
 });
 
 function requireFirstPair(): (typeof KNOWN_CURRENCY_PAIRS)[number] {

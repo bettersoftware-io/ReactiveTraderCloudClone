@@ -699,6 +699,7 @@ export function reactViewModel(world: World): ViewModel {
         setChartType: world.eqWorkspace.intents.setChartType,
         toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
         togglePane: world.eqWorkspace.intents.togglePane,
+        toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
