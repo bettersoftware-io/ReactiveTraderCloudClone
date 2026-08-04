@@ -115,12 +115,23 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   the only thing `BootSequence` paints once `BootCanvas` is gated off (no
  *   wordmark/progress chrome here — that lives inside the real
  *   `BootSequenceMachine`, whose live progress ramp is exactly the
- *   non-determinism this fixture exists to avoid). Note: `BootEmblem`'s own
- *   pulse loop is gated by `AccessibilityInfo.isReduceMotionEnabled()` (an
- *   OS-level signal, not this app's preferences), so it is NOT frozen by
- *   anything this harness controls — Task 11's on-device capture should
- *   confirm whether that introduces the same class of variance that got
- *   `credit/rfq-tiles-empty` dropped, before this golden is trusted blind.
+ *   non-determinism this fixture exists to avoid). **`BootEmblem`'s own pulse
+ *   loop is NOT frozen — CONFIRMED by measurement 2026-08-04, having been
+ *   predicted here first.** It is gated by
+ *   `AccessibilityInfo.isReduceMotionEnabled()`, an OS-level signal rather
+ *   than this app's preferences, so it is the one scene the harness's
+ *   preference-driven freeze has no authority over. Six raw screenshots taken
+ *   back-to-back off a single mounted scenario climb 24 → 61 → 93 → 118 → 133
+ *   in max channel delta, bounded to the emblem. **This golden is therefore a
+ *   phase sample, not a still**, and its cross-run reproducibility is no
+ *   evidence otherwise: the driver waits a fixed `postReadySettleMs` after
+ *   mount, so it re-samples the same phase every run, and a timing
+ *   perturbation is all it takes to report a change that is not one. Reading
+ *   that determinism as "the scene is static, so a mismatch means the golden
+ *   is stale" cost a real investigation (T33 in `docs/rn-open-items.md`).
+ *   Until the pulse takes a gate this fixture can pin, treat a `boot/static`
+ *   diff as unproven — the same class of variance that got
+ *   `credit/rfq-tiles-empty` dropped outright.
  * - `lock/hold` — `HoldToUnlockRing` alone at a fixed mid-fill `progress`
  *   (`fixtures.tsx`'s `LOCK_HOLD_PROGRESS`), with a freshly-built,
  *   never-triggered `LongPressGesture` satisfying its `gesture` prop.
