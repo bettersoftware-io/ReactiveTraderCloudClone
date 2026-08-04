@@ -271,7 +271,17 @@ describe("composePanelStream", () => {
       tradeName: "T-2",
       status: TradeStatus.Rejected,
     });
-    const deps = makeDeps({ blotter: fakeBlotter(of([done, rejected])) });
+
+    const pending = makeTrade({
+      tradeId: 3,
+      tradeName: "T-3",
+      status: TradeStatus.Pending,
+    });
+
+    const deps = makeDeps({
+      blotter: fakeBlotter(of([done, rejected, pending])),
+    });
+
     const spec = makeSpec({
       source: { kind: "blotter" },
       viz: { kind: "table" },
@@ -294,8 +304,13 @@ describe("composePanelStream", () => {
     const rejectedRow = table.rows.find((r) => {
       return r.cells[0] === "T-2";
     });
+
+    const pendingRow = table.rows.find((r) => {
+      return r.cells[0] === "T-3";
+    });
     expect(doneRow?.tone).toBe("up");
     expect(rejectedRow?.tone).toBe("danger");
+    expect(pendingRow?.tone).toBe("info");
   });
 
   it("a transform chain nonsensical for its source yields a valid, empty PanelData instead of throwing (rollingVol on blotter)", () => {
@@ -513,6 +528,377 @@ describe("composePanelStream", () => {
       expect(heatmap.rows).toHaveLength(1);
       expect(heatmap.rows[0]?.label).toBe("EURUSD");
       expect(heatmap.rows[0]?.cells[0]?.intensity).toBeCloseTo(0.5, 10);
+    });
+  });
+
+  describe("transform order (the fold is neither associative nor commutative)", () => {
+    // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
+    // t=3000(120).
+    function orderedTicks(): readonly PriceTick[] {
+      return [
+        makeTick("EURUSD", 100, 0),
+        makeTick("EURUSD", 110, 1_000),
+        makeTick("EURUSD", 99, 2_000),
+        makeTick("EURUSD", 120, 3_000),
+      ];
+    }
+
+    it("[window, returns] differs from [returns, window] over the same ticks (hand-computed)", () => {
+      const depsWindowThenReturns = makeDeps({
+        pricing: fakePricing({ EURUSD: from(orderedTicks()) }),
+      });
+
+      const depsReturnsThenWindow = makeDeps({
+        pricing: fakePricing({ EURUSD: from(orderedTicks()) }),
+      });
+
+      const windowThenReturns = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "window", seconds: 2 }, { kind: "returns" }],
+        viz: { kind: "line" },
+      });
+
+      const returnsThenWindow = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "returns" }, { kind: "window", seconds: 2 }],
+        viz: { kind: "line" },
+      });
+
+      // window(2s) FIRST: cutoff = 3_000 - 2_000 = 1_000, so t=0 (100) drops,
+      // leaving [110@1000, 99@2000, 120@3000]. THEN returns over those 3
+      // points yields 2: (99-110)/110 ≈ -0.1 @2000, (120-99)/99 ≈ 0.21212 @3000.
+      const windowFirst = lastEmission(
+        composePanelStream(windowThenReturns, depsWindowThenReturns),
+      ) as LinePanelData;
+      const windowFirstPoints = windowFirst.series[0]?.points ?? [];
+      expect(windowFirstPoints).toHaveLength(2);
+      expect(
+        windowFirstPoints.map((p) => {
+          return p.t;
+        }),
+      ).toEqual([2_000, 3_000]);
+      expect(windowFirstPoints[0]?.v).toBeCloseTo(-0.1, 10);
+      expect(windowFirstPoints[1]?.v).toBeCloseTo(21 / 99, 10);
+
+      // returns FIRST over all 4 raw ticks yields 3 points: 0.1@1000,
+      // -0.1@2000, 0.21212@3000. THEN window(2s): cutoff = 3_000 - 2_000 =
+      // 1_000, and every one of those 3 points already has t >= 1_000, so
+      // NONE are trimmed — all 3 survive, unlike the other ordering.
+      const returnsFirst = lastEmission(
+        composePanelStream(returnsThenWindow, depsReturnsThenWindow),
+      ) as LinePanelData;
+      const returnsFirstPoints = returnsFirst.series[0]?.points ?? [];
+      expect(returnsFirstPoints).toHaveLength(3);
+      expect(
+        returnsFirstPoints.map((p) => {
+          return p.t;
+        }),
+      ).toEqual([1_000, 2_000, 3_000]);
+      expect(returnsFirstPoints[0]?.v).toBeCloseTo(0.1, 10);
+      expect(returnsFirstPoints[1]?.v).toBeCloseTo(-0.1, 10);
+      expect(returnsFirstPoints[2]?.v).toBeCloseTo(21 / 99, 10);
+
+      // The two orderings are NOT the same interpreter output.
+      expect(windowFirstPoints.length).not.toBe(returnsFirstPoints.length);
+    });
+
+    it("sticky-empty: once a transform empties the frame, every later transform in the chain is a no-op (no throw)", () => {
+      const deps = makeDeps({
+        blotter: fakeBlotter(of([makeTrade({})])),
+      });
+
+      // rollingVol requires a "series" frame; blotter yields "table", so it
+      // empties immediately. topN normally WOULD apply cleanly to a table —
+      // proving it's skipped here (not silently re-interpreting the
+      // already-empty frame as a fresh table) is the point of this test.
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        transforms: [
+          { kind: "rollingVol", samples: 3 },
+          { kind: "topN", n: 2, by: "value" },
+        ],
+        viz: { kind: "table" },
+      });
+
+      expect(() => {
+        collect(composePanelStream(spec, deps));
+      }).not.toThrow();
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "table",
+        columns: [],
+        rows: [],
+      } satisfies PanelData);
+    });
+  });
+
+  describe("spread transform: unequal tick rates", () => {
+    it("pairs the NEWEST points of each series when lengths differ, not the oldest (hand-computed)", () => {
+      const eurTicks = [100, 101, 102, 103, 104].map((v, i) => {
+        return makeTick("EURUSD", v, i * 1_000);
+      });
+
+      const gbpTicks = [50, 51, 52].map((v, i) => {
+        return makeTick("GBPUSD", v, 500 + i * 1_000);
+      });
+
+      const deps = makeDeps({
+        pricing: fakePricing({
+          EURUSD: from(eurTicks),
+          GBPUSD: from(gbpTicks),
+        }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD", "GBPUSD"] },
+        transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
+        viz: { kind: "line" },
+      });
+
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as LinePanelData;
+      const points = last.series[0]?.points ?? [];
+
+      // EURUSD has 5 points (idx 0..4), GBPUSD has 3 (idx 0..2); len=3, so
+      // EURUSD is read from idx 2..4 (its newest 3) and GBPUSD from idx 0..2
+      // (all of it) — NOT EURUSD's idx 0..2 (its oldest, and 1.5s stale
+      // relative to GBPUSD's own window).
+      expect(points).toEqual([
+        { t: 2_000, v: 52 }, // max(2000,500)=2000; 102-50=52
+        { t: 3_000, v: 52 }, // max(3000,1500)=3000; 103-51=52
+        { t: 4_000, v: 52 }, // max(4000,2500)=4000; 104-52=52
+      ]);
+    });
+  });
+
+  describe("totality: every empty-fallback branch is reachable without a throw", () => {
+    it("an unrecognized source.kind (e.g. a future wire addition this build predates) degrades to an empty panel, not a throw", () => {
+      const deps = makeDeps();
+      const spec = makeSpec({
+        // Deliberately a `PanelSource` this client doesn't know about —
+        // forward-compatibility with a server that outpaces this build.
+        source: {
+          kind: "futureSourceKind",
+        } as unknown as PanelSpecV1["source"],
+        viz: { kind: "line" },
+      });
+
+      expect(() => {
+        collect(composePanelStream(spec, deps));
+      }).not.toThrow();
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "line",
+        series: [],
+        annotations: [],
+      } satisfies PanelData);
+    });
+
+    it("spread naming a symbol the source never fetched yields an empty (not a throw)", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+      });
+
+      // Only EURUSD is in source.symbols — "GBPUSD" was never fetched, so
+      // frame.series has no matching label for `b`.
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
+        viz: { kind: "line" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "line",
+        series: [],
+        annotations: [],
+      } satisfies PanelData);
+    });
+
+    it("window applied directly to a non-series source (table) yields an empty, not a throw", () => {
+      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        transforms: [{ kind: "window", seconds: 10 }],
+        viz: { kind: "table" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "table",
+        columns: [],
+        rows: [],
+      } satisfies PanelData);
+    });
+
+    it("returns applied directly to a non-series source (table) yields an empty, not a throw", () => {
+      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        transforms: [{ kind: "returns" }],
+        viz: { kind: "table" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "table",
+        columns: [],
+        rows: [],
+      } satisfies PanelData);
+    });
+
+    it("spread applied directly to a non-series source (table) yields an empty, not a throw", () => {
+      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
+        viz: { kind: "line" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "line",
+        series: [],
+        annotations: [],
+      } satisfies PanelData);
+    });
+
+    it("rollingVol with a degenerate (non-positive) sample window never divides by an empty slice, not a throw", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({
+          EURUSD: from([
+            makeTick("EURUSD", 1, 0),
+            makeTick("EURUSD", 2, 1_000),
+          ]),
+        }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "rollingVol", samples: 0 }],
+        viz: { kind: "line" },
+      });
+
+      expect(() => {
+        collect(composePanelStream(spec, deps));
+      }).not.toThrow();
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as LinePanelData;
+
+      // samples:0 makes every windowPoints slice empty — population stddev
+      // of an empty sample set is defined here as 0.
+      for (const p of last.series[0]?.points ?? []) {
+        expect(p.v).toBe(0);
+      }
+    });
+
+    it("returns skips a pair whose earlier tick is exactly 0 (division-by-zero guard), not a throw", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({
+          EURUSD: from([
+            makeTick("EURUSD", 0, 0),
+            makeTick("EURUSD", 10, 1_000),
+          ]),
+        }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "returns" }],
+        viz: { kind: "line" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "line",
+        series: [{ label: "EURUSD", points: [] }],
+        annotations: [],
+      } satisfies PanelData);
+    });
+
+    it("window applied to an already-empty-points series (from a prior returns with too few ticks) is a no-op, not a throw", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({
+          EURUSD: from([makeTick("EURUSD", 100, 0)]),
+        }),
+      });
+
+      // A single tick gives `returns` nothing to pair — its output series is
+      // present but empty. `window` must then handle a series whose last
+      // point is undefined without throwing.
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "returns" }, { kind: "window", seconds: 5 }],
+        viz: { kind: "line" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "line",
+        series: [{ label: "EURUSD", points: [] }],
+        annotations: [],
+      } satisfies PanelData);
+    });
+
+    it("gauge over a non-series source (table) falls back to the empty gauge placeholder", () => {
+      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        viz: { kind: "gauge" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "gauge",
+        label: "",
+        value: "—",
+        delta: "",
+        tone: "info",
+      } satisfies PanelData);
+    });
+
+    it("gauge over a series whose points are empty (too few ticks for `returns`) falls back to the empty gauge placeholder", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({
+          EURUSD: from([makeTick("EURUSD", 100, 0)]),
+        }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "returns" }],
+        viz: { kind: "gauge" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "gauge",
+        label: "",
+        value: "—",
+        delta: "",
+        tone: "info",
+      } satisfies PanelData);
+    });
+
+    it("sparkGrid over a non-series source (table) falls back to empty cells", () => {
+      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
+      const spec = makeSpec({
+        source: { kind: "blotter" },
+        viz: { kind: "sparkGrid" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "sparkGrid",
+        cells: [],
+      } satisfies PanelData);
+    });
+
+    it("heatmap over a non-table source (series) falls back to empty rows", () => {
+      const deps = makeDeps({
+        pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        viz: { kind: "heatmap" },
+      });
+
+      expect(lastEmission(composePanelStream(spec, deps))).toEqual({
+        kind: "heatmap",
+        rows: [],
+      } satisfies PanelData);
     });
   });
 });

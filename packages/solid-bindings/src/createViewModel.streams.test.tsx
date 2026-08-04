@@ -523,6 +523,42 @@ describe("createViewModel — admin/telemetry streams", () => {
     });
   });
 
+  it("useJarvisPanels starts with an empty panels list and a callable dismissPanel", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useJarvisPanels();
+    });
+
+    expect(result.panels()).toEqual([]);
+    expect(typeof result.dismissPanel).toBe("function");
+  });
+
+  it("useJarvisPanels renders a panel spawned through a real showPanel turn (seeded machine state)", async () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return { jarvis: vm.useJarvis(), panels: vm.useJarvisPanels() };
+    });
+
+    result.jarvis.send("show me gbp volatility");
+
+    // ReferenceDataSimulator.getCurrencyPairs() carries a deliberate 1s
+    // artificial latency (ScriptedJarvisEngine snapshots it before
+    // matching the turn's intent) — well past the default waitFor budget,
+    // so this needs an explicit longer one.
+    await waitFor(
+      () => {
+        expect(result.panels.panels().length).toBeGreaterThan(0);
+      },
+      { timeout: 3_000 },
+    );
+    expect(result.panels.panels()[0]).toMatchObject({
+      panelId: "panel-scripted-1",
+      title: "GBP Volatility",
+      status: "live",
+      vizKind: "line",
+    });
+  }, 8_000);
+
   it("useEventLog reads the seeded rolling event log", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {

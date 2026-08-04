@@ -1,4 +1,4 @@
-import { combineLatest, type Observable, shareReplay } from "rxjs";
+import { combineLatest, type Observable, of, shareReplay } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
 import {
@@ -318,6 +318,18 @@ function blotterFrame$(blotter: BlotterPort): Observable<Frame> {
   );
 }
 
+/** Compile-time-only exhaustiveness assertion that still degrades sanely at
+ * runtime: unlike `const _exhaustive: never = x; return _exhaustive;` (which
+ * would hand a non-`Frame` value straight back to a caller typed to expect
+ * one — a real crash risk the moment anything downstream calls `.pipe()` on
+ * it), this keeps the "TS errors if a new `PanelSource` kind goes
+ * unhandled" safety net while returning a genuine empty `Frame` if an
+ * unrecognized `kind` ever reaches here at runtime anyway (e.g. a future
+ * server sending a source kind this client build predates). */
+function unknownSourceFrame(_source: never): Frame {
+  return { kind: "empty" };
+}
+
 function sourceFrame$(
   source: PanelSource,
   deps: PanelStreamDeps,
@@ -332,10 +344,8 @@ function sourceFrame$(
     case "blotter":
       return blotterFrame$(deps.blotter);
 
-    default: {
-      const _exhaustive: never = source;
-      return _exhaustive;
-    }
+    default:
+      return of<Frame>(unknownSourceFrame(source));
   }
 }
 
@@ -433,6 +443,21 @@ function applyRollingVol(frame: Frame, samples: number): Frame {
   return { kind: "series", series };
 }
 
+/**
+ * Pairs `seriesA`/`seriesB` positionally over their trailing `len =
+ * min(lenA, lenB)` points — i.e. each series' NEWEST `len` points, not its
+ * oldest. Two independently-accumulated fxTicks series tick at different
+ * rates (a quiet pair ticks far less often than a busy one), so pairing from
+ * the START (index 0 of each) would line up the busy series' STALE early
+ * history against the quiet series' full, still-current window — the busier
+ * side's "point 0" can be many minutes older than the quiet side's. Pairing
+ * from the END instead means index `len-1` on both sides is always each
+ * series' own latest tick, and earlier indices step back in lockstep from
+ * there — the newest pairing is always the two series' most recent data,
+ * which is what a spread panel is for. Each pair is stamped with the NEWER
+ * of its two source timestamps (whichever side ticked more recently at that
+ * position), since that's the instant the pair actually became valid.
+ */
 function applySpread(frame: Frame, a: string, b: string): Frame {
   if (frame.kind !== "series") {
     return { kind: "empty" };
@@ -450,18 +475,20 @@ function applySpread(frame: Frame, a: string, b: string): Frame {
     return { kind: "empty" };
   }
 
-  const len = Math.min(seriesA.points.length, seriesB.points.length);
+  const lenA = seriesA.points.length;
+  const lenB = seriesB.points.length;
+  const len = Math.min(lenA, lenB);
   const points: PanelPoint[] = [];
 
   for (let i = 0; i < len; i += 1) {
-    const pa = seriesA.points[i];
-    const pb = seriesB.points[i];
+    const pa = seriesA.points[lenA - len + i];
+    const pb = seriesB.points[lenB - len + i];
 
     if (!pa || !pb) {
       continue;
     }
 
-    points.push({ t: pa.t, v: pa.v - pb.v });
+    points.push({ t: Math.max(pa.t, pb.t), v: pa.v - pb.v });
   }
 
   return { kind: "series", series: [{ label: `${a}-${b}`, points }] };
