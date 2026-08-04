@@ -1159,6 +1159,7 @@ describe("AnthropicAgentLoop", () => {
       transforms: [],
       viz: { kind: "line" },
     };
+
     const panelStream = fakeStream(
       [
         toolUseStartEvent(0, "t1", RENDER_PANEL_TOOL_NAME, { spec: badSpec }),
@@ -1176,6 +1177,7 @@ describe("AnthropicAgentLoop", () => {
         ],
       },
     );
+
     const finalStream = fakeStream([textDeltaEvent(0, "No good, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "No good, sir." }],

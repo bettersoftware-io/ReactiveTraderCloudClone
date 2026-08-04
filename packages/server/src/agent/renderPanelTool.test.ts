@@ -10,36 +10,6 @@ import {
 
 const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"];
 
-function validSpec(): PanelSpecV1 {
-  return {
-    v: 1,
-    title: "GBP Volatility",
-    source: { kind: "priceHistory", symbols: ["GBPUSD"] },
-    transforms: [{ kind: "rollingVol", samples: 20 }],
-    viz: { kind: "line" },
-  };
-}
-
-function buildDeps(overrides: Partial<RenderPanelDeps> = {}): {
-  readonly deps: RenderPanelDeps;
-  readonly emitPanel: ReturnType<typeof vi.fn>;
-  readonly mintPanelId: ReturnType<typeof vi.fn>;
-} {
-  const emitPanel = vi.fn();
-  const mintPanelId = vi.fn(() => {
-    return "panel-minted-1";
-  });
-
-  const deps: RenderPanelDeps = {
-    knownSymbols: KNOWN_SYMBOLS,
-    emitPanel,
-    mintPanelId,
-    ...overrides,
-  };
-
-  return { deps, emitPanel, mintPanelId };
-}
-
 describe("buildRenderPanelTool", () => {
   it("names itself render_panel", () => {
     const { deps } = buildDeps();
@@ -131,6 +101,7 @@ describe("buildRenderPanelTool", () => {
       spec: validSpec(),
       targetPanelId: 42,
     });
+
     const emptyResult = await tool.run({
       spec: validSpec(),
       targetPanelId: "",
@@ -148,12 +119,7 @@ describe("buildRenderPanelTool", () => {
   it("declares its input schema requiring only spec, embedding PANEL_SPEC_JSON_SCHEMA", () => {
     const { deps } = buildDeps();
     const tool = buildRenderPanelTool(deps);
-    const schema = tool.inputSchema as {
-      readonly required: readonly string[];
-      readonly properties: {
-        readonly spec: { readonly required: readonly string[] };
-      };
-    };
+    const schema = tool.inputSchema as unknown as RenderPanelInputSchema;
 
     expect(schema.required).toEqual(["spec"]);
     expect(schema.properties.spec.required).toContain("v");
@@ -175,3 +141,46 @@ describe("buildRenderPanelTool", () => {
     expect(emitPanel).toHaveBeenCalledTimes(1);
   });
 });
+
+function validSpec(): PanelSpecV1 {
+  return {
+    v: 1,
+    title: "GBP Volatility",
+    source: { kind: "priceHistory", symbols: ["GBPUSD"] },
+    transforms: [{ kind: "rollingVol", samples: 20 }],
+    viz: { kind: "line" },
+  };
+}
+
+/** `render_panel`'s input-schema shape this file's own schema-assertion test
+ * casts `tool.inputSchema` (typed `Record<string, unknown>`) to. */
+interface RenderPanelInputSchema {
+  readonly required: readonly string[];
+  readonly properties: {
+    readonly spec: { readonly required: readonly string[] };
+  };
+}
+
+/** `buildDeps`' own return shape — named rather than inline per
+ * `no-restricted-syntax`. */
+interface BuiltDeps {
+  readonly deps: RenderPanelDeps;
+  readonly emitPanel: ReturnType<typeof vi.fn>;
+  readonly mintPanelId: ReturnType<typeof vi.fn>;
+}
+
+function buildDeps(overrides: Partial<RenderPanelDeps> = {}): BuiltDeps {
+  const emitPanel = vi.fn();
+  const mintPanelId = vi.fn(() => {
+    return "panel-minted-1";
+  });
+
+  const deps: RenderPanelDeps = {
+    knownSymbols: KNOWN_SYMBOLS,
+    emitPanel,
+    mintPanelId,
+    ...overrides,
+  };
+
+  return { deps, emitPanel, mintPanelId };
+}
