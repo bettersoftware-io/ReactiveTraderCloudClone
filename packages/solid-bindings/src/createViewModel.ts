@@ -5,6 +5,7 @@ import type { Accessor } from "solid-js";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
   Presenters,
@@ -219,6 +220,14 @@ interface UseJarvisPreferencesResult {
   setEffort: (effort: JarvisEffort) => void;
 }
 
+/** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
+ * starts empty. `dismissPanel` closes one by id (a no-op for an already-gone
+ * id — dismissing twice, or racing an eviction, is silently fine). */
+interface UseJarvisPanelsResult {
+  panels: Accessor<readonly JarvisPanelVm[]>;
+  dismissPanel: (panelId: string) => void;
+}
+
 interface UseViewModePreferenceResult {
   viewMode: Accessor<ViewMode>;
   setViewMode: (viewMode: ViewMode) => void;
@@ -407,6 +416,9 @@ export interface ViewModel {
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => Accessor<JarvisUsageSnapshot | null>;
+  /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
+   * plus the dismiss intent (singleton, app-level). Starts empty. */
+  useJarvisPanels: () => UseJarvisPanelsResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -765,6 +777,15 @@ export function createViewModel(
     null as JarvisUsageSnapshot | null,
   );
 
+  const jarvisPanelsState = state(
+    presenters.jarvisPanels.panels$,
+    [] as readonly JarvisPanelVm[],
+  );
+
+  function dismissJarvisPanel(panelId: string): void {
+    presenters.jarvisPanels.dismissPanel(panelId);
+  }
+
   const eventLogState = state(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
@@ -1106,6 +1127,12 @@ export function createViewModel(
     },
     useJarvisUsage: () => {
       return toSignal(jarvisUsageState);
+    },
+    useJarvisPanels: () => {
+      return {
+        panels: toSignal(jarvisPanelsState),
+        dismissPanel: dismissJarvisPanel,
+      };
     },
     useMetrics: () => {
       return {

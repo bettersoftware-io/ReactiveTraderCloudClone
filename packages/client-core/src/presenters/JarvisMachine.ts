@@ -319,9 +319,27 @@ interface TurnEventItem {
 /** One item flowing through a single `send()` turn. */
 type TurnItem = TurnStartItem | TurnEventItem;
 
-export function createJarvisMachine(
-  deps: JarvisDeps,
-): Machine<JarvisState, JarvisIntents> {
+function isTurnEventItem(item: TurnItem): item is TurnEventItem {
+  return item.kind === "event";
+}
+
+/** `createJarvisMachine`'s return, widened with `events$` — every reply
+ * event from every turn (`port.ask()` call), across the machine's whole
+ * session lifetime. Task 6's sole event source for `JarvisPanelsMachine`
+ * (composition.ts wires it in): panel events ride the same per-turn
+ * `JarvisEvent` stream as everything else `ask()` emits (this machine's own
+ * `"panel"` case is a deliberate no-op — see its doc above), and this is the
+ * one place that stream is exposed outside the turn-sequencing internals.
+ * Callers MUST catchError-guard this before handing it to
+ * `createJarvisPanelsMachine`: that machine's `events$` input is TERMINAL on
+ * error (kills its fold), and nothing here narrows what `port.ask()` could
+ * do. */
+export interface JarvisMachineHandle
+  extends Machine<JarvisState, JarvisIntents> {
+  readonly events$: Observable<JarvisEvent>;
+}
+
+export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const availabilitySource$: Observable<JarvisAvailability> =
     deps.availability$ ?? of(DEFAULT_AVAILABILITY);
@@ -423,13 +441,16 @@ export function createJarvisMachine(
     }),
   );
 
-  const confirmRequests$: Observable<ConfirmRequestEvent> = turnItems$.pipe(
-    filter((item): item is TurnEventItem => {
-      return item.kind === "event";
-    }),
+  // Every reply event from every turn — see JarvisMachineHandle's doc for
+  // why this is exposed and what the caller must do with it.
+  const events$: Observable<JarvisEvent> = turnItems$.pipe(
+    filter(isTurnEventItem),
     map((item) => {
       return item.event;
     }),
+  );
+
+  const confirmRequests$: Observable<ConfirmRequestEvent> = events$.pipe(
     filter(isConfirmRequest),
   );
 
@@ -619,6 +640,7 @@ export function createJarvisMachine(
 
   return {
     state$,
+    events$,
     intents: {
       open: () => {
         open$.next();

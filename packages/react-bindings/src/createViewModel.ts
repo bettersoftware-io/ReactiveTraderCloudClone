@@ -4,6 +4,7 @@ import { combineLatest, firstValueFrom, map } from "rxjs";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
   Presenters,
@@ -137,6 +138,14 @@ export interface UseJarvisPreferencesResult {
   setBrain: (brain: JarvisBrain) => void;
   effort: JarvisEffort;
   setEffort: (effort: JarvisEffort) => void;
+}
+
+/** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
+ * starts empty. `dismissPanel` closes one by id (a no-op for an already-gone
+ * id — dismissing twice, or racing an eviction, is silently fine). */
+export interface UseJarvisPanelsResult {
+  panels: readonly JarvisPanelVm[];
+  dismissPanel: (panelId: string) => void;
 }
 
 interface MetricsView {
@@ -376,6 +385,9 @@ export interface ViewModel {
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => JarvisUsageSnapshot | null;
+  /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
+   * plus the dismiss intent (singleton, app-level). Starts empty. */
+  useJarvisPanels: () => UseJarvisPanelsResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -735,6 +747,15 @@ export function createViewModel(
     null as JarvisUsageSnapshot | null,
   );
 
+  const [useJarvisPanelsValue] = bind(
+    presenters.jarvisPanels.panels$,
+    [] as readonly JarvisPanelVm[],
+  );
+
+  function dismissJarvisPanel(panelId: string): void {
+    presenters.jarvisPanels.dismissPanel(panelId);
+  }
+
   const [useEventLogValue] = bind(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
@@ -1052,6 +1073,12 @@ export function createViewModel(
       };
     },
     useJarvisUsage: useJarvisUsageValue,
+    useJarvisPanels: () => {
+      return {
+        panels: useJarvisPanelsValue(),
+        dismissPanel: dismissJarvisPanel,
+      };
+    },
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),
