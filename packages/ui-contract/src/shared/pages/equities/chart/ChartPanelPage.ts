@@ -99,4 +99,27 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
       }
     });
   }
+
+  /** The chart wrap's `data-yscale` attribute ("linear" | "log"), found as a
+   * descendant — same rationale as {@link panesAttr}: the panel body
+   * (`this.root`) wraps InstrumentHeader + the chart column above the wrap
+   * div itself. */
+  yScaleAttr(): string {
+    return (
+      this.root.querySelector("[data-yscale]")?.getAttribute("data-yscale") ??
+      ""
+    );
+  }
+
+  /** Waits until `data-yscale` reads the given mode — the LOG-pill twin of
+   * {@link waitUntilPanesAttr}. */
+  async waitUntilYScaleAttr(mode: "linear" | "log"): Promise<void> {
+    await waitFor(() => {
+      if (this.yScaleAttr() !== mode) {
+        throw new Error(
+          `data-yscale is "${this.yScaleAttr()}", expected "${mode}"`,
+        );
+      }
+    });
+  }
 }

@@ -12,6 +12,7 @@ import type { Machine } from "./machine";
 export type EqChartType = "candles" | "line" | "area";
 export type EqIndicatorId = "sma20" | "ema50";
 export type EqPaneId = "rsi" | "macd";
+export type EqYScale = "linear" | "log";
 
 export interface EqWorkspaceState {
   readonly sel: string;
@@ -20,6 +21,7 @@ export interface EqWorkspaceState {
   readonly chartType: EqChartType;
   readonly indicators: readonly EqIndicatorId[];
   readonly panes: readonly EqPaneId[];
+  readonly yScale: EqYScale;
 }
 
 export interface EqWorkspaceIntents {
@@ -29,6 +31,7 @@ export interface EqWorkspaceIntents {
   setChartType(kind: EqChartType): void;
   toggleIndicator(id: EqIndicatorId): void;
   togglePane(id: EqPaneId): void;
+  toggleYScale(): void;
 }
 
 export interface EqWorkspaceDeps {
@@ -75,6 +78,7 @@ export function createEqWorkspaceMachine(
   const setChartType$ = new Subject<EqChartType>();
   const toggleIndicator$ = new Subject<EqIndicatorId>();
   const togglePane$ = new Subject<EqPaneId>();
+  const toggleYScale$ = new Subject<void>();
 
   // An empty initialSymbol means no tab is open yet (WS-real, watchlist not
   // arrived synchronously) — NOT a phantom "" tab. InstrumentTabs then simply
@@ -86,6 +90,7 @@ export function createEqWorkspaceMachine(
     chartType: "candles",
     indicators: [],
     panes: [],
+    yScale: "linear",
   };
 
   // select: adds the symbol to openTabs if it isn't already there, then
@@ -180,6 +185,16 @@ export function createEqWorkspaceMachine(
     }),
   );
 
+  // toggleYScale: flips the price axis between linear and log — a binary
+  // toggle (no payload), unlike the id-keyed indicator/pane sets.
+  const toggleYScalePatch$ = toggleYScale$.pipe(
+    map((): Patch => {
+      return (s: EqWorkspaceState): EqWorkspaceState => {
+        return { ...s, yScale: s.yScale === "log" ? "linear" : "log" };
+      };
+    }),
+  );
+
   // Recovery patch: takes exactly one emission from seed$ (or never emits,
   // when seed$ is omitted) and seeds sel/openTabs — but only while sel is
   // still "", so a synchronous initialSymbol or an intervening user select()
@@ -205,6 +220,7 @@ export function createEqWorkspaceMachine(
     setChartTypePatch$,
     toggleIndicatorPatch$,
     togglePanePatch$,
+    toggleYScalePatch$,
     seedPatch$,
   ).pipe(
     scan((s, patch) => {
@@ -240,6 +256,9 @@ export function createEqWorkspaceMachine(
       togglePane: (id: EqPaneId): void => {
         togglePane$.next(id);
       },
+      toggleYScale: (): void => {
+        toggleYScale$.next();
+      },
     },
     dispose: () => {
       select$.complete();
@@ -248,6 +267,7 @@ export function createEqWorkspaceMachine(
       setChartType$.complete();
       toggleIndicator$.complete();
       togglePane$.complete();
+      toggleYScale$.complete();
       warm.unsubscribe();
     },
   };

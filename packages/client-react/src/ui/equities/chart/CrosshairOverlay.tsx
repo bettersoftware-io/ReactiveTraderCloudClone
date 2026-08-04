@@ -13,7 +13,12 @@ import styles from "./CrosshairOverlay.module.css";
  * nothing while no candle is hovered (`vm` null). `showHorizontal` hides
  * just the `.h` hairline while the hover has moved into an indicator pane
  * instead (see `ChartPlot`'s `showHorizontal={cursor?.inPlot}` wiring) — the
- * vertical line and readout chip are unaffected.
+ * vertical line and readout chip are unaffected. `vm.price` (the cursor's
+ * raw y→price inversion — distinct from the readout's snapped-candle OHLC)
+ * has no visible glyph of its own; it rides as a `data-price` attribute on
+ * the readout chip (mirroring the `data-active`/`data-yscale`-style
+ * observer attributes elsewhere in this chart) so the log-mode inversion is
+ * assertable without adding pixels a golden would have to re-pin.
  */
 export function CrosshairOverlay({
   vm,
@@ -37,7 +42,11 @@ export function CrosshairOverlay({
           data-testid="chart-crosshair-h"
         />
       ) : null}
-      <div className={styles.readout} data-testid="chart-crosshair-readout">
+      <div
+        className={styles.readout}
+        data-testid="chart-crosshair-readout"
+        data-price={vm.price}
+      >
         <span>{vm.readout.time}</span>
         <span>O {vm.readout.open}</span>
         <span>H {vm.readout.high}</span>

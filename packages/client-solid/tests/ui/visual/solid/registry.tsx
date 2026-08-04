@@ -61,6 +61,7 @@ import {
   EquitiesChartIndicators,
   EquitiesChartLine,
   EquitiesChartLoadingOlder,
+  EquitiesChartLogScale,
   EquitiesChartPanned,
   EquitiesChartVolumeAxis,
   EquitiesChartZoomed,
@@ -563,6 +564,10 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   },
   EquitiesChartVolumeAxis: () => {
     return <EquitiesChartVolumeAxis />;
+  },
+  // Log price axis (spec 2026-08-04): real CandleChart, yScale="log".
+  EquitiesChartLogScale: () => {
+    return <EquitiesChartLogScale />;
   },
   // --- Task 10: backfill-paging chip scenarios ---
   EquitiesChartLoadingOlder: () => {

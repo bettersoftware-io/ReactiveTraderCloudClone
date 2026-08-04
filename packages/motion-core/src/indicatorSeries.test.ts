@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { priceToY } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 import { Y_SPAN, Y_TOP } from "./chartVm.js";
 import { indicatorPoints, indicatorValues } from "./indicatorSeries.js";
@@ -127,5 +128,24 @@ describe("indicatorPoints", () => {
     const points = indicatorPoints(values, viewport, scale);
 
     expect(points.length).toBe(3);
+  });
+});
+
+describe("indicatorPoints under a log scale", () => {
+  it("maps values through the shared helper (overlay stays glued to candles)", () => {
+    const values = [100, 400, 1000];
+    const viewport = { start: 0, end: 3 };
+    const logScale = { cmin: 100, cmax: 1000, yScale: "log" as const };
+    const points = indicatorPoints(values, viewport, logScale);
+
+    expect(
+      points.map((p) => {
+        return p.y;
+      }),
+    ).toEqual(
+      values.map((v) => {
+        return priceToY(logScale, v);
+      }),
+    );
   });
 });

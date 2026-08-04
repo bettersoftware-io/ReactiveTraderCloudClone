@@ -17,7 +17,9 @@ export {
   chartScene,
   crosshairScene,
   navigatorWindowScene,
+  priceToY,
   volumeScene,
+  yToPrice,
 } from "./chartScene.js";
 export type { ChartViewport, ViewportEdge } from "./chartViewport.js";
 export {

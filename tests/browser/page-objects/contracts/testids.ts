@@ -122,6 +122,9 @@ export const TESTIDS = {
        * (see `PlaywrightEquitiesChart.panePill`, which composes the two via
        * `Locator.and`). */
       panePill: "chart-pane-pill",
+      /** The LOG price-axis pill (IndicatorPills.tsx) — toggles the chart
+       * wrap's `data-yscale` between `"linear"` and `"log"`. */
+      yScalePill: "chart-yscale-pill",
       /** An active RSI/MACD indicator pane's root (IndicatorPane.tsx). */
       pane: (kind: "rsi" | "macd") => {
         return `chart-pane-${kind}`;
@@ -129,6 +132,9 @@ export const TESTIDS = {
       /** The pane's live crosshair readout row — rendered only while the
        * shared crosshair cursor is active over the plot or a pane. */
       paneReadout: "chart-pane-readout",
+      /** One of the 4 price-axis labels rendered down the plot's left edge
+       * (ChartPlot.tsx) — their texts rebase together on a yscale toggle. */
+      priceLabel: "chart-price-label",
     },
   },
   layout: {

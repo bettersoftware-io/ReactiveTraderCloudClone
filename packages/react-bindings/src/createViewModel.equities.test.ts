@@ -259,6 +259,25 @@ describe("createViewModel — equities hooks", () => {
     expect(result.current.state.indicators).toEqual(["sma20"]);
     expect(result.current.state.panes).toEqual([]);
   });
+
+  it("useEqWorkspace().toggleYScale flips linear <-> log, starting linear", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    expect(result.current.state.yScale).toBe("linear");
+
+    act(() => {
+      result.current.toggleYScale();
+    });
+    expect(result.current.state.yScale).toBe("log");
+
+    act(() => {
+      result.current.toggleYScale();
+    });
+    expect(result.current.state.yScale).toBe("linear");
+  });
 });
 
 describe("createViewModel — candle backfill", () => {

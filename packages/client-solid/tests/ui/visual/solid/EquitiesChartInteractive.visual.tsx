@@ -210,6 +210,29 @@ export function EquitiesChartVolumeAxis(): JSX.Element {
   );
 }
 
+// Log price axis (spec 2026-08-04): the real CandleChart mounted with
+// yScale="log" — a real prop like kind/indicators, so no ChartPlot bypass is
+// needed; default (untouched) gesture state keeps it deterministic.
+export function EquitiesChartLogScale(): JSX.Element {
+  return (
+    <div style={STAGE_STYLE}>
+      <CandleChart
+        candles={CANDLES}
+        liveRate={LIVE_RATE}
+        flashOn={false}
+        kind="candles"
+        indicators={[]}
+        panes={[]}
+        yScale="log"
+        defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
+      />
+    </div>
+  );
+}
+
 interface ForcedChartProps {
   readonly viewport: ChartViewport;
   readonly cursor?: { readonly xFrac: number; readonly yFrac: number };
