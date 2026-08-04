@@ -1,14 +1,17 @@
 import type { Direction, JarvisBrain, JarvisEffort } from "@rtc/domain";
 
+import type { PanelSpecV1 } from "./panelSpec.js";
+
 /**
  * Jarvis chat wire vocabulary.
  *
  * Wire rule: each turn-scoped `SERVER_MSG.JARVIS_*` payload (delta,
- * toolEvent, confirmRequest, done, error) IS the matching `JarvisEvent`
- * variant minus its `type` discriminant, PLUS a `readonly turnId: string`
- * that correlates every server event back to the client-generated turn it
- * belongs to — the message type itself carries the `type` discriminant, so
- * the payload only needs the variant's remaining fields plus `turnId`.
+ * toolEvent, confirmRequest, panel, done, error) IS the matching
+ * `JarvisEvent` variant minus its `type` discriminant, PLUS a
+ * `readonly turnId: string` that correlates every server event back to the
+ * client-generated turn it belongs to — the message type itself carries the
+ * `type` discriminant, so the payload only needs the variant's remaining
+ * fields plus `turnId`.
  * `JarvisEvent` itself stays unchanged (no `turnId` on the union) — the
  * client adapter strips `turnId` after filtering by it, so `JarvisMachine`
  * and the UIs still see the exact variant shapes below.
@@ -34,6 +37,11 @@ export type JarvisEvent =
        * the confirm card can format quotedPrice exactly like the price tiles
        * (toFixed(ratePrecision)) without a reference-data lookup UI-side. */
       readonly ratePrecision: number;
+    }
+  | {
+      readonly type: "panel";
+      readonly panelId: string;
+      readonly spec: PanelSpecV1;
     }
   | { readonly type: "done" }
   | { readonly type: "error"; readonly message: string };

@@ -39,6 +39,7 @@ import type { JarvisEvent } from "#/jarvis/jarvisEvent.js";
 
 import type { JarvisTradeIntent } from "./jarvisIntent.js";
 import { matchJarvisIntent } from "./jarvisIntent.js";
+import type { PanelSpecV1 } from "./panelSpec.js";
 
 const SNAPSHOT_TIMEOUT_MS = 2_000;
 const SNAPSHOT_ERROR_MESSAGE =
@@ -70,6 +71,36 @@ const REJECTED_REPLY = "The venue rejected it, sir — nothing was executed.";
 
 /** Non-ASCII minus (U+2212), matching the v5 prototype's movers copy. */
 const MINUS_SIGN = "−";
+
+/** Deterministic — e2e and contract tests key on this literal id. Scripted
+ * panels are a single-panel demo (Round 1), so one constant id suffices. */
+const SCRIPTED_PANEL_ID = "panel-scripted-1";
+
+/** The canned generative-UI demo panel a showPanel turn emits — a zero-token
+ * path that exercises the same `PanelSpecV1` vocabulary a live brain's
+ * `render_panel` tool call would produce (added in a later task). */
+const GBP_VOLATILITY_PANEL_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "GBP Volatility",
+  rationale: "Rolling volatility across the GBP majors, sir.",
+  source: { kind: "priceHistory", symbols: ["GBPUSD", "GBPJPY"] },
+  transforms: [{ kind: "rollingVol", samples: 20 }],
+  viz: { kind: "line" },
+};
+
+const SHOW_PANEL_REPLY = "Pulling up GBP volatility now, sir.";
+const NO_PANEL_TO_RESTYLE_REPLY = "There's no panel open to restyle yet, sir.";
+
+function describeRestylePanelReply(viz: "heatmap" | "table" | "line"): string {
+  return `Restyled as a ${viz}, sir.`;
+}
+
+/** The scripted session's restyle state — the last panel a showPanel/
+ * restylePanel turn produced this session. */
+interface ScriptedPanelState {
+  readonly id: string;
+  readonly spec: PanelSpecV1;
+}
 
 export interface ScriptedJarvisDeps {
   readonly referenceData: ReferenceDataPort;
@@ -131,6 +162,11 @@ function findPair(
  */
 export class ScriptedJarvisEngine {
   private readonly pendingConfirmations = new Map<string, Subject<boolean>>();
+
+  /** The last panel this session's showPanel/restylePanel turns produced —
+   * per-instance (per-session) restyle state; null until a showPanel turn
+   * has run. */
+  private lastPanel: ScriptedPanelState | null = null;
 
   constructor(private readonly deps: ScriptedJarvisDeps) {}
 
@@ -285,6 +321,12 @@ export class ScriptedJarvisEngine {
       case "spread":
         await this.streamSpreadReply(pairs, intent.symbol, push);
         return;
+      case "showPanel":
+        await this.streamShowPanelReply(push);
+        return;
+      case "restylePanel":
+        await this.streamRestylePanelReply(intent.viz, push);
+        return;
       case "trade":
         await this.executeConfirmedTrade(
           pairs,
@@ -400,6 +442,39 @@ export class ScriptedJarvisEngine {
     const spreadPips = Math.round(Number.parseFloat(price.spread));
     const reply = `${pair.symbol} spread is currently ${spreadPips} pips, sir.`;
     await this.reveal(reply, push);
+  }
+
+  /** Emits the canned GBP-volatility panel (the generative-UI demo path —
+   * zero-token, deterministic) and records it as `lastPanel` so a later
+   * restylePanel turn this session can re-emit it with a new viz. */
+  private async streamShowPanelReply(
+    push: (event: JarvisEvent) => void,
+  ): Promise<void> {
+    this.lastPanel = { id: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_PANEL_SPEC };
+    push({
+      type: "panel",
+      panelId: this.lastPanel.id,
+      spec: this.lastPanel.spec,
+    });
+    await this.reveal(SHOW_PANEL_REPLY, push);
+  }
+
+  /** Re-emits `lastPanel` with a new `viz`, keeping every other field (same
+   * `panelId`, source, transforms). No prior panel this session → a
+   * fallback-style reply and no panel event — there is nothing to restyle. */
+  private async streamRestylePanelReply(
+    viz: "heatmap" | "table" | "line",
+    push: (event: JarvisEvent) => void,
+  ): Promise<void> {
+    if (!this.lastPanel) {
+      await this.reveal(NO_PANEL_TO_RESTYLE_REPLY, push);
+      return;
+    }
+
+    const spec: PanelSpecV1 = { ...this.lastPanel.spec, viz: { kind: viz } };
+    this.lastPanel = { id: this.lastPanel.id, spec };
+    push({ type: "panel", panelId: this.lastPanel.id, spec });
+    await this.reveal(describeRestylePanelReply(viz), push);
   }
 
   private async executeConfirmedTrade(
