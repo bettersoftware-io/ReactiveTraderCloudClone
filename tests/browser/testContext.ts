@@ -32,6 +32,9 @@ export class Scratchpad {
      * pan, keyed by the caller's snapshot label — read back by
      * `expectOldestTimeLabelOlderThanWithin`. */
     recordedOldestLabels: new Map<string, string>(),
+    /** Price-axis label texts recorded before a yscale toggle, keyed by the
+     * caller's snapshot label — read back by `expectPriceLabelsChangedFrom`. */
+    recordedPriceLabels: new Map<string, string[]>(),
   };
 }
 
