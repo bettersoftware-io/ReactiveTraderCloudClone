@@ -70,6 +70,11 @@ export function SellSideTicket({
       style={styles.card}
       testID={`sell-side-ticket-${rfq.id}`}
     >
+      <View
+        accessible
+        testID={`sell-side-present-${rfq.id}`}
+        style={styles.a11yMarker}
+      />
       <View style={styles.headRow}>
         <Text style={styles.incoming}>◈ INCOMING RFQ</Text>
         <Text style={urgent ? styles.secondsUrgent : styles.seconds}>
@@ -176,6 +181,7 @@ const DEFAULT_PRICE = 100;
 const URGENT_MS = 10_000;
 
 interface SellSideTicketStyles {
+  a11yMarker: ViewStyle;
   card: ViewStyle;
   headRow: ViewStyle;
   incoming: TextStyle;
@@ -211,6 +217,16 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
   };
 
   return StyleSheet.create({
+    // T28: a 1x1 accessible marker, so the ticket's presence is visible to
+    // `idb ui describe-all` and a Maestro flow can wait on it.
+    //
+    // NOT `accessible` on the card itself, which is the obvious fix and the
+    // wrong one: an accessible view becomes a single accessibility element
+    // and its subtree stops being individually addressable (T3 measured
+    // 41 nodes collapsing to 3). That would hide `sell-side-submit-*` and the
+    // stepper pads — the very controls a flow needs to tap. Same idiom the
+    // visual harness uses for its readiness marker.
+    a11yMarker: { width: 1, height: 1 },
     card: {
       borderRadius: 12,
       paddingVertical: 12,
