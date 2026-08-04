@@ -46,13 +46,22 @@ export interface AnthropicAgentLoopOptions {
   /**
    * The tradeable-pair roster `render_panel`'s tool (LIVE brains only —
    * added inside `AnthropicAgentSession`'s own constructor, never through
-   * `buildTools` above) validates `source.symbols` against. Defaults to `[]`
-   * (no roster check — see `RenderPanelDeps.knownSymbols`'s doc comment) so
-   * a caller that doesn't pass one is unaffected. Loop-level rather than
-   * per-session: unlike `execute_trade`'s `ConfirmGate`, the pair roster
-   * doesn't vary per connection, so it needs no per-session closure.
+   * `buildTools` above) validates `source.symbols` against. REQUIRED,
+   * deliberately — `parsePanelSpec` treats an empty roster as "skip the
+   * membership check" (see `RenderPanelDeps.knownSymbols`'s doc comment),
+   * so an *optional* field here would let a future construction site that
+   * simply forgets this option silently fail OPEN: model-authored
+   * `source.symbols` would validate against nothing rather than being
+   * rejected. Making it required turns that omission into a compile error
+   * instead. (`AnthropicAgentSession`'s own constructor still defaults its
+   * `knownSymbols` parameter to `[]` — that default is a test seam only;
+   * every real construction path goes through this required option.)
+   * Loop-level rather than per-session: unlike `execute_trade`'s
+   * `ConfirmGate`, the pair roster doesn't vary per connection, so it needs
+   * no per-session closure. Pass `[]` explicitly if a caller genuinely
+   * wants no roster check.
    */
-  readonly knownSymbols?: readonly string[];
+  readonly knownSymbols: readonly string[];
   /**
    * Narrowed to the one method every session needs (`recordTokens`) rather
    * than the full `UsageMeter` — the loop has no business calling
@@ -85,7 +94,7 @@ export class AnthropicAgentLoop implements AgentLoop {
   constructor(options: AnthropicAgentLoopOptions) {
     this.buildTools = options.buildTools;
     this.usageMeter = options.usageMeter;
-    this.knownSymbols = options.knownSymbols ?? [];
+    this.knownSymbols = options.knownSymbols;
     this.runnerFactory =
       options.runnerFactory ??
       buildDefaultRunnerFactory(new Anthropic({ apiKey: options.apiKey }));

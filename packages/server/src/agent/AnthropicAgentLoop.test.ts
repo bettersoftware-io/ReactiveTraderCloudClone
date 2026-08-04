@@ -65,6 +65,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -156,6 +157,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(buildFixtureTools),
       runnerFactory: factory,
     });
@@ -242,6 +244,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(buildFixtureTools),
       runnerFactory: factory,
     });
@@ -336,6 +339,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(buildFixtureTools),
       runnerFactory: factory,
     });
@@ -360,6 +364,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -374,6 +379,7 @@ describe("AnthropicAgentLoop", () => {
   it("(e) a thrown SDK/network error surfaces a single sanitized error event", async () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: throwingRunner(),
     });
@@ -406,6 +412,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -429,6 +436,7 @@ describe("AnthropicAgentLoop", () => {
   it("(g) cancelTurn aborts the in-flight request and surfaces a single cancellation error", async () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: hangingRunner(),
     });
@@ -513,6 +521,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(buildFixtureTools),
       runnerFactory: factory,
     });
@@ -540,6 +549,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -593,6 +603,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -625,6 +636,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -682,6 +694,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -731,6 +744,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -762,6 +776,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(buildFixtureTools),
       runnerFactory: throwingRunner(),
     });
@@ -792,6 +807,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -816,6 +832,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -849,6 +866,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
     });
@@ -898,6 +916,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
       usageMeter: { recordTokens },
@@ -934,6 +953,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
       usageMeter: { recordTokens },
@@ -965,6 +985,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
       // usageMeter deliberately omitted.
@@ -1021,6 +1042,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(),
       runnerFactory: factory,
       usageMeter: { recordTokens },
@@ -1069,6 +1091,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
+      knownSymbols: [],
       buildTools: buildToolsFixture(), // contributes zero registry tools
       runnerFactory: factory,
     });

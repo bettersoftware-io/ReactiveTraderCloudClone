@@ -85,8 +85,10 @@ const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
     // single number for "this model". It's 512 tokens on the sonnet/opus-
     // class models but 4,096 tokens on Haiku 4.5 (the brain
     // `DEFAULT_JARVIS_BRAIN` now defaults to) — a much higher bar. Today's
-    // persona+seven-tool-schema prefix is only ~1.3k tokens: comfortably
-    // over 512 (sonnet/opus cache turn-to-turn as intended) but under 4,096
+    // persona+eight-tool-schema prefix (seven `@rtc/agent-tools` desk tools
+    // plus `render_panel`, whose input schema embeds the full
+    // `PANEL_SPEC_JSON_SCHEMA`) is only ~2.1k tokens: comfortably over 512
+    // (sonnet/opus cache turn-to-turn as intended) but under 4,096
     // (Haiku's breakpoint is a silent no-op — the API just serves the
     // request uncached, no error). That's an accepted tradeoff, not a bug:
     // Haiku's per-token input price is already ~5x cheaper than the cache
