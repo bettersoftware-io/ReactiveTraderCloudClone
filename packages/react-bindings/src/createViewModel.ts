@@ -1,5 +1,5 @@
 import { bind, useStateObservable } from "@react-rxjs/core";
-import { combineLatest, firstValueFrom, map } from "rxjs";
+import { combineLatest, firstValueFrom, map, of, switchMap } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -7,6 +7,7 @@ import type {
   JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
+  PanelData,
   Presenters,
 } from "@rtc/client-core";
 import {
@@ -388,6 +389,16 @@ export interface ViewModel {
   /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
    * plus the dismiss intent (singleton, app-level). Starts empty. */
   useJarvisPanels: () => UseJarvisPanelsResult;
+  /** Live-resolved body for one desk panel — the plain-value form of that
+   * panel's `JarvisPanelVm.data$`, looked up by `panelId` from the current
+   * `useJarvisPanels()` list. Mirrors `useCandles`/`useDepth`'s keyed-`bind()`
+   * pattern (a factory function keyed by an id/arg, not a static field) rather
+   * than the plain single-source `bind()` most other hooks here use, since
+   * `data$` is a genuinely per-panel, dynamically-spawned stream that no
+   * static composition-root wiring can pre-bind. Null before the panel's
+   * first data frame, or once the panel is gone (dismissed/evicted/never
+   * existed) — the renderer treats null as "not ready yet", not an error. */
+  useJarvisPanelData: (panelId: string) => PanelData | null;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -756,6 +767,27 @@ export function createViewModel(
     presenters.jarvisPanels.dismissPanel(panelId);
   }
 
+  // Keyed bind — one cached stream per panelId, mirroring useCandles/useDepth
+  // below (a factory function, not a static source$) rather than the plain
+  // bind() used for useJarvisPanelsValue above: a panel's data$ only exists
+  // once that panel is live, so this looks it up from the current panels$
+  // snapshot on every emission and switchMaps into whichever data$ is live
+  // for that id — of(null) once the id is gone (dismissed/evicted), so a
+  // stale reader never keeps replaying a torn-down panel's last frame.
+  const [useJarvisPanelDataValue] = bind(
+    (panelId: string) => {
+      return presenters.jarvisPanels.panels$.pipe(
+        switchMap((panels) => {
+          const panel = panels.find((p) => {
+            return p.panelId === panelId;
+          });
+          return panel ? panel.data$ : of(null);
+        }),
+      );
+    },
+    null as PanelData | null,
+  );
+
   const [useEventLogValue] = bind(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
@@ -1079,6 +1111,7 @@ export function createViewModel(
         dismissPanel: dismissJarvisPanel,
       };
     },
+    useJarvisPanelData: useJarvisPanelDataValue,
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),

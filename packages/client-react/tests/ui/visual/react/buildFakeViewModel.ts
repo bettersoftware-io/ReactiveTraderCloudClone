@@ -495,5 +495,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useJarvisPanels: () => {
       return { panels: [], dismissPanel: noop };
     },
+    // Static screenshots never resolve a live panel body — always null,
+    // mirroring the always-empty useJarvisPanels() stub just above.
+    useJarvisPanelData: () => {
+      return null;
+    },
   };
 }

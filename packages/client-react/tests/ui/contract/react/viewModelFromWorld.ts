@@ -747,6 +747,11 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // No panel data source wired into this World-driven fixture yet (mirrors
+    // useJarvisPanels's always-empty stub above) — always null.
+    useJarvisPanelData: (_panelId: string) => {
+      return null;
+    },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real
     // IncidentMachine's connection-status asymmetry via world.injectIncident.
