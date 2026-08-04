@@ -106,7 +106,7 @@ function applyPanelEvent(
  * panel lifecycle.
  */
 export function createJarvisPanelsMachine(events$: Observable<JarvisEvent>): {
-  readonly state$: Observable<JarvisPanelsState>;
+  readonly state$: StateObservable<JarvisPanelsState>;
   readonly dismissPanel: (panelId: string) => void;
 } {
   const dismiss$ = new Subject<string>();

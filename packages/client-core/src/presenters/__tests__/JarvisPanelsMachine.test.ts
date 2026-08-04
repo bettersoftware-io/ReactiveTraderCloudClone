@@ -1,4 +1,4 @@
-import { Subject } from "rxjs";
+import { Observable, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
@@ -340,6 +340,83 @@ describe("createJarvisPanelsMachine", () => {
       expect(late).toEqual([
         { panelId: "p1", spec: makeSpec("p1"), status: "live" },
       ]);
+    });
+  });
+
+  describe("warm-subscription semantics (pins createJarvisPanelsMachine's internal `state$.subscribe()`)", () => {
+    // These two tests exist to catch a mutant that deleting the machine's
+    // internal warm `state$.subscribe()` would otherwise leave undetected:
+    // every other test in this file drives events through an EXTERNALLY
+    // held subscription, so the warm subscription's own job — keeping
+    // state$'s refCount above zero between external subscribers — is never
+    // exercised. Without it, a panel event fired while nobody is externally
+    // subscribed is lost, and any subscribe/unsubscribe/re-subscribe cycle
+    // tears the underlying `scan` fold down and restarts it from INITIAL
+    // (the ws-effects #171 leak class: a fresh stream per re-subscribe).
+
+    it("a panel event pushed before any external subscriber is captured by the warm internal subscription — a later subscribe replays it, not empty", () => {
+      const ts = scheduler();
+      ts.run(() => {
+        const events$ = new Subject<JarvisEvent>();
+        const machine = createJarvisPanelsMachine(events$);
+
+        // No external subscriber yet — only the machine's own internal warm
+        // subscription (held from construction) is live. Without it, this
+        // event fires into a hot Subject with nobody listening and is lost
+        // for good; state$ would replay an empty INITIAL to the subscriber
+        // below instead.
+        events$.next(panelEvent("p1", makeSpec("p1")));
+
+        let current: JarvisPanelsState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        expect(current?.panels).toEqual([
+          { panelId: "p1", spec: makeSpec("p1"), status: "live" },
+        ]);
+        sub.unsubscribe();
+      });
+    });
+
+    it("the fold accumulates across an external subscribe/unsubscribe/re-subscribe cycle rather than resetting, and events$ is subscribed exactly once for the whole scenario", () => {
+      const ts = scheduler();
+      ts.run(() => {
+        const rawEvents$ = new Subject<JarvisEvent>();
+        let subscribeCount = 0;
+        // An instrumented source: counts every subscription to the RAW
+        // event source, independent of how many times state$ itself is
+        // subscribed/unsubscribed from the outside.
+        const events$ = new Observable<JarvisEvent>((subscriber) => {
+          subscribeCount += 1;
+          return rawEvents$.subscribe(subscriber);
+        });
+
+        const machine = createJarvisPanelsMachine(events$);
+
+        const firstSub = machine.state$.subscribe();
+        rawEvents$.next(panelEvent("p1", makeSpec("p1")));
+        firstSub.unsubscribe();
+
+        // If the warm internal subscription didn't exist, the line above
+        // would have dropped state$'s refCount to zero, tearing the fold
+        // (and its events$ subscription) down — this push would be lost.
+        rawEvents$.next(panelEvent("p2", makeSpec("p2")));
+
+        let current: JarvisPanelsState | undefined;
+        const secondSub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+
+        expect(
+          current?.panels.map((p) => {
+            return p.panelId;
+          }),
+        ).toEqual(["p1", "p2"]);
+        // events$ was subscribed exactly once for the whole scenario — proof
+        // the underlying fold was never torn down and rebuilt mid-session.
+        expect(subscribeCount).toBe(1);
+        secondSub.unsubscribe();
+      });
     });
   });
 });
