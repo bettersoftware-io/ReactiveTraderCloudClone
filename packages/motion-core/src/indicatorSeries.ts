@@ -1,6 +1,6 @@
+import { priceToY } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 import type { ChartPoint, ChartScale } from "./chartVm.js";
-import { Y_SPAN, Y_TOP } from "./chartVm.js";
 
 /** The two indicator overlays the chart can plot: a 20-period simple moving
  * average and a 50-period exponential moving average. */
@@ -45,7 +45,6 @@ export function indicatorPoints(
   const iFirst = Math.max(0, Math.floor(viewport.start));
   const iLast = Math.min(values.length - 1, Math.ceil(viewport.end) - 1);
   const span = viewport.end - viewport.start || 1;
-  const crng = scale.cmax - scale.cmin || 1;
   const points: ChartPoint[] = [];
 
   for (let i = iFirst; i <= iLast; i++) {
@@ -57,7 +56,7 @@ export function indicatorPoints(
 
     points.push({
       x: ((i + 0.5 - viewport.start) / span) * 100,
-      y: ((scale.cmax - value) / crng) * Y_SPAN + Y_TOP,
+      y: priceToY(scale, value),
     });
   }
 
