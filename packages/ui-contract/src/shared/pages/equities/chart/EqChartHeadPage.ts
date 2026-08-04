@@ -111,6 +111,27 @@ export class EqChartHeadPage extends MountedComponent<Record<string, never>> {
     await this.user.click(this.pillFor("chart-pane-pill", "data-pane", id));
   }
 
+  /** Whether the LOG price-axis pill is currently active. */
+  yScaleActive(): boolean {
+    return (
+      within(this.root)
+        .queryAllByTestId("chart-yscale-pill")[0]
+        ?.getAttribute("data-active") === "true"
+    );
+  }
+
+  /** Clicks the LOG pill — drives the real eqWorkspace machine's
+   * toggleYScale intent. */
+  async toggleYScale(): Promise<void> {
+    const pill = within(this.root).queryAllByTestId("chart-yscale-pill")[0];
+
+    if (!pill) {
+      throw new Error("chart-yscale-pill not rendered");
+    }
+
+    await this.user.click(pill);
+  }
+
   /** Finds the single pill of `testid` whose `attr` matches `value` (e.g. the
    * "line" chart-type-pill, or the "sma20" chart-indicator-pill). */
   private pillFor(testid: string, attr: string, value: string): HTMLElement {

@@ -1,7 +1,12 @@
 import { fireEvent, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
+import type {
+  EqChartType,
+  EqIndicatorId,
+  EqPaneId,
+  EqYScale,
+} from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
 
 /** Props CandleChart reads (Task C2/C3's interactive-plot contract: the
@@ -19,6 +24,9 @@ export interface CandleChartProps {
    * keeps compiling; the react/solid registry adapters already default a
    * missing value to `[]`. */
   panes?: readonly EqPaneId[];
+  /** Price-axis mapping (omitted/undefined = linear) — Task 3/4's LOG pill
+   * intent, threaded straight to `chartVm`. */
+  yScale?: EqYScale;
   defaultVisible: number;
   /** Whether an older history page is currently in flight for this series —
    * drives the LOADING OLDER… chip and gates re-triggering. */
@@ -292,6 +300,25 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
    * activation without counting pane DOM nodes itself. */
   panesAttr(): number {
     return Number(this.root.getAttribute("data-panes") ?? "0");
+  }
+
+  /** The wrap root's `data-yscale` attribute ("linear" | "log") — queried
+   * rather than read off `this.root` directly, since `this.root` is the
+   * render container (a parent of the actual wrap div), mirroring
+   * ChartPanelPage's own `panesAttr()` query style. */
+  yScaleAttr(): string {
+    return (
+      this.root.querySelector("[data-yscale]")?.getAttribute("data-yscale") ??
+      ""
+    );
+  }
+
+  /** A candle body's inline CSS custom property (e.g. "--top") — geometry
+   * assertions read the projected var, not layout (jsdom has none). */
+  candleBodyVar(i: number, name: string): string {
+    const candle = this.root.querySelectorAll("[data-candle]")[i];
+    const body = candle?.querySelectorAll("span")[1];
+    return body?.style.getPropertyValue(name) ?? "";
   }
 
   /** Total DOM node count under the chart wrap root (`this.root` IS the
