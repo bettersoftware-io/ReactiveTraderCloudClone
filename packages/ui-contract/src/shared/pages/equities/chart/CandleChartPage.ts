@@ -206,6 +206,19 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     );
   }
 
+  /** The crosshair's raw y→price inversion (`vm.price`, formatted to 2dp by
+   * crosshairScene) — distinct from {@link crosshairReadout}'s snapped-candle
+   * OHLC text. Rides as a `data-price` attribute on the same readout chip
+   * (no visible glyph of its own, so it never perturbs a pixel golden); null
+   * while no candle is hovered. */
+  crosshairPrice(): string | null {
+    return (
+      this.root
+        .querySelector(`[data-testid="${CROSSHAIR_READOUT_TESTID}"]`)
+        ?.getAttribute("data-price") ?? null
+    );
+  }
+
   /** The BACK TO LIVE pill's presence + a click helper — shown only once the
    * viewport has panned/zoomed away from the live edge. */
   backToLive(): BackToLive {

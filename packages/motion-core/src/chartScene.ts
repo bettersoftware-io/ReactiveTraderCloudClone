@@ -380,9 +380,14 @@ export function chartScene(
     return { key: i, top: f * 100 };
   });
 
-  const lmax = Math.log10(cmax);
-  const lrng = lmax - Math.log10(cmin) || 1;
   const isLog = scale.yScale === "log" && cmin > 0;
+  let lmax = 0;
+  let lrng = 1;
+
+  if (isLog) {
+    lmax = Math.log10(cmax);
+    lrng = lmax - Math.log10(cmin) || 1;
+  }
 
   const priceLabels: SceneLabel[] = LABEL_FRACTIONS.map((f, i) => {
     return {

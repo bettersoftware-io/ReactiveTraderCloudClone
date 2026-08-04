@@ -25,7 +25,7 @@ import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartH
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { EquityInstrument, EquityQuote } from "@rtc/domain";
-import { chartVm } from "@rtc/motion-core";
+import { chartVm, yToPrice } from "@rtc/motion-core";
 
 import { candleAt, generateCandles } from "./candleFixture";
 
@@ -103,6 +103,22 @@ describe("Y-scale rendering — CandleChart direct mount", () => {
     });
 
     expect(chart.priceLabels()).toEqual(expected);
+  });
+
+  it("crosshair inverts through the log mapping, not the linear one", () => {
+    const chart = mountChart({ yScale: "log" });
+    const vm = chartVm(CANDLES, LAST.close, false, {
+      viewport: { start: 240, end: 300 },
+      kind: "candles",
+      yScale: "log",
+    });
+
+    // Default viewport {240, 300}; plot-centre (0.5, 0.5) — same forced
+    // crosshair position ChartInteraction.contract.spec.ts uses. yFrac=0.5
+    // maps to y=50 in crosshairScene's y = yFrac * 100.
+    chart.setPointer(0.5, 0.5);
+
+    expect(chart.crosshairPrice()).toBe(yToPrice(vm.scale, 50).toFixed(2));
   });
 });
 

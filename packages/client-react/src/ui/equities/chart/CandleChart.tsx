@@ -40,7 +40,7 @@ export function CandleChart({
   kind,
   indicators,
   panes,
-  yScale,
+  yScale = "linear",
   defaultVisible,
   loadingOlder,
   historyExhausted,
