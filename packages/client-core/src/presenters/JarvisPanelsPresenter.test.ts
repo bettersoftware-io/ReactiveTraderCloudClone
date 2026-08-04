@@ -306,6 +306,7 @@ function instrumentedTicks(): InstrumentedTicks {
       valueDate: "2026-08-04",
       creationTimestamp: 0,
     });
+
     return (): void => {
       tracker.unsubscribeCount += 1;
     };

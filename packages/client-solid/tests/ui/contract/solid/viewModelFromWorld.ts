@@ -744,6 +744,19 @@ export function solidViewModel(world: World): ViewModel {
     useJarvisUsage: () => {
       return wrapSubject(world.jarvisUsage$);
     },
+    // Generative-UI desk panels (Task 6): no panel overlay/World wiring yet
+    // (a later task's concern) — minimal static stub so this driver
+    // satisfies ViewModel: always-empty panels accessor, no-op dismiss.
+    useJarvisPanels: () => {
+      return {
+        panels: () => {
+          return [];
+        },
+        dismissPanel: (_panelId: string) => {
+          // no-op — no generative-UI panel overlay wired into this fixture yet.
+        },
+      };
+    },
     useTopology: () => {
       return wrapSubject(world.topology$);
     },

@@ -736,6 +736,17 @@ export function reactViewModel(world: World): ViewModel {
     useJarvisUsage: () => {
       return useSubject(world.jarvisUsage$);
     },
+    // Generative-UI desk panels (Task 6): no panel overlay/World wiring yet
+    // (a later task's concern) — minimal static stub so this driver satisfies
+    // ViewModel: always-empty panels, dismissPanel a no-op.
+    useJarvisPanels: () => {
+      return {
+        panels: [],
+        dismissPanel: (_panelId: string) => {
+          // no-op — no generative-UI panel overlay wired into this fixture yet.
+        },
+      };
+    },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real
     // IncidentMachine's connection-status asymmetry via world.injectIncident.

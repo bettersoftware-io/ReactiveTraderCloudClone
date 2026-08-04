@@ -97,6 +97,14 @@ function applyPanelEvent(
   return [...base, instance];
 }
 
+/** `createJarvisPanelsMachine`'s return — named (rather than inline) to match
+ * `JarvisMachine.ts`'s `JarvisMachineHandle` idiom for its own factory
+ * return. */
+export interface JarvisPanelsMachineHandle {
+  readonly state$: StateObservable<JarvisPanelsState>;
+  readonly dismissPanel: (panelId: string) => void;
+}
+
 /**
  * Session-lifetime fold over the Jarvis event stream's `"panel"` events plus
  * a local `dismissPanel` intent, producing the live desk-panel roster.
@@ -105,10 +113,9 @@ function applyPanelEvent(
  * own `"panel"` arm is a deliberate no-op; this machine is the sole owner of
  * panel lifecycle.
  */
-export function createJarvisPanelsMachine(events$: Observable<JarvisEvent>): {
-  readonly state$: StateObservable<JarvisPanelsState>;
-  readonly dismissPanel: (panelId: string) => void;
-} {
+export function createJarvisPanelsMachine(
+  events$: Observable<JarvisEvent>,
+): JarvisPanelsMachineHandle {
   const dismiss$ = new Subject<string>();
 
   const panelPatches$: Observable<Patch> = events$.pipe(

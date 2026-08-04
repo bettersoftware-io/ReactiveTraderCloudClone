@@ -28,6 +28,7 @@ describe("composePanelStream", () => {
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
@@ -59,6 +60,7 @@ describe("composePanelStream", () => {
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "window", seconds: 10 }],
@@ -90,6 +92,7 @@ describe("composePanelStream", () => {
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "returns" }],
@@ -113,9 +116,11 @@ describe("composePanelStream", () => {
     const ticks = values.map((v, i) => {
       return makeTick("EURUSD", v, i * 1_000);
     });
+
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from(ticks) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "rollingVol", samples: 3 }],
@@ -130,7 +135,11 @@ describe("composePanelStream", () => {
     // stddev is identically sqrt(8/3).
     const expectedStddev = Math.sqrt(8 / 3);
     expect(points).toHaveLength(3);
-    expect(points.map((p) => p.t)).toEqual([2_000, 3_000, 4_000]);
+    expect(
+      points.map((p) => {
+        return p.t;
+      }),
+    ).toEqual([2_000, 3_000, 4_000]);
 
     for (const p of points) {
       expect(p.v).toBeCloseTo(expectedStddev, 10);
@@ -148,6 +157,7 @@ describe("composePanelStream", () => {
         GBPUSD: from([gbp1, gbp2]),
       }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD", "GBPUSD"] },
       transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
@@ -255,6 +265,7 @@ describe("composePanelStream", () => {
       tradeName: "T-1",
       status: TradeStatus.Done,
     });
+
     const rejected = makeTrade({
       tradeId: 2,
       tradeName: "T-2",
@@ -279,6 +290,7 @@ describe("composePanelStream", () => {
     const doneRow = table.rows.find((r) => {
       return r.cells[0] === "T-1";
     });
+
     const rejectedRow = table.rows.find((r) => {
       return r.cells[0] === "T-2";
     });
@@ -290,11 +302,13 @@ describe("composePanelStream", () => {
     const deps = makeDeps({
       blotter: fakeBlotter(of([makeTrade({})])),
     });
+
     const lineSpec = makeSpec({
       source: { kind: "blotter" },
       transforms: [{ kind: "rollingVol", samples: 3 }],
       viz: { kind: "line" },
     });
+
     const tableSpec = makeSpec({
       source: { kind: "blotter" },
       transforms: [{ kind: "rollingVol", samples: 3 }],
@@ -320,6 +334,7 @@ describe("composePanelStream", () => {
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "topN", n: 3, by: "value" }],
@@ -337,9 +352,11 @@ describe("composePanelStream", () => {
     const ticks = Array.from({ length: 601 }, (_unused, i) => {
       return makeTick("EURUSD", i, i * 1_000);
     });
+
     const deps = makeDeps({
       pricing: fakePricing({ EURUSD: from(ticks) }),
     });
+
     const spec = makeSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
@@ -361,6 +378,7 @@ describe("composePanelStream", () => {
     const ticks$ = new Observable<PriceTick>((subscriber) => {
       subscribeCount += 1;
       subscriber.next(makeTick("EURUSD", 1, 0));
+
       return (): void => {
         unsubscribeCount += 1;
       };
@@ -389,6 +407,7 @@ describe("composePanelStream", () => {
       const deps = makeDeps({
         pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
       });
+
       const spec = makeSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "line" },
@@ -411,6 +430,7 @@ describe("composePanelStream", () => {
           ),
         ),
       });
+
       const spec = makeSpec({
         source: { kind: "analytics" },
         viz: { kind: "table" },
@@ -426,6 +446,7 @@ describe("composePanelStream", () => {
       const deps = makeDeps({
         pricing: fakePricing({ EURUSD: from([t1, t2]) }),
       });
+
       const spec = makeSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "gauge", label: "EURUSD" },
@@ -454,6 +475,7 @@ describe("composePanelStream", () => {
           },
         ),
       });
+
       const spec = makeSpec({
         source: { kind: "priceHistory", symbols: ["EURUSD", "GBPUSD"] },
         viz: { kind: "sparkGrid" },
@@ -480,6 +502,7 @@ describe("composePanelStream", () => {
           ),
         ),
       });
+
       const spec = makeSpec({
         source: { kind: "analytics" },
         viz: { kind: "heatmap" },

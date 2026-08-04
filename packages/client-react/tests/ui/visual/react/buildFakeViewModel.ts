@@ -489,5 +489,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useJarvisUsage: () => {
       return data.jarvisUsage ?? null;
     },
+    // No generative-UI panel AppData field yet (Task 6's overlay is a later
+    // task) — static empty panels, no-op dismiss (static screenshots never
+    // fire it), mirroring useJarvisPreferences's no-op-setter style above.
+    useJarvisPanels: () => {
+      return { panels: [], dismissPanel: noop };
+    },
   };
 }

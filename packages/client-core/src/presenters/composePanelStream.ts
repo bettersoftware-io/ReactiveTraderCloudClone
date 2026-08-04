@@ -282,6 +282,7 @@ function toneFromTradeStatus(status: TradeStatus): PanelTone {
       return "danger";
     case TradeStatus.Pending:
       return "info";
+
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -330,6 +331,7 @@ function sourceFrame$(
       return analyticsFrame$(deps.analytics);
     case "blotter":
       return blotterFrame$(deps.blotter);
+
     default: {
       const _exhaustive: never = source;
       return _exhaustive;
@@ -396,6 +398,7 @@ function stddev(values: readonly number[]): number {
     values.reduce((sum, v) => {
       return sum + v;
     }, 0) / n;
+
   const variance =
     values.reduce((sum, v) => {
       return sum + (v - mean) ** 2;
@@ -438,6 +441,7 @@ function applySpread(frame: Frame, a: string, b: string): Frame {
   const seriesA = frame.series.find((s) => {
     return s.label === a;
   });
+
   const seriesB = frame.series.find((s) => {
     return s.label === b;
   });
@@ -492,6 +496,7 @@ function applyTransform(frame: Frame, transform: PanelTransform): Frame {
       return applySpread(frame, transform.a, transform.b);
     case "topN":
       return applyTopN(frame, transform.n, transform.by);
+
     default: {
       const _exhaustive: never = transform;
       return _exhaustive;
@@ -624,6 +629,7 @@ function renderViz(
       return renderSparkGrid(frame);
     case "heatmap":
       return renderHeatmap(frame);
+
     default: {
       const _exhaustive: never = viz;
       return _exhaustive;

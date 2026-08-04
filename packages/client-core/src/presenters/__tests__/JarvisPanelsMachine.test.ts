@@ -14,53 +14,6 @@ import {
   UNSUPPORTED_SENTINEL_SPEC,
 } from "../JarvisPanelsMachine";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-function makeSpec(title: string): PanelSpecV1 {
-  return {
-    v: 1,
-    title,
-    source: { kind: "blotter" },
-    transforms: [],
-    viz: { kind: "table" },
-  };
-}
-
-function panelEvent(panelId: string, spec: PanelSpecV1): JarvisEvent {
-  return { type: "panel", panelId, spec };
-}
-
-interface RunCtx {
-  machine: ReturnType<typeof createJarvisPanelsMachine>;
-  ts: TestScheduler;
-}
-
-/** Collect every emission of a machine's state$ as it runs, marble-driven —
- * same idiom as JarvisMachine.test.ts's `run` helper. */
-function run(
-  buildEvents: (ts: TestScheduler) => JarvisEvent[] | undefined,
-  drive: (ctx: RunCtx & { events$: Subject<JarvisEvent> }) => void,
-): JarvisPanelsState[] {
-  const states: JarvisPanelsState[] = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    buildEvents(ts);
-    const events$ = new Subject<JarvisEvent>();
-    const machine = createJarvisPanelsMachine(events$);
-    const sub = machine.state$.subscribe((s) => {
-      states.push(s);
-    });
-    drive({ machine, ts, events$ });
-    flush();
-    sub.unsubscribe();
-  });
-  return states;
-}
-
 describe("createJarvisPanelsMachine", () => {
   it("starts with no panels", () => {
     const ts = scheduler();
@@ -78,7 +31,9 @@ describe("createJarvisPanelsMachine", () => {
 
   it("a panel event for a new panelId appends a new live panel", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ts.schedule(() => {
           events$.next(panelEvent("p1", makeSpec("EURUSD vol")));
@@ -94,7 +49,9 @@ describe("createJarvisPanelsMachine", () => {
 
   it("a second panel event for the SAME panelId replaces it in place, preserving array order (a morph, not a move)", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ts.schedule(() => {
           events$.next(panelEvent("p1", makeSpec("first")));
@@ -111,7 +68,11 @@ describe("createJarvisPanelsMachine", () => {
     );
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual(["p1", "p2"]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p1", "p2"]);
     expect(last?.panels[0]).toEqual({
       panelId: "p1",
       spec: makeSpec("first-edited"),
@@ -126,7 +87,9 @@ describe("createJarvisPanelsMachine", () => {
 
   it(`the ${MAX_LIVE_PANELS + 1}th spawn (a 5th NEW panelId) evicts index 0 — FIFO`, () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ["p1", "p2", "p3", "p4", "p5"].forEach((panelId, i) => {
           ts.schedule(() => {
@@ -137,18 +100,19 @@ describe("createJarvisPanelsMachine", () => {
     );
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual([
-      "p2",
-      "p3",
-      "p4",
-      "p5",
-    ]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p2", "p3", "p4", "p5"]);
     expect(last?.panels).toHaveLength(MAX_LIVE_PANELS);
   });
 
   it("an edit to an existing panelId does NOT evict, even already at MAX_LIVE_PANELS", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
           ts.schedule(() => {
@@ -164,12 +128,11 @@ describe("createJarvisPanelsMachine", () => {
     );
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual([
-      "p1",
-      "p2",
-      "p3",
-      "p4",
-    ]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p1", "p2", "p3", "p4"]);
     expect(last?.panels[0]?.spec?.title).toBe("p1-edited");
   });
 
@@ -196,12 +159,18 @@ describe("createJarvisPanelsMachine", () => {
     });
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual(["p2"]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p2"]);
   });
 
   it("dismissing an unknown panelId is a silent no-op", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, machine, ts }) => {
         ts.schedule(() => {
           events$.next(panelEvent("p1", makeSpec("p1")));
@@ -213,7 +182,11 @@ describe("createJarvisPanelsMachine", () => {
     );
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual(["p1"]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p1"]);
   });
 
   it("a later edit targeting a DISMISSED panelId appends it as a fresh panel (never errors)", () => {
@@ -244,7 +217,11 @@ describe("createJarvisPanelsMachine", () => {
     });
 
     const last = states.at(-1);
-    expect(last?.panels.map((p) => p.panelId)).toEqual(["p2", "p1"]);
+    expect(
+      last?.panels.map((p) => {
+        return p.panelId;
+      }),
+    ).toEqual(["p2", "p1"]);
     expect(last?.panels[1]).toEqual({
       panelId: "p1",
       spec: makeSpec("p1-reborn"),
@@ -254,7 +231,9 @@ describe("createJarvisPanelsMachine", () => {
 
   it("a panel event whose spec IS the UNSUPPORTED_SENTINEL_SPEC (by reference) maps to status: unsupported, spec: null", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ts.schedule(() => {
           events$.next(panelEvent("p1", UNSUPPORTED_SENTINEL_SPEC));
@@ -279,7 +258,9 @@ describe("createJarvisPanelsMachine", () => {
     expect(lookalike).not.toBe(UNSUPPORTED_SENTINEL_SPEC);
 
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ts.schedule(() => {
           events$.next(panelEvent("p1", lookalike));
@@ -295,7 +276,9 @@ describe("createJarvisPanelsMachine", () => {
 
   it("non-panel JarvisEvents (delta, done, etc.) are ignored", () => {
     const states = run(
-      () => undefined,
+      () => {
+        return undefined;
+      },
       ({ events$, ts }) => {
         ts.schedule(() => {
           events$.next({ type: "delta", text: "hello" });
@@ -420,3 +403,51 @@ describe("createJarvisPanelsMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+function makeSpec(title: string): PanelSpecV1 {
+  return {
+    v: 1,
+    title,
+    source: { kind: "blotter" },
+    transforms: [],
+    viz: { kind: "table" },
+  };
+}
+
+function panelEvent(panelId: string, spec: PanelSpecV1): JarvisEvent {
+  return { type: "panel", panelId, spec };
+}
+
+interface RunCtx {
+  machine: ReturnType<typeof createJarvisPanelsMachine>;
+  ts: TestScheduler;
+  events$: Subject<JarvisEvent>;
+}
+
+/** Collect every emission of a machine's state$ as it runs, marble-driven —
+ * same idiom as JarvisMachine.test.ts's `run` helper. */
+function run(
+  buildEvents: (ts: TestScheduler) => JarvisEvent[] | undefined,
+  drive: (ctx: RunCtx) => void,
+): JarvisPanelsState[] {
+  const states: JarvisPanelsState[] = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    buildEvents(ts);
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const sub = machine.state$.subscribe((s) => {
+      states.push(s);
+    });
+    drive({ machine, ts, events$ });
+    flush();
+    sub.unsubscribe();
+  });
+  return states;
+}

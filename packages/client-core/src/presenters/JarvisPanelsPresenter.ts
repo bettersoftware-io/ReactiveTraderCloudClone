@@ -9,7 +9,7 @@ import {
   type PanelStreamDeps,
 } from "./composePanelStream.js";
 import type {
-  createJarvisPanelsMachine,
+  JarvisPanelsMachineHandle,
   PanelInstance,
   PanelStatus,
 } from "./JarvisPanelsMachine.js";
@@ -32,8 +32,6 @@ export interface JarvisPanelVm {
  * `.title` directly (see `JarvisPanelsMachine`'s doc on why `spec` is
  * nulled for `"unsupported"` instances), so this is its own small constant. */
 const UNSUPPORTED_TITLE = "Unsupported panel";
-
-type PanelsMachine = ReturnType<typeof createJarvisPanelsMachine>;
 
 /** One `composePanelStream(spec, deps)` result kept warm per live panelId,
  * so N `JarvisPanelVm.data$` readers (and the presenter's own keep-warm
@@ -102,9 +100,10 @@ export class JarvisPanelsPresenter {
   private readonly cache = new Map<string, PanelCacheEntry>();
 
   readonly panels$: Observable<readonly JarvisPanelVm[]>;
+
   readonly dismissPanel: (panelId: string) => void;
 
-  constructor(machine: PanelsMachine, deps: PanelStreamDeps) {
+  constructor(machine: JarvisPanelsMachineHandle, deps: PanelStreamDeps) {
     this.dismissPanel = machine.dismissPanel;
 
     this.panels$ = machine.state$.pipe(

@@ -437,6 +437,7 @@ export function createApp(ports: AppPorts): App {
     preferredBrain$: ports.preferences.jarvisBrain$(),
     effort$: ports.preferences.jarvisEffort$(),
   });
+
   const jarvisPanels = new JarvisPanelsPresenter(
     createJarvisPanelsMachine(
       jarvis.events$.pipe(
