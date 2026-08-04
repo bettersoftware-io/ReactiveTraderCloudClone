@@ -61,7 +61,11 @@ export function ChartPlot({
   paneHoverProps = NOOP_PANE_HOVER_PROPS,
 }: ChartPlotProps): ReactElement {
   return (
-    <div className={styles.wrap} data-panes={panes.length}>
+    <div
+      className={styles.wrap}
+      data-panes={panes.length}
+      data-yscale={vm.scale.yScale ?? "linear"}
+    >
       <div
         className={styles.plot}
         data-testid="chart-plot"
