@@ -272,6 +272,13 @@ function eventPatch(event: JarvisEvent): Patch {
         };
       };
 
+    case "panel":
+      // Deliberate no-op: panel events are owned by the separate
+      // JarvisPanelsMachine (Task 5), not this chat-state machine.
+      return (s: JarvisState): JarvisState => {
+        return s;
+      };
+
     default: {
       const _exhaustive: never = event;
 

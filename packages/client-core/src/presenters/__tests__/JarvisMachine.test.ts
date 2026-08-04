@@ -9,6 +9,7 @@ import {
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
+import type { PanelSpecV1 } from "@rtc/shared";
 
 import type {
   JarvisAskOptions,
@@ -122,6 +123,49 @@ describe("createJarvisMachine", () => {
       done: true,
       tool: { name: "quote", status: "done" },
     });
+  });
+
+  it("a panel event is a no-op for chat state — JarvisPanelsMachine (Task 5) owns it, not this machine", () => {
+    const stubPanelSpec: PanelSpecV1 = {
+      v: 1,
+      title: "GBP Volatility",
+      source: { kind: "priceHistory", symbols: ["GBPUSD"] },
+      transforms: [{ kind: "rollingVol", samples: 20 }],
+      viz: { kind: "line" },
+    };
+
+    const states = run(
+      (ts) => {
+        return {
+          port: fakePort(ts, "a-b-(c|)", {
+            a: { type: "delta", text: "EURUSD is up" },
+            b: {
+              type: "panel",
+              panelId: "panel-scripted-1",
+              spec: stubPanelSpec,
+            },
+            c: { type: "done" },
+          }),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          ...baseBrainDeps(),
+        };
+      },
+      ({ machine, ts }) => {
+        ts.schedule(() => {
+          machine.intents.send("show me gbp volatility");
+        }, 1);
+      },
+    );
+
+    const last = states.at(-1);
+    expect(last?.entries).toEqual([
+      { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      { id: 1, role: "user", text: "show me gbp volatility", done: true },
+      { id: 2, role: "jarvis", text: "EURUSD is up", done: true },
+    ]);
+    expect(last?.pendingConfirmation).toBeNull();
+    expect(last?.phase).toBe("idle");
   });
 
   it("an error reply finalizes the streaming entry with the error message and returns to idle", () => {
