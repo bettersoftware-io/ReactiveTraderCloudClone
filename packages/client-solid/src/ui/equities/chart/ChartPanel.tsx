@@ -111,6 +111,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           kind={state().chartType}
           indicators={state().indicators}
           panes={state().panes}
+          yScale={state().yScale}
           defaultVisible={defaultVisible()}
           loadingOlder={backfill().loadingOlder}
           historyExhausted={backfill().historyExhausted}
