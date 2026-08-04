@@ -1,5 +1,5 @@
-import { EMPTY, type Observable, type Subscription } from "rxjs";
-import { map } from "rxjs/operators";
+import { EMPTY, type Observable, of, type Subscription } from "rxjs";
+import { map, shareReplay, switchMap } from "rxjs/operators";
 
 import type { PanelSpecV1, PanelViz } from "@rtc/shared";
 
@@ -99,6 +99,21 @@ function buildPanelVm(
 export class JarvisPanelsPresenter {
   private readonly cache = new Map<string, PanelCacheEntry>();
 
+  /** One multiplexed `panelData$(panelId)` result kept per distinct id ever
+   * asked for — mirrors `DepthPresenter.depth$`'s Map-cached `shareReplay`
+   * idiom (a repeat call returns the SAME Observable, one shared
+   * subscription for however many UI readers). Unlike `DepthPresenter`'s
+   * key (a currency symbol, whose underlying port stream identity never
+   * changes), a `panelId` CAN be dismissed and later reused by a brand-new
+   * `PanelInstance` — so the cached stream itself stays a `switchMap` over
+   * `panels$` rather than a frozen reference to one `PanelCacheEntry.data$`,
+   * so a respawn under the same id is picked up on the next `panels$`
+   * emission rather than replaying the old (torn-down) panel's last frame. */
+  private readonly panelDataCache = new Map<
+    string,
+    Observable<PanelData | null>
+  >();
+
   readonly panels$: Observable<readonly JarvisPanelVm[]>;
 
   readonly dismissPanel: (panelId: string) => void;
@@ -122,6 +137,35 @@ export class JarvisPanelsPresenter {
     machine.state$.subscribe((s) => {
       this.syncCache(s.panels, deps);
     });
+  }
+
+  /** Live-resolved data for one desk panel, keyed by `panelId` — the
+   * plain-value bridge a UI binding hook (`useJarvisPanelData` in both
+   * react-bindings and solid-bindings) reads instead of touching
+   * `JarvisPanelVm.data$` (a raw `Observable`) directly. `null` while the
+   * panel is unknown/unsupported/gone; otherwise the SAME `data$` this
+   * class's `panels$` VM row already exposes for that id — reusing the
+   * existing per-panel stream cache above rather than standing up a second
+   * one. See the class-level `panelDataCache` doc for why this is a
+   * `switchMap` over `panels$`, not a frozen snapshot. */
+  panelData$(panelId: string): Observable<PanelData | null> {
+    const cached = this.panelDataCache.get(panelId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const stream = this.panels$.pipe(
+      switchMap((panels) => {
+        const panel = panels.find((p) => {
+          return p.panelId === panelId;
+        });
+        return panel && panel.status === "live" ? panel.data$ : of(null);
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.panelDataCache.set(panelId, stream);
+    return stream;
   }
 
   private syncCache(

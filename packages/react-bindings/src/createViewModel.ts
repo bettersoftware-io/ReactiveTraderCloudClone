@@ -1,5 +1,5 @@
 import { bind, useStateObservable } from "@react-rxjs/core";
-import { combineLatest, firstValueFrom, map, of, switchMap } from "rxjs";
+import { combineLatest, firstValueFrom, map } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -769,21 +769,14 @@ export function createViewModel(
 
   // Keyed bind — one cached stream per panelId, mirroring useCandles/useDepth
   // below (a factory function, not a static source$) rather than the plain
-  // bind() used for useJarvisPanelsValue above: a panel's data$ only exists
-  // once that panel is live, so this looks it up from the current panels$
-  // snapshot on every emission and switchMaps into whichever data$ is live
-  // for that id — of(null) once the id is gone (dismissed/evicted), so a
-  // stale reader never keeps replaying a torn-down panel's last frame.
+  // bind() used for useJarvisPanelsValue above. The multiplexing itself
+  // (find the live panel for this id, switch to its data$, null once it's
+  // gone) lives in JarvisPanelsPresenter.panelData$ — reusing the
+  // presenter's existing per-panel stream cache — so this hook is a direct
+  // passthrough, exactly like useDepth below is to DepthPresenter.depth$.
   const [useJarvisPanelDataValue] = bind(
     (panelId: string) => {
-      return presenters.jarvisPanels.panels$.pipe(
-        switchMap((panels) => {
-          const panel = panels.find((p) => {
-            return p.panelId === panelId;
-          });
-          return panel ? panel.data$ : of(null);
-        }),
-      );
+      return presenters.jarvisPanels.panelData$(panelId);
     },
     null as PanelData | null,
   );

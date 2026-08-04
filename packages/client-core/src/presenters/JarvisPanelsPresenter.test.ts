@@ -12,7 +12,7 @@ import type { PanelSpecV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
-import type { PanelStreamDeps } from "./composePanelStream.js";
+import type { PanelData, PanelStreamDeps } from "./composePanelStream.js";
 import {
   createJarvisPanelsMachine,
   MAX_LIVE_PANELS,
@@ -214,7 +214,114 @@ describe("JarvisPanelsPresenter", () => {
     // must not tear down a still-live panel's port stream.
     expect(track.unsubscribeCount).toBe(0);
   });
+
+  it("panelData$ caches one stream per panelId — a repeat call returns the same Observable", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+    const first = presenter.panelData$("p1");
+    const second = presenter.panelData$("p1");
+    expect(second).toBe(first);
+  });
+
+  it("panelData$ returns distinct cached streams for distinct panelIds", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+    const a = presenter.panelData$("p1");
+    const b = presenter.panelData$("p2");
+    expect(b).not.toBe(a);
+  });
+
+  it("panelData$ emits null for an id with no live panel (never spawned, or unsupported)", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+    expect(latest(presenter.panelData$("never-spawned"))).toBeNull();
+
+    events$.next({
+      type: "panel",
+      panelId: "bad",
+      spec: UNSUPPORTED_SENTINEL_SPEC,
+    });
+    expect(latest(presenter.panelData$("bad"))).toBeNull();
+  });
+
+  it("panelData$ relays the live panel's resolved PanelData, keyed by panelId", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+    });
+
+    expect(latest(presenter.panelData$("p1"))).toMatchObject({
+      kind: "table",
+    });
+  });
+
+  it("panelData$ switches to the new panel's data after a dismiss + respawn under the same id — never replays the torn-down panel's last frame", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const trackA = instrumentedTicks();
+    const trackB = instrumentedTicks();
+    const deps = makeDeps({
+      pricing: fakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
+    });
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    // Subscribed once, up front — the same Observable reference is read
+    // across the whole dismiss+respawn cycle below (mirrors how a UI reader
+    // that mounted before the respawn would keep reading it).
+    const dataFeed = presenter.panelData$("p1");
+    expect(latest(dataFeed)).toBeNull();
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: makeSpec({
+        source: { kind: "fxTicks", symbols: ["SYMA"] },
+        viz: { kind: "line" },
+      }),
+    });
+    const first = latest(dataFeed) as LinePanelData;
+    expect(first.kind).toBe("line");
+    expect(first.series[0]?.label).toBe("SYMA");
+
+    presenter.dismissPanel("p1");
+    expect(latest(dataFeed)).toBeNull();
+
+    // A brand-new panel spawned under the SAME id, sourcing a different
+    // symbol — proves the cached stream re-resolves rather than sticking to
+    // whatever "p1" used to mean.
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: makeSpec({
+        source: { kind: "fxTicks", symbols: ["SYMB"] },
+        viz: { kind: "line" },
+      }),
+    });
+    const second = latest(dataFeed) as LinePanelData;
+    expect(second.kind).toBe("line");
+    expect(second.series[0]?.label).toBe("SYMB");
+  });
 });
+
+// A named tag (rather than an inline `{ kind: "line" }` literal) so
+// `Extract<PanelData, ...>` never takes an inline object type argument — the
+// repo's `no-restricted-syntax` bans that even inside a type alias (mirrors
+// JarvisMachine.ts's `ConfirmRequestTag`).
+interface LineKindTag {
+  readonly kind: "line";
+}
+type LinePanelData = Extract<PanelData, LineKindTag>;
 
 function makeSpec(
   overrides: Partial<PanelSpecV1> & Pick<PanelSpecV1, "source" | "viz">,
