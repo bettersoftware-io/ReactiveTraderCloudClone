@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
 import { DEFAULT_JARVIS_BRAIN, Direction } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
+import type { JarvisEvent, JarvisHistoryEntry, PanelSpecV1 } from "@rtc/shared";
 
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
 import type {
@@ -20,6 +20,7 @@ import {
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TURNS_PER_SESSION,
 } from "./jarvisRunnerConfig.js";
+import { RENDER_PANEL_TOOL_NAME } from "./renderPanelTool.js";
 
 const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
 const DESK_LINK_FALTERED_MESSAGE =
@@ -1058,6 +1059,162 @@ describe("AnthropicAgentLoop", () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it("(Task 3) render_panel is composed into the live tool list even when buildTools contributes none", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "hi")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "hi" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(), // contributes zero registry tools
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi");
+
+    expect(calls).toHaveLength(1);
+    const toolNames = asFakeTools(calls[0]?.params.tools ?? []).map((tool) => {
+      return tool.name;
+    });
+    expect(toolNames).toContain(RENDER_PANEL_TOOL_NAME);
+  });
+
+  it("(Task 3) render_panel pushes a panel event onto the SAME turn stream, interleaved with toolEvent/delta/done in call order", async () => {
+    const panelStream = fakeStream(
+      [
+        toolUseStartEvent(0, "t1", RENDER_PANEL_TOOL_NAME, {
+          spec: panelSpecFixture(),
+        }),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: RENDER_PANEL_TOOL_NAME,
+            input: { spec: panelSpecFixture() },
+          },
+        ],
+      },
+    );
+
+    const finalStream = fakeStream([textDeltaEvent(0, "Pulled it up, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Pulled it up, sir." }],
+    });
+
+    let toolResult = "";
+
+    function factory(params: FactoryParams): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield panelStream;
+
+          const tool = asFakeTools(params.tools).find((candidate) => {
+            return candidate.name === RENDER_PANEL_TOOL_NAME;
+          });
+          toolResult = (await tool?.run({ spec: panelSpecFixture() })) ?? "";
+
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      knownSymbols: ["GBPUSD"],
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "chart GBPUSD vol");
+
+    expect(events).toEqual([
+      { type: "toolEvent", tool: RENDER_PANEL_TOOL_NAME, status: "running" },
+      { type: "toolEvent", tool: RENDER_PANEL_TOOL_NAME, status: "done" },
+      {
+        type: "panel",
+        panelId: expect.stringMatching(/^panel-/),
+        spec: panelSpecFixture(),
+      },
+      { type: "delta", text: "Pulled it up, sir." },
+      { type: "done" },
+    ]);
+    expect(toolResult).toMatch(/^Rendered panel panel-.+: GBP Volatility$/);
+  });
+
+  it("(Task 3) an unknown symbol in the panel spec is rejected via the loop's own knownSymbols, and no panel event is pushed", async () => {
+    const badSpec: PanelSpecV1 = {
+      v: 1,
+      title: "Bogus",
+      source: { kind: "fxTicks", symbols: ["ZZZXXX"] },
+      transforms: [],
+      viz: { kind: "line" },
+    };
+    const panelStream = fakeStream(
+      [
+        toolUseStartEvent(0, "t1", RENDER_PANEL_TOOL_NAME, { spec: badSpec }),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: RENDER_PANEL_TOOL_NAME,
+            input: { spec: badSpec },
+          },
+        ],
+      },
+    );
+    const finalStream = fakeStream([textDeltaEvent(0, "No good, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "No good, sir." }],
+    });
+    let toolResult = "";
+
+    function factory(params: FactoryParams): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield panelStream;
+
+          const tool = asFakeTools(params.tools).find((candidate) => {
+            return candidate.name === RENDER_PANEL_TOOL_NAME;
+          });
+          toolResult = (await tool?.run({ spec: badSpec })) ?? "";
+
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      knownSymbols: ["GBPUSD", "EURUSD"], // ZZZXXX is not in this roster
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "chart ZZZXXX");
+
+    expect(
+      events.some((event) => {
+        return event.type === "panel";
+      }),
+    ).toBe(false);
+    expect(toolResult).toBe("source.symbols: unknown symbol: ZZZXXX.");
+  });
 });
 
 // ── fake-runner scripting helpers ──────────────────────────────────────
@@ -1287,6 +1444,16 @@ function fakeExecuteTradeTool(
       onExecute();
       return JSON.stringify({ tradeId: "T-1", status: "Filled" });
     },
+  };
+}
+
+function panelSpecFixture(): PanelSpecV1 {
+  return {
+    v: 1,
+    title: "GBP Volatility",
+    source: { kind: "priceHistory", symbols: ["GBPUSD"] },
+    transforms: [{ kind: "rollingVol", samples: 20 }],
+    viz: { kind: "line" },
   };
 }
 

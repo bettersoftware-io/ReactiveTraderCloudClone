@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { PANEL_VIZ_KINDS } from "@rtc/shared";
+
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 
 /**
@@ -42,6 +44,24 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
 
   it("instructs pair-precision price formatting", () => {
     expect(JARVIS_SYSTEM_PROMPT.toLowerCase()).toContain("precision");
+  });
+
+  it("mentions render_panel and every panel viz kind (derived from the shared const array, not a hardcoded list)", () => {
+    expect(JARVIS_SYSTEM_PROMPT).toContain("render_panel");
+
+    for (const kind of PANEL_VIZ_KINDS) {
+      expect(JARVIS_SYSTEM_PROMPT).toContain(kind);
+    }
+  });
+
+  it("mentions targetPanelId — the edit-in-place affordance for restyling an already-rendered panel", () => {
+    expect(JARVIS_SYSTEM_PROMPT).toContain("targetPanelId");
+  });
+
+  it("carries two panel few-shot examples: one authoring a new panel, one editing via targetPanelId", () => {
+    const lower = JARVIS_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain("example — author");
+    expect(lower).toContain("example — edit");
   });
 
   it("names none of the trademarked film lines", () => {
