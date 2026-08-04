@@ -42,18 +42,29 @@ New file `packages/motion-core/src/priceTicks.ts`, pure and zero-dep:
 export function priceTicks(cmin: number, cmax: number): readonly number[];
 ```
 
-- `rawStep = (cmax − cmin) / 4`; snap **up** to the nearest nice step
-  (`m × 10^k`, `m ∈ {1, 2, 5}`, i.e. the smallest nice step ≥ rawStep).
+- `rawStep = (cmax − cmin) / 4`; round to a nice step by **threshold**, not
+  snap-up: with `err = rawStep / 10^floor(log10(rawStep))`, the multiplier is
+  `err ≥ √50 → 10`, `err ≥ √10 → 5`, `err ≥ √2 → 2`, else `1` (d3's
+  tick-increment rule). *(Amended 2026-08-05: the originally-drafted
+  "smallest nice step ≥ rawStep" under-produces — range 101→109.5 gives
+  rawStep 2.125 → snap-up picks 5 → exactly ONE tick at 105. Threshold
+  rounding keeps step within ~[rawStep/1.6, rawStep·1.4], which is what
+  makes the 3–6 count guarantee true; the worked example below is
+  unchanged.)*
 - Ticks are `k · step` for integer `k` from `ceil(cmin/step)` to
   `floor(cmax/step)` — computed from the integer `k` each time (no
   floating-point accumulation drift). Endpoints inclusive.
 - Worked example (the contract fixture's visible range 339→400):
   raw 15.25 → step 20 → `[340, 360, 380, 400]`.
 - **Degenerate guard:** `cmax ≤ cmin` returns `[cmin]` (unreachable with real
-  OHLC data; keeps the function total). A range so narrow it contains no
-  multiple of the chosen step cannot occur: the step is derived from the
-  range, so at least `floor(4 · …)`-ish multiples always fit; the unit suite
-  sweeps ranges to pin count ∈ [3, 6].
+  OHLC data; keeps the function total).
+- **Count contract (amended 2026-08-05):** typically 3–6 with 4 the design
+  target; the HARD bounds are **[2, 7]** — at the threshold boundaries the
+  chosen step can lose one tick to endpoint alignment (e.g. 390.4→419 →
+  step 10 → `[400, 410]`), exactly as d3's tick engine behaves. A [3, 6]
+  guarantee would require a second adjustment pass for a case TradingView
+  itself renders with 2 lines; not worth the machinery. The unit suite
+  sweeps ranges to pin count ∈ [2, 7].
 
 ## 4. Scene derivation (`chartScene.ts`)
 
@@ -73,19 +84,22 @@ export function priceTicks(cmin: number, cmax: number): readonly number[];
 - Candles, crosshair, indicator overlays, volume, panes, navigator, time
   axis: untouched.
 
-## 5. The only shell change (twinned)
+## 5. Shell changes: none
 
-Labels currently hang *between* lines; under nice ticks the label belongs
-*centered on* its line. Each client's chart label CSS rule gains
-`transform: translateY(-50%)` — one line in `client-react`'s chart module.css
-and one in `client-solid`'s twin. Nothing else in either shell changes.
+*(Amended 2026-08-05 — the drafted `translateY(-50%)` CSS line is
+unnecessary.)* The label projection already centers a label on its anchor:
+`chartCssVars.ts` emits `--ltop: calc(<top>% - 6px)`, and −6px is half the
+label's fixed 12px line-height. Under the old between-lines fractions that
+calc was a nudge; under on-line ticks it is exactly the centering we want.
+Zero changes in either client's shell or CSS.
 
 ## 6. Testing
 
 - **`priceTicks` unit suite** (new `priceTicks.test.ts`): table-driven step
-  selection across magnitudes (339→400 ⇒ `[340, 360, 380, 400]`; a sub-1
-  range picking a fractional step; a 5-step case; a 1-step case), endpoints
-  inclusive, every tick an exact multiple of the step, count ∈ [3, 6] over a
+  selection across magnitudes (339→400 ⇒ `[340, 360, 380, 400]`; the
+  snap-up regression 101→109.5 ⇒ `[102, 104, 106, 108]`; a sub-1 fractional
+  step; the boundary 2-tick case 390.4→419 ⇒ `[400, 410]`), endpoints
+  inclusive, every tick an exact multiple of the step, count ∈ [2, 7] over a
   sweep of ranges, degenerate `cmax ≤ cmin` ⇒ `[cmin]`.
 - **`chartScene` test updates:** grid/label derivation (same `top` per tick;
   label text is the tick's `toFixed(2)`); log-mode grid tops equal
