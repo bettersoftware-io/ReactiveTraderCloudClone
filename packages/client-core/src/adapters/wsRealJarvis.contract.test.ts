@@ -467,6 +467,40 @@ describe("WsJarvisAdapter panel events", () => {
     ]);
   });
 
+  it("REGRESSION: the emitted spec is parsePanelSpec's NORMALIZED result, not the raw wire payload re-emitted verbatim", () => {
+    // Pins the seam a mutation (`spec: spec as never` on the happy path in
+    // `buildPanelEvent`) can silently pass: a payload spec that already
+    // matches VALID_PANEL_SPEC field-for-field can't distinguish "emitted the
+    // raw payload" from "emitted parsePanelSpec's rebuilt object" under
+    // structural equality. An UNKNOWN extra field does distinguish them —
+    // parsePanelSpec reconstructs the PanelSpecV1 field-by-field from its own
+    // known keys, so a raw pass-through would leak "bogus" onto the emitted
+    // event and a normalized one would not.
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("show me GBP volatility").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_PANEL, {
+      turnId,
+      panelId: "panel-1",
+      spec: { ...VALID_PANEL_SPEC, bogus: "x" },
+    });
+
+    expect(received).toHaveLength(1);
+    const event = received[0];
+
+    if (event?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(event.spec).toEqual(VALID_PANEL_SPEC);
+    expect("bogus" in event.spec).toBe(false);
+  });
+
   it("an INVALID spec substitutes UNSUPPORTED_SENTINEL_SPEC (by reference), keeping the wire panelId", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsJarvisAdapter(ws);
