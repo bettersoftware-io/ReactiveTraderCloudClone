@@ -45,16 +45,19 @@ const DEFAULT_VISIBLE = 60;
 const LAST = candleAt(299);
 
 describe("Y-scale pill — head pill drives the real chart column (shared eqWorkspace)", () => {
-  it("LOG pill toggles the axis mode on and off", async () => {
-    const { head } = mountPillWorkspace();
+  it("LOG pill toggles the axis mode on and off, and the panel's chart follows", async () => {
+    const { head, panel } = mountPillWorkspace();
 
     expect(head.yScaleActive()).toBe(false);
+    await panel.waitUntilYScaleAttr("linear");
 
     await head.toggleYScale();
     expect(head.yScaleActive()).toBe(true);
+    await panel.waitUntilYScaleAttr("log");
 
     await head.toggleYScale();
     expect(head.yScaleActive()).toBe(false);
+    await panel.waitUntilYScaleAttr("linear");
   });
 });
 
@@ -71,6 +74,11 @@ describe("Y-scale rendering — CandleChart direct mount", () => {
     const chart = mountChart();
     const linTop = chart.candleBodyVar(30, "--top");
     const linLabels = chart.priceLabels();
+
+    // 4 grid lines BEFORE the switch too — the case below only proves the
+    // count holds if both sides of the comparison are actually asserted.
+    expect(chart.visibleTestids("chart-grid-line")).toBe(4);
+    expect(linLabels).toHaveLength(4);
 
     chart.setProps({ yScale: "log" });
 
