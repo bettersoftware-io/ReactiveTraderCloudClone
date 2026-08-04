@@ -166,6 +166,11 @@ describe("parsePanelSpec — title", () => {
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
   });
 
+  it("accepts a title at exactly 1 char (the minimum)", () => {
+    const spec = { ...minimalValidSpec(), title: "x" };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
   it("rejects a non-string title", () => {
     const spec = { ...minimalValidSpec(), title: 42 };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
@@ -232,6 +237,28 @@ describe("parsePanelSpec — source", () => {
       },
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
+  });
+
+  it("accepts exactly 8 known symbols (the maximum)", () => {
+    const eightKnownSymbols = [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "EURUSD",
+      "GBPUSD",
+    ];
+
+    const spec = {
+      ...minimalValidSpec(),
+      source: { kind: "fxTicks", symbols: eightKnownSymbols },
+    };
+    expect(parsePanelSpec(spec, knownSymbols)).toEqual({
+      ok: true,
+      spec,
+    });
   });
 
   it("rejects a symbol not in knownSymbols", () => {
@@ -312,6 +339,22 @@ describe("parsePanelSpec — transforms", () => {
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
 
+  it("accepts window.seconds at exactly 10 (the minimum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "window", seconds: 10 }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
+  it("accepts window.seconds at exactly 3600 (the maximum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "window", seconds: 3600 }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
   it("rejects rollingVol.samples below 2", () => {
     const spec = {
       ...minimalValidSpec(),
@@ -332,6 +375,22 @@ describe("parsePanelSpec — transforms", () => {
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
 
+  it("accepts rollingVol.samples at exactly 2 (the minimum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "rollingVol", samples: 2 }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
+  it("accepts rollingVol.samples at exactly 500 (the maximum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "rollingVol", samples: 500 }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
   it("rejects topN.n below 1", () => {
     const spec = {
       ...minimalValidSpec(),
@@ -350,6 +409,22 @@ describe("parsePanelSpec — transforms", () => {
       transforms: [{ kind: "topN", n: 9, by: "value" }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
+  });
+
+  it("accepts topN.n at exactly 1 (the minimum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "topN", n: 1, by: "value" }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
+  });
+
+  it("accepts topN.n at exactly 8 (the maximum)", () => {
+    const spec = {
+      ...minimalValidSpec(),
+      transforms: [{ kind: "topN", n: 8, by: "value" }],
+    };
+    expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
   });
 
   it("rejects an invalid topN.by", () => {
