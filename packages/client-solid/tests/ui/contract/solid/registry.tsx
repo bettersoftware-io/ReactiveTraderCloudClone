@@ -37,6 +37,7 @@ import {
   InstrumentTabs,
   JarvisOrb,
   JarvisOverlay,
+  JarvisPanelLayer,
   JarvisUsageCard,
   KpiRow,
   LatencyHistogram,
@@ -216,6 +217,7 @@ import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/conn
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
 import { JarvisOrb as JarvisOrbComponent } from "#/ui/shell/jarvis/JarvisOrb";
 import { JarvisOverlay as JarvisOverlayComponent } from "#/ui/shell/jarvis/JarvisOverlay";
+import { JarvisPanelLayer as JarvisPanelLayerComponent } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { PowerSaverRoot as PowerSaverRootComponent } from "#/ui/shell/power/PowerSaverRoot";
 import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
@@ -809,6 +811,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     JarvisOverlay,
     (): JSX.Element => {
       return <JarvisOverlayComponent />;
+    },
+  ],
+  [
+    JarvisPanelLayer,
+    (): JSX.Element => {
+      return <JarvisPanelLayerComponent />;
     },
   ],
   [

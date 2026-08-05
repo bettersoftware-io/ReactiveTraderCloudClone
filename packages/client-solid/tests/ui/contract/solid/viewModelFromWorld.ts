@@ -2,10 +2,14 @@ import { state } from "@rx-state/core";
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
+import { catchError } from "rxjs/operators";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type {
+  JarvisMachineHandle,
+  JarvisPanelVm,
+  PanelData,
   RfqSubmissionState,
   TicketSubmissionState,
   WorkspaceTab,
@@ -14,6 +18,7 @@ import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
   createJarvisMachine,
+  createJarvisPanelsMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -22,9 +27,7 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
-  type JarvisIntents,
-  type JarvisState,
-  type Machine,
+  JarvisPanelsPresenter,
 } from "@rtc/client-core";
 import type {
   AmbientStyle,
@@ -98,13 +101,13 @@ function wrapSubject<T>(subject: BehaviorSubject<T>): Accessor<T> {
  * Every `solidViewModel(world)` call (one per `mountWith`/`mount`) reuses the
  * same cached machine, mirroring the react driver's own jarvisMachines cache
  * so a co-mounted JarvisOrb + JarvisOverlay observe the same open/phase/
- * entries. */
-const jarvisMachines = new WeakMap<
-  World,
-  Machine<JarvisState, JarvisIntents>
->();
+ * entries. Typed as the widened `JarvisMachineHandle` (not the plain
+ * `Machine`) so `getJarvisPanelsPresenter` below can read its `events$` —
+ * Task 6's sole event source for the generative-UI panels machine, mirroring
+ * composition.ts's own `jarvis.events$` wiring. */
+const jarvisMachines = new WeakMap<World, JarvisMachineHandle>();
 
-function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
+function getJarvisMachine(world: World): JarvisMachineHandle {
   let machine = jarvisMachines.get(world);
 
   if (!machine) {
@@ -132,6 +135,39 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
   }
 
   return machine;
+}
+
+/** The REAL `JarvisPanelsPresenter` (Task 9), one shared instance PER WORLD
+ * — cached like `getJarvisMachine` above, fed by that same cached machine's
+ * `events$` (mirrors `composition.ts`'s own catchError/EMPTY guard, required
+ * since `createJarvisPanelsMachine`'s `events$` input is TERMINAL on error).
+ * Read directly with `toSignal(state(...))` at each call site below — no
+ * extra warm-BehaviorSubject bridge needed here (unlike the react driver's
+ * sibling fixture, which has no `@rx-state/core` dependency to reach for):
+ * `state(source$, default)` always emits synchronously on subscribe (the
+ * default if the source doesn't emit synchronously itself), so `toSignal`
+ * never throws even before this presenter's own panels have ticked. */
+const jarvisPanelsPresenters = new WeakMap<World, JarvisPanelsPresenter>();
+
+function getJarvisPanelsPresenter(world: World): JarvisPanelsPresenter {
+  let presenter = jarvisPanelsPresenters.get(world);
+
+  if (!presenter) {
+    const machine = getJarvisMachine(world);
+    presenter = new JarvisPanelsPresenter(
+      createJarvisPanelsMachine(
+        machine.events$.pipe(
+          catchError(() => {
+            return EMPTY;
+          }),
+        ),
+      ),
+      world.panelStreamDeps,
+    );
+    jarvisPanelsPresenters.set(world, presenter);
+  }
+
+  return presenter;
 }
 
 /** Build a reactive ViewModel backed by the neutral World — the Solid
@@ -761,6 +797,24 @@ export function solidViewModel(world: World): ViewModel {
     // the World subject, mirroring useTopology.
     useJarvisUsage: () => {
       return wrapSubject(world.jarvisUsage$);
+    },
+    // Generative-UI desk panels (Task 9): the REAL JarvisPanelsPresenter,
+    // fed by the same jarvis.events$ the REAL JarvisMachine above emits —
+    // see getJarvisPanelsPresenter's doc for the full wiring.
+    useJarvisPanels: () => {
+      const presenter = getJarvisPanelsPresenter(world);
+      return {
+        panels: toSignal(
+          state(presenter.panels$, [] as readonly JarvisPanelVm[]),
+        ),
+        dismissPanel: presenter.dismissPanel,
+      };
+    },
+    useJarvisPanelData: (panelId: string) => {
+      const presenter = getJarvisPanelsPresenter(world);
+      return toSignal(
+        state(presenter.panelData$(panelId), null as PanelData | null),
+      );
     },
     useTopology: () => {
       return wrapSubject(world.topology$);

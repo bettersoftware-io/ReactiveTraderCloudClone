@@ -10,6 +10,7 @@ import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
+import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -39,6 +40,7 @@ export function App(): JSX.Element {
       <ConnectionOverlay />
       <LockScreen />
       <JarvisOverlay />
+      <JarvisPanelLayer />
     </div>
   );
 }

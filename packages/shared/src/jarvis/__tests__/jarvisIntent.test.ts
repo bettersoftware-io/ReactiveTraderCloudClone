@@ -87,7 +87,34 @@ describe("matchJarvisIntent", () => {
     });
   });
 
-  it("rule 5: moving/movers/market words -> movers", () => {
+  it("rule 5: volatility/panel-request words -> showPanel", () => {
+    expect(matchJarvisIntent("show me gbp volatility", knownSymbols)).toEqual({
+      kind: "showPanel",
+    });
+    expect(matchJarvisIntent("pull up a vol panel", knownSymbols)).toEqual({
+      kind: "showPanel",
+    });
+    expect(matchJarvisIntent("show me a price chart", knownSymbols)).toEqual({
+      kind: "showPanel",
+    });
+  });
+
+  it("rule 6: 'make it/that a <viz>' -> restylePanel, with the viz parsed", () => {
+    expect(matchJarvisIntent("make it a heatmap", knownSymbols)).toEqual({
+      kind: "restylePanel",
+      viz: "heatmap",
+    });
+    expect(matchJarvisIntent("make that a table", knownSymbols)).toEqual({
+      kind: "restylePanel",
+      viz: "table",
+    });
+    expect(matchJarvisIntent("Make It A Line", knownSymbols)).toEqual({
+      kind: "restylePanel",
+      viz: "line",
+    });
+  });
+
+  it("rule 7: moving/movers/market words -> movers", () => {
     expect(matchJarvisIntent("what's moving", knownSymbols)).toEqual({
       kind: "movers",
     });
@@ -96,14 +123,14 @@ describe("matchJarvisIntent", () => {
     ).toEqual({ kind: "movers" });
   });
 
-  it("rule 6: a bare known symbol -> quote", () => {
+  it("rule 8: a bare known symbol -> quote", () => {
     expect(matchJarvisIntent("where is EURUSD?", knownSymbols)).toEqual({
       kind: "quote",
       symbol: "EURUSD",
     });
   });
 
-  it("rule 7: help/capability words -> help", () => {
+  it("rule 9: help/capability words -> help", () => {
     expect(matchJarvisIntent("what can you do for me?", knownSymbols)).toEqual({
       kind: "help",
     });
@@ -112,7 +139,7 @@ describe("matchJarvisIntent", () => {
     ).toEqual({ kind: "help" });
   });
 
-  it("rule 8: greeting words -> greeting", () => {
+  it("rule 10: greeting words -> greeting", () => {
     expect(matchJarvisIntent("hi there", knownSymbols)).toEqual({
       kind: "greeting",
     });
@@ -124,9 +151,15 @@ describe("matchJarvisIntent", () => {
     });
   });
 
-  it("rule 9: anything else -> fallback", () => {
+  it("rule 11: anything else -> fallback", () => {
     expect(matchJarvisIntent("xyzzy", knownSymbols)).toEqual({
       kind: "fallback",
+    });
+  });
+
+  it("priority: a volatility phrase resolves to showPanel, not movers ('volatil' substring collision)", () => {
+    expect(matchJarvisIntent("show me gbp volatility", knownSymbols)).toEqual({
+      kind: "showPanel",
     });
   });
 

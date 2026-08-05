@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { PANEL_VIZ_KINDS } from "@rtc/shared";
+
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 
 /**
@@ -42,6 +44,45 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
 
   it("instructs pair-precision price formatting", () => {
     expect(JARVIS_SYSTEM_PROMPT.toLowerCase()).toContain("precision");
+  });
+
+  it("mentions render_panel and every panel viz kind (derived from the shared const array, not a hardcoded list)", () => {
+    expect(JARVIS_SYSTEM_PROMPT).toContain("render_panel");
+
+    for (const kind of PANEL_VIZ_KINDS) {
+      expect(JARVIS_SYSTEM_PROMPT).toContain(kind);
+    }
+  });
+
+  it("mentions targetPanelId — the edit-in-place affordance for restyling an already-rendered panel", () => {
+    expect(JARVIS_SYSTEM_PROMPT).toContain("targetPanelId");
+  });
+
+  it("carries two panel few-shot examples: one authoring a new panel, one editing via targetPanelId", () => {
+    const lower = JARVIS_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain("example — author");
+    expect(lower).toContain("example — edit");
+  });
+
+  it("wraps both few-shot examples in the tool's real input envelope ({spec: …}), never the bare spec", () => {
+    // The tool schema requires {spec, targetPanelId?} with additionalProperties
+    // false — a bare-spec example would teach the model an input the tool
+    // rejects, costing a self-correction round-trip on the flagship demo turn.
+    const exampleLines = JARVIS_SYSTEM_PROMPT.split("\n").filter((line) => {
+      return line.startsWith("Example — ");
+    });
+
+    expect(exampleLines).toHaveLength(2);
+
+    for (const line of exampleLines) {
+      expect(line).toMatch(/render_panel (?:again )?with \{spec: \{/);
+    }
+
+    const editLine = exampleLines.find((line) => {
+      return line.startsWith("Example — edit");
+    });
+
+    expect(editLine).toContain("targetPanelId:");
   });
 
   it("names none of the trademarked film lines", () => {

@@ -2350,3 +2350,217 @@ const jarvisUsageSnapshot: JarvisUsageSnapshot = {
 fixtures["admin-jarvis-usage"] = makeAppData({
   jarvisUsage: jarvisUsageSnapshot,
 });
+
+// ── Task 10 (generative-UI round 1): desk-panel visual scenarios ──────────
+// One `JarvisPanelLayer` fixture per `PanelViz.kind` plus the unsupported
+// sentinel — all hand-frozen (no live simulator tick, no Date.now/random),
+// mirroring the shapes `composePanelStream` actually emits (see
+// packages/client-core/src/presenters/composePanelStream.ts's `PanelData`
+// union) rather than routing through the real interpreter: the visual tier
+// seeds the ViewModel's `useJarvisPanels`/`useJarvisPanelData` fakes
+// directly (see buildFakeViewModel.ts), so there is no `World`/machine to
+// drive here. Each fixture seeds exactly one live panel, so the layer's
+// down-left cascade (nth-child fan, `JarvisPanelLayer.module.css`) never
+// enters the frame — only the single-panel base case is pixel-pinned.
+
+// jarvis/panel-line: a two-series line chart with both annotation kinds
+// (an `hline` resistance level, an `info` zone) so PanelLine's annotation
+// rendering — otherwise untouched by any contract spec (Task 9's concern) —
+// gets a golden.
+fixtures["jarvis-panel-line"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-line-1",
+      title: "GBP Volatility",
+      rationale: "20-tick rolling volatility on GBPUSD, requested turn #1.",
+      status: "live",
+      vizKind: "line",
+    },
+  ],
+  jarvisPanelData: {
+    "panel-line-1": {
+      kind: "line",
+      series: [
+        {
+          label: "GBPUSD",
+          points: [
+            { t: 0, v: 1.2652 },
+            { t: 1, v: 1.2671 },
+            { t: 2, v: 1.2648 },
+            { t: 3, v: 1.2695 },
+            { t: 4, v: 1.2712 },
+            { t: 5, v: 1.2683 },
+          ],
+        },
+        {
+          label: "GBPUSD (20-tick avg)",
+          points: [
+            { t: 0, v: 1.2661 },
+            { t: 1, v: 1.2663 },
+            { t: 2, v: 1.2665 },
+            { t: 3, v: 1.2669 },
+            { t: 4, v: 1.2674 },
+            { t: 5, v: 1.2678 },
+          ],
+        },
+      ],
+      annotations: [
+        { kind: "hline", value: 1.27, label: "Resistance", tone: "warn" },
+        { kind: "zone", from: 1.262, to: 1.266, tone: "info" },
+      ],
+    },
+  },
+});
+
+// jarvis/panel-table: three tone-coloured rows (up/down/flat) so PanelTable's
+// per-row tone styling is pinned in one shot.
+fixtures["jarvis-panel-table"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-table-1",
+      title: "Open Positions",
+      rationale: "Blotter snapshot, requested turn #1.",
+      status: "live",
+      vizKind: "table",
+    },
+  ],
+  jarvisPanelData: {
+    "panel-table-1": {
+      kind: "table",
+      columns: ["Symbol", "Qty", "PnL"],
+      rows: [
+        { cells: ["EURUSD", "+2,000,000", "+12,450"], tone: "up" },
+        { cells: ["GBPUSD", "-1,000,000", "-3,220"], tone: "down" },
+        { cells: ["USDJPY", "500,000", "0"], tone: "flat" },
+      ],
+    },
+  },
+});
+
+// jarvis/panel-gauge: single tone-coloured readout.
+fixtures["jarvis-panel-gauge"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-gauge-1",
+      title: "Rolling Volatility",
+      rationale: "20-tick rolling volatility on GBPUSD, requested turn #1.",
+      status: "live",
+      vizKind: "gauge",
+    },
+  ],
+  jarvisPanelData: {
+    "panel-gauge-1": {
+      kind: "gauge",
+      label: "GBP 20-tick vol",
+      value: "0.42%",
+      delta: "+0.08%",
+      tone: "warn",
+    },
+  },
+});
+
+// jarvis/panel-spark-grid: four cells, each with ≥2 points so
+// PanelSparkGrid's path-drawing helper (empty below 2 points — Task 9's
+// concern) actually draws a line, not just the empty-state branch.
+fixtures["jarvis-panel-spark-grid"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-spark-grid-1",
+      title: "FX Snapshot",
+      rationale: "Majors overview, requested turn #1.",
+      status: "live",
+      vizKind: "sparkGrid",
+    },
+  ],
+  jarvisPanelData: {
+    "panel-spark-grid-1": {
+      kind: "sparkGrid",
+      cells: [
+        {
+          label: "EURUSD",
+          points: [1.08, 1.081, 1.079, 1.082, 1.083],
+          change: "+0.28%",
+          tone: "up",
+        },
+        {
+          label: "GBPUSD",
+          points: [1.265, 1.264, 1.266, 1.263, 1.262],
+          change: "-0.24%",
+          tone: "down",
+        },
+        {
+          label: "USDJPY",
+          points: [149.2, 149.3, 149.1, 149.4, 149.5],
+          change: "+0.2%",
+          tone: "up",
+        },
+        {
+          label: "AUDUSD",
+          points: [0.658, 0.657, 0.658, 0.657, 0.656],
+          change: "-0.3%",
+          tone: "down",
+        },
+      ],
+    },
+  },
+});
+
+// jarvis/panel-heatmap: two rows x three window cells, spanning positive,
+// negative and near-zero intensities so PanelHeatmap's 7-bucket
+// `data-intensity` styling shows more than one colour. Shaped like the
+// series→heatmap restyle path's real output (this round's flagship restyle:
+// packages/client-core/src/presenters/composePanelStream.ts's `renderHeatmap`
+// consuming `series` frames — commit f52a1992c), not asserted against that
+// path here (this is a static ViewModel fake, not a `World`-driven spec —
+// see Task 9's contract spec for that assertion).
+fixtures["jarvis-panel-heatmap"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-heatmap-1",
+      title: "Cross-Pair Momentum",
+      rationale: "1m/5m/15m returns across two majors, requested turn #1.",
+      status: "live",
+      vizKind: "heatmap",
+    },
+  ],
+  jarvisPanelData: {
+    "panel-heatmap-1": {
+      kind: "heatmap",
+      rows: [
+        {
+          label: "EURUSD",
+          cells: [
+            { label: "1m", intensity: 0.4, text: "+0.12%" },
+            { label: "5m", intensity: -0.6, text: "-0.31%" },
+            { label: "15m", intensity: 0.9, text: "+0.54%" },
+          ],
+        },
+        {
+          label: "GBPUSD",
+          cells: [
+            { label: "1m", intensity: -0.2, text: "-0.05%" },
+            { label: "5m", intensity: 0.1, text: "+0.02%" },
+            { label: "15m", intensity: -0.8, text: "-0.44%" },
+          ],
+        },
+      ],
+    },
+  },
+});
+
+// jarvis/panel-unsupported: JarvisPanelsPresenter.buildPanelVm's own
+// UNSUPPORTED_TITLE substitution ("Unsupported panel") for a panel whose
+// `status` is "unsupported" — no `jarvisPanelData` entry, mirroring the real
+// VM (its `data$` is EMPTY and JarvisPanelBody never reads `data` for this
+// status).
+fixtures["jarvis-panel-unsupported"] = makeAppData({
+  jarvisPanels: [
+    {
+      panelId: "panel-unsupported-1",
+      title: "Unsupported panel",
+      rationale: null,
+      status: "unsupported",
+      vizKind: null,
+    },
+  ],
+});

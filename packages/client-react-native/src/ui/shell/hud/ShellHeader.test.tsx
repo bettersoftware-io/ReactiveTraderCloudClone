@@ -114,12 +114,6 @@ jest.mock("#/ui/shell/lock/LockButton", () => {
   };
 });
 
-jest.mock("#/ui/shell/auth/LogoutButton", () => {
-  const react = require("react");
-  const { Text } = require("react-native");
-  return {
-    LogoutButton: (): unknown => {
-      return react.createElement(Text, null, "Sign out");
-    },
-  };
-});
+// No `LogoutButton` mock: P7 moved sign-out out of the header and into the
+// Appearance sheet, so the header no longer imports it. A mock for a component
+// this file never renders would be dead weight that still reads as intent.

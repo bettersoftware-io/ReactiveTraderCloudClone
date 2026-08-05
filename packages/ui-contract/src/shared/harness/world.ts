@@ -1,4 +1,5 @@
-import { BehaviorSubject, type Observable, of, Subject } from "rxjs";
+import { BehaviorSubject, EMPTY, type Observable, of, Subject } from "rxjs";
+import { filter } from "rxjs/operators";
 
 import type {
   ActivityEntry,
@@ -12,6 +13,7 @@ import type {
   JarvisEvent,
   JarvisPort,
   JarvisUsageSnapshot,
+  PanelStreamDeps,
   SessionUser,
   ThroughputView,
 } from "@rtc/client-core";
@@ -346,6 +348,16 @@ export interface World {
    * once per World, so every component reading useJarvis() through this World
    * shares one machine instance (mirrors eqWorkspace's singleton wiring). */
   readonly jarvis: JarvisWorld;
+  /** The domain-port façade `composePanelStream` needs to interpret a
+   * `PanelSpecV1` into `PanelData` (Task 9) — built directly from World's OWN
+   * existing subjects: `priceFor`/`historyFor` back the `pricing` source,
+   * `sources.useTrades` backs `blotter`, `sources.useAnalytics` backs
+   * `analytics`. Seeding a live desk panel's underlying data is therefore the
+   * SAME `setHistory`/`setPrice`/`push({useTrades}/{useAnalytics})` calls
+   * every other spec already uses — no separate panel-only seeding surface.
+   * `referenceData.getCurrencyPairs`/`pricing.getRfqQuote` exist only to
+   * satisfy the port shape; no panel `source` kind reads either. */
+  readonly panelStreamDeps: PanelStreamDeps;
   /** Live availability of the Jarvis backend, threaded DIRECTLY into the REAL
    * createJarvisMachine's `availability$` dep (mirrors jarvisSkin above) —
    * drives `state.available` (JarvisOrb hides itself, useJarvisHotkey no-ops
@@ -735,6 +747,48 @@ export function createWorld(
     adminSeed.jarvisUsage ?? null,
   );
 
+  // panelStreamDeps (Task 9): a PanelStreamDeps façade wired straight to
+  // World's own existing subjects — see the World.panelStreamDeps doc above
+  // for why each field is built this way.
+  const panelStreamDeps: PanelStreamDeps = {
+    referenceData: {
+      getCurrencyPairs: () => {
+        return sources.useCurrencyPairs.asObservable();
+      },
+    },
+    pricing: {
+      getPriceUpdates: (symbol: string) => {
+        return priceFor(symbol).pipe(
+          filter((price): price is Price => {
+            return price !== null;
+          }),
+        );
+      },
+      getPriceHistory: (symbol: string) => {
+        return historyFor(symbol);
+      },
+      // No panel `source` kind reads RFQ quoting — EMPTY satisfies the port
+      // shape without inventing a fake quote result no spec needs.
+      getRfqQuote: () => {
+        return EMPTY;
+      },
+    },
+    blotter: {
+      getTradeStream: () => {
+        return sources.useTrades.asObservable();
+      },
+    },
+    analytics: {
+      getAnalytics: () => {
+        return sources.useAnalytics.pipe(
+          filter((positions): positions is PositionUpdates => {
+            return positions !== null;
+          }),
+        );
+      },
+    },
+  };
+
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
@@ -873,6 +927,7 @@ export function createWorld(
     ambientStyle,
     jarvisSkin,
     jarvis,
+    panelStreamDeps,
     jarvisAvailability,
     jarvisBrain,
     jarvisEffort,

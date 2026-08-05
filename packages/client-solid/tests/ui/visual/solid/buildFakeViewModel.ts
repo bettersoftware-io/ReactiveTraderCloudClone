@@ -54,9 +54,11 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 };
 
 import type { AppData } from "@ui-visual-shared/appData";
+import { EMPTY } from "rxjs";
 
 import type {
   BootSequenceState,
+  JarvisPanelVm,
   JarvisState,
   NotionalView,
   SessionUser,
@@ -534,6 +536,28 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // golden that never mounts JarvisUsageCard.
     useJarvisUsage: () => {
       return at(data.jarvisUsage ?? null);
+    },
+    // Generative-UI desk panels (Task 10 of this round) — data-driven off
+    // AppData.jarvisPanels; fixtures that don't set it fall back to the
+    // pre-Task-10-of-this-round empty stub (layer renders nothing). `data$`
+    // is never read by JarvisPanelLayer (it reads the panel body separately
+    // via useJarvisPanelData below), so EMPTY is a safe filler satisfying
+    // JarvisPanelVm's shape without a real stream. dismissPanel stays a
+    // no-op — static screenshots never fire it.
+    useJarvisPanels: () => {
+      const panels: readonly JarvisPanelVm[] = (data.jarvisPanels ?? []).map(
+        (panel) => {
+          return { ...panel, data$: EMPTY };
+        },
+      );
+      return { panels: at(panels), dismissPanel: noop };
+    },
+    // Per-panelId rendered body, paired with useJarvisPanels above — reads
+    // AppData.jarvisPanelData directly (no stream involved in a static
+    // screenshot); a missing key returns null, same as the real VM before
+    // the panel's first data frame.
+    useJarvisPanelData: (panelId: string) => {
+      return at(data.jarvisPanelData?.[panelId] ?? null);
     },
   };
 }

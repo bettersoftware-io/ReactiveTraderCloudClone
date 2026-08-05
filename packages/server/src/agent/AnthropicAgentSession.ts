@@ -17,7 +17,7 @@ import type {
   JarvisToolDefinition,
 } from "@rtc/agent-tools";
 import { DEFAULT_JARVIS_BRAIN, DEFAULT_JARVIS_EFFORT } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
+import type { JarvisEvent, JarvisHistoryEntry, PanelSpecV1 } from "@rtc/shared";
 
 import type { UsageMeter } from "../services/UsageMeter.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
@@ -29,6 +29,7 @@ import {
   JARVIS_MAX_TURNS_PER_SESSION,
   JARVIS_TOOL_FRIENDLY_NAMES,
 } from "./jarvisRunnerConfig.js";
+import { buildRenderPanelTool } from "./renderPanelTool.js";
 
 /**
  * Caps how many tool-round-trip iterations ONE turn's `toolRunner()` call may
@@ -84,8 +85,10 @@ const SYSTEM_BLOCKS: readonly BetaTextBlockParam[] = [
     // single number for "this model". It's 512 tokens on the sonnet/opus-
     // class models but 4,096 tokens on Haiku 4.5 (the brain
     // `DEFAULT_JARVIS_BRAIN` now defaults to) — a much higher bar. Today's
-    // persona+seven-tool-schema prefix is only ~1.3k tokens: comfortably
-    // over 512 (sonnet/opus cache turn-to-turn as intended) but under 4,096
+    // persona+eight-tool-schema prefix (seven `@rtc/agent-tools` desk tools
+    // plus `render_panel`, whose input schema embeds the full
+    // `PANEL_SPEC_JSON_SCHEMA`) is only ~2.1k tokens: comfortably over 512
+    // (sonnet/opus cache turn-to-turn as intended) but under 4,096
     // (Haiku's breakpoint is a silent no-op — the API just serves the
     // request uncached, no error). That's an accepted tradeoff, not a bug:
     // Haiku's per-token input price is already ~5x cheaper than the cache
@@ -208,6 +211,16 @@ function adaptTool(tool: JarvisToolDefinition): BetaRunnableTool<unknown> {
 
 function friendlyToolName(name: string): string {
   return JARVIS_TOOL_FRIENDLY_NAMES[name] ?? name;
+}
+
+/** Production `RenderPanelDeps.mintPanelId` — tests inject their own
+ * deterministic mint instead (see `renderPanelTool.test.ts` and this
+ * class's own constructor default). Uses the same global `crypto.randomUUID`
+ * `requestConfirmation` already relies on below, not a `node:crypto`
+ * import — Node exposes Web Crypto globally, so this file has never needed
+ * that import for a UUID. */
+function defaultMintPanelId(): string {
+  return `panel-${crypto.randomUUID()}`;
 }
 
 /** Plain code-point order, not `localeCompare` — the cache-prefix
@@ -340,6 +353,17 @@ export class AnthropicAgentSession implements AgentSession {
     // is a no-op unless a real `UsageMeter` (or a test spy satisfying this
     // narrow `Pick`) is actually wired in.
     private readonly usageMeter?: Pick<UsageMeter, "recordTokens">,
+    // `render_panel`'s roster check — see `RenderPanelDeps.knownSymbols`'s
+    // doc comment. Defaulted to `[]` (parsePanelSpec treats an empty roster
+    // as "skip the membership check") rather than made required, so every
+    // existing test/call site that doesn't care about panels is unaffected.
+    knownSymbols: readonly string[] = [],
+    // Test seam only — production always takes the `defaultMintPanelId`
+    // below, never overriding it. Not threaded through
+    // `AnthropicAgentLoopOptions`: nothing in production needs a different
+    // mint strategy, unlike `knownSymbols`, which genuinely varies (the real
+    // pair roster vs. a test's fixture roster).
+    mintPanelId: () => string = defaultMintPanelId,
   ) {
     const confirmTrade: ConfirmGate = (details: JarvisConfirmDetails) => {
       return this.requestConfirmation(details);
@@ -347,10 +371,36 @@ export class AnthropicAgentSession implements AgentSession {
 
     const jarvisTools = buildTools(confirmTrade);
 
+    // `render_panel` is LIVE-brain-only (the scripted engine already emits
+    // `panel` events itself — see `ScriptedJarvisEngine` — so
+    // `ScriptedAgentSession` needs no equivalent). `emitPanel` closes over
+    // THIS session's own `currentPush` (via `emitPanelEvent` below) the same
+    // way `confirmTrade` above closes over THIS session's own confirmation
+    // registry — never a second, competing event channel.
+    const renderPanelTool = buildRenderPanelTool({
+      knownSymbols,
+      emitPanel: (panelId: string, spec: PanelSpecV1): void => {
+        this.emitPanelEvent(panelId, spec);
+      },
+      mintPanelId,
+    });
+
     // Deterministic cache prefix (see SYSTEM_BLOCKS' doc comment): sort by
     // name so the tools block is byte-identical turn to turn regardless of
     // buildTools' own ordering.
-    this.tools = [...jarvisTools].map(adaptTool).sort(toolNameOrder);
+    this.tools = [...jarvisTools, renderPanelTool]
+      .map(adaptTool)
+      .sort(toolNameOrder);
+  }
+
+  /** Pushes a `panel` event onto the SAME per-turn stream every other event
+   * (`delta`/`toolEvent`/`confirmRequest`/`done`) goes through — `currentPush`
+   * is only non-null while a turn's `runOneTurn` is in flight (see `runTurn`),
+   * which is exactly when a tool's `run()` can execute, so this is never
+   * reachable with no turn open in practice. `?.` still guards it, matching
+   * `requestConfirmation`'s own defensiveness. */
+  private emitPanelEvent(panelId: string, spec: PanelSpecV1): void {
+    this.currentPush?.({ type: "panel", panelId, spec });
   }
 
   private requestConfirmation(details: JarvisConfirmDetails): Promise<boolean> {

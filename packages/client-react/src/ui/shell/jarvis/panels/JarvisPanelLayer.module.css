@@ -1,0 +1,171 @@
+/* J.A.R.V.I.S generative-UI desk-panel cascade — a fixed top-right stack of
+   independently-live panels, fanned down-left ~16px per panel (nth-child,
+   capped at MAX_LIVE_PANELS=4 — packages/client-core's
+   JarvisPanelsMachine.ts — so the CSS constant below is a literal mirror of
+   that limit, not an arbitrary cap).
+
+   PERF (docs/performance.md, binding): panel spawn is one `transform+opacity`
+   `animation` (T5: one animation per property per element); dismiss's
+   transform+opacity plays through WAAPI (JarvisPanelLayer.tsx's
+   animateOnce), not declarative CSS, so it isn't duplicated here; the viz-swap
+   crossfade is the SAME one-shot fade-in keyframe as spawn, retriggered by a
+   `key` change on `.body`'s child. No var() inside an animated transform
+   (T4), no backdrop-filter, no infinite loop anywhere in this file — so
+   there is nothing for power-saver Calm to touch; Freeze/reduced-motion still
+   drop the one-shot animations below for consistency with the rest of the
+   HUD (a completed one-shot isn't steady-state churn, but every panel goes
+   identically inert under Freeze). */
+
+.layer {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  pointer-events: auto;
+  width: 280px;
+  margin-top: 16px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--glow);
+  animation: jarvis-panel-in 0.28s ease;
+}
+
+.panel:first-child {
+  margin-top: 0;
+}
+
+/* Down-left cascade fan, capped at MAX_LIVE_PANELS=4. `margin-top` (via
+   `.panel`'s base 16px + the `:first-child` reset above) staggers each
+   sibling down; `margin-right` staggers it left again since the layer is
+   right-anchored (`align-items: flex-end`) — together a down-left fan, each
+   sibling also lower in stacking order so the newest-appearing (first
+   child) reads on top. */
+.panel:nth-child(1) {
+  z-index: 4;
+}
+
+.panel:nth-child(2) {
+  z-index: 3;
+  margin-right: 16px;
+}
+
+.panel:nth-child(3) {
+  z-index: 2;
+  margin-right: 32px;
+}
+
+.panel:nth-child(4) {
+  z-index: 1;
+  margin-right: 48px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--panel-head);
+  border-radius: 6px 6px 0 0;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.dismiss {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  color: var(--text-primary);
+  background: var(--chip);
+}
+
+.body {
+  min-height: 40px;
+  animation: jarvis-panel-in 0.22s ease;
+}
+
+.unsupported {
+  padding: 14px 12px;
+}
+
+.unsupportedTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--accent-aware);
+}
+
+.unsupportedText {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.pending {
+  padding: 14px 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@keyframes jarvis-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------- motion budgets --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .body {
+    animation: none;
+  }
+}
+
+:root[data-power-saver="freeze"] .panel,
+:root[data-power-saver="freeze"] .body {
+  animation: none;
+}

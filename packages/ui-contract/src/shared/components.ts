@@ -175,6 +175,7 @@ import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverla
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
 import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
+import { JarvisPanelLayerPage } from "./pages/shell/jarvis/JarvisPanelLayerPage";
 import {
   LayoutEnginePage,
   type LayoutEngineProps,
@@ -468,6 +469,13 @@ export const JarvisOverlay = component<
   JarvisOverlayPage
 >((ctx) => {
   return new JarvisOverlayPage(ctx);
+});
+
+export const JarvisPanelLayer = component<
+  Record<string, never>,
+  JarvisPanelLayerPage
+>((ctx) => {
+  return new JarvisPanelLayerPage(ctx);
 });
 
 export const AdminPanel = component<Record<string, never>, AdminPanelPage>(

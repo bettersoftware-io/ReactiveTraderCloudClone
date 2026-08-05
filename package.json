@@ -71,7 +71,7 @@
     "lint:eslint:types": "eslint . --config eslint.config.typed.mjs",
     "lint:css": "stylelint \"packages/*/src/**/*.css\"",
     "visual:jitter": "pnpm --filter @rtc/tests visual:jitter",
-    "jarvis:smoke:live": "tsx scripts/jarvis-live-smoke.ts"
+    "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",

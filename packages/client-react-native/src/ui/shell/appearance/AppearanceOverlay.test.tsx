@@ -62,6 +62,10 @@ function vm(): ViewModel {
         dismiss: (): void => {},
       };
     },
+    // Required since P7 put `LogoutButton` in the sheet (via `AppearanceScreen`).
+    useAuth: () => {
+      return { logout: (): void => {} };
+    },
   } as unknown as ViewModel;
 }
 

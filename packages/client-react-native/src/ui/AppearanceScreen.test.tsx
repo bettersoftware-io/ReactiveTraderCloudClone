@@ -146,6 +146,24 @@ test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async
   expect(reboot).toHaveBeenCalledTimes(1);
 });
 
+// P7 moved sign-out here from the HUD header. Asserted on the SHEET rather
+// than only in `LogoutButton.test.tsx`, which renders the button directly and
+// would still pass if this screen stopped mounting it — leaving the app with
+// no way to sign out at all. The header's own test cannot catch that either:
+// it no longer knows the control exists.
+test("sign-out is on the sheet and drives useAuth().logout()", async () => {
+  const logout = jest.fn();
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { logout },
+    ),
+  );
+  await fireEvent.press(screen.getByTestId("logout-button"));
+  expect(logout).toHaveBeenCalledTimes(1);
+});
+
 interface FakeViewModelOverrides {
   modePreference?: "dark" | "light" | "system";
   ambient?: {
@@ -165,6 +183,7 @@ interface FakeViewModelOverrides {
     setStyle: (s: "aurora" | "rays") => void;
   };
   reboot?: () => void;
+  logout?: () => void;
 }
 
 function fakeViewModel(
@@ -212,6 +231,13 @@ function fakeViewModel(
         reboot: overrides.reboot ?? (() => {}),
         dismiss: () => {},
       };
+    },
+    // Required since P7 moved `LogoutButton` into this screen's last section.
+    // The screen itself never touches auth — the seam is here purely because
+    // it now renders a child that does, which is the honest cost of the sheet
+    // owning account actions.
+    useAuth: () => {
+      return { logout: overrides.logout ?? (() => {}) };
     },
   } as unknown as ViewModel;
 }
