@@ -1,5 +1,9 @@
-import type { Observable } from "rxjs";
-import { firstValueFrom, config as rxjsConfig } from "rxjs";
+import {
+  firstValueFrom,
+  type Observable,
+  of,
+  config as rxjsConfig,
+} from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,7 +16,7 @@ import type { JarvisEvent } from "@rtc/shared";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import { createApp } from "#/composition";
+import { createApp, createMachineFactories } from "#/composition";
 
 describe("composition — jarvis wiring", () => {
   it("app.presenters.jarvis starts with the greeting entry and the default skin", async () => {
@@ -120,12 +124,80 @@ describe("composition — jarvis wiring", () => {
     driverSub.unsubscribe();
     presenters.jarvis.dispose();
   });
+
+  // DEFERRAL (Task 6 review, ruled a documented deferral for Task 10/11):
+  // `jarvisDriver`'s `layout` dep is the SAME fresh-per-call factory
+  // `MachineFactories.layout` exposes to the UI (see JarvisDriverMachine.ts's
+  // own `layout` doc) — a "layout" DriveCommand therefore mutates a
+  // throwaway machine instance nothing else ever reads from. This test pins
+  // the target architecture (a driven layout command observable through the
+  // SAME composition-level machine factory) and is expected to RED today for
+  // exactly that reason; un-skip once composition.ts's `layout` factory
+  // (composition.ts:553, `createLayoutMachine(createDefaultLayoutPort(tab))`)
+  // becomes a memoized per-tab `layoutFor(tab)` singleton shared by both
+  // `createMachineFactories`'s `layout` field and `jarvisDriver`'s `layout`
+  // dep — `JarvisDriverDeps.layout`'s shape (`(tab) => Machine<LayoutState,
+  // LayoutIntents>`) is unchanged by that swap, so no JarvisDriverMachine
+  // code should need to change, only removing `.skip` here.
+  it.skip("a driven 'layout' command leaves the SAME tab's machine (read back through the composition-level machine factory) observably maximized", async () => {
+    const { presenters } = createApp({
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
+      connectionEvents: new ConnectionEventsSimulator(),
+      jarvis: layoutDrivingJarvisPort(),
+    });
+
+    presenters.jarvis.intents.send("maximize the equities chart");
+
+    // The driver's batch-first command applies immediately, but still
+    // through a REAL (non-virtual) scheduler here — give it a macrotask.
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    const layout = createMachineFactories(presenters).layout("equities");
+    const state = await firstValueFrom(layout.state$);
+
+    expect(state.maximized).toBe("eq-chart");
+
+    presenters.jarvis.dispose();
+  });
 });
 
 function explodingJarvisPort(): JarvisPort {
   return {
     ask: (): Observable<JarvisEvent> => {
       throw new Error("boom — simulated ask() failure");
+    },
+    confirm: (): void => {
+      // unused by this test
+    },
+  };
+}
+
+/** A JarvisPort whose ask() replies with a single "command" event driving a
+ * `layout: maximize` DriveCommand at the equities tab's "eq-chart" panel —
+ * used only by the deferral-artifact test above. */
+function layoutDrivingJarvisPort(): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [
+            {
+              kind: "layout",
+              op: "maximize",
+              tab: "equities",
+              panelId: "eq-chart",
+            },
+          ],
+        },
+      });
     },
     confirm: (): void => {
       // unused by this test

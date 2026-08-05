@@ -1,4 +1,4 @@
-import { of, Subject } from "rxjs";
+import { BehaviorSubject, NEVER, of, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -38,7 +38,7 @@ describe("createJarvisDriverMachine", () => {
     expect(seen[0]?.lastBatch).toEqual([]);
   });
 
-  it("applies a batch's commands in order, DRIVE_STAGGER_MS apart", () => {
+  it("the batch's first command applies immediately; later commands are DRIVE_STAGGER_MS apart", () => {
     const { seen } = run((h) => {
       h.ts.schedule(() => {
         h.events$.next(
@@ -53,11 +53,13 @@ describe("createJarvisDriverMachine", () => {
     const growing = seen.filter((e) => {
       return e.lastBatch.length > 0;
     });
+    // First command lands at the SAME frame the batch arrived (no dead
+    // pause); the second is DRIVE_STAGGER_MS later.
     expect(
       growing.map((e) => {
         return e.frame;
       }),
-    ).toEqual([1 + DRIVE_STAGGER_MS, 1 + DRIVE_STAGGER_MS * 2]);
+    ).toEqual([1, 1 + DRIVE_STAGGER_MS]);
     expect(growing[0]?.lastBatch).toEqual([
       { command: { kind: "switchTab", tab: "equities" }, status: "applied" },
     ]);
@@ -102,6 +104,41 @@ describe("createJarvisDriverMachine", () => {
       return e.lastBatch.length > 0;
     });
     // Both commands land at the SAME frame (1) — no stagger under freeze.
+    expect(
+      growing.map((e) => {
+        return e.frame;
+      }),
+    ).toEqual([1, 1]);
+  });
+
+  it("powerSaverLevel$ is re-read fresh per command — a mid-batch flip to freeze collapses the NEXT command's stagger, not just a value latched once at batch start", () => {
+    const level$ = new BehaviorSubject<PowerSaverLevel>("off");
+    const { seen } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              { kind: "switchTab", tab: "equities" },
+              { kind: "switchTab", tab: "fx" },
+            ]),
+          );
+        }, 1);
+        // Scheduled at the SAME frame as the batch, but registered AFTER it —
+        // TestScheduler runs same-frame actions in scheduling order, so this
+        // flip lands between the first command firing (index 0, always
+        // immediate) and the second command's own stagger read. A "read once
+        // at batch start" bug would have already captured "off" before this
+        // ever runs, landing command 2 at 1 + DRIVE_STAGGER_MS instead.
+        h.ts.schedule(() => {
+          level$.next("freeze");
+        }, 1);
+      },
+      { powerSaverLevel$: level$ },
+    );
+
+    const growing = seen.filter((e) => {
+      return e.lastBatch.length > 0;
+    });
     expect(
       growing.map((e) => {
         return e.frame;
@@ -182,6 +219,101 @@ describe("createJarvisDriverMachine", () => {
     expect(active).toBe("fx");
   });
 
+  it("layout restore/collapse/expand ops apply successfully (not routed to the unknown-op default)", () => {
+    const { seen, harness } = run((h) => {
+      h.ts.schedule(() => {
+        h.events$.next(
+          commandEvent([
+            {
+              kind: "layout",
+              op: "restore",
+              tab: "equities",
+              panelId: "eq-chart",
+            },
+            {
+              kind: "layout",
+              op: "collapse",
+              tab: "equities",
+              panelId: "eq-chart",
+            },
+            {
+              kind: "layout",
+              op: "expand",
+              tab: "equities",
+              panelId: "eq-chart",
+            },
+          ]),
+        );
+      }, 1);
+    });
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: {
+          kind: "layout",
+          op: "restore",
+          tab: "equities",
+          panelId: "eq-chart",
+        },
+        status: "applied",
+      },
+      {
+        command: {
+          kind: "layout",
+          op: "collapse",
+          tab: "equities",
+          panelId: "eq-chart",
+        },
+        status: "applied",
+      },
+      {
+        command: {
+          kind: "layout",
+          op: "expand",
+          tab: "equities",
+          panelId: "eq-chart",
+        },
+        status: "applied",
+      },
+    ]);
+    expect(harness.layoutSpy).toHaveBeenCalledTimes(3);
+
+    // The collapse command's own fresh machine instance actually recorded
+    // the collapse — proof `machine.intents.collapse` was really invoked,
+    // not just that the outcome says "applied".
+    const collapseMachine = harness.layoutSpy.mock.results[1]
+      ?.value as ReturnType<typeof createLayoutMachine>;
+    let collapsed: readonly string[] = [];
+    collapseMachine.state$
+      .subscribe((s) => {
+        collapsed = s.collapsed;
+      })
+      .unsubscribe();
+    expect(collapsed).toEqual(["eq-chart"]);
+  });
+
+  it("an unknown layout op (cast around the closed union) is skipped, not applied", () => {
+    const bogusOp = {
+      kind: "layout",
+      op: "obliterate",
+      tab: "equities",
+      panelId: "eq-chart",
+    } as unknown as DriveCommandV1;
+
+    const { seen, harness } = run((h) => {
+      h.ts.schedule(() => {
+        h.events$.next(commandEvent([bogusOp]));
+      }, 1);
+    });
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      { command: bogusOp, status: "skipped", reason: "unknown layout op" },
+    ]);
+    // The membership check passed (panelId IS known) so `layout(tab)` was
+    // called — the unknown-op branch is only reached after that.
+    expect(harness.layoutSpy).toHaveBeenCalledWith("equities");
+  });
+
   it("an unknown eqSelect symbol is skipped with a reason", () => {
     const { seen } = run((h) => {
       h.ts.schedule(() => {
@@ -194,6 +326,27 @@ describe("createJarvisDriverMachine", () => {
         command: { kind: "eqSelect", symbol: "ZZZZZZ" },
         status: "skipped",
         reason: 'unknown symbol "ZZZZZZ"',
+      },
+    ]);
+  });
+
+  it("eqSelect before knownSymbols$ has emitted is skipped 'watchlist not loaded' — never a false 'unknown symbol'", () => {
+    const { seen } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "eqSelect", symbol: "EURUSD" }]),
+          );
+        }, 1);
+      },
+      { knownSymbols$: NEVER },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "eqSelect", symbol: "EURUSD" },
+        status: "skipped",
+        reason: "watchlist not loaded",
       },
     ]);
   });
@@ -267,7 +420,33 @@ describe("createJarvisDriverMachine", () => {
     expect(indicators).toEqual(["ema50"]);
   });
 
-  it("eqPane follows the same already-set / applied rule as eqIndicator", () => {
+  it("eqPane already at the requested value is skipped 'already set' and the toggle intent is NOT called", () => {
+    const { seen, harness } = run((h) => {
+      // rsi starts OFF; requesting on:false is already satisfied.
+      h.ts.schedule(() => {
+        h.events$.next(
+          commandEvent([{ kind: "eqPane", id: "rsi", on: false }]),
+        );
+      }, 1);
+    });
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "eqPane", id: "rsi", on: false },
+        status: "skipped",
+        reason: "already set",
+      },
+    ]);
+    let panes: readonly string[] = [];
+    harness.eqWorkspace.state$
+      .subscribe((s) => {
+        panes = s.panes;
+      })
+      .unsubscribe();
+    expect(panes).toEqual([]);
+  });
+
+  it("eqPane NOT at the requested value is applied and the toggle intent IS called", () => {
     const { seen, harness } = run((h) => {
       h.ts.schedule(() => {
         h.events$.next(commandEvent([{ kind: "eqPane", id: "rsi", on: true }]));
@@ -360,6 +539,77 @@ describe("createJarvisDriverMachine", () => {
     ]);
   });
 
+  it("a throwing injected dep is caught per-command: the batch continues and the driver survives for the next batch", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const harness = buildHarness(ts);
+      const throwingWorkspaceNav: Harness["workspaceNav"] = {
+        ...harness.workspaceNav,
+        intents: {
+          switchTab: () => {
+            throw new Error("boom — switchTab blew up");
+          },
+        },
+      };
+
+      const handle = createJarvisDriverMachine({
+        ...depsFrom(harness),
+        workspaceNav: throwingWorkspaceNav,
+      });
+
+      let erroredOut = false;
+      const seen: JarvisDriverState[] = [];
+      const sub = handle.state$.subscribe({
+        next: (s: JarvisDriverState) => {
+          seen.push(s);
+        },
+        error: () => {
+          erroredOut = true;
+        },
+      });
+
+      ts.schedule(() => {
+        harness.events$.next(
+          commandEvent([
+            { kind: "switchTab", tab: "equities" }, // throws
+            { kind: "eqTimeframe", tf: "1W" }, // must still apply
+          ]),
+        );
+      }, 1);
+
+      // A SEPARATE, later batch — proves state$ itself never errored out.
+      ts.schedule(
+        () => {
+          harness.events$.next(
+            commandEvent([{ kind: "eqChartType", chart: "line" }]),
+          );
+        },
+        1 + DRIVE_STAGGER_MS + 1,
+      );
+
+      flush();
+      sub.unsubscribe();
+
+      expect(erroredOut).toBe(false);
+
+      const firstBatchFinal = seen.find((s) => {
+        return s.lastBatch.length === 2;
+      });
+      expect(firstBatchFinal?.lastBatch).toEqual([
+        {
+          command: { kind: "switchTab", tab: "equities" },
+          status: "skipped",
+          reason: "boom — switchTab blew up",
+        },
+        { command: { kind: "eqTimeframe", tf: "1W" }, status: "applied" },
+      ]);
+
+      expect(seen.at(-1)?.lastBatch).toEqual([
+        { command: { kind: "eqChartType", chart: "line" }, status: "applied" },
+      ]);
+    });
+  });
+
   it("a second batch arriving mid-stagger queues after the first (concatMap)", () => {
     const { seen } = run((h) => {
       h.ts.schedule(() => {
@@ -370,30 +620,25 @@ describe("createJarvisDriverMachine", () => {
           ]),
         );
       }, 1);
-      // Fires mid-first-batch's stagger (well before frame 1 + 2*DRIVE_STAGGER_MS).
-      h.ts.schedule(
-        () => {
-          h.events$.next(commandEvent([{ kind: "switchTab", tab: "admin" }]));
-        },
-        1 + DRIVE_STAGGER_MS + 1,
-      );
+      // Fires well before batch 1 completes (its 2nd command lands at
+      // 1 + DRIVE_STAGGER_MS = 351): a genuine mid-stagger arrival.
+      h.ts.schedule(() => {
+        h.events$.next(commandEvent([{ kind: "switchTab", tab: "admin" }]));
+      }, 100);
     });
 
     const growing = seen.filter((e) => {
       return e.lastBatch.length > 0;
     });
-    // batch 1's two commands land at 1+350 and 1+700; batch 2's single
-    // command only starts its own stagger once batch 1 fully completes, so
-    // it lands at 1+700+350 = 1051 — never interleaved earlier.
+    // batch 1's first command lands immediately (frame 1), its second
+    // DRIVE_STAGGER_MS later (351). Batch 2's own single command is index 0
+    // within ITS batch, so it too fires immediately — but only once batch 1's
+    // whole observable completes, i.e. also at frame 351, never at 100.
     expect(
       growing.map((e) => {
         return e.frame;
       }),
-    ).toEqual([
-      1 + DRIVE_STAGGER_MS,
-      1 + DRIVE_STAGGER_MS * 2,
-      1 + DRIVE_STAGGER_MS * 3,
-    ]);
+    ).toEqual([1, 1 + DRIVE_STAGGER_MS, 1 + DRIVE_STAGGER_MS]);
     expect(growing.at(-1)?.lastBatch).toEqual([
       { command: { kind: "switchTab", tab: "admin" }, status: "applied" },
     ]);
