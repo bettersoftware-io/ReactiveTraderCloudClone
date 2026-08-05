@@ -114,6 +114,15 @@ export {
   TOO_LONG_THRESHOLD_MS,
   TradeStatus,
 } from "./fx/trade.js";
+// Jarvis
+export type {
+  AnomalyDetectorConfig,
+  AnomalyEvent,
+} from "./jarvis/anomalyDetector.js";
+export {
+  DEFAULT_ANOMALY_CONFIG,
+  detectAnomalies,
+} from "./jarvis/anomalyDetector.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { AuthOutcome, AuthPort } from "./ports/authPort.js";
