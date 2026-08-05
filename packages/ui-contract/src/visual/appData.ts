@@ -10,6 +10,8 @@ import type {
   JarvisUsageSnapshot,
   NotionalView,
   OrderTicketState,
+  PanelData,
+  PanelStatus,
   RfqState,
   RfqSubmissionState,
   ThroughputView,
@@ -156,6 +158,24 @@ export interface AppData {
    * placeholder) — routed alongside `jarvis` above so a fixture that seeds
    * this actually reaches the card instead of silently capturing empty. */
   jarvisUsage?: JarvisUsageSnapshot | null;
+  /** Generative-UI desk panels J.A.R.V.I.S. has spawned (useJarvisPanels;
+   * `JarvisPanelLayer`, Task 10 of the generative-UI round) — defaults to
+   * none (the layer renders null). Each entry mirrors `JarvisPanelVm`'s
+   * chrome fields MINUS `data$`: the visual fakes route a panel's rendered
+   * BODY through `jarvisPanelData` below (keyed by panelId) instead of an
+   * Observable, since `useJarvisPanelData(panelId)` is read directly with no
+   * stream involved in a static screenshot. */
+  jarvisPanels?: readonly {
+    readonly panelId: string;
+    readonly title: string;
+    readonly rationale: string | null;
+    readonly status: PanelStatus;
+    readonly vizKind: PanelData["kind"] | null;
+  }[];
+  /** Per-panelId rendered body (useJarvisPanelData), paired with
+   * `jarvisPanels` above; a missing key returns null (the layer's
+   * "Connecting…" placeholder). */
+  jarvisPanelData?: Record<string, PanelData>;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

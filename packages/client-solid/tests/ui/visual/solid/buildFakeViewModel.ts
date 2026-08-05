@@ -54,9 +54,11 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 };
 
 import type { AppData } from "@ui-visual-shared/appData";
+import { EMPTY } from "rxjs";
 
 import type {
   BootSequenceState,
+  JarvisPanelVm,
   JarvisState,
   NotionalView,
   SessionUser,
@@ -517,16 +519,27 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useJarvisUsage: () => {
       return at(data.jarvisUsage ?? null);
     },
-    // No generative-UI panel AppData field yet (Task 6's overlay is a later
-    // task) — static empty panels, no-op dismiss (static screenshots never
-    // fire it), mirroring useJarvisPreferences's no-op-setter style above.
+    // Generative-UI desk panels (Task 10 of this round) — data-driven off
+    // AppData.jarvisPanels; fixtures that don't set it fall back to the
+    // pre-Task-10-of-this-round empty stub (layer renders nothing). `data$`
+    // is never read by JarvisPanelLayer (it reads the panel body separately
+    // via useJarvisPanelData below), so EMPTY is a safe filler satisfying
+    // JarvisPanelVm's shape without a real stream. dismissPanel stays a
+    // no-op — static screenshots never fire it.
     useJarvisPanels: () => {
-      return { panels: at([]), dismissPanel: noop };
+      const panels: readonly JarvisPanelVm[] = (data.jarvisPanels ?? []).map(
+        (panel) => {
+          return { ...panel, data$: EMPTY };
+        },
+      );
+      return { panels: at(panels), dismissPanel: noop };
     },
-    // Static screenshots never resolve a live panel body — always null,
-    // mirroring the always-empty useJarvisPanels() stub just above.
-    useJarvisPanelData: () => {
-      return at(null);
+    // Per-panelId rendered body, paired with useJarvisPanels above — reads
+    // AppData.jarvisPanelData directly (no stream involved in a static
+    // screenshot); a missing key returns null, same as the real VM before
+    // the panel's first data frame.
+    useJarvisPanelData: (panelId: string) => {
+      return at(data.jarvisPanelData?.[panelId] ?? null);
     },
   };
 }

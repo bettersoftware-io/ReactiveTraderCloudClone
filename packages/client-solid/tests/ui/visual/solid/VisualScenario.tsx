@@ -40,6 +40,11 @@ const FULL_BLEED = new Set([
   "LoginScreen",
   "PreferencesModal",
   "JarvisOverlay",
+  // Task 10 (generative-UI round 1): the desk-panel cascade is also
+  // `position: fixed` (top-right, JarvisPanelLayer.module.css), so it must
+  // render full-bleed like JarvisOverlay above rather than inside the
+  // padded inline-block scenario-root wrapper.
+  "JarvisPanelLayer",
 ]);
 
 interface VisualScenarioProps {

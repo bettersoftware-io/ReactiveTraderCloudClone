@@ -303,6 +303,28 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
   },
   "jarvis/overlay-confirm": { fullPage: true },
+
+  // Task 10 (generative-UI round 1): JarvisPanelLayer is `position: fixed`
+  // (top-right cascade, same as the overlay above), so it needs the same
+  // full-page treatment. Each waitForText targets a string that only exists
+  // once its renderer has actually painted (not just the panel chrome) —
+  // guards the first-mount race the vitest-browser tier is prone to (see
+  // reference_visual_scenario_add_recipe_and_gotchas). PanelLine renders no
+  // visible text of its own (SVG path only), so it waits on the panel title
+  // instead — still proof the card (and therefore its body) mounted.
+  "jarvis/panel-line": { fullPage: true, waitForText: "GBP Volatility" },
+  "jarvis/panel-table": { fullPage: true, waitForText: "+12,450" },
+  "jarvis/panel-gauge": { fullPage: true, waitForText: "0.42%" },
+  "jarvis/panel-spark-grid": { fullPage: true, waitForText: "+0.28%" },
+  "jarvis/panel-heatmap": { fullPage: true, waitForText: "+0.54%" },
+  // "UNSUPPORTED PANEL" alone is ambiguous under Playwright's default
+  // case-insensitive getByText — it also substring-matches the panel
+  // chrome's own title span ("Unsupported panel", JarvisPanelsPresenter's
+  // UNSUPPORTED_TITLE), so this targets the body copy's unique tail instead.
+  "jarvis/panel-unsupported": {
+    fullPage: true,
+    waitForText: "has no renderer",
+  },
 };
 
 /** Resolve the capture action for a scenario, mapping matrix-expanded names
