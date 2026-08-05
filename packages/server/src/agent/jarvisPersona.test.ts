@@ -112,6 +112,21 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     }
   });
 
+  it("accounts for EVERY Example line across BOTH tools' envelope pins — a third tool's example, or a malformed drive example missing the literal drive_app, must not silently escape both per-tool filters (the exact R1 drift mode these pins exist to catch)", () => {
+    const allExampleLines = exampleLines();
+    const panelExampleLines = allExampleLines.filter((line) => {
+      return line.includes("render_panel");
+    });
+    const driveExampleLines = allExampleLines.filter((line) => {
+      return line.includes("drive_app");
+    });
+
+    expect(allExampleLines).toHaveLength(4);
+    expect(panelExampleLines.length + driveExampleLines.length).toBe(
+      allExampleLines.length,
+    );
+  });
+
   it("names none of the trademarked film lines", () => {
     const lower = JARVIS_SYSTEM_PROMPT.toLowerCase();
     expect(lower).not.toContain("iron man");

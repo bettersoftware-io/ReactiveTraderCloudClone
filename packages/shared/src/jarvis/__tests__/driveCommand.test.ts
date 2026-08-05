@@ -548,10 +548,10 @@ describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as th
   function itemBranches(): readonly Record<string, unknown>[] {
     const schema = DRIVE_COMMAND_JSON_SCHEMA as unknown as {
       properties: {
-        commands: { items: { oneOf: readonly Record<string, unknown>[] } };
+        commands: { items: { anyOf: readonly Record<string, unknown>[] } };
       };
     };
-    return schema.properties.commands.items.oneOf;
+    return schema.properties.commands.items.anyOf;
   }
 
   function branchFor(kind: string): Record<string, unknown> {
@@ -573,7 +573,7 @@ describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as th
     return props[field]?.enum;
   }
 
-  it("has one oneOf branch per DRIVE_COMMAND_KINDS entry", () => {
+  it("has one anyOf branch per DRIVE_COMMAND_KINDS entry", () => {
     const kinds = itemBranches().map((branch) => {
       return (branch.properties as { kind: { const: string } }).kind.const;
     });

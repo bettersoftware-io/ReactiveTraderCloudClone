@@ -25,7 +25,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Raw JSON Schema for `drive_app`'s own input envelope. `commands` is
  * embedded VERBATIM from `DRIVE_COMMAND_JSON_SCHEMA` — the same
- * oneOf-per-kind item schema `parseDriveBatch` validates against, so the
+ * anyOf-per-kind item schema `parseDriveBatch` validates against, so the
  * two descriptions of "what a command looks like" cannot drift apart. The
  * batch's `v: 1` discriminant is an internal versioning concern with no
  * informational value to the model, so it is deliberately left OFF this

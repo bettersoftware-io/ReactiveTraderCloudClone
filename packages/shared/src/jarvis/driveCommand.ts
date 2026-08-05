@@ -451,16 +451,23 @@ export function parseDriveBatch(input: unknown): DriveBatchParseResult {
   return { ok: true, batch };
 }
 
-/** Raw JSON Schema for a single command entry, one branch per `kind` — a
- * `oneOf` rather than a flattened `properties` bag (unlike `panelSpec.ts`'s
+/** Raw JSON Schema for a single command entry, one branch per `kind` — an
+ * `anyOf` rather than a flattened `properties` bag (unlike `panelSpec.ts`'s
  * transform/annotation items) because two branches (`eqIndicator`,
  * `eqPane`) both use an `id` field drawn from a *different* closed set, so
  * a shared property would blur `DRIVE_INDICATORS` and `DRIVE_PANES`
- * together. Every `enum`/`const` below is spread from the same `const`
- * arrays `parseDriveBatch` checks against, so the two descriptions of
- * "what kinds exist" cannot drift. */
+ * together. `anyOf`, not `oneOf`: the installed `@anthropic-ai/sdk`'s own
+ * strict-schema canonicalizer (`lib/transform-json-schema.js`) rewrites
+ * `oneOf` → `anyOf` before sending it to the API, so `anyOf` is what
+ * Anthropic actually treats as canonical here — writing it directly avoids
+ * relying on an SDK-internal rewrite. The two keywords are semantically
+ * identical for this schema: every branch is mutually exclusive via its own
+ * `kind: {const: ...}` + `additionalProperties: false`, so at most one
+ * branch can ever validate. Every `enum`/`const` below is spread from the
+ * same `const` arrays `parseDriveBatch` checks against, so the two
+ * descriptions of "what kinds exist" cannot drift. */
 const DRIVE_COMMAND_ITEM_SCHEMA: Record<string, unknown> = {
-  oneOf: [
+  anyOf: [
     {
       type: "object",
       properties: {
@@ -571,11 +578,18 @@ const DRIVE_COMMAND_ITEM_SCHEMA: Record<string, unknown> = {
   ],
 };
 
-/** Raw JSON Schema for the drive-batch tool input — same style as
+/** Raw JSON Schema for a whole `DriveBatchV1` — same style as
  * `@rtc/agent-tools` and `PANEL_SPEC_JSON_SCHEMA`. Descriptive for the
  * model, not itself the enforcement mechanism: `parseDriveBatch` is the
  * actual gate, hand-rolled so its rejection messages can be returned to the
- * model verbatim. */
+ * model verbatim. NOT used verbatim as `drive_app`'s own tool `inputSchema`
+ * — the server's `driveAppTool.ts` builds its own model-facing envelope
+ * (deliberately omitting `v`, an internal constant with no informational
+ * value to the model) and consumes only this schema's `.properties.commands`
+ * sub-schema (embedded by reference, so it can't drift from what
+ * `parseDriveBatch` validates). This schema's own top-level shape (`{v,
+ * commands}`) is what `parseDriveBatch` validates against directly, and what
+ * a client-side apply adapter would validate a full batch against. */
 export const DRIVE_COMMAND_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
   properties: {
