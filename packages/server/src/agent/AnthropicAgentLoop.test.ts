@@ -16,6 +16,7 @@ import type {
   AnthropicRunnerFactory,
 } from "./AnthropicAgentSession.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
+import { DRIVE_APP_TOOL_NAME } from "./driveAppTool.js";
 import {
   JARVIS_HISTORY_MAX_MESSAGES,
   JARVIS_MAX_TURNS_PER_SESSION,
@@ -1240,6 +1241,158 @@ describe("AnthropicAgentLoop", () => {
     ).toBe(false);
     expect(toolResult).toBe("source.symbols: unknown symbol: ZZZXXX.");
   });
+
+  it("(Task 3) drive_app is composed into the live tool list even when buildTools contributes none", async () => {
+    const stream = fakeStream([textDeltaEvent(0, "hi")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "hi" }],
+    });
+    const { factory, calls } = scriptedRunner([stream]);
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      knownSymbols: [],
+      buildTools: buildToolsFixture(), // contributes zero registry tools
+      runnerFactory: factory,
+    });
+    const session = loop.createSession();
+
+    await runTurnCollecting(session, "hi");
+
+    expect(calls).toHaveLength(1);
+    const toolNames = asFakeTools(calls[0]?.params.tools ?? []).map((tool) => {
+      return tool.name;
+    });
+    expect(toolNames).toContain(DRIVE_APP_TOOL_NAME);
+  });
+
+  it("(Task 3) drive_app pushes a command event onto the SAME turn stream, interleaved with toolEvent/delta/done in call order", async () => {
+    const driveInput = driveBatchInputFixture();
+
+    const driveStream = fakeStream(
+      [
+        toolUseStartEvent(0, "t1", DRIVE_APP_TOOL_NAME, driveInput),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: DRIVE_APP_TOOL_NAME,
+            input: driveInput,
+          },
+        ],
+      },
+    );
+
+    const finalStream = fakeStream([textDeltaEvent(0, "Done, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "Done, sir." }],
+    });
+
+    let toolResult = "";
+
+    function factory(params: FactoryParams): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield driveStream;
+
+          const tool = asFakeTools(params.tools).find((candidate) => {
+            return candidate.name === DRIVE_APP_TOOL_NAME;
+          });
+          toolResult = (await tool?.run(driveInput)) ?? "";
+
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      knownSymbols: [],
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "open equities");
+
+    expect(events).toEqual([
+      { type: "toolEvent", tool: DRIVE_APP_TOOL_NAME, status: "running" },
+      { type: "toolEvent", tool: DRIVE_APP_TOOL_NAME, status: "done" },
+      {
+        type: "command",
+        batch: { v: 1, commands: driveInput.commands },
+      },
+      { type: "delta", text: "Done, sir." },
+      { type: "done" },
+    ]);
+    expect(toolResult).toBe("Drove the app, sir — applied: 1 command(s).");
+  });
+
+  it("(Task 3) an invalid drive batch is rejected via the tool's own parseDriveBatch, and no command event is pushed", async () => {
+    const badInput = { commands: [{ kind: "teleport" }] };
+
+    const driveStream = fakeStream(
+      [
+        toolUseStartEvent(0, "t1", DRIVE_APP_TOOL_NAME, badInput),
+        toolStopEvent(0),
+      ],
+      {
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: DRIVE_APP_TOOL_NAME,
+            input: badInput,
+          },
+        ],
+      },
+    );
+
+    const finalStream = fakeStream([textDeltaEvent(0, "No good, sir.")], {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: "No good, sir." }],
+    });
+    let toolResult = "";
+
+    function factory(params: FactoryParams): AnthropicRunner {
+      return {
+        async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
+          yield driveStream;
+
+          const tool = asFakeTools(params.tools).find((candidate) => {
+            return candidate.name === DRIVE_APP_TOOL_NAME;
+          });
+          toolResult = (await tool?.run(badInput)) ?? "";
+
+          yield finalStream;
+        },
+        pushMessages: (): void => {},
+      };
+    }
+
+    const loop = new AnthropicAgentLoop({
+      apiKey: "test-key",
+      buildTools: buildToolsFixture(),
+      runnerFactory: factory,
+      knownSymbols: [],
+    });
+    const session = loop.createSession();
+
+    const events = await runTurnCollecting(session, "teleport me");
+
+    expect(
+      events.some((event) => {
+        return event.type === "command";
+      }),
+    ).toBe(false);
+    expect(toolResult).toBe('commands[0].kind: unknown kind "teleport"');
+  });
 });
 
 // ── fake-runner scripting helpers ──────────────────────────────────────
@@ -1480,6 +1633,14 @@ function panelSpecFixture(): PanelSpecV1 {
     transforms: [{ kind: "rollingVol", samples: 20 }],
     viz: { kind: "line" },
   };
+}
+
+/** A `drive_app` tool CALL input — the model-facing envelope (no `v`; see
+ * `driveAppTool.ts`'s `buildInputSchema` doc comment), not a `DriveBatchV1`
+ * itself. Single-command so the loop-composition test's `applied: 1`
+ * assertion is unambiguous. */
+function driveBatchInputFixture(): { commands: unknown[] } {
+  return { commands: [{ kind: "switchTab", tab: "equities" }] };
 }
 
 function buildToolsFixture(
