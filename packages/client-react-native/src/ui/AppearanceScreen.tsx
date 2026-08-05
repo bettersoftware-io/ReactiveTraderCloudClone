@@ -12,6 +12,8 @@ import {
 } from "react-native";
 
 import {
+  POWER_SAVER_LEVELS,
+  type PowerSaverLevel,
   THEME_MODE_PREFERENCES,
   THEME_SKINS,
   type ThemeMode,
@@ -25,7 +27,7 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The Appearance settings screen: a mode row (tap-to-cycle, unchanged) plus a
  * segmented dark/light control, theme cards (swatch + name) for the six
- * skins, ambient + power-saver toggles, and a replay-boot action. All state
+ * skins, an ambient toggle, a three-level power-saver control, and a replay-boot action. All state
  * and every write is behind the ViewModel; this only renders view state and
  * dispatches the exposed intents — no direct storage, no domain writes. */
 export function AppearanceScreen({
@@ -44,10 +46,16 @@ export function AppearanceScreen({
   const { enabled: ambientEnabled, setEnabled: setAmbientEnabled } =
     useAnimatedBackground();
 
-  // The mobile screen stays a 2-state toggle (Off/On) — it never reaches
-  // Freeze (deferred to a later mobile-UI phase); `isCalm` (level !== "off")
-  // is the boolean it needs, and toggling flips between "off" and "calm".
-  const { isCalm: powerSaverEnabled, setLevel: setPowerSaverLevel } =
+  // P5: a THREE-state segmented control, mirroring the web's. This was a
+  // 2-state Off/On toggle that could only reach "calm", with Freeze "deferred
+  // to a later mobile-UI phase" — which is why the item was recorded as
+  // "Freeze renders the same as Calm on RN". That description pointed at the
+  // wrong layer: the gates honour Freeze throughout (54 files read
+  // `useShellMotionEnabled`/`useBootMotionEnabled`/`isFreeze`, and the visual
+  // harness seeds `freeze` directly — that is how `boot/static` is pinned).
+  // The plumbing was never missing; the CONTROL simply could not select the
+  // level, so no phone user could ever reach it.
+  const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
   const { style: ambientStyle, setStyle } = useAmbientStyle();
   const { reboot } = useBootGate();
@@ -213,21 +221,31 @@ export function AppearanceScreen({
           </View>
         </BlurCard>
         <BlurCard mode={mode}>
-          <Pressable
-            testID="appearance-powersaver-toggle"
-            style={powerSaverEnabled ? styles.toggleRowOn : styles.toggleRow}
-            onPress={() => {
-              setPowerSaverLevel(powerSaverEnabled ? "off" : "calm");
-            }}
-          >
-            <Text style={styles.toggleLabel}>Power saver</Text>
-            <Text style={styles.toggleValue}>
-              {powerSaverEnabled ? "ON" : "OFF"}
-            </Text>
-          </Pressable>
+          <View style={styles.segmented}>
+            {POWER_SAVER_LEVELS.map((level) => {
+              return (
+                <Pressable
+                  key={level}
+                  testID={`appearance-powersaver-${level}`}
+                  style={
+                    powerSaverLevel === level
+                      ? styles.segmentActive
+                      : styles.segment
+                  }
+                  onPress={() => {
+                    setPowerSaverLevel(level);
+                  }}
+                >
+                  <Text style={styles.segmentLabel}>
+                    {POWER_SAVER_LABELS[level]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </BlurCard>
         <Text style={styles.toggleCaption}>
-          Power saver reduces motion & re-renders.
+          {POWER_SAVER_CAPTIONS[powerSaverLevel]}
         </Text>
       </View>
 
@@ -255,6 +273,23 @@ export function AppearanceScreen({
 
 /** Number of forward zero-arg cycle() steps (dark → light → system → dark)
  * needed to land the live preference on `target`, from `current`. */
+/** The prototype names the levels rather than showing a switch, because three
+ * states cannot be an on/off affordance. */
+const POWER_SAVER_LABELS: Record<PowerSaverLevel, string> = {
+  off: "Off",
+  calm: "Calm",
+  freeze: "Freeze",
+};
+
+/** Each level earns its own caption: "reduces motion" and "stops all motion"
+ * are different promises, and Freeze's is the one worth stating plainly, since
+ * a user who picks it and still sees movement has found a bug. */
+const POWER_SAVER_CAPTIONS: Record<PowerSaverLevel, string> = {
+  off: "All motion and ambient effects run normally.",
+  calm: "Reduces motion & re-renders; ambient effects stay.",
+  freeze: "Stops all motion, including the boot splash and ambient layer.",
+};
+
 interface AppearanceScreenProps {
   /** Slot: fired after the boot splash is re-raised, so a host that covers the
    * screen (the Appearance overlay) can get out of its way. Optional — the
