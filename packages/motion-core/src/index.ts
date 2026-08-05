@@ -65,12 +65,15 @@ export { crosshairVm } from "./crosshairVm.js";
 export type {
   Drawing,
   DrawingAnchor,
+  DrawingGrip,
   DrawingHandle,
   DrawingSceneItem,
 } from "./drawingScene.js";
 export {
+  dragDrawing,
   drawingScene,
   hitTestDrawings,
+  hitTestGrip,
   pointerToAnchor,
 } from "./drawingScene.js";
 export type { FlipDelta, Rect } from "./flip.js";

@@ -175,3 +175,137 @@ export function hitTestDrawings(
 
   return best;
 }
+
+/** What a cursor-tool pointer-down grabbed on the SELECTED drawing.
+ * `"a"`/`"b"` are a trendline's endpoint handles; `"body"` is its line body
+ * (rigid translate); `"level"` is an hline's handle OR body — both mean the
+ * same vertical-only drag. */
+export interface DrawingGrip {
+  readonly id: string;
+  readonly part: "a" | "b" | "body" | "level";
+}
+
+/** Handle grab tolerance, in plot-percent — deliberately looser than the
+ * line-body tolerance (handles are point targets, lines are extended). */
+const HANDLE_TOL_PCT = 2.5;
+
+/** Hit-tests a pointer position against the SELECTED item's grab points:
+ * handles first (point distance, HANDLE_TOL_PCT), then the line body
+ * (segment distance, DEFAULT_TOL_PCT). Items with `selected: false` are
+ * never grips — selected-only drag is enforced here, in one pure function.
+ * Same %-space anisotropy caveat as {@link hitTestDrawings}. */
+export function hitTestGrip(
+  scene: readonly DrawingSceneItem[],
+  xPct: number,
+  yPct: number,
+): DrawingGrip | null {
+  for (const item of scene) {
+    if (!item.selected) {
+      continue;
+    }
+
+    if (item.kind === "trendline") {
+      // Handle order matches drawingScene's emission: [a, b].
+      const parts = ["a", "b"] as const;
+
+      for (let i = 0; i < item.handles.length; i++) {
+        const h = item.handles[i];
+
+        if (h && Math.hypot(xPct - h.x, yPct - h.y) <= HANDLE_TOL_PCT) {
+          return { id: item.id, part: parts[i] ?? "b" };
+        }
+      }
+
+      const bodyD = segmentDistance(
+        xPct,
+        yPct,
+        item.x1,
+        item.y1,
+        item.x2,
+        item.y2,
+      );
+
+      if (bodyD <= DEFAULT_TOL_PCT) {
+        return { id: item.id, part: "body" };
+      }
+
+      continue;
+    }
+
+    // hline: the handle and the body both mean the same vertical-only drag.
+    const onHandle = item.handles.some((h) => {
+      return Math.hypot(xPct - h.x, yPct - h.y) <= HANDLE_TOL_PCT;
+    });
+
+    if (
+      onHandle ||
+      segmentDistance(xPct, yPct, 0, item.y, 100, item.y) <= DEFAULT_TOL_PCT
+    ) {
+      return { id: item.id, part: "level" };
+    }
+  }
+
+  return null;
+}
+
+/** Projects a drag gesture onto a drawing — the one entry point for every
+ * grip kind, shared verbatim by the preview and the commit (preview ≡
+ * committed by construction, the same property the draw draft has).
+ * Returns the drawing unchanged (same reference) when the grip id doesn't
+ * match. */
+export function dragDrawing(
+  drawing: Drawing,
+  grip: DrawingGrip,
+  from: { readonly xFrac: number; readonly yFrac: number },
+  to: { readonly xFrac: number; readonly yFrac: number },
+  viewport: ChartViewport,
+  scale: ChartScale,
+  seriesLen: number,
+): Drawing {
+  if (drawing.id !== grip.id) {
+    return drawing;
+  }
+
+  if (drawing.kind === "hline") {
+    return { ...drawing, price: yToPrice(scale, to.yFrac * 100) };
+  }
+
+  if (grip.part === "a" || grip.part === "b") {
+    const anchor = pointerToAnchor(
+      to.xFrac,
+      to.yFrac,
+      viewport,
+      scale,
+      seriesLen,
+    );
+    return grip.part === "a"
+      ? { ...drawing, a: anchor }
+      : { ...drawing, b: anchor };
+  }
+
+  // Body: rigid translate. ONE index delta applied to both anchors, clamped
+  // so BOTH stay in [0, seriesLen-1] (clamping the delta, not each anchor,
+  // preserves the segment's shape at the series edges). The y delta is
+  // applied in plot-fraction space to each endpoint's PROJECTED y and
+  // re-inverted — rigid under linear AND log scale (a price-space delta
+  // would deform the segment under log).
+  const span = viewport.end - viewport.start || 1;
+  const rawDelta = Math.round((to.xFrac - from.xFrac) * span);
+  const minIdx = Math.min(drawing.a.index, drawing.b.index);
+  const maxIdx = Math.max(drawing.a.index, drawing.b.index);
+  const delta = Math.min(Math.max(rawDelta, -minIdx), seriesLen - 1 - maxIdx);
+  const dyPct = (to.yFrac - from.yFrac) * 100;
+
+  function translateAnchor(anchor: DrawingAnchor): DrawingAnchor {
+    return {
+      index: anchor.index + delta,
+      price: yToPrice(scale, priceToY(scale, anchor.price) + dyPct),
+    };
+  }
+
+  return {
+    ...drawing,
+    a: translateAnchor(drawing.a),
+    b: translateAnchor(drawing.b),
+  };
+}
