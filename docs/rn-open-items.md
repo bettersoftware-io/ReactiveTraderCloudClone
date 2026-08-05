@@ -9,11 +9,11 @@ backlog entry.
 Nothing here is a blocker on shipped work. Items are grouped by what kind of
 thing they are, because that determines who fixes them and where.
 
-**Last updated: 2026-08-05** (close-out sweep, round 4 — see below)
+**Last updated: 2026-08-05** (close-out sweep, round 5 — see below)
 
 ## 0. The 2026-08-05 close-out sweep
 
-The open count went **31 → 14** over four rounds, and most of that was not code. The list had
+The open count went **31 → 12** over five rounds, and most of that was not code. The list had
 grown into something nobody could act on, because three different kinds of
 entry were sharing one status column:
 
@@ -57,15 +57,27 @@ status strip's FPS cell. Both are real, both are in the shipped app, and
 neither was findable before, because no golden had ever contained the chrome.
 An instrument that finds nothing on first use is usually not an instrument.
 
-So the count holds at **14**: one closed, one accepted, two found. Of those,
-**5 are the M-series** — `@rtc/domain` / wire changes shared with the web
-client and frozen by Phase 5 §4 — leaving **9 RN-specific**, none blocking.
+Round 4 held the count at **14** — one closed, one accepted, two found — and
+round 5 then took it to **12** by closing both of the rows round 4 had opened
+questions about. Of those 12, **4 are the M-series** — `@rtc/domain` / wire
+changes shared with the web client and frozen by Phase 5 §4 — leaving **8
+RN-specific**, none blocking.
+
+**Round 5** closed **P7** within hours of finding it, because the prototype
+already answered it — the header's two controls are glyphs and it has no
+sign-out, so the fix was a restoration rather than a layout negotiation. It
+also closed **M7** on the maintainer's own reasoning: the prototype is a
+*visual* reference with no server and no timestamps, so it was never an
+authority on data cadence. Both are the same shape as M2 — rows that dissolved
+once someone asked which authority they were appealing to.
 
 **The open roster, by id**, so any count here can be checked rather than
 believed:
 
-- **RN-specific (9)** — `R1` `P4` `P7` `P8` `T1` `T5` `T15` `T18` `T24`
-- **M-series (5)** — `M1` `M3` `M4` `M5` `M7`
+- **RN-specific (8)** — `R1` `P4` `P8` `T1` `T5` `T15` `T18` `T24`
+- **M-series (4)** — `M1` `M3` `M4` `M5`
+
+Total **12**.
 
 That list is spelled out because the count has drifted in conversation more
 than once, and always the same way: a row's open/closed state is written in
@@ -106,7 +118,7 @@ the [Phase 5 design §8.1](superpowers/specs/2026-07-25-rn-mobile-v1-rehaul-phas
 | M4 | No equities tick-history stream (sparklines derive from OHLC candles) | Add one mirroring the FX `usePriceHistory` |
 | M5 | A fill is a binary animation intent — no lifecycle event carrying qty/price/outcome | Emit a proper order-lifecycle event |
 | ~~M6~~ | ~~`AnalyticsSimulator` emits a frozen `STATIC_POSITIONS` constant every time; two of the three Analytics widgets read it~~ | **FIXED 2026-07-26 (5c Task 1).** Positions now drift each tick — a mean-reverting step around the original values, so the book wanders without walking away. The web client gains it for free, since the simulator sits below both. Consequence worth knowing: Analytics is now doubly non-deterministic (this drift *plus* the pre-existing `Math.random` history seed), which is why its visual scenario mounts `AnalyticsDashboard` over a literal book rather than the simulator. |
-| M7 | Analytics history appends every 10 s vs the prototype's 1 s mock | **RE-SCOPED 2026-08-05 with both sides measured — this is a DECISION, like M3, and the spec already said so** ("worth deciding deliberately — this is the difference between a live-feeling HUD and a chart that looks frozen", Phase 5 §8.1). The premise is TRUE and was verified, not assumed: the prototype's `_tickSlow` runs on `setInterval(…, 1000)` and pushes `[...H, next].slice(-48)`. But that fixes TWO numbers, not one — **48 points at 1 s is a 48-second window**, where ours is **90 points at 10 s = 15 minutes**. So "raise the cadence" silently shortens the chart's span by ~19×, which is a product choice about what the P&L chart *means*, not a cadence tweak. Two further measurements bound it. (1) The prototype's own chip is the hardcoded literal `Δ ${fmtK(delta)} / 12S` and its `pnlHist` is a bare number array with NO timestamps — so 12 matches neither its step (1 s) nor its window (48 s), and it is not evidence of anything. Ours derives the window from real timestamps and shows `10S` (T39), which cannot go stale. (2) Blast radius is smaller than M-series usually implies: the simulator is the SIM-MODE path only (production reads the server), and `analytics/dashboard` pins a literal `PINNED_BOOK`, so **no golden moves**. Cost is ~3 constants in `AnalyticsSimulator.ts` plus the three tests that advance timers by `10_000`. Do not "just raise the cadence" — pick the window first. |
+| M7 | Analytics history appends every 10 s vs the prototype's 1 s mock | **CLOSED 2026-08-05 — no work required, and the row was asking the wrong authority.** The prototype is a **visual** reference: no server, no real feed, and its `pnlHist` is a bare number array with no timestamps, ticked once a second purely so a static HTML demo looks alive. It has no standing over cadence, window or retention — those are domain concerns, and the numbers verified here (48 points at 1 s = a 48-second window, against our 90 at 10 s = 15 minutes) show "raise the cadence" would have quietly rescaled what the chart MEANS by ~19x on the strength of a demo artifact. A 15-minute P&L window is the more credible readout, and our timestamps are real where the prototype's do not exist. What survives is only the visual observation that the line steps rather than glides — cosmetic, optional, and a **view-layer** job if anyone ever wants it (never a data-model one). Note that smoothing would draw intermediate P&L values that never existed, which for a trading readout is a worse property than a visible step. Same disposition as M2: a real deviation, deliberately kept. |
 
 ## 2. Gaps against the reference implementation
 
@@ -127,7 +139,7 @@ the product this repo recreates.
 | P3 | Skia has no `textBaseline: "middle"`; docking's range-dial rows sit baseline-anchored. | **ACCEPTED — not open work.** Accepted cosmetic gap — but no longer blocked behind P1, and now visible on device for the first time. Judge it against the re-pinned `boot/docking` golden before deciding whether to correct the offset. |
 | P4 | RN Aurora ambient renders far too faint on-device. | Pre-existing; raise `t.aurora` / per-band opacities, revisit sway/skew geometry. |
 | P5 | Power-saver **Freeze** renders the same as Calm on RN — no RN-side motion gating equivalent to the web's CSS catch-all. | **RESOLVED 2026-08-05 — and the recorded description pointed at the wrong layer.** This read "Freeze renders the same as Calm on RN — no RN-side motion gating equivalent to the web's CSS catch-all", which suggested the gates were missing. They were not: **54 files** read `useShellMotionEnabled` / `useBootMotionEnabled` / `isFreeze`, and the visual harness seeds `freeze` directly — that is precisely how `boot/static` is pinned (T16). The gap was the **CONTROL**: `AppearanceScreen` was a 2-state Off/On toggle whose "on" wrote `"calm"`, with a comment saying Freeze was "deferred to a later mobile-UI phase", so **no phone user could ever select the level the plumbing already honoured**. Replaced with a three-segment control over `POWER_SAVER_LEVELS`, matching the web's, with a per-level caption ("reduces motion" and "stops all motion" are different promises). The regression test presses **freeze first** — it is the level the old control could not reach, so a slide back to a boolean toggle fails there rather than shipping quietly. Pre-existing. Means Freeze could not be verified on-device for Phase 4a. |
-| **P7** | **`Sign out` is clipped off the right edge of the HUD header.** Measured from the a11y tree at the iPhone 17 pin, not eyeballed: the label's frame is `x=353.3 w=53.7`, so its right edge lands at **407.0** on a **402.0**-point screen — a 5-point overflow, with the final glyph cut. The row is logo + wordmark + SIM badge + connection dot + `Theme` + `Lock` + `Sign out`, and nothing shrinks. | **FOUND 2026-08-05 by `shell/chrome`** (T6), on the scenario's very first capture — the header had never been inside a golden. Open. Not fixed here deliberately: the repair is a design choice (shrink/ellipsize the labels, drop to icons, or move sign-out into the Appearance sheet) and belongs with whoever owns the chrome's information density, not folded into the scenario that revealed it. |
+| **P7** | **`Sign out` was clipped off the right edge of the HUD header.** Measured from the a11y tree at the iPhone 17 pin, not eyeballed: the label's frame was `x=353.3 w=53.7`, so its right edge landed at **407.0** on a **402.0**-point screen. | **RESOLVED 2026-08-05, and it was a fidelity defect, not a layout one.** The prototype's header (`Reactive Trader Mobile.dc.html:88-94`) carries exactly TWO controls on the right, both fixed 40x44 glyph buttons — `◐` and `⌖` — and **no sign-out at all**. The port had substituted text labels for both glyphs and added a third affordance the design never budgeted width for; ~70pt of text against an 80pt budget is what ran the row off the screen, and the control that fell off was the one we had added. So the fix is a restoration: both buttons are glyphs at the prototype's box, and sign-out moved into the Appearance sheet — where the web client keeps its account actions too, making it the closer analogue as well as the one that fits. Two consequences worth recording. **(1)** A glyph cannot be read aloud, so `LockButton` gained an explicit `accessibilityLabel` it never needed while it said "Lock" — swapping text for an icon trades a visual bug for an accessibility one unless the control is named. **(2)** `AppearanceScreen` now renders a child that touches `useAuth`, so two test fakes needed the seam; the covering test asserts sign-out **on the sheet**, because `LogoutButton.test.tsx` renders the button directly and would still pass if the screen stopped mounting it — leaving the app with no way to sign out at all, and the header's own test no longer knows the control exists. |
 | **P8** | **The radial dock's hex FAB covers the status strip's FPS readout.** The dock is drawn after `StatusStrip` in `Chrome`, and their frames overlap: FAB `x=172 y=756 w=58 h=58` against `60FPS` at `x=195.7 y=766.7 w=31.7` — so the cell is fully occluded at rest, on every screen, in the app's normal state. The strip renders it correctly; it is simply painted over. | **FOUND 2026-08-05 by `shell/chrome`** (T6). Open, and worth noting it makes T30's whole FPS-accuracy investigation invisible in the shipped UI — the number that was wrong for months is a number nobody could see. Fix is a layout decision (inset the telemetry row around the FAB, or move the FAB), so it is recorded rather than guessed at. |
 | P6 | `useMemo`'d `SkPath` captured in a worklet closure was flagged unproven (every other scene builds paths inside the worklet). | **RESOLVED 2026-07-25** — `DockingScene` uses it and renders correctly on-device. The documented fallback was not needed. |
 

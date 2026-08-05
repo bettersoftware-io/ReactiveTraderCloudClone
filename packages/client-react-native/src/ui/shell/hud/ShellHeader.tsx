@@ -21,7 +21,6 @@ import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
-import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -32,8 +31,16 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
 
 /** HUD header (prototype .dc.html:64-96): safe-area spacer, animated reticle
  * logo, Orbitron wordmark, an env badge that toggles simulator/live, a pulsing
- * connection dot (real `useConnectionStatus`), and the appearance/lock/logout
- * affordances. The pulse loop is gated by `useShellMotionEnabled()`. */
+ * connection dot (real `useConnectionStatus`), and the appearance/lock glyph
+ * affordances. The pulse loop is gated by `useShellMotionEnabled()`.
+ *
+ * TWO controls on the right, both glyphs — the prototype's own count and form
+ * (`.dc.html:88-94`). It carried three TEXT affordances until P7: `Theme`,
+ * `Lock` and `Sign out`, roughly 70pt wider than the design budgets, which
+ * overran a 402pt screen and clipped `Sign out` off the edge. Sign-out moved
+ * into the Appearance sheet, where the web client keeps its account actions
+ * too. Adding a third control here means re-measuring the row, not assuming it
+ * fits: nothing about this layout shrinks. */
 export function ShellHeader({
   simulator,
   onToggleSimulator,
@@ -99,7 +106,6 @@ export function ShellHeader({
         />
         <AppearanceButton onPress={onOpenAppearance} />
         <LockButton />
-        <LogoutButton />
       </View>
     </View>
   );
