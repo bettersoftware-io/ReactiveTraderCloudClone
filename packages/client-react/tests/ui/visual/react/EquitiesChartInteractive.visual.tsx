@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { EqIndicatorId } from "@rtc/client-core";
+import type { EqDrawing, EqIndicatorId } from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
 import {
   type ChartViewport,
@@ -49,6 +49,23 @@ const CANDLE_COUNT = 300;
 const BUCKET_MS = 60_000;
 const DEFAULT_VISIBLE = 60;
 const CHART_INDICATORS: readonly EqIndicatorId[] = ["sma20", "ema50"];
+
+// Task 8 (drawing-tools): a literal trendline + hline, anchored to real
+// candles inside the default {240,300} visible window (`candleAt` above) so
+// both lines land inside the plot. Trendline endpoints sit near that
+// window's low end (index 250, price 349 — `candleAt(250)`'s low) and high
+// end (index 290, price 392 — `candleAt(290)`'s high); the hline sits near
+// the window's midpoint (price 370 — `candleAt(270)`'s open). `t1` is also
+// `selectedDrawingId` below, so its handles render.
+const DRAWINGS: readonly EqDrawing[] = [
+  {
+    id: "t1",
+    kind: "trendline",
+    a: { index: 250, price: 349 },
+    b: { index: 290, price: 392 },
+  },
+  { id: "h1", kind: "hline", price: 370 },
+];
 
 const STAGE_STYLE = {
   width: 760,
@@ -226,6 +243,32 @@ export function EquitiesChartLogScale(): ReactElement {
         loadingOlder={false}
         historyExhausted={false}
         onLoadOlder={() => {}}
+      />
+    </div>
+  );
+}
+
+// Drawing tools (Task 8, drawing-tools workstream): the real CandleChart
+// mounted with a literal `drawings`/`selectedDrawingId` — real props (like
+// `kind`/`indicators`/`yScale` above), so no ChartPlot bypass is needed. No
+// gestures are driven: the drawings are forced literal data, so the render
+// is deterministic by construction.
+export function EquitiesChartDrawings(): ReactElement {
+  return (
+    <div style={STAGE_STYLE}>
+      <CandleChart
+        candles={CANDLES}
+        liveRate={LIVE_RATE}
+        flashOn={false}
+        kind="candles"
+        indicators={[]}
+        panes={[]}
+        defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
+        drawings={DRAWINGS}
+        selectedDrawingId="t1"
       />
     </div>
   );

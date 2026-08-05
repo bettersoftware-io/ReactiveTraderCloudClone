@@ -57,6 +57,7 @@ import { EquitiesChartCanvasSpike } from "./EquitiesChartCanvasSpike.visual";
 import {
   EquitiesChartArea,
   EquitiesChartCrosshair,
+  EquitiesChartDrawings,
   EquitiesChartHistoryStart,
   EquitiesChartIndicators,
   EquitiesChartLine,
@@ -578,6 +579,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // Log price axis (spec 2026-08-04): real CandleChart, yScale="log".
   EquitiesChartLogScale: () => {
     return <EquitiesChartLogScale />;
+  },
+  // Drawing tools (Task 8, drawing-tools workstream): real CandleChart with
+  // literal drawings + selectedDrawingId.
+  EquitiesChartDrawings: () => {
+    return <EquitiesChartDrawings />;
   },
   // --- Task 10: backfill-paging chip scenarios ---
   EquitiesChartLoadingOlder: () => {
