@@ -127,6 +127,49 @@ describe("EqDrawingsMachine", () => {
     m.dispose();
   });
 
+  it("updateDrawing replaces the drawing with the matching id IN PLACE (z-order stable)", async () => {
+    const m = createEqDrawingsMachine();
+    const a = hline("d1", 100);
+    const b = hline("d2", 110);
+    const c = hline("d3", 120);
+    m.intents.addDrawing("AAPL", a);
+    m.intents.addDrawing("AAPL", b);
+    m.intents.addDrawing("AAPL", c);
+
+    m.intents.updateDrawing("AAPL", hline("d2", 999));
+
+    const state = await firstValueFrom(m.state$);
+    const list = state.drawings.AAPL;
+    expect(list?.map((d) => d.id)).toEqual(["d1", "d2", "d3"]);
+    expect(list?.[1]).toEqual(hline("d2", 999));
+    m.dispose();
+  });
+
+  it("updateDrawing no-ops on an unknown id (state reference unchanged)", async () => {
+    const m = createEqDrawingsMachine();
+    m.intents.addDrawing("AAPL", hline("d1", 100));
+    const before = await firstValueFrom(m.state$);
+
+    m.intents.updateDrawing("AAPL", hline("ghost", 1));
+
+    const after = await firstValueFrom(m.state$);
+    expect(after).toBe(before);
+    m.dispose();
+  });
+
+  it("updateDrawing leaves selection and tool untouched — after a drag the user still holds the same selected drawing", async () => {
+    const m = createEqDrawingsMachine();
+    m.intents.addDrawing("AAPL", hline("d1", 100));
+    // addDrawing auto-selected d1 and reverted tool to cursor
+
+    m.intents.updateDrawing("AAPL", hline("d1", 200));
+
+    const state = await firstValueFrom(m.state$);
+    expect(state.selectedId).toBe("d1");
+    expect(state.tool).toBe("cursor");
+    m.dispose();
+  });
+
   it("dispose() completes without error; intents after dispose are inert", async () => {
     const m = createEqDrawingsMachine();
     m.intents.addDrawing("AAPL", trendline("t1"));

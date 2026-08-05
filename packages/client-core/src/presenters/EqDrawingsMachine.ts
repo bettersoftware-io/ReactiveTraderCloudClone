@@ -33,6 +33,7 @@ export interface EqDrawingsState {
 export interface EqDrawingsIntents {
   setTool(tool: EqDrawTool): void;
   addDrawing(sym: string, drawing: EqDrawing): void;
+  updateDrawing(sym: string, drawing: EqDrawing): void;
   selectDrawing(id: string | null): void;
   deleteSelected(sym: string): void;
   shiftAnchors(sym: string, by: number): void;
@@ -81,6 +82,7 @@ export function createEqDrawingsMachine(): Machine<
 > {
   const setTool$ = new Subject<EqDrawTool>();
   const addDrawing$ = new Subject<AddDrawingPayload>();
+  const updateDrawing$ = new Subject<AddDrawingPayload>();
   const selectDrawing$ = new Subject<string | null>();
   const deleteSelected$ = new Subject<string>();
   const shiftAnchors$ = new Subject<ShiftAnchorsPayload>();
@@ -106,6 +108,29 @@ export function createEqDrawingsMachine(): Machine<
           selectedId: drawing.id,
           tool: "cursor",
         };
+      };
+    }),
+  );
+
+  // updateDrawing: replaces the matching id in place (z-order stable);
+  // no-op when the id isn't present (same defensive shape as
+  // deleteSelected). Selection and tool are untouched — after a drag the
+  // user is still holding the same selected drawing.
+  const updateDrawingPatch$ = updateDrawing$.pipe(
+    map(({ sym, drawing }): Patch => {
+      return (s: EqDrawingsState): EqDrawingsState => {
+        const list = s.drawings[sym] ?? [];
+        const at = list.findIndex((d) => {
+          return d.id === drawing.id;
+        });
+
+        if (at === -1) {
+          return s;
+        }
+
+        const next = [...list];
+        next[at] = drawing;
+        return { ...s, drawings: { ...s.drawings, [sym]: next } };
       };
     }),
   );
@@ -178,6 +203,7 @@ export function createEqDrawingsMachine(): Machine<
   const stream$ = merge(
     setToolPatch$,
     addDrawingPatch$,
+    updateDrawingPatch$,
     selectDrawingPatch$,
     deleteSelectedPatch$,
     shiftAnchorsPatch$,
@@ -203,6 +229,9 @@ export function createEqDrawingsMachine(): Machine<
       addDrawing: (sym: string, drawing: EqDrawing): void => {
         addDrawing$.next({ sym, drawing });
       },
+      updateDrawing: (sym: string, drawing: EqDrawing): void => {
+        updateDrawing$.next({ sym, drawing });
+      },
       selectDrawing: (id: string | null): void => {
         selectDrawing$.next(id);
       },
@@ -216,6 +245,7 @@ export function createEqDrawingsMachine(): Machine<
     dispose: () => {
       setTool$.complete();
       addDrawing$.complete();
+      updateDrawing$.complete();
       selectDrawing$.complete();
       deleteSelected$.complete();
       shiftAnchors$.complete();
