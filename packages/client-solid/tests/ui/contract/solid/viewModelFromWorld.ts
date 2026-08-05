@@ -41,6 +41,7 @@ import type {
   ExecuteTradeResult,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -755,6 +756,11 @@ export function solidViewModel(world: World): ViewModel {
         setEffort: (effort: JarvisEffort) => {
           world.commands.jarvisEffortSets.push(effort);
           world.jarvisEffort.next(effort);
+        },
+        narrator: wrapSubject(world.jarvisNarrator),
+        setNarrator: (preference: JarvisNarratorPreference) => {
+          world.commands.jarvisNarratorSets.push(preference);
+          world.jarvisNarrator.next(preference);
         },
       };
     },

@@ -43,6 +43,22 @@ export const JARVIS_GREETING =
   "Good morning, sir. J.A.R.V.I.S online — all trading systems nominal. " +
   "I can quote the majors, report the movers, brief you on the desk, or execute FX orders. How may I assist?";
 
+/** The literal prefix a `narrate()` prompt is expected to carry (per
+ * `NarratorMachine`'s pinned prompt format — see its doc). `narrate()`
+ * strips this for the transcript's DISPLAY text but forwards the prompt
+ * unchanged (prefix included) to `port.ask` as the wire text — see
+ * `JarvisIntents.narrate`'s doc. */
+export const JARVIS_NARRATION_PREFIX = "[narration] ";
+
+/** Strip `JARVIS_NARRATION_PREFIX` from a narrate prompt for display; a
+ * prompt without the prefix passes through unchanged (defensive — every
+ * real caller is `NarratorMachine`, which always includes it). */
+function stripNarrationPrefix(prompt: string): string {
+  return prompt.startsWith(JARVIS_NARRATION_PREFIX)
+    ? prompt.slice(JARVIS_NARRATION_PREFIX.length)
+    : prompt;
+}
+
 export type JarvisRole = "user" | "jarvis";
 
 export interface JarvisEntry {
@@ -55,6 +71,10 @@ export interface JarvisEntry {
     readonly name: string;
     readonly status: "running" | "done";
   };
+  /** Set on the USER-side entry of a `narrate()` turn — the proactive
+   * app-driving narrator dispatched this turn unsolicited, rather than the
+   * user typing it. Absent (not `false`) on every ordinary `send()` turn. */
+  readonly origin?: "narrator";
 }
 
 export interface JarvisConfirmation {
@@ -74,6 +94,12 @@ export interface JarvisState {
   readonly open: boolean;
   readonly skin: JarvisSkin;
   readonly unread: number;
+  /** Set when a `narrate()` turn completes while `open` is false; NOT set
+   * when a narrate turn completes while open (unlike `unread`, which still
+   * counts either way — the narrator flare is specifically "JARVIS spoke up
+   * unprompted while you weren't looking"). Cleared by `open()` (and by
+   * `toggle()` opening, mirroring `unread`'s own open-clears-it rule). */
+  readonly unreadNarration: boolean;
   readonly phase: "idle" | "speaking";
   readonly entries: readonly JarvisEntry[];
   readonly pendingConfirmation: JarvisConfirmation | null;
@@ -103,6 +129,16 @@ export interface JarvisIntents {
   close: () => void;
   toggle: () => void;
   send: (text: string) => void;
+  /** Dispatches an UNSOLICITED turn — the proactive app-driving narrator's
+   * entry point (`NarratorMachine`, a later task), not a user action. Enters
+   * the SAME turn queue as `send` (a narrate arriving while a send is still
+   * in flight queues behind it, per the shared `concatMap`), and is the same
+   * silent no-op as `send` while `state.available` is false. `prompt` is
+   * expected to carry the literal `JARVIS_NARRATION_PREFIX` — it rides
+   * unchanged to `port.ask` as the wire text, while the transcript's
+   * user-side entry displays it WITHOUT that prefix and flagged
+   * `origin: "narrator"`. */
+  narrate: (prompt: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
@@ -143,6 +179,7 @@ const INITIAL: JarvisState = {
   open: false,
   skin: DEFAULT_JARVIS_SKIN,
   unread: 0,
+  unreadNarration: false,
   phase: "idle",
   entries: [GREETING_ENTRY],
   pendingConfirmation: null,
@@ -202,8 +239,14 @@ function updateLastEntry(
   return next;
 }
 
-/** Fold one reply event from an in-flight turn into a state Patch. */
-function eventPatch(event: JarvisEvent): Patch {
+/** Fold one reply event from an in-flight turn into a state Patch.
+ * `turnOrigin` is the enclosing turn's origin (set by `turnItems$`'s
+ * `concatMap` when it builds each turn's "start" item — see its doc): only
+ * `"narrator"`-origin turns bump `unreadNarration` on completion. */
+function eventPatch(
+  event: JarvisEvent,
+  turnOrigin: "narrator" | undefined,
+): Patch {
   switch (event.type) {
     case "delta":
       return (s: JarvisState): JarvisState => {
@@ -231,6 +274,8 @@ function eventPatch(event: JarvisEvent): Patch {
           ...s,
           phase: "idle",
           unread: s.open ? s.unread : s.unread + 1,
+          unreadNarration:
+            turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
           entries: updateLastEntry(s.entries, (e) => {
             return { ...e, done: true };
           }),
@@ -243,6 +288,8 @@ function eventPatch(event: JarvisEvent): Patch {
           ...s,
           phase: "idle",
           unread: s.open ? s.unread : s.unread + 1,
+          unreadNarration:
+            turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
           // Drop `tool` entirely rather than leaving it at whatever status a
           // prior toolEvent left it in: a later sequential snapshot read
           // (e.g. ScriptedJarvisAdapter's pnl/movers turns) can still time
@@ -310,22 +357,34 @@ function isConfirmRequest(event: JarvisEvent): event is ConfirmRequestEvent {
   return event.type === "confirmRequest";
 }
 
-/** The synthetic "start" of a `send()` turn: user entry + streaming jarvis
- * stub appended, phase → speaking. */
+/** The synthetic "start" of a turn (`send()` or `narrate()`): user entry +
+ * streaming jarvis stub appended, phase → speaking. */
 interface TurnStartItem {
   readonly kind: "start";
   readonly userEntry: JarvisEntry;
   readonly jarvisEntry: JarvisEntry;
 }
 
-/** One reply event forwarded from `port.ask(text)`. */
+/** One reply event forwarded from `port.ask(text)`. `origin` is the
+ * enclosing turn's origin (undefined for an ordinary `send()` turn,
+ * `"narrator"` for a `narrate()` turn) — threaded through so `eventPatch`'s
+ * "done"/"error" cases can fold `unreadNarration` without any mutable
+ * cross-turn state. */
 interface TurnEventItem {
   readonly kind: "event";
   readonly event: JarvisEvent;
+  readonly origin: "narrator" | undefined;
 }
 
-/** One item flowing through a single `send()` turn. */
+/** One item flowing through a single turn (`send()` or `narrate()`). */
 type TurnItem = TurnStartItem | TurnEventItem;
+
+/** One request enqueued into the shared turn queue — `send()` and
+ * `narrate()` both feed the same `concatMap`, so a `narrate()` arriving
+ * while a `send()` is in flight queues behind it (and vice versa). */
+type TurnRequest =
+  | { readonly kind: "send"; readonly text: string }
+  | { readonly kind: "narrate"; readonly prompt: string };
 
 function isTurnEventItem(item: TurnItem): item is TurnEventItem {
   return item.kind === "event";
@@ -387,6 +446,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;
 
   const send$ = new Subject<string>();
+  const narrate$ = new Subject<string>();
   const open$ = new Subject<void>();
   const close$ = new Subject<void>();
   const toggle$ = new Subject<void>();
@@ -395,24 +455,50 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
 
   let nextEntryId = 1; // 0 is the greeting entry
 
-  // Turns run sequentially: concatMap only advances to the next queued send()
-  // once the previous turn's port.ask() observable has completed. share()
-  // is required here — entryPatches$ and confirmRequests$ below are two
-  // independent consumers, and without it each would trigger its own
+  // send() and narrate() feed the SAME queue — merged upstream of concatMap
+  // so a narrate() arriving mid-send queues behind it (and vice versa), per
+  // JarvisIntents.narrate's doc.
+  const turnRequests$: Observable<TurnRequest> = merge(
+    send$.pipe(
+      map((text): TurnRequest => {
+        return { kind: "send", text };
+      }),
+    ),
+    narrate$.pipe(
+      map((prompt): TurnRequest => {
+        return { kind: "narrate", prompt };
+      }),
+    ),
+  );
+
+  // Turns run sequentially: concatMap only advances to the next queued
+  // request once the previous turn's port.ask() observable has completed.
+  // share() is required here — entryPatches$ and confirmRequests$ below are
+  // two independent consumers, and without it each would trigger its own
   // subscription (and its own port.ask() call + entry-id allocation).
-  const turnItems$: Observable<TurnItem> = send$.pipe(
-    concatMap((text) => {
+  const turnItems$: Observable<TurnItem> = turnRequests$.pipe(
+    concatMap((req) => {
       // Unavailable → silent no-op: no user entry appended (the "start"
       // item below is never built) and port.ask is never called.
       if (!available) {
         return EMPTY;
       }
 
+      const origin: "narrator" | undefined =
+        req.kind === "narrate" ? "narrator" : undefined;
+      // narrate()'s wire text is the prompt AS GIVEN (prefix included, per
+      // JarvisIntents.narrate's doc); the transcript's display text strips
+      // it. send()'s text is used verbatim for both.
+      const wireText = req.kind === "narrate" ? req.prompt : req.text;
+      const displayText =
+        req.kind === "narrate" ? stripNarrationPrefix(req.prompt) : req.text;
+
       const userEntry: JarvisEntry = {
         id: nextEntryId++,
         role: "user",
-        text,
+        text: displayText,
         done: true,
+        ...(origin ? { origin } : {}),
       };
 
       const jarvisEntry: JarvisEntry = {
@@ -423,9 +509,9 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       };
       return concat(
         of<TurnItem>({ kind: "start", userEntry, jarvisEntry }),
-        deps.port.ask(text, { brain: effectiveBrain, effort }).pipe(
+        deps.port.ask(wireText, { brain: effectiveBrain, effort }).pipe(
           map((event): TurnItem => {
-            return { kind: "event", event };
+            return { kind: "event", event, origin };
           }),
         ),
       );
@@ -445,7 +531,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         };
       }
 
-      return eventPatch(item.event);
+      return eventPatch(item.event, item.origin);
     }),
   );
 
@@ -542,7 +628,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const openPatches$: Observable<Patch> = open$.pipe(
     map((): Patch => {
       return (s: JarvisState): JarvisState => {
-        return { ...s, open: true, unread: 0 };
+        return { ...s, open: true, unread: 0, unreadNarration: false };
       };
     }),
   );
@@ -559,7 +645,12 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     map((): Patch => {
       return (s: JarvisState): JarvisState => {
         const open = !s.open;
-        return { ...s, open, unread: open ? 0 : s.unread };
+        return {
+          ...s,
+          open,
+          unread: open ? 0 : s.unread,
+          unreadNarration: open ? false : s.unreadNarration,
+        };
       };
     }),
   );
@@ -662,6 +753,9 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       send: (text: string) => {
         send$.next(text);
       },
+      narrate: (prompt: string) => {
+        narrate$.next(prompt);
+      },
       approveConfirmation: () => {
         approve$.next();
       },
@@ -678,6 +772,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       // subscription that was keeping state$ alive, and the side-channel
       // effort$ subscription alongside it.
       send$.complete();
+      narrate$.complete();
       open$.complete();
       close$.complete();
       toggle$.complete();

@@ -56,6 +56,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -74,6 +75,7 @@ import {
   type Instrument,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -143,6 +145,7 @@ export type UseJarvisResult = {
   close: () => void;
   toggle: () => void;
   send: (text: string) => void;
+  narrate: (prompt: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
@@ -209,16 +212,19 @@ interface UseLoginWaitPreferencesResult {
   setDelay: (delay: LoginWaitDelay) => void;
 }
 
-/** The two Jarvis desk-assistant preferences — which brain to use and the
- * thinking-effort budget forwarded to a live brain. The STORED preference,
- * not the resolved one: `useJarvis().state().effectiveBrain` folds in live
- * availability (a preferred-but-unoffered brain falls back there), while
- * `brain` here always reflects what the user picked. */
+/** The three Jarvis desk-assistant preferences — which brain to use, the
+ * thinking-effort budget forwarded to a live brain, and whether the
+ * proactive app-driving narrator may dispatch unsolicited turns. The STORED
+ * preference, not the resolved one: `useJarvis().state().effectiveBrain`
+ * folds in live availability (a preferred-but-unoffered brain falls back
+ * there), while `brain` here always reflects what the user picked. */
 interface UseJarvisPreferencesResult {
   brain: Accessor<JarvisBrain>;
   setBrain: (brain: JarvisBrain) => void;
   effort: Accessor<JarvisEffort>;
   setEffort: (effort: JarvisEffort) => void;
+  narrator: Accessor<JarvisNarratorPreference>;
+  setNarrator: (preference: JarvisNarratorPreference) => void;
 }
 
 /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
@@ -596,12 +602,23 @@ export function createViewModel(
     DEFAULT_JARVIS_EFFORT,
   );
 
+  const jarvisNarratorPreferenceState = state(
+    presenters.jarvisPreferences.narrator$,
+    DEFAULT_JARVIS_NARRATOR,
+  );
+
   function setJarvisBrainPreference(brain: JarvisBrain): void {
     presenters.jarvisPreferences.setBrain(brain);
   }
 
   function setJarvisEffortPreference(effort: JarvisEffort): void {
     presenters.jarvisPreferences.setEffort(effort);
+  }
+
+  function setJarvisNarratorPreference(
+    preference: JarvisNarratorPreference,
+  ): void {
+    presenters.jarvisPreferences.setNarrator(preference);
   }
 
   const viewModeState = state(
@@ -1153,6 +1170,8 @@ export function createViewModel(
         setBrain: setJarvisBrainPreference,
         effort: toSignal(jarvisEffortPreferenceState),
         setEffort: setJarvisEffortPreference,
+        narrator: toSignal(jarvisNarratorPreferenceState),
+        setNarrator: setJarvisNarratorPreference,
       };
     },
     useJarvisUsage: () => {

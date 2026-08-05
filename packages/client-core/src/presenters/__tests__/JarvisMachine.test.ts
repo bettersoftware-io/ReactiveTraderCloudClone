@@ -43,6 +43,7 @@ describe("createJarvisMachine", () => {
         open: false,
         skin: "reactor",
         unread: 0,
+        unreadNarration: false,
         phase: "idle",
         entries: [{ id: 0, role: "jarvis", text: JARVIS_GREETING, done: true }],
         pendingConfirmation: null,
@@ -1066,6 +1067,259 @@ describe("createJarvisMachine", () => {
           return c.options?.brain;
         }),
       ).toEqual(["scripted", "claude-opus-5"]);
+    });
+  });
+
+  describe("narrate", () => {
+    it("appends a user entry flagged origin:narrator, stripped of the [narration] prefix; the prefix rides only to port.ask", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.2σ.");
+          }, 1);
+        },
+      );
+
+      const userEntry = states.at(-1)?.entries.find((e) => {
+        return e.role === "user";
+      });
+      expect(userEntry).toMatchObject({
+        text: "EURUSD moved 3.2σ.",
+        origin: "narrator",
+        done: true,
+      });
+      expect(port?.asks).toEqual(["[narration] EURUSD moved 3.2σ."]);
+    });
+
+    it("a send() turn's user entry carries no origin field", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      const userEntry = states.at(-1)?.entries.find((e) => {
+        return e.role === "user";
+      });
+      expect(userEntry?.origin).toBeUndefined();
+    });
+
+    it("calls port.ask with the resolved effective brain/effort, exactly like send", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-sonnet-5"],
+              defaultBrain: "scripted",
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
+            effort$: of<JarvisEffort>("high"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] GBPUSD spread widened 4.0σ.");
+          }, 1);
+        },
+      );
+
+      expect(port?.askCalls).toEqual([
+        {
+          text: "[narration] GBPUSD spread widened 4.0σ.",
+          options: { brain: "claude-sonnet-5", effort: "high" },
+        },
+      ]);
+    });
+
+    it("narrate() while unavailable is a no-op: no user entry appended, port.ask not called", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>("f", {
+              f: { available: false, brains: [], defaultBrain: "scripted" },
+            }),
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      ]);
+      expect(port?.asks).toEqual([]);
+    });
+
+    it("a narrate() during an in-flight send() queues behind it (same concatMap queue)", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] second");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.entries.map((e) => {
+          return e.text;
+        }),
+      ).toEqual([JARVIS_GREETING, "first", "", "second", ""]);
+      expect(port?.asks).toEqual(["first", "[narration] second"]);
+
+      // The narrate turn only starts once the send turn's own done has
+      // folded — proving it was truly queued, not run concurrently.
+      const sendDoneIndex = states.findIndex((s) => {
+        return s.entries.at(-1)?.text === "" && s.entries.length === 3;
+      });
+      const narrateStartIndex = states.findIndex((s) => {
+        return s.entries.some((e) => {
+          return e.origin === "narrator";
+        });
+      });
+      expect(narrateStartIndex).toBeGreaterThan(sendDoneIndex);
+    });
+
+    it("unreadNarration is set when a narrate turn completes while closed", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+        },
+      );
+
+      expect(states.at(-1)?.open).toBe(false);
+      expect(states.at(-1)?.unreadNarration).toBe(true);
+    });
+
+    it("unreadNarration is NOT set when a narrate turn completes while open", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 2);
+        },
+      );
+
+      expect(states.at(-1)?.open).toBe(true);
+      expect(states.at(-1)?.unreadNarration).toBe(false);
+    });
+
+    it("unreadNarration is cleared by open()", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 5);
+        },
+      );
+
+      const beforeOpen = states.filter((s) => {
+        return !s.open;
+      });
+      expect(beforeOpen.at(-1)?.unreadNarration).toBe(true);
+      expect(states.at(-1)?.open).toBe(true);
+      expect(states.at(-1)?.unreadNarration).toBe(false);
+    });
+
+    it("initial state starts with unreadNarration false", () => {
+      const ts = scheduler();
+      ts.run(() => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>("reactor"),
+          setSkin: () => {},
+          ...baseBrainDeps(),
+        });
+        let current: JarvisState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        expect(current?.unreadNarration).toBe(false);
+        sub.unsubscribe();
+        machine.dispose();
+      });
     });
   });
 });

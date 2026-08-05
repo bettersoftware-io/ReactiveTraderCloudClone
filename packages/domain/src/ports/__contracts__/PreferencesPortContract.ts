@@ -12,6 +12,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -23,6 +24,7 @@ import {
   type EqWatchlistSort,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -54,6 +56,7 @@ export interface PreferencesSeed {
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
+  jarvisNarrator?: JarvisNarratorPreference;
 }
 
 /**
@@ -504,6 +507,31 @@ export function describePreferencesPortContract(
       it("reads back a seeded jarvisEffort", async () => {
         const port = makeSeeded({ jarvisEffort: "low" });
         expect(await firstValueFrom(port.jarvisEffort$())).toBe("low");
+      });
+    });
+
+    describe("jarvisNarrator", () => {
+      it("empty store emits the default jarvisNarrator", async () => {
+        const port = makeSeeded({});
+        expect(await firstValueFrom(port.jarvisNarrator$())).toBe(
+          DEFAULT_JARVIS_NARRATOR,
+        );
+      });
+
+      it("setJarvisNarrator pushes the new value to subscribers", async () => {
+        const port = makeSeeded({});
+        const seen: JarvisNarratorPreference[] = [];
+        const sub = port.jarvisNarrator$().subscribe((v) => {
+          seen.push(v);
+        });
+        port.setJarvisNarrator("off");
+        sub.unsubscribe();
+        expect(seen).toEqual([DEFAULT_JARVIS_NARRATOR, "off"]);
+      });
+
+      it("reads back a seeded jarvisNarrator", async () => {
+        const port = makeSeeded({ jarvisNarrator: "off" });
+        expect(await firstValueFrom(port.jarvisNarrator$())).toBe("off");
       });
     });
   });

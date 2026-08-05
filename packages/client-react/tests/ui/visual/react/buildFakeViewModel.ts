@@ -38,6 +38,7 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   open: false,
   skin: DEFAULT_JARVIS_SKIN,
   unread: 0,
+  unreadNarration: false,
   phase: "idle",
   entries: [],
   pendingConfirmation: null,
@@ -470,6 +471,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         close: noop,
         toggle: noop,
         send: noop,
+        narrate: noop,
         approveConfirmation: noop,
         declineConfirmation: noop,
         setSkin: noop,
@@ -484,6 +486,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setBrain: noop,
         effort: "medium",
         setEffort: noop,
+        narrator: "on",
+        setNarrator: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off

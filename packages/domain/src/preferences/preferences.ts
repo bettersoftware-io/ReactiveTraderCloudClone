@@ -314,3 +314,25 @@ export const JARVIS_BRAIN_LABELS: Record<JarvisBrain, string> = {
   "claude-sonnet-5": "Sonnet 5",
   "claude-opus-5": "Opus 5",
 };
+
+/** Whether the app-driving proactive narrator (`NarratorMachine`) is allowed
+ * to dispatch unsolicited `narrate()` turns into the Jarvis transcript.
+ * `"on"` is the default — the narrator's whole point is surfacing an
+ * anomaly the user wasn't looking for, so shipping it opt-in would silence
+ * the feature for everyone who never finds the toggle; `"off"` fully
+ * silences it without touching any other Jarvis preference (brain/effort/
+ * skin all stay independent). */
+export type JarvisNarratorPreference = "on" | "off";
+
+/** Selectable narrator states, in toggle order. */
+export const JARVIS_NARRATOR_PREFERENCES: readonly JarvisNarratorPreference[] =
+  ["on", "off"];
+
+export const DEFAULT_JARVIS_NARRATOR: JarvisNarratorPreference = "on";
+
+/** Storage/type guard — a valid stored narrator-preference string. */
+export function isJarvisNarratorPreference(
+  value: unknown,
+): value is JarvisNarratorPreference {
+  return (JARVIS_NARRATOR_PREFERENCES as readonly unknown[]).includes(value);
+}

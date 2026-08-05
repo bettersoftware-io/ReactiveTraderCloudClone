@@ -7,6 +7,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
@@ -24,6 +25,7 @@ import {
   FORCE_BOOT_ANIMATION_STORAGE_KEY,
   JARVIS_BRAIN_STORAGE_KEY,
   JARVIS_EFFORT_STORAGE_KEY,
+  JARVIS_NARRATOR_STORAGE_KEY,
   JARVIS_SKIN_STORAGE_KEY,
   LOGIN_WAIT_DELAY_STORAGE_KEY,
   LOGIN_WAIT_STYLE_STORAGE_KEY,
@@ -131,6 +133,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         localStorage.setItem(JARVIS_EFFORT_STORAGE_KEY, seed.jarvisEffort);
       }
 
+      if (seed.jarvisNarrator) {
+        localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, seed.jarvisNarrator);
+      }
+
       return new LocalStoragePreferencesAdapter();
     },
   );
@@ -234,6 +240,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
       DEFAULT_JARVIS_EFFORT,
     );
   });
+
+  it("falls back to defaults for an invalid stored jarvisNarrator", async () => {
+    localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.jarvisNarrator$())).toBe(
+      DEFAULT_JARVIS_NARRATOR,
+    );
+  });
 });
 
 function clearStorage(): void {
@@ -254,4 +268,5 @@ function clearStorage(): void {
   localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_EFFORT_STORAGE_KEY);
+  localStorage.removeItem(JARVIS_NARRATOR_STORAGE_KEY);
 }

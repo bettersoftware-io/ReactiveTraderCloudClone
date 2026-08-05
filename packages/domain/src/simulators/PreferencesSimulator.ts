@@ -14,6 +14,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -26,6 +27,7 @@ import {
   type EqWatchlistSort,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -54,6 +56,7 @@ export interface PreferencesSeed {
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
+  jarvisNarrator?: JarvisNarratorPreference;
 }
 
 /**
@@ -95,6 +98,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
 
   private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
+
+  private readonly jarvisNarratorSubject: BehaviorSubject<JarvisNarratorPreference>;
 
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
@@ -147,6 +152,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
       seed.jarvisEffort ?? DEFAULT_JARVIS_EFFORT,
+    );
+    this.jarvisNarratorSubject = new BehaviorSubject<JarvisNarratorPreference>(
+      seed.jarvisNarrator ?? DEFAULT_JARVIS_NARRATOR,
     );
   }
 
@@ -284,5 +292,13 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setJarvisEffort(effort: JarvisEffort): void {
     this.jarvisEffortSubject.next(effort);
+  }
+
+  jarvisNarrator$(): Observable<JarvisNarratorPreference> {
+    return this.jarvisNarratorSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisNarrator(preference: JarvisNarratorPreference): void {
+    this.jarvisNarratorSubject.next(preference);
   }
 }

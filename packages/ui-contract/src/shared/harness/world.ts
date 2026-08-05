@@ -34,6 +34,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -53,6 +54,7 @@ import {
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -289,6 +291,9 @@ export interface CommandLog {
   jarvisBrainSets: JarvisBrain[];
   /** Each effort written through useJarvisPreferences().setEffort, in order. */
   jarvisEffortSets: JarvisEffort[];
+  /** Each narrator preference written through
+   * useJarvisPreferences().setNarrator, in order. */
+  jarvisNarratorSets: JarvisNarratorPreference[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -379,6 +384,12 @@ export interface World {
    * threaded into the REAL createJarvisMachine's `effort$` dep — mirrors
    * `jarvisBrain` above. Defaults to DEFAULT_JARVIS_EFFORT. */
   readonly jarvisEffort: BehaviorSubject<JarvisEffort>;
+  /** The STORED Jarvis narrator preference (P5) — whether the proactive
+   * app-driving narrator may dispatch unsolicited turns. Mirrors
+   * `jarvisBrain`/`jarvisEffort` above; not yet threaded into a REAL
+   * `NarratorMachine` dep here (that wiring is a later P5 task). Defaults to
+   * DEFAULT_JARVIS_NARRATOR. */
+  readonly jarvisNarrator: BehaviorSubject<JarvisNarratorPreference>;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
@@ -534,6 +545,8 @@ export function createWorld(
   /** Seeds `World.jarvisEffort` (Task 10 of Phase 3); defaults to
    * DEFAULT_JARVIS_EFFORT. */
   jarvisEffortSeed?: JarvisEffort,
+  /** Seeds `World.jarvisNarrator` (P5); defaults to DEFAULT_JARVIS_NARRATOR. */
+  jarvisNarratorSeed?: JarvisNarratorPreference,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -732,6 +745,10 @@ export function createWorld(
     jarvisEffortSeed ?? DEFAULT_JARVIS_EFFORT,
   );
 
+  const jarvisNarrator = new BehaviorSubject<JarvisNarratorPreference>(
+    jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
+  );
+
   const jarvisUsage$ = new BehaviorSubject<JarvisUsageSnapshot | null>(
     adminSeed.jarvisUsage ?? null,
   );
@@ -902,6 +919,7 @@ export function createWorld(
     placedOrderRequests: [],
     jarvisBrainSets: [],
     jarvisEffortSets: [],
+    jarvisNarratorSets: [],
   };
 
   return {
@@ -920,6 +938,7 @@ export function createWorld(
     jarvisAvailability,
     jarvisBrain,
     jarvisEffort,
+    jarvisNarrator,
     jarvisUsage$,
     setJarvisUsage: (value: JarvisUsageSnapshot | null) => {
       return jarvisUsage$.next(value);
