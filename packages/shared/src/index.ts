@@ -32,6 +32,26 @@ export type {
 } from "./fx/referenceDataDto.js";
 // Jarvis
 export type {
+  DriveBatchParseResult,
+  DriveBatchV1,
+  DriveCommandV1,
+  DriveTab,
+} from "./jarvis/driveCommand.js";
+export {
+  DRIVE_CHART_TYPES,
+  DRIVE_COMMAND_JSON_SCHEMA,
+  DRIVE_COMMAND_KINDS,
+  DRIVE_INDICATORS,
+  DRIVE_LAYOUT_OPS,
+  DRIVE_PANES,
+  DRIVE_POWER_LEVELS,
+  DRIVE_SKINS,
+  DRIVE_TABS,
+  DRIVE_TIMEFRAMES,
+  MAX_DRIVE_COMMANDS,
+  parseDriveBatch,
+} from "./jarvis/driveCommand.js";
+export type {
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
