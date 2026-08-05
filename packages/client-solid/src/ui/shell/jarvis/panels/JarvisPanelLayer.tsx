@@ -97,7 +97,7 @@ function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
   // animateOnce is), THEN the real intent fires — so the panel is already
   // invisible by the time it leaves useJarvisPanels()'s list and this
   // component unmounts. Skipped outright under freeze/reduced-motion
-  // (mirrors useFlipGrid's exit-ghost gating) — no setTimeout anywhere, per
+  // (mirrors useFlipGrid's exit-ghost gating) — no timer calls anywhere, per
   // the src/ui timers gate.
   async function dismissThisPanel(): Promise<void> {
     const el = rootRef;
