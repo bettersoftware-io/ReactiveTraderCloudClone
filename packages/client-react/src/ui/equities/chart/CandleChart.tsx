@@ -12,8 +12,11 @@ import type { Candle } from "@rtc/domain";
 import {
   chartVm,
   crosshairVm,
+  type DrawingGrip,
+  dragDrawing,
   drawingScene,
   hitTestDrawings,
+  hitTestGrip,
   indicatorPoints,
   indicatorValues,
   navigatorLinePoints,
@@ -63,6 +66,7 @@ export function CandleChart({
   onSelectDrawing = NOOP_SELECT_DRAWING,
   onDeleteSelected = NOOP_DELETE_SELECTED,
   onShiftAnchors = NOOP_SHIFT_ANCHORS,
+  onUpdateDrawing = NOOP_UPDATE_DRAWING,
 }: CandleChartProps): ReactElement {
   // Concrete, effect-named handlers (not inline closures) so the gesture
   // slots below read as "what happens", matching the repo's handler-naming
@@ -76,6 +80,8 @@ export function CandleChart({
     onCommitLine: commitTrendline,
     onCommitLevel: commitLevel,
     onPlotClick: selectHitDrawing,
+    hitGrip: gripAt,
+    onCommitEdit: commitEditedDrawing,
     onDeleteKey: onDeleteSelected,
   };
 
@@ -94,6 +100,7 @@ export function CandleChart({
     applyViewport,
     paneHoverProps,
     draft,
+    editDrag,
   } = useChartGestures(
     candles.length,
     defaultVisible,
@@ -171,7 +178,27 @@ export function CandleChart({
   // projection `commitTrendline` below uses to commit) means the preview
   // already sits exactly where the commit will land — no free-floating
   // preview that jumps to a candle center on release.
-  const allDrawings = draft ? [...drawings, draftToDrawing(draft)] : drawings;
+  // A drag-edit in flight previews by replacing the dragged drawing with
+  // its dragDrawing projection — the SAME call the commit makes, so the
+  // preview is byte-identical to what pointer-up will commit.
+  const previewDrawings = editDrag
+    ? drawings.map((d) => {
+        return d.id === editDrag.grip.id
+          ? dragDrawing(
+              d,
+              editDrag.grip,
+              editDrag.from,
+              editDrag.to,
+              viewport,
+              vm.scale,
+              candles.length,
+            )
+          : d;
+      })
+    : drawings;
+  const allDrawings = draft
+    ? [...previewDrawings, draftToDrawing(draft)]
+    : previewDrawings;
   // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
   // passed directly, no mapping.
   const drawItems = drawingScene(
@@ -213,6 +240,28 @@ export function CandleChart({
 
   function selectHitDrawing(p: PlotFrac): void {
     onSelectDrawing(hitTestDrawings(drawItems, p.xFrac * 100, p.yFrac * 100));
+  }
+
+  function gripAt(p: PlotFrac): DrawingGrip | null {
+    return hitTestGrip(drawItems, p.xFrac * 100, p.yFrac * 100);
+  }
+
+  function commitEditedDrawing(
+    grip: DrawingGrip,
+    from: PlotFrac,
+    to: PlotFrac,
+  ): void {
+    const target = drawings.find((d) => {
+      return d.id === grip.id;
+    });
+
+    if (!target) {
+      return;
+    }
+
+    onUpdateDrawing(
+      dragDrawing(target, grip, from, to, viewport, vm.scale, candles.length),
+    );
   }
 
   function draftToDrawing(d: DrawDraft): EqDrawing {
@@ -322,6 +371,9 @@ export interface CandleChartProps {
   /** Shifts every trendline anchor index by `by` (a live prepend keeping
    * drawings pinned to their candles). Slot: default no-op. */
   onShiftAnchors?: (by: number) => void;
+  /** Replaces a drawing after a finished drag-edit (the same id, new
+   * anchors). Slot: default no-op. */
+  onUpdateDrawing?: (drawing: EqDrawing) => void;
 }
 
 /** Stable empty-array identity for the `drawings` default — avoids a fresh
@@ -339,6 +391,8 @@ function NOOP_SELECT_DRAWING(_id: string | null): void {}
 function NOOP_DELETE_SELECTED(): void {}
 
 function NOOP_SHIFT_ANCHORS(_by: number): void {}
+
+function NOOP_UPDATE_DRAWING(_drawing: EqDrawing): void {}
 
 /** Projects each active indicator's value series into the visible viewport,
  * pre-joined into the SVG `points` string SvgPathLayer renders verbatim
