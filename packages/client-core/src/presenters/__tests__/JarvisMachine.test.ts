@@ -1218,16 +1218,23 @@ describe("createJarvisMachine", () => {
       expect(port?.asks).toEqual(["first", "[narration] second"]);
 
       // The narrate turn only starts once the send turn's own done has
-      // folded — proving it was truly queued, not run concurrently.
-      const sendDoneIndex = states.findIndex((s) => {
-        return s.entries.at(-1)?.text === "" && s.entries.length === 3;
-      });
+      // folded — proving it was truly queued, not run concurrently. The
+      // port here only ever emits a bare {type:"done"} (no delta), so the
+      // send turn's jarvis stub entry (entries[2]) is text:"" both at ITS
+      // OWN start (frame 2) and at its completion (frame ~7) — text/length
+      // alone can't tell "queued" from "concurrent" apart. done:true CAN:
+      // under the real concatMap queue, entries[2] must already be
+      // finalized by the time the narrate turn's start item lands (concatMap
+      // can't dequeue narrate until send's inner observable completes);
+      // under a hypothetical concurrent (mergeMap) dispatch, narrate would
+      // start at frame 2 while send is still mid-flight, so entries[2] would
+      // still read done:false there.
       const narrateStartIndex = states.findIndex((s) => {
         return s.entries.some((e) => {
           return e.origin === "narrator";
         });
       });
-      expect(narrateStartIndex).toBeGreaterThan(sendDoneIndex);
+      expect(states[narrateStartIndex]?.entries[2]?.done).toBe(true);
     });
 
     it("unreadNarration is set when a narrate turn completes while closed", () => {
@@ -1301,6 +1308,45 @@ describe("createJarvisMachine", () => {
       expect(beforeOpen.at(-1)?.unreadNarration).toBe(true);
       expect(states.at(-1)?.open).toBe(true);
       expect(states.at(-1)?.unreadNarration).toBe(false);
+    });
+
+    it("REGRESSION: unreadNarration reads `open` at COMPLETION time, not at dispatch time — closing mid-turn (after a narrate() sent while open) still sets it", () => {
+      // Every other unreadNarration test above uses an instantaneous port
+      // ("(a|)"), where dispatch and completion land in the same tick — so
+      // "captured open at dispatch" and "captured open at completion" are
+      // indistinguishable there. This pins the real discriminator: open()
+      // at frame 1, narrate() at frame 2 (dispatch-time open === true), then
+      // close() at frame 3 — strictly BEFORE the delayed port's frame-7
+      // "done" (subscribed at frame 2, "5ms (a|)" fires 5 frames later) — so
+      // the turn is genuinely still in flight when the panel closes. A
+      // dispatch-time-cached read would see open:true and leave
+      // unreadNarration false; the correct completion-time read sees
+      // open:false (already closed by then) and sets it.
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "5ms (a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 2);
+          ts.schedule(() => {
+            machine.intents.close();
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.open).toBe(false);
+      expect(last?.unreadNarration).toBe(true);
     });
 
     it("initial state starts with unreadNarration false", () => {
