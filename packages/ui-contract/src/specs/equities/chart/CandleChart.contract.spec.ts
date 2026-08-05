@@ -14,7 +14,7 @@ const CANDLES: readonly Candle[] = [
 ];
 
 describe("CandleChart", () => {
-  it("renders one wrapper per candle, plus the fixed 4 grid lines and 4 price labels", () => {
+  it("renders one wrapper per candle, plus one grid line + on-line label per nice tick", () => {
     const chart = mount(CandleChart, {
       props: {
         candles: CANDLES,
@@ -30,8 +30,16 @@ describe("CandleChart", () => {
     });
 
     expect(chart.candleCount()).toBe(2);
-    expect(chart.gridLineCount()).toBe(4);
-    expect(chart.priceLabels()).toHaveLength(4);
+    const gridTops = chart.gridLineTopVars();
+    expect(gridTops.length).toBeGreaterThanOrEqual(2);
+    expect(gridTops.length).toBeLessThanOrEqual(7);
+    // One label per line, each centered ON its line: --ltop is the line's
+    // --top wrapped in the projection's −6px centering calc.
+    expect(chart.priceLabelTopVars()).toEqual(
+      gridTops.map((t) => {
+        return `calc(${t} - 6px)`;
+      }),
+    );
   });
 
   it("marks the last candle's direction and glows it only when flashOn", () => {

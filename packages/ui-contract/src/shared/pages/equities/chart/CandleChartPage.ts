@@ -111,6 +111,24 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     });
   }
 
+  /** Each grid line's projected `--gtop` custom property, in DOM order. */
+  gridLineTopVars(): string[] {
+    return Array.from(
+      this.root.querySelectorAll('[data-testid="chart-grid-line"]'),
+    ).map((el) => {
+      return (el as HTMLElement).style.getPropertyValue("--gtop");
+    });
+  }
+
+  /** Each price label's projected `--ltop` custom property, in DOM order. */
+  priceLabelTopVars(): string[] {
+    return Array.from(
+      this.root.querySelectorAll('[data-testid="chart-price-label"]'),
+    ).map((el) => {
+      return (el as HTMLElement).style.getPropertyValue("--ltop");
+    });
+  }
+
   /** Ordered text of every rendered time-axis tick. */
   timeLabels(): string[] {
     return Array.from(
