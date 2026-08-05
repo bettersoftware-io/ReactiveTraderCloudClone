@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { RatesModule } from "#/ui/rates/RatesModule";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
@@ -267,6 +268,26 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <BootSceneFixture Scene={TopoScene} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    // T6: the Rates grid — the app's busiest screen, and until the pricing pin
+    // existed it had no scenario at all, because every cell moved twice over
+    // (a `Math.random()` seed walk plus a live tick loop). `VisualScenarioHost`
+    // now pins pricing host-wide, so the grid renders at its reference prices,
+    // at rest. `freeze` additionally stills the tick-flash pips, which are
+    // driven by a nonce rather than by the price stream and so survive a pin.
+    id: "rates/grid",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ScreenContentFixture>
+            <RatesModule />
+          </ScreenContentFixture>
         </VisualScenarioHost>
       );
     },

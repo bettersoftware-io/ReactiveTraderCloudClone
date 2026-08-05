@@ -159,6 +159,17 @@ export interface PortFactoryDeps {
    * un-pinned blotter golden re-dates itself every calendar day.
    */
   blotterSeedBaseMs?: number;
+
+  /**
+   * Freeze FX pricing at this instant — the seed walk is skipped and the tick
+   * loop never schedules.
+   *
+   * Same reason as `blotterSeedBaseMs`, one order of magnitude worse: a Rates
+   * grid is non-deterministic in EVERY cell (a `Math.random()` seed walk plus a
+   * live `setTimeout` loop), which is why it had no visual scenario at all.
+   * Nothing in the app passes one; a running desk wants live prices.
+   */
+  pricingPinMs?: number;
 }
 
 export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
@@ -181,7 +192,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
   const topology = new ServiceTopologySimulator(3);
   const eventLog = new EventLogSimulator(4);
   const referenceData = new ReferenceDataSimulator();
-  const pricing = new PricingSimulator();
+  const pricing = new PricingSimulator(deps.pricingPinMs);
   const blotter = new TradeStoreSimulator(execution, deps.blotterSeedBaseMs);
   const analytics = new AnalyticsSimulator();
   return {

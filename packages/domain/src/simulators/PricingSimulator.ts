@@ -46,13 +46,18 @@ function createTick(
   symbol: string,
   state: PairState,
   timestamp: number,
+  valueDateMs: number,
 ): PriceTick {
   return {
     symbol,
     mid: state.mid,
     ask: state.mid + state.halfSpread,
     bid: state.mid - state.halfSpread,
-    valueDate: new Date().toISOString().slice(0, 10),
+    // Taken from the caller's clock, not `new Date()` directly: under a pin
+    // this must be the pinned instant. A tick that is deterministic in every
+    // field EXCEPT a date derived from the wall clock is exactly the defect
+    // that made `blotter/seeded` re-date itself every day (T32).
+    valueDate: new Date(valueDateMs).toISOString().slice(0, 10),
     creationTimestamp: timestamp,
   };
 }
@@ -75,10 +80,35 @@ export function rfqResponseDelayMs(rand: number): number {
 export class PricingSimulator implements PricingPort {
   private readonly pairs = new Map<string, PairState>();
 
-  constructor() {
+  private readonly pinAtMs: number | undefined;
+
+  /**
+   * @param pinAtMs Freeze pricing at this instant. Omitted — which is what the
+   * running desk wants — prices seed from a random walk off `Date.now()` and
+   * then tick forever.
+   *
+   * A PIXEL-GOLDEN HARNESS MUST PASS ONE. Every price on screen is otherwise
+   * doubly non-deterministic: `Math.random()` in the seed walk, and a live
+   * `setTimeout` tick loop. `blotter/seeded` (T32) needed the same treatment
+   * for one clock-derived field; a Rates grid is that problem in every cell,
+   * which is why `rates` had no visual scenario at all until this existed.
+   *
+   * Pinned, the walk is skipped entirely rather than seeded from a fixed PRNG:
+   * a scenario wants the grid AT REST at its reference prices, and a
+   * reproducible-but-arbitrary random sequence would assert numbers no reader
+   * could check against `KNOWN_CURRENCY_PAIRS`.
+   */
+  constructor(pinAtMs?: number) {
+    this.pinAtMs = pinAtMs;
+
     for (const pair of KNOWN_CURRENCY_PAIRS) {
       this.initPair(pair);
     }
+  }
+
+  /** The pinned instant when frozen, otherwise the live clock. */
+  private nowMs(): number {
+    return this.pinAtMs ?? Date.now();
   }
 
   private initPair(pair: CurrencyPair): void {
@@ -89,12 +119,15 @@ export class PricingSimulator implements PricingPort {
       stepSize: stepSizeFor(pair),
       ratePrecision: pair.ratePrecision,
     };
-    const now = Date.now();
+    const now = this.nowMs();
 
     for (let i = PRICE_HISTORY_SIZE - 1; i >= 0; i--) {
-      state.mid = applyRandomWalk(state);
+      if (this.pinAtMs === undefined) {
+        state.mid = applyRandomWalk(state);
+      }
+
       const timestamp = now - i * 500; // ~500ms between historical ticks
-      state.history.push(createTick(pair.symbol, state, timestamp));
+      state.history.push(createTick(pair.symbol, state, timestamp, now));
     }
 
     this.pairs.set(pair.symbol, state);
@@ -125,13 +158,24 @@ export class PricingSimulator implements PricingPort {
       }
 
       const pairState = state;
+
+      // Pinned: hand back the resting tick and stop. NOT an empty stream —
+      // a subscriber that never receives anything renders the "no price yet"
+      // branch, which is a different screen from the one a Rates golden is
+      // meant to assert.
+      if (this.pinAtMs !== undefined) {
+        const at = this.pinAtMs;
+        return of(createTick(symbol, pairState, at, at));
+      }
+
       const live$ = new Observable<PriceTick>((subscriber) => {
         let timeoutId: ReturnType<typeof setTimeout>;
 
         function scheduleNext(): void {
           timeoutId = setTimeout(() => {
             pairState.mid = applyRandomWalk(pairState);
-            const tick = createTick(symbol, pairState, Date.now());
+            const now = Date.now();
+            const tick = createTick(symbol, pairState, now, now);
             pairState.history.push(tick);
 
             if (pairState.history.length > PRICE_HISTORY_SIZE) {
