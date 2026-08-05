@@ -115,23 +115,21 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   the only thing `BootSequence` paints once `BootCanvas` is gated off (no
  *   wordmark/progress chrome here — that lives inside the real
  *   `BootSequenceMachine`, whose live progress ramp is exactly the
- *   non-determinism this fixture exists to avoid). **`BootEmblem`'s own pulse
- *   loop is NOT frozen — CONFIRMED by measurement 2026-08-04, having been
- *   predicted here first.** It is gated by
- *   `AccessibilityInfo.isReduceMotionEnabled()`, an OS-level signal rather
- *   than this app's preferences, so it is the one scene the harness's
- *   preference-driven freeze has no authority over. Six raw screenshots taken
- *   back-to-back off a single mounted scenario climb 24 → 61 → 93 → 118 → 133
- *   in max channel delta, bounded to the emblem. **This golden is therefore a
- *   phase sample, not a still**, and its cross-run reproducibility is no
- *   evidence otherwise: the driver waits a fixed `postReadySettleMs` after
- *   mount, so it re-samples the same phase every run, and a timing
- *   perturbation is all it takes to report a change that is not one. Reading
- *   that determinism as "the scene is static, so a mismatch means the golden
- *   is stale" cost a real investigation (T33 in `docs/rn-open-items.md`).
- *   Until the pulse takes a gate this fixture can pin, treat a `boot/static`
- *   diff as unproven — the same class of variance that got
- *   `credit/rfq-tiles-empty` dropped outright.
+ *   non-determinism this fixture exists to avoid). **Pinned with
+ *   `powerSaverLevel="freeze"`, and that is load-bearing (T16/T33).**
+ *   `BootEmblem` runs a 900 ms opacity pulse; it used to gate only on
+ *   `AccessibilityInfo.isReduceMotionEnabled()`, an OS-level signal the
+ *   harness has no authority over, so this was the one scenario capturing a
+ *   *live animation*. Measured 2026-08-04: six raw screenshots back-to-back
+ *   off one mount climbed 24 → 61 → 93 → 118 → 133 in max channel delta.
+ *   Crucially the captures still reproduced, because the driver's fixed
+ *   `postReadySettleMs` re-samples the same phase — so the golden looked
+ *   stable while being a phase sample, and reading that stability as "the
+ *   scene is static, therefore a mismatch means the golden is stale" cost a
+ *   real investigation (T33 in `docs/rn-open-items.md`). The emblem now routes
+ *   through `useBootMotionEnabled`, which encodes "Freeze always wins", so
+ *   seeding `freeze` here pins it to its resting frame like any other
+ *   scenario.
  * - `lock/hold` — `HoldToUnlockRing` alone at a fixed mid-fill `progress`
  *   (`fixtures.tsx`'s `LOCK_HOLD_PROGRESS`), with a freshly-built,
  *   never-triggered `LongPressGesture` satisfying its `gesture` prop.
@@ -279,7 +277,7 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo" mode="dark">
+        <VisualScenarioHost skin="holo" mode="dark" powerSaverLevel="freeze">
           <BootEmblem />
         </VisualScenarioHost>
       );

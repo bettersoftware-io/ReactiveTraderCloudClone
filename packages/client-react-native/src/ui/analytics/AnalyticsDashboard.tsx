@@ -40,7 +40,7 @@ export function AnalyticsDashboard({
         testID="analytics-widget-pnl"
         style={styles.widget}
       >
-        <Text style={styles.widgetTitle}>P&amp;L</Text>
+        <Text style={styles.widgetTitle}>PROFIT &amp; LOSS · USD</Text>
         <PnlValue value={latestPnl} />
         <PnlChart history={data.history} />
       </SurfaceCard>
@@ -50,7 +50,7 @@ export function AnalyticsDashboard({
         testID="analytics-widget-pairs"
         style={styles.widget}
       >
-        <Text style={styles.widgetTitle}>Pair P&amp;L</Text>
+        <Text style={styles.widgetTitle}>PAIR P&amp;L</Text>
         <PairPnlBars positions={data.currentPositions} />
       </SurfaceCard>
 
@@ -59,7 +59,7 @@ export function AnalyticsDashboard({
         testID="analytics-widget-exposure"
         style={styles.widget}
       >
-        <Text style={styles.widgetTitle}>Exposure</Text>
+        <Text style={styles.widgetTitle}>NET EXPOSURE · USD EQUIV</Text>
         <ExposureBubbles positions={data.currentPositions} />
       </SurfaceCard>
     </>
@@ -82,12 +82,18 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
       marginBottom: SPACING.md,
       padding: SPACING.md,
     },
+    // T38: the prototype's card titles are mono 8.5px on 2px tracking,
+    // uppercase, with their unit qualifier (dc.html:167, 179, 192) — not the
+    // 12px display font with 0.5 tracking this used to carry. The `· USD` /
+    // `· USD EQUIV` suffixes are load-bearing copy, not decoration: without
+    // them nothing on the screen says what currency the book is denominated
+    // in.
     widgetTitle: {
-      fontSize: 12,
+      fontSize: 8.5,
       color: t.textMuted,
-      fontFamily: t.fontDisplay,
+      fontFamily: t.fontMono,
       marginBottom: SPACING.sm,
-      letterSpacing: 0.5,
+      letterSpacing: 2,
     },
   });
 }

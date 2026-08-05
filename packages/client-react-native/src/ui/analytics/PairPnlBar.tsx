@@ -85,15 +85,35 @@ interface PairPnlBarStyles {
 
 function makeStyles(t: RnTheme): PairPnlBarStyles {
   return StyleSheet.create({
-    track: { flex: 1, height: 12, justifyContent: "center" },
+    // T40/T41: the prototype's track is a RECESSED RAIL, not an invisible
+    // layout box — `background: var(--panel-head); border-radius: 3px`
+    // (dc.html:183). Without it the bars float on the card and the row loses
+    // the "how far along is this" reading the rail gives for free. The bar
+    // itself is inset 1px top and bottom inside a 12px track (so 10px, not
+    // 8), rounded 2px, and drawn at 0.85 opacity — which is why ours read
+    // harder and heavier than the design's.
+    track: {
+      flex: 1,
+      height: 12,
+      justifyContent: "center",
+      backgroundColor: t.panelHead,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
     centerLine: {
       position: "absolute",
       left: "50%",
       width: 1,
       height: 12,
-      backgroundColor: t.textMuted,
+      backgroundColor: t.border,
     },
-    bar: { position: "absolute", width: "50%", height: 8 },
+    bar: {
+      position: "absolute",
+      width: "50%",
+      height: 10,
+      borderRadius: 2,
+      opacity: 0.85,
+    },
     barPos: {
       left: "50%",
       transformOrigin: "left",
