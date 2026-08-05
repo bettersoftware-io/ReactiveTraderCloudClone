@@ -53,7 +53,7 @@ describe("composition — jarvis wiring", () => {
     presenters.jarvis.dispose();
   });
 
-  it("a jarvis.events$ source error never surfaces on presenters.jarvisPanels.panels$ (the catchError guard composing jarvisPanels in composition.ts)", async () => {
+  it("a jarvis.events$ source error never surfaces on presenters.jarvisPanels.panels$ or presenters.jarvisDriver.state$ (the catchError guards composing jarvisPanels/jarvisDriver in composition.ts)", async () => {
     const { presenters } = createApp({
       ...createSimulatorPorts({
         preferences: new PreferencesSimulator(),
@@ -65,8 +65,9 @@ describe("composition — jarvis wiring", () => {
       // into a synchronous error on JarvisMachine's shared turnItems$, which
       // both presenters.jarvis.state$ AND presenters.jarvis.events$ derive
       // from. Without composition.ts's catchError guard on events$,
-      // createJarvisPanelsMachine's events$ input is TERMINAL on error (its
-      // own doc), so this error would kill panels$'s fold too.
+      // createJarvisPanelsMachine's/createJarvisDriverMachine's events$
+      // input is TERMINAL on error (both machines' own doc), so this error
+      // would kill panels$'s AND the driver's fold too.
       jarvis: explodingJarvisPort(),
     });
 
@@ -77,6 +78,13 @@ describe("composition — jarvis wiring", () => {
       },
     });
 
+    let driverErrored = false;
+    const driverSub = presenters.jarvisDriver.state$.subscribe({
+      error: () => {
+        driverErrored = true;
+      },
+    });
+
     // JarvisMachine.ts's OWN `state$` warm subscription (createJarvisMachine,
     // outside this task's scope) has no error handler of its own, so the
     // SAME exploding ask() also trips a companion, pre-existing RxJS
@@ -84,7 +92,7 @@ describe("composition — jarvis wiring", () => {
     // `reportUnhandledError`), not synchronous, and NOT what this test is
     // pinning. Capture it deliberately (rather than let it become a stray
     // uncaught exception that fails the whole run) so this test's pass/fail
-    // reflects only the composition.ts guard it's named for.
+    // reflects only the composition.ts guards it's named for.
     const capturedUnhandledErrors: unknown[] = [];
     const originalOnUnhandledError = rxjsConfig.onUnhandledError;
 
@@ -96,6 +104,7 @@ describe("composition — jarvis wiring", () => {
       presenters.jarvis.intents.send("hello, sir");
 
       expect(panelsErrored).toBe(false);
+      expect(driverErrored).toBe(false);
 
       // Let the scheduled companion report (see above) land before
       // restoring the default handler.
@@ -108,6 +117,7 @@ describe("composition — jarvis wiring", () => {
     }
 
     sub.unsubscribe();
+    driverSub.unsubscribe();
     presenters.jarvis.dispose();
   });
 });

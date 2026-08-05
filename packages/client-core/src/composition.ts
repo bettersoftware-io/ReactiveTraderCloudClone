@@ -15,6 +15,8 @@ import type {
   ExecuteTradeInput,
   JarvisSkin,
   LoginWaitVariant,
+  PowerSaverLevel,
+  ThemeSkin,
 } from "@rtc/domain";
 import {
   DEFAULT_LOGIN_WAIT_DELAY,
@@ -32,6 +34,7 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/layout/defaultLayoutPort";
+import type { LayoutNode } from "#/layout/layoutPort";
 import {
   AmbientStylePresenter,
   AnalyticsPresenter,
@@ -48,6 +51,7 @@ import {
   createBootSequenceMachine,
   createEqWorkspaceMachine,
   createIncidentMachine,
+  createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
@@ -70,6 +74,7 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
+  type JarvisDriverMachineHandle,
   type JarvisEntry,
   type JarvisMachineHandle,
   JarvisPanelsPresenter,
@@ -199,6 +204,13 @@ export interface Presenters {
    * `jarvis`'s own "panel" turn events, interpreted into live `PanelData`
    * over the domain ports. */
   jarvisPanels: JarvisPanelsPresenter;
+  /** J.A.R.V.I.S. drive-the-app interpreter: turns `jarvis`'s own "command"
+   * turn events into staggered intent dispatches on `workspaceNav`,
+   * per-tab layout machines, `eqWorkspace`, the theme-skin/power-saver
+   * preferences, and `jarvisPanels.dismissPanel` — see
+   * `JarvisDriverMachine`'s doc for the total-interpreter/choreography
+   * contract. */
+  jarvisDriver: JarvisDriverMachineHandle;
 }
 
 export interface AppCommands {
@@ -293,6 +305,39 @@ export function firstWatchlistSymbol$(
     take(1),
   );
 }
+
+/** Every `PanelId` reachable in one layout tree, walked from its root — a
+ * `"panel"` leaf contributes its own id, a `"split"` node contributes its
+ * children's. Pure and static (the default trees never change at runtime),
+ * so `LAYOUT_PANEL_IDS` below computes this once per tab at module load
+ * rather than per `JarvisDriverMachine` call. */
+function collectPanelIds(node: LayoutNode): readonly string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(collectPanelIds);
+}
+
+const WORKSPACE_TABS: readonly WorkspaceTab[] = [
+  "fx",
+  "credit",
+  "equities",
+  "admin",
+];
+
+/** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source: the static panel
+ * ids in each tab's DEFAULT layout tree (e.g. "fx-rates", "eq-chart") — the
+ * `"layout"` DriveCommand's membership check. Deliberately the tree's
+ * default shape, not whatever a live per-mount layout machine's current
+ * `root` happens to be (panel ids never move between tabs at runtime, so the
+ * default tree's id set is exactly the live set too). */
+const LAYOUT_PANEL_IDS: Readonly<Record<WorkspaceTab, readonly string[]>> =
+  Object.fromEntries(
+    WORKSPACE_TABS.map((tab) => {
+      return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
+    }),
+  ) as Readonly<Record<WorkspaceTab, readonly string[]>>;
 
 /**
  * Defensive guard, currently UNREACHABLE in production — kept so a natural
@@ -420,6 +465,25 @@ export function createApp(ports: AppPorts): App {
   // watchlist symbol (see peekFirstWatchlistSymbol below).
   const watchlist = new WatchlistPresenter(ports.marketData);
 
+  // Hoisted (rather than built inline in the `presenters` literal below,
+  // where it used to live) so JarvisDriverMachine — composed below, beside
+  // jarvisPanels — can target this singleton's intents from "eqSelect"/
+  // "eqTimeframe"/"eqChartType"/"eqIndicator"/"eqPane" DriveCommands. Only
+  // needs `watchlist`, already built above.
+  const eqWorkspace = createEqWorkspaceMachine({
+    initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
+    seed$: firstWatchlistSymbol$(watchlist.watchlist$),
+  });
+
+  // Hoisted (rather than built inline in the `presenters` literal below,
+  // where it used to live) so JarvisDriverMachine's `setThemeSkin` closure
+  // can call `.setSkin` on the SAME instance the `presenters` literal below
+  // exposes — one preference presenter, not two independent ones racing the
+  // same underlying preferences port.
+  const themeSkinPreference = new ThemeSkinPreferencePresenter(
+    ports.preferences,
+  );
+
   // Hoisted (rather than built inline in the `presenters` literal below) so
   // `jarvisPanels` can be composed from `jarvis.events$` — Task 6's sole
   // event source for the generative-UI panels machine (see
@@ -465,11 +529,52 @@ export function createApp(ports: AppPorts): App {
   );
 
   // Hoisted (rather than built inline in the `presenters` literal below,
-  // unlike eqWorkspace) so a future JarvisDriverMachine — composed here
-  // beside jarvisPanels, same scope — can target this singleton's
-  // switchTab intent from a "switchTab" DriveCommand. Takes no deps, unlike
-  // eqWorkspace/incident, so it needs nothing else built first.
+  // unlike eqWorkspace) so JarvisDriverMachine — composed here beside
+  // jarvisPanels, same scope — can target this singleton's switchTab intent
+  // from a "switchTab" DriveCommand. Takes no deps, unlike eqWorkspace/
+  // incident, so it needs nothing else built first.
   const workspaceNav = createWorkspaceNavMachine();
+
+  // JarvisDriverMachine: the total DriveCommand interpreter (Task 6). SAME
+  // catchError/EMPTY guard as jarvisPanels above — createJarvisDriverMachine's
+  // events$ input is equally TERMINAL on error, and both fold over the same
+  // jarvis.events$ source, so a source error must not kill either fold.
+  // `layout` is passed straight through as the same per-call factory
+  // MachineFactories.layout exposes to the UI (see JarvisDriverDeps.layout's
+  // own doc for why this is deliberately NOT a cached singleton — mirrors
+  // the workspaceNav dispose-on-unmount lesson from Task 5's review).
+  const jarvisDriver = createJarvisDriverMachine({
+    events$: jarvis.events$.pipe(
+      catchError(() => {
+        return EMPTY;
+      }),
+    ),
+    workspaceNav,
+    layout: (tab: WorkspaceTab) => {
+      return createLayoutMachine(createDefaultLayoutPort(tab));
+    },
+    eqWorkspace,
+    setThemeSkin: (skin: ThemeSkin): void => {
+      themeSkinPreference.setSkin(skin);
+    },
+    setPowerSaver: (level: PowerSaverLevel): void => {
+      powerSaver.setLevel(level);
+    },
+    dismissPanel: (panelId: string): void => {
+      jarvisPanels.dismissPanel(panelId);
+    },
+    knownLayoutPanelIds: (tab: WorkspaceTab) => {
+      return LAYOUT_PANEL_IDS[tab];
+    },
+    knownSymbols$: watchlist.watchlist$.pipe(
+      map((list) => {
+        return list.map((instrument) => {
+          return instrument.symbol;
+        });
+      }),
+    ),
+    powerSaverLevel$: powerSaver.level$,
+  });
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
@@ -496,7 +601,7 @@ export function createApp(ports: AppPorts): App {
       ports.preferences,
       colorScheme,
     ),
-    themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
+    themeSkinPreference,
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     ambientStyle: new AmbientStylePresenter(ports.preferences),
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
@@ -594,10 +699,7 @@ export function createApp(ports: AppPorts): App {
         return incident$.next(ev);
       },
     }),
-    eqWorkspace: createEqWorkspaceMachine({
-      initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
-      seed$: firstWatchlistSymbol$(watchlist.watchlist$),
-    }),
+    eqWorkspace,
     workspaceNav,
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
@@ -609,6 +711,7 @@ export function createApp(ports: AppPorts): App {
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
     jarvisPanels,
+    jarvisDriver,
   };
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
