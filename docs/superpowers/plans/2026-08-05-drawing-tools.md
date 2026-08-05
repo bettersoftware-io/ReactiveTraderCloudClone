@@ -486,7 +486,7 @@ Prepend effect (the `onLoadOlder` precedent — an effect, not render-time):
 
 - [ ] **Step 1:** Forced-state host in each client's `EquitiesChartInteractive.visual.tsx` family: mount `CandleChart` with literal props — a trendline (a: idx 250/price low-ish, b: idx 290/price high-ish across the default {240,300} window), an hline mid-range, `selectedDrawingId` = the trendline's id (handles visible). No gestures.
 - [ ] **Step 2:** Registry entries both clients (registryCoverage enforces).
-- [ ] **Step 3:** Golden generation per UPDATING-GOLDENS.md (build first; kill stale :32xx vite servers from other checkouts). Expect EXACTLY 10 new stems, zero modified — drawings are opt-in DOM; ANY modified existing stem = STOP and investigate before committing.
+- [ ] **Step 3:** Golden generation per UPDATING-GOLDENS.md (build first; kill stale :32xx vite servers from other checkouts). Expect EXACTLY 10 new `equities-chart-drawings` stems + 10 MODIFIED `app-equities` stems (the two DrawToolPills render unconditionally in the head bar — the full-app shot changes, same mechanism as the LOG pill; amended 2026-08-05 after Task 4 landed the pills). The chart-body scenarios (`equities-chart-*`) must NOT change — drawings are opt-in DOM in the plot. Any OTHER modified stem = STOP and investigate before committing.
 - [ ] **Step 4:** Full unscoped visual asserts, react AND solid — 100% green. Eyeball one PNG (two lines, handles on the selected one).
 - [ ] **Step 5: Commit** `test(visual): equities/chart-drawings scenario + darwin-arm64 goldens`
 
