@@ -1368,6 +1368,75 @@ describe("createJarvisMachine", () => {
       });
     });
   });
+
+  // recordDriveOutcome: JarvisDriverMachine's per-command outcomes (Task 10
+  // follow-up ruling — composition.ts wires jarvisDriver.outcomes$ into this
+  // intent). Not a user turn: no port.ask() call, no phase change, no
+  // pending-confirmation involvement — just an entries fold.
+  describe("recordDriveOutcome", () => {
+    it("an APPLIED outcome appends a new jarvis-role entry with text 'drive: <kind>'", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: basePort(ts),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "switchTab", tab: "equities" },
+              status: "applied",
+            });
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "jarvis", text: "drive: switchTab", done: true },
+      ]);
+    });
+
+    it("a SKIPPED outcome folds NOTHING — entries (and the id counter) stay untouched", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: basePort(ts),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "eqSelect", symbol: "ZZZZZZ" },
+              status: "skipped",
+              reason: 'unknown symbol "ZZZZZZ"',
+            });
+          }, 1);
+          // A LATER applied outcome proves the id counter wasn't consumed by
+          // the skipped one above — id 1, not 2.
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "eqTimeframe", tf: "1W" },
+              status: "applied",
+            });
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "jarvis", text: "drive: eqTimeframe", done: true },
+      ]);
+    });
+  });
 });
 
 function scheduler(): TestScheduler {

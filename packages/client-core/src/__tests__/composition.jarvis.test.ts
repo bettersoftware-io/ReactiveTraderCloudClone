@@ -17,6 +17,7 @@ import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
+import { DRIVE_STAGGER_MS } from "#/presenters/JarvisDriverMachine";
 
 describe("composition — jarvis wiring", () => {
   it("app.presenters.jarvis starts with the greeting entry and the default skin", async () => {
@@ -157,6 +158,45 @@ describe("composition — jarvis wiring", () => {
 
     presenters.jarvis.dispose();
   });
+
+  // Task 10 follow-up ruling: jarvisDriver.outcomes$ is wired into
+  // jarvis.intents.recordDriveOutcome (composition.ts, right after
+  // jarvisDriver is built) — proves the WHOLE seam end to end, not just
+  // JarvisDriverMachine.test.ts's outcomes$ unit tests or
+  // JarvisMachine.test.ts's recordDriveOutcome fold unit tests in isolation.
+  it("a command batch through createApp yields 'drive: <kind>' transcript entries for APPLIED commands only", async () => {
+    const { presenters } = createApp({
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
+      connectionEvents: new ConnectionEventsSimulator(),
+      jarvis: mixedOutcomeDrivingJarvisPort(),
+    });
+
+    presenters.jarvis.intents.send("switch to equities and select ZZZZZZ");
+
+    // Two commands in the batch: the first (applied) fires immediately, the
+    // second (skipped — unknown symbol) is staggered DRIVE_STAGGER_MS later
+    // — still a REAL (non-virtual) scheduler at this composition level.
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, DRIVE_STAGGER_MS + 100);
+    });
+
+    const state = await firstValueFrom(presenters.jarvis.state$);
+    const driveEntryTexts = state.entries
+      .filter((entry) => {
+        return entry.text.startsWith("drive: ");
+      })
+      .map((entry) => {
+        return entry.text;
+      });
+
+    expect(driveEntryTexts).toEqual(["drive: switchTab"]);
+
+    presenters.jarvis.dispose();
+  });
 });
 
 function explodingJarvisPort(): JarvisPort {
@@ -187,6 +227,29 @@ function layoutDrivingJarvisPort(): JarvisPort {
               tab: "equities",
               panelId: "eq-chart",
             },
+          ],
+        },
+      });
+    },
+    confirm: (): void => {
+      // unused by this test
+    },
+  };
+}
+
+/** A JarvisPort whose ask() replies with a single "command" event driving a
+ * two-command batch: an applied `switchTab` and a skipped `eqSelect`
+ * (unknown symbol) — used only by the recordDriveOutcome wiring test above. */
+function mixedOutcomeDrivingJarvisPort(): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [
+            { kind: "switchTab", tab: "equities" },
+            { kind: "eqSelect", symbol: "ZZZZZZ" },
           ],
         },
       });

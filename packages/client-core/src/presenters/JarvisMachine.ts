@@ -36,6 +36,7 @@ import type {
   JarvisPort,
 } from "#/adapters/jarvisPort";
 
+import type { DriveOutcome } from "./JarvisDriverMachine";
 import type { Machine } from "./machine";
 
 export const JARVIS_CONFIRM_TIMEOUT_MS = 60_000;
@@ -142,6 +143,20 @@ export interface JarvisIntents {
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
+  /** Folds one `DriveOutcome` (`JarvisDriverMachine`'s per-command result,
+   * not a user action) into the transcript: an `"applied"` outcome appends
+   * a new jarvis-role entry with text `` `drive: ${outcome.command.kind}` ``
+   * (e.g. "drive: switchTab"); a `"skipped"` outcome folds NOTHING — the
+   * filter lives in THIS machine's fold (not at the `outcomes$` source) so
+   * a future consumer that wants skipped outcomes too (e.g. a debug view)
+   * isn't already filtered upstream. No turn correlation: the entry appends
+   * at arrival, independent of `phase`/any in-flight `send`/`narrate` turn,
+   * mirroring how `toolEvent`/`done` entries append at arrival too.
+   * `composition.ts` wires this from `jarvisDriver.outcomes$` AFTER both
+   * machines exist (a late-bound subscription — `jarvisDriver` is built
+   * FROM this machine's own `events$`, so this machine can't depend on
+   * `jarvisDriver`'s output at CONSTRUCTION time without a cycle). */
+  recordDriveOutcome: (outcome: DriveOutcome) => void;
 }
 
 export interface JarvisDeps {
@@ -452,6 +467,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const toggle$ = new Subject<void>();
   const approve$ = new Subject<void>();
   const decline$ = new Subject<void>();
+  const driveOutcome$ = new Subject<DriveOutcome>();
 
   let nextEntryId = 1; // 0 is the greeting entry
 
@@ -655,6 +671,29 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     }),
   );
 
+  // recordDriveOutcome's fold — see JarvisIntents.recordDriveOutcome's doc
+  // for why the applied-only filter lives HERE rather than at the
+  // outcomes$ source. nextEntryId is the SAME counter turnItems$'s concatMap
+  // above allocates from — ids just need to be unique, not contiguous
+  // within one source.
+  const driveOutcomePatches$: Observable<Patch> = driveOutcome$.pipe(
+    filter((outcome) => {
+      return outcome.status === "applied";
+    }),
+    map((outcome): Patch => {
+      const entry: JarvisEntry = {
+        id: nextEntryId++,
+        role: "jarvis",
+        text: `drive: ${outcome.command.kind}`,
+        done: true,
+      };
+
+      return (s: JarvisState): JarvisState => {
+        return { ...s, entries: [...s.entries, entry] };
+      };
+    }),
+  );
+
   // The port is the source of truth for the skin, same loop as every other
   // preference: setSkin() writes through deps.setSkin, and state.skin only
   // ever changes by following skin$ back.
@@ -722,6 +761,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     openPatches$,
     closePatches$,
     togglePatches$,
+    driveOutcomePatches$,
     skinPatches$,
     availabilityPatches$,
     preferredBrainPatches$,
@@ -765,6 +805,9 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       setSkin: (skin: JarvisSkin) => {
         deps.setSkin(skin);
       },
+      recordDriveOutcome: (outcome: DriveOutcome) => {
+        driveOutcome$.next(outcome);
+      },
     },
     dispose: () => {
       // Complete the source Subjects first so the merged stream — and the
@@ -778,6 +821,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       toggle$.complete();
       approve$.complete();
       decline$.complete();
+      driveOutcome$.complete();
       warm.unsubscribe();
       effortSubscription.unsubscribe();
     },

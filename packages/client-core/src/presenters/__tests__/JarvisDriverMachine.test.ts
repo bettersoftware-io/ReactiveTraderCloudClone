@@ -681,6 +681,84 @@ describe("createJarvisDriverMachine", () => {
     ).toBe(true);
   });
 
+  it("outcomes$ emits once per command, in application order, at the SAME frames lastBatch grows at — both applied AND skipped outcomes flow through", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const harness = buildHarness(ts);
+      const handle = createJarvisDriverMachine(depsFrom(harness));
+
+      const seen: OutcomeEmission[] = [];
+      const sub = handle.outcomes$.subscribe((outcome) => {
+        seen.push({ frame: ts.now(), outcome });
+      });
+
+      ts.schedule(() => {
+        harness.events$.next(
+          commandEvent([
+            { kind: "switchTab", tab: "equities" }, // applied, index 0
+            { kind: "eqSelect", symbol: "ZZZZZZ" }, // skipped, index 1 (staggered)
+          ]),
+        );
+      }, 1);
+
+      flush();
+      sub.unsubscribe();
+
+      expect(seen).toEqual([
+        {
+          frame: 1,
+          outcome: {
+            command: { kind: "switchTab", tab: "equities" },
+            status: "applied",
+          },
+        },
+        {
+          frame: 1 + DRIVE_STAGGER_MS,
+          outcome: {
+            command: { kind: "eqSelect", symbol: "ZZZZZZ" },
+            status: "skipped",
+            reason: 'unknown symbol "ZZZZZZ"',
+          },
+        },
+      ]);
+    });
+  });
+
+  it("outcomes$ keeps emitting across a SECOND queued batch — never completes", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const harness = buildHarness(ts);
+      const handle = createJarvisDriverMachine(depsFrom(harness));
+
+      const outcomes: DriveOutcome[] = [];
+      const sub = handle.outcomes$.subscribe((outcome) => {
+        outcomes.push(outcome);
+      });
+
+      ts.schedule(() => {
+        harness.events$.next(
+          commandEvent([{ kind: "switchTab", tab: "equities" }]),
+        );
+      }, 1);
+      ts.schedule(
+        () => {
+          harness.events$.next(
+            commandEvent([{ kind: "switchTab", tab: "fx" }]),
+          );
+        },
+        1 + DRIVE_STAGGER_MS + 1,
+      );
+
+      flush();
+      sub.unsubscribe();
+
+      expect(outcomes).toEqual([
+        { command: { kind: "switchTab", tab: "equities" }, status: "applied" },
+        { command: { kind: "switchTab", tab: "fx" }, status: "applied" },
+      ]);
+    });
+  });
+
   it("a late subscriber replays the current lastBatch rather than starting empty (warm subscription)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
@@ -797,6 +875,11 @@ function depsFrom(
 interface FrameEmission {
   readonly frame: number;
   readonly lastBatch: readonly DriveOutcome[];
+}
+
+interface OutcomeEmission {
+  readonly frame: number;
+  readonly outcome: DriveOutcome;
 }
 
 interface EqDisplayState {

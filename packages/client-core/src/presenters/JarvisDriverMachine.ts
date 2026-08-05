@@ -5,6 +5,7 @@ import {
   type Observable,
   of,
   type SchedulerLike,
+  Subject,
   timer,
 } from "rxjs";
 import { concatMap, filter, map, scan, take } from "rxjs/operators";
@@ -55,6 +56,16 @@ export interface JarvisDriverState {
  * composition singleton with no per-consumer teardown seam. */
 export interface JarvisDriverMachineHandle {
   readonly state$: StateObservable<JarvisDriverState>;
+  /** Emits once per command, in APPLICATION order (i.e. staggered exactly
+   * like `state$.lastBatch` fills in — the two are nexted from the same
+   * `map()` callback) — both `"applied"` AND `"skipped"` outcomes flow
+   * through here, unfiltered. `composition.ts` subscribes this into
+   * `JarvisMachine.intents.recordDriveOutcome`, which does its own
+   * applied-only filtering when folding a transcript row — see that
+   * intent's doc for why the filter lives there and not here. Never
+   * completes: same session-lifetime, no-teardown-seam doctrine as
+   * `state$` above. */
+  readonly outcomes$: Observable<DriveOutcome>;
 }
 
 export interface JarvisDriverDeps {
@@ -349,6 +360,12 @@ function safeApplyCommand(
 export function createJarvisDriverMachine(
   deps: JarvisDriverDeps,
 ): JarvisDriverMachineHandle {
+  // Plain hot Subject, never completed — see JarvisDriverMachineHandle's
+  // `outcomes$` doc for the no-teardown-seam rationale. Nexted from the SAME
+  // `map()` callback that computes each command's outcome (below), so its
+  // emission order/timing is identical to how `lastBatch` fills in.
+  const outcomes$ = new Subject<DriveOutcome>();
+
   const patches$: Observable<Patch> = deps.events$.pipe(
     filter(isCommandEvent),
     concatMap((event) => {
@@ -371,6 +388,7 @@ export function createJarvisDriverMachine(
           return timer(staggerMs, deps.scheduler).pipe(
             map((): Patch => {
               const outcome = safeApplyCommand(cmd, deps);
+              outcomes$.next(outcome);
 
               return (s: JarvisDriverState): JarvisDriverState => {
                 return { lastBatch: [...s.lastBatch, outcome] };
@@ -398,7 +416,11 @@ export function createJarvisDriverMachine(
   // Keep state$ warm, same rationale as JarvisPanelsMachine/EqWorkspaceMachine:
   // a cold state()/shareReplay stream with no live subscriber can drop a
   // batch fired between one consumer unmounting and the next mounting.
+  // outcomes$ needs no equivalent warm subscription: it's a plain Subject
+  // (not a shared/refcounted state() stream), and composition.ts's
+  // recordDriveOutcome wiring subscribes it directly, for the app's whole
+  // session, before any batch can fire.
   state$.subscribe();
 
-  return { state$ };
+  return { state$, outcomes$ };
 }

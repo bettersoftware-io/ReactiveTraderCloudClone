@@ -629,6 +629,22 @@ export function createApp(ports: AppPorts): App {
     powerSaverLevel$: powerSaver.level$,
   });
 
+  // Feeds the driver's per-command outcomes back into the chat transcript
+  // (Task 10 follow-up ruling): JarvisMachine.intents.recordDriveOutcome
+  // folds each "applied" outcome into a new "drive: <kind>" entry;
+  // "skipped" outcomes fold nothing (JarvisMachine.ts's own doc). Wired
+  // HERE, after BOTH singletons exist — jarvisDriver is built FROM
+  // jarvis.events$, so jarvis can't depend on jarvisDriver's OUTPUT at
+  // construction time without a cycle; this late-bound subscription is the
+  // same shape wireJarvisHistorySource (below) uses for its own
+  // cross-machine feed. No held reference / no teardown seam needed:
+  // outcomes$ is a plain Subject that never errors or completes for the
+  // app's whole session, matching jarvisPanels/jarvisDriver/
+  // NarratorMachine's own no-dispose doctrine.
+  jarvisDriver.outcomes$.subscribe((outcome) => {
+    jarvis.intents.recordDriveOutcome(outcome);
+  });
+
   // NarratorMachine (Task 9): the capped client-side proactive narration
   // loop. A composition-root singleton, same doctrine as jarvisPanels/
   // jarvisDriver above — built once, warm-subscribed for the app's whole
