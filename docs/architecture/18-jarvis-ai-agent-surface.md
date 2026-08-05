@@ -1483,3 +1483,270 @@ replacing the committed demo roster, unrelated to what this round built.
 Round-1 open items and the interim PAYG billing decision are tracked in
 [`docs/STATUS.md`](../STATUS.md) under the Jarvis LLM usage governance ⚪
 entry.
+
+## 18.16 The generative-UI surface (round 1)
+
+Round 1 (2026-08-04) of the "Jarvis generative UI" workstream (design:
+[2026-08-04-jarvis-generative-ui-round-1-design.md](../superpowers/specs/2026-08-04-jarvis-generative-ui-round-1-design.md),
+§10 item 1 of the parent roadmap) gives Jarvis a second output channel besides
+prose: it can author a **live-bound floating panel** over the workspace —
+a chart, table, gauge, spark-grid, or heatmap wired to the real tick streams —
+and later restyle or re-source that same panel in a follow-up turn. The panel
+keeps ticking after the turn (and the whole chat overlay) closes, because it
+is driven by a state machine whose lifetime is the session, not the
+conversation. This is L1–L2 of the roadmap's generative-UI ambition; L3
+(docking/persistence) and L4 (dashboards/linked interactions) are explicitly
+deferred, recorded at the end of this section.
+
+### The vocabulary: `PanelSpecV1`, a closed grammar validated at both ends
+
+`packages/shared/src/jarvis/panelSpec.ts` defines `PanelSpecV1` — title,
+optional `rationale`, one `PanelSource` (`fxTicks` / `priceHistory` /
+`analytics` / `blotter`), ≤4 `PanelTransform`s (`window` / `returns` /
+`rollingVol` / `spread` / `topN`) applied in order, one `PanelViz` (`line` /
+`table` / `gauge` / `sparkGrid` / `heatmap`), ≤4 `PanelAnnotation`s. The
+vocabulary is **closed by construction** — the model combines enumerated
+primitives, never writes code, never gets an `eval` path. It lives in
+`@rtc/shared` for the same reason the wire protocol does: both the server
+(validating tool input) and the client (interpreting the spec into live data)
+need the same types, so one package owns both.
+
+`parsePanelSpec(input, knownSymbols): PanelSpecV1 | { error }` is the
+**single** enforcement point — hand-rolled (no schema library), field-scoped
+so every rejection reports a dotted/indexed path (`transforms[0].seconds`,
+`annotations[1].tone`). It runs **twice**, independently: once in the
+server's tool handler (rejecting a malformed model call before anything
+reaches the wire) and once again at the client's wire-parse seam (rejecting
+or degrading a malformed *frame*, regardless of why it's malformed) — the
+same defense-in-depth posture the wire protocol's own parse functions use
+everywhere else in this codebase, not new for panels. A newer server's
+vocabulary (a future `v: 2`, or a viz kind an older client build predates)
+degrades an older client to the unsupported-spec card instead of crashing it.
+`PANEL_SPEC_JSON_SCHEMA` — the model-facing raw JSON Schema handed to
+`render_panel`'s tool definition — spreads its `enum:` lists directly from
+the same `PANEL_*` const arrays `parsePanelSpec` checks against, so schema
+and validator cannot silently drift apart; a test pins the equality.
+
+### `render_panel`: a WS-surface tool, deliberately not in the registry
+
+`render_panel` is **not** a `@rtc/agent-tools` citizen. `agent-tools-stays-inner`
+forbids the registry from importing `@rtc/shared` at all, and the reasoning
+is the same one §18.14 already recorded for `get_app_context`: a tool that
+paints a floating HUD panel is meaningless to an external MCP client, which
+has no HUD to paint into. The registry stays the transport-neutral,
+MCP-facing contract; `render_panel` is built alongside it
+(`packages/server/src/agent/renderPanelTool.ts`), appended to the live
+brain's tool list only, and never threaded into `buildJarvisToolsFor` (the
+`/mcp` tool list) or the scripted loop's `buildTools` seam.
+
+The handler: validate `{ spec, targetPanelId? }` via `parsePanelSpec` against
+the server's real currency-pair roster; on success, mint a fresh `panelId`
+(`` `panel-${crypto.randomUUID()}` ``) or echo `targetPanelId` if given, emit
+the `panel` event on the same per-turn `push` channel every other
+`JarvisEvent` already uses, and return
+`` `Rendered panel ${panelId}: ${spec.title}` `` to the model — the id in the
+tool *result* is what lets a later turn target the same panel for an edit. A
+validation failure returns the validator's own message as the tool result
+(nothing reaches the wire) so the model can self-correct within the turn,
+exactly like every other tool's failure-as-string convention (§18.13). It is
+**not** confirm-gated: rendering a read-only panel costs the user nothing
+more than an extra reply would, so `RenderPanelDeps` carries no `ConfirmGate`
+at all — `execute_trade` remains the only tool that suspends on one.
+
+One accepted cost consequence: the persona-plus-tool-schema prefix that
+feeds every live turn grew from seven `@rtc/agent-tools` schemas (~1.3k
+tokens) to eight, because `render_panel`'s input schema embeds the full
+`PANEL_SPEC_JSON_SCHEMA` — **~2.1k tokens** now. That is still comfortably
+under the Sonnet/Opus 512-token cache floor and, not coincidentally,
+comfortably under Haiku 4.5's 4,096-token floor too — so `cacheReadTokens: 0`
+on every Haiku turn remains the *expected* signature of "prefix under this
+model's minimum," per §18.15's cache-truth subsection, not a regression the
+growth introduced.
+
+### The wire: one new event, no new message
+
+```ts
+| { readonly type: "panel"; readonly panelId: string; readonly spec: PanelSpecV1 }
+```
+
+`panel` joins `JarvisEvent`'s existing union and rides the **same**
+`JARVIS_*` turn-event envelope every other variant does — `WIRE_TYPE_BY_EVENT`
+(the server's `JarvisEvent["type"] → SERVER_MSG` map) gained one entry
+(`panel: SERVER_MSG.JARVIS_PANEL`), and the generic
+`{ type, ...body } = event; out(WIRE_TYPE_BY_EVENT[type], { ...body, turnId })`
+envelope already carries `panelId`/`spec` verbatim once that entry exists —
+no bespoke server-side plumbing beyond the map row. On the client,
+`WsJarvisAdapter` gained a sixth `turnId`-filtered listener. Its
+`buildPanelEvent(panelId, spec)` helper is the wire-side half of the
+both-ends validation described above: it re-runs `parsePanelSpec(spec, [])`
+(the adapter has no reference-data port of its own, so it validates every
+bound *except* roster membership) and requires `panelId` to be a non-empty
+string. Either failure substitutes
+`JarvisPanelsMachine.UNSUPPORTED_SENTINEL_SPEC` — a single frozen,
+**reference-equality** sentinel object, imported and compared with `===`,
+never structurally — and an unusable `panelId` is replaced by a synthesized
+`panel-invalid-<n>` rather than dropping the frame outright, so a malformed
+`panel` event still becomes a visible (if unsupported) card rather than
+silence. Dismissal itself never round-trips the wire at all: the server
+keeps no panel state beyond the ids it has minted, so closing a panel is a
+purely client-local fold. If the model later targets a dismissed id, the
+client treats the stray edit as a fresh spawn instead of a no-op, which
+`JarvisPanelsMachine`'s tests pin directly (see below).
+
+### `JarvisPanelsMachine`: outlives the conversation by construction
+
+Panels are **not** chat state. `JarvisMachine` (the chat/turn machine) gained
+an explicit `case "panel": return (s) => s;` no-op arm in its exhaustive
+event switch — a panel event leaves no trace there — because panel state
+lives in a wholly separate `client-core` machine,
+`JarvisPanelsMachine.ts`, whose lifetime is the **session**, not any one
+turn or the chat overlay's mount state. That separation is what makes "the
+panel survives closing the chat" true by construction rather than by a
+special-cased persistence flag: there is no chat-scoped container for it to
+die with.
+
+The machine folds an ordered map `panelId → { spec, status: "live" |
+"unsupported" }`: a new id appends, a known id replaces in place (which the
+UI renders as a morph, not a remount-and-replace), a `dismissPanel` intent
+removes. `MAX_LIVE_PANELS = 4`; a fifth spawn evicts the oldest by index
+(FIFO) — an *edit* to an existing panel never evicts anything, since it
+occupies its existing slot. Its `state$` keeps one **warm** internal
+subscription to the source `events$` from the moment the machine is
+created, independent of whether any UI is currently subscribed — a panel
+event that arrives with no external subscriber attached is still captured
+and replayed to a subscriber that attaches later, and the fold accumulates
+across an external subscribe/unsubscribe/re-subscribe cycle rather than
+resetting. This is the same warm-subscription idiom `JarvisMachine` itself
+already used for chat state; extending it here is what lets a panel survive
+the entire chat overlay unmounting.
+
+The machine's `events$` input has one more property worth naming because it
+is a correctness requirement, not a style choice: it must **never**
+terminate on error, because an RxJS-terminal source kills the machine's fold
+outright — every subsequent panel event would be silently lost with no
+crash to notice. `composition.ts` guards this at the one call site:
+
+```ts
+const jarvisPanels = new JarvisPanelsPresenter(
+  createJarvisPanelsMachine(
+    jarvis.events$.pipe(catchError(() => EMPTY)),
+  ),
+  { referenceData, pricing, blotter, analytics },
+);
+```
+
+`jarvis.events$` is every reply event from every chat turn — a source a
+throwing `JarvisPort.ask()` could in principle error, so the guard is load-
+bearing, not defensive boilerplate; a regression test seeds a
+synchronously-throwing `ask()` through a real `createApp()` and asserts the
+panels machine survives it. One asymmetry this guard surfaced rather than
+hid: `JarvisMachine`'s own internal warm `state$` subscription has **no**
+equivalent error handler, so the identical throwing `ask()` that the panels
+machine now shrugs off still takes the **entire chat session** down with an
+unhandled error — panels degrade more gracefully than the chat state they're
+derived from. Recorded as a deferred finding below, not fixed in this round
+(outside its file scope).
+
+### `composePanelStream`: a total interpreter, including the heatmap fix
+
+`composePanelStream(spec, ports): Observable<PanelData>` is the pure
+composition that turns a validated spec into render-ready data: source →
+`Frame` (an internal `series` / `table` / `empty` union) → fold `transforms`
+in order → render `viz`. It is a **total function** over the vocabulary —
+a transform that doesn't fit its input frame kind, or a viz that doesn't fit
+what survives the transforms, collapses to an empty `Frame`/`PanelData` of
+the right shape, never a throw; the totality is pinned by tests that
+deliberately drive every source×transform×viz mismatch the vocabulary
+allows (e.g. `rollingVol` over a `blotter` table, `topN` over raw
+`fxTicks`). One exhaustive `default` branch (`sourceFrame$`'s) was returning
+a bare non-`Observable` value along an unreachable-today path; harmless
+until a future server's spec used a `source.kind` this client build
+predates, at which point it would have thrown `.pipe is not a function`
+instead of degrading — fixed to return a genuine empty `Frame`.
+
+The one genuine functional gap found and closed in review: `renderHeatmap`
+originally only ever consumed `table`-shaped frames (`analytics`/`blotter`),
+so the round's own flagship edit — "show me GBP volatility" (a
+`priceHistory` + `rollingVol` **series**) then "make it a heatmap" — fell
+straight through to the empty-rows fallback. Every restyle-to-heatmap turn
+in the demo rendered nothing. Fixed by teaching `renderHeatmap` to also
+consume a `series` frame directly: one row per named series, cells built
+from the trailing `HEATMAP_SERIES_MAX_CELLS` (12) points, each cell's
+intensity normalized against **that window's own min/max** (a constant
+window reports `0` for every cell rather than dividing by zero) — as
+opposed to the table path's `renderHeatmap`, which scales a raw magnitude
+(a P&L dollar figure) against a fixed `HEATMAP_INTENSITY_SCALE = 10_000`,
+deliberately generous so a desk P&L panel pops rather than sitting muted.
+That fixed scale is itself a recorded deferred finding below: a `blotter`
+heatmap (notional trade sizes, routinely well past $10k) saturates every
+cell to the same extreme, losing gradation the P&L case was tuned for.
+
+### The UI: a floating layer + a keyed presenter-accessor
+
+`JarvisPanelLayer` (both web clients, byte-parallel components) floats over
+the workspace — top-right cascade, outside the chat overlay's own DOM
+subtree — each panel a chrome shell (title, `rationale` as a hover tooltip,
+dismiss button) around one of five dumb renderers (`PanelLine`,
+`PanelTable`, `PanelGauge`, `PanelSparkGrid`, `PanelHeatmap`). The layer
+itself reads only `useJarvisPanels()` — chrome-level fields (id/title/
+rationale/status) that change on spawn/dismiss/edit, not on every tick —
+while each panel card independently calls a new keyed hook,
+`useJarvisPanelData(panelId)`, so one panel's own tick cadence never
+re-renders its siblings or the chrome list.
+
+`useJarvisPanelData` is backed by `JarvisPanelsPresenter.panelData$(panelId):
+Observable<PanelData | null>`, a `Map`-cached keyed accessor mirroring the
+established idiom (`DepthPresenter.depth$` keyed by currency symbol) with
+one deliberate difference: a currency symbol's underlying stream identity
+never changes, but a `panelId` can be dismissed and later **reused** by an
+unrelated new panel, so the cached stream is a `switchMap` over the
+presenter's own `panels$` — re-resolving which live panel (if any) currently
+owns that id — rather than a stream frozen to one `PanelInstance` forever.
+The hook itself is a five-line `bind()` passthrough in `@rtc/react-bindings`
+and `@rtc/solid-bindings` — the exact same factory-keyed pattern
+`useCandles`/`useDepth` already established, applied to the one `ViewModel`
+field panels needed that hadn't been wired yet.
+
+Motion stays inside each renderer's own CSS/WAAPI, gated by the existing
+power-saver doctrine: calm reduces flash/transition effects, freeze kills
+all panel motion outright (data may still update textually), matching every
+other animated surface's `/rtc:perf-audit` obligation.
+
+### Zero-token path: the scripted brain demos and CI-tests the whole loop
+
+`ScriptedJarvisEngine` (the shared, transport-neutral scripted brain both
+simulator mode and CI use) gained two canned exchanges: "show me gbp
+volatility" spawns a canned `priceHistory` + `rollingVol` + `line` spec
+(`panelId: "panel-scripted-1"`), and "make it/that a heatmap" re-emits the
+**same** `panelId` with only `viz` swapped — the identical `{ type: "panel",
+panelId, spec }` push both the WS-real adapter and the scripted adapter
+funnel through, so `JarvisPanelsMachine` and every renderer downstream
+cannot tell which brain produced the event. That gives the feature a
+complete, zero-API-call rehearsal path: it demos in simulator mode with no
+key, and CI exercises the real machine/interpreter/UI pipeline end to end —
+shared `@rtc/ui-contract` specs (`JarvisPanelLayer.contract.spec.ts`, 9
+cases across spawn/morph/dismiss/eviction/unsupported-card/tooltip, both
+frameworks) and a Playwright e2e ride (spawn → close the chat overlay →
+panel keeps ticking → restyle turn → morph to the real heatmap testid →
+dismiss) all drive this canned path, never a real model.
+
+### Deferred, and why
+
+Per the design spec's explicit scope line, this round is L1–L2 only:
+
+- **L3 — docking/persistence.** Pinning a panel into the workspace layout,
+  persisting its spec across sessions. Needs the (separately deferred)
+  layout-management port; today's panels are ephemeral by design.
+- **L4 — dashboards, linked interactions.** Multi-panel layouts, shared
+  crosshair/time axis, click-through app-driving. None of the plumbing this
+  round built (one spec → one independent stream) assumes a second panel
+  knows about a first one.
+- **React Native rendering.** Needs its own Skia render path per renderer,
+  the same class of work as the RN boot-scene ports — not attempted here.
+- **Drag-repositioning.** Arrives with L3 docking; a floating panel's
+  position today is pure CSS cascade math, not user-movable.
+
+Round-1 open items — the deferred findings above (the `blotter` heatmap
+saturation, `JarvisMachine`'s missing warm-subscription error handler, the
+timers grep-gate defect, and the rest) plus the L3/L4/RN/drag roadmap — are
+tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis area.
