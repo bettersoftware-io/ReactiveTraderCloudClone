@@ -216,6 +216,25 @@ export function detectAnomalies(ticks$: Observable<PriceTick>,
 
 **Steps:** failing marbles → red → implement → green → commit `feat(domain): edge-triggered anomaly detector (spread 3σ + vol spike)`.
 
+### Task 7b: `PricingSimulator` anomaly episodes (added 2026-08-05 after T7's review)
+
+**Why (review finding, verified by measurement):** the simulator's spread is bit-identical forever (`halfSpread` set once in `initPair`) and its uniform step caps return z-scores at √3≈1.73 — so neither detector channel can EVER fire against the repo's only `PriceTick` stream (0 crossings in 2M ticks), in sim mode or against the deployed server. The approved on-by-default narrator requires a source that can rarely produce anomalies.
+
+**Files:**
+- Modify: `packages/domain/src/simulators/PricingSimulator.ts`
+- Test: its existing test file + new episode-logic tests
+
+**Design (keep it small and bounded):**
+- Per-pair episode state machine, pure and separately unit-testable: in steady state, each tick has a small probability of starting an episode; an episode lasts a bounded tick count then decays back.
+- Two episode kinds: **spread widening** (halfSpread × a factor ramping to 2–4× and back) and **vol burst** (step drawn from a wider distribution — e.g. the existing uniform step × a 4–8× factor for the episode's duration, occasionally signed-persistent so returns actually spike).
+- Frequency tuned to the narrator's product cadence: expected episode interval per symbol in the minutes range at the sim's 150–1000 ms tick cadence (e.g. start probability ≈ 1/1500 per tick, duration 20–60 ticks). Constants named and documented; the narrator's own 5-min cooldown + 4/session cap remain the spam bound.
+- Determinism: extract the episode-advance logic as a pure function `advanceEpisode(state, random: () => number)` taking the RNG as a parameter; unit tests drive it with scripted sequences (forced start, ramp shape, decay, bounds). A statistical test may assert only STRUCTURE (e.g. with a forced episode, `ask − bid` changes over the episode; returns during a burst exceed the steady-state step bound) — no flaky probability assertions.
+- Guard the blast radius: steady-state behavior (no episode) must be byte-compatible with today's output for the same RNG sequence — pin with a test comparing tick streams with episode-start probability forced to 0.
+
+**Interfaces:** no public API change; `getPriceUpdates` signature unchanged.
+
+**Steps:** failing episode-logic tests → red → implement → green (domain suite + build + typecheck + biome) → commit `feat(domain): rare pricing anomaly episodes — the narrator's trigger source`.
+
 ### Task 8: `JarvisNarrator` preference + `JarvisMachine.narrate`
 
 **Files:**
@@ -246,7 +265,7 @@ export const MAX_NARRATIONS_PER_SESSION = 4;
 export function createNarratorMachine(deps: NarratorDeps): { readonly stop: () => void };
 ```
 
-Prompt format (exact, pinned by test): `[narration] ${symbol} ${kind === "spreadWidening" ? "spread widened" : "volatility jumped"} ${sigma.toFixed(1)}σ over the last window.`
+Prompt format (exact, pinned by test): `[narration] ${symbol} ${kind === "spreadWidening" ? "spread widened" : "moved"} ${sigma.toFixed(1)}σ over the last window.` (T7 review ruling: the vol channel detects a large single-tick MOVE, not a rise in σ-of-σ — copy must say "moved", never "volatility jumped".)
 
 **Behaviour to pin (marbles):** first surviving anomaly → one `narrate` call; second anomaly inside `NARRATION_COOLDOWN_MS` (virtual time) → dropped; after cooldown → passes; 5th narration in a session → dropped forever (`MAX_NARRATIONS_PER_SESSION`); `preference$` = `"off"` → dropped, flipping to `"on"` live re-enables WITHOUT re-composition (stays subscribed); detector errors don't kill the machine (`catchError` → EMPTY on the tick source).
 
