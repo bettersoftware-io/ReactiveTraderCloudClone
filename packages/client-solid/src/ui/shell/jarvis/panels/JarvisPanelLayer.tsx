@@ -99,7 +99,16 @@ function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
   // component unmounts. Skipped outright under freeze/reduced-motion
   // (mirrors useFlipGrid's exit-ghost gating) — no timer calls anywhere, per
   // the src/ui timers gate.
-  async function dismissThisPanel(): Promise<void> {
+  //
+  // Split into a sync `onClick` target + an async worker: a JSX event
+  // handler prop must return `void`, so `@typescript-eslint/no-misused-promises`
+  // rejects an `async` function passed straight to `onClick` (a dropped
+  // rejection would otherwise fail silently).
+  function dismissThisPanel(): void {
+    void animateOutThenDismissPanel();
+  }
+
+  async function animateOutThenDismissPanel(): Promise<void> {
     const el = rootRef;
 
     if (
