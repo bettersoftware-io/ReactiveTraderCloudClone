@@ -1,4 +1,8 @@
-import type { EquitiesPaneKind } from "../page-objects/contracts/EquitiesChart";
+import type {
+  EquitiesDrawTool,
+  EquitiesPaneKind,
+  PlotFraction,
+} from "../page-objects/contracts/EquitiesChart";
 import type { TestContext } from "../testContext";
 import { assertEquals, assertTrue } from "./assert";
 
@@ -256,4 +260,51 @@ export async function expectYScaleWithin(
   seconds: number,
 ): Promise<void> {
   await ctx.po.equitiesChart.waitYScale(mode, seconds * 1_000);
+}
+
+export async function clickDrawPill(
+  ctx: TestContext,
+  tool: EquitiesDrawTool,
+): Promise<void> {
+  await ctx.po.equitiesChart.clickDrawPill(tool);
+}
+
+export async function dragOnPlot(
+  ctx: TestContext,
+  from: PlotFraction,
+  to: PlotFraction,
+): Promise<void> {
+  await ctx.po.equitiesChart.dragOnPlot(from, to);
+}
+
+export async function expectDrawingVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitDrawingVisible(seconds * 1_000);
+}
+
+/** Clicks the plot at the committed drawing's own coordinates — the real
+ * hit-testing pointer path (see `PlaywrightEquitiesChart.clickDrawing`'s
+ * pointer-events doc). */
+export async function clickDrawingAtLine(ctx: TestContext): Promise<void> {
+  await ctx.po.equitiesChart.clickDrawing();
+}
+
+export async function expectDrawingSelectedWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitDrawingSelected(seconds * 1_000);
+}
+
+export async function pressDelete(ctx: TestContext): Promise<void> {
+  await ctx.po.equitiesChart.pressDelete();
+}
+
+export async function expectDrawingGoneWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitDrawingGone(seconds * 1_000);
 }

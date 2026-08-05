@@ -122,6 +122,18 @@ export const TESTIDS = {
        * (see `PlaywrightEquitiesChart.panePill`, which composes the two via
        * `Locator.and`). */
       panePill: "chart-pane-pill",
+      /** The trendline/horizontal-level draw-tool selector pill
+       * (DrawToolPills.tsx) — one shared testid for both tools,
+       * disambiguated by the `data-tool` attribute (same `.and` composition
+       * as `panePill`/`PlaywrightEquitiesChart.drawPill`). */
+      drawPill: "chart-draw-pill",
+      /** A committed chart annotation — trendline or horizontal level
+       * (DrawingsLayer.tsx). Carries `data-kind`/`data-selected`/`data-draft`;
+       * the layer's SVG is `pointer-events: none`, so selecting one is
+       * driven by clicking the PLOT at the drawing's own coordinates, never
+       * the drawing element itself (see
+       * `PlaywrightEquitiesChart.clickDrawing`). */
+      drawing: "chart-drawing",
       /** The LOG price-axis pill (IndicatorPills.tsx) — toggles the chart
        * wrap's `data-yscale` between `"linear"` and `"log"`. */
       yScalePill: "chart-yscale-pill",

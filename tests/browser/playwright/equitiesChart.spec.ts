@@ -96,4 +96,23 @@ test.describe("Equities chart", () => {
     await equitiesChart.clickYScalePill(ctx);
     await equitiesChart.expectYScaleWithin(ctx, "linear", 5);
   });
+
+  test("draw a trendline, select it, and delete it", async ({ ctx }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.clickDrawPill(ctx, "trendline");
+    await equitiesChart.dragOnPlot(
+      ctx,
+      { x: 0.25, y: 0.7 },
+      { x: 0.7, y: 0.35 },
+    );
+    await equitiesChart.expectDrawingVisibleWithin(ctx, 3);
+
+    await equitiesChart.clickDrawingAtLine(ctx);
+    await equitiesChart.expectDrawingSelectedWithin(ctx, 3);
+
+    await equitiesChart.pressDelete(ctx);
+    await equitiesChart.expectDrawingGoneWithin(ctx, 3);
+  });
 });
