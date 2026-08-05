@@ -439,6 +439,16 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartLogScale",
     fixtureKey: "equities-loaded",
   },
+  // Drawing tools (drawing-tools workstream, Task 8): the real CandleChart
+  // mounted with a literal `drawings` array (one trendline, one hline) and
+  // `selectedDrawingId` set to the trendline — real props like
+  // kind/indicators/yScale above, so no ChartPlot bypass is needed. No
+  // gestures are driven; the drawings are forced literal data, deterministic
+  // by construction.
+  "equities/chart-drawings": {
+    componentKey: "EquitiesChartDrawings",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 

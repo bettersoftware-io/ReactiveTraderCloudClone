@@ -727,6 +727,23 @@ export function solidViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
+    // Eq drawings: the REAL createEqDrawingsMachine, one shared instance for
+    // the whole World (world.eqDrawings) — its `state$` is already a warm
+    // StateObservable (see @rtc/client-core's Machine interface), so it is
+    // read directly with `toSignal`, exactly like `useEqWorkspace` above —
+    // NOT a per-mount useMachine, so the chart head's draw-tool pills and
+    // the plot's committed drawings, even mounted via separate mountWith()
+    // calls sharing one World, observe the same tool/drawings/selection.
+    useEqDrawings: () => {
+      return {
+        state: toSignal(world.eqDrawings.state$),
+        setTool: world.eqDrawings.intents.setTool,
+        addDrawing: world.eqDrawings.intents.addDrawing,
+        selectDrawing: world.eqDrawings.intents.selectDrawing,
+        deleteSelected: world.eqDrawings.intents.deleteSelected,
+        shiftAnchors: world.eqDrawings.intents.shiftAnchors,
+      };
+    },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and read directly with `toSignal` — its
     // `state$` is already a warm StateObservable (see @rtc/client-core's

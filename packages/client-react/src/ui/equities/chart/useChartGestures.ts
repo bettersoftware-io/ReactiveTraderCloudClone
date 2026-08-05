@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import type { EqDrawTool } from "@rtc/client-core";
 import {
   type ChartViewport,
   clampViewport,
@@ -25,6 +26,11 @@ const ZOOM_OUT_FACTOR = 1.2;
 const KEY_PAN_FRACTION = 0.1;
 /** Keyboard zoom always anchors at the plot's centre (no cursor position). */
 const KEY_ZOOM_ANCHOR = 0.5;
+/** Pointer-down→up excursion (client px, Euclidean) at or below which a
+ * drawing gesture counts as a click rather than a drag: a "cursor" tool
+ * pointer-up selects/deselects the hit drawing, a "trendline" draft within
+ * this radius is discarded instead of committed. */
+const CLICK_MAX_PX = 4;
 
 /** The hovered plot position, as fractions (0-1) of the plot box.
  * `inPlot` is true only while the hover is over the main price plot itself
@@ -59,6 +65,40 @@ interface ChartPlotProps {
   readonly onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
 
+/** A plot position as fractions (0-1) of the plot box — the coordinate
+ * currency the draw gesture slots speak, so this hook stays free of any
+ * data-space (candle index / price) knowledge; that projection is
+ * `CandleChart`'s job via `pointerToAnchor`. */
+export interface PlotFrac {
+  readonly xFrac: number;
+  readonly yFrac: number;
+}
+
+/** An in-progress trendline draft's two anchors, in plot-fraction space. */
+export interface DrawDraft {
+  readonly a: PlotFrac;
+  readonly b: PlotFrac;
+}
+
+/** The drawing-tool gesture inputs — a slot object, so this hook stays
+ * machine-agnostic (it never imports `@rtc/client-core`'s drawings machine,
+ * only its `EqDrawTool` union). Optional on the hook: every existing call
+ * site that doesn't draw keeps compiling untouched. */
+export interface DrawGestureSlots {
+  readonly tool: EqDrawTool;
+  /** Commits a finished trendline drag (`tool === "trendline"`, excursion
+   * beyond `CLICK_MAX_PX`). */
+  readonly onCommitLine: (a: PlotFrac, b: PlotFrac) => void;
+  /** Commits a level on pointer-down (`tool === "hline"`) — one anchor is
+   * all it needs, so there is no drag/draft phase. */
+  readonly onCommitLevel: (p: PlotFrac) => void;
+  /** A `tool === "cursor"` pointer-up within `CLICK_MAX_PX` of its
+   * pointer-down — a click, not a pan — hit-tests the click point. */
+  readonly onPlotClick: (p: PlotFrac) => void;
+  /** `Delete`/`Backspace` while `tool === "cursor"`. */
+  readonly onDeleteKey: () => void;
+}
+
 export interface ChartGestures {
   readonly viewport: ChartViewport;
   readonly cursor: ChartCursor | null;
@@ -72,16 +112,26 @@ export interface ChartGestures {
   readonly applyViewport: (vp: ChartViewport) => void;
   /** Attach to each indicator pane's root — see `PaneHoverProps`. */
   readonly paneHoverProps: PaneHoverProps;
+  /** The in-progress trendline draft (`tool === "trendline"`, between
+   * pointer-down and pointer-up), or `null` when none is open. `b` tracks
+   * the pointer on every move; `CandleChart` projects both anchors through
+   * `pointerToAnchor` and appends the result to the drawing scene as a
+   * live preview. */
+  readonly draft: DrawDraft | null;
 }
 
 /** The drag-in-flight bookkeeping cached at pointerdown: the viewport the
  * drag started from, so every subsequent move recomputes from that fixed
- * origin (rather than accumulating deltas onto a moving viewport). */
+ * origin (rather than accumulating deltas onto a moving viewport). Also
+ * doubles as the trendline-draft's pointer bookkeeping — `downClient` is
+ * the click/drag excursion's origin, measured against the pointer-up
+ * position to tell a click from a drag (`CLICK_MAX_PX`). */
 interface DragOrigin {
   readonly pointerId: number;
   readonly startX: number;
   readonly rectWidth: number;
   readonly startViewport: ChartViewport;
+  readonly downClient: { readonly x: number; readonly y: number };
 }
 
 /**
@@ -95,11 +145,13 @@ export function useChartGestures(
   seriesLen: number,
   defaultVisible: number,
   firstCandleTime?: number,
+  draw?: DrawGestureSlots,
 ): ChartGestures {
   const [viewport, setViewport] = useState<ChartViewport>(() => {
     return defaultViewport(seriesLen, defaultVisible);
   });
   const [cursor, setCursor] = useState<ChartCursor | null>(null);
+  const [draft, setDraft] = useState<DrawDraft | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragOrigin | null>(null);
 
@@ -226,6 +278,13 @@ export function useChartGestures(
       return;
     }
 
+    // hline needs only the one point it just landed on — no capture, no
+    // drag/draft phase, no pan bookkeeping at all.
+    if (draw?.tool === "hline") {
+      draw.onCommitLevel(plotFracOf(e));
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
 
     dragRef.current = {
@@ -233,14 +292,33 @@ export function useChartGestures(
       startX: e.clientX,
       rectWidth: rect.width,
       startViewport: viewport,
+      downClient: { x: e.clientX, y: e.clientY },
     };
     e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (draw?.tool === "trendline") {
+      const anchor = plotFracOf(e);
+      setDraft({ a: anchor, b: anchor });
+    }
   }
 
   function dragOrTrackCursor(e: ReactPointerEvent<HTMLDivElement>): void {
     const drag = dragRef.current;
 
     if (drag && drag.pointerId === e.pointerId) {
+      // The trendline draft's second anchor tracks every move — the
+      // crosshair keeps tracking alongside it (the aiming aid stays live
+      // while placing a line), unlike a plain pan drag below, which leaves
+      // the crosshair frozen at its pre-drag position as it always has.
+      if (draft) {
+        const anchor = plotFracOf(e);
+        setDraft((d) => {
+          return d ? { ...d, b: anchor } : d;
+        });
+        setCursor({ ...anchor, inPlot: true });
+        return;
+      }
+
       const span = drag.startViewport.end - drag.startViewport.start;
       const dxPx = e.clientX - drag.startX;
       setViewport(
@@ -255,6 +333,18 @@ export function useChartGestures(
       yFrac: (e.clientY - rect.top) / rect.height,
       inPlot: true,
     });
+  }
+
+  /** Computes a plot-fraction position from a pointer event, against
+   * `e.currentTarget`'s own rect — the same rule the crosshair tracker
+   * above uses. Shared by the draw-gesture paths (draft open/track, click
+   * hit-testing) below. */
+  function plotFracOf(e: ReactPointerEvent<HTMLDivElement>): PlotFrac {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return {
+      xFrac: (e.clientX - rect.left) / rect.width,
+      yFrac: (e.clientY - rect.top) / rect.height,
+    };
   }
 
   // A pane's own hover: `yFrac` is pinned to mid-height (panes don't have a
@@ -272,6 +362,44 @@ export function useChartGestures(
   }
 
   function endDrag(e: ReactPointerEvent<HTMLDivElement>): void {
+    const drag = dragRef.current;
+
+    if (drag?.pointerId !== e.pointerId) {
+      return;
+    }
+
+    dragRef.current = null;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    const excursionPx = Math.hypot(
+      e.clientX - drag.downClient.x,
+      e.clientY - drag.downClient.y,
+    );
+
+    if (draft) {
+      // Beyond the click threshold: a deliberate line. Within it: a stray
+      // click drew nothing — discard either way, the draft is done.
+      if (excursionPx > CLICK_MAX_PX) {
+        draw?.onCommitLine(draft.a, draft.b);
+      }
+
+      setDraft(null);
+      return;
+    }
+
+    if (draw?.tool === "cursor" && excursionPx <= CLICK_MAX_PX) {
+      draw.onPlotClick(plotFracOf(e));
+    }
+  }
+
+  // A pointercancel is an aborted gesture (browser-initiated takeover, e.g.
+  // a scroll/refresh gesture on a touchpad), never a completed one — an
+  // open trendline draft is discarded here too, never committed, unlike
+  // `endDrag`'s click/drag fork above.
+  function cancelDrag(e: ReactPointerEvent<HTMLDivElement>): void {
     if (dragRef.current?.pointerId !== e.pointerId) {
       return;
     }
@@ -281,6 +409,8 @@ export function useChartGestures(
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
+
+    setDraft(null);
   }
 
   function clearCursor(): void {
@@ -335,6 +465,30 @@ export function useChartGestures(
         e.preventDefault();
         resetToLive();
         return;
+      case "Escape":
+        // No open draft: nothing to cancel, so no-op (same as any other
+        // unhandled key — no preventDefault either).
+        if (!draft) {
+          return;
+        }
+
+        e.preventDefault();
+        // The pointer may still be physically down (the user pressed
+        // Escape mid-drag) — clearing dragRef here is enough: the eventual
+        // real pointerup/pointercancel will see no matching drag and no-op,
+        // and the browser releases its own capture on that event as usual.
+        dragRef.current = null;
+        setDraft(null);
+        return;
+      case "Delete":
+      case "Backspace":
+        if (draw?.tool !== "cursor") {
+          return;
+        }
+
+        e.preventDefault();
+        draw.onDeleteKey();
+        return;
       default:
         return;
     }
@@ -352,7 +506,7 @@ export function useChartGestures(
       // scroll/refresh gesture on a touchpad) never fires pointerup — without
       // this, dragRef stays populated and the next hover (same, stable
       // pointerId for a mouse) resumes a phantom drag from the stale origin.
-      onPointerCancel: endDrag,
+      onPointerCancel: cancelDrag,
       onPointerLeave: clearCursor,
       onDoubleClick: resetToLive,
       onKeyDown: panOrZoomByKey,
@@ -364,5 +518,6 @@ export function useChartGestures(
       onPointerMove: trackPaneCursor,
       onPointerLeave: clearCursor,
     },
+    draft,
   };
 }

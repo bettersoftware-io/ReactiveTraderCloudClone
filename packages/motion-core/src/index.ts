@@ -62,6 +62,17 @@ export {
 } from "./countdownRing.js";
 export type { CrosshairVm } from "./crosshairVm.js";
 export { crosshairVm } from "./crosshairVm.js";
+export type {
+  Drawing,
+  DrawingAnchor,
+  DrawingHandle,
+  DrawingSceneItem,
+} from "./drawingScene.js";
+export {
+  drawingScene,
+  hitTestDrawings,
+  pointerToAnchor,
+} from "./drawingScene.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,

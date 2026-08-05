@@ -278,6 +278,33 @@ describe("createViewModel — equities hooks", () => {
     });
     expect(result.current.state.yScale).toBe("linear");
   });
+
+  it("useEqDrawings().addDrawing appends the drawing, selects it, and reverts the tool to cursor", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqDrawings();
+    });
+
+    act(() => {
+      result.current.addDrawing("AAPL", {
+        id: "t1",
+        kind: "trendline",
+        a: { index: 1, price: 100 },
+        b: { index: 5, price: 110 },
+      });
+    });
+
+    expect(result.current.state.drawings.AAPL).toEqual([
+      {
+        id: "t1",
+        kind: "trendline",
+        a: { index: 1, price: 100 },
+        b: { index: 5, price: 110 },
+      },
+    ]);
+    expect(result.current.state.selectedId).toBe("t1");
+    expect(result.current.state.tool).toBe("cursor");
+  });
 });
 
 describe("createViewModel — candle backfill", () => {

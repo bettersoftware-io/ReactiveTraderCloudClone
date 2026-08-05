@@ -276,6 +276,32 @@ describe("createViewModel — machine-backed members", () => {
     result.toggleYScale();
     expect(result.state().yScale).toBe("linear");
   });
+
+  it("useEqDrawings's addDrawing intent appends the drawing, selects it, and reverts the tool to cursor", () => {
+    const vm = makeViewModel();
+
+    const { result } = renderHook(() => {
+      return vm.useEqDrawings();
+    });
+
+    result.addDrawing("AAPL", {
+      id: "t1",
+      kind: "trendline",
+      a: { index: 1, price: 100 },
+      b: { index: 5, price: 110 },
+    });
+
+    expect(result.state().drawings.AAPL).toEqual([
+      {
+        id: "t1",
+        kind: "trendline",
+        a: { index: 1, price: 100 },
+        b: { index: 5, price: 110 },
+      },
+    ]);
+    expect(result.state().selectedId).toBe("t1");
+    expect(result.state().tool).toBe("cursor");
+  });
 });
 
 function requireFirstPair(): (typeof KNOWN_CURRENCY_PAIRS)[number] {

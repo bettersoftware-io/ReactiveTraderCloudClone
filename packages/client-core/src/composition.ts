@@ -46,6 +46,7 @@ import {
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
+  createEqDrawingsMachine,
   createEqWorkspaceMachine,
   createIncidentMachine,
   createJarvisMachine,
@@ -60,6 +61,8 @@ import {
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
+  type EqDrawingsIntents,
+  type EqDrawingsState,
   EqWatchlistSortPreferencePresenter,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
@@ -166,6 +169,10 @@ export interface Presenters {
   /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
    * shared by the chart, instrument-tabs, and watchlist panels. */
   eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  /** Equities: per-symbol chart annotations (trendlines/horizontal levels),
+   * the active draw tool, and the current selection — shared by the chart
+   * head's tool pills and the plot. */
+  eqDrawings: Machine<EqDrawingsState, EqDrawingsIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -581,6 +588,7 @@ export function createApp(ports: AppPorts): App {
       initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
       seed$: firstWatchlistSymbol$(watchlist.watchlist$),
     }),
+    eqDrawings: createEqDrawingsMachine(),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
     errorRateMetric: new ErrorRatePresenter(ports.telemetry),

@@ -2,7 +2,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 import type {
   EquitiesChartPO,
+  EquitiesDrawTool,
   EquitiesPaneKind,
+  PlotFraction,
 } from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
 
@@ -41,6 +43,18 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
 
   private yScalePill(): Locator {
     return this.page.getByTestId(TESTIDS.equities.chart.yScalePill);
+  }
+
+  // Shared testid disambiguated by `data-tool`, same `.and` composition as
+  // `panePill` above.
+  private drawPill(tool: EquitiesDrawTool): Locator {
+    return this.page
+      .getByTestId(TESTIDS.equities.chart.drawPill)
+      .and(this.page.locator(`[data-tool="${tool}"]`));
+  }
+
+  private drawing(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.drawing);
   }
 
   // The chart wrap (ChartPlot.tsx) carries data-yscale but no testid of its
@@ -182,5 +196,65 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await expect(this.chartWrap()).toHaveAttribute("data-yscale", mode, {
       timeout: timeoutMs,
     });
+  }
+
+  async clickDrawPill(tool: EquitiesDrawTool): Promise<void> {
+    await this.drawPill(tool).click();
+  }
+
+  async dragOnPlot(from: PlotFraction, to: PlotFraction): Promise<void> {
+    const box = await this.plot().boundingBox();
+
+    if (!box) {
+      throw new Error("plot not laid out");
+    }
+
+    const fromX = box.x + from.x * box.width;
+    const fromY = box.y + from.y * box.height;
+    const toX = box.x + to.x * box.width;
+    const toY = box.y + to.y * box.height;
+
+    // Real page.mouse events (not a Locator action) — the app's drag gesture
+    // relies on genuine pointer capture retargeting (useChartGestures'
+    // startDrag/endDrag), which jsdom's synthetic pointer events don't model.
+    await this.page.mouse.move(fromX, fromY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(toX, toY, { steps: 10 });
+    await this.page.mouse.up();
+  }
+
+  async waitDrawingVisible(timeoutMs: number): Promise<void> {
+    await expect(this.drawing()).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async clickDrawing(): Promise<void> {
+    // The drawing overlay SVG is `pointer-events: none` (DrawingsLayer.tsx),
+    // so a Locator.click() on the drawing element itself would time out
+    // waiting for it to become "the target of pointer events" — it never
+    // is. Instead, read its geometry and drive a real mouse click at the
+    // plot underneath, at the drawing's own midpoint (the same coordinates
+    // the app's own hit-testing runs against).
+    const box = await this.drawing().boundingBox();
+
+    if (!box) {
+      throw new Error("drawing not laid out");
+    }
+
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+
+  async waitDrawingSelected(timeoutMs: number): Promise<void> {
+    await expect(this.drawing()).toHaveAttribute("data-selected", "true", {
+      timeout: timeoutMs,
+    });
+  }
+
+  async pressDelete(): Promise<void> {
+    await this.plot().focus();
+    await this.page.keyboard.press("Delete");
+  }
+
+  async waitDrawingGone(timeoutMs: number): Promise<void> {
+    await expect(this.drawing()).toHaveCount(0, { timeout: timeoutMs });
   }
 }
