@@ -458,8 +458,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleYScale: noop,
       };
     },
-    // Eq drawings: no visual scenario exercises this yet (Task 3 is
-    // bindings-exposure only) — a static empty snapshot; intents are no-ops.
+    // Eq drawings: the equities/chart-drawings visual scenario feeds literal
+    // `drawings`/`selectedDrawingId` props directly to CandleChart (see
+    // EquitiesChartDrawings) and never reads this fake — a static empty
+    // snapshot; intents are no-ops.
     useEqDrawings: () => {
       return {
         state: { tool: "cursor", drawings: {}, selectedId: null },

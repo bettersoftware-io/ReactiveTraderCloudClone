@@ -147,6 +147,19 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
     });
   }
 
+  /** The i-th rendered drawing's given attribute (e.g. "x1", "y1") — mirrors
+   * CandleChartPage.drawingAttr, needed by the prepend/live-append
+   * anchor-shift regression case (ChartDrawings.contract.spec.ts): that case
+   * draws through ChartPanel's own plot (not a standalone CandleChart mount)
+   * so the drawing's `sym` key comes from the real eqWorkspace selection. */
+  drawingAttr(i: number, name: string): string | null {
+    return (
+      Array.from(this.root.querySelectorAll('[data-testid="chart-drawing"]'))[
+        i
+      ]?.getAttribute(name) ?? null
+    );
+  }
+
   /** Dispatches a pointerdown on the panel's OWN rendered chart plot — the
    * drawings contract's symbol-isolation and pill-drawing cases need to
    * draw through ChartPanel's real CandleChart (not a standalone mount), so

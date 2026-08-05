@@ -19,6 +19,7 @@
  */
 
 import { CandleChart, ChartPanel, EqChartHead } from "@ui-contract/components";
+import type { World } from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -30,7 +31,7 @@ import type { ChartPanelPage } from "@ui-contract/pages/equities/chart/ChartPane
 import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartHeadPage";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { EqDrawing } from "@rtc/client-core";
+import type { EqDrawing, EqDrawingsState } from "@rtc/client-core";
 import type { Candle, EquityInstrument, EquityQuote } from "@rtc/domain";
 import { chartVm, drawingScene } from "@rtc/motion-core";
 
@@ -109,6 +110,66 @@ describe("Drawing tools — pill drives the real plot (EqChartHead + ChartPanel,
 
     panel.selectInstrument("AAPL");
     expect(panel.drawingVisible()).toBe(true);
+  });
+
+  it("a history prepend shifts a drawn trendline's anchors by exactly grewBy (geometry unchanged); an ordinary live append leaves the machine's anchors untouched", async () => {
+    const { head, panel, world } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    // Force the panel to observe the tool change before gesturing on it —
+    // see the identical rationale in the earlier trendline case.
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    expect(panel.drawingKinds()).toEqual(["trendline"]);
+
+    const before = {
+      x1: panel.drawingAttr(0, "x1"),
+      y1: panel.drawingAttr(0, "y1"),
+      x2: panel.drawingAttr(0, "x2"),
+      y2: panel.drawingAttr(0, "y2"),
+    };
+
+    // Deliver a prepended history page — the same construction
+    // ChartBackfill.contract.spec.ts uses (grewBy older candles, strictly
+    // before the existing series' first candle) — pushed through the
+    // World's candle port directly, since this mount reads candles via
+    // useCandles(sym, timeframe) rather than a CandleChart prop. The
+    // viewport shifts by the SAME grewBy (useChartGestures' own prepend
+    // fork), so if CandleChart's onShiftAnchors fired with exactly that
+    // grewBy the anchor shift and the viewport shift cancel out and the
+    // projected line lands in EXACTLY the same place; any other count
+    // (including zero, i.e. the guard not firing at all) would move it.
+    const grewBy = 50;
+    world.setCandles("AAPL", [...olderCandles(grewBy), ...CANDLES]);
+    // Force a fresh read/flush — same no-op setProps idiom used above.
+    panel.setProps({});
+
+    expect({
+      x1: panel.drawingAttr(0, "x1"),
+      y1: panel.drawingAttr(0, "y1"),
+      x2: panel.drawingAttr(0, "x2"),
+      y2: panel.drawingAttr(0, "y2"),
+    }).toEqual(before);
+
+    // Negative: an ordinary LIVE APPEND (one new candle at the tail, newer
+    // than the series — candles[0] unchanged) must NOT trip the prepend
+    // guard. Assert through the REAL machine's own state, not projected
+    // geometry (which may legitimately move as the viewport follows live)
+    // — reference-equal to the pre-append array proves onShiftAnchors was
+    // never even called, not just called with by=0.
+    const drawingsBeforeAppend = eqDrawingsState(world).drawings.AAPL;
+    const seriesSoFar = world.candlesFor("AAPL").getValue();
+    const lastTime = seriesSoFar[seriesSoFar.length - 1]?.time ?? 0;
+    world.setCandles("AAPL", [
+      ...seriesSoFar,
+      { ...candleAt(seriesSoFar.length), time: lastTime + 60_000 },
+    ]);
+    panel.setProps({});
+
+    expect(eqDrawingsState(world).drawings.AAPL).toBe(drawingsBeforeAppend);
   });
 });
 
@@ -222,6 +283,12 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
 interface PillWorkspace {
   readonly head: EqChartHeadPage;
   readonly panel: ChartPanelPage;
+  /** The shared World backing both mounts — exposed so a case can push
+   * through its candle port directly (`world.setCandles`) or read the real
+   * eqDrawings machine's state (`world.eqDrawings.state$`) without a
+   * page-object seam for either (see the prepend/live-append anchor-shift
+   * regression case below). */
+  readonly world: World;
 }
 
 /** Mounts EqChartHead + ChartPanel on one shared World (mountWith) so a
@@ -250,7 +317,33 @@ function mountPillWorkspace(): PillWorkspace {
   const head = mountWith(world, EqChartHead, {});
   const panel = mountWith(world, ChartPanel, {});
 
-  return { head, panel };
+  return { head, panel, world };
+}
+
+/** `count` candles chronologically BEFORE CANDLES[0] (time 0) — identical
+ * construction to ChartBackfill.contract.spec.ts's own `olderCandles`
+ * helper (not shared/exported from there, so duplicated here per this
+ * file's own established convention of local per-spec candle helpers). */
+function olderCandles(count: number): readonly Candle[] {
+  return Array.from({ length: count }, (_, i) => {
+    return { ...candleAt(i), time: (i - count) * 60_000 };
+  });
+}
+
+/** Reads the REAL eqDrawings machine's current state off a warm World —
+ * `state$.getValue()` is typed to allow a cold `StatePromise` (the general
+ * `@rx-state/core` contract), but `createEqDrawingsMachine` keeps its stream
+ * warm from construction (an internal `.subscribe()`), so this always
+ * resolves synchronously in practice; the guard mirrors
+ * `viewModelFromWorld.ts`'s own `useMachineState` narrowing. */
+function eqDrawingsState(world: World): EqDrawingsState {
+  const value = world.eqDrawings.state$.getValue();
+
+  if (value instanceof Promise) {
+    throw new Error("eqDrawings state$ not initialized");
+  }
+
+  return value;
 }
 
 function quote(symbol: string): EquityQuote {

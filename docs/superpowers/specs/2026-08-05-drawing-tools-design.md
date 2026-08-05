@@ -198,6 +198,11 @@ clicking the active one reverts to `"cursor"`. Driven by
 `useEqDrawings()`'s `tool`/`setTool` through `EqChartHead` — same wiring
 shape as the LOG pill.
 
+*(Amended 2026-08-05 at final review: the pills shipped as the row's last
+group, after TimeframePills and without a divider — judged the better
+placement at the app-equities golden eyeball; the spec's original "after the
+LOG pill + divider" wording is superseded.)*
+
 ## 8. Testing
 
 - **motion-core units** (`drawingScene.test.ts`): pointer→anchor→scene
@@ -241,6 +246,10 @@ when no drawings exist. Freeze/power-saver untouched.
 - Snapping the price to OHLC values, ray/extend modes, labels on drawings,
   more tool kinds, mobile/RN drawings, persistence — all explicitly not in
   3a.
+- Timeframe scope: anchors are candle indices within the selected
+  timeframe's series, and drawings are keyed per symbol only — a drawing
+  made on one timeframe projects onto unrelated candles on another; 3b
+  inherits this recorded limitation, it is not a bug.
 
 ## 11. Shipping
 

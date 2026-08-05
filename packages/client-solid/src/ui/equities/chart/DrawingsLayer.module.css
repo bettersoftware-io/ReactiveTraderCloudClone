@@ -19,8 +19,9 @@
   stroke-width: 2;
 }
 
-/* The line currently being dragged into existence (see `draftScene`, Task
-   5) — dashed to read as provisional, distinct from a committed drawing. */
+/* The line currently being dragged into existence (see CandleChart's
+   `draftToDrawing`) — dashed to read as provisional, distinct from a
+   committed drawing. */
 .drawing[data-draft="true"] {
   stroke-dasharray: 3 2;
 }
