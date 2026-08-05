@@ -15,6 +15,13 @@ export const SCENARIO_IDS = [
   // Phase 2 Task 9: the pinned Appearance sheet — ambient frozen via
   // VisualScenarioHost's `forceReduceMotion`.
   "shell/appearance",
+  // T6: the persistent HUD chrome — header, banner, status strip, collapsed
+  // radial dock. Every other scenario mounts a module's content with no chrome
+  // above it, so this is the only golden covering the frame the user actually
+  // looks at all session. Needs BOTH a frozen `ShellTelemetryContext` (the FPS
+  // cell is a live meter) and `powerSaverLevel="freeze"` (the connection dot
+  // pulses); either alone still re-pins on every capture.
+  "shell/chrome",
   // NB: `credit/rfq-tiles-empty` was dropped after on-device golden
   // verification — it is NON-deterministic. `CreditRfqSimulator` emits new
   // Live RFQs over time, so the default "No RFQs to display" view is only

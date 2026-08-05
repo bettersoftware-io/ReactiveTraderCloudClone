@@ -22,6 +22,7 @@ import {
   CreditSellSideFixture,
   LockHoldFixture,
   ScreenContentFixture,
+  ShellChromeFixture,
 } from "./fixtures";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
@@ -83,18 +84,40 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   `animatedBackground: false` so the Ambient toggle deterministically reads
  *   OFF — both keep the shot stable.
  *
- * Explicitly avoided: the Rates tab (`PricingSimulator` ticks with
- * `Math.random`).
+ * - `shell/chrome` — the persistent HUD frame itself (header, connection
+ *   banner, status strip, collapsed radial dock) via `ShellChromeFixture`,
+ *   which mirrors `app/(app)/_layout.tsx`'s `Chrome` with an empty body. The
+ *   one scenario that is NOT a module's content: every other one is wrapped in
+ *   `ScreenContentFixture` precisely because no chrome sits above it, which
+ *   left the frame the user stares at all session with zero pixel coverage
+ *   (T6). Carries `powerSaverLevel="freeze"` for the header's pulsing
+ *   connection dot, and the fixture pins the status strip's live FPS meter
+ *   through `ShellTelemetryContext` — see its docstring for why neither half
+ *   alone is sufficient.
  *
- * Analytics used to be on that list for the same reason — `AnalyticsSimulator`
- * seeds its P&L history with a `Math.random` walk at construction, and since
- * Phase 5c Task 1 it also drifts positions every 10 s. `analytics/dashboard`
- * (below) does not mount the simulator at all: Phase 5c Task 7 split the cards
- * out as `AnalyticsDashboard`, which takes its data as a prop, so the fixture
- * feeds it a literal book. That removes the data non-determinism; the SECOND
- * source — the bars' and bubbles' entry tweens — is removed by seeding
- * power-saver `freeze`. Neither half alone is sufficient, which is why the
- * scenario carries an explicit `powerSaverLevel` that the others do not.
+ * NOTHING IS EXPLICITLY AVOIDED ANY MORE. The two surfaces that were are worth
+ * keeping on the record, because each was freed by an opposite move.
+ *
+ * The **Rates** tab was excluded outright: `PricingSimulator` moved every cell
+ * twice over — a `Math.random()` seed walk at construction plus a live tick
+ * loop. `rates/grid` covers it now because the SOURCE was pinned:
+ * `VisualScenarioHost` passes a host-wide `pricingPinMs`, under which the walk
+ * is skipped and the tick loop never schedules, so the grid renders at its
+ * `KNOWN_CURRENCY_PAIRS` reference prices, at rest (T6).
+ *
+ * **Analytics** was excluded for the same reason — `AnalyticsSimulator` seeds
+ * its P&L history with a `Math.random` walk at construction, and since Phase 5c
+ * Task 1 it also drifts positions every 10 s. `analytics/dashboard` covers it
+ * by NOT pinning the simulator but declining to mount it: Phase 5c Task 7 split
+ * the cards out as `AnalyticsDashboard`, which takes its data as a prop, so the
+ * fixture feeds it a literal book. That removes the data non-determinism; the
+ * SECOND source — the bars' and bubbles' entry tweens — is removed by seeding
+ * power-saver `freeze`. Neither half alone is sufficient.
+ *
+ * Which of the two applies is a judgement about the seam, not a preference:
+ * pin the source when the screen under test IS the live one (Rates is nothing
+ * but prices); mount the leaf over a literal when the component already takes
+ * its data as a prop and the simulator would only add noise.
  *
  * - `boot/core` / `boot/laser` — the two Phase 6a boot scenes, each pinned to
  *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSceneFixture`. **Their
@@ -172,6 +195,18 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
           <AppearanceOverlay open onClose={(): void => {}} />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "shell/chrome",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ShellChromeFixture />
         </VisualScenarioHost>
       );
     },

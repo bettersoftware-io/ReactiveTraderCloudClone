@@ -16,12 +16,21 @@ import {
   RfqState,
 } from "@rtc/domain";
 
+import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { AnalyticsDashboard } from "#/ui/analytics/AnalyticsDashboard";
+import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import type { BootSceneComponent } from "#/ui/shell/boot/bootScene";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import { RadialCommandDock } from "#/ui/shell/hud/RadialCommandDock";
+import { ShellHeader } from "#/ui/shell/hud/ShellHeader";
+import {
+  type FrozenTelemetry,
+  ShellTelemetryContext,
+} from "#/ui/shell/hud/ShellTelemetryContext";
+import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
 import { useTheme } from "#/ui/theme/useTheme";
 
@@ -200,6 +209,71 @@ export function CreditSellSideFixture(): ReactNode {
   );
 }
 
+/**
+ * The persistent HUD chrome — header, connection banner, status strip and the
+ * radial dock — with an empty body where the routed module would be.
+ *
+ * Mirrors `app/(app)/_layout.tsx`'s `Chrome`, minus its `<Slot/>` and the two
+ * overlays (a closed `AppearanceOverlay` and an unlocked `LockScreen` both
+ * paint nothing, and `shell/appearance` already covers the sheet open). This
+ * is the inverse of `ScreenContentFixture`: every other scenario mounts a
+ * module's CONTENT and fakes the header's inset because no chrome exists above
+ * it, so the header, strip and dock had no pixel coverage at all despite being
+ * on screen for the entire session (T6).
+ *
+ * TWO THINGS MUST BE PINNED, and neither is optional:
+ *
+ * - **FPS**, via `ShellTelemetryContext`. `useShellTelemetry` runs a live
+ *   rolling-window frame meter, so the strip's `NNFPS` cell reports whatever
+ *   the device measured over the last second and the golden would re-pin
+ *   itself on every capture. This provider is the production seam built for
+ *   exactly that and, until now, referenced only from its own unit test.
+ * - **Motion**, via the scenario's `powerSaverLevel="freeze"`. The header's
+ *   connection dot runs a 1200 ms opacity pulse and the dock's satellites
+ *   spring-stagger on open; both gate on `useShellMotionEnabled`. The host's
+ *   `forceReduceMotion` would NOT cover them — it seeds `animatedBackground`,
+ *   which gates the ambient layer alone. Same distinction `analytics/
+ *   dashboard` documents, and the trap `boot/static` was caught by (T33).
+ *
+ * The dock is captured COLLAPSED, which is its resting state: `open` is
+ * internal `useState` with no prop seam, and adding one so a screenshot could
+ * open it would put an affordance in production for the test's benefit. The
+ * expanded satellite fan is therefore NOT covered by this golden — that needs
+ * the Maestro tier, which can tap.
+ *
+ * `simulator` is `true` because it is — this harness composes
+ * `createSimulatorPorts`, so the env badge reads its real state rather than
+ * claiming a live gateway the scenario never had.
+ */
+export function ShellChromeFixture(): ReactNode {
+  return (
+    <ShellTelemetryContext.Provider value={FROZEN_TELEMETRY}>
+      <View style={styles.fill}>
+        <AmbientBackground />
+        <ShellHeader
+          simulator
+          onToggleSimulator={NOOP_TOGGLE_SIMULATOR}
+          onOpenAppearance={NOOP_OPEN_APPEARANCE}
+        />
+        <ConnectionBanner />
+        <View style={styles.body} />
+        <StatusStrip />
+        <RadialCommandDock />
+      </View>
+    </ShellTelemetryContext.Provider>
+  );
+}
+
+function NOOP_TOGGLE_SIMULATOR(): void {}
+
+function NOOP_OPEN_APPEARANCE(): void {}
+
+/** The frozen strip readout. Deliberately the hook's OWN production seeds
+ * (`SEED_FPS` 60 / `SEED_LATENCY_MS` 12) rather than invented numbers, so the
+ * golden pins what a healthy app shows — and a tone regression in `fpsTone`
+ * would still move the pixels, since 60 sits in its nominal band. */
+const FROZEN_TELEMETRY: FrozenTelemetry = { fps: 60, latencyMs: 12 };
+
 /** Mid-window, and above the ten-second urgent threshold — so the golden pins
  * the ring's normal accent rather than its alarm state. */
 const PINNED_REMAINING_MS = 42_000;
@@ -365,6 +439,11 @@ const LOCK_HOLD_PROGRESS = 0.55;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // Mirrors `Chrome`'s own `body`. `minHeight: 0` is copied deliberately, not
+  // incidentally: without it a flex child refuses to shrink below its content,
+  // which is how the chrome would end up pushed off-screen by a body that has
+  // none.
+  body: { flex: 1, minHeight: 0 },
   content: { flex: 1, padding: 16, gap: 20 },
   centred: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
