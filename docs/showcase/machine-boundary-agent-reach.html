@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Agent's Reach Was the Machine Boundary</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ground: #f4f6f9;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --ink: #1a2230;
+    --ink-soft: #4a5567;
+    --ink-faint: #798197;
+    --line: #d9dfe8;
+    --line-soft: #e7ebf1;
+
+    --blue: #2f5fd0;   --blue-bg: #e3eafc;   --blue-line: #b9caf3;
+    --teal: #0f7c82;   --teal-bg: #dcf1f1;   --teal-line: #a9d7d8;
+    --green: #1f8a5b;  --green-bg: #dcf1e6;  --green-line: #a9dcc2;
+    --amber: #b5731a;  --amber-bg: #f8ecd8;  --amber-line: #ecca92;
+    --red: #c0392b;    --red-bg: #f8e1de;    --red-line: #eab5ad;
+
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+    --radius: 12px;
+    --maxw: 980px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1016; --panel: #141a22; --panel-2: #1b222c;
+      --ink: #e8edf4; --ink-soft: #a7b2c2; --ink-faint: #6f7b8d;
+      --line: #262f3b; --line-soft: #1f2731;
+      --blue: #7da2f5; --blue-bg: #172236; --blue-line: #2a3a5a;
+      --teal: #59c2c6; --teal-bg: #10272a; --teal-line: #204b4d;
+      --green: #4bc48b; --green-bg: #10281c; --green-line: #1f4634;
+      --amber: #e0b455; --amber-bg: #2a2312; --amber-line: #4c3f1c;
+      --red: #e88b7d; --red-bg: #2c1613; --red-line: #4d2621;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f6f9; --panel: #ffffff; --panel-2: #eef1f6;
+    --ink: #1a2230; --ink-soft: #4a5567; --ink-faint: #798197;
+    --line: #d9dfe8; --line-soft: #e7ebf1;
+    --blue: #2f5fd0; --blue-bg: #e3eafc; --blue-line: #b9caf3;
+    --teal: #0f7c82; --teal-bg: #dcf1f1; --teal-line: #a9d7d8;
+    --green: #1f8a5b; --green-bg: #dcf1e6; --green-line: #a9dcc2;
+    --amber: #b5731a; --amber-bg: #f8ecd8; --amber-line: #ecca92;
+    --red: #c0392b; --red-bg: #f8e1de; --red-line: #eab5ad;
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1016; --panel: #141a22; --panel-2: #1b222c;
+    --ink: #e8edf4; --ink-soft: #a7b2c2; --ink-faint: #6f7b8d;
+    --line: #262f3b; --line-soft: #1f2731;
+    --blue: #7da2f5; --blue-bg: #172236; --blue-line: #2a3a5a;
+    --teal: #59c2c6; --teal-bg: #10272a; --teal-line: #204b4d;
+    --green: #4bc48b; --green-bg: #10281c; --green-line: #1f4634;
+    --amber: #e0b455; --amber-bg: #2a2312; --amber-line: #4c3f1c;
+    --red: #e88b7d; --red-bg: #2c1613; --red-line: #4d2621;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    font-size: 16px; letter-spacing: .1px;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--panel-2); padding: .1em .35em; border-radius: 5px; }
+
+  .toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 10;
+    font: 500 13px var(--sans); color: var(--ink-soft);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  header { padding: 58px 0 30px; }
+  .eyebrow { font: 600 12.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.12; margin: 14px 0 0; letter-spacing: -.5px; font-weight: 800; }
+  h1 .accent { color: var(--blue); }
+  .dek { font-size: 18px; color: var(--ink-soft); margin: 18px 0 0; max-width: 66ch; }
+
+  section { padding: 26px 0; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 16px; }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  p.lead { font-size: 15.5px; color: var(--ink-soft); max-width: 74ch; }
+
+  .quote {
+    background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+    border-radius: 10px; padding: 18px 22px; box-shadow: var(--shadow);
+    font-size: 17px; color: var(--ink); max-width: 74ch;
+  }
+  .quote cite { display: block; margin-top: 10px; font: 500 12.5px var(--mono); color: var(--ink-faint); font-style: normal; }
+
+  /* reach / unreachable two-up */
+  .reach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  @media (max-width: 720px) { .reach-grid { grid-template-columns: 1fr; } }
+  .reach-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+  .reach-card.yes { border-top: 3px solid var(--green); }
+  .reach-card.no { border-top: 3px solid var(--amber); }
+  .reach-card h3 { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+  .reach-card .tag { font: 700 10.5px var(--mono); letter-spacing: .04em; padding: 3px 8px; border-radius: 6px; }
+  .reach-card.yes .tag { color: var(--green); background: var(--green-bg); border: 1px solid var(--green-line); }
+  .reach-card.no .tag { color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-line); }
+  .reach-card ul { margin: 10px 0 0; padding-left: 20px; }
+  .reach-card li { margin: 6px 0; font-size: 14px; color: var(--ink-soft); }
+  .reach-card li b { color: var(--ink); font-weight: 600; }
+  .reach-card .note { margin-top: 12px; font-size: 13px; color: var(--ink-faint); border-top: 1px solid var(--line-soft); padding-top: 10px; }
+
+  /* code diff */
+  pre.code {
+    font-family: var(--mono); font-size: 12.3px; line-height: 1.6;
+    background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    margin: 0; white-space: pre;
+  }
+  pre.code .cm { color: var(--ink-faint); font-style: italic; }
+  pre.code .kw { color: var(--teal); }
+  pre.code .rm { color: var(--red); }
+  pre.code .add { color: var(--green); }
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 780px) { .diff-grid { grid-template-columns: 1fr; } }
+  .diff-col .lbl { font: 700 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 8px; }
+  .diff-col.before .lbl { color: var(--red); }
+  .diff-col.after .lbl { color: var(--green); }
+  .diff-col .file { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin: 0 0 6px; }
+  .caller-note {
+    margin-top: 12px; font-size: 13.5px; color: var(--ink-soft);
+    background: var(--blue-bg); border: 1px solid var(--blue-line);
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .caller-note b { color: var(--blue); }
+
+  /* toll strip */
+  .toll-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  @media (max-width: 720px) { .toll-stats { grid-template-columns: 1fr; } }
+  .toll-stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); text-align: center; }
+  .toll-stat .n { font: 800 26px/1 var(--sans); color: var(--blue); letter-spacing: -.5px; }
+  .toll-stat .l { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; }
+
+  /* still-unreachable exhibit */
+  .exhibit { background: var(--panel); border: 1px solid var(--amber-line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); margin-top: 14px; }
+  .exhibit .flag { display: inline-block; font: 700 10.5px var(--mono); letter-spacing: .05em; color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 6px; padding: 3px 8px; margin-bottom: 10px; }
+
+  /* receipt table */
+  .receipt { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); font-size: 13.5px; }
+  .receipt th { text-align: left; font: 700 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-faint); background: var(--panel-2); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .receipt td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; color: var(--ink-soft); }
+  .receipt tr:last-child td { border-bottom: none; }
+  .receipt td.cap { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .receipt td.seam { font-family: var(--mono); font-size: 12px; }
+  .receipt td.pr { white-space: nowrap; font-family: var(--mono); font-size: 12px; }
+  .receipt td.pr .this-round { color: var(--blue); font-weight: 700; }
+  .receipt-scroll { overflow-x: auto; }
+
+  .counterfactual { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-top: 16px; }
+  @media (max-width: 680px) { .counterfactual { grid-template-columns: 1fr; } }
+  .cf-box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .cf-box.hooks { border-top: 3px solid var(--red); }
+  .cf-box.here { border-top: 3px solid var(--green); }
+  .cf-box h4 { margin: 0 0 8px; font-size: 13.5px; }
+  .cf-box p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .cf-arrow { font: 800 20px var(--mono); color: var(--ink-faint); text-align: center; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 24px; }
+  footer .wrap { padding: 24px 22px 46px; color: var(--ink-soft); font-size: 14px; }
+  footer .file { display: flex; justify-content: space-between; gap: 12px; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px; padding: 9px 13px; margin: 6px 0; font-family: var(--mono); font-size: 12.5px; flex-wrap: wrap; }
+  footer .file .role { color: var(--ink-faint); }
+  a { color: var(--blue); text-decoration-color: var(--blue-line); text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+<button class="toggle" id="tg" aria-label="Toggle light or dark theme">Theme</button>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Jarvis P5 · app-driving + proactive narrator · 2026-08-05</div>
+    <h1>The agent's reach was <span class="accent">exactly</span> the machine boundary.</h1>
+    <p class="dek">When an AI-driving tool arrived, it could touch everything already behind an intent — and nothing that wasn't. The gap between "Jarvis can do this" and "Jarvis can't" turned out to be a map of one design decision, made months before any AI was in the picture.</p>
+  </div>
+</header>
+
+<section class="wrap">
+  <h2>The claim</h2>
+  <div class="quote">
+    Every AI-era capability this app has shipped — tool-calling over live domain data, an external agent operating the app over MCP, generative UI bound to live streams, now driving the app directly and speaking up unprompted — fell out of clean-architecture decisions none of which were made "for AI."
+    <cite>— 2026-07-12 Jarvis AI assistant design, §2</cite>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The natural experiment</h2>
+  <p class="lead">This round is the sharpest test of that claim yet, because it is falsifiable in a very concrete way: give an agent a closed vocabulary of UI-driving commands, then look at what it can and cannot reach. Everything living behind a state machine — the equities workspace, panel layout, preferences — was drivable with <b>zero new state code</b>. The only unreachable state was the state that had never been promoted off <code>useState</code>.</p>
+
+  <div class="reach-grid">
+    <div class="reach-card yes">
+      <h3><span class="tag">REACHABLE, DAY ONE</span></h3>
+      <ul>
+        <li><b>Workspace layout</b> — maximize/restore/collapse/expand, via the existing per-tab layout machine</li>
+        <li><b>Equities chart</b> — symbol, timeframe, chart type, indicators, panes, via <code>EqWorkspaceMachine</code></li>
+        <li><b>Theme + power-saver</b> — via their existing preference presenters</li>
+        <li><b>Panels</b> — dismiss, via <code>JarvisPanelsMachine</code> (spawn/edit already owned by R1's <code>render_panel</code>)</li>
+      </ul>
+      <div class="note">All four were already machines. Wiring <code>drive_app</code> to them was new dispatch code, not new state.</div>
+    </div>
+    <div class="reach-card no">
+      <h3><span class="tag">UNREACHABLE</span></h3>
+      <ul>
+        <li><b>Workspace tab</b> (<code>App.tsx</code>) — a bare <code>useState&lt;WorkspaceTab&gt;</code>, no path from the composition root. <b>Promoted this round</b> — see below.</li>
+        <li><b><code>FxViewProvider</code></b> — rates/blotter sub-tabs + quick filter, still three <code>useState</code> calls. <b>Deliberately left as-is</b> — the still-unreachable exhibit.</li>
+      </ul>
+      <div class="note">Two pockets, found by asking "what can't the driver reach" — not by auditing the codebase for <code>useState</code> first.</div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The toll — one promotion, not a rewrite</h2>
+  <p class="lead">The workspace tab was worth promoting: it gates which module the whole desk shows, and the flagship demo needs Jarvis to switch to Equities. The entire migration cost was one small machine plus the two-line rewire it took in each web client's <code>App.tsx</code>.</p>
+
+  <div class="diff-grid">
+    <div class="diff-col before">
+      <div class="lbl">Before — unreachable</div>
+      <div class="file">packages/client-react/src/ui/App.tsx</div>
+      <pre class="code"><span class="cm">// nothing outside this component can ever move activeTab —</span>
+<span class="cm">// there is no path from the composition root to setActiveTab</span>
+<span class="kw">const</span> [activeTab, setActiveTab] = useState&lt;WorkspaceTab&gt;(<span class="rm">"fx"</span>);
+
+<span class="cm">// ...</span>
+&lt;HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} /&gt;
+&lt;WorkspaceEngine key={activeTab} tab={activeTab} /&gt;</pre>
+    </div>
+    <div class="diff-col after">
+      <div class="lbl">After — driven and clicked, same intent</div>
+      <div class="file">packages/client-react/src/ui/App.tsx</div>
+      <pre class="code"><span class="cm">// the promoted composition-root singleton — the ONLY</span>
+<span class="cm">// state promotion this whole round makes</span>
+<span class="kw">const</span> { useWorkspaceNav } = useViewModel();
+<span class="kw">const</span> { state: navState, switchTab } = useWorkspaceNav();
+<span class="kw">const</span> activeTab = navState.activeTab;
+
+<span class="cm">// ...</span>
+&lt;HeaderChrome activeTab={activeTab} onTabChange={switchTab} /&gt;
+&lt;WorkspaceEngine key={activeTab} tab={activeTab} /&gt;</pre>
+    </div>
+  </div>
+  <div class="caller-note"><b>Two callers, one intent:</b> a nav-rail click and <code>JarvisDriverMachine</code>'s <code>switchTab</code> command handler now call the exact same method on the exact same <code>WorkspaceNavMachine</code> singleton. "The UI can do it" and "Jarvis can do it" are one fact, not two kept in sync by hand.</div>
+
+  <div class="toll-stats">
+    <div class="toll-stat"><div class="n">1</div><div class="l">new machine — <code>WorkspaceNavMachine</code>, ~70 lines, no injected deps</div></div>
+    <div class="toll-stat"><div class="n">2</div><div class="l">rewired components — <code>App.tsx</code> in each web client (React, Solid)</div></div>
+    <div class="toll-stat"><div class="n">0</div><div class="l">changes to <code>HeaderChrome</code>'s own props — its <code>onTabChange</code> slot already took any callback</div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Still unreachable, on purpose</h2>
+  <p class="lead">The round deliberately left a second <code>useState</code> pocket exactly as it was, as the exhibit for what "the boundary" costs when it isn't paid.</p>
+  <div class="exhibit">
+    <span class="flag">NOT PROMOTED — DEFERRED BY DESIGN</span>
+    <div class="file">packages/client-react/src/ui/fx/FxViewProvider.tsx</div>
+    <pre class="code">const [ratesTab, setRatesTab] = useState&lt;RatesTab&gt;(<span class="rm">"rates"</span>);
+const [blotterTab, setBlotterTab] = useState&lt;BlotterTab&gt;(<span class="rm">"trades"</span>);
+const [quickFilter, setQuickFilter] = useState(<span class="rm">""</span>);</pre>
+    <p style="margin:12px 0 0; font-size: 13.5px; color: var(--ink-soft);">Jarvis cannot switch the FX rates/blotter sub-tab or set the quick filter today — and that gap is the point, not an oversight. The boundary stays <em>visible</em> in what the agent can and cannot do, rather than being quietly promoted away. Same one-line fix as <code>App.tsx</code> when it earns its turn; tracked as a deferred item, not a bug.</p>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The counterfactual</h2>
+  <div class="counterfactual">
+    <div class="cf-box hooks">
+      <h4>A hooks-era codebase</h4>
+      <p>Every screen's state is the <code>App.tsx</code> case: local, component-owned, no seam for anything outside the tree to reach in. "An AI drives the app" means auditing every screen for <code>useState</code>, then rewriting the state layer underneath the whole UI.</p>
+    </div>
+    <div class="cf-arrow">vs</div>
+    <div class="cf-box here">
+      <h4>Here</h4>
+      <p>State already lived behind intents everywhere the doctrine had been followed. Reaching it from an AI was a typed dispatcher over the existing machines. The two places it wasn't followed were exactly the two places the agent couldn't reach — and promoting one took an afternoon.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The receipt — capability by capability</h2>
+  <div class="receipt-scroll">
+    <table class="receipt">
+      <thead>
+        <tr><th>Capability</th><th>Seam</th><th>Shipped</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cap">Tool-calling over live domain data</td>
+          <td class="seam">@rtc/agent-tools — SDK-free desk tools over injected domain ports</td>
+          <td class="pr">P1 #405 / P3 #444</td>
+        </tr>
+        <tr>
+          <td class="cap">External AI operates the app</td>
+          <td class="seam">/mcp Streamable-HTTP — same tool registry, second transport</td>
+          <td class="pr">P4 #453</td>
+        </tr>
+        <tr>
+          <td class="cap">Governed model choice + spend</td>
+          <td class="seam">brain picker + server UsageMeter, a domain preference</td>
+          <td class="pr">governance #472</td>
+        </tr>
+        <tr>
+          <td class="cap">Generative UI — live-bound panels</td>
+          <td class="seam">PanelSpec closed vocabulary + render_panel WS-surface tool + JarvisPanelsMachine</td>
+          <td class="pr">genUI R1 #488</td>
+        </tr>
+        <tr>
+          <td class="cap">App-driving</td>
+          <td class="seam">DriveCommand closed vocabulary + drive_app WS-surface tool + JarvisDriverMachine + the WorkspaceNavMachine promotion</td>
+          <td class="pr"><span class="this-round">P5 — this round</span></td>
+        </tr>
+        <tr>
+          <td class="cap">Proactive narration</td>
+          <td class="seam">domain anomalyDetector (edge-triggered) + NarratorMachine (capped) + JarvisMachine.narrate</td>
+          <td class="pr"><span class="this-round">P5 — this round</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>This page is a companion — the authoritative record lives in the architecture doc and the design spec.</p>
+    <div class="file"><span>docs/architecture/18-jarvis-ai-agent-surface.md</span><span class="role">§18.17 — the engineering receipt</span></div>
+    <div class="file"><span>docs/superpowers/specs/2026-08-05-jarvis-app-driving-narrator-design.md</span><span class="role">the design spec this round executed</span></div>
+    <p style="margin-top:14px">Read the source: <a href="../architecture/18-jarvis-ai-agent-surface.md#1817-app-driving--the-proactive-narrator-p5">§18.17</a> · <a href="../superpowers/specs/2026-08-05-jarvis-app-driving-narrator-design.md">the design spec</a> · <a href="../STATUS.md">STATUS.md</a> (live progress). PRs: P1 #405, P2 #440, P3 #444, P4 #453, governance #472, genUI #488.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("tg");
+    function cur() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = cur() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      btn.textContent = next === "dark" ? "☾ Dark" : "☀ Light";
+    });
+    btn.textContent = cur() === "dark" ? "☾ Dark" : "☀ Light";
+  })();
+</script>
+</body>
+</html>

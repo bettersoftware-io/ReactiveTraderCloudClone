@@ -55,8 +55,12 @@ contains the wrapper's name. (Linux equivalent: `secret-tool lookup` /
    drives availability → a quote turn → a declined-trade confirmation turn →
    a **panel-authoring turn** (asserts a schema-valid `render_panel` call
    from the real model, round-tripped through `parsePanelSpec`) → a
-   fresh-socket history replay, and prints per-turn time-to-first-event.
-   ~5 metered turns. It refuses to run keyless rather than silently passing.
+   **drive turn** (added by the P5 app-driving round:
+   `"switch to equities and maximize the chart"`, asserting a `jarvis.command`
+   frame whose batch `parseDriveBatch`-round-trips and contains a `switchTab`
+   command) → a fresh-socket history replay, and prints per-turn
+   time-to-first-event. ~6 metered turns. It refuses to run keyless rather
+   than silently passing.
    The script now lives at `tests/scripts/jarvis-live-smoke.ts` (moved off
    the repo root so it can import `@rtc/shared` as a real workspace
    dependency of the `tests/` package rather than a root-level one); the
@@ -210,3 +214,21 @@ confirm a real model actually calls `render_panel` with a schema-valid
 spec, since every other tier of this round's testing (unit through e2e)
 exercises the panel pipeline exclusively through the scripted brain's
 canned exchanges.
+
+**Narrator token note (app-driving + proactive narrator round, P5):** the
+client-side `NarratorMachine` caps unsolicited narration turns at
+`MAX_NARRATIONS_PER_SESSION = 4`, plus a 5-minute cooldown
+(`NARRATION_COOLDOWN_MS`) between them — so **at most 4 extra metered turns
+per session**, on the resolved brain (Haiku by default), ride on top of
+whatever the user asks for, and only if the `JarvisNarrator` preference
+(default `"on"`) is left on and a real anomaly actually crosses threshold.
+Each narration turn goes through the exact same `UsageMeter` accounting as
+an ordinary `send()` turn — no special-casing, so it shows up in the footer
+chip and the Admin usage card like any other turn. Flip the preference to
+`"off"` in Preferences → JARVIS to kill that spend outright: the detector
+stays subscribed (cheap — it's a pure `scan` over ticks already flowing) but
+drops every anomaly before it ever reaches `narrate()`, so nothing is billed.
+On `RTC_JARVIS_FAKE=1` / simulator mode the scripted brain's `narration`
+intent produces the same canned copy for free, so the whole flagship ride —
+spike → narration → "yes" → the desk rearranges itself — costs nothing
+without a key.
