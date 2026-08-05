@@ -61,19 +61,40 @@ function pushCapped(buf: number[], value: number, cap: number): void {
   }
 }
 
-/** Population mean/σ (ddof=0) — the window's own values are the whole population, not a sample drawn from a larger one. */
+/** Population mean/σ (ddof=0) — the window's own values are the whole population, not a sample drawn from a larger one. Empty window → {0, 0} (nothing to evaluate against yet). */
 function meanAndStd(values: readonly number[]): { mean: number; std: number } {
   const n = values.length;
+  if (n === 0) {
+    return { mean: 0, std: 0 };
+  }
   const mean = values.reduce((sum, v) => sum + v, 0) / n;
   const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / n;
   return { mean, std: Math.sqrt(variance) };
 }
 
 /**
- * Evaluate one channel's rolling window for an edge-triggered sigma
- * crossing, mutating `window`'s arming flag and returning the event to
- * emit (if any). `std === 0` (a constant series) always resolves to "not
- * crossed" — dividing by it is never attempted.
+ * A window is treated as "zero variance" once σ falls at or below this
+ * fraction of |mean| — not literal `σ === 0`. A logically-constant series
+ * (e.g. the sim's per-tick spread) is only constant up to float rounding:
+ * consecutive `ask - bid` values can differ by ~1 ULP (~1e-16 relative),
+ * which produces a minuscule but nonzero σ. Exact-equality would treat that
+ * ULP noise as real variance and report a many-σ phantom event off a series
+ * that is, for every practical purpose, flat. 1e-12 sits far enough above
+ * float noise (~1e-16) to absorb it, while staying many orders below any
+ * variance a real market regime would produce.
+ */
+const ZERO_VARIANCE_RELATIVE_EPSILON = 1e-12;
+
+/**
+ * Evaluate `value` against a channel's trailing rolling window for an
+ * edge-triggered sigma crossing, mutating `window`'s arming flag and
+ * returning the event to emit (if any). `window` must be the trailing
+ * history ONLY — `value` itself must not already be part of it (callers
+ * evaluate before pushing) — so σ is an honest, unbounded distance rather
+ * than one artificially capped by including the very value being judged.
+ * A window whose σ is zero (or float-noise-close to zero, relative to its
+ * own mean — see `ZERO_VARIANCE_RELATIVE_EPSILON`) always resolves to "not
+ * crossed": dividing by it is never attempted.
  */
 function evaluateCrossing(
   wasAbove: boolean,
@@ -83,7 +104,7 @@ function evaluateCrossing(
   distance: (value: number, mean: number, std: number) => number,
 ): { above: boolean; sigma: number | undefined } {
   const { mean, std } = meanAndStd(window);
-  if (std === 0) {
+  if (std <= Math.abs(mean) * ZERO_VARIANCE_RELATIVE_EPSILON) {
     return { above: false, sigma: undefined };
   }
 
@@ -112,13 +133,36 @@ function evaluateCrossing(
  *   window statistic). A tick's |return| crossing `volSigma` × that σ
  *   fires.
  *
+ * `sigma` on the emitted event is an honest z-score of the current value
+ * against the TRAILING window — the value being judged is evaluated
+ * before it is folded into its own window, never against a window that
+ * already contains it. This is deliberate: a self-inclusive comparison
+ * caps how extreme a single outlier can ever read (bounded by
+ * `sqrt(windowSize - 1)` in the limit), which would make a 250x blowout
+ * and a 10,000x blowout report the same capped σ. Excluding the current
+ * value keeps `sigma` unbounded and proportionate — the narrator renders
+ * it as severity ("moved Nσ"), so it must stay honest.
+ *
  * Both channels are edge-triggered per symbol: crossing above the
  * threshold emits exactly once; staying above emits nothing further;
- * dropping back below re-arms so the next crossing emits again. A
- * constant series (σ=0) can never cross, by construction (the division is
- * never attempted). No tick is evaluated before `minWindowFill` ticks have
- * been seen for its symbol — before that, ticks only accumulate into the
- * window.
+ * dropping back below re-arms so the next crossing emits again. A window
+ * whose σ is zero, or float-noise-close to zero relative to its own mean
+ * (see `ZERO_VARIANCE_RELATIVE_EPSILON`), can never cross, by construction
+ * (the division is never attempted). No tick is evaluated before
+ * `minWindowFill` ticks have been seen for its symbol — before that,
+ * ticks only accumulate into the window.
+ *
+ * Self-silencing / adaptivity: because each evaluation is against the
+ * CURRENT trailing window (not a fixed historical baseline), a regime
+ * shift that persists long enough to dominate — or, once `windowSize` is
+ * exceeded, entirely fill — the window becomes the new normal for that
+ * channel. A sustained wide-spread or high-vol regime therefore produces
+ * at most one emission, not one per tick: either it never both drops
+ * below and re-crosses (the plain edge-trigger latch), or the window
+ * adapts around the sustained level and its own σ against itself no
+ * longer clears `sigma` (the window has re-centred on the regime). This
+ * is by design — the narrator should announce a regime change once, not
+ * narrate every tick of an ongoing one.
  */
 export function detectAnomalies(
   ticks$: Observable<PriceTick>,
@@ -138,15 +182,16 @@ export function detectAnomalies(
         window.tickCount += 1;
 
         const spread = tick.ask - tick.bid;
-        pushCapped(window.spreads, spread, cfg.windowSize);
 
         let ret: number | undefined;
         if (window.prevMid !== undefined && window.prevMid !== 0) {
           ret = (tick.mid - window.prevMid) / window.prevMid;
-          pushCapped(window.returns, ret, cfg.windowSize);
         }
         window.prevMid = tick.mid;
 
+        // Evaluate against the TRAILING window — spread/ret are pushed in
+        // further down, after evaluation, so a value is never judged
+        // against a window that already contains itself (FIX 2 / honest σ).
         if (window.tickCount >= cfg.minWindowFill) {
           const spreadResult = evaluateCrossing(
             window.spreadAbove,
@@ -181,6 +226,11 @@ export function detectAnomalies(
               });
             }
           }
+        }
+
+        pushCapped(window.spreads, spread, cfg.windowSize);
+        if (ret !== undefined) {
+          pushCapped(window.returns, ret, cfg.windowSize);
         }
 
         return events;

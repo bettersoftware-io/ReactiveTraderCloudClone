@@ -11,11 +11,27 @@ import {
 } from "./anomalyDetector.js";
 
 /**
- * A window of `n` equal baseline values plus one outlier `b` has a
- * population-std z-score for the outlier that approaches sqrt(n-1) as
- * `b` dominates the baseline — never higher, regardless of how extreme `b`
- * is. Every fixture below picks window sizes and outlier ratios so that
- * bound comfortably clears the configured sigma (3 by default).
+ * Every fixture below evaluates a value against the window EXCLUDING itself
+ * (the detector evaluates before pushing — see `detectAnomalies`'s
+ * docstring on the "honest, unbounded σ" property), so a single-tick
+ * outlier's population-std z-score is UNBOUNDED as the outlier's magnitude
+ * grows: there is no asymptotic cap the way there was under the old
+ * self-inclusive math (which topped out at `sqrt(windowSize - 1)`
+ * regardless of how extreme the outlier was).
+ *
+ * Once more than one same-magnitude outlier has already accumulated in the
+ * trailing window, though, a *new* outlier's z-score against that window
+ * DOES converge to a fixed ratio as its own magnitude keeps growing: with k
+ * baseline values and `m_prior` same-magnitude outliers already sitting in
+ * the window (not counting the one currently being evaluated),
+ * `z → sqrt(k / m_prior)` as the outlier's magnitude dominates the
+ * baseline. `m_prior = 0` (the very first outlier ever seen) falls out of
+ * this formula as literally unbounded, matching the paragraph above;
+ * `m_prior = 1` is the simplest finite case, `sqrt(k)` (this is the old
+ * `sqrt(n-1)` bound's direct successor under the new exclude-current math).
+ * Every window size below is picked so this bound comfortably clears the
+ * configured sigma (3 by default) even after several outliers have
+ * accumulated.
  */
 function mkTick(
   symbol: string,
@@ -41,18 +57,80 @@ async function collect(
   return lastValueFrom(detectAnomalies(of(...ticks), config).pipe(toArray()));
 }
 
-const BASELINE_MID = 1.1;
-const BASELINE_BID = 1.0999;
-const BASELINE_ASK = 1.1001; // spread = 0.0002
-const SPIKE_BID = 1.075;
-const SPIKE_ASK = 1.125; // spread = 0.05 — 250x the baseline spread
+const FIXED_MID = 1.1;
 
-function baselineSpreadTick(symbol: string, i: number): PriceTick {
-  return mkTick(symbol, BASELINE_BID, BASELINE_ASK, i, BASELINE_MID);
+// --- Exactly-constant fixtures — for tests where the window itself must
+// have literal σ=0 (cold start; the plain σ=0 guard). ---
+const FLAT_BID = 1.0999;
+const FLAT_ASK = 1.1001; // spread = 0.0002, bit-identical every tick
+
+function flatBaselineSpreadTick(symbol: string, i: number): PriceTick {
+  return mkTick(symbol, FLAT_BID, FLAT_ASK, i, FIXED_MID);
 }
 
+const SPIKE_BID = 1.075;
+const SPIKE_ASK = 1.125; // spread = 0.05 — 250x the ~0.0002 baseline mean
+
 function spikeSpreadTick(symbol: string, i: number): PriceTick {
-  return mkTick(symbol, SPIKE_BID, SPIKE_ASK, i, BASELINE_MID);
+  return mkTick(symbol, SPIKE_BID, SPIKE_ASK, i, FIXED_MID);
+}
+
+// --- Jittered fixtures — a window needs SOME real (non-float-noise,
+// non-zero) variance for a spike's z-score against it to be well-defined
+// once the spike is excluded from its own baseline (FIX 2). Alternating
+// between two close values gives an exact, hand-computable population σ:
+// mean = (LOW+HIGH)/2 = 0.0002, σ = (HIGH-LOW)/2 = 0.00002, for any 50/50
+// split. ---
+const JITTER_LOW_BID = 1.09991;
+const JITTER_LOW_ASK = 1.10009; // spread = 0.00018
+const JITTER_HIGH_BID = 1.09989;
+const JITTER_HIGH_ASK = 1.10011; // spread = 0.00022
+
+function jitteredBaselineSpreadTick(
+  symbol: string,
+  parity: number,
+  i: number,
+): PriceTick {
+  return parity % 2 === 0
+    ? mkTick(symbol, JITTER_LOW_BID, JITTER_LOW_ASK, i, FIXED_MID)
+    : mkTick(symbol, JITTER_HIGH_BID, JITTER_HIGH_ASK, i, FIXED_MID);
+}
+
+// --- ULP-noise fixture (FIX 1) — a "constant" spread that differs tick to
+// tick only at float-rounding scale, reproducing what the reviewer found in
+// the sim's real EURUSD mids (~1.1e-16 apart). ---
+function ulpJitter(base: number, n: number): number {
+  return base + n * Number.EPSILON * Math.abs(base);
+}
+
+function ulpNoisyBaselineTick(symbol: string, n: number, i: number): PriceTick {
+  const bid = ulpJitter(FLAT_BID, n);
+  const ask = ulpJitter(FLAT_ASK, n * 3); // independent multiplier: bid/ask jitter independently
+  return mkTick(symbol, bid, ask, i, FIXED_MID);
+}
+
+// --- Vol fixtures — alternating mid gives a well-defined nonzero baseline
+// σ of returns (mirrors the spread jitter above), with a fixed spread so
+// this channel's own noise never leaks into spreadWidening. ---
+const VOL_HALF_SPREAD = 0.0001;
+const VOL_MID_LOW = 1.0999;
+const VOL_MID_HIGH = 1.1001;
+
+function volBaselineTick(symbol: string, parity: number, i: number): PriceTick {
+  const mid = parity % 2 === 0 ? VOL_MID_LOW : VOL_MID_HIGH;
+  return mkTick(symbol, mid - VOL_HALF_SPREAD, mid + VOL_HALF_SPREAD, i, mid);
+}
+
+const VOL_SPIKE_MID = 1.65; // ~50% jump off the ~1.1 baseline
+
+function volSpikeTick(symbol: string, i: number): PriceTick {
+  return mkTick(
+    symbol,
+    VOL_SPIKE_MID - VOL_HALF_SPREAD,
+    VOL_SPIKE_MID + VOL_HALF_SPREAD,
+    i,
+    VOL_SPIKE_MID,
+  );
 }
 
 describe("DEFAULT_ANOMALY_CONFIG", () => {
@@ -69,9 +147,9 @@ describe("DEFAULT_ANOMALY_CONFIG", () => {
 describe("detectAnomalies — cold start", () => {
   it("emits nothing before minWindowFill ticks, even given an extreme spread", async () => {
     const ticks = [
-      baselineSpreadTick("EURUSD", 0),
-      baselineSpreadTick("EURUSD", 1),
-      baselineSpreadTick("EURUSD", 2),
+      flatBaselineSpreadTick("EURUSD", 0),
+      flatBaselineSpreadTick("EURUSD", 1),
+      flatBaselineSpreadTick("EURUSD", 2),
       spikeSpreadTick("EURUSD", 3), // only the 4th tick — below minWindowFill=5
     ];
 
@@ -84,30 +162,61 @@ describe("detectAnomalies — cold start", () => {
   });
 });
 
-describe("detectAnomalies — spread edge-trigger", () => {
-  // A window holding k baseline values and m same-magnitude outliers gives
-  // each outlier a population-std z-score that converges to sqrt(k/m) once
-  // the outlier dominates the baseline (verified against this fixture's
-  // exact 250x ratio to within 1e-3). Three outliers accumulate by the
-  // final crossing below, so k=35 keeps sqrt(35/3)=3.4 comfortably above
-  // spreadSigma=3 even then.
+describe("detectAnomalies — constant series (σ=0 guard)", () => {
+  it("never emits for a perfectly constant spread and mid", async () => {
+    const ticks = Array.from({ length: 30 }, (_, n) =>
+      flatBaselineSpreadTick("EURUSD", n),
+    );
+
+    const events = await collect(ticks, { windowSize: 50, minWindowFill: 20 });
+
+    expect(events).toEqual([]);
+  });
+});
+
+describe("detectAnomalies — ULP-noise guard (FIX 1)", () => {
+  it("stays silent when a logically-constant spread differs only by float rounding (~1 ULP)", async () => {
+    // Each tick's bid/ask is nudged from the flat baseline by a distinct,
+    // tiny (~1e-16-scale) amount — exactly the kind of noise real float
+    // arithmetic produces from a series that is, for every practical
+    // purpose, flat. Exact-equality (`std === 0`) would NOT guard this:
+    // std here is on the order of 1e-17, which against a mean of ~0.0002
+    // would read as a many-sigma phantom event without the relative-
+    // magnitude guard.
+    const ticks = Array.from({ length: 30 }, (_, n) =>
+      ulpNoisyBaselineTick("EURUSD", n, n),
+    );
+
+    const events = await collect(ticks, { windowSize: 50, minWindowFill: 20 });
+
+    expect(events).toEqual([]);
+  });
+});
+
+describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () => {
+  // See the file-level comment above `mkTick` for the k/m_prior bound this
+  // fixture is built against. 36 baseline ticks keeps the SECOND crossing
+  // (evaluated with 2 prior outliers already in the window) at
+  // sqrt(37/2)≈4.3 — comfortably above spreadSigma=3.
   const cfg: Partial<AnomalyDetectorConfig> = {
     windowSize: 100,
-    minWindowFill: 35,
+    minWindowFill: 36,
   };
 
-  it("crosses once, stays silent while above, and re-arms after dropping below", async () => {
+  it("crosses once with an unbounded σ, stays silent while above, and re-arms after dropping below", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
-    // 35 baseline ticks reach minWindowFill; the window is still all-baseline
-    // so std is 0 here (the σ=0 guard) — no emission yet.
-    for (let n = 0; n < 35; n++) {
-      ticks.push(baselineSpreadTick("EURUSD", i++));
+    let parity = 0;
+    // 36 jittered baseline ticks reach minWindowFill; the window is still
+    // all-baseline (σ≈0.00002, real, not float noise) so the 36th tick's
+    // own z stays near 0 — no emission yet.
+    for (let n = 0; n < 36; n++) {
+      ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++));
     }
-    ticks.push(spikeSpreadTick("EURUSD", i++)); // crosses -> emits once
-    ticks.push(spikeSpreadTick("EURUSD", i++)); // stays above -> silent
-    ticks.push(baselineSpreadTick("EURUSD", i++)); // drops below -> re-arms, silent
-    ticks.push(spikeSpreadTick("EURUSD", i++)); // crosses again -> emits again
+    ticks.push(spikeSpreadTick("EURUSD", i++)); // m_prior=0 → crosses, unbounded σ
+    ticks.push(spikeSpreadTick("EURUSD", i++)); // stays above → silent
+    ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++)); // drops below → re-arms
+    ticks.push(spikeSpreadTick("EURUSD", i++)); // m_prior=2 → crosses again, sqrt(37/2)≈4.3
 
     const events = await collect(ticks, cfg);
     const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
@@ -117,18 +226,12 @@ describe("detectAnomalies — spread edge-trigger", () => {
       expect(e.symbol).toBe("EURUSD");
       expect(e.sigma).toBeGreaterThanOrEqual(3);
     }
-  });
-});
-
-describe("detectAnomalies — constant series (σ=0 guard)", () => {
-  it("never emits for a perfectly constant spread and mid", async () => {
-    const ticks = Array.from({ length: 30 }, (_, n) =>
-      baselineSpreadTick("EURUSD", n),
-    );
-
-    const events = await collect(ticks, { windowSize: 50, minWindowFill: 20 });
-
-    expect(events).toEqual([]);
+    // The first crossing has no prior outliers in its trailing window
+    // (m_prior=0): its σ is bounded only by the real ~250x spike/baseline
+    // ratio, not by windowSize — this is FIX 2's "unbounded, honest σ"
+    // property. (Under the old self-inclusive math this could never have
+    // exceeded sqrt(windowSize-1)≈9.9 regardless of the spike's real size.)
+    expect(spreadEvents[0]?.sigma).toBeGreaterThan(500);
   });
 });
 
@@ -140,16 +243,18 @@ describe("detectAnomalies — per-symbol isolation", () => {
     };
 
     const eurTicks: PriceTick[] = [];
+    let eurParity = 0;
     for (let n = 0; n < 20; n++) {
-      eurTicks.push(baselineSpreadTick("EURUSD", n));
+      eurTicks.push(jitteredBaselineSpreadTick("EURUSD", eurParity++, n));
     }
     eurTicks.push(spikeSpreadTick("EURUSD", 20)); // the one EURUSD crossing
 
     // GBPUSD never spikes and outnumbers EURUSD's tick count, so if the
     // detector shared state across symbols this would either mask the
     // EURUSD crossing or spuriously fire for GBPUSD.
+    let gbpParity = 0;
     const gbpTicks: PriceTick[] = Array.from({ length: 25 }, (_, n) =>
-      baselineSpreadTick("GBPUSD", n),
+      jitteredBaselineSpreadTick("GBPUSD", gbpParity++, n),
     );
 
     const combined: PriceTick[] = [];
@@ -178,18 +283,19 @@ describe("detectAnomalies — vol spike", () => {
     minWindowFill: 20,
   };
 
-  it("fires on a single-tick return that dwarfs the window's own rolling σ", async () => {
+  it("fires on a single-tick return that dwarfs the window's own trailing σ", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
+    let parity = 0;
     // Spread held perfectly constant throughout — isolates this test to the
     // vol channel; the σ=0 guard keeps spreadWidening silent for all of it.
     for (let n = 0; n < 20; n++) {
-      ticks.push(mkTick("EURUSD", BASELINE_BID, BASELINE_ASK, i++, 1.1));
+      ticks.push(volBaselineTick("EURUSD", parity++, i++));
     }
-    // A 50% mid jump — the window's baseline returns are all 0, so any
-    // non-zero outlier's z-score approaches sqrt(returns.length - 1); with
-    // ~19 baseline zero-returns that bound is well above volSigma=3.
-    ticks.push(mkTick("EURUSD", BASELINE_BID, BASELINE_ASK, i++, 1.65));
+    // A ~50% mid jump against a baseline return σ of ~1.8e-4 (from the
+    // alternating mid) — its z-score dwarfs volSigma=3 by orders of
+    // magnitude.
+    ticks.push(volSpikeTick("EURUSD", i++));
 
     const events = await collect(ticks, cfg);
 
@@ -197,5 +303,37 @@ describe("detectAnomalies — vol spike", () => {
     expect(events[0]?.kind).toBe("volSpike");
     expect(events[0]?.symbol).toBe("EURUSD");
     expect(events[0]?.sigma).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("detectAnomalies — self-silencing / adaptivity", () => {
+  it("a sustained wide-spread regime produces exactly one emission, not one per tick", async () => {
+    const cfg: Partial<AnomalyDetectorConfig> = {
+      windowSize: 40,
+      minWindowFill: 36,
+    };
+
+    const ticks: PriceTick[] = [];
+    let i = 0;
+    let parity = 0;
+    for (let n = 0; n < 36; n++) {
+      ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++));
+    }
+    // Sustain the SAME wide-spread level for far longer than windowSize=40,
+    // so the trailing window fully rolls over from baseline to regime-only
+    // values. If the detector merely latched a boolean forever, this would
+    // already prove "exactly one"; running it past a full window rollover
+    // additionally proves the window itself re-centres on the regime (its
+    // own σ against itself stops clearing spreadSigma, or the σ=0 guard
+    // takes over once the window is pure-regime) — the detector goes quiet
+    // for the ongoing regime rather than treating it as forever-anomalous.
+    for (let n = 0; n < 80; n++) {
+      ticks.push(spikeSpreadTick("EURUSD", i++));
+    }
+
+    const events = await collect(ticks, cfg);
+    const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
+
+    expect(spreadEvents).toHaveLength(1);
   });
 });
