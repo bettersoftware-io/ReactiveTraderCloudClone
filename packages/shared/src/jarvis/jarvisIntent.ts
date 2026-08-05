@@ -15,6 +15,7 @@ export interface JarvisTradeIntent {
 }
 
 export type JarvisIntent =
+  | { readonly kind: "narration"; readonly symbol: string }
   | { readonly kind: "greeting" }
   | { readonly kind: "help" }
   | { readonly kind: "pnl" }
@@ -27,6 +28,7 @@ export type JarvisIntent =
       readonly kind: "restylePanel";
       readonly viz: "heatmap" | "table" | "line";
     }
+  | { readonly kind: "setupWorkspace" }
   | { readonly kind: "fallback" };
 
 const DEFAULT_TRADE_NOTIONAL = 1_000_000;
@@ -90,10 +92,21 @@ function findKnownSymbol(
   return null;
 }
 
+// Anchored (^) so a [narration] turn is collision-proof: it always wins
+// regardless of what follows the prefix (e.g. the word "volatility", which
+// RULE_SHOW_PANEL/RULE_5_MOVERS would otherwise claim). Checked before every
+// other rule.
+const RULE_0_NARRATION = /^\[narration\]/i;
 const RULE_1_BRIEFING = /(brief|summar|sitrep|status report|good morning)/i;
 const RULE_2_BUY_SELL = /\b(buy|sell)\b/i;
 const RULE_3_SPREAD = /spread/i;
 const RULE_4_PNL = /(pnl|p&l|profit|how am i doing|performance)/i;
+// Checked ahead of RULE_SHOW_PANEL/RULE_5_MOVERS below: this pattern's own
+// "vol(atility)?" alternative is a substring of both "volatility" (which
+// RULE_SHOW_PANEL claims) and "volatil" (which RULE_5_MOVERS claims), so a
+// phrase like "set up a volatility workspace" must resolve to setupWorkspace,
+// not showPanel/movers.
+const RULE_SETUP_WORKSPACE = /(set ?up|morning|vol(atility)?) .*workspace/i;
 // Checked ahead of RULE_5_MOVERS below: "volatility" contains "volatil",
 // which RULE_5_MOVERS would otherwise claim first (e.g. "show me gbp
 // volatility" must resolve to showPanel, not movers).
@@ -103,6 +116,10 @@ const RULE_5_MOVERS = /(moving|movers|market|happening|action|volatil)/i;
 const RULE_7_HELP = /(help|what can you|capabilit)/i;
 const RULE_8_GREETING = /(^| )(hi|hello|hey|thanks|thank you|cheers)( |$|!|,)/i;
 
+/** Generic stand-in for a narration turn's quoted symbol when the prompt
+ * doesn't contain a known pair. */
+const NARRATION_SYMBOL_FALLBACK = "the desk";
+
 function isRestyleViz(
   value: string | undefined,
 ): value is "heatmap" | "table" | "line" {
@@ -110,23 +127,30 @@ function isRestyleViz(
 }
 
 /**
- * Matches free text against the phase-1 intent cascade, in priority order:
+ * Matches free text against the phase-1+ intent cascade, in priority order:
+ * 0. a `[narration]` prefix          → narration (collision-proof, always wins)
  * 1. briefing/sitrep words           → pnl
  * 2. buy/sell + a known FX symbol    → trade
  * 3. "spread" + a known FX symbol    → spread
  * 4. pnl/profit/performance words    → pnl
- * 5. volatility/panel-request words  → showPanel
- * 6. "make it/that a <viz>" words    → restylePanel
- * 7. moving/movers/market words      → movers
- * 8. a bare known FX symbol          → quote
- * 9. help/capability words           → help
- * 10. greeting words                 → greeting
- * 11. anything else                  → fallback
+ * 5. "set up/morning/vol workspace"  → setupWorkspace
+ * 6. volatility/panel-request words  → showPanel
+ * 7. "make it/that a <viz>" words    → restylePanel
+ * 8. moving/movers/market words      → movers
+ * 9. a bare known FX symbol          → quote
+ * 10. help/capability words          → help
+ * 11. greeting words                 → greeting
+ * 12. anything else                  → fallback
  */
 export function matchJarvisIntent(
   text: string,
   knownSymbols: readonly string[],
 ): JarvisIntent {
+  if (RULE_0_NARRATION.test(text)) {
+    const symbol = findKnownSymbol(text, knownSymbols);
+    return { kind: "narration", symbol: symbol ?? NARRATION_SYMBOL_FALLBACK };
+  }
+
   if (RULE_1_BRIEFING.test(text)) {
     return { kind: "pnl" };
   }
@@ -155,6 +179,10 @@ export function matchJarvisIntent(
 
   if (RULE_4_PNL.test(text)) {
     return { kind: "pnl" };
+  }
+
+  if (RULE_SETUP_WORKSPACE.test(text)) {
+    return { kind: "setupWorkspace" };
   }
 
   if (RULE_SHOW_PANEL.test(text)) {

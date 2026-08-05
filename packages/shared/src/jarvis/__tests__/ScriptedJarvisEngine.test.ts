@@ -21,6 +21,7 @@ import {
 import type { JarvisEvent } from "../jarvisEvent.js";
 import { parsePanelSpec } from "../panelSpec.js";
 import {
+  SCRIPTED_VOL_WORKSPACE_BATCH,
   type ScriptedJarvisDeps,
   ScriptedJarvisEngine,
 } from "../ScriptedJarvisEngine.js";
@@ -428,6 +429,76 @@ describe("ScriptedJarvisEngine", () => {
       }),
     ).toBe(false);
     expect(fullText(events)).toBe("There's no panel open to restyle yet, sir.");
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("a setupWorkspace turn emits exactly one command event (batch deep-equal to SCRIPTED_VOL_WORKSPACE_BATCH), a panel event that follows it, deltas, and done", async () => {
+    const { deps } = buildDeps({
+      pairs: KNOWN_CURRENCY_PAIRS,
+      instantReveal$: of(true),
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const { events, done } = runTurn(adapter, "set up my morning workspace");
+    await done;
+
+    const commandEvents = events.filter((e) => {
+      return e.type === "command";
+    });
+    expect(commandEvents).toHaveLength(1);
+
+    const commandEvent = commandEvents[0];
+
+    if (commandEvent?.type !== "command") {
+      throw new Error("expected a command event");
+    }
+
+    expect(commandEvent.batch).toEqual(SCRIPTED_VOL_WORKSPACE_BATCH);
+
+    const commandIndex = events.indexOf(commandEvent);
+    const panelIndex = events.findIndex((e) => {
+      return e.type === "panel";
+    });
+
+    expect(panelIndex).toBeGreaterThan(commandIndex);
+
+    const panelEvent = events[panelIndex];
+
+    if (panelEvent?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(panelEvent.panelId).toBe("panel-scripted-1");
+    expect(
+      events.some((e) => {
+        return e.type === "delta";
+      }),
+    ).toBe(true);
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("a narration turn emits only deltas + done — no command/panel events (offers-never-executes)", async () => {
+    const { deps } = buildDeps({
+      pairs: KNOWN_CURRENCY_PAIRS,
+      instantReveal$: of(true),
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const { events, done } = runTurn(
+      adapter,
+      "[narration] EURUSD volatility spiking",
+    );
+    await done;
+
+    expect(
+      events.some((e) => {
+        return e.type === "command" || e.type === "panel";
+      }),
+    ).toBe(false);
+    expect(fullText(events)).toContain("EURUSD");
+    expect(fullText(events).endsWith("Shall I set up the vol workspace?")).toBe(
+      true,
+    );
     expect(events.at(-1)).toEqual({ type: "done" });
   });
 

@@ -171,4 +171,40 @@ describe("matchJarvisIntent", () => {
       notional: 2_000_000,
     });
   });
+
+  it("rule 0: a [narration] prefix -> narration, quoting the symbol parsed from the prompt", () => {
+    expect(
+      matchJarvisIntent("[narration] EURUSD volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "EURUSD" });
+  });
+
+  it("priority: [narration] wins over showPanel/movers even though the prompt also says 'volatility'", () => {
+    expect(
+      matchJarvisIntent("[narration] EURUSD volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "EURUSD" });
+  });
+
+  it("narration falls back to a generic symbol when no known pair is in the prompt", () => {
+    expect(
+      matchJarvisIntent("[narration] volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "the desk" });
+  });
+
+  it("setupWorkspace: 'set up my morning workspace' -> setupWorkspace", () => {
+    expect(
+      matchJarvisIntent("set up my morning workspace", knownSymbols),
+    ).toEqual({ kind: "setupWorkspace" });
+  });
+
+  it("setupWorkspace: 'pull up my vol workspace' -> setupWorkspace", () => {
+    expect(matchJarvisIntent("pull up my vol workspace", knownSymbols)).toEqual(
+      { kind: "setupWorkspace" },
+    );
+  });
+
+  it("priority: setupWorkspace wins over movers on the 'volatil' substring collision ('set up a volatility workspace')", () => {
+    expect(
+      matchJarvisIntent("let's set up a volatility workspace", knownSymbols),
+    ).toEqual({ kind: "setupWorkspace" });
+  });
 });
