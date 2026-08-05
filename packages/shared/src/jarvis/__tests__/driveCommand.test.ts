@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { CandleTimeframe, PowerSaverLevel, ThemeSkin } from "@rtc/domain";
+import {
+  CANDLE_TIMEFRAMES,
+  type CandleTimeframe,
+  POWER_SAVER_LEVELS,
+  type PowerSaverLevel,
+  THEME_SKINS,
+  type ThemeSkin,
+} from "@rtc/domain";
 
 import {
   DRIVE_CHART_TYPES,
@@ -487,10 +494,14 @@ describe("DRIVE_TIMEFRAMES — pinned against @rtc/domain CandleTimeframe", () =
     expect(DRIVE_TIMEFRAMES).toEqual(["1D", "1W", "1M", "3M"]);
   });
 
-  it("matches the values a CandleTimeframe can take (compile-time pin)", () => {
-    const pin: readonly CandleTimeframe[] =
+  it("matches the values a CandleTimeframe can take (compile-time pin — fails to typecheck, not to run, if DRIVE_TIMEFRAMES has a value CandleTimeframe lacks)", () => {
+    const _pin: readonly CandleTimeframe[] =
       DRIVE_TIMEFRAMES satisfies readonly CandleTimeframe[];
-    expect(pin).toEqual(DRIVE_TIMEFRAMES);
+    expect(_pin).toBe(DRIVE_TIMEFRAMES);
+  });
+
+  it("deep-equals the live @rtc/domain CANDLE_TIMEFRAMES export (bidirectional — catches domain growing a member this list lacks)", () => {
+    expect([...DRIVE_TIMEFRAMES]).toEqual([...CANDLE_TIMEFRAMES]);
   });
 });
 
@@ -506,10 +517,14 @@ describe("DRIVE_SKINS — pinned against @rtc/domain ThemeSkin", () => {
     ]);
   });
 
-  it("matches the values a ThemeSkin can take (compile-time pin)", () => {
-    const pin: readonly ThemeSkin[] =
+  it("matches the values a ThemeSkin can take (compile-time pin — fails to typecheck, not to run, if DRIVE_SKINS has a value ThemeSkin lacks)", () => {
+    const _pin: readonly ThemeSkin[] =
       DRIVE_SKINS satisfies readonly ThemeSkin[];
-    expect(pin).toEqual(DRIVE_SKINS);
+    expect(_pin).toBe(DRIVE_SKINS);
+  });
+
+  it("deep-equals the live @rtc/domain THEME_SKINS export (bidirectional — catches domain growing a member this list lacks)", () => {
+    expect([...DRIVE_SKINS]).toEqual([...THEME_SKINS]);
   });
 });
 
@@ -518,10 +533,14 @@ describe("DRIVE_POWER_LEVELS — pinned against @rtc/domain PowerSaverLevel", ()
     expect(DRIVE_POWER_LEVELS).toEqual(["off", "calm", "freeze"]);
   });
 
-  it("matches the values a PowerSaverLevel can take (compile-time pin)", () => {
-    const pin: readonly PowerSaverLevel[] =
+  it("matches the values a PowerSaverLevel can take (compile-time pin — fails to typecheck, not to run, if DRIVE_POWER_LEVELS has a value PowerSaverLevel lacks)", () => {
+    const _pin: readonly PowerSaverLevel[] =
       DRIVE_POWER_LEVELS satisfies readonly PowerSaverLevel[];
-    expect(pin).toEqual(DRIVE_POWER_LEVELS);
+    expect(_pin).toBe(DRIVE_POWER_LEVELS);
+  });
+
+  it("deep-equals the live @rtc/domain POWER_SAVER_LEVELS export (bidirectional — catches domain growing a member this list lacks)", () => {
+    expect([...DRIVE_POWER_LEVELS]).toEqual([...POWER_SAVER_LEVELS]);
   });
 });
 
