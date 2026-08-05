@@ -3,6 +3,8 @@ import { MountedComponent } from "@ui-contract/harness/component";
 
 import type {
   EqChartType,
+  EqDrawing,
+  EqDrawTool,
   EqIndicatorId,
   EqPaneId,
   EqYScale,
@@ -38,6 +40,27 @@ export interface CandleChartProps {
   /** Fetches one older history page — the near-edge trigger's intent.
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
+  /** The active draw tool — defaults to "cursor" (no drawing gesture
+   * active) when omitted. Drives `useChartGestures`' pointer-down fork
+   * (hline commits immediately, trendline opens a draft, cursor clicks
+   * hit-test) — see ChartDrawings.contract.spec.ts (Task 7). */
+  drawTool?: EqDrawTool;
+  /** The current symbol's committed drawings, in plot order — defaults to
+   * none when omitted. */
+  drawings?: readonly EqDrawing[];
+  /** The id of the currently-selected drawing, or null/omitted for none —
+   * drives which item's handles `drawingScene` projects. */
+  selectedDrawingId?: string | null;
+  /** Commits a finished drawing gesture (trendline drag past the click
+   * threshold, or an hline pointer-down). Slot: default no-op. */
+  onCommitDrawing?: (drawing: EqDrawing) => void;
+  /** Selects (or clears, on null) a drawing by id. Slot: default no-op. */
+  onSelectDrawing?: (id: string | null) => void;
+  /** Deletes the currently-selected drawing. Slot: default no-op. */
+  onDeleteSelected?: () => void;
+  /** Shifts every trendline anchor index by `by` (a live prepend keeping
+   * drawings pinned to their candles). Slot: default no-op. */
+  onShiftAnchors?: (by: number) => void;
 }
 
 /** The BACK TO LIVE pill's presence + a click helper. */
@@ -62,8 +85,11 @@ const NAVIGATOR_WINDOW_TESTID = "navigator-window";
 /** Stand-in plot geometry for jsdom, whose getBoundingClientRect() is
  * all-zeros absent real layout — same 500×50-at-the-origin rect
  * `useChartGestures.test.ts`' own `stubPlotRect` stubs, so xFrac/yFrac
- * fractions land on a concrete client-coordinate rectangle. */
-const STUB_RECT: DOMRect = {
+ * fractions land on a concrete client-coordinate rectangle. Exported so
+ * ChartPanelPage's own plot driver (the drawings contract's symbol-isolation
+ * case, which draws through ChartPanel's real CandleChart rather than a
+ * standalone mount) can stub the SAME rect on its own `chart-plot` element. */
+export const STUB_RECT: DOMRect = {
   left: 0,
   top: 0,
   width: 500,
@@ -466,6 +492,14 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     return el;
   }
 
+  /** The plot element with jsdom's holes stubbed: a concrete bounding rect
+   * plus the pointer-capture trio jsdom doesn't implement — `startDrag`
+   * (useChartGestures) calls `setPointerCapture` on every pointerdown that
+   * isn't the hline tool's immediate commit (cursor drags AND trendline
+   * drafts both go through the general drag-origin path), so any
+   * {@link pointerDown}/{@link pointerUp} driven case needs these stubbed,
+   * mirroring {@link navigatorStrip}'s identical trio for the navigator
+   * strip. */
   private plot(): HTMLElement {
     const el = within(this.root).getByTestId(PLOT_TESTID);
 
@@ -473,7 +507,75 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
       return STUB_RECT;
     };
 
+    el.setPointerCapture = (): void => {};
+
+    el.hasPointerCapture = (): boolean => {
+      return false;
+    };
+
+    el.releasePointerCapture = (): void => {};
+
     return el;
+  }
+
+  /** Dispatches a pointerdown on the plot at the given fraction of its
+   * (stubbed) bounding rect — opens whatever gesture the active draw tool
+   * implies (a trendline draft, an immediate hline commit, or a plain pan/
+   * click origin for the cursor tool), the same coordinate math
+   * {@link setPointer} uses. */
+  pointerDown(xFrac: number, yFrac: number): void {
+    const plot = this.plot();
+    const rect = plot.getBoundingClientRect();
+    fireEvent.pointerDown(plot, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + yFrac * rect.height,
+    });
+    this.setProps({});
+  }
+
+  /** Dispatches a pointerup on the plot at the given fraction of its
+   * (stubbed) bounding rect — commits or discards whatever gesture
+   * {@link pointerDown} (plus any intervening {@link setPointer} moves)
+   * opened. */
+  pointerUp(xFrac: number, yFrac: number): void {
+    const plot = this.plot();
+    const rect = plot.getBoundingClientRect();
+    fireEvent.pointerUp(plot, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + yFrac * rect.height,
+    });
+    this.setProps({});
+  }
+
+  /** Every rendered chart-drawing element (a committed trendline/hline
+   * `<line>`, or the in-progress draft), in DOM order. */
+  drawings(): HTMLElement[] {
+    return Array.from(
+      this.root.querySelectorAll<HTMLElement>('[data-testid="chart-drawing"]'),
+    );
+  }
+
+  /** The i-th rendered drawing's given attribute (e.g. "data-kind", "x1",
+   * "data-selected"), or null if there is no such drawing/attribute. */
+  drawingAttr(i: number, name: string): string | null {
+    return this.drawings()[i]?.getAttribute(name) ?? null;
+  }
+
+  /** Count of rendered selection-handle circles across every drawing —
+   * `drawingScene` only projects handles for the selected item, so this is
+   * 0 with nothing selected, 2 for a selected trendline (its two anchors),
+   * or 1 for a selected hline (its midpoint). Named `selectionHandleCount`
+   * rather than the shorter `handleCount` — the latter trips
+   * `rtc/name-functions-by-effect`'s trigger-prefix check (`/^(on|handle)/`),
+   * which treats a bare `handle`-prefixed identifier as an event-handler
+   * name; "handle" here is the domain noun (a drawing's selection handle),
+   * so the qualifier disambiguates the same way `resizeHandleExists` does in
+   * LayoutEnginePage. */
+  selectionHandleCount(): number {
+    return this.root.querySelectorAll('[data-testid="chart-drawing-handle"]')
+      .length;
   }
 
   /** Dispatches a pointermove on the given pane at an x-fraction of its

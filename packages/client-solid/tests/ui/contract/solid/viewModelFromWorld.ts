@@ -691,19 +691,21 @@ export function solidViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
-    // Eq drawings: no contract spec exercises this yet (Task 3 is bindings-
-    // exposure only) — an inert literal satisfying the ViewModel shape, not a
-    // real World-backed machine like useEqWorkspace above.
+    // Eq drawings: the REAL createEqDrawingsMachine, one shared instance for
+    // the whole World (world.eqDrawings) — its `state$` is already a warm
+    // StateObservable (see @rtc/client-core's Machine interface), so it is
+    // read directly with `toSignal`, exactly like `useEqWorkspace` above —
+    // NOT a per-mount useMachine, so the chart head's draw-tool pills and
+    // the plot's committed drawings, even mounted via separate mountWith()
+    // calls sharing one World, observe the same tool/drawings/selection.
     useEqDrawings: () => {
       return {
-        state: () => {
-          return { tool: "cursor", drawings: {}, selectedId: null };
-        },
-        setTool: () => {},
-        addDrawing: () => {},
-        selectDrawing: () => {},
-        deleteSelected: () => {},
-        shiftAnchors: () => {},
+        state: toSignal(world.eqDrawings.state$),
+        setTool: world.eqDrawings.intents.setTool,
+        addDrawing: world.eqDrawings.intents.addDrawing,
+        selectDrawing: world.eqDrawings.intents.selectDrawing,
+        deleteSelected: world.eqDrawings.intents.deleteSelected,
+        shiftAnchors: world.eqDrawings.intents.shiftAnchors,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World

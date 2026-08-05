@@ -4,6 +4,7 @@ import type {
   ActivityEntry,
   AnimationIntent,
   AuthViewState,
+  EqDrawingsState,
   EqWorkspaceState,
   IncidentKind,
   IncidentState,
@@ -15,7 +16,9 @@ import type {
   ThroughputView,
 } from "@rtc/client-core";
 import {
+  createEqDrawingsMachine,
   createEqWorkspaceMachine,
+  type EqDrawingsIntents,
   type EqWorkspaceIntents,
   type Machine,
 } from "@rtc/client-core";
@@ -454,6 +457,13 @@ export interface World {
    * reading useEqWorkspace() through this World observes the same selection/
    * open-tabs/timeframe state. */
   readonly eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  /** The REAL createEqDrawingsMachine, one shared instance for the whole
+   * World — mirrors `eqWorkspace` above: the chart head's draw-tool pills and
+   * the plot's gesture-committed drawings are independent engine cells that
+   * cannot share React/Solid state, so every component reading
+   * useEqDrawings() through this World observes the same tool/drawings/
+   * selection (matches the composition root's singleton wiring). */
+  readonly eqDrawings: Machine<EqDrawingsState, EqDrawingsIntents>;
   /** Reactive watchlist sort-mode preference backing useEqWatchlistSort. */
   readonly eqWatchlistSort: BehaviorSubject<EqWatchlistSort>;
   /** Reactive blotter tab preference backing useEqBlotterView. */
@@ -615,6 +625,7 @@ export function createWorld(
     initialSymbol:
       equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
   });
+  const eqDrawings = createEqDrawingsMachine();
 
   const eqWatchlistSort = new BehaviorSubject<EqWatchlistSort>(
     equitiesSeed.watchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
@@ -938,6 +949,7 @@ export function createWorld(
       return orderLifecycle.next(order);
     },
     eqWorkspace,
+    eqDrawings,
     eqWatchlistSort,
     eqBlotterView,
     // Admin subjects
