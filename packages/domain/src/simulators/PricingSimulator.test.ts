@@ -1,10 +1,14 @@
-import { firstValueFrom, lastValueFrom, type Subscription } from "rxjs";
+import { firstValueFrom, from, lastValueFrom, type Subscription } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
+import {
+  DEFAULT_ANOMALY_CONFIG,
+  detectAnomalies,
+} from "../jarvis/anomalyDetector.js";
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
 import { PricingSimulator } from "./PricingSimulator.js";
 
@@ -211,13 +215,33 @@ describe("PricingSimulator", () => {
   // --- Anomaly-episode wiring (Task 7b) -----------------------------------
   //
   // The pure episode-advance logic (forced start, ramp shape, decay, bounds,
-  // and the RNG-consumption byte-compat guarantee) is unit-tested directly
-  // against `pricingAnomalyEpisode.ts`. These two tests instead pin the
-  // wiring into `PricingSimulator` itself: end-to-end steady-state
-  // byte-compatibility through the class's public surface, and proof the
-  // live tick stream actually widens when an episode is forced.
+  // and the RNG-consumption byte-compat guarantee — ZERO extra draws when
+  // `startProbability` is forced to 0) is unit-tested directly against
+  // `pricingAnomalyEpisode.ts`; that is the ONLY place the "byte-compatible"
+  // claim is proven, because it is the only test that can control draw
+  // COUNT independent of draw VALUE. These three tests instead pin the
+  // wiring into `PricingSimulator` itself: that the pre-episode formula
+  // still computes the same numbers when no episode is active (a narrower
+  // claim than draw-count compatibility — see the test's own docstring),
+  // that a forced episode visibly widens the live spread, and that a forced
+  // episode's real tick stream trips the real `detectAnomalies`.
 
-  it("byte-compatible steady state: live tick mids match the pre-episode random-walk formula when Math.random never crosses the episode start threshold", async () => {
+  it("steady-state formula wiring: live tick mids match the pre-episode random-walk formula under a constant Math.random()", async () => {
+    // NOTE what this test does and does NOT prove: Math.random() is mocked
+    // to a CONSTANT (0.9), so it is draw-COUNT-insensitive by construction —
+    // the same constant is returned no matter how many times it's called,
+    // so this cannot detect (and does not claim to detect) that the shipped
+    // `DEFAULT_EPISODE_CONFIG` consumes one extra "start roll" draw per
+    // steady-state tick versus the pre-episode code (measured: 2 draws/tick
+    // -> 3, i.e. +50% — see pricingAnomalyEpisode.ts's module doc for why
+    // that's harmless). What THIS test proves is narrower: that the
+    // arithmetic formula itself — mid = mid + (r-0.5)*stepSize, rounded to
+    // ratePrecision — still produces the exact pre-episode numbers when no
+    // episode is active, wired through the class's public surface. The
+    // actual zero-extra-draws guarantee is pinned at the pure-function
+    // level in pricingAnomalyEpisode.test.ts ("byte-compatible steady
+    // state"), the only test that can hold draw count and draw value
+    // independent of each other.
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.9); // 0.9 << 1/1500 crossed only from below; never starts an episode
     vi.useFakeTimers();
     try {
@@ -230,17 +254,9 @@ describe("PricingSimulator", () => {
       await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 6);
       const ticks = await ticksPromise;
 
-      // Manual replication of the PRE-EPISODE formula only: mid = mid +
-      // (r - 0.5) * stepSize, rounded to ratePrecision, seeded from
-      // EURUSD's baseMid/stepSize/ratePrecision (1.09213 / 0.00018 / 5).
-      // A constant Math.random() makes this reproducible independent of
-      // call COUNT, which is the point: if the new episode-aware code ever
-      // consumed extra draws in steady state, the SHAPE would still match
-      // (constant input either way) — the real guarantee (zero extra
-      // draws) is pinned at the pure-function level in
-      // pricingAnomalyEpisode.test.ts. This test instead pins that the
-      // formula itself, wired through the class, still computes the exact
-      // pre-episode numbers when no episode is active.
+      // Manual replication of the PRE-EPISODE formula: mid = mid + (r -
+      // 0.5) * stepSize, rounded to ratePrecision, seeded from EURUSD's
+      // baseMid/stepSize/ratePrecision (1.09213 / 0.00018 / 5).
       const stepSize = 0.00018;
       const ratePrecision = 5;
       const halfSpread = 0.00007;
@@ -293,6 +309,50 @@ describe("PricingSimulator", () => {
       // minimum with a constant-0 random()).
       for (const t of liveTicks) {
         expect(t.ask - t.bid).toBeLessThanOrEqual(restingSpread * 2 + 1e-9);
+      }
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  it("a forced episode's REAL live tick stream (through the actual PricingSimulator class, not a reimplemented walk) trips detectAnomalies' spreadWidening channel", async () => {
+    // Same forcing technique as the test above (Math.random() === 0 always
+    // wins the start roll and always rolls minDuration/spreadWidening/
+    // minPeak), but this time the resulting PriceTick[] — collected from
+    // the actual class, including its real `.toFixed(ratePrecision)`
+    // rounding — is piped through the real, unmodified `detectAnomalies`
+    // with the real `DEFAULT_ANOMALY_CONFIG`. This is the end-to-end proof
+    // that the shipped simulator (not a hand-rolled stand-in) can trigger
+    // the detector; `pricingAnomalyEpisode.test.ts`'s "detector
+    // integration" cases prove the episode SHAPE crosses 3σ (including the
+    // volSpike/volBurst channel) against a sequence built directly from the
+    // pure functions — this test is that proof's real-class witness for
+    // the spreadWidening channel.
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.useFakeTimers();
+    try {
+      const engine = new PricingSimulator();
+      // minWindowFill (60) + enough live ticks for several ramp cycles
+      // (episodes repeat back-to-back at duration 20 under this mock).
+      const ticksPromise = lastValueFrom(
+        engine
+          .getPriceUpdates("EURUSD")
+          .pipe(take(PRICE_HISTORY_SIZE + 70), toArray()),
+      );
+      await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 80);
+      const ticks = await ticksPromise;
+
+      const events = await lastValueFrom(
+        detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG).pipe(toArray()),
+      );
+      const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
+
+      expect(spreadEvents.length).toBeGreaterThanOrEqual(1);
+      for (const e of spreadEvents) {
+        expect(e.symbol).toBe("EURUSD");
+        expect(e.sigma).toBeGreaterThanOrEqual(
+          DEFAULT_ANOMALY_CONFIG.spreadSigma,
+        );
       }
     } finally {
       randomSpy.mockRestore();

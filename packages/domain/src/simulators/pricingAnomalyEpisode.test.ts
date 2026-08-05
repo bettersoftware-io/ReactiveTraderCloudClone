@@ -283,6 +283,7 @@ describe("burstStepMultiplier / burstSignBias", () => {
 
 const EURUSD_HALF_SPREAD = 0.00007; // typicalSpreadPips 1.4 / 2 * pipUnit(4)
 const EURUSD_STEP_SIZE = 0.00018; // stepSizeFor(EURUSD): 1.8 * pipUnit(4)
+const EURUSD_RATE_PRECISION = 5; // KNOWN_CURRENCY_PAIRS EURUSD.ratePrecision
 
 function buildTickSequence(
   steadyTicks: number,
@@ -307,7 +308,13 @@ function buildTickSequence(
     const signBias = burstSignBias(episode);
     const raw = random() - 0.5;
     const r = signBias === 0 ? raw : signBias * Math.abs(raw);
-    mid = mid + r * EURUSD_STEP_SIZE * stepMultiplier;
+    const next = mid + r * EURUSD_STEP_SIZE * stepMultiplier;
+    // Mirror PricingSimulator's applyRandomWalk exactly: round to the
+    // pair's rate precision, and never let a step land at/below zero.
+    // Omitting this previously let the manual walk drift from what the
+    // real class would actually produce (caught in review).
+    const rounded = Number(next.toFixed(EURUSD_RATE_PRECISION));
+    mid = rounded > 0 ? rounded : mid;
 
     const halfSpread = EURUSD_HALF_SPREAD * spreadFactor(episode);
     ticks.push({

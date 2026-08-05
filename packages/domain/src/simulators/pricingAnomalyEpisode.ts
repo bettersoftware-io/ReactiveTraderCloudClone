@@ -33,14 +33,30 @@
  *
  * Determinism: `advanceEpisode` is a pure function over an injected
  * `random: () => number` — this module never calls `Math.random()` itself.
- * In steady state (`startProbability` forced to 0, or simply never rolling
- * a start), it draws ZERO extra values from `random` — the
- * `startProbability <= 0 ||` short-circuit skips the call entirely rather
- * than drawing-and-discarding — so `PricingSimulator`'s per-tick RNG
- * consumption, and therefore its tick VALUES for the same underlying
- * `Math.random()` sequence, stay byte-identical to before this module
- * existed. See `pricingAnomalyEpisode.test.ts`'s
- * "byte-compatible steady state" case.
+ * With `startProbability` forced to 0, it draws ZERO extra values from
+ * `random` — the `startProbability <= 0 ||` short-circuit skips the call
+ * entirely rather than drawing-and-discarding — so `PricingSimulator`'s
+ * per-tick RNG consumption, and therefore its tick VALUES for the same
+ * underlying `Math.random()` sequence, stay byte-identical to before this
+ * module existed. See `pricingAnomalyEpisode.test.ts`'s
+ * "byte-compatible steady state" case (the only place that specific claim
+ * is proven — it is a draw-COUNT test, which needs `startProbability: 0` to
+ * hold count independent of value).
+ *
+ * PRODUCTION IS NOT THAT CASE: the shipped `DEFAULT_EPISODE_CONFIG` uses
+ * `startProbability: 1/1500`, not 0. Every steady-state tick still costs
+ * one "start roll" draw from `advanceEpisode` (`random()` is called even
+ * when it returns `false`) — measured, this raises `PricingSimulator`'s
+ * per-live-tick `Math.random()` consumption from 2 draws (`tickInterval` +
+ * `applyRandomWalk`'s step) to 3 (+ the start roll), a 50% increase. This
+ * is deliberate and harmless, not an oversight: nothing in this repo pins a
+ * live (non-`pinAtMs`) tick's numeric VALUE against a specific
+ * `Math.random()` sequence — grepped and confirmed against every
+ * `PricingSimulator` test and every visual/golden harness (goldens use
+ * `pinAtMs`, which skips the random walk entirely; live-mode tests assert
+ * structure — bounds, precision, monotonic timestamps — never exact
+ * numbers). A shifted draw sequence changes which arbitrary-looking prices
+ * a live desk displays, not whether any assertion passes.
  */
 
 export type EpisodeKind = "spreadWidening" | "volBurst";
