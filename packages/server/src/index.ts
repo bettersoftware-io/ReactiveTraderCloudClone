@@ -9,6 +9,7 @@ import {
   type ConfirmGate,
   type JarvisToolDefinition,
 } from "@rtc/agent-tools";
+import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
@@ -69,6 +70,15 @@ function buildAnthropicLoop(
       return buildJarvisToolsFor(services, confirmTrade);
     },
     usageMeter: services.usageMeter,
+    // render_panel's roster check (LIVE brains only) — the same static
+    // roster the desk tools' own reads ultimately source from
+    // (`ReferenceDataSimulator.getCurrencyPairs()` is just this constant
+    // wrapped in a delayed Observable), taken directly here since tool-list
+    // construction is synchronous and this constant never changes at
+    // runtime.
+    knownSymbols: KNOWN_CURRENCY_PAIRS.map((pair) => {
+      return pair.symbol;
+    }),
   });
 }
 

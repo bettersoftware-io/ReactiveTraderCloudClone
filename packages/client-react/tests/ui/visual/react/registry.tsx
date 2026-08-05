@@ -47,6 +47,7 @@ import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
 import { JarvisOrb } from "#/ui/shell/jarvis/JarvisOrb";
 import { JarvisOverlay } from "#/ui/shell/jarvis/JarvisOverlay";
+import { JarvisPanelLayer } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -679,6 +680,23 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
         }}
       >
         <JarvisOverlay />
+      </div>
+    );
+  },
+  // Panel layer: reads its own panel list via useJarvisPanels() (no props),
+  // same fixed-inset backdrop treatment as JarvisOverlay above — the layer
+  // itself is `position: fixed` (top-right), so it needs a painted
+  // full-viewport background behind it to avoid capturing on default white.
+  JarvisPanelLayer: () => {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "var(--bg-primary)",
+        }}
+      >
+        <JarvisPanelLayer />
       </div>
     );
   },

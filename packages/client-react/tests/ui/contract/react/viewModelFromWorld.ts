@@ -1,9 +1,12 @@
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
-import type { BehaviorSubject } from "rxjs";
-import { EMPTY, type Observable, of, throwError } from "rxjs";
+import { BehaviorSubject, EMPTY, type Observable, of, throwError } from "rxjs";
+import { catchError } from "rxjs/operators";
 
 import type {
+  JarvisMachineHandle,
+  JarvisPanelVm,
+  PanelData,
   RfqSubmissionState,
   TicketSubmissionState,
 } from "@rtc/client-core";
@@ -11,6 +14,7 @@ import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
   createJarvisMachine,
+  createJarvisPanelsMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -19,9 +23,7 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
-  type JarvisIntents,
-  type JarvisState,
-  type Machine,
+  JarvisPanelsPresenter,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type {
@@ -117,13 +119,14 @@ function useMachineState<T>(state$: PeekableState<T>): T {
  * an application-layer concern; see world.ts's `JarvisWorld` doc comment).
  * Every `reactViewModel(world)` call (one per `mountWith`/`mount`) reuses the
  * same cached machine, mirroring world.eqWorkspace's per-World singleton so a
- * co-mounted JarvisOrb + JarvisOverlay observe the same open/phase/entries. */
-const jarvisMachines = new WeakMap<
-  World,
-  Machine<JarvisState, JarvisIntents>
->();
+ * co-mounted JarvisOrb + JarvisOverlay observe the same open/phase/entries.
+ * Typed as the widened `JarvisMachineHandle` (not the plain `Machine`) so
+ * `getJarvisPanelsBridge` below can read its `events$` — Task 6's sole event
+ * source for the generative-UI panels machine, mirroring composition.ts's own
+ * `jarvis.events$` wiring. */
+const jarvisMachines = new WeakMap<World, JarvisMachineHandle>();
 
-function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
+function getJarvisMachine(world: World): JarvisMachineHandle {
   let machine = jarvisMachines.get(world);
 
   if (!machine) {
@@ -151,6 +154,81 @@ function getJarvisMachine(world: World): Machine<JarvisState, JarvisIntents> {
   }
 
   return machine;
+}
+
+/**
+ * Bridges the REAL `JarvisPanelsPresenter` (Task 9) into plain
+ * BehaviorSubjects this driver's existing `useSubject` helper can read.
+ * `presenter.panels$`/`presenter.panelData$(panelId)` are ordinary (non-
+ * Behavior) Observables, and this test-only fixtures package deliberately
+ * has no direct `@rx-state/core` dependency (unlike client-solid's sibling
+ * fixture — see that package's own viewModelFromWorld.ts), so a manual
+ * warm-subscribe-into-a-BehaviorSubject bridge is the shape that fits here.
+ * One bridge per World, cached like `jarvisMachines` above. The subscribe
+ * below is safe to treat as synchronously-seeded: `createJarvisPanelsMachine`
+ * keeps its own `state$` warm internally (see that file's doc), so
+ * `presenter.panels$` always has a current value to replay the moment this
+ * bridge subscribes — mirroring `useSubject`'s own BehaviorSubject
+ * assumption. The presenter's OWN internal caches (composePanelStream's
+ * per-panelId warm subscriptions) are what actually keep a live panel's port
+ * streams flowing independent of whether any component is currently mounted
+ * to read them; this bridge only rehosts that same data as something React's
+ * `useSyncExternalStore`-backed `useSubject` can read synchronously. */
+interface JarvisPanelsBridge {
+  readonly panels$: BehaviorSubject<readonly JarvisPanelVm[]>;
+  readonly dismissPanel: (panelId: string) => void;
+  panelData$(panelId: string): BehaviorSubject<PanelData | null>;
+}
+
+const jarvisPanelsBridges = new WeakMap<World, JarvisPanelsBridge>();
+
+function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
+  const cached = jarvisPanelsBridges.get(world);
+
+  if (cached) {
+    return cached;
+  }
+
+  const machine = getJarvisMachine(world);
+  // `createJarvisPanelsMachine`'s `events$` input is TERMINAL on error (kills
+  // its fold) — same catchError/EMPTY guard composition.ts applies to the
+  // real `jarvis.events$` before handing it to the same factory.
+  const presenter = new JarvisPanelsPresenter(
+    createJarvisPanelsMachine(
+      machine.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+    ),
+    world.panelStreamDeps,
+  );
+
+  const panels$ = new BehaviorSubject<readonly JarvisPanelVm[]>([]);
+  presenter.panels$.subscribe(panels$);
+
+  const dataSubjects = new Map<string, BehaviorSubject<PanelData | null>>();
+
+  function panelData$(panelId: string): BehaviorSubject<PanelData | null> {
+    const cachedSubject = dataSubjects.get(panelId);
+
+    if (cachedSubject) {
+      return cachedSubject;
+    }
+
+    const subject = new BehaviorSubject<PanelData | null>(null);
+    presenter.panelData$(panelId).subscribe(subject);
+    dataSubjects.set(panelId, subject);
+    return subject;
+  }
+
+  const bridge: JarvisPanelsBridge = {
+    panels$,
+    dismissPanel: presenter.dismissPanel,
+    panelData$,
+  };
+  jarvisPanelsBridges.set(world, bridge);
+  return bridge;
 }
 
 /** Build a reactive ViewModel backed by the neutral World. */
@@ -736,6 +814,20 @@ export function reactViewModel(world: World): ViewModel {
     // the World subject, mirroring useTopology.
     useJarvisUsage: () => {
       return useSubject(world.jarvisUsage$);
+    },
+    // Generative-UI desk panels (Task 9): the REAL JarvisPanelsPresenter,
+    // fed by the same jarvis.events$ the REAL JarvisMachine above emits —
+    // see getJarvisPanelsBridge's doc for the full wiring.
+    useJarvisPanels: () => {
+      const bridge = getJarvisPanelsBridge(world);
+      return {
+        panels: useSubject(bridge.panels$),
+        dismissPanel: bridge.dismissPanel,
+      };
+    },
+    useJarvisPanelData: (panelId: string) => {
+      const bridge = getJarvisPanelsBridge(world);
+      return useSubject(bridge.panelData$(panelId));
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

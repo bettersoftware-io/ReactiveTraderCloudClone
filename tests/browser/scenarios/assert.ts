@@ -56,6 +56,12 @@ export function assertTrue(actual: boolean, msg?: string): void {
   }
 }
 
+export function assertFalse(actual: boolean, msg?: string): void {
+  if (actual !== false) {
+    fail(msg ?? `expected false, got ${actual}`);
+  }
+}
+
 export function assertGreaterThanZero(actual: number, msg?: string): void {
   if (!(actual > 0)) {
     fail(msg ?? `expected ${actual} to be > 0`);

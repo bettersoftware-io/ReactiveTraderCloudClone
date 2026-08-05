@@ -53,8 +53,20 @@ contains the wrapper's name. (Linux equivalent: `secret-tool lookup` /
 1. **Smoke first (recommended):** `with-anthropic-key pnpm jarvis:smoke:live`
    — the only sanctioned real-key surface. Boots the real server, logs in,
    drives availability → a quote turn → a declined-trade confirmation turn →
-   a fresh-socket history replay, and prints per-turn time-to-first-event.
-   ~4 metered turns. It refuses to run keyless rather than silently passing.
+   a **panel-authoring turn** (asserts a schema-valid `render_panel` call
+   from the real model, round-tripped through `parsePanelSpec`) → a
+   fresh-socket history replay, and prints per-turn time-to-first-event.
+   ~5 metered turns. It refuses to run keyless rather than silently passing.
+   The script now lives at `tests/scripts/jarvis-live-smoke.ts` (moved off
+   the repo root so it can import `@rtc/shared` as a real workspace
+   dependency of the `tests/` package rather than a root-level one); the
+   `pnpm jarvis:smoke:live` command is unchanged, it now delegates to
+   `pnpm --filter @rtc/tests jarvis:smoke:live`. **A human with a real key
+   running this once is the ship gate for the generative-UI round** — every
+   other tier (unit, contract, visual, e2e) exercises the panel machinery
+   only through the scripted brain's canned exchanges (zero API calls); this
+   is the one witness that a real model actually calls `render_panel` with a
+   valid spec, not just that the client-side plumbing works.
 2. **Full stack:** `with-anthropic-key pnpm dev:react:fs` (or run
    `with-anthropic-key pnpm dev:ws` alone and pair it with
    `pnpm dev:react:ws:local`). Sign in with the demo roster; the orb renders
@@ -182,3 +194,19 @@ tokens (vs. 512 on Sonnet/Opus), comfortably above today's ~1.3k-token
 persona+tools prefix — so `cacheReadTokens: 0` on every Haiku turn, visible
 in the Admin usage card, is expected, not a broken cache (§18.15 has the
 full explanation).
+
+**Prompt-prefix cost note (generative-UI round, 2026-08-04):** the
+persona+tool-schema prefix grew from seven `@rtc/agent-tools` desk-tool
+schemas to **eight** — the new `render_panel` surface tool (§18.16) embeds
+the full closed-vocabulary `PanelSpecV1` JSON Schema in its input schema —
+taking the prefix from ~1.3k tokens to **~2.1k tokens**. That is still well
+inside the Sonnet/Opus 512-token cache floor (cache engages as before) and,
+not coincidentally, still under Haiku 4.5's 4,096-token floor too — so
+`cacheReadTokens: 0` on every Haiku turn **remains the expected signature**
+of "prefix under this model's minimum," not a regression the growth
+introduced. The live smoke (above) gained a fifth, panel-authoring turn to
+match: it is the one check in the whole suite that spends real tokens to
+confirm a real model actually calls `render_panel` with a schema-valid
+spec, since every other tier of this round's testing (unit through e2e)
+exercises the panel pipeline exclusively through the scripted brain's
+canned exchanges.

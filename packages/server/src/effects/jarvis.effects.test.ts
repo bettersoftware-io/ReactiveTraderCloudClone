@@ -8,6 +8,7 @@ import type {
   JarvisConfirmPayload,
   JarvisEvent,
   JarvisHistoryEntry,
+  PanelSpecV1,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound } from "@rtc/ws-effects";
@@ -37,6 +38,14 @@ const FILL_REPLY =
   "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";
 
 const STUB_TURN_ID = "turn-stub";
+
+const STUB_PANEL_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "GBP Volatility",
+  source: { kind: "priceHistory", symbols: ["GBPUSD"] },
+  transforms: [{ kind: "rollingVol", samples: 20 }],
+  viz: { kind: "line" },
+};
 
 /** One case per `JarvisEvent` variant, proving `WIRE_TYPE_BY_EVENT` end to
  * end: mutating any one entry (e.g. error -> JARVIS_DONE) fails exactly its
@@ -73,6 +82,19 @@ const WIRE_MAPPING_CASES: readonly WireMappingCase[] = [
       notional: 1_000_000,
       quotedPrice: 1.1,
       ratePrecision: 5,
+      turnId: STUB_TURN_ID,
+    },
+  },
+  {
+    event: {
+      type: "panel",
+      panelId: "panel-scripted-1",
+      spec: STUB_PANEL_SPEC,
+    },
+    wireType: SERVER_MSG.JARVIS_PANEL,
+    body: {
+      panelId: "panel-scripted-1",
+      spec: STUB_PANEL_SPEC,
       turnId: STUB_TURN_ID,
     },
   },

@@ -5,8 +5,10 @@ import type { Accessor } from "solid-js";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
+  PanelData,
   Presenters,
 } from "@rtc/client-core";
 import {
@@ -219,6 +221,14 @@ interface UseJarvisPreferencesResult {
   setEffort: (effort: JarvisEffort) => void;
 }
 
+/** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
+ * starts empty. `dismissPanel` closes one by id (a no-op for an already-gone
+ * id — dismissing twice, or racing an eviction, is silently fine). */
+interface UseJarvisPanelsResult {
+  panels: Accessor<readonly JarvisPanelVm[]>;
+  dismissPanel: (panelId: string) => void;
+}
+
 interface UseViewModePreferenceResult {
   viewMode: Accessor<ViewMode>;
   setViewMode: (viewMode: ViewMode) => void;
@@ -407,6 +417,19 @@ export interface ViewModel {
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
   useJarvisUsage: () => Accessor<JarvisUsageSnapshot | null>;
+  /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
+   * plus the dismiss intent (singleton, app-level). Starts empty. */
+  useJarvisPanels: () => UseJarvisPanelsResult;
+  /** Live-resolved body for one desk panel — the plain-value form of that
+   * panel's `JarvisPanelVm.data$`, looked up by `panelId` from the current
+   * `useJarvisPanels()` list. Mirrors `useCandles`/`useDepth`'s keyed-`state()`
+   * pattern (a factory function keyed by an id/arg, not a static field) rather
+   * than the plain single-source `state()` most other hooks here use, since
+   * `data$` is a genuinely per-panel, dynamically-spawned stream that no
+   * static composition-root wiring can pre-bind. Null before the panel's
+   * first data frame, or once the panel is gone (dismissed/evicted/never
+   * existed) — the renderer treats null as "not ready yet", not an error. */
+  useJarvisPanelData: (panelId: string) => Accessor<PanelData | null>;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -765,6 +788,29 @@ export function createViewModel(
     null as JarvisUsageSnapshot | null,
   );
 
+  const jarvisPanelsState = state(
+    presenters.jarvisPanels.panels$,
+    [] as readonly JarvisPanelVm[],
+  );
+
+  function dismissJarvisPanel(panelId: string): void {
+    presenters.jarvisPanels.dismissPanel(panelId);
+  }
+
+  // Keyed `state()` — one cached stream per panelId, mirroring candlesState/
+  // depthState above (a factory function, not a static source$) rather than
+  // the plain `state()` used for jarvisPanelsState above. The multiplexing
+  // itself (find the live panel for this id, switch to its data$, null once
+  // it's gone) lives in JarvisPanelsPresenter.panelData$ — reusing the
+  // presenter's existing per-panel stream cache — so this hook is a direct
+  // passthrough, exactly like depthState above is to DepthPresenter.depth$.
+  const panelDataState = state(
+    (panelId: string) => {
+      return presenters.jarvisPanels.panelData$(panelId);
+    },
+    null as PanelData | null,
+  );
+
   const eventLogState = state(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
@@ -1111,6 +1157,15 @@ export function createViewModel(
     },
     useJarvisUsage: () => {
       return toSignal(jarvisUsageState);
+    },
+    useJarvisPanels: () => {
+      return {
+        panels: toSignal(jarvisPanelsState),
+        dismissPanel: dismissJarvisPanel,
+      };
+    },
+    useJarvisPanelData: (panelId: string) => {
+      return toSignal(panelDataState(panelId));
     },
     useMetrics: () => {
       return {

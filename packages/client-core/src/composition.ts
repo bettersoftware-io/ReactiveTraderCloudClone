@@ -1,5 +1,11 @@
-import { type Observable, of, Subject } from "rxjs";
-import { distinctUntilChanged, filter, map, take } from "rxjs/operators";
+import { EMPTY, type Observable, of, Subject } from "rxjs";
+import {
+  catchError,
+  distinctUntilChanged,
+  filter,
+  map,
+  take,
+} from "rxjs/operators";
 
 import type {
   BootVariant,
@@ -43,6 +49,7 @@ import {
   createEqWorkspaceMachine,
   createIncidentMachine,
   createJarvisMachine,
+  createJarvisPanelsMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
@@ -63,9 +70,9 @@ import {
   type IncidentState,
   InstrumentsPresenter,
   type JarvisEntry,
-  type JarvisIntents,
+  type JarvisMachineHandle,
+  JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
-  type JarvisState,
   JarvisUsagePresenter,
   LatencyPresenter,
   LoginWaitPreferencesPresenter,
@@ -171,11 +178,17 @@ export interface Presenters {
   sessions: SessionsPresenter;
   /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
   sessionsKpi: SessionsKpiPresenter;
-  /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase. */
-  jarvis: Machine<JarvisState, JarvisIntents>;
+  /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase.
+   * Widened with `events$` (every turn's reply events) — Task 6's
+   * `jarvisPanels` below is composed from it. */
+  jarvis: JarvisMachineHandle;
   /** J.A.R.V.I.S. usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
   jarvisUsage: JarvisUsagePresenter;
+  /** J.A.R.V.I.S. generative-UI desk panels: spawned/edited/dismissed via
+   * `jarvis`'s own "panel" turn events, interpreted into live `PanelData`
+   * over the domain ports. */
+  jarvisPanels: JarvisPanelsPresenter;
 }
 
 export interface AppCommands {
@@ -397,6 +410,50 @@ export function createApp(ports: AppPorts): App {
   // watchlist symbol (see peekFirstWatchlistSymbol below).
   const watchlist = new WatchlistPresenter(ports.marketData);
 
+  // Hoisted (rather than built inline in the `presenters` literal below) so
+  // `jarvisPanels` can be composed from `jarvis.events$` — Task 6's sole
+  // event source for the generative-UI panels machine (see
+  // JarvisMachineHandle's doc). The `catchError`/`EMPTY` guard is required:
+  // `createJarvisPanelsMachine`'s `events$` input is TERMINAL on error
+  // (kills its fold + reports unhandled), and nothing about `jarvis.events$`
+  // itself rules that out.
+  const jarvis = createJarvisMachine({
+    port: ports.jarvis,
+    skin$: ports.preferences.jarvisSkin$(),
+    setSkin: (s: JarvisSkin): void => {
+      ports.preferences.setJarvisSkin(s);
+    },
+    // Only WsJarvisAdapter (WS-real mode) exposes availability$ — see
+    // wireJarvisHistorySource's doc above for why this is an instanceof
+    // check rather than a JarvisPort method (jarvisPort.ts's surface stays
+    // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
+    // needs none: createJarvisMachine defaults an absent availability$ to
+    // an always-available, scripted-only value, so sim stays permanently
+    // available offering only the scripted brain.
+    availability$:
+      ports.jarvis instanceof WsJarvisAdapter
+        ? ports.jarvis.availability$()
+        : undefined,
+    preferredBrain$: ports.preferences.jarvisBrain$(),
+    effort$: ports.preferences.jarvisEffort$(),
+  });
+
+  const jarvisPanels = new JarvisPanelsPresenter(
+    createJarvisPanelsMachine(
+      jarvis.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+    ),
+    {
+      referenceData: ports.referenceData,
+      pricing: ports.pricing,
+      blotter: ports.blotter,
+      analytics: ports.analytics,
+    },
+  );
+
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
   const colorScheme = ports.colorScheme ?? {
@@ -531,27 +588,9 @@ export function createApp(ports: AppPorts): App {
     eventLog: new EventLogPresenter(ports.eventLog),
     sessions: new SessionsPresenter(ports.sessions),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions),
-    jarvis: createJarvisMachine({
-      port: ports.jarvis,
-      skin$: ports.preferences.jarvisSkin$(),
-      setSkin: (s: JarvisSkin): void => {
-        ports.preferences.setJarvisSkin(s);
-      },
-      // Only WsJarvisAdapter (WS-real mode) exposes availability$ — see
-      // wireJarvisHistorySource's doc above for why this is an instanceof
-      // check rather than a JarvisPort method (jarvisPort.ts's surface stays
-      // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
-      // needs none: createJarvisMachine defaults an absent availability$ to
-      // an always-available, scripted-only value, so sim stays permanently
-      // available offering only the scripted brain.
-      availability$:
-        ports.jarvis instanceof WsJarvisAdapter
-          ? ports.jarvis.availability$()
-          : undefined,
-      preferredBrain$: ports.preferences.jarvisBrain$(),
-      effort$: ports.preferences.jarvisEffort$(),
-    }),
+    jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
+    jarvisPanels,
   };
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);

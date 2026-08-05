@@ -22,6 +22,11 @@ export type JarvisIntent =
   | { readonly kind: "spread"; readonly symbol: string }
   | { readonly kind: "quote"; readonly symbol: string }
   | JarvisTradeIntent
+  | { readonly kind: "showPanel" }
+  | {
+      readonly kind: "restylePanel";
+      readonly viz: "heatmap" | "table" | "line";
+    }
   | { readonly kind: "fallback" };
 
 const DEFAULT_TRADE_NOTIONAL = 1_000_000;
@@ -89,9 +94,20 @@ const RULE_1_BRIEFING = /(brief|summar|sitrep|status report|good morning)/i;
 const RULE_2_BUY_SELL = /\b(buy|sell)\b/i;
 const RULE_3_SPREAD = /spread/i;
 const RULE_4_PNL = /(pnl|p&l|profit|how am i doing|performance)/i;
+// Checked ahead of RULE_5_MOVERS below: "volatility" contains "volatil",
+// which RULE_5_MOVERS would otherwise claim first (e.g. "show me gbp
+// volatility" must resolve to showPanel, not movers).
+const RULE_SHOW_PANEL = /volatility|vol panel|show .*(chart|panel)/i;
+const RULE_RESTYLE_PANEL = /make (?:it|that) a (heatmap|table|line)/i;
 const RULE_5_MOVERS = /(moving|movers|market|happening|action|volatil)/i;
 const RULE_7_HELP = /(help|what can you|capabilit)/i;
 const RULE_8_GREETING = /(^| )(hi|hello|hey|thanks|thank you|cheers)( |$|!|,)/i;
+
+function isRestyleViz(
+  value: string | undefined,
+): value is "heatmap" | "table" | "line" {
+  return value === "heatmap" || value === "table" || value === "line";
+}
 
 /**
  * Matches free text against the phase-1 intent cascade, in priority order:
@@ -99,11 +115,13 @@ const RULE_8_GREETING = /(^| )(hi|hello|hey|thanks|thank you|cheers)( |$|!|,)/i;
  * 2. buy/sell + a known FX symbol    → trade
  * 3. "spread" + a known FX symbol    → spread
  * 4. pnl/profit/performance words    → pnl
- * 5. moving/movers/market words      → movers
- * 6. a bare known FX symbol          → quote
- * 7. help/capability words           → help
- * 8. greeting words                  → greeting
- * 9. anything else                   → fallback
+ * 5. volatility/panel-request words  → showPanel
+ * 6. "make it/that a <viz>" words    → restylePanel
+ * 7. moving/movers/market words      → movers
+ * 8. a bare known FX symbol          → quote
+ * 9. help/capability words           → help
+ * 10. greeting words                 → greeting
+ * 11. anything else                  → fallback
  */
 export function matchJarvisIntent(
   text: string,
@@ -137,6 +155,20 @@ export function matchJarvisIntent(
 
   if (RULE_4_PNL.test(text)) {
     return { kind: "pnl" };
+  }
+
+  if (RULE_SHOW_PANEL.test(text)) {
+    return { kind: "showPanel" };
+  }
+
+  const restyleMatch = text.match(RULE_RESTYLE_PANEL);
+
+  if (restyleMatch) {
+    const viz = restyleMatch[1]?.toLowerCase();
+
+    if (isRestyleViz(viz)) {
+      return { kind: "restylePanel", viz };
+    }
   }
 
   if (RULE_5_MOVERS.test(text)) {

@@ -23,7 +23,15 @@
  *   3. One trade turn ("Buy 1M EURUSD") that DECLINES the confirmation
  *      (`jarvis.confirm { approved: false }` as soon as a confirmRequest
  *      arrives) — asserts the declined tool-result still produces a reply.
- *   4. A FRESH WebSocket connection (same login token, new server-side
+ *   4. One panel-authoring turn ("Show me a volatility panel for GBP") that
+ *      asks the model to reach for the `render_panel` desk tool
+ *      (`packages/server/src/agent/renderPanelTool.ts`) — asserts a
+ *      `render_panel` tool call was actually made (a `[render_panel:...]`
+ *      tool event) AND that the resulting `jarvis.panel` wire frame carries
+ *      a schema-valid `PanelSpecV1` (round-tripped back through the real
+ *      `parsePanelSpec`, not a hand-mirrored re-check — see the import note
+ *      below).
+ *   5. A FRESH WebSocket connection (same login token, new server-side
  *      `AgentSession` — `jarvisEffects`' `jarvisSessionEffect` mints one per
  *      socket) carrying turns 1-3 as wire `history`, stretched with synthetic
  *      filler so the server's own 20-entry wire cap
@@ -31,14 +39,14 @@
  *      into an assistant-first array *before* it ever reaches
  *      `AnthropicAgentSession`.
  *
- * Turn 4 exists specifically to exercise, against the real API, the two
+ * Turn 5 exists specifically to exercise, against the real API, the two
  * mechanisms the Task 6 reviewer flagged as "documented but cannot verify
  * without a live key": `AnthropicAgentSession.capMessages`'s assistant-first
  * `400` guard, and `JARVIS_HISTORY_MAX_MESSAGES` token-pressure trimming.
  * Both need a FRESH connection to matter: `AnthropicAgentSession` only
  * consults the wire's `history` param on a session's first turn (once its own
  * `this.history` is non-empty, later turns use that instead — see the doc
- * comment on `runTurn`) — reusing turns 1-3's connection for turn 4 would
+ * comment on `runTurn`) — reusing turns 1-3's connection for turn 5 would
  * make the constructed `history` payload below silently ignored, so this
  * check would pass even with the guard deleted. A fresh connection = a fresh
  * session = the wire history is genuinely consulted, which is exactly the
@@ -50,11 +58,29 @@
  * trip the Anthropic API's *separate* "roles must alternate" 400 — a
  * different failure this check must not be confused by.
  *
- * This is deliberately dependency-free (no `@rtc/*` import): the
+ * This is otherwise dependency-free (no other `@rtc/*` import): the
  * `CLIENT_MSG` / `SERVER_MSG` / `JarvisEvent` wire vocabulary below is a
  * narrow, hand-mirrored slice of packages/shared/src/protocol/messages.ts
  * and packages/shared/src/jarvis/jarvisEvent.ts, so this script never needs
- * `@rtc/shared` built first — see those files if the two drift.
+ * `@rtc/shared` built first — see those files if the two drift. `parsePanelSpec`
+ * is the ONE deliberate exception: panel-shape validation is exactly the
+ * kind of logic that must NOT be re-hand-rolled a second time here (see
+ * `panelSpec.ts`'s own doc comment on why it stays hand-rolled once), so
+ * check 4 below reuses the genuine parser instead of drifting its own copy.
+ * This lives in the `tests/` workspace specifically so that reuse is a plain
+ * static top-level `import` rather than a workaround: `tests/package.json`
+ * already declares `@rtc/shared: workspace:*` (a real consumer, not a
+ * dependency added just for this script) and is itself `"type": "module"`,
+ * so `@rtc/shared`'s `exports` map's `"import"` condition resolves cleanly
+ * through the normal ESM loader — no root-level `@rtc/*` dependency needed
+ * (root `package.json` intentionally carries none; adding one there would
+ * let `@rtc/shared` resolve from every package via the root link, weakening
+ * pnpm's strict per-package resolution as a boundary). This DOES mean
+ * `@rtc/shared` must be built (`pnpm --filter @rtc/shared build`) before
+ * this script can run — acceptable for a manual, human-invoked tool. Root
+ * `pnpm jarvis:smoke:live` delegates here via `pnpm --filter @rtc/tests
+ * jarvis:smoke:live`, the same pattern as `visual:jitter` /
+ * `perf:framework-compare`.
  *
  * Exits non-zero on refusal, on any hard error (a turn timing out, the
  * overall 120s budget expiring), or when any assertion fails. Always prints
@@ -63,6 +89,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parsePanelSpec } from "@rtc/shared";
 
 // ── Env gate — runs before anything else spawns or connects ────────
 
@@ -90,6 +118,7 @@ const SERVER_MSG = {
   JARVIS_DELTA: "jarvis.delta",
   JARVIS_TOOL_EVENT: "jarvis.toolEvent",
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
+  JARVIS_PANEL: "jarvis.panel",
   JARVIS_DONE: "jarvis.done",
   JARVIS_ERROR: "jarvis.error",
   JARVIS_AVAILABILITY: "jarvis.availability",
@@ -130,6 +159,15 @@ interface ToolEventFramePayload {
   readonly status: string;
 }
 
+/** `spec` is left `unknown` on purpose — it is validated by round-tripping
+ * it through the real `parsePanelSpec` (see check 4), not trusted as
+ * pre-typed `PanelSpecV1` just because it arrived on the wire. */
+interface PanelFramePayload {
+  readonly turnId: string;
+  readonly panelId: string;
+  readonly spec: unknown;
+}
+
 interface DoneFramePayload {
   readonly turnId: string;
 }
@@ -164,7 +202,9 @@ const AUTH_USERS = "demo:demo";
 const TURN_TIMEOUT_MS = 60_000;
 const OVERALL_TIMEOUT_MS = 120_000;
 
-const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..");
+// This file lives at tests/scripts/jarvis-live-smoke.ts — three levels
+// below the monorepo root (file -> tests/scripts -> tests -> root).
+const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 
 // ── Process orchestration (mirrors tests/fullstack/_orchestration.ts) ──
 
@@ -383,6 +423,11 @@ interface ChatTurnOutcome {
   readonly replyText: string;
   readonly toolEvents: readonly string[];
   readonly confirmationSeen: boolean;
+  /** Every `jarvis.panel` frame seen for this turn, in arrival order — a
+   * `render_panel` call with `targetPanelId` could in principle emit more
+   * than one during agentic follow-up, so this is an array rather than a
+   * single optional slot even though check 4 below only expects one. */
+  readonly panelEvents: readonly PanelFramePayload[];
   readonly terminal: "done" | "error";
   readonly errorMessage?: string;
   /** `Date.now()` delta from sending `jarvis.chat` to the first
@@ -434,6 +479,7 @@ function runChatTurn(
   return new Promise((resolve, reject) => {
     let replyText = "";
     const toolEvents: string[] = [];
+    const panelEvents: PanelFramePayload[] = [];
     let confirmationSeen = false;
     // Captured right before sendFrame() below, so every handler's
     // markFirstEvent() call measures against the actual wire send, not
@@ -505,6 +551,18 @@ function runChatTurn(
       },
     );
 
+    const unsubPanel = bus.on(SERVER_MSG.JARVIS_PANEL, (payload) => {
+      const p = payload as PanelFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      markFirstEvent();
+      panelEvents.push(p);
+      console.log(`  [panel] panelId=${p.panelId}`);
+    });
+
     const unsubDone = bus.on(SERVER_MSG.JARVIS_DONE, (payload) => {
       const p = payload as DoneFramePayload;
 
@@ -521,6 +579,7 @@ function runChatTurn(
         replyText,
         toolEvents,
         confirmationSeen,
+        panelEvents,
         terminal: "done",
         firstEventMs,
       });
@@ -541,6 +600,7 @@ function runChatTurn(
         replyText,
         toolEvents,
         confirmationSeen,
+        panelEvents,
         terminal: "error",
         errorMessage: p.message,
         firstEventMs,
@@ -551,6 +611,7 @@ function runChatTurn(
       unsubDelta();
       unsubTool();
       unsubConfirm();
+      unsubPanel();
       unsubDone();
       unsubError();
     }
@@ -564,10 +625,10 @@ function runChatTurn(
   });
 }
 
-// ── Reconnect history fixture (check 4) ─────────────────────────
+// ── Reconnect history fixture (check 5) ─────────────────────────
 
 /**
- * Builds the wire `history` for check 4's fresh-connection quote turn.
+ * Builds the wire `history` for check 5's fresh-connection quote turn.
  * Deliberately 21 entries — one more than `JARVIS_WIRE_HISTORY_MAX_ENTRIES`
  * (20, see jarvis.effects.ts) — so the server's own `truncateHistory` drops
  * exactly the leading synthetic entry below and hands
@@ -728,11 +789,63 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
       trade.terminal === "done" && trade.replyText.length > 0,
     );
     tradeReplyText = trade.replyText;
+
+    // 4. Panel-authoring turn — ask for a volatility panel and assert the
+    // model actually reached for the render_panel desk tool, AND that the
+    // resulting jarvis.panel wire frame's spec round-trips the REAL
+    // parsePanelSpec (imported from @rtc/shared — see the header comment's
+    // dependency-free exception). `history: []`: the same AgentSession
+    // already carries turns 2-3 in `this.history` (see `runTurn`'s doc
+    // comment) — this session's own state, not the wire's `history` param,
+    // is what's exercised on a turn past the session's first, same as the
+    // trade turn above.
+    const panelTurn = await runChatTurn(
+      bus1,
+      ws1,
+      "panel authoring",
+      "Show me a volatility panel for GBP",
+      [],
+    );
+    check(
+      results,
+      "panel turn: terminated with done and a non-empty reply",
+      panelTurn.terminal === "done" && panelTurn.replyText.length > 0,
+    );
+    check(
+      results,
+      "panel turn: model called the render_panel tool (tool event observed)",
+      panelTurn.toolEvents.some((event) => {
+        return event.includes("render_panel");
+      }),
+    );
+    check(
+      results,
+      "panel turn: a jarvis.panel wire frame arrived",
+      panelTurn.panelEvents.length > 0,
+    );
+
+    const panelEvent = panelTurn.panelEvents[0];
+    const parsedPanel = panelEvent
+      ? parsePanelSpec(panelEvent.spec, [])
+      : { ok: false as const, error: "no jarvis.panel frame arrived" };
+    check(
+      results,
+      "panel turn: render_panel's spec round-trips parsePanelSpec " +
+        `(schema-valid)${parsedPanel.ok ? "" : ` — ${parsedPanel.error}`}`,
+      parsedPanel.ok,
+    );
+    check(
+      results,
+      "panel turn: parsed spec has a viz and a source",
+      parsedPanel.ok &&
+        typeof parsedPanel.spec.viz?.kind === "string" &&
+        typeof parsedPanel.spec.source?.kind === "string",
+    );
   } finally {
     ws1.close();
   }
 
-  // 4. Reconnect (fresh WebSocket = fresh server-side AgentSession) and send
+  // 5. Reconnect (fresh WebSocket = fresh server-side AgentSession) and send
   // a quote turn carrying a wire history built to force an assistant-first
   // array through the 20-entry wire cap — see buildReconnectHistoryFixture's
   // doc comment. Reuses the same login token; a new session never needs a

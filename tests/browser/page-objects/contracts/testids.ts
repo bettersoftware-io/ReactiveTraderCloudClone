@@ -150,12 +150,25 @@ export const TESTIDS = {
   jarvis: {
     orb: "jarvis-orb",
     overlay: "jarvis-overlay",
+    close: "jarvis-close",
     entry: "jarvis-entry",
     input: "jarvis-input",
     send: "jarvis-send",
     confirmCard: "jarvis-confirm-card",
     confirmApprove: "jarvis-confirm-approve",
     confirmReject: "jarvis-confirm-reject",
+    /** Generative-UI desk panels (JarvisPanelLayer,
+     * packages/client-{react,solid}/src/ui/shell/jarvis/panels/). `panel` is
+     * shared by every panel card — distinguish with the `data-panel-id` /
+     * `data-status` attributes. `panelLine` / `panelHeatmap` are the
+     * per-viz-kind body renderers; only the one matching the panel's current
+     * `viz.kind` is ever mounted. The layer itself unmounts once no panels
+     * remain (mirrors `overlay`'s `!open` → null pattern). */
+    panelLayer: "jarvis-panel-layer",
+    panel: "jarvis-panel",
+    panelLine: "jarvis-panel-line",
+    panelHeatmap: "jarvis-panel-heatmap",
+    panelDismiss: "jarvis-panel-dismiss",
   },
   /**
    * LoginScreen (packages/client-react/src/ui/shell/auth/LoginScreen.tsx),

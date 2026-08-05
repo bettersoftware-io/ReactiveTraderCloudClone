@@ -12,4 +12,10 @@ test.describe("Jarvis assistant", () => {
   test("executes a confirm-gated trade into the blotter", async ({ ctx }) => {
     await jarvis.expectConfirmedTradeLandsInBlotter(ctx);
   });
+
+  test("rides a scripted generative-UI panel: spawn, survive overlay close, restyle to heatmap, dismiss", async ({
+    ctx,
+  }) => {
+    await jarvis.expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(ctx);
+  });
 });

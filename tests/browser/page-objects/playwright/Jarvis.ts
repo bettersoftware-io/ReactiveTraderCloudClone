@@ -12,6 +12,20 @@ const REPLY_DONE_TIMEOUT_MS = 15_000;
  * pacing involved) — normally fast, but generous to absorb CI jitter. */
 const CONFIRM_CARD_TIMEOUT_MS = 15_000;
 
+/** A showPanel/restylePanel turn's `panel` wire event lands well before its
+ * (typed-reveal-paced) chat reply finishes — no speech pacing involved —
+ * but generous to absorb CI jitter. */
+const PANEL_LIVE_TIMEOUT_MS = 15_000;
+
+/** The body renderer mounts one tick after the panel goes live (its own
+ * `data$` subscription), and a restyle remounts it (keyed by `viz.kind`) —
+ * generous for the same reason as the other polls in this file. */
+const PANEL_RENDERER_TIMEOUT_MS = 15_000;
+
+/** Dismiss plays a short exit animation (~180ms, skipped under freeze/
+ * reduced-motion) before the underlying intent fires — generous for CI. */
+const PANEL_DISMISS_TIMEOUT_MS = 15_000;
+
 export class PlaywrightJarvis implements JarvisPO {
   constructor(private readonly page: Page) {}
 
@@ -23,12 +37,40 @@ export class PlaywrightJarvis implements JarvisPO {
     return this.page.getByTestId(TESTIDS.jarvis.overlay);
   }
 
+  private closeButton(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.close);
+  }
+
   private input(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.input);
   }
 
   private sendButton(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.send);
+  }
+
+  /** The panel layer mounts as the overlay's SIBLING (JarvisPanelLayer), so
+   * it stays queryable whether the overlay is open or closed. */
+  private panelLayer(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.panelLayer);
+  }
+
+  private panel(panelId: string): Locator {
+    return this.page.locator(
+      `[data-testid="${TESTIDS.jarvis.panel}"][data-panel-id="${panelId}"]`,
+    );
+  }
+
+  private panelLine(panelId: string): Locator {
+    return this.panel(panelId).getByTestId(TESTIDS.jarvis.panelLine);
+  }
+
+  private panelHeatmap(panelId: string): Locator {
+    return this.panel(panelId).getByTestId(TESTIDS.jarvis.panelHeatmap);
+  }
+
+  private panelDismiss(panelId: string): Locator {
+    return this.panel(panelId).getByTestId(TESTIDS.jarvis.panelDismiss);
   }
 
   /** Every message row (user and jarvis) shares this testid — filter by the
@@ -53,6 +95,10 @@ export class PlaywrightJarvis implements JarvisPO {
 
   async openViaOrb(): Promise<void> {
     await this.orb().click();
+  }
+
+  async closeViaButton(): Promise<void> {
+    await this.closeButton().click();
   }
 
   async isOverlayVisible(): Promise<boolean> {
@@ -87,5 +133,41 @@ export class PlaywrightJarvis implements JarvisPO {
       timeout: CONFIRM_CARD_TIMEOUT_MS,
     });
     await this.confirmApprove().click();
+  }
+
+  async waitForPanelLive(panelId: string): Promise<void> {
+    await expect(this.panel(panelId)).toHaveAttribute("data-status", "live", {
+      timeout: PANEL_LIVE_TIMEOUT_MS,
+    });
+  }
+
+  async isPanelPresent(panelId: string): Promise<boolean> {
+    return (await this.panel(panelId).count()) > 0;
+  }
+
+  async waitForPanelLineRenderer(panelId: string): Promise<void> {
+    await expect(this.panelLine(panelId)).toBeVisible({
+      timeout: PANEL_RENDERER_TIMEOUT_MS,
+    });
+  }
+
+  async waitForPanelHeatmapRenderer(panelId: string): Promise<void> {
+    await expect(this.panelHeatmap(panelId)).toBeVisible({
+      timeout: PANEL_RENDERER_TIMEOUT_MS,
+    });
+    // The line renderer must be GONE, not merely hidden — a restyle remounts
+    // the body keyed by `viz.kind` (see JarvisPanelLayer's `key={data?.kind}`),
+    // so the two renderers never coexist in the DOM.
+    await expect(this.panelLine(panelId)).toHaveCount(0);
+  }
+
+  async dismissPanel(panelId: string): Promise<void> {
+    await this.panelDismiss(panelId).click();
+  }
+
+  async waitForNoPanels(): Promise<void> {
+    await expect(this.panelLayer()).toHaveCount(0, {
+      timeout: PANEL_DISMISS_TIMEOUT_MS,
+    });
   }
 }

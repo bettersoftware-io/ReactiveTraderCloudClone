@@ -797,6 +797,34 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisUsageCard",
     fixtureKey: "admin-jarvis-usage",
   },
+
+  // Task 10 (generative-UI round 1): one JarvisPanelLayer scenario per
+  // PanelViz.kind, plus the unsupported sentinel — see fixtures.ts's
+  // matching "jarvis-panel-*" section for the frozen PanelData each drives.
+  "jarvis/panel-line": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-line",
+  },
+  "jarvis/panel-table": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-table",
+  },
+  "jarvis/panel-gauge": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-gauge",
+  },
+  "jarvis/panel-spark-grid": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-spark-grid",
+  },
+  "jarvis/panel-heatmap": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-heatmap",
+  },
+  "jarvis/panel-unsupported": {
+    componentKey: "JarvisPanelLayer",
+    fixtureKey: "jarvis-panel-unsupported",
+  },
 };
 
 // The theme matrix: every skin except neon × dark/light. Every base scenario is

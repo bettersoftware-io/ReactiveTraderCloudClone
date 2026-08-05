@@ -19,6 +19,7 @@ import {
 } from "@rtc/domain";
 
 import type { JarvisEvent } from "../jarvisEvent.js";
+import { parsePanelSpec } from "../panelSpec.js";
 import {
   type ScriptedJarvisDeps,
   ScriptedJarvisEngine,
@@ -332,6 +333,102 @@ describe("ScriptedJarvisEngine", () => {
       status: "done",
     });
     expect(fullText(events)).toBe("EURUSD spread is currently 2 pips, sir.");
+  });
+
+  it("a showPanel turn emits the canned GBP-volatility panel (round-tripping parsePanelSpec against the engine's own roster) followed by speech + done", async () => {
+    const { deps } = buildDeps({
+      pairs: KNOWN_CURRENCY_PAIRS,
+      instantReveal$: of(true),
+    });
+
+    const knownSymbols = KNOWN_CURRENCY_PAIRS.map((p) => {
+      return p.symbol;
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const { events, done } = runTurn(adapter, "show me gbp volatility");
+    await done;
+
+    const panelEvents = events.filter((e) => {
+      return e.type === "panel";
+    });
+    expect(panelEvents).toHaveLength(1);
+
+    const panelEvent = panelEvents[0];
+
+    if (panelEvent?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(panelEvent.panelId).toBe("panel-scripted-1");
+    expect(parsePanelSpec(panelEvent.spec, knownSymbols)).toEqual({
+      ok: true,
+      spec: panelEvent.spec,
+    });
+    expect(panelEvent.spec.source).toEqual({
+      kind: "priceHistory",
+      symbols: ["GBPUSD", "GBPJPY"],
+    });
+    expect(
+      panelEvent.spec.transforms.some((t) => {
+        return t.kind === "rollingVol";
+      }),
+    ).toBe(true);
+    expect(panelEvent.spec.viz).toEqual({ kind: "line" });
+    expect(
+      events.some((e) => {
+        return e.type === "delta";
+      }),
+    ).toBe(true);
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("a restylePanel turn re-emits the same panelId with the new viz", async () => {
+    const { deps } = buildDeps({
+      pairs: KNOWN_CURRENCY_PAIRS,
+      instantReveal$: of(true),
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const shown = runTurn(adapter, "show me gbp volatility");
+    await shown.done;
+
+    const restyled = runTurn(adapter, "make it a heatmap");
+    await restyled.done;
+
+    const panelEvents = restyled.events.filter((e) => {
+      return e.type === "panel";
+    });
+    expect(panelEvents).toHaveLength(1);
+
+    const panelEvent = panelEvents[0];
+
+    if (panelEvent?.type !== "panel") {
+      throw new Error("expected a panel event");
+    }
+
+    expect(panelEvent.panelId).toBe("panel-scripted-1");
+    expect(panelEvent.spec.viz).toEqual({ kind: "heatmap" });
+    expect(panelEvent.spec.source).toEqual({
+      kind: "priceHistory",
+      symbols: ["GBPUSD", "GBPJPY"],
+    });
+  });
+
+  it("a restylePanel turn with no prior panel this session gets a fallback-style reply and emits no panel event", async () => {
+    const { deps } = buildDeps({ instantReveal$: of(true) });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    const { events, done } = runTurn(adapter, "make it a heatmap");
+    await done;
+
+    expect(
+      events.some((e) => {
+        return e.type === "panel";
+      }),
+    ).toBe(false);
+    expect(fullText(events)).toBe("There's no panel open to restyle yet, sir.");
+    expect(events.at(-1)).toEqual({ type: "done" });
   });
 
   it("a help turn replies with the capability roster verbatim", async () => {

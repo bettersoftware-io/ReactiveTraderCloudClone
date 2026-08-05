@@ -40,6 +40,7 @@ const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
   delta: SERVER_MSG.JARVIS_DELTA,
   toolEvent: SERVER_MSG.JARVIS_TOOL_EVENT,
   confirmRequest: SERVER_MSG.JARVIS_CONFIRM_REQUEST,
+  panel: SERVER_MSG.JARVIS_PANEL,
   done: SERVER_MSG.JARVIS_DONE,
   error: SERVER_MSG.JARVIS_ERROR,
 };
