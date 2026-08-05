@@ -757,6 +757,13 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
+    // No panel data source wired into this World-driven fixture yet (mirrors
+    // useJarvisPanels's always-empty stub above) — always null.
+    useJarvisPanelData: (_panelId: string) => {
+      return () => {
+        return null;
+      };
+    },
     useTopology: () => {
       return wrapSubject(world.topology$);
     },
