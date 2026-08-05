@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { priceToY } from "./chartScene.js";
 import {
   type ChartCandle,
   type ChartVarStyle,
   chartVm,
   volumeVm,
 } from "./chartVm.js";
+import { priceTicks } from "./priceTicks.js";
 
 describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
   it("returns empty candles/grid/labels for an empty series", () => {
@@ -65,37 +67,43 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
     expect(cssVar(c1.style, "--wleft-offset")).toBe("16%");
     expect(cssVar(c1.wickStyle, "--wx")).toBe("calc(75% - 0.5px)");
 
-    // Grid: 4 fixed fractions, each carrying only --gtop.
-    expect(vm.grid).toHaveLength(4);
+    // Grid: one nice tick per line (cmin=8, cmax=14 -> ticks [8,10,12,14],
+    // highest first), each carrying only --gtop at priceToY(scale, tick).
+    const scale = { cmin: 8, cmax: 14 };
+    const ticks = [...priceTicks(scale.cmin, scale.cmax)].reverse();
+    const gridTops = ticks.map((t) => {
+      return `${priceToY(scale, t)}%`;
+    });
+
+    expect(vm.grid).toHaveLength(ticks.length);
     expect(
       vm.grid.map((g) => {
         return cssVar(g.style, "--gtop");
       }),
-    ).toEqual(["20%", "40%", "60%", "80%"]);
+    ).toEqual(gridTops);
 
-    // Labels: 4 fixed fractions, price = cmax - f*crng = 14 - f*6.
-    expect(vm.labels).toHaveLength(4);
+    // Labels: same ticks, price text is the tick value itself (not
+    // interpolated).
+    expect(vm.labels).toHaveLength(ticks.length);
     expect(
       vm.labels.map((l) => {
         return l.txt;
       }),
-    ).toEqual([
-      (14 - 0.12 * 6).toFixed(2),
-      (14 - 0.37 * 6).toFixed(2),
-      (14 - 0.62 * 6).toFixed(2),
-      (14 - 0.87 * 6).toFixed(2),
-    ]);
-    // Exact --ltop calc(...% - 6px) strings for the same 4 fixed fractions.
+    ).toEqual(
+      ticks.map((t) => {
+        return t.toFixed(2);
+      }),
+    );
+    // Exact --ltop calc(...% - 6px) strings for the same ticks.
     expect(
       vm.labels.map((l) => {
         return cssVar(l.style, "--ltop");
       }),
-    ).toEqual([
-      "calc(12% - 6px)",
-      "calc(37% - 6px)",
-      "calc(62% - 6px)",
-      "calc(87% - 6px)",
-    ]);
+    ).toEqual(
+      gridTops.map((t) => {
+        return `calc(${t} - 6px)`;
+      }),
+    );
   });
 
   it("glows only the last candle, and only when flashOn is true", () => {
@@ -315,13 +323,17 @@ describe("chartVm (viewport slicing, chart kinds, time axis, volume vm)", () => 
     expect(cssVar(last.wickStyle, "--wtop")).toBe("6%");
     expect(cssVar(last.wickStyle, "--wh")).toBe("86%");
 
-    // Grid/labels' formats are viewport-independent (fixed fractions); only
-    // the label prices (via cmax/crng) move with the visible slice's range.
+    // Labels are the nice ticks for this slice's [cmin, cmax]=[85, 115]:
+    // rawStep=7.5, err=7.5 >= sqrt(50) -> step 10 -> ticks [90, 100, 110].
     expect(
       vm.labels.map((l) => {
         return l.txt;
       }),
-    ).toEqual(["111.40", "103.90", "96.40", "88.90"]);
+    ).toEqual(
+      [...priceTicks(85, 115)].reverse().map((t) => {
+        return t.toFixed(2);
+      }),
+    );
 
     // Time labels are keyed to absolute series indices, exact --tx strings.
     expect(vm.timeLabels).toHaveLength(4);

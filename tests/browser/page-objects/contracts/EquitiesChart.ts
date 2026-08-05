@@ -55,6 +55,4 @@ export interface EquitiesChartPO {
   clickYScalePill(): Promise<void>;
   /** Waits until the chart wrap's data-yscale equals the given mode. */
   waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void>;
-  /** Current texts of the 4 price labels. */
-  priceLabelTexts(): Promise<string[]>;
 }

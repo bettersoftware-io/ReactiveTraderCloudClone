@@ -183,10 +183,4 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
       timeout: timeoutMs,
     });
   }
-
-  async priceLabelTexts(): Promise<string[]> {
-    return await this.page
-      .getByTestId(TESTIDS.equities.chart.priceLabel)
-      .allTextContents();
-  }
 }

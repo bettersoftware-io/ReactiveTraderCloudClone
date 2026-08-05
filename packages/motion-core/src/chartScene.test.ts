@@ -23,6 +23,7 @@ import {
   type PaneScene,
   paneScene,
 } from "./paneScene.js";
+import { priceTicks } from "./priceTicks.js";
 
 const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
   const dir = i % 2 === 0 ? 1 : -1;
@@ -192,23 +193,58 @@ describe("chartScene in log mode", () => {
     expect(logTop).toBeLessThan(linTop);
   });
 
-  it("grid geometry is identical between modes; label text is log-interpolated", () => {
+  it("grid and labels derive from the same ticks; log moves positions, not values", () => {
     const linear = chartScene(SERIES, 1000, false);
     const log = chartScene(SERIES, 1000, false, { yScale: "log" });
 
-    expect(log.grid).toEqual(linear.grid);
+    // Same round tick values in both modes, highest first…
+    const values = [...priceTicks(100, 1000)].reverse().map((t) => {
+      return t.toFixed(2);
+    });
+    expect(
+      linear.priceLabels.map((l) => {
+        return l.txt;
+      }),
+    ).toEqual(values);
     expect(
       log.priceLabels.map((l) => {
-        return l.top;
+        return l.txt;
+      }),
+    ).toEqual(values);
+
+    // …every label sits ON its grid line…
+    for (const scene of [linear, log]) {
+      expect(
+        scene.priceLabels.map((l) => {
+          return l.top;
+        }),
+      ).toEqual(
+        scene.grid.map((g) => {
+          return g.top;
+        }),
+      );
+    }
+
+    // …and log re-positions through priceToY (interior ticks differ).
+    const logScale = { cmin: 100, cmax: 1000, yScale: "log" as const };
+    expect(
+      log.grid.map((g) => {
+        return g.top;
       }),
     ).toEqual(
-      linear.priceLabels.map((l) => {
-        return l.top;
+      [...priceTicks(100, 1000)].reverse().map((t) => {
+        return priceToY(logScale, t);
       }),
     );
-    // f=0.12: linear 1000 − 0.12·900 = 892.00; log 10^(3 − 0.12·1) = 758.58.
-    expect(linear.priceLabels[0]?.txt).toBe("892.00");
-    expect(log.priceLabels[0]?.txt).toBe((10 ** (3 - 0.12)).toFixed(2));
+    expect(
+      log.grid.map((g) => {
+        return g.top;
+      }),
+    ).not.toEqual(
+      linear.grid.map((g) => {
+        return g.top;
+      }),
+    );
   });
 });
 

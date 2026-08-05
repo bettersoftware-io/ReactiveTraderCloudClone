@@ -90,10 +90,8 @@ test.describe("Equities chart", () => {
     await equitiesChart.openEquitiesWorkspace(ctx);
     await equitiesChart.expectPlotVisibleWithin(ctx, 5);
 
-    await equitiesChart.recordPriceLabels(ctx, "beforeLog");
     await equitiesChart.clickYScalePill(ctx);
     await equitiesChart.expectYScaleWithin(ctx, "log", 5);
-    await equitiesChart.expectPriceLabelsChangedFrom(ctx, "beforeLog");
 
     await equitiesChart.clickYScalePill(ctx);
     await equitiesChart.expectYScaleWithin(ctx, "linear", 5);

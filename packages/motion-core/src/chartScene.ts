@@ -1,4 +1,5 @@
 import type { ChartViewport } from "./chartViewport.js";
+import { priceTicks } from "./priceTicks.js";
 
 /**
  * Structural stand-in for a framework style object carrying only CSS custom
@@ -89,8 +90,6 @@ export function yToPrice(scale: ChartScale, y: number): number {
 
 const BODY_FRAC = 0.64;
 const MIN_BODY = 0.6;
-const GRID_FRACTIONS = [0.2, 0.4, 0.6, 0.8];
-const LABEL_FRACTIONS = [0.12, 0.37, 0.62, 0.87];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LABEL_TARGET_DIVISOR = 5;
 const STEP_CANDIDATES: readonly number[] = [1, 2, 5, 10, 15, 30, 60, 120];
@@ -350,7 +349,6 @@ export function chartScene(
       return c.high;
     }),
   );
-  const crng = cmax - cmin || 1;
   const cw = 100 / win.span;
 
   const scale: ChartScale =
@@ -376,26 +374,18 @@ export function chartScene(
           return { x: xPct(i, win.vp, win.span), y: yPct(cd.close) };
         });
 
-  const grid: SceneGridLine[] = GRID_FRACTIONS.map((f, i) => {
-    return { key: i, top: f * 100 };
+  // Grid and labels are the same tick list viewed twice: one line and one
+  // label per nice tick, both at priceToY(scale, tick), highest price first
+  // (the old top-down reading order). The label projection's −6px calc
+  // (chartCssVars) centers each 12px label on its line.
+  const ticks = [...priceTicks(cmin, cmax)].reverse();
+
+  const grid: SceneGridLine[] = ticks.map((t, i) => {
+    return { key: i, top: yPct(t) };
   });
 
-  const isLog = scale.yScale === "log" && cmin > 0;
-  let lmax = 0;
-  let lrng = 1;
-
-  if (isLog) {
-    lmax = Math.log10(cmax);
-    lrng = lmax - Math.log10(cmin) || 1;
-  }
-
-  const priceLabels: SceneLabel[] = LABEL_FRACTIONS.map((f, i) => {
-    return {
-      key: i,
-      txt: (isLog ? 10 ** (lmax - f * lrng) : cmax - f * crng).toFixed(2),
-      top: f * 100,
-      x: 0,
-    };
+  const priceLabels: SceneLabel[] = ticks.map((t, i) => {
+    return { key: i, txt: t.toFixed(2), top: yPct(t), x: 0 };
   });
 
   const timeLabels = buildTimeLabels(series, win);

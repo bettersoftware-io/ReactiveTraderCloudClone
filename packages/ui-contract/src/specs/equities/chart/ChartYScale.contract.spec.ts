@@ -25,7 +25,7 @@ import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartH
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { EquityInstrument, EquityQuote } from "@rtc/domain";
-import { chartVm, yToPrice } from "@rtc/motion-core";
+import { chartVm, priceTicks, yToPrice } from "@rtc/motion-core";
 
 import { candleAt, generateCandles } from "./candleFixture";
 
@@ -70,37 +70,35 @@ describe("Y-scale rendering — CandleChart direct mount", () => {
     expect(chart.yScaleAttr()).toBe("log");
   });
 
-  it("log mode moves candle geometry; grid and label positions hold still", () => {
+  it("log mode moves candle geometry AND grid positions; tick values hold still", () => {
     const chart = mountChart();
     const linTop = chart.candleBodyVar(30, "--top");
     const linLabels = chart.priceLabels();
-
-    // 4 grid lines BEFORE the switch too — the case below only proves the
-    // count holds if both sides of the comparison are actually asserted.
-    expect(chart.visibleTestids("chart-grid-line")).toBe(4);
-    expect(linLabels).toHaveLength(4);
+    const linGridTops = chart.gridLineTopVars();
 
     chart.setProps({ yScale: "log" });
 
     expect(chart.candleBodyVar(30, "--top")).not.toBe(linTop);
-    // Same 4 labels at the same slots — only the text moved.
-    expect(chart.priceLabels()).toHaveLength(linLabels.length);
-    expect(chart.priceLabels()).not.toEqual(linLabels);
-    expect(chart.visibleTestids("chart-grid-line")).toBe(4);
+    // Same round prices in both modes…
+    expect(chart.priceLabels()).toEqual(linLabels);
+    // …at different heights (log bunches toward the top).
+    expect(chart.gridLineTopVars()).not.toEqual(linGridTops);
+    expect(chart.gridLineTopVars()).toHaveLength(linGridTops.length);
   });
 
-  it("label text matches the log interpolation exactly", () => {
+  it("label text matches the round ticks exactly", () => {
     const chart = mountChart({ yScale: "log" });
     const vm = chartVm(CANDLES, LAST.close, false, {
       viewport: { start: 240, end: 300 },
       kind: "candles",
       yScale: "log",
     });
-    const lmax = Math.log10(vm.scale.cmax);
-    const lrng = lmax - Math.log10(vm.scale.cmin) || 1;
-    const expected = [0.12, 0.37, 0.62, 0.87].map((f) => {
-      return (10 ** (lmax - f * lrng)).toFixed(2);
-    });
+
+    const expected = [...priceTicks(vm.scale.cmin, vm.scale.cmax)]
+      .reverse()
+      .map((t) => {
+        return t.toFixed(2);
+      });
 
     expect(chart.priceLabels()).toEqual(expected);
   });
