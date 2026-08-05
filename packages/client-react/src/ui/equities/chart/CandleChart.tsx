@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 
 import type {
   EqChartType,
@@ -13,19 +13,27 @@ import {
   chartVm,
   crosshairVm,
   drawingScene,
+  hitTestDrawings,
   indicatorPoints,
   indicatorValues,
   navigatorLinePoints,
   navigatorWindowStyle,
   paneReadout,
   paneScene,
+  pointerToAnchor,
   volumeVm,
 } from "@rtc/motion-core";
 
 import type { PaneVm } from "./ChartPlot";
 import { ChartPlot } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
-import { type ChartGestures, useChartGestures } from "./useChartGestures";
+import {
+  type ChartGestures,
+  type DrawDraft,
+  type DrawGestureSlots,
+  type PlotFrac,
+  useChartGestures,
+} from "./useChartGestures";
 import { useNavigatorBrush } from "./useNavigatorBrush";
 
 /**
@@ -48,20 +56,29 @@ export function CandleChart({
   loadingOlder,
   historyExhausted,
   onLoadOlder,
-  // drawTool and the four slots below are structural-only in this task (no
-  // gesture wiring yet — Task 5's job): accepted with their spec'd defaults
-  // so ChartPanel can wire them today and the signature stays stable when
-  // Task 5 starts actually calling them. The `_`-prefixed local bindings
-  // are the honest way to tell the linter "unused for now" without a
-  // disable comment (repo policy: zero lint disables).
-  drawTool: _drawTool = "cursor",
+  drawTool = "cursor",
   drawings = EMPTY_DRAWINGS,
   selectedDrawingId = null,
-  onCommitDrawing: _onCommitDrawing = NOOP_COMMIT_DRAWING,
-  onSelectDrawing: _onSelectDrawing = NOOP_SELECT_DRAWING,
-  onDeleteSelected: _onDeleteSelected = NOOP_DELETE_SELECTED,
-  onShiftAnchors: _onShiftAnchors = NOOP_SHIFT_ANCHORS,
+  onCommitDrawing = NOOP_COMMIT_DRAWING,
+  onSelectDrawing = NOOP_SELECT_DRAWING,
+  onDeleteSelected = NOOP_DELETE_SELECTED,
+  onShiftAnchors = NOOP_SHIFT_ANCHORS,
 }: CandleChartProps): ReactElement {
+  // Concrete, effect-named handlers (not inline closures) so the gesture
+  // slots below read as "what happens", matching the repo's handler-naming
+  // doctrine — `commitTrendline`/`commitLevel`/`selectHitDrawing` close over
+  // `viewport`/`vm`/`drawItems`/`candles`, all declared further down in this
+  // same render; that's a plain forward reference (these are hoisted
+  // function declarations, only ever CALLED later, from a real gesture), not
+  // a temporal-dead-zone hazard.
+  const drawSlots: DrawGestureSlots = {
+    tool: drawTool,
+    onCommitLine: commitTrendline,
+    onCommitLevel: commitLevel,
+    onPlotClick: selectHitDrawing,
+    onDeleteKey: onDeleteSelected,
+  };
+
   // Destructured (not kept as one `g.foo` object) so each field's own type
   // drives the plugin's ref-safety analysis individually — `useChartGestures`
   // returns `plotRef` (a real ref) alongside plain values, and reading them
@@ -76,7 +93,13 @@ export function CandleChart({
     resetToLive,
     applyViewport,
     paneHoverProps,
-  } = useChartGestures(candles.length, defaultVisible, candles[0]?.time);
+    draft,
+  } = useChartGestures(
+    candles.length,
+    defaultVisible,
+    candles[0]?.time,
+    drawSlots,
+  );
 
   // The near-edge fetch trigger — deliberately an EFFECT, the only one in
   // the chart shells: syncing view state (the viewport nearing the loaded
@@ -92,6 +115,33 @@ export function CandleChart({
       onLoadOlder();
     }
   }, [nearLeftEdge, loadingOlder, historyExhausted, onLoadOlder]);
+
+  // Backfill prepend detection — same "an effect, not render-time" call as
+  // the near-edge fetch trigger above: every trendline anchor is a candle
+  // INDEX, so a prepend (the series growing while its first candle got
+  // OLDER) shifts every existing index by the prepended count, or every
+  // drawing silently drifts onto the wrong candles as older history loads
+  // in underneath it.
+  const firstTime = candles[0]?.time;
+  const prevRef = useRef<PrependWatermark>({
+    len: candles.length,
+    firstTime,
+  });
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = { len: candles.length, firstTime };
+    const grewBy = candles.length - prev.len;
+
+    if (
+      grewBy > 0 &&
+      prev.firstTime !== undefined &&
+      firstTime !== undefined &&
+      firstTime < prev.firstTime
+    ) {
+      onShiftAnchors(grewBy);
+    }
+  }, [candles.length, firstTime, onShiftAnchors]);
 
   const historyStart = historyExhausted && viewport.start === 0;
 
@@ -113,14 +163,67 @@ export function CandleChart({
     vm.scale,
   );
   const paneVms = toPaneVms(panes, closes, viewport, cross);
+  // The in-progress trendline draft, appended as a sentinel-id "draft"
+  // drawing so committed and preview rendering share one `drawingScene`
+  // call — `DrawingsLayer` styles the `id === "draft"` item via
+  // `data-draft="true"` (dashed, no handles), no special-casing here.
+  // Snapping the draft's `a`/`b` through `pointerToAnchor` (the same
+  // projection `commitTrendline` below uses to commit) means the preview
+  // already sits exactly where the commit will land — no free-floating
+  // preview that jumps to a candle center on release.
+  const allDrawings = draft ? [...drawings, draftToDrawing(draft)] : drawings;
   // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
   // passed directly, no mapping.
   const drawItems = drawingScene(
-    drawings,
+    allDrawings,
     viewport,
     vm.scale,
     selectedDrawingId,
   );
+
+  // Concrete, effect-named handlers for the draw-gesture slots above and the
+  // draft's live preview — declared as hoisted `function`s (not `const`
+  // arrows) so `drawSlots` above can reference them by name before this
+  // point in the render, while their bodies close over `viewport`/`vm`/
+  // `drawItems`/`candles` from right here.
+  function commitTrendline(a: PlotFrac, b: PlotFrac): void {
+    const seriesLen = candles.length;
+    onCommitDrawing({
+      id: crypto.randomUUID(),
+      kind: "trendline",
+      a: pointerToAnchor(a.xFrac, a.yFrac, viewport, vm.scale, seriesLen),
+      b: pointerToAnchor(b.xFrac, b.yFrac, viewport, vm.scale, seriesLen),
+    });
+  }
+
+  function commitLevel(p: PlotFrac): void {
+    const anchor = pointerToAnchor(
+      p.xFrac,
+      p.yFrac,
+      viewport,
+      vm.scale,
+      candles.length,
+    );
+    onCommitDrawing({
+      id: crypto.randomUUID(),
+      kind: "hline",
+      price: anchor.price,
+    });
+  }
+
+  function selectHitDrawing(p: PlotFrac): void {
+    onSelectDrawing(hitTestDrawings(drawItems, p.xFrac * 100, p.yFrac * 100));
+  }
+
+  function draftToDrawing(d: DrawDraft): EqDrawing {
+    const seriesLen = candles.length;
+    return {
+      id: "draft",
+      kind: "trendline",
+      a: pointerToAnchor(d.a.xFrac, d.a.yFrac, viewport, vm.scale, seriesLen),
+      b: pointerToAnchor(d.b.xFrac, d.b.yFrac, viewport, vm.scale, seriesLen),
+    };
+  }
 
   const brush = useNavigatorBrush(
     viewport,
@@ -164,6 +267,14 @@ export function CandleChart({
   );
 }
 
+/** The candle series' length + first-candle time as of the last render — the
+ * prepend-detection effect's own watermark, compared against the current
+ * render's values to tell a backfill prepend from a live append. */
+interface PrependWatermark {
+  readonly len: number;
+  readonly firstTime: number | undefined;
+}
+
 export interface CandleChartProps {
   candles: readonly Candle[];
   liveRate: number;
@@ -190,18 +301,19 @@ export interface CandleChartProps {
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
   /** The active draw tool — defaults to `"cursor"` (no drawing gesture
-   * active). Consumed by the gesture wiring (Task 5); this component only
-   * threads it through the props chain for now. */
+   * active). Drives `useChartGestures`' pointer-down fork (hline commits
+   * immediately, trendline opens a draft, cursor clicks hit-test). */
   drawTool?: EqDrawTool;
   /** The current symbol's committed drawings, in plot order — defaults to
    * none. Re-projected into plot-percent geometry every render via
-   * `drawingScene`. */
+   * `drawingScene`, alongside any in-progress draft. */
   drawings?: readonly EqDrawing[];
   /** The id of the currently-selected drawing, or `null` — drives which
    * item's handles `drawingScene` projects. */
   selectedDrawingId?: string | null;
-  /** Commits a finished drawing gesture. Slot: default no-op keeps this
-   * component mountable before the gesture wiring lands (Task 5). */
+  /** Commits a finished drawing gesture (trendline drag past the click
+   * threshold, or an hline pointer-down). Slot: default no-op keeps this
+   * component mountable without a drawings machine wired up. */
   onCommitDrawing?: (drawing: EqDrawing) => void;
   /** Selects (or clears, on `null`) a drawing by id. Slot: default no-op. */
   onSelectDrawing?: (id: string | null) => void;
@@ -218,8 +330,8 @@ export interface CandleChartProps {
 const EMPTY_DRAWINGS: readonly EqDrawing[] = [];
 
 /** Stable no-op identities for the drawing slots' defaults — keeps this
- * component mountable before the gesture wiring (Task 5) supplies real
- * handlers. */
+ * component mountable without a drawings machine wired up (e.g. a spec mount
+ * that only cares about candles/indicators). */
 function NOOP_COMMIT_DRAWING(_drawing: EqDrawing): void {}
 
 function NOOP_SELECT_DRAWING(_id: string | null): void {}

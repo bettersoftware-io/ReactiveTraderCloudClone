@@ -7,7 +7,11 @@ import {
 } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { type ChartGestures, useChartGestures } from "./useChartGestures";
+import {
+  type ChartGestures,
+  type DrawGestureSlots,
+  useChartGestures,
+} from "./useChartGestures";
 
 const SERIES_LEN = 200;
 const DEFAULT_VISIBLE = 50;
@@ -639,6 +643,342 @@ describe("useChartGestures", () => {
   });
 });
 
+describe("useChartGestures — draw gesture fork", () => {
+  it("hline: pointer-down commits the level immediately, with no capture and no draft", () => {
+    const onCommitLevel = vi.fn();
+    const setPointerCapture = vi.fn();
+    const draw = drawSlots({ tool: "hline", onCommitLevel });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }, { setPointerCapture }),
+      );
+    });
+
+    expect(onCommitLevel).toHaveBeenCalledWith({ xFrac: 0.5, yFrac: 0.5 });
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(result.current.draft).toBeNull();
+  });
+
+  it("trendline: pointer-down opens a draft with both anchors at the down point, and captures the pointer", () => {
+    const setPointerCapture = vi.fn();
+    const draw = drawSlots({ tool: "trendline" });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }, { setPointerCapture }),
+      );
+    });
+
+    const anchor = { xFrac: 0.2, yFrac: 0.5 };
+    expect(result.current.draft).toEqual({ a: anchor, b: anchor });
+    expect(setPointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it("trendline: every move updates the draft's b anchor while the crosshair keeps tracking", () => {
+    const draw = drawSlots({ tool: "trendline" });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 200, clientY: 40 }),
+      );
+    });
+
+    expect(result.current.draft).toEqual({
+      a: { xFrac: 0.2, yFrac: 0.5 },
+      b: { xFrac: 0.4, yFrac: 0.8 },
+    });
+    expect(result.current.cursor).toEqual({
+      xFrac: 0.4,
+      yFrac: 0.8,
+      inPlot: true,
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 200, clientY: 40 }),
+      );
+    });
+  });
+
+  it("trendline: pointer-up beyond CLICK_MAX_PX commits the line via onCommitLine and clears the draft", () => {
+    const onCommitLine = vi.fn();
+    const releasePointerCapture = vi.fn();
+    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 200, clientY: 25 }),
+      );
+    });
+    act(() => {
+      // 100px excursion from the (100, 25) down point — well beyond
+      // CLICK_MAX_PX (4px).
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 200, clientY: 25 }, { releasePointerCapture }),
+      );
+    });
+
+    expect(onCommitLine).toHaveBeenCalledWith(
+      { xFrac: 0.2, yFrac: 0.5 },
+      { xFrac: 0.4, yFrac: 0.5 },
+    );
+    expect(releasePointerCapture).toHaveBeenCalledWith(1);
+    expect(result.current.draft).toBeNull();
+  });
+
+  it("trendline: pointer-up within CLICK_MAX_PX discards the draft without committing", () => {
+    const onCommitLine = vi.fn();
+    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      // ~2.24px excursion — within the 4px click threshold: a stray click,
+      // not a deliberate line.
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 102, clientY: 26 }),
+      );
+    });
+
+    expect(onCommitLine).not.toHaveBeenCalled();
+    expect(result.current.draft).toBeNull();
+  });
+
+  it("pointercancel discards an open trendline draft without committing (same as a phantom-drag pan cancel)", () => {
+    const onCommitLine = vi.fn();
+    const releasePointerCapture = vi.fn();
+    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 300, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerCancel(
+        pointerEvent({ clientX: 300, clientY: 25 }, { releasePointerCapture }),
+      );
+    });
+
+    expect(onCommitLine).not.toHaveBeenCalled();
+    expect(releasePointerCapture).toHaveBeenCalledWith(1);
+    expect(result.current.draft).toBeNull();
+  });
+
+  it("Escape cancels an open trendline draft", () => {
+    const onCommitLine = vi.fn();
+    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    expect(result.current.draft).not.toBeNull();
+
+    const escapeKey = keyEvent("Escape");
+    act(() => {
+      result.current.plotProps.onKeyDown(escapeKey);
+    });
+
+    expect(result.current.draft).toBeNull();
+    expect(escapeKey.preventDefault).toHaveBeenCalled();
+
+    // The eventual real pointerup for the now-cancelled gesture must not
+    // resurrect or commit the discarded draft.
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 300, clientY: 25 }),
+      );
+    });
+    expect(onCommitLine).not.toHaveBeenCalled();
+  });
+
+  it("Escape with no open draft is a no-op and does not preventDefault", () => {
+    const draw = drawSlots({ tool: "cursor" });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const escapeKey = keyEvent("Escape");
+
+    act(() => {
+      result.current.plotProps.onKeyDown(escapeKey);
+    });
+
+    expect(escapeKey.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("cursor: pointer-up within CLICK_MAX_PX of its pointer-down calls onPlotClick with the up point's fraction", () => {
+    const onPlotClick = vi.fn();
+    const draw = drawSlots({ tool: "cursor", onPlotClick });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 102, clientY: 26 }),
+      );
+    });
+
+    expect(onPlotClick).toHaveBeenCalledWith({ xFrac: 0.204, yFrac: 0.52 });
+  });
+
+  it("cursor: a real drag beyond CLICK_MAX_PX pans as usual and does not call onPlotClick", () => {
+    const onPlotClick = vi.fn();
+    const draw = drawSlots({ tool: "cursor", onPlotClick });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const before = result.current.viewport;
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 50, clientY: 50 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 100, clientY: 50 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 100, clientY: 50 }),
+      );
+    });
+
+    expect(result.current.viewport).not.toEqual(before);
+    expect(onPlotClick).not.toHaveBeenCalled();
+  });
+
+  it("Delete calls onDeleteKey while the cursor tool is active", () => {
+    const onDeleteKey = vi.fn();
+    const draw = drawSlots({ tool: "cursor", onDeleteKey });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const del = keyEvent("Delete");
+
+    act(() => {
+      result.current.plotProps.onKeyDown(del);
+    });
+
+    expect(onDeleteKey).toHaveBeenCalledOnce();
+    expect(del.preventDefault).toHaveBeenCalled();
+  });
+
+  it("Backspace also calls onDeleteKey while the cursor tool is active", () => {
+    const onDeleteKey = vi.fn();
+    const draw = drawSlots({ tool: "cursor", onDeleteKey });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onKeyDown(keyEvent("Backspace"));
+    });
+
+    expect(onDeleteKey).toHaveBeenCalledOnce();
+  });
+
+  it("Delete is a no-op while a non-cursor tool is active", () => {
+    const onDeleteKey = vi.fn();
+    const draw = drawSlots({ tool: "trendline", onDeleteKey });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const del = keyEvent("Delete");
+
+    act(() => {
+      result.current.plotProps.onKeyDown(del);
+    });
+
+    expect(onDeleteKey).not.toHaveBeenCalled();
+    expect(del.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("with no draw slots passed at all, the hook behaves exactly as the drawing-free signature (no draft, no crash)", () => {
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    });
+
+    expect(result.current.draft).toBeNull();
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 100, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 101, clientY: 25 }),
+      );
+    });
+
+    expect(result.current.draft).toBeNull();
+  });
+});
+
+/** Builds a full `DrawGestureSlots`, all four handlers stubbed with no-op
+ * `vi.fn()`s — tests override just the tool and whichever handler they
+ * assert against. */
+function drawSlots(overrides: Partial<DrawGestureSlots>): DrawGestureSlots {
+  return {
+    tool: "cursor",
+    onCommitLine: vi.fn(),
+    onCommitLevel: vi.fn(),
+    onPlotClick: vi.fn(),
+    onDeleteKey: vi.fn(),
+    ...overrides,
+  };
+}
+
 /** Stubs a 500×50 rect at the origin for the plot div, standing in for the
  * real layout jsdom never computes (getBoundingClientRect() is all-zeros by
  * default there). */
@@ -704,16 +1044,26 @@ interface PointerEventInit {
   clientY: number;
 }
 
+/** Optional spy overrides for the capture methods on the stubbed
+ * `currentTarget` — the draw-gesture tests assert against these directly
+ * (e.g. hline never calls `setPointerCapture`), while every other test
+ * ignores them exactly as before (a fresh, unasserted `vi.fn()` each). */
+interface PointerEventCaptureSpies {
+  setPointerCapture?: ReturnType<typeof vi.fn>;
+  releasePointerCapture?: ReturnType<typeof vi.fn>;
+}
+
 function pointerEvent(
   init: PointerEventInit,
+  spies: PointerEventCaptureSpies = {},
 ): ReactPointerEvent<HTMLDivElement> {
   const rect = { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
   const currentTarget = {
-    setPointerCapture: vi.fn(),
+    setPointerCapture: spies.setPointerCapture ?? vi.fn(),
     hasPointerCapture: (): boolean => {
       return true;
     },
-    releasePointerCapture: vi.fn(),
+    releasePointerCapture: spies.releasePointerCapture ?? vi.fn(),
     getBoundingClientRect: () => {
       return rect;
     },
