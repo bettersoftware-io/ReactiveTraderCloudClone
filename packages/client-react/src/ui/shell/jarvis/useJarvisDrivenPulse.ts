@@ -4,7 +4,26 @@ import { useViewModel } from "@rtc/react-bindings";
 
 export interface JarvisDrivenPulse {
   readonly pulsing: boolean;
-  readonly clearPulse: () => void;
+  readonly clearPulse: (event: PulseAnimationEndEvent) => void;
+}
+
+/** The two fields `clearPulse` reads, shared structurally with React's
+ * synthetic `AnimationEvent<Element>` (the JSX `onAnimationEnd` wiring) —
+ * mirrors RfqCard.tsx's `CardTransitionEvent` idiom so callers can pass
+ * `clearPulse` straight into `onAnimationEnd` without this file importing
+ * a React event type by name. */
+interface PulseAnimationEndEvent {
+  readonly target: EventTarget | null;
+  readonly currentTarget: EventTarget | null;
+}
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+/** Same `matchMedia` read `useRankGlide.ts`/`JarvisPanelLayer.tsx`/
+ * `useFlipGrid.ts` already use — a fresh synchronous check, not cached, so a
+ * mid-session OS flip is picked up on the very next outcome. */
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false;
 }
 
 /**
@@ -27,11 +46,17 @@ export interface JarvisDrivenPulse {
  * batch with FEWER applied commands than the previous one still pulses
  * correctly on its own first applied command.
  *
- * Freeze-gated at the SOURCE (never sets `pulsing` true while
- * `usePowerSaver().isFreeze`), in addition to the CSS catch-all
- * (DrivenPulse.module.css) that would otherwise still spin up a near-instant
- * Animation object — the same "JS gate + CSS catch-all" doctrine every other
- * one-shot flash in this codebase follows.
+ * Gated at the SOURCE — never sets `pulsing` true while
+ * `usePowerSaver().isFreeze` OR `prefers-reduced-motion: reduce` — in
+ * addition to the CSS catch-all (DrivenPulse.module.css) that would
+ * otherwise still spin up a near-instant Animation object under freeze, the
+ * same "JS gate + CSS catch-all" doctrine every other one-shot flash in this
+ * codebase follows. The reduced-motion half of the gate is load-bearing, not
+ * belt-and-suspenders: `DrivenPulse.module.css`'s
+ * `@media (prefers-reduced-motion: reduce) { .driven { animation: none; } }`
+ * means NO `animationend` ever fires there, so without this JS-side gate
+ * `pulsing` would latch `true` forever after the first outcome — never
+ * cleared, blocking every later pulse for the rest of the session.
  */
 export function useJarvisDrivenPulse(): JarvisDrivenPulse {
   const { useJarvisDriver, usePowerSaver } = useViewModel();
@@ -45,14 +70,28 @@ export function useJarvisDrivenPulse(): JarvisDrivenPulse {
       return outcome.status === "applied";
     }).length;
 
-    if (appliedCount > appliedSeenRef.current && !isFreeze) {
+    if (
+      appliedCount > appliedSeenRef.current &&
+      !isFreeze &&
+      !prefersReducedMotion()
+    ) {
       setPulsing(true);
     }
 
     appliedSeenRef.current = appliedCount;
   }, [lastBatch, isFreeze]);
 
-  function clearPulse(): void {
+  function clearPulse(event: PulseAnimationEndEvent): void {
+    // Ignore animationend events BUBBLING from a descendant — e.g. every FX
+    // tile's own tick-flash animation (TilePrice.module.css) bubbles through
+    // the workspace wrapper on every price tick. Same guard as
+    // RfqCard.tsx's settleCardTransition; without it, a descendant's
+    // animationend tears the pulse down within tens of ms instead of the
+    // intended ~700ms.
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
     setPulsing(false);
   }
 
