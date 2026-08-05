@@ -872,6 +872,10 @@ export function createViewModel(
     presenters.eqWorkspace.intents.togglePane(id);
   }
 
+  function toggleEqYScale(): void {
+    presenters.eqWorkspace.intents.toggleYScale();
+  }
+
   return {
     usePrice,
     usePriceHistory,
@@ -1081,6 +1085,7 @@ export function createViewModel(
         setChartType: setEqChartType,
         toggleIndicator: toggleEqIndicator,
         togglePane: toggleEqPane,
+        toggleYScale: toggleEqYScale,
       };
     },
     useJarvis: () => {

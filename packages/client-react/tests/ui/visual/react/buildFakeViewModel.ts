@@ -447,6 +447,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           chartType: "candles",
           indicators: [],
           panes: [],
+          yScale: "linear",
         },
         select: noop,
         closeTab: noop,
@@ -454,6 +455,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setChartType: noop,
         toggleIndicator: noop,
         togglePane: noop,
+        toggleYScale: noop,
       };
     },
     // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a

@@ -19,7 +19,7 @@ test("renders one row per position with the prototype's signed whole-k label", a
   );
   expect(screen.getByTestId("pair-pnl-row-EURUSD")).toBeTruthy();
   expect(screen.getByTestId("pair-pnl-row-USDJPY")).toBeTruthy();
-  expect(screen.getByText("EURUSD")).toBeTruthy();
+  expect(screen.getByText("EUR/USD")).toBeTruthy();
   expect(screen.getByText("+12k")).toBeTruthy();
 });
 
@@ -73,7 +73,7 @@ test("renders a bar per position, tinted by direction", async () => {
 test("a zero-P&L pair keeps its row, symbol and label", async () => {
   await renderWithTheme(<PairPnlBars positions={[pos("EURGBP", 0)]} />);
   expect(screen.getByTestId("pair-pnl-row-EURGBP")).toBeTruthy();
-  expect(screen.getByText("EURGBP")).toBeTruthy();
+  expect(screen.getByText("EUR/GBP")).toBeTruthy();
   expect(screen.getByText("+0k")).toBeTruthy();
 });
 

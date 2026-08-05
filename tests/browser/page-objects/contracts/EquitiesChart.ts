@@ -51,4 +51,8 @@ export interface EquitiesChartPO {
   ): Promise<void>;
   /** Text of the given pane's live crosshair readout row. */
   paneReadoutText(kind: EquitiesPaneKind): Promise<string>;
+  /** Clicks the LOG price-axis pill (IndicatorPills.tsx). */
+  clickYScalePill(): Promise<void>;
+  /** Waits until the chart wrap's data-yscale equals the given mode. */
+  waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void>;
 }

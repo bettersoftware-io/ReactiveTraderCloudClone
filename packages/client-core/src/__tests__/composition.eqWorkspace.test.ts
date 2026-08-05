@@ -71,6 +71,7 @@ describe("composition — EqWorkspaceMachine wired to an async watchlist port (C
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
 
     source$.next([AAPL]);
@@ -83,6 +84,7 @@ describe("composition — EqWorkspaceMachine wired to an async watchlist port (C
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
 
     eqWorkspace.dispose();

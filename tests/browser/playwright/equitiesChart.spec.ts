@@ -83,4 +83,17 @@ test.describe("Equities chart", () => {
     await equitiesChart.hoverPlotCenter(ctx);
     await equitiesChart.expectRsiReadoutShowsRealValueWithin(ctx, 3);
   });
+
+  test("LOG pill switches the price axis to log scale and back", async ({
+    ctx,
+  }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.clickYScalePill(ctx);
+    await equitiesChart.expectYScaleWithin(ctx, "log", 5);
+
+    await equitiesChart.clickYScalePill(ctx);
+    await equitiesChart.expectYScaleWithin(ctx, "linear", 5);
+  });
 });

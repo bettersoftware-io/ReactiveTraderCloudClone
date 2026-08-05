@@ -54,7 +54,7 @@ test("shows an ambient toggle wired to useAnimatedBackground", async () => {
   expect(setEnabled).toHaveBeenCalledWith(true);
 });
 
-test("shows a power-saver toggle wired to usePowerSaver", async () => {
+test("shows a three-level power-saver control wired to usePowerSaver", async () => {
   const setLevel = jest.fn();
   await renderScreen(
     fakeViewModel(
@@ -71,18 +71,30 @@ test("shows a power-saver toggle wired to usePowerSaver", async () => {
       },
     ),
   );
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-toggle"));
+  // P5: three segments now, not an on/off toggle. Freeze is the one worth
+  // asserting — it is the level the old 2-state control could never reach, so
+  // a regression to a boolean toggle fails here rather than silently shipping
+  // a screen that cannot express the strongest setting.
+  await fireEvent.press(screen.getByTestId("appearance-powersaver-freeze"));
+  expect(setLevel).toHaveBeenCalledWith("freeze");
+
+  await fireEvent.press(screen.getByTestId("appearance-powersaver-calm"));
   expect(setLevel).toHaveBeenCalledWith("calm");
+
+  await fireEvent.press(screen.getByTestId("appearance-powersaver-off"));
+  expect(setLevel).toHaveBeenCalledWith("off");
 });
 
-test("power-saver caption explains its effect", async () => {
+test("the power-saver caption tracks the selected level", async () => {
   await renderScreen(
     fakeViewModel(
       () => {},
       () => {},
     ),
   );
-  expect(screen.getByText(/reduces motion & re-renders/i)).toBeTruthy();
+  // The stub reports level "off", so the caption must be the off one — a
+  // fixed caption would read as a promise the screen is not keeping.
+  expect(screen.getByText(/run normally/i)).toBeTruthy();
 });
 
 test("segmented dark/light control presses light and drives cycle() the right number of steps from the live preference", async () => {

@@ -100,6 +100,7 @@ import type {
   EqChartType,
   EqIndicatorId,
   EqPaneId,
+  EqYScale,
   NotionalIntents,
   NotionalView,
   PanelId,
@@ -933,6 +934,7 @@ export const registry = new Map<AnyToken, ElementFor>([
           kind={(p().kind as EqChartType) ?? "candles"}
           indicators={(p().indicators as readonly EqIndicatorId[]) ?? []}
           panes={(p().panes as readonly EqPaneId[]) ?? []}
+          yScale={p().yScale as EqYScale | undefined}
           defaultVisible={(p().defaultVisible as number) ?? 50}
           loadingOlder={(p().loadingOlder as boolean) ?? false}
           historyExhausted={(p().historyExhausted as boolean) ?? false}

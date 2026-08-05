@@ -1,57 +1,58 @@
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
-import {
-  AccessibilityInfo,
-  Animated,
-  StyleSheet,
-  type ViewStyle,
-} from "react-native";
+import { Animated, StyleSheet, type ViewStyle } from "react-native";
 import Svg, { Circle, Polygon } from "react-native-svg";
 
+import { useBootMotionEnabled } from "#/ui/shell/boot/useBootMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
 
-/** Boot splash emblem: a themed hex badge with a gently pulsing core. Pure
+/**
+ * Boot splash emblem: a themed hex badge with a gently pulsing core. Pure
  * cosmetic — the react-native-svg stand-in for the web boot <canvas>, which is
- * Expo-Go-incompatible. The pulse is disabled under reduce-motion. */
+ * Expo-Go-incompatible.
+ *
+ * T16: the pulse used to gate on `AccessibilityInfo.isReduceMotionEnabled()`
+ * alone — an OS-level signal this app has no authority over. That made the
+ * emblem the ONE surface power-saver Freeze could not stop, against a repo
+ * doctrine that Freeze kills all motion, and it left the `boot/static` golden
+ * sampling a live animation (the capture only looked stable because the
+ * driver's fixed post-mount settle re-samples the same phase). Routing through
+ * `useBootMotionEnabled` fixes both at once: it already encodes
+ * "Freeze always wins" over reduced-motion and the force-boot override, so the
+ * fixture can pin the emblem by seeding `freeze` like any other scenario.
+ */
 export function BootEmblem(): JSX.Element {
   const theme = useTheme();
+  const motionEnabled = useBootMotionEnabled();
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    let cancelled = false;
-    let loop: Animated.CompositeAnimation | undefined;
-    void AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduce) => {
-        if (cancelled || reduce) {
-          return;
-        }
+    if (!motionEnabled) {
+      // Resting, fully opaque — the still frame, not a mid-pulse one.
+      pulse.setValue(1);
+      return;
+    }
 
-        loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulse, {
-              toValue: 0.4,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulse, {
-              toValue: 1,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-          ]),
-        );
-        loop.start();
-      })
-      .catch(() => {
-        // Cosmetic pulse only — if the reduce-motion probe rejects, just skip
-        // the animation (same as reduce=true); never let it go unhandled.
-      });
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 0.4,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
 
     return () => {
-      cancelled = true;
-      loop?.stop();
+      loop.stop();
     };
-  }, [pulse]);
+  }, [motionEnabled, pulse]);
 
   return (
     <Animated.View

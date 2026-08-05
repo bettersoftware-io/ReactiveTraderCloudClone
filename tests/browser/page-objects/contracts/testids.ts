@@ -122,6 +122,9 @@ export const TESTIDS = {
        * (see `PlaywrightEquitiesChart.panePill`, which composes the two via
        * `Locator.and`). */
       panePill: "chart-pane-pill",
+      /** The LOG price-axis pill (IndicatorPills.tsx) — toggles the chart
+       * wrap's `data-yscale` between `"linear"` and `"log"`. */
+      yScalePill: "chart-yscale-pill",
       /** An active RSI/MACD indicator pane's root (IndicatorPane.tsx). */
       pane: (kind: "rsi" | "macd") => {
         return `chart-pane-${kind}`;

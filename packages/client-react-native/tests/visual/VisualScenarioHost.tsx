@@ -209,6 +209,21 @@ interface SurfaceProps {
  */
 const BLOTTER_SEED_BASE_MS = Date.UTC(2026, 6, 27, 12, 0, 0);
 
+/**
+ * Freezes FX pricing for every scenario, so a grid of prices can be captured at
+ * all. Without it each cell moves twice over — a `Math.random()` seed walk and
+ * a live tick loop — and no Rates golden could reproduce itself (T6).
+ *
+ * Applied HOST-WIDE rather than per-scenario, because a live price stream is
+ * never something a pixel golden wants: scenarios that render no prices are
+ * unaffected, and one that starts rendering them later inherits the pin instead
+ * of silently becoming unreproducible — the lesson `boot/topo` taught when it
+ * began printing a wall clock (T10).
+ *
+ * Same instant as the blotter pin, for one readable clock across the tier.
+ */
+const PRICING_PIN_MS: number = BLOTTER_SEED_BASE_MS;
+
 function buildScenarioViewModel(
   skin: ThemeSkin,
   mode: ThemeMode,
@@ -240,6 +255,7 @@ function buildScenarioViewModel(
       auth,
       sessionStore,
       blotterSeedBaseMs: BLOTTER_SEED_BASE_MS,
+      pricingPinMs: PRICING_PIN_MS,
     }),
     connectionEvents,
   });

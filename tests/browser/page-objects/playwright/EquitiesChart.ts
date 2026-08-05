@@ -39,6 +39,17 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     return this.pane(kind).getByTestId(TESTIDS.equities.chart.paneReadout);
   }
 
+  private yScalePill(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.yScalePill);
+  }
+
+  // The chart wrap (ChartPlot.tsx) carries data-yscale but no testid of its
+  // own — the same `.locator("[data-...]")` pattern `panePill` uses for its
+  // sibling `data-pane` attribute.
+  private chartWrap(): Locator {
+    return this.page.locator("[data-yscale]");
+  }
+
   async waitPlotVisible(timeoutMs: number): Promise<void> {
     await expect(this.plot()).toBeVisible({ timeout: timeoutMs });
   }
@@ -161,5 +172,15 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   async paneReadoutText(kind: EquitiesPaneKind): Promise<string> {
     const text = await this.paneReadout(kind).textContent();
     return text ?? "";
+  }
+
+  async clickYScalePill(): Promise<void> {
+    await this.yScalePill().click();
+  }
+
+  async waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void> {
+    await expect(this.chartWrap()).toHaveAttribute("data-yscale", mode, {
+      timeout: timeoutMs,
+    });
   }
 }

@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   type ChartCandle,
+  type ChartScale,
   type ChartScene,
   type CrosshairScene,
   chartScene,
   crosshairScene,
   type NavigatorWindowScene,
   navigatorWindowScene,
+  priceToY,
   type SceneCandle,
   type VolumeSceneBar,
   volumeScene,
+  yToPrice,
 } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 import {
@@ -20,6 +23,7 @@ import {
   type PaneScene,
   paneScene,
 } from "./paneScene.js";
+import { priceTicks } from "./priceTicks.js";
 
 const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
   const dir = i % 2 === 0 ? 1 : -1;
@@ -129,6 +133,146 @@ describe("navigatorWindowScene", () => {
       left: 0,
       w: 100,
     });
+  });
+});
+
+describe("priceToY / yToPrice — the pluggable scale seam", () => {
+  const LINEAR: ChartScale = { cmin: 100, cmax: 200 };
+  const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
+
+  it("linear branch reproduces the historical mapping verbatim", () => {
+    // ((cmax − p) / crng) · Y_SPAN + Y_TOP with p=150, crng=100:
+    expect(priceToY(LINEAR, 150)).toBeCloseTo(0.5 * 86 + 6, 10);
+    expect(priceToY(LINEAR, 200)).toBeCloseTo(6, 10);
+    expect(priceToY(LINEAR, 100)).toBeCloseTo(92, 10);
+  });
+
+  it("log branch interpolates in log10 space", () => {
+    // sqrt(100·200) ≈ 141.42 is the log-midpoint → lands at the band middle.
+    expect(priceToY(LOG, Math.sqrt(100 * 200))).toBeCloseTo(49, 6);
+    expect(priceToY(LOG, 200)).toBeCloseTo(6, 10);
+    expect(priceToY(LOG, 100)).toBeCloseTo(92, 10);
+    // 150 sits ABOVE the linear midpoint under log (log compresses the top).
+    expect(priceToY(LOG, 150)).toBeLessThan(priceToY(LINEAR, 150));
+  });
+
+  it("round-trips in both modes", () => {
+    for (const scale of [LINEAR, LOG]) {
+      for (const p of [100, 123.45, 150, 199.99, 200]) {
+        expect(yToPrice(scale, priceToY(scale, p))).toBeCloseTo(p, 9);
+      }
+    }
+  });
+
+  it("cmin ≤ 0 falls back to the linear branch in both helpers", () => {
+    const bad: ChartScale = { cmin: 0, cmax: 100, yScale: "log" };
+    expect(priceToY(bad, 50)).toBeCloseTo(0.5 * 86 + 6, 10);
+    expect(yToPrice(bad, 49)).toBeCloseTo(50, 9);
+  });
+});
+
+describe("chartScene in log mode", () => {
+  // 3 candles spanning a wide ratio so log vs linear geometry is unambiguous.
+  const SERIES: ChartCandle[] = [
+    { time: 0, open: 100, high: 110, low: 100, close: 110, volume: 1 },
+    { time: 60_000, open: 110, high: 400, low: 110, close: 400, volume: 1 },
+    { time: 120_000, open: 400, high: 1000, low: 400, close: 1000, volume: 1 },
+  ];
+
+  it("stamps yScale onto scene.scale and moves candle geometry", () => {
+    const linear = chartScene(SERIES, 1000, false);
+    const log = chartScene(SERIES, 1000, false, { yScale: "log" });
+
+    expect(linear.scale).toEqual({ cmin: 100, cmax: 1000 });
+    expect(log.scale).toEqual({ cmin: 100, cmax: 1000, yScale: "log" });
+    // Candle 1's body top is y(close=400) — candle 2's would be y(1000),
+    // which pins to Y_TOP in BOTH modes and proves nothing. Price 400's y:
+    // linear ((1000−400)/900)·86+6 ≈ 63.33; log ((3−2.602)/1)·86+6 ≈ 40.22.
+    const linTop = linear.candles[1]?.top ?? Number.NaN;
+    const logTop = log.candles[1]?.top ?? Number.NaN;
+    expect(logTop).toBeLessThan(linTop);
+  });
+
+  it("grid and labels derive from the same ticks; log moves positions, not values", () => {
+    const linear = chartScene(SERIES, 1000, false);
+    const log = chartScene(SERIES, 1000, false, { yScale: "log" });
+
+    // Same round tick values in both modes, highest first…
+    const values = [...priceTicks(100, 1000)].reverse().map((t) => {
+      return t.toFixed(2);
+    });
+    expect(
+      linear.priceLabels.map((l) => {
+        return l.txt;
+      }),
+    ).toEqual(values);
+    expect(
+      log.priceLabels.map((l) => {
+        return l.txt;
+      }),
+    ).toEqual(values);
+
+    // …every label sits ON its grid line…
+    for (const scene of [linear, log]) {
+      expect(
+        scene.priceLabels.map((l) => {
+          return l.top;
+        }),
+      ).toEqual(
+        scene.grid.map((g) => {
+          return g.top;
+        }),
+      );
+    }
+
+    // …and log re-positions through priceToY (interior ticks differ).
+    const logScale = { cmin: 100, cmax: 1000, yScale: "log" as const };
+    expect(
+      log.grid.map((g) => {
+        return g.top;
+      }),
+    ).toEqual(
+      [...priceTicks(100, 1000)].reverse().map((t) => {
+        return priceToY(logScale, t);
+      }),
+    );
+    expect(
+      log.grid.map((g) => {
+        return g.top;
+      }),
+    ).not.toEqual(
+      linear.grid.map((g) => {
+        return g.top;
+      }),
+    );
+  });
+});
+
+describe("crosshairScene in log mode", () => {
+  it("inverts through yToPrice, not the linear formula", () => {
+    const series: ChartCandle[] = Array.from({ length: 10 }, (_, i) => {
+      return {
+        time: i * 60_000,
+        open: 100,
+        high: 1000,
+        low: 100,
+        close: 100,
+        volume: 1,
+      };
+    });
+    const scale: ChartScale = { cmin: 100, cmax: 1000, yScale: "log" };
+    const cross = crosshairScene(
+      0.5,
+      0.5,
+      series,
+      { start: 0, end: 10 },
+      scale,
+    );
+
+    // y = 50 → expected price = yToPrice(scale, 50). The linear inversion
+    // would give 1000 − ((50−6)/86)·900 = 539.53 — assert we did NOT get it.
+    expect(cross?.price).toBe(yToPrice(scale, 50).toFixed(2));
+    expect(cross?.price).not.toBe("539.53");
   });
 });
 

@@ -1,6 +1,11 @@
 import { createEffect, createMemo, type JSX } from "solid-js";
 
-import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
+import type {
+  EqChartType,
+  EqIndicatorId,
+  EqPaneId,
+  EqYScale,
+} from "@rtc/client-core";
 import type { Candle } from "@rtc/domain";
 import {
   type ChartViewport,
@@ -67,6 +72,7 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     return chartVm(props.candles, props.liveRate, props.flashOn, {
       viewport: g.viewport(),
       kind: props.kind,
+      yScale: props.yScale ?? "linear",
     });
   });
 
@@ -166,6 +172,9 @@ export interface CandleChartProps {
   indicators: readonly EqIndicatorId[];
   /** The active RSI/MACD panes, in render order (empty renders none). */
   panes: readonly EqPaneId[];
+  /** Price-axis mapping; optional so existing spec mounts keep compiling —
+   * absent means "linear" (the bare default stays bare). */
+  yScale?: EqYScale;
   /** The timeframe's default visible-candle count (`CANDLE_DEFAULT_VISIBLE`)
    * — seeds `createChartGestures`'s initial/reset viewport. ChartPanel
    * already computes this from the selected timeframe. */

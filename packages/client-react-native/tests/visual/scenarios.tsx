@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { RatesModule } from "#/ui/rates/RatesModule";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
@@ -115,12 +116,21 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   the only thing `BootSequence` paints once `BootCanvas` is gated off (no
  *   wordmark/progress chrome here — that lives inside the real
  *   `BootSequenceMachine`, whose live progress ramp is exactly the
- *   non-determinism this fixture exists to avoid). Note: `BootEmblem`'s own
- *   pulse loop is gated by `AccessibilityInfo.isReduceMotionEnabled()` (an
- *   OS-level signal, not this app's preferences), so it is NOT frozen by
- *   anything this harness controls — Task 11's on-device capture should
- *   confirm whether that introduces the same class of variance that got
- *   `credit/rfq-tiles-empty` dropped, before this golden is trusted blind.
+ *   non-determinism this fixture exists to avoid). **Pinned with
+ *   `powerSaverLevel="freeze"`, and that is load-bearing (T16/T33).**
+ *   `BootEmblem` runs a 900 ms opacity pulse; it used to gate only on
+ *   `AccessibilityInfo.isReduceMotionEnabled()`, an OS-level signal the
+ *   harness has no authority over, so this was the one scenario capturing a
+ *   *live animation*. Measured 2026-08-04: six raw screenshots back-to-back
+ *   off one mount climbed 24 → 61 → 93 → 118 → 133 in max channel delta.
+ *   Crucially the captures still reproduced, because the driver's fixed
+ *   `postReadySettleMs` re-samples the same phase — so the golden looked
+ *   stable while being a phase sample, and reading that stability as "the
+ *   scene is static, therefore a mismatch means the golden is stale" cost a
+ *   real investigation (T33 in `docs/rn-open-items.md`). The emblem now routes
+ *   through `useBootMotionEnabled`, which encodes "Freeze always wins", so
+ *   seeding `freeze` here pins it to its resting frame like any other
+ *   scenario.
  * - `lock/hold` — `HoldToUnlockRing` alone at a fixed mid-fill `progress`
  *   (`fixtures.tsx`'s `LOCK_HOLD_PROGRESS`), with a freshly-built,
  *   never-triggered `LongPressGesture` satisfying its `gesture` prop.
@@ -263,12 +273,32 @@ export const SCENARIOS: readonly Scenario[] = [
     },
   },
   {
+    // T6: the Rates grid — the app's busiest screen, and until the pricing pin
+    // existed it had no scenario at all, because every cell moved twice over
+    // (a `Math.random()` seed walk plus a live tick loop). `VisualScenarioHost`
+    // now pins pricing host-wide, so the grid renders at its reference prices,
+    // at rest. `freeze` additionally stills the tick-flash pips, which are
+    // driven by a nonce rather than by the price stream and so survive a pin.
+    id: "rates/grid",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ScreenContentFixture>
+            <RatesModule />
+          </ScreenContentFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
     id: "boot/static",
     skin: "holo",
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo" mode="dark">
+        <VisualScenarioHost skin="holo" mode="dark" powerSaverLevel="freeze">
           <BootEmblem />
         </VisualScenarioHost>
       );

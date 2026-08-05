@@ -14,6 +14,7 @@ describe("EqWorkspaceMachine", () => {
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
     m.dispose();
   });
@@ -87,6 +88,7 @@ describe("EqWorkspaceMachine", () => {
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
     m.dispose();
   });
@@ -123,6 +125,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
     m.dispose();
   });
@@ -142,6 +145,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
 
     seed$.next("AAPL");
@@ -153,6 +157,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       chartType: "candles",
       indicators: [],
       panes: [],
+      yScale: "linear",
     });
     m.dispose();
   });
@@ -313,6 +318,23 @@ describe("EqWorkspaceMachine — indicator panes (RSI/MACD)", () => {
     const state = await firstValueFrom(m.state$);
     expect(state.indicators).toEqual(["sma20"]);
     expect(state.panes).toEqual(["rsi"]);
+    m.dispose();
+  });
+});
+
+describe("EqWorkspaceMachine — price axis scale (linear/log)", () => {
+  it("toggleYScale flips linear ↔ log, starting linear", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    let state = await firstValueFrom(m.state$);
+    expect(state.yScale).toBe("linear");
+
+    m.intents.toggleYScale();
+    state = await firstValueFrom(m.state$);
+    expect(state.yScale).toBe("log");
+
+    m.intents.toggleYScale();
+    state = await firstValueFrom(m.state$);
+    expect(state.yScale).toBe("linear");
     m.dispose();
   });
 });

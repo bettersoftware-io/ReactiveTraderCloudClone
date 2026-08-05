@@ -43,7 +43,11 @@ import styles from "./CandleChart.module.css";
  */
 export function ChartPlot(props: ChartPlotProps): JSX.Element {
   return (
-    <div class={styles.wrap} data-panes={(props.panes ?? []).length}>
+    <div
+      class={styles.wrap}
+      data-panes={(props.panes ?? []).length}
+      data-yscale={props.vm.scale.yScale ?? "linear"}
+    >
       <div
         class={styles.plot}
         data-testid="chart-plot"

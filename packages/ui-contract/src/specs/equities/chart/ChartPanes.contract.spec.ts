@@ -157,6 +157,7 @@ describe("Indicator panes — chart-column rendering (CandleChart mounted direct
     expect(chart.paneVisible("rsi")).toBe(false);
 
     chart.setProps({ panes: ["rsi"] });
+    expect(chart.panesAttr()).toBe(1);
     expect(chart.paneVisible("rsi")).toBe(true);
     // …and toggling a pane leaves the overlay untouched.
     expect(chart.indicatorPathIds()).toEqual(["sma20"]);

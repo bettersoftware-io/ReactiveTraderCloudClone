@@ -473,6 +473,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
             chartType: "candles" as const,
             indicators: [],
             panes: [],
+            yScale: "linear" as const,
           },
         ),
         select: noop,
@@ -481,6 +482,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setChartType: noop,
         toggleIndicator: noop,
         togglePane: noop,
+        toggleYScale: noop,
       };
     },
     // Jarvis: stub returning a noop implementation (no visual tests yet).

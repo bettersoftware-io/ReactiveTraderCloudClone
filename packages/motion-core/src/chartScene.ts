@@ -1,4 +1,5 @@
 import type { ChartViewport } from "./chartViewport.js";
+import { priceTicks } from "./priceTicks.js";
 
 /**
  * Structural stand-in for a framework style object carrying only CSS custom
@@ -34,10 +35,13 @@ export interface ChartPoint {
   readonly y: number;
 }
 
-/** The visible-slice price range (post live-overlay) a ChartVm was fit to. */
+/** The visible-slice price range (post live-overlay) a ChartVm was fit to.
+ * `yScale` is the y-mapping mode; absent = linear (room for "percent" when
+ * comparison series lands). */
 export interface ChartScale {
   readonly cmin: number;
   readonly cmax: number;
+  readonly yScale?: "log";
 }
 
 export interface ChartVmOptions {
@@ -45,6 +49,8 @@ export interface ChartVmOptions {
   readonly viewport?: ChartViewport;
   /** Plot style; default "candles". */
   readonly kind?: ChartKind;
+  /** Price-axis mapping; default "linear". */
+  readonly yScale?: "linear" | "log";
 }
 
 /** Shared Y-mapping constants: price maps into [Y_TOP%, (Y_TOP+Y_SPAN)%] of
@@ -52,10 +58,38 @@ export interface ChartVmOptions {
  * B3), which must land the crosshair on the same price-to-pixel mapping. */
 export const Y_TOP = 6;
 export const Y_SPAN = 86;
+
+/** price → % of the plot box, into [Y_TOP, Y_TOP + Y_SPAN], inverted (high
+ * at the top). The ONLY price→y mapping in the codebase: candle geometry,
+ * crosshair inversion, and indicator overlays all route through it, so a
+ * scale-mode change cannot desynchronize them. Log mode interpolates in
+ * log10 space; a non-positive cmin falls back to the linear branch (keeps
+ * the math total — equities prices cannot reach it). */
+export function priceToY(scale: ChartScale, price: number): number {
+  if (scale.yScale === "log" && scale.cmin > 0) {
+    const lmax = Math.log10(scale.cmax);
+    const lrng = lmax - Math.log10(scale.cmin) || 1;
+    return ((lmax - Math.log10(price)) / lrng) * Y_SPAN + Y_TOP;
+  }
+
+  const crng = scale.cmax - scale.cmin || 1;
+  return ((scale.cmax - price) / crng) * Y_SPAN + Y_TOP;
+}
+
+/** Exact inverse of {@link priceToY} — same branch rules. */
+export function yToPrice(scale: ChartScale, y: number): number {
+  if (scale.yScale === "log" && scale.cmin > 0) {
+    const lmax = Math.log10(scale.cmax);
+    const lrng = lmax - Math.log10(scale.cmin) || 1;
+    return 10 ** (lmax - ((y - Y_TOP) / Y_SPAN) * lrng);
+  }
+
+  const crng = scale.cmax - scale.cmin || 1;
+  return scale.cmax - ((y - Y_TOP) / Y_SPAN) * crng;
+}
+
 const BODY_FRAC = 0.64;
 const MIN_BODY = 0.6;
-const GRID_FRACTIONS = [0.2, 0.4, 0.6, 0.8];
-const LABEL_FRACTIONS = [0.12, 0.37, 0.62, 0.87];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LABEL_TARGET_DIVISOR = 5;
 const STEP_CANDIDATES: readonly number[] = [1, 2, 5, 10, 15, 30, 60, 120];
@@ -315,11 +349,13 @@ export function chartScene(
       return c.high;
     }),
   );
-  const crng = cmax - cmin || 1;
   const cw = 100 / win.span;
 
+  const scale: ChartScale =
+    opts?.yScale === "log" ? { cmin, cmax, yScale: "log" } : { cmin, cmax };
+
   function yPct(p: number): number {
-    return ((cmax - p) / crng) * Y_SPAN + Y_TOP;
+    return priceToY(scale, p);
   }
 
   const candles: SceneCandle[] =
@@ -338,17 +374,18 @@ export function chartScene(
           return { x: xPct(i, win.vp, win.span), y: yPct(cd.close) };
         });
 
-  const grid: SceneGridLine[] = GRID_FRACTIONS.map((f, i) => {
-    return { key: i, top: f * 100 };
+  // Grid and labels are the same tick list viewed twice: one line and one
+  // label per nice tick, both at priceToY(scale, tick), highest price first
+  // (the old top-down reading order). The label projection's −6px calc
+  // (chartCssVars) centers each 12px label on its line.
+  const ticks = [...priceTicks(cmin, cmax)].reverse();
+
+  const grid: SceneGridLine[] = ticks.map((t, i) => {
+    return { key: i, top: yPct(t) };
   });
 
-  const priceLabels: SceneLabel[] = LABEL_FRACTIONS.map((f, i) => {
-    return {
-      key: i,
-      txt: (cmax - f * crng).toFixed(2),
-      top: f * 100,
-      x: 0,
-    };
+  const priceLabels: SceneLabel[] = ticks.map((t, i) => {
+    return { key: i, txt: t.toFixed(2), top: yPct(t), x: 0 };
   });
 
   const timeLabels = buildTimeLabels(series, win);
@@ -360,7 +397,7 @@ export function chartScene(
     priceLabels,
     timeLabels,
     linePoints,
-    scale: { cmin, cmax },
+    scale,
   };
 }
 
@@ -445,8 +482,7 @@ export function crosshairScene(
 
   const x = ((idx + 0.5 - viewport.start) / span) * 100;
   const y = yFrac * 100;
-  const crng = scale.cmax - scale.cmin || 1;
-  const price = scale.cmax - ((y - Y_TOP) / Y_SPAN) * crng;
+  const price = yToPrice(scale, y);
   const bucketMs = series.length >= 2 ? bucketMsOf(series) : 0;
 
   return {

@@ -26,8 +26,31 @@ jest.mock("react-native-reanimated", () => {
     ) => {
       return { setActive: () => {}, isActive: autostart, callbackId: -1 };
     },
+    // T31: the official mock builds a NEW `{value}` object on every render,
+    // where the real hook is `useRef`-backed and stable for a component's
+    // lifetime. That difference is not cosmetic — it silently inverts what a
+    // test proves. Code memoising on a shared value looks broken under jest
+    // while being correct on device, and a harness can propagate a changing
+    // prop purely because the mock rebuilt the object, which is how
+    // `LaserSceneHarness` came to assert a timeline it would not really have
+    // driven (T29's defect, reproduced inside the instrument for it).
+    //
+    // `require` rather than a module-scope import because jest hoists this
+    // factory above the imports; the cast is what lets the generic through.
+    useSharedValue: <T>(initial: T): MockSharedValue<T> => {
+      const react = require("react") as typeof import("react");
+      const ref = react.useRef<MockSharedValue<T> | null>(null);
+      ref.current ??= { value: initial };
+      return ref.current;
+    },
   };
 });
+
+/** The `{ value }` box `useSharedValue` hands back — one per component
+ * lifetime, as the real hook does. */
+interface MockSharedValue<T> {
+  value: T;
+}
 
 interface HostElementProps {
   children?: unknown;

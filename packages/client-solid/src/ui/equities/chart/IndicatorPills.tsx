@@ -1,15 +1,15 @@
 import { For, type JSX } from "solid-js";
 
-import type { EqIndicatorId, EqPaneId } from "@rtc/client-core";
+import type { EqIndicatorId, EqPaneId, EqYScale } from "@rtc/client-core";
 
 import styles from "./TimeframePills.module.css";
 
-/** The SMA20/EMA50 overlay toggles, plus the RSI/MACD indicator-pane
- * toggles — a `TimeframePills` clone (reuses its module-css shape
- * verbatim), but every pill's active state is independent (a toggle, not a
- * mutually-exclusive selection). The two groups are separate toggle sets
- * (an overlay and a pane can both be active for the same indicator name)
- * sharing one pill row, split by a `.divider`. */
+/** The SMA20/EMA50 overlay toggles, the RSI/MACD indicator-pane toggles,
+ * and the LOG axis-scale toggle — a `TimeframePills` clone (reuses its
+ * module-css shape verbatim), but every pill's active state is independent
+ * (a toggle, not a mutually-exclusive selection). Three toggle groups
+ * (overlays / panes / axis scale) share one pill row, each split from the
+ * next by a `.divider`. */
 export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
   return (
     <div class={styles.pills}>
@@ -50,6 +50,18 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
           );
         }}
       </For>
+      <span class={styles.divider} />
+      <button
+        type="button"
+        class={styles.pill}
+        data-testid="chart-yscale-pill"
+        data-active={String(props.yScale === "log")}
+        onClick={() => {
+          props.onToggleYScale();
+        }}
+      >
+        LOG
+      </button>
     </div>
   );
 }
@@ -79,4 +91,6 @@ export interface IndicatorPillsProps {
   onToggle: (id: EqIndicatorId) => void;
   activePanes: readonly EqPaneId[];
   onTogglePane: (id: EqPaneId) => void;
+  yScale: EqYScale;
+  onToggleYScale: () => void;
 }

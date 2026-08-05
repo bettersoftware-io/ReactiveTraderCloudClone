@@ -432,6 +432,13 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartCanvasSpike",
     fixtureKey: "equities-loaded",
   },
+  // Log price axis (spec 2026-08-04): the real CandleChart mounted with
+  // yScale="log" — a real prop like kind/indicators, so no ChartPlot bypass
+  // is needed; default (untouched) gesture state keeps it deterministic.
+  "equities/chart-log-scale": {
+    componentKey: "EquitiesChartLogScale",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 

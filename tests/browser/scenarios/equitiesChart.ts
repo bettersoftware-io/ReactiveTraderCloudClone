@@ -245,3 +245,15 @@ export async function expectRsiReadoutShowsRealValueWithin(
     `expected the RSI pane readout to show a real number, got ${JSON.stringify(text)}`,
   );
 }
+
+export async function clickYScalePill(ctx: TestContext): Promise<void> {
+  await ctx.po.equitiesChart.clickYScalePill();
+}
+
+export async function expectYScaleWithin(
+  ctx: TestContext,
+  mode: "linear" | "log",
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitYScale(mode, seconds * 1_000);
+}
