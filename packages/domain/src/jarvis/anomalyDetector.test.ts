@@ -96,17 +96,62 @@ function jitteredBaselineSpreadTick(
     : mkTick(symbol, JITTER_HIGH_BID, JITTER_HIGH_ASK, i, FIXED_MID);
 }
 
-// --- ULP-noise fixture (FIX 1) — a "constant" spread that differs tick to
-// tick only at float-rounding scale, reproducing what the reviewer found in
-// the sim's real EURUSD mids (~1.1e-16 apart). ---
+// --- ULP-noise fixtures (FIX 1 witnesses) — round 1's regression test built
+// a 30-tick RAMP of independently-jittered bid/ask (a distinct multiplier
+// per tick), but that ramp's own population σ (2.7e-15..4.1e-15) already
+// sits ABOVE the round-1 guard's threshold, so the guard never actually
+// fired and the test passed even with the guard reverted — proven in the
+// round-2 fix report. The two fixtures below are real witnesses instead:
+// a hand-computable exact shape (spread channel) and a fixture whose
+// no-guard behaviour was independently verified to fire (vol channel), each
+// checked to actually go RED when the new guard is reverted.
 function ulpJitter(base: number, n: number): number {
   return base + n * Number.EPSILON * Math.abs(base);
 }
 
-function ulpNoisyBaselineTick(symbol: string, n: number, i: number): PriceTick {
-  const bid = ulpJitter(FLAT_BID, n);
-  const ask = ulpJitter(FLAT_ASK, n * 3); // independent multiplier: bid/ask jitter independently
-  return mkTick(symbol, bid, ask, i, FIXED_MID);
+// Spread channel: 29 bit-identical spreads + one tick nudged by exactly one
+// ULP on `ask`. Population σ of that 30-value window ≈ 3.99e-17 (measured) —
+// nonzero, so a bare `std === 0` guard does NOT catch it, unlike the
+// literally-repeated FLAT_SPREAD windows above (whose σ reduces to exactly
+// 0.0 in this file's meanAndStd, verified separately). A FRESH tick that
+// recurs the identical one-ULP-off value (the 31st, not a self-comparison)
+// evaluated against that window scores z ≈ 5.385 under "no guard at all" —
+// comfortably over the default spreadSigma=3 — hand-computed and
+// cross-checked against a standalone port of `meanAndStd`/the exclude-
+// current evaluation order (see the fix report for the script + output).
+const ONE_ULP_OFF_ASK: number = ulpJitter(FLAT_ASK, 1);
+
+function oneUlpOffSpreadTick(symbol: string, i: number): PriceTick {
+  return mkTick(symbol, FLAT_BID, ONE_ULP_OFF_ASK, i, FIXED_MID);
+}
+
+// Vol channel: an otherwise perfectly flat mid (returns exactly 0 every
+// tick, so the trailing window's mean is genuinely ~0 by construction — the
+// exact condition that made the round-1 mean-relative guard inert) with a
+// single momentary few-ULP nudge, then straight back to flat. Spread is
+// held fixed throughout so this fixture only exercises the vol channel.
+const WOBBLE_MID = 1.1;
+const WOBBLE_HALF_SPREAD = 0.0001;
+
+function flatVolTick(symbol: string, i: number): PriceTick {
+  return mkTick(
+    symbol,
+    WOBBLE_MID - WOBBLE_HALF_SPREAD,
+    WOBBLE_MID + WOBBLE_HALF_SPREAD,
+    i,
+    WOBBLE_MID,
+  );
+}
+
+function ulpWobbleMidTick(symbol: string, ulps: number, i: number): PriceTick {
+  const mid = ulpJitter(WOBBLE_MID, ulps);
+  return mkTick(
+    symbol,
+    mid - WOBBLE_HALF_SPREAD,
+    mid + WOBBLE_HALF_SPREAD,
+    i,
+    mid,
+  );
 }
 
 // --- Vol fixtures — alternating mid gives a well-defined nonzero baseline
@@ -174,22 +219,51 @@ describe("detectAnomalies — constant series (σ=0 guard)", () => {
   });
 });
 
-describe("detectAnomalies — ULP-noise guard (FIX 1)", () => {
-  it("stays silent when a logically-constant spread differs only by float rounding (~1 ULP)", async () => {
-    // Each tick's bid/ask is nudged from the flat baseline by a distinct,
-    // tiny (~1e-16-scale) amount — exactly the kind of noise real float
-    // arithmetic produces from a series that is, for every practical
-    // purpose, flat. Exact-equality (`std === 0`) would NOT guard this:
-    // std here is on the order of 1e-17, which against a mean of ~0.0002
-    // would read as a many-sigma phantom event without the relative-
-    // magnitude guard.
-    const ticks = Array.from({ length: 30 }, (_, n) =>
-      ulpNoisyBaselineTick("EURUSD", n, n),
-    );
+describe("detectAnomalies — spread-channel ULP-noise guard (FIX 1 witness)", () => {
+  it("stays silent when a single tick's spread differs from an otherwise bit-identical trailing window by exactly one ULP", async () => {
+    // Trailing window at evaluation time: ticks 1-29 (bit-identical FLAT
+    // spread) + tick 30 (nudged by exactly one ULP) = 30 entries, σ ≈
+    // 3.99e-17. Tick 31 recurs that same one-ULP-off spread value and gets
+    // evaluated against it. See the fixture comment above for the z ≈ 5.385
+    // this scores with no guard at all.
+    const ticks: PriceTick[] = [];
+    let i = 0;
+    for (let n = 0; n < 29; n++) {
+      ticks.push(flatBaselineSpreadTick("EURUSD", i++));
+    }
+    ticks.push(oneUlpOffSpreadTick("EURUSD", i++)); // tick 30: the odd one out
+    ticks.push(oneUlpOffSpreadTick("EURUSD", i++)); // tick 31: evaluated against it
 
-    const events = await collect(ticks, { windowSize: 50, minWindowFill: 20 });
+    const events = await collect(ticks, { windowSize: 40, minWindowFill: 31 });
+    const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
 
-    expect(events).toEqual([]);
+    expect(spreadEvents).toEqual([]);
+  });
+});
+
+describe("detectAnomalies — vol-channel ULP-noise guard (FIX 1 witness)", () => {
+  it("stays silent across a flat mid with a single momentary few-ULP wobble", async () => {
+    // 45 flat ticks, one tick nudged 3 ULPs off the flat mid, then 14 more
+    // flat ticks. Every trailing window here has a returns-channel mean
+    // indistinguishable from 0 (this is exactly the shape that made the
+    // round-1 mean-relative guard inert on this channel). Independently
+    // verified (see the fix report): with no guard at all, this exact
+    // sequence produces one volSpike at sigma ≈ 6.78 — comfortably over the
+    // default volSigma=3.
+    const ticks: PriceTick[] = [];
+    let i = 0;
+    for (let n = 0; n < 45; n++) {
+      ticks.push(flatVolTick("EURUSD", i++));
+    }
+    ticks.push(ulpWobbleMidTick("EURUSD", 3, i++));
+    for (let n = 0; n < 14; n++) {
+      ticks.push(flatVolTick("EURUSD", i++));
+    }
+
+    const events = await collect(ticks, { windowSize: 60, minWindowFill: 20 });
+    const volEvents = events.filter((e) => e.kind === "volSpike");
+
+    expect(volEvents).toEqual([]);
   });
 });
 
@@ -208,8 +282,11 @@ describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () =>
     let i = 0;
     let parity = 0;
     // 36 jittered baseline ticks reach minWindowFill; the window is still
-    // all-baseline (σ≈0.00002, real, not float noise) so the 36th tick's
-    // own z stays near 0 — no emission yet.
+    // all-baseline (σ≈0.00002, real, not float noise). The 36th tick's own
+    // z against its 35-tick trailing window is ≈1.03 (measured — not "near
+    // 0": the alternating LOW/HIGH parity means whichever value lands last
+    // sits on one side of the trailing mean by roughly one baseline σ), well
+    // under spreadSigma=3 either way — no emission yet.
     for (let n = 0; n < 36; n++) {
       ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++));
     }

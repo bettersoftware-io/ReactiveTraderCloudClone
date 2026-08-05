@@ -73,17 +73,42 @@ function meanAndStd(values: readonly number[]): { mean: number; std: number } {
 }
 
 /**
- * A window is treated as "zero variance" once σ falls at or below this
- * fraction of |mean| — not literal `σ === 0`. A logically-constant series
- * (e.g. the sim's per-tick spread) is only constant up to float rounding:
- * consecutive `ask - bid` values can differ by ~1 ULP (~1e-16 relative),
- * which produces a minuscule but nonzero σ. Exact-equality would treat that
- * ULP noise as real variance and report a many-σ phantom event off a series
- * that is, for every practical purpose, flat. 1e-12 sits far enough above
- * float noise (~1e-16) to absorb it, while staying many orders below any
- * variance a real market regime would produce.
+ * A window is treated as "zero variance" once σ falls at or below this many
+ * multiples of `Number.EPSILON * refMagnitude` — not literal `σ === 0`, and
+ * NOT scaled by the window's own mean (an earlier version compared σ to
+ * `|mean| * 1e-12`, which is inert on the returns/vol channel: a returns
+ * window's mean is ~0 by construction — it oscillates around zero — so that
+ * threshold collapsed to ~1e-29 while the channel's real ULP-noise σ sits
+ * around 1e-15..1e-16, letting float noise through as phantom multi-σ
+ * `volSpike` events). `refMagnitude` instead reflects the magnitude of the
+ * OPERANDS a channel's values are computed from — float granularity is
+ * inherited from the operands, not from the derived value's own size, and
+ * it stays well above zero on both channels even when the derived value's
+ * mean does not.
+ *
+ * Measured (30-tick fixtures at the FX-typical ~1.1 mid used throughout
+ * this file's tests):
+ * - A window of independently-computed, per-tick ULP jitter (a ramp of
+ *   distinct ~1-90 ULP offsets) has population σ up to ~4.2e-15.
+ * - A single 1-ULP outlier against an otherwise bit-identical baseline has
+ *   population σ ≈ 4.0e-17.
+ * - A legitimate market regime's variance is ≥1e-6.
+ *
+ * `EPSILON_K = 4096` against `Number.EPSILON` (~2.22e-16) and a ~1.0-1.1
+ * magnitude operand gives an absolute floor of ~9.1e-13..1.0e-12 — roughly
+ * 220-250x above the measured noise ceiling (~4.2e-15) and roughly a
+ * millionfold below the smallest legitimate regime signal (~1e-6). This
+ * margin is real, not "1e-12 is obviously far enough": both bounds were
+ * measured, not assumed (see the fix report for the fixtures and figures).
  */
-const ZERO_VARIANCE_RELATIVE_EPSILON = 1e-12;
+const ZERO_VARIANCE_EPSILON_K = 4096;
+
+/** `true` once σ is at or below the ULP-noise floor for operands of `refMagnitude` — see `ZERO_VARIANCE_EPSILON_K`. */
+function isZeroVariance(std: number, refMagnitude: number): boolean {
+  return (
+    std <= ZERO_VARIANCE_EPSILON_K * Number.EPSILON * Math.abs(refMagnitude)
+  );
+}
 
 /**
  * Evaluate `value` against a channel's trailing rolling window for an
@@ -92,8 +117,8 @@ const ZERO_VARIANCE_RELATIVE_EPSILON = 1e-12;
  * history ONLY — `value` itself must not already be part of it (callers
  * evaluate before pushing) — so σ is an honest, unbounded distance rather
  * than one artificially capped by including the very value being judged.
- * A window whose σ is zero (or float-noise-close to zero, relative to its
- * own mean — see `ZERO_VARIANCE_RELATIVE_EPSILON`) always resolves to "not
+ * A window whose σ is zero, or ULP-noise-close to zero relative to
+ * `refMagnitude` (see `ZERO_VARIANCE_EPSILON_K`), always resolves to "not
  * crossed": dividing by it is never attempted.
  */
 function evaluateCrossing(
@@ -101,10 +126,11 @@ function evaluateCrossing(
   value: number,
   window: readonly number[],
   sigma: number,
+  refMagnitude: number,
   distance: (value: number, mean: number, std: number) => number,
 ): { above: boolean; sigma: number | undefined } {
   const { mean, std } = meanAndStd(window);
-  if (std <= Math.abs(mean) * ZERO_VARIANCE_RELATIVE_EPSILON) {
+  if (isZeroVariance(std, refMagnitude)) {
     return { above: false, sigma: undefined };
   }
 
@@ -141,16 +167,22 @@ function evaluateCrossing(
  * `sqrt(windowSize - 1)` in the limit), which would make a 250x blowout
  * and a 10,000x blowout report the same capped σ. Excluding the current
  * value keeps `sigma` unbounded and proportionate — the narrator renders
- * it as severity ("moved Nσ"), so it must stay honest.
+ * it as severity ("moved Nσ"), so it must stay honest. One consequence:
+ * at the tick where `tickCount` first reaches `minWindowFill`, the spread
+ * channel's trailing window holds `tickCount - 1` entries (one push per
+ * prior tick), while the returns/vol channel's holds `tickCount - 2` — a
+ * tick's own return needs a `prevMid`, so the very first tick for a symbol
+ * never contributes one. The two channels are one tick apart for the rest
+ * of that symbol's stream.
  *
  * Both channels are edge-triggered per symbol: crossing above the
  * threshold emits exactly once; staying above emits nothing further;
  * dropping back below re-arms so the next crossing emits again. A window
- * whose σ is zero, or float-noise-close to zero relative to its own mean
- * (see `ZERO_VARIANCE_RELATIVE_EPSILON`), can never cross, by construction
- * (the division is never attempted). No tick is evaluated before
- * `minWindowFill` ticks have been seen for its symbol — before that,
- * ticks only accumulate into the window.
+ * whose σ is zero, or ULP-noise-close to zero relative to the magnitude of
+ * the operands it was computed from (see `ZERO_VARIANCE_EPSILON_K`), can
+ * never cross, by construction (the division is never attempted). No tick
+ * is evaluated before `minWindowFill` ticks have been seen for its symbol
+ * — before that, ticks only accumulate into the window.
  *
  * Self-silencing / adaptivity: because each evaluation is against the
  * CURRENT trailing window (not a fixed historical baseline), a regime
@@ -198,6 +230,10 @@ export function detectAnomalies(
             spread,
             window.spreads,
             cfg.spreadSigma,
+            // spread = ask - bid is computed directly from bid/ask, both
+            // ~tick.mid in magnitude — that's the operand scale ULP noise
+            // in `spread` is inherited from.
+            tick.mid,
             (value, mean, std) => (value - mean) / std,
           );
           window.spreadAbove = spreadResult.above;
@@ -215,6 +251,11 @@ export function detectAnomalies(
               ret,
               window.returns,
               cfg.volSigma,
+              // ret = (mid - prevMid) / prevMid is already normalized to a
+              // dimensionless ratio: its own ULP-noise floor is
+              // ~ULP(mid)/prevMid ≈ Number.EPSILON regardless of the price
+              // level, so 1 (not tick.mid) is the right operand scale here.
+              1,
               (value, _mean, std) => Math.abs(value) / std,
             );
             window.volAbove = volResult.above;
