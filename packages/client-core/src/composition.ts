@@ -96,6 +96,8 @@ import {
   TradeExecutionPresenter,
   ViewModePreferencePresenter,
   WatchlistPresenter,
+  type WorkspaceNavIntents,
+  type WorkspaceNavState,
 } from "#/presenters/index";
 
 export type { AppPorts };
@@ -167,6 +169,13 @@ export interface Presenters {
   /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
    * shared by the chart, instrument-tabs, and watchlist panels. */
   eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  /** The app's active workspace tab — a composition-root singleton (mirrors
+   * `eqWorkspace`/`incident` above), the promoted form of the
+   * `useState<WorkspaceTab>` that used to live directly in each web client's
+   * `App.tsx`, now reachable from composition (and therefore from Jarvis's
+   * drive-the-app `switchTab` command — see the P5 `JarvisDriverMachine`,
+   * composed alongside `jarvisPanels` below). */
+  workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -455,6 +464,13 @@ export function createApp(ports: AppPorts): App {
     },
   );
 
+  // Hoisted (rather than built inline in the `presenters` literal below,
+  // unlike eqWorkspace) so a future JarvisDriverMachine — composed here
+  // beside jarvisPanels, same scope — can target this singleton's
+  // switchTab intent from a "switchTab" DriveCommand. Takes no deps, unlike
+  // eqWorkspace/incident, so it needs nothing else built first.
+  const workspaceNav = createWorkspaceNavMachine();
+
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
   const colorScheme = ports.colorScheme ?? {
@@ -582,6 +598,7 @@ export function createApp(ports: AppPorts): App {
       initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
       seed$: firstWatchlistSymbol$(watchlist.watchlist$),
     }),
+    workspaceNav,
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
     errorRateMetric: new ErrorRatePresenter(ports.telemetry),
@@ -647,16 +664,10 @@ function gateTransportOnAuth(
 }
 
 /** Build the app-layer machine factories the ViewModel seam injects. Each factory
- * spins up a fresh machine per component mount, wired to the presenters —
- * EXCEPT `workspaceNav`, a composition-root SINGLETON built once here (it
- * takes no deps, unlike `eqWorkspace`/`incident`, so it needs no earlier home
- * in `Presenters`/`composeApp`) and returned as the already-built machine
- * itself rather than a factory. */
+ * spins up a fresh machine per component mount, wired to the presenters. */
 export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
-  const workspaceNav = createWorkspaceNavMachine();
-
   return {
     tileExecution: (pair: CurrencyPair) => {
       return createTileExecutionMachine(pair, {
@@ -716,6 +727,5 @@ export function createMachineFactories(
         defaultSymbol,
       });
     },
-    workspaceNav,
   };
 }
