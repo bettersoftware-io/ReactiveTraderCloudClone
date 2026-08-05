@@ -326,11 +326,15 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     });
   }
 
-  /** The chart wrap's `data-panes` count — mirrors ChartPlot's own
-   * `data-panes={panes.length}`, letting a spec assert the count tracks
-   * activation without counting pane DOM nodes itself. */
+  /** The chart wrap's `data-panes` count. Reads the wrap div via
+   * querySelector — `this.root` is the RTL render container, a PARENT of
+   * the wrap (same pattern as yScaleAttr; the old direct getAttribute
+   * always returned the fallback). */
   panesAttr(): number {
-    return Number(this.root.getAttribute("data-panes") ?? "0");
+    return Number(
+      this.root.querySelector("[data-panes]")?.getAttribute("data-panes") ??
+        "0",
+    );
   }
 
   /** The wrap root's `data-yscale` attribute ("linear" | "log") — queried
@@ -352,9 +356,9 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     return body?.style.getPropertyValue(name) ?? "";
   }
 
-  /** Total DOM node count under the chart wrap root (`this.root` IS the
-   * wrap when CandleChart is mounted directly) — the node-budget
-   * tripwire's raw signal. See ChartPanes.contract.spec.ts for the WHY. */
+  /** Total DOM node count under the render container — counts the mounted
+   * tree including child render roots; the node-budget tripwire's raw
+   * signal. See ChartPanes.contract.spec.ts for the WHY. */
   wrapNodeCount(): number {
     return this.root.querySelectorAll("*").length;
   }
