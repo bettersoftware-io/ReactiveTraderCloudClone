@@ -33,7 +33,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
             testID={`pair-pnl-row-${pos.symbol}`}
             style={styles.row}
           >
-            <Text style={styles.symbol}>{pos.symbol}</Text>
+            <Text style={styles.symbol}>{slashPair(pos.symbol)}</Text>
             <PairPnlBar fraction={fraction} positive={positive} />
             <Text
               testID={`pair-pnl-label-${pos.symbol}`}
@@ -46,6 +46,20 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
       })}
     </View>
   );
+}
+
+/**
+ * `EURUSD` → `EUR/USD` (T42). The domain carries the unseparated symbol; the
+ * prototype renders the slash (dc.html:182), and without it a row reads as an
+ * unfamiliar single ticker rather than a pair.
+ *
+ * Only a 6-character symbol splits — anything else is passed through
+ * untouched rather than sliced at a position that may not be a boundary.
+ */
+function slashPair(symbol: string): string {
+  return symbol.length === 6
+    ? `${symbol.slice(0, 3)}/${symbol.slice(3)}`
+    : symbol;
 }
 
 interface PairPnlBarsProps {
