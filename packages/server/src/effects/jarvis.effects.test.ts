@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import type {
+  DriveBatchV1,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
@@ -45,6 +46,11 @@ const STUB_PANEL_SPEC: PanelSpecV1 = {
   source: { kind: "priceHistory", symbols: ["GBPUSD"] },
   transforms: [{ kind: "rollingVol", samples: 20 }],
   viz: { kind: "line" },
+};
+
+const STUB_DRIVE_BATCH: DriveBatchV1 = {
+  v: 1,
+  commands: [{ kind: "switchTab", tab: "fx" }],
 };
 
 /** One case per `JarvisEvent` variant, proving `WIRE_TYPE_BY_EVENT` end to
@@ -97,6 +103,11 @@ const WIRE_MAPPING_CASES: readonly WireMappingCase[] = [
       spec: STUB_PANEL_SPEC,
       turnId: STUB_TURN_ID,
     },
+  },
+  {
+    event: { type: "command", batch: STUB_DRIVE_BATCH },
+    wireType: SERVER_MSG.JARVIS_COMMAND,
+    body: { batch: STUB_DRIVE_BATCH, turnId: STUB_TURN_ID },
   },
   {
     event: { type: "done" },

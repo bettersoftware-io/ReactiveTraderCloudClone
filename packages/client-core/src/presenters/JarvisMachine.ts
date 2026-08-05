@@ -279,6 +279,14 @@ function eventPatch(event: JarvisEvent): Patch {
         return s;
       };
 
+    case "command":
+      // Deliberate no-op, mirroring "panel" above: command batches are
+      // applied by a separate drive-the-app machine/adapter (a later P5
+      // task), not folded into chat entries here.
+      return (s: JarvisState): JarvisState => {
+        return s;
+      };
+
     default: {
       const _exhaustive: never = event;
 

@@ -107,6 +107,7 @@ export const SERVER_MSG = {
   JARVIS_TOOL_EVENT: "jarvis.toolEvent",
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
   JARVIS_PANEL: "jarvis.panel",
+  JARVIS_COMMAND: "jarvis.command",
   JARVIS_DONE: "jarvis.done",
   JARVIS_ERROR: "jarvis.error",
   // Sent only in reply to CLIENT_MSG.JARVIS_SUBSCRIBE (see
