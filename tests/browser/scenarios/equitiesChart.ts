@@ -1,6 +1,6 @@
 import type { EquitiesPaneKind } from "../page-objects/contracts/EquitiesChart";
 import type { TestContext } from "../testContext";
-import { assertEquals, assertNotEqual, assertTrue } from "./assert";
+import { assertEquals, assertTrue } from "./assert";
 
 export async function openEquitiesWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.openEquities();
@@ -256,37 +256,4 @@ export async function expectYScaleWithin(
   seconds: number,
 ): Promise<void> {
   await ctx.po.equitiesChart.waitYScale(mode, seconds * 1_000);
-}
-
-export async function recordPriceLabels(
-  ctx: TestContext,
-  key: string,
-): Promise<void> {
-  ctx.scratch.equitiesChart.recordedPriceLabels.set(
-    key,
-    await ctx.po.equitiesChart.priceLabelTexts(),
-  );
-}
-
-/** Compares the CURRENT price-axis labels against a prior {@link recordPriceLabels}
- * snapshot — the yscale-toggle rebase assertion. Tick-safe: switching modes
- * rebases all four labels from the plot's cmin/cmax at once (see
- * `priceToY`/`yToPrice`), so the inequality holds even if a live tick landed
- * between the `before` snapshot and the toggle. */
-export async function expectPriceLabelsChangedFrom(
-  ctx: TestContext,
-  key: string,
-): Promise<void> {
-  const baseline = ctx.scratch.equitiesChart.recordedPriceLabels.get(key);
-
-  if (baseline === undefined) {
-    throw new Error(`no recorded price labels for ${key}`);
-  }
-
-  const current = await ctx.po.equitiesChart.priceLabelTexts();
-  assertNotEqual(
-    JSON.stringify(current),
-    JSON.stringify(baseline),
-    `expected price labels to change after the yscale toggle: before=${JSON.stringify(baseline)} after=${JSON.stringify(current)}`,
-  );
 }
