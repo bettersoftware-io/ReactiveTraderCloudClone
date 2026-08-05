@@ -55,6 +55,7 @@ import {
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
+  createNarratorMachine,
   createNotionalMachine,
   createOrderTicketMachine,
   createRfqTileMachine,
@@ -484,6 +485,13 @@ export function createApp(ports: AppPorts): App {
     ports.preferences,
   );
 
+  // Hoisted (rather than built inline in the `presenters` literal below,
+  // mirroring themeSkinPreference above) so NarratorMachine (Task 9, wired
+  // below alongside jarvisDriver) can consume `.narrator$` — the user's
+  // stored preference for whether the proactive narrator may dispatch
+  // unsolicited turns.
+  const jarvisPreferences = new JarvisPreferencesPresenter(ports.preferences);
+
   // Hoisted (rather than built inline in the `presenters` literal below) so
   // `jarvisPanels` can be composed from `jarvis.events$` — Task 6's sole
   // event source for the generative-UI panels machine (see
@@ -574,6 +582,34 @@ export function createApp(ports: AppPorts): App {
       }),
     ),
     powerSaverLevel$: powerSaver.level$,
+  });
+
+  // NarratorMachine (Task 9): the capped client-side proactive narration
+  // loop. A composition-root singleton, same doctrine as jarvisPanels/
+  // jarvisDriver above — built once, warm-subscribed for the app's whole
+  // session, never re-created per consumer. Its own `catchError`/`EMPTY`
+  // guard is internal (see createNarratorMachine's doc) — unlike
+  // jarvisPanels/jarvisDriver, it reads no jarvis.events$, so it needs no
+  // guard here. `ports.narratorConfig` is the dev-only relaxed-threshold
+  // seam (`?narratorThresholds=test`, both web clients'
+  // buildBrowserPorts.ts) — undefined in production, so the detector runs
+  // at DEFAULT_ANOMALY_CONFIG. The return value's `stop()` is unused here:
+  // this machine, like jarvisPanels/jarvisDriver, lives for the app's whole
+  // session with no composition-root teardown seam.
+  createNarratorMachine({
+    pricing: ports.pricing,
+    symbols$: currencyPairs.pairs$.pipe(
+      map((pairs) => {
+        return pairs.map((pair) => {
+          return pair.symbol;
+        });
+      }),
+    ),
+    narrate: (prompt: string): void => {
+      jarvis.intents.narrate(prompt);
+    },
+    preference$: jarvisPreferences.narrator$,
+    config: ports.narratorConfig,
   });
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
@@ -687,7 +723,7 @@ export function createApp(ports: AppPorts): App {
       },
     ),
     loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
-    jarvisPreferences: new JarvisPreferencesPresenter(ports.preferences),
+    jarvisPreferences,
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),

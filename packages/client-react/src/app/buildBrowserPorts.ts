@@ -15,6 +15,7 @@ import {
 } from "@rtc/client-core";
 import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {
+  type AnomalyDetectorConfig,
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
@@ -55,8 +56,43 @@ function parseDevAuth(raw: string | undefined): Record<string, string> {
   }
 }
 
+/** Relaxed `NarratorMachine` detector thresholds for the `?narratorThresholds=test`
+ * dev/e2e seam — see `devNarratorConfig`'s doc for when this actually applies. */
+const TEST_NARRATOR_CONFIG: Partial<AnomalyDetectorConfig> = {
+  windowSize: 8,
+  minWindowFill: 4,
+  spreadSigma: 0.1,
+  volSigma: 0.1,
+};
+
+/**
+ * Dev-only override for `NarratorMachine`'s anomaly-detector thresholds:
+ * `PricingSimulator`'s natural anomaly episodes are rare by design (~14 min
+ * expected interval per symbol — see `pricingAnomalyEpisode.ts`), so an e2e
+ * run (or a human) that wants to exercise the proactive narrator on demand
+ * needs a way to force near-guaranteed crossings instead of waiting one out.
+ *
+ * Gated on BOTH `import.meta.env.DEV` (a compile-time literal Vite
+ * dead-code-eliminates from a production build, so this whole branch —
+ * including the relaxed thresholds themselves — never ships) AND an
+ * explicit `?narratorThresholds=test` query param, so it can never activate
+ * outside a local/dev server even if the DEV guard were somehow bypassed.
+ */
+function devNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
+  if (!import.meta.env.DEV) {
+    return undefined;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+
+  return params.get("narratorThresholds") === "test"
+    ? TEST_NARRATOR_CONFIG
+    : undefined;
+}
+
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
+  const narratorConfig = devNarratorConfig();
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
   const sessionStore = new LocalStorageSessionStore();
@@ -111,6 +147,7 @@ export function buildBrowserPorts(): AppPorts {
       colorScheme,
       bootSplash,
       transport: ws,
+      narratorConfig,
     };
   }
 
@@ -152,5 +189,6 @@ export function buildBrowserPorts(): AppPorts {
     connectionEvents,
     colorScheme,
     bootSplash,
+    narratorConfig,
   };
 }

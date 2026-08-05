@@ -35,6 +35,7 @@ export * from "#/presenters/LatencyPresenter";
 export * from "#/presenters/LayoutMachine";
 export * from "#/presenters/LoginWaitPreferencesPresenter";
 export * from "#/presenters/machine";
+export * from "#/presenters/NarratorMachine";
 export * from "#/presenters/NotionalMachine";
 export * from "#/presenters/OrdersBlotterPresenter";
 export * from "#/presenters/OrderTicketMachine";
