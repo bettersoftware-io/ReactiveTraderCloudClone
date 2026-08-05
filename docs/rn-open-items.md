@@ -9,11 +9,11 @@ backlog entry.
 Nothing here is a blocker on shipped work. Items are grouped by what kind of
 thing they are, because that determines who fixes them and where.
 
-**Last updated: 2026-08-05** (close-out sweep, round 5 — see below)
+**Last updated: 2026-08-05** (close-out sweep, round 6 — see below)
 
 ## 0. The 2026-08-05 close-out sweep
 
-The open count went **31 → 12** over five rounds, and most of that was not code. The list had
+The open count went **31 → 12** over six rounds, and most of that was not code. The list had
 grown into something nobody could act on, because three different kinds of
 entry were sharing one status column:
 
@@ -63,6 +63,22 @@ questions about. Of those 12, **4 are the M-series** — `@rtc/domain` / wire
 changes shared with the web client and frozen by Phase 5 §4 — leaving **8
 RN-specific**, none blocking.
 
+**Round 6** removed a defect that had been in EVERY golden since the tier
+existed and that nobody had named: a grey `gearshape.fill` bubble near the
+top-left of all 18 shots. It is expo-dev-menu's floating action button, mounted
+in a `DevMenuFABWindow` — a passthrough `UIWindow` layered above the app, which
+is why it drew over the Rates filter chips and the shell header and appeared in
+the a11y tree as if it were ours. It never destabilised a diff (same place
+every run, so captures still reproduced at 0.00%), **which is exactly why it
+survived**: the tier's own question is "did this change?", and the answer was
+always no. The cost fell on the corpus's OTHER use — reading these PNGs beside
+the design prototype's shots to judge fidelity, with dev-tooling chrome baked
+into every comparison. `tests/visual/shared/devMenuFab.ts` now writes the
+dev-menu's own `EXDevMenuShowFloatingActionButton` preference off around a run
+and deletes it afterwards, so it is hidden for captures and back for ordinary
+dev. All 18 re-captured and verified. **The Maestro tier's 3 goldens still
+carry it** — that runner never learns a UDID, so it has nothing to pass.
+
 **Round 5** closed **P7** within hours of finding it, because the prototype
 already answered it — the header's two controls are glyphs and it has no
 sign-out, so the fix was a restoration rather than a layout negotiation. It
@@ -87,13 +103,17 @@ with the M-series excluded and the other with it included. State the filter
 with the figure, every time. (A parseable status token per row would end this
 properly; ~40 rows would need one, so it has not been done.)
 
-**The whole golden set was re-captured** on iPhone 17 / iOS 26.5 against the
-fixed UI. There are **18** scenarios now — rounds 3 and 4 added `rates/grid`
-and `shell/chrome`, each verified at **0.00%** — and the 16 that predate them
-were re-captured and verified reproducing at **0.00%**, except
-`blotter/seeded` at **0.06%**, which is content-identical with every glyph
-ghosted by a sub-pixel layout settle. Treat 0.06% as that scenario's noise
-floor rather than a signal; it sits far under the 6% tolerance.
+**The whole golden set was re-captured** on iPhone 17 / iOS 26.5, most recently
+in round 6 (all **18** at once, to strip the dev-menu bubble). Every scenario
+was then verified reproducing: **16 at 0.00%**, with `analytics/dashboard` at
+**0.17%** and `credit/sell-side` at **0.08%**.
+
+Those two are the tier's noise floor, and WHICH scenario carries it moves
+between runs — `blotter/seeded` was the 0.06% outlier before round 6 and now
+sits at 0.00%. So read a sub-1% number as cross-run jitter (sub-pixel layout
+settle, ghosting glyphs in content-identical frames), not as a signal about one
+scenario; all of it sits far under the 6% tolerance. A number that does NOT
+move between runs is the one worth looking at.
 
 The set is now a comparison instrument rather than a regression gate: paired
 against [`reference-shots/`](design/mobile/v1/reference-shots/DRIFT.md) it is
