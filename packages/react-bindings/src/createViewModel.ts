@@ -4,6 +4,7 @@ import { combineLatest, firstValueFrom, map } from "rxjs";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
@@ -40,6 +41,8 @@ import {
   type TicketSubmissionState,
   type TileExecutionIntents,
   type TileExecutionState,
+  type WorkspaceNavIntents,
+  type WorkspaceNavState,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import {
@@ -119,6 +122,10 @@ type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
 type UseEqWorkspaceResult = {
   state: EqWorkspaceState;
 } & EqWorkspaceIntents;
+
+type UseWorkspaceNavResult = {
+  state: WorkspaceNavState;
+} & WorkspaceNavIntents;
 
 export interface UseJarvisResult {
   state: JarvisState;
@@ -384,6 +391,12 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** The app's active workspace tab (a composition-root singleton, mirroring
+   * `useEqWorkspace` above) plus the `switchTab` intent — the promoted form
+   * of the `useState<WorkspaceTab>` that used to live directly in each web
+   * client's `App.tsx`, now reachable from Jarvis's drive-the-app
+   * `switchTab` command too. */
+  useWorkspaceNav: () => UseWorkspaceNavResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
@@ -405,6 +418,11 @@ export interface ViewModel {
    * first data frame, or once the panel is gone (dismissed/evicted/never
    * existed) — the renderer treats null as "not ready yet", not an error. */
   useJarvisPanelData: (panelId: string) => PanelData | null;
+  /** J.A.R.V.I.S. drive-the-app interpreter's latest batch outcomes
+   * (singleton, app-level) — the UI's driven-pulse cue reads `lastBatch` to
+   * flash the nav rail / workspace wrapper on a new applied outcome. Starts
+   * `{ lastBatch: [] }`. */
+  useJarvisDriver: () => JarvisDriverState;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -870,6 +888,24 @@ export function createViewModel(
     presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
+  // Workspace nav machine — shared single instance, same
+  // useStateObservable-direct pattern as eqWorkspace above (NOT useMachine,
+  // which would dispose the singleton on the first tab-switch remount).
+  function useWorkspaceNavState(): WorkspaceNavState {
+    return useStateObservable(presenters.workspaceNav.state$);
+  }
+
+  function switchWorkspaceTab(tab: WorkspaceTab): void {
+    presenters.workspaceNav.intents.switchTab(tab);
+  }
+
+  // Jarvis drive-the-app interpreter — shared single instance, same
+  // useStateObservable-direct pattern (no intents to wrap; JarvisDriverMachineHandle
+  // exposes only state$ — see its own doc).
+  function useJarvisDriverState(): JarvisDriverState {
+    return useStateObservable(presenters.jarvisDriver.state$);
+  }
+
   // Jarvis AI assistant — shared single instance. Reads
   // presenters.jarvis.state$ DIRECTLY via useStateObservable, NOT via
   // bind() (mirroring the eqWorkspace pattern — see its comment for why).
@@ -1070,10 +1106,21 @@ export function createViewModel(
       }).state;
     },
     useAnimationIntents,
+    // Layout — UNLIKE every other useMachine-bridged factory here,
+    // machines.layout(tab) resolves to a composition-root SINGLETON per tab
+    // (see MachineFactories.layout's own doc), so it is read directly via
+    // useStateObservable rather than through useMachine: useMachine's
+    // cleanup calls .dispose() on whatever machine instance it's given,
+    // which would tear down the shared singleton on the first tab-switch
+    // remount and silently break it for every later mount (including a
+    // driven "layout" DriveCommand's own target). Mirrors the
+    // eqWorkspace/workspaceNav pattern above.
     useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return machines.layout(tab);
-      });
+      const layoutMachine = machines.layout(tab);
+      return {
+        state: useStateObservable(layoutMachine.state$),
+        ...layoutMachine.intents,
+      };
     },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
@@ -1105,6 +1152,12 @@ export function createViewModel(
         toggleYScale: toggleEqYScale,
       };
     },
+    useWorkspaceNav: () => {
+      return {
+        state: useWorkspaceNavState(),
+        switchTab: switchWorkspaceTab,
+      };
+    },
     useJarvis: () => {
       return {
         state: useJarvisState(),
@@ -1129,6 +1182,7 @@ export function createViewModel(
       };
     },
     useJarvisPanelData: useJarvisPanelDataValue,
+    useJarvisDriver: useJarvisDriverState,
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),

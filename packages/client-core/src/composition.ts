@@ -34,7 +34,7 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/layout/defaultLayoutPort";
-import type { LayoutNode } from "#/layout/layoutPort";
+import type { LayoutNode, LayoutState } from "#/layout/layoutPort";
 import {
   AmbientStylePresenter,
   AnalyticsPresenter,
@@ -82,6 +82,7 @@ import {
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
   LatencyPresenter,
+  type LayoutIntents,
   LoginWaitPreferencesPresenter,
   type Machine,
   type MachineFactories,
@@ -182,6 +183,24 @@ export interface Presenters {
    * drive-the-app `switchTab` command — see the P5 `JarvisDriverMachine`,
    * composed alongside `jarvisPanels` below). */
   workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
+  /** Per-tab layout view-model — a memoized composition-root SINGLETON (one
+   * `Machine` instance per `WorkspaceTab`, built lazily on first request and
+   * cached for the app's whole session), mirroring `eqWorkspace`/
+   * `workspaceNav` above. Resolves the deferral Task 6's review recorded: a
+   * driven `"layout"` DriveCommand used to mutate a throwaway per-call
+   * instance nothing else ever read from (`layout` used to be a bare
+   * factory, matching `MachineFactories.layout`'s OLD "fresh machine per
+   * mount" contract — see `machine.ts`'s doc for the exception this field
+   * is now the source of truth for). `createMachineFactories`'s own `layout`
+   * field is a thin `(tab) => presenters.layoutFor(tab)` passthrough onto
+   * THIS map, so the UI (via `useLayout`, consumed WITHOUT `useMachine`'s
+   * dispose-on-unmount — see `createViewModel.ts`) and `jarvisDriver`'s
+   * `layout` dep both read/write the exact same instance per tab. Named
+   * consequence (accepted): layout state (maximized/collapsed/split sizes)
+   * now SURVIVES a tab switch instead of resetting on `WorkspaceEngine`'s
+   * `key={activeTab}` remount, since the underlying machine is no longer
+   * rebuilt per mount. */
+  layoutFor: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -543,14 +562,42 @@ export function createApp(ports: AppPorts): App {
   // incident, so it needs nothing else built first.
   const workspaceNav = createWorkspaceNavMachine();
 
+  // Per-tab layout SINGLETON map (Presenters.layoutFor's backing store) —
+  // resolves the Task 6 review's documented deferral: `layout` used to be a
+  // bare "fresh machine per call" factory (mirroring MachineFactories'
+  // OLD contract), so a driven "layout" command mutated a throwaway
+  // instance nothing else ever read from. Built lazily (one entry per tab,
+  // on first request) rather than eagerly for all four tabs — cheap either
+  // way (4-entry cap), but lazy matches every other on-demand construction
+  // in this function. `layoutFor` is exposed on `Presenters` so BOTH
+  // `jarvisDriver`'s `layout` dep below AND `createMachineFactories`'s
+  // `layout` field (see below) resolve to the exact same instance per tab.
+  const layoutMachines = new Map<
+    WorkspaceTab,
+    Machine<LayoutState, LayoutIntents>
+  >();
+
+  function layoutFor(tab: WorkspaceTab): Machine<LayoutState, LayoutIntents> {
+    const existing = layoutMachines.get(tab);
+
+    if (existing) {
+      return existing;
+    }
+
+    const machine = createLayoutMachine(createDefaultLayoutPort(tab));
+    layoutMachines.set(tab, machine);
+    return machine;
+  }
+
   // JarvisDriverMachine: the total DriveCommand interpreter (Task 6). SAME
   // catchError/EMPTY guard as jarvisPanels above — createJarvisDriverMachine's
   // events$ input is equally TERMINAL on error, and both fold over the same
   // jarvis.events$ source, so a source error must not kill either fold.
-  // `layout` is passed straight through as the same per-call factory
-  // MachineFactories.layout exposes to the UI (see JarvisDriverDeps.layout's
-  // own doc for why this is deliberately NOT a cached singleton — mirrors
-  // the workspaceNav dispose-on-unmount lesson from Task 5's review).
+  // `layout` is `layoutFor` itself (Task 10's resolution of the Task 6
+  // review's documented deferral) — the SAME per-tab singleton map
+  // `Presenters.layoutFor`/`createMachineFactories`'s `layout` field expose
+  // to the UI, so a driven "layout" command is now observable through the
+  // mounted `useLayout(tab)` view instead of a throwaway instance.
   const jarvisDriver = createJarvisDriverMachine({
     events$: jarvis.events$.pipe(
       catchError(() => {
@@ -558,9 +605,7 @@ export function createApp(ports: AppPorts): App {
       }),
     ),
     workspaceNav,
-    layout: (tab: WorkspaceTab) => {
-      return createLayoutMachine(createDefaultLayoutPort(tab));
-    },
+    layout: layoutFor,
     eqWorkspace,
     setThemeSkin: (skin: ThemeSkin): void => {
       themeSkinPreference.setSkin(skin);
@@ -737,6 +782,7 @@ export function createApp(ports: AppPorts): App {
     }),
     eqWorkspace,
     workspaceNav,
+    layoutFor,
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
     errorRateMetric: new ErrorRatePresenter(ports.telemetry),
@@ -802,8 +848,12 @@ function gateTransportOnAuth(
     });
 }
 
-/** Build the app-layer machine factories the ViewModel seam injects. Each factory
- * spins up a fresh machine per component mount, wired to the presenters. */
+/** Build the app-layer machine factories the ViewModel seam injects. Most
+ * factories spin up a fresh machine per component mount, wired to the
+ * presenters — `layout` is the one documented exception: it resolves to
+ * `presenters.layoutFor(tab)`, a composition-root SINGLETON per tab (see
+ * `Presenters.layoutFor`'s doc), so every call with the same `tab` returns
+ * the SAME instance rather than a fresh one. */
 export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
@@ -847,7 +897,7 @@ export function createMachineFactories(
       return presenters.rfqs.createTicketSubmission();
     },
     layout: (tab: WorkspaceTab) => {
-      return createLayoutMachine(createDefaultLayoutPort(tab));
+      return presenters.layoutFor(tab);
     },
     boot: (onDone: () => void) => {
       return createBootSequenceMachine({

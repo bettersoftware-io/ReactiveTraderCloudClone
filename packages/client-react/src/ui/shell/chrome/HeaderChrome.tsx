@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from "react";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
+import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
 import { HudLogo } from "../logo/HudLogo";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
@@ -11,6 +12,7 @@ import { NotificationsMenu } from "./NotificationsMenu";
 import { PowerSaverToggle } from "./PowerSaverToggle";
 import { ThemePicker } from "./ThemePicker";
 
+import drivenPulseStyles from "../jarvis/DrivenPulse.module.css";
 import styles from "./HeaderChrome.module.css";
 
 /**
@@ -33,6 +35,12 @@ export function HeaderChrome({
   // plain useState is correct here, no port involved.
   const [prefsOpen, setPrefsOpen] = useState(false);
 
+  // Driven-pulse cue (Task 10): flashes the nav rail for one CSS animation
+  // cycle when Jarvis's drive-the-app interpreter applies a command — see
+  // useJarvisDrivenPulse's own doc (freeze-gated, no timer).
+  const { pulsing: navPulsing, clearPulse: clearNavPulse } =
+    useJarvisDrivenPulse();
+
   return (
     <header data-testid="header" className={styles.header}>
       <div className={styles.brand}>
@@ -47,7 +55,14 @@ export function HeaderChrome({
         </span>
       </div>
 
-      <nav className={styles.nav} aria-label="Workspace">
+      <nav
+        data-jarvis-driven={navPulsing ? "true" : "false"}
+        className={
+          navPulsing ? `${styles.nav} ${drivenPulseStyles.driven}` : styles.nav
+        }
+        onAnimationEnd={clearNavPulse}
+        aria-label="Workspace"
+      >
         <NavTab tab="fx" active={activeTab === "fx"} onSelect={onTabChange} />
         <NavTab
           tab="credit"

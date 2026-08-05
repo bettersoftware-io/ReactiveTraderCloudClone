@@ -835,6 +835,31 @@ export function reactViewModel(world: World): ViewModel {
       const bridge = getJarvisPanelsBridge(world);
       return useSubject(bridge.panelData$(panelId));
     },
+    // Jarvis drive-the-app interpreter's outcomes (Task 10) — a static empty
+    // filler, mirroring Task 8's minimal-plumbing precedent for a field no
+    // CURRENT contract spec drives through World. HeaderChrome's own
+    // driven-pulse cue reads this (see useJarvisDrivenPulse.ts) so it must
+    // satisfy the shape and never crash — it just never actually pulses in
+    // this harness today. A later task adding a driven-pulse contract spec
+    // will need a real World-backed jarvisDriver, the same way
+    // world.eqWorkspace/getJarvisMachine are wired above.
+    useJarvisDriver: () => {
+      return { lastBatch: [] };
+    },
+    // The app's active workspace tab (Task 10) — a plain local useState, not
+    // wired to World: no CURRENT contract spec mounts App.tsx itself (only
+    // individual leaf components, e.g. HeaderChrome directly with its own
+    // activeTab/onTabChange props), so nothing exercises this beyond
+    // satisfying the ViewModel type.
+    useWorkspaceNav: () => {
+      const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+      return {
+        state: { activeTab },
+        switchTab: (tab: WorkspaceTab) => {
+          setActiveTab(tab);
+        },
+      };
+    },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real
     // IncidentMachine's connection-status asymmetry via world.injectIncident.

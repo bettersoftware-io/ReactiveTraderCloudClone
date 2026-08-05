@@ -125,21 +125,13 @@ describe("composition — jarvis wiring", () => {
     presenters.jarvis.dispose();
   });
 
-  // DEFERRAL (Task 6 review, ruled a documented deferral for Task 10/11):
-  // `jarvisDriver`'s `layout` dep is the SAME fresh-per-call factory
-  // `MachineFactories.layout` exposes to the UI (see JarvisDriverMachine.ts's
-  // own `layout` doc) — a "layout" DriveCommand therefore mutates a
-  // throwaway machine instance nothing else ever reads from. This test pins
-  // the target architecture (a driven layout command observable through the
-  // SAME composition-level machine factory) and is expected to RED today for
-  // exactly that reason; un-skip once composition.ts's `layout` factory
-  // (composition.ts:553, `createLayoutMachine(createDefaultLayoutPort(tab))`)
-  // becomes a memoized per-tab `layoutFor(tab)` singleton shared by both
-  // `createMachineFactories`'s `layout` field and `jarvisDriver`'s `layout`
-  // dep — `JarvisDriverDeps.layout`'s shape (`(tab) => Machine<LayoutState,
-  // LayoutIntents>`) is unchanged by that swap, so no JarvisDriverMachine
-  // code should need to change, only removing `.skip` here.
-  it.skip("a driven 'layout' command leaves the SAME tab's machine (read back through the composition-level machine factory) observably maximized", async () => {
+  // RESOLVED (Task 10): `jarvisDriver`'s `layout` dep is now
+  // `Presenters.layoutFor`, a memoized per-tab singleton also exposed as
+  // `createMachineFactories`'s `layout` field (composition.ts) — a "layout"
+  // DriveCommand is therefore observable through the SAME instance the
+  // mounted UI reads. `JarvisDriverDeps.layout`'s shape was unchanged by the
+  // swap, per the Task 6 review's deferral note.
+  it("a driven 'layout' command leaves the SAME tab's machine (read back through the composition-level machine factory) observably maximized", async () => {
     const { presenters } = createApp({
       ...createSimulatorPorts({
         preferences: new PreferencesSimulator(),

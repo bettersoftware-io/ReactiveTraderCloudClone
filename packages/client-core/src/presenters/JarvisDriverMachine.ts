@@ -64,13 +64,14 @@ export interface JarvisDriverDeps {
   readonly events$: Observable<JarvisEvent>;
   /** The app's active-tab singleton — `switchTab` commands target this. */
   readonly workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
-  /** Per-tab layout machine factory — the SAME factory `MachineFactories.layout`
-   * exposes to the UI (a fresh instance per call; `machine.ts`'s own doc:
-   * "each builds a fresh machine instance per component mount"). Called
-   * fresh here too, never cached across commands — caching a returned
-   * instance across the driver's own lifetime would only diverge further
-   * from whatever the UI mounts, and risks the exact dispose-on-unmount
-   * collision Task 5's review caught for `workspaceNav` (see its report). */
+  /** Per-tab layout machine SINGLETON accessor — the SAME `Presenters.layoutFor`
+   * `createMachineFactories`'s own `layout` field resolves to (Task 10's
+   * resolution of a documented Task 6 review deferral: this used to be a
+   * fresh-per-call factory, so a driven "layout" command mutated a
+   * throwaway instance nothing else ever read from). Calling it with the
+   * same `tab` always returns the exact instance the mounted `useLayout(tab)`
+   * view reads from, so a "layout" DriveCommand is now observable through
+   * the real UI. */
   readonly layout: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
   /** Cross-panel equities workspace singleton — `eqSelect`/`eqTimeframe`/
    * `eqChartType`/`eqIndicator`/`eqPane` commands target this directly,

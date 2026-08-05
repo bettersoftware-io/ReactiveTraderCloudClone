@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { CurrencyPair } from "@rtc/domain";
 
+import {
+  createDefaultLayoutPort,
+  type WorkspaceTab,
+} from "#/layout/defaultLayoutPort";
+import { createLayoutMachine } from "#/presenters/LayoutMachine";
+
 import { createMachineFactories, type Presenters } from "./composition";
 
 // `createMachineFactories` is a WIRING TABLE: ~12 thunks, each pairing a machine
@@ -141,6 +147,15 @@ function stubPresenters(): PresenterStub {
         return "core";
       },
       setVariant: spies.setVariant,
+    },
+    // layoutFor: Task 10 made `factories.layout` a thin passthrough onto this
+    // singleton accessor (see composition.ts's `layoutFor` doc) instead of a
+    // bare `createLayoutMachine` call — stub it the same narrow way as every
+    // other member here, returning a fresh instance per call (this test only
+    // asserts the factory returns SOMETHING, not identity/singleton
+    // behaviour — that is composition.jarvis.test.ts's job).
+    layoutFor: (tab: string) => {
+      return createLayoutMachine(createDefaultLayoutPort(tab as WorkspaceTab));
     },
   } as unknown as Presenters;
 
