@@ -1,8 +1,9 @@
 import {
   BehaviorSubject,
-  type Observable,
+  Observable,
   of,
   Subject,
+  shareReplay,
   throwError,
 } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
@@ -10,9 +11,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type {
   AnomalyDetectorConfig,
+  CurrencyPair,
   JarvisNarratorPreference,
   PriceTick,
-  PricingPort,
 } from "@rtc/domain";
 
 import {
@@ -37,8 +38,8 @@ describe("createNarratorMachine — prompt format (pinned)", () => {
       const handle = createNarratorMachine(rig.deps);
 
       ts.schedule(() => {
-        const next = fillSpreadBaseline(rig.tickSubject);
-        rig.tickSubject.next(spikeSpreadTick(next));
+        const next = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, next));
       }, 0);
 
       flush();
@@ -58,8 +59,8 @@ describe("createNarratorMachine — prompt format (pinned)", () => {
       const handle = createNarratorMachine(rig.deps);
 
       ts.schedule(() => {
-        const next = fillVolBaseline(rig.tickSubject);
-        rig.tickSubject.next(volSpikeTick(next));
+        const next = fillVolBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, volSpikeTick(SYMBOL, next));
       }, 0);
 
       flush();
@@ -86,27 +87,62 @@ describe("createNarratorMachine — cooldown gate (virtual time)", () => {
 
       // t=0: fill + first crossing → narrate call #1.
       ts.schedule(() => {
-        i = fillSpreadBaseline(rig.tickSubject);
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        i = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, 0);
 
       // t=1000 (well inside the 5-minute cooldown): re-arm + second
       // crossing → dropped, no new narrate call.
       ts.schedule(() => {
-        rig.tickSubject.next(rearmSpreadTick(i++));
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, 1_000);
 
       // t=NARRATION_COOLDOWN_MS+1 (just past the cooldown): re-arm + third
       // crossing → admitted, narrate call #2.
       ts.schedule(() => {
-        rig.tickSubject.next(rearmSpreadTick(i++));
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, NARRATION_COOLDOWN_MS + 1);
 
       flush();
 
       expect(rig.narrate).toHaveBeenCalledTimes(2);
+      handle.stop();
+    });
+  });
+
+  // Review fix (T9 round 1, Finding 2a): the gate is a SINGLE `scan` folding
+  // over the whole anomaly stream regardless of which symbol produced each
+  // event, so it must narrate AT MOST ONCE for a same-frame double-anomaly
+  // even when the two anomalies come from two DIFFERENT symbols — not once
+  // per symbol. A per-symbol-keyed rewrite (e.g. `groupBy(symbol)` +
+  // per-group `throttleTime`) would regress this invisibly.
+  it("narrates AT MOST ONCE for a same-frame double anomaly across two different symbols — the gate is GLOBAL, not per-symbol", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const symbolA = "EURUSD";
+      const symbolB = "GBPUSD";
+      const rig = buildRig(
+        ts,
+        of("on"),
+        of([mkPair(symbolA), mkPair(symbolB)]),
+      );
+      const handle = createNarratorMachine(rig.deps);
+
+      // Both symbols fill their baselines and cross in the SAME
+      // synchronous scheduled callback (frame 0) — a genuine same-frame
+      // double anomaly, not two anomalies merely close in virtual time.
+      ts.schedule(() => {
+        const nextA = fillSpreadBaseline(rig.registry, symbolA);
+        const nextB = fillSpreadBaseline(rig.registry, symbolB);
+        rig.registry.push(symbolA, spikeSpreadTick(symbolA, nextA));
+        rig.registry.push(symbolB, spikeSpreadTick(symbolB, nextB));
+      }, 0);
+
+      flush();
+
+      expect(rig.narrate).toHaveBeenCalledTimes(1);
       handle.stop();
     });
   });
@@ -122,16 +158,16 @@ describe("createNarratorMachine — session cap", () => {
       const cycleGapMs = NARRATION_COOLDOWN_MS + 1;
 
       ts.schedule(() => {
-        i = fillSpreadBaseline(rig.tickSubject);
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        i = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, 0);
 
       // 4 more cycles, each safely past the prior cycle's cooldown — a
       // 6th cycle (5 total crossings) exercises the hard session cap.
       for (let cycle = 1; cycle <= 5; cycle++) {
         ts.schedule(() => {
-          rig.tickSubject.next(rearmSpreadTick(i++));
-          rig.tickSubject.next(spikeSpreadTick(i++));
+          rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+          rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
         }, cycle * cycleGapMs);
       }
 
@@ -139,6 +175,73 @@ describe("createNarratorMachine — session cap", () => {
 
       // 6 crossings total (the t=0 one + 5 more); only the first
       // MAX_NARRATIONS_PER_SESSION (4) are ever dispatched.
+      expect(rig.narrate).toHaveBeenCalledTimes(MAX_NARRATIONS_PER_SESSION);
+      handle.stop();
+    });
+  });
+
+  // Review fix (T9 round 1, Finding 2b): the gate `scan` sits OUTSIDE
+  // `pairs$`'s `switchMap` (see createNarratorMachine's doc), so a `pairs$`
+  // re-emission (e.g. a reconnect re-fetching reference data, which makes
+  // `switchMap` tear down and rebuild the inner merged tick source) must
+  // NOT reset the session-cap counter — a rewrite that scoped the gate
+  // "per roster" (moved inside the switchMap) is the worst regression this
+  // file could take, per the review.
+  it("the session cap survives a pairs$ re-emission (switchMap resubscribing must not reset the gate)", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const pairs$ = new BehaviorSubject<readonly CurrencyPair[]>([
+        mkPair(SYMBOL),
+      ]);
+      const rig = buildRig(ts, of("on"), pairs$);
+      const handle = createNarratorMachine(rig.deps);
+      let i = 0;
+      const cycleGapMs = NARRATION_COOLDOWN_MS + 1;
+
+      // t=0 + 3 more cycles = 4 narrations — MAX_NARRATIONS_PER_SESSION
+      // reached.
+      ts.schedule(() => {
+        i = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
+      }, 0);
+
+      for (let cycle = 1; cycle <= 3; cycle++) {
+        ts.schedule(() => {
+          rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+          rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
+        }, cycle * cycleGapMs);
+      }
+
+      // Re-emit pairs$ with the SAME roster mid-way through the 4th gap —
+      // simulates a reconnect re-fetching reference data. The underlying
+      // shared tick registry keeps routing pushes to the same symbol
+      // correctly across switchMap's resubscription (see
+      // makeSharedTickRegistry's doc). Re-fills the baseline right after
+      // (harmless padding onto an already-full window under CORRECT code —
+      // detectAnomalies' own per-symbol window sits outside the switchMap
+      // exactly like the gate does — but load-bearing for this test to
+      // isolate the GATE specifically: a buggy switchMap-scoped rewrite
+      // would reset the detector's window too, and without a re-fill that
+      // would starve the 5th cycle's crossing regardless of the gate,
+      // masking the very regression this test exists to catch).
+      ts.schedule(
+        () => {
+          pairs$.next([mkPair(SYMBOL)]);
+          fillSpreadBaseline(rig.registry, SYMBOL);
+        },
+        3 * cycleGapMs + 10,
+      );
+
+      // A 5th cycle, safely past cycle 4's own cooldown window — if the
+      // re-emission had reset the session-cap counter this WOULD narrate;
+      // it must not.
+      ts.schedule(() => {
+        rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
+      }, 4 * cycleGapMs);
+
+      flush();
+
       expect(rig.narrate).toHaveBeenCalledTimes(MAX_NARRATIONS_PER_SESSION);
       handle.stop();
     });
@@ -158,8 +261,8 @@ describe("createNarratorMachine — preference gate", () => {
       // (per the "no slot consumed" claim) this must not count against
       // MAX_NARRATIONS_PER_SESSION or start the cooldown clock.
       ts.schedule(() => {
-        i = fillSpreadBaseline(rig.tickSubject);
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        i = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, 0);
 
       // t=1: flip the SAME live preference stream to "on" — no
@@ -170,8 +273,8 @@ describe("createNarratorMachine — preference gate", () => {
 
       // t=2: re-arm + a fresh crossing → now admitted.
       ts.schedule(() => {
-        rig.tickSubject.next(rearmSpreadTick(i++));
-        rig.tickSubject.next(spikeSpreadTick(i++));
+        rig.registry.push(SYMBOL, rearmSpreadTick(SYMBOL, i++));
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, i++));
       }, 2);
 
       flush();
@@ -187,26 +290,17 @@ describe("createNarratorMachine — error guard", () => {
     const ts = scheduler();
     ts.run(() => {
       const narrate = vi.fn<(prompt: string) => void>();
-      const explodingPricing: PricingPort = {
-        getPriceUpdates: () => {
-          return throwError(() => {
-            return new Error("boom");
-          });
-        },
-        getPriceHistory: () => {
-          return of([]);
-        },
-        getRfqQuote: () => {
-          return of();
-        },
-      };
 
       let handle: ReturnType<typeof createNarratorMachine> | undefined;
 
       expect(() => {
         handle = createNarratorMachine({
-          pricing: explodingPricing,
-          symbols$: of([SYMBOL]),
+          pairs$: of([mkPair(SYMBOL)]),
+          priceFor: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
           narrate,
           preference$: of("on"),
           scheduler: ts,
@@ -222,35 +316,86 @@ describe("createNarratorMachine — error guard", () => {
   });
 });
 
-describe("createNarratorMachine — symbol roster arrives asynchronously", () => {
-  it("waits for symbols$'s first emission before detecting anything, then narrates once symbols are known", () => {
+describe("createNarratorMachine — pair roster arrives asynchronously", () => {
+  it("waits for pairs$'s first emission before detecting anything, then narrates once pairs are known", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const symbols$ = new Subject<readonly string[]>();
-      const rig = buildRig(ts, of("on"), symbols$);
+      const pairs$ = new Subject<readonly CurrencyPair[]>();
+      const rig = buildRig(ts, of("on"), pairs$);
       const handle = createNarratorMachine(rig.deps);
 
-      // t=0: a tick pushed before symbols$ has ever emitted goes nowhere —
-      // the narrator hasn't subscribed to this symbol's pricing stream yet
-      // (switchMap only subscribes once symbols$ emits).
+      // t=0: a tick pushed before pairs$ has ever emitted goes nowhere —
+      // the narrator hasn't subscribed to this symbol's tick stream yet
+      // (switchMap only subscribes once pairs$ emits).
       ts.schedule(() => {
-        rig.tickSubject.next(spikeSpreadTick(0));
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, 0));
       }, 0);
 
       // t=1: the watchlist/reference-data roster resolves.
       ts.schedule(() => {
-        symbols$.next([SYMBOL]);
+        pairs$.next([mkPair(SYMBOL)]);
       }, 1);
 
       // t=2: now the fill + crossing is actually observed.
       ts.schedule(() => {
-        const next = fillSpreadBaseline(rig.tickSubject);
-        rig.tickSubject.next(spikeSpreadTick(next));
+        const next = fillSpreadBaseline(rig.registry, SYMBOL);
+        rig.registry.push(SYMBOL, spikeSpreadTick(SYMBOL, next));
       }, 2);
 
       flush();
 
       expect(rig.narrate).toHaveBeenCalledTimes(1);
+      handle.stop();
+    });
+  });
+});
+
+// Review fix (T9 round 1, Finding 1): NarratorMachine must consume ticks
+// through the SAME shared, per-symbol-cached `priceFor` every other
+// price-driven consumer reads through (composition injects
+// `PriceStreamPresenter.price$` — see `NarratorDeps.priceFor`'s doc) rather
+// than a fresh direct port call, because the underlying live tick source is
+// COLD per subscription and mutates SHARED per-pair state on its own timer
+// loop (the #171 tick-acceleration family). This suite proves the shape at
+// the unit level: a subscription-counting fake registry asserts exactly ONE
+// underlying subscription per symbol even when BOTH the narrator AND a
+// simulated second consumer (a price tile) attach to the same cached
+// `priceFor`.
+describe("createNarratorMachine — shared tick source (no double subscription)", () => {
+  it("the narrator and a simulated second consumer share ONE underlying subscription per symbol", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const registry = makeSharedTickRegistry();
+      const pair = mkPair(SYMBOL);
+      const narrate = vi.fn<(prompt: string) => void>();
+      const deps: NarratorDeps = {
+        pairs$: of([pair]),
+        priceFor: registry.priceFor,
+        narrate,
+        preference$: of("on"),
+        scheduler: ts,
+        config: CFG,
+      };
+
+      const handle = createNarratorMachine(deps);
+
+      // A second, independent consumer of the SAME cached priceFor — e.g. a
+      // price tile mounting for the same symbol. Kept subscribed (not
+      // torn down) so both consumers are simultaneously live, matching the
+      // review's "narrator + a simulated tile consumer both attach".
+      const tileSub = registry.priceFor(pair).subscribe();
+
+      ts.schedule(() => {
+        const next = fillSpreadBaseline(registry, SYMBOL);
+        registry.push(SYMBOL, spikeSpreadTick(SYMBOL, next));
+      }, 0);
+
+      flush();
+
+      expect(registry.subscribeCount(SYMBOL)).toBe(1);
+      expect(narrate).toHaveBeenCalledTimes(1);
+
+      tileSub.unsubscribe();
       handle.stop();
     });
   });
@@ -289,14 +434,31 @@ const CFG: Partial<AnomalyDetectorConfig> = {
   minWindowFill: BASELINE_FILL,
 };
 
+/** A minimal, valid `CurrencyPair` for `symbol` — only `.symbol` is read by
+ * anything under test (`priceFor`/`detectAnomalies` key purely off tick
+ * symbols), the rest is filler satisfying the type. */
+function mkPair(symbol: string): CurrencyPair {
+  return {
+    symbol,
+    ratePrecision: 5,
+    pipsPosition: 4,
+    base: symbol.slice(0, 3),
+    terms: symbol.slice(3, 6),
+    defaultNotional: 1_000_000,
+    baseMid: 1.1,
+    typicalSpreadPips: 1.4,
+  };
+}
+
 function mkTick(
+  symbol: string,
   bid: number,
   ask: number,
   i: number,
   mid: number = (bid + ask) / 2,
 ): PriceTick {
   return {
-    symbol: SYMBOL,
+    symbol,
     bid,
     ask,
     mid,
@@ -308,29 +470,36 @@ function mkTick(
 /** One jittered baseline spread tick, constant mid (isolates the fixture to
  * the spread channel — returns are all exactly 0, so the vol channel's
  * σ=0 guard keeps it silent). */
-function jitteredSpreadTick(parity: number, i: number): PriceTick {
+function jitteredSpreadTick(
+  symbol: string,
+  parity: number,
+  i: number,
+): PriceTick {
   return parity % 2 === 0
-    ? mkTick(JITTER_LOW_BID, JITTER_LOW_ASK, i, FIXED_MID)
-    : mkTick(JITTER_HIGH_BID, JITTER_HIGH_ASK, i, FIXED_MID);
+    ? mkTick(symbol, JITTER_LOW_BID, JITTER_LOW_ASK, i, FIXED_MID)
+    : mkTick(symbol, JITTER_HIGH_BID, JITTER_HIGH_ASK, i, FIXED_MID);
 }
 
-function spikeSpreadTick(i: number): PriceTick {
-  return mkTick(SPIKE_BID, SPIKE_ASK, i, FIXED_MID);
+function spikeSpreadTick(symbol: string, i: number): PriceTick {
+  return mkTick(symbol, SPIKE_BID, SPIKE_ASK, i, FIXED_MID);
 }
 
 /** One "re-arm the spread channel" tick — a jittered baseline value dropping
  * the trailing window back below `spreadSigma`, matching the domain
  * detector's own "crosses once ... re-arms after dropping below" fixture. */
-function rearmSpreadTick(i: number): PriceTick {
-  return jitteredSpreadTick(i, i);
+function rearmSpreadTick(symbol: string, i: number): PriceTick {
+  return jitteredSpreadTick(symbol, i, i);
 }
 
-/** Pushes `BASELINE_FILL` jittered spread ticks (indices `0..249`) onto
- * `subject`, returning the next free tick index (`250`) for the caller's
- * own follow-on ticks (a spike, a rearm tick, ...). */
-function fillSpreadBaseline(subject: Subject<PriceTick>): number {
+/** Pushes `BASELINE_FILL` jittered spread ticks (indices `0..249`) for
+ * `symbol` into `registry`, returning the next free tick index (`250`) for
+ * the caller's own follow-on ticks (a spike, a rearm tick, ...). */
+function fillSpreadBaseline(
+  registry: SharedTickRegistry,
+  symbol: string,
+): number {
   for (let n = 0; n < BASELINE_FILL; n++) {
-    subject.next(jitteredSpreadTick(n, n));
+    registry.push(symbol, jitteredSpreadTick(symbol, n, n));
   }
 
   return BASELINE_FILL;
@@ -339,13 +508,14 @@ function fillSpreadBaseline(subject: Subject<PriceTick>): number {
 /** One alternating-mid baseline tick, constant spread (isolates the fixture
  * to the vol channel — spread is bit-identical every tick, so the spread
  * channel's σ=0 guard keeps it silent). */
-function volBaselineTick(parity: number, i: number): PriceTick {
+function volBaselineTick(symbol: string, parity: number, i: number): PriceTick {
   const mid = parity % 2 === 0 ? VOL_MID_LOW : VOL_MID_HIGH;
-  return mkTick(mid - VOL_HALF_SPREAD, mid + VOL_HALF_SPREAD, i, mid);
+  return mkTick(symbol, mid - VOL_HALF_SPREAD, mid + VOL_HALF_SPREAD, i, mid);
 }
 
-function volSpikeTick(i: number): PriceTick {
+function volSpikeTick(symbol: string, i: number): PriceTick {
   return mkTick(
+    symbol,
     VOL_SPIKE_MID - VOL_HALF_SPREAD,
     VOL_SPIKE_MID + VOL_HALF_SPREAD,
     i,
@@ -353,9 +523,9 @@ function volSpikeTick(i: number): PriceTick {
   );
 }
 
-function fillVolBaseline(subject: Subject<PriceTick>): number {
+function fillVolBaseline(registry: SharedTickRegistry, symbol: string): number {
   for (let n = 0; n < BASELINE_FILL; n++) {
-    subject.next(volBaselineTick(n, n));
+    registry.push(symbol, volBaselineTick(symbol, n, n));
   }
 
   return BASELINE_FILL;
@@ -367,22 +537,68 @@ function scheduler(): TestScheduler {
   });
 }
 
-function fakePricing(subject: Subject<PriceTick>): PricingPort {
+/** A fake `priceFor` layer modeling `PriceStreamPresenter.price$`'s real
+ * shape: a per-symbol CACHED, `shareReplay({refCount: true})`-multicast
+ * stream over a genuinely COLD underlying source — mirrors
+ * `PricingSimulator.getPriceUpdates`'s own "fresh timer loop per
+ * subscription" contract (see `NarratorDeps.priceFor`'s doc). `push` writes
+ * directly to the per-symbol `Subject` the cold source wraps, independent
+ * of how many (or how few) multicast subscribers are currently attached —
+ * so pushes always land correctly across a `switchMap` resubscription.
+ * `subscribeCount(symbol)` reports how many times the COLD source itself
+ * was subscribed — the number a correctly-shared cache keeps at 1 no
+ * matter how many logical consumers call `priceFor` for the same symbol. */
+interface SharedTickRegistry {
+  readonly priceFor: (pair: CurrencyPair) => Observable<PriceTick>;
+  readonly push: (symbol: string, tick: PriceTick) => void;
+  readonly subscribeCount: (symbol: string) => number;
+}
+
+function makeSharedTickRegistry(): SharedTickRegistry {
+  const subjects = new Map<string, Subject<PriceTick>>();
+  const shared = new Map<string, Observable<PriceTick>>();
+  const counts = new Map<string, number>();
+
+  function subjectFor(symbol: string): Subject<PriceTick> {
+    const existing = subjects.get(symbol);
+
+    if (existing) {
+      return existing;
+    }
+
+    const created = new Subject<PriceTick>();
+    subjects.set(symbol, created);
+    return created;
+  }
+
   return {
-    getPriceUpdates: (symbol: string): Observable<PriceTick> => {
-      return symbol === SYMBOL ? subject : of();
+    priceFor: (pair: CurrencyPair): Observable<PriceTick> => {
+      const cached = shared.get(pair.symbol);
+
+      if (cached) {
+        return cached;
+      }
+
+      const cold = new Observable<PriceTick>((subscriber) => {
+        counts.set(pair.symbol, (counts.get(pair.symbol) ?? 0) + 1);
+        return subjectFor(pair.symbol).subscribe(subscriber);
+      });
+
+      const stream = cold.pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      shared.set(pair.symbol, stream);
+      return stream;
     },
-    getPriceHistory: () => {
-      return of([]);
+    push: (symbol: string, tick: PriceTick): void => {
+      subjectFor(symbol).next(tick);
     },
-    getRfqQuote: () => {
-      return of();
+    subscribeCount: (symbol: string): number => {
+      return counts.get(symbol) ?? 0;
     },
   };
 }
 
 interface Rig {
-  readonly tickSubject: Subject<PriceTick>;
+  readonly registry: SharedTickRegistry;
   readonly preference$: Observable<JarvisNarratorPreference>;
   readonly narrate: ReturnType<typeof vi.fn<(prompt: string) => void>>;
   readonly ts: TestScheduler;
@@ -392,18 +608,18 @@ interface Rig {
 function buildRig(
   ts: TestScheduler,
   preference$: Observable<JarvisNarratorPreference> = of("on"),
-  symbols$: Observable<readonly string[]> = of([SYMBOL]),
+  pairs$: Observable<readonly CurrencyPair[]> = of([mkPair(SYMBOL)]),
 ): Rig {
-  const tickSubject = new Subject<PriceTick>();
+  const registry = makeSharedTickRegistry();
   const narrate = vi.fn<(prompt: string) => void>();
   const deps: NarratorDeps = {
-    pricing: fakePricing(tickSubject),
-    symbols$,
+    pairs$,
+    priceFor: registry.priceFor,
     narrate,
     preference$,
     scheduler: ts,
     config: CFG,
   };
 
-  return { tickSubject, preference$, narrate, ts, deps };
+  return { registry, preference$, narrate, ts, deps };
 }

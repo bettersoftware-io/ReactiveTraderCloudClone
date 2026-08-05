@@ -199,7 +199,11 @@ export interface Presenters {
    * consequence (accepted): layout state (maximized/collapsed/split sizes)
    * now SURVIVES a tab switch instead of resetting on `WorkspaceEngine`'s
    * `key={activeTab}` remount, since the underlying machine is no longer
-   * rebuilt per mount. */
+   * rebuilt per mount. The returned instance's `dispose()` is a
+   * STRUCTURAL no-op (not just a documented convention) — a legacy
+   * `useMachine`-style consumer calling it (e.g. solid-bindings' current
+   * `useLayout`, ahead of Task 11's non-disposing rewrite there) cannot
+   * tear down the shared singleton for every other consumer. */
   layoutFor: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
@@ -572,21 +576,56 @@ export function createApp(ports: AppPorts): App {
   // in this function. `layoutFor` is exposed on `Presenters` so BOTH
   // `jarvisDriver`'s `layout` dep below AND `createMachineFactories`'s
   // `layout` field (see below) resolve to the exact same instance per tab.
-  const layoutMachines = new Map<
+  //
+  // Two parallel maps, not one: `layoutMachinesReal` holds the actual
+  // `createLayoutMachine` instances (a genuinely disposable `dispose()`),
+  // kept PRIVATE to this closure — nothing outside `createApp()` ever sees
+  // it. `layoutHandles` is what `layoutFor` actually returns: the same
+  // `state$`/`intents` wired straight through, but `dispose` replaced with
+  // a documented no-op. This makes the composition-root-singleton
+  // invariant STRUCTURAL, not just documentation: `MachineFactories.layout`
+  // has the identical shape as every per-mount factory a `useMachine`
+  // bridge disposes on unmount (exactly what solid-bindings' CURRENT
+  // `useMachine(machines.layout(tab))` still does, ahead of Task 11's
+  // non-disposing rewrite there) — a legacy consumer calling `.dispose()`
+  // on the returned handle is now harmless instead of completing the real
+  // machine's Subjects and caching the corpse in the Map forever. The real
+  // machine's dispose stays reachable via `layoutMachinesReal` for a
+  // hypothetical future composition-root teardown path — unused today,
+  // same no-teardown-seam doctrine as `eqWorkspace`/`workspaceNav`/
+  // `jarvisPanels`/`jarvisDriver`.
+  const layoutMachinesReal = new Map<
+    WorkspaceTab,
+    Machine<LayoutState, LayoutIntents>
+  >();
+
+  const layoutHandles = new Map<
     WorkspaceTab,
     Machine<LayoutState, LayoutIntents>
   >();
 
   function layoutFor(tab: WorkspaceTab): Machine<LayoutState, LayoutIntents> {
-    const existing = layoutMachines.get(tab);
+    const existingHandle = layoutHandles.get(tab);
 
-    if (existing) {
-      return existing;
+    if (existingHandle) {
+      return existingHandle;
     }
 
     const machine = createLayoutMachine(createDefaultLayoutPort(tab));
-    layoutMachines.set(tab, machine);
-    return machine;
+    layoutMachinesReal.set(tab, machine);
+
+    const handle: Machine<LayoutState, LayoutIntents> = {
+      state$: machine.state$,
+      intents: machine.intents,
+      dispose: () => {
+        // Deliberately inert — see this map pair's doc above. Composition
+        // owns this machine's lifetime; a consumer's dispose() must never
+        // tear down a shared singleton for every other consumer.
+      },
+    };
+
+    layoutHandles.set(tab, handle);
+    return handle;
   }
 
   // JarvisDriverMachine: the total DriveCommand interpreter (Task 6). SAME
@@ -657,15 +696,21 @@ export function createApp(ports: AppPorts): App {
   // at DEFAULT_ANOMALY_CONFIG. The return value's `stop()` is unused here:
   // this machine, like jarvisPanels/jarvisDriver, lives for the app's whole
   // session with no composition-root teardown seam.
+  //
+  // `priceFor` is `priceStream.price$` — the SAME shared per-symbol cache
+  // AnimationDirector's own `priceFor` reads above, NOT a direct
+  // `ports.pricing.getPriceUpdates` call (review fix, T9 round 1): the
+  // simulator's live tick stream is cold per subscription and mutates
+  // SHARED per-pair state on its own timer loop, so an independent second
+  // subscription to the same symbol doubles its effective tick rate (the
+  // #171 tick-acceleration family) — see NarratorDeps.priceFor's doc for
+  // the full rationale and the two accepted consequences (permanently
+  // pinning those shared streams warm; conflation under power-saver calm).
   createNarratorMachine({
-    pricing: ports.pricing,
-    symbols$: currencyPairs.pairs$.pipe(
-      map((pairs) => {
-        return pairs.map((pair) => {
-          return pair.symbol;
-        });
-      }),
-    ),
+    pairs$: currencyPairs.pairs$,
+    priceFor: (pair: CurrencyPair) => {
+      return priceStream.price$(pair);
+    },
     narrate: (prompt: string): void => {
       jarvis.intents.narrate(prompt);
     },
