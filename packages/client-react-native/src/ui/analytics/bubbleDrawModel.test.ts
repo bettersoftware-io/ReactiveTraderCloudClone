@@ -98,18 +98,25 @@ describe("buildBubbleDrawModel", () => {
   it("labels only the bubbles wide enough to hold a second line", () => {
     const byCurrency = indexEntries(SPREAD_BOOK);
 
-    // AUD is 120px across, GBP exactly 40 — the threshold, which is inclusive.
+    // T37: the floor is 30px, the MOBILE prototype's own smallest bubble
+    // (`30 + (|usd| / maxExp) * 44`), not the 40 taken from the web
+    // prototype's `40 + sqrt(|M|) * 11`. At the mobile amount size of 7.5px a
+    // 30px bubble fits its value, and the design's template labels every
+    // bubble unconditionally — so EUR, exactly on the threshold, keeps its
+    // amount where it used to be blanked.
     expect(byCurrency.AUD.amount).toBe("+100.0M");
     expect(byCurrency.GBP.amount).toBe("-20.0M");
-    // EUR is 30px across: an amount would spill outside the circle.
-    expect(byCurrency.EUR.amount).toBeNull();
+    expect(byCurrency.EUR.amount).toBe("+10.0M");
   });
 
-  it("steps the currency label up a size only past the 62px diameter", () => {
+  // T37: the mobile design uses ONE currency size (9px/600, dc.html:196), so
+  // the step-up is a no-op today. The seam is kept — and asserted flat — so a
+  // future size split is a deliberate edit rather than an accident.
+  it("uses one currency size either side of the 62px diameter", () => {
     const byCurrency = indexEntries(SPREAD_BOOK);
 
-    expect(byCurrency.AUD.currencyFontSize).toBe(15); // 120px across
-    expect(byCurrency.GBP.currencyFontSize).toBe(12); // 40px across
+    expect(byCurrency.AUD.currencyFontSize).toBe(9); // 120px across
+    expect(byCurrency.GBP.currencyFontSize).toBe(9); // 40px across
   });
 
   it("drops the currency label below centre only when it stands alone", () => {
@@ -118,9 +125,11 @@ describe("buildBubbleDrawModel", () => {
     // Stacked over an amount: the pair straddles the centre line.
     expect(byCurrency.AUD.currencyBaseline).toBeLessThan(0);
     expect(byCurrency.AUD.amountBaseline).toBeGreaterThan(0);
-    // Alone: nudged below centre so it reads optically centred, since text
-    // hangs from its baseline rather than being boxed.
-    expect(byCurrency.EUR.currencyBaseline).toBeGreaterThan(0);
+    // EUR now carries an amount too (see the floor change above), so it is
+    // stacked rather than alone — the lone-label branch is exercised by
+    // `currencyBaseline` directly below.
+    expect(byCurrency.EUR.currencyBaseline).toBeLessThan(0);
+    expect(byCurrency.EUR.amountBaseline).toBeGreaterThan(0);
   });
 
   it("returns nothing to draw for an empty book", () => {
@@ -133,8 +142,8 @@ describe("buildBubbleDrawModel", () => {
 
 describe("currencyFontSize", () => {
   it("sizes on the diameter, exclusive at the threshold", () => {
-    expect(currencyFontSize(31)).toBe(12); // exactly 62px across
-    expect(currencyFontSize(31.5)).toBe(15); // just over
+    expect(currencyFontSize(31)).toBe(9); // exactly 62px across
+    expect(currencyFontSize(31.5)).toBe(9); // just over — same size today
   });
 });
 
