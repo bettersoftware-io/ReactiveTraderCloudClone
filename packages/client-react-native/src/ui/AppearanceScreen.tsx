@@ -22,14 +22,16 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The Appearance settings screen: a mode row (tap-to-cycle, unchanged) plus a
- * segmented dark/light control, theme cards (swatch + name) for the six
- * skins, an ambient toggle, a three-level power-saver control, and a replay-boot action. All state
- * and every write is behind the ViewModel; this only renders view state and
- * dispatches the exposed intents — no direct storage, no domain writes. */
+ * segmented dark/light control, theme cards (swatch + name) for the six skins,
+ * an ambient toggle, a three-level power-saver control, a replay-boot action,
+ * and sign-out (moved here from the HUD header by P7). All state and every
+ * write is behind the ViewModel; this only renders view state and dispatches
+ * the exposed intents — no direct storage, no domain writes. */
 export function AppearanceScreen({
   onReplayBoot,
 }: AppearanceScreenProps = {}): JSX.Element {
@@ -265,6 +267,18 @@ export function AppearanceScreen({
           >
             <Text style={styles.replayButtonText}>⟳ Replay Boot</Text>
           </Pressable>
+        </BlurCard>
+      </View>
+
+      {/* Sign-out lives here rather than in the HUD header (P7): the
+          prototype's header carries exactly two glyph controls and no
+          sign-out, and the third text affordance is what pushed that row off
+          the edge of the screen. Last section deliberately — it is the only
+          destructive action on the sheet, so it sits below everything
+          reversible. */}
+      <View style={styles.section}>
+        <BlurCard mode={mode}>
+          <LogoutButton />
         </BlurCard>
       </View>
     </ScrollView>
