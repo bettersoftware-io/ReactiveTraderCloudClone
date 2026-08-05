@@ -26,12 +26,6 @@ const PANEL_RENDERER_TIMEOUT_MS = 15_000;
  * reduced-motion) before the underlying intent fires — generous for CI. */
 const PANEL_DISMISS_TIMEOUT_MS = 15_000;
 
-/** Every panel body renderer (PanelLine/PanelTable/PanelGauge/PanelSparkGrid/
- * PanelHeatmap) falls back to this exact copy when its frame shape doesn't
- * match its viz kind (composePanelStream.ts's "totality" render path) — no
- * dedicated testid exists for it, so this file matches the literal text. */
-const PANEL_EMPTY_STATE_TEXT = "No data yet";
-
 export class PlaywrightJarvis implements JarvisPO {
   constructor(private readonly page: Page) {}
 
@@ -164,13 +158,6 @@ export class PlaywrightJarvis implements JarvisPO {
     // The line renderer must be GONE, not merely hidden — a restyle remounts
     // the body keyed by `viz.kind` (see JarvisPanelLayer's `key={data?.kind}`),
     // so the two renderers never coexist in the DOM.
-    await expect(this.panelLine(panelId)).toHaveCount(0);
-  }
-
-  async waitForPanelEmptyState(panelId: string): Promise<void> {
-    await expect(
-      this.panel(panelId).getByText(PANEL_EMPTY_STATE_TEXT),
-    ).toBeVisible({ timeout: PANEL_RENDERER_TIMEOUT_MS });
     await expect(this.panelLine(panelId)).toHaveCount(0);
   }
 

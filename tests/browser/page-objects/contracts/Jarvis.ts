@@ -37,23 +37,8 @@ export interface JarvisPO {
    * Wait for the given panel's heatmap body renderer to mount AND its
    * line-chart renderer to be gone — the two are mutually exclusive (only
    * the renderer matching the panel's current `viz.kind` is ever mounted).
-   * Only reachable when the panel's `source`/`transforms` produce a
-   * `"table"`-shaped frame (`analytics`/`blotter`, optionally `topN`) — a
-   * `heatmap` restyle over a `"series"`-shaped frame (e.g. `priceHistory` +
-   * `rollingVol`) is a real, intentional "no data" state instead (see
-   * `composePanelStream.ts`'s totality doc comment) — use
-   * `waitForPanelEmptyState` for that case.
    */
   waitForPanelHeatmapRenderer(panelId: string): Promise<void>;
-  /**
-   * Wait for the given panel body to show its viz-agnostic "No data yet"
-   * placeholder, with its line-chart renderer gone — the correct, documented
-   * outcome of restyling to a viz whose renderer needs a frame shape the
-   * panel's `source`/`transforms` don't produce (e.g. a `priceHistory`-
-   * sourced panel restyled to `heatmap`/`table`, both of which need a
-   * `"table"`-shaped frame that only `analytics`/`blotter` sources yield).
-   */
-  waitForPanelEmptyState(panelId: string): Promise<void>;
   /** Click the given panel's own dismiss (✕) button. */
   dismissPanel(panelId: string): Promise<void>;
   /**

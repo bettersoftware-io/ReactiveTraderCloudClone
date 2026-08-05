@@ -61,18 +61,6 @@ const SCRIPTED_PANEL_ID = "panel-scripted-1";
  * layer is the overlay's SIBLING, not its child); a restylePanel turn swaps
  * the SAME panel (same `data-panel-id`) to a heatmap; dismissing it removes
  * it (and the whole panel layer, since this demo is single-panel).
- *
- * The scripted demo's ONE canned spec (GBP_VOLATILITY_PANEL_SPEC in
- * ScriptedJarvisEngine.ts) sources `priceHistory` + `rollingVol`, which
- * `composePanelStream.ts` folds into a `"series"`-shaped frame — heatmap (and
- * table) rendering needs a `"table"`-shaped frame instead (only
- * `analytics`/`blotter` sources produce one), so restyling THIS panel to a
- * heatmap deterministically lands on the render pipeline's documented
- * "totality" empty state, not populated heatmap cells. That's the real,
- * correct behavior to assert (`waitForPanelEmptyState`) — it still proves
- * the restyle mechanism end to end: same panel id, `data-status` stays
- * `"live"`, and the line renderer unmounts in favor of the new viz kind's
- * (empty) render.
  */
 export async function expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(
   ctx: TestContext,
@@ -98,12 +86,10 @@ export async function expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(
     "expected the panel to survive closing the chat overlay",
   );
 
-  // Reopen and restyle — same panel id, new viz. See this function's doc
-  // comment for why the correct outcome here is the empty-state placeholder,
-  // not populated heatmap cells.
+  // Reopen and restyle — same panel id, new viz.
   await ctx.po.jarvis.openViaOrb();
   await ctx.po.jarvis.ask("make it a heatmap");
-  await ctx.po.jarvis.waitForPanelEmptyState(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForPanelHeatmapRenderer(SCRIPTED_PANEL_ID);
   await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
   await ctx.po.jarvis.waitForReplyDone();
   assertContains(await ctx.po.jarvis.lastReplyText(), "Restyled as a heatmap");
