@@ -559,6 +559,46 @@ describe("createViewModel — admin/telemetry streams", () => {
     });
   }, 8_000);
 
+  it("useJarvisPanelData starts null for an unknown panelId", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useJarvisPanelData("no-such-panel");
+    });
+
+    expect(result()).toBeNull();
+  });
+
+  it("useJarvisPanelData resolves the live panel's data once its data$ frame lands (seeded machine state)", async () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return {
+        jarvis: vm.useJarvis(),
+        panels: vm.useJarvisPanels(),
+        panelData: vm.useJarvisPanelData("panel-scripted-1"),
+      };
+    });
+
+    result.jarvis.send("show me gbp volatility");
+
+    // Same 1s ReferenceDataSimulator latency called out on the
+    // useJarvisPanels turn above — carried through to the panel's own
+    // data$ frame.
+    await waitFor(
+      () => {
+        expect(result.panels.panels().length).toBeGreaterThan(0);
+      },
+      { timeout: 3_000 },
+    );
+
+    await waitFor(
+      () => {
+        expect(result.panelData()).not.toBeNull();
+      },
+      { timeout: 3_000 },
+    );
+    expect(result.panelData()).toMatchObject({ kind: "line" });
+  }, 8_000);
+
   it("useEventLog reads the seeded rolling event log", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
