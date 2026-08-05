@@ -57,6 +57,7 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  createWorkspaceNavMachine,
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
@@ -646,10 +647,16 @@ function gateTransportOnAuth(
 }
 
 /** Build the app-layer machine factories the ViewModel seam injects. Each factory
- * spins up a fresh machine per component mount, wired to the presenters. */
+ * spins up a fresh machine per component mount, wired to the presenters —
+ * EXCEPT `workspaceNav`, a composition-root SINGLETON built once here (it
+ * takes no deps, unlike `eqWorkspace`/`incident`, so it needs no earlier home
+ * in `Presenters`/`composeApp`) and returned as the already-built machine
+ * itself rather than a factory. */
 export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
+  const workspaceNav = createWorkspaceNavMachine();
+
   return {
     tileExecution: (pair: CurrencyPair) => {
       return createTileExecutionMachine(pair, {
@@ -709,5 +716,6 @@ export function createMachineFactories(
         defaultSymbol,
       });
     },
+    workspaceNav,
   };
 }

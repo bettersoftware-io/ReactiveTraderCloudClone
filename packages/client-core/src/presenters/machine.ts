@@ -26,6 +26,10 @@ import type {
   TileExecutionIntents,
   TileExecutionState,
 } from "./TileExecutionMachine";
+import type {
+  WorkspaceNavIntents,
+  WorkspaceNavState,
+} from "./WorkspaceNavMachine";
 
 /** Every app-layer machine factory returns this: a framework-agnostic
  * StateObservable carrying current state, plain intent methods, and dispose()
@@ -84,4 +88,11 @@ export interface MachineFactories {
   orderTicket: (
     defaultSymbol: string,
   ) => Machine<OrderTicketState, OrderTicketIntents>;
+  /** Active workspace tab — a composition-root SINGLETON (unlike every other
+   * field above, this is the already-built machine itself, not a per-mount
+   * factory): the promoted form of the `useState<WorkspaceTab>` that used to
+   * live directly in each web client's `App.tsx`, now reachable from
+   * composition (and therefore from Jarvis's drive-the-app `switchTab`
+   * command — see the P5 `JarvisDriverMachine`). */
+  workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
 }

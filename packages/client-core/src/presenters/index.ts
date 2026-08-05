@@ -58,4 +58,5 @@ export * from "#/presenters/TileExecutionMachine";
 export * from "#/presenters/TradeExecutionPresenter";
 export * from "#/presenters/ViewModePreferencePresenter";
 export * from "#/presenters/WatchlistPresenter";
+export * from "#/presenters/WorkspaceNavMachine";
 export * from "#/presenters/windowedSamples";
