@@ -64,6 +64,27 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     expect(lower).toContain("example — edit");
   });
 
+  it("wraps both few-shot examples in the tool's real input envelope ({spec: …}), never the bare spec", () => {
+    // The tool schema requires {spec, targetPanelId?} with additionalProperties
+    // false — a bare-spec example would teach the model an input the tool
+    // rejects, costing a self-correction round-trip on the flagship demo turn.
+    const exampleLines = JARVIS_SYSTEM_PROMPT.split("\n").filter((line) => {
+      return line.startsWith("Example — ");
+    });
+
+    expect(exampleLines).toHaveLength(2);
+
+    for (const line of exampleLines) {
+      expect(line).toMatch(/render_panel (?:again )?with \{spec: \{/);
+    }
+
+    const editLine = exampleLines.find((line) => {
+      return line.startsWith("Example — edit");
+    });
+
+    expect(editLine).toContain("targetPanelId:");
+  });
+
   it("names none of the trademarked film lines", () => {
     const lower = JARVIS_SYSTEM_PROMPT.toLowerCase();
     expect(lower).not.toContain("iron man");
