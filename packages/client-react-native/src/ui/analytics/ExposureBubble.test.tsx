@@ -31,12 +31,16 @@ const FONT = {
  * assertion about which layers were drawn. The geometry those layers use is
  * `buildBubbleDrawModel`'s and is asserted there.
  */
-test("stacks a fill, a glow and a ring under both labels", async () => {
+test("stacks a fill and a ring under both labels — and NO glow", async () => {
   await renderWithTheme(bubble({ currencyFont: FONT, amountFont: FONT }));
 
-  // Fill, glow and ring — the prototype's three layers, one circle each.
-  expect(countHosts("SkiaCircle")).toBe(3);
-  expect(countHosts("SkiaRadialGradient")).toBe(1);
+  // T37: the MOBILE design is TWO layers, an 11% fill and a full-opacity
+  // hairline ring (dc.html:194). The third circle and the radial gradient
+  // asserted here previously came from the v2 WEB prototype's stylesheet,
+  // which this component had been ported from by mistake. The explicit zero
+  // is the point of the test — a glow creeping back is the regression.
+  expect(countHosts("SkiaCircle")).toBe(2);
+  expect(countHosts("SkiaRadialGradient")).toBe(0);
   expect(countHosts("SkiaText")).toBe(2);
 });
 
@@ -46,7 +50,7 @@ test("stacks a fill, a glow and a ring under both labels", async () => {
 test("draws the disc but no text while the typefaces are still loading", async () => {
   await renderWithTheme(bubble({ currencyFont: null, amountFont: null }));
 
-  expect(countHosts("SkiaCircle")).toBe(3);
+  expect(countHosts("SkiaCircle")).toBe(2);
   expect(countHosts("SkiaText")).toBe(0);
 });
 
@@ -68,7 +72,7 @@ test("draws at rest immediately when motion is disabled", async () => {
     bubble({ currencyFont: FONT, amountFont: FONT, motionEnabled: false }),
   );
 
-  expect(countHosts("SkiaCircle")).toBe(3);
+  expect(countHosts("SkiaCircle")).toBe(2);
 });
 
 interface BubbleOverrides {

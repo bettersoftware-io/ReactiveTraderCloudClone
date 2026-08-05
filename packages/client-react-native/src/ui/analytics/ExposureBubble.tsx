@@ -1,11 +1,4 @@
-import {
-  Circle,
-  Group,
-  RadialGradient,
-  type SkFont,
-  Text,
-  vec,
-} from "@shopify/react-native-skia";
+import { Circle, Group, type SkFont, Text } from "@shopify/react-native-skia";
 import type { JSX } from "react";
 import { useEffect } from "react";
 import {
@@ -21,8 +14,7 @@ import {
 } from "#/ui/analytics/bubbleDrawModel";
 
 /**
- * One exposure bubble: a tinted disc, a radial glow, a hairline ring, and its
- * labels — breathing to a new size and position as the book drifts.
+ * One exposure bubble: a tinted disc, a hairline ring, and its labels — breathing to a new size and position as the book drifts.
  *
  * WHY A SEPARATE COMPONENT. Each bubble owns three shared values and an
  * effect, and hooks cannot live inside the `.map()` in `ExposureBubbles`. One
@@ -79,13 +71,6 @@ export function ExposureBubble({
   return (
     <Group transform={transform}>
       <Circle cx={0} cy={0} r={radius} color={color} opacity={FILL_ALPHA} />
-      <Circle cx={0} cy={0} r={radius} opacity={GLOW_ALPHA}>
-        <RadialGradient
-          c={GLOW_CENTER}
-          r={radius}
-          colors={[color, TRANSPARENT]}
-        />
-      </Circle>
       <Circle
         cx={0}
         cy={0}
@@ -93,7 +78,6 @@ export function ExposureBubble({
         style="stroke"
         strokeWidth={RING_STROKE_WIDTH}
         color={color}
-        opacity={RING_ALPHA}
       />
       {currencyFont === null ? null : (
         <Text
@@ -126,29 +110,31 @@ const BREATH_DURATION_MS = 900;
 const BREATHING = Easing.inOut(Easing.cubic);
 
 /**
- * The prototype's three stacked layers (`ExposureBubbles.module.css`): a 10%
- * fill, a 22% radial glow, and a hairline ring at 50%.
+ * The MOBILE prototype's bubble: an 11% fill and a full-opacity hairline ring.
+ * Two layers, not three — there is no glow (dc.html:194).
  *
- * Expressed as `opacity` on the element rather than as an alpha baked into a
+ * T37: these constants used to be a faithful copy of
+ * `packages/client-prototype/src/fx/Positions/ExposureBubbles.module.css` —
+ * the **v2 WEB** design port. Fill `0.1`, ring `opacity: 0.5`, a
+ * `radial-gradient` glow and labels at 12/15/9px all traced to it exactly, and
+ * the comment here claimed they were "the prototype's three stacked layers"
+ * while naming a stylesheet belonging to a different client. The result read
+ * as heavy glowing discs where the mobile design draws crisp rings. Same
+ * defect class as T35 (modelled on the wrong source), one level up: the wrong
+ * *product*.
+ *
+ * Expressed as `opacity` on the element rather than an alpha baked into a
  * colour string, because a theme colour is not guaranteed to be a hex triple —
  * the holo skin stores several tokens as `rgba(...)` already, and the
- * hex-parsing `withAlpha` in `PnlChart` would silently mangle those. Opacity
- * needs no parsing and works whatever the token's format.
+ * hex-parsing `withAlpha` in `PnlChart` would silently mangle those.
  */
-const FILL_ALPHA = 0.1;
-const GLOW_ALPHA = 0.22;
-const RING_ALPHA = 0.5;
+const FILL_ALPHA = 0.11;
 const RING_STROKE_WIDTH = 1;
-
-/** The glow is centred on the bubble; children are drawn in bubble-local
- * space, so that is the origin. */
-const GLOW_CENTER = vec(0, 0);
-const TRANSPARENT = "rgba(0,0,0,0)";
 
 interface ExposureBubbleProps {
   readonly entry: BubbleDrawEntry;
-  /** Accent for this bubble's sign — fill, glow, ring and currency label all
-   * take it, as in the prototype. */
+  /** Accent for this bubble's sign — fill, ring and currency label all take
+   * it, as in the prototype. */
   readonly color: string;
   readonly amountColor: string;
   /** `null` until the typeface asset resolves; the disc still draws. */

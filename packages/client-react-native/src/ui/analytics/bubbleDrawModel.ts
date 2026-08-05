@@ -123,20 +123,35 @@ export function centerTextX(centerX: number, textWidth: number): number {
   return centerX - textWidth / 2;
 }
 
-const CURRENCY_FONT_SIZE_SMALL = 12;
-const CURRENCY_FONT_SIZE_LARGE = 15;
-export const AMOUNT_FONT_SIZE = 9;
+/**
+ * T37: the MOBILE prototype renders the currency at 9px/600 and the amount at
+ * 7.5px (dc.html:196-197). These were 12/15/9 — the sizes in
+ * `packages/client-prototype/.../ExposureBubbles.module.css`, i.e. the v2 WEB
+ * design port, carried over wholesale along with the glow and the half-opacity
+ * ring. There is no step-up at a larger diameter in the mobile design, so the
+ * two currency sizes collapse to one.
+ */
+const CURRENCY_FONT_SIZE_SMALL = 9;
+const CURRENCY_FONT_SIZE_LARGE = 9;
+export const AMOUNT_FONT_SIZE = 7.5;
 
-/** Diameter above which the currency label steps up a size (dc.html L1299). */
+/** Retained so the size-selection seam stays explicit even though the mobile
+ * design uses one size either side of it. */
 const LARGE_LABEL_DIAMETER = 62;
 
 /**
- * Smallest bubble that gets an amount label. `aggregatePositionsByCurrency`
- * scales radius down to 15 — a 30px bubble, far too narrow for `-55.0M` at
- * 9px. 40px is the prototype's own floor (its diameter is `40 + sqrt(|M|) *
- * 11`, so it never draws an amount in anything smaller either).
+ * Smallest bubble that gets an amount label.
+ *
+ * T37: this was 40, justified as "the prototype's own floor (its diameter is
+ * `40 + sqrt(|M|) * 11`)" — but that formula is the **web** prototype's
+ * (`client-prototype/src/fx/Positions/positionsData.ts:25`). The mobile design
+ * sizes bubbles `30 + (|usd| / maxExp) * 44`: a LINEAR ramp with a **30px**
+ * floor, and its template draws the amount on every bubble unconditionally
+ * (dc.html:194-197). The suppression existed because the labels were carrying
+ * the web's oversized 9px amount; at the mobile 7.5px a 30px bubble fits, so
+ * the floor drops to match and the smallest bubble regains its value.
  */
-const AMOUNT_MIN_DIAMETER = 40;
+const AMOUNT_MIN_DIAMETER = 30;
 
 /**
  * A lone currency label sits slightly below the geometric centre so it reads

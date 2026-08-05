@@ -1,7 +1,13 @@
 import type { JSX } from "react";
-import { StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
-import type { PositionUpdates } from "@rtc/domain";
+import { formatPnlK, type PositionUpdates } from "@rtc/domain";
 
 import { ExposureBubbles } from "#/ui/analytics/ExposureBubbles";
 import { PairPnlBars } from "#/ui/analytics/PairPnlBars";
@@ -32,6 +38,7 @@ export function AnalyticsDashboard({
   const styles = useThemedStyles(makeStyles);
   const latestPnl =
     data.history.length > 0 ? data.history[data.history.length - 1].usdPnl : 0;
+  const delta = latestDelta(data.history);
 
   return (
     <>
@@ -40,7 +47,16 @@ export function AnalyticsDashboard({
         testID="analytics-widget-pnl"
         style={styles.widget}
       >
-        <Text style={styles.widgetTitle}>PROFIT &amp; LOSS · USD</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.widgetTitle}>PROFIT &amp; LOSS · USD</Text>
+          {delta === null ? null : (
+            <View testID="analytics-pnl-delta" style={styles.deltaChip}>
+              <Text style={styles.deltaLabel}>
+                Δ {formatPnlK(delta.change)} / {delta.windowSecs}S
+              </Text>
+            </View>
+          )}
+        </View>
         <PnlValue value={latestPnl} />
         <PnlChart history={data.history} />
       </SurfaceCard>
@@ -66,13 +82,51 @@ export function AnalyticsDashboard({
   );
 }
 
+/**
+ * The change over the most recent history step, for the header chip
+ * (T39 — the prototype's `Δ +4.2K / 12S`, dc.html:977).
+ *
+ * The WINDOW IS DERIVED FROM THE TIMESTAMPS, not hardcoded. The prototype's
+ * "12S" is its own mock cadence; ours is whatever `AnalyticsSimulator` is
+ * appending at (10 s today). Reading it off the data means the label cannot
+ * drift from reality if that interval ever changes — a hardcoded "10S" beside
+ * a changed constant is exactly the class of stale-by-construction copy that
+ * `blotter/seeded` re-dating itself (T32) came from.
+ *
+ * `null` with fewer than two points: there is no change to report yet, and a
+ * chip reading "Δ +0k / 0S" would be an assertion rather than an absence.
+ */
+function latestDelta(history: PositionUpdates["history"]): PnlDelta | null {
+  if (history.length < 2) {
+    return null;
+  }
+
+  const last = history[history.length - 1];
+  const previous = history[history.length - 2];
+  const elapsedMs = Date.parse(last.timestamp) - Date.parse(previous.timestamp);
+
+  return {
+    change: last.usdPnl - previous.usdPnl,
+    windowSecs: Math.max(0, Math.round(elapsedMs / 1000)),
+  };
+}
+
+/** The P&L header chip's two values: the step change and the window it covers. */
+interface PnlDelta {
+  change: number;
+  windowSecs: number;
+}
+
 interface AnalyticsDashboardProps {
   data: PositionUpdates;
 }
 
 interface AnalyticsDashboardStyles {
   widget: ViewStyle;
+  titleRow: ViewStyle;
   widgetTitle: TextStyle;
+  deltaChip: ViewStyle;
+  deltaLabel: TextStyle;
 }
 
 function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
@@ -94,6 +148,27 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
       fontFamily: t.fontMono,
       marginBottom: SPACING.sm,
       letterSpacing: 2,
+    },
+    // dc.html:167 puts the delta in a bordered pill on the title's baseline,
+    // right-aligned against the card edge.
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    deltaChip: {
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 4,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      marginBottom: SPACING.sm,
+    },
+    deltaLabel: {
+      fontSize: 8.5,
+      letterSpacing: 1,
+      color: t.textSecondary,
+      fontFamily: t.fontMono,
     },
   });
 }

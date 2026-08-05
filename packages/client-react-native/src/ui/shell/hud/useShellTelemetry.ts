@@ -54,8 +54,29 @@ export function useShellTelemetry(): ShellTelemetry {
 
     framesSv.value += 1;
 
-    if (windowStartSv.value === 0) {
+    // T30: THE CLOCK RESTARTS UNDER US. `useFrameCallback` registers its
+    // argument in an effect keyed on the callback identity, and this one is an
+    // inline arrow — a new identity every render — so every re-render
+    // unregisters and re-registers it, and re-registration restarts
+    // `timeSinceFirstFrame` at zero. This hook re-renders itself on each
+    // `setFps`, so that happens constantly. A `windowStartSv` captured before
+    // a reset is a stamp in the OLD clock's frame of reference, and
+    // subtracting it from the new one yields a tiny or negative elapsed —
+    // which is how the status strip reported 302, 485 and 1264 FPS on device.
+    //
+    // Same mechanism as T29, where every boot scene sat frozen at t=0. The fix
+    // there was to hoist the callback; that repair trips
+    // `react-hooks/immutability` here (the rule tolerates shared-value writes
+    // in an inline `useFrameCallback` argument but not in a hoisted one), so
+    // this instead detects the reset and resyncs. Frames counted against the
+    // previous clock are discarded rather than divided by the wrong elapsed —
+    // one dropped window is invisible; a wrong number is not.
+    const restarted = frame.timeSinceFirstFrame < windowStartSv.value;
+
+    if (windowStartSv.value === 0 || restarted) {
       windowStartSv.value = frame.timeSinceFirstFrame;
+      framesSv.value = 0;
+      return;
     }
 
     const elapsed = frame.timeSinceFirstFrame - windowStartSv.value;
