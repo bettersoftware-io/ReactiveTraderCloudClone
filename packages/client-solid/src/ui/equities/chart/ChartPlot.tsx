@@ -5,6 +5,7 @@ import type {
   ChartVarStyle,
   ChartVm,
   CrosshairVm,
+  DrawingSceneItem,
   EqPaneKind,
   NavigatorVm,
   PaneReadoutRow,
@@ -18,6 +19,7 @@ import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
 import type { ChartGestures, PaneHoverProps } from "./createChartGestures";
 import type { NavigatorStripProps } from "./createNavigatorBrush";
+import { DrawingsLayer } from "./DrawingsLayer";
 import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
 import type { IndicatorPath } from "./SvgPathLayer";
@@ -102,6 +104,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           kind={props.kind}
           indicatorPaths={props.indicatorPaths}
         />
+        <DrawingsLayer items={props.drawItems ?? []} />
         <CrosshairOverlay
           vm={props.cross}
           showHorizontal={props.showHorizontal ?? true}
@@ -156,6 +159,10 @@ export interface ChartPlotProps {
   readonly vm: ChartVm;
   readonly kind: EqChartType;
   readonly indicatorPaths: readonly IndicatorPath[];
+  /** Chart annotations (trendlines/horizontal levels), pre-projected by
+   * `@rtc/motion-core`'s `drawingScene` — omit for a drawing-free mount
+   * (defaults to none, same convention as `panes`). */
+  readonly drawItems?: readonly DrawingSceneItem[];
   readonly cross: CrosshairVm | null;
   readonly atLiveEdge: boolean;
   readonly volumeBars: readonly VolumeBarVm[];
