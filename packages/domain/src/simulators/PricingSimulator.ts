@@ -14,6 +14,15 @@ import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import type { PriceTick } from "../fx/price.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
+import {
+  advanceEpisode,
+  burstSignBias,
+  burstStepMultiplier,
+  DEFAULT_EPISODE_CONFIG,
+  type EpisodeState,
+  NO_EPISODE,
+  spreadFactor,
+} from "./pricingAnomalyEpisode.js";
 
 const MIN_TICK_INTERVAL_MS = 150;
 const MAX_TICK_INTERVAL_MS = 1_000;
@@ -24,6 +33,14 @@ interface PairState {
   halfSpread: number;
   stepSize: number;
   ratePrecision: number;
+  /**
+   * Rare anomaly-episode state (see `pricingAnomalyEpisode.ts`) — the
+   * narrator's only trigger source. Advanced once per LIVE tick only; the
+   * history-seeding walk in `initPair` never touches it, so it stays
+   * `NO_EPISODE` for every seeded/pinned tick (RFQ quotes likewise never
+   * consult it — a quote is a point-in-time snapshot, not a live tick).
+   */
+  episode: EpisodeState;
 }
 
 /** Pip unit: 10^-pipsPosition (0.01 for JPY-quoted pairs, 0.0001 otherwise). */
@@ -36,8 +53,21 @@ function stepSizeFor(pair: CurrencyPair): number {
   return pair.pipsPosition === 2 ? 2 * pipUnit(2) : 1.8 * pipUnit(4);
 }
 
-function applyRandomWalk(state: PairState): number {
-  const next = state.mid + (Math.random() - 0.5) * state.stepSize;
+/**
+ * `stepMultiplier`/`signBias` default to the neutral values (1, 0), so a
+ * call site that never touches episodes computes byte-identically to the
+ * original single-argument formula — see `pricingAnomalyEpisode.ts`'s
+ * module doc for why this matters (the steady-state RNG byte-compat pin).
+ */
+function applyRandomWalk(
+  state: PairState,
+  random: () => number,
+  stepMultiplier = 1,
+  signBias: -1 | 0 | 1 = 0,
+): number {
+  const raw = random() - 0.5;
+  const r = signBias === 0 ? raw : signBias * Math.abs(raw);
+  const next = state.mid + r * state.stepSize * stepMultiplier;
   const rounded = Number(next.toFixed(state.ratePrecision));
   return rounded > 0 ? rounded : state.mid;
 }
@@ -47,12 +77,14 @@ function createTick(
   state: PairState,
   timestamp: number,
   valueDateMs: number,
+  spreadMultiplier = 1,
 ): PriceTick {
+  const halfSpread = state.halfSpread * spreadMultiplier;
   return {
     symbol,
     mid: state.mid,
-    ask: state.mid + state.halfSpread,
-    bid: state.mid - state.halfSpread,
+    ask: state.mid + halfSpread,
+    bid: state.mid - halfSpread,
     // Taken from the caller's clock, not `new Date()` directly: under a pin
     // this must be the pinned instant. A tick that is deterministic in every
     // field EXCEPT a date derived from the wall clock is exactly the defect
@@ -118,12 +150,13 @@ export class PricingSimulator implements PricingPort {
       halfSpread: (pair.typicalSpreadPips / 2) * pipUnit(pair.pipsPosition),
       stepSize: stepSizeFor(pair),
       ratePrecision: pair.ratePrecision,
+      episode: NO_EPISODE,
     };
     const now = this.nowMs();
 
     for (let i = PRICE_HISTORY_SIZE - 1; i >= 0; i--) {
       if (this.pinAtMs === undefined) {
-        state.mid = applyRandomWalk(state);
+        state.mid = applyRandomWalk(state, Math.random);
       }
 
       const timestamp = now - i * 500; // ~500ms between historical ticks
@@ -173,9 +206,31 @@ export class PricingSimulator implements PricingPort {
 
         function scheduleNext(): void {
           timeoutId = setTimeout(() => {
-            pairState.mid = applyRandomWalk(pairState);
+            // Episode state is advanced only on the LIVE path — the one
+            // and only trigger source for the proactive narrator's
+            // anomaly detector (see pricingAnomalyEpisode.ts). Seeded
+            // history and RFQ quotes never call this.
+            pairState.episode = advanceEpisode(
+              pairState.episode,
+              Math.random,
+              DEFAULT_EPISODE_CONFIG,
+            );
+            const stepMultiplier = burstStepMultiplier(pairState.episode);
+            const signBias = burstSignBias(pairState.episode);
+            pairState.mid = applyRandomWalk(
+              pairState,
+              Math.random,
+              stepMultiplier,
+              signBias,
+            );
             const now = Date.now();
-            const tick = createTick(symbol, pairState, now, now);
+            const tick = createTick(
+              symbol,
+              pairState,
+              now,
+              now,
+              spreadFactor(pairState.episode),
+            );
             pairState.history.push(tick);
 
             if (pairState.history.length > PRICE_HISTORY_SIZE) {

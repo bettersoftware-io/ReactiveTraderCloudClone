@@ -207,4 +207,95 @@ describe("PricingSimulator", () => {
     expect(history).toHaveLength(PRICE_HISTORY_SIZE);
     expect(history.length).not.toBeGreaterThan(PRICE_HISTORY_SIZE);
   });
+
+  // --- Anomaly-episode wiring (Task 7b) -----------------------------------
+  //
+  // The pure episode-advance logic (forced start, ramp shape, decay, bounds,
+  // and the RNG-consumption byte-compat guarantee) is unit-tested directly
+  // against `pricingAnomalyEpisode.ts`. These two tests instead pin the
+  // wiring into `PricingSimulator` itself: end-to-end steady-state
+  // byte-compatibility through the class's public surface, and proof the
+  // live tick stream actually widens when an episode is forced.
+
+  it("byte-compatible steady state: live tick mids match the pre-episode random-walk formula when Math.random never crosses the episode start threshold", async () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.9); // 0.9 << 1/1500 crossed only from below; never starts an episode
+    vi.useFakeTimers();
+    try {
+      const engine = new PricingSimulator();
+      const ticksPromise = lastValueFrom(
+        engine
+          .getPriceUpdates("EURUSD")
+          .pipe(take(PRICE_HISTORY_SIZE + 5), toArray()),
+      );
+      await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 6);
+      const ticks = await ticksPromise;
+
+      // Manual replication of the PRE-EPISODE formula only: mid = mid +
+      // (r - 0.5) * stepSize, rounded to ratePrecision, seeded from
+      // EURUSD's baseMid/stepSize/ratePrecision (1.09213 / 0.00018 / 5).
+      // A constant Math.random() makes this reproducible independent of
+      // call COUNT, which is the point: if the new episode-aware code ever
+      // consumed extra draws in steady state, the SHAPE would still match
+      // (constant input either way) — the real guarantee (zero extra
+      // draws) is pinned at the pure-function level in
+      // pricingAnomalyEpisode.test.ts. This test instead pins that the
+      // formula itself, wired through the class, still computes the exact
+      // pre-episode numbers when no episode is active.
+      const stepSize = 0.00018;
+      const ratePrecision = 5;
+      const halfSpread = 0.00007;
+      let mid = 1.09213;
+      const r = 0.9 - 0.5;
+      const expectedMids: number[] = [];
+      for (let i = 0; i < ticks.length; i++) {
+        const next = mid + r * stepSize;
+        const rounded = Number(next.toFixed(ratePrecision));
+        mid = rounded > 0 ? rounded : mid;
+        expectedMids.push(mid);
+      }
+
+      expect(ticks.map((t) => t.mid)).toEqual(expectedMids);
+      for (const tick of ticks) {
+        expect(tick.ask).toBeCloseTo(tick.mid + halfSpread, 10);
+        expect(tick.bid).toBeCloseTo(tick.mid - halfSpread, 10);
+      }
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  it("a forced continuous episode visibly widens the live ask-bid spread beyond the resting baseline, bounded by the configured peak", async () => {
+    // Math.random() === 0 always wins the start roll (0 < 1/1500) AND
+    // always rolls the minimum duration (20), spreadWidening (not
+    // volBurst), and the range's minimum peak factor (2x) — a fully
+    // deterministic, continuously-repeating spreadWidening episode.
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.useFakeTimers();
+    try {
+      const engine = new PricingSimulator();
+      const ticksPromise = lastValueFrom(
+        engine
+          .getPriceUpdates("EURUSD")
+          .pipe(take(PRICE_HISTORY_SIZE + 15), toArray()),
+      );
+      await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 20);
+      const ticks = await ticksPromise;
+      const liveTicks = ticks.slice(PRICE_HISTORY_SIZE);
+
+      const restingSpread = 0.00007 * 2; // EURUSD half-spread * 2
+      const widened = liveTicks.filter(
+        (t) => t.ask - t.bid > restingSpread + 1e-9,
+      );
+      expect(widened.length).toBeGreaterThan(0);
+
+      // Bounded: never exceeds the pinned peak factor (2x, from
+      // spreadPeakRange[0], since every roll above lands on the range's
+      // minimum with a constant-0 random()).
+      for (const t of liveTicks) {
+        expect(t.ask - t.bid).toBeLessThanOrEqual(restingSpread * 2 + 1e-9);
+      }
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
 });
