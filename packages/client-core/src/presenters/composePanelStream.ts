@@ -121,6 +121,12 @@ const BLOTTER_TABLE_COLUMNS = [
  * already saturates) — desk P&L panels are meant to pop, not sit muted. */
 const HEATMAP_INTENSITY_SCALE = 10_000;
 
+/** A heatmap row built from a `series` frame keeps only its trailing window
+ * of points — a full rollingVol/returns series can run to hundreds of
+ * samples, and a heatmap row is meant to be scanned at a glance, not
+ * scrolled. */
+const HEATMAP_SERIES_MAX_CELLS = 12;
+
 function capPoints(points: readonly PanelPoint[]): readonly PanelPoint[] {
   if (points.length <= MAX_POINTS_PER_SERIES) {
     return points;
@@ -619,7 +625,69 @@ function renderSparkGrid(frame: Frame): PanelData {
   return { kind: "sparkGrid", cells };
 }
 
+/** Maps `value` into the heatmap's -1..1 intensity range using the
+ * trailing window's OWN min/max: `min` → -1, `max` → +1, linearly between.
+ * A constant window (`max === min`, incl. a single-point window) has no
+ * spread to normalize against, so every cell reports a neutral 0 rather
+ * than dividing by zero. */
+function normalizeIntensity(value: number, min: number, max: number): number {
+  if (max === min) {
+    return 0;
+  }
+
+  return clamp((2 * (value - min)) / (max - min) - 1, -1, 1);
+}
+
+/** One cell of a heatmap row — mirrors the `"heatmap"` arm of `PanelData`
+ * (kept as its own named type only for internal helper signatures; the
+ * public `PanelData` union is unchanged). */
+interface HeatmapCell {
+  readonly label: string;
+  readonly intensity: number;
+  readonly text: string;
+}
+
+interface HeatmapRow {
+  readonly label: string;
+  readonly cells: readonly HeatmapCell[];
+}
+
+/** One heatmap row's cells from a `series` frame's `NamedSeries`. Cells run
+ * oldest → newest over the trailing `HEATMAP_SERIES_MAX_CELLS` points; each
+ * cell's `label` is its plain sequential index within that kept window
+ * (`"0"`, `"1"`, …) rather than a formatted time — deterministic and
+ * locale/timezone-free, since the underlying tick timestamps carry no fixed
+ * relationship to wall-clock display width. An empty series (no points to
+ * show — e.g. a transform chain that left it with none) reports no cells; a
+ * row with zero cells is filtered out by the caller, collapsing to the same
+ * empty heatmap as no series at all. */
+function seriesHeatmapRow(s: NamedSeries): HeatmapRow {
+  const window = s.points.slice(-HEATMAP_SERIES_MAX_CELLS);
+  const values = window.map((p) => {
+    return p.v;
+  });
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const cells = window.map((p, i) => {
+    return {
+      label: String(i),
+      intensity: normalizeIntensity(p.v, min, max),
+      text: formatGaugeValue(p.v),
+    };
+  });
+  return { label: s.label, cells };
+}
+
 function renderHeatmap(frame: Frame): PanelData {
+  if (frame.kind === "series") {
+    const rows = frame.series
+      .filter((s) => {
+        return s.points.length > 0;
+      })
+      .map(seriesHeatmapRow);
+    return { kind: "heatmap", rows };
+  }
+
   if (frame.kind !== "table") {
     return { kind: "heatmap", rows: [] };
   }

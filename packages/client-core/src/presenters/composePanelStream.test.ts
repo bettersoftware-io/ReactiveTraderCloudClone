@@ -531,6 +531,142 @@ describe("composePanelStream", () => {
     });
   });
 
+  describe("heatmap from a series frame (the 'make it a heatmap' restyle path)", () => {
+    it("normalizes each cell against the window's own min/max — min maps to -1, max to +1 (hand-computed)", () => {
+      const values = [10, 20, 30, 15];
+      const ticks = values.map((v, i) => {
+        return makeTick("EURUSD", v, i * 1_000);
+      });
+
+      const deps = makeDeps({
+        pricing: fakePricing({ EURUSD: from(ticks) }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        viz: { kind: "heatmap" },
+      });
+
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as HeatmapPanelData;
+
+      expect(last.rows).toHaveLength(1);
+      expect(last.rows[0]?.label).toBe("EURUSD");
+      // min=10 -> -1, max=30 -> +1, 20 is the midpoint -> 0, 15 is a
+      // quarter of the way up from 10 -> -0.5.
+      expect(last.rows[0]?.cells).toEqual([
+        { label: "0", intensity: -1, text: "10.0000" },
+        { label: "1", intensity: 0, text: "20.0000" },
+        { label: "2", intensity: 1, text: "30.0000" },
+        { label: "3", intensity: -0.5, text: "15.0000" },
+      ]);
+    });
+
+    it("a constant series (max === min) reports 0 intensity for every cell, not a division by zero", () => {
+      const ticks = [0, 1_000, 2_000].map((t) => {
+        return makeTick("EURUSD", 5, t);
+      });
+
+      const deps = makeDeps({
+        pricing: fakePricing({ EURUSD: from(ticks) }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        viz: { kind: "heatmap" },
+      });
+
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as HeatmapPanelData;
+
+      expect(last.rows[0]?.cells).toEqual([
+        { label: "0", intensity: 0, text: "5.0000" },
+        { label: "1", intensity: 0, text: "5.0000" },
+        { label: "2", intensity: 0, text: "5.0000" },
+      ]);
+    });
+
+    it("keeps only the trailing 12 points when the series has more (hand-computed boundary)", () => {
+      const values = Array.from({ length: 15 }, (_unused, i) => {
+        return i;
+      });
+
+      const ticks = values.map((v, i) => {
+        return makeTick("EURUSD", v, i * 1_000);
+      });
+
+      const deps = makeDeps({
+        pricing: fakePricing({ EURUSD: from(ticks) }),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        viz: { kind: "heatmap" },
+      });
+
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as HeatmapPanelData;
+      const cells = last.rows[0]?.cells ?? [];
+
+      // 15 raw points -> only the newest 12 survive: values 3..14. The
+      // window's own min=3 (label "0") and max=14 (label "11").
+      expect(cells).toHaveLength(12);
+      expect(cells[0]).toEqual({ label: "0", intensity: -1, text: "3.0000" });
+      expect(cells[11]).toEqual({
+        label: "11",
+        intensity: 1,
+        text: "14.0000",
+      });
+    });
+
+    it("the flagship scripted restyle scenario (priceHistory + rollingVol -> heatmap) renders real, non-empty rows", () => {
+      const gbpUsdTicks = Array.from({ length: 25 }, (_unused, i) => {
+        return makeTick("GBPUSD", 1.25 + i * 0.001, i * 60_000);
+      });
+
+      const gbpJpyTicks = Array.from({ length: 25 }, (_unused, i) => {
+        return makeTick("GBPJPY", 190 + i * 0.05, i * 60_000);
+      });
+
+      const deps = makeDeps({
+        pricing: fakePricing(
+          {},
+          {
+            GBPUSD: of(gbpUsdTicks),
+            GBPJPY: of(gbpJpyTicks),
+          },
+        ),
+      });
+
+      const spec = makeSpec({
+        source: { kind: "priceHistory", symbols: ["GBPUSD", "GBPJPY"] },
+        transforms: [{ kind: "rollingVol", samples: 20 }],
+        viz: { kind: "heatmap" },
+      });
+
+      const last = lastEmission(
+        composePanelStream(spec, deps),
+      ) as HeatmapPanelData;
+
+      // The regression this whole describe block exists to close: this
+      // exact source+transform+viz combination used to fall back to the
+      // empty heatmap (renderHeatmap only ever consumed table frames).
+      expect(last.rows).toHaveLength(2);
+
+      for (const row of last.rows) {
+        expect(row.cells.length).toBeGreaterThan(0);
+
+        for (const cell of row.cells) {
+          expect(cell.intensity).toBeGreaterThanOrEqual(-1);
+          expect(cell.intensity).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+  });
+
   describe("transform order (the fold is neither associative nor commutative)", () => {
     // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
     // t=3000(120).
@@ -885,13 +1021,19 @@ describe("composePanelStream", () => {
       } satisfies PanelData);
     });
 
-    it("heatmap over a non-table source (series) falls back to empty rows", () => {
+    it("heatmap over a series whose points are all empty (too few ticks for `returns`) falls back to empty rows", () => {
+      // A series frame IS now a valid heatmap source (see the dedicated
+      // "heatmap from a series frame" describe block above) — this pins the
+      // remaining empty case: every series present has zero points, which
+      // must still collapse to the same empty heatmap as no series at all,
+      // not a row with zero cells.
       const deps = makeDeps({
         pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
       });
 
       const spec = makeSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        transforms: [{ kind: "returns" }],
         viz: { kind: "heatmap" },
       });
 
