@@ -50,6 +50,8 @@ export const SCENARIO_IDS = [
   "boot/jarvis",
   "boot/topo",
   "boot/static",
+  // Phase 6 T6: the Rates grid, unblocked by the host-wide pricing pin.
+  "rates/grid",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",
   // Phase 5c Task 7: the three Analytics cards. Analytics was previously
