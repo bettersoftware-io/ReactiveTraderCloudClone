@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import type { EqDrawing } from "@rtc/client-core";
 import { CANDLE_DEFAULT_VISIBLE } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -25,9 +26,17 @@ export function ChartPanel(): ReactElement {
     useCandleBackfill,
     useWatchlist,
     loadOlderCandles,
+    useEqDrawings,
   } = useViewModel();
   const { state } = useEqWorkspace();
   const { sel, timeframe, chartType, indicators, panes, yScale } = state;
+  const {
+    state: drawState,
+    addDrawing,
+    selectDrawing,
+    deleteSelected,
+    shiftAnchors,
+  } = useEqDrawings();
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
   const backfill = useCandleBackfill(sel, timeframe);
@@ -80,8 +89,27 @@ export function ChartPanel(): ReactElement {
           loadingOlder={backfill.loadingOlder}
           historyExhausted={backfill.historyExhausted}
           onLoadOlder={loadOlderForSelected}
+          drawTool={drawState.tool}
+          drawings={drawState.drawings[sel] ?? EMPTY_DRAWINGS}
+          selectedDrawingId={drawState.selectedId}
+          onCommitDrawing={(d: EqDrawing) => {
+            addDrawing(sel, d);
+          }}
+          onSelectDrawing={selectDrawing}
+          onDeleteSelected={() => {
+            deleteSelected(sel);
+          }}
+          onShiftAnchors={(by: number) => {
+            shiftAnchors(sel, by);
+          }}
         />
       </div>
     </div>
   );
 }
+
+// Stable empty-array identity so a symbol with no drawings yet doesn't hand
+// CandleChart a fresh `[]` every render (mirrors CandleChart's own
+// EMPTY_DRAWINGS default — this one covers the "selected symbol not yet a
+// key in state.drawings" case).
+const EMPTY_DRAWINGS: readonly EqDrawing[] = [];

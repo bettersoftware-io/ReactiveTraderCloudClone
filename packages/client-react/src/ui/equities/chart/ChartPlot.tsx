@@ -5,6 +5,7 @@ import type {
   ChartVarStyle,
   ChartVm,
   CrosshairVm,
+  DrawingSceneItem,
   EqPaneKind,
   NavigatorVm,
   PaneReadoutRow,
@@ -16,6 +17,7 @@ import { BackfillChips } from "./BackfillChips";
 import { BackToLiveButton } from "./BackToLiveButton";
 import { CandleBars } from "./CandleBars";
 import { CrosshairOverlay } from "./CrosshairOverlay";
+import { DrawingsLayer } from "./DrawingsLayer";
 import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
 import type { IndicatorPath } from "./SvgPathLayer";
@@ -45,6 +47,7 @@ export function ChartPlot({
   vm,
   kind,
   indicatorPaths,
+  drawItems = [],
   cross,
   atLiveEdge,
   volumeBars,
@@ -103,6 +106,7 @@ export function ChartPlot({
           kind={kind}
           indicatorPaths={indicatorPaths}
         />
+        <DrawingsLayer items={drawItems} />
         <CrosshairOverlay vm={cross} showHorizontal={showHorizontal} />
         <BackfillChips
           loadingOlder={loadingOlder}
@@ -151,6 +155,10 @@ export interface ChartPlotProps {
   readonly vm: ChartVm;
   readonly kind: EqChartType;
   readonly indicatorPaths: readonly IndicatorPath[];
+  /** Chart annotations (trendlines/horizontal levels), pre-projected by
+   * `@rtc/motion-core`'s `drawingScene` — omit for a drawing-free mount
+   * (defaults to none, same convention as `panes`). */
+  readonly drawItems?: readonly DrawingSceneItem[];
   readonly cross: CrosshairVm | null;
   readonly atLiveEdge: boolean;
   readonly volumeBars: readonly VolumeBarVm[];

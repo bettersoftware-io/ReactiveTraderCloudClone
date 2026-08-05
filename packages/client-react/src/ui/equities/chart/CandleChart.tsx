@@ -2,6 +2,8 @@ import { type ReactElement, useEffect } from "react";
 
 import type {
   EqChartType,
+  EqDrawing,
+  EqDrawTool,
   EqIndicatorId,
   EqPaneId,
   EqYScale,
@@ -10,6 +12,7 @@ import type { Candle } from "@rtc/domain";
 import {
   chartVm,
   crosshairVm,
+  drawingScene,
   indicatorPoints,
   indicatorValues,
   navigatorLinePoints,
@@ -45,6 +48,19 @@ export function CandleChart({
   loadingOlder,
   historyExhausted,
   onLoadOlder,
+  // drawTool and the four slots below are structural-only in this task (no
+  // gesture wiring yet — Task 5's job): accepted with their spec'd defaults
+  // so ChartPanel can wire them today and the signature stays stable when
+  // Task 5 starts actually calling them. The `_`-prefixed local bindings
+  // are the honest way to tell the linter "unused for now" without a
+  // disable comment (repo policy: zero lint disables).
+  drawTool: _drawTool = "cursor",
+  drawings = EMPTY_DRAWINGS,
+  selectedDrawingId = null,
+  onCommitDrawing: _onCommitDrawing = NOOP_COMMIT_DRAWING,
+  onSelectDrawing: _onSelectDrawing = NOOP_SELECT_DRAWING,
+  onDeleteSelected: _onDeleteSelected = NOOP_DELETE_SELECTED,
+  onShiftAnchors: _onShiftAnchors = NOOP_SHIFT_ANCHORS,
 }: CandleChartProps): ReactElement {
   // Destructured (not kept as one `g.foo` object) so each field's own type
   // drives the plugin's ref-safety analysis individually — `useChartGestures`
@@ -97,6 +113,14 @@ export function CandleChart({
     vm.scale,
   );
   const paneVms = toPaneVms(panes, closes, viewport, cross);
+  // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
+  // passed directly, no mapping.
+  const drawItems = drawingScene(
+    drawings,
+    viewport,
+    vm.scale,
+    selectedDrawingId,
+  );
 
   const brush = useNavigatorBrush(
     viewport,
@@ -121,6 +145,7 @@ export function CandleChart({
       vm={vm}
       kind={kind}
       indicatorPaths={indicatorPaths}
+      drawItems={drawItems}
       cross={cross}
       atLiveEdge={atLiveEdge}
       volumeBars={volumeVm(candles, viewport)}
@@ -164,7 +189,44 @@ export interface CandleChartProps {
   /** Fetches one older history page — the near-edge trigger's intent.
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
+  /** The active draw tool — defaults to `"cursor"` (no drawing gesture
+   * active). Consumed by the gesture wiring (Task 5); this component only
+   * threads it through the props chain for now. */
+  drawTool?: EqDrawTool;
+  /** The current symbol's committed drawings, in plot order — defaults to
+   * none. Re-projected into plot-percent geometry every render via
+   * `drawingScene`. */
+  drawings?: readonly EqDrawing[];
+  /** The id of the currently-selected drawing, or `null` — drives which
+   * item's handles `drawingScene` projects. */
+  selectedDrawingId?: string | null;
+  /** Commits a finished drawing gesture. Slot: default no-op keeps this
+   * component mountable before the gesture wiring lands (Task 5). */
+  onCommitDrawing?: (drawing: EqDrawing) => void;
+  /** Selects (or clears, on `null`) a drawing by id. Slot: default no-op. */
+  onSelectDrawing?: (id: string | null) => void;
+  /** Deletes the currently-selected drawing. Slot: default no-op. */
+  onDeleteSelected?: () => void;
+  /** Shifts every trendline anchor index by `by` (a live prepend keeping
+   * drawings pinned to their candles). Slot: default no-op. */
+  onShiftAnchors?: (by: number) => void;
 }
+
+/** Stable empty-array identity for the `drawings` default — avoids a fresh
+ * `[]` (and so a `drawingScene` re-run) on every render when the caller
+ * omits the prop. */
+const EMPTY_DRAWINGS: readonly EqDrawing[] = [];
+
+/** Stable no-op identities for the drawing slots' defaults — keeps this
+ * component mountable before the gesture wiring (Task 5) supplies real
+ * handlers. */
+function NOOP_COMMIT_DRAWING(_drawing: EqDrawing): void {}
+
+function NOOP_SELECT_DRAWING(_id: string | null): void {}
+
+function NOOP_DELETE_SELECTED(): void {}
+
+function NOOP_SHIFT_ANCHORS(_by: number): void {}
 
 /** Projects each active indicator's value series into the visible viewport,
  * pre-joined into the SVG `points` string SvgPathLayer renders verbatim
