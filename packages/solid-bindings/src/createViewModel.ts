@@ -16,6 +16,10 @@ import {
   type BootSequenceState,
   createRfqCountdownMachine,
   type EqChartType,
+  type EqDrawing,
+  type EqDrawingsIntents,
+  type EqDrawingsState,
+  type EqDrawTool,
   type EqIndicatorId,
   type EqPaneId,
   type EqWorkspaceIntents,
@@ -128,6 +132,13 @@ type UseOrderTicketResult = {
 type UseEqWorkspaceResult = {
   state: Accessor<EqWorkspaceState>;
 } & EqWorkspaceIntents;
+/** Machine-adjacent, same shape family as UseEqWorkspaceResult above: reads
+ * `presenters.eqDrawings.state$` directly via `toSignal` rather than a
+ * per-mount `useMachine` — eqDrawings is likewise a warm composition-root
+ * singleton, not per-mount. */
+type UseEqDrawingsResult = {
+  state: Accessor<EqDrawingsState>;
+} & EqDrawingsIntents;
 /** Shared incident-machine bundle — IMPLEMENTED here: a plain `state()` read
  * of the singleton `presenters.incident.state$` (mirrors useAuth/useBootGate
  * below, not a per-mount `useMachine`), so it belongs to part 1. */
@@ -399,6 +410,12 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** Equities chart annotations — per-symbol drawings (trendlines/horizontal
+   * levels), the active draw tool, and the current selection. One machine
+   * instance for the whole app (a composition-root singleton, not per-mount),
+   * shared by the chart head's tool pills and the plot itself — mirrors
+   * useEqWorkspace's shared-singleton shape. */
+  useEqDrawings: () => UseEqDrawingsResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
@@ -823,6 +840,29 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleYScale();
   }
 
+  // Stable callbacks for eqDrawings intents — presenters.eqDrawings.state$ is
+  // read directly via toSignal below, mirroring presenters.eqWorkspace.state$
+  // above (both warm composition-root singletons, not per-mount machines).
+  function setEqDrawTool(tool: EqDrawTool): void {
+    presenters.eqDrawings.intents.setTool(tool);
+  }
+
+  function addEqDrawing(sym: string, drawing: EqDrawing): void {
+    presenters.eqDrawings.intents.addDrawing(sym, drawing);
+  }
+
+  function selectEqDrawing(id: string | null): void {
+    presenters.eqDrawings.intents.selectDrawing(id);
+  }
+
+  function deleteSelectedEqDrawing(sym: string): void {
+    presenters.eqDrawings.intents.deleteSelected(sym);
+  }
+
+  function shiftEqDrawingAnchors(sym: string, by: number): void {
+    presenters.eqDrawings.intents.shiftAnchors(sym, by);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -1093,6 +1133,16 @@ export function createViewModel(
         toggleIndicator: toggleEqIndicator,
         togglePane: toggleEqPane,
         toggleYScale: toggleEqYScale,
+      };
+    },
+    useEqDrawings: () => {
+      return {
+        state: toSignal(presenters.eqDrawings.state$),
+        setTool: setEqDrawTool,
+        addDrawing: addEqDrawing,
+        selectDrawing: selectEqDrawing,
+        deleteSelected: deleteSelectedEqDrawing,
+        shiftAnchors: shiftEqDrawingAnchors,
       };
     },
     useJarvis: () => {

@@ -702,6 +702,19 @@ export function reactViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
+    // Eq drawings: no contract spec exercises this yet (Task 3 is bindings-
+    // exposure only) — an inert literal satisfying the ViewModel shape, not a
+    // real World-backed machine like useEqWorkspace above.
+    useEqDrawings: () => {
+      return {
+        state: { tool: "cursor", drawings: {}, selectedId: null },
+        setTool: () => {},
+        addDrawing: () => {},
+        selectDrawing: () => {},
+        deleteSelected: () => {},
+        shiftAnchors: () => {},
+      };
+    },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and bridged through useMachineState exactly
     // like the shared eqWorkspace machine above — so JarvisOrb and

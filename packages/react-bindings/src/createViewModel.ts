@@ -15,6 +15,10 @@ import {
   type BootSequenceState,
   createRfqCountdownMachine,
   type EqChartType,
+  type EqDrawing,
+  type EqDrawingsIntents,
+  type EqDrawingsState,
+  type EqDrawTool,
   type EqIndicatorId,
   type EqPaneId,
   type EqWorkspaceIntents,
@@ -115,6 +119,9 @@ type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
 type UseEqWorkspaceResult = {
   state: EqWorkspaceState;
 } & EqWorkspaceIntents;
+type UseEqDrawingsResult = {
+  state: EqDrawingsState;
+} & EqDrawingsIntents;
 
 export interface UseJarvisResult {
   state: JarvisState;
@@ -368,6 +375,12 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** Equities chart annotations — per-symbol drawings (trendlines/horizontal
+   * levels), the active draw tool, and the current selection. One machine
+   * instance for the whole app (a composition-root singleton, not per-mount),
+   * shared by the chart head's tool pills and the plot itself — mirrors
+   * useEqWorkspace's shared-singleton shape. */
+  useEqDrawings: () => UseEqDrawingsResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
@@ -830,6 +843,34 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleYScale();
   }
 
+  // Eq drawings machine — shared single instance, mirroring eqWorkspace's
+  // wiring above: reads presenters.eqDrawings.state$ DIRECTLY via
+  // useStateObservable, NOT via bind() (same warm-value trap avoided).
+  function useEqDrawingsState(): EqDrawingsState {
+    return useStateObservable(presenters.eqDrawings.state$);
+  }
+
+  // Stable callbacks for eqDrawings intents (this-safe; arrow functions).
+  function setEqDrawTool(tool: EqDrawTool): void {
+    presenters.eqDrawings.intents.setTool(tool);
+  }
+
+  function addEqDrawing(sym: string, drawing: EqDrawing): void {
+    presenters.eqDrawings.intents.addDrawing(sym, drawing);
+  }
+
+  function selectEqDrawing(id: string | null): void {
+    presenters.eqDrawings.intents.selectDrawing(id);
+  }
+
+  function deleteSelectedEqDrawing(sym: string): void {
+    presenters.eqDrawings.intents.deleteSelected(sym);
+  }
+
+  function shiftEqDrawingAnchors(sym: string, by: number): void {
+    presenters.eqDrawings.intents.shiftAnchors(sym, by);
+  }
+
   return {
     usePrice,
     usePriceHistory,
@@ -1040,6 +1081,16 @@ export function createViewModel(
         toggleIndicator: toggleEqIndicator,
         togglePane: toggleEqPane,
         toggleYScale: toggleEqYScale,
+      };
+    },
+    useEqDrawings: () => {
+      return {
+        state: useEqDrawingsState(),
+        setTool: setEqDrawTool,
+        addDrawing: addEqDrawing,
+        selectDrawing: selectEqDrawing,
+        deleteSelected: deleteSelectedEqDrawing,
+        shiftAnchors: shiftEqDrawingAnchors,
       };
     },
     useJarvis: () => {

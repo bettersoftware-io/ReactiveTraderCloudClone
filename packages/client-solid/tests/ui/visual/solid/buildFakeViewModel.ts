@@ -483,6 +483,22 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleYScale: noop,
       };
     },
+    // Eq drawings: no visual scenario exercises this yet (Task 3 is
+    // bindings-exposure only) — a static empty snapshot; intents are no-ops.
+    useEqDrawings: () => {
+      return {
+        state: at({
+          tool: "cursor" as const,
+          drawings: {},
+          selectedId: null,
+        }),
+        setTool: noop,
+        addDrawing: noop,
+        selectDrawing: noop,
+        deleteSelected: noop,
+        shiftAnchors: noop,
+      };
+    },
     // Jarvis: stub returning a noop implementation (no visual tests yet).
     // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a
     // static state snapshot (Task 10); all intents stay no-ops (static

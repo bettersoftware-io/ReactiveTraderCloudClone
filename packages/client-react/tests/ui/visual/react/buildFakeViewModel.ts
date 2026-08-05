@@ -456,6 +456,18 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleYScale: noop,
       };
     },
+    // Eq drawings: no visual scenario exercises this yet (Task 3 is
+    // bindings-exposure only) — a static empty snapshot; intents are no-ops.
+    useEqDrawings: () => {
+      return {
+        state: { tool: "cursor", drawings: {}, selectedId: null },
+        setTool: noop,
+        addDrawing: noop,
+        selectDrawing: noop,
+        deleteSelected: noop,
+        shiftAnchors: noop,
+      };
+    },
     // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a
     // static state snapshot (Task 10); all intents stay no-ops (static
     // screenshots never fire them). Fixtures that don't set `jarvis` fall

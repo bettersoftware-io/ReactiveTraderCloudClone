@@ -691,6 +691,21 @@ export function solidViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
+    // Eq drawings: no contract spec exercises this yet (Task 3 is bindings-
+    // exposure only) — an inert literal satisfying the ViewModel shape, not a
+    // real World-backed machine like useEqWorkspace above.
+    useEqDrawings: () => {
+      return {
+        state: () => {
+          return { tool: "cursor", drawings: {}, selectedId: null };
+        },
+        setTool: () => {},
+        addDrawing: () => {},
+        selectDrawing: () => {},
+        deleteSelected: () => {},
+        shiftAnchors: () => {},
+      };
+    },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and read directly with `toSignal` — its
     // `state$` is already a warm StateObservable (see @rtc/client-core's
