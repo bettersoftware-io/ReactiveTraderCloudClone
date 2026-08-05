@@ -29,9 +29,6 @@ importers:
       '@manypkg/cli':
         specifier: ^0.25.1
         version: 0.25.1
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:packages/shared
       dependency-cruiser:
         specifier: ^17.4.3
         version: 17.4.3

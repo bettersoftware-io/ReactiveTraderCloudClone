@@ -63,21 +63,24 @@
  * narrow, hand-mirrored slice of packages/shared/src/protocol/messages.ts
  * and packages/shared/src/jarvis/jarvisEvent.ts, so this script never needs
  * `@rtc/shared` built first — see those files if the two drift. `parsePanelSpec`
- * is the ONE deliberate exception (a real `devDependency` on `@rtc/shared`,
- * `workspace:*`): panel-shape validation is exactly the kind of logic that
- * must NOT be re-hand-rolled a second time here (see `panelSpec.ts`'s own
- * doc comment on why it stays hand-rolled once), so check 4 below reuses the
- * genuine parser instead of drifting its own copy. This DOES mean `@rtc/shared`
- * must be built (`pnpm --filter @rtc/shared build`) before this script can run
- * — acceptable for a manual, human-invoked tool. Loaded via a `await
- * import("@rtc/shared")` INSIDE `runAllChecks` rather than a static
- * top-level import: this file has no `"type": "module"` boundary of its own
- * (the repo root package.json is CommonJS by default, unlike every
- * `packages/*` workspace member), but `@rtc/shared`'s package.json `exports`
- * map only declares an `"import"` condition — a static `import` resolves
- * through Node's CJS loader here and throws `ERR_PACKAGE_PATH_NOT_EXPORTED`;
- * a dynamic `import()` always goes through the ESM resolver regardless of
- * the importing file's own module type, so it resolves cleanly.
+ * is the ONE deliberate exception: panel-shape validation is exactly the
+ * kind of logic that must NOT be re-hand-rolled a second time here (see
+ * `panelSpec.ts`'s own doc comment on why it stays hand-rolled once), so
+ * check 4 below reuses the genuine parser instead of drifting its own copy.
+ * This lives in the `tests/` workspace specifically so that reuse is a plain
+ * static top-level `import` rather than a workaround: `tests/package.json`
+ * already declares `@rtc/shared: workspace:*` (a real consumer, not a
+ * dependency added just for this script) and is itself `"type": "module"`,
+ * so `@rtc/shared`'s `exports` map's `"import"` condition resolves cleanly
+ * through the normal ESM loader — no root-level `@rtc/*` dependency needed
+ * (root `package.json` intentionally carries none; adding one there would
+ * let `@rtc/shared` resolve from every package via the root link, weakening
+ * pnpm's strict per-package resolution as a boundary). This DOES mean
+ * `@rtc/shared` must be built (`pnpm --filter @rtc/shared build`) before
+ * this script can run — acceptable for a manual, human-invoked tool. Root
+ * `pnpm jarvis:smoke:live` delegates here via `pnpm --filter @rtc/tests
+ * jarvis:smoke:live`, the same pattern as `visual:jitter` /
+ * `perf:framework-compare`.
  *
  * Exits non-zero on refusal, on any hard error (a turn timing out, the
  * overall 120s budget expiring), or when any assertion fails. Always prints
@@ -86,6 +89,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parsePanelSpec } from "@rtc/shared";
 
 // ── Env gate — runs before anything else spawns or connects ────────
 
@@ -197,7 +202,9 @@ const AUTH_USERS = "demo:demo";
 const TURN_TIMEOUT_MS = 60_000;
 const OVERALL_TIMEOUT_MS = 120_000;
 
-const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..");
+// This file lives at tests/scripts/jarvis-live-smoke.ts — three levels
+// below the monorepo root (file -> tests/scripts -> tests -> root).
+const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 
 // ── Process orchestration (mirrors tests/fullstack/_orchestration.ts) ──
 
@@ -714,10 +721,6 @@ function printSummary(
 // ── Main ─────────────────────────────────────────────────────────
 
 async function runAllChecks(results: CheckResult[]): Promise<void> {
-  // Dynamic import — see the header comment's dependency-free exception for
-  // why this can't be a static top-level `import`.
-  const { parsePanelSpec } = await import("@rtc/shared");
-
   const httpBase = `http://${HOST}:${PORT}`;
 
   await waitForHealth(`${httpBase}/health`, 30_000);
