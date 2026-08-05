@@ -16,13 +16,16 @@
  * `composePanelStream` is TOTAL by construction (see that file's doc): every
  * `PanelSpecV1` — regardless of whether its underlying World subject has
  * been seeded with data — resolves to SOME `PanelData` of the requested viz
- * kind. But three of the five renderers (`PanelTable`/`PanelSparkGrid` only
- * on a truly EMPTY series count, and `PanelHeatmap`/`PanelTable` on zero
- * rows) early-return a plain "No data yet" placeholder with NO testid when
- * their resolved data is empty — so scenarios that assert a specific
- * renderer testid seed real World data first (`setHistory` for line/gauge,
- * `push({ useAnalytics })` for table/heatmap); scenarios that only assert
- * chrome/count/eviction do not need to.
+ * kind. But `PanelTable`/`PanelSparkGrid`/`PanelHeatmap` early-return a plain
+ * "No data yet" placeholder with NO testid when their resolved data is
+ * genuinely empty (zero rows / zero series / zero points) — so scenarios
+ * that assert a specific renderer testid seed real World data first
+ * (`setHistory` for line/gauge, `push({ useAnalytics })` for table/heatmap);
+ * scenarios that only assert chrome/count/eviction do not need to. Since
+ * f52a1992c, `renderHeatmap` also consumes `series` frames (not just
+ * `table` ones) — a `priceHistory`+`rollingVol` spec restyled to `heatmap`
+ * (the real scripted "make it a heatmap" turn) now resolves non-empty rows
+ * too, given seeded history.
  *
  * Per Task 8's review, this spec deliberately does NOT assert field-level
  * flash-isolation granularity on any renderer — that legitimately differs
@@ -101,35 +104,86 @@ describe("JarvisPanelLayer", () => {
     expect(layer.rendererTestId(SCRIPTED_PANEL_ID)).toBe("jarvis-panel-line");
   });
 
-  it("edit (same panelId) morphs the renderer in place — old one gone, panel count unchanged", async () => {
+  it("the real scripted restyle turn (viz-only swap, same priceHistory source) morphs line into heatmap in place", async () => {
+    // The genuine demo path: "show me gbp volatility" (showPanel) then "make
+    // it a heatmap" (restylePanel) as TWO separate scripted turns —
+    // ScriptedJarvisEngine.streamRestylePanelReply re-emits `lastPanel` with
+    // ONLY `viz` swapped, keeping the same panelId/source/transforms. Fixed
+    // by f52a1992c (composePanelStream's renderHeatmap now also consumes
+    // `series` frames, not just `table` ones) — before that fix this exact
+    // restyle rendered an empty heatmap with no testid at all.
     const world = createWorld();
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 
     layer.setHistory("GBPUSD", buildTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
     layer.setHistory("GBPJPY", buildTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
-    layer.emit({ useAnalytics: ANALYTICS_SEED });
 
     await overlay.pressHotkey();
-    await overlay.send("show me gbp volatility, then heat it up");
+    await overlay.send("show me gbp volatility");
     overlay.emitEvents([
       { type: "panel", panelId: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_SPEC },
     ]);
     expect(layer.rendererTestId(SCRIPTED_PANEL_ID)).toBe("jarvis-panel-line");
+    // Complete the first turn before opening a second one — send$'s
+    // concatMap only advances once the in-flight turn's Observable
+    // completes, and world.jarvis.emit() throws if called before ask()
+    // opens a fresh turn (see world.ts's JarvisWorld.emit doc).
+    overlay.emitEvents([{ type: "done" }]);
 
-    // A genuine "edit" turn: same panelId, a wholly new spec (source AND viz
-    // both change here — nothing in JarvisPanelsMachine's applyPanelEvent
-    // restricts an edit to a viz-only swap; a real brain's render_panel call
-    // can replace the whole spec just as freely as the scripted engine's own
-    // viz-only restylePanel path). Deliberately NOT the scripted engine's own
-    // restyle (same priceHistory source, viz-only swap) — that path keeps
-    // `source: priceHistory` and produces a documented-empty heatmap (Task
-    // 8's manual check confirmed this), which would leave no
-    // "jarvis-panel-heatmap" testid to assert against.
+    await overlay.send("make it a heatmap");
     overlay.emitEvents([
       {
         type: "panel",
         panelId: SCRIPTED_PANEL_ID,
+        spec: { ...GBP_VOLATILITY_SPEC, viz: { kind: "heatmap" } },
+      },
+    ]);
+    overlay.emitEvents([{ type: "done" }]);
+
+    expect(layer.panelIds()).toEqual([SCRIPTED_PANEL_ID]);
+    expect(layer.status(SCRIPTED_PANEL_ID)).toBe("live");
+    expect(
+      layer.hasRendererTestId(SCRIPTED_PANEL_ID, "jarvis-panel-line"),
+    ).toBe(false);
+    expect(layer.rendererTestId(SCRIPTED_PANEL_ID)).toBe(
+      "jarvis-panel-heatmap",
+    );
+  });
+
+  it("an edit can also swap the WHOLE spec (source + viz), not just viz — JarvisPanelsMachine.applyPanelEvent has no such restriction", async () => {
+    // A real brain's render_panel tool call isn't limited to the scripted
+    // engine's own viz-only restyle shape — this proves the machine's
+    // in-place-replace fold (same panelId → same array index, whatever the
+    // new spec looks like) holds for a source change too, using the
+    // analytics source's own table→heatmap path (untouched by f52a1992c).
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    const layer = mountWith(world, JarvisPanelLayer);
+
+    layer.emit({ useAnalytics: ANALYTICS_SEED });
+
+    await overlay.pressHotkey();
+    await overlay.send("show me desk positions, then heat them up");
+    overlay.emitEvents([
+      {
+        type: "panel",
+        panelId: "panel-positions",
+        spec: {
+          v: 1,
+          title: "Desk Positions",
+          source: { kind: "analytics" },
+          transforms: [],
+          viz: { kind: "table" },
+        },
+      },
+    ]);
+    expect(layer.rendererTestId("panel-positions")).toBe("jarvis-panel-table");
+
+    overlay.emitEvents([
+      {
+        type: "panel",
+        panelId: "panel-positions",
         spec: {
           v: 1,
           title: "Desk P&L Heat",
@@ -141,11 +195,11 @@ describe("JarvisPanelLayer", () => {
     ]);
     overlay.emitEvents([{ type: "done" }]);
 
-    expect(layer.panelIds()).toEqual([SCRIPTED_PANEL_ID]);
+    expect(layer.panelIds()).toEqual(["panel-positions"]);
     expect(
-      layer.hasRendererTestId(SCRIPTED_PANEL_ID, "jarvis-panel-line"),
+      layer.hasRendererTestId("panel-positions", "jarvis-panel-table"),
     ).toBe(false);
-    expect(layer.rendererTestId(SCRIPTED_PANEL_ID)).toBe(
+    expect(layer.rendererTestId("panel-positions")).toBe(
       "jarvis-panel-heatmap",
     );
   });
