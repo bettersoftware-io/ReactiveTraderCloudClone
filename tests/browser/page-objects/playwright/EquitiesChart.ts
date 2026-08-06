@@ -57,6 +57,10 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     return this.page.getByTestId(TESTIDS.equities.chart.drawing);
   }
 
+  private drawingHandles(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.drawingHandle);
+  }
+
   // The chart wrap (ChartPlot.tsx) carries data-yscale but no testid of its
   // own — the same `.locator("[data-...]")` pattern `panePill` uses for its
   // sibling `data-pane` attribute.
@@ -247,6 +251,52 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await expect(this.drawing()).toHaveAttribute("data-selected", "true", {
       timeout: timeoutMs,
     });
+  }
+
+  async readDrawingGeometry(): Promise<string> {
+    const line = this.drawing();
+    const [x1, y1, x2, y2] = await Promise.all([
+      line.getAttribute("x1"),
+      line.getAttribute("y1"),
+      line.getAttribute("x2"),
+      line.getAttribute("y2"),
+    ]);
+    return `${x1},${y1},${x2},${y2}`;
+  }
+
+  async dragSelectedDrawingEndpoint(): Promise<void> {
+    // Handles are `pointer-events: none` (DrawingsLayer.tsx), same trap as
+    // `clickDrawing` above — grip the handle by driving a real pointer
+    // through the PLOT underneath, at the handle's own coordinates. The
+    // handle's cx/cy are plot-percent (SVG viewBox "0 0 100 100",
+    // preserveAspectRatio="none", so it stretches to exactly the plot box).
+    const handle = this.drawingHandles().nth(1);
+    const [cx, cy, plotBox] = await Promise.all([
+      handle.getAttribute("cx"),
+      handle.getAttribute("cy"),
+      this.plot().boundingBox(),
+    ]);
+
+    if (cx === null || cy === null || !plotBox) {
+      throw new Error("drawing handle or plot not laid out");
+    }
+
+    const fromX = plotBox.x + (Number(cx) / 100) * plotBox.width;
+    const fromY = plotBox.y + (Number(cy) / 100) * plotBox.height;
+
+    await this.page.mouse.move(fromX, fromY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(fromX + 80, fromY - 60, { steps: 10 });
+    await this.page.mouse.up();
+  }
+
+  async expectDrawingGeometryChangedWithin(
+    before: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect
+      .poll(() => this.readDrawingGeometry(), { timeout: timeoutMs })
+      .not.toBe(before);
   }
 
   async pressDelete(): Promise<void> {
