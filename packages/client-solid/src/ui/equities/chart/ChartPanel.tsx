@@ -72,6 +72,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     selectDrawing,
     deleteSelected,
     shiftAnchors,
+    updateDrawing,
   } = useEqDrawings();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
@@ -130,6 +131,9 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           selectedDrawingId={drawState().selectedId}
           onCommitDrawing={(d: EqDrawing) => {
             addDrawing(props.symbol, d);
+          }}
+          onUpdateDrawing={(d: EqDrawing) => {
+            updateDrawing(props.symbol, d);
           }}
           onSelectDrawing={selectDrawing}
           onDeleteSelected={() => {
