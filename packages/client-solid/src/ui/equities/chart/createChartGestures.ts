@@ -11,6 +11,7 @@ import type { EqDrawTool } from "@rtc/client-core";
 import {
   type ChartViewport,
   clampViewport,
+  type DrawingGrip,
   defaultViewport,
   followLive,
   isAtLiveEdge,
@@ -80,6 +81,15 @@ export interface DrawDraft {
   readonly b: PlotFrac;
 }
 
+/** The in-flight drag-edit of an existing drawing — the editing twin of
+ * `DrawDraft`, exposed alongside it. Lives here as view state (ADR-005);
+ * the machine sees one updateDrawing only at commit. */
+interface EditDrag {
+  readonly grip: DrawingGrip;
+  readonly from: PlotFrac;
+  readonly to: PlotFrac;
+}
+
 /** The drawing-tool gesture inputs — a slot object, so this primitive stays
  * machine-agnostic (it never imports `@rtc/client-core`'s drawings machine,
  * only its `EqDrawTool` union). Optional on the primitive: every existing
@@ -102,6 +112,16 @@ export interface DrawGestureSlots {
   /** A `tool === "cursor"` pointer-up within `CLICK_MAX_PX` of its
    * pointer-down — a click, not a pan — hit-tests the click point. */
   readonly onPlotClick: (p: PlotFrac) => void;
+  /** Consulted at pointer-down when tool === "cursor": the grip at the
+   * pointer, or null. The primitive stays projection-blind — CandleChart
+   * implements this against its own drawItems. */
+  readonly hitGrip: (p: PlotFrac) => DrawingGrip | null;
+  /** Commits a finished drag-edit (pointer-up beyond CLICK_MAX_PX). */
+  readonly onCommitEdit: (
+    grip: DrawingGrip,
+    from: PlotFrac,
+    to: PlotFrac,
+  ) => void;
   /** `Delete`/`Backspace` while `tool === "cursor"`. */
   readonly onDeleteKey: () => void;
 }
@@ -126,6 +146,10 @@ export interface ChartGestures {
    * `pointerToAnchor` and appends the result to the drawing scene as a
    * live preview. */
   readonly draft: Accessor<DrawDraft | null>;
+  /** The in-progress drag-edit of an existing drawing (`tool === "cursor"`,
+   * between a grip pointer-down and pointer-up), or `null` when none is
+   * open. See `EditDrag`. */
+  readonly editDrag: Accessor<EditDrag | null>;
 }
 
 /** The drag-in-flight bookkeeping cached at pointerdown: the viewport the
@@ -178,6 +202,7 @@ export function createChartGestures(
   );
   const [cursor, setCursor] = createSignal<ChartCursor | null>(null);
   const [draft, setDraft] = createSignal<DrawDraft | null>(null);
+  const [editDrag, setEditDrag] = createSignal<EditDrag | null>(null);
   let plotEl: HTMLDivElement | undefined;
   let dragOrigin: DragOrigin | null = null;
   let pendingViewportWrite: (() => void) | null = null;
@@ -368,6 +393,26 @@ export function createChartGestures(
       return;
     }
 
+    if (draw?.tool() === "cursor") {
+      const p = plotFracOf(e);
+      const grip = draw.hitGrip(p);
+
+      if (grip) {
+        const gripTarget = e.currentTarget as HTMLDivElement;
+        const gripRect = gripTarget.getBoundingClientRect();
+        dragOrigin = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          rectWidth: gripRect.width,
+          startViewport: viewport(),
+          downClient: { x: e.clientX, y: e.clientY },
+        };
+        gripTarget.setPointerCapture(e.pointerId);
+        setEditDrag({ grip, from: p, to: p });
+        return;
+      }
+    }
+
     const target = e.currentTarget as HTMLDivElement;
     const rect = target.getBoundingClientRect();
 
@@ -390,6 +435,15 @@ export function createChartGestures(
     const drag = dragOrigin;
 
     if (drag && drag.pointerId === e.pointerId) {
+      if (editDrag()) {
+        const p = plotFracOf(e);
+        setEditDrag((d) => {
+          return d ? { ...d, to: p } : d;
+        });
+        setCursor({ ...p, inPlot: true });
+        return;
+      }
+
       // The trendline draft's second anchor tracks every move — the
       // crosshair keeps tracking alongside it (the aiming aid stays live
       // while placing a line), unlike a plain pan drag below, which leaves
@@ -474,6 +528,26 @@ export function createChartGestures(
       e.clientY - drag.downClient.y,
     );
 
+    const openEditDrag = editDrag();
+
+    if (openEditDrag) {
+      // Beyond the click threshold: a deliberate drag — commit. Within it:
+      // a no-move tap on a grip keeps the selection as-is; do NOT fall
+      // through to onPlotClick (the deselect trap: the handle tolerance is
+      // looser than the body tolerance, so a fall-through click could miss
+      // the body test and wrongly deselect).
+      if (excursionPx > CLICK_MAX_PX) {
+        draw?.onCommitEdit(
+          openEditDrag.grip,
+          openEditDrag.from,
+          openEditDrag.to,
+        );
+      }
+
+      setEditDrag(null);
+      return;
+    }
+
     const openDraft = draft();
 
     if (openDraft) {
@@ -510,6 +584,7 @@ export function createChartGestures(
     }
 
     setDraft(null);
+    setEditDrag(null);
   }
 
   function clearCursor(): void {
@@ -572,9 +647,9 @@ export function createChartGestures(
         resetToLive();
         return;
       case "Escape":
-        // No open draft: nothing to cancel, so no-op (same as any other
-        // unhandled key — no preventDefault either).
-        if (!draft()) {
+        // No open draft/editDrag: nothing to cancel, so no-op (same as any
+        // other unhandled key — no preventDefault either).
+        if (!draft() && !editDrag()) {
           return;
         }
 
@@ -586,10 +661,11 @@ export function createChartGestures(
         // event as usual.
         dragOrigin = null;
         setDraft(null);
+        setEditDrag(null);
         return;
       case "Delete":
       case "Backspace":
-        if (draw?.tool() !== "cursor") {
+        if (draw?.tool() !== "cursor" || editDrag()) {
           return;
         }
 
@@ -630,5 +706,6 @@ export function createChartGestures(
       onPointerLeave: clearCursor,
     },
     draft,
+    editDrag,
   };
 }

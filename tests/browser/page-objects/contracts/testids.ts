@@ -134,6 +134,11 @@ export const TESTIDS = {
        * the drawing element itself (see
        * `PlaywrightEquitiesChart.clickDrawing`). */
       drawing: "chart-drawing",
+      /** A selected drawing's endpoint-drag handle (DrawingsLayer.tsx) — a
+       * trendline renders two (one per anchor), an hline renders at most
+       * one (its midpoint); `cx`/`cy` are plot-percent, matching the
+       * drawing's own `x1`/`y1`/`x2`/`y2` coordinate space. */
+      drawingHandle: "chart-drawing-handle",
       /** The LOG price-axis pill (IndicatorPills.tsx) — toggles the chart
        * wrap's `data-yscale` between `"linear"` and `"log"`. */
       yScalePill: "chart-yscale-pill",

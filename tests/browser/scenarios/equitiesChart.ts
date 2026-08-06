@@ -298,6 +298,27 @@ export async function expectDrawingSelectedWithin(
   await ctx.po.equitiesChart.waitDrawingSelected(seconds * 1_000);
 }
 
+export async function readDrawingGeometry(ctx: TestContext): Promise<string> {
+  return await ctx.po.equitiesChart.readDrawingGeometry();
+}
+
+export async function dragSelectedDrawingEndpoint(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.equitiesChart.dragSelectedDrawingEndpoint();
+}
+
+export async function expectDrawingGeometryChangedWithin(
+  ctx: TestContext,
+  before: string,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.expectDrawingGeometryChangedWithin(
+    before,
+    seconds * 1_000,
+  );
+}
+
 export async function pressDelete(ctx: TestContext): Promise<void> {
   await ctx.po.equitiesChart.pressDelete();
 }

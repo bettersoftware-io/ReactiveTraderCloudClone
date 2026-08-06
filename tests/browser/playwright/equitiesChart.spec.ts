@@ -97,7 +97,9 @@ test.describe("Equities chart", () => {
     await equitiesChart.expectYScaleWithin(ctx, "linear", 5);
   });
 
-  test("draw a trendline, select it, and delete it", async ({ ctx }) => {
+  test("draw a trendline, select it, drag its endpoint, and delete it", async ({
+    ctx,
+  }) => {
     await equitiesChart.openEquitiesWorkspace(ctx);
     await equitiesChart.expectPlotVisibleWithin(ctx, 5);
 
@@ -111,6 +113,10 @@ test.describe("Equities chart", () => {
 
     await equitiesChart.clickDrawingAtLine(ctx);
     await equitiesChart.expectDrawingSelectedWithin(ctx, 3);
+
+    const before = await equitiesChart.readDrawingGeometry(ctx);
+    await equitiesChart.dragSelectedDrawingEndpoint(ctx);
+    await equitiesChart.expectDrawingGeometryChangedWithin(ctx, before, 3);
 
     await equitiesChart.pressDelete(ctx);
     await equitiesChart.expectDrawingGoneWithin(ctx, 3);

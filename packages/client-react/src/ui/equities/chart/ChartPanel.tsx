@@ -36,6 +36,7 @@ export function ChartPanel(): ReactElement {
     selectDrawing,
     deleteSelected,
     shiftAnchors,
+    updateDrawing,
   } = useEqDrawings();
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
@@ -94,6 +95,9 @@ export function ChartPanel(): ReactElement {
           selectedDrawingId={drawState.selectedId}
           onCommitDrawing={(d: EqDrawing) => {
             addDrawing(sel, d);
+          }}
+          onUpdateDrawing={(d: EqDrawing) => {
+            updateDrawing(sel, d);
           }}
           onSelectDrawing={selectDrawing}
           onDeleteSelected={() => {

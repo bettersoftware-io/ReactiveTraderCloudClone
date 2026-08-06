@@ -93,6 +93,30 @@ export interface EquitiesChartPO {
   clickDrawing(): Promise<void>;
   /** Waits for the drawing to render with `data-selected="true"`. */
   waitDrawingSelected(timeoutMs: number): Promise<void>;
+  /** The selected drawing's `x1,y1,x2,y2` attribute string — a cheap
+   * before/after fingerprint for the drag-edit assertion, not a full
+   * geometry read. */
+  readDrawingGeometry(): Promise<string>;
+  /** Drags the selected drawing's SECOND endpoint handle
+   * (`chart-drawing-handle`) by a fixed on-plot vector, gripping and
+   * releasing via real pointer events — the same pointer-capture path
+   * `dragOnPlot` drives, needed because the handle itself is
+   * `pointer-events: none` (see `PlaywrightEquitiesChart.clickDrawing`'s
+   * doc for the same trap on the drawing line). */
+  dragSelectedDrawingEndpoint(): Promise<void>;
+  /** Polls until the drawing's SHAPE (`x2-x1`, `y2-y1`) has moved by more
+   * than a few plot-percent from a prior {@link readDrawingGeometry}
+   * snapshot (`before`) — the drag-edit gesture commits its update on
+   * pointer-up, not per-frame. Deliberately not a bare string/position
+   * diff: the drawing is re-projected through the live y-scale on every
+   * sim tick and can slide with the visible window, either of which can
+   * change an UNDRAGGED drawing's absolute x1/y1/x2/y2 within the poll
+   * window — but both move the two endpoints (near-)uniformly, leaving the
+   * segment's shape unchanged, so shape is the drag-only witness. */
+  expectDrawingGeometryChangedWithin(
+    before: string,
+    timeoutMs: number,
+  ): Promise<void>;
   /** Presses Delete on the focused plot — the `cursor`-tool
    * delete-selected-drawing gesture. */
   pressDelete(): Promise<void>;

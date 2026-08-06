@@ -958,6 +958,10 @@ export function createViewModel(
     presenters.eqDrawings.intents.addDrawing(sym, drawing);
   }
 
+  function updateEqDrawing(sym: string, drawing: EqDrawing): void {
+    presenters.eqDrawings.intents.updateDrawing(sym, drawing);
+  }
+
   function selectEqDrawing(id: string | null): void {
     presenters.eqDrawings.intents.selectDrawing(id);
   }
@@ -1204,6 +1208,7 @@ export function createViewModel(
         state: useEqDrawingsState(),
         setTool: setEqDrawTool,
         addDrawing: addEqDrawing,
+        updateDrawing: updateEqDrawing,
         selectDrawing: selectEqDrawing,
         deleteSelected: deleteSelectedEqDrawing,
         shiftAnchors: shiftEqDrawingAnchors,

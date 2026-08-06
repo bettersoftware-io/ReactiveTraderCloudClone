@@ -898,6 +898,7 @@ export function solidViewModel(world: World): ViewModel {
         selectDrawing: world.eqDrawings.intents.selectDrawing,
         deleteSelected: world.eqDrawings.intents.deleteSelected,
         shiftAnchors: world.eqDrawings.intents.shiftAnchors,
+        updateDrawing: world.eqDrawings.intents.updateDrawing,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World

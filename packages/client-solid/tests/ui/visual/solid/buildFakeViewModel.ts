@@ -530,6 +530,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         selectDrawing: noop,
         deleteSelected: noop,
         shiftAnchors: noop,
+        updateDrawing: noop,
       };
     },
     // Jarvis: stub returning a noop implementation (no visual tests yet).

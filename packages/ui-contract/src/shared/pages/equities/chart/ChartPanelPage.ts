@@ -208,6 +208,21 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
     this.setProps({});
   }
 
+  /** Focuses the panel's own rendered plot and dispatches one keydown — the
+   * drag-edit contract's Escape driver (mirrors CandleChartPage.pressPlotKey,
+   * the only existing plot-keydown driver): the drag-edit cases
+   * (ChartDrawings.contract.spec.ts) fire Escape against ChartPanel's own
+   * plot (the shared eqDrawings machine), not a standalone CandleChart
+   * mount, so they need this on ChartPanelPage rather than reusing
+   * CandleChartPage's. Follows the same "flush after firing" convention as
+   * every other gesture driver on this page object. */
+  pressPlotKey(key: string): void {
+    const plot = this.plot();
+    plot.focus();
+    fireEvent.keyDown(plot, { key });
+    this.setProps({});
+  }
+
   /** The plot element with jsdom's holes stubbed — see
    * CandleChartPage.plot's identical rationale (a concrete bounding rect
    * plus the pointer-capture trio jsdom doesn't implement). */

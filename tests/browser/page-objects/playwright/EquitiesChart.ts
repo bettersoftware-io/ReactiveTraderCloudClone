@@ -9,6 +9,40 @@ import type {
 } from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
 
+/**
+ * Minimum plot-percent change in the drawing's SHAPE (`x2-x1`/`y2-y1`, not
+ * its absolute projection) that counts as a genuine drag — see
+ * `expectDrawingGeometryChangedWithin`'s doc for why shape, not position, is
+ * the witness. `dragSelectedDrawingEndpoint` moves one endpoint by 80/60px,
+ * which on a ~900px-wide plot reshapes the segment
+ * by roughly 8-15 plot-%, comfortably above this threshold; ambient
+ * scale/viewport drift moves both endpoints in lockstep and shifts the
+ * shape by well under 1%.
+ */
+const DRAG_SHAPE_DELTA_THRESHOLD_PCT = 3;
+
+/** Parses a `readDrawingGeometry` string ("x1,y1,x2,y2") back into its four
+ * plot-percent numbers. */
+function parseGeometry(
+  geometry: string,
+): [x1: number, y1: number, x2: number, y2: number] {
+  const parts = geometry.split(",").map(Number);
+  const [x1, y1, x2, y2] = parts;
+
+  if (
+    parts.length !== 4 ||
+    x1 === undefined ||
+    y1 === undefined ||
+    x2 === undefined ||
+    y2 === undefined ||
+    [x1, y1, x2, y2].some(Number.isNaN)
+  ) {
+    throw new Error(`unparsable drawing geometry: ${JSON.stringify(geometry)}`);
+  }
+
+  return [x1, y1, x2, y2];
+}
+
 export class PlaywrightEquitiesChart implements EquitiesChartPO {
   constructor(private readonly page: Page) {}
 
@@ -65,6 +99,10 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
 
   private drawing(): Locator {
     return this.page.getByTestId(TESTIDS.equities.chart.drawing);
+  }
+
+  private drawingHandles(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.drawingHandle);
   }
 
   // The chart wrap (ChartPlot.tsx) carries data-yscale but no testid of its
@@ -268,6 +306,75 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await expect(this.drawing()).toHaveAttribute("data-selected", "true", {
       timeout: timeoutMs,
     });
+  }
+
+  async readDrawingGeometry(): Promise<string> {
+    const line = this.drawing();
+    const [x1, y1, x2, y2] = await Promise.all([
+      line.getAttribute("x1"),
+      line.getAttribute("y1"),
+      line.getAttribute("x2"),
+      line.getAttribute("y2"),
+    ]);
+    return `${x1},${y1},${x2},${y2}`;
+  }
+
+  async dragSelectedDrawingEndpoint(): Promise<void> {
+    // Handles are `pointer-events: none` (DrawingsLayer.tsx), same trap as
+    // `clickDrawing` above — grip the handle by driving a real pointer
+    // through the PLOT underneath, at the handle's own coordinates. The
+    // handle's cx/cy are plot-percent (SVG viewBox "0 0 100 100",
+    // preserveAspectRatio="none", so it stretches to exactly the plot box).
+    const handle = this.drawingHandles().nth(1);
+    const [cx, cy, plotBox] = await Promise.all([
+      handle.getAttribute("cx"),
+      handle.getAttribute("cy"),
+      this.plot().boundingBox(),
+    ]);
+
+    if (cx === null || cy === null || !plotBox) {
+      throw new Error("drawing handle or plot not laid out");
+    }
+
+    const fromX = plotBox.x + (Number(cx) / 100) * plotBox.width;
+    const fromY = plotBox.y + (Number(cy) / 100) * plotBox.height;
+
+    await this.page.mouse.move(fromX, fromY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(fromX + 80, fromY - 60, { steps: 10 });
+    await this.page.mouse.up();
+  }
+
+  async expectDrawingGeometryChangedWithin(
+    before: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    // A bare string/positional diff is NOT a safe drag witness: the drawing
+    // is data-anchored and re-projected through the live y-scale on every
+    // sim tick (500ms), and a candle append can slide the visible window —
+    // either can shift an UNDRAGGED drawing's x1/y1/x2/y2 by chance within
+    // the poll window. Both of those move the two endpoints (near-)uniformly,
+    // leaving the segment's SHAPE (`x2-x1`, `y2-y1`) unchanged — so polling
+    // on the shape delta instead is immune to that ambient drift while still
+    // catching the real drag (see `DRAG_SHAPE_DELTA_THRESHOLD_PCT`'s doc).
+    const [bx1, by1, bx2, by2] = parseGeometry(before);
+    const beforeDx = bx2 - bx1;
+    const beforeDy = by2 - by1;
+
+    await expect
+      .poll(
+        async () => {
+          const [x1, y1, x2, y2] = parseGeometry(
+            await this.readDrawingGeometry(),
+          );
+          return Math.max(
+            Math.abs(x2 - x1 - beforeDx),
+            Math.abs(y2 - y1 - beforeDy),
+          );
+        },
+        { timeout: timeoutMs },
+      )
+      .toBeGreaterThan(DRAG_SHAPE_DELTA_THRESHOLD_PCT);
   }
 
   async pressDelete(): Promise<void> {

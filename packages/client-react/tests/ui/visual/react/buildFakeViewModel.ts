@@ -487,6 +487,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         selectDrawing: noop,
         deleteSelected: noop,
         shiftAnchors: noop,
+        updateDrawing: noop,
       };
     },
     // Jarvis: data-driven fake for JarvisOrb/JarvisOverlay screenshots — a

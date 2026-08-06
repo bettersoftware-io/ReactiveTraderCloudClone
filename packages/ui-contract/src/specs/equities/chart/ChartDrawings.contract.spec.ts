@@ -280,6 +280,353 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
   });
 });
 
+describe("Drawing tools — drag-edit (ChartPanel, shared eqDrawings)", () => {
+  it("dragging the selected trendline's endpoint handle moves that end only, and the geometry survives a re-render (machine-committed, not preview-only)", async () => {
+    const { head, panel, world } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    // Force the panel to observe the tool change before gesturing on it —
+    // see the identical rationale in the pill-drives-plot describe above.
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    // addDrawing's own patch (EqDrawingsMachine) both auto-selects the new
+    // drawing AND reverts the tool to cursor — the very next pointer-down
+    // below lands as a cursor-tool grip test, not a second trendline draft.
+    expect(panel.drawingKinds()).toEqual(["trendline"]);
+    expect(panel.drawingAttr(0, "data-selected")).toBe("true");
+
+    const x1 = panel.drawingAttr(0, "x1");
+    const y1 = panel.drawingAttr(0, "y1");
+    const x2 = panel.drawingAttr(0, "x2");
+    const y2 = panel.drawingAttr(0, "y2");
+
+    // Grab the b endpoint's own rendered handle exactly (distance 0, well
+    // inside HANDLE_TOL_PCT) and drag it far away — 0.4/0.15 lands many
+    // multiples of the plot's stubbed 500x50 rect beyond the 4px
+    // click/drag threshold, so this commits rather than merely selecting.
+    panel.plotPointerDown(Number(x2) / 100, Number(y2) / 100);
+    panel.plotPointerMove(0.4, 0.15);
+    panel.plotPointerUp(0.4, 0.15);
+
+    const newX2 = panel.drawingAttr(0, "x2");
+    const newY2 = panel.drawingAttr(0, "y2");
+
+    expect(newX2).not.toBe(x2);
+    expect(newY2).not.toBe(y2);
+    // The "a" endpoint is untouched by a "b"-grip drag (dragDrawing only
+    // replaces the matching endpoint) — byte-identical since it's the same
+    // deterministic projection re-run over an unchanged anchor.
+    expect(panel.drawingAttr(0, "x1")).toBe(x1);
+    expect(panel.drawingAttr(0, "y1")).toBe(y1);
+
+    // Persistence check: force an UNRELATED re-render and confirm the
+    // dragged geometry is still there — proves it's a real EqDrawingsMachine
+    // update (onUpdateDrawing → updateDrawing), not a transient editDrag
+    // preview that happened to render the same numbers at pointer-up.
+    // Deliberately a SAME-LENGTH tail update (bump the last candle's close
+    // in place), not a growing tail append: this mount's default viewport
+    // ({240,300} of 300 candles) sits exactly at the live edge, so a
+    // genuine tail APPEND would trigger useChartGestures' own
+    // followLive fold and shift the viewport (and so every drawing's
+    // projected x) by one candle — a real, harmless effect, but one that
+    // would confound a byte-equality check on x2 with an unrelated cause.
+    // Holding candles.length and candles[0].time fixed keeps the viewport
+    // (and so the projection) untouched, isolating the persistence check.
+    const seriesSoFar = world.candlesFor("AAPL").getValue();
+    const lastIdx = seriesSoFar.length - 1;
+    const last = seriesSoFar[lastIdx];
+
+    if (!last) {
+      throw new Error("expected at least one candle");
+    }
+
+    world.setCandles("AAPL", [
+      ...seriesSoFar.slice(0, lastIdx),
+      { ...last, close: last.close + 1 },
+    ]);
+    panel.setProps({});
+
+    expect(panel.drawingAttr(0, "x2")).toBe(newX2);
+    expect(panel.drawingAttr(0, "y2")).toBe(newY2);
+  });
+
+  it("dragging the line body translates both ends (rigid)", async () => {
+    const { head, panel } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    const x1 = Number(panel.drawingAttr(0, "x1"));
+    const y1 = Number(panel.drawingAttr(0, "y1"));
+    const x2 = Number(panel.drawingAttr(0, "x2"));
+    const y2 = Number(panel.drawingAttr(0, "y2"));
+
+    // The segment's own midpoint — far outside HANDLE_TOL_PCT (2.5%) from
+    // either endpoint given this fixture's ~40%-wide draw, so this hits the
+    // "body" grip, not a handle.
+    const midXFrac = (x1 + x2) / 2 / 100;
+    const midYFrac = (y1 + y2) / 2 / 100;
+    const dxFrac = 0.15;
+    const dyFrac = -0.1;
+
+    panel.plotPointerDown(midXFrac, midYFrac);
+    panel.plotPointerMove(midXFrac + dxFrac, midYFrac + dyFrac);
+    panel.plotPointerUp(midXFrac + dxFrac, midYFrac + dyFrac);
+
+    const newX1 = Number(panel.drawingAttr(0, "x1"));
+    const newY1 = Number(panel.drawingAttr(0, "y1"));
+    const newX2 = Number(panel.drawingAttr(0, "x2"));
+    const newY2 = Number(panel.drawingAttr(0, "y2"));
+
+    expect(newX1).not.toBe(x1);
+    expect(newX2).not.toBe(x2);
+    expect(newY1).not.toBe(y1);
+    expect(newY2).not.toBe(y2);
+
+    // Rigid translate: the segment's own shape (both deltas) is preserved,
+    // not just "both ends moved" — dragDrawing's body branch applies ONE
+    // index delta and ONE y%-delta to both anchors identically.
+    const EPSILON = 0.01;
+
+    expect(Math.abs(newX2 - newX1 - (x2 - x1))).toBeLessThan(EPSILON);
+    expect(Math.abs(newY2 - newY1 - (y2 - y1))).toBeLessThan(EPSILON);
+
+    // Shape alone doesn't pin MAGNITUDE — a double-application bug (e.g.
+    // committing off the already-dragged preview instead of the original
+    // committed drawing) would double the offset while leaving the
+    // segment's own shape untouched, and both assertions above would still
+    // pass. Pin the actual displacement against the pointer's OWN delta:
+    // dragDrawing's body branch is a rigid translate of exactly
+    // round(dxFrac*span) candles and dyFrac*100 percent, applied ONCE.
+    // DEFAULT_VISIBLE doubles as the span here — this test never pans, so
+    // the viewport stays exactly {240,300} (a 60-candle span) throughout.
+    const expectedXShift =
+      (Math.round(dxFrac * DEFAULT_VISIBLE) / DEFAULT_VISIBLE) * 100;
+    const expectedYShift = dyFrac * 100;
+
+    expect(newX1 - x1).toBeCloseTo(expectedXShift, 2);
+    expect(newX2 - x2).toBeCloseTo(expectedXShift, 2);
+    expect(newY1 - y1).toBeCloseTo(expectedYShift, 2);
+    expect(newY2 - y2).toBeCloseTo(expectedYShift, 2);
+  });
+
+  it("Escape mid-drag reverts to the committed geometry byte-for-byte", async () => {
+    const { head, panel } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    const committed = {
+      x1: panel.drawingAttr(0, "x1"),
+      y1: panel.drawingAttr(0, "y1"),
+      x2: panel.drawingAttr(0, "x2"),
+      y2: panel.drawingAttr(0, "y2"),
+    };
+
+    panel.plotPointerDown(
+      Number(committed.x2) / 100,
+      Number(committed.y2) / 100,
+    );
+    panel.plotPointerMove(0.05, 0.9);
+    panel.pressPlotKey("Escape");
+    // The eventual real pointer-up for the now-discarded edit must not
+    // resurrect or commit it (mirrors useChartGestures.test.ts's own
+    // "Escape mid-editDrag discards it; the eventual stale pointer-up
+    // no-ops" case).
+    panel.plotPointerUp(0.05, 0.9);
+
+    expect({
+      x1: panel.drawingAttr(0, "x1"),
+      y1: panel.drawingAttr(0, "y1"),
+      x2: panel.drawingAttr(0, "x2"),
+      y2: panel.drawingAttr(0, "y2"),
+    }).toEqual(committed);
+  });
+
+  it("a no-move tap on a handle keeps the selection (the deselect trap)", async () => {
+    const { head, panel, world } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    expect(panel.drawingAttr(0, "data-selected")).toBe("true");
+
+    const x1 = Number(panel.drawingAttr(0, "x1"));
+    const y1 = Number(panel.drawingAttr(0, "y1"));
+    const x2 = Number(panel.drawingAttr(0, "x2"));
+    const y2 = Number(panel.drawingAttr(0, "y2"));
+
+    // Self-documenting geometry: the trap only bites at a point where the
+    // HANDLE test hits (≤2.5%) but the plain click/body test would MISS
+    // (>1.5%) — tapping the endpoint itself (dist 0 from both) can't
+    // exercise that gap. Move OUT along the segment's own direction, past
+    // the b endpoint: for a point beyond the endpoint, point-to-segment
+    // distance clamps to point-to-endpoint distance, so handle dist and
+    // body dist are the SAME number — pick that number between the two
+    // tolerances. Computed from the drawing's own rendered geometry, not
+    // guessed, and asserted below (mirrors the pan case's own guard).
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const segLen = Math.hypot(dx, dy);
+    const OFFSET_PCT = 2;
+    const tapX = x2 + (dx / segLen) * OFFSET_PCT;
+    const tapY = y2 + (dy / segLen) * OFFSET_PCT;
+
+    const handleDist = Math.hypot(tapX - x2, tapY - y2);
+    const bodyDist = distanceToSegment(tapX, tapY, x1, y1, x2, y2);
+
+    expect(handleDist).toBeLessThanOrEqual(2.5);
+    expect(bodyDist).toBeGreaterThan(1.5);
+
+    const bxFrac = tapX / 100;
+    const byFrac = tapY / 100;
+
+    // The load-bearing assertion is on the underlying machine INTENT, not
+    // just the resulting `data-selected` value: grabbing an "a"/"b" handle
+    // opens an editDrag preview that projects the grabbed endpoint to
+    // wherever the pointer CURRENTLY is (dragDrawing's endpoint branch is
+    // an ABSOLUTE reprojection, not a from→to delta) — and that preview is
+    // already live by the time this pointer-up's fall-through click (were
+    // it to fire) would hit-test, so a fall-through click would very
+    // likely re-select the SAME drawing anyway (its own preview has
+    // already snapped to within a candle-width of the tap point). A
+    // `data-selected==="true"` check alone can't tell "kept selected via
+    // editDrag's early return" apart from "deselected, then silently
+    // reselected via that self-referential fallback" — verified empirically
+    // (see task-6-report.md's mutation-check notes). Spying on the real
+    // machine's `selectDrawing` intent sidesteps that entirely: it must
+    // NEVER be invoked by a no-move tap, regardless of what it would have
+    // been invoked WITH.
+    const selectDrawingSpy = vi.spyOn(
+      world.eqDrawings.intents,
+      "selectDrawing",
+    );
+
+    // Down and up at the EXACT same point (0px excursion, well under
+    // CLICK_MAX_PX): endDrag's editDrag branch must return without falling
+    // through to onPlotClick.
+    panel.plotPointerDown(bxFrac, byFrac);
+    panel.plotPointerUp(bxFrac, byFrac);
+
+    expect(selectDrawingSpy).not.toHaveBeenCalled();
+    expect(panel.drawingAttr(0, "data-selected")).toBe("true");
+  });
+
+  it("pointer-down on empty plot with a selection still pans (drag-edit never steals the pan)", async () => {
+    const { head, panel } = mountPillWorkspace();
+
+    await head.setDrawTool("trendline");
+    panel.setProps({});
+    panel.plotPointerDown(0.2, 0.7);
+    panel.plotPointerMove(0.6, 0.3);
+    panel.plotPointerUp(0.6, 0.3);
+
+    const beforeX1 = panel.drawingAttr(0, "x1");
+    const x1 = Number(beforeX1);
+    const y1 = Number(panel.drawingAttr(0, "y1"));
+    const x2 = Number(panel.drawingAttr(0, "x2"));
+    const y2 = Number(panel.drawingAttr(0, "y2"));
+
+    // Computed, not guessed: the plot's far corner (2%, 2%) must sit outside
+    // BOTH hitTestGrip's handle tolerance (2.5%, point distance — always
+    // >= the segment distance below) and its body tolerance (1.5%, segment
+    // distance) or this case would silently exercise a drag-edit instead of
+    // a pan.
+    const missXFrac = 0.02;
+    const missYFrac = 0.02;
+    const missDistPct = distanceToSegment(
+      missXFrac * 100,
+      missYFrac * 100,
+      x1,
+      y1,
+      x2,
+      y2,
+    );
+
+    expect(missDistPct).toBeGreaterThan(2.5);
+
+    panel.plotPointerDown(missXFrac, missYFrac);
+    panel.plotPointerMove(missXFrac + 0.3, missYFrac);
+    panel.plotPointerUp(missXFrac + 0.3, missYFrac);
+
+    // The pan moved the viewport, so the SAME committed anchors now project
+    // to a different screen x — the simplest robust signal that a pan (not
+    // a drag-edit) happened, without hand-deriving the exact new value.
+    expect(panel.drawingAttr(0, "x1")).not.toBe(beforeX1);
+    expect(panel.drawingAttr(0, "data-selected")).toBe("true");
+  });
+
+  it("dragging a selected hline moves y only", async () => {
+    const { head, panel } = mountPillWorkspace();
+
+    await head.setDrawTool("hline");
+    panel.setProps({});
+    // hline commits on pointerdown alone — no drag/draft phase — and
+    // addDrawing auto-selects it just like the trendline case.
+    panel.plotPointerDown(0.5, 0.6);
+
+    expect(panel.drawingKinds()).toEqual(["hline"]);
+    expect(panel.drawingAttr(0, "data-selected")).toBe("true");
+
+    // DrawingsLayer renders an hline's projected y on both the `y1`/`y2`
+    // attrs (a full-width `<line>`, no plain `y`) — see the x1/x2 assertion
+    // below for the same fixed span.
+    const yFrac = Number(panel.drawingAttr(0, "y1")) / 100;
+
+    // The hline's one handle always sits at x=50 (drawingScene) —
+    // pointer-down there hits the "level" grip regardless of x.
+    panel.plotPointerDown(0.5, yFrac);
+    panel.plotPointerMove(0.9, 0.3);
+    panel.plotPointerUp(0.9, 0.3);
+
+    expect(Number(panel.drawingAttr(0, "y1"))).toBeCloseTo(30, 6);
+    expect(panel.drawingAttr(0, "y2")).toBe(panel.drawingAttr(0, "y1"));
+    expect(panel.drawingAttr(0, "data-kind")).toBe("hline");
+    // x-independent: an hline always spans the full plot width regardless
+    // of where its handle/body was grabbed (DrawingsLayer renders a fixed
+    // 0/100 span for every hline, selected or not).
+    expect(panel.drawingAttr(0, "x1")).toBe("0");
+    expect(panel.drawingAttr(0, "x2")).toBe("100");
+  });
+});
+
+/** Point-to-segment distance in plot-percent space — a local copy of
+ * `@rtc/motion-core`'s own (unexported) `segmentDistance`, the same
+ * per-spec-file duplication convention `olderCandles` below already
+ * follows. Used only to GUARD the pan case's miss point against the real
+ * hitTestGrip tolerances, never to assert projected drawing geometry. */
+function distanceToSegment(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  const t =
+    lenSq === 0
+      ? 0
+      : Math.min(Math.max(((px - x1) * dx + (py - y1) * dy) / lenSq, 0), 1);
+  const cx = x1 + t * dx;
+  const cy = y1 + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
 interface PillWorkspace {
   readonly head: EqChartHeadPage;
   readonly panel: ChartPanelPage;

@@ -7,6 +7,8 @@ import {
 } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { DrawingGrip } from "@rtc/motion-core";
+
 import {
   type ChartGestures,
   type DrawGestureSlots,
@@ -965,15 +967,309 @@ describe("useChartGestures — draw gesture fork", () => {
   });
 });
 
-/** Builds a full `DrawGestureSlots`, all four handlers stubbed with no-op
- * `vi.fn()`s — tests override just the tool and whichever handler they
- * assert against. */
+describe("editDrag (drag-edit fork)", () => {
+  // Harness notes: tool "cursor". hitGrip returns a grip for pointer-downs
+  // inside the "grab zone" the test controls — simplest: a vi.fn() the test
+  // programs per-case.
+
+  it("pointer-down on a grip opens editDrag instead of a pan; moves track `to`; pointer-up beyond CLICK_MAX_PX commits once with (grip, from, to)", () => {
+    const grip: DrawingGrip = { id: "d1", part: "b" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const onCommitEdit = vi.fn();
+    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const before = result.current.viewport;
+
+    act(() => {
+      // (250, 25) of the 500x50 stub rect -> plot fraction (0.5, 0.5).
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+
+    expect(result.current.editDrag).not.toBeNull();
+    expect(result.current.editDrag?.from).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+
+    act(() => {
+      // (350, 15) -> (0.7, 0.3); a 100/10px excursion, well beyond
+      // CLICK_MAX_PX.
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+
+    expect(result.current.editDrag?.to).toEqual({ xFrac: 0.7, yFrac: 0.3 });
+
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+
+    expect(onCommitEdit).toHaveBeenCalledOnce();
+    expect(onCommitEdit).toHaveBeenCalledWith(
+      grip,
+      { xFrac: 0.5, yFrac: 0.5 },
+      { xFrac: 0.7, yFrac: 0.3 },
+    );
+    expect(result.current.editDrag).toBeNull();
+    // The pan path never ran — the viewport is exactly as it started.
+    expect(result.current.viewport).toEqual(before);
+  });
+
+  it("pointer-up within CLICK_MAX_PX discards the editDrag WITHOUT calling onPlotClick or onCommitEdit (the deselect trap)", () => {
+    const grip: DrawingGrip = { id: "d1", part: "body" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const onCommitEdit = vi.fn();
+    const onPlotClick = vi.fn();
+    const draw = drawSlots({
+      tool: "cursor",
+      hitGrip,
+      onCommitEdit,
+      onPlotClick,
+    });
+
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+    act(() => {
+      // 1px excursion — well within CLICK_MAX_PX (4px).
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 251, clientY: 25 }),
+      );
+    });
+
+    expect(onCommitEdit).not.toHaveBeenCalled();
+    expect(onPlotClick).not.toHaveBeenCalled();
+    expect(result.current.editDrag).toBeNull();
+  });
+
+  it("Escape mid-editDrag discards it; the eventual stale pointer-up no-ops", () => {
+    const grip: DrawingGrip = { id: "d1", part: "a" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const onCommitEdit = vi.fn();
+    const onPlotClick = vi.fn();
+    const draw = drawSlots({
+      tool: "cursor",
+      hitGrip,
+      onCommitEdit,
+      onPlotClick,
+    });
+
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+
+    const escapeKey = keyEvent("Escape");
+    act(() => {
+      result.current.plotProps.onKeyDown(escapeKey);
+    });
+
+    expect(result.current.editDrag).toBeNull();
+    expect(escapeKey.preventDefault).toHaveBeenCalled();
+
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+
+    expect(onCommitEdit).not.toHaveBeenCalled();
+    expect(onPlotClick).not.toHaveBeenCalled();
+  });
+
+  it("pointercancel mid-editDrag discards it", () => {
+    const grip: DrawingGrip = { id: "d1", part: "level" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const onCommitEdit = vi.fn();
+    const releasePointerCapture = vi.fn();
+    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerCancel(
+        pointerEvent({ clientX: 350, clientY: 15 }, { releasePointerCapture }),
+      );
+    });
+
+    expect(result.current.editDrag).toBeNull();
+    expect(onCommitEdit).not.toHaveBeenCalled();
+    expect(releasePointerCapture).toHaveBeenCalledWith(1);
+
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 350, clientY: 15 }),
+      );
+    });
+
+    expect(onCommitEdit).not.toHaveBeenCalled();
+  });
+
+  it("hitGrip returning null falls through to the normal pan path (viewport changes on drag)", () => {
+    const hitGrip = vi.fn().mockReturnValue(null);
+    const onCommitEdit = vi.fn();
+    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const before = result.current.viewport;
+
+    act(() => {
+      // (250, 25) -> 0.5 xFrac.
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+    act(() => {
+      // Dragging right (dx = +100 of 500px width) pans the view backward
+      // (earlier) — away from the live edge, so nothing clamps it back to
+      // the same window (unlike dragging toward the edge, which would).
+      result.current.plotProps.onPointerMove(
+        pointerEvent({ clientX: 350, clientY: 25 }),
+      );
+    });
+    act(() => {
+      result.current.plotProps.onPointerUp(
+        pointerEvent({ clientX: 350, clientY: 25 }),
+      );
+    });
+
+    expect(result.current.editDrag).toBeNull();
+    expect(result.current.viewport.start).not.toEqual(before.start);
+    expect(onCommitEdit).not.toHaveBeenCalled();
+  });
+
+  it("Delete/Backspace is ignored while an editDrag is open", () => {
+    const grip: DrawingGrip = { id: "d1", part: "b" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const onDeleteKey = vi.fn();
+    const draw = drawSlots({ tool: "cursor", hitGrip, onDeleteKey });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+    expect(result.current.editDrag).not.toBeNull();
+
+    const del = keyEvent("Delete");
+    act(() => {
+      result.current.plotProps.onKeyDown(del);
+    });
+
+    expect(onDeleteKey).not.toHaveBeenCalled();
+    expect(del.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("hitGrip is only consulted when tool === 'cursor' (trendline tool pointer-down never calls it)", () => {
+    const hitGrip = vi.fn();
+    const draw = drawSlots({ tool: "trendline", hitGrip });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+
+    act(() => {
+      result.current.plotProps.onPointerDown(
+        pointerEvent({ clientX: 250, clientY: 25 }),
+      );
+    });
+
+    expect(hitGrip).not.toHaveBeenCalled();
+    // The trendline draft opened instead.
+    expect(result.current.draft).not.toBeNull();
+    expect(result.current.editDrag).toBeNull();
+  });
+
+  it("a pointer-down on a button descendant never consults hitGrip (button guard runs first)", () => {
+    // Pins the GUARD ORDER, not just the guard's existence: unlike the
+    // plain "lands on a nested button" test above (which mounts with no
+    // draw slots at all), this one mounts WITH a cursor-tool hitGrip that
+    // would happily return a grip — so if a future refactor ever hoisted
+    // the grip check above the button guard, this is the test that would
+    // catch it. Failure scenario it insures against: a selected drawing's
+    // handle sitting under the BACK TO LIVE pill — a pointer-down there
+    // would open an editDrag and capture-swallow the pill's click.
+    const grip: DrawingGrip = { id: "d1", part: "b" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const draw = drawSlots({ tool: "cursor", hitGrip });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const setPointerCapture = vi.fn();
+    const event = {
+      pointerId: 9,
+      clientX: 10,
+      clientY: 10,
+      target: {
+        closest: (selector: string) => {
+          return selector === "button" ? {} : null;
+        },
+      },
+      currentTarget: {
+        setPointerCapture,
+        getBoundingClientRect: (): DOMRect => {
+          return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+        },
+      } as unknown as HTMLDivElement,
+    } as unknown as ReactPointerEvent<HTMLDivElement>;
+
+    act(() => {
+      result.current.plotProps.onPointerDown(event);
+    });
+
+    expect(hitGrip).not.toHaveBeenCalled();
+    expect(result.current.editDrag).toBeNull();
+    expect(setPointerCapture).not.toHaveBeenCalled();
+  });
+});
+
+/** Builds a full `DrawGestureSlots`, every handler stubbed with a no-op
+ * `vi.fn()` (`hitGrip` stubbed to always return `null`) — tests override just
+ * the tool and whichever handler they assert against. */
 function drawSlots(overrides: Partial<DrawGestureSlots>): DrawGestureSlots {
   return {
     tool: "cursor",
     onCommitLine: vi.fn(),
     onCommitLevel: vi.fn(),
     onPlotClick: vi.fn(),
+    hitGrip: () => {
+      return null;
+    },
+    onCommitEdit: vi.fn(),
     onDeleteKey: vi.fn(),
     ...overrides,
   };
