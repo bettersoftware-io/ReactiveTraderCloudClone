@@ -59,7 +59,7 @@
  * a live desk displays, not whether any assertion passes.
  */
 
-export type EpisodeKind = "spreadWidening" | "volBurst";
+type EpisodeKind = "spreadWidening" | "volBurst";
 
 export interface EpisodeState {
   readonly kind: EpisodeKind | "none";
@@ -128,6 +128,7 @@ function ramp01(elapsedTicks: number, duration: number): number {
   if (duration <= 1) {
     return 0;
   }
+
   return Math.sin((Math.PI * elapsedTicks) / (duration - 1));
 }
 
@@ -187,6 +188,7 @@ export function spreadFactor(state: EpisodeState): number {
   if (state.kind !== "spreadWidening") {
     return 1;
   }
+
   const elapsedTicks = state.duration - state.ticksRemaining;
   return 1 + (state.peakFactor - 1) * ramp01(elapsedTicks, state.duration);
 }

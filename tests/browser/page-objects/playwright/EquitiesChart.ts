@@ -2,8 +2,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 import type {
   EquitiesChartPO,
-  EquitiesIndicatorKind,
   EquitiesDrawTool,
+  EquitiesIndicatorKind,
   EquitiesPaneKind,
   PlotFraction,
 } from "../contracts/EquitiesChart";

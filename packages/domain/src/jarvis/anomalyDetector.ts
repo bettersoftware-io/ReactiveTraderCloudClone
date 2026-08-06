@@ -56,19 +56,35 @@ function createSymbolWindow(): SymbolWindow {
 /** Push `value` onto `buf`, dropping the oldest entry past `cap`. */
 function pushCapped(buf: number[], value: number, cap: number): void {
   buf.push(value);
+
   if (buf.length > cap) {
     buf.shift();
   }
 }
 
+interface MeanAndStd {
+  readonly mean: number;
+  readonly std: number;
+}
+
 /** Population mean/σ (ddof=0) — the window's own values are the whole population, not a sample drawn from a larger one. Empty window → {0, 0} (nothing to evaluate against yet). */
-function meanAndStd(values: readonly number[]): { mean: number; std: number } {
+function meanAndStd(values: readonly number[]): MeanAndStd {
   const n = values.length;
+
   if (n === 0) {
     return { mean: 0, std: 0 };
   }
-  const mean = values.reduce((sum, v) => sum + v, 0) / n;
-  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / n;
+
+  const mean =
+    values.reduce((sum, v) => {
+      return sum + v;
+    }, 0) / n;
+
+  const variance =
+    values.reduce((sum, v) => {
+      return sum + (v - mean) ** 2;
+    }, 0) / n;
+
   return { mean, std: Math.sqrt(variance) };
 }
 
@@ -121,6 +137,11 @@ function isZeroVariance(std: number, refMagnitude: number): boolean {
  * `refMagnitude` (see `ZERO_VARIANCE_EPSILON_K`), always resolves to "not
  * crossed": dividing by it is never attempted.
  */
+interface CrossingEvaluation {
+  readonly above: boolean;
+  readonly sigma: number | undefined;
+}
+
 function evaluateCrossing(
   wasAbove: boolean,
   value: number,
@@ -128,8 +149,9 @@ function evaluateCrossing(
   sigma: number,
   refMagnitude: number,
   distance: (value: number, mean: number, std: number) => number,
-): { above: boolean; sigma: number | undefined } {
+): CrossingEvaluation {
   const { mean, std } = meanAndStd(window);
+
   if (isZeroVariance(std, refMagnitude)) {
     return { above: false, sigma: undefined };
   }
@@ -216,9 +238,11 @@ export function detectAnomalies(
         const spread = tick.ask - tick.bid;
 
         let ret: number | undefined;
+
         if (window.prevMid !== undefined && window.prevMid !== 0) {
           ret = (tick.mid - window.prevMid) / window.prevMid;
         }
+
         window.prevMid = tick.mid;
 
         // Evaluate against the TRAILING window — spread/ret are pushed in
@@ -234,9 +258,12 @@ export function detectAnomalies(
             // ~tick.mid in magnitude — that's the operand scale ULP noise
             // in `spread` is inherited from.
             tick.mid,
-            (value, mean, std) => (value - mean) / std,
+            (value, mean, std) => {
+              return (value - mean) / std;
+            },
           );
           window.spreadAbove = spreadResult.above;
+
           if (spreadResult.sigma !== undefined) {
             events.push({
               kind: "spreadWidening",
@@ -256,9 +283,12 @@ export function detectAnomalies(
               // ~ULP(mid)/prevMid ≈ Number.EPSILON regardless of the price
               // level, so 1 (not tick.mid) is the right operand scale here.
               1,
-              (value, _mean, std) => Math.abs(value) / std,
+              (value, _mean, std) => {
+                return Math.abs(value) / std;
+              },
             );
             window.volAbove = volResult.above;
+
             if (volResult.sigma !== undefined) {
               events.push({
                 kind: "volSpike",
@@ -270,13 +300,16 @@ export function detectAnomalies(
         }
 
         pushCapped(window.spreads, spread, cfg.windowSize);
+
         if (ret !== undefined) {
           pushCapped(window.returns, ret, cfg.windowSize);
         }
 
         return events;
       }, []),
-      mergeMap((events) => from(events)),
+      mergeMap((events) => {
+        return from(events);
+      }),
     );
   });
 }

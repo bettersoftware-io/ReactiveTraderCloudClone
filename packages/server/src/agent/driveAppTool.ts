@@ -32,11 +32,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * model-facing envelope (see the R1 envelope-drift lesson in
  * `jarvisPersona.ts`'s drive few-shots) — `run` below fills it in before
  * calling `parseDriveBatch`. */
+type DriveCommandJsonSchemaShape = {
+  readonly properties: { readonly commands: unknown };
+};
+
 function buildInputSchema(): Record<string, unknown> {
   const { commands } = (
-    DRIVE_COMMAND_JSON_SCHEMA as {
-      readonly properties: { readonly commands: unknown };
-    }
+    DRIVE_COMMAND_JSON_SCHEMA as DriveCommandJsonSchemaShape
   ).properties;
 
   return {

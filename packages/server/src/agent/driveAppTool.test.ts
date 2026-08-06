@@ -152,9 +152,8 @@ describe("buildDriveAppTool", () => {
     const { deps } = buildDeps();
     const tool = buildDriveAppTool(deps);
     const schema = tool.inputSchema as unknown as DriveAppInputSchema;
-    const sharedSchema = DRIVE_COMMAND_JSON_SCHEMA as unknown as {
-      readonly properties: { readonly commands: unknown };
-    };
+    const sharedSchema =
+      DRIVE_COMMAND_JSON_SCHEMA as unknown as SharedDriveCommandSchemaShape;
 
     expect(schema.required).toEqual(["commands"]);
     expect(schema.additionalProperties).toBe(false);
@@ -188,6 +187,12 @@ interface DriveAppInputSchema {
     readonly commands: unknown;
     readonly v?: unknown;
   };
+}
+
+/** `DRIVE_COMMAND_JSON_SCHEMA`'s own shape, as cast for the "embeds the
+ * commands item schema verbatim" assertion above. */
+interface SharedDriveCommandSchemaShape {
+  readonly properties: { readonly commands: unknown };
 }
 
 /** `buildDeps`' own return shape — named rather than inline per

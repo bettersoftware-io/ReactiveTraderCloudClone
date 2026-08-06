@@ -18,25 +18,6 @@ import {
   spreadFactor,
 } from "./pricingAnomalyEpisode.js";
 
-/** A scripted RNG: each call returns the next value from `values`, cycling if exhausted. Throws if `values` is empty and it's ever called — a test bug, not a domain bug. */
-function scriptedRandom(values: readonly number[]): {
-  readonly random: () => number;
-  readonly callCount: () => number;
-} {
-  let i = 0;
-  return {
-    random: () => {
-      if (values.length === 0) {
-        throw new Error("scriptedRandom: no values scripted");
-      }
-      const v = values[i % values.length];
-      i += 1;
-      return v;
-    },
-    callCount: () => i,
-  };
-}
-
 describe("advanceEpisode", () => {
   it("steady state: a roll that misses startProbability leaves the state unchanged and consumes exactly one draw", () => {
     const { random, callCount } = scriptedRandom([0.9]);
@@ -56,6 +37,7 @@ describe("advanceEpisode", () => {
     const { random, callCount } = scriptedRandom([0, 0, 0, 0, 0]);
 
     let state = NO_EPISODE;
+
     for (let tick = 0; tick < 50; tick++) {
       state = advanceEpisode(state, random, config);
     }
@@ -171,6 +153,7 @@ describe("advanceEpisode", () => {
     const { random, callCount } = scriptedRandom([0.5]); // never consulted once kind !== "none"
 
     const seenKinds: string[] = [state.kind];
+
     for (let tick = 0; tick < duration; tick++) {
       state = advanceEpisode(state, random, DEFAULT_EPISODE_CONFIG);
       seenKinds.push(state.kind);
@@ -208,6 +191,7 @@ describe("spreadFactor", () => {
     const duration = 21;
     const peakFactor = 4;
     const factors: number[] = [];
+
     for (let ticksRemaining = duration; ticksRemaining >= 1; ticksRemaining--) {
       factors.push(
         spreadFactor({
@@ -230,6 +214,7 @@ describe("spreadFactor", () => {
     for (let i = 1; i <= midIndex; i++) {
       expect(factors[i]).toBeGreaterThanOrEqual(factors[i - 1]);
     }
+
     for (let i = midIndex + 1; i < factors.length; i++) {
       expect(factors[i]).toBeLessThanOrEqual(factors[i - 1]);
     }
@@ -285,6 +270,110 @@ const EURUSD_HALF_SPREAD = 0.00007; // typicalSpreadPips 1.4 / 2 * pipUnit(4)
 const EURUSD_STEP_SIZE = 0.00018; // stepSizeFor(EURUSD): 1.8 * pipUnit(4)
 const EURUSD_RATE_PRECISION = 5; // KNOWN_CURRENCY_PAIRS EURUSD.ratePrecision
 
+describe("detector integration (proves the calibration actually fires)", () => {
+  it("a forced spreadWidening episode trips detectAnomalies' spreadWidening channel at least once", async () => {
+    const random = scriptedRandom(
+      Array.from({ length: 2000 }, (_, i) => {
+        return (i * 0.6180339887) % 1;
+      }), // low-discrepancy-ish fill, deterministic
+    ).random;
+
+    const ticks = buildTickSequence(
+      DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
+      {
+        kind: "spreadWidening",
+        ticksRemaining: DEFAULT_EPISODE_CONFIG.maxDurationTicks,
+        duration: DEFAULT_EPISODE_CONFIG.maxDurationTicks,
+        peakFactor: DEFAULT_EPISODE_CONFIG.spreadPeakRange[1],
+        signBias: 0,
+      },
+      random,
+    );
+
+    const events = await new Promise<
+      readonly { kind: string; symbol: string; sigma: number }[]
+    >((resolve, reject) => {
+      detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG)
+        .pipe(toArray())
+        .subscribe({ next: resolve, error: reject });
+    });
+
+    const spreadEvents = events.filter((e) => {
+      return e.kind === "spreadWidening";
+    });
+    expect(spreadEvents.length).toBeGreaterThanOrEqual(1);
+
+    for (const e of spreadEvents) {
+      expect(e.symbol).toBe("EURUSD");
+      expect(e.sigma).toBeGreaterThanOrEqual(
+        DEFAULT_ANOMALY_CONFIG.spreadSigma,
+      );
+    }
+  });
+
+  it("a forced volBurst episode trips detectAnomalies' volSpike channel at least once", async () => {
+    const random = scriptedRandom(
+      Array.from({ length: 2000 }, (_, i) => {
+        return (i * 0.6180339887) % 1;
+      }),
+    ).random;
+
+    const ticks = buildTickSequence(
+      DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
+      {
+        kind: "volBurst",
+        ticksRemaining: DEFAULT_EPISODE_CONFIG.minDurationTicks,
+        duration: DEFAULT_EPISODE_CONFIG.minDurationTicks,
+        peakFactor: DEFAULT_EPISODE_CONFIG.burstPeakRange[1],
+        signBias: 1,
+      },
+      random,
+    );
+
+    const events = await new Promise<
+      readonly { kind: string; symbol: string; sigma: number }[]
+    >((resolve, reject) => {
+      detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG)
+        .pipe(toArray())
+        .subscribe({ next: resolve, error: reject });
+    });
+
+    const volEvents = events.filter((e) => {
+      return e.kind === "volSpike";
+    });
+    expect(volEvents.length).toBeGreaterThanOrEqual(1);
+
+    for (const e of volEvents) {
+      expect(e.symbol).toBe("EURUSD");
+      expect(e.sigma).toBeGreaterThanOrEqual(DEFAULT_ANOMALY_CONFIG.volSigma);
+    }
+  });
+});
+
+interface ScriptedRandom {
+  readonly random: () => number;
+  readonly callCount: () => number;
+}
+
+/** A scripted RNG: each call returns the next value from `values`, cycling if exhausted. Throws if `values` is empty and it's ever called — a test bug, not a domain bug. */
+function scriptedRandom(values: readonly number[]): ScriptedRandom {
+  let i = 0;
+  return {
+    random: () => {
+      if (values.length === 0) {
+        throw new Error("scriptedRandom: no values scripted");
+      }
+
+      const v = values[i % values.length];
+      i += 1;
+      return v;
+    },
+    callCount: () => {
+      return i;
+    },
+  };
+}
+
 function buildTickSequence(
   steadyTicks: number,
   forcedEpisode: EpisodeState,
@@ -329,73 +418,3 @@ function buildTickSequence(
 
   return ticks;
 }
-
-describe("detector integration (proves the calibration actually fires)", () => {
-  it("a forced spreadWidening episode trips detectAnomalies' spreadWidening channel at least once", async () => {
-    const random = scriptedRandom(
-      Array.from({ length: 2000 }, (_, i) => (i * 0.6180339887) % 1), // low-discrepancy-ish fill, deterministic
-    ).random;
-
-    const ticks = buildTickSequence(
-      DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
-      {
-        kind: "spreadWidening",
-        ticksRemaining: DEFAULT_EPISODE_CONFIG.maxDurationTicks,
-        duration: DEFAULT_EPISODE_CONFIG.maxDurationTicks,
-        peakFactor: DEFAULT_EPISODE_CONFIG.spreadPeakRange[1],
-        signBias: 0,
-      },
-      random,
-    );
-
-    const events = await new Promise<
-      readonly { kind: string; symbol: string; sigma: number }[]
-    >((resolve, reject) => {
-      detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG)
-        .pipe(toArray())
-        .subscribe({ next: resolve, error: reject });
-    });
-
-    const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
-    expect(spreadEvents.length).toBeGreaterThanOrEqual(1);
-    for (const e of spreadEvents) {
-      expect(e.symbol).toBe("EURUSD");
-      expect(e.sigma).toBeGreaterThanOrEqual(
-        DEFAULT_ANOMALY_CONFIG.spreadSigma,
-      );
-    }
-  });
-
-  it("a forced volBurst episode trips detectAnomalies' volSpike channel at least once", async () => {
-    const random = scriptedRandom(
-      Array.from({ length: 2000 }, (_, i) => (i * 0.6180339887) % 1),
-    ).random;
-
-    const ticks = buildTickSequence(
-      DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
-      {
-        kind: "volBurst",
-        ticksRemaining: DEFAULT_EPISODE_CONFIG.minDurationTicks,
-        duration: DEFAULT_EPISODE_CONFIG.minDurationTicks,
-        peakFactor: DEFAULT_EPISODE_CONFIG.burstPeakRange[1],
-        signBias: 1,
-      },
-      random,
-    );
-
-    const events = await new Promise<
-      readonly { kind: string; symbol: string; sigma: number }[]
-    >((resolve, reject) => {
-      detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG)
-        .pipe(toArray())
-        .subscribe({ next: resolve, error: reject });
-    });
-
-    const volEvents = events.filter((e) => e.kind === "volSpike");
-    expect(volEvents.length).toBeGreaterThanOrEqual(1);
-    for (const e of volEvents) {
-      expect(e.symbol).toBe("EURUSD");
-      expect(e.sigma).toBeGreaterThanOrEqual(DEFAULT_ANOMALY_CONFIG.volSigma);
-    }
-  });
-});

@@ -546,36 +546,32 @@ describe("DRIVE_POWER_LEVELS — pinned against @rtc/domain PowerSaverLevel", ()
 
 describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as the validator", () => {
   function itemBranches(): readonly Record<string, unknown>[] {
-    const schema = DRIVE_COMMAND_JSON_SCHEMA as unknown as {
-      properties: {
-        commands: { items: { anyOf: readonly Record<string, unknown>[] } };
-      };
-    };
+    const schema =
+      DRIVE_COMMAND_JSON_SCHEMA as unknown as DriveCommandSchemaRoot;
     return schema.properties.commands.items.anyOf;
   }
 
   function branchFor(kind: string): Record<string, unknown> {
     const branch = itemBranches().find((candidate) => {
-      const props = candidate.properties as { kind: { const: string } };
+      const props = candidate.properties as KindConstProperty;
       return props.kind.const === kind;
     });
+
     if (branch === undefined) {
       throw new Error(`no schema branch for kind ${kind}`);
     }
+
     return branch;
   }
 
   function enumOf(branch: Record<string, unknown>, field: string): unknown {
-    const props = branch.properties as Record<
-      string,
-      { enum?: readonly string[] }
-    >;
+    const props = branch.properties as Record<string, EnumProperty>;
     return props[field]?.enum;
   }
 
   it("has one anyOf branch per DRIVE_COMMAND_KINDS entry", () => {
     const kinds = itemBranches().map((branch) => {
-      return (branch.properties as { kind: { const: string } }).kind.const;
+      return (branch.properties as KindConstProperty).kind.const;
     });
     expect(kinds).toEqual([...DRIVE_COMMAND_KINDS]);
   });
@@ -621,3 +617,21 @@ describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as th
     ]);
   });
 });
+
+/** `DRIVE_COMMAND_JSON_SCHEMA`'s own shape, as cast to reach its per-kind
+ * `anyOf` branches. */
+interface DriveCommandSchemaRoot {
+  properties: {
+    commands: { items: { anyOf: readonly Record<string, unknown>[] } };
+  };
+}
+
+/** A schema branch's `kind` property, as cast to read its `const` value. */
+interface KindConstProperty {
+  kind: { const: string };
+}
+
+/** A schema branch's `properties`, as cast to read one field's `enum`. */
+interface EnumProperty {
+  enum?: readonly string[];
+}

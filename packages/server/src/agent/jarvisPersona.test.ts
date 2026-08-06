@@ -117,6 +117,7 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     const panelExampleLines = allExampleLines.filter((line) => {
       return line.includes("render_panel");
     });
+
     const driveExampleLines = allExampleLines.filter((line) => {
       return line.includes("drive_app");
     });

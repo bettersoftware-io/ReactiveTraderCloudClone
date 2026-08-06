@@ -1636,10 +1636,16 @@ function panelSpecFixture(): PanelSpecV1 {
 }
 
 /** A `drive_app` tool CALL input — the model-facing envelope (no `v`; see
- * `driveAppTool.ts`'s `buildInputSchema` doc comment), not a `DriveBatchV1`
- * itself. Single-command so the loop-composition test's `applied: 1`
- * assertion is unambiguous. */
-function driveBatchInputFixture(): { commands: unknown[] } {
+ * `driveAppTool.ts`'s `buildInputSchema` doc comment). */
+interface DriveAppInputFixture {
+  readonly commands: unknown[];
+}
+
+/**
+ * Not a `DriveBatchV1` itself. Single-command so the loop-composition test's
+ * `applied: 1` assertion is unambiguous.
+ */
+function driveBatchInputFixture(): DriveAppInputFixture {
   return { commands: [{ kind: "switchTab", tab: "equities" }] };
 }
 

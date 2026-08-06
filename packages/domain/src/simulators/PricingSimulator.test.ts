@@ -244,6 +244,7 @@ describe("PricingSimulator", () => {
     // independent of each other.
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.9); // 0.9 << 1/1500 crossed only from below; never starts an episode
     vi.useFakeTimers();
+
     try {
       const engine = new PricingSimulator();
       const ticksPromise = lastValueFrom(
@@ -263,6 +264,7 @@ describe("PricingSimulator", () => {
       let mid = 1.09213;
       const r = 0.9 - 0.5;
       const expectedMids: number[] = [];
+
       for (let i = 0; i < ticks.length; i++) {
         const next = mid + r * stepSize;
         const rounded = Number(next.toFixed(ratePrecision));
@@ -270,7 +272,12 @@ describe("PricingSimulator", () => {
         expectedMids.push(mid);
       }
 
-      expect(ticks.map((t) => t.mid)).toEqual(expectedMids);
+      expect(
+        ticks.map((t) => {
+          return t.mid;
+        }),
+      ).toEqual(expectedMids);
+
       for (const tick of ticks) {
         expect(tick.ask).toBeCloseTo(tick.mid + halfSpread, 10);
         expect(tick.bid).toBeCloseTo(tick.mid - halfSpread, 10);
@@ -287,6 +294,7 @@ describe("PricingSimulator", () => {
     // deterministic, continuously-repeating spreadWidening episode.
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     vi.useFakeTimers();
+
     try {
       const engine = new PricingSimulator();
       const ticksPromise = lastValueFrom(
@@ -299,9 +307,9 @@ describe("PricingSimulator", () => {
       const liveTicks = ticks.slice(PRICE_HISTORY_SIZE);
 
       const restingSpread = 0.00007 * 2; // EURUSD half-spread * 2
-      const widened = liveTicks.filter(
-        (t) => t.ask - t.bid > restingSpread + 1e-9,
-      );
+      const widened = liveTicks.filter((t) => {
+        return t.ask - t.bid > restingSpread + 1e-9;
+      });
       expect(widened.length).toBeGreaterThan(0);
 
       // Bounded: never exceeds the pinned peak factor (2x, from
@@ -330,6 +338,7 @@ describe("PricingSimulator", () => {
     // the spreadWidening channel.
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     vi.useFakeTimers();
+
     try {
       const engine = new PricingSimulator();
       // minWindowFill (60) + enough live ticks for several ramp cycles
@@ -345,9 +354,13 @@ describe("PricingSimulator", () => {
       const events = await lastValueFrom(
         detectAnomalies(from(ticks), DEFAULT_ANOMALY_CONFIG).pipe(toArray()),
       );
-      const spreadEvents = events.filter((e) => e.kind === "spreadWidening");
+
+      const spreadEvents = events.filter((e) => {
+        return e.kind === "spreadWidening";
+      });
 
       expect(spreadEvents.length).toBeGreaterThanOrEqual(1);
+
       for (const e of spreadEvents) {
         expect(e.symbol).toBe("EURUSD");
         expect(e.sigma).toBeGreaterThanOrEqual(
