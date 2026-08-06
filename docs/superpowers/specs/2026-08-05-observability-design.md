@@ -2,6 +2,10 @@
 
 **Date:** 2026-08-05
 **Status:** Approved
+**Amended:** 2026-08-06 — full re-verification errata (every §3 number
+re-checked against live pricing pages), two vendors added to the survey
+(§3), the creating-spans-vs-displaying-them clarification (§2.1), and
+exit/revisit updates (§11).
 **Workstream:** Closes the "Observability workstream (Sentry + structured
 logging + metrics)" entry in [`docs/STATUS.md`](../../STATUS.md), which
 deferred this to its own brainstorm rather than bolting it on.
@@ -22,9 +26,12 @@ metrics** replacing ad-hoc `console.*`.
 **This app is WebSocket-native, and neither Sentry nor OpenTelemetry
 auto-instruments WebSockets.**
 
-- Sentry's `browserTracingIntegration` spans "every XMLHttpRequest or fetch
-  request"; its docs direct you to manual propagation for "other places than
-  HTTP requests (for example, with websockets)".
+- Sentry's `browserTracingIntegration` auto-instruments pageloads,
+  navigations, fetch/XHR, user interactions and long tasks — nothing
+  WebSocket; its docs direct you to manual propagation for "other places
+  than HTTP requests (for example, with websockets)". *(Amended 2026-08-06:
+  the original wording quoted only the XHR/fetch clause; the
+  auto-instrumented list is broader, the WS gap identical.)*
 - OTel has the same gap and states the reason: WebSocket messages "flow over a
   single long-lived connection with no built-in mechanism for per-message
   metadata... there are no headers to piggyback on after the initial
@@ -40,20 +47,83 @@ choice is not a tracing-capability decision. It is a backend/UX/cost decision.
 And the seam already exists — `packages/client-core/src/adapters/WsAdapter.ts`
 defines the frame as `{ type, payload, correlationId? }`.
 
-## 3. Vendor survey (verified 2026-08-05)
+### 2.1 Creating spans vs. displaying them
+
+*(Added 2026-08-06 — the §2 finding kept being read as "we must build our own
+tracing system". We do not.)*
+
+The gap is narrow: the SDK will not **create** spans for WS frames or stamp
+`traceparent` onto them automatically, the way it does for `fetch`. Sentry's
+backend and UI are indifferent to where a span came from — a span created by
+hand through the SDK's public API is stored, stitched and rendered
+identically to an auto-instrumented one. Trace assembly is by ID alone: every
+span carries the 32-hex trace id, and the UI groups everything sharing it
+into one waterfall.
+
+What we hand-write is therefore three small pieces, each specified below:
+
+1. **The decorator stamps the frame** (§5.1). For an RPC-class frame it opens
+   a span through the SDK's ordinary API and writes that span's context into
+   the frame as the `traceparent` string — one field write; the W3C format
+   exists precisely so any backend can parse it:
+
+   ```ts
+   // inside the decorator's send wrapper — conceptually:
+   Sentry.startSpan({ name: `ws.rpc.${type}` }, (span) => {
+     realAdapter.send({ type, payload, correlationId,
+       traceparent: toTraceparent(span) });
+   });
+   ```
+
+2. **The server extracts and continues** (§6.2): the OTel SDK parses the
+   incoming `traceparent`, wraps the handling effect in a *child* span, and
+   exports over OTLP to the same Sentry org.
+3. **The class table decides which frames get step 1 at all** (§5.2).
+
+We build no span storage, no trace assembly, no waterfall renderer, no query
+UI, no retention. **There is no custom dashboard in this design.** Where each
+signal displays:
+
+| Signal | Dashboard |
+|---|---|
+| Distributed traces (RPCs, handshakes, Jarvis turns) | **Sentry's Trace Explorer** — one waterfall per trace id: browser root → WS hop → server effect children |
+| Errors | **Sentry's Issues view**, trace id attached for jump-to-trace |
+| Stream-tick health (frames/sec, p95 gap, staleness) | **Grafana at fly-metrics.net** (Fly's free Prometheus) — ticks are never spanned (§5.2), so their health signal is metrics |
+| Local inspection | **the devtools wire lens**, which shows the trace id per frame (§5.3) |
+
+The one seam: a single logical action lands in two UIs (trace in Sentry, tick
+metrics in Grafana) with no deep-link between them. If that split ever
+grates, consolidating under one roof is exactly what the Grafana Cloud exit
+(§11) buys — at the cost of Sentry's better error UX.
+
+## 3. Vendor survey (verified 2026-08-05, re-verified 2026-08-06)
 
 | Vendor | Free tier | Verdict |
 |---|---|---|
 | **Sentry** | 5K errors, 5M spans, 5GB logs, 5GB metrics, 50 replays, **1 user**. Team from $26/mo | **Selected.** Best browser + RN story by a distance; Session Replay is the strongest demo artifact |
-| **Grafana Cloud** | 10K series, 50GB each logs/traces/profiles, 3 users, 14-day retention, no card | **Pre-vetted fallback.** Most generous tier, pure OTLP; weakest frontend/RN error UX |
+| **PostHog** *(added 2026-08-06)* | 100K exceptions, 5K replays, 10GB logs, 1M events, **unlimited seats** | **Strongest challenger — rejected on tracing maturity.** 20× the free error quota, no seat cap, Sentry-grade RN crash + symbol upload (Hermes/dSYM/Proguard via EAS plugin); but its OTLP tracing entered **beta only 2026-07**, and the distributed trace is this design's showcase artifact. Revisit trigger in §11 |
+| **New Relic** *(added 2026-08-06)* | 100GB/mo all signals, 1 full user | **Rejected: wrong failure mode.** The only vendor covering every requirement in one free tier — but exceeding 100GB **hard-locks platform access until the next month**. For an app whose hazard is span floods, a lockout mid-demo is worse than a bill |
+| **Grafana Cloud** | 10K series, 50GB each logs/traces/profiles, 3 users, 14-day retention, no card; incl. Faro frontend observability (50K sessions) | **Pre-vetted fallback.** Most generous full-stack tier, pure OTLP; Faro captures JS errors, but no Sentry-grade issue workflow, RN crash product, or replay |
 | **Honeycomb** | 20M events/mo | Best trace querying; no error/crash product. Pro repriced 2026-07-01 to $3.00/M events (from $1.30) |
-| **SigNoz** | Self-host free; Cloud $0.30/GB, $49/mo min | OTel-native, but self-hosting means operating ClickHouse — a second production system that can be down |
-| **Datadog** | None meaningful | **Disqualified.** APM $31–35/host/mo, RUM $0.15/1K sessions; worst lock-in |
+| **SigNoz** | Self-host free; Cloud $0.30/GB logs/traces ($0.10/M metric samples), $49/mo min | OTel-native, but self-hosting means operating ClickHouse — a second production system that can be down |
+| **Datadog** | None meaningful (infra-only, 5 hosts) | **Disqualified.** APM $31–35/host/mo; RUM $0.15/1K sessions is the stripped-down Measure tier — full-fidelity Investigate is $3.00/1K (+$2.50/1K replay); worst lock-in |
 | **Fly managed Prom + Grafana** | Free, already running | Not a competitor — a freebie we adopt for metrics |
 
 Excluded: **Vercel**'s observability products (the web clients are static Vite
 SPAs, not Next.js functions — no invocation to observe), and duplicating the
 existing `@rtc/devtools-*` trio (which solves *local* inspection).
+
+Also swept 2026-08-06 and found not competitive: **Axiom** and **Uptrace**
+(pure OTLP sinks, no error tracking — but the two largest free OTLP
+allowances found anywhere; carried as exit options in §11), **Better Stack**
+(free web errors + replay, but 3GB/3-day traces and no RN story),
+**Highlight.io** (cloud shut down 2026-02 after the LaunchDarkly
+acquisition), **GlitchTip/Bugsink** (cloud tiers below Sentry's own;
+self-host-only value), and **OpenObserve / Dash0 / Middleware / Elastic**
+(free tiers withdrawn to 14-day trials). The market is moving *away* from
+permanent free tiers — Honeycomb repriced 2.3×, three vendors retreated to
+trials, one shut down — which independently strengthens this design's
+standards-over-vendors stance.
 
 **Selected approach:** Sentry as the backend, reached through a repo-owned
 port, with **W3C Trace Context and OTLP as the wire formats**. Standards are
@@ -190,11 +260,15 @@ uploaded + deleted, for Sentry.
 - OTLP exporter → Sentry's OTLP endpoint (open beta). Two confirmed caveats
   designed around: **metrics over OTLP are unsupported** (metrics go to Fly's
   free managed Prometheus instead) and **span events are dropped** (use span
-  *attributes*, never events).
+  *attributes*, never events). OTLP **logs** became supported during the beta
+  (re-verified 2026-08-06) — capability noted; the §10 "no log shipping"
+  scope decision stands.
 - **`SIGTERM` flush is mandatory.** Fly's idle autostop suspends the machine; a
   buffered exporter loses everything in flight.
-- The 16 `console.*` sites adopt `connectionLog.ts`'s existing structured,
-  reason-tagged, token-safe shape — generalising the house pattern.
+- The 14 `console.*` call sites *(corrected 2026-08-06 — the original count
+  of 16 included a comment mention and `connectionLog`'s own default
+  parameter)* adopt `connectionLog.ts`'s existing structured, reason-tagged,
+  token-safe shape — generalising the house pattern.
 - **Jarvis is the highest-value trace:** one span tree per turn — user message
   → brain selection (scripted vs Haiku) → each of the 7 `@rtc/agent-tools`
   calls → response, with token counts and cost as attributes. Real money on a
@@ -259,7 +333,10 @@ The app already models this — `ErrorRateSimulator` and `EventLogSimulator`'s
 So the adapter carries a client-side breaker *before* any SDK call: dedupe by
 fingerprint, cap per fingerprint per session, hard-cap total events/minute.
 Sentry's server-side spike protection is a backstop, not the control — by the
-time it engages the events are billed.
+time it engages the events are billed. It also covers only errors, spans and
+attachments — **not logs** (re-verified 2026-08-06) — and the SDK's built-in
+protections (the default-on `Dedupe` integration, 429 backoff) include no
+generic events-per-minute limiter, so the breaker stays ours.
 
 ### 7.4 Environment separation
 
@@ -351,8 +428,18 @@ card). Because §4 puts everything behind a port, §5 propagates W3C
 `traceparent`, and §6.2 exports OTLP, migration is four adapter files and an
 env var.
 
-Revisit if: the error budget binds, more seats are needed, or Sentry's OTLP
-**metrics** support leaves beta (which would let metrics consolidate off Fly).
+Two further pure-OTLP exits verified 2026-08-06, both with larger free
+trace/log allowances than Grafana Cloud though neither has an error-tracking
+product: **Axiom** (500GB/mo, 30-day retention) and **Uptrace** (50GB/mo,
+budget caps instead of lockouts, unlimited users). The port + W3C + OTLP
+shape makes any of the three the same four-file swap.
+
+Revisit if: the error budget binds, more seats are needed, Sentry's OTLP
+**metrics** support leaves beta (which would let metrics consolidate off
+Fly) — or **PostHog's OTLP tracing leaves beta**. PostHog is the one
+candidate that dissolves both the 1-user constraint and most of the §7.3
+error-budget pressure (100K exceptions/mo free), so its tracing maturing
+genuinely reopens the vendor pick.
 
 ## 12. Sources
 
@@ -374,3 +461,17 @@ Verified 2026-08-05.
 - [SigNoz pricing](https://cubeapm.com/blog/signoz-pricing-review/) ·
   [Datadog pricing](https://www.cloudzero.com/blog/datadog-pricing/)
 - [Fly.io metrics](https://fly.io/docs/monitoring/metrics/)
+
+Re-verified 2026-08-06 (errata pass): every §3 number re-checked against live
+pricing pages; additions:
+
+- [Sentry pricing (Developer quotas current post-2025-08-27 restructure)](https://sentry.io/pricing/) ·
+  [spike protection scope](https://docs.sentry.io/pricing/quotas/spike-protection/) ·
+  [Application Metrics GA 2026-05](https://blog.sentry.io/introducing-application-metrics/)
+- [New Relic pricing (100GB free, lockout on overage)](https://newrelic.com/pricing)
+- [PostHog pricing](https://posthog.com/pricing) ·
+  [PostHog OTLP traces beta](https://posthog.com/blog/traces-beta) ·
+  [PostHog RN error tracking](https://posthog.com/docs/error-tracking/installation/react-native)
+- [Axiom pricing](https://axiom.co/pricing) ·
+  [Uptrace pricing](https://uptrace.dev/pricing)
+- [Highlight.io → LaunchDarkly shutdown](https://www.highlight.io/blog/launchdarkly-migration)
