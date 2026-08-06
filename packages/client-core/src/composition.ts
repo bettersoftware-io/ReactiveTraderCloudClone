@@ -200,10 +200,13 @@ export interface Presenters {
    * now SURVIVES a tab switch instead of resetting on `WorkspaceEngine`'s
    * `key={activeTab}` remount, since the underlying machine is no longer
    * rebuilt per mount. The returned instance's `dispose()` is a
-   * STRUCTURAL no-op (not just a documented convention) — a legacy
-   * `useMachine`-style consumer calling it (e.g. solid-bindings' current
-   * `useLayout`, ahead of Task 11's non-disposing rewrite there) cannot
-   * tear down the shared singleton for every other consumer. */
+   * STRUCTURAL no-op (not just a documented convention) — it exists as the
+   * backstop for ANY future `useMachine`-style consumer that disposes on
+   * unmount, so such a consumer can never tear down the shared singleton
+   * for every other consumer. Both bindings' current `useLayout` already
+   * read this singleton non-disposingly (solid-bindings via `toSignal`,
+   * react-bindings likewise), so the no-op isn't load-bearing for either
+   * today — it's defense-in-depth, not a workaround for a live caller. */
   layoutFor: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
@@ -585,13 +588,14 @@ export function createApp(ports: AppPorts): App {
   // a documented no-op. This makes the composition-root-singleton
   // invariant STRUCTURAL, not just documentation: `MachineFactories.layout`
   // has the identical shape as every per-mount factory a `useMachine`
-  // bridge disposes on unmount (exactly what solid-bindings' CURRENT
-  // `useMachine(machines.layout(tab))` still does, ahead of Task 11's
-  // non-disposing rewrite there) — a legacy consumer calling `.dispose()`
-  // on the returned handle is now harmless instead of completing the real
-  // machine's Subjects and caching the corpse in the Map forever. The real
-  // machine's dispose stays reachable via `layoutMachinesReal` for a
-  // hypothetical future composition-root teardown path — unused today,
+  // bridge disposes on unmount — so ANY future consumer that reaches this
+  // singleton through such a bridge (rather than the current non-disposing
+  // `useLayout` both bindings actually use — solid-bindings via `toSignal`,
+  // react-bindings via `useStateObservable`, neither routing through
+  // `useMachine`) would find `.dispose()` harmless instead of completing
+  // the real machine's Subjects and caching the corpse in the Map forever.
+  // The real machine's dispose stays reachable via `layoutMachinesReal` for
+  // a hypothetical future composition-root teardown path — unused today,
   // same no-teardown-seam doctrine as `eqWorkspace`/`workspaceNav`/
   // `jarvisPanels`/`jarvisDriver`.
   const layoutMachinesReal = new Map<
