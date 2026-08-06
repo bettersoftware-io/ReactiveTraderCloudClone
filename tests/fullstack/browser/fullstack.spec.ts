@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_SESSION_KEY,
-  seedSessionLocalStorage,
+  JARVIS_NARRATOR_OFF_VALUE,
+  JARVIS_NARRATOR_STORAGE_KEY,
+  seedLocalStorageItem,
 } from "#/browser/authSeed.js";
 
 import { loginForToken } from "../loginForToken.js";
@@ -27,9 +29,18 @@ test.beforeEach(async ({ page }) => {
     user: login.user,
     exp: login.exp,
   };
-  await page.addInitScript(seedSessionLocalStorage, {
+  await page.addInitScript(seedLocalStorageItem, {
     key: E2E_SESSION_KEY,
     value: JSON.stringify(session),
+  });
+  // Seed JarvisNarrator OFF: fullstack mode drives the client against the
+  // REAL server's PricingSimulator, which starts a genuine anomaly episode
+  // often enough (aggregated across ~10 pairs) to fire an unsolicited
+  // narration turn mid-test — see authSeed.ts for the full rationale. None of
+  // the specs below exercise narration, so this makes them deterministic.
+  await page.addInitScript(seedLocalStorageItem, {
+    key: JARVIS_NARRATOR_STORAGE_KEY,
+    value: JARVIS_NARRATOR_OFF_VALUE,
   });
 });
 
@@ -127,8 +138,14 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
 
     const input = page.getByTestId("jarvis-input");
     const send = page.getByTestId("jarvis-send");
+    // Excludes narrator-origin entries (`data-origin="narrator"`, see
+    // JarvisOverlay.tsx) as belt-and-braces on top of the narrator-off seed
+    // above: even with that seed, this stays the last REPLY entry rather than
+    // an unsolicited proactive narration turn that happened to land after it.
     const lastJarvisEntry = page
-      .locator("[data-testid='jarvis-entry'][data-role='jarvis']")
+      .locator(
+        "[data-testid='jarvis-entry'][data-role='jarvis']:not([data-origin='narrator'])",
+      )
       .last();
 
     // Turn 1: a live-desk quote question, answered from real server-side

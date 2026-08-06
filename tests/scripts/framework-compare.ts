@@ -37,7 +37,7 @@ import { type CDPSession, chromium, type Page } from "@playwright/test";
 import {
   E2E_SESSION_JSON,
   E2E_SESSION_KEY,
-  seedSessionLocalStorage,
+  seedLocalStorageItem,
 } from "../browser/authSeed";
 
 const REPO_ROOT = path.resolve(
@@ -94,7 +94,7 @@ async function runTrial(
   const browser = await chromium.launch();
   const context = await browser.newContext();
 
-  await context.addInitScript(seedSessionLocalStorage, {
+  await context.addInitScript(seedLocalStorageItem, {
     key: E2E_SESSION_KEY,
     value: E2E_SESSION_JSON,
   });

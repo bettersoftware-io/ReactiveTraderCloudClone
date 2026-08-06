@@ -36,17 +36,48 @@ const E2E_STORED_SESSION = {
 
 export const E2E_SESSION_JSON: string = JSON.stringify(E2E_STORED_SESSION);
 
-/** Args for the `addInitScript` callback that seeds `localStorage` — kept as a
- * named type because the callback is serialized and run in the browser, so
- * its argument can't close over anything from the Node-side scope. */
-export interface SessionSeedArgs {
+/**
+ * The JarvisNarrator preference's storage key and persisted "off"/"on" forms
+ * — mirrored identically by both web clients' `LocalStoragePreferencesAdapter`
+ * (`packages/client-react` and `packages/client-solid`, each at
+ * `src/app/adapters/LocalStoragePreferencesAdapter.ts:70`;
+ * `JarvisNarratorPreference = "on" | "off"` in
+ * `packages/domain/src/preferences/preferences.ts`). Hardcoded here (like
+ * `E2E_SESSION_KEY` above) rather than imported from a client package: the
+ * suites run against either `@rtc/client-react` or `@rtc/client-solid` via
+ * `RTC_CLIENT_PKG`, and the two packages export the identical string.
+ *
+ * `DEFAULT_JARVIS_NARRATOR` is `"on"`, and in fullstack mode the client
+ * detects anomalies against the REAL server's tick stream, whose
+ * `PricingSimulator` can start a genuine anomaly episode on its own — an
+ * unsolicited narration turn racing into the transcript mid-test and
+ * perturbing an assertion that expects the last reply to be something else.
+ * Seeding the preference OFF in the shared bootstraps
+ * (`playwright-cucumber/world.ts`, `playwright/_context.ts`, and
+ * `tests/fullstack/browser/fullstack.spec.ts`'s own `beforeEach`) makes every
+ * suite deterministic by default; the one ride that actually exercises
+ * narration (`scenarios/jarvis.ts`'s flagship ride, via
+ * `PlaywrightWorkspace.openWithNarratorThresholds`) opts back in for its own
+ * context.
+ */
+export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
+export const JARVIS_NARRATOR_OFF_VALUE = "off";
+export const JARVIS_NARRATOR_ON_VALUE = "on";
+
+/** Args for the `addInitScript` callback that seeds one `localStorage`
+ * key/value pair — kept as a named type because the callback is serialized
+ * and run in the browser, so its argument can't close over anything from the
+ * Node-side scope. */
+export interface LocalStorageSeedArgs {
   readonly key: string;
   readonly value: string;
 }
 
 /** The `addInitScript` callback body itself, shared by every Playwright seed
  * point (playwright-cucumber's world, the raw playwright `_context` fixture,
- * and the fullstack browser smoke) so the seeding logic lives in one place. */
-export function seedSessionLocalStorage(args: SessionSeedArgs): void {
+ * the fullstack browser smoke, and the perf scripts) so the seeding logic
+ * lives in one place — used both for the authenticated-session seed above and
+ * the JarvisNarrator preference seed. */
+export function seedLocalStorageItem(args: LocalStorageSeedArgs): void {
   window.localStorage.setItem(args.key, args.value);
 }
