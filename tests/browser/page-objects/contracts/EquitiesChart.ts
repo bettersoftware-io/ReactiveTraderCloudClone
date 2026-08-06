@@ -94,9 +94,15 @@ export interface EquitiesChartPO {
    * `pointer-events: none` (see `PlaywrightEquitiesChart.clickDrawing`'s
    * doc for the same trap on the drawing line). */
   dragSelectedDrawingEndpoint(): Promise<void>;
-  /** Polls until the drawing's geometry string differs from `before` (a
-   * prior {@link readDrawingGeometry} snapshot) — the drag-edit gesture
-   * commits its update on pointer-up, not per-frame. */
+  /** Polls until the drawing's SHAPE (`x2-x1`, `y2-y1`) has moved by more
+   * than a few plot-percent from a prior {@link readDrawingGeometry}
+   * snapshot (`before`) — the drag-edit gesture commits its update on
+   * pointer-up, not per-frame. Deliberately not a bare string/position
+   * diff: the drawing is re-projected through the live y-scale on every
+   * sim tick and can slide with the visible window, either of which can
+   * change an UNDRAGGED drawing's absolute x1/y1/x2/y2 within the poll
+   * window — but both move the two endpoints (near-)uniformly, leaving the
+   * segment's shape unchanged, so shape is the drag-only witness. */
   expectDrawingGeometryChangedWithin(
     before: string,
     timeoutMs: number,

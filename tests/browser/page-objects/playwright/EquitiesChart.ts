@@ -8,6 +8,40 @@ import type {
 } from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
 
+/**
+ * Minimum plot-percent change in the drawing's SHAPE (`x2-x1`/`y2-y1`, not
+ * its absolute projection) that counts as a genuine drag — see
+ * `expectDrawingGeometryChangedWithin`'s doc for why shape, not position, is
+ * the witness. `dragSelectedDrawingEndpoint` moves one endpoint by 80/60px,
+ * which on a ~900px-wide plot reshapes the segment
+ * by roughly 8-15 plot-%, comfortably above this threshold; ambient
+ * scale/viewport drift moves both endpoints in lockstep and shifts the
+ * shape by well under 1%.
+ */
+const DRAG_SHAPE_DELTA_THRESHOLD_PCT = 3;
+
+/** Parses a `readDrawingGeometry` string ("x1,y1,x2,y2") back into its four
+ * plot-percent numbers. */
+function parseGeometry(
+  geometry: string,
+): [x1: number, y1: number, x2: number, y2: number] {
+  const parts = geometry.split(",").map(Number);
+  const [x1, y1, x2, y2] = parts;
+
+  if (
+    parts.length !== 4 ||
+    x1 === undefined ||
+    y1 === undefined ||
+    x2 === undefined ||
+    y2 === undefined ||
+    [x1, y1, x2, y2].some(Number.isNaN)
+  ) {
+    throw new Error(`unparsable drawing geometry: ${JSON.stringify(geometry)}`);
+  }
+
+  return [x1, y1, x2, y2];
+}
+
 export class PlaywrightEquitiesChart implements EquitiesChartPO {
   constructor(private readonly page: Page) {}
 
@@ -294,9 +328,32 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     before: string,
     timeoutMs: number,
   ): Promise<void> {
+    // A bare string/positional diff is NOT a safe drag witness: the drawing
+    // is data-anchored and re-projected through the live y-scale on every
+    // sim tick (500ms), and a candle append can slide the visible window —
+    // either can shift an UNDRAGGED drawing's x1/y1/x2/y2 by chance within
+    // the poll window. Both of those move the two endpoints (near-)uniformly,
+    // leaving the segment's SHAPE (`x2-x1`, `y2-y1`) unchanged — so polling
+    // on the shape delta instead is immune to that ambient drift while still
+    // catching the real drag (see `DRAG_SHAPE_DELTA_THRESHOLD_PCT`'s doc).
+    const [bx1, by1, bx2, by2] = parseGeometry(before);
+    const beforeDx = bx2 - bx1;
+    const beforeDy = by2 - by1;
+
     await expect
-      .poll(() => this.readDrawingGeometry(), { timeout: timeoutMs })
-      .not.toBe(before);
+      .poll(
+        async () => {
+          const [x1, y1, x2, y2] = parseGeometry(
+            await this.readDrawingGeometry(),
+          );
+          return Math.max(
+            Math.abs(x2 - x1 - beforeDx),
+            Math.abs(y2 - y1 - beforeDy),
+          );
+        },
+        { timeout: timeoutMs },
+      )
+      .toBeGreaterThan(DRAG_SHAPE_DELTA_THRESHOLD_PCT);
   }
 
   async pressDelete(): Promise<void> {
