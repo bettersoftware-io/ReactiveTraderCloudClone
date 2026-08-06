@@ -1,12 +1,13 @@
 import type { Direction, JarvisBrain, JarvisEffort } from "@rtc/domain";
 
+import type { DriveBatchV1 } from "./driveCommand.js";
 import type { PanelSpecV1 } from "./panelSpec.js";
 
 /**
  * Jarvis chat wire vocabulary.
  *
  * Wire rule: each turn-scoped `SERVER_MSG.JARVIS_*` payload (delta,
- * toolEvent, confirmRequest, panel, done, error) IS the matching
+ * toolEvent, confirmRequest, panel, command, done, error) IS the matching
  * `JarvisEvent` variant minus its `type` discriminant, PLUS a
  * `readonly turnId: string` that correlates every server event back to the
  * client-generated turn it belongs to — the message type itself carries the
@@ -42,6 +43,10 @@ export type JarvisEvent =
       readonly type: "panel";
       readonly panelId: string;
       readonly spec: PanelSpecV1;
+    }
+  | {
+      readonly type: "command";
+      readonly batch: DriveBatchV1;
     }
   | { readonly type: "done" }
   | { readonly type: "error"; readonly message: string };

@@ -37,6 +37,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -56,6 +57,7 @@ import {
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -184,11 +186,28 @@ export interface JarvisWorld {
    * pushed, mirroring the real port's completion contract. Throws if called
    * before any `ask()` has run (i.e. before `send()`). */
   emit(events: readonly JarvisEvent[]): void;
+  /** Invokes the REAL JarvisMachine's `narrate(prompt)` intent for this
+   * World (Task 12/P5) — the proactive-turn counterpart to driving `send()`
+   * through a mounted `JarvisOverlay`: production's `NarratorMachine` calls
+   * exactly this intent, which opens a turn on `port.ask()` just like
+   * `send()` does (tagging the turn `origin: "narrator"`), so a spec drives
+   * its reply the same way — `emit([...])` on the SAME `current` turn. Each
+   * framework's `viewModelFromWorld` driver registers the real machine's
+   * `intents.narrate` here (see {@link registerNarrate}) the first time it
+   * builds the machine over this World (mirrors `jarvisMachines`'
+   * per-World cache) — calling `narrate()` before any Jarvis-consuming
+   * component has mounted throws, the same "not wired up yet" guard as
+   * `emit()`'s own "ask() not opened" check. */
+  narrate(prompt: string): void;
+  /** Registration seam for the framework driver's `getJarvisMachine` — not
+   * meant to be called from a spec directly. See {@link narrate}'s doc. */
+  registerNarrate(fn: (prompt: string) => void): void;
 }
 
 function createJarvisWorld(): JarvisWorld {
   const confirms: Array<[string, boolean]> = [];
   let current: Subject<JarvisEvent> | null = null;
+  let narrateImpl: ((prompt: string) => void) | null = null;
 
   const port: JarvisPort = {
     ask(_text: string): Observable<JarvisEvent> {
@@ -217,7 +236,23 @@ function createJarvisWorld(): JarvisWorld {
     }
   }
 
-  return { port, confirms, emit };
+  function narrate(prompt: string): void {
+    if (!narrateImpl) {
+      throw new Error(
+        "world.jarvis.narrate() called before a Jarvis-consuming component " +
+          "registered the real machine — mount something that reads " +
+          "useJarvis()/useJarvisPreferences() (e.g. JarvisOrb/JarvisOverlay) first.",
+      );
+    }
+
+    narrateImpl(prompt);
+  }
+
+  function registerNarrate(fn: (prompt: string) => void): void {
+    narrateImpl = fn;
+  }
+
+  return { port, confirms, emit, narrate, registerNarrate };
 }
 
 /** Seed values for the ADMIN / telemetry hooks (Phase 5). */
@@ -292,6 +327,9 @@ export interface CommandLog {
   jarvisBrainSets: JarvisBrain[];
   /** Each effort written through useJarvisPreferences().setEffort, in order. */
   jarvisEffortSets: JarvisEffort[];
+  /** Each narrator preference written through
+   * useJarvisPreferences().setNarrator, in order. */
+  jarvisNarratorSets: JarvisNarratorPreference[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -382,6 +420,12 @@ export interface World {
    * threaded into the REAL createJarvisMachine's `effort$` dep — mirrors
    * `jarvisBrain` above. Defaults to DEFAULT_JARVIS_EFFORT. */
   readonly jarvisEffort: BehaviorSubject<JarvisEffort>;
+  /** The STORED Jarvis narrator preference (P5) — whether the proactive
+   * app-driving narrator may dispatch unsolicited turns. Mirrors
+   * `jarvisBrain`/`jarvisEffort` above; not yet threaded into a REAL
+   * `NarratorMachine` dep here (that wiring is a later P5 task). Defaults to
+   * DEFAULT_JARVIS_NARRATOR. */
+  readonly jarvisNarrator: BehaviorSubject<JarvisNarratorPreference>;
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
@@ -544,6 +588,8 @@ export function createWorld(
   /** Seeds `World.jarvisEffort` (Task 10 of Phase 3); defaults to
    * DEFAULT_JARVIS_EFFORT. */
   jarvisEffortSeed?: JarvisEffort,
+  /** Seeds `World.jarvisNarrator` (P5); defaults to DEFAULT_JARVIS_NARRATOR. */
+  jarvisNarratorSeed?: JarvisNarratorPreference,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -743,6 +789,10 @@ export function createWorld(
     jarvisEffortSeed ?? DEFAULT_JARVIS_EFFORT,
   );
 
+  const jarvisNarrator = new BehaviorSubject<JarvisNarratorPreference>(
+    jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
+  );
+
   const jarvisUsage$ = new BehaviorSubject<JarvisUsageSnapshot | null>(
     adminSeed.jarvisUsage ?? null,
   );
@@ -913,6 +963,7 @@ export function createWorld(
     placedOrderRequests: [],
     jarvisBrainSets: [],
     jarvisEffortSets: [],
+    jarvisNarratorSets: [],
   };
 
   return {
@@ -931,6 +982,7 @@ export function createWorld(
     jarvisAvailability,
     jarvisBrain,
     jarvisEffort,
+    jarvisNarrator,
     jarvisUsage$,
     setJarvisUsage: (value: JarvisUsageSnapshot | null) => {
       return jarvisUsage$.next(value);

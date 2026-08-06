@@ -8,6 +8,7 @@ import type {
   EqWatchlistSort,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -108,4 +109,9 @@ export interface PreferencesPort {
    * `"scripted"` brain. */
   jarvisEffort$(): Observable<JarvisEffort>;
   setJarvisEffort(effort: JarvisEffort): void;
+  /** Replay-current Jarvis narrator stream; emits synchronously on
+   * subscribe. Whether the app-driving proactive narrator (`NarratorMachine`)
+   * may dispatch unsolicited `narrate()` turns; `"off"` fully silences it. */
+  jarvisNarrator$(): Observable<JarvisNarratorPreference>;
+  setJarvisNarrator(preference: JarvisNarratorPreference): void;
 }

@@ -6,6 +6,7 @@ import type {
   AmbientStyle,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   LoginWaitDelay,
   LoginWaitStyle,
 } from "@rtc/domain";
@@ -246,6 +247,14 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   /** Each effort written through useJarvisPreferences().setEffort, in order. */
   jarvisEffortSets(): JarvisEffort[] {
     return this.commandLog().jarvisEffortSets;
+  }
+
+  /** Each narrator preference written through
+   * useJarvisPreferences().setNarrator, in order — the World's own
+   * storage-fake command log standing in for the real
+   * LocalStoragePreferencesAdapter (Task 12/P5). */
+  jarvisNarratorSets(): JarvisNarratorPreference[] {
+    return this.commandLog().jarvisNarratorSets;
   }
 }
 

@@ -18,7 +18,12 @@ import type {
   JarvisEvent,
   JarvisHistoryEntry,
 } from "@rtc/shared";
-import { CLIENT_MSG, parsePanelSpec, SERVER_MSG } from "@rtc/shared";
+import {
+  CLIENT_MSG,
+  parseDriveBatch,
+  parsePanelSpec,
+  SERVER_MSG,
+} from "@rtc/shared";
 
 import { UNSUPPORTED_SENTINEL_SPEC } from "#/presenters/JarvisPanelsMachine";
 
@@ -109,6 +114,12 @@ interface PanelFramePayload {
   readonly panelId: unknown;
   readonly spec: unknown;
 }
+/** `batch` is likewise typed `unknown` — validated below via `parseDriveBatch`
+ * before ever becoming a `command` `JarvisEvent`. */
+interface CommandFramePayload {
+  readonly turnId: string;
+  readonly batch: unknown;
+}
 
 /** The minimal `Subscriber<JarvisEvent>` surface the turn listeners need. */
 interface JarvisTurnSubscriber {
@@ -156,13 +167,13 @@ function buildPanelEvent(panelId: unknown, spec: unknown): JarvisEvent {
   return { type: "panel", panelId: resolvedPanelId, spec: result.spec };
 }
 
-/** Attach the six `SERVER_MSG.JARVIS_*` listeners that feed one turn's
+/** Attach the seven `SERVER_MSG.JARVIS_*` listeners that feed one turn's
  * `JarvisEvent`s to `subscriber`, re-attaching the `type` discriminant the
  * wire strips off. Every frame is filtered to `payload.turnId === turnId`
  * first — a frame belonging to a different turn (a P2-era straggler arriving
  * after this turn's own listeners replaced a torn-down turn's) is ignored
  * silently rather than misdelivered. `done`/`error` frames also complete the
- * subscriber. Returns the six `ws.on()` unregister functions for teardown. */
+ * subscriber. Returns the seven `ws.on()` unregister functions for teardown. */
 function attachJarvisTurnListeners(
   ws: IWsAdapter,
   turnId: string,
@@ -205,6 +216,26 @@ function attachJarvisTurnListeners(
       }
 
       subscriber.next(buildPanelEvent(p.panelId, p.spec));
+    }),
+    ws.on(SERVER_MSG.JARVIS_COMMAND, (payload) => {
+      const p = payload as CommandFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      // Unlike buildPanelEvent (never dropped — a bad panel substitutes
+      // UNSUPPORTED_SENTINEL_SPEC), an invalid batch is dropped silently: a
+      // DriveCommand batch has no sentinel/degraded rendering, and the turn
+      // stays open — this is just one skipped server frame, not a reason to
+      // error or complete the stream.
+      const result = parseDriveBatch(p.batch);
+
+      if (!result.ok) {
+        return;
+      }
+
+      subscriber.next({ type: "command", batch: result.batch });
     }),
     ws.on(SERVER_MSG.JARVIS_DONE, (payload) => {
       const p = payload as DoneFramePayload;

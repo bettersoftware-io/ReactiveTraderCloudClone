@@ -1,0 +1,44 @@
+/* Driven-pulse cue — one-shot ~700ms flash applied to a region Jarvis's
+   drive-the-app interpreter just acted on (the nav rail, the workspace
+   wrapper). PERF (docs/performance.md, binding): `transform`/`opacity`
+   ONLY, one shot (no `infinite`), applied/cleared via a plain data attribute
+   toggled by useJarvisDrivenPulse.ts (React state cleared on the element's
+   own `animationend` — no timer anywhere, mirroring the panel
+   flash-on-change / RfqCard entrance-cascade precedents in this codebase).
+
+   Freeze suppression is BELT AND BRACES: the global
+   `[data-power-saver="freeze"] *` catch-all (index.css) already zeroes
+   every animation's duration to 0.01ms, but useJarvisDrivenPulse.ts's own
+   `isFreeze` gate means `.driven` is never even applied while frozen — no
+   Animation object is created at all, not even a near-instant one. */
+
+.driven {
+  animation: jarvis-driven-pulse 700ms ease-out;
+}
+
+@keyframes jarvis-driven-pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.994);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1.006);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driven {
+    animation: none;
+  }
+}
+
+:root[data-power-saver="freeze"] .driven {
+  animation: none;
+}

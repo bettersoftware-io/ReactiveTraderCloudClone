@@ -15,6 +15,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -28,10 +29,12 @@ import {
   type EqWatchlistSort,
   isJarvisBrain,
   isJarvisEffort,
+  isJarvisNarratorPreference,
   isPowerSaverLevel,
   JARVIS_SKINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
@@ -64,6 +67,7 @@ export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
+export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
 
 function isThemeModePreference(
   value: string | null,
@@ -232,6 +236,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
 
+  private readonly jarvisNarratorSubject: BehaviorSubject<JarvisNarratorPreference>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       readStored(
@@ -318,6 +324,13 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         JARVIS_EFFORT_STORAGE_KEY,
         isJarvisEffort,
         DEFAULT_JARVIS_EFFORT,
+      ),
+    );
+    this.jarvisNarratorSubject = new BehaviorSubject<JarvisNarratorPreference>(
+      readStored(
+        JARVIS_NARRATOR_STORAGE_KEY,
+        isJarvisNarratorPreference,
+        DEFAULT_JARVIS_NARRATOR,
       ),
     );
   }
@@ -473,5 +486,14 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setJarvisEffort(effort: JarvisEffort): void {
     writeStored(JARVIS_EFFORT_STORAGE_KEY, effort);
     this.jarvisEffortSubject.next(effort);
+  }
+
+  jarvisNarrator$(): Observable<JarvisNarratorPreference> {
+    return this.jarvisNarratorSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisNarrator(preference: JarvisNarratorPreference): void {
+    writeStored(JARVIS_NARRATOR_STORAGE_KEY, preference);
+    this.jarvisNarratorSubject.next(preference);
   }
 }

@@ -99,6 +99,27 @@ describe("matchJarvisIntent", () => {
     });
   });
 
+  it("rule 5: 'show' needs the chart/panel noun after it, on the same line", () => {
+    // Both preserved from the original `show .*(chart|panel)` regex: `.` never
+    // matched a line terminator, and the noun had to follow the "show ".
+    expect(matchJarvisIntent("chart of gbp, show it", knownSymbols)).toEqual({
+      kind: "fallback",
+    });
+    expect(matchJarvisIntent("show me\na price chart", knownSymbols)).toEqual({
+      kind: "fallback",
+    });
+  });
+
+  it("rule 5: a long run of 'show ' resolves without backtracking (ReDoS guard)", () => {
+    // The old `show .*(chart|panel)` alternative restarted `.*` at every one of
+    // these (CodeQL js/polynomial-redos) — quadratic, ~7.6s on this input; the
+    // linear scan from the first "show " returns instantly. If a regression
+    // reintroduces the ambiguity this test hangs and trips the suite's timeout
+    // rather than passing slowly.
+    const evil = "show ".repeat(50_000);
+    expect(matchJarvisIntent(evil, knownSymbols)).toEqual({ kind: "fallback" });
+  });
+
   it("rule 6: 'make it/that a <viz>' -> restylePanel, with the viz parsed", () => {
     expect(matchJarvisIntent("make it a heatmap", knownSymbols)).toEqual({
       kind: "restylePanel",
@@ -170,5 +191,41 @@ describe("matchJarvisIntent", () => {
       direction: Direction.Buy,
       notional: 2_000_000,
     });
+  });
+
+  it("rule 0: a [narration] prefix -> narration, quoting the symbol parsed from the prompt", () => {
+    expect(
+      matchJarvisIntent("[narration] EURUSD volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "EURUSD" });
+  });
+
+  it("priority: [narration] wins over showPanel/movers even though the prompt also says 'volatility'", () => {
+    expect(
+      matchJarvisIntent("[narration] EURUSD volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "EURUSD" });
+  });
+
+  it("narration falls back to a generic symbol when no known pair is in the prompt", () => {
+    expect(
+      matchJarvisIntent("[narration] volatility spiking", knownSymbols),
+    ).toEqual({ kind: "narration", symbol: "the desk" });
+  });
+
+  it("setupWorkspace: 'set up my morning workspace' -> setupWorkspace", () => {
+    expect(
+      matchJarvisIntent("set up my morning workspace", knownSymbols),
+    ).toEqual({ kind: "setupWorkspace" });
+  });
+
+  it("setupWorkspace: 'pull up my vol workspace' -> setupWorkspace", () => {
+    expect(matchJarvisIntent("pull up my vol workspace", knownSymbols)).toEqual(
+      { kind: "setupWorkspace" },
+    );
+  });
+
+  it("priority: setupWorkspace wins over movers on the 'volatil' substring collision ('set up a volatility workspace')", () => {
+    expect(
+      matchJarvisIntent("let's set up a volatility workspace", knownSymbols),
+    ).toEqual({ kind: "setupWorkspace" });
   });
 });

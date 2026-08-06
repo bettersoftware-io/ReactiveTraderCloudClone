@@ -43,6 +43,7 @@ describe("createJarvisMachine", () => {
         open: false,
         skin: "reactor",
         unread: 0,
+        unreadNarration: false,
         phase: "idle",
         entries: [{ id: 0, role: "jarvis", text: JARVIS_GREETING, done: true }],
         pendingConfirmation: null,
@@ -1066,6 +1067,374 @@ describe("createJarvisMachine", () => {
           return c.options?.brain;
         }),
       ).toEqual(["scripted", "claude-opus-5"]);
+    });
+  });
+
+  describe("narrate", () => {
+    it("appends a user entry flagged origin:narrator, stripped of the [narration] prefix; the prefix rides only to port.ask", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.2σ.");
+          }, 1);
+        },
+      );
+
+      const userEntry = states.at(-1)?.entries.find((e) => {
+        return e.role === "user";
+      });
+      expect(userEntry).toMatchObject({
+        text: "EURUSD moved 3.2σ.",
+        origin: "narrator",
+        done: true,
+      });
+      expect(port?.asks).toEqual(["[narration] EURUSD moved 3.2σ."]);
+    });
+
+    it("a send() turn's user entry carries no origin field", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("hello");
+          }, 1);
+        },
+      );
+
+      const userEntry = states.at(-1)?.entries.find((e) => {
+        return e.role === "user";
+      });
+      expect(userEntry?.origin).toBeUndefined();
+    });
+
+    it("calls port.ask with the resolved effective brain/effort, exactly like send", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-sonnet-5"],
+              defaultBrain: "scripted",
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
+            effort$: of<JarvisEffort>("high"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] GBPUSD spread widened 4.0σ.");
+          }, 1);
+        },
+      );
+
+      expect(port?.askCalls).toEqual([
+        {
+          text: "[narration] GBPUSD spread widened 4.0σ.",
+          options: { brain: "claude-sonnet-5", effort: "high" },
+        },
+      ]);
+    });
+
+    it("narrate() while unavailable is a no-op: no user entry appended, port.ask not called", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>("f", {
+              f: { available: false, brains: [], defaultBrain: "scripted" },
+            }),
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      ]);
+      expect(port?.asks).toEqual([]);
+    });
+
+    it("a narrate() during an in-flight send() queues behind it (same concatMap queue)", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] second");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.entries.map((e) => {
+          return e.text;
+        }),
+      ).toEqual([JARVIS_GREETING, "first", "", "second", ""]);
+      expect(port?.asks).toEqual(["first", "[narration] second"]);
+
+      // The narrate turn only starts once the send turn's own done has
+      // folded — proving it was truly queued, not run concurrently. The
+      // port here only ever emits a bare {type:"done"} (no delta), so the
+      // send turn's jarvis stub entry (entries[2]) is text:"" both at ITS
+      // OWN start (frame 2) and at its completion (frame ~7) — text/length
+      // alone can't tell "queued" from "concurrent" apart. done:true CAN:
+      // under the real concatMap queue, entries[2] must already be
+      // finalized by the time the narrate turn's start item lands (concatMap
+      // can't dequeue narrate until send's inner observable completes);
+      // under a hypothetical concurrent (mergeMap) dispatch, narrate would
+      // start at frame 2 while send is still mid-flight, so entries[2] would
+      // still read done:false there.
+      const narrateStartIndex = states.findIndex((s) => {
+        return s.entries.some((e) => {
+          return e.origin === "narrator";
+        });
+      });
+      expect(states[narrateStartIndex]?.entries[2]?.done).toBe(true);
+    });
+
+    it("unreadNarration is set when a narrate turn completes while closed", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+        },
+      );
+
+      expect(states.at(-1)?.open).toBe(false);
+      expect(states.at(-1)?.unreadNarration).toBe(true);
+    });
+
+    it("unreadNarration is NOT set when a narrate turn completes while open", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 2);
+        },
+      );
+
+      expect(states.at(-1)?.open).toBe(true);
+      expect(states.at(-1)?.unreadNarration).toBe(false);
+    });
+
+    it("unreadNarration is cleared by open()", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 5);
+        },
+      );
+
+      const beforeOpen = states.filter((s) => {
+        return !s.open;
+      });
+      expect(beforeOpen.at(-1)?.unreadNarration).toBe(true);
+      expect(states.at(-1)?.open).toBe(true);
+      expect(states.at(-1)?.unreadNarration).toBe(false);
+    });
+
+    it("REGRESSION: unreadNarration reads `open` at COMPLETION time, not at dispatch time — closing mid-turn (after a narrate() sent while open) still sets it", () => {
+      // Every other unreadNarration test above uses an instantaneous port
+      // ("(a|)"), where dispatch and completion land in the same tick — so
+      // "captured open at dispatch" and "captured open at completion" are
+      // indistinguishable there. This pins the real discriminator: open()
+      // at frame 1, narrate() at frame 2 (dispatch-time open === true), then
+      // close() at frame 3 — strictly BEFORE the delayed port's frame-7
+      // "done" (subscribed at frame 2, "5ms (a|)" fires 5 frames later) — so
+      // the turn is genuinely still in flight when the panel closes. A
+      // dispatch-time-cached read would see open:true and leave
+      // unreadNarration false; the correct completion-time read sees
+      // open:false (already closed by then) and sets it.
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "5ms (a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.open();
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.narrate("[narration] EURUSD moved 3.0σ.");
+          }, 2);
+          ts.schedule(() => {
+            machine.intents.close();
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.open).toBe(false);
+      expect(last?.unreadNarration).toBe(true);
+    });
+
+    it("initial state starts with unreadNarration false", () => {
+      const ts = scheduler();
+      ts.run(() => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>("reactor"),
+          setSkin: () => {},
+          ...baseBrainDeps(),
+        });
+        let current: JarvisState | undefined;
+        const sub = machine.state$.subscribe((s) => {
+          current = s;
+        });
+        expect(current?.unreadNarration).toBe(false);
+        sub.unsubscribe();
+        machine.dispose();
+      });
+    });
+  });
+
+  // recordDriveOutcome: JarvisDriverMachine's per-command outcomes (Task 10
+  // follow-up ruling — composition.ts wires jarvisDriver.outcomes$ into this
+  // intent). Not a user turn: no port.ask() call, no phase change, no
+  // pending-confirmation involvement — just an entries fold.
+  describe("recordDriveOutcome", () => {
+    it("an APPLIED outcome appends a new jarvis-role entry with text 'drive: <kind>'", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: basePort(ts),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "switchTab", tab: "equities" },
+              status: "applied",
+            });
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "jarvis", text: "drive: switchTab", done: true },
+      ]);
+    });
+
+    it("a SKIPPED outcome folds NOTHING — entries (and the id counter) stay untouched", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: basePort(ts),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "eqSelect", symbol: "ZZZZZZ" },
+              status: "skipped",
+              reason: 'unknown symbol "ZZZZZZ"',
+            });
+          }, 1);
+          // A LATER applied outcome proves the id counter wasn't consumed by
+          // the skipped one above — id 1, not 2.
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "eqTimeframe", tf: "1W" },
+              status: "applied",
+            });
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        { id: 1, role: "jarvis", text: "drive: eqTimeframe", done: true },
+      ]);
     });
   });
 });

@@ -64,25 +64,68 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     expect(lower).toContain("example — edit");
   });
 
-  it("wraps both few-shot examples in the tool's real input envelope ({spec: …}), never the bare spec", () => {
+  it("wraps both panel few-shot examples in the tool's real input envelope ({spec: …}), never the bare spec", () => {
     // The tool schema requires {spec, targetPanelId?} with additionalProperties
     // false — a bare-spec example would teach the model an input the tool
     // rejects, costing a self-correction round-trip on the flagship demo turn.
-    const exampleLines = JARVIS_SYSTEM_PROMPT.split("\n").filter((line) => {
-      return line.startsWith("Example — ");
+    const panelExampleLines = exampleLines().filter((line) => {
+      return line.includes("render_panel");
     });
 
-    expect(exampleLines).toHaveLength(2);
+    expect(panelExampleLines).toHaveLength(2);
 
-    for (const line of exampleLines) {
+    for (const line of panelExampleLines) {
       expect(line).toMatch(/render_panel (?:again )?with \{spec: \{/);
     }
 
-    const editLine = exampleLines.find((line) => {
+    const editLine = panelExampleLines.find((line) => {
       return line.startsWith("Example — edit");
     });
 
     expect(editLine).toContain("targetPanelId:");
+  });
+
+  it("mentions drive_app, the closed drive-command vocabulary, and the never-during-narration constraint", () => {
+    const lower = JARVIS_SYSTEM_PROMPT.toLowerCase();
+    expect(lower).toContain("drive_app");
+    expect(lower).toContain("switch tabs");
+    expect(lower).toContain("[narration]");
+  });
+
+  it("carries two drive few-shot examples", () => {
+    const driveExampleLines = exampleLines().filter((line) => {
+      return line.includes("drive_app");
+    });
+
+    expect(driveExampleLines).toHaveLength(2);
+  });
+
+  it("wraps both drive few-shot examples in the tool's real input envelope ({commands: [{kind: …}]}), never a bare/mismatched shape (the R1 envelope-drift lesson)", () => {
+    const driveExampleLines = exampleLines().filter((line) => {
+      return line.includes("drive_app");
+    });
+
+    expect(driveExampleLines).toHaveLength(2);
+
+    for (const line of driveExampleLines) {
+      expect(line).toMatch(/drive_app with \{commands: \[\{kind: /);
+    }
+  });
+
+  it("accounts for EVERY Example line across BOTH tools' envelope pins — a third tool's example, or a malformed drive example missing the literal drive_app, must not silently escape both per-tool filters (the exact R1 drift mode these pins exist to catch)", () => {
+    const allExampleLines = exampleLines();
+    const panelExampleLines = allExampleLines.filter((line) => {
+      return line.includes("render_panel");
+    });
+
+    const driveExampleLines = allExampleLines.filter((line) => {
+      return line.includes("drive_app");
+    });
+
+    expect(allExampleLines).toHaveLength(4);
+    expect(panelExampleLines.length + driveExampleLines.length).toBe(
+      allExampleLines.length,
+    );
   });
 
   it("names none of the trademarked film lines", () => {
@@ -96,3 +139,12 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     expect(JARVIS_SYSTEM_PROMPT.length).toBeLessThanOrEqual(3_000);
   });
 });
+
+/** Every `"Example — …"` line in the prompt, panel and drive alike — the
+ * shared source both the panel-envelope and drive-envelope conformance
+ * pins filter from. */
+function exampleLines(): string[] {
+  return JARVIS_SYSTEM_PROMPT.split("\n").filter((line) => {
+    return line.startsWith("Example — ");
+  });
+}

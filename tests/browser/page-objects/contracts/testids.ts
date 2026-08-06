@@ -149,12 +149,21 @@ export const TESTIDS = {
       /** The pane's live crosshair readout row — rendered only while the
        * shared crosshair cursor is active over the plot or a pane. */
       paneReadout: "chart-pane-readout",
+      /** The SMA20/EMA50 overlay toggle pill (IndicatorPills.tsx) — one
+       * shared testid for both, disambiguated by the `data-ind` attribute
+       * (mirrors `panePill`'s `data-pane`-disambiguated pattern above). */
+      indicatorPill: "chart-indicator-pill",
     },
   },
   layout: {
     // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
     // owns the full id, so consumers match on this stable prefix.
     handlePrefix: "handle-",
+    /** A layout-engine panel's own root testid (InhouseLayoutEngine.tsx's
+     * PanelLeaf) — carries `data-maximized`/`data-strip`/`data-collapsed`. */
+    panel: (panelId: string) => {
+      return `panel-${panelId}`;
+    },
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,

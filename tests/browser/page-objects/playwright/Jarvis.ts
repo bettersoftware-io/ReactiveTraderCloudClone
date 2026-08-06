@@ -26,6 +26,20 @@ const PANEL_RENDERER_TIMEOUT_MS = 15_000;
  * reduced-motion) before the underlying intent fires — generous for CI. */
 const PANEL_DISMISS_TIMEOUT_MS = 15_000;
 
+/** With the `?narratorThresholds=test` seam's relaxed config
+ * (`minWindowFill: 4`), the anomaly detector can evaluate as soon as 4 ticks
+ * have arrived for one symbol (~150ms-1s each — see PricingSimulator's tick
+ * interval) and the near-zero `spreadSigma`/`volSigma` thresholds make the
+ * very first evaluation almost certain to cross — generous margin for CI
+ * jitter and cold-start warmup, well past the handful of seconds this
+ * normally takes. */
+const NARRATION_FLARE_TIMEOUT_MS = 30_000;
+
+/** JarvisDriverMachine stages each command's application `DRIVE_STAGGER_MS`
+ * (350ms) apart, and the drive rows only fold in once the "command" event's
+ * outcomes stream through `recordDriveOutcome` — generous for CI. */
+const DRIVE_ROW_TIMEOUT_MS = 15_000;
+
 export class PlaywrightJarvis implements JarvisPO {
   constructor(private readonly page: Page) {}
 
@@ -87,6 +101,21 @@ export class PlaywrightJarvis implements JarvisPO {
 
   private confirmCard(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.confirmCard);
+  }
+
+  /** Narrator-origin entries — `data-origin="narrator"` on the shared
+   * `jarvis-entry` testid (see JarvisOverlay.tsx). */
+  private narratorEntries(): Locator {
+    return this.page.locator(
+      `[data-testid="${TESTIDS.jarvis.entry}"][data-origin="narrator"]`,
+    );
+  }
+
+  /** "drive: <kind>" rows — plain jarvis-role entries folded by
+   * `JarvisMachine.recordDriveOutcome`, sharing the generic entry template
+   * (no `tool`/`origin` field of their own). */
+  private driveRows(): Locator {
+    return this.jarvisEntries().filter({ hasText: /^drive: / });
   }
 
   private confirmApprove(): Locator {
@@ -169,5 +198,21 @@ export class PlaywrightJarvis implements JarvisPO {
     await expect(this.panelLayer()).toHaveCount(0, {
       timeout: PANEL_DISMISS_TIMEOUT_MS,
     });
+  }
+
+  async waitForNarrationFlare(): Promise<void> {
+    await expect(this.orb()).toHaveAttribute("data-jarvis-state", "attention", {
+      timeout: NARRATION_FLARE_TIMEOUT_MS,
+    });
+  }
+
+  async waitForDriveRowCount(count: number): Promise<void> {
+    await expect(this.driveRows()).toHaveCount(count, {
+      timeout: DRIVE_ROW_TIMEOUT_MS,
+    });
+  }
+
+  async narrationEntryCount(): Promise<number> {
+    return await this.narratorEntries().count();
   }
 }

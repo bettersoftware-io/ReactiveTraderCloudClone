@@ -30,8 +30,22 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.page.getByTestId(TESTIDS.shell.tab("equities")).click();
   }
 
+  async openWithNarratorThresholds(): Promise<void> {
+    await this.page.goto("/?narratorThresholds=test");
+  }
+
   async clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void> {
     await this.page.getByTestId(TESTIDS.shell.tab(tab)).click();
+  }
+
+  async isTabActive(
+    tab: "fx" | "credit" | "admin" | "equities",
+  ): Promise<boolean> {
+    return (
+      (await this.page
+        .getByTestId(TESTIDS.shell.tab(tab))
+        .getAttribute("data-active")) === "true"
+    );
   }
 
   async reload(): Promise<void> {

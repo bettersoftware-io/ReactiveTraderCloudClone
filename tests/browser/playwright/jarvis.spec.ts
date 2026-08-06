@@ -18,4 +18,17 @@ test.describe("Jarvis assistant", () => {
   }) => {
     await jarvis.expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(ctx);
   });
+
+  test("flagship ride: narrator flare -> setupWorkspace drive batch assembles the vol workspace, cooldown holds", async ({
+    ctx,
+  }) => {
+    // Waiting for the narrator's proactive flare is a genuine wall-clock
+    // cost (a handful of real sim ticks per FX symbol, even with the
+    // relaxed ?narratorThresholds=test seam — see waitForNarrationFlare's
+    // doc), on top of the ride's own several generous per-step polls —
+    // ample headroom over the default 30s, same precedent as
+    // devtools.spec.ts's coalesced-stream test.
+    test.setTimeout(45_000);
+    await jarvis.expectNarratorDriveRideSetsUpVolWorkspace(ctx);
+  });
 });

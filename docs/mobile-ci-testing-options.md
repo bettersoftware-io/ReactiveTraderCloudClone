@@ -686,7 +686,12 @@ Three further practical notes, from the harness's own documented experience:
 
 - The tolerance is already 6% mismatched pixels
   ([`shared/diff.ts`](../packages/client-react-native/tests/visual/shared/diff.ts)),
-  which absorbs the status-bar clock and the Expo dev-tools gear. Loosening it
+  which absorbs the status-bar clock (and used to absorb the Expo dev-tools
+  gear — now hidden per-run on the `simctl` tier, though **still baked into
+  Maestro's 3 goldens**, since that runner pins no device and so has no UDID to
+  switch the preference on; see
+  [BAKEOFF.md](../packages/client-react-native/tests/visual/BAKEOFF.md)).
+  Loosening it
   further to paper over cross-machine drift is a trap — BAKEOFF.md's injected-bug
   proof shows the real #147 shadow-clip regression only moved **0.04%** of
   pixels, comfortably under the existing tolerance. Widening the tolerance

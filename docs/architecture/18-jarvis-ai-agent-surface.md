@@ -1750,3 +1750,318 @@ Round-1 open items — the deferred findings above (the `blotter` heatmap
 saturation, `JarvisMachine`'s missing warm-subscription error handler, the
 timers grep-gate defect, and the rest) plus the L3/L4/RN/drag roadmap — are
 tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis area.
+
+## 18.17 App-driving + the proactive narrator (P5)
+
+P5 (2026-08-05, design:
+[2026-08-05-jarvis-app-driving-narrator-design.md](../superpowers/specs/2026-08-05-jarvis-app-driving-narrator-design.md))
+gives Jarvis two more capabilities that compose into one flagship demo: it can
+**drive the app directly** — switch tabs, resize panels, drive the equities
+chart controls, change theme/power-saver — and it can **speak up
+unprompted** when a deterministic domain-side anomaly detector fires, offering
+(never executing) a suggested action. Both ride the existing turn/event
+pipeline; neither adds a new transport. The round doubles as a natural
+experiment in the thesis §18.1 opened this document with — see the
+companion showcase page,
+[`docs/showcase/machine-boundary-agent-reach.html`](../showcase/machine-boundary-agent-reach.html),
+for the narrative; this section is the engineering receipt.
+
+### `DriveCommand` v1 — a second closed vocabulary, `PanelSpec`'s sibling
+
+`packages/shared/src/jarvis/driveCommand.ts` follows §18.16's `PanelSpecV1`
+doctrine exactly, down to the file layout: ten command kinds
+(`switchTab`, `layout`, `eqSelect`, `eqTimeframe`, `eqChartType`,
+`eqIndicator`, `eqPane`, `setTheme`, `setPowerSaver`, `dismissPanel`), each a
+discriminated-union variant over literal unions mirroring real app types
+(`WorkspaceTab`, `CandleTimeframe`, `EqChartType`/`EqIndicatorId`/
+`EqPaneId`, `ThemeSkin`, `PowerSaverLevel`) that `@rtc/shared` cannot import
+directly, so the vocabulary re-declares them as frozen local `const` arrays.
+A `DriveBatchV1` is `{ v: 1; commands: readonly DriveCommandV1[] }`, 1–8
+commands applied in order. `parseDriveBatch` is the same hand-rolled,
+field-scoped validator shape as `parsePanelSpec` — every rejection is a
+`"commands[2].tab: must be one of fx, credit, equities, admin."`-style
+string the model can read verbatim — and `DRIVE_COMMAND_JSON_SCHEMA`'s
+`enum`/`const` values spread from the identical arrays the validator checks,
+so schema and validator cannot drift. One deliberate scope cut: **panel
+spawning is not in this vocabulary** — `render_panel` already owns
+creation/morph, so `drive_app` only gets `dismissPanel`, keeping one path per
+capability. `layout.panelId` and `eqSelect.symbol` get the same two-tier
+validation as `PanelSpec`'s `knownSymbols`: shape-checked here, and checked
+for real **membership** only at the client-side driver (below) — the server
+has no notion of the client's mounted layout tree.
+
+### `drive_app` — a second WS-surface tool, not confirm-gated
+
+`packages/server/src/agent/driveAppTool.ts` mirrors `renderPanelTool.ts`'s
+placement exactly: composed into `AnthropicAgentSession` only, never into
+`@rtc/agent-tools` (a driven tab switch is as meaningless over `/mcp` as a
+floating HUD panel — the same §18.14 `get_app_context` reasoning). Its own
+model-facing input schema embeds `DRIVE_COMMAND_JSON_SCHEMA`'s `commands`
+sub-schema **by reference** (and deliberately omits the internal `v: 1`
+discriminant, which carries no information for the model), so the tool's
+envelope and the validator's shape cannot drift apart either. The handler
+fills `v: 1` back in, calls `parseDriveBatch`, and on success invokes an
+injected `emitDrive(batch)` closure (the `emitPanel` pattern) before
+returning an accepted/rejected summary string — rejection is **all-or-nothing
+at the batch level**: `parseDriveBatch` stops at the first invalid command,
+so a batch with seven good commands and one bad one applies none of them,
+and the model sees exactly why. Like `render_panel`, `drive_app` is **not**
+confirm-gated: `DriveAppDeps` carries no `ConfirmGate` at all, because every
+drive command is a reversible UI mutation — `execute_trade` remains the only
+tool that suspends on user approval. The persona (`jarvisPersona.ts`) gained
+a drive section with envelope-conformant few-shots, extending the R1
+conformance pin test that catches an example showing the wrong call shape.
+
+### The wire: one more additive event, the `panel` pattern verbatim
+
+`JarvisEvent` gains `{ type: "command"; batch: DriveBatchV1 }`, riding the
+same generic `JARVIS_*` turn-event envelope as `panel` — `WIRE_TYPE_BY_EVENT`
+gained one row (`command: SERVER_MSG.JARVIS_COMMAND`, wire type
+`"jarvis.command"`) and the envelope already carries `batch` verbatim once
+that row exists. `WsJarvisAdapter` gained a seventh `turnId`-filtered
+listener that re-validates with `parseDriveBatch` (shape only — membership
+stays at the driver) and, on failure, **drops the frame silently** rather
+than substituting a sentinel: unlike a malformed `panel` (which still
+becomes a visible if unsupported card), there is nothing to render for a
+malformed command batch, and the server already validated it once — a
+client-side rejection here means version skew, and dropping one frame
+degrades the turn gracefully rather than erroring the whole stream.
+
+### `WorkspaceNavMachine` — the promotion that made the natural experiment
+
+Before this round, `client-react`'s `App.tsx` (and its `client-solid`
+counterpart) owned the active workspace tab as a bare
+`useState<WorkspaceTab>("fx")` — the one piece of drivable UI state with no
+path from the composition root, and therefore the one thing Jarvis's new
+`switchTab` command could not reach. The fix promotes it to a
+composition-root singleton, `packages/client-core/src/presenters/WorkspaceNavMachine.ts`:
+
+```ts
+export interface WorkspaceNavState { readonly activeTab: WorkspaceTab; }
+export interface WorkspaceNavIntents { switchTab(tab: WorkspaceTab): void; }
+```
+
+a plain `Subject` → `scan` → `distinctUntilChanged` fold, no injected deps,
+same warm-subscription-from-construction shape as `EqWorkspaceMachine`. Both
+web clients rewire their `App.tsx` to read it instead:
+
+```tsx
+// before — unreachable: nothing outside this component can move activeTab
+const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+// ...
+<HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
+<WorkspaceEngine key={activeTab} tab={activeTab} />
+```
+
+```tsx
+// after — the promoted singleton; the ONLY new state this round adds
+// (the layoutFor fix below promotes an EXISTING machine's lifetime,
+// not new state — see "The layoutFor singleton" section)
+const { useWorkspaceNav } = useViewModel();
+const { state: navState, switchTab } = useWorkspaceNav();
+const activeTab = navState.activeTab;
+// ...
+<HeaderChrome activeTab={activeTab} onTabChange={switchTab} />
+<WorkspaceEngine key={activeTab} tab={activeTab} />
+```
+
+`switchTab` now has **two callers, one intent**: a user's nav-rail click
+(`HeaderChrome`'s `onTabChange` slot, unchanged in shape) and
+`JarvisDriverMachine`'s `switchTab` command handler — both call the exact
+same method on the exact same singleton, so "the UI can do it" and "Jarvis
+can do it" are the same fact, not two facts kept in sync by hand. The
+`key={activeTab}` remount of `WorkspaceEngine` is unchanged: only *ownership*
+of the tab value moved, not the remount behaviour built on top of it. The
+round's deliberately-kept counterexample — `FxViewProvider`'s rates/blotter
+sub-tabs and quick filter, still three bare `useState` calls — is the
+showcase page's "still-unreachable" exhibit: Jarvis cannot drive FX sub-tabs
+today, on purpose, so the boundary stays visible in what the agent can and
+cannot do rather than being promoted away silently.
+
+### The `layoutFor` singleton — the second half of "reachable and observed"
+
+A driven `switchTab` alone would move the tab but leave a driven `layout`
+command (maximize/restore/collapse/expand) inert: `Presenters.layoutFor`
+used to be a bare "fresh machine per call" factory, so a `layout` command
+mutated a throwaway instance nothing else ever read from. `composition.ts`
+now memoizes it as a per-tab (four-entry) `Map` singleton, built lazily on
+first request, shared verbatim by both `createMachineFactories`'s `layout`
+field (what the mounted `useLayout(tab)` view reads) and
+`JarvisDriverMachine`'s `layout` dep — so a driven layout command is
+observable through the real UI, and, as a bonus user-visible side effect,
+layout state now survives a tab switch instead of resetting per mount.
+The **no-op-dispose invariant**: the map holds two parallel entries per tab
+— `layoutMachinesReal` (the real `createLayoutMachine` instance, kept
+private to the closure, disposable) and `layoutHandles` (what `layoutFor`
+actually returns, identical `state$`/`intents` but with `dispose` replaced
+by a documented no-op). This makes "composition owns this machine's
+lifetime" structural rather than a comment: a legacy per-mount consumer
+calling `.dispose()` on the returned handle is harmless instead of
+completing the real machine's Subjects and caching the corpse in the map
+forever — the exact bug class a *fresh-per-call* factory handed to a
+`useMachine`-style dispose-on-unmount bridge would otherwise reintroduce the
+moment anything called `.dispose()` on what it assumed was its own instance.
+
+### `JarvisDriverMachine` — a total interpreter, staggered, freeze-aware
+
+`packages/client-core/src/presenters/JarvisDriverMachine.ts` is
+`JarvisPanelsMachine`'s sibling: a composition-root singleton folding
+`jarvis.events$`'s `"command"` events (guarded with the same
+`catchError(() => EMPTY)` composition applies to `jarvisPanels`'s source).
+Its injected deps read like a cross-section of the composition root:
+`workspaceNav`, `layout(tab)` (the singleton accessor above), `eqWorkspace`,
+thin closures over theme-skin/power-saver setters, `dismissPanel`, plus two
+membership oracles (`knownLayoutPanelIds(tab)`, `knownSymbols$`) and a
+`powerSaverLevel$` read.
+
+**Total by construction** (the `composePanelStream` doctrine, reapplied):
+`applyCommand` is a switch with one branch per `DriveCommandV1["kind"]`,
+every branch returns a `DriveOutcome` (`{ command, status: "applied" |
+"skipped", reason? }`), nothing throws — an injected dep that itself throws
+(any intent method, `setThemeSkin`, ...) is caught by a `safeApplyCommand`
+wrapper, because an uncaught throw inside the machine's `map()` callback
+would error `state$` **permanently** (RxJS: a stream error is terminal).
+`"skipped"` covers two distinct cases with one status: a membership miss
+(unknown `panelId`/`symbol`) and a no-op setter already at the requested
+value — `eqIndicator`/`eqPane` use **setter semantics** (`on: boolean`) even
+though the underlying machine exposes toggles, specifically so a replayed
+or duplicated command is idempotent rather than double-toggling.
+
+**Choreography:** commands within one batch apply with a fixed
+`DRIVE_STAGGER_MS = 350` gap between them — read fresh, per command, from
+`powerSaverLevel$`, collapsing to `0` under power-saver **freeze** (the
+motion-free guarantee, not a new mechanism) — except the batch's own first
+command, which always fires immediately so there is no dead pause before the
+desk visibly reacts. A second `"command"` event arriving mid-stagger queues
+behind the first (outer `concatMap`); within a batch, commands are strictly
+ordered (inner `concatMap` over a fresh `timer` per command). `switchTab`
+ordering is safe against the batch's own later equities/layout commands
+because `EqWorkspaceMachine` and the per-tab layout machines are singletons
+addressed by the command's own `tab` field, not by whichever tab happens to
+be mounted — a batch that switches to equities and then drives its chart
+works regardless of the stagger's timing relative to the remount.
+
+### The narrator stack: detector → episodes → machine → turn
+
+**The detector** (`packages/domain/src/jarvis/anomalyDetector.ts`) is a pure,
+rxjs-only, per-symbol rolling-window `scan` over `PriceTick`s — no wall-clock
+reads, so the same tick sequence always produces the same events. Two
+edge-triggered channels, `spreadWidening` and `volSpike`, each a z-score of
+the **current** tick against its symbol's own trailing window (evaluated
+*before* the value is folded into that window, keeping `sigma` an honest,
+unbounded severity rather than one artificially capped by self-inclusion).
+Edge-triggered means a sustained wide-spread or high-vol regime narrates
+once, not once per tick — crossing above fires, staying above is silent,
+dropping back below re-arms. A window is treated as **zero-variance**
+(never crosses, division never attempted) once σ falls at or below
+`ZERO_VARIANCE_EPSILON_K × Number.EPSILON × |refMagnitude|` — an
+operand-magnitude-scaled floor, not a fixed epsilon or one scaled by the
+window's own mean, because the returns/vol channel's mean sits near zero by
+construction and a mean-scaled floor would let float noise through as
+phantom multi-σ events (measured: ULP-jitter windows sit up to ~4.2e-15σ,
+real regimes at ≥1e-6σ, the chosen floor lands ~220–250x above the former
+and ~1,000,000x below the latter).
+
+**The trigger source**
+(`packages/domain/src/simulators/pricingAnomalyEpisode.ts`): without it the
+simulator's spread never changes and its uniform-step random walk caps
+return z-scores at √3 ≈ 1.73, so neither channel could ever cross a 3σ
+threshold — measured at zero crossings over 2M simulated ticks. Two rare,
+bounded, self-terminating episode kinds layer onto the live tick stream:
+`spreadWidening` ramps `halfSpread` from 1x up to a 2–4x peak and back
+(a ramp, not a jump, so the very first widened tick isn't judged against a
+window of nothing but identical values); `volBurst` scales the random-walk
+step 4–8x for the episode's duration, sometimes pinning the step's sign for
+a persistent-direction run. Determinism is preserved: `advanceEpisode` is a
+pure function over an injected `random`, and with `startProbability` forced
+to `0` it draws nothing extra, so `PricingSimulator`'s tick *values* stay
+byte-identical to before this module existed — production's real
+`startProbability` (`1/1500`) does cost one extra draw per tick, accepted
+because nothing in this repo pins a live tick's numeric value against a
+specific `Math.random()` sequence.
+
+**`NarratorMachine`** (`packages/client-core/src/presenters/NarratorMachine.ts`)
+is a third composition-root singleton, subscribing `detectAnomalies` to the
+**same shared, cached** `PriceStreamPresenter.price$` every other
+price-driven surface reads through — never a fresh direct `PricingPort` call,
+because the simulator's live tick stream is cold per subscription and a
+second independent subscription to the same symbol would double its
+effective tick rate (the #171 tick-acceleration family, reintroduced in a
+new spot if this were gotten wrong). A surviving anomaly must clear three
+gates, all folded by **one** `scan` sitting outside `pairs$`'s `switchMap`
+(deliberately — nesting the gate inside would let a `pairs$` re-emission
+silently reset the session cap): the `JarvisNarrator` preference reads `"on"`
+at arrival (checked via `withLatestFrom`, so flipping the preference live
+takes effect on the very next anomaly with no re-composition);
+`NARRATION_COOLDOWN_MS = 300_000` (5 minutes) has elapsed since the last
+narration, measured via an injected `scheduler.now()`, never `Date.now()`
+directly; and fewer than `MAX_NARRATIONS_PER_SESSION = 4` narrations have
+fired this session (a hard, non-resetting cap). The single-`scan` shape also
+guarantees a same-frame double anomaly narrates **at most once globally**,
+not once per symbol.
+
+**`JarvisMachine.narrate(prompt)`** is the new unsolicited-turn intent:
+behaves like `send()` — same `concatMap` turn queue, same `port.ask()` call
+at the resolved brain/effort, same `UsageMeter` accounting, no
+special-casing of cost — with two differences. The transcript entry carries
+`origin: "narrator"` (the UI renders an accent border + "JARVIS INITIATED"
+badge instead of a fake user bubble); and if the chat panel is **closed**
+when the turn completes, the machine raises `unreadNarration`, which the
+orb renders as its existing attention flare. `send()` and `narrate()` share
+one queue, so a narration arriving mid-`send()` queues behind it and vice
+versa — there is exactly one turn in flight at a time regardless of which
+intent started it.
+
+**Offers, never executes** (the persona-level rule, deliberately not a
+server-side tool gate, to keep v1 simple): `jarvisPersona.ts` has no
+dedicated narration section — the constraint is one trailing clause on the
+`drive_app` paragraph, "neither `drive_app` nor `render_panel` during a
+`[narration]` turn" — but it covers both surface tools, so the model may not
+call either one while replying to a `[narration]`-prefixed turn
+(`JARVIS_NARRATION_PREFIX = "[narration] "`, stripped for display, kept on
+the wire text so the model sees the marker). The drive/panel tools remain
+available only on the **next**, user-initiated turn — a narration is
+therefore always followed by a real reply before anything on the desk
+actually moves. The scripted brain's `narration` intent mirrors this by
+construction: it only ever emits narration deltas, never a command batch.
+
+**`JarvisNarratorPreference`** (`@rtc/domain`) is `"on" | "off"`, default
+**`"on"`** — the round's other budgeted-blast-radius preference (the
+governance-round precedent: domain type + default, four storage adapters,
+the preferences contract test, `JarvisPreferencesPresenter`, both bindings,
+a Preferences-modal row in both clients, a ui-contract spec, fixtures).
+Flipping it to `"off"` does not tear `NarratorMachine`'s subscription down —
+the machine stays warm and simply drops every surviving anomaly before it
+reaches `narrate()`, so re-enabling it later needs no re-composition.
+
+### Zero-token path: `setupWorkspace` + `narration` scripted intents
+
+`ScriptedJarvisEngine` gained `setupWorkspace` (matched by "morning
+workspace" / "vol workspace" / "set up …") and `narration` (matched by the
+literal `[narration]` prefix, collision-proof against the substring-overlap
+class R1's own persona notes already flagged). `setupWorkspace` emits
+`SCRIPTED_VOL_WORKSPACE_BATCH` — switch to equities, maximize `eq-chart`,
+timeframe `1D`, EMA50 on, RSI pane on — through the identical `{ type:
+"command", batch }` push both the WS-real adapter and the scripted adapter
+funnel through, so `JarvisDriverMachine` cannot tell which brain produced
+the event; the canned flagship batch additionally ends by spawning the R1
+GBP-vol panel, composing both P5 features with R1's generative-UI surface in
+one demo turn. `narration` emits a canned, symbol-aware anomaly headline
+ending in an offer ("Shall I set up the vol workspace?"), priming the
+natural follow-up `setupWorkspace` turn. This gives the whole flagship ride
+— spike detected → narration → user says "yes" → tab switches, chart
+maximizes, indicators flip on, panel spawns, all narrated — a
+zero-API-call rehearsal path: it demos in simulator mode with no key, and
+CI exercises the real machine/interpreter/UI pipeline end to end through it.
+
+### Cross-references
+
+The showcase page,
+[`docs/showcase/machine-boundary-agent-reach.html`](../showcase/machine-boundary-agent-reach.html),
+tells this round's story as the natural experiment it is — reach exactly
+coextensive with the machine boundary, the promotion's real diff, the
+receipt table across every Jarvis round. The design spec is
+[2026-08-05-jarvis-app-driving-narrator-design.md](../superpowers/specs/2026-08-05-jarvis-app-driving-narrator-design.md);
+remaining open items (at time of writing: the Solid mirror, the shared
+ui-contract specs, the e2e flagship ride + live-smoke drive turn) are
+tracked in [`docs/STATUS.md`](../STATUS.md) under the Jarvis area.

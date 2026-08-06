@@ -4,12 +4,45 @@ Three candidate tiers were evaluated for on-device iOS visual verification of
 `@rtc/client-react-native`, all sharing one harness (`VisualScenarioHost` +
 the `__visual/<id>` dev-only route) and one diff core (`shared/diff.ts`,
 `pixelmatch`, 6% mismatched-pixel tolerance). This records what each tier is,
-how it scored, and the recommendation.
+how it scored, and where the comparison currently stands.
 
 All three drive the **same** isolated scenarios and compare against the **same**
 committed goldens under `__screenshots__/<pin>/<tier>/`; they differ only in how
 they navigate the device and take the shot. Measured on the pinned device
 `ios-iphone17-26` (iPhone 17 / iOS 26.x). **Never CI** — iOS pixels need a Mac.
+
+## Status: UNFINISHED, not decided (as of 2026-08-06)
+
+**No tier has been chosen, because no two tiers have been compared at
+comparable coverage.** Read every conclusion below against its evidentiary
+base:
+
+| | what was actually measured |
+|---|---|
+| Scenarios | **3** of the 18 that exist today (`blotter/seeded`, `shell/appearance`, `shell/connection-banner`) |
+| Devices | 1 (`ios-iphone17-26`) |
+| Platforms | iOS only — **no Android run at all**, though Maestro's whole case is that it is cross-platform |
+| Duration | a single sitting, not sustained use |
+| Regressions caught | 1 injected paint bug, plus 1 real regression the suite **missed** (#147) |
+
+That is a **viability spike** — enough to establish which tiers can run here,
+and nothing like enough to rank them. The contrast worth holding onto is the
+web suite's Playwright-vs-Cypress bake-off, which ran both frameworks over the
+same specs for months before Cypress was retired
+([`docs/test-bakeoff-outcome.md`](../../../../docs/test-bakeoff-outcome.md));
+that is what a decision's worth of evidence looks like.
+
+Meanwhile the golden sets are lopsided — **simctl has all 18, Maestro has the
+3 from the spike, owl has none** — so the tiers cannot be compared even in
+principle right now. Running the Maestro tier today reports **15 failures at
+100%**, because `compareToGolden` returns `ratio: 1` for an absent golden
+rather than throwing; that is a missing baseline, not a regression.
+
+**Deliberately not fixed yet.** Capturing the other 15 Maestro goldens would
+mean re-capturing them on every visual-fidelity change still in flight — churn,
+not a baseline. The plan is to finish the comparison **after the mobile UI's
+visual fidelity settles**: capture all tiers at full coverage at that point,
+then decide. Until then all three stay on the table and nothing is retired.
 
 ## Scoreboard
 
@@ -26,6 +59,10 @@ they navigate the device and take the shot. Measured on the pinned device
 | Caught blatant paint bug | ✅ 67.92% | ✅ 67.92% | — |
 | Android-portable | ❌ Apple-only | ✅ cross-platform | ❌ (owl is iOS/Android but dead here) |
 | Device-pin coupling | **high** (re-measure tap px per pin) | low (a11y ids are pin-agnostic) | — |
+| Goldens committed | **18** (all scenarios) | **3** (the spike's sample) | 0 |
+| Runner pins the device | ✅ `RTC_VISUAL_UDID` (default `booted`) | ❌ **none** — Maestro picks | — |
+| Runnable on this Mac today | ✅ | ❌ **no JDK 17 on `PATH`** | ❌ |
+| Dev-menu gear hidden | ✅ since 2026-08-05 | ❌ still in all 3 goldens | — |
 
 ## simctl — `xcrun simctl` + `idb`
 
@@ -62,7 +99,52 @@ Android). Costs a JDK 17 + Maestro install and flow regeneration when
 > deep-link, then `visual-ready`. Maestro then captures + self-reproduces at
 > 0.03%.
 
-## owl — `react-native-owl` — NOT VIABLE on this stack
+### Trap: the Maestro runner pins no device
+
+`maestro/run.ts` drives the device with exactly one call —
+`exec("maestro", ["test", FLOWS_DIR, "--format", "junit"])` — and Maestro
+performs its own device discovery. **The runner never learns which simulator
+ran**, and never asserts one.
+
+Its goldens nonetheless live under `__screenshots__/ios-iphone17-26/maestro/`,
+a path that claims a specific phone. Nothing enforces that claim: with two
+booted simulators, Maestro may shoot the wrong one and the run diffs it against
+the pinned baseline anyway. On a device mismatch that surfaces as a large
+mismatch ratio (or a dimension mismatch, which `shared/diff.ts` refuses to
+absorb) — a confusing failure that names pixels rather than the device.
+
+`simctl` has no such gap: `simctl/run.ts` reads `RTC_VISUAL_UDID` (defaulting to
+the `booted` alias) and passes it to every `xcrun` call it makes.
+
+Fixing it also unblocks the dev-menu gear (below): resolving the UDID ourselves
+— `xcrun simctl list devices booted` — and handing it to Maestro would pin the
+device **and** give the runner the identifier `hideDevMenuFab` needs. One
+change, two problems.
+
+### Trap: it cannot run here without JDK 17
+
+Maestro 2.x refuses to start without it:
+
+```
+$ maestro test --help
+ERROR: Java 17 or higher is required.
+```
+
+This machine has no JDK 17 on `PATH`, so the Maestro tier is **not currently
+runnable** — which is the actual reason its golden set stalled at the spike's
+3, rather than any verdict against it. Worth stating plainly: a tier that
+silently cannot run looks identical, in a file listing, to one that was
+weighed and set aside.
+
+## owl — `react-native-owl` — BLOCKED on this stack (unproven, not rejected)
+
+**Nothing here judges owl as a screenshot tool — it never took a screenshot.**
+All three blockers below are *compatibility with this stack*: a shell-quoting
+detail, a gitignored directory, and a version gap. None of them is evidence
+that owl captures worse pixels, navigates worse, or is slower; that comparison
+has never been run. Keep the two claims apart, because "not viable" is one
+sentence away from being read as "evaluated and rejected", and only the first
+is true.
 
 owl needs a native Debug build of an instrumented app and produced **no**
 goldens. Three stacking blockers, decisive:
@@ -83,6 +165,13 @@ goldens. Three stacking blockers, decisive:
 owl would need a new-architecture-capable fork (or a React downgrade) to be
 viable here. Recorded as a decisive finding, not a failure — the `owl.config.json`
 is kept for documentation.
+
+Note which blockers are **ours** and which are not. (1) needs a wrapper script;
+(2) needs `expo prebuild` to be run (the `ios/` folder is gitignored, not
+absent by design) — both are an afternoon. Only (3) is outside our control, and
+it is a *wait-for-a-release* problem rather than a permanent one. If a
+new-architecture-capable owl ships, this tier becomes assessable again for the
+cost of a `pnpm add`.
 
 ### The dependency was REMOVED on 2026-07-25 (the config stays)
 
@@ -132,16 +221,91 @@ background), captures NOT regenerated:
 - **Status-bar clock** overlaps the top row of full-bleed shots. It changes
   between capture and verify but stays within the 6% tolerance (self-repro
   0.00–0.03%); noted, not fought.
-- **Expo dev-tools gear** is baked into dev-build shots. It is deterministic
-  (always present in the same spot), so it does not break reproduction.
+- **Expo dev-tools gear** was baked into dev-build shots. It is deterministic
+  (always present in the same spot), so it never broke reproduction — **hidden
+  on the `simctl` tier since 2026-08-05, still present in Maestro's 3 goldens.**
+  See below; it is the clearest case in this file of an artifact that a
+  self-reproducing suite cannot report.
 
-## Recommendation
+### The dev-menu gear, and how to hide it on every tier
 
-- **simctl** — keep as the zero-JDK base tier; it works today with the fewest
-  dependencies. Accept the blind-tap re-measurement cost on device re-pins.
-- **Maestro** — the more robust choice and the one to grow: a11y-based waits
-  (pin-agnostic, less flaky) and a path to Android. Worth its JDK 17 dependency.
-- **owl** — not viable on SDK 57 / RN 0.86 / React 19 / new-arch; do not invest
-  without a new-architecture-capable fork.
-- **Next** — add an inset-3D-card scenario so the suite can actually catch the
-  #147 shadow-clip class.
+expo-dev-menu mounts a floating action button — a grey `gearshape.fill` bubble
+near the top-left — in a `DevMenuFABWindow`, a passthrough `UIWindow` layered
+*above* the app. So it drew over the Rates filter chips and the shell header,
+and appeared in the a11y tree as though it were ours.
+
+**It survived in all 18 goldens precisely because the tier stayed green.** Same
+place every run ⇒ captures reproduced at 0.00% ⇒ nothing to report. A golden
+answers *"did this change?"*, never *"is this right?"*, and this is what that
+distinction costs: the bubble was harmless to diffing and pure noise to the
+corpus's other use — reading these PNGs beside the design prototype's shots to
+judge fidelity.
+
+The preference behind it exists on **both** platforms, under the **same key**,
+and is reachable two different ways:
+
+| | build-time default | runtime override |
+|---|---|---|
+| **iOS** | `Info.plist` → `EXDevMenuShowFloatingActionButton` (`DevMenuPreferences.swift:29,49`) | `UserDefaults`, app domain → `xcrun simctl spawn <udid> defaults write` |
+| **Android** | `AndroidManifest` meta-data → **same key** (`DevMenuPreferences.kt:73`, fallback `true`) | `SharedPreferences` → `adb shell` |
+
+Android has its own FAB (`MovableFloatingActionButton.kt`) — this is not an
+Apple-only problem, and will land on the Maestro tier the moment it drives an
+Android emulator.
+
+`shared/devMenuFab.ts` implements the **iOS runtime override**: written off
+before a run, deleted afterwards, best-effort in both directions so a simulator
+that refuses the write degrades to a noisier golden rather than a failed run.
+That was the right fix to ship, because it works against the dev client we
+already have and reverts cleanly for ordinary development.
+
+But note what shape it has: **a per-runner fix**. It is wired into `simctl` and
+was silently missed by Maestro, which has no UDID to give it (see the
+device-pin trap above) — the same way a fourth tier would miss it. The
+**build-time default** is the version no driver can forget: set the key in the
+app config and the bubble is off for `simctl`, Maestro, owl and anything
+future, on both platforms, with no device identifier involved at all. Its cost
+is that it is baked into a binary, so the harness would need its own native
+build rather than sharing the everyday dev client (today `EXPO_PUBLIC_VISUAL_HARNESS`
+only affects the JS bundle Metro serves). **That is the shape to move to when
+the tiers are compared for real.**
+
+## Working position — a division of roles, not a verdict
+
+These were never "winner and losers". They were assigned **roles** on the
+evidence available, and the roles still hold:
+
+- **simctl** — the zero-JDK **base** tier: fewest dependencies, works today,
+  carries all 18 goldens. Accept the blind-tap re-measurement cost on device
+  re-pins.
+- **Maestro** — the more robust tier and **the one to grow**: a11y-based waits
+  (pin-agnostic, less flaky) and the only path to Android, which `xcrun`-based
+  simctl can never take. Worth its JDK 17 dependency.
+- **owl** — blocked on SDK 57 / RN 0.86 / React 19 / new-arch; do not invest
+  until a new-architecture-capable release exists. Unproven, not outscored.
+
+**Nothing is retired.** Retiring a tier requires the comparison this file says
+has not happened, and the Android requirement makes Maestro load-bearing
+regardless of how that comparison lands.
+
+## What would finish the comparison
+
+In order. The first two are cheap and should not wait; the third is the one
+gated on visual fidelity settling.
+
+1. **Pin Maestro's device** — resolve the UDID and pass it to `maestro test`.
+   Closes the wrong-device hazard and hands the runner the identifier
+   `hideDevMenuFab` needs.
+2. **Install JDK 17** so the tier can run at all on this machine.
+3. **Capture every tier at full scenario coverage, then judge** — once the
+   mobile UI's visual fidelity has stabilised, so goldens are captured against
+   a UI that has stopped moving. Compare on wall-clock, flake rate across
+   repeated runs, and what each tier catches — *not* on the spike's numbers.
+4. **Add an inset-3D-card scenario** so the suite can actually catch the #147
+   shadow-clip class (see the injected-bug findings above). This is a gap in
+   the *scenario matrix*, and it handicaps every tier equally — worth closing
+   before the comparison, so all three are judged on a matrix that can catch
+   the bug class the suite was built for.
+
+Tracked in [`docs/rn-open-items.md`](../../../../docs/rn-open-items.md) and
+[`docs/STATUS.md`](../../../../docs/STATUS.md).

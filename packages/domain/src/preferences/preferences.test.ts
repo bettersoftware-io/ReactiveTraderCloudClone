@@ -5,12 +5,15 @@ import {
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   EQ_WATCHLIST_SORTS,
+  isJarvisNarratorPreference,
   isPowerSaverLevel,
+  JARVIS_NARRATOR_PREFERENCES,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
@@ -132,5 +135,26 @@ describe("power-saver preference", () => {
     expect(isPowerSaverLevel("")).toBe(false);
     expect(isPowerSaverLevel("true")).toBe(false);
     expect(isPowerSaverLevel("Off")).toBe(false);
+  });
+});
+
+describe("jarvis narrator preference", () => {
+  it("defaults to on and enumerates on/off in toggle order", () => {
+    expect(DEFAULT_JARVIS_NARRATOR).toBe("on");
+    expect(JARVIS_NARRATOR_PREFERENCES).toEqual(["on", "off"]);
+  });
+
+  it("accepts exactly the two stored preference strings", () => {
+    for (const pref of JARVIS_NARRATOR_PREFERENCES) {
+      expect(isJarvisNarratorPreference(pref)).toBe(true);
+    }
+  });
+
+  it("rejects null, undefined, empty, and anything outside the closed union", () => {
+    expect(isJarvisNarratorPreference(null)).toBe(false);
+    expect(isJarvisNarratorPreference(undefined)).toBe(false);
+    expect(isJarvisNarratorPreference("")).toBe(false);
+    expect(isJarvisNarratorPreference("On")).toBe(false);
+    expect(isJarvisNarratorPreference("true")).toBe(false);
   });
 });

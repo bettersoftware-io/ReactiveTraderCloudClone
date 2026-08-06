@@ -86,11 +86,18 @@ const FAB_PREFERENCE_KEY = "EXDevMenuShowFloatingActionButton";
 /** Matches `simctl/capture.ts`'s constant of the same name. Restated rather
  * than imported so this module owes nothing to a specific driver.
  *
- * WIRED INTO THE `simctl` TIER ONLY. Maestro drives the device through its own
- * CLI and its runner never learns a UDID, so it has nothing to pass here. Its
- * three committed goldens (`blotter/seeded`, `shell/appearance`,
- * `shell/connection-banner`) therefore STILL contain the bubble — stated
- * plainly because "the goldens are clean now" would otherwise be true of 18
- * files and false of 3. That tier is a bake-off remnant against `simctl`'s
- * complete 18; give it a UDID and it can call these two functions unchanged. */
+ * WIRED INTO THE `simctl` TIER ONLY, and iOS-only besides. Maestro drives the
+ * device through its own CLI and its runner never learns a UDID, so it has
+ * nothing to pass here. Its three committed goldens (`blotter/seeded`,
+ * `shell/appearance`, `shell/connection-banner`) therefore STILL contain the
+ * bubble — stated plainly because "the goldens are clean now" would otherwise
+ * be true of 18 files and false of 3. Pin Maestro's device (resolve the UDID
+ * and pass it to `maestro test`) and it can call these two functions unchanged.
+ *
+ * Android will need a SIBLING, not this: the FAB exists there too, under the
+ * same preference key, but in `SharedPreferences` via `adb shell` rather than
+ * `UserDefaults` via `simctl`. The version that needs neither is the build-time
+ * default (`Info.plist` / `AndroidManifest` meta-data), which no runner can
+ * forget. See `tests/visual/BAKEOFF.md` — "The dev-menu gear, and how to hide
+ * it on every tier". */
 const APP_BUNDLE_ID = "io.bettersoftware.rtcmobile";

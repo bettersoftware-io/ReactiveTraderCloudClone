@@ -6,11 +6,16 @@ import type { JarvisEvent } from "@rtc/client-core";
 import type { JarvisSkin } from "@rtc/domain";
 
 /** One rendered `jarvis-entry` row, as read off its `data-role`/`data-done`
- * attributes plus its visible text. */
+ * attributes plus its visible text. `origin` mirrors `JarvisEntry.origin`
+ * (Task 12/P5): `"narrator"` on the user-side entry of a `narrate()` turn
+ * (JARVIS speaking up unprompted), `undefined` for an ordinary `send()`
+ * turn — read off `data-origin`, which is absent (not `""`) when the entry
+ * carries no origin, matching React's `entry.origin` prop passthrough. */
 export interface JarvisEntryView {
   readonly role: string;
   readonly text: string;
   readonly done: boolean;
+  readonly origin: string | undefined;
 }
 
 /**
@@ -67,6 +72,7 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
           role: el.getAttribute("data-role") ?? "",
           text: el.textContent ?? "",
           done: el.getAttribute("data-done") === "true",
+          origin: el.getAttribute("data-origin") ?? undefined,
         };
       });
   }
@@ -75,6 +81,18 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
   lastEntry(): JarvisEntryView | null {
     const all = this.entries();
     return all.length > 0 ? (all[all.length - 1] ?? null) : null;
+  }
+
+  /** True while the "◈ JARVIS INITIATED" narrator badge (Task 12/P5) is
+   * rendered anywhere in the transcript — the positive styling/affordance
+   * witness for an `origin: "narrator"` entry, alongside {@link entries}'s
+   * `origin` field. */
+  hasNarratorBadge(): boolean {
+    const overlay = this.overlay();
+    return (
+      !!overlay &&
+      within(overlay).queryByTestId("jarvis-narrator-badge") !== null
+    );
   }
 
   /** The streaming tool chip's `data-status` ("running" | "done"), or null

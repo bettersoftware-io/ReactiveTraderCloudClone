@@ -11,4 +11,8 @@ export interface LayoutPO {
   firstResizeHandleSize(): Promise<number>;
   /** Pointer-drag the first splitter handle along its axis by `dx` CSS pixels. */
   dragFirstHandleBy(dx: number): Promise<void>;
+  /** Wait for the given layout panel (InhouseLayoutEngine's PanelLeaf) to
+   *  report `data-maximized="true"` — the layout-state witness for a
+   *  driven `{kind:"layout",op:"maximize",...}` command actually landing. */
+  waitPanelMaximized(panelId: string, timeoutMs: number): Promise<void>;
 }

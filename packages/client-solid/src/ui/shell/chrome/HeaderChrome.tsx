@@ -2,6 +2,7 @@ import type { JSX } from "solid-js";
 import { createSignal } from "solid-js";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
+import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
 import { HudLogo } from "../logo/HudLogo";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
@@ -12,6 +13,7 @@ import { NotificationsMenu } from "./NotificationsMenu";
 import { PowerSaverToggle } from "./PowerSaverToggle";
 import { ThemePicker } from "./ThemePicker";
 
+import drivenPulseStyles from "../jarvis/DrivenPulse.module.css";
 import styles from "./HeaderChrome.module.css";
 
 /**
@@ -31,6 +33,11 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   // plain createSignal is correct here, no port involved.
   const [prefsOpen, setPrefsOpen] = createSignal(false);
 
+  // Driven-pulse cue (Task 10/11): flashes the nav rail for one CSS
+  // animation cycle when Jarvis's drive-the-app interpreter applies a
+  // command — see useJarvisDrivenPulse's own doc (freeze-gated, no timer).
+  const navPulse = useJarvisDrivenPulse();
+
   return (
     <header data-testid="header" class={styles.header}>
       <div class={styles.brand}>
@@ -45,7 +52,16 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
         </span>
       </div>
 
-      <nav class={styles.nav} aria-label="Workspace">
+      <nav
+        ref={navPulse.ref}
+        data-jarvis-driven={navPulse.pulsing() ? "true" : "false"}
+        class={
+          navPulse.pulsing()
+            ? `${styles.nav} ${drivenPulseStyles.driven}`
+            : styles.nav
+        }
+        aria-label="Workspace"
+      >
         <NavTab
           tab="fx"
           active={props.activeTab === "fx"}

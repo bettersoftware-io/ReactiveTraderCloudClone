@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { LayoutPO } from "../contracts/Layout";
 import { TESTIDS } from "../contracts/testids";
@@ -10,6 +10,10 @@ export class PlaywrightLayout implements LayoutPO {
 
   private first(): Locator {
     return this.page.locator(HANDLE).first();
+  }
+
+  private panel(panelId: string): Locator {
+    return this.page.getByTestId(TESTIDS.layout.panel(panelId));
   }
 
   async resizeHandleCount(): Promise<number> {
@@ -41,5 +45,13 @@ export class PlaywrightLayout implements LayoutPO {
     // way a real drag does (a single jump can skip the handler).
     await this.page.mouse.move(tx, ty, { steps: 8 });
     await this.page.mouse.up();
+  }
+
+  async waitPanelMaximized(panelId: string, timeoutMs: number): Promise<void> {
+    await expect(this.panel(panelId)).toHaveAttribute(
+      "data-maximized",
+      "true",
+      { timeout: timeoutMs },
+    );
   }
 }

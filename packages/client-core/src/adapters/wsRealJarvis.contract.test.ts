@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import {
   CLIENT_MSG,
+  type DriveBatchV1,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type PanelSpecV1,
@@ -602,6 +603,132 @@ describe("WsJarvisAdapter panel events", () => {
   });
 });
 
+describe("WsJarvisAdapter command events", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a VALID batch payload is parsed and re-emitted normalized", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("set up my morning workspace").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, { turnId, batch: VALID_DRIVE_BATCH });
+
+    expect(received).toEqual([{ type: "command", batch: VALID_DRIVE_BATCH }]);
+  });
+
+  it("REGRESSION: the emitted batch is parseDriveBatch's NORMALIZED result, not the raw wire payload re-emitted verbatim", () => {
+    // Mirrors the equivalent panel regression test: an extra unknown field on
+    // a command entry can't be distinguished from "re-emitted the rebuilt
+    // object" by structural equality alone unless that extra field is
+    // actually stripped — parseDriveBatch reconstructs each DriveCommandV1
+    // field-by-field from its own known keys, so a raw pass-through would
+    // leak the bogus field onto the emitted event and a normalized one would
+    // not.
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("set up my morning workspace").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, {
+      turnId,
+      batch: {
+        v: 1,
+        commands: [{ kind: "switchTab", tab: "fx", bogus: "x" }],
+      },
+    });
+
+    expect(received).toHaveLength(1);
+    const event = received[0];
+
+    if (event?.type !== "command") {
+      throw new Error("expected a command event");
+    }
+
+    expect(event.batch).toEqual(VALID_DRIVE_BATCH);
+    expect(
+      event.batch.commands.some((command) => {
+        return "bogus" in command;
+      }),
+    ).toBe(false);
+  });
+
+  it("an INVALID batch is dropped silently — no event emitted, and the turn stays open (unlike panel's sentinel substitution)", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    let completed = false;
+    adapter.ask("set up my morning workspace").subscribe({
+      next: (event: JarvisEvent) => {
+        received.push(event);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, {
+      turnId,
+      batch: { v: 1, commands: [{ kind: "bogusKind" }] },
+    });
+
+    expect(received).toEqual([]);
+    expect(completed).toBe(false);
+  });
+
+  it("REGRESSION: the stream stays alive after an invalid batch — a later VALID frame on the same turn still lands", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("set up my morning workspace").subscribe((event) => {
+      received.push(event);
+    });
+
+    const turnId = sentTurnId(ws);
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, {
+      turnId,
+      batch: { v: "not-1", commands: [] },
+    });
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, { turnId, batch: VALID_DRIVE_BATCH });
+    ws.emit(SERVER_MSG.JARVIS_DONE, { turnId });
+
+    expect(received).toEqual([
+      { type: "command", batch: VALID_DRIVE_BATCH },
+      { type: "done" },
+    ]);
+  });
+
+  it("a command frame carrying a different (stale) turnId is ignored", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisEvent[] = [];
+    adapter.ask("set up my morning workspace").subscribe((event) => {
+      received.push(event);
+    });
+    sentTurnId(ws); // ensure the chat frame was sent; the real turnId is deliberately not reused below
+
+    ws.emit(SERVER_MSG.JARVIS_COMMAND, {
+      turnId: "some-other-turn",
+      batch: VALID_DRIVE_BATCH,
+    });
+
+    expect(received).toEqual([]);
+  });
+});
+
 describe("WsJarvisAdapter.availability$()", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -910,6 +1037,13 @@ const VALID_PANEL_SPEC: PanelSpecV1 = {
   source: { kind: "priceHistory", symbols: ["GBPUSD"] },
   transforms: [],
   viz: { kind: "line" },
+};
+
+/** A structurally-valid `DriveBatchV1` — passes `parseDriveBatch` unchanged,
+ * matching the wire command tests' "happy path" fixture. */
+const VALID_DRIVE_BATCH: DriveBatchV1 = {
+  v: 1,
+  commands: [{ kind: "switchTab", tab: "fx" }],
 };
 
 /** The shape of a sent `CLIENT_MSG.JARVIS_CHAT` frame's payload — named

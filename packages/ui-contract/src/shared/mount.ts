@@ -16,6 +16,7 @@ import type {
   EquityQuote,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   LogEvent,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -91,6 +92,9 @@ export interface MountOptions<P> {
   /** Seed the initial Jarvis thinking-effort preference (useJarvisPreferences);
    * defaults to DEFAULT_JARVIS_EFFORT. */
   jarvisEffort?: JarvisEffort;
+  /** Seed the initial STORED Jarvis narrator preference (useJarvisPreferences);
+   * defaults to DEFAULT_JARVIS_NARRATOR. */
+  jarvisNarrator?: JarvisNarratorPreference;
 }
 
 const mounted: MountedRoot[] = [];
@@ -261,6 +265,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.jarvisAvailability,
     opts.jarvisBrain,
     opts.jarvisEffort,
+    opts.jarvisNarrator,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

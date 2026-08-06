@@ -114,6 +114,15 @@ export {
   TOO_LONG_THRESHOLD_MS,
   TradeStatus,
 } from "./fx/trade.js";
+// Jarvis
+export type {
+  AnomalyDetectorConfig,
+  AnomalyEvent,
+} from "./jarvis/anomalyDetector.js";
+export {
+  DEFAULT_ANOMALY_CONFIG,
+  detectAnomalies,
+} from "./jarvis/anomalyDetector.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { AuthOutcome, AuthPort } from "./ports/authPort.js";
@@ -148,6 +157,7 @@ export type {
   EqWatchlistSort,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -170,6 +180,7 @@ export {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -182,10 +193,12 @@ export {
   EQ_WATCHLIST_SORTS,
   isJarvisBrain,
   isJarvisEffort,
+  isJarvisNarratorPreference,
   isPowerSaverLevel,
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
+  JARVIS_NARRATOR_PREFERENCES,
   JARVIS_SKINS,
   LOGIN_WAIT_DELAY_MS,
   LOGIN_WAIT_DELAYS,

@@ -23,7 +23,21 @@ const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 const notYetPortedSpecs: string[] = [];
 
 export default defineConfig({
-  plugins: [solid()],
+  // hot: false (Task 12/P5) — vite-plugin-solid enables solid-refresh HMR
+  // wrapping whenever `command === "serve"`, which vitest's own dev server
+  // always reports true for, even under a one-shot `vitest run`; harmless
+  // until the new `AppShell` token (`registry.tsx`) made App.tsx (and
+  // therefore every panel it reaches) part of setup.ts's eagerly-loaded
+  // module graph for every test in this project, INCLUDING the co-located
+  // `appPanelRegistry.test.ts`/`appHeadRegistry.test.ts` unit tests: those
+  // mock `createComponent` to assert panel-id→module identity WITHOUT
+  // rendering, and solid-refresh's extra memo/untrack wrapper around each
+  // now-HMR-registered leaf broke that interception (the mock stopped
+  // firing, so the real component body ran — `useViewModel()` outside any
+  // `ViewModelProvider`, `useViewModel must be used within ViewModelProvider`).
+  // HMR has no meaning inside a one-shot test run, so disabling it outright
+  // is the correct fix, not a workaround for the mock specifically.
+  plugins: [solid({ hot: false })],
   resolve: {
     alias: {
       // The framework-neutral harness lives in @rtc/ui-contract; resolve
@@ -69,9 +83,14 @@ export default defineConfig({
       // omitting them.
       include: ["src/ui/**"],
       exclude: [
-        // Full-page composition roots — owned by the visual tier (once it
-        // exists) + app/* + e2e, mirrors client-react's exclusion.
-        "src/ui/App.tsx",
+        // App.tsx used to be a full-page composition root the contract tier
+        // never mounted (owned instead by the visual tier + app/* + e2e,
+        // mirrored client-react's own exclusion) — no longer true as of
+        // Task 12/P5's `AppShell` (JarvisDriver.contract.spec.ts +
+        // HeaderChrome.contract.spec.ts's promotion regression), which
+        // mounts the REAL `App` to witness the driven-pulse cue on the nav
+        // rail + workspace wrapper together, so it now participates in this
+        // gate for real (mirrors client-react's own un-exclusion).
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
       ],

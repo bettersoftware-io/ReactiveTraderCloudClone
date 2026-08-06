@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -10,6 +9,7 @@ import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
+import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -17,15 +17,35 @@ import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
+import drivenPulseStyles from "./shell/jarvis/DrivenPulse.module.css";
 
 export function App(): ReactElement {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+  // Machine-backed nav (Task 10): the promoted composition-root singleton
+  // (Presenters.workspaceNav) replacing the useState<WorkspaceTab> that used
+  // to live here — reachable now from Jarvis's drive-the-app "switchTab"
+  // command too. `key={activeTab}` below is unchanged: WorkspaceEngine still
+  // remounts per tab, but the underlying layout machines now survive that
+  // remount (see Presenters.layoutFor's doc).
+  const { useWorkspaceNav } = useViewModel();
+  const { state: navState, switchTab } = useWorkspaceNav();
+  const activeTab = navState.activeTab;
+  const { pulsing, clearPulse } = useJarvisDrivenPulse();
 
   return (
     <div className={styles.app}>
       <AmbientBackground />
-      <HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
-      <WorkspaceEngine key={activeTab} tab={activeTab} />
+      <HeaderChrome activeTab={activeTab} onTabChange={switchTab} />
+      <div
+        data-jarvis-driven={pulsing ? "true" : "false"}
+        className={
+          pulsing
+            ? `${styles.workspaceRegion} ${drivenPulseStyles.driven}`
+            : styles.workspaceRegion
+        }
+        onAnimationEnd={clearPulse}
+      >
+        <WorkspaceEngine key={activeTab} tab={activeTab} />
+      </div>
       <StatusBar />
       <ConnectionOverlay />
       <LockScreen />
