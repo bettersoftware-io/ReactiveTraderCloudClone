@@ -1,6 +1,7 @@
 import type { TestContext } from "../testContext";
 import {
   assertContains,
+  assertEquals,
   assertFalse,
   assertGreaterThanZero,
   assertTrue,
@@ -101,4 +102,86 @@ export async function expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(
   await ctx.po.jarvis.closeViaButton();
   await ctx.po.jarvis.dismissPanel(SCRIPTED_PANEL_ID);
   await ctx.po.jarvis.waitForNoPanels();
+}
+
+/** The layout panel id the scripted vol-workspace drive batch maximizes
+ * (see `SCRIPTED_VOL_WORKSPACE_BATCH` in ScriptedJarvisEngine.ts). */
+const EQ_CHART_PANEL_ID = "eq-chart";
+
+/** `SCRIPTED_VOL_WORKSPACE_BATCH` has 5 commands (switchTab, layout,
+ * eqTimeframe, eqIndicator, eqPane) and every one of them applies cleanly
+ * against a fresh session — see `applyCommand`'s skip conditions in
+ * JarvisDriverMachine.ts (none of them can fire here: the tab/panel/
+ * indicator/pane ids are all real, and nothing has toggled ema50/rsi yet). */
+const EXPECTED_DRIVE_ROW_COUNT = 5;
+
+const LAYOUT_MAXIMIZE_TIMEOUT_MS = 15_000;
+const INDICATOR_ACTIVE_TIMEOUT_MS = 15_000;
+const PANE_VISIBLE_TIMEOUT_MS = 15_000;
+
+/**
+ * The flagship narrator + drive-the-app ride. Launches with the dev-only
+ * `?narratorThresholds=test` seam so a proactive narration fires within
+ * seconds of live sim ticks (instead of the simulator's natural ~14 min
+ * anomaly interval — see NarratorMachine.ts), waits for the header orb to
+ * flare (the narration turn completed while the overlay was still closed),
+ * opens the overlay, and replies with the scripted `setupWorkspace` trigger
+ * phrase. `streamSetupWorkspaceReply` (ScriptedJarvisEngine.ts) does THREE
+ * things in that one turn: reveals the setup copy, emits the
+ * `SCRIPTED_VOL_WORKSPACE_BATCH` command batch, and ALSO spawns the same
+ * canned GBP-volatility desk panel the other ride in this file exercises —
+ * which is why `panel-scripted-1` being present is part of this assertion
+ * set even though nothing here asked for a panel explicitly.
+ *
+ * Finishes by asserting the narration cooldown held: exactly one
+ * narrator-origin transcript entry, not a second one. `NARRATION_COOLDOWN_MS`
+ * is 5 minutes — far longer than this ride takes — so a bounded post-ride
+ * count is the honest witness here, not a long wait for a cooldown that
+ * cannot possibly have expired yet.
+ */
+export async function expectNarratorDriveRideSetsUpVolWorkspace(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.workspace.openWithNarratorThresholds();
+
+  // The narration turn completes (and the orb flares) while the overlay is
+  // still closed — entries only render once state.open is true, so the orb
+  // is the one witness available before opening it.
+  await ctx.po.jarvis.waitForNarrationFlare();
+
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.ask("set up the vol workspace");
+
+  // The scripted setupWorkspace turn's own streamShowPanelReply spawns this
+  // panel mid-turn — see the doc comment above.
+  await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForReplyDone();
+
+  assertTrue(
+    await ctx.po.workspace.isTabActive("equities"),
+    "expected the equities tab to be active after the drive batch's switchTab command",
+  );
+
+  await ctx.po.layout.waitPanelMaximized(
+    EQ_CHART_PANEL_ID,
+    LAYOUT_MAXIMIZE_TIMEOUT_MS,
+  );
+  await ctx.po.equitiesChart.waitIndicatorActive(
+    "ema50",
+    INDICATOR_ACTIVE_TIMEOUT_MS,
+  );
+  await ctx.po.equitiesChart.waitPaneVisible("rsi", PANE_VISIBLE_TIMEOUT_MS);
+
+  assertTrue(
+    await ctx.po.jarvis.isPanelPresent(SCRIPTED_PANEL_ID),
+    "expected the GBP-volatility desk panel to be present after the setupWorkspace turn",
+  );
+
+  await ctx.po.jarvis.waitForDriveRowCount(EXPECTED_DRIVE_ROW_COUNT);
+
+  assertEquals(
+    await ctx.po.jarvis.narrationEntryCount(),
+    1,
+    "expected exactly one narrator-origin entry — the cooldown must hold for the ride's whole duration",
+  );
 }

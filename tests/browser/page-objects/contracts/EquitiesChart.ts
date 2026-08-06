@@ -2,6 +2,10 @@
  * toggled independently via IndicatorPills.tsx's pane pills. */
 export type EquitiesPaneKind = "rsi" | "macd";
 
+/** The two overlay-line indicators toggled via IndicatorPills.tsx's overlay
+ * pills (SvgPathLayer.tsx renders the actual line). */
+export type EquitiesIndicatorKind = "sma20" | "ema50";
+
 /**
  * The equities interactive candle chart plot (CandleChart) plus its
  * back-to-live lifecycle: panning away from the live edge (ArrowLeft) freezes
@@ -40,6 +44,12 @@ export interface EquitiesChartPO {
   clickPanePill(kind: EquitiesPaneKind): Promise<void>;
   /** Waits for the given pane's root to render (IndicatorPane.tsx). */
   waitPaneVisible(kind: EquitiesPaneKind, timeoutMs: number): Promise<void>;
+  /** Waits for the given SMA20/EMA50 overlay toggle pill
+   *  (IndicatorPills.tsx) to report `data-active="true"`. */
+  waitIndicatorActive(
+    kind: EquitiesIndicatorKind,
+    timeoutMs: number,
+  ): Promise<void>;
   /** A REAL pointer move to the main plot's center — the gesture the pane
    * readout's live value derives from. */
   hoverPlotCenter(): Promise<void>;

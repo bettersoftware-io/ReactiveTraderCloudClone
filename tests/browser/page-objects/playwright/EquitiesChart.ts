@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 import type {
   EquitiesChartPO,
+  EquitiesIndicatorKind,
   EquitiesPaneKind,
 } from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
@@ -33,6 +34,15 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
 
   private pane(kind: EquitiesPaneKind): Locator {
     return this.page.getByTestId(TESTIDS.equities.chart.pane(kind));
+  }
+
+  // Shared testid across both overlay pills (IndicatorPills.tsx) — narrowed
+  // via the sibling `data-ind` attribute, same `.and()` composition as
+  // `panePill` above.
+  private indicatorPill(kind: EquitiesIndicatorKind): Locator {
+    return this.page
+      .getByTestId(TESTIDS.equities.chart.indicatorPill)
+      .and(this.page.locator(`[data-ind="${kind}"]`));
   }
 
   private paneReadout(kind: EquitiesPaneKind): Locator {
@@ -182,5 +192,16 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await expect(this.chartWrap()).toHaveAttribute("data-yscale", mode, {
       timeout: timeoutMs,
     });
+  }
+
+  async waitIndicatorActive(
+    kind: EquitiesIndicatorKind,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.indicatorPill(kind)).toHaveAttribute(
+      "data-active",
+      "true",
+      { timeout: timeoutMs },
+    );
   }
 }
