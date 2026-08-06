@@ -477,16 +477,18 @@ describe("ScriptedJarvisEngine", () => {
     expect(events.at(-1)).toEqual({ type: "done" });
   });
 
-  it("a narration turn emits only deltas + done — no command/panel events (offers-never-executes)", async () => {
+  it("a volSpike ('moved') narration turn emits only deltas + done — no command/panel events (offers-never-executes) — and replies with move-flavored copy", async () => {
     const { deps } = buildDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
     const adapter = new ScriptedJarvisEngine(deps);
 
+    // Real NarratorMachine prompt shape for a volSpike anomaly
+    // (formatNarrationPrompt's "moved" verb).
     const { events, done } = runTurn(
       adapter,
-      "[narration] EURUSD volatility spiking",
+      "[narration] EURUSD moved 2749.3σ over the last window.",
     );
     await done;
 
@@ -495,9 +497,34 @@ describe("ScriptedJarvisEngine", () => {
         return e.type === "command" || e.type === "panel";
       }),
     ).toBe(false);
-    expect(fullText(events)).toContain("EURUSD");
-    expect(fullText(events).endsWith("Shall I set up the vol workspace?")).toBe(
-      true,
+    expect(fullText(events)).toBe(
+      "EURUSD just moved hard, sir. Shall I set up the vol workspace?",
+    );
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("a spreadWidening narration turn replies with spread-flavored copy, not the volSpike copy — spread is spread, never folded into the vol channel (T7 review ruling)", async () => {
+    const { deps } = buildDeps({
+      pairs: KNOWN_CURRENCY_PAIRS,
+      instantReveal$: of(true),
+    });
+    const adapter = new ScriptedJarvisEngine(deps);
+
+    // Real NarratorMachine prompt shape for a spreadWidening anomaly
+    // (formatNarrationPrompt's "spread widened" verb).
+    const { events, done } = runTurn(
+      adapter,
+      "[narration] EURUSD spread widened 2490.0σ over the last window.",
+    );
+    await done;
+
+    expect(
+      events.some((e) => {
+        return e.type === "command" || e.type === "panel";
+      }),
+    ).toBe(false);
+    expect(fullText(events)).toBe(
+      "EURUSD spreads are widening, sir. Shall I set up the vol workspace?",
     );
     expect(events.at(-1)).toEqual({ type: "done" });
   });

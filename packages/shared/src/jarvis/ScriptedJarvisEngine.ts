@@ -112,9 +112,20 @@ const SETUP_WORKSPACE_REPLY =
   "EMA50 and RSI live.";
 
 /** `symbol` is already resolved by `matchJarvisIntent` (a known pair, or its
- * own generic fallback) — this just formats the canned offer copy around it. */
-function describeNarrationReply(symbol: string): string {
-  return `${symbol} volatility is spiking, sir. Shall I set up the vol workspace?`;
+ * own generic fallback) — this formats the canned offer copy around it,
+ * kind-aware from the raw `prompt` NarratorMachine sent
+ * (`formatNarrationPrompt`'s "spread widened" vs "moved" — the T7 review
+ * ruling that the vol channel detects a MOVE, not a rise in "volatility" as
+ * its own quantity, applies equally to the spread channel: spread is spread,
+ * never folded into the vol copy). Falls back to the move-flavored copy for
+ * any narration prompt that names neither verb (e.g. a hand-typed
+ * `[narration]` turn in a test or a future channel). */
+function describeNarrationReply(symbol: string, prompt: string): string {
+  if (/spread widened/i.test(prompt)) {
+    return `${symbol} spreads are widening, sir. Shall I set up the vol workspace?`;
+  }
+
+  return `${symbol} just moved hard, sir. Shall I set up the vol workspace?`;
 }
 
 function describeRestylePanelReply(viz: "heatmap" | "table" | "line"): string {
@@ -327,7 +338,7 @@ export class ScriptedJarvisEngine {
 
     switch (intent.kind) {
       case "narration":
-        await this.reveal(describeNarrationReply(intent.symbol), push);
+        await this.reveal(describeNarrationReply(intent.symbol, text), push);
         return;
       case "greeting":
         await this.reveal(GREETING_REPLY, push);
