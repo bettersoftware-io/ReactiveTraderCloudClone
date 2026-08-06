@@ -183,11 +183,28 @@ export interface JarvisWorld {
    * pushed, mirroring the real port's completion contract. Throws if called
    * before any `ask()` has run (i.e. before `send()`). */
   emit(events: readonly JarvisEvent[]): void;
+  /** Invokes the REAL JarvisMachine's `narrate(prompt)` intent for this
+   * World (Task 12/P5) — the proactive-turn counterpart to driving `send()`
+   * through a mounted `JarvisOverlay`: production's `NarratorMachine` calls
+   * exactly this intent, which opens a turn on `port.ask()` just like
+   * `send()` does (tagging the turn `origin: "narrator"`), so a spec drives
+   * its reply the same way — `emit([...])` on the SAME `current` turn. Each
+   * framework's `viewModelFromWorld` driver registers the real machine's
+   * `intents.narrate` here (see {@link registerNarrate}) the first time it
+   * builds the machine over this World (mirrors `jarvisMachines`'
+   * per-World cache) — calling `narrate()` before any Jarvis-consuming
+   * component has mounted throws, the same "not wired up yet" guard as
+   * `emit()`'s own "ask() not opened" check. */
+  narrate(prompt: string): void;
+  /** Registration seam for the framework driver's `getJarvisMachine` — not
+   * meant to be called from a spec directly. See {@link narrate}'s doc. */
+  registerNarrate(fn: (prompt: string) => void): void;
 }
 
 function createJarvisWorld(): JarvisWorld {
   const confirms: Array<[string, boolean]> = [];
   let current: Subject<JarvisEvent> | null = null;
+  let narrateImpl: ((prompt: string) => void) | null = null;
 
   const port: JarvisPort = {
     ask(_text: string): Observable<JarvisEvent> {
@@ -216,7 +233,23 @@ function createJarvisWorld(): JarvisWorld {
     }
   }
 
-  return { port, confirms, emit };
+  function narrate(prompt: string): void {
+    if (!narrateImpl) {
+      throw new Error(
+        "world.jarvis.narrate() called before a Jarvis-consuming component " +
+          "registered the real machine — mount something that reads " +
+          "useJarvis()/useJarvisPreferences() (e.g. JarvisOrb/JarvisOverlay) first.",
+      );
+    }
+
+    narrateImpl(prompt);
+  }
+
+  function registerNarrate(fn: (prompt: string) => void): void {
+    narrateImpl = fn;
+  }
+
+  return { port, confirms, emit, narrate, registerNarrate };
 }
 
 /** Seed values for the ADMIN / telemetry hooks (Phase 5). */

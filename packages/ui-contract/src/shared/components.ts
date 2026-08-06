@@ -173,6 +173,7 @@ import {
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import { JarvisDriverPage } from "./pages/shell/jarvis/JarvisDriverPage";
 import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
 import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
 import { JarvisPanelLayerPage } from "./pages/shell/jarvis/JarvisPanelLayerPage";
@@ -436,6 +437,15 @@ export const StatusBar = component<Record<string, never>, StatusBarPage>(
 export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
   (ctx) => {
     return new HeaderChromePage(ctx);
+  },
+);
+
+/** The full `App` shell, mounted whole (Task 12/P5) — see `JarvisDriverPage`'s
+ * own doc for why this is the one page object that mounts production's
+ * top-level composition rather than a leaf/synthetic composite. */
+export const AppShell = component<Record<string, never>, JarvisDriverPage>(
+  (ctx) => {
+    return new JarvisDriverPage(ctx);
   },
 );
 

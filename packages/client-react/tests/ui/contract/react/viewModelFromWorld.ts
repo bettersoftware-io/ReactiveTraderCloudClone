@@ -1,18 +1,27 @@
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { BehaviorSubject, EMPTY, type Observable, of, throwError } from "rxjs";
-import { catchError } from "rxjs/operators";
+import { catchError, map } from "rxjs/operators";
 
 import type {
+  DriveOutcome,
+  JarvisDriverMachineHandle,
   JarvisMachineHandle,
   JarvisPanelVm,
+  LayoutIntents,
+  LayoutNode,
+  LayoutState,
+  Machine,
   PanelData,
   RfqSubmissionState,
   TicketSubmissionState,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
 } from "@rtc/client-core";
 import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
@@ -23,6 +32,7 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  createWorkspaceNavMachine,
   JarvisPanelsPresenter,
   type WorkspaceTab,
 } from "@rtc/client-core";
@@ -152,9 +162,155 @@ function getJarvisMachine(world: World): JarvisMachineHandle {
       effort$: world.jarvisEffort,
     });
     jarvisMachines.set(world, machine);
+    // Register this World's real narrate() intent (Task 12/P5) so
+    // world.jarvis.narrate(prompt) — a spec's proactive-turn counterpart to
+    // driving send() through a mounted overlay — routes to the SAME machine
+    // instance every other Jarvis-consuming component on this World shares.
+    // See JarvisWorld.narrate's doc in world.ts.
+    world.jarvis.registerNarrate(machine.intents.narrate);
   }
 
   return machine;
+}
+
+/** Every `PanelId` reachable in one layout tree, walked from its root — a
+ * `"panel"` leaf contributes its own id, a `"split"` node contributes its
+ * children's. Mirrors `composition.ts`'s own `collectPanelIds` (private
+ * there) — this test-only fixture keeps its own copy rather than reaching
+ * into `@rtc/client-core`'s composition-root internals, exactly like
+ * `JarvisPanelLayer.contract.spec.ts` keeps its own copy of
+ * `ScriptedJarvisEngine`'s module-private `SCRIPTED_PANEL_ID`. */
+function collectPanelIds(node: LayoutNode): readonly string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(collectPanelIds);
+}
+
+/** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source (Task 12/P5) —
+ * the static panel ids in `tab`'s DEFAULT layout tree, mirroring
+ * `composition.ts`'s `LAYOUT_PANEL_IDS`. Computed fresh per call (no
+ * module-load cache, unlike composition.ts's optimization) since a test
+ * fixture's call volume never warrants it. */
+function knownLayoutPanelIds(tab: WorkspaceTab): readonly string[] {
+  return collectPanelIds(createDefaultLayoutPort(tab).initial.root);
+}
+
+/** The REAL `createWorkspaceNavMachine`, one shared instance PER WORLD —
+ * same per-World-singleton doctrine as `jarvisMachines` above (Task 12/P5).
+ * `App.tsx`'s own promoted composition-root singleton (`Presenters.
+ * workspaceNav`) is the production mirror of this cache: a driven
+ * `"switchTab"` command targets the SAME instance a mounted `AppShell`'s
+ * `useWorkspaceNav()` reads from. */
+const workspaceNavs = new WeakMap<
+  World,
+  Machine<WorkspaceNavState, WorkspaceNavIntents>
+>();
+
+function getWorkspaceNav(
+  world: World,
+): Machine<WorkspaceNavState, WorkspaceNavIntents> {
+  let machine = workspaceNavs.get(world);
+
+  if (!machine) {
+    machine = createWorkspaceNavMachine();
+    workspaceNavs.set(world, machine);
+  }
+
+  return machine;
+}
+
+/** The REAL per-tab `createLayoutMachine` SINGLETON map, one map PER WORLD —
+ * mirrors `composition.ts`'s `layoutFor` (Task 12/P5): a driven `"layout"`
+ * command (via `JarvisDriverMachine`'s `layout` dep, wired below) targets the
+ * EXACT instance a mounted `AppShell`'s `useLayout(tab)` reads from, instead
+ * of a throwaway per-mount machine nothing else observes (the Task 6 review
+ * defect `composition.ts`'s own `layoutFor` doc describes). Built lazily,
+ * one entry per tab, on first request — cheap either way (4-entry cap). */
+const layoutHandles = new WeakMap<
+  World,
+  Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>
+>();
+
+function getLayoutFor(
+  world: World,
+  tab: WorkspaceTab,
+): Machine<LayoutState, LayoutIntents> {
+  let byTab = layoutHandles.get(world);
+
+  if (!byTab) {
+    byTab = new Map();
+    layoutHandles.set(world, byTab);
+  }
+
+  let machine = byTab.get(tab);
+
+  if (!machine) {
+    machine = createLayoutMachine(createDefaultLayoutPort(tab));
+    byTab.set(tab, machine);
+  }
+
+  return machine;
+}
+
+/** The REAL `createJarvisDriverMachine`, one shared instance PER WORLD
+ * (Task 12/P5) — mirrors `jarvisMachines`/`jarvisPanelsBridges`'s per-World
+ * cache. Built from the SAME `getJarvisMachine(world).events$` the panels
+ * bridge above reads (both guarded with the identical `catchError(() =>
+ * EMPTY)`, mirroring `composition.ts`'s doc for why both folds need the
+ * source guarded independently), targeting `getWorkspaceNav`/`getLayoutFor`
+ * above and `world.eqWorkspace` — the SAME singletons a mounted `AppShell`
+ * reads from, so a driven command is observable through the real UI exactly
+ * like production. Also wires `outcomes$` into
+ * `getJarvisMachine(world).intents.recordDriveOutcome` (composition.ts's own
+ * late-bound subscription, reproduced here) so applied commands fold into
+ * the transcript as `"drive: <kind>"` rows. */
+const jarvisDrivers = new WeakMap<World, JarvisDriverMachineHandle>();
+
+function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
+  let driver = jarvisDrivers.get(world);
+
+  if (!driver) {
+    const machine = getJarvisMachine(world);
+    driver = createJarvisDriverMachine({
+      events$: machine.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+      workspaceNav: getWorkspaceNav(world),
+      layout: (tab: WorkspaceTab) => {
+        return getLayoutFor(world, tab);
+      },
+      eqWorkspace: world.eqWorkspace,
+      setThemeSkin: (skin: ThemeSkin) => {
+        world.themeSkin.next(skin);
+      },
+      setPowerSaver: (level: PowerSaverLevel) => {
+        world.powerSaverLevel.next(level);
+      },
+      dismissPanel: (panelId: string) => {
+        getJarvisPanelsBridge(world).dismissPanel(panelId);
+      },
+      knownLayoutPanelIds,
+      knownSymbols$: world.watchlist.pipe(
+        map((list) => {
+          return list.map((instrument) => {
+            return instrument.symbol;
+          });
+        }),
+      ),
+      powerSaverLevel$: world.powerSaverLevel,
+    });
+    jarvisDrivers.set(world, driver);
+
+    driver.outcomes$.subscribe((outcome: DriveOutcome) => {
+      machine.intents.recordDriveOutcome(outcome);
+    });
+  }
+
+  return driver;
 }
 
 /**
@@ -698,10 +854,14 @@ export function reactViewModel(world: World): ViewModel {
     useAnimationIntents: (target: string) => {
       return useSubject(world.intentFor(target));
     },
+    // Layout: the REAL per-tab createLayoutMachine SINGLETON (Task 12/P5,
+    // getLayoutFor above) rather than a fresh per-mount instance — a driven
+    // "layout" DriveCommand and a mounted AppShell's own useLayout(tab) now
+    // read/write the SAME machine, mirroring composition.ts's layoutFor.
     useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return createLayoutMachine(createDefaultLayoutPort(tab));
-      });
+      const machine = getLayoutFor(world, tab);
+      const state = useMachineState(machine.state$);
+      return { state, ...machine.intents };
     },
     // Boot sequence: no contract spec exercises the boot sequence in Phase 2;
     // use the REAL machine with a fixed "core" variant and noop advance so it
@@ -835,30 +995,24 @@ export function reactViewModel(world: World): ViewModel {
       const bridge = getJarvisPanelsBridge(world);
       return useSubject(bridge.panelData$(panelId));
     },
-    // Jarvis drive-the-app interpreter's outcomes (Task 10) — a static empty
-    // filler, mirroring Task 8's minimal-plumbing precedent for a field no
-    // CURRENT contract spec drives through World. HeaderChrome's own
-    // driven-pulse cue reads this (see useJarvisDrivenPulse.ts) so it must
-    // satisfy the shape and never crash — it just never actually pulses in
-    // this harness today. A later task adding a driven-pulse contract spec
-    // will need a real World-backed jarvisDriver, the same way
-    // world.eqWorkspace/getJarvisMachine are wired above.
+    // Jarvis drive-the-app interpreter's outcomes (Task 12/P5): the REAL
+    // createJarvisDriverMachine (getJarvisDriverMachine above), one shared
+    // instance per World — a driven batch's lastBatch is now genuinely
+    // observable, including by HeaderChrome's/AppShell's own driven-pulse
+    // cue (useJarvisDrivenPulse.ts).
     useJarvisDriver: () => {
-      return { lastBatch: [] };
+      const driver = getJarvisDriverMachine(world);
+      return useMachineState(driver.state$);
     },
-    // The app's active workspace tab (Task 10) — a plain local useState, not
-    // wired to World: no CURRENT contract spec mounts App.tsx itself (only
-    // individual leaf components, e.g. HeaderChrome directly with its own
-    // activeTab/onTabChange props), so nothing exercises this beyond
-    // satisfying the ViewModel type.
+    // The app's active workspace tab (Task 12/P5): the REAL
+    // createWorkspaceNavMachine SINGLETON (getWorkspaceNav above), mirroring
+    // composition.ts's promoted workspaceNav — reachable now from a driven
+    // "switchTab" command, and shared by every component reading
+    // useWorkspaceNav() through this World (e.g. a mounted AppShell).
     useWorkspaceNav: () => {
-      const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
-      return {
-        state: { activeTab },
-        switchTab: (tab: WorkspaceTab) => {
-          setActiveTab(tab);
-        },
-      };
+      const machine = getWorkspaceNav(world);
+      const state = useMachineState(machine.state$);
+      return { state, switchTab: machine.intents.switchTab };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

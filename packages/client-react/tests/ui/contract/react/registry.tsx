@@ -6,6 +6,7 @@ import {
   AnalyticsHead,
   AnalyticsPanel,
   AnimationProbe,
+  AppShell,
   AuthGate,
   BlotterHeader,
   BlotterRow,
@@ -127,6 +128,7 @@ import type {
   Trade,
 } from "@rtc/domain";
 
+import { App } from "#/ui/App";
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
@@ -698,6 +700,12 @@ export const registry = new Map<AnyToken, ElementFor>([
           }
         />
       );
+    },
+  ],
+  [
+    AppShell,
+    (): ReactElement => {
+      return <App />;
     },
   ],
   [

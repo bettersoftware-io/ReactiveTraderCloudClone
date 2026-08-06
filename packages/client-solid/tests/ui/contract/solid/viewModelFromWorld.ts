@@ -2,23 +2,31 @@ import { state } from "@rx-state/core";
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
 import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
-import { catchError } from "rxjs/operators";
+import { catchError, map } from "rxjs/operators";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type {
+  DriveOutcome,
+  JarvisDriverMachineHandle,
   JarvisDriverState,
   JarvisMachineHandle,
   JarvisPanelVm,
+  LayoutIntents,
+  LayoutNode,
+  LayoutState,
+  Machine,
   PanelData,
   RfqSubmissionState,
   TicketSubmissionState,
+  WorkspaceNavIntents,
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/client-core";
 import {
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
@@ -29,6 +37,7 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  createWorkspaceNavMachine,
   JarvisPanelsPresenter,
 } from "@rtc/client-core";
 import type {
@@ -135,9 +144,138 @@ function getJarvisMachine(world: World): JarvisMachineHandle {
       effort$: world.jarvisEffort,
     });
     jarvisMachines.set(world, machine);
+    // Register this World's real narrate() intent (Task 12/P5) so
+    // world.jarvis.narrate(prompt) — a spec's proactive-turn counterpart to
+    // driving send() through a mounted overlay — routes to the SAME machine
+    // instance every other Jarvis-consuming component on this World shares.
+    // See JarvisWorld.narrate's doc in world.ts.
+    world.jarvis.registerNarrate(machine.intents.narrate);
   }
 
   return machine;
+}
+
+/** Every `PanelId` reachable in one layout tree — mirrors the react driver's
+ * own copy (Task 12/P5), which itself mirrors `composition.ts`'s
+ * module-private `collectPanelIds`. */
+function collectPanelIds(node: LayoutNode): readonly string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(collectPanelIds);
+}
+
+/** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source (Task 12/P5) —
+ * mirrors the react driver's own copy. */
+function knownLayoutPanelIds(tab: WorkspaceTab): readonly string[] {
+  return collectPanelIds(createDefaultLayoutPort(tab).initial.root);
+}
+
+/** The REAL `createWorkspaceNavMachine`, one shared instance PER WORLD
+ * (Task 12/P5) — mirrors `jarvisMachines`/`getJarvisPanelsPresenter`'s
+ * per-World cache, and the react driver's own `workspaceNavs`. `App.tsx`'s
+ * promoted composition-root singleton (`Presenters.workspaceNav`) is the
+ * production mirror: a driven `"switchTab"` command targets the SAME
+ * instance a mounted `AppShell`'s `useWorkspaceNav()` reads from. */
+const workspaceNavs = new WeakMap<
+  World,
+  Machine<WorkspaceNavState, WorkspaceNavIntents>
+>();
+
+function getWorkspaceNav(
+  world: World,
+): Machine<WorkspaceNavState, WorkspaceNavIntents> {
+  let machine = workspaceNavs.get(world);
+
+  if (!machine) {
+    machine = createWorkspaceNavMachine();
+    workspaceNavs.set(world, machine);
+  }
+
+  return machine;
+}
+
+/** The REAL per-tab `createLayoutMachine` SINGLETON map, one map PER WORLD
+ * (Task 12/P5) — mirrors `composition.ts`'s `layoutFor` and the react
+ * driver's own `layoutHandles`: a driven `"layout"` command targets the
+ * EXACT instance a mounted `AppShell`'s `useLayout(tab)` reads from. */
+const layoutHandles = new WeakMap<
+  World,
+  Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>
+>();
+
+function getLayoutFor(
+  world: World,
+  tab: WorkspaceTab,
+): Machine<LayoutState, LayoutIntents> {
+  let byTab = layoutHandles.get(world);
+
+  if (!byTab) {
+    byTab = new Map();
+    layoutHandles.set(world, byTab);
+  }
+
+  let machine = byTab.get(tab);
+
+  if (!machine) {
+    machine = createLayoutMachine(createDefaultLayoutPort(tab));
+    byTab.set(tab, machine);
+  }
+
+  return machine;
+}
+
+/** The REAL `createJarvisDriverMachine`, one shared instance PER WORLD
+ * (Task 12/P5) — mirrors the react driver's own `jarvisDrivers` cache; see
+ * that file's doc for the full wiring rationale (same catchError/EMPTY
+ * guard on `events$`, same late-bound `outcomes$` → `recordDriveOutcome`
+ * subscription). */
+const jarvisDrivers = new WeakMap<World, JarvisDriverMachineHandle>();
+
+function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
+  let driver = jarvisDrivers.get(world);
+
+  if (!driver) {
+    const machine = getJarvisMachine(world);
+    driver = createJarvisDriverMachine({
+      events$: machine.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+      workspaceNav: getWorkspaceNav(world),
+      layout: (tab: WorkspaceTab) => {
+        return getLayoutFor(world, tab);
+      },
+      eqWorkspace: world.eqWorkspace,
+      setThemeSkin: (skin: ThemeSkin) => {
+        world.themeSkin.next(skin);
+      },
+      setPowerSaver: (level: PowerSaverLevel) => {
+        world.powerSaverLevel.next(level);
+      },
+      dismissPanel: (panelId: string) => {
+        getJarvisPanelsPresenter(world).dismissPanel(panelId);
+      },
+      knownLayoutPanelIds,
+      knownSymbols$: world.watchlist.pipe(
+        map((list) => {
+          return list.map((instrument) => {
+            return instrument.symbol;
+          });
+        }),
+      ),
+      powerSaverLevel$: world.powerSaverLevel,
+    });
+    jarvisDrivers.set(world, driver);
+
+    driver.outcomes$.subscribe((outcome: DriveOutcome) => {
+      machine.intents.recordDriveOutcome(outcome);
+    });
+  }
+
+  return driver;
 }
 
 /** The REAL `JarvisPanelsPresenter` (Task 9), one shared instance PER WORLD
@@ -647,10 +785,13 @@ export function solidViewModel(world: World): ViewModel {
     useAnimationIntents: (target: string) => {
       return wrapSubject(world.intentFor(target));
     },
+    // Layout: the REAL per-tab createLayoutMachine SINGLETON (Task 12/P5,
+    // getLayoutFor above) rather than a fresh per-mount instance — a driven
+    // "layout" DriveCommand and a mounted AppShell's own useLayout(tab) now
+    // read/write the SAME machine, mirroring composition.ts's layoutFor.
     useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return createLayoutMachine(createDefaultLayoutPort(tab));
-      });
+      const machine = getLayoutFor(world, tab);
+      return { state: toSignal(machine.state$), ...machine.intents };
     },
     // Boot sequence: no contract spec exercises the boot sequence beyond its
     // own BootSequence.contract.spec.ts (Task 9); use the REAL machine with a
@@ -730,20 +871,16 @@ export function solidViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
-    // The app's active workspace tab (Task 10/11) — a plain local
-    // createSignal, not wired to World: no CURRENT contract spec mounts
-    // App.tsx itself (only individual leaf components, e.g. HeaderChrome
-    // directly with its own activeTab/onTabChange props), so nothing
-    // exercises this beyond satisfying the ViewModel type.
+    // The app's active workspace tab (Task 12/P5): the REAL
+    // createWorkspaceNavMachine SINGLETON (getWorkspaceNav above), mirroring
+    // composition.ts's promoted workspaceNav — reachable now from a driven
+    // "switchTab" command, and shared by every component reading
+    // useWorkspaceNav() through this World (e.g. a mounted AppShell).
     useWorkspaceNav: () => {
-      const [navState, setNavState] = createSignal<WorkspaceNavState>({
-        activeTab: "fx",
-      });
+      const machine = getWorkspaceNav(world);
       return {
-        state: navState,
-        switchTab: (tab: WorkspaceTab) => {
-          setNavState({ activeTab: tab });
-        },
+        state: toSignal(machine.state$),
+        switchTab: machine.intents.switchTab,
       };
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
@@ -823,18 +960,14 @@ export function solidViewModel(world: World): ViewModel {
         state(presenter.panelData$(panelId), null as PanelData | null),
       );
     },
-    // Jarvis drive-the-app interpreter's outcomes (Task 10/11) — a static
-    // empty filler, mirroring the react driver's minimal-plumbing precedent
-    // for a field no CURRENT contract spec drives through World. The
-    // driven-pulse cue reads this (see useJarvisDrivenPulse.ts) so it must
-    // satisfy the shape and never crash — it just never actually pulses in
-    // this harness today. A later spec adding a driven-pulse contract case
-    // will need a real World-backed jarvisDriver, the same way
-    // world.eqWorkspace/getJarvisMachine are wired above.
-    useJarvisDriver: () => {
-      return (): JarvisDriverState => {
-        return { lastBatch: [] };
-      };
+    // Jarvis drive-the-app interpreter's outcomes (Task 12/P5): the REAL
+    // createJarvisDriverMachine (getJarvisDriverMachine above), one shared
+    // instance per World — a driven batch's lastBatch is now genuinely
+    // observable, including by HeaderChrome's/AppShell's own driven-pulse
+    // cue (useJarvisDrivenPulse.ts).
+    useJarvisDriver: (): Accessor<JarvisDriverState> => {
+      const driver = getJarvisDriverMachine(world);
+      return toSignal(driver.state$);
     },
     useTopology: () => {
       return wrapSubject(world.topology$);
