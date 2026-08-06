@@ -1211,6 +1211,48 @@ describe("editDrag (drag-edit fork)", () => {
     expect(result.current.draft).not.toBeNull();
     expect(result.current.editDrag).toBeNull();
   });
+
+  it("a pointer-down on a button descendant never consults hitGrip (button guard runs first)", () => {
+    // Pins the GUARD ORDER, not just the guard's existence: unlike the
+    // plain "lands on a nested button" test above (which mounts with no
+    // draw slots at all), this one mounts WITH a cursor-tool hitGrip that
+    // would happily return a grip — so if a future refactor ever hoisted
+    // the grip check above the button guard, this is the test that would
+    // catch it. Failure scenario it insures against: a selected drawing's
+    // handle sitting under the BACK TO LIVE pill — a pointer-down there
+    // would open an editDrag and capture-swallow the pill's click.
+    const grip: DrawingGrip = { id: "d1", part: "b" };
+    const hitGrip = vi.fn().mockReturnValue(grip);
+    const draw = drawSlots({ tool: "cursor", hitGrip });
+    const { result } = renderHook(() => {
+      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    });
+    const setPointerCapture = vi.fn();
+    const event = {
+      pointerId: 9,
+      clientX: 10,
+      clientY: 10,
+      target: {
+        closest: (selector: string) => {
+          return selector === "button" ? {} : null;
+        },
+      },
+      currentTarget: {
+        setPointerCapture,
+        getBoundingClientRect: (): DOMRect => {
+          return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
+        },
+      } as unknown as HTMLDivElement,
+    } as unknown as ReactPointerEvent<HTMLDivElement>;
+
+    act(() => {
+      result.current.plotProps.onPointerDown(event);
+    });
+
+    expect(hitGrip).not.toHaveBeenCalled();
+    expect(result.current.editDrag).toBeNull();
+    expect(setPointerCapture).not.toHaveBeenCalled();
+  });
 });
 
 /** Builds a full `DrawGestureSlots`, every handler stubbed with a no-op
