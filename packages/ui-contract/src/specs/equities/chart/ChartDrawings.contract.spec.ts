@@ -372,10 +372,12 @@ describe("Drawing tools — drag-edit (ChartPanel, shared eqDrawings)", () => {
     // "body" grip, not a handle.
     const midXFrac = (x1 + x2) / 2 / 100;
     const midYFrac = (y1 + y2) / 2 / 100;
+    const dxFrac = 0.15;
+    const dyFrac = -0.1;
 
     panel.plotPointerDown(midXFrac, midYFrac);
-    panel.plotPointerMove(midXFrac + 0.15, midYFrac - 0.1);
-    panel.plotPointerUp(midXFrac + 0.15, midYFrac - 0.1);
+    panel.plotPointerMove(midXFrac + dxFrac, midYFrac + dyFrac);
+    panel.plotPointerUp(midXFrac + dxFrac, midYFrac + dyFrac);
 
     const newX1 = Number(panel.drawingAttr(0, "x1"));
     const newY1 = Number(panel.drawingAttr(0, "y1"));
@@ -394,6 +396,24 @@ describe("Drawing tools — drag-edit (ChartPanel, shared eqDrawings)", () => {
 
     expect(Math.abs(newX2 - newX1 - (x2 - x1))).toBeLessThan(EPSILON);
     expect(Math.abs(newY2 - newY1 - (y2 - y1))).toBeLessThan(EPSILON);
+
+    // Shape alone doesn't pin MAGNITUDE — a double-application bug (e.g.
+    // committing off the already-dragged preview instead of the original
+    // committed drawing) would double the offset while leaving the
+    // segment's own shape untouched, and both assertions above would still
+    // pass. Pin the actual displacement against the pointer's OWN delta:
+    // dragDrawing's body branch is a rigid translate of exactly
+    // round(dxFrac*span) candles and dyFrac*100 percent, applied ONCE.
+    // DEFAULT_VISIBLE doubles as the span here — this test never pans, so
+    // the viewport stays exactly {240,300} (a 60-candle span) throughout.
+    const expectedXShift =
+      (Math.round(dxFrac * DEFAULT_VISIBLE) / DEFAULT_VISIBLE) * 100;
+    const expectedYShift = dyFrac * 100;
+
+    expect(newX1 - x1).toBeCloseTo(expectedXShift, 2);
+    expect(newX2 - x2).toBeCloseTo(expectedXShift, 2);
+    expect(newY1 - y1).toBeCloseTo(expectedYShift, 2);
+    expect(newY2 - y2).toBeCloseTo(expectedYShift, 2);
   });
 
   it("Escape mid-drag reverts to the committed geometry byte-for-byte", async () => {
@@ -433,7 +453,7 @@ describe("Drawing tools — drag-edit (ChartPanel, shared eqDrawings)", () => {
   });
 
   it("a no-move tap on a handle keeps the selection (the deselect trap)", async () => {
-    const { head, panel } = mountPillWorkspace();
+    const { head, panel, world } = mountPillWorkspace();
 
     await head.setDrawTool("trendline");
     panel.setProps({});
@@ -443,17 +463,64 @@ describe("Drawing tools — drag-edit (ChartPanel, shared eqDrawings)", () => {
 
     expect(panel.drawingAttr(0, "data-selected")).toBe("true");
 
-    const bxFrac = Number(panel.drawingAttr(0, "x2")) / 100;
-    const byFrac = Number(panel.drawingAttr(0, "y2")) / 100;
+    const x1 = Number(panel.drawingAttr(0, "x1"));
+    const y1 = Number(panel.drawingAttr(0, "y1"));
+    const x2 = Number(panel.drawingAttr(0, "x2"));
+    const y2 = Number(panel.drawingAttr(0, "y2"));
+
+    // Self-documenting geometry: the trap only bites at a point where the
+    // HANDLE test hits (≤2.5%) but the plain click/body test would MISS
+    // (>1.5%) — tapping the endpoint itself (dist 0 from both) can't
+    // exercise that gap. Move OUT along the segment's own direction, past
+    // the b endpoint: for a point beyond the endpoint, point-to-segment
+    // distance clamps to point-to-endpoint distance, so handle dist and
+    // body dist are the SAME number — pick that number between the two
+    // tolerances. Computed from the drawing's own rendered geometry, not
+    // guessed, and asserted below (mirrors the pan case's own guard).
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const segLen = Math.hypot(dx, dy);
+    const OFFSET_PCT = 2;
+    const tapX = x2 + (dx / segLen) * OFFSET_PCT;
+    const tapY = y2 + (dy / segLen) * OFFSET_PCT;
+
+    const handleDist = Math.hypot(tapX - x2, tapY - y2);
+    const bodyDist = distanceToSegment(tapX, tapY, x1, y1, x2, y2);
+
+    expect(handleDist).toBeLessThanOrEqual(2.5);
+    expect(bodyDist).toBeGreaterThan(1.5);
+
+    const bxFrac = tapX / 100;
+    const byFrac = tapY / 100;
+
+    // The load-bearing assertion is on the underlying machine INTENT, not
+    // just the resulting `data-selected` value: grabbing an "a"/"b" handle
+    // opens an editDrag preview that projects the grabbed endpoint to
+    // wherever the pointer CURRENTLY is (dragDrawing's endpoint branch is
+    // an ABSOLUTE reprojection, not a from→to delta) — and that preview is
+    // already live by the time this pointer-up's fall-through click (were
+    // it to fire) would hit-test, so a fall-through click would very
+    // likely re-select the SAME drawing anyway (its own preview has
+    // already snapped to within a candle-width of the tap point). A
+    // `data-selected==="true"` check alone can't tell "kept selected via
+    // editDrag's early return" apart from "deselected, then silently
+    // reselected via that self-referential fallback" — verified empirically
+    // (see task-6-report.md's mutation-check notes). Spying on the real
+    // machine's `selectDrawing` intent sidesteps that entirely: it must
+    // NEVER be invoked by a no-move tap, regardless of what it would have
+    // been invoked WITH.
+    const selectDrawingSpy = vi.spyOn(
+      world.eqDrawings.intents,
+      "selectDrawing",
+    );
 
     // Down and up at the EXACT same point (0px excursion, well under
-    // CLICK_MAX_PX): endDrag's editDrag branch returns without falling
-    // through to onPlotClick, so this must not deselect — the handle
-    // tolerance (2.5%) is looser than the body tolerance (1.5%) a
-    // fall-through click would test instead.
+    // CLICK_MAX_PX): endDrag's editDrag branch must return without falling
+    // through to onPlotClick.
     panel.plotPointerDown(bxFrac, byFrac);
     panel.plotPointerUp(bxFrac, byFrac);
 
+    expect(selectDrawingSpy).not.toHaveBeenCalled();
     expect(panel.drawingAttr(0, "data-selected")).toBe("true");
   });
 
