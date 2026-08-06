@@ -10,10 +10,20 @@ Run the local gate gauntlet. Argument: `$ARGUMENTS` (empty → fast tier, `full`
 
 !`awk '/^  checks:/,/^  e2e:/' .github/workflows/ci.yml | grep -E "^\s+- name:" | sed 's/.*- name: //' | grep -viE "corepack|store path|cache the|install dependencies|checkout|setup-node"`
 
-**Before running anything**, compare that list against the two tiers below. If CI
-has a step that appears in neither tier, say so loudly and run it anyway — a
-gauntlet that has silently stopped mirroring CI is worse than no gauntlet. This
-repo already runs four drift checks; this is the same idea applied to itself.
+**Before running anything**, account for every step in that list. Walk it top to
+bottom and name, for each step, the tier command that covers it — or `UNMAPPED`,
+or the explicit skip reason. Do not eyeball the two lists side by side and
+declare them equivalent: `check:prototype-shots` was a CI gate absent from both
+tiers for an unknown stretch, and each free-form comparison read as "looks
+right". Emit the mapping as a compact list, then run every `UNMAPPED` step
+anyway and report it loudly — a gauntlet that has silently stopped mirroring CI
+is worse than no gauntlet. This repo already runs four drift checks; this is the
+same idea applied to itself.
+
+Only two steps may be skipped locally, and only for the reasons given here:
+**Expo bundle smoke** (Metro monorepo resolution — belongs on a clean runner)
+and, in the fast tier, everything listed under **Full tier**. Anything else
+unmapped is drift, not a judgement call.
 
 The list is scoped to the **`checks` job only**. An earlier version grepped the
 whole workflow and so flagged the three `e2e`-job steps (`Install Playwright
@@ -22,6 +32,10 @@ run. A drift check that always fires is one you learn to ignore — which is
 exactly the failure it exists to prevent.
 
 ## Fast tier — default, ~50s, no build required
+
+> **Adding or removing a gate below?** `CLAUDE.md`'s `/rtc:gauntlet` row states
+> the fast-gate count in prose and nothing verifies it — it has already gone
+> stale twice (14 → 15 → 18 → 19). Update it in the same commit.
 
 Run in this order and stop reporting nothing until all have run (run them all
 even if one fails — a single command's failure is not a reason to skip the rest):
@@ -34,6 +48,7 @@ pnpm lint:css                           # stylelint
 pnpm lint:actions                       # actionlint
 pnpm check:doc-links                    # md links + anchors
 pnpm check:manifest-drift               # presenter manifest, web ↔ RN
+pnpm check:prototype-shots              # prototype deviation corpus, manifest ↔ tree
 pnpm check:image-tag-drift              # Playwright image pin
 pnpm check:versions                     # manypkg + syncpack
 pnpm check:scripts                      # every package wired to the gates

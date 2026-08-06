@@ -99,6 +99,8 @@ import type { ReactElement } from "react";
 import type {
   ColumnFilter,
   EqChartType,
+  EqDrawing,
+  EqDrawTool,
   EqIndicatorId,
   EqPaneId,
   EqYScale,
@@ -869,6 +871,19 @@ export const registry = new Map<AnyToken, ElementFor>([
           loadingOlder={(p.loadingOlder as boolean) ?? false}
           historyExhausted={(p.historyExhausted as boolean) ?? false}
           onLoadOlder={(p.onLoadOlder as () => void) ?? ((): void => {})}
+          drawTool={p.drawTool as EqDrawTool | undefined}
+          drawings={p.drawings as readonly EqDrawing[] | undefined}
+          selectedDrawingId={p.selectedDrawingId as string | null | undefined}
+          onCommitDrawing={
+            p.onCommitDrawing as ((drawing: EqDrawing) => void) | undefined
+          }
+          onSelectDrawing={
+            p.onSelectDrawing as ((id: string | null) => void) | undefined
+          }
+          onDeleteSelected={p.onDeleteSelected as (() => void) | undefined}
+          onShiftAnchors={
+            p.onShiftAnchors as ((by: number) => void) | undefined
+          }
         />
       );
     },

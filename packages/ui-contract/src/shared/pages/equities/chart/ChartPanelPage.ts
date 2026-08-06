@@ -1,7 +1,11 @@
-import { waitFor, within } from "@testing-library/dom";
+import { fireEvent, waitFor, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
 import type { EqPaneId } from "@rtc/client-core";
+
+import { STUB_RECT } from "./CandleChartPage";
+
+const PLOT_TESTID = "chart-plot";
 
 /**
  * Page object for ChartPanel: the body composing InstrumentHeader +
@@ -121,5 +125,107 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
         );
       }
     });
+  }
+
+  /** Whether any chart-drawing (trendline/hline) is currently rendered in
+   * the chart column — the drawings-machine counterpart of {@link
+   * paneVisible}, used by the drawings contract's symbol-isolation case
+   * (ChartDrawings.contract.spec.ts): a drawing is per-symbol, so switching
+   * the shared eqWorkspace selection away from the drawn symbol should make
+   * this go false, and true again on switching back. */
+  drawingVisible(): boolean {
+    return this.root.querySelector('[data-testid="chart-drawing"]') !== null;
+  }
+
+  /** Every rendered chart-drawing's `data-kind` ("trendline" | "hline"), in
+   * DOM order — the drawings-machine counterpart of {@link paneOrder}. */
+  drawingKinds(): string[] {
+    return Array.from(
+      this.root.querySelectorAll('[data-testid="chart-drawing"]'),
+    ).map((el) => {
+      return el.getAttribute("data-kind") ?? "";
+    });
+  }
+
+  /** The i-th rendered drawing's given attribute (e.g. "x1", "y1") — mirrors
+   * CandleChartPage.drawingAttr, needed by the prepend/live-append
+   * anchor-shift regression case (ChartDrawings.contract.spec.ts): that case
+   * draws through ChartPanel's own plot (not a standalone CandleChart mount)
+   * so the drawing's `sym` key comes from the real eqWorkspace selection. */
+  drawingAttr(i: number, name: string): string | null {
+    return (
+      Array.from(this.root.querySelectorAll('[data-testid="chart-drawing"]'))[
+        i
+      ]?.getAttribute(name) ?? null
+    );
+  }
+
+  /** Dispatches a pointerdown on the panel's OWN rendered chart plot — the
+   * drawings contract's symbol-isolation and pill-drawing cases need to
+   * draw through ChartPanel's real CandleChart (not a standalone mount), so
+   * the committed drawing's `sym` key comes from the shared eqWorkspace
+   * selection, not a spec-supplied literal. Mirrors
+   * CandleChartPage.pointerDown's coordinate math against the same stubbed
+   * rect (imported, not re-declared) — an hline commits immediately on
+   * pointerdown (useChartGestures.startDrag), so no matching pointerUp is
+   * needed for that tool. */
+  plotPointerDown(xFrac: number, yFrac: number): void {
+    const plot = this.plot();
+    const rect = plot.getBoundingClientRect();
+    fireEvent.pointerDown(plot, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + yFrac * rect.height,
+    });
+    this.setProps({});
+  }
+
+  /** Dispatches a pointermove on the panel's plot — the trendline draft's
+   * second anchor, continuing whatever {@link plotPointerDown} opened
+   * (mirrors CandleChartPage.setPointer's coordinate math). */
+  plotPointerMove(xFrac: number, yFrac: number): void {
+    const plot = this.plot();
+    const rect = plot.getBoundingClientRect();
+    fireEvent.pointerMove(plot, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + yFrac * rect.height,
+    });
+    this.setProps({});
+  }
+
+  /** Dispatches a pointerup on the panel's plot — commits or discards
+   * whatever gesture {@link plotPointerDown} (plus any intervening {@link
+   * plotPointerMove}) opened. */
+  plotPointerUp(xFrac: number, yFrac: number): void {
+    const plot = this.plot();
+    const rect = plot.getBoundingClientRect();
+    fireEvent.pointerUp(plot, {
+      pointerId: 1,
+      clientX: rect.left + xFrac * rect.width,
+      clientY: rect.top + yFrac * rect.height,
+    });
+    this.setProps({});
+  }
+
+  /** The plot element with jsdom's holes stubbed — see
+   * CandleChartPage.plot's identical rationale (a concrete bounding rect
+   * plus the pointer-capture trio jsdom doesn't implement). */
+  private plot(): HTMLElement {
+    const el = within(this.root).getByTestId(PLOT_TESTID);
+
+    el.getBoundingClientRect = (): DOMRect => {
+      return STUB_RECT;
+    };
+
+    el.setPointerCapture = (): void => {};
+
+    el.hasPointerCapture = (): boolean => {
+      return false;
+    };
+
+    el.releasePointerCapture = (): void => {};
+
+    return el;
   }
 }

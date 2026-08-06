@@ -99,6 +99,27 @@ describe("matchJarvisIntent", () => {
     });
   });
 
+  it("rule 5: 'show' needs the chart/panel noun after it, on the same line", () => {
+    // Both preserved from the original `show .*(chart|panel)` regex: `.` never
+    // matched a line terminator, and the noun had to follow the "show ".
+    expect(matchJarvisIntent("chart of gbp, show it", knownSymbols)).toEqual({
+      kind: "fallback",
+    });
+    expect(matchJarvisIntent("show me\na price chart", knownSymbols)).toEqual({
+      kind: "fallback",
+    });
+  });
+
+  it("rule 5: a long run of 'show ' resolves without backtracking (ReDoS guard)", () => {
+    // The old `show .*(chart|panel)` alternative restarted `.*` at every one of
+    // these (CodeQL js/polynomial-redos) — quadratic, ~7.6s on this input; the
+    // linear scan from the first "show " returns instantly. If a regression
+    // reintroduces the ambiguity this test hangs and trips the suite's timeout
+    // rather than passing slowly.
+    const evil = "show ".repeat(50_000);
+    expect(matchJarvisIntent(evil, knownSymbols)).toEqual({ kind: "fallback" });
+  });
+
   it("rule 6: 'make it/that a <viz>' -> restylePanel, with the viz parsed", () => {
     expect(matchJarvisIntent("make it a heatmap", knownSymbols)).toEqual({
       kind: "restylePanel",

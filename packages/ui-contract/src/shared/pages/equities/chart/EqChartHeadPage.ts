@@ -1,8 +1,13 @@
-import { within } from "@testing-library/dom";
+import { waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EqChartType, EqIndicatorId, EqPaneId } from "@rtc/client-core";
+import type {
+  EqChartType,
+  EqDrawTool,
+  EqIndicatorId,
+  EqPaneId,
+} from "@rtc/client-core";
 
 const TAB_PREFIX = "instrument-tab-";
 
@@ -130,6 +135,47 @@ export class EqChartHeadPage extends MountedComponent<Record<string, never>> {
     }
 
     await this.user.click(pill);
+  }
+
+  /** The currently-active draw-tool pill's `data-tool` ("trendline" |
+   * "hline"), or null when the cursor tool is active — no draw pill carries
+   * `data-active="true"` in that state (mirrors {@link activeChartType}). */
+  activeDrawTool(): Exclude<EqDrawTool, "cursor"> | null {
+    const active = within(this.root)
+      .queryAllByTestId("chart-draw-pill")
+      .find((el) => {
+        return el.getAttribute("data-active") === "true";
+      });
+    return (
+      (active?.getAttribute("data-tool") as Exclude<
+        EqDrawTool,
+        "cursor"
+      > | null) ?? null
+    );
+  }
+
+  /** Clicks the draw-tool pill for the given tool — drives the real
+   * eqDrawings machine's setTool intent. Clicking an already-active pill
+   * toggles it back to "cursor" (DrawToolPills' own momentary-mode
+   * behaviour), so calling this twice in a row with the same tool both
+   * activates and then reverts it. */
+  async setDrawTool(tool: Exclude<EqDrawTool, "cursor">): Promise<void> {
+    await this.user.click(this.pillFor("chart-draw-pill", "data-tool", tool));
+  }
+
+  /** Waits until no draw-tool pill is active — the cross-root twin of
+   * {@link activeDrawTool}, needed when the REVERTING gesture (a committed
+   * drawing auto-reverts the eqDrawings machine's tool to cursor) happened
+   * on a separate mounted root sharing the same World (e.g. a pointer
+   * gesture on ChartPanel's plot — see ChartDrawings.contract.spec.ts's
+   * pill-workspace mount, mirroring ChartPanelPage.waitUntilPaneVisible's
+   * identical cross-root rationale). */
+  async waitUntilDrawToolReverted(): Promise<void> {
+    await waitFor(() => {
+      if (this.activeDrawTool() !== null) {
+        throw new Error(`draw tool still active: ${this.activeDrawTool()}`);
+      }
+    });
   }
 
   /** Finds the single pill of `testid` whose `attr` matches `value` (e.g. the

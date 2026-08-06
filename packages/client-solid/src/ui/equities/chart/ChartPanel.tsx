@@ -1,5 +1,6 @@
 import { createMemo, type JSX, Show } from "solid-js";
 
+import type { EqDrawing } from "@rtc/client-core";
 import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -62,8 +63,16 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     useCandleBackfill,
     useWatchlist,
     loadOlderCandles,
+    useEqDrawings,
   } = useViewModel();
   const { state } = useEqWorkspace();
+  const {
+    state: drawState,
+    addDrawing,
+    selectDrawing,
+    deleteSelected,
+    shiftAnchors,
+  } = useEqDrawings();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
@@ -116,8 +125,27 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           loadingOlder={backfill().loadingOlder}
           historyExhausted={backfill().historyExhausted}
           onLoadOlder={loadOlderForSelected}
+          drawTool={drawState().tool}
+          drawings={drawState().drawings[props.symbol] ?? EMPTY_DRAWINGS}
+          selectedDrawingId={drawState().selectedId}
+          onCommitDrawing={(d: EqDrawing) => {
+            addDrawing(props.symbol, d);
+          }}
+          onSelectDrawing={selectDrawing}
+          onDeleteSelected={() => {
+            deleteSelected(props.symbol);
+          }}
+          onShiftAnchors={(by: number) => {
+            shiftAnchors(props.symbol, by);
+          }}
         />
       </div>
     </div>
   );
 }
+
+// Stable empty-array identity so a symbol with no drawings yet doesn't hand
+// CandleChart a fresh `[]` every render (mirrors CandleChart's own
+// EMPTY_DRAWINGS default — this one covers the "selected symbol not yet a
+// key in drawState().drawings" case).
+const EMPTY_DRAWINGS: readonly EqDrawing[] = [];

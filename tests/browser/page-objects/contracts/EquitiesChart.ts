@@ -6,6 +6,19 @@ export type EquitiesPaneKind = "rsi" | "macd";
  * pills (SvgPathLayer.tsx renders the actual line). */
 export type EquitiesIndicatorKind = "sma20" | "ema50";
 
+/** The two draw tools DrawToolPills offers (excludes the momentary
+ * `"cursor"` default it always reverts to — see EqDrawingsMachine's
+ * `addDrawing` patch). */
+export type EquitiesDrawTool = "trendline" | "hline";
+
+/** A drag/click point on the plot, as a fraction (0-1) of its own width and
+ * height — the same coordinate currency the app's own gesture hook speaks
+ * (`PlotFrac`, useChartGestures.ts). */
+export interface PlotFraction {
+  readonly x: number;
+  readonly y: number;
+}
+
 /**
  * The equities interactive candle chart plot (CandleChart) plus its
  * back-to-live lifecycle: panning away from the live edge (ArrowLeft) freezes
@@ -65,4 +78,24 @@ export interface EquitiesChartPO {
   clickYScalePill(): Promise<void>;
   /** Waits until the chart wrap's data-yscale equals the given mode. */
   waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void>;
+  /** Clicks the given draw-tool pill (DrawToolPills.tsx). */
+  clickDrawPill(tool: EquitiesDrawTool): Promise<void>;
+  /** A real pointer drag across the plot, from one fractional position to
+   * another — down, move (multi-step), up — driving the trendline/hline
+   * commit gesture's pointer-capture path jsdom can't dispatch. */
+  dragOnPlot(from: PlotFraction, to: PlotFraction): Promise<void>;
+  /** Waits for a committed drawing (DrawingsLayer's `chart-drawing`) to
+   * render. */
+  waitDrawingVisible(timeoutMs: number): Promise<void>;
+  /** Clicks the plot at the rendered drawing's own midpoint — the drawing
+   * overlay is `pointer-events: none`, so hit-testing is driven by a real
+   * click on the plot underneath, at the drawing's coordinates. */
+  clickDrawing(): Promise<void>;
+  /** Waits for the drawing to render with `data-selected="true"`. */
+  waitDrawingSelected(timeoutMs: number): Promise<void>;
+  /** Presses Delete on the focused plot — the `cursor`-tool
+   * delete-selected-drawing gesture. */
+  pressDelete(): Promise<void>;
+  /** Waits for the drawing to be removed from the DOM entirely. */
+  waitDrawingGone(timeoutMs: number): Promise<void>;
 }

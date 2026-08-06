@@ -49,6 +49,7 @@ import {
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
+  createEqDrawingsMachine,
   createEqWorkspaceMachine,
   createIncidentMachine,
   createJarvisDriverMachine,
@@ -66,6 +67,8 @@ import {
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
+  type EqDrawingsIntents,
+  type EqDrawingsState,
   EqWatchlistSortPreferencePresenter,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
@@ -208,6 +211,10 @@ export interface Presenters {
    * react-bindings likewise), so the no-op isn't load-bearing for either
    * today — it's defense-in-depth, not a workaround for a live caller. */
   layoutFor: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
+  /** Equities: per-symbol chart annotations (trendlines/horizontal levels),
+   * the active draw tool, and the current selection — shared by the chart
+   * head's tool pills and the plot. */
+  eqDrawings: Machine<EqDrawingsState, EqDrawingsIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -848,6 +855,7 @@ export function createApp(ports: AppPorts): App {
     eqWorkspace,
     workspaceNav,
     layoutFor,
+    eqDrawings: createEqDrawingsMachine(),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
     errorRateMetric: new ErrorRatePresenter(ports.telemetry),

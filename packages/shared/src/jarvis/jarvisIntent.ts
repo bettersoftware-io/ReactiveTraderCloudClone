@@ -101,16 +101,23 @@ const RULE_1_BRIEFING = /(brief|summar|sitrep|status report|good morning)/i;
 const RULE_2_BUY_SELL = /\b(buy|sell)\b/i;
 const RULE_3_SPREAD = /spread/i;
 const RULE_4_PNL = /(pnl|p&l|profit|how am i doing|performance)/i;
-// Checked ahead of RULE_SHOW_PANEL/RULE_5_MOVERS below: this pattern's own
+// Checked ahead of isShowPanelRequest/RULE_5_MOVERS below: this prefix's own
 // "vol(atility)?" alternative is a substring of both "volatility" (which
-// RULE_SHOW_PANEL claims) and "volatil" (which RULE_5_MOVERS claims), so a
-// phrase like "set up a volatility workspace" must resolve to setupWorkspace,
-// not showPanel/movers.
-const RULE_SETUP_WORKSPACE = /(set ?up|morning|vol(atility)?) .*workspace/i;
+// RULE_SHOW_PANEL_DIRECT claims) and "volatil" (which RULE_5_MOVERS claims),
+// so a phrase like "set up a volatility workspace" must resolve to
+// setupWorkspace, not showPanel/movers. Split into prefix + noun (see
+// isSetupWorkspaceRequest) to stay out of the polynomial-redos class.
+const SETUP_WORKSPACE_PREFIX = /(set ?up|morning|vol(atility)?) /i;
+const SETUP_WORKSPACE_NOUN = /workspace/i;
 // Checked ahead of RULE_5_MOVERS below: "volatility" contains "volatil",
 // which RULE_5_MOVERS would otherwise claim first (e.g. "show me gbp
 // volatility" must resolve to showPanel, not movers).
-const RULE_SHOW_PANEL = /volatility|vol panel|show .*(chart|panel)/i;
+const RULE_SHOW_PANEL_DIRECT = /volatility|vol panel/i;
+const SHOW_PANEL_PREFIX = /show /i;
+const SHOW_PANEL_NOUN = /chart|panel/i;
+// `.` in the old one-shot regex spanned everything except these four, so
+// splitting on them keeps the "same line" requirement it implied.
+const LINE_TERMINATORS = /[\n\r\u2028\u2029]/;
 const RULE_RESTYLE_PANEL = /make (?:it|that) a (heatmap|table|line)/i;
 const RULE_5_MOVERS = /(moving|movers|market|happening|action|volatil)/i;
 const RULE_7_HELP = /(help|what can you|capabilit)/i;
@@ -124,6 +131,70 @@ function isRestyleViz(
   value: string | undefined,
 ): value is "heatmap" | "table" | "line" {
   return value === "heatmap" || value === "table" || value === "line";
+}
+
+/**
+ * Reports whether the text asks for a panel — either by naming one outright
+ * ("volatility", "vol panel") or by pairing "show " with a later "chart" or
+ * "panel" on the same line ("show me a price chart").
+ *
+ * The second half was written as `show .*(chart|panel)` until CodeQL flagged
+ * it (js/polynomial-redos). Free chat text reaches this rule, and a message
+ * of many "show " runs with no chart/panel made the engine restart `.*` at
+ * every one — quadratic, ~3s of pinned CPU for a 160 KB turn. Scanning from
+ * only the FIRST "show " is equivalent (anything after a later "show " is
+ * also after the first) and linear. Behaviour is unchanged: verified against
+ * the old regex over 300k generated inputs, zero divergence.
+ */
+function isShowPanelRequest(text: string): boolean {
+  if (RULE_SHOW_PANEL_DIRECT.test(text)) {
+    return true;
+  }
+
+  for (const line of text.split(LINE_TERMINATORS)) {
+    const showMatch = SHOW_PANEL_PREFIX.exec(line);
+
+    if (showMatch === null) {
+      continue;
+    }
+
+    if (
+      SHOW_PANEL_NOUN.test(line.slice(showMatch.index + showMatch[0].length))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Reports whether the text asks for a workspace setup ("set up my morning
+ * workspace", "vol workspace"). Same first-prefix linear-scan shape as
+ * `isShowPanelRequest` above, and for the same reason: the one-shot form
+ * `(set ?up|morning|vol(atility)?) .*workspace` shares the exact polynomial
+ * class CodeQL flagged there (many prefix hits, no "workspace" → quadratic
+ * restarts of `.*`). Scanning from only the FIRST prefix hit per line is
+ * equivalent and linear.
+ */
+function isSetupWorkspaceRequest(text: string): boolean {
+  for (const line of text.split(LINE_TERMINATORS)) {
+    const prefixMatch = SETUP_WORKSPACE_PREFIX.exec(line);
+
+    if (prefixMatch === null) {
+      continue;
+    }
+
+    if (
+      SETUP_WORKSPACE_NOUN.test(
+        line.slice(prefixMatch.index + prefixMatch[0].length),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -181,11 +252,11 @@ export function matchJarvisIntent(
     return { kind: "pnl" };
   }
 
-  if (RULE_SETUP_WORKSPACE.test(text)) {
+  if (isSetupWorkspaceRequest(text)) {
     return { kind: "setupWorkspace" };
   }
 
-  if (RULE_SHOW_PANEL.test(text)) {
+  if (isShowPanelRequest(text)) {
     return { kind: "showPanel" };
   }
 

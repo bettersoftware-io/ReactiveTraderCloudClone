@@ -2,13 +2,22 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { argv, env, exit } from "node:process";
 
+import type { VisualDriver } from "../driver";
 import { SCENARIO_IDS } from "../scenarioIds";
+import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
 import { compareToGolden } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
 import { createSimctlDriver } from "./capture";
 
 const SCRATCH_FLAG = "--scratch";
 const DEFAULT_SCRATCH_DIR = "/tmp/rtc-visual-scratch";
+
+/** What a run does with each captured PNG: write it outside the golden tree
+ * (`scratchDir`), overwrite the golden (`update`), or diff against it. */
+interface RunOptions {
+  readonly update: boolean;
+  readonly scratchDir: string | undefined;
+}
 
 /**
  * Tier 1 CLI runner: captures every registered `Scenario` via the `simctl`
@@ -67,12 +76,44 @@ async function main(): Promise<void> {
           return idFilter.has(id);
         });
 
+  const udid = env.RTC_VISUAL_UDID ?? "booted";
+
   const driver = createSimctlDriver({
-    udid: env.RTC_VISUAL_UDID ?? "booted",
+    udid,
     metroPort: env.RTC_VISUAL_METRO_PORT,
     idbPath: env.RTC_VISUAL_IDB,
   });
 
+  // Once, around the WHOLE run, not per capture: the preference is read at app
+  // start and the driver cold-starts the app for every scenario, so a single
+  // write covers them all — while restoring between captures would put the
+  // bubble back for the very next launch. See `hideDevMenuFab`.
+  await hideDevMenuFab(udid);
+
+  let code = 1;
+
+  try {
+    code = await runScenarios(driver, ids, { update, scratchDir });
+  } finally {
+    // A run that throws halfway must not leave a developer's dev menu switched
+    // off — this is dev tooling they use outside the harness.
+    await restoreDevMenuFab(udid);
+  }
+
+  // AFTER the finally, deliberately. `exit()` tears the process down
+  // synchronously, so calling it inside the `try` would skip the restore
+  // entirely and leave the bubble disabled on every successful run — the exact
+  // case that matters most.
+  exit(code);
+}
+
+/** Captures each scenario and reports it, returning the process exit code. */
+async function runScenarios(
+  driver: VisualDriver,
+  ids: readonly string[],
+  opts: RunOptions,
+): Promise<number> {
+  const { update, scratchDir } = opts;
   let failures = 0;
 
   for (const id of ids) {
@@ -107,10 +148,10 @@ async function main(): Promise<void> {
 
   if (failures > 0) {
     console.error(`${failures} scenario(s) failed`);
-    exit(1);
+    return 1;
   }
 
-  exit(0);
+  return 0;
 }
 
 main().catch((e: unknown): void => {
