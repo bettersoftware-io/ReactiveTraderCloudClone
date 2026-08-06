@@ -60,11 +60,14 @@ export default defineConfig({
       // report surfaces wholly-untested files at 0% rather than omitting them.
       include: ["src/ui/**"],
       exclude: [
-        // Full-page composition roots — owned by the visual (tests/ui/visual) tier, app/*, + e2e.
-        "src/ui/App.tsx",
-        // The real id→module-root map; the contract/visual harnesses mount a
-        // test PanelRegistry instead, exactly like the hooks providers above.
-        "src/ui/shell/layout/engine/appPanelRegistry.tsx",
+        // App.tsx and its real appPanelRegistry map used to be full-page
+        // composition roots the contract tier never mounted (owned instead
+        // by the visual tier, app/*, + e2e) — no longer true as of Task
+        // 12/P5's `AppShell` (JarvisDriver.contract.spec.ts +
+        // HeaderChrome.contract.spec.ts's promotion regression), which
+        // mounts the REAL `App` (and therefore the REAL `appPanelRegistry`)
+        // to witness the driven-pulse cue on the nav rail + workspace
+        // wrapper together — so both now participate in this gate for real.
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.

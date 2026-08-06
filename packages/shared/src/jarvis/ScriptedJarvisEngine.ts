@@ -37,6 +37,7 @@ import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "@rtc/motion-core";
 
 import type { JarvisEvent } from "#/jarvis/jarvisEvent.js";
 
+import type { DriveBatchV1 } from "./driveCommand.js";
 import type { JarvisTradeIntent } from "./jarvisIntent.js";
 import { matchJarvisIntent } from "./jarvisIntent.js";
 import type { PanelSpecV1 } from "./panelSpec.js";
@@ -90,6 +91,42 @@ const GBP_VOLATILITY_PANEL_SPEC: PanelSpecV1 = {
 
 const SHOW_PANEL_REPLY = "Pulling up GBP volatility now, sir.";
 const NO_PANEL_TO_RESTYLE_REPLY = "There's no panel open to restyle yet, sir.";
+
+/** The canned generative-UI-driving demo batch a setupWorkspace turn emits —
+ * the zero-token path that exercises the same `DriveBatchV1` vocabulary a
+ * live brain's drive-the-app tool call would produce. Maximizes the equities
+ * chart on a 1D timeframe with EMA50 and an RSI pane live. */
+export const SCRIPTED_VOL_WORKSPACE_BATCH: DriveBatchV1 = {
+  v: 1,
+  commands: [
+    { kind: "switchTab", tab: "equities" },
+    { kind: "layout", op: "maximize", tab: "equities", panelId: "eq-chart" },
+    { kind: "eqTimeframe", tf: "1D" },
+    { kind: "eqIndicator", id: "ema50", on: true },
+    { kind: "eqPane", id: "rsi", on: true },
+  ],
+};
+
+const SETUP_WORKSPACE_REPLY =
+  "Setting up your morning workspace now, sir — equities maximized, " +
+  "EMA50 and RSI live.";
+
+/** `symbol` is already resolved by `matchJarvisIntent` (a known pair, or its
+ * own generic fallback) — this formats the canned offer copy around it,
+ * kind-aware from the raw `prompt` NarratorMachine sent
+ * (`formatNarrationPrompt`'s "spread widened" vs "moved" — the T7 review
+ * ruling that the vol channel detects a MOVE, not a rise in "volatility" as
+ * its own quantity, applies equally to the spread channel: spread is spread,
+ * never folded into the vol copy). Falls back to the move-flavored copy for
+ * any narration prompt that names neither verb (e.g. a hand-typed
+ * `[narration]` turn in a test or a future channel). */
+function describeNarrationReply(symbol: string, prompt: string): string {
+  if (/spread widened/i.test(prompt)) {
+    return `${symbol} spreads are widening, sir. Shall I set up the vol workspace?`;
+  }
+
+  return `${symbol} just moved hard, sir. Shall I set up the vol workspace?`;
+}
 
 function describeRestylePanelReply(viz: "heatmap" | "table" | "line"): string {
   return `Restyled as a ${viz}, sir.`;
@@ -300,6 +337,9 @@ export class ScriptedJarvisEngine {
     const intent = matchJarvisIntent(text, knownSymbols);
 
     switch (intent.kind) {
+      case "narration":
+        await this.reveal(describeNarrationReply(intent.symbol, text), push);
+        return;
       case "greeting":
         await this.reveal(GREETING_REPLY, push);
         return;
@@ -326,6 +366,9 @@ export class ScriptedJarvisEngine {
         return;
       case "restylePanel":
         await this.streamRestylePanelReply(intent.viz, push);
+        return;
+      case "setupWorkspace":
+        await this.streamSetupWorkspaceReply(push);
         return;
       case "trade":
         await this.executeConfirmedTrade(
@@ -475,6 +518,20 @@ export class ScriptedJarvisEngine {
     this.lastPanel = { id: this.lastPanel.id, spec };
     push({ type: "panel", panelId: this.lastPanel.id, spec });
     await this.reveal(describeRestylePanelReply(viz), push);
+  }
+
+  /** Emits the canned "drive the app" demo (the zero-token setupWorkspace
+   * path): an intro line, ONE `command` event carrying
+   * `SCRIPTED_VOL_WORKSPACE_BATCH`, then reuses `streamShowPanelReply` for
+   * the canned GBP-vol panel — so the panel event (and its own speech)
+   * follows the command event, same as a live brain chaining a
+   * drive-the-app tool call into a render_panel call. */
+  private async streamSetupWorkspaceReply(
+    push: (event: JarvisEvent) => void,
+  ): Promise<void> {
+    await this.reveal(SETUP_WORKSPACE_REPLY, push);
+    push({ type: "command", batch: SCRIPTED_VOL_WORKSPACE_BATCH });
+    await this.streamShowPanelReply(push);
   }
 
   private async executeConfirmedTrade(

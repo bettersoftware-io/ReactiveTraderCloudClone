@@ -17,10 +17,16 @@ import type {
   JarvisToolDefinition,
 } from "@rtc/agent-tools";
 import { DEFAULT_JARVIS_BRAIN, DEFAULT_JARVIS_EFFORT } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry, PanelSpecV1 } from "@rtc/shared";
+import type {
+  DriveBatchV1,
+  JarvisEvent,
+  JarvisHistoryEntry,
+  PanelSpecV1,
+} from "@rtc/shared";
 
 import type { UsageMeter } from "../services/UsageMeter.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
+import { buildDriveAppTool } from "./driveAppTool.js";
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 import {
   JARVIS_EFFORT_CAPABLE_BRAINS,
@@ -385,10 +391,23 @@ export class AnthropicAgentSession implements AgentSession {
       mintPanelId,
     });
 
+    // `drive_app` is likewise LIVE-brain-only (the scripted engine drives
+    // the app via its own scripted intents — see Task 4 of this round — so
+    // `ScriptedAgentSession` needs no equivalent tool). `emitDrive` closes
+    // over THIS session's own `currentPush` (via `emitCommandEvent` below)
+    // the same way `emitPanel` above does, and the same way `confirmTrade`
+    // closes over THIS session's own confirmation registry — never a
+    // second, competing event channel.
+    const driveAppTool = buildDriveAppTool({
+      emitDrive: (batch: DriveBatchV1): void => {
+        this.emitCommandEvent(batch);
+      },
+    });
+
     // Deterministic cache prefix (see SYSTEM_BLOCKS' doc comment): sort by
     // name so the tools block is byte-identical turn to turn regardless of
     // buildTools' own ordering.
-    this.tools = [...jarvisTools, renderPanelTool]
+    this.tools = [...jarvisTools, renderPanelTool, driveAppTool]
       .map(adaptTool)
       .sort(toolNameOrder);
   }
@@ -401,6 +420,13 @@ export class AnthropicAgentSession implements AgentSession {
    * `requestConfirmation`'s own defensiveness. */
   private emitPanelEvent(panelId: string, spec: PanelSpecV1): void {
     this.currentPush?.({ type: "panel", panelId, spec });
+  }
+
+  /** Pushes a `command` event onto the SAME per-turn stream, mirroring
+   * `emitPanelEvent` above — see that method's doc comment for why `?.` is
+   * defense in depth rather than a reachable branch. */
+  private emitCommandEvent(batch: DriveBatchV1): void {
+    this.currentPush?.({ type: "command", batch });
   }
 
   private requestConfirmation(details: JarvisConfirmDetails): Promise<boolean> {

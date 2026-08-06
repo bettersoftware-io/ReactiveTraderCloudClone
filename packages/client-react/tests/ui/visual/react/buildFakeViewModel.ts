@@ -38,6 +38,7 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   open: false,
   skin: DEFAULT_JARVIS_SKIN,
   unread: 0,
+  unreadNarration: false,
   phase: "idle",
   entries: [],
   pendingConfirmation: null,
@@ -50,10 +51,12 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 };
 
 import type { AppData } from "@ui-visual-shared/appData";
+import { useState } from "react";
 import { EMPTY } from "rxjs";
 
 import type {
   BootSequenceState,
+  JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
   NotionalView,
@@ -335,6 +338,20 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useAnimationIntents: (_target: string) => {
       return null;
     },
+    // Workspace nav (Task 10): a REAL local useState, not a static filler —
+    // the "app/equities" visual scenario clicks the "tab-equities" NavTab
+    // and relies on App.tsx's `key={activeTab}` remount to reveal the
+    // equities dock, so switchTab must actually re-render App with the new
+    // tab (mirroring the App.tsx useState<WorkspaceTab> this replaced).
+    useWorkspaceNav: () => {
+      const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+      return {
+        state: { activeTab },
+        switchTab: (tab: WorkspaceTab) => {
+          setActiveTab(tab);
+        },
+      };
+    },
     // Layout: static snapshot for screenshots — returns the tab's default
     // arrangement with noop intents (no drag, no maximize during capture).
     useLayout: (tab: WorkspaceTab) => {
@@ -484,6 +501,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         close: noop,
         toggle: noop,
         send: noop,
+        narrate: noop,
         approveConfirmation: noop,
         declineConfirmation: noop,
         setSkin: noop,
@@ -498,6 +516,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setBrain: noop,
         effort: "medium",
         setEffort: noop,
+        narrator: "on",
+        setNarrator: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off
@@ -528,6 +548,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // the panel's first data frame.
     useJarvisPanelData: (panelId: string) => {
       return data.jarvisPanelData?.[panelId] ?? null;
+    },
+    // Jarvis drive-the-app interpreter's outcomes (Task 10) — static empty
+    // filler: no fixture drives a batch through a visual screenshot, so the
+    // driven-pulse cue never fires here (pixel-neutral for every golden).
+    useJarvisDriver: (): JarvisDriverState => {
+      return { lastBatch: [] };
     },
   };
 }

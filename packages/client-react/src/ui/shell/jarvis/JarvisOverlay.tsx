@@ -283,8 +283,17 @@ export function JarvisOverlay(): ReactElement | null {
                 data-testid="jarvis-entry"
                 data-role={entry.role}
                 data-done={entry.done ? "true" : "false"}
+                data-origin={entry.origin}
                 className={styles.entry}
               >
+                {entry.origin === "narrator" ? (
+                  <span
+                    data-testid="jarvis-narrator-badge"
+                    className={styles.narratorBadge}
+                  >
+                    ◈ JARVIS INITIATED
+                  </span>
+                ) : null}
                 {entry.tool ? (
                   <span
                     data-testid="jarvis-tool-chip"

@@ -4,6 +4,7 @@ import { combineLatest, firstValueFrom, map } from "rxjs";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
@@ -44,6 +45,8 @@ import {
   type TicketSubmissionState,
   type TileExecutionIntents,
   type TileExecutionState,
+  type WorkspaceNavIntents,
+  type WorkspaceNavState,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import {
@@ -59,6 +62,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -77,6 +81,7 @@ import {
   type Instrument,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   type LogEvent,
   type LoginWaitDelay,
@@ -125,27 +130,35 @@ type UseEqDrawingsResult = {
   state: EqDrawingsState;
 } & EqDrawingsIntents;
 
+type UseWorkspaceNavResult = {
+  state: WorkspaceNavState;
+} & WorkspaceNavIntents;
+
 export interface UseJarvisResult {
   state: JarvisState;
   open: () => void;
   close: () => void;
   toggle: () => void;
   send: (text: string) => void;
+  narrate: (prompt: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
 }
 
-/** The two Jarvis desk-assistant preferences — which brain to use and the
- * thinking-effort budget forwarded to a live brain. The STORED preference,
- * not the resolved one: `useJarvis().state.effectiveBrain` folds in live
- * availability (a preferred-but-unoffered brain falls back there), while
- * `brain` here always reflects what the user picked. */
+/** The three Jarvis desk-assistant preferences — which brain to use, the
+ * thinking-effort budget forwarded to a live brain, and whether the
+ * proactive app-driving narrator may dispatch unsolicited turns. The STORED
+ * preference, not the resolved one: `useJarvis().state.effectiveBrain` folds
+ * in live availability (a preferred-but-unoffered brain falls back there),
+ * while `brain` here always reflects what the user picked. */
 export interface UseJarvisPreferencesResult {
   brain: JarvisBrain;
   setBrain: (brain: JarvisBrain) => void;
   effort: JarvisEffort;
   setEffort: (effort: JarvisEffort) => void;
+  narrator: JarvisNarratorPreference;
+  setNarrator: (preference: JarvisNarratorPreference) => void;
 }
 
 /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
@@ -385,6 +398,12 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** The app's active workspace tab (a composition-root singleton, mirroring
+   * `useEqWorkspace` above) plus the `switchTab` intent — the promoted form
+   * of the `useState<WorkspaceTab>` that used to live directly in each web
+   * client's `App.tsx`, now reachable from Jarvis's drive-the-app
+   * `switchTab` command too. */
+  useWorkspaceNav: () => UseWorkspaceNavResult;
   /** Equities chart annotations — per-symbol drawings (trendlines/horizontal
    * levels), the active draw tool, and the current selection. One machine
    * instance for the whole app (a composition-root singleton, not per-mount),
@@ -412,6 +431,11 @@ export interface ViewModel {
    * first data frame, or once the panel is gone (dismissed/evicted/never
    * existed) — the renderer treats null as "not ready yet", not an error. */
   useJarvisPanelData: (panelId: string) => PanelData | null;
+  /** J.A.R.V.I.S. drive-the-app interpreter's latest batch outcomes
+   * (singleton, app-level) — the UI's driven-pulse cue reads `lastBatch` to
+   * flash the nav rail / workspace wrapper on a new applied outcome. Starts
+   * `{ lastBatch: [] }`. */
+  useJarvisDriver: () => JarvisDriverState;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -578,12 +602,23 @@ export function createViewModel(
     DEFAULT_JARVIS_EFFORT,
   );
 
+  const [useJarvisNarratorPreferenceValue] = bind(
+    presenters.jarvisPreferences.narrator$,
+    DEFAULT_JARVIS_NARRATOR,
+  );
+
   function setJarvisBrainPreference(brain: JarvisBrain): void {
     presenters.jarvisPreferences.setBrain(brain);
   }
 
   function setJarvisEffortPreference(effort: JarvisEffort): void {
     presenters.jarvisPreferences.setEffort(effort);
+  }
+
+  function setJarvisNarratorPreference(
+    preference: JarvisNarratorPreference,
+  ): void {
+    presenters.jarvisPreferences.setNarrator(preference);
   }
 
   const [useViewModeValue] = bind(
@@ -866,6 +901,24 @@ export function createViewModel(
     presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
+  // Workspace nav machine — shared single instance, same
+  // useStateObservable-direct pattern as eqWorkspace above (NOT useMachine,
+  // which would dispose the singleton on the first tab-switch remount).
+  function useWorkspaceNavState(): WorkspaceNavState {
+    return useStateObservable(presenters.workspaceNav.state$);
+  }
+
+  function switchWorkspaceTab(tab: WorkspaceTab): void {
+    presenters.workspaceNav.intents.switchTab(tab);
+  }
+
+  // Jarvis drive-the-app interpreter — shared single instance, same
+  // useStateObservable-direct pattern (no intents to wrap; JarvisDriverMachineHandle
+  // exposes only state$ — see its own doc).
+  function useJarvisDriverState(): JarvisDriverState {
+    return useStateObservable(presenters.jarvisDriver.state$);
+  }
+
   // Jarvis AI assistant — shared single instance. Reads
   // presenters.jarvis.state$ DIRECTLY via useStateObservable, NOT via
   // bind() (mirroring the eqWorkspace pattern — see its comment for why).
@@ -1094,10 +1147,21 @@ export function createViewModel(
       }).state;
     },
     useAnimationIntents,
+    // Layout — UNLIKE every other useMachine-bridged factory here,
+    // machines.layout(tab) resolves to a composition-root SINGLETON per tab
+    // (see MachineFactories.layout's own doc), so it is read directly via
+    // useStateObservable rather than through useMachine: useMachine's
+    // cleanup calls .dispose() on whatever machine instance it's given,
+    // which would tear down the shared singleton on the first tab-switch
+    // remount and silently break it for every later mount (including a
+    // driven "layout" DriveCommand's own target). Mirrors the
+    // eqWorkspace/workspaceNav pattern above.
     useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return machines.layout(tab);
-      });
+      const layoutMachine = machines.layout(tab);
+      return {
+        state: useStateObservable(layoutMachine.state$),
+        ...layoutMachine.intents,
+      };
     },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
@@ -1129,6 +1193,12 @@ export function createViewModel(
         toggleYScale: toggleEqYScale,
       };
     },
+    useWorkspaceNav: () => {
+      return {
+        state: useWorkspaceNavState(),
+        switchTab: switchWorkspaceTab,
+      };
+    },
     useEqDrawings: () => {
       return {
         state: useEqDrawingsState(),
@@ -1151,6 +1221,8 @@ export function createViewModel(
         setBrain: setJarvisBrainPreference,
         effort: useJarvisEffortPreferenceValue(),
         setEffort: setJarvisEffortPreference,
+        narrator: useJarvisNarratorPreferenceValue(),
+        setNarrator: setJarvisNarratorPreference,
       };
     },
     useJarvisUsage: useJarvisUsageValue,
@@ -1161,6 +1233,7 @@ export function createViewModel(
       };
     },
     useJarvisPanelData: useJarvisPanelDataValue,
+    useJarvisDriver: useJarvisDriverState,
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),

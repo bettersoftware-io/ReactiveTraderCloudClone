@@ -10,6 +10,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_VIEW_MODE,
   LOGIN_WAIT_VARIANTS,
@@ -363,6 +364,43 @@ test("hydrate() seeds a stored jarvisBrain and jarvisEffort on the first emissio
   const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   expect(await firstValueFrom(prefs.jarvisBrain$())).toBe("claude-opus-5");
   expect(await firstValueFrom(prefs.jarvisEffort$())).toBe("high");
+});
+
+test("emits the default jarvisNarrator synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe(
+    DEFAULT_JARVIS_NARRATOR,
+  );
+});
+
+test("hydrates a stored, non-default jarvisNarrator after construction", async () => {
+  store.set("rt-jarvis-narrator", "off");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.jarvisNarrator$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("off");
+});
+
+test("setJarvisNarrator writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setJarvisNarrator("off");
+  expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe("off");
+  expect(store.get("rt-jarvis-narrator")).toBe("off");
+});
+
+test("falls back to the default jarvisNarrator when the stored value is unknown", async () => {
+  store.set("rt-jarvis-narrator", "not-a-real-preference");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe(
+    DEFAULT_JARVIS_NARRATOR,
+  );
+});
+
+test("hydrate() seeds a stored jarvisNarrator on the first emission", async () => {
+  store.set("rt-jarvis-narrator", "off");
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+  expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe("off");
 });
 
 test("emits the default login-wait variant synchronously on construction", async () => {

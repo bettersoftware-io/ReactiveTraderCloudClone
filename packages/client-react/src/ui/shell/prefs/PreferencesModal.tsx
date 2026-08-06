@@ -4,6 +4,7 @@ import type {
   AmbientStyle,
   JarvisBrain,
   JarvisEffort,
+  JarvisNarratorPreference,
   LoginWaitDelay,
   LoginWaitStyle,
   PowerSaverLevel,
@@ -12,6 +13,7 @@ import {
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
+  JARVIS_NARRATOR_PREFERENCES,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -33,16 +35,17 @@ import styles from "./PreferencesModal.module.css";
  * (added later) sits at the foot of column 2, so it doesn't reopen that
  * balance.
  *
- * EIGHT rows are wired to real ports — Animated background
+ * NINE rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Always play
  * boot animation (`useForceBootAnimation`), the two login-wait rows
- * (`useLoginWaitPreferences`), and the two Jarvis rows (`useJarvisPreferences`
- * for the stored brain/effort, `useJarvis` read-only for which brains the
- * server is currently offering); every other row is decorative (see the
- * comment on the catalogue below). Dumb component: consumes `useViewModel()`
- * destructured only, holds no app-layer state / persistence / transport /
- * timers, and renders only when `open`.
+ * (`useLoginWaitPreferences`), and the three Jarvis rows
+ * (`useJarvisPreferences` for the stored brain/effort/narrator, `useJarvis`
+ * read-only for which brains the server is currently offering); every other
+ * row is decorative (see the comment on the catalogue below). Dumb
+ * component: consumes `useViewModel()` destructured only, holds no
+ * app-layer state / persistence / transport / timers, and renders only when
+ * `open`.
  */
 export function PreferencesModal({
   open,
@@ -81,6 +84,8 @@ export function PreferencesModal({
     setBrain: setJarvisBrain,
     effort: jarvisEffort,
     setEffort: setJarvisEffort,
+    narrator: jarvisNarrator,
+    setNarrator: setJarvisNarrator,
   } = useJarvisPreferences();
 
   // Real (non-"scripted") brain options are disabled when the server isn't
@@ -278,6 +283,16 @@ export function PreferencesModal({
                 testid="pref-segment-jarvisEffort"
                 disabled={jarvisBrain === "scripted"}
               />
+              <PrefSegment
+                label="Narrator"
+                description="Let J.A.R.V.I.S speak up unprompted about notable market moves."
+                options={JARVIS_NARRATOR_OPTIONS}
+                value={jarvisNarrator}
+                onChange={(value: string) => {
+                  setJarvisNarrator(value as JarvisNarratorPreference);
+                }}
+                testid="pref-segment-jarvisNarrator"
+              />
             </div>
           </div>
         </div>
@@ -423,6 +438,16 @@ const JARVIS_EFFORT_OPTIONS: readonly PrefSegmentOption[] = JARVIS_EFFORTS.map(
     };
   },
 );
+
+// Options for the real "Narrator" row (useJarvisPreferences) — mirrors the
+// Brain/Effort rows' structure immediately above.
+const JARVIS_NARRATOR_OPTIONS: readonly PrefSegmentOption[] =
+  JARVIS_NARRATOR_PREFERENCES.map((preference): PrefSegmentOption => {
+    return {
+      value: preference,
+      label: preference === "on" ? "On" : "Off",
+    };
+  });
 
 // DECORATIVE — cosmetic HUD setting, intentionally not wired to any port (spec:
 // decorative-but-dead is allowed and explicit). The REAL controls in this

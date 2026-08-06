@@ -43,6 +43,25 @@ describe("jarvisPreferences presenter", () => {
     );
     expect(readOnce(app.presenters.jarvisPreferences.effort$)).toBe("low");
   });
+
+  it("writes the narrator preference through the port", () => {
+    const prefs = new PreferencesSimulator({});
+    const app = appWithPrefs(prefs);
+
+    app.presenters.jarvisPreferences.setNarrator("off");
+
+    expect(readOnce(prefs.jarvisNarrator$())).toBe("off");
+  });
+
+  it("replays the current narrator value to a late subscriber", () => {
+    const app = appWithPrefs(
+      new PreferencesSimulator({
+        jarvisNarrator: "off",
+      }),
+    );
+
+    expect(readOnce(app.presenters.jarvisPreferences.narrator$)).toBe("off");
+  });
 });
 
 function appWithPrefs(preferences: PreferencesSimulator): App {

@@ -311,4 +311,25 @@ describe("PreferencesModal", () => {
     expect(page.jarvisEffortSets()).toEqual(["high"]);
     expect(page.segmentActive("jarvisEffort", "high")).toBe(true);
   });
+
+  it("shows the REAL Narrator row defaulting to on, and writes through the seam on toggle (Task 12/P5)", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.segmentActive("jarvisNarrator", "on")).toBe(true);
+
+    await page.selectSegment("jarvisNarrator", "off");
+    expect(page.jarvisNarratorSets()).toEqual(["off"]);
+    expect(page.segmentActive("jarvisNarrator", "off")).toBe(true);
+    expect(page.segmentActive("jarvisNarrator", "on")).toBe(false);
+  });
+
+  it("reflects a seeded narrator preference", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisNarrator: "off",
+    });
+    expect(page.segmentActive("jarvisNarrator", "off")).toBe(true);
+    expect(page.segmentActive("jarvisNarrator", "on")).toBe(false);
+  });
 });

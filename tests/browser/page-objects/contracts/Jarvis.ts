@@ -47,4 +47,31 @@ export interface JarvisPO {
    * animation before the underlying intent fires.
    */
   waitForNoPanels(): Promise<void>;
+  /**
+   * Wait for the header orb to flare into "attention" — set once a
+   * narrator-origin turn completes while the chat overlay is still closed
+   * (see `NarratorMachine`/`JarvisMachine`'s `unreadNarration` fold).
+   * Entries only render once the overlay is open, so this is the one
+   * witness available for a narration BEFORE opening it. Requires the
+   * dev-only `?narratorThresholds=test` seam (see
+   * `WorkspacePO.openWithNarratorThresholds`) to have relaxed the anomaly
+   * detector, else this could take the simulator's natural ~14 min interval.
+   */
+  waitForNarrationFlare(): Promise<void>;
+  /**
+   * Wait for exactly `count` "drive: <kind>" timeline rows to have
+   * accumulated (JarvisDriverMachine's applied outcomes, folded into the
+   * transcript by `JarvisMachine.recordDriveOutcome`) — polls rather than
+   * snapshotting once, since the driver stages each command's application
+   * ~350ms apart (`DRIVE_STAGGER_MS`).
+   */
+  waitForDriveRowCount(count: number): Promise<void>;
+  /**
+   * Snapshot: how many transcript entries currently carry
+   * `data-origin="narrator"` — the witness for the narration cooldown
+   * holding (`NARRATION_COOLDOWN_MS` is 5 minutes, far longer than one e2e
+   * ride, so a bounded post-ride count is the honest assertion rather than
+   * a long wait for a cooldown that cannot have expired).
+   */
+  narrationEntryCount(): Promise<number>;
 }

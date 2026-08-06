@@ -1,5 +1,10 @@
-import { HeaderChrome } from "@ui-contract/components";
-import { cleanupMounted, mount } from "@ui-contract/mount";
+import { AppShell, HeaderChrome } from "@ui-contract/components";
+import {
+  cleanupMounted,
+  createWorld,
+  mount,
+  mountWith,
+} from "@ui-contract/mount";
 import type { WorkspaceTab } from "@ui-contract/pages/shell/chrome/HeaderChromePage";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -207,5 +212,21 @@ describe("HeaderChrome", () => {
     expect(header.logoutCount()).toBe(0);
     await header.clickLogout();
     expect(header.logoutCount()).toBe(1);
+  });
+
+  it("clicking a nav tab switches the workspace through the REAL promoted WorkspaceNavMachine (Task 12/P5 regression)", async () => {
+    // Every test above mounts HeaderChrome directly with props (a dumb
+    // click → onTabChange report) — this proves the promotion itself: the
+    // app-level useWorkspaceNav() seam App.tsx now reads, no longer a local
+    // useState App.tsx's own composition can't reach. Mounts the real App
+    // shell (AppShell) rather than HeaderChrome directly, since HeaderChrome
+    // stays prop-driven and never reads useWorkspaceNav() itself.
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+    expect(app.header.isActive("fx")).toBe(true);
+
+    await app.header.clickTab("credit");
+    expect(app.header.isActive("credit")).toBe(true);
+    expect(app.header.isActive("fx")).toBe(false);
   });
 });

@@ -15,6 +15,7 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
+  DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
@@ -28,10 +29,12 @@ import {
   type EqWatchlistSort,
   isJarvisBrain,
   isJarvisEffort,
+  isJarvisNarratorPreference,
   isPowerSaverLevel,
   JARVIS_SKINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisNarratorPreference,
   type JarvisSkin,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
@@ -64,6 +67,7 @@ export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
+export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
 
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
@@ -147,6 +151,7 @@ interface StoredPreferences {
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
+  jarvisNarrator?: JarvisNarratorPreference;
 }
 
 /** Read every preference key from AsyncStorage once and return the validated,
@@ -173,6 +178,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       jarvisSkin,
       jarvisBrain,
       jarvisEffort,
+      jarvisNarrator,
     ] = await Promise.all([
       AsyncStorage.getItem(THEME_STORAGE_KEY),
       AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -191,6 +197,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
+      AsyncStorage.getItem(JARVIS_NARRATOR_STORAGE_KEY),
     ]);
 
     const stored: StoredPreferences = {};
@@ -269,6 +276,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       stored.jarvisEffort = jarvisEffort;
     }
 
+    if (isJarvisNarratorPreference(jarvisNarrator)) {
+      stored.jarvisNarrator = jarvisNarrator;
+    }
+
     return stored;
   } catch {
     // AsyncStorage may be unavailable — fall back to all defaults.
@@ -337,6 +348,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly jarvisEffortSubject: BehaviorSubject<JarvisEffort>;
 
+  private readonly jarvisNarratorSubject: BehaviorSubject<JarvisNarratorPreference>;
+
   /** When `seed` is provided (the `hydrate()` path) every subject starts on its
    * persisted value and NO async load runs. When omitted, subjects start on
    * defaults and `selfHydrate()` reads the store asynchronously. */
@@ -390,6 +403,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.jarvisEffortSubject = new BehaviorSubject<JarvisEffort>(
       s.jarvisEffort ?? DEFAULT_JARVIS_EFFORT,
+    );
+    this.jarvisNarratorSubject = new BehaviorSubject<JarvisNarratorPreference>(
+      s.jarvisNarrator ?? DEFAULT_JARVIS_NARRATOR,
     );
 
     if (seed === undefined) {
@@ -467,6 +483,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.jarvisEffort !== undefined) {
       this.jarvisEffortSubject.next(s.jarvisEffort);
+    }
+
+    if (s.jarvisNarrator !== undefined) {
+      this.jarvisNarratorSubject.next(s.jarvisNarrator);
     }
   }
 
@@ -645,5 +665,16 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.jarvisEffortSubject.next(effort);
+  }
+
+  jarvisNarrator$(): Observable<JarvisNarratorPreference> {
+    return this.jarvisNarratorSubject.pipe(distinctUntilChanged());
+  }
+
+  setJarvisNarrator(preference: JarvisNarratorPreference): void {
+    void AsyncStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, preference).catch(
+      () => {},
+    );
+    this.jarvisNarratorSubject.next(preference);
   }
 }

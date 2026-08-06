@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createApp } from "@rtc/client-core";
 import {
@@ -50,3 +50,49 @@ describe("buildBrowserPorts (simulator branch)", () => {
     expect(status).toBe(ConnectionStatus.CONNECTED);
   });
 });
+
+// The dev-only NarratorMachine threshold seam (Task 9): `import.meta.env.DEV`
+// is `true` under vitest (unset MODE defaults away from "production"), so
+// only the `?narratorThresholds=test` query param varies here — the DEV
+// half of the gate is exercised structurally (this file couldn't run at all
+// under a real production build, where the whole branch is compiled away).
+describe("buildBrowserPorts — narratorConfig (dev-only ?narratorThresholds=test seam)", () => {
+  afterEach(() => {
+    setSearch("");
+  });
+
+  it("omits narratorConfig when the query param is absent", () => {
+    setSearch("");
+    const ports = buildBrowserPorts();
+    expect(ports.narratorConfig).toBeUndefined();
+  });
+
+  it("omits narratorConfig for an unrelated query param", () => {
+    setSearch("?foo=1");
+    const ports = buildBrowserPorts();
+    expect(ports.narratorConfig).toBeUndefined();
+  });
+
+  it("supplies the relaxed detector thresholds when ?narratorThresholds=test is present", () => {
+    setSearch("?narratorThresholds=test");
+    const ports = buildBrowserPorts();
+    expect(ports.narratorConfig).toEqual({
+      windowSize: 8,
+      minWindowFill: 4,
+      spreadSigma: 0.1,
+      volSigma: 0.1,
+    });
+  });
+
+  it("omits narratorConfig for a near-miss value", () => {
+    setSearch("?narratorThresholds=production");
+    const ports = buildBrowserPorts();
+    expect(ports.narratorConfig).toBeUndefined();
+  });
+});
+
+/** Drive window.location.search via the History API (jsdom-supported) —
+ * same idiom as `@rtc/boot-splash`'s `bootSplashGate.test.ts`. */
+function setSearch(search: string): void {
+  window.history.replaceState({}, "", `/${search}`);
+}

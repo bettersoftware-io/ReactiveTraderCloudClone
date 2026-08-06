@@ -4,6 +4,7 @@ import {
   type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
+  type AnomalyDetectorConfig,
   type AuthPort,
   type BlotterPort,
   type Candle,
@@ -142,6 +143,14 @@ export interface AppPorts {
    * (client-react bootSplashGate — it reads navigator/location, which stays
    * out of this framework-free core). */
   bootSplash?: { shouldPlay(): boolean };
+  /** Overrides `NarratorMachine`'s `detectAnomalies` thresholds — read once
+   * at composition time and threaded straight through to
+   * `createNarratorMachine`'s own `config`. Optional — `undefined` in
+   * production (the detector runs at `DEFAULT_ANOMALY_CONFIG`). Both web
+   * clients' `buildBrowserPorts.ts` supply the dev-only relaxed thresholds
+   * (`?narratorThresholds=test`, `import.meta.env.DEV`-gated) here; nothing
+   * else in the app sets it. */
+  narratorConfig?: Partial<AnomalyDetectorConfig>;
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;

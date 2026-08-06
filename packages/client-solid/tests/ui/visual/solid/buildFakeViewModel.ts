@@ -41,6 +41,7 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   open: false,
   skin: DEFAULT_JARVIS_SKIN,
   unread: 0,
+  unreadNarration: false,
   phase: "idle",
   entries: [],
   pendingConfirmation: null,
@@ -55,13 +56,16 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 
 import type { AppData } from "@ui-visual-shared/appData";
 import { EMPTY } from "rxjs";
+import { createSignal } from "solid-js";
 
 import type {
   BootSequenceState,
+  JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
   NotionalView,
   SessionUser,
+  WorkspaceNavState,
 } from "@rtc/client-core";
 import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
@@ -97,9 +101,21 @@ const DEMO_USER: SessionUser = {
  * the accessor mechanics differ: react hooks re-run per render and return
  * plain values, Solid instead hands back a zero-arg `Accessor` per field
  * (`at()` below) — the value never changes within one scenario's lifetime
- * (no interaction re-seeds the fixture), so a constant closure is sufficient;
- * no `createSignal` is needed anywhere in this file. */
+ * (no interaction re-seeds the fixture), so a constant closure is sufficient
+ * for every field EXCEPT `useWorkspaceNav` (Task 10/11): the "app/equities"
+ * visual scenario clicks the "tab-equities" NavTab and relies on App.tsx's
+ * keyed `<Show>` remount to reveal the equities dock, so `switchTab` must
+ * actually re-render App with the new tab — the one place in this file a
+ * real `createSignal` is needed. */
 export function buildFakeViewModel(data: AppData): ViewModel {
+  // Workspace nav (Task 10/11): a REAL signal, not a static `at()` closure —
+  // see this function's own doc comment above for why. One signal for this
+  // ViewModel instance's whole lifetime, mirroring how the react driver's
+  // `useState<WorkspaceTab>` is scoped to one App mount.
+  const [navState, setNavState] = createSignal<WorkspaceNavState>({
+    activeTab: "fx",
+  });
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return at(data.prices[pair.symbol] ?? null);
@@ -485,6 +501,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleYScale: noop,
       };
     },
+    // Workspace nav (Task 10/11): a REAL signal, not a static `at()` closure
+    // — the "app/equities" visual scenario clicks the "tab-equities" NavTab
+    // and relies on App.tsx's keyed `<Show>` remount to reveal the equities
+    // dock, so switchTab must actually re-render App with the new tab
+    // (mirroring the App.tsx createSignal<WorkspaceTab> this replaced).
+    useWorkspaceNav: () => {
+      return {
+        state: navState,
+        switchTab: (tab: WorkspaceTab) => {
+          setNavState({ activeTab: tab });
+        },
+      };
+    },
     // Eq drawings: the equities/chart-drawings visual scenario feeds literal
     // `drawings`/`selectedDrawingId` props directly to CandleChart (see
     // EquitiesChartDrawings) and never reads this fake — a static empty
@@ -516,6 +545,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         close: noop,
         toggle: noop,
         send: noop,
+        narrate: noop,
         approveConfirmation: noop,
         declineConfirmation: noop,
         setSkin: noop,
@@ -530,6 +560,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setBrain: noop,
         effort: at("medium"),
         setEffort: noop,
+        narrator: at("on"),
+        setNarrator: noop,
       };
     },
     // Jarvis token-usage/cost telemetry (Task 10) — data-driven off
@@ -560,6 +592,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // the panel's first data frame.
     useJarvisPanelData: (panelId: string) => {
       return at(data.jarvisPanelData?.[panelId] ?? null);
+    },
+    // Jarvis drive-the-app interpreter's outcomes (Task 10/11) — static empty
+    // filler: no fixture drives a batch through a visual screenshot, so the
+    // driven-pulse cue never fires here (pixel-neutral for every golden).
+    useJarvisDriver: () => {
+      return at<JarvisDriverState>({ lastBatch: [] });
     },
   };
 }

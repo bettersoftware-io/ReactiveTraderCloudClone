@@ -31,7 +31,14 @@
  *      a schema-valid `PanelSpecV1` (round-tripped back through the real
  *      `parsePanelSpec`, not a hand-mirrored re-check — see the import note
  *      below).
- *   5. A FRESH WebSocket connection (same login token, new server-side
+ *   5. One drive-the-app turn ("switch to equities and maximize the chart")
+ *      that asks the model to reach for the `drive_app` desk tool
+ *      (`packages/server/src/agent/driveAppTool.ts`) — asserts a
+ *      `drive_app` tool call was actually made AND that the resulting
+ *      `jarvis.command` wire frame's batch round-trips a schema-valid
+ *      `DriveBatchV1` (via the real `parseDriveBatch`, same reuse doctrine
+ *      as check 4's `parsePanelSpec`) containing a `switchTab` command.
+ *   6. A FRESH WebSocket connection (same login token, new server-side
  *      `AgentSession` — `jarvisEffects`' `jarvisSessionEffect` mints one per
  *      socket) carrying turns 1-3 as wire `history`, stretched with synthetic
  *      filler so the server's own 20-entry wire cap
@@ -39,14 +46,14 @@
  *      into an assistant-first array *before* it ever reaches
  *      `AnthropicAgentSession`.
  *
- * Turn 5 exists specifically to exercise, against the real API, the two
+ * Turn 6 exists specifically to exercise, against the real API, the two
  * mechanisms the Task 6 reviewer flagged as "documented but cannot verify
  * without a live key": `AnthropicAgentSession.capMessages`'s assistant-first
  * `400` guard, and `JARVIS_HISTORY_MAX_MESSAGES` token-pressure trimming.
  * Both need a FRESH connection to matter: `AnthropicAgentSession` only
  * consults the wire's `history` param on a session's first turn (once its own
  * `this.history` is non-empty, later turns use that instead — see the doc
- * comment on `runTurn`) — reusing turns 1-3's connection for turn 5 would
+ * comment on `runTurn`) — reusing turns 1-3's connection for turn 6 would
  * make the constructed `history` payload below silently ignored, so this
  * check would pass even with the guard deleted. A fresh connection = a fresh
  * session = the wire history is genuinely consulted, which is exactly the
@@ -62,12 +69,14 @@
  * `CLIENT_MSG` / `SERVER_MSG` / `JarvisEvent` wire vocabulary below is a
  * narrow, hand-mirrored slice of packages/shared/src/protocol/messages.ts
  * and packages/shared/src/jarvis/jarvisEvent.ts, so this script never needs
- * `@rtc/shared` built first — see those files if the two drift. `parsePanelSpec`
- * is the ONE deliberate exception: panel-shape validation is exactly the
- * kind of logic that must NOT be re-hand-rolled a second time here (see
- * `panelSpec.ts`'s own doc comment on why it stays hand-rolled once), so
- * check 4 below reuses the genuine parser instead of drifting its own copy.
- * This lives in the `tests/` workspace specifically so that reuse is a plain
+ * `@rtc/shared` built first — see those files if the two drift.
+ * `parsePanelSpec` / `parseDriveBatch` are the deliberate exceptions:
+ * panel/batch-shape validation is exactly the kind of logic that must NOT
+ * be re-hand-rolled a second time here (see `panelSpec.ts`'s own doc
+ * comment on why it stays hand-rolled once — `driveCommand.ts` mirrors
+ * that), so checks 4 and 5 below reuse the genuine parsers instead of
+ * drifting their own copies. This lives in the `tests/` workspace
+ * specifically so that reuse is a plain
  * static top-level `import` rather than a workaround: `tests/package.json`
  * already declares `@rtc/shared: workspace:*` (a real consumer, not a
  * dependency added just for this script) and is itself `"type": "module"`,
@@ -90,7 +99,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parsePanelSpec } from "@rtc/shared";
+import { parseDriveBatch, parsePanelSpec } from "@rtc/shared";
 
 // ── Env gate — runs before anything else spawns or connects ────────
 
@@ -119,6 +128,7 @@ const SERVER_MSG = {
   JARVIS_TOOL_EVENT: "jarvis.toolEvent",
   JARVIS_CONFIRM_REQUEST: "jarvis.confirmRequest",
   JARVIS_PANEL: "jarvis.panel",
+  JARVIS_COMMAND: "jarvis.command",
   JARVIS_DONE: "jarvis.done",
   JARVIS_ERROR: "jarvis.error",
   JARVIS_AVAILABILITY: "jarvis.availability",
@@ -166,6 +176,15 @@ interface PanelFramePayload {
   readonly turnId: string;
   readonly panelId: string;
   readonly spec: unknown;
+}
+
+/** `batch` is left `unknown` on purpose, same reasoning as `PanelFramePayload`'s
+ * `spec` — validated by round-tripping it through the real `parseDriveBatch`
+ * (see check 5), not trusted as a pre-typed `DriveBatchV1` just because it
+ * arrived on the wire. */
+interface CommandFramePayload {
+  readonly turnId: string;
+  readonly batch: unknown;
 }
 
 interface DoneFramePayload {
@@ -428,6 +447,10 @@ interface ChatTurnOutcome {
    * than one during agentic follow-up, so this is an array rather than a
    * single optional slot even though check 4 below only expects one. */
   readonly panelEvents: readonly PanelFramePayload[];
+  /** Every `jarvis.command` frame seen for this turn, in arrival order —
+   * same "array, not a single slot" reasoning as `panelEvents` above (a
+   * `drive_app` call could in principle fire more than once per turn). */
+  readonly commandEvents: readonly CommandFramePayload[];
   readonly terminal: "done" | "error";
   readonly errorMessage?: string;
   /** `Date.now()` delta from sending `jarvis.chat` to the first
@@ -480,6 +503,7 @@ function runChatTurn(
     let replyText = "";
     const toolEvents: string[] = [];
     const panelEvents: PanelFramePayload[] = [];
+    const commandEvents: CommandFramePayload[] = [];
     let confirmationSeen = false;
     // Captured right before sendFrame() below, so every handler's
     // markFirstEvent() call measures against the actual wire send, not
@@ -563,6 +587,18 @@ function runChatTurn(
       console.log(`  [panel] panelId=${p.panelId}`);
     });
 
+    const unsubCommand = bus.on(SERVER_MSG.JARVIS_COMMAND, (payload) => {
+      const p = payload as CommandFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      markFirstEvent();
+      commandEvents.push(p);
+      console.log("  [command] batch received");
+    });
+
     const unsubDone = bus.on(SERVER_MSG.JARVIS_DONE, (payload) => {
       const p = payload as DoneFramePayload;
 
@@ -580,6 +616,7 @@ function runChatTurn(
         toolEvents,
         confirmationSeen,
         panelEvents,
+        commandEvents,
         terminal: "done",
         firstEventMs,
       });
@@ -601,6 +638,7 @@ function runChatTurn(
         toolEvents,
         confirmationSeen,
         panelEvents,
+        commandEvents,
         terminal: "error",
         errorMessage: p.message,
         firstEventMs,
@@ -612,6 +650,7 @@ function runChatTurn(
       unsubTool();
       unsubConfirm();
       unsubPanel();
+      unsubCommand();
       unsubDone();
       unsubError();
     }
@@ -841,11 +880,62 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
         typeof parsedPanel.spec.viz?.kind === "string" &&
         typeof parsedPanel.spec.source?.kind === "string",
     );
+
+    // 5. Drive-the-app turn — ask the model to act on the desk directly and
+    // assert the resulting jarvis.command wire frame's batch round-trips the
+    // REAL parseDriveBatch (imported from @rtc/shared, same reuse doctrine
+    // as check 4's parsePanelSpec) AND contains a switchTab command. The
+    // phrasing deliberately echoes jarvisPersona.ts's own drive few-shot
+    // ("open equities, maximize the chart"). `history: []`: same AgentSession
+    // as checks 2-4, its own `this.history` already carries the prior turns.
+    const driveTurn = await runChatTurn(
+      bus1,
+      ws1,
+      "drive the app",
+      "switch to equities and maximize the chart",
+      [],
+    );
+    check(
+      results,
+      "drive turn: terminated with done and a non-empty reply",
+      driveTurn.terminal === "done" && driveTurn.replyText.length > 0,
+    );
+    check(
+      results,
+      "drive turn: model called the drive_app tool (tool event observed)",
+      driveTurn.toolEvents.some((event) => {
+        return event.includes("drive_app");
+      }),
+    );
+    check(
+      results,
+      "drive turn: a jarvis.command wire frame arrived",
+      driveTurn.commandEvents.length > 0,
+    );
+
+    const commandEvent = driveTurn.commandEvents[0];
+    const parsedBatch = commandEvent
+      ? parseDriveBatch(commandEvent.batch)
+      : { ok: false as const, error: "no jarvis.command frame arrived" };
+    check(
+      results,
+      "drive turn: drive_app's batch round-trips parseDriveBatch " +
+        `(schema-valid)${parsedBatch.ok ? "" : ` — ${parsedBatch.error}`}`,
+      parsedBatch.ok,
+    );
+    check(
+      results,
+      "drive turn: parsed batch contains a switchTab command",
+      parsedBatch.ok &&
+        parsedBatch.batch.commands.some((cmd) => {
+          return cmd.kind === "switchTab";
+        }),
+    );
   } finally {
     ws1.close();
   }
 
-  // 5. Reconnect (fresh WebSocket = fresh server-side AgentSession) and send
+  // 6. Reconnect (fresh WebSocket = fresh server-side AgentSession) and send
   // a quote turn carrying a wire history built to force an assistant-first
   // array through the 20-entry wire cap — see buildReconnectHistoryFixture's
   // doc comment. Reuses the same login token; a new session never needs a

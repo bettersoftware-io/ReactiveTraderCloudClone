@@ -18,3 +18,16 @@
   );
   color: var(--text-primary);
 }
+
+/* Transparent flex passthrough around WorkspaceEngine — carries the SAME
+ * flex participation InhouseLayoutEngine's own `.engine` root already has
+ * (flex:1 + min-height:0, no padding/margin of its own) so wrapping it costs
+ * no visual difference; it exists only so the driven-pulse cue (Task 10's
+ * `data-jarvis-driven`, DrivenPulse.module.css) has an element to flash
+ * without remounting (and losing the state of) the real workspace subtree. */
+.workspaceRegion {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
