@@ -31,7 +31,7 @@ import { chromium } from "@playwright/test";
 import {
   E2E_SESSION_JSON,
   E2E_SESSION_KEY,
-  seedSessionLocalStorage,
+  seedLocalStorageItem,
 } from "../browser/authSeed";
 import { type MotionSample, sampleMotion } from "../browser/motionProbe";
 
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   const context = await browser.newContext();
   // Same authenticated-session seed the e2e suites use — boots straight past
   // LoginScreen in simulator mode (see tests/browser/authSeed.ts).
-  await context.addInitScript(seedSessionLocalStorage, {
+  await context.addInitScript(seedLocalStorageItem, {
     key: E2E_SESSION_KEY,
     value: E2E_SESSION_JSON,
   });

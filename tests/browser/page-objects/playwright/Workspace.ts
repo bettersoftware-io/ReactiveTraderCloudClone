@@ -1,5 +1,11 @@
 import type { Page } from "@playwright/test";
 
+import {
+  JARVIS_NARRATOR_ON_VALUE,
+  JARVIS_NARRATOR_STORAGE_KEY,
+  seedLocalStorageItem,
+} from "#/browser/authSeed";
+
 import { TESTIDS } from "../contracts/testids";
 import type { WorkspacePO } from "../contracts/Workspace";
 
@@ -31,6 +37,18 @@ export class PlaywrightWorkspace implements WorkspacePO {
   }
 
   async openWithNarratorThresholds(): Promise<void> {
+    // The shared bootstrap (playwright-cucumber/world.ts or
+    // playwright/_context.ts, whichever runner drives this scenario) seeds
+    // JarvisNarrator OFF by default for hermeticity — see authSeed.ts. This
+    // is the one ride that actually exercises narration, so opt back IN for
+    // this page's own init-script chain: addInitScript callbacks run in
+    // registration order on every navigation, so this one registers after
+    // the shared OFF seed and wins on the goto() below (and any later
+    // navigation in this context).
+    await this.page.addInitScript(seedLocalStorageItem, {
+      key: JARVIS_NARRATOR_STORAGE_KEY,
+      value: JARVIS_NARRATOR_ON_VALUE,
+    });
     await this.page.goto("/?narratorThresholds=test");
   }
 
