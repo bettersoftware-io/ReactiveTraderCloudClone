@@ -22,6 +22,11 @@ let appHeadRegistry: typeof import("../appHeadRegistry")["appHeadRegistry"];
 let expectedByPanelId: ReadonlyMap<PanelId, Component>;
 
 beforeAll(async () => {
+  // Generous timeout (default 10s): CI's cold transform of the whole App
+  // module graph (pulled in by vi.resetModules() + this re-import wave) has
+  // measured ~71s total import time on a cold runner, well past vitest's
+  // default hookTimeout — passes locally only because the Vite transform
+  // cache is already warm there.
   vi.resetModules();
 
   const [
@@ -69,7 +74,7 @@ beforeAll(async () => {
     ["credit-rfqs", RfqsHead],
     ["credit-blotter", CreditBlotterHead],
   ]);
-});
+}, 60_000);
 
 describe("appHeadRegistry", () => {
   it.each(PANEL_IDS)("maps %s to its own head component", (panelId) => {

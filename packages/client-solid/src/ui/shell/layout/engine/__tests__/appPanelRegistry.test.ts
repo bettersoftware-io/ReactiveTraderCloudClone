@@ -28,6 +28,11 @@ let appPanelRegistry: typeof import("../appPanelRegistry")["appPanelRegistry"];
 let expectedByPanelId: ReadonlyMap<PanelId, Component<never>>;
 
 beforeAll(async () => {
+  // Generous timeout (default 10s): CI's cold transform of the whole App
+  // module graph (pulled in by vi.resetModules() + this re-import wave) has
+  // measured ~71s total import time on a cold runner, well past vitest's
+  // default hookTimeout — passes locally only because the Vite transform
+  // cache is already warm there.
   vi.resetModules();
 
   const [
@@ -84,7 +89,7 @@ beforeAll(async () => {
     ["eq-depth", EqDepthDock],
     ["eq-sectors", EqSectorsDock],
   ]);
-});
+}, 60_000);
 
 describe("appPanelRegistry", () => {
   it.each(PANEL_IDS)("maps %s to its own module root", (panelId) => {
