@@ -98,6 +98,29 @@ overrides:
   # gate 25 directly. 3.1.5 published 2026-07-31 — outside the
   # minimumReleaseAge cooldown.
   "fast-uri@<3.1.5": ^3.1.5
+  # Force the transitive hono up from the vulnerable 4.12.33 to the PATCHED 4.12.34.
+  # Fixes the MODERATE ReDoS advisory GHSA-8j4g-w8fx-2239 / CVE-2026-69207
+  # (CVSS 5.3 — quadratic backtracking in the CORS middleware while parsing an
+  # attacker-supplied `Access-Control-Request-Headers`); vulnerable <4.12.34.
+  # Arrives on TWO prod paths, both under the /mcp endpoint's SDK:
+  #   packages/server > @modelcontextprotocol/sdk > @hono/node-server > hono
+  #   packages/server > @modelcontextprotocol/sdk > hono
+  # Prod scope, but MODERATE — so gate 25 (`pnpm audit --prod --audit-level
+  # high`) never reds on it; it surfaced via the Dependabot alert list, the
+  # same way the fast-uri 3.1.4 round did.
+  #
+  # Checked for real reachability rather than assumed, per the uuid note below:
+  # the vulnerable code is `hono/cors`, and the ONLY file importing it is the
+  # SDK's dist/*/examples/server/honoWebStandardStreamableHttp.js — an example
+  # we never import. Our mcpHttpHandler.ts imports StreamableHTTPServerTransport
+  # from the SDK's server/streamableHttp.js, whose sole hono touch is
+  # `getRequestListener` from @hono/node-server (a Node<->Web-Standard request
+  # adapter, no middleware). So this bump is hygiene, not a live-exploit fix.
+  #
+  # SCOPED to the vulnerable range so a consumer already on >=4.12.34 keeps its
+  # choice. Both consumers ask for `^4`, so a 4.12.x -> 4.13.x float is in-range.
+  # 4.12.34 published 2026-08-03 — outside the minimumReleaseAge cooldown.
+  "hono@<4.12.34": ^4.12.34
   # Force the transitive undici 7.x (dev-only: vitest > jsdom > undici) up
   # from the vulnerable 7.28.0 to the PATCHED 7.29.0 — which closes FIVE
   # advisories at once, all patched in 7.29.0: the HIGH GHSA-4cwx-7wf7-3272
