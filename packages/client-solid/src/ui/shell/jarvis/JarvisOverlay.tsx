@@ -300,8 +300,17 @@ export function JarvisOverlay(): JSX.Element {
                     data-testid="jarvis-entry"
                     data-role={entry.role}
                     data-done={entry.done ? "true" : "false"}
+                    data-origin={entry.origin}
                     class={styles.entry}
                   >
+                    <Show when={entry.origin === "narrator"}>
+                      <span
+                        data-testid="jarvis-narrator-badge"
+                        class={styles.narratorBadge}
+                      >
+                        ◈ JARVIS INITIATED
+                      </span>
+                    </Show>
                     <Show when={entry.tool}>
                       {(tool: Accessor<NonNullable<JarvisEntry["tool"]>>) => {
                         return (

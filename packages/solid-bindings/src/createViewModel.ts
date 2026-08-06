@@ -5,6 +5,7 @@ import type { Accessor } from "solid-js";
 import type {
   ActivityEntry,
   AppCommands,
+  JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
   JarvisUsageSnapshot,
@@ -41,6 +42,8 @@ import {
   type TicketSubmissionState,
   type TileExecutionIntents,
   type TileExecutionState,
+  type WorkspaceNavIntents,
+  type WorkspaceNavState,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import {
@@ -132,6 +135,14 @@ type UseOrderTicketResult = {
 type UseEqWorkspaceResult = {
   state: Accessor<EqWorkspaceState>;
 } & EqWorkspaceIntents;
+/** The app's active workspace tab (a composition-root singleton, mirroring
+ * `UseEqWorkspaceResult` above) plus the `switchTab` intent — the promoted
+ * form of the `createSignal<WorkspaceTab>` that used to live directly in
+ * `App.tsx`, now reachable from Jarvis's drive-the-app `switchTab` command
+ * too. */
+type UseWorkspaceNavResult = {
+  state: Accessor<WorkspaceNavState>;
+} & WorkspaceNavIntents;
 /** Shared incident-machine bundle — IMPLEMENTED here: a plain `state()` read
  * of the singleton `presenters.incident.state$` (mirrors useAuth/useBootGate
  * below, not a per-mount `useMachine`), so it belongs to part 1. */
@@ -373,7 +384,16 @@ export interface ViewModel {
    * Null until the AnimationDirector emits a real domain-driven intent; the dumb
    * UI maps the intent's kind to a CSS class / Motion One call. */
   useAnimationIntents: (target: string) => Accessor<AnimationIntent | null>;
-  /** Layout view-model + intents for a workspace tab (the in-house engine). */
+  /** Layout view-model + intents for a workspace tab (the in-house engine).
+   * UNLIKE every other `useMachine`-bridged factory in `MachineFactories`,
+   * `machines.layout(tab)` resolves to a composition-root SINGLETON per tab
+   * (see `Presenters.layoutFor`'s own doc), so it is read directly via
+   * `toSignal` rather than through `useMachine`: `useMachine`'s cleanup
+   * calls `.dispose()` on whatever machine instance it's given, which would
+   * tear down the shared singleton on the first tab-switch unmount and
+   * silently break it for every later mount (including a driven "layout"
+   * DriveCommand's own target). Mirrors the `useEqWorkspace`/
+   * `useWorkspaceNav` non-disposing pattern used elsewhere in this file. */
   useLayout: (tab: WorkspaceTab) => UseLayoutResult;
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
@@ -415,6 +435,12 @@ export interface ViewModel {
    * and watchlist panels are independent engine cells that read/write this
    * one shared source of truth. */
   useEqWorkspace: () => UseEqWorkspaceResult;
+  /** The app's active workspace tab (a composition-root singleton, mirroring
+   * `useEqWorkspace` above) plus the `switchTab` intent — the promoted form
+   * of the `createSignal<WorkspaceTab>` that used to live directly in each
+   * web client's `App.tsx`, now reachable from Jarvis's drive-the-app
+   * `switchTab` command too. */
+  useWorkspaceNav: () => UseWorkspaceNavResult;
   /** Jarvis AI assistant state + intents (singleton, app-level). */
   useJarvis: () => UseJarvisResult;
   /** The two Jarvis desk-assistant preferences (brain + effort) — the
@@ -436,6 +462,11 @@ export interface ViewModel {
    * first data frame, or once the panel is gone (dismissed/evicted/never
    * existed) — the renderer treats null as "not ready yet", not an error. */
   useJarvisPanelData: (panelId: string) => Accessor<PanelData | null>;
+  /** J.A.R.V.I.S. drive-the-app interpreter's latest batch outcomes
+   * (singleton, app-level) — the UI's driven-pulse cue reads `lastBatch` to
+   * flash the nav rail / workspace wrapper on a new applied outcome. Starts
+   * `{ lastBatch: [] }`. */
+  useJarvisDriver: () => Accessor<JarvisDriverState>;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -886,6 +917,13 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleYScale();
   }
 
+  // Workspace nav machine — shared single instance, same toSignal-direct
+  // pattern as eqWorkspace above (NOT useMachine, which would dispose the
+  // singleton on the first tab-switch remount).
+  function switchWorkspaceTab(tab: WorkspaceTab): void {
+    presenters.workspaceNav.intents.switchTab(tab);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -1109,10 +1147,21 @@ export function createViewModel(
     useAnimationIntents: (target: string) => {
       return toSignal(animationIntentsState(target));
     },
+    // Layout — UNLIKE every other useMachine-bridged factory here,
+    // machines.layout(tab) resolves to a composition-root SINGLETON per tab
+    // (see MachineFactories.layout's own doc), so it is read directly via
+    // toSignal rather than through useMachine: useMachine's cleanup calls
+    // .dispose() on whatever machine instance it's given, which would tear
+    // down the shared singleton on the first tab-switch remount and
+    // silently break it for every later mount (including a driven "layout"
+    // DriveCommand's own target). Mirrors the eqWorkspace/workspaceNav
+    // pattern below.
     useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return machines.layout(tab);
-      });
+      const layoutMachine = machines.layout(tab);
+      return {
+        state: toSignal(layoutMachine.state$),
+        ...layoutMachine.intents,
+      };
     },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
@@ -1158,6 +1207,12 @@ export function createViewModel(
         toggleYScale: toggleEqYScale,
       };
     },
+    useWorkspaceNav: () => {
+      return {
+        state: toSignal(presenters.workspaceNav.state$),
+        switchTab: switchWorkspaceTab,
+      };
+    },
     useJarvis: () => {
       return {
         state: toSignal(presenters.jarvis.state$),
@@ -1185,6 +1240,9 @@ export function createViewModel(
     },
     useJarvisPanelData: (panelId: string) => {
       return toSignal(panelDataState(panelId));
+    },
+    useJarvisDriver: () => {
+      return toSignal(presenters.jarvisDriver.state$);
     },
     useMetrics: () => {
       return {

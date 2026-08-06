@@ -25,8 +25,13 @@ export function JarvisOrb(): JSX.Element {
   const { useJarvis } = useViewModel();
   const { state, toggle } = useJarvis();
 
+  // "attention" also covers unreadNarration (JARVIS spoke up unprompted
+  // while the overlay was closed) — reusing the same flare/pulse class
+  // rather than a new keyframe set, per Task 10's brief. unreadNarration is
+  // only ever true while `!state().open` (cleared by open()), so this can
+  // never fire while the overlay is visibly showing the narration already.
   function jarvisState(): "attention" | "speaking" | "idle" {
-    if (state().pendingConfirmation !== null) {
+    if (state().pendingConfirmation !== null || state().unreadNarration) {
       return "attention";
     }
 

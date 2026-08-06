@@ -7,11 +7,13 @@ import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type {
+  JarvisDriverState,
   JarvisMachineHandle,
   JarvisPanelVm,
   PanelData,
   RfqSubmissionState,
   TicketSubmissionState,
+  WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/client-core";
 import {
@@ -728,6 +730,22 @@ export function solidViewModel(world: World): ViewModel {
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
       };
     },
+    // The app's active workspace tab (Task 10/11) — a plain local
+    // createSignal, not wired to World: no CURRENT contract spec mounts
+    // App.tsx itself (only individual leaf components, e.g. HeaderChrome
+    // directly with its own activeTab/onTabChange props), so nothing
+    // exercises this beyond satisfying the ViewModel type.
+    useWorkspaceNav: () => {
+      const [navState, setNavState] = createSignal<WorkspaceNavState>({
+        activeTab: "fx",
+      });
+      return {
+        state: navState,
+        switchTab: (tab: WorkspaceTab) => {
+          setNavState({ activeTab: tab });
+        },
+      };
+    },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and read directly with `toSignal` — its
     // `state$` is already a warm StateObservable (see @rtc/client-core's
@@ -804,6 +822,19 @@ export function solidViewModel(world: World): ViewModel {
       return toSignal(
         state(presenter.panelData$(panelId), null as PanelData | null),
       );
+    },
+    // Jarvis drive-the-app interpreter's outcomes (Task 10/11) — a static
+    // empty filler, mirroring the react driver's minimal-plumbing precedent
+    // for a field no CURRENT contract spec drives through World. The
+    // driven-pulse cue reads this (see useJarvisDrivenPulse.ts) so it must
+    // satisfy the shape and never crash — it just never actually pulses in
+    // this harness today. A later spec adding a driven-pulse contract case
+    // will need a real World-backed jarvisDriver, the same way
+    // world.eqWorkspace/getJarvisMachine are wired above.
+    useJarvisDriver: () => {
+      return (): JarvisDriverState => {
+        return { lastBatch: [] };
+      };
     },
     useTopology: () => {
       return wrapSubject(world.topology$);
