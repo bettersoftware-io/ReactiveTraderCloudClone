@@ -1030,6 +1030,7 @@ describe("editDrag (drag-edit fork)", () => {
       onCommitEdit,
       onPlotClick,
     });
+
     const { result } = renderHook(() => {
       return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     });
@@ -1062,6 +1063,7 @@ describe("editDrag (drag-edit fork)", () => {
       onCommitEdit,
       onPlotClick,
     });
+
     const { result } = renderHook(() => {
       return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     });

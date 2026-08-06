@@ -140,7 +140,11 @@ describe("EqDrawingsMachine", () => {
 
     const state = await firstValueFrom(m.state$);
     const list = state.drawings.AAPL;
-    expect(list?.map((d) => d.id)).toEqual(["d1", "d2", "d3"]);
+    expect(
+      list?.map((d) => {
+        return d.id;
+      }),
+    ).toEqual(["d1", "d2", "d3"]);
     expect(list?.[1]).toEqual(hline("d2", 999));
     m.dispose();
   });

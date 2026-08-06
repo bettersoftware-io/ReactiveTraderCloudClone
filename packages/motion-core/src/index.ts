@@ -68,6 +68,7 @@ export type {
   DrawingGrip,
   DrawingHandle,
   DrawingSceneItem,
+  PlotFrac,
 } from "./drawingScene.js";
 export {
   dragDrawing,

@@ -84,7 +84,7 @@ export interface DrawDraft {
 /** The in-flight drag-edit of an existing drawing — the editing twin of
  * `DrawDraft`, exposed alongside it. Lives here as view state (ADR-005);
  * the machine sees one updateDrawing only at commit. */
-export interface EditDrag {
+interface EditDrag {
   readonly grip: DrawingGrip;
   readonly from: PlotFrac;
   readonly to: PlotFrac;

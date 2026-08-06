@@ -988,6 +988,7 @@ describe("editDrag (drag-edit fork)", () => {
       onCommitEdit,
       onPlotClick,
     });
+
     const { result } = renderHook(() => {
       return createChartGestures(
         fixedSeriesLen,
@@ -1017,6 +1018,7 @@ describe("editDrag (drag-edit fork)", () => {
       onCommitEdit,
       onPlotClick,
     });
+
     const { result } = renderHook(() => {
       return createChartGestures(
         fixedSeriesLen,

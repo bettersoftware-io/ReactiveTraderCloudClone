@@ -248,6 +248,14 @@ export function hitTestGrip(
   return null;
 }
 
+/** A pointer position as fractions (0-1) of the plot box — the coordinate
+ * currency the clients' gesture hooks speak (each declares its own
+ * structural twin; they unify). */
+export interface PlotFrac {
+  readonly xFrac: number;
+  readonly yFrac: number;
+}
+
 /** Projects a drag gesture onto a drawing — the one entry point for every
  * grip kind, shared verbatim by the preview and the commit (preview ≡
  * committed by construction, the same property the draw draft has).
@@ -256,8 +264,8 @@ export function hitTestGrip(
 export function dragDrawing(
   drawing: Drawing,
   grip: DrawingGrip,
-  from: { readonly xFrac: number; readonly yFrac: number },
-  to: { readonly xFrac: number; readonly yFrac: number },
+  from: PlotFrac,
+  to: PlotFrac,
   viewport: ChartViewport,
   scale: ChartScale,
   seriesLen: number,
