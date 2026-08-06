@@ -100,14 +100,16 @@
   .quote cite { display: block; margin-top: 10px; font: 500 12.5px var(--mono); color: var(--ink-faint); font-style: normal; }
 
   /* reach / unreachable two-up */
-  .reach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
-  @media (max-width: 720px) { .reach-grid { grid-template-columns: 1fr; } }
+  .reach-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 16px; }
+  @media (max-width: 900px) { .reach-grid { grid-template-columns: 1fr; } }
   .reach-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
   .reach-card.yes { border-top: 3px solid var(--green); }
+  .reach-card.fixed { border-top: 3px solid var(--blue); }
   .reach-card.no { border-top: 3px solid var(--amber); }
   .reach-card h3 { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
   .reach-card .tag { font: 700 10.5px var(--mono); letter-spacing: .04em; padding: 3px 8px; border-radius: 6px; }
   .reach-card.yes .tag { color: var(--green); background: var(--green-bg); border: 1px solid var(--green-line); }
+  .reach-card.fixed .tag { color: var(--blue); background: var(--blue-bg); border: 1px solid var(--blue-line); }
   .reach-card.no .tag { color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-line); }
   .reach-card ul { margin: 10px 0 0; padding-left: 20px; }
   .reach-card li { margin: 6px 0; font-size: 14px; color: var(--ink-soft); }
@@ -139,11 +141,16 @@
   .caller-note b { color: var(--blue); }
 
   /* toll strip */
-  .toll-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
-  @media (max-width: 720px) { .toll-stats { grid-template-columns: 1fr; } }
+  .toll-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  @media (max-width: 860px) { .toll-stats { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .toll-stats { grid-template-columns: 1fr; } }
+  .toll-stats.n3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px) { .toll-stats.n3 { grid-template-columns: 1fr; } }
   .toll-stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); text-align: center; }
   .toll-stat .n { font: 800 26px/1 var(--sans); color: var(--blue); letter-spacing: -.5px; }
+  .toll-stat.blue .n { color: var(--blue); }
   .toll-stat .l { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; }
+  .toll-stat .l code { background: var(--panel-2); }
 
   /* still-unreachable exhibit */
   .exhibit { background: var(--panel); border: 1px solid var(--amber-line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); margin-top: 14px; }
@@ -197,33 +204,39 @@
 
 <section class="wrap">
   <h2>The natural experiment</h2>
-  <p class="lead">This round is the sharpest test of that claim yet, because it is falsifiable in a very concrete way: give an agent a closed vocabulary of UI-driving commands, then look at what it can and cannot reach. Everything living behind a state machine — the equities workspace, panel layout, preferences — was drivable with <b>zero new state code</b>. The only unreachable state was the state that had never been promoted off <code>useState</code>.</p>
+  <p class="lead">This round is the sharpest test of that claim yet, because it is falsifiable in a very concrete way: give an agent a closed vocabulary of UI-driving commands, then look at what it can and cannot reach. Most state living behind a machine was drivable with <b>zero new state code</b>. One exception needed its lifetime fixed first — its machine already existed, but a driven command would have landed on a disposable instance nothing rendered (the second toll, below). The only <em>truly</em> unreachable state was state that had never been promoted off <code>useState</code> at all.</p>
 
   <div class="reach-grid">
     <div class="reach-card yes">
       <h3><span class="tag">REACHABLE, DAY ONE</span></h3>
       <ul>
-        <li><b>Workspace layout</b> — maximize/restore/collapse/expand, via the existing per-tab layout machine</li>
         <li><b>Equities chart</b> — symbol, timeframe, chart type, indicators, panes, via <code>EqWorkspaceMachine</code></li>
         <li><b>Theme + power-saver</b> — via their existing preference presenters</li>
         <li><b>Panels</b> — dismiss, via <code>JarvisPanelsMachine</code> (spawn/edit already owned by R1's <code>render_panel</code>)</li>
       </ul>
-      <div class="note">All four were already machines. Wiring <code>drive_app</code> to them was new dispatch code, not new state.</div>
+      <div class="note">Three of four command kinds. Wiring <code>drive_app</code> to them was new dispatch code, not new state.</div>
+    </div>
+    <div class="reach-card fixed">
+      <h3><span class="tag">REACHABLE — AFTER A LIFETIME FIX</span></h3>
+      <ul>
+        <li><b>Workspace layout</b> — maximize/restore/collapse/expand. The machine already existed, but <code>machines.layout(tab)</code> built a <b>fresh instance every call</b>, so a driven command mutated a throwaway nothing rendered.</li>
+      </ul>
+      <div class="note">The state machine wasn't the missing piece — its <em>lifetime</em> was. See the second toll, below.</div>
     </div>
     <div class="reach-card no">
       <h3><span class="tag">UNREACHABLE</span></h3>
       <ul>
-        <li><b>Workspace tab</b> (<code>App.tsx</code>) — a bare <code>useState&lt;WorkspaceTab&gt;</code>, no path from the composition root. <b>Promoted this round</b> — see below.</li>
+        <li><b>Workspace tab</b> (<code>App.tsx</code>) — a bare <code>useState&lt;WorkspaceTab&gt;</code>, no path from the composition root. <b>Promoted this round</b> — see the first toll, below.</li>
         <li><b><code>FxViewProvider</code></b> — rates/blotter sub-tabs + quick filter, still three <code>useState</code> calls. <b>Deliberately left as-is</b> — the still-unreachable exhibit.</li>
       </ul>
-      <div class="note">Two pockets, found by asking "what can't the driver reach" — not by auditing the codebase for <code>useState</code> first.</div>
+      <div class="note">Found by asking "what can't the driver reach" — not by auditing the codebase for <code>useState</code> first.</div>
     </div>
   </div>
 </section>
 
 <section class="wrap">
-  <h2>The toll — one promotion, not a rewrite</h2>
-  <p class="lead">The workspace tab was worth promoting: it gates which module the whole desk shows, and the flagship demo needs Jarvis to switch to Equities. The entire migration cost was one small machine plus the two-line rewire it took in each web client's <code>App.tsx</code>.</p>
+  <h2>The first toll — a promotion, not a rewrite</h2>
+  <p class="lead">The workspace tab was worth promoting: it gates which module the whole desk shows, and the flagship demo needs Jarvis to switch to Equities. The visible cost was one small machine plus a three-line rewire in <code>App.tsx</code> — but that rewire needed a seam to land on, not just goodwill: a new <code>useWorkspaceNav</code> ViewModel hook in <code>react-bindings</code> (mirrored in <code>solid-bindings</code> for the Solid counterpart), plus the composition wiring that exposes the singleton to it.</p>
 
   <div class="diff-grid">
     <div class="diff-col before">
@@ -240,14 +253,16 @@
     <div class="diff-col after">
       <div class="lbl">After — driven and clicked, same intent</div>
       <div class="file">packages/client-react/src/ui/App.tsx</div>
-      <pre class="code"><span class="cm">// the promoted composition-root singleton — the ONLY</span>
-<span class="cm">// state promotion this whole round makes</span>
+      <pre class="code"><span class="cm">// the promoted composition-root singleton — the only</span>
+<span class="cm">// NEW state this round adds (the layout fix below is a</span>
+<span class="cm">// lifetime promotion of EXISTING state, not new state)</span>
 <span class="kw">const</span> { useWorkspaceNav } = useViewModel();
 <span class="kw">const</span> { state: navState, switchTab } = useWorkspaceNav();
 <span class="kw">const</span> activeTab = navState.activeTab;
 
 <span class="cm">// ...</span>
 &lt;HeaderChrome activeTab={activeTab} onTabChange={switchTab} /&gt;
+<span class="cm">// ... (driven-pulse wrapper div omitted — same WorkspaceEngine inside)</span>
 &lt;WorkspaceEngine key={activeTab} tab={activeTab} /&gt;</pre>
     </div>
   </div>
@@ -255,8 +270,47 @@
 
   <div class="toll-stats">
     <div class="toll-stat"><div class="n">1</div><div class="l">new machine — <code>WorkspaceNavMachine</code>, ~70 lines, no injected deps</div></div>
-    <div class="toll-stat"><div class="n">2</div><div class="l">rewired components — <code>App.tsx</code> in each web client (React, Solid)</div></div>
+    <div class="toll-stat"><div class="n">~60</div><div class="l">lines added to the ViewModel seam — <code>react-bindings</code>' <code>createViewModel.ts</code> (new <code>useWorkspaceNav</code> hook + the <code>useLayout</code> binding change), mirrored in <code>solid-bindings</code></div></div>
+    <div class="toll-stat"><div class="n">3</div><div class="l">line rewire in <code>App.tsx</code> — committed for <code>client-react</code>; the Solid counterpart mirrors it byte-for-byte per the parity doctrine</div></div>
     <div class="toll-stat"><div class="n">0</div><div class="l">changes to <code>HeaderChrome</code>'s own props — its <code>onTabChange</code> slot already took any callback</div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The second toll — a lifetime fix, not a rewrite either</h2>
+  <p class="lead">The workspace tab wasn't the only surprise. Panel layout — maximize, restore, collapse, expand — already lived behind a state machine, so it looked reachable by construction. It wasn't: <code>machines.layout(tab)</code> built a <b>fresh <code>createLayoutMachine</code> instance on every single call</b>, so a driven <code>layout</code> command would have mutated a throwaway nobody rendered. The boundary held — but only after the machine's <em>lifetime</em>, not its existence, was fixed.</p>
+
+  <div class="diff-grid">
+    <div class="diff-col before">
+      <div class="lbl">Before — a machine, but not a singleton</div>
+      <div class="file">packages/client-core/src/composition.ts (origin/main)</div>
+      <pre class="code"><span class="cm">// a fresh instance every call — a driven command would</span>
+<span class="cm">// land on one nothing on screen ever reads from</span>
+layout: (tab: WorkspaceTab) => {
+  <span class="kw">return</span> createLayoutMachine(createDefaultLayoutPort(tab));
+},</pre>
+    </div>
+    <div class="diff-col after">
+      <div class="lbl">After — one closure swap, no-op-dispose invariant</div>
+      <div class="file">packages/client-core/src/composition.ts</div>
+      <pre class="code"><span class="cm">// layoutHandles: Map&lt;WorkspaceTab, Machine&lt;...&gt;&gt; — lazy,</span>
+<span class="cm">// 4-entry cap, built once per tab, cached for the session</span>
+<span class="kw">function</span> layoutFor(tab: WorkspaceTab) {
+  <span class="kw">const</span> existing = layoutHandles.get(tab);
+  <span class="kw">if</span> (existing) <span class="kw">return</span> existing; <span class="cm">// same instance, every call</span>
+  <span class="kw">const</span> machine = createLayoutMachine(createDefaultLayoutPort(tab));
+  <span class="kw">const</span> handle = { ...machine, dispose: () => {} }; <span class="cm">// composition owns it</span>
+  layoutHandles.set(tab, handle);
+  <span class="kw">return</span> handle;
+}</pre>
+    </div>
+  </div>
+  <div class="caller-note"><b>The no-op-dispose invariant:</b> the returned handle's <code>dispose()</code> is a documented no-op — composition owns this machine's lifetime now, so a legacy per-mount consumer calling <code>dispose()</code> can't tear the shared singleton down for every other consumer. <code>createMachineFactories</code>'s own <code>layout</code> field and <code>JarvisDriverMachine</code>'s <code>layout</code> dep both resolve to this <b>same</b> function, so the mounted UI and the driver always read the exact same instance per tab.</div>
+
+  <div class="toll-stats n3">
+    <div class="toll-stat"><div class="n">1</div><div class="l">closure swap — <code>layoutFor(tab)</code> replaces the bare factory; <code>0</code> new machines</div></div>
+    <div class="toll-stat"><div class="n">2</div><div class="l">consumers repointed at the same singleton — <code>createMachineFactories.layout</code> and <code>JarvisDriverMachine</code>'s <code>layout</code> dep</div></div>
+    <div class="toll-stat"><div class="n">+1</div><div class="l">user-visible bonus — layout state now <b>survives a tab switch</b> instead of resetting on every remount</div></div>
   </div>
 </section>
 
@@ -297,9 +351,14 @@ const [quickFilter, setQuickFilter] = useState(<span class="rm">""</span>);</pre
       </thead>
       <tbody>
         <tr>
+          <td class="cap">Chat surface, scripted brain (no tools yet)</td>
+          <td class="seam">ScriptedAgentLoop + the JARVIS_* WS wire</td>
+          <td class="pr">P1 #405 / P2 #440</td>
+        </tr>
+        <tr>
           <td class="cap">Tool-calling over live domain data</td>
           <td class="seam">@rtc/agent-tools — SDK-free desk tools over injected domain ports</td>
-          <td class="pr">P1 #405 / P3 #444</td>
+          <td class="pr">P3 #444</td>
         </tr>
         <tr>
           <td class="cap">External AI operates the app</td>

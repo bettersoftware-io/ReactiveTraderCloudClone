@@ -55,12 +55,13 @@ contains the wrapper's name. (Linux equivalent: `secret-tool lookup` /
    drives availability → a quote turn → a declined-trade confirmation turn →
    a **panel-authoring turn** (asserts a schema-valid `render_panel` call
    from the real model, round-tripped through `parsePanelSpec`) → a
-   **drive turn** (added by the P5 app-driving round:
-   `"switch to equities and maximize the chart"`, asserting a `jarvis.command`
-   frame whose batch `parseDriveBatch`-round-trips and contains a `switchTab`
-   command) → a fresh-socket history replay, and prints per-turn
-   time-to-first-event. ~6 metered turns. It refuses to run keyless rather
-   than silently passing.
+   fresh-socket history replay, and prints per-turn time-to-first-event.
+   ~5 metered turns today. It refuses to run keyless rather than silently
+   passing. **The P5 app-driving round is adding a sixth, drive turn**
+   (`"switch to equities and maximize the chart"`, asserting a
+   `jarvis.command` frame whose batch `parseDriveBatch`-round-trips and
+   contains a `switchTab` command) as part of its own e2e task — not landed
+   as of this writing; this note will read "~6 metered turns" once it has.
    The script now lives at `tests/scripts/jarvis-live-smoke.ts` (moved off
    the repo root so it can import `@rtc/shared` as a real workspace
    dependency of the `tests/` package rather than a root-level one); the

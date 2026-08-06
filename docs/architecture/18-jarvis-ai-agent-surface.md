@@ -1854,7 +1854,9 @@ const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
 ```
 
 ```tsx
-// after — the promoted singleton; the ONLY state promotion this round makes
+// after — the promoted singleton; the ONLY new state this round adds
+// (the layoutFor fix below promotes an EXISTING machine's lifetime,
+// not new state — see "The layoutFor singleton" section)
 const { useWorkspaceNav } = useViewModel();
 const { state: navState, switchTab } = useWorkspaceNav();
 const activeTab = navState.activeTab;
@@ -2011,9 +2013,11 @@ versa — there is exactly one turn in flight at a time regardless of which
 intent started it.
 
 **Offers, never executes** (the persona-level rule, deliberately not a
-server-side tool gate, to keep v1 simple): the narration section of
-`jarvisPersona.ts` instructs the model to describe and *suggest* — it may
-not call `drive_app` or `render_panel` during a `[narration]`-prefixed turn
+server-side tool gate, to keep v1 simple): `jarvisPersona.ts` has no
+dedicated narration section — the constraint is one trailing clause on the
+`drive_app` paragraph, "neither `drive_app` nor `render_panel` during a
+`[narration]` turn" — but it covers both surface tools, so the model may not
+call either one while replying to a `[narration]`-prefixed turn
 (`JARVIS_NARRATION_PREFIX = "[narration] "`, stripped for display, kept on
 the wire text so the model sees the marker). The drive/panel tools remain
 available only on the **next**, user-initiated turn — a narration is
