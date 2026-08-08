@@ -10,7 +10,7 @@ Nothing here is a blocker on shipped work. Items are grouped by what kind of
 thing they are, because that determines who fixes them and where.
 
 **Last updated: 2026-08-08** (close-out sweep rounds 1–6, a round-7 correction
-to T9, a round-8 JDK resolution, and round 9 closing T5 — see below)
+to T9, a round-8 JDK resolution, and rounds 9-10 closing T5 and P8 — see below)
 
 ## 0. The 2026-08-05 close-out sweep
 
@@ -136,13 +136,27 @@ zero warnings, `Exported: dist`. The real fix had already landed in
 `packageExtensions` and nobody noticed, because the tolerance made success and
 failure look identical from the outside — a green step either way.
 
+**Round 10** closed **P8**, and it completes a set worth naming. Three defects
+were closed in two days whose common property is that *the instrument that
+should have caught them was structurally incapable of it*: the dev-menu gear
+survived 18 goldens because a golden compares the app to **itself**; T5's
+tolerance made a passing and a crashing bundle **look identical**; and P8 was
+invisible to both the golden **and** the design reference, because the reference
+shot is a ~89%-scaled render in which the collision does not occur. Each was
+found only by measuring something the instrument does not measure — a11y frames,
+echo-filtered CI logs, pixel dimensions of the reference itself.
+
+The practical rule this leaves: **when a check has been green for a long time
+over an area nobody has looked at directly, that is not evidence of health.**
+Ask what the check compares against, and whether the defect could survive it.
+
 **The open roster, by id**, so any count here can be checked rather than
 believed:
 
-- **RN-specific (7)** — `R1` `P4` `P8` `T1` `T15` `T18` `T24`
+- **RN-specific (6)** — `R1` `P4` `T1` `T15` `T18` `T24`
 - **M-series (4)** — `M1` `M3` `M4` `M5`
 
-Total **11**.
+Total **10**.
 
 That list is spelled out because the count has drifted in conversation more
 than once, and always the same way: a row's open/closed state is written in
@@ -209,7 +223,7 @@ the product this repo recreates.
 | P4 | RN Aurora ambient renders far too faint on-device. | Pre-existing; raise `t.aurora` / per-band opacities, revisit sway/skew geometry. |
 | P5 | Power-saver **Freeze** renders the same as Calm on RN — no RN-side motion gating equivalent to the web's CSS catch-all. | **RESOLVED 2026-08-05 — and the recorded description pointed at the wrong layer.** This read "Freeze renders the same as Calm on RN — no RN-side motion gating equivalent to the web's CSS catch-all", which suggested the gates were missing. They were not: **54 files** read `useShellMotionEnabled` / `useBootMotionEnabled` / `isFreeze`, and the visual harness seeds `freeze` directly — that is precisely how `boot/static` is pinned (T16). The gap was the **CONTROL**: `AppearanceScreen` was a 2-state Off/On toggle whose "on" wrote `"calm"`, with a comment saying Freeze was "deferred to a later mobile-UI phase", so **no phone user could ever select the level the plumbing already honoured**. Replaced with a three-segment control over `POWER_SAVER_LEVELS`, matching the web's, with a per-level caption ("reduces motion" and "stops all motion" are different promises). The regression test presses **freeze first** — it is the level the old control could not reach, so a slide back to a boolean toggle fails there rather than shipping quietly. Pre-existing. Means Freeze could not be verified on-device for Phase 4a. |
 | **P7** | **`Sign out` was clipped off the right edge of the HUD header.** Measured from the a11y tree at the iPhone 17 pin, not eyeballed: the label's frame was `x=353.3 w=53.7`, so its right edge landed at **407.0** on a **402.0**-point screen. | **RESOLVED 2026-08-05, and it was a fidelity defect, not a layout one.** The prototype's header (`Reactive Trader Mobile.dc.html:88-94`) carries exactly TWO controls on the right, both fixed 40x44 glyph buttons — `◐` and `⌖` — and **no sign-out at all**. The port had substituted text labels for both glyphs and added a third affordance the design never budgeted width for; ~70pt of text against an 80pt budget is what ran the row off the screen, and the control that fell off was the one we had added. So the fix is a restoration: both buttons are glyphs at the prototype's box, and sign-out moved into the Appearance sheet — where the web client keeps its account actions too, making it the closer analogue as well as the one that fits. Two consequences worth recording. **(1)** A glyph cannot be read aloud, so `LockButton` gained an explicit `accessibilityLabel` it never needed while it said "Lock" — swapping text for an icon trades a visual bug for an accessibility one unless the control is named. **(2)** `AppearanceScreen` now renders a child that touches `useAuth`, so two test fakes needed the seam; the covering test asserts sign-out **on the sheet**, because `LogoutButton.test.tsx` renders the button directly and would still pass if the screen stopped mounting it — leaving the app with no way to sign out at all, and the header's own test no longer knows the control exists. |
-| **P8** | **The radial dock's hex FAB covers the status strip's FPS readout.** The dock is drawn after `StatusStrip` in `Chrome`, and their frames overlap: FAB `x=172 y=756 w=58 h=58` against `60FPS` at `x=195.7 y=766.7 w=31.7` — so the cell is fully occluded at rest, on every screen, in the app's normal state. The strip renders it correctly; it is simply painted over. | **FOUND 2026-08-05 by `shell/chrome`** (T6). Open, and worth noting it makes T30's whole FPS-accuracy investigation invisible in the shipped UI — the number that was wrong for months is a number nobody could see. Fix is a layout decision (inset the telemetry row around the FAB, or move the FAB), so it is recorded rather than guessed at. |
+| **P8** | **The radial dock's hex FAB covers the status strip's FPS readout.** The dock is drawn after `StatusStrip` in `Chrome`, and their frames overlap: FAB `x=172 y=756 w=58 h=58` against `60FPS` at `x=195.7 y=766.7 w=31.7` — so the cell is fully occluded at rest, on every screen, in the app's normal state. The strip renders it correctly; it is simply painted over. | **RESOLVED 2026-08-08 — and the prototype could not be read for the fix, which was the finding.** Every number involved is already a verbatim port of it (FAB `bottom:26px` / 58×58; strip `gap:11px` / `padding:4px 0 3px`; module row `height:60px` / `padding:0 18px`), yet [`reference-shots/rates/grid.png`](design/mobile/v1/reference-shots/rates/grid.png) shows the hex merely *nicking* the strip. The mock renders inside a phone frame at **~89% scale** — its hex measures 155px where a true 1:1 iPhone 17 render of 58pt gives **174px** — so at real device scale the same numbers collide. The design carries a latent geometry bug visible only at 1:1. The FAB therefore does **not** move: clearing the strip would need `bottom <= 2` (on the home-indicator gesture bar), and shrinking the hex to ~34pt breaks the 44pt touch-target floor. Instead the telemetry row reserves `DOCK_FAB_CLEARANCE` (hex + one 11pt inter-cell gap each side) down its centre, both halves `flex: 1` so the gap stays exactly centred — centring the five cells as one run puts it ~17pt off, because the two sides carry unequal text (~106pt vs ~140pt). FAB size moved to a shared `dockMetrics` module so the two cannot drift apart. **The `shell/chrome` golden is intentionally stale** until the next native session: it shows the occluded strip, because a golden compares the app to *itself* and so has been green on this defect since the scenario existed. |
 | P6 | `useMemo`'d `SkPath` captured in a worklet closure was flagged unproven (every other scene builds paths inside the worklet). | **RESOLVED 2026-07-25** — `DockingScene` uses it and renders correctly on-device. The documented fallback was not needed. |
 
 ## 4. Test and tooling wrinkles
