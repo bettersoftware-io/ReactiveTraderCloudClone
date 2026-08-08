@@ -212,6 +212,7 @@ const DEFAULT_AVAILABILITY: JarvisAvailability = {
   available: true,
   brains: ["scripted"],
   defaultBrain: "scripted",
+  gate: null,
 };
 
 /** Resolves which brain a turn actually runs with: the preferred brain when
@@ -455,6 +456,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     available: true,
     brains: JARVIS_BRAINS,
     defaultBrain: DEFAULT_JARVIS_BRAIN,
+    gate: null,
   };
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
   let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;

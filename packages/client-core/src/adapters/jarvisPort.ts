@@ -1,7 +1,7 @@
 import type { Observable } from "rxjs";
 
 import type { JarvisBrain, JarvisEffort } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisAvailabilityGate, JarvisEvent } from "@rtc/shared";
 
 export type { JarvisEvent } from "@rtc/shared";
 
@@ -38,4 +38,10 @@ export interface JarvisAvailability {
   readonly available: boolean;
   readonly brains: readonly JarvisBrain[];
   readonly defaultBrain: JarvisBrain;
+  /** The active usage-budget gate, or `null` when none is active (or the
+   * wire's `gate` field was absent/malformed — see `parseGate` in
+   * `WsJarvisAdapter`, which silently drops a malformed `gate` while the
+   * rest of the frame still applies). Required rather than optional so tsc
+   * flags every construction site across the codebase. */
+  readonly gate: JarvisAvailabilityGate | null;
 }

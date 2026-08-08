@@ -605,11 +605,17 @@ describe("createJarvisMachine", () => {
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           availability$: cold<JarvisAvailability>("f-t", {
-            f: { available: false, brains: [], defaultBrain: "scripted" },
+            f: {
+              available: false,
+              brains: [],
+              defaultBrain: "scripted",
+              gate: null,
+            },
             t: {
               available: true,
               brains: ["scripted"],
               defaultBrain: "scripted",
+              gate: null,
             },
           }),
           ...baseBrainDeps(),
@@ -639,7 +645,12 @@ describe("createJarvisMachine", () => {
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>("f", {
-              f: { available: false, brains: [], defaultBrain: "scripted" },
+              f: {
+                available: false,
+                brains: [],
+                defaultBrain: "scripted",
+                gate: null,
+              },
             }),
             ...baseBrainDeps(),
           };
@@ -695,6 +706,7 @@ describe("createJarvisMachine", () => {
                   available: false,
                   brains: [],
                   defaultBrain: "scripted",
+                  gate: null,
                 },
               },
             ),
@@ -760,6 +772,7 @@ describe("createJarvisMachine", () => {
             available: true,
             brains: ["scripted", "claude-sonnet-5"],
             defaultBrain: "scripted",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
           effort$: of<JarvisEffort>("high"),
@@ -787,6 +800,7 @@ describe("createJarvisMachine", () => {
             available: true,
             brains: ["scripted"],
             defaultBrain: "scripted",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -813,6 +827,7 @@ describe("createJarvisMachine", () => {
             available: false,
             brains: [],
             defaultBrain: "claude-haiku-4-5",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -884,11 +899,13 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted"],
               defaultBrain: "scripted",
+              gate: null,
             },
             b: {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             },
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -930,6 +947,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -963,6 +981,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: ts.createColdObservable<JarvisBrain>("a-b", {
               a: "scripted",
@@ -1018,6 +1037,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
             // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
@@ -1137,6 +1157,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -1167,7 +1188,12 @@ describe("createJarvisMachine", () => {
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>("f", {
-              f: { available: false, brains: [], defaultBrain: "scripted" },
+              f: {
+                available: false,
+                brains: [],
+                defaultBrain: "scripted",
+                gate: null,
+              },
             }),
             ...baseBrainDeps(),
           };
