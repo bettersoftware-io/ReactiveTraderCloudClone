@@ -1,6 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 
+import { formatGateResetTime, type JarvisState } from "@rtc/client-core";
 import type {
   AmbientStyle,
   JarvisBrain,
@@ -86,18 +87,41 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
     setNarrator: setJarvisNarrator,
   } = useJarvisPreferences();
 
+  // The active usage-budget gate (null when none is active). A gated brain
+  // gets both `disabled: true` and a `title` explaining why — the reset
+  // time, formatted by the same helper the hint line below uses — so the
+  // native tooltip and the hint line never drift apart.
+  function gate(): JarvisState["gate"] {
+    return jarvisState().gate;
+  }
+
+  function gateHint(): string | undefined {
+    const g = gate();
+    return g === null
+      ? undefined
+      : `Budget window — resets ${formatGateResetTime(g.resetsAtMs)}`;
+  }
+
   // Real (non-"scripted") brain options are disabled when the server isn't
   // currently offering them (jarvisState().brains — an empty array is a
   // normal "nothing offered right now" value, not a loading sentinel, so it
   // disables every real option same as any other not-offered case).
   // "scripted" is always selectable — it's the offline fallback, not a
   // server-side model.
+  // A brain the active gate has removed is ALSO disabled, independent of
+  // whether the server still offers it in `brains` (a gate can remove a
+  // brain the picker would otherwise show as available).
   function jarvisBrainOptions(): readonly PrefSegmentOption[] {
+    const g = gate();
     return JARVIS_BRAINS.map((brain): PrefSegmentOption => {
+      const gated = g?.gated.includes(brain) ?? false;
       return {
         value: brain,
         label: JARVIS_BRAIN_LABELS[brain],
-        disabled: brain !== "scripted" && !jarvisState().brains.includes(brain),
+        disabled:
+          gated ||
+          (brain !== "scripted" && !jarvisState().brains.includes(brain)),
+        title: gated ? gateHint() : undefined,
       };
     });
   }
@@ -275,6 +299,14 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
                   }}
                   testid="pref-segment-jarvisBrain"
                 />
+                <Show when={gate() !== null}>
+                  <div
+                    class={styles.gateHint}
+                    data-testid="pref-segment-jarvisBrain-hint"
+                  >
+                    {gateHint()}
+                  </div>
+                </Show>
                 <PrefSegment
                   label="Effort"
                   description="Thinking-effort budget for a live brain. No effect on scripted."

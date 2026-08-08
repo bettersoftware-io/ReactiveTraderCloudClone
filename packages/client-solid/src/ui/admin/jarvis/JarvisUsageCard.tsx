@@ -24,10 +24,25 @@ import styles from "./JarvisUsageCard.module.css";
  * `windowEndMs === 0` is the snapshot's own "no turn recorded yet" sentinel
  * (see `JarvisUsageSnapshot`'s doc) — rendered as "—" rather than the
  * misleading epoch-zero clock read `clock(0)` would otherwise print.
+ *
+ * The server has sent the budget-gate envelope fields (`budgetUsd` etc., see
+ * `AdminUsage` below) on every `ADMIN_JARVIS_USAGE` push since the
+ * corresponding server round landed, but `useJarvisUsage()`'s static type
+ * (threaded through `@rtc/client-core`'s `JarvisUsagePort` and
+ * `@rtc/solid-bindings`'s `ViewModel`, neither owned by this package) is
+ * still the narrower `JarvisUsageSnapshot` — widening it is a client-core +
+ * solid-bindings edit outside this package's file scope. `AdminUsage`
+ * mirrors `@rtc/shared`'s `AdminJarvisUsagePayload` shape locally (this
+ * package has no dependency on `@rtc/shared`) so the extra fields can be
+ * read via a structural cast at this one consumption boundary instead.
  */
 export function JarvisUsageCard(): JSX.Element {
   const { useJarvisUsage } = useViewModel();
-  const usage = useJarvisUsage();
+  const rawUsage = useJarvisUsage();
+
+  function usage(): AdminUsage | null {
+    return rawUsage() as AdminUsage | null;
+  }
 
   return (
     <div data-testid="admin-jarvis-usage-card" class={styles.card}>
@@ -36,6 +51,26 @@ export function JarvisUsageCard(): JSX.Element {
         when={usage() !== null}
         fallback={<div class={styles.empty}>NO USAGE DATA</div>}
       >
+        <Show when={usage()?.budgetUsd !== undefined}>
+          <div data-testid="admin-jarvis-budget-line" class={styles.budgetLine}>
+            {usage()?.budgetUsd === null
+              ? "BUDGET OFF"
+              : `$${(usage()?.spentWindowUsd ?? 0).toFixed(2)} of $${(usage()?.budgetUsd ?? 0).toFixed(2)} this window — soft gate at $${(usage()?.softBudgetUsd ?? 0).toFixed(2)}`}
+            <Show
+              when={
+                usage()?.gateLevel === "soft" || usage()?.gateLevel === "hard"
+              }
+            >
+              <span
+                data-testid="admin-jarvis-gate-badge"
+                class={styles.gateBadge}
+                data-gate={usage()?.gateLevel}
+              >
+                {usage()?.gateLevel?.toUpperCase()} GATE
+              </span>
+            </Show>
+          </div>
+        </Show>
         <UsageSection
           title="CURRENT WINDOW"
           rows={() => {
@@ -108,6 +143,20 @@ interface UsageSectionProps {
  * has no direct dependency on `@rtc/shared`; only `JarvisUsageSnapshot`
  * itself is re-exported through `@rtc/client-core`'s `jarvisUsagePort`). */
 type JarvisBrainUsageRow = JarvisUsageSnapshot["currentWindow"][number];
+
+/** Locally mirrors `@rtc/shared`'s `AdminJarvisUsagePayload` shape —
+ * see this component's doc comment for why this package reads the extra
+ * budget-gate fields via a local type + cast rather than an import.
+ * `budgetUsd: null` means gating is disabled server-side; `undefined`
+ * (the field absent entirely) means a pre-round server that never sends
+ * the envelope at all — the budget line renders only when the field is
+ * present, either way. */
+interface AdminUsage extends JarvisUsageSnapshot {
+  readonly budgetUsd?: number | null;
+  readonly softBudgetUsd?: number | null;
+  readonly spentWindowUsd?: number;
+  readonly gateLevel?: "none" | "soft" | "hard";
+}
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
