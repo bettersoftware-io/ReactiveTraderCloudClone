@@ -81,13 +81,31 @@ export interface JarvisCancelPayload {
   readonly turnId: string;
 }
 
-/** `SERVER_MSG.JARVIS_AVAILABILITY` payload — not turn-scoped; sent only in
- * reply to `CLIENT_MSG.JARVIS_SUBSCRIBE`. Availability is static per server
- * process, so there is no server-side push on change — a client re-sends
- * `JARVIS_SUBSCRIBE` (e.g. on every reconnect) to get a fresh answer. */
+/** Tri-state budget-gate level; "none" never crosses the wire on the
+ * availability payload — `gate` is simply absent. The admin usage payload
+ * carries the full tri-state. */
+export type JarvisGateLevel = "none" | "soft" | "hard";
+
+/** Present on JARVIS_AVAILABILITY only while a budget gate is active.
+ * `gated` lists the brains removed BY the gate (already intersected with
+ * what env capability offered), so the picker can render them
+ * disabled-with-reason rather than plainly absent. `resetsAtMs` is the
+ * meter's windowEndMs (0 when a forced gate is active on a fresh meter —
+ * consumers render "—"). */
+export interface JarvisAvailabilityGate {
+  readonly level: Exclude<JarvisGateLevel, "none">;
+  readonly resetsAtMs: number;
+  readonly gated: readonly JarvisBrain[];
+}
+
+/** `SERVER_MSG.JARVIS_AVAILABILITY` payload — not turn-scoped; sent in reply
+ * to `CLIENT_MSG.JARVIS_SUBSCRIBE`, and again by the server on every
+ * budget-gate transition (the client channel is already live-push-capable,
+ * so a fresh frame lands without the client having to re-subscribe). */
 export interface JarvisAvailabilityPayload {
   readonly available: boolean;
   /** Absent on pre-round servers — consumers treat absent as "all offered". */
   readonly brains?: readonly JarvisBrain[];
   readonly defaultBrain?: JarvisBrain;
+  readonly gate?: JarvisAvailabilityGate;
 }

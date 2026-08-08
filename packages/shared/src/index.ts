@@ -52,14 +52,17 @@ export {
   parseDriveBatch,
 } from "./jarvis/driveCommand.js";
 export type {
+  JarvisAvailabilityGate,
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
   JarvisEvent,
+  JarvisGateLevel,
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
 export type {
+  AdminJarvisUsagePayload,
   JarvisBrainUsageRow,
   JarvisUsageSnapshot,
 } from "./jarvis/jarvisUsage.js";
