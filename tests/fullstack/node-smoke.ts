@@ -12,21 +12,17 @@
  * Happy path: subscribe to pricing and receive a tick; execute a trade and
  * receive an ack. Exits non-zero on any failure.
  */
-import { firstValueFrom, timeout } from "rxjs";
+import { firstValueFrom, type Observable, timeout } from "rxjs";
 
 import {
   createWsRealPorts,
   HttpAuthAdapter,
   InMemorySessionStore,
+  type JarvisAvailability,
 } from "@rtc/client-core";
 import { WsAdapter } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
 import { PreferencesSimulator } from "@rtc/domain";
-import {
-  CLIENT_MSG,
-  type JarvisAvailabilityPayload,
-  SERVER_MSG,
-} from "@rtc/shared";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 import { loginForToken } from "./loginForToken.js";
@@ -154,84 +150,33 @@ async function runChecks(): Promise<void> {
   }
 }
 
-// ── Jarvis gate witness (raw ws) ────────────────────────────────
+// ── Jarvis gate witness ──────────────────────────────────────────
 //
-// The above `runChecks` drives the real client adapter stack (WsAdapter +
-// WsReal* ports). This section instead speaks the wire directly with a raw
-// `ws` socket — there is no client-side port for `jarvis.subscribe` /
-// `jarvis.availability` to route through, and the point here is only to
-// witness the server's forced-soft-gate availability frame verbatim, not to
-// exercise any client abstraction.
+// Drives the SAME real client adapter stack as `runChecks` (WsAdapter +
+// createWsRealPorts), against a SECOND real server forced into the soft
+// budget gate. `ports.jarvis` is a client-core `WsJarvisAdapter` in this
+// mode, which — beyond the `JarvisPort` surface — also exposes
+// `availability$(): Observable<JarvisAvailability>`, the same subscribe +
+// parse client-core already owns (see WsJarvisAdapter.availability$ and its
+// `parseAvailability`/`parseGate`). Asserting against that ALREADY-PARSED
+// shape (rather than the raw wire frame) is a better witness than a raw `ws`
+// socket would be: it proves the client parser accepts the server's real
+// frame, the exact cross-package contract nothing else integration-tests.
+// `WsJarvisAdapter` itself isn't exported from client-core's package entry
+// point (deliberately — see its own doc comment), so `AvailabilityCapable`
+// below narrows the port to the extra method it's known to carry at runtime
+// (every `createWsRealPorts` call constructs a real `WsJarvisAdapter`)
+// without needing the concrete class.
 
-// Derived from PORT rather than its own env var, so this smoke stays
-// configurable via the same FULLSTACK_PORT knob as `runChecks` without
-// adding a new turbo.json passthrough entry for a single-use port.
-const GATED_PORT: number = PORT + 1;
+// Distinct from THREE neighbors also claiming a port in this dir: this
+// file's own `PORT` (4123, default), `browser-smoke.ts`'s `SERVER_PORT`
+// (4124, default — both run concurrently under run-all.ts's e2e suite) and
+// `../scripts/jarvis-live-smoke.ts`'s hardcoded 4125 (manual-only, not part
+// of run-all.ts, but still a live claim worth staying clear of).
+const GATED_PORT: number = PORT + 3;
 
-interface WireMessage {
-  readonly type: string;
-  readonly payload?: unknown;
-}
-
-/** Resolves once `socket` reaches OPEN, or rejects on error/timeout. */
-function waitForOpen(socket: WebSocket, timeoutMs: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`socket open timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    socket.addEventListener(
-      "open",
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
-    socket.addEventListener(
-      "error",
-      (event) => {
-        clearTimeout(timer);
-        reject(new Error(`socket error: ${String(event)}`));
-      },
-      { once: true },
-    );
-  });
-}
-
-/** Resolves with the payload of the first `type`-matching frame received on
- * `socket`, or rejects after `timeoutMs`. */
-function waitForMessage<T>(
-  socket: WebSocket,
-  type: string,
-  timeoutMs: number,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      socket.removeEventListener("message", resolveOnMatchingFrame);
-      reject(new Error(`timed out waiting for "${type}" after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    function resolveOnMatchingFrame(event: MessageEvent): void {
-      let msg: WireMessage;
-
-      try {
-        msg = JSON.parse(String(event.data)) as WireMessage;
-      } catch {
-        return;
-      }
-
-      if (msg.type !== type) {
-        return;
-      }
-
-      clearTimeout(timer);
-      socket.removeEventListener("message", resolveOnMatchingFrame);
-      resolve(msg.payload as T);
-    }
-
-    socket.addEventListener("message", resolveOnMatchingFrame);
-  });
+interface AvailabilityCapable {
+  availability$(): Observable<JarvisAvailability>;
 }
 
 /**
@@ -239,7 +184,8 @@ function waitForMessage<T>(
  * that `jarvis.availability` carries the narrowed brains list + gate
  * metadata over the real wire — the fullstack witness for the client-core
  * gate-parsing work (see JarvisMachine's gate handling). This connection
- * only subscribes; it sends no `jarvis.chat` turn, so the dummy
+ * only subscribes (`availability$()` sends `jarvis.subscribe` internally,
+ * nothing more); it sends no `jarvis.chat` turn, so the dummy
  * `ANTHROPIC_API_KEY` below can never trigger a real Anthropic call.
  */
 async function runGateSmoke(): Promise<void> {
@@ -258,22 +204,30 @@ async function runGateSmoke(): Promise<void> {
     await waitForHttp(`${httpBase}/health`, 30_000);
 
     const login = await loginForToken(httpBase);
-    const wsUrl = new URL(`ws://${HOST}:${GATED_PORT}`);
-    wsUrl.searchParams.set("access", login.token);
-    const socket = new WebSocket(wsUrl.toString());
+    const sessionStore = new InMemorySessionStore();
+    sessionStore.write({
+      token: login.token,
+      user: login.user,
+      username: "demo",
+      exp: login.exp,
+    });
+
+    const ws = new WsAdapter(`ws://${HOST}:${GATED_PORT}`, () => {
+      return sessionStore.read()?.token;
+    });
+
+    const ports = createWsRealPorts(ws, {
+      preferences: new PreferencesSimulator(),
+      auth: new HttpAuthAdapter(httpBase),
+      sessionStore,
+    });
 
     try {
-      await waitForOpen(socket, FIRST_VALUE_TIMEOUT_MS);
-
-      const availabilityPromise = waitForMessage<JarvisAvailabilityPayload>(
-        socket,
-        SERVER_MSG.JARVIS_AVAILABILITY,
-        FIRST_VALUE_TIMEOUT_MS,
+      const availability = await firstValueFrom(
+        (ports.jarvis as unknown as AvailabilityCapable)
+          .availability$()
+          .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
       );
-
-      socket.send(JSON.stringify({ type: CLIENT_MSG.JARVIS_SUBSCRIBE }));
-
-      const availability = await availabilityPromise;
 
       assert(
         JSON.stringify(availability.brains) ===
@@ -284,7 +238,7 @@ async function runGateSmoke(): Promise<void> {
         availability.defaultBrain === "claude-haiku-4-5",
         `gated defaultBrain (got ${availability.defaultBrain})`,
       );
-      assert(availability.gate !== undefined, "availability carries a gate");
+      assert(availability.gate !== null, "availability carries a gate");
       assert(
         availability.gate?.level === "soft",
         `gate level (got ${availability.gate?.level})`,
@@ -302,7 +256,7 @@ async function runGateSmoke(): Promise<void> {
         "  ✓ jarvis gate: forced soft gate narrows brains + carries gate metadata over the real wire",
       );
     } finally {
-      socket.close();
+      ws.dispose();
     }
   } finally {
     await stopProcess(gatedServer);
