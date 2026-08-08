@@ -8,6 +8,7 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
   "--bg-primary",
   "--accent-primary",
   "--accent-2",
+  "--accent-compare",
   "--border-strong",
   "--panel",
   "--panel-head",

@@ -123,6 +123,7 @@ const FALLBACK_EQ_STATE: EqWorkspaceState = {
   indicators: [],
   panes: [],
   yScale: "linear",
+  compare: null,
 };
 
 // A named tag (rather than an inline `{ type: "command" }` literal) so

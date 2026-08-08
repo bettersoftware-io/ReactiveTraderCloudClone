@@ -439,6 +439,15 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartLogScale",
     fixtureKey: "equities-loaded",
   },
+  // Comparison series (spec 2026-08-08): the real CandleChart mounted with a
+  // deterministic compare series — a real prop like yScale above, so no
+  // ChartPlot bypass is needed; default gesture state keeps it
+  // deterministic. Pins the percent axis labels, the compare polyline
+  // (--accent-compare), and the unchanged candle geometry in one capture.
+  "equities/chart-compare": {
+    componentKey: "EquitiesChartCompare",
+    fixtureKey: "equities-loaded",
+  },
   // Drawing tools (drawing-tools workstream, Task 8): the real CandleChart
   // mounted with a literal `drawings` array (one trendline, one hline) and
   // `selectedDrawingId` set to the trendline — real props like

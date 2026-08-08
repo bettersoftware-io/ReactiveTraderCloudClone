@@ -66,9 +66,22 @@ export function SvgPathLayer(props: SvgPathLayerProps): JSX.Element {
           );
         }}
       </Index>
+      <Show when={(props.comparePoints ?? EMPTY_POINTS).length > 1}>
+        <polyline
+          data-testid="chart-compare-line"
+          class={styles.compare}
+          fill="none"
+          points={toPointsAttr(props.comparePoints ?? EMPTY_POINTS)}
+        />
+      </Show>
     </svg>
   );
 }
+
+/** Stable empty-array identity for the `comparePoints` default — avoids a
+ * fresh `[]` (and so a length re-check against a new reference) whenever the
+ * caller omits the prop. */
+const EMPTY_POINTS: readonly ChartPoint[] = [];
 
 /** One overlay indicator's already-joined SVG `points` attribute string —
  * see `CandleChart`, which projects `indicatorValues`/`indicatorPoints`
@@ -82,6 +95,9 @@ export interface SvgPathLayerProps {
   readonly linePoints: readonly ChartPoint[];
   readonly kind: ChartKind;
   readonly indicatorPaths: readonly IndicatorPath[];
+  /** The comparison overlay's projected close-line — omit for no comparison
+   * active (defaults to none, same convention as `indicatorPaths`). */
+  readonly comparePoints?: readonly ChartPoint[];
 }
 
 function toPointsAttr(points: readonly ChartPoint[]): string {

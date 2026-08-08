@@ -1909,6 +1909,7 @@ const equitiesBase: EquitiesBaseFixture = {
     indicators: [],
     panes: [],
     yScale: "linear",
+    compare: null,
   },
 };
 
@@ -1951,6 +1952,7 @@ fixtures["equities-no-selection"] = makeAppData({
     indicators: [],
     panes: [],
     yScale: "linear",
+    compare: null,
   },
 });
 fixtures["equities-ticket-editing"] = makeAppData({

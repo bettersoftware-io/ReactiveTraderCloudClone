@@ -934,6 +934,10 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleYScale();
   }
 
+  function setEqCompareSymbol(sym: string | null): void {
+    presenters.eqWorkspace.intents.setCompare(sym);
+  }
+
   // Workspace nav machine — shared single instance, same toSignal-direct
   // pattern as eqWorkspace above (NOT useMachine, which would dispose the
   // singleton on the first tab-switch remount).
@@ -1249,6 +1253,7 @@ export function createViewModel(
         toggleIndicator: toggleEqIndicator,
         togglePane: toggleEqPane,
         toggleYScale: toggleEqYScale,
+        setCompare: setEqCompareSymbol,
       };
     },
     useWorkspaceNav: () => {

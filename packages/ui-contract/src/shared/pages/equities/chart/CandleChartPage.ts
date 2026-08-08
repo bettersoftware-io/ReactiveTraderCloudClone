@@ -29,6 +29,11 @@ export interface CandleChartProps {
   /** Price-axis mapping (omitted/undefined = linear) — Task 3/4's LOG pill
    * intent, threaded straight to `chartVm`. */
   yScale?: EqYScale;
+  /** Comparison series overlay — presence switches the whole plot to the
+   * percent axis (see @rtc/motion-core chartScene). An empty `series` while
+   * the compare symbol's data is still loading percent-projects the primary
+   * alone (the axis is already %, so the line's arrival doesn't reflow). */
+  compare?: { readonly series: readonly Candle[] };
   defaultVisible: number;
   /** Whether an older history page is currently in flight for this series —
    * drives the LOADING OLDER… chip and gates re-triggering. */
@@ -371,6 +376,13 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     return (
       this.root.querySelector("[data-yscale]")?.getAttribute("data-yscale") ??
       ""
+    );
+  }
+
+  /** Whether the comparison close-line polyline is rendered. */
+  compareLineVisible(): boolean {
+    return (
+      this.root.querySelector('[data-testid="chart-compare-line"]') !== null
     );
   }
 

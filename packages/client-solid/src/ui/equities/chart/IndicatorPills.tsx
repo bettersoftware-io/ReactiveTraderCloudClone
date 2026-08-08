@@ -55,12 +55,14 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
         type="button"
         class={styles.pill}
         data-testid="chart-yscale-pill"
-        data-active={String(props.yScale === "log")}
+        data-active={String(!props.comparing && props.yScale === "log")}
+        disabled={props.comparing ?? false}
+        title={props.comparing ? "comparison uses percent scale" : undefined}
         onClick={() => {
           props.onToggleYScale();
         }}
       >
-        LOG
+        {props.comparing ? "PCT" : "LOG"}
       </button>
     </div>
   );
@@ -93,4 +95,8 @@ export interface IndicatorPillsProps {
   onTogglePane: (id: EqPaneId) => void;
   yScale: EqYScale;
   onToggleYScale: () => void;
+  /** Whether a comparison symbol is active — forces the axis to percent
+   * scale, so the LOG toggle becomes a disabled "PCT" readout. Optional so
+   * existing spec/visual mounts keep compiling. */
+  comparing?: boolean;
 }

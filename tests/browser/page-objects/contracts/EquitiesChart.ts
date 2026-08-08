@@ -77,7 +77,16 @@ export interface EquitiesChartPO {
   /** Clicks the LOG price-axis pill (IndicatorPills.tsx). */
   clickYScalePill(): Promise<void>;
   /** Waits until the chart wrap's data-yscale equals the given mode. */
-  waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void>;
+  waitYScale(
+    mode: "linear" | "log" | "percent",
+    timeoutMs: number,
+  ): Promise<void>;
+  /** Clicks the VS comparison pill for the given symbol (ComparePills.tsx). */
+  clickComparePill(sym: string): Promise<void>;
+  /** Waits until the comparison close-line polyline is rendered. */
+  waitCompareLineVisible(timeoutMs: number): Promise<void>;
+  /** Waits until the comparison close-line polyline is gone. */
+  waitCompareLineHidden(timeoutMs: number): Promise<void>;
   /** Clicks the given draw-tool pill (DrawToolPills.tsx). */
   clickDrawPill(tool: EquitiesDrawTool): Promise<void>;
   /** A real pointer drag across the plot, from one fractional position to

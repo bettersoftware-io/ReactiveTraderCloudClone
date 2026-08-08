@@ -29,7 +29,9 @@ export function ChartPanel(): ReactElement {
     useEqDrawings,
   } = useViewModel();
   const { state } = useEqWorkspace();
-  const { sel, timeframe, chartType, indicators, panes, yScale } = state;
+  const { sel, timeframe, chartType, indicators, panes, yScale, compare } =
+    state;
+
   const {
     state: drawState,
     addDrawing,
@@ -40,6 +42,10 @@ export function ChartPanel(): ReactElement {
   } = useEqDrawings();
   const quote = useEquityQuote(sel);
   const candles = useCandles(sel, timeframe);
+  // The comparison symbol's series — the presenter maps "" to a stable
+  // empty series, so no compare costs nothing. Reuses the same keyed
+  // useCandles bind as the primary (per-symbol streams already exist).
+  const compareCandles = useCandles(compare ?? "", timeframe);
   const backfill = useCandleBackfill(sel, timeframe);
   const instruments = useWatchlist();
   const instrument = instruments.find((i) => {
@@ -86,6 +92,7 @@ export function ChartPanel(): ReactElement {
           indicators={indicators}
           panes={panes}
           yScale={yScale}
+          compare={compare !== null ? { series: compareCandles } : undefined}
           defaultVisible={defaultVisible}
           loadingOlder={backfill.loadingOlder}
           historyExhausted={backfill.historyExhausted}

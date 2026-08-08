@@ -36,6 +36,7 @@ export {
 } from "./chartViewport.js";
 export type {
   ChartCandle,
+  ChartCompareInput,
   ChartKind,
   ChartPoint,
   ChartScale,

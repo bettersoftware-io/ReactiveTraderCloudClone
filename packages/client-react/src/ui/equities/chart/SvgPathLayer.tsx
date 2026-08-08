@@ -19,6 +19,7 @@ export function SvgPathLayer({
   linePoints,
   kind,
   indicatorPaths,
+  comparePoints = EMPTY_POINTS,
 }: SvgPathLayerProps): ReactElement {
   // Same route as PnlChart.tsx/ThroughputChart.tsx for a gradient defs id
   // referenced by fill: a build-time-stable literal CSS selector can't name
@@ -71,6 +72,14 @@ export function SvgPathLayer({
           />
         );
       })}
+      {comparePoints.length > 1 && (
+        <polyline
+          data-testid="chart-compare-line"
+          className={styles.compare}
+          fill="none"
+          points={toPointsAttr(comparePoints)}
+        />
+      )}
     </svg>
   );
 }
@@ -87,7 +96,15 @@ export interface SvgPathLayerProps {
   readonly linePoints: readonly ChartPoint[];
   readonly kind: ChartKind;
   readonly indicatorPaths: readonly IndicatorPath[];
+  /** The comparison overlay's pre-projected close-line — empty/omitted
+   * renders nothing. */
+  readonly comparePoints?: readonly ChartPoint[];
 }
+
+/** Stable empty-array identity for the `comparePoints` default — avoids a
+ * fresh `[]` (and so an unnecessary `length` check allocation) on every
+ * render when the caller omits the prop. */
+const EMPTY_POINTS: readonly ChartPoint[] = [];
 
 function toPointsAttr(points: readonly ChartPoint[]): string {
   return points

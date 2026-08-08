@@ -869,6 +869,7 @@ export function solidViewModel(world: World): ViewModel {
         toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
         togglePane: world.eqWorkspace.intents.togglePane,
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
+        setCompare: world.eqWorkspace.intents.setCompare,
       };
     },
     // The app's active workspace tab (Task 12/P5): the REAL
