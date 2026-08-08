@@ -24,11 +24,13 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   type Direction,
+  JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
+import type { JarvisAvailabilityGate } from "@rtc/shared";
 
 import type {
   JarvisAvailability,
@@ -72,10 +74,14 @@ export interface JarvisEntry {
     readonly name: string;
     readonly status: "running" | "done";
   };
-  /** Set on the USER-side entry of a `narrate()` turn — the proactive
-   * app-driving narrator dispatched this turn unsolicited, rather than the
-   * user typing it. Absent (not `false`) on every ordinary `send()` turn. */
-  readonly origin?: "narrator";
+  /** `"narrator"` is set on the USER-side entry of a `narrate()` turn — the
+   * proactive app-driving narrator dispatched this turn unsolicited, rather
+   * than the user typing it. `"system"` marks a machine-generated JARVIS-role
+   * entry with no corresponding turn at all — currently only the
+   * budget-downgrade line `availabilityPatches$` appends (see
+   * `JarvisState.gate`'s doc). Absent (not `false`) on every ordinary
+   * `send()` turn's entries. */
+  readonly origin?: "narrator" | "system";
 }
 
 export interface JarvisConfirmation {
@@ -123,6 +129,15 @@ export interface JarvisState {
    * (an availability flip can un-offer the currently-preferred brain
    * mid-session). */
   readonly effectiveBrain: JarvisBrain;
+  /** The active usage-budget gate, mirrored verbatim from the live
+   * `availability$` feed's own `gate` field on every emission (`null` when
+   * none is active, including sim mode's always-`null` default). Distinct
+   * from `effectiveBrain`: a gate can be active without moving THIS user's
+   * effective brain (e.g. a soft gate that only removes brains they weren't
+   * using) — see `availabilityPatches$`'s doc for how the two are folded
+   * together, and the one system-line entry a gate that DOES move
+   * `effectiveBrain` appends into `entries`. */
+  readonly gate: JarvisAvailabilityGate | null;
 }
 
 export interface JarvisIntents {
@@ -201,6 +216,7 @@ const INITIAL: JarvisState = {
   available: true,
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  gate: null,
 };
 
 /** Sim-mode / legacy-caller default for `JarvisDeps.availability$`: always
@@ -230,6 +246,30 @@ function resolveEffectiveBrain(
   return availability.brains.includes(preferredBrain)
     ? preferredBrain
     : availability.defaultBrain;
+}
+
+/** Locale `HH:MM` rendering of a gate's `resetsAtMs` (e.g. the footer chip,
+ * the picker's disabled-row reset copy, and the budget-downgrade system
+ * line below all share this one formatting rule). `0` is the meter's
+ * "forced gate on a fresh window" sentinel — see `JarvisAvailabilityGate`'s
+ * doc — rendered as "—" rather than the 1970 epoch a naive `Date(0)` would
+ * produce. */
+export function formatGateResetTime(resetsAtMs: number): string {
+  if (resetsAtMs === 0) {
+    return "—";
+  }
+
+  return new Date(resetsAtMs).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** The budget-downgrade system line's trailing clause: empty for the `0`
+ * sentinel (the line reads "...continuing on Haiku 4.5." with no dangling
+ * "until —"), else " until HH:MM". */
+function untilClause(resetsAtMs: number): string {
+  return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
 }
 
 /** Replace the last entry (the one currently streaming/accumulating) with the
@@ -713,19 +753,58 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   // synchronously. Also re-resolves `effectiveBrain` — an availability flip
   // can un-offer the currently-preferred brain mid-session, so this must
   // recompute it here too, not only on preferredBrain$'s own emissions.
+  //
+  // This is ALSO the sole home of the budget-downgrade system line: one
+  // availability emission must produce one atomic state patch (gate +
+  // brains + effectiveBrain + the optional entry), so no intermediate state
+  // is ever observable — a separate subscription reacting to the same
+  // source would risk an observer catching effectiveBrain updated but the
+  // entry not yet appended (or vice versa).
   const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
     map((value): Patch => {
+      const previousEffectiveBrain = effectiveBrain;
       available = value.available;
       availability = value;
       effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
+      const nextEffectiveBrain = effectiveBrain;
+      const gate = value.gate;
 
       return (s: JarvisState): JarvisState => {
-        return {
+        const base: JarvisState = {
           ...s,
           available: value.available,
           brains: value.brains,
-          effectiveBrain,
+          gate,
+          effectiveBrain: nextEffectiveBrain,
         };
+
+        // The system line appends only when: a gate is actually active
+        // (never on lift — `gate` goes back to `null` there, so this whole
+        // branch is skipped, matching "no line on gate LIFT"); it actually
+        // MOVED this session's effective brain (an unaffected user's
+        // `nextEffectiveBrain` doesn't change, matching "no line for
+        // unaffected users"); and there is an open conversation to append
+        // it to — more than just the canned `GREETING_ENTRY` (id 0), which
+        // every fresh transcript already carries regardless of whether the
+        // user has said anything yet (matching "no line when [the
+        // conversation reads as] empty").
+        if (
+          gate === null ||
+          nextEffectiveBrain === previousEffectiveBrain ||
+          s.entries.length <= 1
+        ) {
+          return base;
+        }
+
+        const entry: JarvisEntry = {
+          id: nextEntryId++,
+          role: "jarvis",
+          text: `Usage budget reached — continuing on ${JARVIS_BRAIN_LABELS[nextEffectiveBrain]}${untilClause(gate.resetsAtMs)}.`,
+          done: true,
+          origin: "system",
+        };
+
+        return { ...base, entries: [...s.entries, entry] };
       };
     }),
   );

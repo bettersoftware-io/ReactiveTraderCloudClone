@@ -20,6 +20,7 @@ import type {
 
 import {
   createJarvisMachine,
+  formatGateResetTime,
   JARVIS_GREETING,
   type JarvisDeps,
   type JarvisState,
@@ -50,6 +51,7 @@ describe("createJarvisMachine", () => {
         available: true,
         brains: ["scripted"],
         effectiveBrain: "scripted",
+        gate: null,
       });
       sub.unsubscribe();
       machine.dispose();
@@ -1461,6 +1463,406 @@ describe("createJarvisMachine", () => {
         { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
         { id: 1, role: "jarvis", text: "drive: eqTimeframe", done: true },
       ]);
+    });
+  });
+
+  // Governance round 2 (usage auto-gating): state.gate + the one-line
+  // in-chat notice when a live gate frame downgrades THIS session's own
+  // effectiveBrain. See JarvisState.gate's and availabilityPatches$'s docs.
+  describe("budget-downgrade gate", () => {
+    it("appends one system line when a gate frame downgrades the active brain mid-conversation", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Frame 0 offers every brain (opus included) — matches the
+            // pre-emission cache's own seed, so effectiveBrain already
+            // reads "claude-opus-5" before this frame even lands. Frame 10
+            // (well after the frame-1 send()'s instant "(a|)" turn has
+            // settled, so entries.length > 1 by then) narrows to
+            // scripted+haiku and gates opus/sonnet — un-offering the
+            // preferred brain, which re-resolves effectiveBrain to the new
+            // defaultBrain "claude-haiku-4-5".
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(last?.gate).toEqual({
+        level: "soft",
+        resetsAtMs,
+        gated: ["claude-sonnet-5", "claude-opus-5"],
+      });
+
+      // greeting, user, jarvis(done) from the completed turn, then exactly
+      // one new system entry from the gate frame.
+      expect(last?.entries).toHaveLength(4);
+      expect(last?.entries.at(-1)).toEqual({
+        id: 3,
+        role: "jarvis",
+        text: `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+        done: true,
+        origin: "system",
+      });
+    });
+
+    it("appends no system line when the effective brain is unaffected (haiku user, soft gate)", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // haiku is offered both before and after the gate — the
+            // preferred/effective brain never moves, so no line appends
+            // even though a gate is active and the conversation is open.
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(last?.gate).toEqual({
+        level: "soft",
+        resetsAtMs,
+        gated: ["claude-sonnet-5", "claude-opus-5"],
+      });
+      // greeting, user, jarvis(done) — no fourth (system) entry.
+      expect(last?.entries).toHaveLength(3);
+      expect(
+        last?.entries.some((e) => {
+          return e.origin === "system";
+        }),
+      ).toBe(false);
+    });
+
+    it("appends no system line when the conversation is empty (only the canned greeting, no completed turn)", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: ts.createColdObservable<JarvisAvailability>("a-b", {
+            a: {
+              available: true,
+              brains: [
+                "scripted",
+                "claude-haiku-4-5",
+                "claude-sonnet-5",
+                "claude-opus-5",
+              ],
+              defaultBrain: "scripted",
+              gate: null,
+            },
+            b: {
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "claude-haiku-4-5",
+              gate: {
+                level: "soft",
+                resetsAtMs,
+                gated: ["claude-sonnet-5", "claude-opus-5"],
+              },
+            },
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+          effort$: of<JarvisEffort>("medium"),
+        });
+        const seen: JarvisState[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+
+        const last = seen.at(-1);
+        // effectiveBrain/gate still fold normally — only the entry append
+        // is suppressed.
+        expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+        expect(last?.gate).not.toBeNull();
+        expect(last?.entries).toEqual([
+          { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        ]);
+      });
+    });
+
+    it("hard gate wording names scripted", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted"],
+                  defaultBrain: "scripted",
+                  gate: {
+                    level: "hard",
+                    resetsAtMs,
+                    gated: [
+                      "claude-haiku-4-5",
+                      "claude-sonnet-5",
+                      "claude-opus-5",
+                    ],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("scripted");
+      expect(last?.entries.at(-1)?.text).toBe(
+        `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+      );
+      expect(last?.entries.at(-1)?.origin).toBe("system");
+    });
+
+    it("state.gate mirrors the availability gate and clears on lift; no line appears on the lift frame even though effectiveBrain reverts", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const gate = {
+        level: "soft" as const,
+        resetsAtMs,
+        gated: ["claude-sonnet-5" as const, "claude-opus-5" as const],
+      };
+
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // a (frame 0): every brain offered, no gate.
+            // b (frame 6, well after the frame-1 send() has settled): the
+            // soft gate above narrows brains and un-offers opus.
+            // c (frame 12): lift — every brain re-offered, gate back to
+            // null. effectiveBrain reverts opus->...->opus, but no system
+            // line appends on this frame.
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a-----b-----c",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate,
+                },
+                c: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const softState = states.find((s) => {
+        return s.gate !== null;
+      });
+      expect(softState?.gate).toEqual(gate);
+
+      const last = states.at(-1);
+      expect(last?.gate).toBeNull();
+      expect(last?.effectiveBrain).toBe("claude-opus-5");
+      expect(
+        last?.entries.filter((e) => {
+          return e.origin === "system";
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("omits the 'until' clause when resetsAtMs is 0 (forced gate on a fresh window)", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted"],
+                  defaultBrain: "scripted",
+                  gate: {
+                    level: "hard",
+                    resetsAtMs: 0,
+                    gated: [
+                      "claude-haiku-4-5",
+                      "claude-sonnet-5",
+                      "claude-opus-5",
+                    ],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      expect(states.at(-1)?.entries.at(-1)?.text).toBe(
+        "Usage budget reached — continuing on scripted.",
+      );
+    });
+  });
+
+  describe("formatGateResetTime", () => {
+    it("returns the em-dash sentinel for 0", () => {
+      expect(formatGateResetTime(0)).toBe("—");
+    });
+
+    it("formats a non-zero epoch as locale HH:MM", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      expect(formatGateResetTime(resetsAtMs)).toBe(
+        new Date(resetsAtMs).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
     });
   });
 });
