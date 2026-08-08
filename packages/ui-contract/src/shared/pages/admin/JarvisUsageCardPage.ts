@@ -34,6 +34,23 @@ export class JarvisUsageCardPage extends MountedComponent<
     return within(this.root).queryByText(/resets on server restart/i) !== null;
   }
 
+  /** The budget-line's text (the spend/budget line, or "BUDGET OFF"), or
+   * `null` when the line isn't rendered at all — a pre-round payload with
+   * no budget-gate fields (`budgetUsd === undefined`). Includes the gate
+   * badge's own text when one is rendered alongside (no separator between
+   * the two — see {@link gateBadgeText} to read the badge in isolation). */
+  budgetLineText(): string | null {
+    const el = within(this.root).queryByTestId("admin-jarvis-budget-line");
+    return el ? (el.textContent?.trim() ?? "") : null;
+  }
+
+  /** The gate badge's text ("SOFT GATE" / "HARD GATE"), or `null` when no
+   * badge is rendered (no active gate, or the budget line itself absent). */
+  gateBadgeText(): string | null {
+    const el = within(this.root).queryByTestId("admin-jarvis-gate-badge");
+    return el ? (el.textContent?.trim() ?? "") : null;
+  }
+
   /** The "Window resets HH:MM:SS" (or "Window resets —") line's text. */
   resetLineText(): string {
     return (

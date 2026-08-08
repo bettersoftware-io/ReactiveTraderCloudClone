@@ -21,6 +21,7 @@ import { JarvisOverlay } from "@ui-contract/components";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { formatGateResetTime } from "@rtc/client-core";
 import { Direction } from "@rtc/domain";
 
 afterEach(() => {
@@ -330,12 +331,53 @@ describe("JarvisOverlay", () => {
       undefined,
       undefined,
       undefined,
-      { available: false, brains: [], defaultBrain: "scripted" },
+      { available: false, brains: [], defaultBrain: "scripted", gate: null },
     );
     const overlay = mountWith(world, JarvisOverlay);
 
     expect(overlay.isOpen()).toBe(false);
     await overlay.pressHotkey();
     expect(overlay.isOpen()).toBe(false);
+  });
+
+  it("stamps data-origin=system on the budget-downgrade line appended when a live gate moves the effective brain mid-session", async () => {
+    // world's default jarvisAvailability seed offers every brain (Task 8 of
+    // Phase 5's `createWorld` default), so the stored DEFAULT_JARVIS_BRAIN
+    // preference ("claude-haiku-4-5") starts as the effective brain.
+    const world = createWorld();
+    const overlay = mountWith(world, JarvisOverlay);
+    await overlay.pressHotkey();
+
+    // Complete one ordinary turn first — JarvisMachine's budget-downgrade
+    // line only appends when there's an open conversation to append to
+    // (more than just the canned greeting entry).
+    await overlay.send("Where is EURUSD?");
+    overlay.emitEvents([{ type: "done" }]);
+    expect(overlay.entries()).toHaveLength(3); // greeting + user + reply
+
+    // A hard gate lands mid-session, removing every live brain (offered
+    // brains narrow to just "scripted") — the preferred "claude-haiku-4-5"
+    // is no longer offered, so the effective brain actually moves.
+    const resetsAtMs = 1_754_000_000_000;
+    overlay.setJarvisAvailability({
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: {
+        level: "hard",
+        resetsAtMs,
+        gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+      },
+    });
+
+    const entries = overlay.entries();
+    expect(entries).toHaveLength(4);
+    const last = overlay.lastEntry();
+    expect(last?.role).toBe("jarvis");
+    expect(last?.done).toBe(true);
+    expect(last?.origin).toBe("system");
+    expect(last?.text).toBe(
+      `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+    );
   });
 });

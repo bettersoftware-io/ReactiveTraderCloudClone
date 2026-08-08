@@ -2,6 +2,7 @@ import { PreferencesModal } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { formatGateResetTime } from "@rtc/client-core";
 import { JARVIS_BRAINS } from "@rtc/domain";
 
 afterEach(() => {
@@ -249,6 +250,7 @@ describe("PreferencesModal", () => {
         available: true,
         brains: ["scripted"],
         defaultBrain: "scripted",
+        gate: null,
       },
     });
 
@@ -265,6 +267,7 @@ describe("PreferencesModal", () => {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: "claude-haiku-4-5",
+        gate: null,
       },
     });
 
@@ -280,6 +283,7 @@ describe("PreferencesModal", () => {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: "claude-haiku-4-5",
+        gate: null,
       },
       jarvisBrain: "scripted",
     });
@@ -289,6 +293,68 @@ describe("PreferencesModal", () => {
     expect(page.jarvisBrainSets()).toEqual(["claude-opus-5"]);
     expect(page.segmentActive("jarvisBrain", "claude-opus-5")).toBe(true);
     expect(page.segmentActive("jarvisBrain", "scripted")).toBe(false);
+  });
+
+  it("disables gated brains and titles them with the reset time", () => {
+    const resetsAtMs = 1_754_000_000_000;
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        // "claude-sonnet-5"/"claude-opus-5" are absent from `brains`
+        // entirely (env-removed, unrelated to the gate); only
+        // "claude-haiku-4-5" is BOTH offered AND in `gate.gated`.
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+        gate: {
+          level: "soft",
+          resetsAtMs,
+          gated: ["claude-haiku-4-5"],
+        },
+      },
+    });
+
+    // Gated AND offered: disabled, with the reset-time title.
+    expect(page.jarvisBrainDisabled("claude-haiku-4-5")).toBe(true);
+    expect(page.jarvisBrainOptionTitle("claude-haiku-4-5")).toBe(
+      `Budget window — resets ${formatGateResetTime(resetsAtMs)}`,
+    );
+
+    // Env-removed (absent from `brains`) but NOT in `gate.gated`: disabled,
+    // but WITHOUT a title — the `title: gated ? gateHint : undefined`
+    // branch only fires for a brain the GATE itself removed, not merely a
+    // not-currently-offered one. (Routed T6 review finding.)
+    expect(page.jarvisBrainDisabled("claude-sonnet-5")).toBe(true);
+    expect(page.jarvisBrainOptionTitle("claude-sonnet-5")).toBeNull();
+
+    // Never gated, never env-removed: enabled, no title.
+    expect(page.jarvisBrainDisabled("scripted")).toBe(false);
+    expect(page.jarvisBrainOptionTitle("scripted")).toBeNull();
+  });
+
+  it("shows the budget hint line under the Brain row while gated, and not when ungated", () => {
+    const resetsAtMs = 1_754_000_000_000;
+    const gatedPage = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: "claude-haiku-4-5",
+        gate: {
+          level: "hard",
+          resetsAtMs,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+    expect(gatedPage.jarvisBrainHintText()).toBe(
+      `Budget window — resets ${formatGateResetTime(resetsAtMs)}`,
+    );
+
+    const ungatedPage = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(ungatedPage.jarvisBrainHintText()).toBeNull();
   });
 
   it("disables the Effort row entirely when the stored brain is scripted", () => {

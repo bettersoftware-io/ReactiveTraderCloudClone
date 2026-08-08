@@ -24,6 +24,7 @@ describe("JarvisStatusChip", () => {
         available: false,
         brains: [],
         defaultBrain: "scripted",
+        gate: null,
       },
     });
     expect(page.jarvisChipPresent()).toBe(false);
@@ -35,6 +36,7 @@ describe("JarvisStatusChip", () => {
         available: true,
         brains: ["scripted", "claude-opus-5"],
         defaultBrain: "scripted",
+        gate: null,
       },
       jarvisBrain: "claude-opus-5",
     });
@@ -49,6 +51,7 @@ describe("JarvisStatusChip", () => {
         available: true,
         brains: ["scripted"],
         defaultBrain: "scripted",
+        gate: null,
       },
       jarvisBrain: "scripted",
     });
@@ -62,11 +65,60 @@ describe("JarvisStatusChip", () => {
         available: true,
         brains: ["scripted"],
         defaultBrain: "scripted",
+        gate: null,
       },
       // Preferred, but NOT among the offered brains above.
       jarvisBrain: "claude-opus-5",
     });
     expect(page.jarvisChipBrain()).toBe("scripted");
     expect(page.jarvisChipText()).toBe("JARVIS · scripted");
+  });
+
+  it("carries no data-gate attribute when no gate is active", () => {
+    const page = mount(StatusBar, {
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: null,
+      },
+    });
+    // Explicit attribute-absence assertion, not just textContent — the chip
+    // must not stamp `data-gate=""` for the ungated case.
+    expect(page.jarvisChipGateLevel()).toBeNull();
+  });
+
+  it("suffixes budget-limited and stamps data-gate=soft under a soft gate", () => {
+    const page = mount(StatusBar, {
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+        gate: {
+          level: "soft",
+          resetsAtMs: 1_754_000_000_000,
+          gated: ["claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+    expect(page.jarvisChipGateLevel()).toBe("soft");
+    expect(page.jarvisChipText()).toBe("JARVIS · Haiku 4.5 · budget-limited");
+  });
+
+  it("suffixes budget exhausted and stamps data-gate=hard under a hard gate", () => {
+    const page = mount(StatusBar, {
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: 1_754_000_000_000,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+    expect(page.jarvisChipGateLevel()).toBe("hard");
+    expect(page.jarvisChipText()).toBe("JARVIS · scripted · budget exhausted");
   });
 });

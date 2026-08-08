@@ -61,4 +61,13 @@ export class StatusBarPage extends MountedComponent<Record<string, never>> {
       ""
     );
   }
+
+  /** The chip's `data-gate` attribute — the active budget gate's level
+   * ("soft" | "hard"), or `null` when no gate is active (the attribute is
+   * absent entirely, not an empty string). */
+  jarvisChipGateLevel(): string | null {
+    return within(this.root)
+      .getByTestId("jarvis-status-chip")
+      .getAttribute("data-gate");
+  }
 }
