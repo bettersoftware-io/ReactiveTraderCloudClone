@@ -939,6 +939,7 @@ export function reactViewModel(world: World): ViewModel {
         toggleIndicator: world.eqWorkspace.intents.toggleIndicator,
         togglePane: world.eqWorkspace.intents.togglePane,
         toggleYScale: world.eqWorkspace.intents.toggleYScale,
+        setCompare: world.eqWorkspace.intents.setCompare,
       };
     },
     // Eq drawings: the REAL createEqDrawingsMachine, one shared instance for

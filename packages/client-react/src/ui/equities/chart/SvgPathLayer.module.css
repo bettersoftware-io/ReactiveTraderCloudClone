@@ -40,3 +40,12 @@
 .indicator[data-ind="ema50"] {
   stroke: var(--accent-aware);
 }
+
+/* The comparison symbol's close-line — its own accent token so it reads
+   apart from the primary line (--accent-primary) and both overlays
+   (--accent-2 sma20, --accent-aware ema50). */
+.compare {
+  stroke: var(--accent-compare);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
