@@ -2214,6 +2214,7 @@ const jarvisStateIdle: JarvisState = {
   // any consistent, offered value keeps the goldens byte-identical.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  gate: null,
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
@@ -2244,6 +2245,7 @@ const jarvisStateChat: JarvisState = {
   available: true,
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  gate: null,
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2284,6 +2286,7 @@ const jarvisStateConfirm: JarvisState = {
   available: true,
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  gate: null,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });
 

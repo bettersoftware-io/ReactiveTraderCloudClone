@@ -4,11 +4,11 @@ import type { Accessor } from "solid-js";
 
 import type {
   ActivityEntry,
+  AdminJarvisUsagePayload,
   AppCommands,
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
-  JarvisUsageSnapshot,
   PanelData,
   Presenters,
 } from "@rtc/client-core";
@@ -465,7 +465,7 @@ export interface ViewModel {
   useJarvisPreferences: () => UseJarvisPreferencesResult;
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
-  useJarvisUsage: () => Accessor<JarvisUsageSnapshot | null>;
+  useJarvisUsage: () => Accessor<AdminJarvisUsagePayload | null>;
   /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
    * plus the dismiss intent (singleton, app-level). Starts empty. */
   useJarvisPanels: () => UseJarvisPanelsResult;
@@ -850,7 +850,7 @@ export function createViewModel(
 
   const jarvisUsageState = state(
     presenters.jarvisUsage.usage$,
-    null as JarvisUsageSnapshot | null,
+    null as AdminJarvisUsagePayload | null,
   );
 
   const jarvisPanelsState = state(

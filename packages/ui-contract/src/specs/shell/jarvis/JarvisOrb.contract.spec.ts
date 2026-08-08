@@ -44,7 +44,7 @@ describe("JarvisOrb", () => {
       undefined,
       undefined,
       undefined,
-      { available: false, brains: [], defaultBrain: "scripted" },
+      { available: false, brains: [], defaultBrain: "scripted", gate: null },
     );
     const orb = mountWith(world, JarvisOrb);
 

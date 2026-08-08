@@ -64,13 +64,13 @@ import {
   type WorkflowPort,
 } from "@rtc/domain";
 import type {
+  AdminJarvisUsagePayload,
   AnalyticsDto,
   BlotterMessage,
   DealerEvent,
   ExecutionRequestDto,
   ExecutionResponseDto,
   InstrumentEvent,
-  JarvisUsageSnapshot,
   PriceHistoryDto,
   PriceTickDto,
   ReferenceDataMessage,
@@ -224,7 +224,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
       instantReveal$: createInstantReveal$(deps.preferences),
     }),
     jarvisUsage: {
-      usage$(): Observable<JarvisUsageSnapshot> {
+      usage$(): Observable<AdminJarvisUsagePayload> {
         return of({
           windowStartMs: 0,
           windowEndMs: 0,
