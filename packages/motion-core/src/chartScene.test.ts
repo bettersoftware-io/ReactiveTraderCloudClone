@@ -321,3 +321,170 @@ function assertSceneNeutral(node: unknown, path: string): void {
     }
   }
 }
+
+// Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
+// two series align by time exactly; closes climb twice as fast so the pct
+// ranges genuinely differ (union must widen).
+const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
+  { length: 12 },
+  (_, i) => {
+    return {
+      time: 1_782_864_000_000 + i * 60_000,
+      open: 50 + i * 2,
+      high: 53 + i * 2,
+      low: 48 + i * 2,
+      close: 50 + i * 2,
+      volume: 1_000,
+    };
+  },
+);
+
+describe("percent scale (comparison series)", () => {
+  const VP: ChartViewport = { start: 0, end: 12 };
+
+  it("priceToY's percent branch is numerically identical to linear for the primary", () => {
+    const linear: ChartScale = { cmin: 90, cmax: 110 };
+    const percent: ChartScale = {
+      cmin: 90,
+      cmax: 110,
+      yScale: "percent",
+      base: 100,
+    };
+
+    for (const p of [90, 95, 100, 104.37, 110]) {
+      expect(priceToY(percent, p)).toBeCloseTo(priceToY(linear, p), 10);
+      expect(yToPrice(percent, priceToY(percent, p))).toBeCloseTo(p, 8);
+    }
+  });
+
+  it("a percent scale with a non-positive base falls back to the linear branch", () => {
+    const linear: ChartScale = { cmin: 90, cmax: 110 };
+    const broken: ChartScale = {
+      cmin: 90,
+      cmax: 110,
+      yScale: "percent",
+      base: 0,
+    };
+    expect(priceToY(broken, 95)).toBe(priceToY(linear, 95));
+    expect(yToPrice(broken, 40)).toBe(yToPrice(linear, 40));
+  });
+
+  it("chartScene with compare derives a percent scale based at the first visible close", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+
+    expect(scene.scale.yScale).toBe("percent");
+    expect(scene.scale.base).toBe(TWELVE_MIXED[0]?.close);
+  });
+
+  it("compare is aligned by time: one point per primary index with a matching compare candle", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+    expect(scene.compareLinePoints).toHaveLength(12);
+
+    // A gappy compare series (every other candle removed) yields exactly the
+    // surviving times' points — no interpolation.
+    const gappy = COMPARE_TWELVE.filter((_, i) => {
+      return i % 2 === 0;
+    });
+    const gappyScene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: gappy },
+    });
+    expect(gappyScene.compareLinePoints).toHaveLength(6);
+  });
+
+  it("the pct-range union widens the scale to include the compare series", () => {
+    // Compare alone spans 0% → +44% (close 50 → 72 over its base 50), far
+    // beyond the primary's own pct range — so cmax back-converted must
+    // exceed the primary's raw high.
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+    const primaryOnly = chartScene(TWELVE_MIXED, 0, false, { viewport: VP });
+    expect(scene.scale.cmax).toBeGreaterThan(primaryOnly.scale.cmax);
+  });
+
+  it("the baseline rebases when the viewport moves", () => {
+    const late = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: { start: 6, end: 12 },
+      compare: { series: COMPARE_TWELVE },
+    });
+    expect(late.scale.base).toBe(TWELVE_MIXED[6]?.close);
+  });
+
+  it("percent labels are signed, two-decimal, %-suffixed; zero is unsigned", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+
+    for (const l of scene.priceLabels) {
+      expect(l.txt).toMatch(/^(\+|-)?\d+\.\d{2}%$/);
+    }
+
+    const zero = scene.priceLabels.find((l) => {
+      return l.txt === "0.00%";
+    });
+    // The compare's +44% swamps the primary range, so a 0% tick exists.
+    expect(zero).toBeDefined();
+    // No signed zero either way.
+    expect(
+      scene.priceLabels.some((l) => {
+        return l.txt === "+0.00%" || l.txt === "-0.00%";
+      }),
+    ).toBe(false);
+  });
+
+  it("an empty compare series still percent-projects the primary alone", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: [] },
+    });
+    expect(scene.scale.yScale).toBe("percent");
+    expect(scene.compareLinePoints).toEqual([]);
+  });
+
+  it("a compare series entirely older than the window keeps percent but omits the line", () => {
+    const older = COMPARE_TWELVE.map((c) => {
+      return { ...c, time: c.time - 100 * 60_000 };
+    });
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: older },
+    });
+    expect(scene.scale.yScale).toBe("percent");
+    expect(scene.compareLinePoints).toEqual([]);
+  });
+
+  it("compare overrides an explicit log yScale option", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      yScale: "log",
+      compare: { series: COMPARE_TWELVE },
+    });
+    expect(scene.scale.yScale).toBe("percent");
+  });
+
+  it("scenes without compare emit an empty compareLinePoints and are otherwise unchanged", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, { viewport: VP });
+    expect(scene.compareLinePoints).toEqual([]);
+    expect(scene.scale.yScale).toBeUndefined();
+  });
+
+  it("crosshairScene formats its price readout as percent under a percent scale", () => {
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+    const cross = crosshairScene(0.5, 0.5, TWELVE_MIXED, VP, scene.scale);
+    expect(cross?.price).toMatch(/^(\+|-)?\d+\.\d{2}%$/);
+    // OHLC readout stays in prices.
+    expect(cross?.readout.close).toMatch(/^\d+(\.\d{2})?$/);
+  });
+});

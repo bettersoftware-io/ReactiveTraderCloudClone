@@ -18,6 +18,7 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
       grid: [],
       labels: [],
       linePoints: [],
+      compareLinePoints: [],
       timeLabels: [],
       scale: { cmin: 0, cmax: 0 },
     });

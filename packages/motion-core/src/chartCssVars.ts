@@ -40,6 +40,7 @@ export function chartVmFromScene(scene: ChartScene): ChartVm {
       };
     }),
     linePoints: scene.linePoints,
+    compareLinePoints: scene.compareLinePoints,
     timeLabels: scene.timeLabels.map((l) => {
       return {
         key: l.key,
