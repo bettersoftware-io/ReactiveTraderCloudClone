@@ -110,6 +110,38 @@ describe("PreferencesModal — JARVIS brain/effort rows", () => {
 
     expect(setEffort).toHaveBeenCalledWith("high");
   });
+
+  it("renders no gate hint while no gate is active", () => {
+    renderModal();
+
+    expect(screen.queryByTestId("pref-segment-jarvisBrain-hint")).toBeNull();
+  });
+
+  it("disables a gated brain with a reset-time title, and shows the hint line", () => {
+    renderModal({
+      jarvisBrains: JARVIS_BRAINS,
+      jarvisGate: {
+        level: "soft",
+        resetsAtMs: 0,
+        gated: ["claude-opus-5"],
+      },
+    });
+
+    const opusOption = screen.getByTestId(
+      "pref-segment-jarvisBrain-claude-opus-5",
+    );
+    expect(opusOption).toHaveProperty("disabled", true);
+    expect(opusOption.getAttribute("title")).toMatch(/^Budget window/);
+
+    // A brain the gate did NOT remove stays enabled even though a gate is
+    // active elsewhere.
+    expect(
+      screen.getByTestId("pref-segment-jarvisBrain-claude-sonnet-5"),
+    ).not.toHaveProperty("disabled", true);
+
+    const hint = screen.getByTestId("pref-segment-jarvisBrain-hint");
+    expect(hint.textContent).toMatch(/^Budget window — resets/);
+  });
 });
 
 interface RenderModalOptions {
@@ -120,6 +152,11 @@ interface RenderModalOptions {
   setJarvisBrain?: (brain: JarvisBrain) => void;
   jarvisEffort?: JarvisEffort;
   setJarvisEffort?: (effort: JarvisEffort) => void;
+  jarvisGate?: {
+    level: "soft" | "hard";
+    resetsAtMs: number;
+    gated: readonly JarvisBrain[];
+  } | null;
 }
 
 function renderModal(
@@ -133,6 +170,7 @@ function renderModal(
     setJarvisBrain = vi.fn(),
     jarvisEffort = "medium",
     setJarvisEffort = vi.fn(),
+    jarvisGate = null,
   } = options;
 
   const hooks = {
@@ -165,6 +203,7 @@ function renderModal(
           available: true,
           brains: jarvisBrains,
           effectiveBrain: jarvisBrain,
+          gate: jarvisGate,
         },
       };
     },

@@ -88,6 +88,74 @@ describe("JarvisUsageCard", () => {
     expect(card.textContent).toContain("Window resets —");
     expect(card.textContent).toContain("No turns yet");
   });
+
+  it("renders no budget line on a pre-round server (budgetUsd absent)", () => {
+    renderCard({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+    });
+
+    expect(screen.queryByTestId("admin-jarvis-budget-line")).toBeNull();
+  });
+
+  it("renders BUDGET OFF when budgetUsd is null (gating disabled)", () => {
+    renderCard({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+      budgetUsd: null,
+    } as JarvisUsageSnapshot);
+
+    expect(screen.getByTestId("admin-jarvis-budget-line").textContent).toBe(
+      "BUDGET OFF",
+    );
+    expect(screen.queryByTestId("admin-jarvis-gate-badge")).toBeNull();
+  });
+
+  it("renders the spend/budget/soft-gate line and a SOFT GATE badge", () => {
+    renderCard({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+      budgetUsd: 10,
+      softBudgetUsd: 8,
+      spentWindowUsd: 8.5,
+      gateLevel: "soft",
+    } as JarvisUsageSnapshot);
+
+    const line = screen.getByTestId("admin-jarvis-budget-line");
+    expect(line.textContent).toContain(
+      "$8.50 of $10.00 this window — soft gate at $8.00",
+    );
+
+    const badge = screen.getByTestId("admin-jarvis-gate-badge");
+    expect(badge.textContent).toBe("SOFT GATE");
+    expect(badge.getAttribute("data-gate")).toBe("soft");
+  });
+
+  it("renders a HARD GATE badge and defaults spent/soft-budget when absent", () => {
+    renderCard({
+      windowStartMs: 0,
+      windowEndMs: 0,
+      currentWindow: [],
+      sinceBoot: [],
+      budgetUsd: 10,
+      gateLevel: "hard",
+    } as JarvisUsageSnapshot);
+
+    const line = screen.getByTestId("admin-jarvis-budget-line");
+    expect(line.textContent).toContain(
+      "$0.00 of $10.00 this window — soft gate at $0.00",
+    );
+
+    const badge = screen.getByTestId("admin-jarvis-gate-badge");
+    expect(badge.textContent).toBe("HARD GATE");
+    expect(badge.getAttribute("data-gate")).toBe("hard");
+  });
 });
 
 function renderCard(

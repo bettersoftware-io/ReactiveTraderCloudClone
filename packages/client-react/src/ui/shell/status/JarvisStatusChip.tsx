@@ -12,6 +12,15 @@ import styles from "./StatusBar.module.css";
  * an offline desk assistant has no brain worth advertising in the footer.
  * The leading `│` separator lives INSIDE this component so a jarvis-less
  * server never leaves a dangling double separator in the footer.
+ *
+ * While a usage-budget gate is active (`state.gate`), the chip also carries
+ * `data-gate` and a visible text suffix — `· budget-limited` for a soft
+ * gate (some brains removed), `· budget exhausted` for a hard gate (every
+ * live brain removed, forced to scripted) — so the same fact the
+ * Preferences picker's hint/tooltip explains is visible without opening the
+ * modal. A static color tint only (amber soft / red hard, reusing the
+ * status bar's existing warn/error tokens) — no transition/animation, per
+ * `docs/performance.md`.
  */
 export function JarvisStatusChip(): ReactElement | null {
   const { useJarvis } = useViewModel();
@@ -21,15 +30,27 @@ export function JarvisStatusChip(): ReactElement | null {
     return null;
   }
 
+  const gate = state.gate;
+
   return (
     <>
       <span className={styles.metricSep}>│</span>
       <span
         data-testid="jarvis-status-chip"
         data-brain={state.effectiveBrain}
-        className={styles.jarvisChip}
+        data-gate={gate === null ? undefined : gate.level}
+        className={
+          gate === null
+            ? styles.jarvisChip
+            : `${styles.jarvisChip} ${styles.jarvisChipGated}`
+        }
       >
         JARVIS · {JARVIS_BRAIN_LABELS[state.effectiveBrain]}
+        {gate === null
+          ? null
+          : gate.level === "soft"
+            ? " · budget-limited"
+            : " · budget exhausted"}
       </span>
     </>
   );
