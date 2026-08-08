@@ -1,13 +1,26 @@
 import { BehaviorSubject, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisUsageSnapshot } from "@rtc/shared";
+import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import type { JarvisGateConfig } from "../services/jarvisGate.js";
+import { JarvisGateService, spentWindowUsd } from "../services/jarvisGate.js";
+import { UsageMeter } from "../services/UsageMeter.js";
 import { adminJarvisUsageEffects } from "./adminJarvisUsage.effects.js";
 import type { Ctx } from "./context.js";
+
+/** The default stand-in gate config for every test below that doesn't
+ * itself exercise the budget-gate envelope — never gates, so the pushed
+ * payload's `budgetUsd`/`softBudgetUsd` read `null` and `gateLevel` reads
+ * `"none"` throughout. */
+const UNGATED_CONFIG: JarvisGateConfig = {
+  budgetUsd: "off",
+  softRatio: 0.8,
+  forceLevel: null,
+};
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -29,7 +42,7 @@ describe("admin jarvis usage effects", () => {
     });
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: initial },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
   });
 
@@ -56,8 +69,8 @@ describe("admin jarvis usage effects", () => {
     vi.advanceTimersByTime(1_000);
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: initial },
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: last },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(last) },
     ]);
   });
 
@@ -76,8 +89,8 @@ describe("admin jarvis usage effects", () => {
     snapshot$.next(later);
 
     expect(sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: initial },
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: later },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(later) },
     ]);
   });
 
@@ -101,11 +114,83 @@ describe("admin jarvis usage effects", () => {
     });
 
     expect(a.sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: initial },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
     expect(b.sent).toEqual([
-      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: initial },
+      { type: SERVER_MSG.ADMIN_JARVIS_USAGE, payload: ungatedPayload(initial) },
     ]);
+  });
+
+  describe("budget-gate envelope", () => {
+    it("carries budgetUsd/softBudgetUsd/spentWindowUsd/gateLevel from a live gate and meter", () => {
+      const meter = new UsageMeter();
+      // $0.30: claude-sonnet-5 prices input at $3/Mtok, so 100,000 input
+      // tokens costs exactly 100_000 * 3 / 1e6 = 0.3.
+      meter.recordTokens("claude-sonnet-5", {
+        inputTokens: 100_000,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      });
+      const config: JarvisGateConfig = {
+        budgetUsd: 2,
+        softRatio: 0.8,
+        forceLevel: null,
+      };
+      const gate = new JarvisGateService(meter, config);
+      const { messages$, sent } = harnessFor(meter, gate);
+
+      messages$.next({
+        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        payload: {},
+      });
+
+      expect(sent).toHaveLength(1);
+      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      expect(payload.budgetUsd).toBe(2);
+      expect(payload.softBudgetUsd).toBe(1.6);
+      expect(payload.spentWindowUsd).toBeCloseTo(0.3, 10);
+      expect(payload.gateLevel).toBe("none");
+    });
+
+    it('budgetUsd: "off" (gating disabled) reports budgetUsd/softBudgetUsd as null', () => {
+      const meter = new UsageMeter();
+      const gate = new JarvisGateService(meter, UNGATED_CONFIG);
+      const { messages$, sent } = harnessFor(meter, gate);
+
+      messages$.next({
+        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        payload: {},
+      });
+
+      expect(sent).toHaveLength(1);
+      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      expect(payload.budgetUsd).toBeNull();
+      expect(payload.softBudgetUsd).toBeNull();
+      expect(payload.gateLevel).toBe("none");
+    });
+
+    it('a forced hard gate reports gateLevel: "hard" regardless of actual spend', () => {
+      const meter = new UsageMeter();
+      const config: JarvisGateConfig = {
+        budgetUsd: 2,
+        softRatio: 0.8,
+        forceLevel: "hard",
+      };
+      const gate = new JarvisGateService(meter, config);
+      const { messages$, sent } = harnessFor(meter, gate);
+
+      messages$.next({
+        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        payload: {},
+      });
+
+      expect(sent).toHaveLength(1);
+      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      expect(payload.gateLevel).toBe("hard");
+      expect(payload.budgetUsd).toBe(2);
+      expect(payload.softBudgetUsd).toBe(1.6);
+    });
   });
 });
 
@@ -114,8 +199,26 @@ interface Harness {
   readonly sent: Outbound[];
 }
 
+/** Builds a harness over a caller-supplied `snapshot$` (a bare
+ * `BehaviorSubject` stand-in for `UsageMeter`, matching the pre-existing
+ * throttle-behavior tests above) paired with an `UNGATED_CONFIG` gate
+ * wired to the same stream, so `gateLevel` reads `"none"` throughout and
+ * the throttle-timing assertions are unaffected by the enrichment. */
 function harness(snapshot$: BehaviorSubject<JarvisUsageSnapshot>): Harness {
-  const ctx = { usageMeter: { snapshot$ } } as unknown as Ctx;
+  const gate = new JarvisGateService({ snapshot$ }, UNGATED_CONFIG);
+
+  return harnessFor({ snapshot$ }, gate);
+}
+
+/** Builds a harness over a caller-supplied usage-meter-shaped object and
+ * gate — the shared wiring for both the throttle-behavior tests (a bare
+ * `{ snapshot$ }` stand-in) and the budget-gate-envelope tests (a real
+ * `UsageMeter`). */
+function harnessFor(
+  usageMeter: Pick<UsageMeter, "snapshot$">,
+  jarvisGate: JarvisGateService,
+): Harness {
+  const ctx = { usageMeter, jarvisGate } as unknown as Ctx;
   const messages$ = new Subject<Inbound>();
   const closed$ = new Subject<void>();
   const sent: Outbound[] = [];
@@ -128,6 +231,21 @@ function harness(snapshot$: BehaviorSubject<JarvisUsageSnapshot>): Harness {
   };
   createWsListener(combineEffects(...adminJarvisUsageEffects), ctx)(socket);
   return { messages$, sent };
+}
+
+/** The enriched payload the effect produces over `UNGATED_CONFIG`, for the
+ * pre-existing throttle-behavior tests above (which predate the budget-gate
+ * envelope and only assert the snapshot fields carry through unchanged). */
+function ungatedPayload(
+  snapshot: JarvisUsageSnapshot,
+): AdminJarvisUsagePayload {
+  return {
+    ...snapshot,
+    budgetUsd: null,
+    softBudgetUsd: null,
+    spentWindowUsd: spentWindowUsd(snapshot),
+    gateLevel: "none",
+  };
 }
 
 function makeSnapshot(
