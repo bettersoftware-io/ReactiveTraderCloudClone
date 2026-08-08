@@ -272,43 +272,70 @@ function untilClause(resetsAtMs: number): string {
   return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
 }
 
-/** Replace the last entry (the one currently streaming/accumulating) with the
- * result of `fn`. Turns run sequentially (concatMap), so at any point at most
- * one jarvis entry is being folded and it is always the array's tail. */
-function updateLastEntry(
+/** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
+ * entry `turnItems$`'s concatMap allocated for the CURRENT in-flight turn
+ * (tracked by `entryPatches$`, cleared on that turn's own done/error — see
+ * its doc). Targeting by id, not "the last entry" (this function's
+ * predecessor, `updateLastEntry`), matters because an UNRELATED source can
+ * append a new entry mid-turn — `availabilityPatches$`'s budget-downgrade
+ * system line and `driveOutcomePatches$`'s drive row both do, and either
+ * can land between two deltas of an in-flight turn (the gate line in
+ * particular: the server pushes the availability frame synchronously off
+ * the very turn's own `recordTokens`, so this is the MODAL path, not an
+ * edge case). Under "the last entry", that appended row becomes the new
+ * tail and hijacks every subsequent delta/toolEvent/done/error meant for
+ * the real streaming entry — its text glues onto the notice/drive row, and
+ * the real entry never gets its `done: true`, stuck spinning forever.
+ * Targeting by id sidesteps this by construction: an append changes what's
+ * LAST but never what MATCHES the tracked id. A missing `id` (no turn in
+ * flight) or an id no longer present is a no-op, mirroring
+ * `updateLastEntry`'s own defensive empty-array return. */
+function updateEntryById(
   entries: readonly JarvisEntry[],
+  id: number | null,
   fn: (e: JarvisEntry) => JarvisEntry,
 ): readonly JarvisEntry[] {
-  if (entries.length === 0) {
+  if (id === null) {
     return entries;
   }
 
-  const lastIndex = entries.length - 1;
-  const last = entries[lastIndex];
+  const index = entries.findIndex((e) => {
+    return e.id === id;
+  });
 
-  if (!last) {
+  if (index === -1) {
+    return entries;
+  }
+
+  const target = entries[index];
+
+  if (!target) {
     return entries;
   }
 
   const next = [...entries];
-  next[lastIndex] = fn(last);
+  next[index] = fn(target);
   return next;
 }
 
 /** Fold one reply event from an in-flight turn into a state Patch.
  * `turnOrigin` is the enclosing turn's origin (set by `turnItems$`'s
  * `concatMap` when it builds each turn's "start" item — see its doc): only
- * `"narrator"`-origin turns bump `unreadNarration` on completion. */
+ * `"narrator"`-origin turns bump `unreadNarration` on completion.
+ * `entryId` is the in-flight streaming entry's own id, captured by
+ * `entryPatches$` at the turn's "start" item — see `updateEntryById`'s doc
+ * for why every case below targets by id rather than "the last entry". */
 function eventPatch(
   event: JarvisEvent,
   turnOrigin: "narrator" | undefined,
+  entryId: number | null,
 ): Patch {
   switch (event.type) {
     case "delta":
       return (s: JarvisState): JarvisState => {
         return {
           ...s,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, text: e.text + event.text };
           }),
         };
@@ -318,7 +345,7 @@ function eventPatch(
       return (s: JarvisState): JarvisState => {
         return {
           ...s,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, tool: { name: event.tool, status: event.status } };
           }),
         };
@@ -332,7 +359,7 @@ function eventPatch(
           unread: s.open ? s.unread : s.unread + 1,
           unreadNarration:
             turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, done: true };
           }),
         };
@@ -352,7 +379,7 @@ function eventPatch(
           // out into an error after toolEvent(running) already landed, and
           // without clearing it the finalized entry would show error text
           // alongside a permanently-stuck "running" badge.
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             const { tool: _tool, ...rest } = e;
             return { ...rest, text: event.message, done: true };
           }),
@@ -501,6 +528,16 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
   let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;
   let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;
+  // The CURRENT turn's own streaming jarvis entry id, or `null` when no turn
+  // is in flight. Set by entryPatches$ at the turn's "start" item (the same
+  // id turnItems$'s concatMap just allocated for `jarvisEntry`), cleared on
+  // that turn's own done/error. eventPatch's delta/toolEvent/done/error
+  // cases target this id (via updateEntryById) rather than "the last
+  // entry" — see updateEntryById's doc for why: an unrelated mid-turn
+  // append (the budget-downgrade system line, a drive-outcome row) would
+  // otherwise become the new "last entry" and hijack every following event
+  // meant for the real streaming entry.
+  let inFlightEntryId: number | null = null;
 
   const send$ = new Subject<string>();
   const narrate$ = new Subject<string>();
@@ -580,6 +617,12 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const entryPatches$: Observable<Patch> = turnItems$.pipe(
     map((item): Patch => {
       if (item.kind === "start") {
+        // Track the freshly-allocated streaming entry's id BEFORE this
+        // turn's first event can possibly arrive (map() runs synchronously
+        // per emission, and turnItems$'s concat() always emits "start"
+        // before anything from port.ask() — see turnItems$'s doc).
+        inFlightEntryId = item.jarvisEntry.id;
+
         return (s: JarvisState): JarvisState => {
           return {
             ...s,
@@ -589,7 +632,17 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         };
       }
 
-      return eventPatch(item.event, item.origin);
+      const patch = eventPatch(item.event, item.origin, inFlightEntryId);
+
+      // done/error are this turn's terminal events (JarvisPort.ask's own
+      // contract — see its doc): clear the tracked id so a stray later
+      // event (there shouldn't be one) is a no-op rather than mistargeting
+      // whatever the NEXT turn's own streaming entry happens to be.
+      if (item.event.type === "done" || item.event.type === "error") {
+        inFlightEntryId = null;
+      }
+
+      return patch;
     }),
   );
 
@@ -762,7 +815,6 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   // entry not yet appended (or vice versa).
   const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
     map((value): Patch => {
-      const previousEffectiveBrain = effectiveBrain;
       available = value.available;
       availability = value;
       effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
@@ -770,6 +822,15 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       const gate = value.gate;
 
       return (s: JarvisState): JarvisState => {
+        // Read from the FOLDED state, not a mutable closure snapshot: this
+        // keeps the patch pure in (s, value) rather than leaning on
+        // subscribe-order between this map()'s synchronous cache write and
+        // whenever `scan` actually applies the returned patch — the two are
+        // one and the same today, but reading `s.effectiveBrain` deletes
+        // that ordering hazard by construction rather than relying on it
+        // staying true forever.
+        const previousEffectiveBrain = s.effectiveBrain;
+
         const base: JarvisState = {
           ...s,
           available: value.available,
@@ -783,11 +844,13 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         // branch is skipped, matching "no line on gate LIFT"); it actually
         // MOVED this session's effective brain (an unaffected user's
         // `nextEffectiveBrain` doesn't change, matching "no line for
-        // unaffected users"); and there is an open conversation to append
-        // it to — more than just the canned `GREETING_ENTRY` (id 0), which
-        // every fresh transcript already carries regardless of whether the
-        // user has said anything yet (matching "no line when [the
-        // conversation reads as] empty").
+        // unaffected users" — including a republished frame at the SAME
+        // gate level with only e.g. `resetsAtMs` bumped, since
+        // `nextEffectiveBrain` doesn't move on a re-judge either); and
+        // there is an open conversation to append it to — more than just
+        // the canned `GREETING_ENTRY` (id 0), which every fresh transcript
+        // already carries regardless of whether the user has said anything
+        // yet (matching "no line when [the conversation reads as] empty").
         if (
           gate === null ||
           nextEffectiveBrain === previousEffectiveBrain ||

@@ -1848,6 +1848,231 @@ describe("createJarvisMachine", () => {
         "Usage budget reached — continuing on scripted.",
       );
     });
+
+    it("REGRESSION (root fix): a gate frame landing between two deltas of an in-flight turn does not hijack the streaming entry — the real reply still gets both deltas + done:true, and the system line is a separate, clean entry", () => {
+      // The MODAL path per the reviewer's CRITICAL finding: the server
+      // pushes JARVIS_AVAILABILITY synchronously off the very turn's own
+      // recordTokens, so a gate frame landing strictly BETWEEN two deltas
+      // of the turn that tripped it is the common case, not an edge case.
+      // Before the id-targeting fix, the system line (appended mid-turn)
+      // became "the last entry", so the "USD" delta below would have glued
+      // onto ITS text instead of the real streaming entry — leaving the
+      // real entry stuck at done:false forever.
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            // Relative to this port's own subscribe at frame 1 (send()'s
+            // schedule below): delta "EUR" at frame 1, delta "USD" at frame
+            // 7, done at frame 10.
+            port: fakePort(ts, "a-----b--(c|)", {
+              a: { type: "delta", text: "EUR" },
+              b: { type: "delta", text: "USD" },
+              c: { type: "done" },
+            }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Relative to machine construction (frame 0): baseline at
+            // frame 0, the gate at frame 4 — strictly between the turn's
+            // own delta-1 (frame 1) and delta-2 (frame 7).
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---g",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                g: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+
+      // The real streaming reply (id 2, allocated by the turn's own
+      // "start" item): both deltas concatenated, finalized done:true.
+      expect(
+        last?.entries.find((e) => {
+          return e.id === 2;
+        }),
+      ).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: true,
+      });
+
+      // The system line (id 3, appended mid-turn) stayed a separate, clean
+      // entry — untouched by either delta.
+      expect(
+        last?.entries.find((e) => {
+          return e.origin === "system";
+        })?.text,
+      ).toBe(
+        `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+      );
+
+      // Append order: greeting, user, jarvis reply, system line — the
+      // system line landing mid-turn doesn't reorder anything, since the
+      // fix targets the real entry BY ID rather than by array position.
+      expect(
+        last?.entries.map((e) => {
+          return e.id;
+        }),
+      ).toEqual([0, 1, 2, 3]);
+    });
+
+    it("REGRESSION (root fix): a drive outcome landing between two deltas of an in-flight turn does not hijack the streaming entry — mirrors the P5 latent bug (a stray delta glued onto 'drive: switchTab')", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "a-----b--(c|)", {
+              a: { type: "delta", text: "EUR" },
+              b: { type: "delta", text: "USD" },
+              c: { type: "done" },
+            }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+          // Lands strictly between the turn's own delta-1 (frame 1) and
+          // delta-2 (frame 7).
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "switchTab", tab: "equities" },
+              status: "applied",
+            });
+          }, 4);
+        },
+      );
+
+      const last = states.at(-1);
+
+      expect(
+        last?.entries.find((e) => {
+          return e.id === 2;
+        }),
+      ).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: true,
+      });
+
+      expect(
+        last?.entries.find((e) => {
+          return e.text.startsWith("drive:");
+        })?.text,
+      ).toBe("drive: switchTab");
+
+      expect(
+        last?.entries.map((e) => {
+          return e.id;
+        }),
+      ).toEqual([0, 1, 2, 3]);
+    });
+
+    it("REGRESSION (mutation witness): a republished frame at the SAME gate level with only resetsAtMs bumped does not append a second line — 'exactly once per downgrade', not 'once per gated frame'", () => {
+      // A comparison against `preferredBrain` (unaffected by a re-judge
+      // that doesn't change what's offered) instead of the FOLDED state's
+      // own previous effectiveBrain would re-append on every republished
+      // gated frame — this is the discriminating witness.
+      const t1 = 1_893_456_000_000;
+      const t2 = 1_893_456_600_000; // 10 minutes later — a re-judge, not a new downgrade
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b---------c",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs: t1,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+                c: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs: t2,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      // gate/effectiveBrain still fold to the LATEST re-judged frame — only
+      // the entry append is suppressed the second time.
+      expect(last?.gate?.resetsAtMs).toBe(t2);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(
+        last?.entries.filter((e) => {
+          return e.origin === "system";
+        }),
+      ).toHaveLength(1);
+    });
   });
 
   describe("formatGateResetTime", () => {
@@ -1863,6 +2088,27 @@ describe("createJarvisMachine", () => {
           minute: "2-digit",
         }),
       );
+    });
+
+    it("WITNESS: pins the intended HH:MM 24-hour shape under an explicit en-GB locale, independent of whatever locale is ambient in the test runner", () => {
+      // formatGateResetTime itself always formats under `[]` (the ambient
+      // ICU default locale — see its doc), so it can't be asked to render
+      // as en-GB directly, and the two tests above (which recompute their
+      // own "expected" value via that same ambient formula) would pass
+      // even if the ambient ICU default happened to render 12-hour AM/PM
+      // copy. This pins the concrete 24-hour "HH:MM" shape the feature is
+      // designed around against Node's full ICU under an EXPLICIT locale,
+      // so at least one assertion in this suite carries a literal,
+      // environment-independent expected string. CI runs UTC, so a
+      // `Date.UTC` instant renders identically regardless of the runner's
+      // timezone.
+      const resetsAtMs = Date.UTC(2026, 0, 15, 14, 30);
+      expect(
+        new Date(resetsAtMs).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      ).toBe("14:30");
     });
   });
 });
