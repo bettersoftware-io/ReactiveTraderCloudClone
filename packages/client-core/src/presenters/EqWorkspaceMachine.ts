@@ -22,6 +22,10 @@ export interface EqWorkspaceState {
   readonly indicators: readonly EqIndicatorId[];
   readonly panes: readonly EqPaneId[];
   readonly yScale: EqYScale;
+  /** The comparison-series symbol, or null for none. While non-null the
+   * chart renders on a percent axis (derived downstream — `yScale` above is
+   * NEVER mutated by compare, so clearing restores the stored lin/log). */
+  readonly compare: string | null;
 }
 
 export interface EqWorkspaceIntents {
@@ -32,6 +36,7 @@ export interface EqWorkspaceIntents {
   toggleIndicator(id: EqIndicatorId): void;
   togglePane(id: EqPaneId): void;
   toggleYScale(): void;
+  setCompare(sym: string | null): void;
 }
 
 export interface EqWorkspaceDeps {
@@ -79,6 +84,7 @@ export function createEqWorkspaceMachine(
   const toggleIndicator$ = new Subject<EqIndicatorId>();
   const togglePane$ = new Subject<EqPaneId>();
   const toggleYScale$ = new Subject<void>();
+  const setCompare$ = new Subject<string | null>();
 
   // An empty initialSymbol means no tab is open yet (WS-real, watchlist not
   // arrived synchronously) — NOT a phantom "" tab. InstrumentTabs then simply
@@ -91,17 +97,21 @@ export function createEqWorkspaceMachine(
     indicators: [],
     panes: [],
     yScale: "linear",
+    compare: null,
   };
 
   // select: adds the symbol to openTabs if it isn't already there, then
   // (re)selects it — the prototype's "click watchlist row" behaviour.
+  // Selecting the currently-compared symbol clears the comparison (the
+  // primary absorbs it — comparing a symbol against itself is meaningless).
   const selectPatch$ = select$.pipe(
     map((sym): Patch => {
       return (s: EqWorkspaceState): EqWorkspaceState => {
         const openTabs = s.openTabs.includes(sym)
           ? s.openTabs
           : [...s.openTabs, sym];
-        return { ...s, sel: sym, openTabs };
+        const compare = s.compare === sym ? null : s.compare;
+        return { ...s, sel: sym, openTabs, compare };
       };
     }),
   );
@@ -195,6 +205,21 @@ export function createEqWorkspaceMachine(
     }),
   );
 
+  // setCompare: sets/clears the comparison symbol. Comparing the selected
+  // symbol against itself is guarded here too (the pills already exclude
+  // it) — a no-op, not a clear.
+  const setComparePatch$ = setCompare$.pipe(
+    map((sym): Patch => {
+      return (s: EqWorkspaceState): EqWorkspaceState => {
+        if (sym !== null && sym === s.sel) {
+          return s;
+        }
+
+        return { ...s, compare: sym };
+      };
+    }),
+  );
+
   // Recovery patch: takes exactly one emission from seed$ (or never emits,
   // when seed$ is omitted) and seeds sel/openTabs — but only while sel is
   // still "", so a synchronous initialSymbol or an intervening user select()
@@ -221,6 +246,7 @@ export function createEqWorkspaceMachine(
     toggleIndicatorPatch$,
     togglePanePatch$,
     toggleYScalePatch$,
+    setComparePatch$,
     seedPatch$,
   ).pipe(
     scan((s, patch) => {
@@ -259,6 +285,9 @@ export function createEqWorkspaceMachine(
       toggleYScale: (): void => {
         toggleYScale$.next();
       },
+      setCompare: (sym: string | null): void => {
+        setCompare$.next(sym);
+      },
     },
     dispose: () => {
       select$.complete();
@@ -268,6 +297,7 @@ export function createEqWorkspaceMachine(
       toggleIndicator$.complete();
       togglePane$.complete();
       toggleYScale$.complete();
+      setCompare$.complete();
       warm.unsubscribe();
     },
   };
