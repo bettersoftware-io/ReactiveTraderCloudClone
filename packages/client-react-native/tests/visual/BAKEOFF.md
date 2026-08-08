@@ -49,7 +49,7 @@ then decide. Until then all three stay on the table and nothing is retired.
 | Dimension | simctl | Maestro | owl |
 |---|---|---|---|
 | **Viable on this stack** | ✅ yes | ✅ yes | ❌ **no** |
-| Extra tooling | `idb` | Maestro 2.6.1 + **JDK 17** | native `ios/` build + `owl` |
+| Extra tooling | `idb` | Maestro 2.6.1 + **a JDK ≥ 17** (we use 21) | native `ios/` build + `owl` |
 | Harness LOC | ~200 (`capture.ts`+`run.ts`) | ~230 (`generateFlows.ts`+`run.ts`+3 flows) | ~10 config + 1 test (never ran) |
 | Wall-clock, 3 scenarios | ~35 s | ~30 s | — (never built) |
 | Navigation | blind `idb` taps at fixed points | **a11y tree** (XCUITest) element waits | — |
@@ -61,7 +61,7 @@ then decide. Until then all three stay on the table and nothing is retired.
 | Device-pin coupling | **high** (re-measure tap px per pin) | low (a11y ids are pin-agnostic) | — |
 | Goldens committed | **18** (all scenarios) | **3** (the spike's sample) | 0 |
 | Runner pins the device | ✅ `RTC_VISUAL_UDID` (default `booted`) | ❌ **none** — Maestro picks | — |
-| Runnable on this Mac today | ✅ | ❌ **no JDK 17 on `PATH`** | ❌ |
+| Runnable on this Mac today | ✅ | ✅ **since 2026-08-08** (openjdk@21) | ❌ |
 | Dev-menu gear hidden | ✅ since 2026-08-05 | ❌ still in all 3 goldens | — |
 
 ## simctl — `xcrun simctl` + `idb`
@@ -89,8 +89,8 @@ dismisses the "Open" dialog by **finding it in the accessibility tree** (no blin
 tap), and `extendedWaitUntil`s the harness's `visual-ready` id before shooting.
 No fixed coordinates, no fixed settle — the assertions make it pin-agnostic and
 less flaky, and Maestro is **cross-platform** (the same flows would drive
-Android). Costs a JDK 17 + Maestro install and flow regeneration when
-`SCENARIO_IDS` changes.
+Android). Costs a JDK (≥ 17; see below for which) + Maestro install and flow
+regeneration when `SCENARIO_IDS` changes.
 
 > **Fix applied here:** the generated flow previously waited for `visual-ready`
 > *before* the scenario deep link, so all three flows timed out on the
@@ -121,20 +121,49 @@ Fixing it also unblocks the dev-menu gear (below): resolving the UDID ourselves
 device **and** give the runner the identifier `hideDevMenuFab` needs. One
 change, two problems.
 
-### Trap: it cannot run here without JDK 17
+### The JDK requirement is a FLOOR of 17, and the right choice is 21
 
-Maestro 2.x refuses to start without it:
-
-```
-$ maestro test --help
-ERROR: Java 17 or higher is required.
-```
-
-This machine has no JDK 17 on `PATH`, so the Maestro tier is **not currently
-runnable** — which is the actual reason its golden set stalled at the spike's
-3, rather than any verdict against it. Worth stating plainly: a tier that
-silently cannot run looks identical, in a file listing, to one that was
+**Resolved 2026-08-08 — `openjdk@21` installed; the tier runs here now.** Until
+then it did not, which is the actual reason its golden set stalled at the
+spike's 3, rather than any verdict against it. Worth stating plainly: a tier
+that silently cannot run looks identical, in a file listing, to one that was
 weighed and set aside.
+
+**"JDK 17" was this repo's own mis-transcription.** The launcher check is a
+floor, not a pin — `~/.maestro/bin/maestro:250`:
+
+```sh
+JAVA_VERSION=$( "$JAVACMD" -classpath "$APP_HOME"/bin/*.jar JvmVersion )
+if [ "$JAVA_VERSION" -lt 17 ]; then
+  die "ERROR: Java 17 or higher is required.
+```
+
+`-lt 17`, and the error string says *"or higher"*. Five files in this repo —
+this one included, three lines below a verbatim quote of that string — rendered
+it as "install JDK 17", and `ios-visual-spike.yml` then hardcoded
+`brew install openjdk@17` from the summary rather than the source.
+
+**So why not the newest JDK?** Measured across the whole installable range,
+`maestro --version` on Maestro 2.6.1:
+
+| JDK | starts | warnings |
+|---|---|---|
+| 1.8.0_501 | ❌ dies on the `-lt 17` check | — |
+| **21.0.12** (LTS) | ✅ `2.6.1` | **0** |
+| 25.0.4 (LTS) | ✅ `2.6.1` | 4 — jansi calls the restricted `System::load` |
+| 26.0.2 (current) | ✅ `2.6.1` | 7 — jansi, **plus** picocli mutating a final field |
+
+Every JDK past 21 adds a *scheduled* breakage to a dependency Maestro bundles,
+and both warnings say so in as many words — *"will be blocked in a future
+release"*. The picocli one is not cosmetic: picocli is Maestro's **command-line
+argument parser** and the mutated field is on `TestCommand`, the class behind
+the `maestro test` our runner invokes. When a JDK enforces it, Maestro stops
+parsing its own flags.
+
+21 is the newest JDK that runs clean, and it is an LTS. Pick it deliberately,
+not by defaulting to `brew install openjdk` — **the unversioned formula floats**,
+so it would roll onto the next release the moment one ships, which the table
+above says is exactly when this breaks. Always the versioned formula.
 
 ## owl — `react-native-owl` — BLOCKED on this stack (unproven, not rejected)
 
@@ -280,7 +309,7 @@ evidence available, and the roles still hold:
   re-pins.
 - **Maestro** — the more robust tier and **the one to grow**: a11y-based waits
   (pin-agnostic, less flaky) and the only path to Android, which `xcrun`-based
-  simctl can never take. Worth its JDK 17 dependency.
+  simctl can never take. Worth its JDK dependency.
 - **owl** — blocked on SDK 57 / RN 0.86 / React 19 / new-arch; do not invest
   until a new-architecture-capable release exists. Unproven, not outscored.
 
@@ -290,13 +319,14 @@ regardless of how that comparison lands.
 
 ## What would finish the comparison
 
-In order. The first two are cheap and should not wait; the third is the one
-gated on visual fidelity settling.
+In order. The first is cheap and should not wait; the third is the one gated on
+visual fidelity settling.
 
 1. **Pin Maestro's device** — resolve the UDID and pass it to `maestro test`.
    Closes the wrong-device hazard and hands the runner the identifier
    `hideDevMenuFab` needs.
-2. **Install JDK 17** so the tier can run at all on this machine.
+2. ~~**Install a JDK**~~ — **DONE 2026-08-08**, `openjdk@21`. See the floor-vs-pin
+   section above for why 21 and not the newest.
 3. **Capture every tier at full scenario coverage, then judge** — once the
    mobile UI's visual fidelity has stabilised, so goldens are captured against
    a UI that has stopped moving. Compare on wall-clock, flake rate across

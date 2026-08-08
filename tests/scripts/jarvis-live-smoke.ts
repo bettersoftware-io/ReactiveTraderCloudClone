@@ -23,7 +23,7 @@
  *   3. One trade turn ("Buy 1M EURUSD") that DECLINES the confirmation
  *      (`jarvis.confirm { approved: false }` as soon as a confirmRequest
  *      arrives) — asserts the declined tool-result still produces a reply.
- *   4. One panel-authoring turn ("Show me a volatility panel for GBP") that
+ *   4. One panel-authoring turn ("Show me a volatility panel for GBPUSD") that
  *      asks the model to reach for the `render_panel` desk tool
  *      (`packages/server/src/agent/renderPanelTool.ts`) — asserts a
  *      `render_panel` tool call was actually made (a `[render_panel:...]`
@@ -842,7 +842,11 @@ async function runAllChecks(results: CheckResult[]): Promise<void> {
       bus1,
       ws1,
       "panel authoring",
-      "Show me a volatility panel for GBP",
+      // A full pair symbol, deliberately: "for GBP" is ambiguous enough that
+      // the model may (correctly) ask which GBP cross instead of calling
+      // render_panel at all — observed live 2026-08-08, failing the four
+      // panel assertions below on model behaviour rather than any defect.
+      "Show me a volatility panel for GBPUSD",
       [],
     );
     check(
