@@ -1,9 +1,10 @@
-import type { JSX } from "solid-js";
+import { createMemo, type JSX } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { InstrumentTabs } from "../tabs/InstrumentTabs";
 import { ChartTypePills } from "./ChartTypePills";
+import { ComparePills } from "./ComparePills";
 import { DrawToolPills } from "./DrawToolPills";
 import { IndicatorPills } from "./IndicatorPills";
 import { TimeframePills } from "./TimeframePills";
@@ -18,7 +19,7 @@ import styles from "./EqChartHead.module.css";
  * prototype's ChartPanelControls). Registered as eq-chart's headControls.
  */
 export function EqChartHead(): JSX.Element {
-  const { useEqWorkspace, useEqDrawings } = useViewModel();
+  const { useEqWorkspace, useEqDrawings, useWatchlist } = useViewModel();
   const {
     state,
     setTimeframe,
@@ -26,8 +27,19 @@ export function EqChartHead(): JSX.Element {
     toggleIndicator,
     togglePane,
     toggleYScale,
+    setCompare,
   } = useEqWorkspace();
   const { state: drawState, setTool } = useEqDrawings();
+  const instruments = useWatchlist();
+  const candidates = createMemo((): readonly string[] => {
+    return instruments()
+      .map((i) => {
+        return i.symbol;
+      })
+      .filter((sym) => {
+        return sym !== state().sel;
+      });
+  });
 
   return (
     <div class={styles.head}>
@@ -42,6 +54,12 @@ export function EqChartHead(): JSX.Element {
         onTogglePane={togglePane}
         yScale={state().yScale}
         onToggleYScale={toggleYScale}
+        comparing={state().compare !== null}
+      />
+      <ComparePills
+        candidates={candidates()}
+        active={state().compare}
+        onSelect={setCompare}
       />
       <TimeframePills tf={state().timeframe} onSet={setTimeframe} />
       <DrawToolPills tool={drawState().tool} onSet={setTool} />

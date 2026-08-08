@@ -156,6 +156,7 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
       viewport: g.viewport(),
       kind: props.kind,
       yScale: props.yScale ?? "linear",
+      compare: props.compare,
     });
   });
 
@@ -400,6 +401,11 @@ export interface CandleChartProps {
   /** Price-axis mapping; optional so existing spec mounts keep compiling —
    * absent means "linear" (the bare default stays bare). */
   yScale?: EqYScale;
+  /** Comparison series overlay — presence switches the whole plot to the
+   * percent axis (see @rtc/motion-core chartScene). An empty `series` while
+   * the compare symbol's data is still loading percent-projects the primary
+   * alone (the axis is already %, so the line's arrival doesn't reflow). */
+  compare?: { readonly series: readonly Candle[] };
   /** The timeframe's default visible-candle count (`CANDLE_DEFAULT_VISIBLE`)
    * — seeds `createChartGestures`'s initial/reset viewport. ChartPanel
    * already computes this from the selected timeframe. */
