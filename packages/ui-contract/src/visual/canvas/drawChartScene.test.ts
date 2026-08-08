@@ -41,6 +41,7 @@ const twoCandleScene: ChartScene = {
   priceLabels: [],
   timeLabels: [],
   linePoints: [],
+  compareLinePoints: [],
   scale: { cmin: 0, cmax: 0 },
 };
 
