@@ -223,7 +223,13 @@ overrides:
   # troubleshooting guide. reanimated peers `0.10.x`, so a natural install lets
   # pnpm float the peer to 0.10.1 (a MISMATCH vs the 0.10.0 plugin); force 0.10.0
   # everywhere so plugin == runtime == the tested pair.
-  react-native-worklets: 0.10.0
+  # EXPERIMENT 2026-08-08 (T5): moved 0.10.0 -> 0.11.3 to test whether the newer
+  # worklets plugin fixes the x86-Linux `reading 'length'` crash the CI bundle
+  # smoke has tolerated since it was introduced. reanimated@4.5.3 peers
+  # `0.10.x - 0.11.x`, so plugin==runtime still holds. NOTE this leaves Expo
+  # SDK 57's bundledNativeModules (which pins 0.10.0 / 4.5.0) — if the crash is
+  # NOT fixed, revert rather than carry the divergence.
+  react-native-worklets: 0.11.3
   # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
   # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
   # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
