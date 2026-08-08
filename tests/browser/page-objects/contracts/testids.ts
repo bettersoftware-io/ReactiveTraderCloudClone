@@ -153,6 +153,14 @@ export const TESTIDS = {
        * shared testid for both, disambiguated by the `data-ind` attribute
        * (mirrors `panePill`'s `data-pane`-disambiguated pattern above). */
       indicatorPill: "chart-indicator-pill",
+      /** The VS comparison-symbol pill (ComparePills.tsx) — one shared
+       * testid for every candidate, disambiguated by the `data-sym`
+       * attribute (same `.and` composition as `panePill`/`indicatorPill`
+       * above). */
+      comparePill: "chart-compare-pill",
+      /** The comparison close-line polyline overlay (SvgPathLayer.tsx),
+       * rendered while a comparison is active. */
+      compareLine: "chart-compare-line",
     },
   },
   layout: {
