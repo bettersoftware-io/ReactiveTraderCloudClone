@@ -117,7 +117,7 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
 
   /** Waits until `data-yscale` reads the given mode — the LOG-pill twin of
    * {@link waitUntilPanesAttr}. */
-  async waitUntilYScaleAttr(mode: "linear" | "log"): Promise<void> {
+  async waitUntilYScaleAttr(mode: "linear" | "log" | "percent"): Promise<void> {
     await waitFor(() => {
       if (this.yScaleAttr() !== mode) {
         throw new Error(
@@ -125,6 +125,25 @@ export class ChartPanelPage extends MountedComponent<Record<string, never>> {
         );
       }
     });
+  }
+
+  /** Ordered text of every rendered y-axis price label in the chart column
+   * — prices ("104.00") normally, signed percents ("+1.25%") while a
+   * comparison locks the axis to percent mode. */
+  priceLabels(): string[] {
+    return Array.from(
+      this.root.querySelectorAll('[data-testid="chart-price-label"]'),
+    ).map((el) => {
+      return el.textContent ?? "";
+    });
+  }
+
+  /** Whether the comparison close-line polyline is rendered in the chart
+   * column — the panel-mount twin of CandleChartPage.compareLineVisible. */
+  compareLineVisible(): boolean {
+    return (
+      this.root.querySelector('[data-testid="chart-compare-line"]') !== null
+    );
   }
 
   /** Whether any chart-drawing (trendline/hline) is currently rendered in

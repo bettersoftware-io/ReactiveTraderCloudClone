@@ -137,6 +137,50 @@ export class EqChartHeadPage extends MountedComponent<Record<string, never>> {
     await this.user.click(pill);
   }
 
+  /** Every compare pill's symbol, in DOM order. */
+  compareCandidates(): string[] {
+    return within(this.root)
+      .queryAllByTestId("chart-compare-pill")
+      .map((el) => {
+        return el.getAttribute("data-sym") ?? "";
+      });
+  }
+
+  /** The active compare pill's symbol, or null when no comparison is set. */
+  activeCompare(): string | null {
+    const active = within(this.root)
+      .queryAllByTestId("chart-compare-pill")
+      .find((el) => {
+        return el.getAttribute("data-active") === "true";
+      });
+    return active?.getAttribute("data-sym") ?? null;
+  }
+
+  /** Clicks the compare pill for the given symbol — drives the real
+   * eqWorkspace machine's setCompare intent (clicking the active pill
+   * clears the comparison). */
+  async toggleCompare(sym: string): Promise<void> {
+    await this.user.click(this.pillFor("chart-compare-pill", "data-sym", sym));
+  }
+
+  /** The axis-scale pill's current label — "LOG" normally, "PCT" while a
+   * comparison locks the axis to percent. */
+  yScalePillLabel(): string {
+    return (
+      within(this.root).queryAllByTestId("chart-yscale-pill")[0]?.textContent ??
+      ""
+    );
+  }
+
+  /** Whether the axis-scale pill is disabled (true while comparing). */
+  yScalePillDisabled(): boolean {
+    return (
+      within(this.root)
+        .queryAllByTestId("chart-yscale-pill")[0]
+        ?.hasAttribute("disabled") === true
+    );
+  }
+
   /** The currently-active draw-tool pill's `data-tool` ("trendline" |
    * "hline"), or null when the cursor tool is active — no draw pill carries
    * `data-active="true"` in that state (mirrors {@link activeChartType}). */
