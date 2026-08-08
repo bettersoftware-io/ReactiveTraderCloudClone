@@ -31,6 +31,7 @@ export function ChartPanel(): ReactElement {
   const { state } = useEqWorkspace();
   const { sel, timeframe, chartType, indicators, panes, yScale, compare } =
     state;
+
   const {
     state: drawState,
     addDrawing,

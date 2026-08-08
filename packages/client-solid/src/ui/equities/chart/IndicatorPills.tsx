@@ -57,9 +57,7 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
         data-testid="chart-yscale-pill"
         data-active={String(!props.comparing && props.yScale === "log")}
         disabled={props.comparing ?? false}
-        title={
-          props.comparing ? "comparison uses percent scale" : undefined
-        }
+        title={props.comparing ? "comparison uses percent scale" : undefined}
         onClick={() => {
           props.onToggleYScale();
         }}

@@ -159,6 +159,7 @@ export function CandleChart({
     yScale,
     compare,
   });
+
   const cross = cursor
     ? crosshairVm(cursor.xFrac, cursor.yFrac, candles, viewport, vm.scale)
     : null;
