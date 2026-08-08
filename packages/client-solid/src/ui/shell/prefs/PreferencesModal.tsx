@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { formatGateResetTime, type JarvisState } from "@rtc/client-core";
 import type {
@@ -95,12 +95,19 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
     return jarvisState().gate;
   }
 
-  function gateHint(): string | undefined {
+  // A createMemo (not a plain function called only from guarded sites)
+  // — mirrors react's eager `const gateHint = gate === null ? … : …`
+  // shape: it re-evaluates on every `gate()` change regardless of whether
+  // anything currently reads it, so BOTH ternary arms are real reachable
+  // code (a component mounted with a null gate exercises the `undefined`
+  // arm on creation), not a permanently-dead branch behind the two guarded
+  // call sites below.
+  const gateHint = createMemo((): string | undefined => {
     const g = gate();
     return g === null
       ? undefined
       : `Budget window — resets ${formatGateResetTime(g.resetsAtMs)}`;
-  }
+  });
 
   // Real (non-"scripted") brain options are disabled when the server isn't
   // currently offering them (jarvisState().brains — an empty array is a

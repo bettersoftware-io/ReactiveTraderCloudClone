@@ -142,6 +142,27 @@ describe("JarvisUsageCard", () => {
     expect(page.gateBadgeText()).toBe("SOFT GATE");
   });
 
+  it("renders HARD GATE and defaults spentWindowUsd/softBudgetUsd to 0 when only budgetUsd is present", () => {
+    // Guards the ?? 0 defaults and the "hard" gate-badge label independently
+    // of the "soft" case above — a mutant hardcoding the badge text to
+    // "SOFT GATE" or flipping either `?? 0` default (e.g. to `?? 999`)
+    // must fail this.
+    const page = mount(JarvisUsageCard, {
+      admin: {
+        jarvisUsage: {
+          ...SNAPSHOT,
+          budgetUsd: 20,
+          gateLevel: "hard",
+          // spentWindowUsd / softBudgetUsd deliberately absent.
+        },
+      },
+    });
+    expect(page.budgetLineText()).toContain(
+      "$0.00 of $20.00 this window — soft gate at $0.00",
+    );
+    expect(page.gateBadgeText()).toBe("HARD GATE");
+  });
+
   it("renders BUDGET OFF when budgetUsd is null", () => {
     const page = mount(JarvisUsageCard, {
       admin: {
