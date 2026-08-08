@@ -95,7 +95,6 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
   const compareCandles = createMemo(
     (): (() => readonly Candle[]) | null => {
       const sym = state().compare;
-      // eslint-disable-next-line solid/reactivity -- props.timeframe is fixed for this component's lifetime (ChartBody remounts on timeframe change)
       return sym !== null ? useCandles(sym, props.timeframe) : null;
     },
   );
