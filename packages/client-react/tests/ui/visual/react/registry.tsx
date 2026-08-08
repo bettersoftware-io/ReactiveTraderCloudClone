@@ -57,6 +57,7 @@ import { StatusBar } from "#/ui/shell/status/StatusBar";
 import { EquitiesChartCanvasSpike } from "./EquitiesChartCanvasSpike.visual";
 import {
   EquitiesChartArea,
+  EquitiesChartCompare,
   EquitiesChartCrosshair,
   EquitiesChartDrawings,
   EquitiesChartHistoryStart,
@@ -580,6 +581,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // Log price axis (spec 2026-08-04): real CandleChart, yScale="log".
   EquitiesChartLogScale: () => {
     return <EquitiesChartLogScale />;
+  },
+  // Comparison series (spec 2026-08-08): real CandleChart with a literal
+  // compare series (percent axis + --accent-compare polyline).
+  EquitiesChartCompare: () => {
+    return <EquitiesChartCompare />;
   },
   // Drawing tools (Task 8, drawing-tools workstream): real CandleChart with
   // literal drawings + selectedDrawingId.
