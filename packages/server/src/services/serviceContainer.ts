@@ -19,6 +19,7 @@ import {
   TradeStoreSimulator,
 } from "@rtc/domain";
 
+import { JarvisGateService, parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
@@ -37,6 +38,7 @@ export interface ServiceContainer {
   readonly orders: OrderPort;
   readonly positions: PositionPort;
   readonly usageMeter: UsageMeter;
+  readonly jarvisGate: JarvisGateService;
 }
 
 export function createServices(): ServiceContainer {
@@ -53,6 +55,10 @@ export function createServices(): ServiceContainer {
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
   const throughput = new ThroughputService();
   const usageMeter = new UsageMeter();
+  const jarvisGate = new JarvisGateService(
+    usageMeter,
+    parseJarvisGateConfig(process.env),
+  );
   const marketData = new EquityMarketDataSimulator();
   const positions = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
@@ -79,5 +85,6 @@ export function createServices(): ServiceContainer {
     orders,
     positions,
     usageMeter,
+    jarvisGate,
   };
 }
