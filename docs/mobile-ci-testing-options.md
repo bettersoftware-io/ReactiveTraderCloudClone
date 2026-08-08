@@ -164,7 +164,7 @@ separate question (§5) — almost certainly they will not, at first.
 - Image contents change on GitHub's schedule, not yours. A default-Xcode bump
   can move every golden pixel overnight.
 - Tooling this repo needs is not preinstalled: `pnpm` (Corepack handles it),
-  Maestro (a `curl` install + JDK 17), and **`idb`**, whose Python client
+  Maestro (a `curl` install + a JDK ≥ 17; the tier pins 21), and **`idb`**, whose Python client
   `fb-idb` requires Python ≤ 3.13 per
   [the harness README](../packages/client-react-native/tests/visual/README.md)
   and whose `idb-companion` comes from a Homebrew tap. Whether that installs
@@ -753,7 +753,7 @@ iPhone 17 + iOS 26.x. Model it on `visual.yml`, which is already the repo's
 Concrete first step — **a spike, not a tier**: a `workflow_dispatch`-only
 workflow on `macos-26` that does nothing but prove the environment. Pin Xcode
 explicitly, install pnpm via Corepack, `expo prebuild` + build the app for the
-simulator, boot an iPhone 17 / iOS 26.x sim, install Maestro + JDK 17, and run
+simulator, boot an iPhone 17 / iOS 26.x sim, install Maestro + a JDK, and run
 **one** scenario in `--scratch` mode (which
 [`simctl/run.ts`](../packages/client-react-native/tests/visual/simctl/run.ts)
 already supports) — uploading the PNG as an artifact. Compare it by eye to the
@@ -767,8 +767,8 @@ committed golden. Total cost: one afternoon and zero pounds.
    `python3` is 3.14.6, above `fb-idb`'s ≤ 3.13 ceiling, and `idb-companion`
    comes from a Homebrew tap. **Prefer the Maestro tier for the CI spike** —
    BAKEOFF.md already rates it the more robust, pin-agnostic tier, and its only
-   extra dependency (JDK 17) is a `brew install` (measured: 97 s, together with
-   Maestro itself). Leave simctl+idb as the Mac-local tier it was built to be.
+   extra dependency (a JDK ≥ 17) is a `brew install` (measured: 97 s, together
+   with Maestro itself). Leave simctl+idb as the Mac-local tier it was built to be.
 3. ~~**14 GB of disk.**~~ **NOT A PROBLEM — measured 97 GB free** (§7.0).
    Deleting unused Xcodes is an optimisation, not a prerequisite.
 4. **Wall-clock.** A cold `expo prebuild` + native build on 3 cores could
@@ -843,7 +843,7 @@ inferences:
 | Default Xcode | **26.5** (build 17F42) — pin it explicitly anyway; the image default moves |
 | Simulator create + boot | **1 min 38 s** |
 | `pnpm install --frozen-lockfile` | **74 s**, ~2.7 GB |
-| JDK 17 + Maestro install | **97 s** |
+| JDK + Maestro install | **97 s** (the spike installed `openjdk@17`; the tier pins `@21` since 2026-08-08 — same one-formula shape, so the timing carries) |
 | Preinstalled Node | v24.18.0 (`setup-node` raised it to v26.5.0 without complaint) |
 | **Preinstalled Python** | **3.14.6** |
 
