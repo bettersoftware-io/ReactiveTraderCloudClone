@@ -48,7 +48,7 @@ activate it in production.
 - **Metro** running from this worktree with the harness flag:
   `EXPO_PUBLIC_VISUAL_HARNESS=1 npx expo start --dev-client --port 8083`
 - **idb** (Tier 1) for the in-app "Open?" confirmation tap: `pipx install --python python3.13 fb-idb` + `brew install facebook/fb/idb-companion` (fb-idb needs Python ≤3.13).
-- **Maestro + JDK 17** (Tier 2): `curl -fsSL https://get.maestro.mobile.dev | bash` and `brew install openjdk@17`; run flows with `JAVA_HOME=/opt/homebrew/opt/openjdk@17` and `~/.maestro/bin` on `PATH`.
+- **Maestro + a JDK** (Tier 2): `curl -fsSL https://get.maestro.mobile.dev | bash` and `brew install openjdk@21`; run flows with `JAVA_HOME="$(brew --prefix openjdk@21)"` and `~/.maestro/bin` on `PATH`. Maestro's check is a **floor** (`-lt 17`), not a pin — but **21 is the newest JDK it runs clean on**: 25 and 26 both warn that dependencies Maestro bundles "will be blocked in a future release", one of them its own CLI arg parser. Always the *versioned* formula; bare `openjdk` floats onto the next release. Measured table: [BAKEOFF.md](BAKEOFF.md#the-jdk-requirement-is-a-floor-of-17-and-the-right-choice-is-21).
 
 ## Run
 
@@ -62,7 +62,7 @@ RTC_VISUAL_UDID=<iphone17-udid> RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(comm
 
 # Tier 2 — Maestro (a11y-driven; no blind taps). Regenerate flows first if SCENARIO_IDS changed:
 tsx tests/visual/maestro/generateFlows.ts
-PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME=/opt/homebrew/opt/openjdk@17 MAESTRO_METRO_PORT=8083 \
+PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
   pnpm --filter @rtc/client-react-native test:rn:visual:maestro          # verify vs goldens
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update   # regenerate
 ```

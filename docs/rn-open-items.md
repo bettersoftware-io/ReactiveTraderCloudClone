@@ -9,8 +9,8 @@ backlog entry.
 Nothing here is a blocker on shipped work. Items are grouped by what kind of
 thing they are, because that determines who fixes them and where.
 
-**Last updated: 2026-08-06** (close-out sweep rounds 1–6, plus a round-7
-correction to T9 — see below)
+**Last updated: 2026-08-08** (close-out sweep rounds 1–6, a round-7 correction
+to T9, and a round-8 JDK resolution — see below)
 
 ## 0. The 2026-08-05 close-out sweep
 
@@ -89,7 +89,8 @@ The word "bake-off" invited the Playwright-vs-Cypress reading, where two suites
 ran the same specs for months before one was retired — a different quantity of
 evidence entirely. Two concrete defects fell out of re-reading it: Maestro
 **pins no device** while its goldens sit under a path claiming one, and it
-**cannot start without JDK 17**, which is why its golden set stalled. Also
+**could not start without a JDK ≥ 17**, which is why its golden set stalled
+(resolved in round 8, below). Also
 recorded: the dev-menu gear has an **Android** twin under the same preference
 key, and a **build-time** default that no runner can forget — the per-runner
 fix shipped in round 6 is the version Maestro silently missed. Nothing is
@@ -103,6 +104,23 @@ also closed **M7** on the maintainer's own reasoning: the prototype is a
 *visual* reference with no server and no timestamps, so it was never an
 authority on data cadence. Both are the same shape as M2 — rows that dissolved
 once someone asked which authority they were appealing to.
+
+**Round 8** made the Maestro tier runnable and, in doing so, corrected a number
+this file helped propagate. The recorded blocker was "install JDK 17". Read from
+source, `~/.maestro/bin/maestro:250` is `if [ "$JAVA_VERSION" -lt 17 ]` — a
+**floor**, and its own error string says *"Java 17 or higher is required"*. Five
+files had rendered that floor as a pin, one of them three lines below a verbatim
+quote of the string, and `ios-visual-spike.yml` then hardcoded
+`brew install openjdk@17` from the summary rather than the source.
+
+The measurement that followed inverted the obvious correction. `maestro --version`
+on 2.6.1: JDK **21 → 0 warnings**; **25 → 4** (jansi's restricted `System::load`);
+**26 → 7** (jansi *plus* picocli mutating a final field on `TestCommand`). Both
+warn that the behaviour "will be blocked in a future release", and picocli is the
+parser for `maestro test`'s own flags — so the newest JDK is the one accumulating
+scheduled breakage, and **21 is the newest that runs clean**. `openjdk@21` is now
+installed and pinned in the workflow; keep the *versioned* formula, since bare
+`openjdk` floats onto the next release.
 
 **The open roster, by id**, so any count here can be checked rather than
 believed:

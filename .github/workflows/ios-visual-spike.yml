@@ -215,20 +215,26 @@ jobs:
       - name: Enable Corepack (pins pnpm from the packageManager field)
         run: npm install -g corepack@0.35.0 && corepack enable
 
-      - name: Install JDK 17 + Maestro (timed)
+      # Maestro's own check is a FLOOR (`-lt 17`), not a pin — but 21 is the
+      # newest JDK it runs clean on; 25 and 26 warn that bundled deps (jansi,
+      # and picocli, which parses `maestro test`'s own flags) "will be blocked
+      # in a future release". Keep the VERSIONED formula: bare `openjdk` floats
+      # onto the next release, which is exactly when this breaks. Measured
+      # table: packages/client-react-native/tests/visual/BAKEOFF.md
+      - name: Install JDK 21 + Maestro (timed)
         run: |
           set -euo pipefail
           start=$SECONDS
-          brew install openjdk@17
+          brew install openjdk@21
           curl -fsSL https://get.maestro.mobile.dev | bash
           export PATH="$HOME/.maestro/bin:$PATH"
           # Declared and exported separately (SC2155): `export X="$(cmd)"` masks
           # cmd's exit status behind export's, so a failing brew would pass.
-          JAVA_HOME="$(brew --prefix openjdk@17)"
+          JAVA_HOME="$(brew --prefix openjdk@21)"
           export JAVA_HOME
           maestro --version
           elapsed=$(( SECONDS - start ))
-          echo "maestro + jdk17 install: ${elapsed}s"
+          echo "maestro + jdk21 install: ${elapsed}s"
           {
             echo "## Maestro"
             echo '```'
@@ -343,13 +349,14 @@ jobs:
       - name: Build workspace libraries (this package's deps only)
         run: pnpm exec turbo run build --filter='@rtc/client-react-native^...'
 
-      - name: Install JDK 17 + Maestro
+      # 21, not the newest — see the note on the timed install step above.
+      - name: Install JDK 21 + Maestro
         run: |
           set -euo pipefail
-          brew install openjdk@17
+          brew install openjdk@21
           curl -fsSL https://get.maestro.mobile.dev | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-          echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
+          echo "JAVA_HOME=$(brew --prefix openjdk@21)" >> "$GITHUB_ENV"
 
       - name: Create and boot the golden pin
         id: sim
