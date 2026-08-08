@@ -276,52 +276,6 @@ describe("crosshairScene in log mode", () => {
   });
 });
 
-// Type-level neutrality: no field of SceneCandle/ChartScene is `--`-keyed.
-// (Compile-only — these types are never instantiated; a violation fails
-// `tsc`, not `vitest`.)
-type CssVarKeys<T> = {
-  [K in keyof T]: K extends `--${string}` ? K : never;
-}[keyof T];
-type AssertNever<T extends never> = T;
-type _CandleClean = AssertNever<CssVarKeys<SceneCandle>>;
-type _SceneClean = AssertNever<CssVarKeys<ChartScene>>;
-type _CrosshairClean = AssertNever<CssVarKeys<CrosshairScene>>;
-type _NavWindowClean = AssertNever<CssVarKeys<NavigatorWindowScene>>;
-type _VolumeBarClean = AssertNever<CssVarKeys<VolumeSceneBar>>;
-type _PaneSceneClean = AssertNever<CssVarKeys<PaneScene>>;
-type _PaneLineClean = AssertNever<CssVarKeys<PaneLine>>;
-type _PaneBarClean = AssertNever<CssVarKeys<PaneBar>>;
-type _PaneGuideClean = AssertNever<CssVarKeys<PaneGuide>>;
-
-/** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
- * ChartCandle is the structural subset chartScene reads). */
-type Candle = ChartCandle & { readonly time: number };
-
-// Recursively asserts a scene value carries no CSS syntax: no string field
-// matches `%` or `calc(`, and no object key is `--`-prefixed. Run over both
-// chartScene and volumeScene output to prove the numeric scene layer never
-// leaks the projection's string formatting.
-function assertSceneNeutral(node: unknown, path: string): void {
-  if (Array.isArray(node)) {
-    node.forEach((v, i) => {
-      assertSceneNeutral(v, `${path}[${i}]`);
-    });
-    return;
-  }
-
-  if (typeof node === "string") {
-    expect(node, `${path} leaks CSS syntax`).not.toMatch(/%|calc\(/);
-    return;
-  }
-
-  if (node !== null && typeof node === "object") {
-    for (const [k, v] of Object.entries(node)) {
-      expect(k.startsWith("--"), `${path}.${k} is a CSS var key`).toBe(false);
-      assertSceneNeutral(v, `${path}.${k}`);
-    }
-  }
-}
-
 // Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
 // two series align by time exactly; closes climb twice as fast so the pct
 // ranges genuinely differ (union must widen).
@@ -338,6 +292,16 @@ const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
     };
   },
 );
+
+// A primary-only pct range engineered to straddle zero with round ±10/±20
+// ticks (base=close=100, low=75 -> -25%, high=125 -> +25%; priceTicks(-25,
+// 25) lands exactly on -20/-10/0/10/20), so formatPctLabel's sign and
+// zero-unsigned rules can be pinned with literal string values instead of
+// just the regex shape check above.
+const STRADDLE_SERIES: readonly ChartCandle[] = [
+  { time: 0, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+  { time: 60_000, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+];
 
 describe("percent scale (comparison series)", () => {
   const VP: ChartViewport = { start: 0, end: 12 };
@@ -391,11 +355,28 @@ describe("percent scale (comparison series)", () => {
     const gappy = COMPARE_TWELVE.filter((_, i) => {
       return i % 2 === 0;
     });
+
     const gappyScene = chartScene(TWELVE_MIXED, 0, false, {
       viewport: VP,
       compare: { series: gappy },
     });
     expect(gappyScene.compareLinePoints).toHaveLength(6);
+  });
+
+  it("the compare baseline is inclusive of an exact time match (pins >= over >)", () => {
+    // COMPARE_TWELVE's first candle sits at EXACTLY the primary window-start
+    // time, so an inclusive `>=` match picks it as cBase — the compare
+    // line's very first point is then measured against its own close, so it
+    // lands on pct 0, the same 0%-mark the primary itself starts at (base is
+    // also the primary's first visible close). A strict `>` boundary would
+    // instead skip to the NEXT compare candle as cBase, moving this point
+    // off 0% — a literal numeric pin, not just a length/shape check.
+    const scene = chartScene(TWELVE_MIXED, 0, false, {
+      viewport: VP,
+      compare: { series: COMPARE_TWELVE },
+    });
+    const zeroPctY = priceToY(scene.scale, scene.scale.base as number);
+    expect(scene.compareLinePoints[0]?.y).toBeCloseTo(zeroPctY, 8);
   });
 
   it("the pct-range union widens the scale to include the compare series", () => {
@@ -441,6 +422,29 @@ describe("percent scale (comparison series)", () => {
     ).toBe(false);
   });
 
+  it("percent labels: literal signed values pin the sign and zero-unsigned rules", () => {
+    // `compare` with an empty series is present purely to flip the scene
+    // into percent mode; resolveCompare contributes nothing extra (no
+    // cBase), so the pct range is exactly the primary's own -25%..+25%
+    // (see STRADDLE_SERIES) and priceTicks(-25, 25) is the deterministic
+    // -20/-10/0/10/20 set computed above. Exact strings — not the regex
+    // shape check — so stripping the minus sign or the -0.00 branch in
+    // formatPctLabel cannot slip through green. liveRate=100 matches the
+    // last candle's own close, so withLiveLast's overlay is a no-op —
+    // passing 0 here (as elsewhere in this file) would stretch that
+    // candle's low to 0, blowing the pct range wide open.
+    const scene = chartScene(STRADDLE_SERIES, 100, false, {
+      viewport: { start: 0, end: 2 },
+      compare: { series: [] },
+    });
+
+    expect(
+      scene.priceLabels.map((l) => {
+        return l.txt;
+      }),
+    ).toEqual(["+20.00%", "+10.00%", "0.00%", "-10.00%", "-20.00%"]);
+  });
+
   it("an empty compare series still percent-projects the primary alone", () => {
     const scene = chartScene(TWELVE_MIXED, 0, false, {
       viewport: VP,
@@ -454,6 +458,7 @@ describe("percent scale (comparison series)", () => {
     const older = COMPARE_TWELVE.map((c) => {
       return { ...c, time: c.time - 100 * 60_000 };
     });
+
     const scene = chartScene(TWELVE_MIXED, 0, false, {
       viewport: VP,
       compare: { series: older },
@@ -487,4 +492,66 @@ describe("percent scale (comparison series)", () => {
     // OHLC readout stays in prices.
     expect(cross?.readout.close).toMatch(/^\d+(\.\d{2})?$/);
   });
+
+  it("crosshairScene collapses a tiny negative percent rounding to unsigned zero", () => {
+    // price = base·(1 - 0.00001) -> pct = -0.001, which .toFixed(2) rounds
+    // to the literal string "-0.00" — the exact edge formatPctLabel's
+    // zero-unsigned branch exists to catch. A literal "0.00%" pin, not the
+    // permissive sign-optional regex used elsewhere in this file.
+    const scale: ChartScale = {
+      cmin: 90,
+      cmax: 110,
+      yScale: "percent",
+      base: 100,
+    };
+    const y = priceToY(scale, 100 * (1 - 0.00001));
+    const cross = crosshairScene(0.5, y / 100, TWELVE_MIXED, VP, scale);
+    expect(cross?.price).toBe("0.00%");
+  });
 });
+
+// Type-level neutrality: no field of SceneCandle/ChartScene is `--`-keyed.
+// (Compile-only — these types are never instantiated; a violation fails
+// `tsc`, not `vitest`.)
+type CssVarKeys<T> = {
+  [K in keyof T]: K extends `--${string}` ? K : never;
+}[keyof T];
+type AssertNever<T extends never> = T;
+type _CandleClean = AssertNever<CssVarKeys<SceneCandle>>;
+type _SceneClean = AssertNever<CssVarKeys<ChartScene>>;
+type _CrosshairClean = AssertNever<CssVarKeys<CrosshairScene>>;
+type _NavWindowClean = AssertNever<CssVarKeys<NavigatorWindowScene>>;
+type _VolumeBarClean = AssertNever<CssVarKeys<VolumeSceneBar>>;
+type _PaneSceneClean = AssertNever<CssVarKeys<PaneScene>>;
+type _PaneLineClean = AssertNever<CssVarKeys<PaneLine>>;
+type _PaneBarClean = AssertNever<CssVarKeys<PaneBar>>;
+type _PaneGuideClean = AssertNever<CssVarKeys<PaneGuide>>;
+
+/** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
+ * ChartCandle is the structural subset chartScene reads). */
+type Candle = ChartCandle & { readonly time: number };
+
+// Recursively asserts a scene value carries no CSS syntax: no string field
+// matches `%` or `calc(`, and no object key is `--`-prefixed. Run over both
+// chartScene and volumeScene output to prove the numeric scene layer never
+// leaks the projection's string formatting.
+function assertSceneNeutral(node: unknown, path: string): void {
+  if (Array.isArray(node)) {
+    node.forEach((v, i) => {
+      assertSceneNeutral(v, `${path}[${i}]`);
+    });
+    return;
+  }
+
+  if (typeof node === "string") {
+    expect(node, `${path} leaks CSS syntax`).not.toMatch(/%|calc\(/);
+    return;
+  }
+
+  if (node !== null && typeof node === "object") {
+    for (const [k, v] of Object.entries(node)) {
+      expect(k.startsWith("--"), `${path}.${k} is a CSS var key`).toBe(false);
+      assertSceneNeutral(v, `${path}.${k}`);
+    }
+  }
+}
