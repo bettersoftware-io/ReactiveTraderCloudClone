@@ -146,8 +146,8 @@ this manual per-user escape hatch — is the "Budget gate" section below (item
 
 Beyond the manual per-user "flip to Scripted" escape hatch above, the server
 now watches its own `UsageMeter` and narrows the brain offer on its own —
-the automatic-gating follow-on that closed out the "still missing" note
-just above. Full design and architecture receipt:
+the automatic-gating follow-on to the "still missing" note just above.
+Full design and architecture receipt:
 [design doc](superpowers/specs/2026-08-08-jarvis-usage-auto-gating-design.md)
 and [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt).
 
@@ -165,8 +165,8 @@ and [architecture §18.15](architecture/18-jarvis-ai-agent-surface.md#1815-the-b
 2. **Hard** (spend ≥ budget) — every real brain drops; only `scripted`
    remains offered.
 
-Both stages push the same `JARVIS_AVAILABILITY` frame the picker already
-renders (gated brains show visible-but-disabled with a reset time), and the
+Both stages push the same `JARVIS_AVAILABILITY` frame the picker renders
+(gated brains show visible-but-disabled with a reset time), and the
 gate lifts itself automatically once the 5h window rolls — no restart, no
 manual re-enable. `RTC_JARVIS_FORCE_GATE` is layered on top of that same
 frame, so it is a faithful preview of the real degraded state, not a
@@ -181,8 +181,13 @@ restarts today.
 **Turbo passthrough:** all three vars ride through turbo's
 `globalPassThroughEnv` (`turbo.json`), the same list `RTC_JARVIS_FAKE`
 already sits in — without that entry turbo's strict env mode would strip
-them silently in `dev:*:fs` and `dev:ws`, the same trap `CLAUDE.md`
-documents for `VITE_SERVER_URL`.
+them silently in the turbo-routed `dev:*:fs` scripts (`dev:react:fs`,
+`dev:solid:fs`, `dev:ios:fs`, each a `turbo run dev`), the same trap
+`CLAUDE.md` documents for `VITE_SERVER_URL`. `dev:ws` itself never goes
+through turbo — it's a plain `pnpm --filter @rtc/server dev` (tsx watch) —
+so this passthrough entry doesn't affect it either way:
+`RTC_JARVIS_FORCE_GATE=soft pnpm dev:ws` reaches the process untouched
+with no `turbo.json` involvement at all.
 
 ## Rate limits, and how Jarvis behaves when any limit trips
 
