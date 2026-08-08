@@ -191,6 +191,68 @@ describe("admin jarvis usage effects", () => {
       expect(payload.budgetUsd).toBe(2);
       expect(payload.softBudgetUsd).toBe(1.6);
     });
+
+    it("a recordTokens call that crosses the budget WHILE the snapshot leg is mid-throttle-window pairs the immediate hard gate with the FRESH spend, never the stale pre-recordTokens one", () => {
+      const meter = new UsageMeter();
+      const config: JarvisGateConfig = {
+        budgetUsd: 1,
+        softRatio: 0.8,
+        forceLevel: null,
+      };
+      // Constructed before the socket subscribes, exactly like production
+      // (`JarvisGateService` lives in the shared `ServiceContainer`,
+      // constructed once at server/test-harness startup) — this is what
+      // makes `ctx.jarvisGate`'s internal subscription to `meter.snapshot$`
+      // earlier-registered than the effect's own, and so the source of the
+      // reentrant-notification-order race this test targets.
+      const gate = new JarvisGateService(meter, config);
+      const { messages$, sent } = harnessFor(meter, gate);
+
+      // Opens the 1s throttle window: leading emission, zero spend, "none".
+      messages$.next({
+        type: CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE,
+        payload: {},
+      });
+      expect(sent).toHaveLength(1);
+      expect((sent[0]?.payload as AdminJarvisUsagePayload).gateLevel).toBe(
+        "none",
+      );
+
+      // Still well inside the throttle window (no leading edge available,
+      // trailing not due for another second) — record $1.50 in one shot:
+      // claude-sonnet-5 prices input at $3/Mtok, so 500,000 input tokens
+      // costs exactly 500_000 * 3 / 1e6 = 1.5, crossing the $1 hard budget.
+      // This is the reviewer's exact repro shape: a single recordTokens
+      // that both produces a fresh snapshot AND flips the gate, with the
+      // snapshot leg unable to emit its own fresh value yet.
+      vi.advanceTimersByTime(500);
+      meter.recordTokens("claude-sonnet-5", {
+        inputTokens: 500_000,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      });
+
+      // The gate-transition leg must have pushed a SECOND frame immediately
+      // (still mid-throttle-window — the routine leg's trailing frame is
+      // not due for another 500ms) — and it must carry the FRESH spend
+      // alongside the fresh gate level, never `{gateLevel:"hard",
+      // spentWindowUsd:0}` (the bug: a stale snapshot cached before the
+      // recordTokens that caused the very flip being reported).
+      expect(sent).toHaveLength(2);
+      const transitionFrame = sent[1]?.payload as AdminJarvisUsagePayload;
+      expect(transitionFrame.gateLevel).toBe("hard");
+      expect(transitionFrame.spentWindowUsd).toBeCloseTo(1.5, 10);
+
+      // The bounded duplicate the fix accepts: once the throttle window
+      // closes, the routine leg's trailing frame follows — internally
+      // consistent with the same fresh pairing, never the stale one.
+      vi.advanceTimersByTime(500);
+      expect(sent).toHaveLength(3);
+      const trailingFrame = sent[2]?.payload as AdminJarvisUsagePayload;
+      expect(trailingFrame.gateLevel).toBe("hard");
+      expect(trailingFrame.spentWindowUsd).toBeCloseTo(1.5, 10);
+    });
   });
 });
 
