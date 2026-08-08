@@ -10,7 +10,7 @@ import {
   timer,
 } from "rxjs";
 
-import type { JarvisBrain } from "@rtc/domain";
+import { JARVIS_BRAINS, type JarvisBrain } from "@rtc/domain";
 import type { JarvisGateLevel, JarvisUsageSnapshot } from "@rtc/shared";
 
 import type { UsageMeter } from "./UsageMeter.js";
@@ -18,13 +18,16 @@ import type { UsageMeter } from "./UsageMeter.js";
 export const DEFAULT_JARVIS_BUDGET_USD = 1;
 export const DEFAULT_JARVIS_BUDGET_SOFT_RATIO = 0.8;
 
-/** The expensive brains the soft stage removes; hard removes every real brain. */
+/** The expensive brains the soft stage removes — a literal policy list,
+ * chosen deliberately rather than derived. */
 const SOFT_GATED: readonly JarvisBrain[] = ["claude-sonnet-5", "claude-opus-5"];
-const HARD_GATED: readonly JarvisBrain[] = [
-  "claude-haiku-4-5",
-  "claude-sonnet-5",
-  "claude-opus-5",
-];
+
+/** Hard removes every real (non-scripted) brain — derived from
+ * `JARVIS_BRAINS` rather than listed, so a future brain joining the roster
+ * is hard-gated by default instead of silently staying offered past budget. */
+const HARD_GATED: readonly JarvisBrain[] = JARVIS_BRAINS.filter((brain) => {
+  return brain !== "scripted";
+});
 
 export interface JarvisGateConfig {
   readonly budgetUsd: number | "off";
@@ -198,18 +201,32 @@ export class JarvisGateService {
     this.subscription = meter.snapshot$
       .pipe(
         switchMap((snapshot): Observable<JarvisGateState> => {
-          function judge(): JarvisGateState {
+          function judge(nowMs: number): JarvisGateState {
             return {
-              level: computeGateLevel(snapshot, config, now()),
+              level: computeGateLevel(snapshot, config, nowMs),
               resetsAtMs: snapshot.windowEndMs,
             };
           }
 
-          const immediate = judge();
-          const liftDelayMs = snapshot.windowEndMs - now();
+          // Single reading shared by the immediate judgment and the lift
+          // delay below — reading now() twice risked the two calls
+          // straddling windowEndMs (one still before, one already past),
+          // which would judge "hard" immediately yet compute a negative
+          // liftDelayMs and arm no lift timer at all.
+          const at = now();
+          const immediate = judge(at);
+          const liftDelayMs = snapshot.windowEndMs - at;
           const lift$ =
             immediate.level !== "none" && liftDelayMs > 0
-              ? timer(liftDelayMs).pipe(map(judge))
+              ? // The lift itself re-reads now() when the timer actually
+                // fires — it must NOT reuse `at`, or the re-judgment would
+                // be evaluated at the snapshot's arrival time instead of
+                // the real time the lift fires.
+                timer(liftDelayMs).pipe(
+                  map(() => {
+                    return judge(now());
+                  }),
+                )
               : EMPTY;
 
           return concat(of(immediate), lift$);
@@ -218,7 +235,10 @@ export class JarvisGateService {
       .subscribe((state) => {
         const previous = this.stateSubject.getValue();
 
-        if (previous.level !== state.level) {
+        if (
+          previous.level !== state.level ||
+          (state.level !== "none" && previous.resetsAtMs !== state.resetsAtMs)
+        ) {
           this.stateSubject.next(state);
         }
       });

@@ -74,7 +74,31 @@ describe("computeGateLevel", () => {
 
 describe("spentWindowUsd", () => {
   it("sums estimatedCostUsd across the current window's rows", () => {
-    const snap = snapshotWith(0.25, 10_000);
+    const snap: JarvisUsageSnapshot = {
+      windowStartMs: 0,
+      windowEndMs: 10_000,
+      currentWindow: [
+        {
+          brain: "claude-haiku-4-5",
+          turns: 1,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          estimatedCostUsd: 0.1,
+        },
+        {
+          brain: "claude-sonnet-5",
+          turns: 1,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          estimatedCostUsd: 0.15,
+        },
+      ],
+      sinceBoot: [],
+    };
     expect(spentWindowUsd(snap)).toBeCloseTo(0.25);
   });
 });
@@ -220,8 +244,47 @@ describe("JarvisGateService", () => {
 
     nowMs = 1_000;
     snapshot$.next(snapshotWith(0.1, 10_000));
+    expect(vi.getTimerCount()).toBe(0);
     vi.advanceTimersByTime(60_000);
     expect(levels).toEqual(["none"]);
+
+    sub.unsubscribe();
+    service.dispose();
+  });
+
+  it("forced gate: a later snapshot with a real windowEndMs updates resetsAtMs even though level stays hard", () => {
+    let nowMs = 0;
+    const snapshot$ = new BehaviorSubject<JarvisUsageSnapshot>(
+      snapshotWith(0, 0),
+    );
+
+    const forced = {
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: "hard",
+    } as const;
+
+    const service = new JarvisGateService({ snapshot$ }, forced, () => {
+      return nowMs;
+    });
+
+    const resetsAtMsSeen: number[] = [];
+    const sub = service.state$.subscribe((s) => {
+      resetsAtMsSeen.push(s.resetsAtMs);
+    });
+
+    // fresh meter: forced hard fires immediately, but resetsAtMs is stuck at 0
+    expect(service.current().level).toBe("hard");
+    expect(service.current().resetsAtMs).toBe(0);
+
+    // a real turn re-anchors the meter's window; level stays forced-hard, but
+    // resetsAtMs must still update so the availability push carries the real
+    // reset time instead of freezing at 0 forever
+    nowMs = 1_000;
+    snapshot$.next(snapshotWith(0, 10_000));
+    expect(service.current().level).toBe("hard");
+    expect(service.current().resetsAtMs).toBe(10_000);
+    expect(resetsAtMsSeen).toEqual([0, 10_000]);
 
     sub.unsubscribe();
     service.dispose();
