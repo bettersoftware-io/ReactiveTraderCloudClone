@@ -8,6 +8,7 @@ import {
   merge,
   type Observable,
   of,
+  switchMap,
 } from "rxjs";
 
 import { isJarvisBrain, isJarvisEffort, type JarvisBrain } from "@rtc/domain";
@@ -215,12 +216,27 @@ function buildAvailabilityPayload(
  * Jarvis is absent entirely the payload is `available: false` with
  * `brains: []` — the `available` flag is what a client must key off (the orb
  * hides, so no picker renders); an empty `brains` array is NOT a nullish
- * sentinel and must never be read as "all brains offered". `availability$`
- * stays subscribed to `ctx.jarvisGate.state$` for the life of the
- * connection, so every later gate transition (trip or lift) re-pushes a
+ * sentinel and must never be read as "all brains offered". Each live
+ * observer stays subscribed to `ctx.jarvisGate.state$` for as long as it's
+ * the current one, so every later gate transition (trip or lift) re-pushes a
  * fresh frame without the client re-sending `JARVIS_SUBSCRIBE` — the state
  * stream already dedups per-transition, so this emits exactly one push per
- * transition per subscribed connection.
+ * transition per LIVE observer.
+ *
+ * Hand-rolled with `switchMap` rather than the generic `stream()` helper
+ * (which is hardwired to `mergeMap`, same reason `jarvisChat$` below is
+ * hand-rolled too): `ctx.jarvisGate.state$` is a `BehaviorSubject` that
+ * never completes, so a `mergeMap`'d inner observer never tears down on its
+ * own. A reconnecting or double-firing client sending `JARVIS_SUBSCRIBE`
+ * more than once on the SAME socket would otherwise accumulate one permanent
+ * observer per frame — N duplicate `JARVIS_AVAILABILITY` pushes per gate
+ * transition, and an ever-growing subscriber list on the shared
+ * `JarvisGateService` for the life of the process. `switchMap` instead
+ * unsubscribes the previous observer the moment a new `JARVIS_SUBSCRIBE`
+ * arrives, so a socket holds at most one live observer regardless of how
+ * many subscribe frames it sends (latest-subscribe-wins) — and because
+ * `state$` is a `BehaviorSubject`, a connection that subscribes while
+ * already gated still gets the gated payload in its very first frame.
  *
  * The session effect is a factory rather than a constant `WsEffect[]` (like
  * `fxEffects`): each `AgentLoop.createSession()` call runs inside the effect
@@ -233,19 +249,28 @@ function buildAvailabilityPayload(
  * client-side session state), and vice versa.
  */
 export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
-  const availability$: WsEffect<Ctx> = stream(
-    CLIENT_MSG.JARVIS_SUBSCRIBE,
-    (_payload, ctx): Observable<Outbound> => {
-      return ctx.jarvisGate.state$.pipe(
-        map((gate) => {
-          return out(
-            SERVER_MSG.JARVIS_AVAILABILITY,
-            buildAvailabilityPayload(loops, gate),
-          );
-        }),
-      );
-    },
-  );
+  function availability$(
+    in$: Observable<Inbound>,
+    ctx: Ctx,
+  ): Observable<Outbound> {
+    return in$.pipe(
+      matchType(CLIENT_MSG.JARVIS_SUBSCRIBE),
+      switchMap((): Observable<Outbound> => {
+        return ctx.jarvisGate.state$.pipe(
+          map((gate) => {
+            return out(
+              SERVER_MSG.JARVIS_AVAILABILITY,
+              buildAvailabilityPayload(loops, gate),
+            );
+          }),
+          catchError((err: unknown): Observable<never> => {
+            console.error("ws-effects: stream effect error", err);
+            return EMPTY;
+          }),
+        );
+      }),
+    );
+  }
 
   if (loops === null) {
     return [availability$];
