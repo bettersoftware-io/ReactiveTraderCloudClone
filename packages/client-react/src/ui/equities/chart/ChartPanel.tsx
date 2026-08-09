@@ -46,6 +46,10 @@ export function ChartPanel(): ReactElement {
   // empty series, so no compare costs nothing. Reuses the same keyed
   // useCandles bind as the primary (per-symbol streams already exist).
   const compareCandles = useCandles(compare ?? "", timeframe);
+  // The comparison symbol's backfill flags — the presenter's "" key is a
+  // pair of inert false-defaults, so no comparison costs nothing (mirrors
+  // the compareCandles line above).
+  const compareBackfill = useCandleBackfill(compare ?? "", timeframe);
   const backfill = useCandleBackfill(sel, timeframe);
   const instruments = useWatchlist();
   const instrument = instruments.find((i) => {
@@ -62,8 +66,17 @@ export function ChartPanel(): ReactElement {
 
   const defaultVisible = CANDLE_DEFAULT_VISIBLE[timeframe];
 
-  function loadOlderForSelected(): void {
+  // Pages every series the chart is rendering: the primary always, plus
+  // the comparison when one is set. Ineligible series are safe no-ops in
+  // CandleSeriesPresenter.loadOlder (single-flight, exhaustion latch,
+  // error cooldown), so this needs no eligibility logic of its own — the
+  // near-edge gate in CandleChart decides WHEN, this decides WHAT.
+  function loadOlderForChart(): void {
     loadOlderCandles(sel, timeframe);
+
+    if (compare !== null) {
+      loadOlderCandles(compare, timeframe);
+    }
   }
 
   return (
@@ -93,10 +106,11 @@ export function ChartPanel(): ReactElement {
           panes={panes}
           yScale={yScale}
           compare={compare !== null ? { series: compareCandles } : undefined}
+          compareBackfill={compare !== null ? compareBackfill : undefined}
           defaultVisible={defaultVisible}
           loadingOlder={backfill.loadingOlder}
           historyExhausted={backfill.historyExhausted}
-          onLoadOlder={loadOlderForSelected}
+          onLoadOlder={loadOlderForChart}
           drawTool={drawState.tool}
           drawings={drawState.drawings[sel] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState.selectedId}
