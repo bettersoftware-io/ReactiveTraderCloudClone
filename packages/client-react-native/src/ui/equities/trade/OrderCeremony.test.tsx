@@ -1,5 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
+import { StyleSheet, type ViewStyle } from "react-native";
 
 import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
@@ -80,6 +81,55 @@ test("fires an Error haptic entering the rejected phase", async () => {
   );
 });
 
+test("keeps a fixed-height slot across every phase, so a sibling control below it in OrderTicket never has to move", async () => {
+  // The regression this guards: OrderCeremony used to sit directly in-flow,
+  // so its BusyPill (~one text line) vs Toast (~two text lines) variants
+  // gave working/filled/etc. different natural heights — pushing whatever
+  // OrderTicket renders below it (the ResetButton) down by ~20px on a
+  // working -> filled transition, right as a user reached to tap "NEW
+  // ORDER". A fixed-height slot is the fix: assert the slot's height is
+  // identical across all six phases, not just the one pair from the report.
+  const editing = await renderWithTheme(
+    <OrderCeremony
+      state={{ phase: "editing", form: {} as never, error: null }}
+    />,
+  );
+
+  const submitting = await renderWithTheme(
+    <OrderCeremony state={{ phase: "submitting" }} />,
+  );
+
+  const working = await renderWithTheme(
+    <OrderCeremony state={{ phase: "working", order: ORDER }} />,
+  );
+
+  const partiallyFilled = await renderWithTheme(
+    <OrderCeremony state={{ phase: "partiallyFilled", order: ORDER }} />,
+  );
+
+  const filled = await renderWithTheme(
+    <OrderCeremony state={{ phase: "filled", order: ORDER }} />,
+  );
+
+  const rejected = await renderWithTheme(
+    <OrderCeremony state={{ phase: "rejected", reason: "NO LIQUIDITY" }} />,
+  );
+
+  const heights = [
+    editing,
+    submitting,
+    working,
+    partiallyFilled,
+    filled,
+    rejected,
+  ].map((result) => {
+    return heightOf(result.getByTestId("eq-order-ceremony-slot"));
+  });
+
+  expect(heights[0]).toEqual(expect.any(Number));
+  expect(new Set(heights).size).toBe(1);
+});
+
 test("mutes the haptic when motion is disabled, but still renders the toast", async () => {
   Haptics.notificationAsync.mockClear();
   mockMotionEnabled.mockReturnValueOnce(false);
@@ -112,4 +162,13 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
 interface MockedHaptics {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string; Error: string };
+}
+
+interface StyledNode {
+  props: { style?: unknown };
+}
+
+function heightOf(node: StyledNode): number | undefined {
+  const flattened = StyleSheet.flatten(node.props.style as ViewStyle);
+  return typeof flattened.height === "number" ? flattened.height : undefined;
 }

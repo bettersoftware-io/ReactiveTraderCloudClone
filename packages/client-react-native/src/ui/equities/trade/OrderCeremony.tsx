@@ -2,7 +2,13 @@
 import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
-import { StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import type { OrderTicketState } from "@rtc/client-core";
@@ -13,22 +19,59 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Maps the equity order ticket's `OrderTicketState.phase` (six-way union, the
  * ticket machine's own lifecycle — no UI-side timers) to a ceremonial flourish
- * layered above the ticket's own static phase text: `editing` renders nothing
- * (the ceremony is terminal/in-flight only); `submitting` shows a busy pill;
- * `working`/`partiallyFilled` show the same pill re-labelled (still in
- * flight, just with a live order to report progress from); `filled`/
- * `rejected` show a toast, firing an `expo-haptics` notification once on
- * entry. Adapted from Phase 4a's `ExecutionCeremony` (`TileExecutionState`,
- * a different union) rather than imported — the two rate/equity tickets
- * don't share a state shape. Unlike `ExecutionCeremony`, no once-guard ref is
- * needed here: each phase renders a genuinely different child (or null), so a
- * phase transition IS a mount/unmount, and the haptic fires from that child's
- * own mount effect. Both the motion (toast/pill entrance, the toast's exit)
- * and the haptic gate on `useShellMotionEnabled`; every phase's text renders
- * unconditionally so reduced-motion/Freeze users still see the outcome. */
-export function OrderCeremony({
-  state,
-}: OrderCeremonyProps): JSX.Element | null {
+ * that OWNS the ticket's phase-status text (the ticket itself renders none of
+ * it — see `OrderTicket.tsx`, avoiding the same fact printing twice in one
+ * card): `editing` renders nothing (terminal/in-flight only); `submitting`
+ * shows a busy pill; `working`/`partiallyFilled` show the same pill
+ * re-labelled (still in flight, just with a live order to report progress
+ * from); `filled`/`rejected` show a toast, firing an `expo-haptics`
+ * notification once on entry. Adapted from Phase 4a's `ExecutionCeremony`
+ * (`TileExecutionState`, a different union) rather than imported — the two
+ * rate/equity tickets don't share a state shape.
+ *
+ * Always renders inside a fixed-height slot (`styles.slot`), in every one of
+ * the six phases, whether or not it has content — NOT `position: absolute`.
+ * The pill and toast variants differ in natural height (a one-line pill vs a
+ * two-line toast), and this used to sit directly in the ticket's normal flow:
+ * a `working → filled` transition shifted the `ResetButton` below it by
+ * ~20px, right as a user who just watched their order fill was reaching to
+ * tap "NEW ORDER". A fixed-height slot makes every sibling below it
+ * position-invariant across all six phases by construction, with no
+ * per-transition reasoning required. `position: absolute` (matching
+ * `ExecutionCeremony`'s `StyleSheet.absoluteFill` scrim) was the other option
+ * considered and rejected: `ExecutionCeremony` deliberately overlaps and
+ * blocks taps to the pads it covers while execution is in flight, but here
+ * the `ResetButton` must stay both visible AND tappable throughout
+ * working/partiallyFilled/filled/rejected — an overlay would have to either
+ * dodge the button's exact geometry or swallow taps on "NEW ORDER"/"RESET"/
+ * "RETRY", trading Finding 1 (a moving target) for a worse one (a dead
+ * target). A same-height, non-overlapping sibling needs no tap-blocking
+ * decision at all: nothing is ever stacked, so nothing is ever swallowed.
+ *
+ * Both the motion (toast/pill entrance, the toast's exit) and the haptic gate
+ * on `useShellMotionEnabled`; every phase's text renders unconditionally so
+ * reduced-motion/Freeze users still see the outcome. */
+export function OrderCeremony({ state }: OrderCeremonyProps): JSX.Element {
+  const styles = useThemedStyles(makeStyles);
+
+  return (
+    <View testID="eq-order-ceremony-slot" style={styles.slot}>
+      <CeremonyContent state={state} />
+    </View>
+  );
+}
+
+export interface OrderCeremonyProps {
+  readonly state: OrderTicketState;
+}
+
+// Private: the phase → content mapping, kept in an exhaustive switch a
+// `never` fallthrough can compiler-check (rather than an if-chain that would
+// silently render nothing on an unhandled phase): if `OrderTicketState` ever
+// grows a seventh phase, the switch's `default` branch stops narrowing to
+// `never` and the `assertNever` call fails to typecheck. A component (not a
+// `renderX` helper function) so it composes normally in React DevTools.
+function CeremonyContent({ state }: OrderCeremonyProps): JSX.Element | null {
   switch (state.phase) {
     case "editing":
       return null;
@@ -71,14 +114,6 @@ export function OrderCeremony({
   }
 }
 
-export interface OrderCeremonyProps {
-  readonly state: OrderTicketState;
-}
-
-// Exhaustiveness backstop: if `OrderTicketState` ever grows a seventh phase,
-// the switch's `default` branch stops narrowing to `never` and this call
-// fails to typecheck — a compiler-checked reminder rather than a silently
-// unhandled phase.
 function assertNever(value: never): never {
   throw new Error(`Unhandled order ticket phase: ${JSON.stringify(value)}`);
 }
@@ -174,7 +209,16 @@ const ENTER_MS = 220;
  * instantly. `src/ui` stays free of timers either way. */
 const TOAST_DWELL_MS = 1250;
 
+/** Height of the slot `OrderCeremony` always renders into, regardless of
+ * phase — sized to the tallest variant (`Toast`'s two text lines plus its
+ * padding) so nothing clips, and held constant even for the shorter `BusyPill`
+ * or the empty (`editing`) case. See the top-level doc comment for why this
+ * exists: the slot, not the ceremony's own content height, is what the
+ * `ResetButton` beneath it in `OrderTicket.tsx` is actually laid out against. */
+const CEREMONY_SLOT_HEIGHT = 52;
+
 interface OrderCeremonyStyles {
+  slot: ViewStyle;
   busy: ViewStyle;
   busyLabel: TextStyle;
   toast: ViewStyle;
@@ -188,6 +232,10 @@ interface OrderCeremonyStyles {
 
 function makeStyles(t: RnTheme): OrderCeremonyStyles {
   return StyleSheet.create({
+    slot: {
+      height: CEREMONY_SLOT_HEIGHT,
+      justifyContent: "center",
+    },
     busy: {
       alignSelf: "flex-start",
       paddingVertical: 6,
@@ -204,6 +252,7 @@ function makeStyles(t: RnTheme): OrderCeremonyStyles {
       fontFamily: t.fontMono,
     },
     toast: {
+      alignSelf: "flex-start",
       gap: 2,
       paddingVertical: 8,
       paddingHorizontal: 12,

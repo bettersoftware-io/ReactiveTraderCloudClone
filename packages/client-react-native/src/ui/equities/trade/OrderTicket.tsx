@@ -22,9 +22,10 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * plus the terminal/in-flight phases (submitting/working/partiallyFilled/
  * filled/rejected). All state + intents from `useOrderTicket(symbol)`. Ported
  * from web `OrderTicket` without the web-only fill animation intent. Every
- * phase's `Ticket` shell also carries `OrderCeremony` — the animated
- * haptic-firing flourish (busy pill / fill-or-reject toast) layered above
- * this ticket's own static phase text. */
+ * phase's `Ticket` shell also carries `OrderCeremony`, which OWNS the
+ * phase-status text (busy pill / fill-or-reject toast) — this component
+ * itself renders none of it, so the same fact (e.g. "FILLED — 100 @ 182.40")
+ * never appears twice in one card. */
 export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const { useOrderTicket } = useViewModel();
   const ticket = useOrderTicket(symbol);
@@ -32,31 +33,12 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
   if (state.phase === "submitting") {
-    return (
-      <Ticket state={state} styles={styles}>
-        <Text style={styles.status}>SUBMITTING…</Text>
-      </Ticket>
-    );
+    return <Ticket state={state} styles={styles} />;
   }
 
-  if (state.phase === "working") {
+  if (state.phase === "working" || state.phase === "partiallyFilled") {
     return (
       <Ticket state={state} styles={styles}>
-        <Text style={styles.status}>
-          WORKING — {state.order.filledQty}/{state.order.qty} filled
-        </Text>
-        <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
-      </Ticket>
-    );
-  }
-
-  if (state.phase === "partiallyFilled") {
-    return (
-      <Ticket state={state} styles={styles}>
-        <Text style={styles.status}>
-          PARTIAL — {state.order.filledQty}/{state.order.qty} @{" "}
-          {state.order.avgPrice?.toFixed(2) ?? "—"}
-        </Text>
         <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -65,9 +47,6 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   if (state.phase === "filled") {
     return (
       <Ticket state={state} styles={styles}>
-        <Text style={styles.status}>
-          FILLED — {state.order.qty} @ {state.order.avgPrice?.toFixed(2) ?? "—"}
-        </Text>
         <ResetButton label="NEW ORDER" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -76,7 +55,6 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   if (state.phase === "rejected") {
     return (
       <Ticket state={state} styles={styles}>
-        <Text style={styles.status}>REJECTED — {state.reason}</Text>
         <ResetButton label="RETRY" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -197,7 +175,9 @@ interface OrderTicketProps {
 interface TicketProps {
   state: OrderTicketState;
   styles: OrderTicketStyles;
-  children: ReactNode;
+  // Optional: `submitting` has no other content — `OrderCeremony` alone (its
+  // busy pill) is the whole card.
+  children?: ReactNode;
 }
 
 /** Shared `order-ticket` card shell — every phase branch (submitting/working/
@@ -238,7 +218,6 @@ function ResetButton({
 
 interface OrderTicketStyles {
   ticket: ViewStyle;
-  status: TextStyle;
   toggleGroup: ViewStyle;
   toggle: ViewStyle;
   buyActive: ViewStyle;
@@ -279,7 +258,6 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       gap: 10,
       padding: SPACING.md,
     },
-    status: { fontSize: 13, color: t.textPrimary, fontFamily: t.fontMono },
     toggleGroup: { flexDirection: "row", gap: SPACING.sm },
     toggle: baseToggle,
     buyActive: {
