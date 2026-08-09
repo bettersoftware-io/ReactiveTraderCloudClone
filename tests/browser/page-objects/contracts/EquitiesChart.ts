@@ -19,6 +19,15 @@ export interface PlotFraction {
   readonly y: number;
 }
 
+/** The canvas-substrate plot's witness attributes (SceneCanvas's `summary`
+ * prop, ChartPlot.tsx) — the only cross-substrate geometry signal, since the
+ * canvas painting itself isn't inspectable. */
+export interface CanvasPlotSummary {
+  readonly candles: number;
+  readonly drawings: number;
+  readonly compare: boolean;
+}
+
 /**
  * The equities interactive candle chart plot (CandleChart) plus its
  * back-to-live lifecycle: panning away from the live edge (ArrowLeft) freezes
@@ -131,4 +140,40 @@ export interface EquitiesChartPO {
   pressDelete(): Promise<void>;
   /** Waits for the drawing to be removed from the DOM entirely. */
   waitDrawingGone(timeoutMs: number): Promise<void>;
+  /** Waits for the canvas-substrate plot (`chart-canvas-plot`) to render —
+   * true only once the Chart renderer preference has flipped to "canvas"
+   * and the chart has re-rendered with a canvas scene. */
+  waitCanvasPlotVisible(timeoutMs: number): Promise<void>;
+  /** Waits for the canvas-substrate plot to be gone — the DOM-mode geometry
+   * tree (grid/candles/drawings) renders in its place. */
+  waitCanvasPlotHidden(timeoutMs: number): Promise<void>;
+  /** Reads the canvas plot's witness attributes — a one-shot snapshot, not a
+   * poll (callers needing to wait on a specific count should use
+   * {@link waitCanvasDrawingsCount} instead). */
+  readCanvasSummary(): Promise<CanvasPlotSummary>;
+  /** Waits for the canvas plot's `data-drawings` witness attribute to equal
+   * `count` — the canvas-mode analogue of `waitDrawingVisible`/
+   * `waitDrawingGone` (DOM mode renders one `chart-drawing` element per
+   * drawing; canvas mode renders none, just this attribute). */
+  waitCanvasDrawingsCount(count: number, timeoutMs: number): Promise<void>;
+  /** Waits for every DOM-mode candle (`[data-candle]`, CandleBars.tsx) to be
+   * gone — true in canvas mode, where the canvas draws candles itself with
+   * no per-candle DOM. */
+  waitDomCandlesHidden(timeoutMs: number): Promise<void>;
+  /** Waits for at least one DOM-mode candle to (re)render — true back in DOM
+   * mode. A count check, not a visibility check: the `[data-candle]` wrapper
+   * itself carries no geometry (its wick/body children are absolutely
+   * positioned), so it always reads as zero-size/"hidden" to a visibility
+   * assertion even when candles are genuinely on screen. */
+  waitDomCandlesVisible(timeoutMs: number): Promise<void>;
+  /** A REAL pointer move to a fractional point on the plot (no down/up) —
+   * the crosshair-only half of `dragOnPlot`'s pointer path, needed because a
+   * genuine pointermove is what activates the shared crosshair cursor
+   * (jsdom can't dispatch one — the same trap `hoverPlotCenter` works
+   * around). */
+  moveCrosshairOnPlot(at: PlotFraction): Promise<void>;
+  /** Waits for the crosshair readout chip (CrosshairOverlay.tsx) to render —
+   * it renders in BOTH substrates (see the testid's own doc in
+   * testids.ts). */
+  waitCrosshairReadoutVisible(timeoutMs: number): Promise<void>;
 }

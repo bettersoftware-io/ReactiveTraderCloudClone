@@ -136,4 +136,29 @@ test.describe("Equities chart", () => {
     await equitiesChart.pressDelete(ctx);
     await equitiesChart.expectDrawingGoneWithin(ctx, 3);
   });
+
+  test("switching the chart renderer to canvas keeps the chart interactive, and back", async ({
+    ctx,
+  }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.openPreferencesAndSelectSubstrate(ctx, "canvas");
+    await equitiesChart.expectCanvasMode(ctx, 5);
+
+    await equitiesChart.moveCrosshairOnPlot(ctx, 0.5, 0.5);
+    await equitiesChart.expectCrosshairReadoutVisibleWithin(ctx, 3);
+
+    await equitiesChart.clickDrawPill(ctx, "trendline");
+    await equitiesChart.dragOnPlot(
+      ctx,
+      { x: 0.25, y: 0.7 },
+      { x: 0.7, y: 0.35 },
+    );
+    await equitiesChart.expectCanvasDrawingsCount(ctx, 1, 3);
+
+    await equitiesChart.openPreferencesAndSelectSubstrate(ctx, "dom");
+    await equitiesChart.expectDomMode(ctx, 5);
+    await equitiesChart.expectDrawingVisibleWithin(ctx, 3);
+  });
 });

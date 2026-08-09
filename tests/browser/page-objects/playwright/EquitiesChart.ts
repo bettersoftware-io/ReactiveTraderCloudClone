@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import type {
+  CanvasPlotSummary,
   EquitiesChartPO,
   EquitiesDrawTool,
   EquitiesIndicatorKind,
@@ -123,6 +124,20 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   // sibling `data-pane` attribute.
   private chartWrap(): Locator {
     return this.page.locator("[data-yscale]");
+  }
+
+  private canvasPlot(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.canvasPlot);
+  }
+
+  private crosshairReadout(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.crosshairReadout);
+  }
+
+  // DOM-mode candle nodes (CandleBars.tsx) carry no testid of their own —
+  // same bare-attribute-locator pattern as `chartWrap` above.
+  private domCandles(): Locator {
+    return this.page.locator("[data-candle]");
   }
 
   async waitPlotVisible(timeoutMs: number): Promise<void> {
@@ -412,5 +427,75 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
 
   async waitDrawingGone(timeoutMs: number): Promise<void> {
     await expect(this.drawing()).toHaveCount(0, { timeout: timeoutMs });
+  }
+
+  async waitCanvasPlotVisible(timeoutMs: number): Promise<void> {
+    await expect(this.canvasPlot()).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async waitCanvasPlotHidden(timeoutMs: number): Promise<void> {
+    await expect(this.canvasPlot()).toHaveCount(0, { timeout: timeoutMs });
+  }
+
+  async readCanvasSummary(): Promise<CanvasPlotSummary> {
+    const el = this.canvasPlot();
+    const [candles, drawings, compare] = await Promise.all([
+      el.getAttribute("data-candles"),
+      el.getAttribute("data-drawings"),
+      el.getAttribute("data-compare"),
+    ]);
+
+    return {
+      candles: Number(candles ?? 0),
+      drawings: Number(drawings ?? 0),
+      compare: compare === "true",
+    };
+  }
+
+  async waitCanvasDrawingsCount(
+    count: number,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.canvasPlot()).toHaveAttribute(
+      "data-drawings",
+      String(count),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async waitDomCandlesHidden(timeoutMs: number): Promise<void> {
+    await expect(this.domCandles()).toHaveCount(0, { timeout: timeoutMs });
+  }
+
+  async waitDomCandlesVisible(timeoutMs: number): Promise<void> {
+    // NOT `.first().toBeVisible()`: the `[data-candle]` wrapper div
+    // (CandleBars.tsx) carries no geometry of its own — its wick/body
+    // children are `position: absolute` (CandleBars.module.css), so the
+    // wrapper's own bounding box is zero-size and Playwright's visibility
+    // check reports it "hidden" even with candles genuinely on screen.
+    // Count is the correct cross-substrate witness (mirrors
+    // `waitDomCandlesHidden`'s `toHaveCount(0)` the other way).
+    await expect(this.domCandles()).not.toHaveCount(0, {
+      timeout: timeoutMs,
+    });
+  }
+
+  async moveCrosshairOnPlot(at: PlotFraction): Promise<void> {
+    const box = await this.plot().boundingBox();
+
+    if (!box) {
+      throw new Error("plot not laid out");
+    }
+
+    // A single real mouse move (no down/up) — the crosshair-only half of
+    // `dragOnPlot`'s pointer path (see this method's contract doc).
+    await this.page.mouse.move(
+      box.x + at.x * box.width,
+      box.y + at.y * box.height,
+    );
+  }
+
+  async waitCrosshairReadoutVisible(timeoutMs: number): Promise<void> {
+    await expect(this.crosshairReadout()).toBeVisible({ timeout: timeoutMs });
   }
 }

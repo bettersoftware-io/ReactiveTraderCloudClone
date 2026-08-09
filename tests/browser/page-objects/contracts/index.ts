@@ -14,6 +14,7 @@ import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { LoginScreenPO } from "./LoginScreen";
 import type { PositionsPanelPO } from "./PositionsPanel";
 import type { PowerSaverPO } from "./PowerSaver";
+import type { PreferencesPO } from "./Preferences";
 import type { ThemeTogglePO } from "./ThemeToggle";
 import type { WorkspacePO } from "./Workspace";
 
@@ -32,6 +33,7 @@ export interface PageObjects {
   equitiesChart: EquitiesChartPO;
   layout: LayoutPO;
   jarvis: JarvisPO;
+  preferences: PreferencesPO;
   /** Optional: the same-origin DevTools inspector (a second page). Only the
    *  Playwright factory provides it. */
   inspector?: InspectorPO;
