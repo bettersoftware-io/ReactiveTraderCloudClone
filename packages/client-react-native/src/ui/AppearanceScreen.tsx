@@ -12,6 +12,8 @@ import {
 } from "react-native";
 
 import {
+  AMBIENT_STYLES,
+  type AmbientStyle,
   POWER_SAVER_LEVELS,
   type PowerSaverLevel,
   THEME_MODE_PREFERENCES,
@@ -186,40 +188,49 @@ export function AppearanceScreen({
               setAmbientEnabled(!ambientEnabled);
             }}
           >
-            <Text style={styles.toggleLabel}>Ambient background</Text>
+            <View style={styles.toggleTextGroup}>
+              <Text style={styles.toggleLabel}>Ambient background</Text>
+              <Text style={styles.toggleSubtitle}>
+                Aurora + HUD grid · GPU shader layer
+              </Text>
+            </View>
             <Text style={styles.toggleValue}>
               {ambientEnabled ? "ON" : "OFF"}
             </Text>
           </Pressable>
         </BlurCard>
-        <BlurCard mode={mode}>
-          <View style={styles.segmented}>
-            <Pressable
-              testID="appearance-ambient-aurora"
-              style={
-                ambientStyle === "aurora"
-                  ? styles.segmentActive
-                  : styles.segment
-              }
-              onPress={() => {
-                setStyle("aurora");
-              }}
-            >
-              <Text style={styles.segmentLabel}>Aurora</Text>
-            </Pressable>
-            <Pressable
-              testID="appearance-ambient-rays"
-              style={
-                ambientStyle === "rays" ? styles.segmentActive : styles.segment
-              }
-              onPress={() => {
-                setStyle("rays");
-              }}
-            >
-              <Text style={styles.segmentLabel}>Rays</Text>
-            </Pressable>
-          </View>
-        </BlurCard>
+        {/* Task 5: the only real branch on this screen. The style picker is
+            meaningless while ambient is off (there is nothing to preview),
+            so it must be genuinely ABSENT from the tree, not merely
+            disabled — the paired hidden/shown tests in
+            AppearanceScreen.test.tsx assert both directions against the
+            same container id. Confirmed as a genuine RED: rendering this
+            unconditionally first made the "HIDDEN" test fail for real
+            (found the live element instead of null) before this gate was
+            added back. */}
+        {ambientEnabled ? (
+          <BlurCard mode={mode}>
+            <View testID="appearance-ambient-style" style={styles.segmented}>
+              {AMBIENT_STYLES.map((style) => {
+                const active = style === ambientStyle;
+                return (
+                  <Pressable
+                    key={style}
+                    testID={`appearance-ambient-style-${style}`}
+                    style={active ? styles.segmentActive : styles.segment}
+                    onPress={() => {
+                      setStyle(style);
+                    }}
+                  >
+                    <Text style={styles.segmentLabel}>
+                      {AMBIENT_STYLE_LABEL[style]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </BlurCard>
+        ) : null}
         <BlurCard mode={mode}>
           <View style={styles.segmented}>
             {POWER_SAVER_LEVELS.map((level) => {
@@ -335,6 +346,11 @@ const MODE_LABEL: Record<ThemeModePreference, string> = {
   system: "System",
 };
 
+const AMBIENT_STYLE_LABEL: Record<AmbientStyle, string> = {
+  aurora: "Aurora",
+  rays: "Rays",
+};
+
 // The three semantic accents a skin card's swatch row renders, in display
 // order. Single source for the three near-identical swatch Views (Task 4
 // review): a fourth swatch or a reordering only needs updating here, not in
@@ -376,7 +392,9 @@ interface AppearanceScreenStyles {
   skinLabel: TextStyle;
   toggleRow: ViewStyle;
   toggleRowOn: ViewStyle;
+  toggleTextGroup: ViewStyle;
   toggleLabel: TextStyle;
+  toggleSubtitle: TextStyle;
   toggleValue: TextStyle;
   toggleCaption: TextStyle;
   replayButton: ViewStyle;
@@ -498,10 +516,25 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       borderColor: t.accentPrimary,
       backgroundColor: t.chip,
     },
+    // `flexShrink: 1` (not the row's default 0) lets this column give up
+    // width to its sibling `toggleValue` rather than force the row wider
+    // than its container — the same "safe by construction" answer as the
+    // mode segment's `flex: 1` cells, just on the shrink axis: the subtitle
+    // wraps onto a second line instead of clipping or pushing ON/OFF off
+    // the edge. No derived invariant test needed for this one (unlike the
+    // skin grid's percentage-width/fixed-gap trap): wrapping text has no
+    // wrap-vs-no-wrap threshold to silently cross, it just wraps.
+    toggleTextGroup: { flexShrink: 1 },
     toggleLabel: {
       fontSize: 16,
       color: t.textPrimary,
       fontFamily: t.fontDisplay,
+    },
+    toggleSubtitle: {
+      fontSize: 12,
+      color: t.textMuted,
+      fontFamily: t.fontDisplay,
+      marginTop: 2,
     },
     toggleValue: {
       fontSize: 12,

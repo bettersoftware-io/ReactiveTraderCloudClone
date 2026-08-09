@@ -320,18 +320,37 @@ function parsePercent(value: unknown): number {
   return Number.parseFloat(value);
 }
 
-test("shows an ambient style segmented control wired to useAmbientStyle", async () => {
+// The picker is the only real branch on this screen: it must be entirely
+// absent while ambient is off, not merely unusable. `queryByTestId` returning
+// null is a trivially-passing assertion if the container id is wrong (it
+// would also pass before the picker ever existed), so this is only trustworthy
+// alongside the paired "shown" test below proving the SAME id resolves once
+// ambient is on.
+test("ambient style picker is HIDDEN when ambient is off", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { ambient: { enabled: false, setEnabled: () => {}, toggle: () => {} } },
+    ),
+  );
+  expect(screen.queryByTestId("appearance-ambient-style")).toBeNull();
+});
+
+test("ambient style picker is SHOWN and selectable when ambient is on", async () => {
   const setStyle = jest.fn();
   await renderScreen(
     fakeViewModel(
       () => {},
       () => {},
-      { ambientStyle: { style: "aurora", setStyle } },
+      {
+        ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} },
+        ambientStyle: { style: "aurora", setStyle },
+      },
     ),
   );
-  expect(screen.getByTestId("appearance-ambient-aurora")).toBeTruthy();
-  expect(screen.getByTestId("appearance-ambient-rays")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-ambient-rays"));
+  expect(screen.getByTestId("appearance-ambient-style")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("appearance-ambient-style-rays"));
   expect(setStyle).toHaveBeenCalledWith("rays");
 });
 
