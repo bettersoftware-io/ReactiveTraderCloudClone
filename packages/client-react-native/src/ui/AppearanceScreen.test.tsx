@@ -188,14 +188,32 @@ test("shows a three-level power-saver control wired to usePowerSaver", async () 
   // asserting — it is the level the old 2-state control could never reach, so
   // a regression to a boolean toggle fails here rather than silently shipping
   // a screen that cannot express the strongest setting.
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-freeze"));
+  await fireEvent.press(screen.getByTestId("appearance-power-freeze"));
   expect(setLevel).toHaveBeenCalledWith("freeze");
 
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-calm"));
+  await fireEvent.press(screen.getByTestId("appearance-power-calm"));
   expect(setLevel).toHaveBeenCalledWith("calm");
 
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-off"));
+  await fireEvent.press(screen.getByTestId("appearance-power-off"));
   expect(setLevel).toHaveBeenCalledWith("off");
+});
+
+// Task 6: the section carries no visible label on the control itself (the
+// section head is "Motion", shared with the ambient toggle above it) — the
+// web client's PreferencesModal.tsx labels the equivalent PrefSegment
+// "Power saver" (packages/client-react/src/ui/shell/prefs/PreferencesModal.tsx),
+// and this screen follows the same per-control labelling convention the
+// "Skin" and "Motion" section heads already establish. Without this, the
+// three-cell segment reads as unlabelled motion controls with no indication
+// of what they select.
+test("the power-saver control is labelled 'Power saver'", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getByText("Power saver")).toBeTruthy();
 });
 
 test("the power-saver caption tracks the selected level", async () => {
@@ -365,6 +383,57 @@ test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async
   );
   await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
   expect(reboot).toHaveBeenCalledTimes(1);
+});
+
+// Task 6: the splash renders BEHIND this sheet (an opaque full-screen
+// overlay), so a host that never learns the boot was re-triggered has no way
+// to get out of its way — replaying the sequence would play, and finish,
+// unseen. `onReplayBoot` is the seam that raises the splash above the sheet.
+// This also pins the CALL ORDER (reboot() before onReplayBoot(), not the
+// reverse) by recording both calls into one shared log: the sheet dismissing
+// before the reboot is triggered would be the "never worked" bug again, just
+// moved one call earlier.
+test("replay boot reboots then notifies onReplayBoot, in that order", async () => {
+  const calls: string[] = [];
+  const reboot = jest.fn(() => {
+    calls.push("reboot");
+  });
+  const onReplayBoot = jest.fn(() => {
+    calls.push("onReplayBoot");
+  });
+  await render(
+    <ViewModelProvider
+      viewModel={fakeViewModel(
+        () => {},
+        () => {},
+        { reboot },
+      )}
+    >
+      <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+        <AppearanceScreen onReplayBoot={onReplayBoot} />
+      </ThemeContext.Provider>
+    </ViewModelProvider>,
+  );
+  await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
+  expect(reboot).toHaveBeenCalledTimes(1);
+  expect(onReplayBoot).toHaveBeenCalledTimes(1);
+  expect(calls).toEqual(["reboot", "onReplayBoot"]);
+});
+
+// The design's dev-handoff HTML spells this "▸ REPLAY BOOT SEQUENCE" verbatim
+// (docs/design/mobile/v1/dev-handoff/prototype/source/Reactive Trader
+// Mobile.dc.html) — a bare `\uXXXX` escape renders as the literal escape
+// sequence in this codebase's JSX (a real shipped defect class here), so this
+// asserts the exact string, not a substring or regex that a mangled glyph
+// could still satisfy.
+test("replay boot button is labelled with the literal ▸ glyph, verbatim", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getByText("▸ REPLAY BOOT SEQUENCE")).toBeTruthy();
 });
 
 // P7 moved sign-out here from the HUD header. Asserted on the SHEET rather

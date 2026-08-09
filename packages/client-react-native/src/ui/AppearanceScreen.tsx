@@ -231,13 +231,24 @@ export function AppearanceScreen({
             </View>
           </BlurCard>
         ) : null}
+        {/* Task 6 layout-threshold check: this segment renders through the
+            SAME `styles.segmented`/`segment`/`segmentActive` objects as the
+            mode segment above (Task 3) and the ambient style picker above
+            that (Task 5) — one `StyleSheet.create` call, shared by
+            reference, not three copies. Task 3's derived invariant test
+            already proves those objects give every cell `flex: 1` (equal
+            division of the row, safe at any width, no wrap/clip threshold);
+            Task 5 relied on that same proof for its own 2-cell segment
+            without adding a second copy of the test, and this segment
+            follows that precedent rather than adding a third. */}
+        <Text style={styles.label}>Power saver</Text>
         <BlurCard mode={mode}>
           <View style={styles.segmented}>
             {POWER_SAVER_LEVELS.map((level) => {
               return (
                 <Pressable
                   key={level}
-                  testID={`appearance-powersaver-${level}`}
+                  testID={`appearance-power-${level}`}
                   style={
                     powerSaverLevel === level
                       ? styles.segmentActive
@@ -260,6 +271,13 @@ export function AppearanceScreen({
         </Text>
       </View>
 
+      {/* Task 6 layout-threshold check: `replayButton` spreads `rowBase`
+          (the same base the ambient toggle row uses, Task 5) with no fixed
+          or percentage width and no `numberOfLines` cap — the label is one
+          `Text` node in a full-width, height-auto row. A narrower device
+          just grows the row and wraps the text onto a second line; there is
+          no width at which it discretely clips or collapses, so — like
+          Task 5's toggle-row text — this needs no derived invariant test. */}
       <View style={styles.section}>
         <BlurCard mode={mode}>
           <Pressable
@@ -274,7 +292,7 @@ export function AppearanceScreen({
               onReplayBoot?.();
             }}
           >
-            <Text style={styles.replayButtonText}>⟳ Replay Boot</Text>
+            <Text style={styles.replayButtonText}>▸ REPLAY BOOT SEQUENCE</Text>
           </Pressable>
         </BlurCard>
       </View>
