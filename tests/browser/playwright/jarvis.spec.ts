@@ -9,6 +9,22 @@ test.describe("Jarvis assistant", () => {
     await jarvis.expectQuoteReply(ctx);
   });
 
+  test("demo guide: opening it and clicking a command round-trips the same reply as typing it", async ({
+    ctx,
+  }) => {
+    await jarvis.expectGuideCommandRoundTrip(ctx);
+  });
+
+  test("full demo: RUN FULL DEMO advances past step 1, STOP halts it", async ({
+    ctx,
+  }) => {
+    // The typed-reveal pacing alone (26ms/chunk) makes step 1's reply take
+    // several real seconds before step 2 can even start — same generous
+    // headroom as the flagship narrator ride below.
+    test.setTimeout(45_000);
+    await jarvis.expectFullDemoStartsAndStops(ctx);
+  });
+
   test("executes a confirm-gated trade into the blotter", async ({ ctx }) => {
     await jarvis.expectConfirmedTradeLandsInBlotter(ctx);
   });
