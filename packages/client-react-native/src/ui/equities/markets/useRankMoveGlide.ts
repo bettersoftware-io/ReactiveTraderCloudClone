@@ -10,18 +10,27 @@ import {
   withTiming,
 } from "react-native-reanimated";
 
-import { computeRankDirections, HIGHLIGHT_DUR_MS } from "@rtc/motion-core";
+import { HIGHLIGHT_DUR_MS, type RankDirection } from "@rtc/motion-core";
 
 /** The movers board's rank-move highlight: a direction-tinted overlay pulse
  * played whenever a row's `rank` changes from the value this hook last saw —
  * `riseColor` when the row moved to a numerically LOWER rank (up the board),
- * `fallColor` when it moved to a higher one. The rose/fell classification
- * itself is motion-core's `computeRankDirections` (same function the web
- * `useRankGlide` calls) rather than a re-implemented comparison, called
- * against a single-row order so the maths stays in one place per ADR-005.
- * `HIGHLIGHT_DUR_MS` (820ms) is motion-core's §3.2-locked constant — the
- * prototype's own 950ms is a deliberate non-match, kept so RN and web read
- * off one source of truth.
+ * `fallColor` when it moved to a higher one. `HIGHLIGHT_DUR_MS` (820ms) is
+ * motion-core's §3.2-locked constant — the prototype's own 950ms is a
+ * deliberate non-match, kept so RN and web read off one source of truth.
+ *
+ * DELIBERATELY does NOT call motion-core's `computeRankDirections`: that
+ * function derives a symbol's CURRENT rank from its array INDEX in the
+ * `order` it's given, and this hook only ever has one row's rank in hand —
+ * routing it through as a one-element array pins "current index" at a
+ * constant 0, so `oldIndex > index` is unconditionally true and every real
+ * rank change reads as "rose". `fallColor` would be unreachable. That
+ * function's index-from-order contract is correct for its real (board-level,
+ * full-order) callers — the web `useRankGlide` calls it that way — so it's
+ * not broken; a single row is simply the wrong shape to route through it. A
+ * previous version of this file did exactly that and shipped the bug.
+ * `directionFor` below is the direct numeric comparison instead (same rule,
+ * inlined at the right arity): lower rank number = "rose", higher = "fell".
  *
  * This hook only plays the highlight PULSE. The row's actual position glide
  * is handled for free by the caller's `Animated.View` carrying
@@ -44,13 +53,7 @@ export function useRankMoveGlide(
   const prevRankRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    const prevRank = prevRankRef.current;
-    const prevOrder =
-      prevRank === undefined ? undefined : { [RANK_GLIDE_ROW_KEY]: prevRank };
-
-    const direction = computeRankDirections(prevOrder, [RANK_GLIDE_ROW_KEY])[
-      RANK_GLIDE_ROW_KEY
-    ];
+    const direction = directionFor(prevRankRef.current, rank);
 
     prevRankRef.current = rank;
 
@@ -99,7 +102,18 @@ const HIGHLIGHT_FADE_EASING = Easing.out(Easing.ease);
 // capped well below 1 so the pulse tints rather than obscures — same
 // technique as Watchlist/SectorHeatmap's `heat` overlay.
 const OVERLAY_PEAK_OPACITY = 0.35;
-// computeRankDirections operates on a whole symbol order; this hook only
-// ever asks it about the one row it owns, so a single stable key stands in
-// for that row's "order".
-const RANK_GLIDE_ROW_KEY = "row";
+
+// The single-row equivalent of motion-core's `computeRankDirections` rule
+// (lower rank number = "rose", higher = "fell", no prior rank or no change =
+// "unchanged") — see this file's top doc comment for why that shared helper
+// itself is NOT called here.
+function directionFor(
+  prevRank: number | undefined,
+  rank: number,
+): RankDirection {
+  if (prevRank === undefined || prevRank === rank) {
+    return "unchanged";
+  }
+
+  return prevRank > rank ? "rose" : "fell";
+}

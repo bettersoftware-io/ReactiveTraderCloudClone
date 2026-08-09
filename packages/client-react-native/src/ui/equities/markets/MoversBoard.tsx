@@ -180,6 +180,7 @@ function MoversBoardRow({
         onSelect={onSelect}
       />
       <Animated.View
+        testID={`eq-mover-${row.symbol}-glow`}
         pointerEvents="none"
         style={[styles.rankGlow, overlayStyle]}
       />
