@@ -256,10 +256,31 @@ export async function clickYScalePill(ctx: TestContext): Promise<void> {
 
 export async function expectYScaleWithin(
   ctx: TestContext,
-  mode: "linear" | "log",
+  mode: "linear" | "log" | "percent",
   seconds: number,
 ): Promise<void> {
   await ctx.po.equitiesChart.waitYScale(mode, seconds * 1_000);
+}
+
+export async function clickComparePill(
+  ctx: TestContext,
+  sym: string,
+): Promise<void> {
+  await ctx.po.equitiesChart.clickComparePill(sym);
+}
+
+export async function expectCompareLineVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCompareLineVisible(seconds * 1_000);
+}
+
+export async function expectCompareLineHiddenWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCompareLineHidden(seconds * 1_000);
 }
 
 export async function clickDrawPill(

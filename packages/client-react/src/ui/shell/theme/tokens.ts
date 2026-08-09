@@ -45,6 +45,10 @@ export interface ThemeTokens {
   "--accent-primary": string;
   /** Secondary accent (accent2 in the design CSS). */
   "--accent-2": string;
+  /** The comparison-series close-line's own accent — distinct from
+   * `--accent-primary`/`--accent-2`/`--accent-aware` so it reads apart from
+   * the primary line and the SMA20/EMA50 overlays. */
+  "--accent-compare": string;
 
   // Borders
   "--border-primary": string;
@@ -133,6 +137,7 @@ const darkTokens: ThemeTokens = {
   "--accent-aware": "#f59e0b",
   "--accent-primary": "#3b82f6",
   "--accent-2": "#60a5fa",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "#334155",
   "--border-subtle": "#1e293b",
@@ -187,6 +192,7 @@ const lightTokens: ThemeTokens = {
   "--accent-aware": "#d97706",
   "--accent-primary": "#2563eb",
   "--accent-2": "#60a5fa",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "#e2e8f0",
   "--border-subtle": "#f1f5f9",
@@ -244,6 +250,7 @@ const holoDark: ThemeTokens = {
   "--accent-aware": "#ffb000",
   "--accent-primary": "#00e5ff",
   "--accent-2": "#19ffd0",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "rgba(0,224,255,0.26)",
   "--border-subtle": "rgba(0,224,255,0.12)",
@@ -303,6 +310,7 @@ const holoLight: ThemeTokens = {
   "--accent-aware": "#cc8800",
   "--accent-primary": "#0096b3",
   "--accent-2": "#0ab39a",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "rgba(0,150,179,0.26)",
   "--border-subtle": "rgba(0,180,204,0.15)",
@@ -364,6 +372,7 @@ const holo3dDark: ThemeTokens = {
   "--accent-aware": "#ffb000",
   "--accent-primary": "#00e5ff",
   "--accent-2": "#19ffd0",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "rgba(0,224,255,0.30)",
   "--border-subtle": "rgba(0,224,255,0.12)",
@@ -429,6 +438,7 @@ const holo3dLight: ThemeTokens = {
   "--accent-aware": "#cc8800",
   "--accent-primary": "#0096b3",
   "--accent-2": "#0ab39a",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "rgba(0,150,179,0.3)",
   "--border-subtle": "rgba(0,180,204,0.15)",
@@ -488,6 +498,7 @@ const terminalDark: ThemeTokens = {
   "--accent-aware": "#ffb000",
   "--accent-primary": "#ffb000",
   "--accent-2": "#4a9eff",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "#262b34",
   "--border-subtle": "#1a1e25",
@@ -542,6 +553,7 @@ const terminalLight: ThemeTokens = {
   "--accent-aware": "#b37a00",
   "--accent-primary": "#b67700",
   "--accent-2": "#2f6fd0",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "#d4d8de",
   "--border-subtle": "#e2e5ea",
@@ -601,6 +613,7 @@ const terminal3dDark: ThemeTokens = {
   "--accent-aware": "#ffb000",
   "--accent-primary": "#ffb000",
   "--accent-2": "#4a9eff",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "#2a303a",
   "--border-subtle": "#1a1e25",
@@ -660,6 +673,7 @@ const terminal3dLight: ThemeTokens = {
   "--accent-aware": "#b37a00",
   "--accent-primary": "#b67700",
   "--accent-2": "#2f6fd0",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "#d2d6dc",
   "--border-subtle": "#e2e5ea",
@@ -718,6 +732,7 @@ const neonDark: ThemeTokens = {
   "--accent-aware": "#ffb000",
   "--accent-primary": "#ff2bd6",
   "--accent-2": "#00f0ff",
+  "--accent-compare": "#a78bfa",
 
   "--border-primary": "rgba(255,43,214,0.36)",
   "--border-subtle": "rgba(255,43,214,0.18)",
@@ -775,6 +790,7 @@ const neonLight: ThemeTokens = {
   "--accent-aware": "#cc8800",
   "--accent-primary": "#c800a0",
   "--accent-2": "#0093b3",
+  "--accent-compare": "#7c3aed",
 
   "--border-primary": "rgba(200,0,160,0.28)",
   "--border-subtle": "rgba(200,0,160,0.15)",

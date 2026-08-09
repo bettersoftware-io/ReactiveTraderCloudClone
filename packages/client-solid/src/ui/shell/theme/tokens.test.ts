@@ -8,6 +8,7 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
   "--bg-primary",
   "--accent-primary",
   "--accent-2",
+  "--accent-compare",
   "--border-strong",
   "--panel",
   "--panel-head",
@@ -112,5 +113,12 @@ describe("themeTokens skin×mode store", () => {
     expect(themeTokens.holo.light["--accent-primary"]).toBe("#0096b3");
     expect(themeTokens.terminal.light["--accent-primary"]).toBe("#b67700");
     expect(themeTokens.neon.light["--accent-primary"]).toBe("#c800a0");
+  });
+
+  it("accent-compare is a fixed violet, independent of skin", () => {
+    for (const skin of THEME_SKINS) {
+      expect(themeTokens[skin].dark["--accent-compare"]).toBe("#a78bfa");
+      expect(themeTokens[skin].light["--accent-compare"]).toBe("#7c3aed");
+    }
   });
 });

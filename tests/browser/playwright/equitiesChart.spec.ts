@@ -97,6 +97,21 @@ test.describe("Equities chart", () => {
     await equitiesChart.expectYScaleWithin(ctx, "linear", 5);
   });
 
+  test("VS pill overlays a comparison on a percent axis and clears back", async ({
+    ctx,
+  }) => {
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesChart.expectPlotVisibleWithin(ctx, 5);
+
+    await equitiesChart.clickComparePill(ctx, "MSFT");
+    await equitiesChart.expectYScaleWithin(ctx, "percent", 5);
+    await equitiesChart.expectCompareLineVisibleWithin(ctx, 5);
+
+    await equitiesChart.clickComparePill(ctx, "MSFT");
+    await equitiesChart.expectYScaleWithin(ctx, "linear", 5);
+    await equitiesChart.expectCompareLineHiddenWithin(ctx, 5);
+  });
+
   test("draw a trendline, select it, drag its endpoint, and delete it", async ({
     ctx,
   }) => {

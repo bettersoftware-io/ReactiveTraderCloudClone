@@ -15,6 +15,7 @@ describe("EqWorkspaceMachine", () => {
       indicators: [],
       panes: [],
       yScale: "linear",
+      compare: null,
     });
     m.dispose();
   });
@@ -89,6 +90,7 @@ describe("EqWorkspaceMachine", () => {
       indicators: [],
       panes: [],
       yScale: "linear",
+      compare: null,
     });
     m.dispose();
   });
@@ -126,6 +128,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       indicators: [],
       panes: [],
       yScale: "linear",
+      compare: null,
     });
     m.dispose();
   });
@@ -146,6 +149,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       indicators: [],
       panes: [],
       yScale: "linear",
+      compare: null,
     });
 
     seed$.next("AAPL");
@@ -158,6 +162,7 @@ describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
       indicators: [],
       panes: [],
       yScale: "linear",
+      compare: null,
     });
     m.dispose();
   });
@@ -335,6 +340,57 @@ describe("EqWorkspaceMachine — price axis scale (linear/log)", () => {
     m.intents.toggleYScale();
     state = await firstValueFrom(m.state$);
     expect(state.yScale).toBe("linear");
+    m.dispose();
+  });
+});
+
+describe("EqWorkspaceMachine — comparison series (compare)", () => {
+  it("starts with no comparison symbol", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    const state = await firstValueFrom(m.state$);
+    expect(state.compare).toBeNull();
+    m.dispose();
+  });
+
+  it("setCompare(sym) sets the comparison; setCompare(null) clears it", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setCompare("MSFT");
+    expect((await firstValueFrom(m.state$)).compare).toBe("MSFT");
+    m.intents.setCompare(null);
+    expect((await firstValueFrom(m.state$)).compare).toBeNull();
+    m.dispose();
+  });
+
+  it("setCompare(the selected symbol) is a no-op", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setCompare("AAPL");
+    expect((await firstValueFrom(m.state$)).compare).toBeNull();
+    m.dispose();
+  });
+
+  it("select(the compared symbol) clears the comparison — the primary absorbs it", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setCompare("MSFT");
+    m.intents.select("MSFT");
+    const state = await firstValueFrom(m.state$);
+    expect(state.sel).toBe("MSFT");
+    expect(state.compare).toBeNull();
+    m.dispose();
+  });
+
+  it("selecting an unrelated symbol keeps the comparison", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setCompare("MSFT");
+    m.intents.select("TSLA");
+    expect((await firstValueFrom(m.state$)).compare).toBe("MSFT");
+    m.dispose();
+  });
+
+  it("setTimeframe keeps the comparison", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
+    m.intents.setCompare("MSFT");
+    m.intents.setTimeframe("1W");
+    expect((await firstValueFrom(m.state$)).compare).toBe("MSFT");
     m.dispose();
   });
 });

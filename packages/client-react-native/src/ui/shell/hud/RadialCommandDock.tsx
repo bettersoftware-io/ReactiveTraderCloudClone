@@ -24,6 +24,7 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
+import { DOCK_FAB_SIZE } from "./dockMetrics";
 import { MODULE_ROUTES, resolveActiveModule } from "./moduleRoutes";
 import { radialDockLayout } from "./radialDockLayout";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
@@ -89,7 +90,10 @@ export function RadialCommandDock(): JSX.Element {
   );
 }
 
-const FAB = 58;
+/** Re-exported under the local name the layout maths reads with. Declared in
+ * `dockMetrics` because `StatusStrip` must reserve exactly this width — see
+ * that file for why the FAB stays put and the strip yields instead. */
+const FAB: number = DOCK_FAB_SIZE;
 const HEX_POINTS = "29,0 54,14.5 54,43.5 29,58 4,43.5 4,14.5";
 
 interface FabHexProps {

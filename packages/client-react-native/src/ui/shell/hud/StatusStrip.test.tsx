@@ -1,6 +1,9 @@
 import { expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
+import { StyleSheet, type ViewStyle } from "react-native";
+
+import { DOCK_FAB_SIZE } from "./dockMetrics";
 
 const mockPathname = jest.fn<() => string>();
 // Imported after the mocks are registered.
@@ -17,6 +20,26 @@ test("shows RATES on the index route", async () => {
   await render(<StatusStrip />);
   expect(screen.getByTestId("hud-module-label")).toHaveTextContent("RATES");
 });
+
+// P8: the dock's FAB is painted over this strip by construction, so the
+// telemetry row must keep its centre clear or the cell under the hex is
+// invisible on every screen (`60FPS` was, at rest, in every golden ever taken).
+// Asserted as ">= the FAB's own width" rather than "== the clearance constant"
+// so the test states the INVARIANT the user can see, and still fails if either
+// number drifts toward a collision.
+test("telemetry row reserves at least the FAB's width down its centre", async () => {
+  mockPathname.mockReturnValue("/");
+  await render(<StatusStrip />);
+  const spacer = screen.getByTestId("hud-dock-clearance");
+  expect(flattenWidth(spacer.props.style)).toBeGreaterThanOrEqual(
+    DOCK_FAB_SIZE,
+  );
+});
+
+function flattenWidth(style: unknown): number {
+  const flat = StyleSheet.flatten(style as ViewStyle);
+  return typeof flat?.width === "number" ? flat.width : 0;
+}
 
 interface StatusStripModule {
   StatusStrip: () => JSX.Element;

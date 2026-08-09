@@ -15,6 +15,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
+import { DOCK_FAB_CLEARANCE } from "./dockMetrics";
 import { resolveActiveModule } from "./moduleRoutes";
 import { useShellTelemetry } from "./useShellTelemetry";
 
@@ -37,11 +38,16 @@ export function StatusStrip(): JSX.Element {
       style={[styles.wrap, { paddingBottom: insets.bottom }]}
     >
       <View style={styles.telemetry}>
-        <Text style={styles.conn}>{CONN_LABEL[status]}</Text>
-        <Text style={styles.cell}>{latencyMs}MS</Text>
-        <Text style={styles.cell}>{fps}FPS</Text>
-        <Text style={styles.cell}>{clock}</Text>
-        <Text style={styles.cell}>{build}</Text>
+        <View style={styles.telemetryLeft}>
+          <Text style={styles.conn}>{CONN_LABEL[status]}</Text>
+          <Text style={styles.cell}>{latencyMs}MS</Text>
+        </View>
+        <View testID="hud-dock-clearance" style={styles.fabClearance} />
+        <View style={styles.telemetryRight}>
+          <Text style={styles.cell}>{fps}FPS</Text>
+          <Text style={styles.cell}>{clock}</Text>
+          <Text style={styles.cell}>{build}</Text>
+        </View>
       </View>
       <View style={styles.moduleRow}>
         <View>
@@ -70,6 +76,9 @@ const CONN_LABEL: Record<ConnectionStatus, string> = {
 interface StatusStripStyles {
   wrap: ViewStyle;
   telemetry: ViewStyle;
+  telemetryLeft: ViewStyle;
+  telemetryRight: ViewStyle;
+  fabClearance: ViewStyle;
   conn: TextStyle;
   cell: TextStyle;
   moduleRow: ViewStyle;
@@ -84,13 +93,30 @@ function makeStyles(t: RnTheme): StatusStripStyles {
     wrap: { backgroundColor: t.bgHeader },
     telemetry: {
       flexDirection: "row",
-      justifyContent: "center",
-      gap: 11,
+      alignItems: "center",
       paddingTop: 4,
       paddingBottom: 3,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.borderSubtle,
     },
+    // Both halves flex equally so the clearance stays EXACTLY centred, which is
+    // what guarantees it lines up with the centred FAB. Centring the five cells
+    // as one run and inserting a fixed gap does not: the two sides have unequal
+    // text widths (~106pt vs ~140pt), so the gap lands ~17pt off centre and the
+    // hex clips the right-hand group anyway.
+    telemetryLeft: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 11,
+    },
+    telemetryRight: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "flex-start",
+      gap: 11,
+    },
+    fabClearance: { width: DOCK_FAB_CLEARANCE, flexShrink: 0 },
     conn: {
       color: t.accentPositive,
       fontFamily: t.fontMono,

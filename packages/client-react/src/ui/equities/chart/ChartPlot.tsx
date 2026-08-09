@@ -105,6 +105,7 @@ export function ChartPlot({
           linePoints={vm.linePoints}
           kind={kind}
           indicatorPaths={indicatorPaths}
+          comparePoints={vm.compareLinePoints}
         />
         <DrawingsLayer items={drawItems} />
         <CrosshairOverlay vm={cross} showHorizontal={showHorizontal} />

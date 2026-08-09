@@ -942,6 +942,10 @@ export function createViewModel(
     presenters.eqWorkspace.intents.toggleYScale();
   }
 
+  function setEqCompareSymbol(sym: string | null): void {
+    presenters.eqWorkspace.intents.setCompare(sym);
+  }
+
   // Eq drawings machine — shared single instance, mirroring eqWorkspace's
   // wiring above: reads presenters.eqDrawings.state$ DIRECTLY via
   // useStateObservable, NOT via bind() (same warm-value trap avoided).
@@ -1195,6 +1199,7 @@ export function createViewModel(
         toggleIndicator: toggleEqIndicator,
         togglePane: toggleEqPane,
         toggleYScale: toggleEqYScale,
+        setCompare: setEqCompareSymbol,
       };
     },
     useWorkspaceNav: () => {

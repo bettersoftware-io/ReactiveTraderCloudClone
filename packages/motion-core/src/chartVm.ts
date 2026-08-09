@@ -11,6 +11,7 @@ import type { ChartViewport } from "./chartViewport.js";
 
 export type {
   ChartCandle,
+  ChartCompareInput,
   ChartKind,
   ChartPoint,
   ChartScale,
@@ -52,6 +53,7 @@ export interface ChartVm {
   grid: readonly GridLineVm[];
   labels: readonly PriceLabelVm[];
   linePoints: readonly ChartPoint[];
+  compareLinePoints: readonly ChartPoint[];
   timeLabels: readonly TimeLabelVm[];
   scale: ChartScale;
 }

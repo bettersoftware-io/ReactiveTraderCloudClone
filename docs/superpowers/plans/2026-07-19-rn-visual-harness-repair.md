@@ -185,7 +185,7 @@ git commit -m "chore(rn-visual): re-pin goldens to ios-iphone17-26 (iPhone 17/iO
 
 ### Task 6 (T3): Maestro tier
 
-- [ ] `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ~/.maestro/bin/maestro --version` sanity. Regenerate flows if `SCENARIO_IDS` changed (`tsx generateFlows.ts`).
+- [ ] `JAVA_HOME="$(brew --prefix openjdk@21)" ~/.maestro/bin/maestro --version` sanity (21, not the newest JDK — see [BAKEOFF.md](../../../packages/client-react-native/tests/visual/BAKEOFF.md)). Regenerate flows if `SCENARIO_IDS` changed (`tsx generateFlows.ts`).
 - [ ] `JAVA_HOME=… MAESTRO_METRO_PORT=8083 pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update`; eyeball; then `:maestro` verify (all pass). If the two-step / `visual-ready` a11y assert fails against the dev client, record the exact failure as a bake-off finding (do NOT switch to a Release build without a non-`__DEV__` harness flag — see spec §Security hardening coupling). Commit whatever goldens succeed.
 
 ### Task 7 (T4): owl tier

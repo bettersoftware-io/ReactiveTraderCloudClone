@@ -36,12 +36,26 @@ export interface ChartPoint {
 }
 
 /** The visible-slice price range (post live-overlay) a ChartVm was fit to.
- * `yScale` is the y-mapping mode; absent = linear (room for "percent" when
- * comparison series lands). */
+ * `yScale` is the y-mapping mode; absent = linear. Percent mode carries
+ * `base` (the primary series' baseline price — the first visible candle's
+ * close); cmin/cmax stay in PRICE units in every mode (percent's are the
+ * pct-range union back-converted through `base`), which keeps the scale
+ * invertible in price space — drawings/crosshair route through it
+ * unchanged. */
 export interface ChartScale {
   readonly cmin: number;
   readonly cmax: number;
-  readonly yScale?: "log";
+  readonly yScale?: "log" | "percent";
+  /** Percent mode only: pct(p) = (p / base − 1) × 100. */
+  readonly base?: number;
+}
+
+/** A second symbol's candle series to overlay as a close-price line on a
+ * shared percent axis. Presence of this option IS the percent-mode signal —
+ * "percent" is never requestable via `yScale`, so percent-without-a-base is
+ * unrepresentable. */
+export interface ChartCompareInput {
+  readonly series: readonly ChartCandle[];
 }
 
 export interface ChartVmOptions {
@@ -49,8 +63,11 @@ export interface ChartVmOptions {
   readonly viewport?: ChartViewport;
   /** Plot style; default "candles". */
   readonly kind?: ChartKind;
-  /** Price-axis mapping; default "linear". */
+  /** Price-axis mapping; default "linear". Ignored while `compare` is
+   * present (compare forces percent). */
   readonly yScale?: "linear" | "log";
+  /** Comparison series — switches the scene to percent mode. */
+  readonly compare?: ChartCompareInput;
 }
 
 /** Shared Y-mapping constants: price maps into [Y_TOP%, (Y_TOP+Y_SPAN)%] of
@@ -59,13 +76,31 @@ export interface ChartVmOptions {
 export const Y_TOP = 6;
 export const Y_SPAN = 86;
 
+function pctOf(base: number, price: number): number {
+  return (price / base - 1) * 100;
+}
+
 /** price → % of the plot box, into [Y_TOP, Y_TOP + Y_SPAN], inverted (high
  * at the top). The ONLY price→y mapping in the codebase: candle geometry,
  * crosshair inversion, and indicator overlays all route through it, so a
- * scale-mode change cannot desynchronize them. Log mode interpolates in
- * log10 space; a non-positive cmin falls back to the linear branch (keeps
- * the math total — equities prices cannot reach it). */
+ * scale-mode change cannot desynchronize them. Percent mode is
+ * affine-identical to linear for the primary (it exists so `yToPrice`
+ * returns prices through `base`, and so a percent scale never accidentally
+ * falls into the log branch); log mode interpolates in log10 space. A
+ * non-positive cmin (log) or base (percent) falls back to the linear branch
+ * (keeps the math total — equities prices cannot reach it). */
 export function priceToY(scale: ChartScale, price: number): number {
+  if (
+    scale.yScale === "percent" &&
+    scale.base !== undefined &&
+    scale.base > 0
+  ) {
+    const pmax = pctOf(scale.base, scale.cmax);
+    const pmin = pctOf(scale.base, scale.cmin);
+    const prng = pmax - pmin || 1;
+    return ((pmax - pctOf(scale.base, price)) / prng) * Y_SPAN + Y_TOP;
+  }
+
   if (scale.yScale === "log" && scale.cmin > 0) {
     const lmax = Math.log10(scale.cmax);
     const lrng = lmax - Math.log10(scale.cmin) || 1;
@@ -78,6 +113,18 @@ export function priceToY(scale: ChartScale, price: number): number {
 
 /** Exact inverse of {@link priceToY} — same branch rules. */
 export function yToPrice(scale: ChartScale, y: number): number {
+  if (
+    scale.yScale === "percent" &&
+    scale.base !== undefined &&
+    scale.base > 0
+  ) {
+    const pmax = pctOf(scale.base, scale.cmax);
+    const pmin = pctOf(scale.base, scale.cmin);
+    const prng = pmax - pmin || 1;
+    const pct = pmax - ((y - Y_TOP) / Y_SPAN) * prng;
+    return scale.base * (1 + pct / 100);
+  }
+
   if (scale.yScale === "log" && scale.cmin > 0) {
     const lmax = Math.log10(scale.cmax);
     const lrng = lmax - Math.log10(scale.cmin) || 1;
@@ -123,6 +170,18 @@ export function formatTimeLabel(timeMs: number, bucketMs: number): string {
 
   const dd = String(d.getUTCDate()).padStart(2, "0");
   return `${dd} ${MONTHS[d.getUTCMonth()]}`;
+}
+
+/** Signed two-decimal percent label: "+1.25%", "-0.40%", "0.00%" (zero is
+ * unsigned, including the -0.00 rounding case). ASCII minus. */
+function formatPctLabel(pct: number): string {
+  const txt = pct.toFixed(2);
+
+  if (txt === "0.00" || txt === "-0.00") {
+    return "0.00%";
+  }
+
+  return txt.startsWith("-") ? `${txt}%` : `+${txt}%`;
 }
 
 interface ChartWindow {
@@ -230,6 +289,9 @@ export interface ChartScene {
   readonly priceLabels: readonly SceneLabel[];
   readonly timeLabels: readonly SceneLabel[];
   readonly linePoints: readonly ChartPoint[];
+  /** The comparison overlay's projected close-line — empty when no compare
+   * is active or no compare candle aligns with the visible window. */
+  readonly compareLinePoints: readonly ChartPoint[];
   readonly scale: ChartScale;
 }
 
@@ -311,6 +373,112 @@ function buildTimeLabels(
   return labels;
 }
 
+/** Everything percent mode derives from the compare option: the widened
+ * price-unit scale, the pct-space tick range, the aligned line points, and
+ * the pct→y projection the ticks/line share. Null when compare is absent or
+ * the primary baseline is unusable (base <= 0) — callers then take the
+ * existing linear/log path untouched. */
+interface ResolvedCompare {
+  readonly scale: ChartScale;
+  readonly pctMin: number;
+  readonly pctMax: number;
+  readonly linePoints: readonly ChartPoint[];
+  readonly pctToY: (pct: number) => number;
+}
+
+function resolveCompare(
+  compare: ChartCompareInput | undefined,
+  visible: readonly ChartCandle[],
+  series: readonly ChartCandle[],
+  win: ChartWindow,
+): ResolvedCompare | null {
+  const base = visible[0]?.close;
+
+  if (!compare || base === undefined || base <= 0) {
+    return null;
+  }
+
+  let pctMin = Number.POSITIVE_INFINITY;
+  let pctMax = Number.NEGATIVE_INFINITY;
+
+  for (const c of visible) {
+    pctMin = Math.min(pctMin, pctOf(base, c.low));
+    pctMax = Math.max(pctMax, pctOf(base, c.high));
+  }
+
+  // Compare baseline: its close at the primary window-start's time — the
+  // first compare candle at/after that time (an exact match is also >=).
+  // None (series empty or entirely older) ⇒ the line is omitted this frame
+  // but the axis stays percent (no scale-mode flicker when data lands).
+  const wStart = series[win.iFirst]?.time;
+  const wEnd = series[win.iLast]?.time;
+  const cBase =
+    wStart === undefined
+      ? undefined
+      : compare.series.find((c) => {
+          return c.time >= wStart;
+        });
+  const linePoints: ChartPoint[] = [];
+
+  if (cBase !== undefined && cBase.close > 0 && wEnd !== undefined) {
+    for (const c of compare.series) {
+      if (c.time < (wStart as number) || c.time > wEnd) {
+        continue;
+      }
+
+      const p = pctOf(cBase.close, c.close);
+      pctMin = Math.min(pctMin, p);
+      pctMax = Math.max(pctMax, p);
+    }
+  }
+
+  const prng = pctMax - pctMin || 1;
+
+  function pctToY(pct: number): number {
+    return ((pctMax - pct) / prng) * Y_SPAN + Y_TOP;
+  }
+
+  if (cBase !== undefined && cBase.close > 0) {
+    const closeByTime = new Map<number, number>();
+
+    for (const c of compare.series) {
+      closeByTime.set(c.time, c.close);
+    }
+
+    for (let i = win.iFirst; i <= win.iLast; i++) {
+      const t = series[i]?.time;
+
+      if (t === undefined) {
+        continue;
+      }
+
+      const close = closeByTime.get(t);
+
+      if (close === undefined) {
+        continue;
+      }
+
+      linePoints.push({
+        x: xPct(i, win.vp, win.span),
+        y: pctToY(pctOf(cBase.close, close)),
+      });
+    }
+  }
+
+  return {
+    scale: {
+      cmin: base * (1 + pctMin / 100),
+      cmax: base * (1 + pctMax / 100),
+      yScale: "percent",
+      base,
+    },
+    pctMin,
+    pctMax,
+    linePoints,
+    pctToY,
+  };
+}
+
 // PROTO L1343-1345: y maps a price into [6%, 92%] of the plot, inverted (high
 // at the top); each candle body is 64% of a column wide, its wick 1px.
 export function chartScene(
@@ -329,6 +497,7 @@ export function chartScene(
       priceLabels: [],
       timeLabels: [],
       linePoints: [],
+      compareLinePoints: [],
       scale: { cmin: 0, cmax: 0 },
     };
   }
@@ -351,8 +520,13 @@ export function chartScene(
   );
   const cw = 100 / win.span;
 
-  const scale: ChartScale =
-    opts?.yScale === "log" ? { cmin, cmax, yScale: "log" } : { cmin, cmax };
+  const compared = resolveCompare(opts?.compare, visible, series, win);
+
+  const scale: ChartScale = compared
+    ? compared.scale
+    : opts?.yScale === "log"
+      ? { cmin, cmax, yScale: "log" }
+      : { cmin, cmax };
 
   function yPct(p: number): number {
     return priceToY(scale, p);
@@ -374,18 +548,24 @@ export function chartScene(
           return { x: xPct(i, win.vp, win.span), y: yPct(cd.close) };
         });
 
-  // Grid and labels are the same tick list viewed twice: one line and one
-  // label per nice tick, both at priceToY(scale, tick), highest price first
-  // (the old top-down reading order). The label projection's −6px calc
-  // (chartCssVars) centers each 12px label on its line.
-  const ticks = [...priceTicks(cmin, cmax)].reverse();
+  // Grid and labels are the same tick list viewed twice. Percent mode
+  // computes nice ticks IN PCT SPACE (the same 1-2-5 engine, fed the pct
+  // range) and formats them as signed percent; price mode is unchanged.
+  const ticks = compared
+    ? [...priceTicks(compared.pctMin, compared.pctMax)].reverse()
+    : [...priceTicks(cmin, cmax)].reverse();
 
   const grid: SceneGridLine[] = ticks.map((t, i) => {
-    return { key: i, top: yPct(t) };
+    return { key: i, top: compared ? compared.pctToY(t) : yPct(t) };
   });
 
   const priceLabels: SceneLabel[] = ticks.map((t, i) => {
-    return { key: i, txt: t.toFixed(2), top: yPct(t), x: 0 };
+    return {
+      key: i,
+      txt: compared ? formatPctLabel(t) : t.toFixed(2),
+      top: compared ? compared.pctToY(t) : yPct(t),
+      x: 0,
+    };
   });
 
   const timeLabels = buildTimeLabels(series, win);
@@ -397,6 +577,7 @@ export function chartScene(
     priceLabels,
     timeLabels,
     linePoints,
+    compareLinePoints: compared ? compared.linePoints : [],
     scale,
   };
 }
@@ -489,7 +670,10 @@ export function crosshairScene(
     idx,
     x,
     y,
-    price: price.toFixed(2),
+    price:
+      scale.yScale === "percent" && scale.base !== undefined && scale.base > 0
+        ? formatPctLabel(pctOf(scale.base, price))
+        : price.toFixed(2),
     readout: {
       time: formatTimeLabel(candle.time, bucketMs),
       open: candle.open.toFixed(2),

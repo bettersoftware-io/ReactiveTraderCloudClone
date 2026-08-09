@@ -1,7 +1,11 @@
 import { createMemo, type JSX, Show } from "solid-js";
 
 import type { EqDrawing } from "@rtc/client-core";
-import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
+import {
+  CANDLE_DEFAULT_VISIBLE,
+  type Candle,
+  type CandleTimeframe,
+} from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CandleChart } from "./CandleChart";
@@ -80,6 +84,24 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
   const candles = useCandles(props.symbol, props.timeframe);
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const backfill = useCandleBackfill(props.symbol, props.timeframe);
+  // Alias so biome's (React-centric) useHookAtTopLevel heuristic no longer
+  // matches on the name `useCandles`: solid-bindings' `use*` functions are
+  // plain factories (toSignal-based), not React hooks, and calling one
+  // inside a keyed createMemo below is the deliberate keyed-resource
+  // pattern — not a rule violation to suppress.
+  const candleSeriesFor = useCandles;
+  // The comparison symbol's series. `useCandles` subscribes at CALL time
+  // with a plain symbol (see the SOLID PORT NOTE above) — but unlike
+  // sel/timeframe, a compare switch must NOT remount ChartBody (that would
+  // reset the viewport). Calling it inside a createMemo keyed on the
+  // compare symbol gives the keyed-resource behaviour instead: toSignal
+  // registers onCleanup, and a memo re-run disposes its previous
+  // computation's cleanups — so each compare value gets a fresh
+  // subscription and the old one is torn down, no remount involved.
+  const compareCandles = createMemo((): (() => readonly Candle[]) | null => {
+    const sym = state().compare;
+    return sym !== null ? candleSeriesFor(sym, props.timeframe) : null;
+  });
   const instruments = useWatchlist();
   const instrument = createMemo(() => {
     return instruments().find((i) => {
@@ -122,6 +144,11 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           indicators={state().indicators}
           panes={state().panes}
           yScale={state().yScale}
+          compare={
+            compareCandles() !== null
+              ? { series: compareCandles()?.() ?? [] }
+              : undefined
+          }
           defaultVisible={defaultVisible()}
           loadingOlder={backfill().loadingOlder}
           historyExhausted={backfill().historyExhausted}

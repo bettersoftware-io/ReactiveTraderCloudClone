@@ -17,6 +17,7 @@ export function IndicatorPills({
   onTogglePane,
   yScale,
   onToggleYScale,
+  comparing = false,
 }: IndicatorPillsProps): ReactElement {
   return (
     <div className={styles.pills}>
@@ -60,12 +61,14 @@ export function IndicatorPills({
         type="button"
         className={styles.pill}
         data-testid="chart-yscale-pill"
-        data-active={String(yScale === "log")}
+        data-active={String(!comparing && yScale === "log")}
+        disabled={comparing}
+        title={comparing ? "comparison uses percent scale" : undefined}
         onClick={() => {
           onToggleYScale();
         }}
       >
-        LOG
+        {comparing ? "PCT" : "LOG"}
       </button>
     </div>
   );
@@ -98,4 +101,8 @@ export interface IndicatorPillsProps {
   onTogglePane: (id: EqPaneId) => void;
   yScale: EqYScale;
   onToggleYScale: () => void;
+  /** Whether a comparison symbol is active — renders the axis-scale pill as
+   * a disabled "PCT" marker (comparison forces the percent axis; the stored
+   * linear/log preference underneath is untouched). Default false. */
+  comparing?: boolean;
 }

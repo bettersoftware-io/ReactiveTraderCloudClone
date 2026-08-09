@@ -867,6 +867,9 @@ export const registry = new Map<AnyToken, ElementFor>([
           indicators={(p.indicators as readonly EqIndicatorId[]) ?? []}
           panes={(p.panes as readonly EqPaneId[]) ?? []}
           yScale={p.yScale as EqYScale | undefined}
+          compare={
+            p.compare as { readonly series: readonly Candle[] } | undefined
+          }
           defaultVisible={(p.defaultVisible as number) ?? 50}
           loadingOlder={(p.loadingOlder as boolean) ?? false}
           historyExhausted={(p.historyExhausted as boolean) ?? false}

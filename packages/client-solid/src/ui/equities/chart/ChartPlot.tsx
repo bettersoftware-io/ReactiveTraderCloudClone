@@ -103,6 +103,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           linePoints={props.vm.linePoints}
           kind={props.kind}
           indicatorPaths={props.indicatorPaths}
+          comparePoints={props.vm.compareLinePoints}
         />
         <DrawingsLayer items={props.drawItems ?? []} />
         <CrosshairOverlay

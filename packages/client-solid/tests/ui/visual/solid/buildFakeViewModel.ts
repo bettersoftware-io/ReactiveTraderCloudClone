@@ -493,6 +493,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
             indicators: [],
             panes: [],
             yScale: "linear" as const,
+            compare: null,
           },
         ),
         select: noop,
@@ -502,6 +503,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleIndicator: noop,
         togglePane: noop,
         toggleYScale: noop,
+        setCompare: noop,
       };
     },
     // Workspace nav (Task 10/11): a REAL signal, not a static `at()` closure

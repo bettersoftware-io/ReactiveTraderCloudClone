@@ -89,6 +89,19 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     return this.page.getByTestId(TESTIDS.equities.chart.yScalePill);
   }
 
+  // Shared testid across every candidate pill (ComparePills.tsx) — narrowed
+  // via the sibling `data-sym` attribute, same `.and()` composition as
+  // `panePill`/`indicatorPill` above.
+  private comparePill(sym: string): Locator {
+    return this.page
+      .getByTestId(TESTIDS.equities.chart.comparePill)
+      .and(this.page.locator(`[data-sym="${sym}"]`));
+  }
+
+  private compareLine(): Locator {
+    return this.page.getByTestId(TESTIDS.equities.chart.compareLine);
+  }
+
   // Shared testid disambiguated by `data-tool`, same `.and` composition as
   // `panePill` above.
   private drawPill(tool: EquitiesDrawTool): Locator {
@@ -240,10 +253,25 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     await this.yScalePill().click();
   }
 
-  async waitYScale(mode: "linear" | "log", timeoutMs: number): Promise<void> {
+  async waitYScale(
+    mode: "linear" | "log" | "percent",
+    timeoutMs: number,
+  ): Promise<void> {
     await expect(this.chartWrap()).toHaveAttribute("data-yscale", mode, {
       timeout: timeoutMs,
     });
+  }
+
+  async clickComparePill(sym: string): Promise<void> {
+    await this.comparePill(sym).click();
+  }
+
+  async waitCompareLineVisible(timeoutMs: number): Promise<void> {
+    await expect(this.compareLine()).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async waitCompareLineHidden(timeoutMs: number): Promise<void> {
+    await expect(this.compareLine()).toHaveCount(0, { timeout: timeoutMs });
   }
 
   async waitIndicatorActive(

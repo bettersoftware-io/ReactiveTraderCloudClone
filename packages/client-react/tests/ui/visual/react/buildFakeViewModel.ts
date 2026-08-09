@@ -468,6 +468,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           indicators: [],
           panes: [],
           yScale: "linear",
+          compare: null,
         },
         select: noop,
         closeTab: noop,
@@ -476,6 +477,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggleIndicator: noop,
         togglePane: noop,
         toggleYScale: noop,
+        setCompare: noop,
       };
     },
     // Eq drawings: the equities/chart-drawings visual scenario feeds literal

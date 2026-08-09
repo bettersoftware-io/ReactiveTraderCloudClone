@@ -37,3 +37,15 @@
   align-self: stretch;
   background-color: var(--border);
 }
+
+/* ComparePills' group label — a small static marker before the symbol
+   pills (matches the pill typography, non-interactive). */
+.vsLabel {
+  align-self: center;
+  padding: 0 2px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}

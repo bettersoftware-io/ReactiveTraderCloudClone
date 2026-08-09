@@ -250,6 +250,45 @@ export function EquitiesChartLogScale(): JSX.Element {
   );
 }
 
+// Comparison series (spec 2026-08-08): the real CandleChart with a literal
+// deterministic compare series on the same one-minute buckets as CANDLES
+// (time-aligned at every index), steeper slope so the two pct paths
+// visibly diverge across the default {240,300} window.
+const COMPARE_SERIES: readonly Candle[] = Array.from(
+  { length: 300 },
+  (_, i) => {
+    const open = 50 + i * 2;
+    return {
+      time: i * BUCKET_MS,
+      open,
+      high: open + 2,
+      low: open - 2,
+      close: open + 1,
+      volume: 1_000,
+    };
+  },
+);
+
+export function EquitiesChartCompare(): JSX.Element {
+  return (
+    <div style={STAGE_STYLE}>
+      <CandleChart
+        candles={CANDLES}
+        liveRate={LIVE_RATE}
+        flashOn={false}
+        kind="candles"
+        indicators={[]}
+        panes={[]}
+        compare={{ series: COMPARE_SERIES }}
+        defaultVisible={DEFAULT_VISIBLE}
+        loadingOlder={false}
+        historyExhausted={false}
+        onLoadOlder={() => {}}
+      />
+    </div>
+  );
+}
+
 // Drawing tools (Task 8, drawing-tools workstream): the real CandleChart
 // mounted with a literal `drawings`/`selectedDrawingId` — real props (like
 // `kind`/`indicators`/`yScale` above), so no ChartPlot bypass is needed. No
