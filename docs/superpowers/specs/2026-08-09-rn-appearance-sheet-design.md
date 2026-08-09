@@ -40,9 +40,16 @@ prototype is simply older.
 
 ## Target structure
 
+**As shipped** — see "Known consequences" below for why the mode segment sits
+on its own row rather than inline beside the title as first drawn here, and
+why `[DARK|LIGHT|SYSTEM]` (the domain's `cycle()` order) rather than
+`[SYS|DARK|LIGHT]`:
+
 ```
 ╭────────────── ━━━ ──────────────╮   grab handle
-│ APPEARANCE   [SYS|DARK|LIGHT]  │   header + mode, one row
+│ APPEARANCE                     │   header, own row
+│ [ DARK | LIGHT | SYSTEM ]      │   mode segment, own row (see below)
+│ Skin                           │   section label
 │ ┌─────┐ ┌─────┐ ┌─────┐        │
 │ │■■■  │ │■■■  │ │■■■  │        │   3×2 skin cards,
 │ │HOLO │ │HOLO3│ │TERM │        │   3 swatches + mono label,
@@ -50,6 +57,7 @@ prototype is simply older.
 │ ┌─────┐ ┌─────┐ ┌─────┐        │
 │ │TERM3│ │NEON │ │CLASS│        │
 │ └─────┘ └─────┘ └─────┘        │
+│ Motion                         │   section label
 │ Ambient background       (●─)  │
 │ Aurora + HUD grid · GPU shader │   subtitle, per design
 │   └ [ Aurora | Rays ]          │   ONLY when ambient is ON
@@ -58,6 +66,8 @@ prototype is simply older.
 │ ┌────────────────────────────┐ │
 │ │  ▸ REPLAY BOOT SEQUENCE    │ │
 │ └────────────────────────────┘ │
+│           SIGN OUT             │   last section — the one destructive
+│                                 │   action, P7
 ╰────────────────────────────────╯
 ```
 
