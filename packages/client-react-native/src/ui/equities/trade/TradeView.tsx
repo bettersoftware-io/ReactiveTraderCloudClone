@@ -8,11 +8,11 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { CandleChart } from "#/ui/equities/trade/CandleChart";
 import { DepthLadder } from "#/ui/equities/trade/DepthLadder";
 import { InstrumentHeader } from "#/ui/equities/trade/InstrumentHeader";
 import { InstrumentTabs } from "#/ui/equities/trade/InstrumentTabs";
 import { OrderTicket } from "#/ui/equities/trade/OrderTicket";
-import { PriceChart } from "#/ui/equities/trade/PriceChart";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -39,7 +39,7 @@ export function TradeView({
         <InstrumentHeader symbol={selectedSymbol} />
         <View style={styles.section}>
           <Text style={styles.heading}>{selectedSymbol} — PRICE</Text>
-          <PriceChart symbol={selectedSymbol} />
+          <CandleChart symbol={selectedSymbol} />
         </View>
         <View style={styles.section}>
           <Text style={styles.heading}>DEPTH</Text>

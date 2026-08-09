@@ -35,7 +35,7 @@ test("renders tabs, chart, depth and ticket for the selected symbol", async () =
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("instrument-tab-AAPL")).toBeTruthy();
-  expect(screen.getByTestId("price-chart")).toBeTruthy();
+  expect(screen.getByTestId("eq-candle-empty")).toBeTruthy(); // fullVM's useCandles is []
   expect(screen.getByTestId("depth-empty")).toBeTruthy(); // null book → empty
   expect(screen.getByTestId("order-ticket")).toBeTruthy();
 });
