@@ -296,6 +296,129 @@ export class JarvisOverlayPage extends MountedComponent<Record<string, never>> {
   emitEvents(events: readonly JarvisEvent[]): void {
     this.emitJarvis(events);
   }
+
+  /** Click the ⓘ demo-guide toggle. */
+  async toggleGuide(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-guide-toggle"),
+    );
+  }
+
+  /** True while the demo guide panel (`jarvis-guide-panel`) is rendered. */
+  isGuideOpen(): boolean {
+    return (
+      within(this.requireOverlay()).queryByTestId("jarvis-guide-panel") !== null
+    );
+  }
+
+  /** A guide row's own command label — its direct TEXT_NODE children only,
+   * so the optional `jarvis-guide-live-badge` child <span> ("live brain")
+   * is excluded regardless of framework markup whitespace. */
+  private guideRowCommandText(row: HTMLElement): string {
+    return [...row.childNodes]
+      .filter((node) => {
+        return node.nodeType === Node.TEXT_NODE;
+      })
+      .map((node) => {
+        return node.textContent ?? "";
+      })
+      .join("")
+      .trim();
+  }
+
+  /** Every guide-section title, in render order. Section wrappers carry no
+   * testid of their own, so this walks each `jarvis-guide-row`'s parent
+   * (deduped, first-seen order) and reads its first element child's text —
+   * the section title div always precedes a section's rows. */
+  guideSectionTitles(): string[] {
+    const rows = within(this.requireOverlay()).getAllByTestId(
+      "jarvis-guide-row",
+    );
+    const sections: HTMLElement[] = [];
+
+    for (const row of rows) {
+      const section = row.parentElement;
+
+      if (section && !sections.includes(section)) {
+        sections.push(section);
+      }
+    }
+
+    return sections.map((section) => {
+      return section.firstElementChild?.textContent?.trim() ?? "";
+    });
+  }
+
+  /** Every guide row's command label, in render order. */
+  guideRows(): string[] {
+    return within(this.requireOverlay())
+      .getAllByTestId("jarvis-guide-row")
+      .map((row) => {
+        return this.guideRowCommandText(row);
+      });
+  }
+
+  /** Click a guide row by its exact command label — sends it as a user turn
+   * (halting a running demo first, same `submit()` guard every other
+   * click-to-send control shares). */
+  async clickGuideRow(command: string): Promise<void> {
+    const rows = within(this.requireOverlay()).getAllByTestId(
+      "jarvis-guide-row",
+    );
+
+    const row = rows.find((el) => {
+      return this.guideRowCommandText(el) === command;
+    });
+
+    if (!row) {
+      throw new Error(`no guide row labelled "${command}"`);
+    }
+
+    await this.user.click(row);
+  }
+
+  /** Every guide row carrying the "live brain" badge, by command label. */
+  liveBadgedRows(): string[] {
+    return within(this.requireOverlay())
+      .getAllByTestId("jarvis-guide-row")
+      .filter((row) => {
+        return within(row).queryByTestId("jarvis-guide-live-badge") !== null;
+      })
+      .map((row) => {
+        return this.guideRowCommandText(row);
+      });
+  }
+
+  /** Click ▶ RUN FULL DEMO · HANDS-FREE inside the open guide panel. */
+  async runDemoFromGuide(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-guide-run"),
+    );
+  }
+
+  /** Click ▶ RUN FULL DEMO in the footer (guide panel closed or open —
+   * the footer control is always rendered while the demo is idle). */
+  async runDemoFromFooter(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-demo-run"),
+    );
+  }
+
+  /** The footer's "STEP i/n · LABEL" progress text while the hands-free demo
+   * is running, or `null` while idle (`jarvis-demo-progress` absent). */
+  demoProgressText(): string | null {
+    const el = within(this.requireOverlay()).queryByTestId(
+      "jarvis-demo-progress",
+    );
+    return el ? (el.textContent?.trim() ?? "") : null;
+  }
+
+  /** Click ■ STOP. */
+  async stopDemo(): Promise<void> {
+    await this.user.click(
+      within(this.requireOverlay()).getByTestId("jarvis-demo-stop"),
+    );
+  }
 }
 
 const SKIN_LABEL: Record<JarvisSkin, string> = {
