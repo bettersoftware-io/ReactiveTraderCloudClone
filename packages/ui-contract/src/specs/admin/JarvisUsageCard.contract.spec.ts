@@ -10,13 +10,13 @@ import { JarvisUsageCard } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { JarvisUsageSnapshot } from "@rtc/client-core";
+import type { AdminJarvisUsagePayload } from "@rtc/client-core";
 
 afterEach(() => {
   cleanupMounted();
 });
 
-const SNAPSHOT: JarvisUsageSnapshot = {
+const SNAPSHOT: AdminJarvisUsagePayload = {
   windowStartMs: 1_700_000_000_000,
   windowEndMs: 1_700_000_600_000,
   currentWindow: [
@@ -122,5 +122,62 @@ describe("JarvisUsageCard", () => {
       admin: { jarvisUsage: { ...SNAPSHOT, windowEndMs: 0 } },
     });
     expect(noEnd.resetLineText()).toBe("Window resets —");
+  });
+
+  it("renders spent-of-budget with the soft-gate mark when the payload carries budget fields", () => {
+    const page = mount(JarvisUsageCard, {
+      admin: {
+        jarvisUsage: {
+          ...SNAPSHOT,
+          budgetUsd: 10,
+          softBudgetUsd: 8,
+          spentWindowUsd: 8.5,
+          gateLevel: "soft",
+        },
+      },
+    });
+    expect(page.budgetLineText()).toContain(
+      "$8.50 of $10.00 this window — soft gate at $8.00",
+    );
+    expect(page.gateBadgeText()).toBe("SOFT GATE");
+  });
+
+  it("renders HARD GATE and defaults spentWindowUsd/softBudgetUsd to 0 when only budgetUsd is present", () => {
+    // Guards the ?? 0 defaults and the "hard" gate-badge label independently
+    // of the "soft" case above — a mutant hardcoding the badge text to
+    // "SOFT GATE" or flipping either `?? 0` default (e.g. to `?? 999`)
+    // must fail this.
+    const page = mount(JarvisUsageCard, {
+      admin: {
+        jarvisUsage: {
+          ...SNAPSHOT,
+          budgetUsd: 20,
+          gateLevel: "hard",
+          // spentWindowUsd / softBudgetUsd deliberately absent.
+        },
+      },
+    });
+    expect(page.budgetLineText()).toContain(
+      "$0.00 of $20.00 this window — soft gate at $0.00",
+    );
+    expect(page.gateBadgeText()).toBe("HARD GATE");
+  });
+
+  it("renders BUDGET OFF when budgetUsd is null", () => {
+    const page = mount(JarvisUsageCard, {
+      admin: {
+        jarvisUsage: { ...SNAPSHOT, budgetUsd: null },
+      },
+    });
+    expect(page.budgetLineText()).toBe("BUDGET OFF");
+    expect(page.gateBadgeText()).toBeNull();
+  });
+
+  it("renders no budget line at all for a pre-round payload without the fields", () => {
+    const page = mount(JarvisUsageCard, {
+      admin: { jarvisUsage: SNAPSHOT },
+    });
+    expect(page.budgetLineText()).toBeNull();
+    expect(page.gateBadgeText()).toBeNull();
   });
 });

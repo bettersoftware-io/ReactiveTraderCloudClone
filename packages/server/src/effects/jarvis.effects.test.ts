@@ -23,9 +23,14 @@ import type {
 } from "../agent/agentLoop.js";
 import { createJarvisLoops } from "../agent/agentLoop.js";
 import {
+  type JarvisGateConfig,
+  JarvisGateService,
+} from "../services/jarvisGate.js";
+import {
   createServices,
   type ServiceContainer,
 } from "../services/serviceContainer.js";
+import { JARVIS_USAGE_WINDOW_MS, UsageMeter } from "../services/UsageMeter.js";
 import type { Ctx } from "./context.js";
 import { jarvisEffects } from "./jarvis.effects.js";
 
@@ -138,7 +143,8 @@ describe("jarvis availability", () => {
   it("responds { available: false, brains: [], defaultBrain: 'scripted' } to jarvis.subscribe when no loops are present", () => {
     const sent: Outbound[] = [];
     const socket = createSocket(sent);
-    createWsListener(combineEffects(...jarvisEffects(null)), {} as Ctx)(socket);
+    const ctx = { jarvisGate: createUngatedGate() } as unknown as Ctx;
+    createWsListener(combineEffects(...jarvisEffects(null)), ctx)(socket);
 
     socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
 
@@ -168,7 +174,11 @@ describe("jarvis availability", () => {
   });
 
   it("responds with every JARVIS_BRAINS entry and DEFAULT_JARVIS_BRAIN when a live anthropic loop is present too", () => {
-    const services = createServices();
+    // `{}` explicit, not the ambient `process.env` default — this test's
+    // gate must read "none" regardless of whatever RTC_JARVIS_* is set in
+    // whatever environment the suite happens to run under (mirrors
+    // `createJarvisLoops`'s own explicit-env call just below).
+    const services = createServices({});
     const loops = createJarvisLoops(
       { ANTHROPIC_API_KEY: "sk-test" },
       services,
@@ -1215,6 +1225,305 @@ describe("jarvis effects — dual-brain routing (spy loops)", () => {
   });
 });
 
+describe("budget gate", () => {
+  it("re-pushes availability when the gate trips, narrowed and carrying gate metadata", () => {
+    const { meter, messages$, sent } = availabilityGateHarness({
+      budgetUsd: 0.5,
+      softRatio: 0.8,
+      forceLevel: null,
+    });
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: JARVIS_BRAINS,
+          defaultBrain: "claude-haiku-4-5",
+        },
+      },
+    ]);
+
+    const beforeTrip = Date.now();
+
+    // $1.00 estimated (200_000 input tokens * $5/Mtok for claude-opus-5) —
+    // over the $0.50 budget, so this trips "hard" in one call.
+    meter.recordTokens("claude-opus-5", {
+      inputTokens: 200_000,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+  });
+
+  it("soft gate keeps haiku and scripted and lists exactly sonnet+opus as gated", () => {
+    const { meter, messages$, sent } = availabilityGateHarness({
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: null,
+    });
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    expect(sent).toHaveLength(1);
+
+    // $0.45 of the $1 budget (90_000 input tokens * $5/Mtok) — under the
+    // soft threshold ($0.80): the gate stays "none", no new push.
+    meter.recordTokens("claude-opus-5", {
+      inputTokens: 90_000,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+    expect(sent).toHaveLength(1);
+
+    const beforeSoft = Date.now();
+
+    // Cumulative $0.85 (+80_000 input tokens) — crosses the $0.80 soft
+    // threshold without reaching the $1 hard one.
+    meter.recordTokens("claude-opus-5", {
+      inputTokens: 80_000,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+        gate: {
+          level: "soft",
+          resetsAtMs: beforeSoft + JARVIS_USAGE_WINDOW_MS,
+          gated: ["claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+  });
+
+  it("lifts by timer without any new record (fake timers advance past windowEndMs)", async () => {
+    const { meter, messages$, sent } = availabilityGateHarness({
+      budgetUsd: 0.5,
+      softRatio: 0.8,
+      forceLevel: null,
+    });
+
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+
+    const beforeTrip = Date.now();
+
+    meter.recordTokens("claude-opus-5", {
+      inputTokens: 200_000,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+
+    // No further record — the lift is the gate's own timer firing at
+    // windowEndMs, re-judging the same (now-stale) snapshot as "none".
+    await vi.advanceTimersByTimeAsync(JARVIS_USAGE_WINDOW_MS + 1);
+
+    expect(sent).toHaveLength(3);
+    expect(sent[2]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: JARVIS_BRAINS,
+        defaultBrain: "claude-haiku-4-5",
+      },
+    });
+  });
+
+  it("loops === null never attaches gate metadata to the unavailable payload, even while forced-hard", () => {
+    const gate = new JarvisGateService(new UsageMeter(), {
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: "hard",
+    });
+    const sent: Outbound[] = [];
+    const socket = createSocket(sent);
+    const ctx = { jarvisGate: gate } as unknown as Ctx;
+    createWsListener(combineEffects(...jarvisEffects(null)), ctx)(socket);
+
+    socket.messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+
+    // `buildAvailabilityPayload`'s `loops === null` branch must win outright
+    // — no `gate` field, no narrowed `brains` — regardless of the gate
+    // level: `applyGateToOffer` is never even called against the (empty)
+    // env-capability offer.
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: { available: false, brains: [], defaultBrain: "scripted" },
+      },
+    ]);
+  });
+
+  it("subscribing while ALREADY gated gets the gated payload in the very first frame", () => {
+    const { sent, messages$ } = availabilityGateHarness({
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: "hard",
+    });
+
+    // No prior subscribe on this connection at all — the very first
+    // JARVIS_SUBSCRIBE frame lands after the gate is already tripped
+    // (forced hard from construction), proving `state$`'s `BehaviorSubject`
+    // replay reaches a brand-new observer, not just a pre-existing one.
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.JARVIS_AVAILABILITY,
+        payload: {
+          available: true,
+          brains: ["scripted"],
+          defaultBrain: "scripted",
+          gate: {
+            level: "hard",
+            resetsAtMs: 0,
+            gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+          },
+        },
+      },
+    ]);
+  });
+
+  it("two subscribe frames on one socket leave exactly one live observer: a gate transition produces exactly one new frame, not two", () => {
+    const { meter, messages$, sent } = availabilityGateHarness({
+      budgetUsd: 0.5,
+      softRatio: 0.8,
+      forceLevel: null,
+    });
+
+    // Two JARVIS_SUBSCRIBE frames on the SAME socket — a reconnect replay,
+    // or simply a client re-sending the handshake. Each produces its own
+    // immediate frame (the state$ BehaviorSubject replays "none" to every
+    // new subscriber), so `sent` legitimately holds two frames here — the
+    // assertion below is about what happens on the NEXT transition, not
+    // about de-duplicating these two.
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
+    expect(sent).toHaveLength(2);
+
+    const beforeTrip = Date.now();
+
+    // $1.00 estimated — trips "hard". A mergeMap'd (uncapped) availability
+    // effect would still hold BOTH subscribe frames' observers live, so
+    // this single transition would append TWO new frames (one per stale
+    // observer) instead of one. switchMap tore the first one down when the
+    // second JARVIS_SUBSCRIBE arrived, so only one observer is left —
+    // exactly one new frame, not two.
+    meter.recordTokens("claude-opus-5", {
+      inputTokens: 200_000,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    });
+
+    expect(sent).toHaveLength(3);
+    expect(sent[2]).toEqual({
+      type: SERVER_MSG.JARVIS_AVAILABILITY,
+      payload: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs: beforeTrip + JARVIS_USAGE_WINDOW_MS,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+    });
+  });
+
+  it("a turn frame requesting a gated brain resolves to the gated offer's default", () => {
+    const gate = new JarvisGateService(new UsageMeter(), {
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: "soft",
+    });
+    const { anthropicSpy, messages$ } = dualLoopsHarness(vi.fn(), gate);
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-opus-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    // "claude-opus-5" is soft-gated away; the offer's surviving default
+    // (DEFAULT_JARVIS_BRAIN, "claude-haiku-4-5") is what the turn actually
+    // routes to — the scripted-vs-anthropic routing here still reaches the
+    // anthropic session, just on the fallback brain.
+    expect(anthropicSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", [], {
+      brain: "claude-haiku-4-5",
+      effort: undefined,
+    });
+  });
+
+  it("hard gate routes every turn to the scripted loop", () => {
+    const gate = new JarvisGateService(new UsageMeter(), {
+      budgetUsd: 1,
+      softRatio: 0.8,
+      forceLevel: "hard",
+    });
+
+    const { scriptedSpy, anthropicSpy, messages$ } = dualLoopsHarness(
+      vi.fn(),
+      gate,
+    );
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "hi",
+        turnId: STUB_TURN_ID,
+        brain: "claude-opus-5",
+      } satisfies JarvisChatPayload,
+    });
+
+    expect(scriptedSpy.sessions[0]?.runTurn).toHaveBeenCalledWith("hi", []);
+    expect(anthropicSpy.createSession).not.toHaveBeenCalled();
+  });
+});
+
 interface WireMappingCase {
   readonly event: JarvisEvent;
   readonly wireType: string;
@@ -1264,8 +1573,57 @@ function createSocket(sent: Outbound[]): TestSocket {
   };
 }
 
+/** A `JarvisGateService` that never gates (`budgetUsd: "off"`) — the default
+ * stand-in for every harness below that doesn't itself exercise the budget
+ * gate, so `ctx.jarvisGate.current().level` reads `"none"` throughout and
+ * `resolveBrain`'s gated offer is always the full, ungated one. */
+function createUngatedGate(): JarvisGateService {
+  return new JarvisGateService(new UsageMeter(), {
+    budgetUsd: "off",
+    softRatio: 0.8,
+    forceLevel: null,
+  });
+}
+
+interface AvailabilityGateHarness {
+  readonly meter: UsageMeter;
+  readonly gate: JarvisGateService;
+  readonly messages$: Subject<Inbound>;
+  readonly sent: Outbound[];
+}
+
+/** The common setup for the "budget gate" describe block's availability-push
+ * tests below: a real `JarvisGateService` (built from the given config) over
+ * a real `UsageMeter`, wired to a fixed full-`JARVIS_BRAINS` `JarvisLoops`
+ * (session-spy-free `vi.fn()` stubs — these tests only exercise the
+ * availability effect, never a chat turn). Does NOT send the initial
+ * `JARVIS_SUBSCRIBE` itself — callers drive `messages$` explicitly, same as
+ * every other harness in this file, so a test that needs more than one
+ * subscribe frame (e.g. proving a socket holds at most one live observer)
+ * can send exactly as many as it needs. */
+function availabilityGateHarness(
+  config: JarvisGateConfig,
+): AvailabilityGateHarness {
+  const meter = new UsageMeter();
+  const gate = new JarvisGateService(meter, config);
+  const loops: JarvisLoops = {
+    scripted: { createSession: vi.fn() },
+    anthropic: { createSession: vi.fn() },
+    brains: JARVIS_BRAINS,
+    defaultBrain: "claude-haiku-4-5",
+  };
+  const sent: Outbound[] = [];
+  const socket = createSocket(sent);
+  const ctx = { jarvisGate: gate } as unknown as Ctx;
+  createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
+  return { meter, gate, messages$: socket.messages$, sent };
+}
+
 function harness(): Harness {
-  const services = createServices();
+  // `{}` explicit — see the note on the anthropic-loop availability test
+  // above; every scenario built from this harness assumes an ungated
+  // ("none") gate regardless of the ambient process env.
+  const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
   if (!loops) {
@@ -1299,7 +1657,7 @@ interface SocketHandle {
  * per accepted connection — each call runs the session effect's body again,
  * so each socket gets its own `AgentSession` via `loops.scripted.createSession()`. */
 function twoSocketHarness(): TwoSocketHarness {
-  const services = createServices();
+  const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
   if (!loops) {
@@ -1345,8 +1703,8 @@ interface StubHarness {
  * below sends no `brain`, so routing always resolves to `"scripted"` and
  * reaches this loop) — no `ServiceContainer` / fake timers, since a stub
  * `runTurn` returning `of(…)` emits synchronously. A minimal stub `ctx`
- * supplies just `usageMeter.recordTurn` (a no-op spy), the only `Ctx` member
- * `jarvisEffects` reads. */
+ * supplies just `usageMeter.recordTurn` (a no-op spy) and an ungated
+ * `jarvisGate` — the two `Ctx` members `jarvisEffects` reads. */
 function stubHarness(loop: AgentLoop): StubHarness {
   const loops: JarvisLoops = {
     scripted: loop,
@@ -1354,7 +1712,11 @@ function stubHarness(loop: AgentLoop): StubHarness {
     brains: ["scripted"],
     defaultBrain: "scripted",
   };
-  const ctx = { usageMeter: { recordTurn: vi.fn() } } as unknown as Ctx;
+
+  const ctx = {
+    usageMeter: { recordTurn: vi.fn() },
+    jarvisGate: createUngatedGate(),
+  } as unknown as Ctx;
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
   createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
@@ -1421,13 +1783,15 @@ interface DualLoopsHarness {
 }
 
 /** Wires `jarvisEffects` to a caller-supplied `JarvisLoops`, with an
- * injectable `recordTurn` spy standing in for `ctx.usageMeter.recordTurn` —
- * the only `Ctx` member `jarvisEffects` reads. */
+ * injectable `recordTurn` spy standing in for `ctx.usageMeter.recordTurn`
+ * and an injectable `jarvisGate` (an ungated stand-in by default) — the two
+ * `Ctx` members `jarvisEffects` reads. */
 function wireDualLoops(
   loops: JarvisLoops,
   recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
+  jarvisGate: JarvisGateService = createUngatedGate(),
 ): DualLoopsHarness {
-  const ctx = { usageMeter: { recordTurn } } as unknown as Ctx;
+  const ctx = { usageMeter: { recordTurn }, jarvisGate } as unknown as Ctx;
   const sent: Outbound[] = [];
   const socket = createSocket(sent);
   createWsListener(combineEffects(...jarvisEffects(loops)), ctx)(socket);
@@ -1442,9 +1806,12 @@ interface DualSpyHarness extends DualLoopsHarness {
 
 /** The common case for the dual-brain routing tests: a full `JarvisLoops`
  * (all four `JARVIS_BRAINS`, `DEFAULT_JARVIS_BRAIN`) built from two fresh
- * `createSpyLoop()`s, wired via `wireDualLoops`. */
+ * `createSpyLoop()`s, wired via `wireDualLoops`. `jarvisGate` defaults to an
+ * ungated stand-in — the budget-gate tests below pass a forced/tripped
+ * `JarvisGateService` instead, to prove `resolveBrain` actually consults it. */
 function dualLoopsHarness(
   recordTurn: ReturnType<typeof vi.fn> = vi.fn(),
+  jarvisGate: JarvisGateService = createUngatedGate(),
 ): DualSpyHarness {
   const scriptedSpy = createSpyLoop();
   const anthropicSpy = createSpyLoop();
@@ -1454,7 +1821,12 @@ function dualLoopsHarness(
     brains: JARVIS_BRAINS,
     defaultBrain: DEFAULT_JARVIS_BRAIN,
   };
-  const { messages$, closed$, sent } = wireDualLoops(loops, recordTurn);
+
+  const { messages$, closed$, sent } = wireDualLoops(
+    loops,
+    recordTurn,
+    jarvisGate,
+  );
   return { loops, scriptedSpy, anthropicSpy, messages$, closed$, sent };
 }
 

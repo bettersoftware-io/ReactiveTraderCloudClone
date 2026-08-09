@@ -118,6 +118,17 @@
   color: var(--text-muted);
 }
 
+/* Budget-gate hint under the Brain row — same muted/small treatment as a
+ * row's own description line, but rendered as a standalone row (not nested
+ * inside .rowText) so it can sit below the segmented control rather than
+ * beside the label. */
+.gateHint {
+  padding: 0 2px 11px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-primary);
+}
+
 .sw {
   flex: none;
   position: relative;

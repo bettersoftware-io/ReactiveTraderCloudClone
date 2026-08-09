@@ -462,7 +462,13 @@ function wireJarvisHistorySource(
   jarvisPort.setHistorySource(() => {
     return historyEntriesExcludingInFlightTurn(latestEntries)
       .filter((entry) => {
-        return entry.done && entry.text.length > 0;
+        // `origin: "system"` (the budget-downgrade line — JarvisMachine's
+        // `availabilityPatches$`) is UI-only bookkeeping, not something the
+        // model ever produced or should see echoed back as its own past
+        // turn — excluded here. `"narrator"` (proactive app-driving turns)
+        // and drive-outcome rows (no `origin` at all, same as any ordinary
+        // reply) stay: both are genuine turns the model itself is party to.
+        return entry.done && entry.text.length > 0 && entry.origin !== "system";
       })
       .map((entry): JarvisHistoryEntry => {
         return { role: entry.role, text: entry.text };

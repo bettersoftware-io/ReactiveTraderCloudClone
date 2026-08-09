@@ -589,6 +589,13 @@
   color: var(--accent-2);
 }
 
+/* System-origin entries (the machine-generated budget-downgrade line, not a
+ * user/JARVIS turn) render muted — text-muted only, no accent border — so
+ * they read as background telemetry rather than something JARVIS said. */
+.entry[data-origin="system"] .entryText {
+  color: var(--text-muted);
+}
+
 .entry[data-role="jarvis"] .entryText {
   background: var(--panel);
   border: 1px solid var(--border-primary);

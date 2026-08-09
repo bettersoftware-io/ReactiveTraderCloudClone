@@ -1,6 +1,6 @@
 import { filter, Observable, switchMap } from "rxjs";
 
-import type { JarvisUsageSnapshot } from "@rtc/shared";
+import type { AdminJarvisUsagePayload } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type { IWsAdapter } from "./IWsAdapter";
@@ -14,10 +14,10 @@ import type { JarvisUsagePort } from "./jarvisUsagePort";
  * adapter itself stays a plain forwarder with no local caching. */
 function createConnectionUsageStream(
   ws: IWsAdapter,
-): Observable<JarvisUsageSnapshot> {
-  return new Observable<JarvisUsageSnapshot>((subscriber) => {
+): Observable<AdminJarvisUsagePayload> {
+  return new Observable<AdminJarvisUsagePayload>((subscriber) => {
     const unregister = ws.on(SERVER_MSG.ADMIN_JARVIS_USAGE, (payload) => {
-      subscriber.next(payload as JarvisUsageSnapshot);
+      subscriber.next(payload as AdminJarvisUsagePayload);
     });
     ws.send(CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE);
 
@@ -40,7 +40,7 @@ function createConnectionUsageStream(
 export class WsJarvisUsageAdapter implements JarvisUsagePort {
   constructor(private readonly ws: IWsAdapter) {}
 
-  usage$(): Observable<JarvisUsageSnapshot> {
+  usage$(): Observable<AdminJarvisUsagePayload> {
     return this.ws.connectionEvents().pipe(
       filter((event) => {
         return event.type === "gatewayConnected";

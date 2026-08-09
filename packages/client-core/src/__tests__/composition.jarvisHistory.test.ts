@@ -112,6 +112,57 @@ describe("composition — jarvis history-source wiring", () => {
     presenters.jarvis.dispose();
   });
 
+  it("RULING: excludes an origin:'system' entry (the budget-downgrade line) from the model-facing history — the model never produced it and must not see it echoed back as its own past turn", () => {
+    const ws = new FakeWsAdapter();
+    const { presenters } = createApp({
+      ...createWsRealPorts(ws, deps()),
+      connectionEvents: {
+        events: () => {
+          return ws.connectionEvents();
+        },
+      },
+    });
+
+    presenters.jarvis.intents.send("first");
+    const firstTurnId = (
+      ws.sentMessages().find((m) => {
+        return m.type === CLIENT_MSG.JARVIS_CHAT;
+      })?.payload as ChatFramePayload
+    ).turnId;
+    ws.emit(SERVER_MSG.JARVIS_DELTA, {
+      turnId: firstTurnId,
+      text: "EUR/USD is 1.0850",
+    });
+    ws.emit(SERVER_MSG.JARVIS_DONE, { turnId: firstTurnId });
+
+    // Downgrades PreferencesSimulator's default-preferred brain
+    // (DEFAULT_JARVIS_BRAIN, "claude-haiku-4-5") away, appending the
+    // budget-downgrade system line into the transcript.
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: {
+        level: "hard",
+        resetsAtMs: 0,
+        gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+      },
+    });
+
+    presenters.jarvis.intents.send("second");
+
+    // Greeting + the completed "first" turn — the system line
+    // ("Usage budget reached...") does not reach the model.
+    expect(lastChatHistory(ws)).toEqual([
+      { role: "jarvis", text: JARVIS_GREETING },
+      { role: "user", text: "first" },
+      { role: "jarvis", text: "EUR/USD is 1.0850" },
+    ]);
+
+    presenters.jarvis.dispose();
+  });
+
   it("dispose() also unsubscribes the history source's state$ subscription (WS-real mode)", () => {
     // Without this, `wireJarvisHistorySource`'s subscription permanently pins
     // `state$`'s refCount above zero even after `dispose()` unsubscribes the

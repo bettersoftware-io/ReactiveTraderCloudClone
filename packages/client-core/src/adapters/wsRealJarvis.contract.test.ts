@@ -775,6 +775,7 @@ describe("WsJarvisAdapter.availability$()", () => {
         available: true,
         brains: ["scripted", "claude-haiku-4-5"],
         defaultBrain: "claude-haiku-4-5",
+        gate: null,
       },
     ]);
   });
@@ -794,7 +795,12 @@ describe("WsJarvisAdapter.availability$()", () => {
       defaultBrain: "claude-haiku-4-5",
     });
     expect(received).toEqual([
-      { available: false, brains: [], defaultBrain: "claude-haiku-4-5" },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: "claude-haiku-4-5",
+        gate: null,
+      },
     ]);
   });
 
@@ -813,6 +819,7 @@ describe("WsJarvisAdapter.availability$()", () => {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
       },
     ]);
   });
@@ -828,7 +835,12 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emitConnectionEvent("gatewayConnected");
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: false });
     expect(received).toEqual([
-      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
+      },
     ]);
   });
 
@@ -861,7 +873,12 @@ describe("WsJarvisAdapter.availability$()", () => {
 
     vi.advanceTimersByTime(1);
     expect(received).toEqual([
-      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
+      },
     ]);
     expect(completed).toBe(false);
 
@@ -872,8 +889,18 @@ describe("WsJarvisAdapter.availability$()", () => {
       defaultBrain: "scripted",
     });
     expect(received).toEqual([
-      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
-      { available: true, brains: ["scripted"], defaultBrain: "scripted" },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
+      },
+      {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: null,
+      },
     ]);
     expect(completed).toBe(false);
   });
@@ -903,8 +930,14 @@ describe("WsJarvisAdapter.availability$()", () => {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
       },
-      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
+      },
     ]);
   });
 
@@ -926,11 +959,17 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
 
     expect(received).toEqual([
-      { available: false, brains: [], defaultBrain: DEFAULT_JARVIS_BRAIN },
+      {
+        available: false,
+        brains: [],
+        defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
+      },
       {
         available: true,
         brains: JARVIS_BRAINS,
         defaultBrain: DEFAULT_JARVIS_BRAIN,
+        gate: null,
       },
     ]);
   });
@@ -961,7 +1000,12 @@ describe("WsJarvisAdapter.availability$()", () => {
     });
 
     expect(received).toEqual([
-      { available: true, brains: ["scripted"], defaultBrain: "scripted" },
+      {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: null,
+      },
     ]);
   });
 
@@ -1004,6 +1048,145 @@ describe("WsJarvisAdapter.availability$()", () => {
     ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, { available: true });
     ws.emitConnectionEvent("gatewayConnected");
     expect(received).toEqual([]);
+  });
+
+  it("GATE: a valid gate object surfaces verbatim on availability$", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: {
+        level: "soft",
+        resetsAtMs: 1_700_000_000_000,
+        gated: ["claude-opus-5"],
+      },
+    });
+
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "soft",
+          resetsAtMs: 1_700_000_000_000,
+          gated: ["claude-opus-5"],
+        },
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      "level outside the tri-state",
+      { level: "medium", resetsAtMs: 0, gated: [] },
+    ],
+    [
+      "resetsAtMs not a number",
+      { level: "soft", resetsAtMs: "soon", gated: [] },
+    ],
+    [
+      "gated contains a non-JarvisBrain value",
+      { level: "hard", resetsAtMs: 0, gated: ["chatgpt"] },
+    ],
+    ["gate itself not an object", 7],
+  ])("GATE MALFORMED (%s): silently drops to gate:null while the rest of the frame still applies", (_label, malformedGate) => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted", "claude-haiku-4-5"],
+      defaultBrain: "claude-haiku-4-5",
+      gate: malformedGate,
+    });
+
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+        gate: null,
+      },
+    ]);
+  });
+
+  it("distinctUntilChanged: two frames identical except gate.level are NOT deduped", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
+    });
+
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: { level: "hard", resetsAtMs: 100, gated: ["claude-opus-5"] },
+    });
+
+    expect(received).toHaveLength(2);
+  });
+
+  it("distinctUntilChanged: identical frames including gate ARE deduped", () => {
+    const ws = new FakeWsAdapter();
+    const adapter = new WsJarvisAdapter(ws);
+    const received: JarvisAvailability[] = [];
+    adapter.availability$().subscribe((availability) => {
+      received.push(availability);
+    });
+
+    ws.emitConnectionEvent("gatewayConnected");
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
+    });
+
+    ws.emitConnectionEvent("gatewayDisconnected");
+    ws.emitConnectionEvent("gatewayConnected");
+    // A brand-new object/array instance with the same contents — structural
+    // equality (jarvisAvailabilityGateEquals), not reference equality.
+    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
+      available: true,
+      brains: ["scripted"],
+      defaultBrain: "scripted",
+      gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
+    });
+
+    expect(received).toEqual([
+      {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: { level: "soft", resetsAtMs: 100, gated: ["claude-opus-5"] },
+      },
+    ]);
   });
 });
 

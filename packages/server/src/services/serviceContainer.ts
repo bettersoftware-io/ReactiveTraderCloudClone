@@ -19,6 +19,7 @@ import {
   TradeStoreSimulator,
 } from "@rtc/domain";
 
+import { JarvisGateService, parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 
@@ -37,9 +38,22 @@ export interface ServiceContainer {
   readonly orders: OrderPort;
   readonly positions: PositionPort;
   readonly usageMeter: UsageMeter;
+  readonly jarvisGate: JarvisGateService;
 }
 
-export function createServices(): ServiceContainer {
+/**
+ * `env` defaults to `process.env` — the real, ambient environment — so every
+ * existing call site (`index.ts`, and the many tests that call
+ * `createServices()` with no argument) keeps reading real process env with
+ * no change. Parameterized (mirroring `createJarvisLoops`'s own
+ * `env: NodeJS.ProcessEnv` parameter in `agentLoop.ts`) so a test that wants
+ * a specific `RTC_JARVIS_*` gate config can pass one explicitly instead of
+ * the whole suite becoming sensitive to whatever's set in the ambient
+ * process env it happens to run under.
+ */
+export function createServices(
+  env: NodeJS.ProcessEnv = process.env,
+): ServiceContainer {
   const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
   const execution = new ExecutionSimulator();
@@ -53,6 +67,10 @@ export function createServices(): ServiceContainer {
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
   const throughput = new ThroughputService();
   const usageMeter = new UsageMeter();
+  const jarvisGate = new JarvisGateService(
+    usageMeter,
+    parseJarvisGateConfig(env),
+  );
   const marketData = new EquityMarketDataSimulator();
   const positions = new EquityPositionSimulator(marketData);
   const orders = new EquityOrderSimulator({
@@ -79,5 +97,6 @@ export function createServices(): ServiceContainer {
     orders,
     positions,
     usageMeter,
+    jarvisGate,
   };
 }

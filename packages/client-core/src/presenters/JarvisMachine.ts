@@ -24,11 +24,13 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_SKIN,
   type Direction,
+  JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
+import type { JarvisAvailabilityGate } from "@rtc/shared";
 
 import type {
   JarvisAvailability,
@@ -72,10 +74,14 @@ export interface JarvisEntry {
     readonly name: string;
     readonly status: "running" | "done";
   };
-  /** Set on the USER-side entry of a `narrate()` turn — the proactive
-   * app-driving narrator dispatched this turn unsolicited, rather than the
-   * user typing it. Absent (not `false`) on every ordinary `send()` turn. */
-  readonly origin?: "narrator";
+  /** `"narrator"` is set on the USER-side entry of a `narrate()` turn — the
+   * proactive app-driving narrator dispatched this turn unsolicited, rather
+   * than the user typing it. `"system"` marks a machine-generated JARVIS-role
+   * entry with no corresponding turn at all — currently only the
+   * budget-downgrade line `availabilityPatches$` appends (see
+   * `JarvisState.gate`'s doc). Absent (not `false`) on every ordinary
+   * `send()` turn's entries. */
+  readonly origin?: "narrator" | "system";
 }
 
 export interface JarvisConfirmation {
@@ -123,6 +129,15 @@ export interface JarvisState {
    * (an availability flip can un-offer the currently-preferred brain
    * mid-session). */
   readonly effectiveBrain: JarvisBrain;
+  /** The active usage-budget gate, mirrored verbatim from the live
+   * `availability$` feed's own `gate` field on every emission (`null` when
+   * none is active, including sim mode's always-`null` default). Distinct
+   * from `effectiveBrain`: a gate can be active without moving THIS user's
+   * effective brain (e.g. a soft gate that only removes brains they weren't
+   * using) — see `availabilityPatches$`'s doc for how the two are folded
+   * together, and the one system-line entry a gate that DOES move
+   * `effectiveBrain` appends into `entries`. */
+  readonly gate: JarvisAvailabilityGate | null;
 }
 
 export interface JarvisIntents {
@@ -201,6 +216,7 @@ const INITIAL: JarvisState = {
   available: true,
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  gate: null,
 };
 
 /** Sim-mode / legacy-caller default for `JarvisDeps.availability$`: always
@@ -212,6 +228,7 @@ const DEFAULT_AVAILABILITY: JarvisAvailability = {
   available: true,
   brains: ["scripted"],
   defaultBrain: "scripted",
+  gate: null,
 };
 
 /** Resolves which brain a turn actually runs with: the preferred brain when
@@ -231,43 +248,94 @@ function resolveEffectiveBrain(
     : availability.defaultBrain;
 }
 
-/** Replace the last entry (the one currently streaming/accumulating) with the
- * result of `fn`. Turns run sequentially (concatMap), so at any point at most
- * one jarvis entry is being folded and it is always the array's tail. */
-function updateLastEntry(
+/** Locale `HH:MM` rendering of a gate's `resetsAtMs` (e.g. the footer chip,
+ * the picker's disabled-row reset copy, and the budget-downgrade system
+ * line below all share this one formatting rule). `0` is the meter's
+ * "forced gate on a fresh window" sentinel — see `JarvisAvailabilityGate`'s
+ * doc — rendered as "—" rather than the 1970 epoch a naive `Date(0)` would
+ * produce. */
+export function formatGateResetTime(resetsAtMs: number): string {
+  if (resetsAtMs === 0) {
+    return "—";
+  }
+
+  return new Date(resetsAtMs).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** The budget-downgrade system line's trailing clause: empty for the `0`
+ * sentinel (the line reads "...continuing on Haiku 4.5." with no dangling
+ * "until —"), else " until HH:MM". */
+function untilClause(resetsAtMs: number): string {
+  return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
+}
+
+/** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
+ * entry `turnItems$`'s concatMap allocated for the CURRENT in-flight turn
+ * (tracked by `entryPatches$`, cleared on that turn's own done/error — see
+ * its doc). Targeting by id, not "the last entry" (this function's
+ * predecessor, `updateLastEntry`), matters because an UNRELATED source can
+ * append a new entry mid-turn — `availabilityPatches$`'s budget-downgrade
+ * system line and `driveOutcomePatches$`'s drive row both do, and either
+ * can land between two deltas of an in-flight turn (the gate line in
+ * particular: the server pushes the availability frame synchronously off
+ * the very turn's own `recordTokens`, so this is the MODAL path, not an
+ * edge case). Under "the last entry", that appended row becomes the new
+ * tail and hijacks every subsequent delta/toolEvent/done/error meant for
+ * the real streaming entry — its text glues onto the notice/drive row, and
+ * the real entry never gets its `done: true`, stuck spinning forever.
+ * Targeting by id sidesteps this by construction: an append changes what's
+ * LAST but never what MATCHES the tracked id. A missing `id` (no turn in
+ * flight) or an id no longer present is a no-op, mirroring
+ * `updateLastEntry`'s own defensive empty-array return. */
+function updateEntryById(
   entries: readonly JarvisEntry[],
+  id: number | null,
   fn: (e: JarvisEntry) => JarvisEntry,
 ): readonly JarvisEntry[] {
-  if (entries.length === 0) {
+  if (id === null) {
     return entries;
   }
 
-  const lastIndex = entries.length - 1;
-  const last = entries[lastIndex];
+  const index = entries.findIndex((e) => {
+    return e.id === id;
+  });
 
-  if (!last) {
+  if (index === -1) {
+    return entries;
+  }
+
+  const target = entries[index];
+
+  if (!target) {
     return entries;
   }
 
   const next = [...entries];
-  next[lastIndex] = fn(last);
+  next[index] = fn(target);
   return next;
 }
 
 /** Fold one reply event from an in-flight turn into a state Patch.
  * `turnOrigin` is the enclosing turn's origin (set by `turnItems$`'s
  * `concatMap` when it builds each turn's "start" item — see its doc): only
- * `"narrator"`-origin turns bump `unreadNarration` on completion. */
+ * `"narrator"`-origin turns bump `unreadNarration` on completion.
+ * `entryId` is the in-flight streaming entry's own id, captured by
+ * `entryPatches$` at the turn's "start" item — see `updateEntryById`'s doc
+ * for why every case below targets by id rather than "the last entry". */
 function eventPatch(
   event: JarvisEvent,
   turnOrigin: "narrator" | undefined,
+  entryId: number | null,
 ): Patch {
   switch (event.type) {
     case "delta":
       return (s: JarvisState): JarvisState => {
         return {
           ...s,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, text: e.text + event.text };
           }),
         };
@@ -277,7 +345,7 @@ function eventPatch(
       return (s: JarvisState): JarvisState => {
         return {
           ...s,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, tool: { name: event.tool, status: event.status } };
           }),
         };
@@ -291,7 +359,7 @@ function eventPatch(
           unread: s.open ? s.unread : s.unread + 1,
           unreadNarration:
             turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             return { ...e, done: true };
           }),
         };
@@ -311,7 +379,7 @@ function eventPatch(
           // out into an error after toolEvent(running) already landed, and
           // without clearing it the finalized entry would show error text
           // alongside a permanently-stuck "running" badge.
-          entries: updateLastEntry(s.entries, (e) => {
+          entries: updateEntryById(s.entries, entryId, (e) => {
             const { tool: _tool, ...rest } = e;
             return { ...rest, text: event.message, done: true };
           }),
@@ -455,10 +523,21 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     available: true,
     brains: JARVIS_BRAINS,
     defaultBrain: DEFAULT_JARVIS_BRAIN,
+    gate: null,
   };
   let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
   let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;
   let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;
+  // The CURRENT turn's own streaming jarvis entry id, or `null` when no turn
+  // is in flight. Set by entryPatches$ at the turn's "start" item (the same
+  // id turnItems$'s concatMap just allocated for `jarvisEntry`), cleared on
+  // that turn's own done/error. eventPatch's delta/toolEvent/done/error
+  // cases target this id (via updateEntryById) rather than "the last
+  // entry" — see updateEntryById's doc for why: an unrelated mid-turn
+  // append (the budget-downgrade system line, a drive-outcome row) would
+  // otherwise become the new "last entry" and hijack every following event
+  // meant for the real streaming entry.
+  let inFlightEntryId: number | null = null;
 
   const send$ = new Subject<string>();
   const narrate$ = new Subject<string>();
@@ -538,6 +617,12 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const entryPatches$: Observable<Patch> = turnItems$.pipe(
     map((item): Patch => {
       if (item.kind === "start") {
+        // Track the freshly-allocated streaming entry's id BEFORE this
+        // turn's first event can possibly arrive (map() runs synchronously
+        // per emission, and turnItems$'s concat() always emits "start"
+        // before anything from port.ask() — see turnItems$'s doc).
+        inFlightEntryId = item.jarvisEntry.id;
+
         return (s: JarvisState): JarvisState => {
           return {
             ...s,
@@ -547,7 +632,17 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         };
       }
 
-      return eventPatch(item.event, item.origin);
+      const patch = eventPatch(item.event, item.origin, inFlightEntryId);
+
+      // done/error are this turn's terminal events (JarvisPort.ask's own
+      // contract — see its doc): clear the tracked id so a stray later
+      // event (there shouldn't be one) is a no-op rather than mistargeting
+      // whatever the NEXT turn's own streaming entry happens to be.
+      if (item.event.type === "done" || item.event.type === "error") {
+        inFlightEntryId = null;
+      }
+
+      return patch;
     }),
   );
 
@@ -711,19 +806,68 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   // synchronously. Also re-resolves `effectiveBrain` — an availability flip
   // can un-offer the currently-preferred brain mid-session, so this must
   // recompute it here too, not only on preferredBrain$'s own emissions.
+  //
+  // This is ALSO the sole home of the budget-downgrade system line: one
+  // availability emission must produce one atomic state patch (gate +
+  // brains + effectiveBrain + the optional entry), so no intermediate state
+  // is ever observable — a separate subscription reacting to the same
+  // source would risk an observer catching effectiveBrain updated but the
+  // entry not yet appended (or vice versa).
   const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
     map((value): Patch => {
       available = value.available;
       availability = value;
       effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
+      const nextEffectiveBrain = effectiveBrain;
+      const gate = value.gate;
 
       return (s: JarvisState): JarvisState => {
-        return {
+        // Read from the FOLDED state, not a mutable closure snapshot: this
+        // keeps the patch pure in (s, value) rather than leaning on
+        // subscribe-order between this map()'s synchronous cache write and
+        // whenever `scan` actually applies the returned patch — the two are
+        // one and the same today, but reading `s.effectiveBrain` deletes
+        // that ordering hazard by construction rather than relying on it
+        // staying true forever.
+        const previousEffectiveBrain = s.effectiveBrain;
+
+        const base: JarvisState = {
           ...s,
           available: value.available,
           brains: value.brains,
-          effectiveBrain,
+          gate,
+          effectiveBrain: nextEffectiveBrain,
         };
+
+        // The system line appends only when: a gate is actually active
+        // (never on lift — `gate` goes back to `null` there, so this whole
+        // branch is skipped, matching "no line on gate LIFT"); it actually
+        // MOVED this session's effective brain (an unaffected user's
+        // `nextEffectiveBrain` doesn't change, matching "no line for
+        // unaffected users" — including a republished frame at the SAME
+        // gate level with only e.g. `resetsAtMs` bumped, since
+        // `nextEffectiveBrain` doesn't move on a re-judge either); and
+        // there is an open conversation to append it to — more than just
+        // the canned `GREETING_ENTRY` (id 0), which every fresh transcript
+        // already carries regardless of whether the user has said anything
+        // yet (matching "no line when [the conversation reads as] empty").
+        if (
+          gate === null ||
+          nextEffectiveBrain === previousEffectiveBrain ||
+          s.entries.length <= 1
+        ) {
+          return base;
+        }
+
+        const entry: JarvisEntry = {
+          id: nextEntryId++,
+          role: "jarvis",
+          text: `Usage budget reached — continuing on ${JARVIS_BRAIN_LABELS[nextEffectiveBrain]}${untilClause(gate.resetsAtMs)}.`,
+          done: true,
+          origin: "system",
+        };
+
+        return { ...base, entries: [...s.entries, entry] };
       };
     }),
   );

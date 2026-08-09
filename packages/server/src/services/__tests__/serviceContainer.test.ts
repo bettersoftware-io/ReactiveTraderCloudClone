@@ -18,6 +18,7 @@ describe("createServices", () => {
     expect(services.workflow).toBeDefined();
     expect(services.throughput).toBeDefined();
     expect(services.usageMeter).toBeDefined();
+    expect(services.jarvisGate).toBeDefined();
   });
 
   it("wires equity marketData, orders, and positions ports", () => {
@@ -50,5 +51,19 @@ describe("createServices", () => {
     const topology = await firstValueFrom(services.serviceHealth.topology$());
 
     expect(topology).toBeDefined();
+  });
+});
+
+describe("createServices — env plumbing", () => {
+  it("threads an explicitly-passed env through to jarvisGate's config: RTC_JARVIS_FORCE_GATE is honored", () => {
+    const services = createServices({ RTC_JARVIS_FORCE_GATE: "hard" });
+
+    expect(services.jarvisGate.current().level).toBe("hard");
+  });
+
+  it("an explicit {} never picks up ambient process.env, regardless of what's actually set there", () => {
+    const services = createServices({});
+
+    expect(services.jarvisGate.current().level).toBe("none");
   });
 });

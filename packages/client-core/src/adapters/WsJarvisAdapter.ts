@@ -9,8 +9,14 @@ import {
   timeout,
 } from "rxjs";
 
-import { DEFAULT_JARVIS_BRAIN, JARVIS_BRAINS } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  isJarvisBrain,
+  JARVIS_BRAINS,
+  type JarvisBrain,
+} from "@rtc/domain";
 import type {
+  JarvisAvailabilityGate,
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
@@ -320,6 +326,54 @@ function createJarvisTurnStream(
   });
 }
 
+/** The not-yet-validated shape `parseGate` casts an unknown `gate` field
+ * into before checking each field individually — a named alias rather than
+ * an inline object type in the cast (the repo's `no-restricted-syntax` bans
+ * that even for a throwaway shape). */
+interface GateCandidate {
+  level?: unknown;
+  resetsAtMs?: unknown;
+  gated?: unknown;
+}
+
+/** Validates an unknown `gate` field off `JARVIS_AVAILABILITY` into a
+ * `JarvisAvailabilityGate`, or `null` on ANY shape mismatch — matching the
+ * silent-drop rule `parseDriveBatch`/`buildPanelEvent` already apply to
+ * other untrusted wire payloads (the P5 `jarvis.command` precedent): a
+ * malformed `gate` is dropped on its own, the rest of the frame (available/
+ * brains/defaultBrain) still applies normally. Every field is checked before
+ * any is trusted — `level` restricted to the non-"none" tri-state (the wire
+ * never sends "none"; it simply omits `gate`), `resetsAtMs` a number,
+ * `gated` an array of valid `JarvisBrain`s. */
+function parseGate(gate: unknown): JarvisAvailabilityGate | null {
+  if (typeof gate !== "object" || gate === null) {
+    return null;
+  }
+
+  const candidate = gate as GateCandidate;
+
+  if (candidate.level !== "soft" && candidate.level !== "hard") {
+    return null;
+  }
+
+  if (typeof candidate.resetsAtMs !== "number") {
+    return null;
+  }
+
+  if (
+    !Array.isArray(candidate.gated) ||
+    !candidate.gated.every(isJarvisBrain)
+  ) {
+    return null;
+  }
+
+  return {
+    level: candidate.level,
+    resetsAtMs: candidate.resetsAtMs,
+    gated: candidate.gated as readonly JarvisBrain[],
+  };
+}
+
 /** Normalizes a wire `JarvisAvailabilityPayload` into the client-core
  * `JarvisAvailability` shape: `brains`/`defaultBrain` are OPTIONAL on the
  * wire (a pre-round server never sends them), so an absent `brains` maps to
@@ -328,7 +382,8 @@ function createJarvisTurnStream(
  * to a bare `{ available: false }` also produces the synthetic
  * offline-timeout shape (`brains: []`, since `available` is false) —
  * `createConnectionAvailabilityStream`'s deadline branch below reuses it
- * rather than duplicating the fallback rule. */
+ * rather than duplicating the fallback rule. `gate` runs through `parseGate`
+ * — see its doc for the silent-drop rule on a malformed gate. */
 function parseAvailability(
   payload: JarvisAvailabilityPayload,
 ): JarvisAvailability {
@@ -336,7 +391,32 @@ function parseAvailability(
     available: payload.available,
     brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
     defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
+    gate: parseGate(payload.gate),
   };
+}
+
+/** Structural equality for one `JarvisAvailabilityGate | null` pair —
+ * `null` on both sides is equal; `null` on exactly one side is not; two
+ * non-null gates compare `level`/`resetsAtMs`/ordered `gated` (same
+ * order-stable index-comparison rationale as `brains` below — `gated` is a
+ * filtered slice of the fixed `JARVIS_BRAINS` list, not independently
+ * reordered). */
+function jarvisAvailabilityGateEquals(
+  a: JarvisAvailabilityGate | null,
+  b: JarvisAvailabilityGate | null,
+): boolean {
+  if (a === null || b === null) {
+    return a === b;
+  }
+
+  return (
+    a.level === b.level &&
+    a.resetsAtMs === b.resetsAtMs &&
+    a.gated.length === b.gated.length &&
+    a.gated.every((brain, index) => {
+      return brain === b.gated[index];
+    })
+  );
 }
 
 /** Structural equality for `JarvisAvailability` — `distinctUntilChanged`'s
@@ -344,7 +424,8 @@ function parseAvailability(
  * contents are identical (every `JARVIS_AVAILABILITY` push builds a new
  * object). `brains` is compared element-by-element in order rather than by
  * reference: `JARVIS_BRAINS` is a fixed, order-stable list, so index
- * comparison is sufficient and avoids a set/sort allocation per compare. */
+ * comparison is sufficient and avoids a set/sort allocation per compare.
+ * `gate` delegates to `jarvisAvailabilityGateEquals`. */
 function jarvisAvailabilityEquals(
   a: JarvisAvailability,
   b: JarvisAvailability,
@@ -355,7 +436,8 @@ function jarvisAvailabilityEquals(
     a.brains.length === b.brains.length &&
     a.brains.every((brain, index) => {
       return brain === b.brains[index];
-    })
+    }) &&
+    jarvisAvailabilityGateEquals(a.gate, b.gate)
   );
 }
 

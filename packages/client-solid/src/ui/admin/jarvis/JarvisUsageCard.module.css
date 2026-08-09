@@ -95,6 +95,33 @@
   color: var(--text-secondary);
 }
 
+.budgetLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Static color only — reuses the same warn/error tokens the status bar's
+ * chip uses for the identical soft/hard distinction (StatusBar.module.css'
+ * `.jarvisChipGated`). No transition/animation (docs/performance.md). */
+.gateBadge {
+  flex: none;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.gateBadge[data-gate="soft"] {
+  color: var(--accent-aware);
+}
+
+.gateBadge[data-gate="hard"] {
+  color: var(--accent-negative);
+}
+
 .caveat {
   flex: none;
   margin-top: auto;

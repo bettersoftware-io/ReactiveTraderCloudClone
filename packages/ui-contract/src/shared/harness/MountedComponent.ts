@@ -1,6 +1,7 @@
 import type {
   AnimationIntent,
   IncidentKind,
+  JarvisAvailability,
   JarvisEvent,
   ThroughputView,
 } from "@rtc/client-core";
@@ -64,6 +65,11 @@ export interface PageContext<P> {
    * turn (`world.jarvis.emit`), flush-wrapped so the framework driver applies
    * the resulting re-render before the caller's next assertion. */
   emitJarvis(events: readonly JarvisEvent[]): void;
+  /** Push a new Jarvis backend availability (drives `world.jarvisAvailability`
+   * — the REAL JarvisMachine's `availability$` dep — mid-test), flush-wrapped
+   * so a mid-session gate transition (e.g. the budget-downgrade system line)
+   * is applied before the caller's next assertion, mirroring `emitJarvis`. */
+  setJarvisAvailability(value: JarvisAvailability): void;
   // Equities drivers (flush-wrapped, mirroring setPrice/setTopology — added so
   // the equities specs need no direct framework `act()` around raw World
   // mutations; the framework driver's flushSync does the flushing).
@@ -196,6 +202,12 @@ export abstract class MountedComponent<P> {
   /** Push reply events onto the Jarvis fake's in-flight `ask()` turn. */
   protected emitJarvis(events: readonly JarvisEvent[]): void {
     this.ctx.emitJarvis(events);
+  }
+
+  /** Push a new Jarvis backend availability → re-render every subscribing
+   * surface (chip, picker, orb, overlay) off the REAL JarvisMachine. */
+  setJarvisAvailability(value: JarvisAvailability): void {
+    this.ctx.setJarvisAvailability(value);
   }
 
   // Equities drivers (flush-wrapped; see the PageContext docs above).

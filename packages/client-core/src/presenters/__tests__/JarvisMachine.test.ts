@@ -20,6 +20,7 @@ import type {
 
 import {
   createJarvisMachine,
+  formatGateResetTime,
   JARVIS_GREETING,
   type JarvisDeps,
   type JarvisState,
@@ -50,6 +51,7 @@ describe("createJarvisMachine", () => {
         available: true,
         brains: ["scripted"],
         effectiveBrain: "scripted",
+        gate: null,
       });
       sub.unsubscribe();
       machine.dispose();
@@ -605,11 +607,17 @@ describe("createJarvisMachine", () => {
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           availability$: cold<JarvisAvailability>("f-t", {
-            f: { available: false, brains: [], defaultBrain: "scripted" },
+            f: {
+              available: false,
+              brains: [],
+              defaultBrain: "scripted",
+              gate: null,
+            },
             t: {
               available: true,
               brains: ["scripted"],
               defaultBrain: "scripted",
+              gate: null,
             },
           }),
           ...baseBrainDeps(),
@@ -639,7 +647,12 @@ describe("createJarvisMachine", () => {
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>("f", {
-              f: { available: false, brains: [], defaultBrain: "scripted" },
+              f: {
+                available: false,
+                brains: [],
+                defaultBrain: "scripted",
+                gate: null,
+              },
             }),
             ...baseBrainDeps(),
           };
@@ -695,6 +708,7 @@ describe("createJarvisMachine", () => {
                   available: false,
                   brains: [],
                   defaultBrain: "scripted",
+                  gate: null,
                 },
               },
             ),
@@ -760,6 +774,7 @@ describe("createJarvisMachine", () => {
             available: true,
             brains: ["scripted", "claude-sonnet-5"],
             defaultBrain: "scripted",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
           effort$: of<JarvisEffort>("high"),
@@ -787,6 +802,7 @@ describe("createJarvisMachine", () => {
             available: true,
             brains: ["scripted"],
             defaultBrain: "scripted",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -813,6 +829,7 @@ describe("createJarvisMachine", () => {
             available: false,
             brains: [],
             defaultBrain: "claude-haiku-4-5",
+            gate: null,
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
           effort$: of<JarvisEffort>("medium"),
@@ -884,11 +901,13 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted"],
               defaultBrain: "scripted",
+              gate: null,
             },
             b: {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             },
           }),
           preferredBrain$: of<JarvisBrain>("claude-opus-5"),
@@ -930,6 +949,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -963,6 +983,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: ts.createColdObservable<JarvisBrain>("a-b", {
               a: "scripted",
@@ -1018,6 +1039,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-opus-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             // Relative to ITS OWN subscribe at machine-construction time
             // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
@@ -1137,6 +1159,7 @@ describe("createJarvisMachine", () => {
               available: true,
               brains: ["scripted", "claude-sonnet-5"],
               defaultBrain: "scripted",
+              gate: null,
             }),
             preferredBrain$: of<JarvisBrain>("claude-sonnet-5"),
             effort$: of<JarvisEffort>("high"),
@@ -1167,7 +1190,12 @@ describe("createJarvisMachine", () => {
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>("f", {
-              f: { available: false, brains: [], defaultBrain: "scripted" },
+              f: {
+                available: false,
+                brains: [],
+                defaultBrain: "scripted",
+                gate: null,
+              },
             }),
             ...baseBrainDeps(),
           };
@@ -1435,6 +1463,652 @@ describe("createJarvisMachine", () => {
         { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
         { id: 1, role: "jarvis", text: "drive: eqTimeframe", done: true },
       ]);
+    });
+  });
+
+  // Governance round 2 (usage auto-gating): state.gate + the one-line
+  // in-chat notice when a live gate frame downgrades THIS session's own
+  // effectiveBrain. See JarvisState.gate's and availabilityPatches$'s docs.
+  describe("budget-downgrade gate", () => {
+    it("appends one system line when a gate frame downgrades the active brain mid-conversation", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Frame 0 offers every brain (opus included) — matches the
+            // pre-emission cache's own seed, so effectiveBrain already
+            // reads "claude-opus-5" before this frame even lands. Frame 10
+            // (well after the frame-1 send()'s instant "(a|)" turn has
+            // settled, so entries.length > 1 by then) narrows to
+            // scripted+haiku and gates opus/sonnet — un-offering the
+            // preferred brain, which re-resolves effectiveBrain to the new
+            // defaultBrain "claude-haiku-4-5".
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(last?.gate).toEqual({
+        level: "soft",
+        resetsAtMs,
+        gated: ["claude-sonnet-5", "claude-opus-5"],
+      });
+
+      // greeting, user, jarvis(done) from the completed turn, then exactly
+      // one new system entry from the gate frame.
+      expect(last?.entries).toHaveLength(4);
+      expect(last?.entries.at(-1)).toEqual({
+        id: 3,
+        role: "jarvis",
+        text: `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+        done: true,
+        origin: "system",
+      });
+    });
+
+    it("appends no system line when the effective brain is unaffected (haiku user, soft gate)", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // haiku is offered both before and after the gate — the
+            // preferred/effective brain never moves, so no line appends
+            // even though a gate is active and the conversation is open.
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(last?.gate).toEqual({
+        level: "soft",
+        resetsAtMs,
+        gated: ["claude-sonnet-5", "claude-opus-5"],
+      });
+      // greeting, user, jarvis(done) — no fourth (system) entry.
+      expect(last?.entries).toHaveLength(3);
+      expect(
+        last?.entries.some((e) => {
+          return e.origin === "system";
+        }),
+      ).toBe(false);
+    });
+
+    it("appends no system line when the conversation is empty (only the canned greeting, no completed turn)", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          availability$: ts.createColdObservable<JarvisAvailability>("a-b", {
+            a: {
+              available: true,
+              brains: [
+                "scripted",
+                "claude-haiku-4-5",
+                "claude-sonnet-5",
+                "claude-opus-5",
+              ],
+              defaultBrain: "scripted",
+              gate: null,
+            },
+            b: {
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "claude-haiku-4-5",
+              gate: {
+                level: "soft",
+                resetsAtMs,
+                gated: ["claude-sonnet-5", "claude-opus-5"],
+              },
+            },
+          }),
+          preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+          effort$: of<JarvisEffort>("medium"),
+        });
+        const seen: JarvisState[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s);
+        });
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+
+        const last = seen.at(-1);
+        // effectiveBrain/gate still fold normally — only the entry append
+        // is suppressed.
+        expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+        expect(last?.gate).not.toBeNull();
+        expect(last?.entries).toEqual([
+          { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        ]);
+      });
+    });
+
+    it("hard gate wording names scripted", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted"],
+                  defaultBrain: "scripted",
+                  gate: {
+                    level: "hard",
+                    resetsAtMs,
+                    gated: [
+                      "claude-haiku-4-5",
+                      "claude-sonnet-5",
+                      "claude-opus-5",
+                    ],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.effectiveBrain).toBe("scripted");
+      expect(last?.entries.at(-1)?.text).toBe(
+        `Usage budget reached — continuing on scripted until ${formatGateResetTime(resetsAtMs)}.`,
+      );
+      expect(last?.entries.at(-1)?.origin).toBe("system");
+    });
+
+    it("state.gate mirrors the availability gate and clears on lift; no line appears on the lift frame even though effectiveBrain reverts", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      const gate = {
+        level: "soft" as const,
+        resetsAtMs,
+        gated: ["claude-sonnet-5" as const, "claude-opus-5" as const],
+      };
+
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // a (frame 0): every brain offered, no gate.
+            // b (frame 6, well after the frame-1 send() has settled): the
+            // soft gate above narrows brains and un-offers opus.
+            // c (frame 12): lift — every brain re-offered, gate back to
+            // null. effectiveBrain reverts opus->...->opus, but no system
+            // line appends on this frame.
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a-----b-----c",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate,
+                },
+                c: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const softState = states.find((s) => {
+        return s.gate !== null;
+      });
+      expect(softState?.gate).toEqual(gate);
+
+      const last = states.at(-1);
+      expect(last?.gate).toBeNull();
+      expect(last?.effectiveBrain).toBe("claude-opus-5");
+      expect(
+        last?.entries.filter((e) => {
+          return e.origin === "system";
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("omits the 'until' clause when resetsAtMs is 0 (forced gate on a fresh window)", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted"],
+                  defaultBrain: "scripted",
+                  gate: {
+                    level: "hard",
+                    resetsAtMs: 0,
+                    gated: [
+                      "claude-haiku-4-5",
+                      "claude-sonnet-5",
+                      "claude-opus-5",
+                    ],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      expect(states.at(-1)?.entries.at(-1)?.text).toBe(
+        "Usage budget reached — continuing on scripted.",
+      );
+    });
+
+    it("REGRESSION (root fix): a gate frame landing between two deltas of an in-flight turn does not hijack the streaming entry — the real reply still gets both deltas + done:true, and the system line is a separate, clean entry", () => {
+      // The MODAL path per the reviewer's CRITICAL finding: the server
+      // pushes JARVIS_AVAILABILITY synchronously off the very turn's own
+      // recordTokens, so a gate frame landing strictly BETWEEN two deltas
+      // of the turn that tripped it is the common case, not an edge case.
+      // Before the id-targeting fix, the system line (appended mid-turn)
+      // became "the last entry", so the "USD" delta below would have glued
+      // onto ITS text instead of the real streaming entry — leaving the
+      // real entry stuck at done:false forever.
+      const resetsAtMs = 1_893_456_000_000;
+      const states = run(
+        (ts) => {
+          return {
+            // Relative to this port's own subscribe at frame 1 (send()'s
+            // schedule below): delta "EUR" at frame 1, delta "USD" at frame
+            // 7, done at frame 10.
+            port: fakePort(ts, "a-----b--(c|)", {
+              a: { type: "delta", text: "EUR" },
+              b: { type: "delta", text: "USD" },
+              c: { type: "done" },
+            }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            // Relative to machine construction (frame 0): baseline at
+            // frame 0, the gate at frame 4 — strictly between the turn's
+            // own delta-1 (frame 1) and delta-2 (frame 7).
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---g",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                g: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+
+      // The real streaming reply (id 2, allocated by the turn's own
+      // "start" item): both deltas concatenated, finalized done:true.
+      expect(
+        last?.entries.find((e) => {
+          return e.id === 2;
+        }),
+      ).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: true,
+      });
+
+      // The system line (id 3, appended mid-turn) stayed a separate, clean
+      // entry — untouched by either delta.
+      expect(
+        last?.entries.find((e) => {
+          return e.origin === "system";
+        })?.text,
+      ).toBe(
+        `Usage budget reached — continuing on Haiku 4.5 until ${formatGateResetTime(resetsAtMs)}.`,
+      );
+
+      // Append order: greeting, user, jarvis reply, system line — the
+      // system line landing mid-turn doesn't reorder anything, since the
+      // fix targets the real entry BY ID rather than by array position.
+      expect(
+        last?.entries.map((e) => {
+          return e.id;
+        }),
+      ).toEqual([0, 1, 2, 3]);
+    });
+
+    it("REGRESSION (root fix): a drive outcome landing between two deltas of an in-flight turn does not hijack the streaming entry — mirrors the P5 latent bug (a stray delta glued onto 'drive: switchTab')", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "a-----b--(c|)", {
+              a: { type: "delta", text: "EUR" },
+              b: { type: "delta", text: "USD" },
+              c: { type: "done" },
+            }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+          // Lands strictly between the turn's own delta-1 (frame 1) and
+          // delta-2 (frame 7).
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "switchTab", tab: "equities" },
+              status: "applied",
+            });
+          }, 4);
+        },
+      );
+
+      const last = states.at(-1);
+
+      expect(
+        last?.entries.find((e) => {
+          return e.id === 2;
+        }),
+      ).toEqual({
+        id: 2,
+        role: "jarvis",
+        text: "EURUSD",
+        done: true,
+      });
+
+      expect(
+        last?.entries.find((e) => {
+          return e.text.startsWith("drive:");
+        })?.text,
+      ).toBe("drive: switchTab");
+
+      expect(
+        last?.entries.map((e) => {
+          return e.id;
+        }),
+      ).toEqual([0, 1, 2, 3]);
+    });
+
+    it("REGRESSION (mutation witness): a republished frame at the SAME gate level with only resetsAtMs bumped does not append a second line — 'exactly once per downgrade', not 'once per gated frame'", () => {
+      // A comparison against `preferredBrain` (unaffected by a re-judge
+      // that doesn't change what's offered) instead of the FOLDED state's
+      // own previous effectiveBrain would re-append on every republished
+      // gated frame — this is the discriminating witness.
+      const t1 = 1_893_456_000_000;
+      const t2 = 1_893_456_600_000; // 10 minutes later — a re-judge, not a new downgrade
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>(
+              "a---------b---------c",
+              {
+                a: {
+                  available: true,
+                  brains: [
+                    "scripted",
+                    "claude-haiku-4-5",
+                    "claude-sonnet-5",
+                    "claude-opus-5",
+                  ],
+                  defaultBrain: "scripted",
+                  gate: null,
+                },
+                b: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs: t1,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+                c: {
+                  available: true,
+                  brains: ["scripted", "claude-haiku-4-5"],
+                  defaultBrain: "claude-haiku-4-5",
+                  gate: {
+                    level: "soft",
+                    resetsAtMs: t2,
+                    gated: ["claude-sonnet-5", "claude-opus-5"],
+                  },
+                },
+              },
+            ),
+            preferredBrain$: of<JarvisBrain>("claude-opus-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("quote EURUSD");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      // gate/effectiveBrain still fold to the LATEST re-judged frame — only
+      // the entry append is suppressed the second time.
+      expect(last?.gate?.resetsAtMs).toBe(t2);
+      expect(last?.effectiveBrain).toBe("claude-haiku-4-5");
+      expect(
+        last?.entries.filter((e) => {
+          return e.origin === "system";
+        }),
+      ).toHaveLength(1);
+    });
+  });
+
+  describe("formatGateResetTime", () => {
+    it("returns the em-dash sentinel for 0", () => {
+      expect(formatGateResetTime(0)).toBe("—");
+    });
+
+    it("formats a non-zero epoch as locale HH:MM", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      expect(formatGateResetTime(resetsAtMs)).toBe(
+        new Date(resetsAtMs).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+    });
+
+    it("WITNESS: pins the intended HH:MM 24-hour shape under an explicit en-GB locale, independent of whatever locale is ambient in the test runner", () => {
+      // formatGateResetTime itself always formats under `[]` (the ambient
+      // ICU default locale — see its doc), so it can't be asked to render
+      // as en-GB directly, and the two tests above (which recompute their
+      // own "expected" value via that same ambient formula) would pass
+      // even if the ambient ICU default happened to render 12-hour AM/PM
+      // copy. This pins the concrete 24-hour "HH:MM" shape the feature is
+      // designed around against Node's full ICU under an EXPLICIT locale,
+      // so at least one assertion in this suite carries a literal,
+      // environment-independent expected string. CI runs UTC, so a
+      // `Date.UTC` instant renders identically regardless of the runner's
+      // timezone.
+      const resetsAtMs = Date.UTC(2026, 0, 15, 14, 30);
+      expect(
+        new Date(resetsAtMs).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      ).toBe("14:30");
     });
   });
 });

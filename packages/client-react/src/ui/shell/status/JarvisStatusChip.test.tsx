@@ -18,13 +18,17 @@ afterEach(() => {
 
 describe("JarvisStatusChip", () => {
   it("renders nothing while Jarvis is unavailable", () => {
-    renderChip({ available: false, effectiveBrain: "scripted" });
+    renderChip({ available: false, effectiveBrain: "scripted", gate: null });
 
     expect(screen.queryByTestId("jarvis-status-chip")).toBeNull();
   });
 
   it("shows the effective brain's label and data-brain while available", () => {
-    renderChip({ available: true, effectiveBrain: "claude-opus-5" });
+    renderChip({
+      available: true,
+      effectiveBrain: "claude-opus-5",
+      gate: null,
+    });
 
     const chip = screen.getByTestId("jarvis-status-chip");
     expect(chip.getAttribute("data-brain")).toBe("claude-opus-5");
@@ -32,11 +36,39 @@ describe("JarvisStatusChip", () => {
   });
 
   it("labels the scripted brain as such", () => {
-    renderChip({ available: true, effectiveBrain: "scripted" });
+    renderChip({ available: true, effectiveBrain: "scripted", gate: null });
 
     expect(screen.getByTestId("jarvis-status-chip").textContent).toBe(
       "JARVIS · scripted",
     );
+  });
+
+  it("carries data-gate and a budget-limited suffix under a soft gate", () => {
+    renderChip({
+      available: true,
+      effectiveBrain: "claude-haiku-4-5",
+      gate: { level: "soft", resetsAtMs: 0, gated: ["claude-opus-5"] },
+    });
+
+    const chip = screen.getByTestId("jarvis-status-chip");
+    expect(chip.getAttribute("data-gate")).toBe("soft");
+    expect(chip.textContent).toBe("JARVIS · Haiku 4.5 · budget-limited");
+  });
+
+  it("carries data-gate and a budget-exhausted suffix under a hard gate", () => {
+    renderChip({
+      available: true,
+      effectiveBrain: "scripted",
+      gate: {
+        level: "hard",
+        resetsAtMs: 0,
+        gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+      },
+    });
+
+    const chip = screen.getByTestId("jarvis-status-chip");
+    expect(chip.getAttribute("data-gate")).toBe("hard");
+    expect(chip.textContent).toBe("JARVIS · scripted · budget exhausted");
   });
 });
 
@@ -47,6 +79,11 @@ interface RenderChipState {
     | "claude-haiku-4-5"
     | "claude-sonnet-5"
     | "claude-opus-5";
+  gate: {
+    level: "soft" | "hard";
+    resetsAtMs: number;
+    gated: readonly string[];
+  } | null;
 }
 
 function renderChip(state: RenderChipState): ReturnType<typeof render> {

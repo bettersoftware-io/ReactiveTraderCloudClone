@@ -24,6 +24,17 @@
   white-space: nowrap;
 }
 
+/* Budget-gate tint — a static color change only, reusing the same
+ * warn/error tokens `.metricValue[data-tone]` already uses elsewhere in
+ * this bar. No transition: a gate flips instantly (docs/performance.md). */
+.jarvisChipGated[data-gate="soft"] {
+  color: var(--accent-aware);
+}
+
+.jarvisChipGated[data-gate="hard"] {
+  color: var(--accent-negative);
+}
+
 .metrics {
   display: flex;
   align-items: center;

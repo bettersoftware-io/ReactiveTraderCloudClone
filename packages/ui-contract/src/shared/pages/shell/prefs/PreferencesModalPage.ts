@@ -229,6 +229,26 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
       .hasAttribute("disabled");
   }
 
+  /** The given Jarvis brain option's native `title` attribute, or `null`
+   * when absent — a gated brain carries the budget-reset hint (matching the
+   * hint line's own copy); a merely not-currently-offered (env-removed, not
+   * gated) brain is disabled but carries NO title. */
+  jarvisBrainOptionTitle(brain: JarvisBrain): string | null {
+    return within(this.root)
+      .getByTestId(`pref-segment-jarvisBrain-${brain}`)
+      .getAttribute("title");
+  }
+
+  /** The Brain row's budget-gate hint line text, or `null` when not
+   * rendered (no active gate — `jarvisState.gate === null`). */
+  jarvisBrainHintText(): string | null {
+    return (
+      within(this.root)
+        .queryByTestId("pref-segment-jarvisBrain-hint")
+        ?.textContent?.trim() ?? null
+    );
+  }
+
   /** True when the whole Jarvis "Effort" row is disabled (every option's
    * native `disabled` — the row-level disable while the stored brain is
    * "scripted"). Checked via one option since the row-level `disabled` prop

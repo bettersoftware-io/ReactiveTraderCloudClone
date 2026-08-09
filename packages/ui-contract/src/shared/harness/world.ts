@@ -3,6 +3,7 @@ import { filter } from "rxjs/operators";
 
 import type {
   ActivityEntry,
+  AdminJarvisUsagePayload,
   AnimationIntent,
   AuthViewState,
   EqDrawingsState,
@@ -12,7 +13,6 @@ import type {
   JarvisAvailability,
   JarvisEvent,
   JarvisPort,
-  JarvisUsageSnapshot,
   PanelStreamDeps,
   SessionUser,
   ThroughputView,
@@ -263,9 +263,11 @@ export interface AdminSeed {
   sessionCountSeries?: readonly MetricSample[];
   metrics?: Partial<MetricsView>;
   /** Seeds `World.jarvisUsage$` (Task 10 of Phase 3) — the JarvisUsageCard's
-   * useJarvisUsage() snapshot. Defaults to null (the card's "NO USAGE DATA"
-   * placeholder), mirroring `topology`'s null-until-first-push default. */
-  jarvisUsage?: JarvisUsageSnapshot | null;
+   * useJarvisUsage() snapshot, including the optional budget-gate envelope
+   * fields (`budgetUsd`/`softBudgetUsd`/`spentWindowUsd`/`gateLevel`).
+   * Defaults to null (the card's "NO USAGE DATA" placeholder), mirroring
+   * `topology`'s null-until-first-push default. */
+  jarvisUsage?: AdminJarvisUsagePayload | null;
 }
 
 /**
@@ -429,9 +431,9 @@ export interface World {
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
-  readonly jarvisUsage$: BehaviorSubject<JarvisUsageSnapshot | null>;
+  readonly jarvisUsage$: BehaviorSubject<AdminJarvisUsagePayload | null>;
   /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
-  setJarvisUsage(value: JarvisUsageSnapshot | null): void;
+  setJarvisUsage(value: AdminJarvisUsagePayload | null): void;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -778,6 +780,7 @@ export function createWorld(
       available: true,
       brains: JARVIS_BRAINS,
       defaultBrain: DEFAULT_JARVIS_BRAIN,
+      gate: null,
     },
   );
 
@@ -793,7 +796,7 @@ export function createWorld(
     jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
   );
 
-  const jarvisUsage$ = new BehaviorSubject<JarvisUsageSnapshot | null>(
+  const jarvisUsage$ = new BehaviorSubject<AdminJarvisUsagePayload | null>(
     adminSeed.jarvisUsage ?? null,
   );
 
@@ -984,7 +987,7 @@ export function createWorld(
     jarvisEffort,
     jarvisNarrator,
     jarvisUsage$,
-    setJarvisUsage: (value: JarvisUsageSnapshot | null) => {
+    setJarvisUsage: (value: AdminJarvisUsagePayload | null) => {
       return jarvisUsage$.next(value);
     },
     animatedBackground,

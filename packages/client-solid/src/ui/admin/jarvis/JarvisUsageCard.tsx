@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 
-import type { JarvisUsageSnapshot } from "@rtc/client-core";
+import type { AdminJarvisUsagePayload } from "@rtc/client-core";
 import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -22,8 +22,13 @@ import styles from "./JarvisUsageCard.module.css";
  * in scope per this card's spec), so there's nothing to flag either way.
  *
  * `windowEndMs === 0` is the snapshot's own "no turn recorded yet" sentinel
- * (see `JarvisUsageSnapshot`'s doc) — rendered as "—" rather than the
+ * (see `AdminJarvisUsagePayload`'s doc) — rendered as "—" rather than the
  * misleading epoch-zero clock read `clock(0)` would otherwise print.
+ *
+ * The budget-gate envelope fields (`budgetUsd`/`softBudgetUsd`/
+ * `spentWindowUsd`/`gateLevel`) are all absent on a pre-round server — the
+ * budget line renders only when `budgetUsd` is present (`null` means
+ * budgeting is disabled server-side; a real number means it's on).
  */
 export function JarvisUsageCard(): JSX.Element {
   const { useJarvisUsage } = useViewModel();
@@ -36,6 +41,26 @@ export function JarvisUsageCard(): JSX.Element {
         when={usage() !== null}
         fallback={<div class={styles.empty}>NO USAGE DATA</div>}
       >
+        <Show when={usage()?.budgetUsd !== undefined}>
+          <div data-testid="admin-jarvis-budget-line" class={styles.budgetLine}>
+            {usage()?.budgetUsd === null
+              ? "BUDGET OFF"
+              : `$${(usage()?.spentWindowUsd ?? 0).toFixed(2)} of $${(usage()?.budgetUsd ?? 0).toFixed(2)} this window — soft gate at $${(usage()?.softBudgetUsd ?? 0).toFixed(2)}`}
+            <Show
+              when={
+                usage()?.gateLevel === "soft" || usage()?.gateLevel === "hard"
+              }
+            >
+              <span
+                data-testid="admin-jarvis-gate-badge"
+                class={styles.gateBadge}
+                data-gate={usage()?.gateLevel}
+              >
+                {usage()?.gateLevel?.toUpperCase()} GATE
+              </span>
+            </Show>
+          </div>
+        </Show>
         <UsageSection
           title="CURRENT WINDOW"
           rows={() => {
@@ -102,12 +127,13 @@ interface UsageSectionProps {
   rows: () => readonly JarvisBrainUsageRow[];
 }
 
-/** One per-brain usage row, as carried by both `JarvisUsageSnapshot` windows —
- * referenced structurally off the client-core-exported snapshot type rather
- * than importing `@rtc/shared`'s `JarvisBrainUsageRow` directly (client-solid
- * has no direct dependency on `@rtc/shared`; only `JarvisUsageSnapshot`
- * itself is re-exported through `@rtc/client-core`'s `jarvisUsagePort`). */
-type JarvisBrainUsageRow = JarvisUsageSnapshot["currentWindow"][number];
+/** One per-brain usage row, as carried by both `AdminJarvisUsagePayload`
+ * windows — referenced structurally off the client-core-exported payload
+ * type rather than importing `@rtc/shared`'s `JarvisBrainUsageRow` directly
+ * (client-solid has no direct dependency on `@rtc/shared`; only
+ * `AdminJarvisUsagePayload` itself is re-exported through
+ * `@rtc/client-core`'s `jarvisUsagePort`). */
+type JarvisBrainUsageRow = AdminJarvisUsagePayload["currentWindow"][number];
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");

@@ -52,6 +52,9 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // react driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
+  // No fixture exercises a budget gate (Task 6/8 scenarios add that
+  // separately) — every existing golden stays pixel-identical.
+  gate: null,
 };
 
 import type { AppData } from "@ui-visual-shared/appData";

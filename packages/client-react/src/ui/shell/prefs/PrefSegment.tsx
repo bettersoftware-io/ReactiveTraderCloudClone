@@ -35,6 +35,7 @@ export function PrefSegment({
               type="button"
               aria-pressed={active}
               disabled={optionDisabled}
+              title={option.title}
               data-testid={`${testid}-${option.value}`}
               data-on={active ? "true" : "false"}
               className={styles.segButton}
@@ -60,6 +61,10 @@ export interface PrefSegmentOption {
    * on click), independent of the row-level `disabled` prop — e.g. a
    * brain the server isn't currently offering. */
   disabled?: boolean;
+  /** Forwarded verbatim to the button's native `title` — a hover tooltip
+   * explaining WHY an option is disabled (e.g. a budget-gated brain's reset
+   * time), independent of the row-level description line. */
+  title?: string;
 }
 
 interface PrefSegmentProps {

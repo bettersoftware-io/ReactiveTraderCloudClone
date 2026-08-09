@@ -8,6 +8,7 @@ import {
   merge,
   type Observable,
   of,
+  switchMap,
 } from "rxjs";
 
 import { isJarvisBrain, isJarvisEffort, type JarvisBrain } from "@rtc/domain";
@@ -30,6 +31,11 @@ import {
 } from "@rtc/ws-effects";
 
 import type { AgentSession, JarvisLoops } from "../agent/agentLoop.js";
+import {
+  applyGateToOffer,
+  type GatedOffer,
+  type JarvisGateState,
+} from "../services/jarvisGate.js";
 import type { Ctx } from "./context.js";
 
 /** SERVER_MSG for each `JarvisEvent` variant — the wire rule documented on
@@ -161,17 +167,76 @@ function parseCancelPayload(payload: unknown): JarvisCancelPayload | undefined {
     : undefined;
 }
 
+/** Builds the `JARVIS_AVAILABILITY` payload for one gate state reading.
+ * `loops === null` (no Jarvis at all — no scripted fallback, no Anthropic
+ * key) short-circuits before the gate is even consulted: `applyGateToOffer`
+ * on an empty offer would compute a `defaultBrain` of `"scripted"` that
+ * isn't actually a member of the (empty) `brains` it returns, so the
+ * unavailable payload is returned directly instead. `gate.level === "none"`
+ * omits the `gate` field entirely — the wire rule on `JarvisAvailabilityGate`
+ * (see `#/jarvis/jarvisAvailabilityGate`): "none" never crosses the wire. */
+function buildAvailabilityPayload(
+  loops: JarvisLoops | null,
+  gate: JarvisGateState,
+): JarvisAvailabilityPayload {
+  if (loops === null) {
+    return { available: false, brains: [], defaultBrain: "scripted" };
+  }
+
+  const offer = applyGateToOffer(loops.brains, loops.defaultBrain, gate.level);
+
+  if (gate.level === "none") {
+    return {
+      available: true,
+      brains: offer.brains,
+      defaultBrain: offer.defaultBrain,
+    };
+  }
+
+  return {
+    available: true,
+    brains: offer.brains,
+    defaultBrain: offer.defaultBrain,
+    gate: {
+      level: gate.level,
+      resetsAtMs: gate.resetsAtMs,
+      gated: offer.gated,
+    },
+  };
+}
+
 /**
  * Produces the JARVIS_* wire effects, closing over the given `loops`.
  *
  * `availability$` always registers — even with `loops === null` — so the
  * client's `JARVIS_SUBSCRIBE` handshake always gets an answer instead of
  * hanging when Jarvis is absent (RTC_JARVIS_FAKE off, no Anthropic key).
- * `brains`/`defaultBrain` mirror `JarvisLoops` when present; when Jarvis is
- * absent entirely the payload is `available: false` with `brains: []` — the
- * `available` flag is what a client must key off (the orb hides, so no
- * picker renders); an empty `brains` array is NOT a nullish sentinel and
- * must never be read as "all brains offered".
+ * `brains`/`defaultBrain` mirror `JarvisLoops` when present, narrowed through
+ * `ctx.jarvisGate`'s current level via `buildAvailabilityPayload`; when
+ * Jarvis is absent entirely the payload is `available: false` with
+ * `brains: []` — the `available` flag is what a client must key off (the orb
+ * hides, so no picker renders); an empty `brains` array is NOT a nullish
+ * sentinel and must never be read as "all brains offered". Each live
+ * observer stays subscribed to `ctx.jarvisGate.state$` for as long as it's
+ * the current one, so every later gate transition (trip or lift) re-pushes a
+ * fresh frame without the client re-sending `JARVIS_SUBSCRIBE` — the state
+ * stream already dedups per-transition, so this emits exactly one push per
+ * transition per LIVE observer.
+ *
+ * Hand-rolled with `switchMap` rather than the generic `stream()` helper
+ * (which is hardwired to `mergeMap`, same reason `jarvisChat$` below is
+ * hand-rolled too): `ctx.jarvisGate.state$` is a `BehaviorSubject` that
+ * never completes, so a `mergeMap`'d inner observer never tears down on its
+ * own. A reconnecting or double-firing client sending `JARVIS_SUBSCRIBE`
+ * more than once on the SAME socket would otherwise accumulate one permanent
+ * observer per frame — N duplicate `JARVIS_AVAILABILITY` pushes per gate
+ * transition, and an ever-growing subscriber list on the shared
+ * `JarvisGateService` for the life of the process. `switchMap` instead
+ * unsubscribes the previous observer the moment a new `JARVIS_SUBSCRIBE`
+ * arrives, so a socket holds at most one live observer regardless of how
+ * many subscribe frames it sends (latest-subscribe-wins) — and because
+ * `state$` is a `BehaviorSubject`, a connection that subscribes while
+ * already gated still gets the gated payload in its very first frame.
  *
  * The session effect is a factory rather than a constant `WsEffect[]` (like
  * `fxEffects`): each `AgentLoop.createSession()` call runs inside the effect
@@ -184,18 +249,28 @@ function parseCancelPayload(payload: unknown): JarvisCancelPayload | undefined {
  * client-side session state), and vice versa.
  */
 export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
-  const availability$: WsEffect<Ctx> = stream(
-    CLIENT_MSG.JARVIS_SUBSCRIBE,
-    (): Observable<Outbound> => {
-      return of(
-        out(SERVER_MSG.JARVIS_AVAILABILITY, {
-          available: loops !== null,
-          brains: loops?.brains ?? [],
-          defaultBrain: loops?.defaultBrain ?? "scripted",
-        } satisfies JarvisAvailabilityPayload),
-      );
-    },
-  );
+  function availability$(
+    in$: Observable<Inbound>,
+    ctx: Ctx,
+  ): Observable<Outbound> {
+    return in$.pipe(
+      matchType(CLIENT_MSG.JARVIS_SUBSCRIBE),
+      switchMap((): Observable<Outbound> => {
+        return ctx.jarvisGate.state$.pipe(
+          map((gate) => {
+            return out(
+              SERVER_MSG.JARVIS_AVAILABILITY,
+              buildAvailabilityPayload(loops, gate),
+            );
+          }),
+          catchError((err: unknown): Observable<never> => {
+            console.error("ws-effects: stream effect error", err);
+            return EMPTY;
+          }),
+        );
+      }),
+    );
+  }
 
   if (loops === null) {
     return [availability$];
@@ -231,15 +306,21 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
     }
 
     /** `payload.brain` if it's both a recognized brain AND one of the
-     * brains this loop set actually offers, else `activeLoops.defaultBrain`
-     * — the same "invalid/un-offered input silently falls back to the
-     * default" posture as the parse seam above, not a rejected frame. */
-    function resolveBrain(payload: JarvisChatPayload): JarvisBrain {
-      if (payload.brain && activeLoops.brains.includes(payload.brain)) {
+     * brains the current gated offer actually includes, else
+     * `offer.defaultBrain` — the same "invalid/un-offered input silently
+     * falls back to the default" posture as the parse seam above, not a
+     * rejected frame. Pure over `offer` (not `ctx`/`activeLoops`) so the
+     * gate is resolved exactly once per turn at the call site, keeping this
+     * function trivially testable and free of hidden reads. */
+    function resolveBrain(
+      offer: GatedOffer,
+      payload: JarvisChatPayload,
+    ): JarvisBrain {
+      if (payload.brain && offer.brains.includes(payload.brain)) {
         return payload.brain;
       }
 
-      return activeLoops.defaultBrain;
+      return offer.defaultBrain;
     }
 
     function runTurnFor(
@@ -256,10 +337,11 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
 
       if (!session) {
         // Cannot happen by construction: `resolveBrain` only ever returns a
-        // real-model brain when it's a member of `activeLoops.brains`, and
-        // that set only ever lists real models when `activeLoops.anthropic`
-        // is non-null (see `createJarvisLoops`). Defended anyway, with a
-        // sanitized log (brain id only, never the turn's text/history).
+        // real-model brain when it's a member of the gated offer's `brains`,
+        // itself a subset of `activeLoops.brains` — and that set only ever
+        // lists real models when `activeLoops.anthropic` is non-null (see
+        // `createJarvisLoops`). Defended anyway, with a sanitized log (brain
+        // id only, never the turn's text/history).
         console.error(
           `jarvis.chat: resolved brain "${brain}" has no live anthropic session; falling back to scripted`,
         );
@@ -308,7 +390,12 @@ export function jarvisEffects(loops: JarvisLoops | null): WsEffect<Ctx>[] {
 
         inFlightTurnId = parsed.turnId;
 
-        const resolvedBrain = resolveBrain(parsed);
+        const offer = applyGateToOffer(
+          activeLoops.brains,
+          activeLoops.defaultBrain,
+          ctx.jarvisGate.current().level,
+        );
+        const resolvedBrain = resolveBrain(offer, parsed);
         // Once per DEQUEUED (parsed-valid) chat frame: this defer runs when
         // the concatMap queue reaches the turn, not at frame arrival — a
         // frame still queued when the socket closes is never counted (it

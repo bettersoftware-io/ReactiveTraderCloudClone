@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from "react";
 
+import { formatGateResetTime } from "@rtc/client-core";
 import type {
   AmbientStyle,
   JarvisBrain,
@@ -88,17 +89,34 @@ export function PreferencesModal({
     setNarrator: setJarvisNarrator,
   } = useJarvisPreferences();
 
+  // The active usage-budget gate (null when none is active). A gated brain
+  // gets both `disabled: true` and a `title` explaining why — the reset
+  // time, formatted by the same helper the hint line below uses — so the
+  // native tooltip and the hint line never drift apart.
+  const gate = jarvisState.gate;
+  const gateHint =
+    gate === null
+      ? undefined
+      : `Budget window — resets ${formatGateResetTime(gate.resetsAtMs)}`;
+
   // Real (non-"scripted") brain options are disabled when the server isn't
   // currently offering them (jarvisState.brains — an empty array is a normal
   // "nothing offered right now" value, not a loading sentinel, so it disables
   // every real option same as any other not-offered case). "scripted" is
   // always selectable — it's the offline fallback, not a server-side model.
+  // A brain the active gate has removed is ALSO disabled, independent of
+  // whether the server still offers it in `brains` (a gate can remove a
+  // brain the picker would otherwise show as available).
   const jarvisBrainOptions: readonly PrefSegmentOption[] = JARVIS_BRAINS.map(
     (brain): PrefSegmentOption => {
+      const gated = gate?.gated.includes(brain) === true;
       return {
         value: brain,
         label: JARVIS_BRAIN_LABELS[brain],
-        disabled: brain !== "scripted" && !jarvisState.brains.includes(brain),
+        disabled:
+          gated ||
+          (brain !== "scripted" && !jarvisState.brains.includes(brain)),
+        title: gated ? gateHint : undefined,
       };
     },
   );
@@ -272,6 +290,14 @@ export function PreferencesModal({
                 }}
                 testid="pref-segment-jarvisBrain"
               />
+              {gate !== null ? (
+                <div
+                  className={styles.gateHint}
+                  data-testid="pref-segment-jarvisBrain-hint"
+                >
+                  {gateHint}
+                </div>
+              ) : null}
               <PrefSegment
                 label="Effort"
                 description="Thinking-effort budget for a live brain. No effect on scripted."

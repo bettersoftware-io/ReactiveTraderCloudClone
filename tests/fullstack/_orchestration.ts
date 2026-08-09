@@ -23,8 +23,19 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-/** Start the real backend (from source via the server's own tsx). */
-export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
+/**
+ * Start the real backend (from source via the server's own tsx).
+ *
+ * `extraEnv` is spread LAST so a caller can override any of the defaults
+ * below (e.g. the jarvis-gate smoke flips `RTC_JARVIS_FAKE` off and sets
+ * `ANTHROPIC_API_KEY` + `RTC_JARVIS_FORCE_GATE` to reach the real dual-loop
+ * `createJarvisLoops` branch without ever calling out to Anthropic).
+ */
+export function startServer(
+  port: number,
+  host = "127.0.0.1",
+  extraEnv: Record<string, string> = {},
+): ChildProcess {
   return spawn(
     "pnpm",
     ["--filter", "@rtc/server", "exec", "tsx", "src/index.ts"],
@@ -46,6 +57,7 @@ export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
         AUTH_SECRET: "e2e-secret",
         AUTH_USERS: "demo:demo",
         RTC_JARVIS_FAKE: "1",
+        ...extraEnv,
       },
     },
   );

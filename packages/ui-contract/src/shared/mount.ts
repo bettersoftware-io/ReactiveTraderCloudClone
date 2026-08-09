@@ -210,6 +210,11 @@ function buildContext<P>(
         return world.jarvis.emit(events);
       });
     },
+    setJarvisAvailability: (value: JarvisAvailability) => {
+      return flush(() => {
+        return world.jarvisAvailability.next(value);
+      });
+    },
     // Equities drivers (flush-wrapped, mirroring setPrice/setTopology above).
     setWatchlist: (value: readonly EquityInstrument[]) => {
       return flush(() => {
