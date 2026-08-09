@@ -26,6 +26,43 @@ flowchart TD
 
 ---
 
+## Jarvis
+
+### Discoverability round — feature-aware hints, demo guide, run-full-demo
+
+The overlay's suggestion chips (`SUGGESTIONS` in `JarvisOverlay.tsx`, both web
+clients) are still the four P1 strings ("Where is EURUSD?", "What's moving?",
+"How am I doing?", "Buy 5M EURUSD") while the surface has since grown panels,
+app-driving, panel restyling, workspace setup, theme/power-saver control and
+the narrator — the scripted engine alone matches **12 intents**; the chips
+advertise 4. Users cannot discover what shipped (raised 2026-08-09). The v5
+design prototype goes further with a **demo guide** and a **"run full demo"**
+flow. A "run full demo" is unusually cheap here: the scripted brain already has
+zero-token canned versions of the flagship moves (`setupWorkspace` drives the
+app, `panel-scripted-1` renders a live panel), so a guided demo could chain
+scripted routes without spending a token — which also makes it CI-testable.
+Scope sketch: rotating or context-aware hint chips covering each shipped
+capability, a demo-guide overlay, and the chained full demo. Caveat: the four
+current strings are pinned verbatim by contract + e2e specs, so changing them
+touches those suites. Fold-in candidate: the persona panel-id roster fix from
+the P5 deferred-findings ledger in [STATUS.md](STATUS.md) (tiny, and it fixes a
+real observed drive failure).
+
+### Generative-UI compositions (post-L1/L2 riffs)
+
+Compositions of shipped systems with the panel surface, noted 2026-08-09 while
+surveying what generative UI could become — each rides the roadmap
+([architecture §19](architecture/19-ai-capability-roadmap.md)) rather than
+adding to it: **narrator × panels** (an anomaly narration *offers* a chart
+panel — the offers-never-executes persona clause already anticipates the
+handshake); **sentinels × panels** (a standing watcher renders its own live
+panel showing trigger proximity); **drive × panels × narrator** (a "morning
+briefing" turn that rearranges the workspace, spawns overnight-movers panels
+and narrates them — three shipped systems in one choreographed turn); and
+**renderer-vocabulary growth** (depth ladder, correlation matrix, PnL
+waterfall — each closed-vocab `PanelSpec` kind multiplies what every future
+feature can express without ever granting the model arbitrary UI power).
+
 ## Tooling & workflow
 
 ### Adopt a GitHub merge queue
