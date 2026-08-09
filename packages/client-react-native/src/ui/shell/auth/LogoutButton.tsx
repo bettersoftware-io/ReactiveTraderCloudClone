@@ -50,8 +50,8 @@ interface LogoutButtonStyles {
 
 function makeStyles(t: RnTheme): LogoutButtonStyles {
   return StyleSheet.create({
-    // A full-width sheet row now, matching `⟳ Replay Boot` directly above it,
-    // rather than the bare inline text a toolbar slot wanted.
+    // A full-width sheet row now, matching `▸ REPLAY BOOT SEQUENCE` directly
+    // above it, rather than the bare inline text a toolbar slot wanted.
     row: { paddingVertical: 12, alignItems: "center" },
     // `statusDisconnected`, not `textMuted`: in a sheet this is the only
     // destructive action on the screen, and it no longer has to stay quiet to
