@@ -1,10 +1,5 @@
 import type { Candle } from "@rtc/domain";
 
-/** The subset of `Candle` this scene actually projects — `volume` plays no
- * part in candle geometry, so the parameter accepts anything shaped like a
- * `Candle` minus its trade-size field rather than the full domain entity. */
-type CandleOHLC = Omit<Candle, "volume">;
-
 /** Smallest a doji's body may render at, so open === close still reads as a
  * bar rather than vanishing. */
 const MIN_BODY_HEIGHT = 1;
@@ -33,7 +28,7 @@ export interface CandleBar {
  * (open === close) clamps to `MIN_BODY_HEIGHT` so it stays visible. Numeric
  * only — no Skia or React import — so it stays vitest-testable and reusable. */
 export function buildCandleScene(
-  candles: readonly CandleOHLC[],
+  candles: readonly Candle[],
   width: number,
   height: number,
   barWidth: number,
