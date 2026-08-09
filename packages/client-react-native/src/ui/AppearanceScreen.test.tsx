@@ -90,6 +90,63 @@ test("the three swatches are the three distinct semantic accent tokens, not copi
   expect(new Set(colors).size).toBe(3);
 });
 
+// P8 (StatusStrip.test.tsx) and the mode-segment invariant below guard a
+// geometric assumption the same way after a control silently drifted into an
+// unsafe layout with every other test still green. The skin grid has the
+// identical trap: `skinCardWrap` is a PERCENTAGE width but `skinGrid`'s `gap`
+// is a FIXED pixel amount, so the row's no-wrap margin is a function of
+// device width, not a constant — it shrinks as the device narrows and grows
+// as `gap` grows. At the values this grid shipped with in review round 1
+// (31% / gap 10), a 320pt device cleared the no-wrap floor by 0.16pt —
+// noise-level, and invisible to every order/count/colour/press test in this
+// file, none of which would fail if the grid silently became 2x3. This test
+// derives the ACTUAL no-wrap floor from the real rendered styles (not a
+// hardcoded expectation of the constants) and asserts it clears a stated
+// minimum device width with real margin.
+//
+// The repo states no minimum supported device width (checked app.config.ts
+// and the RN package for a device-floor constant — none exists). 320pt is a
+// CHOSEN assumption here, not a discovered fact: the logical width of the
+// smallest iPhone the App Store has ever shipped (iPhone 5/SE 1st gen), used
+// as the conservative floor.
+test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; not stated in the repo)", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const MIN_SUPPORTED_DEVICE_WIDTH = 320;
+  // This file's content container padding (AppearanceScreen.tsx `content:
+  // { padding: 16, ... }`) — the grid's row width is the device width minus
+  // this on both sides. Not independently readable off a queried node
+  // (ScrollView's `contentContainerStyle` isn't exposed as `props.style` on
+  // the host node RTL returns), so it is named here explicitly rather than
+  // silently assumed; a change to that padding value must update this too.
+  const CONTENT_HORIZONTAL_PADDING = 16;
+
+  const grid = screen.getByTestId("appearance-skin-grid");
+  const gap = StyleSheet.flatten(grid.props.style as ViewStyle).gap;
+  expect(typeof gap).toBe("number");
+
+  const cell = screen.getByTestId("appearance-skin-holo-cell");
+  const width = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const cardWidthFraction = parsePercent(width) / 100;
+
+  // Wrap condition: 3 * cardWidthFraction * C + 2 * gap > C, where C is the
+  // row's available content width. No-wrap requires
+  // C >= 2 * gap / (1 - 3 * cardWidthFraction).
+  const containerFloor = (2 * (gap as number)) / (1 - 3 * cardWidthFraction);
+  const deviceWidthFloor = containerFloor + 2 * CONTENT_HORIZONTAL_PADDING;
+
+  expect(deviceWidthFloor).toBeLessThan(MIN_SUPPORTED_DEVICE_WIDTH);
+  // Real margin, not sub-pixel: the floor must clear the assumed minimum by
+  // at least 50pt, ruling out the kind of 0.16pt "pass" review round 1 shipped.
+  expect(MIN_SUPPORTED_DEVICE_WIDTH - deviceWidthFloor).toBeGreaterThanOrEqual(
+    50,
+  );
+});
+
 test("pressing a card sets that skin", async () => {
   const setSkin = jest.fn();
   await renderScreen(fakeViewModel(() => {}, setSkin));
@@ -247,6 +304,20 @@ function flattenFlex(style: unknown): number | undefined {
 
 function flattenFlexDirection(style: unknown): string | undefined {
   return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
+}
+
+/** RN's `width: "30%"`-style percentage values are plain strings ending in
+ * `%` — this strips it and parses the number, throwing loudly rather than
+ * returning NaN if a future edit switches the card to a fixed pixel width
+ * (which would silently defeat the no-wrap-margin test that consumes this). */
+function parsePercent(value: unknown): number {
+  if (typeof value !== "string" || !value.endsWith("%")) {
+    throw new Error(
+      `expected a percentage width string, got ${JSON.stringify(value)}`,
+    );
+  }
+
+  return Number.parseFloat(value);
 }
 
 test("shows an ambient style segmented control wired to useAmbientStyle", async () => {

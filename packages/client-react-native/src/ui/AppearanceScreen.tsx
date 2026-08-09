@@ -122,12 +122,16 @@ export function AppearanceScreen({
 
       <View style={styles.section}>
         <Text style={styles.label}>Skin</Text>
-        <View style={styles.skinGrid}>
+        <View testID="appearance-skin-grid" style={styles.skinGrid}>
           {SKIN_DISPLAY_ORDER.map((s) => {
             const active = s === skin;
             const swatch = rnThemeTokens[s][mode];
             return (
-              <View key={s} style={styles.skinCardWrap}>
+              <View
+                key={s}
+                testID={`appearance-skin-${s}-cell`}
+                style={styles.skinCardWrap}
+              >
                 <BlurCard mode={mode}>
                   <Pressable
                     testID={
@@ -145,27 +149,18 @@ export function AppearanceScreen({
                           testID (getAllByTestId) — the three semantic
                           accents (primary/positive/negative), not the old
                           card's bgTile + accent2 pairing. */}
-                      <View
-                        testID={`appearance-skin-${s}-swatch`}
-                        style={[
-                          styles.skinSwatch,
-                          { backgroundColor: swatch.accentPrimary },
-                        ]}
-                      />
-                      <View
-                        testID={`appearance-skin-${s}-swatch`}
-                        style={[
-                          styles.skinSwatch,
-                          { backgroundColor: swatch.accentPositive },
-                        ]}
-                      />
-                      <View
-                        testID={`appearance-skin-${s}-swatch`}
-                        style={[
-                          styles.skinSwatch,
-                          { backgroundColor: swatch.accentNegative },
-                        ]}
-                      />
+                      {SWATCH_ACCENT_KEYS.map((accentKey) => {
+                        return (
+                          <View
+                            key={accentKey}
+                            testID={`appearance-skin-${s}-swatch`}
+                            style={[
+                              styles.skinSwatch,
+                              { backgroundColor: swatch[accentKey] },
+                            ]}
+                          />
+                        );
+                      })}
                     </View>
                     <Text
                       testID={`appearance-skin-${s}-label`}
@@ -340,6 +335,16 @@ const MODE_LABEL: Record<ThemeModePreference, string> = {
   system: "System",
 };
 
+// The three semantic accents a skin card's swatch row renders, in display
+// order. Single source for the three near-identical swatch Views (Task 4
+// review): a fourth swatch or a reordering only needs updating here, not in
+// three separate JSX blocks.
+const SWATCH_ACCENT_KEYS: readonly (
+  | "accentPrimary"
+  | "accentPositive"
+  | "accentNegative"
+)[] = ["accentPrimary", "accentPositive", "accentNegative"];
+
 // Display names ported from docs/design/mobile/v1/dev-handoff/theme-tokens.ts
 // (THEMES map's `name` field), matching the prototype's uppercase header
 // typography — same porting convention as rnThemeTokens itself (tokens.ts:49).
@@ -441,12 +446,22 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       color: t.textPrimary,
       fontFamily: t.fontDisplay,
     },
-    // 3x2 grid (Task 4): three cards per row. `gap` handles inter-card
-    // spacing, so each card's width only needs to clear a third of the row —
-    // "31%" leaves room for two gaps without the card overflowing into a
-    // fourth-per-row wrap.
+    // 3x2 grid (Task 4): three cards per row. `flexWrap` only keeps three per
+    // row while the row's content width comfortably clears
+    // 3 * cardWidthPct + 2 * gap — a FIXED gap against a PERCENTAGE width
+    // means that margin shrinks as the device narrows, so it has to be
+    // checked, not assumed. At 31% width / gap 10 the no-wrap floor was a
+    // 285.7pt container (317.7pt device with this file's 16px content
+    // padding) — a 320pt device cleared it by 0.16pt, inside normal Yoga
+    // sub-pixel rounding noise, and a `gap` raised from 10 to 12 alone would
+    // have pushed the floor past 375pt and silently collapsed this to a 2x3
+    // grid with every existing test (order/count/colour/press) still green
+    // (Task 4 review, fix round 1). 30% moves the floor to a 200pt container
+    // (232pt device) — see the derived invariant test in
+    // AppearanceScreen.test.tsx, which asserts this margin rather than
+    // trusting the constant.
     skinGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-    skinCardWrap: { width: "31%" },
+    skinCardWrap: { width: "30%" },
     skinCard: {
       alignItems: "center",
       padding: 12,
