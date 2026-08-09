@@ -718,6 +718,125 @@ describe("createJarvisMachine", () => {
       ).toEqual([JARVIS_GREETING, "first", "", "second", ""]);
       expect(port?.asks).toEqual(["first", "second"]);
     });
+
+    it("REGRESSION: a sendScripted() queued behind an in-flight haiku send() still runs on 'scripted' — the pin doesn't leak from the queued turn ahead of it", () => {
+      // The queue-interleaving test above only asserts entry text / ask
+      // ORDER, which would stay green even if sendScripted's brain pin
+      // leaked (e.g. if it accidentally inherited whatever brain the turn
+      // ahead of it in the queue used). This pins the actual per-turn
+      // brain under queueing, on availability/preference deps where
+      // effectiveBrain is genuinely "claude-haiku-4-5" (not "scripted",
+      // which baseBrainDeps() resolves to — a leak in either direction
+      // would be invisible there).
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.sendScripted("second");
+          }, 2);
+        },
+      );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["claude-haiku-4-5", "scripted"]);
+    });
+
+    it("REGRESSION: a send() queued behind a sendScripted() turn still resolves the effective brain at DEQUEUE time — a preference flip while the scripted turn is in flight re-prices the queued send(), unaffected by the pinned turn ahead of it", () => {
+      // Mirrors the "queued turn resolves brain/effort at DEQUEUE time" test
+      // in the "brain + effort resolution" describe above (turn 1 there is
+      // an ordinary send()); this variant proves the SAME dequeue-time
+      // resolution holds when the turn ahead in the queue is a
+      // sendScripted() — i.e. sendScripted's pin is per-turn only and
+      // never bleeds into effectiveBrain's own resolution for a later
+      // queued send().
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a-b-c-(d|)", {
+            a: { type: "delta", text: "EUR" },
+            b: { type: "delta", text: "USD" },
+            c: { type: "delta", text: " is up" },
+            d: { type: "done" },
+          });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-opus-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            // Relative to ITS OWN subscribe at machine-construction time
+            // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
+            // at frame 0, flips to "claude-opus-5" at frame 6 — strictly
+            // between turn 2's frame-4 enqueue and turn 1's frame-7 done,
+            // so the flip lands while turn 2 is queued but not yet
+            // dequeued. (Irrelevant to turn 1's own brain — sendScripted
+            // always pins "scripted" regardless of this feed — but it's
+            // what turn 2's send() resolves against.)
+            preferredBrain$: ts.createColdObservable<JarvisBrain>("a-----b", {
+              a: "scripted",
+              b: "claude-opus-5",
+            }),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("first");
+          }, 1);
+          // Same frame math as the send-ahead-of-send regression: turn 1's
+          // deltas land at frames 1/3/5 and done at frame 7, so frame 4 is
+          // strictly between the "USD" and " is up" deltas — turn 1 is
+          // genuinely still in flight and concatMap actually queues this.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 4);
+        },
+      );
+
+      // Turn 2 only starts once turn 1's done has folded — proving it was
+      // truly queued, not run concurrently.
+      const turn1Done = states.findIndex((s) => {
+        return s.entries.at(-1)?.text === "EURUSD is up";
+      });
+      const turn2Started = states.findIndex((s) => {
+        return s.entries.some((e) => {
+          return e.role === "user" && e.text === "second";
+        });
+      });
+      expect(turn2Started).toBeGreaterThan(turn1Done);
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["scripted", "claude-opus-5"]);
+    });
   });
 
   it("setSkin(s) calls deps.setSkin; state.skin follows skin$, the source of truth", () => {
