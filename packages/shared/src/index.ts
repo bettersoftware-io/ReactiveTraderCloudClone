@@ -30,6 +30,8 @@ export type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,
 } from "./fx/referenceDataDto.js";
+export type { DeskPanelInfo } from "./jarvis/deskPanels.js";
+export { DESK_PANEL_ROSTER } from "./jarvis/deskPanels.js";
 // Jarvis
 export type {
   DriveBatchParseResult,
