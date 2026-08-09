@@ -18,7 +18,10 @@ import styles from "./CrosshairOverlay.module.css";
  * has no visible glyph of its own; it rides as a `data-price` attribute on
  * the readout chip (mirroring the `data-active`/`data-yscale`-style
  * observer attributes elsewhere in this chart) so the log-mode inversion is
- * assertable without adding pixels a golden would have to re-pin.
+ * assertable without adding pixels a golden would have to re-pin. `linesHidden`
+ * skips both hairline divs (used in canvas-substrate mode, where the plot's
+ * own `SceneCanvas` already draws the crosshair lines) while keeping the
+ * readout chip, which stays DOM in every substrate.
  */
 export function CrosshairOverlay(props: CrosshairOverlayProps): JSX.Element {
   return (
@@ -26,12 +29,14 @@ export function CrosshairOverlay(props: CrosshairOverlayProps): JSX.Element {
       {(vm: () => CrosshairVm): JSX.Element => {
         return (
           <div class={styles.overlay}>
-            <div
-              class={styles.v}
-              style={vm().style}
-              data-testid="chart-crosshair-v"
-            />
-            <Show when={props.showHorizontal}>
+            <Show when={!props.linesHidden}>
+              <div
+                class={styles.v}
+                style={vm().style}
+                data-testid="chart-crosshair-v"
+              />
+            </Show>
+            <Show when={!props.linesHidden && props.showHorizontal}>
               <div
                 class={styles.h}
                 style={vm().style}
@@ -60,4 +65,7 @@ export function CrosshairOverlay(props: CrosshairOverlayProps): JSX.Element {
 export interface CrosshairOverlayProps {
   readonly vm: CrosshairVm | null;
   readonly showHorizontal: boolean;
+  /** Skips both hairline divs (canvas-substrate mode draws them itself) —
+   * the readout chip stays regardless. Defaults to false (shown). */
+  readonly linesHidden?: boolean;
 }

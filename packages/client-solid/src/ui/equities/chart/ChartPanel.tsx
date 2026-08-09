@@ -69,8 +69,10 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     useWatchlist,
     loadOlderCandles,
     useEqDrawings,
+    useChartSubstrate,
   } = useViewModel();
   const { state } = useEqWorkspace();
+  const { substrate } = useChartSubstrate();
   const {
     state: drawState,
     addDrawing,
@@ -201,6 +203,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           onShiftAnchors={(by: number) => {
             shiftAnchors(props.symbol, by);
           }}
+          substrate={substrate()}
         />
       </div>
     </div>
