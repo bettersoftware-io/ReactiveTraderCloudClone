@@ -15,6 +15,7 @@ import type { JarvisEvent } from "#/adapters/jarvisPort";
 import {
   createJarvisDemoMachine,
   DEMO_STEP_BEAT_MS,
+  DEMO_STEP_TIMEOUT_MS,
   guideCommand,
   JARVIS_DEMO_STEPS,
   type JarvisDemoDeps,
@@ -41,6 +42,20 @@ describe("createJarvisDemoMachine", () => {
     });
   });
 
+  it("JARVIS_DEMO_STEPS resolves to the exact spec'd 7 commands and labels — pins guideCommand's derivation against catalog drift", () => {
+    expect(
+      JARVIS_DEMO_STEPS.map((step) => {
+        return { label: step.label, command: step.command };
+      }),
+    ).toEqual(EXPECTED_STEPS);
+    expect(JARVIS_DEMO_STEPS[EXECUTION_STEP_INDEX]?.awaitsConfirmation).toBe(
+      true,
+    );
+    expect(JARVIS_DEMO_STEPS[JARVIS_DEMO_STEPS.length - 1]?.closesOverlay).toBe(
+      true,
+    );
+  });
+
   it("plays all 7 steps in order, one sendScripted per settle, with 1200ms beats", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
@@ -63,7 +78,7 @@ describe("createJarvisDemoMachine", () => {
       flush();
 
       expect(commandOrder(h)).toEqual(
-        JARVIS_DEMO_STEPS.map((step) => {
+        EXPECTED_STEPS.map((step) => {
           return step.command;
         }),
       );
@@ -102,6 +117,66 @@ describe("createJarvisDemoMachine", () => {
 
       // All 7 calls land on the SAME frame — no beat under freeze.
       expect(callFrames).toEqual(new Array(7).fill(1));
+    });
+  });
+
+  it("powerSaverLevel$ is re-read fresh per step: a mid-run flip to freeze collapses the NEXT beat to 0, and flipping back restores 1200", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const h = buildHarness();
+      const callFrames: number[] = [];
+      const secondCommand = EXPECTED_STEPS[1]?.command as string;
+      const thirdCommand = EXPECTED_STEPS[2]?.command as string;
+
+      h.sendScripted.mockImplementation((text: string) => {
+        callFrames.push(ts.now());
+
+        // Flipped from INSIDE the mock (not via ts.schedule at some fixed
+        // frame) so the change is synchronously visible before
+        // runStepPatches$'s own readLatest(powerSaverLevel$) call for the
+        // NEXT beat — that read only happens once THIS synchronous call
+        // returns and the auto-settled "done" has propagated, so this is
+        // the exact moment the mechanism itself reads fresh, without
+        // needing any TestScheduler same-frame ordering games.
+        if (text === secondCommand) {
+          // Freezes the step-2 → step-3 gap.
+          h.powerSaverLevel$.next("freeze");
+        }
+
+        if (text === thirdCommand) {
+          // Restores the step-3 → step-4 gap.
+          h.powerSaverLevel$.next("off");
+        }
+
+        buildAutoSettlingSendScripted(
+          h.jarvisState$,
+          h.jarvisEvents$,
+          h.nextId,
+        )(text);
+      });
+
+      const demo = createJarvisDemoMachine(depsFrom(h, ts));
+
+      ts.schedule(() => {
+        demo.intents.startDemo();
+      }, 1);
+
+      flush();
+
+      expect(callFrames).toEqual([
+        1,
+        1 + DEMO_STEP_BEAT_MS,
+        1 + DEMO_STEP_BEAT_MS, // frozen: step 2 → step 3 gap collapses to 0
+        1 + 2 * DEMO_STEP_BEAT_MS, // restored: step 3 → step 4 gap back to 1200
+        1 + 3 * DEMO_STEP_BEAT_MS,
+        1 + 4 * DEMO_STEP_BEAT_MS,
+        1 + 5 * DEMO_STEP_BEAT_MS,
+      ]);
+      expect(commandOrder(h)).toEqual(
+        EXPECTED_STEPS.map((step) => {
+          return step.command;
+        }),
+      );
     });
   });
 
@@ -145,7 +220,7 @@ describe("createJarvisDemoMachine", () => {
       // The demo carries on to the final step afterward — the whole
       // 7-command script still completes, decline included.
       expect(commandOrder(h)).toEqual(
-        JARVIS_DEMO_STEPS.map((step) => {
+        EXPECTED_STEPS.map((step) => {
           return step.command;
         }),
       );
@@ -222,8 +297,54 @@ describe("createJarvisDemoMachine", () => {
       expect(h.declineConfirmation).toHaveBeenCalledTimes(1);
       // The final step ("Set up my morning workspace") is never reached.
       expect(commandOrder(h)).not.toContain(
-        JARVIS_DEMO_STEPS[JARVIS_DEMO_STEPS.length - 1]?.command,
+        EXPECTED_STEPS[EXPECTED_STEPS.length - 1]?.command,
       );
+
+      let final: JarvisDemoState | undefined;
+      demo.state$.subscribe((s) => {
+        final = s;
+      });
+      expect(final).toEqual({
+        running: false,
+        stepIndex: 0,
+        stepCount: JARVIS_DEMO_STEPS.length,
+        label: null,
+      });
+      // The overlay was never closed at this point in the run (stop landed
+      // on step 6, well before step 7's closesOverlay) — stopDemo's own
+      // reopen guard must NOT fire spuriously: only the demo-start open()
+      // call happened.
+      expect(h.open).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("stopDemo reopens the overlay if the stopped run had closed it (M1: symmetric with the error/complete exit paths)", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const h = buildHarness();
+      const demo = createJarvisDemoMachine(depsFrom(h, ts));
+
+      const lastStepFrame =
+        1 + (JARVIS_DEMO_STEPS.length - 1) * DEMO_STEP_BEAT_MS;
+
+      ts.schedule(() => {
+        demo.intents.startDemo();
+      }, 1);
+      // One tick after step 7's own advance — jarvis.close() has already
+      // fired and its auto-settled turn has already "done", but the
+      // post-settle beat hasn't elapsed yet, so finishPatch$'s own reopen
+      // hasn't run naturally. A genuine "closed, not yet reopened" window.
+      ts.schedule(() => {
+        demo.intents.stopDemo();
+      }, lastStepFrame + 1);
+
+      flush();
+
+      expect(h.close).toHaveBeenCalledTimes(1);
+      // open() fires once at demo start, and again from stopDemo's reopen
+      // guard — NOT from finishPatch$, which never got the chance to run
+      // (takeUntil cut the chain first).
+      expect(h.open).toHaveBeenCalledTimes(2);
 
       let final: JarvisDemoState | undefined;
       demo.state$.subscribe((s) => {
@@ -277,7 +398,7 @@ describe("createJarvisDemoMachine", () => {
       flush();
 
       expect(commandOrder(h)).toEqual(
-        JARVIS_DEMO_STEPS.map((step) => {
+        EXPECTED_STEPS.map((step) => {
           return step.command;
         }),
       );
@@ -289,7 +410,7 @@ describe("createJarvisDemoMachine", () => {
     ts.run(({ flush }) => {
       const h = buildHarness();
       const erroringStepIndex = 2;
-      const erroringCommand = JARVIS_DEMO_STEPS[erroringStepIndex]
+      const erroringCommand = EXPECTED_STEPS[erroringStepIndex]
         ?.command as string;
 
       h.sendScripted.mockImplementation(
@@ -319,7 +440,7 @@ describe("createJarvisDemoMachine", () => {
 
       // Only steps 0..erroringStepIndex ever ran — nothing after.
       expect(commandOrder(h)).toEqual(
-        JARVIS_DEMO_STEPS.slice(0, erroringStepIndex + 1).map((step) => {
+        EXPECTED_STEPS.slice(0, erroringStepIndex + 1).map((step) => {
           return step.command;
         }),
       );
@@ -340,11 +461,81 @@ describe("createJarvisDemoMachine", () => {
     });
   });
 
+  it("a step whose settle never arrives (silent no-op send — e.g. WS-mode unavailable) times out after DEMO_STEP_TIMEOUT_MS and aborts to idle, reopening the overlay it had closed", () => {
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const h = buildHarness();
+      // The LAST step: it both closes the overlay AND is the one whose
+      // settle never arrives, so this single test also proves the "reopens
+      // the overlay if the aborting step had closed it" sub-clause.
+      const stuckIndex = EXPECTED_STEPS.length - 1;
+      const stuckCommand = EXPECTED_STEPS[stuckIndex]?.command as string;
+      const openFrames: number[] = [];
+      h.open.mockImplementation(() => {
+        openFrames.push(ts.now());
+      });
+
+      h.sendScripted.mockImplementation(
+        buildAutoSettlingSendScripted(
+          h.jarvisState$,
+          h.jarvisEvents$,
+          h.nextId,
+          {
+            [stuckCommand]: () => {
+              // Silent no-op — mirrors JarvisMachine's real behavior while
+              // `available` is false: `turnRequests$`'s concatMap returns
+              // EMPTY, so no entries pair and no jarvisEvents$ emission
+              // EVER arrive for this call — runStep's watcher has nothing
+              // to observe, ever.
+            },
+          },
+        ),
+      );
+
+      const demo = createJarvisDemoMachine(depsFrom(h, ts));
+
+      ts.schedule(() => {
+        demo.intents.startDemo();
+      }, 1);
+
+      flush();
+
+      // sendScripted WAS called for the stuck step (the demo has no way to
+      // know it silently no-op'd) but the demo never advances past it.
+      expect(commandOrder(h)).toEqual(
+        EXPECTED_STEPS.slice(0, stuckIndex + 1).map((step) => {
+          return step.command;
+        }),
+      );
+
+      let final: JarvisDemoState | undefined;
+      demo.state$.subscribe((s) => {
+        final = s;
+      });
+      expect(final).toEqual({
+        running: false,
+        stepIndex: 0,
+        stepCount: JARVIS_DEMO_STEPS.length,
+        label: null,
+      });
+      expect(h.close).toHaveBeenCalledTimes(1);
+      // open() fires at demo start AND again from the abort tail — the
+      // watchdog timeout takes the SAME reopen-and-reset path as an errored
+      // turn (runDemo$'s catchError), so the overlay the stuck step had
+      // closed is reopened even though it never settled. The second open()
+      // lands EXACTLY DEMO_STEP_TIMEOUT_MS after the stuck step's own
+      // advance (no post-settle beat on the abort path — see
+      // runStepPatches$'s doc).
+      const stuckStepFrame = 1 + stuckIndex * DEMO_STEP_BEAT_MS;
+      expect(openFrames).toEqual([1, stuckStepFrame + DEMO_STEP_TIMEOUT_MS]);
+    });
+  });
+
   it("a narrator turn's decoy 'done' arriving BEFORE the step's own [user, jarvis] pair does not advance the demo", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const h = buildHarness();
-      const firstCommand = JARVIS_DEMO_STEPS[0]?.command as string;
+      const firstCommand = EXPECTED_STEPS[0]?.command as string;
 
       h.sendScripted.mockImplementationOnce((text: string) => {
         // Simulate a narrate() turn that was already queued ahead of this
@@ -383,7 +574,7 @@ describe("createJarvisDemoMachine", () => {
         }),
       ).toHaveLength(1);
       expect(commandOrder(h)).toEqual(
-        JARVIS_DEMO_STEPS.map((step) => {
+        EXPECTED_STEPS.map((step) => {
           return step.command;
         }),
       );
@@ -406,7 +597,7 @@ describe("createJarvisDemoMachine", () => {
 
       flush();
 
-      JARVIS_DEMO_STEPS.forEach((step, index) => {
+      EXPECTED_STEPS.forEach((step, index) => {
         expect(
           seen.some((s) => {
             return (
@@ -440,12 +631,34 @@ describe("guideCommand", () => {
   });
 });
 
+interface ExpectedStep {
+  readonly label: string;
+  readonly command: string;
+}
+
+/** The demo script's 7 commands + labels, RE-TYPED by hand (deliberately —
+ * see this file's "pins guideCommand's derivation" test) — every
+ * order/content assertion in this file compares against THIS literal fixture
+ * rather than `JARVIS_DEMO_STEPS` itself, so a `guideCommand` lookup that
+ * silently drifts (a catalog edit reassigns what index N resolves to, e.g.)
+ * fails a test instead of the whole file quietly comparing derived output
+ * against itself. */
+const EXPECTED_STEPS: readonly ExpectedStep[] = [
+  { label: "DESK BRIEFING", command: "Brief me on the desk" },
+  { label: "MARKET INTEL", command: "Where is EURUSD?" },
+  { label: "MARKET INTEL", command: "What's moving?" },
+  { label: "GENERATIVE UI", command: "Show me GBP volatility" },
+  { label: "GENERATIVE UI", command: "Make it a heatmap" },
+  { label: "EXECUTION", command: "Buy 5M EURUSD" },
+  { label: "MORNING WORKSPACE", command: "Set up my morning workspace" },
+];
+
 const EXECUTION_STEP_INDEX: number = JARVIS_DEMO_STEPS.findIndex((step) => {
   return step.awaitsConfirmation === true;
 });
 
 const EXECUTION_COMMAND: string | undefined =
-  JARVIS_DEMO_STEPS[EXECUTION_STEP_INDEX]?.command;
+  EXPECTED_STEPS[EXECUTION_STEP_INDEX]?.command;
 
 /** The `confirmRequest` event's fields minus its `type` discriminant — the
  * shared fixture `withConfirmFlow` spreads into both `pendingConfirmation`

@@ -22,6 +22,7 @@ import {
   take,
   takeUntil,
   tap,
+  timeout,
 } from "rxjs/operators";
 
 import type { PowerSaverLevel } from "@rtc/domain";
@@ -38,6 +39,27 @@ import { JARVIS_GUIDE_CATALOG } from "./jarvisGuideCatalog";
  * `JarvisDriverMachine.DRIVE_STAGGER_MS`'s identical motion-free
  * guarantee — `docs/performance.md`/`docs/power-saver-mode.md`). */
 export const DEMO_STEP_BEAT_MS = 1200;
+
+/** Upper bound on how long ONE step may wait for its turn to settle before
+ * the whole demo gives up and aborts to idle — the SAME abort path an
+ * errored turn takes (`runStepPatches$`'s doc): both throw, and
+ * `runDemo$`'s `catchError` funnels either one to the identical
+ * reopen-and-reset tail.
+ *
+ * Exists because `sendScripted` is a SILENT no-op while `JarvisMachine`'s
+ * `available` is false (`JarvisMachine.ts`'s `turnRequests$` `concatMap`:
+ * `if (!available) return EMPTY;` — no user/jarvis entry pair ever appears,
+ * so `runStep`'s own settle detection has nothing to observe, and no
+ * `jarvisEvents$` emission ever arrives either). A WS-mode disconnect mid-demo
+ * would otherwise pin `JarvisDemoState.running` at `true` forever with no
+ * way out — worse, if it happens to die on step 7, the overlay stays closed
+ * (`closesOverlay`) permanently too. `runStep`'s `timeout({ first: ... })`
+ * wrapper measures from SUBSCRIBE (i.e. from `sendScripted` being called) to
+ * the step's one-and-only settle emission, so a normal turn (deltas complete
+ * in well under a second) is never at risk — 30s is comfortably above any
+ * real scripted-brain turn while still short enough that a genuinely stuck
+ * demo self-heals inside one viewing. */
+export const DEMO_STEP_TIMEOUT_MS = 30_000;
 
 export interface JarvisDemoStep {
   /** Rendered by `JarvisDemoState.label` while this step is in flight — a
@@ -301,12 +323,20 @@ type WatchItem = StateWatchItem | EventWatchItem;
  * matching `"confirmRequest"` event once the turn has started, delays one
  * beat (power-saver-aware, same `beatMsFor` every step's post-settle delay
  * uses), then calls `declineConfirmation()` — never `approveConfirmation()`.
+ *
+ * **Watchdog.** The whole thing is wrapped in `timeout({ first:
+ * DEMO_STEP_TIMEOUT_MS })`: if no settle arrives within that window (the
+ * `sendScripted`-while-unavailable silent no-op is the real-world trigger —
+ * see `DEMO_STEP_TIMEOUT_MS`'s doc), rxjs errors this observable with a
+ * `TimeoutError`, which propagates out exactly like the `"error"` outcome
+ * does downstream (`runStepPatches$`'s `catchError`-driven abort path) —
+ * no separate handling needed here.
  */
 function runStep(
   step: JarvisDemoStep,
   deps: JarvisDemoDeps,
 ): Observable<"done" | "error"> {
-  return new Observable<"done" | "error">((subscriber) => {
+  const watched$ = new Observable<"done" | "error">((subscriber) => {
     const watermark = lastEntryId(readLatest(deps.jarvisState$)?.entries);
     let started = false;
     let confirmationHandled = false;
@@ -375,14 +405,37 @@ function runStep(
       declineTimerSub?.unsubscribe();
     };
   });
+
+  return watched$.pipe(
+    timeout({ first: DEMO_STEP_TIMEOUT_MS, scheduler: deps.scheduler }),
+  );
 }
 
 type Patch = (s: JarvisDemoState) => JarvisDemoState;
 
-function openPatch$(deps: JarvisDemoDeps): Observable<Patch> {
+/** Tracks whether THIS machine's own run currently has the overlay closed
+ * (step 7's `closesOverlay`) and not yet reopened — the one piece of mutable
+ * state shared between the normal run pipeline (`advancePatch$`/
+ * `openPatch$`/`finishPatch$`) and `stopDemo`'s own reopen guard (M1 fix):
+ * `stopDemo` must reopen the overlay if THE DEMO is the one that closed it,
+ * but must never force it back open just because a user separately closed it
+ * by hand outside the demo — that's exactly what this flag distinguishes.
+ * Lives for the machine's whole session (one instance, not per-run): every
+ * exit path that calls `jarvis.open()` (`openPatch$` at the start of the
+ * NEXT run, `finishPatch$` at the end of THIS one) also clears it, so a
+ * fresh run always starts clean. */
+interface OverlayCloseTracker {
+  closedByDemo: boolean;
+}
+
+function openPatch$(
+  deps: JarvisDemoDeps,
+  tracker: OverlayCloseTracker,
+): Observable<Patch> {
   return of(null).pipe(
     tap(() => {
       deps.jarvis.open();
+      tracker.closedByDemo = false;
     }),
     map((): Patch => {
       return (s: JarvisDemoState): JarvisDemoState => {
@@ -392,10 +445,14 @@ function openPatch$(deps: JarvisDemoDeps): Observable<Patch> {
   );
 }
 
-function finishPatch$(deps: JarvisDemoDeps): Observable<Patch> {
+function finishPatch$(
+  deps: JarvisDemoDeps,
+  tracker: OverlayCloseTracker,
+): Observable<Patch> {
   return of(null).pipe(
     tap(() => {
       deps.jarvis.open();
+      tracker.closedByDemo = false;
     }),
     map((): Patch => {
       return (): JarvisDemoState => {
@@ -409,11 +466,13 @@ function advancePatch$(
   step: JarvisDemoStep,
   index: number,
   deps: JarvisDemoDeps,
+  tracker: OverlayCloseTracker,
 ): Observable<Patch> {
   return of(null).pipe(
     tap(() => {
       if (step.closesOverlay) {
         deps.jarvis.close();
+        tracker.closedByDemo = true;
       }
     }),
     map((): Patch => {
@@ -442,6 +501,7 @@ function runStepPatches$(
   step: JarvisDemoStep,
   index: number,
   deps: JarvisDemoDeps,
+  tracker: OverlayCloseTracker,
 ): Observable<Patch> {
   const settle$: Observable<Patch> = runStep(step, deps).pipe(
     concatMap((outcome) => {
@@ -456,29 +516,35 @@ function runStepPatches$(
     }),
   );
 
-  return concat(advancePatch$(step, index, deps), settle$);
+  return concat(advancePatch$(step, index, deps, tracker), settle$);
 }
 
 /** One full demo run's `Patch` stream: `jarvis.open()`, all 7
  * `JARVIS_DEMO_STEPS` in order (`concatMap`, so step N+1 never starts
  * until step N's own turn has settled and paced its beat), then
  * `jarvis.open()` again + reset to idle. The `catchError` swallows a step's
- * abort throw (`runStepPatches$`'s doc) so the SAME reopen-and-reset tail
- * runs whether the loop finished all 7 steps or aborted early on an errored
- * turn — `jarvis.open()` is idempotent while already open (`JarvisMachine`'s
+ * abort throw — either an `"error"` outcome (`runStepPatches$`'s doc) OR a
+ * `runStep` watchdog timeout (`DEMO_STEP_TIMEOUT_MS`'s doc; the SAME
+ * `TimeoutError` just propagates through `settle$` unchanged, so no separate
+ * handling is needed here) — so the SAME reopen-and-reset tail runs whether
+ * the loop finished all 7 steps or aborted early for either reason —
+ * `jarvis.open()` is idempotent while already open (`JarvisMachine`'s
  * `openPatches$` guard), so re-calling it here is always safe, never a
  * double "just opened" event. */
-function runDemo$(deps: JarvisDemoDeps): Observable<Patch> {
+function runDemo$(
+  deps: JarvisDemoDeps,
+  tracker: OverlayCloseTracker,
+): Observable<Patch> {
   const steps$: Observable<Patch> = from(JARVIS_DEMO_STEPS).pipe(
     concatMap((step, index) => {
-      return runStepPatches$(step, index, deps);
+      return runStepPatches$(step, index, deps, tracker);
     }),
     catchError(() => {
       return EMPTY;
     }),
   );
 
-  return concat(openPatch$(deps), steps$, finishPatch$(deps));
+  return concat(openPatch$(deps, tracker), steps$, finishPatch$(deps, tracker));
 }
 
 /**
@@ -501,22 +567,27 @@ function runDemo$(deps: JarvisDemoDeps): Observable<Patch> {
  * confirmation card FIRST (directly, via a synchronous `jarvisState$` read
  * — never leave a dangling 60s-timeout card behind, regardless of whether
  * `runStep`'s own confirm→beat→decline sub-flow ever got the chance to run
- * its own decline), THEN signals `stop$`, which `takeUntil` uses to tear
- * down the in-flight step and a SEPARATE `stop$`-keyed patch resets state
- * to idle. The turn `sendScripted` already dispatched is left to finish
- * naturally — this machine has no way to cancel it (nor should it try:
- * it's a zero-cost, already-in-flight reply the user simply stops watching
- * the demo advance against).
+ * its own decline), then reopens the overlay if THIS run is the one that
+ * closed it (`overlayTracker.closedByDemo` — M1 fix: `takeUntil(stop$)`
+ * cuts `runDemo$` before its own `finishPatch$` tail can run that reopen,
+ * so `stopDemo` must do it directly, symmetric with the error/complete exit
+ * paths), THEN signals `stop$`, which `takeUntil` uses to tear down the
+ * in-flight step and a SEPARATE `stop$`-keyed patch resets state to idle.
+ * The turn `sendScripted` already dispatched is left to finish naturally —
+ * this machine has no way to cancel it (nor should it try: it's a
+ * zero-cost, already-in-flight reply the user simply stops watching the
+ * demo advance against).
  */
 export function createJarvisDemoMachine(
   deps: JarvisDemoDeps,
 ): JarvisDemoMachineHandle {
   const start$ = new Subject<void>();
   const stop$ = new Subject<void>();
+  const overlayTracker: OverlayCloseTracker = { closedByDemo: false };
 
   const runPatches$: Observable<Patch> = start$.pipe(
     exhaustMap(() => {
-      return runDemo$(deps).pipe(takeUntil(stop$));
+      return runDemo$(deps, overlayTracker).pipe(takeUntil(stop$));
     }),
   );
 
@@ -556,6 +627,15 @@ export function createJarvisDemoMachine(
 
         if (current?.pendingConfirmation) {
           deps.jarvis.declineConfirmation();
+        }
+
+        // M1: reopen the overlay if THIS run is the one that closed it —
+        // see overlayTracker's doc for why this must be a tracked flag
+        // rather than an unconditional open() (a user's own manual close
+        // must never be force-reopened by a stop).
+        if (overlayTracker.closedByDemo) {
+          deps.jarvis.open();
+          overlayTracker.closedByDemo = false;
         }
 
         stop$.next();
