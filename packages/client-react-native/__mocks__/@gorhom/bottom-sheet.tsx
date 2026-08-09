@@ -4,6 +4,16 @@ import { View } from "react-native";
 
 interface SheetProps {
   children?: ReactNode;
+  /** Fired when the sheet leaves the "presented" state — via `.dismiss()`,
+   * `.close()`, a backdrop tap, or a pan-down-to-dismiss on the real
+   * component. `TradeTicketSheet` and `AppearanceOverlay` both wire this to
+   * their own `onClose`, so a double that never calls it can't catch a
+   * caller that dropped the wiring — which is exactly what this double did
+   * until this prop and the calls below were added: `dismiss()`/`close()`
+   * flipped local state but never told the caller, so nothing in this
+   * package could ever observe TradeTicketSheet's machine-driven auto-close
+   * actually closing the sheet. */
+  onDismiss?: () => void;
 }
 
 interface ViewSheetProps extends SheetProps {
@@ -36,9 +46,11 @@ export const BottomSheetModal = forwardRef(function BottomSheetModal(
       },
       dismiss: (): void => {
         setPresented(false);
+        props.onDismiss?.();
       },
       close: (): void => {
         setPresented(false);
+        props.onDismiss?.();
       },
     };
   });
@@ -47,7 +59,11 @@ export const BottomSheetModal = forwardRef(function BottomSheetModal(
     return null;
   }
 
-  return <View testID="bottom-sheet">{props.children}</View>;
+  // No `testID` here: the real `BottomSheetModalProps` doesn't carry one (a
+  // caller testID's the CONTENT via `BottomSheetView` below, not the modal
+  // itself), so a hardcoded literal here would assert nothing a real render
+  // could match.
+  return <View>{props.children}</View>;
 });
 
 export function BottomSheetModalProvider(props: SheetProps): React.JSX.Element {
