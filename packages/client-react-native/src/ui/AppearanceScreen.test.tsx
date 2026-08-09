@@ -46,7 +46,11 @@ test("renders all six skins as cards in the design's order", async () => {
     ),
   );
   const labels = screen.getAllByTestId(/^appearance-skin-.*-label$/);
-  expect(labels.map((n) => n.props.children)).toEqual([
+  expect(
+    labels.map((n) => {
+      return n.props.children;
+    }),
+  ).toEqual([
     "HOLO HUD",
     "HOLO 3D",
     "TERMINAL",
@@ -78,9 +82,9 @@ test("the three swatches are the three distinct semantic accent tokens, not copi
     ),
   );
   const swatches = screen.getAllByTestId("appearance-skin-holo-swatch");
-  const colors = swatches.map(
-    (n) => StyleSheet.flatten(n.props.style as ViewStyle).backgroundColor,
-  );
+  const colors = swatches.map((n) => {
+    return StyleSheet.flatten(n.props.style as ViewStyle).backgroundColor;
+  });
   const holoDark = rnThemeTokens.holo.dark;
   expect(colors).toEqual([
     holoDark.accentPrimary,
@@ -308,35 +312,15 @@ test("mode segment cells are flex:1 and the segment does not share a row with th
       () => {},
     ),
   );
+
   for (const target of ["dark", "light", "system"]) {
     const cell = screen.getByTestId(`appearance-mode-${target}`);
     expect(flattenFlex(cell.props.style)).toBe(1);
   }
+
   const section = screen.getByTestId("appearance-mode-section");
   expect(flattenFlexDirection(section.props.style)).not.toBe("row");
 });
-
-function flattenFlex(style: unknown): number | undefined {
-  return StyleSheet.flatten(style as ViewStyle)?.flex;
-}
-
-function flattenFlexDirection(style: unknown): string | undefined {
-  return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
-}
-
-/** RN's `width: "30%"`-style percentage values are plain strings ending in
- * `%` — this strips it and parses the number, throwing loudly rather than
- * returning NaN if a future edit switches the card to a fixed pixel width
- * (which would silently defeat the no-wrap-margin test that consumes this). */
-function parsePercent(value: unknown): number {
-  if (typeof value !== "string" || !value.endsWith("%")) {
-    throw new Error(
-      `expected a percentage width string, got ${JSON.stringify(value)}`,
-    );
-  }
-
-  return Number.parseFloat(value);
-}
 
 // The picker is the only real branch on this screen: it must be entirely
 // absent while ambient is off, not merely unusable. `queryByTestId` returning
@@ -398,6 +382,7 @@ test("replay boot reboots then notifies onReplayBoot, in that order", async () =
   const reboot = jest.fn(() => {
     calls.push("reboot");
   });
+
   const onReplayBoot = jest.fn(() => {
     calls.push("onReplayBoot");
   });
@@ -540,4 +525,26 @@ function renderScreen(vm: ViewModel): Promise<unknown> {
       </ThemeContext.Provider>
     </ViewModelProvider>,
   );
+}
+
+function flattenFlex(style: unknown): number | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flex;
+}
+
+function flattenFlexDirection(style: unknown): string | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
+}
+
+/** RN's `width: "30%"`-style percentage values are plain strings ending in
+ * `%` — this strips it and parses the number, throwing loudly rather than
+ * returning NaN if a future edit switches the card to a fixed pixel width
+ * (which would silently defeat the no-wrap-margin test that consumes this). */
+function parsePercent(value: unknown): number {
+  if (typeof value !== "string" || !value.endsWith("%")) {
+    throw new Error(
+      `expected a percentage width string, got ${JSON.stringify(value)}`,
+    );
+  }
+
+  return Number.parseFloat(value);
 }
