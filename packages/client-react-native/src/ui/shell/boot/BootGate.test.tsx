@@ -2,7 +2,7 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { act, screen, waitFor } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
@@ -134,63 +134,32 @@ test("renders nothing while the seam reports the splash hidden", async () => {
   expect(screen.queryByTestId("boot-wordmark")).toBeNull();
 });
 
-test("re-arms the fade on every raise (⟳ Replay Boot)", async () => {
-  // BootGate no longer unmounts between boots — visibility is the seam's now —
-  // so its `Animated.Value` OUTLIVES the splash it faded out. Without this
-  // re-arm a replay re-rendered the overlay at the opacity 0 the previous
-  // dismissal left behind: mounted, ramping, and completely invisible, with
-  // nothing in the a11y tree to say so. Found on device, by pressing the button.
-  //
-  // This asserts the re-arm CALL, not the rendered opacity, because jest cannot
-  // observe the latter: the fade runs `useNativeDriver: true`, so it never
-  // touches the JS-side value and `style.opacity` reads 1 here whether faded or
-  // not. Same structural blindness as the worklet class (rn-open-items §5) —
-  // the simulator stays the only real witness for the pixels.
-  jest
-    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
-    .mockResolvedValue(true);
-  const setValue = jest.spyOn(Animated.Value.prototype, "setValue");
-  let raise: (() => void) | null = null;
-  // The seam hook drives the re-render, exactly as the bound `visible$` does in
-  // the app — swapping the ViewModel object would not, since the provider holds
-  // one instance for the life of the mount.
-  const viewModel = {
-    useBootGate: () => {
-      const [visible, setVisible] = useState(false);
-
-      raise = (): void => {
-        setVisible(true);
-      };
-
-      return {
-        visible,
-        dismiss: noop,
-        reboot: noop,
-      };
-    },
-    useBootSequence: () => {
-      return {
-        state: RUNNING,
-        skip: noop,
-      };
-    },
-  } as unknown as ViewModel;
-
-  await renderWithTheme(
-    <ViewModelProvider viewModel={viewModel}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  expect(screen.queryByTestId("boot-gate")).toBeNull();
-  setValue.mockClear();
-
-  await act(async () => {
-    raise?.();
-  });
-
-  expect(screen.getByTestId("boot-gate")).toBeTruthy();
-  expect(setValue).toHaveBeenCalledWith(1);
-});
+// NO jest test guards the replay defect, deliberately — and this is the record
+// of why, so nobody re-adds one that cannot fail.
+//
+// The defect: `BootGate` never unmounts (the layout renders it
+// unconditionally), so an opacity `Animated.Value` held on IT survives every
+// raise, carrying the previous dismissal's terminal 0 into the next boot. The
+// splash then ran its whole ~5s ramp at native opacity 0 — invisible over the
+// live HUD — and appeared for one frame at the end, when starting the next fade
+// re-synced the native node. Measured on the simulator: 31 consecutive frames
+// with no splash, then a single partial-opacity frame with progress already at
+// 100%.
+//
+// Why there is no test. The previous fix re-armed the shared value with
+// `opacity.setValue(1)`, and the test here asserted that CALL. It passed for as
+// long as the bug shipped, because under `useNativeDriver: true` the JS-side
+// value is not what paints. Two later attempts were tried and both were
+// verified worthless before being discarded:
+//   1. counting `Animated.Value` constructions — `useRef(new Animated.Value(1))`
+//      evaluates its argument on EVERY render, so it counts renders, not
+//      retained instances; it stayed green with the defect restored.
+//   2. reading the value off the rendered node — RN resolves it to a plain
+//      number on the host (`style.opacity === 1`), so the instance identity that
+//      distinguishes fresh from stale never reaches the tree.
+// The fix is structural rather than behavioural (the value now mounts and dies
+// WITH the splash, as both web clients' CSS opacity already does), and this tier
+// cannot see structure. The simulator is the witness; see docs/rn-open-items.md.
 
 // Never-done fake: useBootSequence returns a running state and never invokes
 // onDone — the splash stays up so we can assert it rendered.
