@@ -10,34 +10,40 @@ const ROWS = [
 
 describe("sortMovers", () => {
   test("chg sorts by change% descending — the design's default board order", () => {
-    expect(sortMovers(ROWS, "chg").map((r) => r.symbol)).toEqual([
-      "TSLA",
-      "NVDA",
-      "AAPL",
-    ]);
+    expect(
+      sortMovers(ROWS, "chg").map((r) => {
+        return r.symbol;
+      }),
+    ).toEqual(["TSLA", "NVDA", "AAPL"]);
   });
 
   test("price sorts by last descending", () => {
-    expect(sortMovers(ROWS, "price").map((r) => r.symbol)).toEqual([
-      "TSLA",
-      "AAPL",
-      "NVDA",
-    ]);
+    expect(
+      sortMovers(ROWS, "price").map((r) => {
+        return r.symbol;
+      }),
+    ).toEqual(["TSLA", "AAPL", "NVDA"]);
   });
 
   test("sym sorts A-Z ascending", () => {
-    expect(sortMovers(ROWS, "sym").map((r) => r.symbol)).toEqual([
-      "AAPL",
-      "NVDA",
-      "TSLA",
-    ]);
+    expect(
+      sortMovers(ROWS, "sym").map((r) => {
+        return r.symbol;
+      }),
+    ).toEqual(["AAPL", "NVDA", "TSLA"]);
   });
 
   test("does not mutate its input", () => {
-    const before = ROWS.map((r) => r.symbol);
+    const before = ROWS.map((r) => {
+      return r.symbol;
+    });
 
     sortMovers(ROWS, "sym");
-    expect(ROWS.map((r) => r.symbol)).toEqual(before);
+    expect(
+      ROWS.map((r) => {
+        return r.symbol;
+      }),
+    ).toEqual(before);
   });
 
   test("rows with no quote yet sort last, never first", () => {
@@ -63,7 +69,11 @@ describe("sparklinePoints", () => {
   test("a flat series sits on the vertical midline rather than dividing by zero", () => {
     const pts = sparklinePoints([5, 5, 5], 100, 20);
 
-    expect(pts.every((p) => p.y === 10)).toBe(true);
+    expect(
+      pts.every((p) => {
+        return p.y === 10;
+      }),
+    ).toBe(true);
   });
 
   test("fewer than two closes yields no points — nothing to draw", () => {
