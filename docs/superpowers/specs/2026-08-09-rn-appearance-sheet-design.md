@@ -146,6 +146,24 @@ matters — they are the only real branch.
   on a 402pt screen leaves ~230pt for three cells. Measure it; if it does not sit
   cleanly, mode moves to its own row directly under the header. Do not guess —
   this exact class of assumption is what produced P8.
+  - **Resolved: own row, not inline.** The design's real CSS
+    (`docs/design/mobile/v1/standalone/Reactive Trader Mobile.html`, the
+    "appearance sheet" block) is a genuine measurement, but only for the
+    2-way DARK/LIGHT case — it fits inline beside the title at the sheet's
+    real content width. That block has no `SYSTEM` button, so it supplies no
+    number for the 3-way segment ours needs; estimating a third cell's width
+    from font metrics would be exactly the guess this note warns against. The
+    segment was moved to its own row beneath the title — safe at any width by
+    construction — per the fallback stated above. Landed in
+    `AppearanceScreen.tsx` (commit `a4417799a`).
+  - **Visible consequence:** a deliberate deviation from the mobile-v1
+    reference shot, which shows the segment inline — the sheet is one row
+    taller. Worth a look on a future visual-parity pass, and specifically
+    *not* a bug to fix back to inline without first obtaining a real 3-way
+    measurement.
+  - **Reopens if:** a real 3-way-segment measurement is taken (on-device or
+    simulator, at the sheet's actual content width), or the design gains a
+    `SYSTEM` cell in its own reference, giving a real number to build against.
 - `AppearanceScreen` (495 lines) is substantially rewritten, not patched.
 
 ## Explicit non-goals
