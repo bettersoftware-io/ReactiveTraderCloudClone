@@ -21,22 +21,22 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * ticket machine's own lifecycle — no UI-side timers) to a ceremonial flourish
  * that OWNS the ticket's phase-status text (the ticket itself renders none of
  * it — see `OrderTicket.tsx`, avoiding the same fact printing twice in one
- * card): `editing` renders nothing (terminal/in-flight only); `submitting`
- * shows a busy pill; `working`/`partiallyFilled` show the same pill
- * re-labelled (still in flight, just with a live order to report progress
- * from); `filled`/`rejected` show a toast, firing an `expo-haptics`
+ * card): `editing` renders nothing at all (terminal/in-flight only);
+ * `submitting` shows a busy pill; `working`/`partiallyFilled` show the same
+ * pill re-labelled (still in flight, just with a live order to report
+ * progress from); `filled`/`rejected` show a toast, firing an `expo-haptics`
  * notification once on entry. Adapted from Phase 4a's `ExecutionCeremony`
  * (`TileExecutionState`, a different union) rather than imported — the two
  * rate/equity tickets don't share a state shape.
  *
- * Always renders inside a fixed-height slot (`styles.slot`), in every one of
- * the six phases, whether or not it has content — NOT `position: absolute`.
+ * Renders inside a fixed-height slot (`styles.slot`) for `submitting`/
+ * `working`/`partiallyFilled`/`filled`/`rejected` — NOT `position: absolute`.
  * The pill and toast variants differ in natural height (a one-line pill vs a
  * two-line toast), and this used to sit directly in the ticket's normal flow:
  * a `working → filled` transition shifted the `ResetButton` below it by
  * ~20px, right as a user who just watched their order fill was reaching to
  * tap "NEW ORDER". A fixed-height slot makes every sibling below it
- * position-invariant across all six phases by construction, with no
+ * position-invariant across those five phases by construction, with no
  * per-transition reasoning required. `position: absolute` (matching
  * `ExecutionCeremony`'s `StyleSheet.absoluteFill` scrim) was the other option
  * considered and rejected: `ExecutionCeremony` deliberately overlaps and
@@ -44,15 +44,32 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * the `ResetButton` must stay both visible AND tappable throughout
  * working/partiallyFilled/filled/rejected — an overlay would have to either
  * dodge the button's exact geometry or swallow taps on "NEW ORDER"/"RESET"/
- * "RETRY", trading Finding 1 (a moving target) for a worse one (a dead
- * target). A same-height, non-overlapping sibling needs no tap-blocking
- * decision at all: nothing is ever stacked, so nothing is ever swallowed.
+ * "RETRY", trading a moving target for a worse dead one. A same-height,
+ * non-overlapping sibling needs no tap-blocking decision at all: nothing is
+ * ever stacked, so nothing is ever swallowed.
+ *
+ * `editing` is deliberately exempt from the slot, not just from content: it
+ * renders no wrapper at all, contributing zero height. `editing` has no
+ * `ResetButton` (or any continuous sibling) below `OrderCeremony` to protect
+ * — entering/leaving `editing` already swaps the ticket's entire child tree
+ * for the order form, so there is no shared sibling for a reserved slot to
+ * keep still. Reserving one there anyway (an earlier version of this fix
+ * did) bought nothing and cost a constant ~62px blank strip (52px slot +
+ * `Ticket`'s `gap: 10`) on the ticket's default resting state — the screen
+ * a user sees before every single order, worse than the intermittent ~20px
+ * shift it replaced.
  *
  * Both the motion (toast/pill entrance, the toast's exit) and the haptic gate
  * on `useShellMotionEnabled`; every phase's text renders unconditionally so
  * reduced-motion/Freeze users still see the outcome. */
-export function OrderCeremony({ state }: OrderCeremonyProps): JSX.Element {
+export function OrderCeremony({
+  state,
+}: OrderCeremonyProps): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
+
+  if (state.phase === "editing") {
+    return null;
+  }
 
   return (
     <View testID="eq-order-ceremony-slot" style={styles.slot}>
@@ -209,12 +226,13 @@ const ENTER_MS = 220;
  * instantly. `src/ui` stays free of timers either way. */
 const TOAST_DWELL_MS = 1250;
 
-/** Height of the slot `OrderCeremony` always renders into, regardless of
- * phase — sized to the tallest variant (`Toast`'s two text lines plus its
- * padding) so nothing clips, and held constant even for the shorter `BusyPill`
- * or the empty (`editing`) case. See the top-level doc comment for why this
- * exists: the slot, not the ceremony's own content height, is what the
- * `ResetButton` beneath it in `OrderTicket.tsx` is actually laid out against. */
+/** Height of the slot `OrderCeremony` renders for the five non-`editing`
+ * phases — sized to the tallest variant (`Toast`'s two text lines plus its
+ * padding) so nothing clips, and held constant for the shorter `BusyPill`
+ * too. `editing` renders no slot at all (see the top-level doc comment), so
+ * this height never applies there. The slot, not the ceremony's own content
+ * height, is what the `ResetButton` beneath it in `OrderTicket.tsx` is
+ * actually laid out against. */
 const CEREMONY_SLOT_HEIGHT = 52;
 
 interface OrderCeremonyStyles {

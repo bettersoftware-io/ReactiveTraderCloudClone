@@ -81,20 +81,25 @@ test("fires an Error haptic entering the rejected phase", async () => {
   );
 });
 
-test("keeps a fixed-height slot across every phase, so a sibling control below it in OrderTicket never has to move", async () => {
+test("keeps a fixed-height slot across submitting/working/partiallyFilled/filled/rejected, so a sibling control below it in OrderTicket never has to move", async () => {
   // The regression this guards: OrderCeremony used to sit directly in-flow,
   // so its BusyPill (~one text line) vs Toast (~two text lines) variants
   // gave working/filled/etc. different natural heights — pushing whatever
   // OrderTicket renders below it (the ResetButton) down by ~20px on a
   // working -> filled transition, right as a user reached to tap "NEW
   // ORDER". A fixed-height slot is the fix: assert the slot's height is
-  // identical across all six phases, not just the one pair from the report.
-  const editing = await renderWithTheme(
-    <OrderCeremony
-      state={{ phase: "editing", form: {} as never, error: null }}
-    />,
-  );
-
+  // identical across all five phases that carry one, not just the one pair
+  // from the report.
+  //
+  // `editing` is deliberately EXCLUDED from this set, not merely untested:
+  // it renders no slot at all (see "reserves no height while editing"
+  // below), because it has no ResetButton or other continuous sibling below
+  // OrderCeremony for a reserved slot to protect — entering/leaving
+  // `editing` already swaps the ticket's whole child tree for the order
+  // form. Folding `editing` back into this height set would silently
+  // reintroduce the ~62px blank strip a first attempt at this fix shipped
+  // (52px slot + the ticket's own `gap: 10`) on the ticket's default
+  // resting state.
   const submitting = await renderWithTheme(
     <OrderCeremony state={{ phase: "submitting" }} />,
   );
@@ -115,19 +120,25 @@ test("keeps a fixed-height slot across every phase, so a sibling control below i
     <OrderCeremony state={{ phase: "rejected", reason: "NO LIQUIDITY" }} />,
   );
 
-  const heights = [
-    editing,
-    submitting,
-    working,
-    partiallyFilled,
-    filled,
-    rejected,
-  ].map((result) => {
-    return heightOf(result.getByTestId("eq-order-ceremony-slot"));
-  });
+  const heights = [submitting, working, partiallyFilled, filled, rejected].map(
+    (result) => {
+      return heightOf(result.getByTestId("eq-order-ceremony-slot"));
+    },
+  );
 
   expect(heights[0]).toEqual(expect.any(Number));
   expect(new Set(heights).size).toBe(1);
+});
+
+test("reserves no height while editing — no ~62px blank strip on the ticket's default resting state", async () => {
+  const { queryByTestId, toJSON } = await renderWithTheme(
+    <OrderCeremony
+      state={{ phase: "editing", form: {} as never, error: null }}
+    />,
+  );
+
+  expect(queryByTestId("eq-order-ceremony-slot")).toBeNull();
+  expect(toJSON()).toBeNull();
 });
 
 test("mutes the haptic when motion is disabled, but still renders the toast", async () => {
