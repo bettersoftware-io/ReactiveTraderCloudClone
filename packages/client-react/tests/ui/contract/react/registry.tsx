@@ -870,6 +870,14 @@ export const registry = new Map<AnyToken, ElementFor>([
           compare={
             p.compare as { readonly series: readonly Candle[] } | undefined
           }
+          compareBackfill={
+            p.compareBackfill as
+              | {
+                  readonly loadingOlder: boolean;
+                  readonly historyExhausted: boolean;
+                }
+              | undefined
+          }
           defaultVisible={(p.defaultVisible as number) ?? 50}
           loadingOlder={(p.loadingOlder as boolean) ?? false}
           historyExhausted={(p.historyExhausted as boolean) ?? false}

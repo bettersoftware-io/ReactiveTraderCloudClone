@@ -1,7 +1,13 @@
 import { state } from "@rx-state/core";
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
-import type { BehaviorSubject } from "rxjs";
-import { EMPTY, type Observable, of, throwError } from "rxjs";
+import {
+  BehaviorSubject,
+  combineLatest,
+  EMPTY,
+  type Observable,
+  of,
+  throwError,
+} from "rxjs";
 import { catchError, map } from "rxjs/operators";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
@@ -25,6 +31,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/client-core";
 import {
+  CandleSeriesPresenter,
   createBootSequenceMachine,
   createDefaultLayoutPort,
   createJarvisDemoMachine,
@@ -44,11 +51,14 @@ import {
 } from "@rtc/client-core";
 import type {
   AmbientStyle,
+  Candle,
   CandleTimeframe,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
+  DepthBook,
   EqBlotterView,
+  EquityQuote,
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
@@ -58,6 +68,7 @@ import type {
   JarvisSkin,
   LoginWaitDelay,
   LoginWaitStyle,
+  MarketDataPort,
   PlaceOrderRequest,
   PowerSaverLevel,
   RfqQuoteResult,
@@ -226,6 +237,127 @@ function getLayoutFor(
   }
 
   return machine;
+}
+
+/** The REAL `CandleSeriesPresenter`, one shared instance PER WORLD (same
+ * per-World-singleton doctrine as `getLayoutFor`/`getWorkspaceNav` above) —
+ * built over a `MarketDataPort`-shaped wrapper of the World's own candle
+ * subjects/`candleHistory` fake, so `loadOlderCandles`/`useCandleBackfill`
+ * below drive the SAME single-flight/exhaustion state machine production
+ * does, through the World's spy-able `candleHistory` (ChartCompare.contract
+ * .spec.ts's "ChartPanel pages only the primary…" case spies on it) —
+ * mirrors the react driver's own `getCandleSeries`. Only `candles()`/
+ * `candleHistory()` are ever actually called by the presenter; `quotes()`/
+ * `depth()` are wired for interface completeness via `as unknown` casts
+ * (the World's per-symbol subjects are nullable ahead of first data, a
+ * shape the presenter never touches). */
+const candleSeriesPresenters = new WeakMap<World, CandleSeriesPresenter>();
+
+function getCandleSeries(world: World): CandleSeriesPresenter {
+  let presenter = candleSeriesPresenters.get(world);
+
+  if (!presenter) {
+    const port: MarketDataPort = {
+      watchlist: () => {
+        return world.watchlist;
+      },
+      quotes: (symbol: string) => {
+        return world.equityQuoteFor(
+          symbol,
+        ) as unknown as Observable<EquityQuote>;
+      },
+      candles: (symbol: string) => {
+        return world.candlesFor(symbol);
+      },
+      candleHistory: (
+        symbol: string,
+        timeframe: CandleTimeframe,
+        beforeTime: number,
+        count: number,
+      ) => {
+        return world.candleHistory(symbol, timeframe, beforeTime, count);
+      },
+      depth: (symbol: string) => {
+        return world.depthFor(symbol) as unknown as Observable<DepthBook>;
+      },
+    };
+
+    presenter = new CandleSeriesPresenter(port);
+    candleSeriesPresenters.set(world, presenter);
+  }
+
+  return presenter;
+}
+
+/** `getCandleBridge`'s combined loadingOlder/historyExhausted snapshot —
+ * named (not inlined) per `no-restricted-syntax`'s ban on inline object type
+ * arguments. */
+interface CandleBridgeBackfill {
+  readonly loadingOlder: boolean;
+  readonly historyExhausted: boolean;
+}
+
+/** A candle series' rendered value plus its backfill flags, mirrored into
+ * plain `BehaviorSubject`s kept warm for the World's lifetime (then wrapped
+ * as Solid accessors via `wrapSubject`) — see `getCandleBridge` for why a
+ * churn-free subscription matters here. */
+interface CandleBridge {
+  readonly candles$: BehaviorSubject<readonly Candle[]>;
+  readonly backfill$: BehaviorSubject<CandleBridgeBackfill>;
+}
+
+const candleBridges = new WeakMap<World, Map<string, CandleBridge>>();
+
+/** One subscription-per-(World, symbol|timeframe) to `CandleSeriesPresenter
+ * .candles$`/backfill streams, mirrored into permanently-warm
+ * `BehaviorSubject`s `wrapSubject` reads through. Deliberately NOT
+ * subscribed straight off a per-render Solid primitive: `candles$` wraps a
+ * `shareReplay({ refCount: true })` inside a `defer()` that resets the
+ * backfill state (older$/exhausted$/latestFirst) on every FRESH
+ * subscription — a subscription that churns with the component would tear
+ * down and re-establish it repeatedly, silently un-latching
+ * `historyExhausted` in between. A single subscribe here, kept alive for
+ * the World's lifetime, avoids that churn entirely — mirrors the react
+ * driver's own `getCandleBridge`. */
+function getCandleBridge(
+  world: World,
+  symbol: string,
+  timeframe?: CandleTimeframe,
+): CandleBridge {
+  let byKey = candleBridges.get(world);
+
+  if (!byKey) {
+    byKey = new Map();
+    candleBridges.set(world, byKey);
+  }
+
+  const key = `${symbol}|${timeframe ?? ""}`;
+  let bridge = byKey.get(key);
+
+  if (!bridge) {
+    const presenter = getCandleSeries(world);
+    const candles$ = new BehaviorSubject<readonly Candle[]>([]);
+    const backfill$ = new BehaviorSubject<CandleBridgeBackfill>({
+      loadingOlder: false,
+      historyExhausted: false,
+    });
+
+    presenter.candles$(symbol, timeframe).subscribe((series) => {
+      candles$.next(series);
+    });
+
+    combineLatest([
+      presenter.loadingOlder$(symbol, timeframe),
+      presenter.historyExhausted$(symbol, timeframe),
+    ]).subscribe(([loadingOlder, historyExhausted]) => {
+      backfill$.next({ loadingOlder, historyExhausted });
+    });
+
+    bridge = { candles$, backfill$ };
+    byKey.set(key, bridge);
+  }
+
+  return bridge;
 }
 
 /** The REAL `createJarvisDriverMachine`, one shared instance PER WORLD
@@ -845,20 +977,22 @@ export function solidViewModel(world: World): ViewModel {
     useEquityQuote: (symbol: string) => {
       return wrapSubject(world.equityQuoteFor(symbol));
     },
-    useCandles: (symbol: string, _timeframe?: CandleTimeframe) => {
-      return wrapSubject(world.candlesFor(symbol));
+    // Candles + backfill route through the REAL `CandleSeriesPresenter`
+    // (getCandleBridge/getCandleSeries above) — ChartCompare.contract.spec
+    // .ts's "ChartPanel pages only the primary…" case drives a real
+    // near-edge trigger through ChartPanel and spies on the World's
+    // `candleHistory`, so `loadOlderCandles` must reach it for real rather
+    // than stay the no-op stub this used to be (ChartBackfill.contract.spec
+    // .ts still covers the trigger's own logic by mounting CandleChart
+    // directly with props) — mirrors the react driver's own wiring.
+    useCandles: (symbol: string, timeframe?: CandleTimeframe) => {
+      return wrapSubject(getCandleBridge(world, symbol, timeframe).candles$);
     },
-    // Candle backfill: static default — no current contract spec drives
-    // backfill through World (ChartBackfill.contract.spec.ts mounts
-    // CandleChart directly with props instead), so a constant accessor plus
-    // a no-op command is sufficient to satisfy the interface.
-    useCandleBackfill: (_symbol: string, _timeframe?: CandleTimeframe) => {
-      return () => {
-        return { loadingOlder: false, historyExhausted: false };
-      };
+    useCandleBackfill: (symbol: string, timeframe?: CandleTimeframe) => {
+      return wrapSubject(getCandleBridge(world, symbol, timeframe).backfill$);
     },
-    loadOlderCandles: (): void => {
-      return;
+    loadOlderCandles: (symbol: string, timeframe?: CandleTimeframe): void => {
+      getCandleSeries(world).loadOlder(symbol, timeframe);
     },
     useDepth: (symbol: string) => {
       return wrapSubject(world.depthFor(symbol));

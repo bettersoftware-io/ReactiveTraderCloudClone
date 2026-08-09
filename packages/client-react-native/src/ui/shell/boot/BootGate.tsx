@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import {
   AccessibilityInfo,
   Animated,
@@ -30,19 +30,38 @@ import { BootSequence } from "#/ui/shell/boot/BootSequence";
 export function BootGate(): JSX.Element | null {
   const { useBootGate } = useViewModel();
   const { visible, dismiss } = useBootGate();
-  const opacity = useRef(new Animated.Value(1)).current;
 
-  // Re-arm the fade for every raise. This component no longer unmounts between
-  // boots — visibility is the seam's now — so the `Animated.Value` outlives the
-  // splash it faded out, and a replay would otherwise re-render the overlay at
-  // the opacity 0 the previous dismissal left behind: mounted, ramping,
-  // completely invisible. Found on device; the splash simply never appeared
-  // again, with nothing in the tree to suggest why.
-  useEffect(() => {
-    if (visible) {
-      opacity.setValue(1);
-    }
-  }, [visible, opacity]);
+  if (!visible) {
+    return null;
+  }
+
+  return <BootOverlay dismiss={dismiss} />;
+}
+
+/** The splash overlay and the fade that lowers it.
+ *
+ * **This is a separate component so the fade's `Animated.Value` dies with the
+ * splash.** `BootGate` itself never unmounts (it is rendered unconditionally by
+ * `app/(app)/_layout.tsx`), so an opacity value held up there OUTLIVES every
+ * raise — and the previous dismissal leaves it at 0. Replay then mounted the
+ * overlay at native opacity 0: the ramp ran for its full ~5s completely
+ * invisible over the live HUD, and the splash only appeared for a fraction of a
+ * second at the very end, when starting the next fade re-synced the native
+ * node. From the user's side: tap ⟳ Replay Boot, nothing happens for five
+ * seconds, then a flash.
+ *
+ * A previous fix re-armed the value with `opacity.setValue(1)` from an effect on
+ * every raise. The call happens — `BootGate.test.tsx` asserts it and passes —
+ * but it does not reach the native node, so the bug survived the fix AND its
+ * test. Mounting the value with the splash removes the stale-state class
+ * outright instead of patching propagation.
+ *
+ * Both web clients are correct here for exactly this reason and never needed a
+ * re-arm: their opacity lives in CSS on a `<div>` that is created fresh on each
+ * raise (`.boot[data-done]`), so there is no value to go stale. This is the RN
+ * equivalent of that structure. */
+function BootOverlay({ dismiss }: BootOverlayProps): JSX.Element {
+  const opacity = useRef(new Animated.Value(1)).current;
 
   function dismissBoot(): void {
     void AccessibilityInfo.isReduceMotionEnabled()
@@ -66,15 +85,15 @@ export function BootGate(): JSX.Element | null {
       });
   }
 
-  if (!visible) {
-    return null;
-  }
-
   return (
     <Animated.View testID="boot-gate" style={[styles.overlay, { opacity }]}>
       <BootSequence onDone={dismissBoot} />
     </Animated.View>
   );
+}
+
+interface BootOverlayProps {
+  readonly dismiss: () => void;
 }
 
 const FADE_MS = 320;

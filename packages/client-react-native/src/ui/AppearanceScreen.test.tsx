@@ -1,6 +1,7 @@
 // packages/client-react-native/src/ui/AppearanceScreen.test.tsx
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet, type ViewStyle } from "react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
@@ -8,27 +9,36 @@ import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
-test("shows the current mode preference and cycles on press", async () => {
-  const cycle = jest.fn();
-  await renderScreen(fakeViewModel(cycle, () => {}));
-  expect(screen.getByTestId("appearance-mode")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-mode"));
-  expect(cycle).toHaveBeenCalledTimes(1);
-});
-
-test("selects a skin on press", async () => {
+// Three near-identical tests here used to assert the same press -> setSkin
+// binding separately (terminal, holo3d, neon) — the last was added without
+// anyone noticing the first two already covered the binding itself.
+// Collapsed to one parameterised test; each skin still gets its own press
+// asserted against its own `setSkin` argument, just without three copies of
+// the render/fire/expect boilerplate.
+test.each<[string, string]>([
+  ["terminal", "appearance-skin-terminal"],
+  ["holo3d", "appearance-skin-holo3d"],
+  ["neon", "appearance-skin-neon"],
+])("pressing the %s card calls setSkin with it", async (skin, testId) => {
   const setSkin = jest.fn();
   await renderScreen(fakeViewModel(() => {}, setSkin));
-  await fireEvent.press(screen.getByTestId("appearance-skin-terminal"));
-  expect(setSkin).toHaveBeenCalledWith("terminal");
+  await fireEvent.press(screen.getByTestId(testId));
+  expect(setSkin).toHaveBeenCalledWith(skin);
 });
 
-test("lists the 3d skins and selects holo3d on press", async () => {
-  const setSkin = jest.fn();
-  await renderScreen(fakeViewModel(() => {}, setSkin));
+// Asserts something the parameterised test above does not: that the
+// terminal3d CARD itself renders at all, not merely that pressing it (were
+// it present) would call setSkin. Kept separate rather than folded into the
+// "renders all six skins" order test below, which only asserts the six
+// LABEL nodes.
+test("renders the terminal3d skin card", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
   expect(screen.getByTestId("appearance-skin-terminal3d")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-skin-holo3d"));
-  expect(setSkin).toHaveBeenCalledWith("holo3d");
 });
 
 test("marks the active skin selected", async () => {
@@ -39,6 +49,190 @@ test("marks the active skin selected", async () => {
     ),
   );
   expect(screen.getByTestId("appearance-skin-holo-active")).toBeTruthy();
+});
+
+// The domain's storage order is alphabetical-ish (classic first); the design
+// groups skins by family reading left-to-right across a 3x2 grid. This
+// asserts the VIEW order (SKIN_DISPLAY_ORDER), not the domain's, and would
+// catch a regression back to iterating THEME_SKINS directly.
+test("renders all six skins as cards in the design's order", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const labels = screen.getAllByTestId(/^appearance-skin-.*-label$/);
+  expect(
+    labels.map((n) => {
+      return n.props.children;
+    }),
+  ).toEqual([
+    "HOLO HUD",
+    "HOLO 3D",
+    "TERMINAL",
+    "TERMINAL 3D",
+    "NEON",
+    "CLASSIC",
+  ]);
+});
+
+test("each card shows three swatches", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getAllByTestId("appearance-skin-holo-swatch")).toHaveLength(3);
+});
+
+// A count of three proves the swatches exist, not that they carry the right
+// colours — three copies of the same accent would also pass the count-only
+// test above. This pins the three swatches to the three distinct semantic
+// accent tokens, in order, for the fixed "dark" mode the stub reports.
+test("the three swatches are the three distinct semantic accent tokens, not copies of one", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const swatches = screen.getAllByTestId("appearance-skin-holo-swatch");
+  const colors = swatches.map((n) => {
+    return StyleSheet.flatten(n.props.style as ViewStyle).backgroundColor;
+  });
+  const holoDark = rnThemeTokens.holo.dark;
+  expect(colors).toEqual([
+    holoDark.accentPrimary,
+    holoDark.accentPositive,
+    holoDark.accentNegative,
+  ]);
+  expect(new Set(colors).size).toBe(3);
+});
+
+// P8 (StatusStrip.test.tsx) and the mode-segment invariant below guard a
+// geometric assumption the same way after a control silently drifted into an
+// unsafe layout with every other test still green. The skin grid has the
+// identical trap: `skinCardWrap` is a PERCENTAGE width but `skinGrid`'s `gap`
+// is a FIXED pixel amount, so the row's no-wrap margin is a function of
+// device width, not a constant — it shrinks as the device narrows and grows
+// as `gap` grows. At the values this grid shipped with in review round 1
+// (31% / gap 10), a 320pt device cleared the no-wrap floor by 0.16pt —
+// noise-level, and invisible to every order/count/colour/press test in this
+// file, none of which would fail if the grid silently became 2x3. This test
+// derives the ACTUAL no-wrap floor from the real rendered styles (not a
+// hardcoded expectation of the constants) and asserts it clears a stated
+// minimum device width with real margin.
+//
+// The repo states no minimum supported device width (checked app.config.ts
+// and the RN package for a device-floor constant — none exists). 320pt is a
+// CHOSEN assumption here, not a discovered fact: the logical width of the
+// smallest iPhone the App Store has ever shipped (iPhone 5/SE 1st gen), used
+// as the conservative floor.
+test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; not stated in the repo)", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const MIN_SUPPORTED_DEVICE_WIDTH = 320;
+  // This file's content container padding (AppearanceScreen.tsx `content:
+  // { padding: 16, ... }`) — the grid's row width is the device width minus
+  // this on both sides. Not independently readable off a queried node
+  // (ScrollView's `contentContainerStyle` isn't exposed as `props.style` on
+  // the host node RTL returns), so it is named here explicitly rather than
+  // silently assumed; a change to that padding value must update this too.
+  const CONTENT_HORIZONTAL_PADDING = 16;
+
+  const grid = screen.getByTestId("appearance-skin-grid");
+  const gap = StyleSheet.flatten(grid.props.style as ViewStyle).gap;
+  expect(typeof gap).toBe("number");
+
+  const cell = screen.getByTestId("appearance-skin-holo-cell");
+  const width = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const cardWidthFraction = parsePercent(width) / 100;
+
+  // Wrap condition: 3 * cardWidthFraction * C + 2 * gap > C, where C is the
+  // row's available content width. No-wrap requires
+  // C >= 2 * gap / (1 - 3 * cardWidthFraction).
+  const containerFloor = (2 * (gap as number)) / (1 - 3 * cardWidthFraction);
+  const deviceWidthFloor = containerFloor + 2 * CONTENT_HORIZONTAL_PADDING;
+
+  expect(deviceWidthFloor).toBeLessThan(MIN_SUPPORTED_DEVICE_WIDTH);
+  // Real margin, not sub-pixel: the floor must clear the assumed minimum by
+  // at least 50pt, ruling out the kind of 0.16pt "pass" review round 1 shipped.
+  expect(MIN_SUPPORTED_DEVICE_WIDTH - deviceWidthFloor).toBeGreaterThanOrEqual(
+    50,
+  );
+});
+
+// A SECOND, independent threshold from the test above — that one proves
+// three CARDS fit per row; this one proves three SWATCHES then fit INSIDE
+// one of those cards. Both are the same class of trap (a FIXED pixel amount
+// against a PERCENTAGE width, so the margin shrinks as the device narrows),
+// but they are different geometry: `skinCardWrap`'s outer width vs
+// `skinGrid`'s gap (above) says nothing about `skinCard`'s INNER content
+// width vs the swatch row's own intrinsic width. Review round 2 found the
+// swatch row shipped at 18pt swatches / 6pt gap (66pt needed), whose real
+// floor was 332pt — ABOVE the 320pt floor the test above already asserts
+// elsewhere in this same grid, so a 320pt device would have silently
+// CLIPPED the third swatch (`BlurCard`'s `overflow: "hidden"` swallows the
+// overflow rather than pushing the row wider), with every order/count/
+// colour/press test in this file still green. 16pt / 4pt closes that gap;
+// this test derives the real floor from live rendered styles, the same way
+// the grid-wrap test above does, rather than trusting the constants.
+test("the skin card's inner content width keeps real margin over its swatch row's intrinsic width on a 320pt device", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const MIN_SUPPORTED_DEVICE_WIDTH = 320;
+  // Same named constant, same reason it can't be read off a queried node, as
+  // the grid-wrap test above (AppearanceScreen.tsx `content: { padding: 16,
+  // ... }`).
+  const CONTENT_HORIZONTAL_PADDING = 16;
+
+  const cell = screen.getByTestId("appearance-skin-neon-cell");
+  const cellWidth = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const cardWidthFraction = parsePercent(cellWidth) / 100;
+
+  // "neon" is never the stub's active skin (default is "holo"), so this is
+  // always the plain `skinCard` style, not `skinCardActive` — both carry the
+  // same `padding: 12`, so either would do, but only one needs querying.
+  const card = screen.getByTestId("appearance-skin-neon");
+  const cardPadding = StyleSheet.flatten(card.props.style as ViewStyle)
+    .padding as number;
+  expect(typeof cardPadding).toBe("number");
+
+  const swatchRow = screen.getByTestId("appearance-skin-neon-swatch-row");
+  const swatchGap = StyleSheet.flatten(swatchRow.props.style as ViewStyle)
+    .gap as number;
+  expect(typeof swatchGap).toBe("number");
+
+  const swatches = screen.getAllByTestId("appearance-skin-neon-swatch");
+  const swatchWidth = StyleSheet.flatten(swatches[0]?.props.style as ViewStyle)
+    .width as number;
+  expect(typeof swatchWidth).toBe("number");
+
+  const swatchRowWidth = 3 * swatchWidth + 2 * swatchGap;
+
+  // Fit condition: cardWidthFraction * C - 2 * cardPadding >= swatchRowWidth,
+  // where C is the grid row's available content width (device width minus
+  // this file's horizontal padding on both sides). Solving for the device
+  // width floor:
+  const containerFloor = (swatchRowWidth + 2 * cardPadding) / cardWidthFraction;
+  const deviceWidthFloor = containerFloor + 2 * CONTENT_HORIZONTAL_PADDING;
+
+  expect(deviceWidthFloor).toBeLessThan(MIN_SUPPORTED_DEVICE_WIDTH);
+  // Real margin, not sub-pixel — the class of near-miss (332pt vs a 320pt
+  // floor) that shipped the clip this test guards against.
+  expect(MIN_SUPPORTED_DEVICE_WIDTH - deviceWidthFloor).toBeGreaterThanOrEqual(
+    15,
+  );
 });
 
 test("shows an ambient toggle wired to useAnimatedBackground", async () => {
@@ -75,14 +269,32 @@ test("shows a three-level power-saver control wired to usePowerSaver", async () 
   // asserting — it is the level the old 2-state control could never reach, so
   // a regression to a boolean toggle fails here rather than silently shipping
   // a screen that cannot express the strongest setting.
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-freeze"));
+  await fireEvent.press(screen.getByTestId("appearance-power-freeze"));
   expect(setLevel).toHaveBeenCalledWith("freeze");
 
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-calm"));
+  await fireEvent.press(screen.getByTestId("appearance-power-calm"));
   expect(setLevel).toHaveBeenCalledWith("calm");
 
-  await fireEvent.press(screen.getByTestId("appearance-powersaver-off"));
+  await fireEvent.press(screen.getByTestId("appearance-power-off"));
   expect(setLevel).toHaveBeenCalledWith("off");
+});
+
+// Task 6: the section carries no visible label on the control itself (the
+// section head is "Motion", shared with the ambient toggle above it) — the
+// web client's PreferencesModal.tsx labels the equivalent PrefSegment
+// "Power saver" (packages/client-react/src/ui/shell/prefs/PreferencesModal.tsx),
+// and this screen follows the same per-control labelling convention the
+// "Skin" and "Motion" section heads already establish. Without this, the
+// three-cell segment reads as unlabelled motion controls with no indication
+// of what they select.
+test("the power-saver control is labelled 'Power saver'", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getByText("Power saver")).toBeTruthy();
 });
 
 test("the power-saver caption tracks the selected level", async () => {
@@ -97,7 +309,7 @@ test("the power-saver caption tracks the selected level", async () => {
   expect(screen.getByText(/run normally/i)).toBeTruthy();
 });
 
-test("segmented dark/light control presses light and drives cycle() the right number of steps from the live preference", async () => {
+test("the 3-way mode segment presses light and drives cycle() the right number of steps from the live preference", async () => {
   // modePreference defaults to "system" in the stub; the ViewModel exposes no
   // direct mode setter (createViewModel.ts UseThemePreferenceResult is
   // { mode, modePreference, cycle } only), so the segmented control must
@@ -110,7 +322,7 @@ test("segmented dark/light control presses light and drives cycle() the right nu
   expect(cycle).toHaveBeenCalledTimes(2);
 });
 
-test("segmented dark/light control presses dark and drives cycle() the right number of steps from the live preference", async () => {
+test("the 3-way mode segment presses dark and drives cycle() the right number of steps from the live preference", async () => {
   // From "system", reaching "dark" is one step: system→dark.
   const cycle = jest.fn();
   await renderScreen(fakeViewModel(cycle, () => {}));
@@ -118,18 +330,106 @@ test("segmented dark/light control presses dark and drives cycle() the right num
   expect(cycle).toHaveBeenCalledTimes(1);
 });
 
-test("shows an ambient style segmented control wired to useAmbientStyle", async () => {
+test("selecting System advances the cycle the right number of times", async () => {
+  // starts at "dark"; dark -> light -> system is 2 cycles
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "dark" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  expect(cycle).toHaveBeenCalledTimes(2);
+});
+
+test("the redundant tap-to-change row is gone", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.queryByTestId("appearance-mode")).toBeNull();
+});
+
+// The zero-cycle case matters most: an off-by-one in cyclesToReach would make
+// pressing the ALREADY-ACTIVE cell silently wrap a full lap (3 cycle() calls
+// instead of 0), and nothing else here would catch it — every other case in
+// this file presses a DIFFERENT cell than the live preference.
+test("pressing the already-active mode cell drives cycle() zero times", async () => {
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "system" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  expect(cycle).toHaveBeenCalledTimes(0);
+});
+
+test("segmented control presses dark from light and drives cycle() the right number of steps", async () => {
+  // From "light", reaching "dark" is two steps: light→system→dark.
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "light" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
+  expect(cycle).toHaveBeenCalledTimes(2);
+});
+
+// P8 (StatusStrip.test.tsx) guarded a geometric invariant the same way after
+// a control silently drifted into an unsafe layout with every other test
+// still green. Guards two things a later edit could reintroduce without any
+// functional test noticing: (1) a fixed-width cell that could clip a label
+// at some device width, and (2) the segment sharing a row with the title
+// again — the very re-measurement question Step 4 exists to avoid guessing
+// about. `flex: 1` cells in a non-row-sharing container are safe by
+// construction at any width, which is why this asserts the construction
+// rather than one measured number.
+test("mode segment cells are flex:1 and the segment does not share a row with the title", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+
+  for (const target of ["dark", "light", "system"]) {
+    const cell = screen.getByTestId(`appearance-mode-${target}`);
+    expect(flattenFlex(cell.props.style)).toBe(1);
+  }
+
+  const section = screen.getByTestId("appearance-mode-section");
+  expect(flattenFlexDirection(section.props.style)).not.toBe("row");
+});
+
+// The picker is the only real branch on this screen: it must be entirely
+// absent while ambient is off, not merely unusable. `queryByTestId` returning
+// null is a trivially-passing assertion if the container id is wrong (it
+// would also pass before the picker ever existed), so this is only trustworthy
+// alongside the paired "shown" test below proving the SAME id resolves once
+// ambient is on.
+test("ambient style picker is HIDDEN when ambient is off", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { ambient: { enabled: false, setEnabled: () => {}, toggle: () => {} } },
+    ),
+  );
+  expect(screen.queryByTestId("appearance-ambient-style")).toBeNull();
+});
+
+test("ambient style picker is SHOWN and selectable when ambient is on", async () => {
   const setStyle = jest.fn();
   await renderScreen(
     fakeViewModel(
       () => {},
       () => {},
-      { ambientStyle: { style: "aurora", setStyle } },
+      {
+        ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} },
+        ambientStyle: { style: "aurora", setStyle },
+      },
     ),
   );
-  expect(screen.getByTestId("appearance-ambient-aurora")).toBeTruthy();
-  expect(screen.getByTestId("appearance-ambient-rays")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-ambient-rays"));
+  expect(screen.getByTestId("appearance-ambient-style")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("appearance-ambient-style-rays"));
   expect(setStyle).toHaveBeenCalledWith("rays");
 });
 
@@ -144,6 +444,58 @@ test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async
   );
   await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
   expect(reboot).toHaveBeenCalledTimes(1);
+});
+
+// Task 6: the splash renders BEHIND this sheet (an opaque full-screen
+// overlay), so a host that never learns the boot was re-triggered has no way
+// to get out of its way — replaying the sequence would play, and finish,
+// unseen. `onReplayBoot` is the seam that raises the splash above the sheet.
+// This also pins the CALL ORDER (reboot() before onReplayBoot(), not the
+// reverse) by recording both calls into one shared log: the sheet dismissing
+// before the reboot is triggered would be the "never worked" bug again, just
+// moved one call earlier.
+test("replay boot reboots then notifies onReplayBoot, in that order", async () => {
+  const calls: string[] = [];
+  const reboot = jest.fn(() => {
+    calls.push("reboot");
+  });
+
+  const onReplayBoot = jest.fn(() => {
+    calls.push("onReplayBoot");
+  });
+  await render(
+    <ViewModelProvider
+      viewModel={fakeViewModel(
+        () => {},
+        () => {},
+        { reboot },
+      )}
+    >
+      <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+        <AppearanceScreen onReplayBoot={onReplayBoot} />
+      </ThemeContext.Provider>
+    </ViewModelProvider>,
+  );
+  await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
+  expect(reboot).toHaveBeenCalledTimes(1);
+  expect(onReplayBoot).toHaveBeenCalledTimes(1);
+  expect(calls).toEqual(["reboot", "onReplayBoot"]);
+});
+
+// The design's dev-handoff HTML spells this "▸ REPLAY BOOT SEQUENCE" verbatim
+// (docs/design/mobile/v1/dev-handoff/prototype/source/Reactive Trader
+// Mobile.dc.html) — a bare `\uXXXX` escape renders as the literal escape
+// sequence in this codebase's JSX (a real shipped defect class here), so this
+// asserts the exact string, not a substring or regex that a mangled glyph
+// could still satisfy.
+test("replay boot button is labelled with the literal ▸ glyph, verbatim", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getByText("▸ REPLAY BOOT SEQUENCE")).toBeTruthy();
 });
 
 // P7 moved sign-out here from the HUD header. Asserted on the SHEET rather
@@ -250,4 +602,26 @@ function renderScreen(vm: ViewModel): Promise<unknown> {
       </ThemeContext.Provider>
     </ViewModelProvider>,
   );
+}
+
+function flattenFlex(style: unknown): number | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flex;
+}
+
+function flattenFlexDirection(style: unknown): string | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
+}
+
+/** RN's `width: "30%"`-style percentage values are plain strings ending in
+ * `%` — this strips it and parses the number, throwing loudly rather than
+ * returning NaN if a future edit switches the card to a fixed pixel width
+ * (which would silently defeat the no-wrap-margin test that consumes this). */
+function parsePercent(value: unknown): number {
+  if (typeof value !== "string" || !value.endsWith("%")) {
+    throw new Error(
+      `expected a percentage width string, got ${JSON.stringify(value)}`,
+    );
+  }
+
+  return Number.parseFloat(value);
 }

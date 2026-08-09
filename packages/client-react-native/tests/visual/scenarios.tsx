@@ -1,3 +1,4 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { ReactNode } from "react";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
@@ -83,6 +84,16 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   ambient layer beneath it here), and `forceReduceMotion` seeds
  *   `animatedBackground: false` so the Ambient toggle deterministically reads
  *   OFF — both keep the shot stable.
+ *   `AppearanceOverlay` mounts a `BottomSheetModal`, whose internals call
+ *   `useBottomSheetModalInternal()` unconditionally and throw
+ *   `'BottomSheetModalInternalContext' cannot be null!'` with no
+ *   `BottomSheetModalProvider` ancestor — real in the app, because
+ *   `app/(app)/_layout.tsx` supplies one, but this route is a SIBLING of
+ *   `(app)`, not inside it (see `app/__visual/[...id].tsx`), and
+ *   `VisualScenarioHost` itself supplies only `ViewModelProvider` +
+ *   `ThemeProvider`. So this scenario wraps `AppearanceOverlay` in its own
+ *   `BottomSheetModalProvider` below — scoped to this one scenario, not
+ *   added to `VisualScenarioHost`, which no other scenario needs.
  *
  * - `shell/chrome` — the persistent HUD frame itself (header, connection
  *   banner, status strip, collapsed radial dock) via `ShellChromeFixture`,
@@ -194,7 +205,14 @@ export const SCENARIOS: readonly Scenario[] = [
     build: (): ReactNode => {
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
-          <AppearanceOverlay open onClose={(): void => {}} />
+          {/* BottomSheetModalProvider, scoped to THIS scenario only — see the
+              file-level comment above. `app/(app)/_layout.tsx` supplies one
+              for the real app, but this harness route sits outside that
+              layout, and VisualScenarioHost deliberately provides none for
+              the other scenarios, which don't need a portal host. */}
+          <BottomSheetModalProvider>
+            <AppearanceOverlay open onClose={(): void => {}} />
+          </BottomSheetModalProvider>
         </VisualScenarioHost>
       );
     },
