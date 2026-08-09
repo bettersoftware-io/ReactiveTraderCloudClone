@@ -155,6 +155,11 @@ This round makes it reactive to the gate:
   level, e.g. "Haiku · budget-limited" (soft, for a downgraded user) /
   "Scripted · budget exhausted" (hard). Non-downgraded users see their
   chip unchanged.
+  *Implementation deviation (recorded at final review, 2026-08-09): the
+  shipped chip shows the gated state for **every** user whenever a gate is
+  active — a Haiku user's chip also gains "· budget-limited" under a soft
+  gate. More transparency than specified, pinned by the shared contract
+  specs; kept.*
 - **Admin card:** budget line ("$0.81 of $1.00 this window — soft gate at
   $0.80"), level badge, and the existing resets-at/in-memory copy.
 
