@@ -26,6 +26,7 @@ export * from "#/presenters/EventLogPresenter";
 export * from "#/presenters/ForceBootAnimationPresenter";
 export * from "#/presenters/IncidentMachine";
 export * from "#/presenters/InstrumentsPresenter";
+export * from "#/presenters/JarvisDemoMachine";
 export * from "#/presenters/JarvisDriverMachine";
 export * from "#/presenters/JarvisMachine";
 export * from "#/presenters/JarvisPanelsMachine";

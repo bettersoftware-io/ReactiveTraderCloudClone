@@ -66,6 +66,7 @@ import { createSignal } from "solid-js";
 
 import type {
   BootSequenceState,
+  JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
@@ -73,7 +74,11 @@ import type {
   SessionUser,
   WorkspaceNavState,
 } from "@rtc/client-core";
-import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  JARVIS_DEMO_STEPS,
+  type WorkspaceTab,
+} from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
 
 function noop(): void {}
@@ -555,6 +560,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggle: noop,
         send: noop,
         narrate: noop,
+        sendScripted: noop,
         approveConfirmation: noop,
         declineConfirmation: noop,
         setSkin: noop,
@@ -607,6 +613,21 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // driven-pulse cue never fires here (pixel-neutral for every golden).
     useJarvisDriver: () => {
       return at<JarvisDriverState>({ lastBatch: [] });
+    },
+    // Jarvis hands-free scripted demo — static idle filler, no-op intents
+    // (Task 6/7 of this round wire up a consuming UI; no static screenshot
+    // drives it yet, so this stays pixel-neutral for every existing golden).
+    useJarvisDemo: () => {
+      return {
+        state: at<JarvisDemoState>({
+          running: false,
+          stepIndex: 0,
+          stepCount: JARVIS_DEMO_STEPS.length,
+          label: null,
+        }),
+        startDemo: noop,
+        stopDemo: noop,
+      };
     },
   };
 }
