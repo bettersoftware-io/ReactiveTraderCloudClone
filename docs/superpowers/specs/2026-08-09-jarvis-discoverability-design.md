@@ -180,3 +180,24 @@ model) stays ledgered — it is a wire/architecture change, out of scope.
 - Roadmap-teaser rows in the guide (content-honesty decision, §2).
 - Guide search/filtering; per-user or per-context catalog curation.
 - The drive correction-signal wire change (skipped outcomes → model).
+
+## 10. Plan-time deviations + final-review record (2026-08-09)
+
+Eight deviations were ruled at plan time from a fact-sheet audit (full list in
+the plan's header): the chip seed required a new `openCount` field (no counter
+existed); the panel roster was promoted to `@rtc/shared` with a client-core
+conformance gate (the only dependency-legal never-drift shape — §7's "unit
+test in server against defaultLayoutPort" was impossible); the demo rides a
+new `sendScripted` machine intent (`ask` options were unreachable from the
+UI layer and require `effort` too); e2e follows the existing plain-Playwright
+jarvis pattern (no Gherkin jarvis suite exists); footer copy matches the real
+footer (`⌘J`, twin skin marks); the synthetic closing line was dropped (the
+workspace reply closes, matching the prototype); `setupWorkspace` runs LAST
+(its scripted reply re-emits the panel at `viz:"line"`, which mid-script
+would undo the restyle step); the chip sampler draws only non-`liveOnly`
+items. One further softening recorded at final review: §6's separate P&L
+beat was absorbed into the "Brief me on the desk" step. A 30s per-step
+watchdog (`DEMO_STEP_TIMEOUT_MS`) was added in review — `sendScripted` is a
+silent no-op while Jarvis is unavailable, and without it the demo would pin
+at running forever. Final whole-branch review 2026-08-09: SHIP, zero
+blocking findings.
