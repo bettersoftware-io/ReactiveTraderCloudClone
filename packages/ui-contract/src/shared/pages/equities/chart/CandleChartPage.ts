@@ -34,6 +34,13 @@ export interface CandleChartProps {
    * the compare symbol's data is still loading percent-projects the primary
    * alone (the axis is already %, so the line's arrival doesn't reflow). */
   compare?: { readonly series: readonly Candle[] };
+  /** The comparison symbol's backfill flags — the near-edge trigger's
+   * either-series gate (silent paging; chips stay the primary's).
+   * Structural on purpose: ui-contract never imports a bindings type. */
+  compareBackfill?: {
+    readonly loadingOlder: boolean;
+    readonly historyExhausted: boolean;
+  };
   defaultVisible: number;
   /** Whether an older history page is currently in flight for this series —
    * drives the LOADING OLDER… chip and gates re-triggering. */

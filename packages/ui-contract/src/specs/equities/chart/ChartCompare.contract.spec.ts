@@ -22,7 +22,7 @@ import {
 import type { CandleChartPage } from "@ui-contract/pages/equities/chart/CandleChartPage";
 import type { ChartPanelPage } from "@ui-contract/pages/equities/chart/ChartPanelPage";
 import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartHeadPage";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Candle, EquityInstrument, EquityQuote } from "@rtc/domain";
 
@@ -165,6 +165,81 @@ describe("Comparison series — CandleChart direct mount", () => {
   });
 });
 
+describe("Comparison backfill parity — the near-edge trigger pages both series", () => {
+  it("primary exhausted but compare still growable: the trigger STILL fires (either-series gate)", () => {
+    const onLoadOlder = vi.fn();
+    const chart = mountCompareBackfillChart(onLoadOlder, {
+      historyExhausted: true,
+      compareBackfill: { loadingOlder: false, historyExhausted: false },
+    });
+
+    chart.pressPlotKey("Home");
+
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+  });
+
+  it("both series exhausted: no fetch", () => {
+    const onLoadOlder = vi.fn();
+    const chart = mountCompareBackfillChart(onLoadOlder, {
+      historyExhausted: true,
+      compareBackfill: { loadingOlder: false, historyExhausted: true },
+    });
+
+    chart.pressPlotKey("Home");
+
+    expect(onLoadOlder).not.toHaveBeenCalled();
+  });
+
+  it("compare paging is silent: an in-flight compare page never shows the LOADING OLDER chip", () => {
+    const chart = mountCompareBackfillChart(vi.fn(), {
+      compareBackfill: { loadingOlder: true, historyExhausted: false },
+    });
+
+    expect(chart.loadingOlderChip()).toBe(false);
+  });
+
+  it("without a comparison the trigger stays primary-gated", () => {
+    const onLoadOlder = vi.fn();
+    const chart = mountCompareBackfillChart(onLoadOlder, {
+      historyExhausted: true,
+      compare: undefined,
+      compareBackfill: undefined,
+    });
+
+    chart.pressPlotKey("Home");
+
+    expect(onLoadOlder).not.toHaveBeenCalled();
+  });
+
+  it("ChartPanel pages only the primary without a comparison, then BOTH symbols with one", async () => {
+    const { head, panel, world } = mountPillWorkspace();
+    const historySpy = vi.spyOn(world, "candleHistory");
+
+    // Phase 1 — no comparison: the port sees ONLY the primary (no ""/
+    // phantom fetches from the always-subscribed compare plumbing).
+    panel.pressPlotKey("Home");
+
+    const phase1 = historySpy.mock.calls.map((call) => {
+      return call[0];
+    });
+    expect(new Set(phase1)).toEqual(new Set(["AAPL"]));
+
+    // Phase 2 — comparison active: the same gesture pages both symbols.
+    // (The fake port's empty page latched AAPL exhausted in phase 1, so
+    // this ALSO exercises the either-series gate through the real stack:
+    // primary ineligible, compare still growable ⇒ trigger fires.)
+    await head.toggleCompare("MSFT");
+    await panel.waitUntilYScaleAttr("percent");
+    panel.pressPlotKey("Home");
+
+    const phase2 = historySpy.mock.calls.map((call) => {
+      return call[0];
+    });
+    expect(phase2).toContain("MSFT");
+    expect(phase2).not.toContain("");
+  });
+});
+
 interface PillWorkspace {
   readonly head: EqChartHeadPage;
   readonly panel: ChartPanelPage;
@@ -233,6 +308,47 @@ function mountChart({ compare }: MountChartOptions = {}): CandleChartPage {
       loadingOlder: false,
       historyExhausted: false,
       onLoadOlder: () => {},
+    },
+  });
+}
+
+interface CompareBackfillMountOptions {
+  historyExhausted?: boolean;
+  compare?: { readonly series: readonly Candle[] };
+  compareBackfill?: {
+    readonly loadingOlder: boolean;
+    readonly historyExhausted: boolean;
+  };
+}
+
+/** mountChart's backfill-flavoured sibling: a compare overlay by default,
+ * an onLoadOlder spy, and per-case primary/compare backfill flags — the
+ * ChartBackfill.contract.spec.ts slot-spy pattern applied to the
+ * either-series gate. Key-presence (not undefined) decides whether the
+ * compare default applies, so `compare: undefined` genuinely mounts the
+ * no-comparison arm (a destructuring default would silently re-apply on
+ * explicit undefined). */
+function mountCompareBackfillChart(
+  onLoadOlder: () => void,
+  opts: CompareBackfillMountOptions = {},
+): CandleChartPage {
+  const compare =
+    "compare" in opts ? opts.compare : { series: COMPARE_CANDLES };
+
+  return mount(CandleChart, {
+    props: {
+      candles: CANDLES,
+      liveRate: LAST.close,
+      flashOn: false,
+      kind: "candles",
+      indicators: [],
+      panes: [],
+      compare,
+      compareBackfill: opts.compareBackfill,
+      defaultVisible: DEFAULT_VISIBLE,
+      loadingOlder: false,
+      historyExhausted: opts.historyExhausted ?? false,
+      onLoadOlder,
     },
   });
 }
