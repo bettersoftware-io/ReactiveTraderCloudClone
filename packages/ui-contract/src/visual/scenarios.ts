@@ -450,6 +450,15 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartDrawings",
     fixtureKey: "equities-loaded",
   },
+  // Canvas substrate (production engine, spec 2026-08-09): the full-scene
+  // drawPlotScene/drawVolumeScene/drawPaneScene composite — candles + volume
+  // + compare + drawings + macd pane + crosshair — with the palette read
+  // from each theme's live token cascade, so the 10-combo matrix is the
+  // palette port's pixel witness. Text stays DOM (labels/readout/chips).
+  "equities/chart-canvas": {
+    componentKey: "EquitiesChartCanvas",
+    fixtureKey: "equities-loaded",
+  },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
 
