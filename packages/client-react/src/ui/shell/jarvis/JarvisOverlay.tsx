@@ -5,6 +5,7 @@ import type {
 } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/client-core";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -31,7 +32,7 @@ import styles from "./JarvisOverlay.module.css";
  * early return, per the dumb-UI hooks rule.
  */
 export function JarvisOverlay(): ReactElement | null {
-  const { useJarvis } = useViewModel();
+  const { useJarvis, useJarvisDemo } = useViewModel();
   const {
     state,
     close,
@@ -41,10 +42,30 @@ export function JarvisOverlay(): ReactElement | null {
     declineConfirmation,
     setSkin,
   } = useJarvis();
+  const { state: demoState, startDemo, stopDemo } = useJarvisDemo();
   const [inputValue, setInputValue] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useJarvisHotkey(toggle, state.available);
+
+  // Halts a running hands-free demo before honouring the user's own close —
+  // otherwise the demo machine's next step would reopen the overlay the user
+  // just dismissed (JarvisDemoMachine's `closesOverlay` reopen tail). A plain
+  // function declaration rather than a shared helper the effect below also
+  // calls: this component reads hooks off the ViewModel seam (`useJarvis`/
+  // `useJarvisDemo`), which bails the React Compiler out of memoizing it, so
+  // it gets a fresh identity every render — fine as a JSX click prop
+  // (identity doesn't matter there) but wrong as an effect dependency (see
+  // the effect below, which inlines the same guard over its own primitive
+  // deps instead).
+  function closeAndStopDemo(): void {
+    if (demoState.running) {
+      stopDemo();
+    }
+
+    close();
+  }
 
   useEffect(() => {
     if (!state.open) {
@@ -52,9 +73,15 @@ export function JarvisOverlay(): ReactElement | null {
     }
 
     function closeOnEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") {
-        close();
+      if (event.key !== "Escape") {
+        return;
       }
+
+      if (demoState.running) {
+        stopDemo();
+      }
+
+      close();
     }
 
     document.addEventListener("keydown", closeOnEscape);
@@ -62,19 +89,28 @@ export function JarvisOverlay(): ReactElement | null {
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [state.open, close]);
+  }, [state.open, demoState.running, stopDemo, close]);
 
   // Auto-scroll to the newest entry — a DOM view-effect (ADR-005-sanctioned),
   // keyed on entries.length so it fires only when the list actually grows.
+  // ALSO keyed on state.open: while closed this component renders `null`, so
+  // `listRef.current` is null and every entries.length change over that span
+  // no-ops here — including the whole backlog a hands-free demo step appends
+  // between its own `jarvis.close()` and its later `jarvis.open()`
+  // (JarvisDemoMachine's `closesOverlay`/reopen tail). Without `state.open`
+  // in the deps, the reopen's render sees the SAME entries.length as the
+  // last (no-op) run and React skips re-invoking the effect entirely, so the
+  // freshly mounted `.messages` div is left at its default scrollTop (top)
+  // instead of the newest entry.
   useLayoutEffect(() => {
     const el = listRef.current;
 
-    if (!el || state.entries.length === 0) {
+    if (!state.open || !el || state.entries.length === 0) {
       return;
     }
 
     el.scrollTop = el.scrollHeight;
-  }, [state.entries.length]);
+  }, [state.entries.length, state.open]);
 
   if (!state.open) {
     return null;
@@ -88,11 +124,23 @@ export function JarvisOverlay(): ReactElement | null {
       ? "● SPEAKING"
       : "◈ LISTENING";
 
+  const chips = sampleGuideChips(JARVIS_GUIDE_CATALOG, state.openCount);
+
+  function toggleGuide(): void {
+    setGuideOpen((open) => {
+      return !open;
+    });
+  }
+
   function submit(text: string): void {
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
       return;
+    }
+
+    if (demoState.running) {
+      stopDemo();
     }
 
     send(trimmed);
@@ -123,9 +171,20 @@ export function JarvisOverlay(): ReactElement | null {
           data-testid="jarvis-close"
           aria-label="Close J.A.R.V.I.S"
           className={styles.closeButton}
-          onClick={close}
+          onClick={closeAndStopDemo}
         >
           ✕
+        </button>
+
+        <button
+          type="button"
+          data-testid="jarvis-guide-toggle"
+          aria-label="Demo guide"
+          aria-pressed={guideOpen}
+          className={styles.guideToggle}
+          onClick={toggleGuide}
+        >
+          ⓘ
         </button>
 
         {/* Holographic core — layered radial glows under counter-rotating
@@ -314,6 +373,82 @@ export function JarvisOverlay(): ReactElement | null {
           })}
         </div>
 
+        {guideOpen ? (
+          <aside
+            data-testid="jarvis-guide-panel"
+            className={styles.guidePanel}
+            aria-label="Demo guide"
+          >
+            <div className={styles.guideHead}>
+              <span>DEMO GUIDE</span>
+              <button
+                type="button"
+                aria-label="Close demo guide"
+                className={styles.guideClose}
+                onClick={toggleGuide}
+              >
+                ✕
+              </button>
+            </div>
+            <div className={styles.guideBody}>
+              <button
+                type="button"
+                data-testid="jarvis-guide-run"
+                className={styles.guideRun}
+                disabled={demoState.running}
+                onClick={startDemo}
+              >
+                ▶ RUN FULL DEMO · HANDS-FREE
+              </button>
+              <p className={styles.guideExplainer}>
+                Every line below is a live command — click one to send it to
+                J.A.R.V.I.S.
+              </p>
+              {JARVIS_GUIDE_CATALOG.map((section) => {
+                return (
+                  <div key={section.title} className={styles.guideSection}>
+                    <div className={styles.guideSectionTitle}>
+                      {section.title}
+                    </div>
+                    {section.items.map((item) => {
+                      return (
+                        <button
+                          key={item.command}
+                          type="button"
+                          data-testid="jarvis-guide-row"
+                          className={styles.guideRow}
+                          disabled={speaking}
+                          onClick={() => {
+                            submit(item.command);
+                          }}
+                        >
+                          {item.command}
+                          {item.liveOnly ? (
+                            <span
+                              data-testid="jarvis-guide-live-badge"
+                              className={styles.guideLiveBadge}
+                            >
+                              live brain
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              <div className={styles.guideTips}>
+                <p>⌘J summons J.A.R.V.I.S from anywhere; ESC dismisses.</p>
+                <p>
+                  ▶ RUN FULL DEMO plays the desk hands-free; ■ STOP or any
+                  message halts it.
+                </p>
+                <p>Generated panels stay live after the conversation ends.</p>
+              </div>
+            </div>
+          </aside>
+        ) : null}
+
         {state.pendingConfirmation ? (
           <JarvisConfirmCard
             confirmation={state.pendingConfirmation}
@@ -323,7 +458,7 @@ export function JarvisOverlay(): ReactElement | null {
         ) : null}
 
         <div className={styles.suggestions}>
-          {SUGGESTIONS.map((text) => {
+          {chips.map((text) => {
             return (
               <button
                 key={text}
@@ -372,6 +507,35 @@ export function JarvisOverlay(): ReactElement | null {
           <span className={styles.hint}>ESC · CLOSE</span>
           <span className={styles.hint}>⌘J · TOGGLE</span>
 
+          {demoState.running ? (
+            <>
+              <span
+                data-testid="jarvis-demo-progress"
+                className={styles.demoProgress}
+              >
+                STEP {demoState.stepIndex}/{demoState.stepCount} ·{" "}
+                {demoState.label}
+              </span>
+              <button
+                type="button"
+                data-testid="jarvis-demo-stop"
+                className={styles.demoStop}
+                onClick={stopDemo}
+              >
+                ■ STOP
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              data-testid="jarvis-demo-run"
+              className={styles.demoRun}
+              onClick={startDemo}
+            >
+              ▶ RUN FULL DEMO
+            </button>
+          )}
+
           <div data-testid="jarvis-skin-switch" className={styles.skinSwitch}>
             <span className={styles.hint}>CORE</span>
             {JARVIS_SKINS.map((skin) => {
@@ -394,6 +558,10 @@ export function JarvisOverlay(): ReactElement | null {
               );
             })}
           </div>
+
+          <button type="button" className={styles.hint} onClick={toggleGuide}>
+            ⓘ DEMO GUIDE
+          </button>
         </div>
       </div>
     </div>
@@ -413,15 +581,6 @@ const SKIN_MARK: Record<JarvisSkin, string> = {
   singularity: "MK-I SINGULARITY",
   reactor: "MK-II REACTOR",
 };
-
-// Static UI copy — one suggestion row, exact strings pinned by Task 9's
-// contract/e2e specs.
-const SUGGESTIONS: readonly string[] = [
-  "Where is EURUSD?",
-  "What's moving?",
-  "How am I doing?",
-  "Buy 5M EURUSD",
-];
 
 /** PROTO renders 26 waveform bars; each one's duration/delay pair lives in
  * the stylesheet as an `:nth-child` rule (no inline style, no var() inside an
