@@ -22,16 +22,19 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { cyclesToReach } from "#/ui/shell/appearance/appearanceLayout";
 import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** The Appearance settings screen: a mode row (tap-to-cycle, unchanged) plus a
- * segmented dark/light control, theme cards (swatch + name) for the six skins,
- * an ambient toggle, a three-level power-saver control, a replay-boot action,
- * and sign-out (moved here from the HUD header by P7). All state and every
- * write is behind the ViewModel; this only renders view state and dispatches
- * the exposed intents — no direct storage, no domain writes. */
+/** The Appearance settings screen: an APPEARANCE header with a single 3-way
+ * dark/light/system mode segment (replacing the old title-label + tap-to-cycle
+ * row + 2-way segment — two controls for one setting collapsed to one), theme
+ * cards (swatch + name) for the six skins, an ambient toggle, a three-level
+ * power-saver control, a replay-boot action, and sign-out (moved here from the
+ * HUD header by P7). All state and every write is behind the ViewModel; this
+ * only renders view state and dispatches the exposed intents — no direct
+ * storage, no domain writes. */
 export function AppearanceScreen({
   onReplayBoot,
 }: AppearanceScreenProps = {}): JSX.Element {
@@ -64,11 +67,12 @@ export function AppearanceScreen({
   const styles = useThemedStyles(makeStyles);
 
   // The ViewModel exposes no direct mode setter — UseThemePreferenceResult is
-  // { mode, modePreference, cycle } only (createViewModel.ts) — so "jump to
-  // dark/light" is expressed as N zero-arg cycle() calls. cycle() re-reads the
-  // live persisted preference on every call (not a captured render value), so
-  // firing it synchronously N times in a row still lands on the true target.
-  function jumpToMode(target: "dark" | "light"): void {
+  // { mode, modePreference, cycle } only (createViewModel.ts) — so "jump to a
+  // mode" (dark/light/system) is expressed as N zero-arg cycle() calls.
+  // cycle() re-reads the live persisted preference on every call (not a
+  // captured render value), so firing it synchronously N times in a row
+  // still lands on the true target.
+  function jumpToMode(target: ThemeModePreference): void {
     const steps = cyclesToReach(modePreference, target);
 
     for (let i = 0; i < steps; i += 1) {
@@ -82,48 +86,34 @@ export function AppearanceScreen({
       style={styles.panel}
       contentContainerStyle={styles.content}
     >
+      {/* One 3-way segment replaces the old title + tap-to-cycle row + 2-way
+          segment (two controls for one setting). The design's own header row
+          (dev-handoff standalone HTML, "appearance sheet" block) places a
+          2-way DARK/LIGHT segment inline beside the APPEARANCE title and
+          fits — but it has no SYSTEM option, so there is no real measurement
+          for a 3-way segment at that width. Rather than guess at the extra
+          cell's fit (the class of error that produced P8), the segment sits
+          on its own row beneath the title, which is safe by construction at
+          any width. */}
       <View style={styles.section}>
-        <Text style={styles.label}>Mode</Text>
-        <BlurCard mode={mode}>
-          <Pressable
-            testID="appearance-mode"
-            style={styles.modeRow}
-            onPress={() => {
-              cycle();
-            }}
-          >
-            <Text style={styles.modeValue}>{MODE_LABEL[modePreference]}</Text>
-            <Text style={styles.modeHint}>Tap to change</Text>
-          </Pressable>
-        </BlurCard>
+        <Text style={styles.headerTitle}>APPEARANCE</Text>
         <BlurCard mode={mode}>
           <View style={styles.segmented}>
-            <Pressable
-              testID="appearance-mode-dark"
-              style={
-                modePreference === "dark"
-                  ? styles.segmentActive
-                  : styles.segment
-              }
-              onPress={() => {
-                jumpToMode("dark");
-              }}
-            >
-              <Text style={styles.segmentLabel}>Dark</Text>
-            </Pressable>
-            <Pressable
-              testID="appearance-mode-light"
-              style={
-                modePreference === "light"
-                  ? styles.segmentActive
-                  : styles.segment
-              }
-              onPress={() => {
-                jumpToMode("light");
-              }}
-            >
-              <Text style={styles.segmentLabel}>Light</Text>
-            </Pressable>
+            {THEME_MODE_PREFERENCES.map((target) => {
+              const active = modePreference === target;
+              return (
+                <Pressable
+                  key={target}
+                  testID={`appearance-mode-${target}`}
+                  style={active ? styles.segmentActive : styles.segment}
+                  onPress={() => {
+                    jumpToMode(target);
+                  }}
+                >
+                  <Text style={styles.segmentLabel}>{MODE_LABEL[target]}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </BlurCard>
       </View>
@@ -285,8 +275,6 @@ export function AppearanceScreen({
   );
 }
 
-/** Number of forward zero-arg cycle() steps (dark → light → system → dark)
- * needed to land the live preference on `target`, from `current`. */
 /** The prototype names the levels rather than showing a switch, because three
  * states cannot be an on/off affordance. */
 const POWER_SAVER_LABELS: Record<PowerSaverLevel, string> = {
@@ -309,17 +297,6 @@ interface AppearanceScreenProps {
    * screen (the Appearance overlay) can get out of its way. Optional — the
    * screen is also mounted standalone, where there is nothing to dismiss. */
   readonly onReplayBoot?: () => void;
-}
-
-function cyclesToReach(
-  current: ThemeModePreference,
-  target: "dark" | "light",
-): number {
-  const from = THEME_MODE_PREFERENCES.indexOf(current);
-  const to = THEME_MODE_PREFERENCES.indexOf(target);
-  return (
-    (to - from + THEME_MODE_PREFERENCES.length) % THEME_MODE_PREFERENCES.length
-  );
 }
 
 interface BlurCardProps {
@@ -367,9 +344,7 @@ interface AppearanceScreenStyles {
   content: ViewStyle;
   section: ViewStyle;
   label: TextStyle;
-  modeRow: ViewStyle;
-  modeValue: TextStyle;
-  modeHint: TextStyle;
+  headerTitle: TextStyle;
   segmented: ViewStyle;
   segment: ViewStyle;
   segmentActive: ViewStyle;
@@ -412,13 +387,18 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       color: t.textSecondary,
       fontFamily: t.fontDisplay,
     },
-    modeRow: rowBase,
-    modeValue: {
-      fontSize: 16,
+    // Matches the design's own header ("appearance sheet" block, dev-handoff
+    // standalone HTML): font-size 14px, font-weight 600, letter-spacing
+    // 1.5px. Title case rather than CSS text-transform, matching the file's
+    // existing convention of literal-uppercase display strings (see
+    // THEME_DISPLAY_NAME above).
+    headerTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      letterSpacing: 1.5,
       color: t.textPrimary,
       fontFamily: t.fontDisplay,
     },
-    modeHint: { fontSize: 12, color: t.textMuted },
     segmented: {
       flexDirection: "row",
       backgroundColor: t.panel,

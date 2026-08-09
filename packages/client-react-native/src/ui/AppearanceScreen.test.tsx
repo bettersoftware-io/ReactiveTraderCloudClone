@@ -8,14 +8,6 @@ import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
-test("shows the current mode preference and cycles on press", async () => {
-  const cycle = jest.fn();
-  await renderScreen(fakeViewModel(cycle, () => {}));
-  expect(screen.getByTestId("appearance-mode")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-mode"));
-  expect(cycle).toHaveBeenCalledTimes(1);
-});
-
 test("selects a skin on press", async () => {
   const setSkin = jest.fn();
   await renderScreen(fakeViewModel(() => {}, setSkin));
@@ -116,6 +108,26 @@ test("segmented dark/light control presses dark and drives cycle() the right num
   await renderScreen(fakeViewModel(cycle, () => {}));
   await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
   expect(cycle).toHaveBeenCalledTimes(1);
+});
+
+test("selecting System advances the cycle the right number of times", async () => {
+  // starts at "dark"; dark -> light -> system is 2 cycles
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "dark" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  expect(cycle).toHaveBeenCalledTimes(2);
+});
+
+test("the redundant tap-to-change row is gone", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.queryByTestId("appearance-mode")).toBeNull();
 });
 
 test("shows an ambient style segmented control wired to useAmbientStyle", async () => {
