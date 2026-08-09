@@ -9,16 +9,19 @@ import {
 } from "react-native";
 
 import type { MoverRow } from "#/ui/equities/markets/moversVm";
+import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** One ranked row of the movers board: a zero-padded rank index, the symbol
- * over the company name, the last price, and a tinted signed-percentage
- * pill. Ported from the design's mover row (dc.html ~L339): rank | symbol +
- * name | price + pct pill (the sparkline column there is out of scope here —
- * `MoverRow` carries no close series). The board (a later task) supplies
- * `rank` and owns sort order; this component only renders one row of it.
+ * over the company name, an inline close-price sparkline, the last price,
+ * and a tinted signed-percentage pill. Ported from the design's mover row
+ * (dc.html ~L339): rank | symbol + name | sparkline | price + pct pill.
+ * `MoverRow` itself carries no close series — `RowSparkline` derives its own
+ * from `useCandles(symbol)`, there being no equities tick-history stream to
+ * pull one from. The board (a later task) supplies `rank` and owns sort
+ * order; this component only renders one row of it.
  *
  * `last`/`changePct` arrive together and are both null until the first quote
  * for that symbol lands (see `moversVm`'s `MoverRow` doc) — so before that,
@@ -49,6 +52,7 @@ export function MoversRow({
           {row.name}
         </Text>
       </View>
+      <RowSparkline symbol={row.symbol} positive={(row.changePct ?? 0) >= 0} />
       <View style={styles.priceCol}>
         <Text style={styles.price}>
           {row.last === null ? "—" : row.last.toFixed(2)}
