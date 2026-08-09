@@ -1,11 +1,21 @@
-import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import type { ReactNode } from "react";
+import { expect, test } from "@jest/globals";
+import { render, screen } from "@testing-library/react-native";
+import type { ReactElement } from "react";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { ThemeContext } from "#/ui/theme/ThemeContext";
+import { rnThemeTokens } from "#/ui/theme/tokens";
+
+// `@gorhom/bottom-sheet` is replaced package-wide by the manual mock at
+// `__mocks__/@gorhom/bottom-sheet.tsx` (picked up automatically by jest, no
+// `jest.mock` call needed here). That double gates its `children` behind the
+// imperative `.present()`/`.dismiss()` handle rather than always rendering
+// them, matching the real component's own `mount` contract — so
+// `getByTestId("appearance-sheet")` below is proof `.present()` was actually
+// invoked, not just that the tree contains a `BottomSheetView`.
 
 test("renders the sheet with a grab handle and no CLOSE affordance", async () => {
   await renderWithTheme(
@@ -25,6 +35,35 @@ test("renders nothing when closed", async () => {
   );
   expect(screen.queryByTestId("appearance-sheet")).toBeNull();
 });
+
+// Guards the effect-deps bug found in review: an empty-deps mount effect
+// only ever calls `.present()` once, at `AppearanceOverlay`'s own mount —
+// almost always while still closed, since it stays mounted for the app's
+// whole lifetime and only `open` toggles. First-mount-already-open (the test
+// above) can't catch that; only a later false -> true transition on an
+// already-mounted instance can.
+test("presents the sheet on a later open, not just at first mount", async () => {
+  // `renderWithTheme` doesn't expose `rerender` re-wrapped in its own
+  // `ThemeContext.Provider` — `rerender` replaces the whole previous tree, so
+  // the wrapper has to be reapplied by hand on each call, matching what
+  // `renderWithTheme` does internally (`rnThemeTokens.holo.dark`, its own
+  // default).
+  const { rerender } = await render(wrapped(false));
+  expect(screen.queryByTestId("appearance-sheet")).toBeNull();
+
+  await rerender(wrapped(true));
+  expect(screen.getByTestId("appearance-sheet")).toBeTruthy();
+});
+
+function wrapped(open: boolean): ReactElement {
+  return (
+    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+      <ViewModelProvider viewModel={vm()}>
+        <AppearanceOverlay open={open} onClose={(): void => {}} />
+      </ViewModelProvider>
+    </ThemeContext.Provider>
+  );
+}
 
 function vm(): ViewModel {
   return {
@@ -65,57 +104,4 @@ function vm(): ViewModel {
       return { logout: (): void => {} };
     },
   } as unknown as ViewModel;
-}
-
-// The package-wide manual mock (`__mocks__/@gorhom/bottom-sheet.tsx`, picked
-// up automatically by jest with no `jest.mock` call needed) renders
-// `BottomSheetView` as a bare `<View>` — it drops every prop but `children`,
-// built for `TradeTicketSheet`'s needs, which never asserts on a testID
-// inside the sheet. This component's contract pins its own `testID`
-// (`appearance-sheet`, carried on `BottomSheetView` since the real
-// `BottomSheetModalProps` — unlike `BottomSheetViewProps` — has no `testID`
-// of its own) through to the caller (`tests/visual/scenarios.tsx` selects the
-// open sheet by it), so this override — scoped to this file only, the shared
-// double is untouched — forwards `testID` instead of dropping it, and keeps
-// the same imperative present/dismiss handle shape as the shared double.
-jest.mock("@gorhom/bottom-sheet", () => {
-  const react = require("react") as typeof import("react");
-  const { View } = require("react-native") as typeof import("react-native");
-
-  const BottomSheetModal = react.forwardRef<
-    BottomSheetModalMockHandle,
-    BottomSheetModalMockProps
-  >(function BottomSheetModal({ children }, ref) {
-    react.useImperativeHandle(ref, () => {
-      return { present: (): void => {}, dismiss: (): void => {} };
-    });
-    return <View>{children}</View>;
-  });
-
-  function BottomSheetView({
-    children,
-    testID,
-  }: BottomSheetViewMockProps): unknown {
-    return <View testID={testID}>{children}</View>;
-  }
-
-  function BottomSheetBackdrop(): null {
-    return null;
-  }
-
-  return { BottomSheetModal, BottomSheetView, BottomSheetBackdrop };
-});
-
-interface BottomSheetModalMockHandle {
-  present: () => void;
-  dismiss: () => void;
-}
-
-interface BottomSheetModalMockProps {
-  children?: ReactNode;
-}
-
-interface BottomSheetViewMockProps {
-  children?: ReactNode;
-  testID?: string;
 }
