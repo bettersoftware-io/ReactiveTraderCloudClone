@@ -117,7 +117,7 @@ function OrderRow({
         {order.avgPrice ? order.avgPrice.toFixed(2) : "—"}
       </Text>
       <Text
-        testID={`eq-order-status-${order.status}`}
+        testID={`eq-order-status-${order.id}`}
         style={[styles.cell, pillStyle]}
       >
         {order.status.toUpperCase()}

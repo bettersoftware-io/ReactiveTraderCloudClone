@@ -46,8 +46,18 @@ test("renders a status pill per order, coloured by status", async () => {
       <OrdersBlotter />
     </ViewModelProvider>,
   );
-  expect(screen.getByTestId("eq-order-status-working")).toBeTruthy();
-  expect(screen.getByTestId("eq-order-status-filled")).toBeTruthy();
+  expect(screen.getByTestId("eq-order-status-o1")).toHaveTextContent("WORKING");
+  expect(screen.getByTestId("eq-order-status-o2")).toHaveTextContent("FILLED");
+});
+
+test("two orders sharing a status each still carry their own pill", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(TWO_WORKING_ORDERS)}>
+      <OrdersBlotter />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("eq-order-status-o1")).toHaveTextContent("WORKING");
+  expect(screen.getByTestId("eq-order-status-o2")).toHaveTextContent("WORKING");
 });
 
 test("flags exactly one newest row, never two", async () => {
@@ -77,6 +87,34 @@ const ORDERS = [
     status: "filled",
   },
 ] as never;
+
+// The regression fixture for the id-scoped testID fix: two DIFFERENT orders
+// sharing the SAME status ("working" is the commonest live blotter state).
+// Under the old status-only testID (`eq-order-status-working`) this scenario
+// couldn't be expressed at all — both pills would collide on one testID.
+const TWO_WORKING_ORDERS: readonly EquityOrder[] = [
+  {
+    id: "o1",
+    symbol: "NVDA",
+    side: "buy",
+    type: "market",
+    qty: 500,
+    status: "working",
+    filledQty: 0,
+    createdAt: 0,
+  },
+  {
+    id: "o2",
+    symbol: "AAPL",
+    side: "sell",
+    type: "limit",
+    qty: 100,
+    status: "working",
+    filledQty: 0,
+    limitPrice: 227.17,
+    createdAt: 0,
+  },
+];
 
 function vmWith(orders: readonly EquityOrder[]): ViewModel {
   return {
