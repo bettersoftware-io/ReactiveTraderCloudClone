@@ -285,6 +285,23 @@ test("setAmbientStyle writes through to AsyncStorage and emits", async () => {
   expect(store.get("rtc-ambient-style")).toBe("rays");
 });
 
+test("hydrates a stored, non-default chartSubstrate after construction", async () => {
+  store.set("rtc-chart-substrate", "canvas");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.chartSubstrate$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("canvas");
+});
+
+test("setChartSubstrate writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setChartSubstrate("canvas");
+  const next = await firstValueFrom(prefs.chartSubstrate$());
+  expect(next).toBe("canvas");
+  expect(store.get("rtc-chart-substrate")).toBe("canvas");
+});
+
 test("emits the default jarvisSkin (singularity) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.jarvisSkin$());

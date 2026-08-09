@@ -4,6 +4,7 @@ import { MountedComponent } from "@ui-contract/harness/component";
 
 import type {
   AmbientStyle,
+  ChartSubstrate,
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
@@ -204,6 +205,12 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return this.segmentActive("ambientStyle", style);
   }
 
+  /** True when the given chart-substrate option is the active one in the REAL
+   * "Chart renderer" segment row (its `data-on`). */
+  chartSubstrateActive(substrate: ChartSubstrate): boolean {
+    return this.segmentActive("chartSubstrate", substrate);
+  }
+
   /** Each style written through useLoginWaitPreferences().setStyle, in order. */
   loginWaitStyleSets(): LoginWaitStyle[] {
     return this.commandLog().loginWaitStyleSets;
@@ -218,6 +225,12 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
    * writing through the useAmbientStyle seam. */
   async selectAmbientStyle(style: AmbientStyle): Promise<void> {
     await this.selectSegment("ambientStyle", style);
+  }
+
+  /** Select a chart-substrate option through the REAL "Chart renderer" segment,
+   * writing through the useChartSubstrate seam. */
+  async selectChartSubstrate(substrate: ChartSubstrate): Promise<void> {
+    await this.selectSegment("chartSubstrate", substrate);
   }
 
   /** True when the given Jarvis brain option is disabled (native `disabled`

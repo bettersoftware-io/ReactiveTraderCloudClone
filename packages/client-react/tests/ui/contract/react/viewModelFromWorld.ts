@@ -48,6 +48,7 @@ import type {
   AmbientStyle,
   Candle,
   CandleTimeframe,
+  ChartSubstrate,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
@@ -828,6 +829,18 @@ export function reactViewModel(world: World): ViewModel {
         style,
         setStyle: (next: AmbientStyle) => {
           world.ambientStyle.next(next);
+        },
+      };
+    },
+    // Chart substrate: reactive view backed by the World subject (mirrors
+    // useAmbientStyle above); setSubstrate pushes back so a click through the
+    // seam (PreferencesModal's "Chart renderer" segment) flips the value.
+    useChartSubstrate: () => {
+      const substrate = useSubject(world.chartSubstrate);
+      return {
+        substrate,
+        setSubstrate: (next: ChartSubstrate) => {
+          world.chartSubstrate.next(next);
         },
       };
     },

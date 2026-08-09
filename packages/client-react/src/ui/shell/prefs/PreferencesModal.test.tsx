@@ -183,6 +183,12 @@ function renderModal(
     useAmbientStyle: () => {
       return { style: ambientStyle, setStyle: setAmbientStyle };
     },
+    // Not exercised here (the shared ui-contract tier covers the Chart
+    // renderer row) — but the modal destructures it, so a fake that omits it
+    // fails to render at all.
+    useChartSubstrate: () => {
+      return { substrate: "dom", setSubstrate: vi.fn() };
+    },
     useForceBootAnimation: () => {
       return { enabled: false, toggle: vi.fn() };
     },

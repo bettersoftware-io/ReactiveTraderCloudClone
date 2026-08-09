@@ -45,6 +45,7 @@ import {
   BootGatePresenter,
   BootPreferencePresenter,
   CandleSeriesPresenter,
+  ChartSubstratePresenter,
   ConnectionStatusPresenter,
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
@@ -152,6 +153,7 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   ambientStyle: AmbientStylePresenter;
+  chartSubstrate: ChartSubstratePresenter;
   forceBootAnimation: ForceBootAnimationPresenter;
   powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
@@ -763,6 +765,7 @@ export function createApp(ports: AppPorts): App {
     themeSkinPreference,
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     ambientStyle: new AmbientStylePresenter(ports.preferences),
+    chartSubstrate: new ChartSubstratePresenter(ports.preferences),
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),

@@ -152,6 +152,7 @@ export type {
 export type {
   AmbientStyle,
   BootVariant,
+  ChartSubstrate,
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
@@ -171,9 +172,11 @@ export type {
 export {
   AMBIENT_STYLES,
   BOOT_VARIANTS,
+  CHART_SUBSTRATES,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,

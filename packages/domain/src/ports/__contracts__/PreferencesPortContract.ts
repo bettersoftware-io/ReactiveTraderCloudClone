@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   type AmbientStyle,
   type BootVariant,
+  type ChartSubstrate,
   type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -53,6 +55,7 @@ export interface PreferencesSeed {
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
+  chartSubstrate?: ChartSubstrate;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -429,6 +432,33 @@ export function describePreferencesPortContract(
     it("reads back a seeded ambientStyle", async () => {
       const port = makeSeeded({ ambientStyle: "rays" });
       expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
+    });
+
+    it("defaults chartSubstrate to dom and round-trips a write", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.chartSubstrate$())).toBe(
+        DEFAULT_CHART_SUBSTRATE,
+      );
+      port.setChartSubstrate("canvas");
+      expect(await firstValueFrom(port.chartSubstrate$())).toBe("canvas");
+      // late subscriber sees the current value synchronously (replay-current)
+      expect(await firstValueFrom(port.chartSubstrate$())).toBe("canvas");
+    });
+
+    it("setChartSubstrate persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: ChartSubstrate[] = [];
+      const sub = port.chartSubstrate$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setChartSubstrate("canvas");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_CHART_SUBSTRATE, "canvas"]);
+    });
+
+    it("reads back a seeded chartSubstrate", async () => {
+      const port = makeSeeded({ chartSubstrate: "canvas" });
+      expect(await firstValueFrom(port.chartSubstrate$())).toBe("canvas");
     });
 
     it("defaults jarvisSkin to singularity and round-trips a write", async () => {

@@ -83,6 +83,12 @@ export type EqBlotterView = "orders" | "positions";
  * style is active. */
 export type AmbientStyle = "aurora" | "rays";
 
+/** The chart rendering substrate. `"dom"` is retained DOM/SVG geometry (today's
+ * shipping renderer); `"canvas"` is immediate-mode canvas drawing, which keeps
+ * fewer live DOM nodes on screen. Orthogonal to every other display
+ * preference. */
+export type ChartSubstrate = "dom" | "canvas";
+
 /** J.A.R.V.I.S orb/overlay visual core. Rendered in order by the skin switch. */
 export type JarvisSkin = "singularity" | "reactor";
 
@@ -146,6 +152,9 @@ export const DEFAULT_ANIMATED_BACKGROUND = true;
  * curtains). Users who pick "rays" keep that choice (persisted under
  * `rtc-ambient-style`). */
 export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
+/** Chart rendering substrate default. Users who pick "canvas" keep that choice
+ * (persisted under `rtc-chart-substrate`). */
+export const DEFAULT_CHART_SUBSTRATE: ChartSubstrate = "dom";
 /** J.A.R.V.I.S visual core default. Users who pick "reactor" keep that choice
  * (persisted under `rtc-jarvis-skin`). */
 export const DEFAULT_JARVIS_SKIN: JarvisSkin = "singularity";
@@ -182,6 +191,9 @@ export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];
 
 /** The Preferences "Ambient style" segmented control renders these in order. */
 export const AMBIENT_STYLES: readonly AmbientStyle[] = ["aurora", "rays"];
+
+/** The Preferences "Chart renderer" segmented control renders these in order. */
+export const CHART_SUBSTRATES: readonly ChartSubstrate[] = ["dom", "canvas"];
 
 /** The J.A.R.V.I.S skin switch renders these in order. */
 export const JARVIS_SKINS: readonly JarvisSkin[] = ["singularity", "reactor"];

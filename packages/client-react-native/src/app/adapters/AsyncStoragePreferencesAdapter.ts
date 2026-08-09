@@ -6,9 +6,12 @@ import {
   type AmbientStyle,
   BOOT_VARIANTS,
   type BootVariant,
+  CHART_SUBSTRATES,
+  type ChartSubstrate,
   type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -64,6 +67,7 @@ export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
+export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -72,6 +76,12 @@ export const JARVIS_NARRATOR_STORAGE_KEY = "rt-jarvis-narrator";
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
     value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
+  );
+}
+
+function isChartSubstrate(value: string | null): value is ChartSubstrate {
+  return (
+    value !== null && (CHART_SUBSTRATES as readonly string[]).includes(value)
   );
 }
 
@@ -148,6 +158,7 @@ interface StoredPreferences {
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
+  chartSubstrate?: ChartSubstrate;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -175,6 +186,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       eqWatchlistSort,
       eqBlotterView,
       ambientStyle,
+      chartSubstrate,
       jarvisSkin,
       jarvisBrain,
       jarvisEffort,
@@ -194,6 +206,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
+      AsyncStorage.getItem(CHART_SUBSTRATE_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
@@ -262,6 +275,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
 
     if (isAmbientStyle(ambientStyle)) {
       stored.ambientStyle = ambientStyle;
+    }
+
+    if (isChartSubstrate(chartSubstrate)) {
+      stored.chartSubstrate = chartSubstrate;
     }
 
     if (isJarvisSkin(jarvisSkin)) {
@@ -342,6 +359,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
+  private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
+
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
   private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
@@ -394,6 +413,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.ambientStyle = new BehaviorSubject<AmbientStyle>(
       s.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
+    );
+    this.chartSubstrate = new BehaviorSubject<ChartSubstrate>(
+      s.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -471,6 +493,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.ambientStyle !== undefined) {
       this.ambientStyle.next(s.ambientStyle);
+    }
+
+    if (s.chartSubstrate !== undefined) {
+      this.chartSubstrate.next(s.chartSubstrate);
     }
 
     if (s.jarvisSkin !== undefined) {
@@ -636,6 +662,17 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   setAmbientStyle(style: AmbientStyle): void {
     void AsyncStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, style).catch(() => {});
     this.ambientStyle.next(style);
+  }
+
+  chartSubstrate$(): Observable<ChartSubstrate> {
+    return this.chartSubstrate.pipe(distinctUntilChanged());
+  }
+
+  setChartSubstrate(substrate: ChartSubstrate): void {
+    void AsyncStorage.setItem(CHART_SUBSTRATE_STORAGE_KEY, substrate).catch(
+      () => {},
+    );
+    this.chartSubstrate.next(substrate);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

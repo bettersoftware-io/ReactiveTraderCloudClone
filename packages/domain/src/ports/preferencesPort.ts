@@ -3,6 +3,7 @@ import type { Observable } from "rxjs";
 import type {
   AmbientStyle,
   BootVariant,
+  ChartSubstrate,
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
@@ -51,6 +52,10 @@ export interface PreferencesPort {
    * animatedBackground motion gate. */
   ambientStyle$(): Observable<AmbientStyle>;
   setAmbientStyle(style: AmbientStyle): void;
+  /** Replay-current chart-substrate stream; emits synchronously on subscribe.
+   * Selects retained DOM/SVG geometry vs immediate-mode canvas drawing. */
+  chartSubstrate$(): Observable<ChartSubstrate>;
+  setChartSubstrate(substrate: ChartSubstrate): void;
   /** Replay-current J.A.R.V.I.S skin stream; emits synchronously on subscribe. */
   jarvisSkin$(): Observable<JarvisSkin>;
   setJarvisSkin(skin: JarvisSkin): void;

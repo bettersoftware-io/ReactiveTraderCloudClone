@@ -51,6 +51,7 @@ import type {
   AmbientStyle,
   Candle,
   CandleTimeframe,
+  ChartSubstrate,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
@@ -768,6 +769,18 @@ export function solidViewModel(world: World): ViewModel {
         style: wrapSubject(world.ambientStyle),
         setStyle: (next: AmbientStyle) => {
           world.ambientStyle.next(next);
+        },
+      };
+    },
+    // Chart substrate: reactive view backed by the World subject (mirrors
+    // useAmbientStyle above); setSubstrate pushes back so a click through the
+    // seam (PreferencesModal's "Chart renderer" segment) flips the value.
+    // Mirrors the react driver's useChartSubstrate exactly.
+    useChartSubstrate: () => {
+      return {
+        substrate: wrapSubject(world.chartSubstrate),
+        setSubstrate: (next: ChartSubstrate) => {
+          world.chartSubstrate.next(next);
         },
       };
     },

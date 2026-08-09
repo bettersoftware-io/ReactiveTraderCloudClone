@@ -227,6 +227,21 @@ describe("PreferencesModal", () => {
     expect(page.ambientStyleActive("aurora")).toBe(false);
   });
 
+  it("shows the REAL Chart renderer segment reflecting the active option, and writes through the seam on select", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      chartSubstrate: "dom",
+    });
+
+    expect(page.chartSubstrateActive("dom")).toBe(true);
+    expect(page.chartSubstrateActive("canvas")).toBe(false);
+
+    await page.selectChartSubstrate("canvas");
+
+    expect(page.chartSubstrateActive("canvas")).toBe(true);
+    expect(page.chartSubstrateActive("dom")).toBe(false);
+  });
+
   it("renders the Jarvis brain segment with all four options", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
