@@ -824,6 +824,7 @@ describe("createJarvisMachine", () => {
       const turn1Done = states.findIndex((s) => {
         return s.entries.at(-1)?.text === "EURUSD is up";
       });
+
       const turn2Started = states.findIndex((s) => {
         return s.entries.some((e) => {
           return e.role === "user" && e.text === "second";
