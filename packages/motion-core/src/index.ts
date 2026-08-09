@@ -64,6 +64,20 @@ export {
 export type { CrosshairVm } from "./crosshairVm.js";
 export { crosshairVm } from "./crosshairVm.js";
 export type {
+  Canvas2D,
+  CanvasGradient2D,
+  CanvasSize,
+  ChartPalette,
+  OverlayLine,
+  PlotCanvasScene,
+} from "./drawChartScene.js";
+export {
+  CHART_PALETTE_TOKENS,
+  drawPaneScene,
+  drawPlotScene,
+  drawVolumeScene,
+} from "./drawChartScene.js";
+export type {
   Drawing,
   DrawingAnchor,
   DrawingGrip,
