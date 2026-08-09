@@ -95,7 +95,7 @@ export function AppearanceScreen({
           cell's fit (the class of error that produced P8), the segment sits
           on its own row beneath the title, which is safe by construction at
           any width. */}
-      <View style={styles.section}>
+      <View testID="appearance-mode-section" style={styles.section}>
         <Text style={styles.headerTitle}>APPEARANCE</Text>
         <BlurCard mode={mode}>
           <View style={styles.segmented}>

@@ -1,6 +1,7 @@
 // packages/client-react-native/src/ui/AppearanceScreen.test.tsx
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet, type ViewStyle } from "react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
@@ -129,6 +130,61 @@ test("the redundant tap-to-change row is gone", async () => {
   );
   expect(screen.queryByTestId("appearance-mode")).toBeNull();
 });
+
+// The zero-cycle case matters most: an off-by-one in cyclesToReach would make
+// pressing the ALREADY-ACTIVE cell silently wrap a full lap (3 cycle() calls
+// instead of 0), and nothing else here would catch it — every other case in
+// this file presses a DIFFERENT cell than the live preference.
+test("pressing the already-active mode cell drives cycle() zero times", async () => {
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "system" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  expect(cycle).toHaveBeenCalledTimes(0);
+});
+
+test("segmented control presses dark from light and drives cycle() the right number of steps", async () => {
+  // From "light", reaching "dark" is two steps: light→system→dark.
+  const cycle = jest.fn();
+  await renderScreen(
+    fakeViewModel(cycle, () => {}, { modePreference: "light" }),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
+  expect(cycle).toHaveBeenCalledTimes(2);
+});
+
+// P8 (StatusStrip.test.tsx) guarded a geometric invariant the same way after
+// a control silently drifted into an unsafe layout with every other test
+// still green. Guards two things a later edit could reintroduce without any
+// functional test noticing: (1) a fixed-width cell that could clip a label
+// at some device width, and (2) the segment sharing a row with the title
+// again — the very re-measurement question Step 4 exists to avoid guessing
+// about. `flex: 1` cells in a non-row-sharing container are safe by
+// construction at any width, which is why this asserts the construction
+// rather than one measured number.
+test("mode segment cells are flex:1 and the segment does not share a row with the title", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  for (const target of ["dark", "light", "system"]) {
+    const cell = screen.getByTestId(`appearance-mode-${target}`);
+    expect(flattenFlex(cell.props.style)).toBe(1);
+  }
+  const section = screen.getByTestId("appearance-mode-section");
+  expect(flattenFlexDirection(section.props.style)).not.toBe("row");
+});
+
+function flattenFlex(style: unknown): number | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flex;
+}
+
+function flattenFlexDirection(style: unknown): string | undefined {
+  return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
+}
 
 test("shows an ambient style segmented control wired to useAmbientStyle", async () => {
   const setStyle = jest.fn();
