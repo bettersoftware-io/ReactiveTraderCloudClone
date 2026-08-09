@@ -27,8 +27,10 @@ export function ChartPanel(): ReactElement {
     useWatchlist,
     loadOlderCandles,
     useEqDrawings,
+    useChartSubstrate,
   } = useViewModel();
   const { state } = useEqWorkspace();
+  const { substrate } = useChartSubstrate();
   const { sel, timeframe, chartType, indicators, panes, yScale, compare } =
     state;
 
@@ -105,6 +107,7 @@ export function ChartPanel(): ReactElement {
           indicators={indicators}
           panes={panes}
           yScale={yScale}
+          substrate={substrate}
           compare={compare !== null ? { series: compareCandles } : undefined}
           compareBackfill={compare !== null ? compareBackfill : undefined}
           defaultVisible={defaultVisible}

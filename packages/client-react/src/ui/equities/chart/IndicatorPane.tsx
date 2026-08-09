@@ -1,8 +1,13 @@
 import type { ReactElement } from "react";
 
+import type { ChartSubstrate } from "@rtc/domain";
 import {
+  type Canvas2D,
+  type CanvasSize,
+  type ChartPalette,
   type ChartPoint,
   type ChartVarStyle,
+  drawPaneScene,
   type EqPaneKind,
   MACD_FAST,
   MACD_SIGNAL,
@@ -13,6 +18,7 @@ import {
   RSI_WINDOW,
 } from "@rtc/motion-core";
 
+import { SceneCanvas } from "./SceneCanvas";
 import type { PaneHoverProps } from "./useChartGestures";
 
 import styles from "./IndicatorPane.module.css";
@@ -36,6 +42,7 @@ export function IndicatorPane({
   readout,
   crosshairStyle,
   hoverProps,
+  substrate = "dom",
 }: IndicatorPaneProps): ReactElement {
   const zeroGuideY = scene.guides[0]?.y ?? 50;
 
@@ -47,43 +54,52 @@ export function IndicatorPane({
       onPointerLeave={hoverProps.onPointerLeave}
     >
       <span className={styles.label}>{paneLabel(kind)}</span>
-      <svg
-        className={styles.svg}
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        {scene.guides.map((g) => {
-          return (
-            <line
-              key={g.key}
-              className={styles.guide}
-              x1="0"
-              y1={g.y}
-              x2="100"
-              y2={g.y}
+      {substrate === "canvas" ? (
+        <SceneCanvas
+          testid="chart-canvas-pane"
+          draw={(ctx: Canvas2D, palette: ChartPalette, size: CanvasSize) => {
+            drawPaneScene(ctx, scene, palette, size);
+          }}
+        />
+      ) : (
+        <svg
+          className={styles.svg}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {scene.guides.map((g) => {
+            return (
+              <line
+                key={g.key}
+                className={styles.guide}
+                x1="0"
+                y1={g.y}
+                x2="100"
+                y2={g.y}
+              />
+            );
+          })}
+          {scene.histogram.length > 0 && (
+            <path
+              className={styles.histogram}
+              data-testid="chart-pane-histogram"
+              d={toHistogramPath(scene.histogram, zeroGuideY)}
             />
-          );
-        })}
-        {scene.histogram.length > 0 && (
-          <path
-            className={styles.histogram}
-            data-testid="chart-pane-histogram"
-            d={toHistogramPath(scene.histogram, zeroGuideY)}
-          />
-        )}
-        {scene.lines.map((ln) => {
-          return (
-            <polyline
-              key={ln.key}
-              className={styles.line}
-              data-line={ln.key}
-              fill="none"
-              points={toPointsAttr(ln.points)}
-            />
-          );
-        })}
-      </svg>
+          )}
+          {scene.lines.map((ln) => {
+            return (
+              <polyline
+                key={ln.key}
+                className={styles.line}
+                data-line={ln.key}
+                fill="none"
+                points={toPointsAttr(ln.points)}
+              />
+            );
+          })}
+        </svg>
+      )}
       {crosshairStyle ? (
         <div
           className={styles.crosshairV}
@@ -115,6 +131,11 @@ export interface IndicatorPaneProps {
    * attached to this component's own root, the one element in the pane
    * that isn't `pointer-events: none`. */
   readonly hoverProps: PaneHoverProps;
+  /** The rendering substrate for this pane's geometry — defaults to
+   * `"dom"` (the existing SVG). `"canvas"` swaps the `<svg>` for a
+   * `chart-canvas-pane` `SceneCanvas`; the label and readout text (and the
+   * crosshair echo div) stay DOM either way. */
+  readonly substrate?: ChartSubstrate;
 }
 
 /** The corner label, composed from the exported window/period constants

@@ -13,7 +13,10 @@ import styles from "./CrosshairOverlay.module.css";
  * nothing while no candle is hovered (`vm` null). `showHorizontal` hides
  * just the `.h` hairline while the hover has moved into an indicator pane
  * instead (see `ChartPlot`'s `showHorizontal={cursor?.inPlot}` wiring) — the
- * vertical line and readout chip are unaffected. `vm.price` (the cursor's
+ * vertical line and readout chip are unaffected. `linesHidden` hides BOTH
+ * hairlines (the canvas substrate draws its own crosshair lines onto
+ * `chart-canvas-plot` — see `drawPlotScene`'s crosshair pass — so the DOM
+ * overlay keeps only the readout chip in canvas mode). `vm.price` (the cursor's
  * raw y→price inversion — distinct from the readout's snapped-candle OHLC)
  * has no visible glyph of its own; it rides as a `data-price` attribute on
  * the readout chip (mirroring the `data-active`/`data-yscale`-style
@@ -23,6 +26,7 @@ import styles from "./CrosshairOverlay.module.css";
 export function CrosshairOverlay({
   vm,
   showHorizontal,
+  linesHidden = false,
 }: CrosshairOverlayProps): ReactElement | null {
   if (!vm) {
     return null;
@@ -30,12 +34,14 @@ export function CrosshairOverlay({
 
   return (
     <div className={styles.overlay}>
-      <div
-        className={styles.v}
-        style={vm.style}
-        data-testid="chart-crosshair-v"
-      />
-      {showHorizontal ? (
+      {linesHidden ? null : (
+        <div
+          className={styles.v}
+          style={vm.style}
+          data-testid="chart-crosshair-v"
+        />
+      )}
+      {showHorizontal && !linesHidden ? (
         <div
           className={styles.h}
           style={vm.style}
@@ -61,4 +67,8 @@ export function CrosshairOverlay({
 export interface CrosshairOverlayProps {
   readonly vm: CrosshairVm | null;
   readonly showHorizontal: boolean;
+  /** Hides both hairlines while keeping the readout chip — set in canvas
+   * mode, where `chart-canvas-plot` already draws its own crosshair lines.
+   * Defaults to `false` (unchanged DOM-mode behaviour). */
+  readonly linesHidden?: boolean;
 }
