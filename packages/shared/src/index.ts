@@ -61,6 +61,8 @@ export type {
   JarvisGateLevel,
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
+export type { JarvisIntent, JarvisTradeIntent } from "./jarvis/jarvisIntent.js";
+export { matchJarvisIntent } from "./jarvis/jarvisIntent.js";
 export type {
   AdminJarvisUsagePayload,
   JarvisBrainUsageRow,
