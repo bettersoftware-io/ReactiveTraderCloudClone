@@ -45,7 +45,7 @@ test("ranks by change% under the chg sort — the mover leads", async () => {
   expect(screen.getByTestId("eq-mover-TSLA-rank").props.children).toBe("01");
 });
 
-test("re-sorting by symbol renumbers without remounting rows", async () => {
+test("re-sorting by symbol renumbers without losing a row's rank-move state", async () => {
   const { rerender } = await renderWithTheme(
     <ViewModelProvider viewModel={vm("chg")}>
       <MoversBoard selectedSymbol={null} onSelect={(): void => {}} />
