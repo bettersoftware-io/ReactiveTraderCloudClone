@@ -9,19 +9,36 @@ import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
-test("selects a skin on press", async () => {
+// Three near-identical tests here used to assert the same press -> setSkin
+// binding separately (terminal, holo3d, neon) — the last was added without
+// anyone noticing the first two already covered the binding itself.
+// Collapsed to one parameterised test; each skin still gets its own press
+// asserted against its own `setSkin` argument, just without three copies of
+// the render/fire/expect boilerplate.
+test.each<[string, string]>([
+  ["terminal", "appearance-skin-terminal"],
+  ["holo3d", "appearance-skin-holo3d"],
+  ["neon", "appearance-skin-neon"],
+])("pressing the %s card calls setSkin with it", async (skin, testId) => {
   const setSkin = jest.fn();
   await renderScreen(fakeViewModel(() => {}, setSkin));
-  await fireEvent.press(screen.getByTestId("appearance-skin-terminal"));
-  expect(setSkin).toHaveBeenCalledWith("terminal");
+  await fireEvent.press(screen.getByTestId(testId));
+  expect(setSkin).toHaveBeenCalledWith(skin);
 });
 
-test("lists the 3d skins and selects holo3d on press", async () => {
-  const setSkin = jest.fn();
-  await renderScreen(fakeViewModel(() => {}, setSkin));
+// Asserts something the parameterised test above does not: that the
+// terminal3d CARD itself renders at all, not merely that pressing it (were
+// it present) would call setSkin. Kept separate rather than folded into the
+// "renders all six skins" order test below, which only asserts the six
+// LABEL nodes.
+test("renders the terminal3d skin card", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
   expect(screen.getByTestId("appearance-skin-terminal3d")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-skin-holo3d"));
-  expect(setSkin).toHaveBeenCalledWith("holo3d");
 });
 
 test("marks the active skin selected", async () => {
@@ -151,11 +168,71 @@ test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; 
   );
 });
 
-test("pressing a card sets that skin", async () => {
-  const setSkin = jest.fn();
-  await renderScreen(fakeViewModel(() => {}, setSkin));
-  await fireEvent.press(screen.getByTestId("appearance-skin-neon"));
-  expect(setSkin).toHaveBeenCalledWith("neon");
+// A SECOND, independent threshold from the test above — that one proves
+// three CARDS fit per row; this one proves three SWATCHES then fit INSIDE
+// one of those cards. Both are the same class of trap (a FIXED pixel amount
+// against a PERCENTAGE width, so the margin shrinks as the device narrows),
+// but they are different geometry: `skinCardWrap`'s outer width vs
+// `skinGrid`'s gap (above) says nothing about `skinCard`'s INNER content
+// width vs the swatch row's own intrinsic width. Review round 2 found the
+// swatch row shipped at 18pt swatches / 6pt gap (66pt needed), whose real
+// floor was 332pt — ABOVE the 320pt floor the test above already asserts
+// elsewhere in this same grid, so a 320pt device would have silently
+// CLIPPED the third swatch (`BlurCard`'s `overflow: "hidden"` swallows the
+// overflow rather than pushing the row wider), with every order/count/
+// colour/press test in this file still green. 16pt / 4pt closes that gap;
+// this test derives the real floor from live rendered styles, the same way
+// the grid-wrap test above does, rather than trusting the constants.
+test("the skin card's inner content width keeps real margin over its swatch row's intrinsic width on a 320pt device", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const MIN_SUPPORTED_DEVICE_WIDTH = 320;
+  // Same named constant, same reason it can't be read off a queried node, as
+  // the grid-wrap test above (AppearanceScreen.tsx `content: { padding: 16,
+  // ... }`).
+  const CONTENT_HORIZONTAL_PADDING = 16;
+
+  const cell = screen.getByTestId("appearance-skin-neon-cell");
+  const cellWidth = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const cardWidthFraction = parsePercent(cellWidth) / 100;
+
+  // "neon" is never the stub's active skin (default is "holo"), so this is
+  // always the plain `skinCard` style, not `skinCardActive` — both carry the
+  // same `padding: 12`, so either would do, but only one needs querying.
+  const card = screen.getByTestId("appearance-skin-neon");
+  const cardPadding = StyleSheet.flatten(card.props.style as ViewStyle)
+    .padding as number;
+  expect(typeof cardPadding).toBe("number");
+
+  const swatchRow = screen.getByTestId("appearance-skin-neon-swatch-row");
+  const swatchGap = StyleSheet.flatten(swatchRow.props.style as ViewStyle)
+    .gap as number;
+  expect(typeof swatchGap).toBe("number");
+
+  const swatches = screen.getAllByTestId("appearance-skin-neon-swatch");
+  const swatchWidth = StyleSheet.flatten(swatches[0]?.props.style as ViewStyle)
+    .width as number;
+  expect(typeof swatchWidth).toBe("number");
+
+  const swatchRowWidth = 3 * swatchWidth + 2 * swatchGap;
+
+  // Fit condition: cardWidthFraction * C - 2 * cardPadding >= swatchRowWidth,
+  // where C is the grid row's available content width (device width minus
+  // this file's horizontal padding on both sides). Solving for the device
+  // width floor:
+  const containerFloor = (swatchRowWidth + 2 * cardPadding) / cardWidthFraction;
+  const deviceWidthFloor = containerFloor + 2 * CONTENT_HORIZONTAL_PADDING;
+
+  expect(deviceWidthFloor).toBeLessThan(MIN_SUPPORTED_DEVICE_WIDTH);
+  // Real margin, not sub-pixel — the class of near-miss (332pt vs a 320pt
+  // floor) that shipped the clip this test guards against.
+  expect(MIN_SUPPORTED_DEVICE_WIDTH - deviceWidthFloor).toBeGreaterThanOrEqual(
+    15,
+  );
 });
 
 test("shows an ambient toggle wired to useAnimatedBackground", async () => {
@@ -232,7 +309,7 @@ test("the power-saver caption tracks the selected level", async () => {
   expect(screen.getByText(/run normally/i)).toBeTruthy();
 });
 
-test("segmented dark/light control presses light and drives cycle() the right number of steps from the live preference", async () => {
+test("the 3-way mode segment presses light and drives cycle() the right number of steps from the live preference", async () => {
   // modePreference defaults to "system" in the stub; the ViewModel exposes no
   // direct mode setter (createViewModel.ts UseThemePreferenceResult is
   // { mode, modePreference, cycle } only), so the segmented control must
@@ -245,7 +322,7 @@ test("segmented dark/light control presses light and drives cycle() the right nu
   expect(cycle).toHaveBeenCalledTimes(2);
 });
 
-test("segmented dark/light control presses dark and drives cycle() the right number of steps from the live preference", async () => {
+test("the 3-way mode segment presses dark and drives cycle() the right number of steps from the live preference", async () => {
   // From "system", reaching "dark" is one step: system→dark.
   const cycle = jest.fn();
   await renderScreen(fakeViewModel(cycle, () => {}));

@@ -26,7 +26,11 @@ export const SKIN_DISPLAY_ORDER: readonly ThemeSkin[] = [
  * `{ mode, modePreference, cycle }` — so a segmented control cannot assign a
  * mode; it can only advance the cycle N times. `cycle()` re-reads the live
  * persisted preference on each call rather than a captured render value, so
- * firing it synchronously N times still lands on the true target.
+ * firing it synchronously N times still lands on the true target. The
+ * presenter behind `cycle()` is guarded directly by
+ * `packages/client-core/src/presenters/__tests__/ThemePreferencePresenter.test.ts`
+ * ("cycle advances dark → light → system → dark from the live current
+ * value") — this function only computes how many times to call it.
  *
  * Widened from the previous `"dark" | "light"` version: the 3-way segment can
  * now select `system`, which the old 2-way toggle could not express. */

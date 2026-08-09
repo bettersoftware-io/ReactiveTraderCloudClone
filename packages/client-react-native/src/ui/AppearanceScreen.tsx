@@ -75,7 +75,10 @@ export function AppearanceScreen({
   // mode" (dark/light/system) is expressed as N zero-arg cycle() calls.
   // cycle() re-reads the live persisted preference on every call (not a
   // captured render value), so firing it synchronously N times in a row
-  // still lands on the true target.
+  // still lands on the true target — guarded directly by
+  // packages/client-core/src/presenters/__tests__/ThemePreferencePresenter.test.ts
+  // ("cycle advances dark → light → system → dark from the live current
+  // value"); `cyclesToReach` here only computes the step count.
   function jumpToMode(target: ThemeModePreference): void {
     const steps = cyclesToReach(modePreference, target);
 
@@ -146,11 +149,18 @@ export function AppearanceScreen({
                       setSkin(s);
                     }}
                   >
-                    <View style={styles.skinSwatchRow}>
+                    <View
+                      testID={`appearance-skin-${s}-swatch-row`}
+                      style={styles.skinSwatchRow}
+                    >
                       {/* Three sibling swatches deliberately share one
                           testID (getAllByTestId) — the three semantic
                           accents (primary/positive/negative), not the old
-                          card's bgTile + accent2 pairing. */}
+                          card's bgTile + accent2 pairing. The row itself
+                          carries its own testID too, purely so
+                          AppearanceScreen.test.tsx's derived swatch-overflow
+                          invariant test can read its real `gap` off a live
+                          rendered node instead of trusting the constant. */}
                       {SWATCH_ACCENT_KEYS.map((accentKey) => {
                         return (
                           <View
@@ -199,7 +209,7 @@ export function AppearanceScreen({
             </Text>
           </Pressable>
         </BlurCard>
-        {/* Task 5: the only real branch on this screen. The style picker is
+        {/* The only real branch on this screen. The style picker is
             meaningless while ambient is off (there is nothing to preview),
             so it must be genuinely ABSENT from the tree, not merely
             disabled — the paired hidden/shown tests in
@@ -231,16 +241,17 @@ export function AppearanceScreen({
             </View>
           </BlurCard>
         ) : null}
-        {/* Task 6 layout-threshold check: this segment renders through the
-            SAME `styles.segmented`/`segment`/`segmentActive` objects as the
-            mode segment above (Task 3) and the ambient style picker above
-            that (Task 5) — one `StyleSheet.create` call, shared by
-            reference, not three copies. Task 3's derived invariant test
-            already proves those objects give every cell `flex: 1` (equal
-            division of the row, safe at any width, no wrap/clip threshold);
-            Task 5 relied on that same proof for its own 2-cell segment
-            without adding a second copy of the test, and this segment
-            follows that precedent rather than adding a third. */}
+        {/* This segment renders through the SAME
+            `styles.segmented`/`segment`/`segmentActive` objects as the mode
+            segment above and the ambient style picker above that — one
+            `StyleSheet.create` call, shared by reference, not three copies.
+            The mode segment's own derived invariant test (below, in
+            AppearanceScreen.test.tsx) already proves those objects give
+            every cell `flex: 1` (equal division of the row, safe at any
+            width, no wrap/clip threshold); the ambient picker relied on that
+            same proof for its own 2-cell segment without adding a second
+            copy of the test, and this segment follows that precedent rather
+            than adding a third. */}
         <Text style={styles.label}>Power saver</Text>
         <BlurCard mode={mode}>
           <View style={styles.segmented}>
@@ -271,13 +282,13 @@ export function AppearanceScreen({
         </Text>
       </View>
 
-      {/* Task 6 layout-threshold check: `replayButton` spreads `rowBase`
-          (the same base the ambient toggle row uses, Task 5) with no fixed
-          or percentage width and no `numberOfLines` cap — the label is one
-          `Text` node in a full-width, height-auto row. A narrower device
-          just grows the row and wraps the text onto a second line; there is
-          no width at which it discretely clips or collapses, so — like
-          Task 5's toggle-row text — this needs no derived invariant test. */}
+      {/* `replayButton` spreads `rowBase` (the same base the ambient toggle
+          row above uses) with no fixed or percentage width and no
+          `numberOfLines` cap — the label is one `Text` node in a full-width,
+          height-auto row. A narrower device just grows the row and wraps the
+          text onto a second line; there is no width at which it discretely
+          clips or collapses, so — like the ambient toggle row's own text —
+          this needs no derived invariant test. */}
       <View style={styles.section}>
         <BlurCard mode={mode}>
           <Pressable
@@ -370,9 +381,9 @@ const AMBIENT_STYLE_LABEL: Record<AmbientStyle, string> = {
 };
 
 // The three semantic accents a skin card's swatch row renders, in display
-// order. Single source for the three near-identical swatch Views (Task 4
-// review): a fourth swatch or a reordering only needs updating here, not in
-// three separate JSX blocks.
+// order. Single source for the three near-identical swatch Views: a fourth
+// swatch or a reordering only needs updating here, not in three separate JSX
+// blocks.
 const SWATCH_ACCENT_KEYS: readonly (
   | "accentPrimary"
   | "accentPositive"
@@ -518,8 +529,33 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       borderWidth: 2,
       borderColor: t.accentPrimary,
     },
-    skinSwatchRow: { flexDirection: "row", gap: 6 },
-    skinSwatch: { width: 18, height: 18, borderRadius: 4 },
+    // A SECOND, independent no-wrap-style threshold from `skinGrid`'s above:
+    // this one is the card's own INNER content width (card width minus
+    // `skinCard`'s `padding: 12` on both sides) against the swatch row's
+    // INTRINSIC width (3 swatches + 2 gaps, both FIXED pixel amounts, unlike
+    // the card width which is a percentage of the device). `skinGrid`'s
+    // comment above only proves three cards fit per row; it says nothing
+    // about whether the three swatches then fit INSIDE one of those cards —
+    // that overflow is silent, too: `blurWrap` (BlurCard) sets `overflow:
+    // "hidden"`, so a swatch row wider than its card just gets clipped, with
+    // every order/count/colour/press test in this file still green (fix
+    // round 2 review). At 18pt swatches / 6pt gap (66pt needed) the floor
+    // was 332pt — ABOVE the 320pt floor `AppearanceScreen.test.tsx` already
+    // asserts elsewhere in this same card grid, so a 320pt device would have
+    // silently clipped the third swatch. 16pt / 4pt (56pt needed) moves the
+    // floor to ~298.7pt, clearing 320pt with real margin — see the derived
+    // invariant test in AppearanceScreen.test.tsx, which asserts this margin
+    // from the live rendered styles rather than trusting these constants.
+    //
+    // 320pt was re-checked against real device support, not re-assumed: RN
+    // 0.86's Podfile pins `min_ios_version_supported` to 15.1
+    // (node_modules/react-native/scripts/cocoapods/helpers.rb), and iPhone SE
+    // (1st generation) — 320x568pt, the narrowest iPhone Apple ever shipped —
+    // is a supported iOS 15 device. So a 320pt device is a real, running
+    // target for this app today, not a retired one; 320 stays the floor
+    // rather than being widened to 375.
+    skinSwatchRow: { flexDirection: "row", gap: 4 },
+    skinSwatch: { width: 16, height: 16, borderRadius: 4 },
     skinLabel: {
       fontSize: 11,
       fontWeight: "600",
