@@ -34,6 +34,69 @@ test("marks the active skin selected", async () => {
   expect(screen.getByTestId("appearance-skin-holo-active")).toBeTruthy();
 });
 
+// The domain's storage order is alphabetical-ish (classic first); the design
+// groups skins by family reading left-to-right across a 3x2 grid. This
+// asserts the VIEW order (SKIN_DISPLAY_ORDER), not the domain's, and would
+// catch a regression back to iterating THEME_SKINS directly.
+test("renders all six skins as cards in the design's order", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const labels = screen.getAllByTestId(/^appearance-skin-.*-label$/);
+  expect(labels.map((n) => n.props.children)).toEqual([
+    "HOLO HUD",
+    "HOLO 3D",
+    "TERMINAL",
+    "TERMINAL 3D",
+    "NEON",
+    "CLASSIC",
+  ]);
+});
+
+test("each card shows three swatches", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getAllByTestId("appearance-skin-holo-swatch")).toHaveLength(3);
+});
+
+// A count of three proves the swatches exist, not that they carry the right
+// colours — three copies of the same accent would also pass the count-only
+// test above. This pins the three swatches to the three distinct semantic
+// accent tokens, in order, for the fixed "dark" mode the stub reports.
+test("the three swatches are the three distinct semantic accent tokens, not copies of one", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  const swatches = screen.getAllByTestId("appearance-skin-holo-swatch");
+  const colors = swatches.map(
+    (n) => StyleSheet.flatten(n.props.style as ViewStyle).backgroundColor,
+  );
+  const holoDark = rnThemeTokens.holo.dark;
+  expect(colors).toEqual([
+    holoDark.accentPrimary,
+    holoDark.accentPositive,
+    holoDark.accentNegative,
+  ]);
+  expect(new Set(colors).size).toBe(3);
+});
+
+test("pressing a card sets that skin", async () => {
+  const setSkin = jest.fn();
+  await renderScreen(fakeViewModel(() => {}, setSkin));
+  await fireEvent.press(screen.getByTestId("appearance-skin-neon"));
+  expect(setSkin).toHaveBeenCalledWith("neon");
+});
+
 test("shows an ambient toggle wired to useAnimatedBackground", async () => {
   const setEnabled = jest.fn();
   await renderScreen(

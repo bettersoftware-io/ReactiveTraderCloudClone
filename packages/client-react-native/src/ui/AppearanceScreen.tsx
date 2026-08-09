@@ -15,14 +15,16 @@ import {
   POWER_SAVER_LEVELS,
   type PowerSaverLevel,
   THEME_MODE_PREFERENCES,
-  THEME_SKINS,
   type ThemeMode,
   type ThemeModePreference,
   type ThemeSkin,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
-import { cyclesToReach } from "#/ui/shell/appearance/appearanceLayout";
+import {
+  cyclesToReach,
+  SKIN_DISPLAY_ORDER,
+} from "#/ui/shell/appearance/appearanceLayout";
 import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -120,52 +122,63 @@ export function AppearanceScreen({
 
       <View style={styles.section}>
         <Text style={styles.label}>Skin</Text>
-        {THEME_SKINS.map((s) => {
-          const active = s === skin;
-          const swatch = rnThemeTokens[s][mode];
-          return (
-            <BlurCard key={s} mode={mode}>
-              <Pressable
-                testID={
-                  active
-                    ? `appearance-skin-${s}-active`
-                    : `appearance-skin-${s}`
-                }
-                style={active ? styles.skinRowActive : styles.skinRow}
-                onPress={() => {
-                  setSkin(s);
-                }}
-              >
-                <View style={styles.skinPreviewRow}>
-                  <View
-                    style={[
-                      styles.swatch,
-                      {
-                        backgroundColor: swatch.bgTile,
-                        borderColor: swatch.borderStrong,
-                      },
-                    ]}
+        <View style={styles.skinGrid}>
+          {SKIN_DISPLAY_ORDER.map((s) => {
+            const active = s === skin;
+            const swatch = rnThemeTokens[s][mode];
+            return (
+              <View key={s} style={styles.skinCardWrap}>
+                <BlurCard mode={mode}>
+                  <Pressable
+                    testID={
+                      active
+                        ? `appearance-skin-${s}-active`
+                        : `appearance-skin-${s}`
+                    }
+                    style={active ? styles.skinCardActive : styles.skinCard}
+                    onPress={() => {
+                      setSkin(s);
+                    }}
                   >
-                    <View
-                      style={[
-                        styles.swatchDot,
-                        { backgroundColor: swatch.accentPrimary },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.swatchDot,
-                        { backgroundColor: swatch.accent2 },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.skinName}>{THEME_DISPLAY_NAME[s]}</Text>
-                </View>
-                {active ? <Text style={styles.check}>✓</Text> : null}
-              </Pressable>
-            </BlurCard>
-          );
-        })}
+                    <View style={styles.skinSwatchRow}>
+                      {/* Three sibling swatches deliberately share one
+                          testID (getAllByTestId) — the three semantic
+                          accents (primary/positive/negative), not the old
+                          card's bgTile + accent2 pairing. */}
+                      <View
+                        testID={`appearance-skin-${s}-swatch`}
+                        style={[
+                          styles.skinSwatch,
+                          { backgroundColor: swatch.accentPrimary },
+                        ]}
+                      />
+                      <View
+                        testID={`appearance-skin-${s}-swatch`}
+                        style={[
+                          styles.skinSwatch,
+                          { backgroundColor: swatch.accentPositive },
+                        ]}
+                      />
+                      <View
+                        testID={`appearance-skin-${s}-swatch`}
+                        style={[
+                          styles.skinSwatch,
+                          { backgroundColor: swatch.accentNegative },
+                        ]}
+                      />
+                    </View>
+                    <Text
+                      testID={`appearance-skin-${s}-label`}
+                      style={styles.skinLabel}
+                    >
+                      {THEME_DISPLAY_NAME[s]}
+                    </Text>
+                  </Pressable>
+                </BlurCard>
+              </View>
+            );
+          })}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -349,13 +362,13 @@ interface AppearanceScreenStyles {
   segment: ViewStyle;
   segmentActive: ViewStyle;
   segmentLabel: TextStyle;
-  skinRow: ViewStyle;
-  skinRowActive: ViewStyle;
-  skinPreviewRow: ViewStyle;
-  swatch: ViewStyle;
-  swatchDot: ViewStyle;
-  skinName: TextStyle;
-  check: TextStyle;
+  skinGrid: ViewStyle;
+  skinCardWrap: ViewStyle;
+  skinCard: ViewStyle;
+  skinCardActive: ViewStyle;
+  skinSwatchRow: ViewStyle;
+  skinSwatch: ViewStyle;
+  skinLabel: TextStyle;
   toggleRow: ViewStyle;
   toggleRowOn: ViewStyle;
   toggleLabel: TextStyle;
@@ -428,22 +441,41 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       color: t.textPrimary,
       fontFamily: t.fontDisplay,
     },
-    skinRow: rowBase,
-    skinRowActive: { ...rowBase, borderWidth: 1, borderColor: t.borderStrong },
-    skinPreviewRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    swatch: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      borderWidth: 1,
+    // 3x2 grid (Task 4): three cards per row. `gap` handles inter-card
+    // spacing, so each card's width only needs to clear a third of the row —
+    // "31%" leaves room for two gaps without the card overflowing into a
+    // fourth-per-row wrap.
+    skinGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    skinCardWrap: { width: "31%" },
+    skinCard: {
       alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "row",
-      gap: 4,
+      padding: 12,
+      gap: 8,
+      borderRadius: 8,
+      backgroundColor: t.panel,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.border,
     },
-    swatchDot: { width: 8, height: 8, borderRadius: 4 },
-    skinName: { fontSize: 16, color: t.textPrimary, fontFamily: t.fontDisplay },
-    check: { fontSize: 16, color: t.accentPrimary },
+    // The ring is the design's only selection cue (the old check mark is
+    // gone), so the active card's border is the one visible difference.
+    skinCardActive: {
+      alignItems: "center",
+      padding: 12,
+      gap: 8,
+      borderRadius: 8,
+      backgroundColor: t.panel,
+      borderWidth: 2,
+      borderColor: t.accentPrimary,
+    },
+    skinSwatchRow: { flexDirection: "row", gap: 6 },
+    skinSwatch: { width: 18, height: 18, borderRadius: 4 },
+    skinLabel: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+      textAlign: "center",
+    },
     toggleRow: rowBase,
     toggleRowOn: {
       ...rowBase,
