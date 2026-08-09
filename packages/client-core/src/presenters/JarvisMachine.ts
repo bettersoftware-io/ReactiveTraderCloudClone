@@ -138,6 +138,11 @@ export interface JarvisState {
    * together, and the one system-line entry a gate that DOES move
    * `effectiveBrain` appends into `entries`. */
   readonly gate: JarvisAvailabilityGate | null;
+  /** Times the overlay has been opened this session — the chip-rotation
+   * seed. Increments only on a closed→open transition, via `open()` or the
+   * opening branch of `toggle()`; never on `close()`, and never on a
+   * repeated `open()` call while already open. `0` in `INITIAL`. */
+  readonly openCount: number;
 }
 
 export interface JarvisIntents {
@@ -155,6 +160,14 @@ export interface JarvisIntents {
    * user-side entry displays it WITHOUT that prefix and flagged
    * `origin: "narrator"`. */
   narrate: (prompt: string) => void;
+  /** Queue a turn pinned to the scripted brain — the demo's send; the
+   * user's brain preference is untouched. Enters the SAME turn queue as
+   * `send`/`narrate` (a `sendScripted` arriving while another turn is still
+   * in flight queues behind it, per the shared `concatMap`), is the same
+   * silent no-op as `send` while `state.available` is false, and produces
+   * an ordinary user-role entry — `origin` is left unset, exactly like
+   * `send`'s. Only the brain the turn's `port.ask` call carries differs. */
+  sendScripted: (text: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
@@ -217,6 +230,7 @@ const INITIAL: JarvisState = {
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  openCount: 0,
 };
 
 /** Sim-mode / legacy-caller default for `JarvisDeps.availability$`: always
@@ -462,11 +476,15 @@ interface TurnEventItem {
 /** One item flowing through a single turn (`send()` or `narrate()`). */
 type TurnItem = TurnStartItem | TurnEventItem;
 
-/** One request enqueued into the shared turn queue — `send()` and
- * `narrate()` both feed the same `concatMap`, so a `narrate()` arriving
- * while a `send()` is in flight queues behind it (and vice versa). */
+/** One request enqueued into the shared turn queue — `send()`, `narrate()`,
+ * and `sendScripted()` all feed the same `concatMap`, so any one of them
+ * arriving while another is in flight queues behind it. `"sendScripted"` is
+ * an ordinary user turn shape-wise (same as `"send"`); only its `kind` is
+ * read at the `port.ask` call site to pin the turn's brain to `"scripted"`
+ * regardless of `effectiveBrain`. */
 type TurnRequest =
   | { readonly kind: "send"; readonly text: string }
+  | { readonly kind: "sendScripted"; readonly text: string }
   | { readonly kind: "narrate"; readonly prompt: string };
 
 function isTurnEventItem(item: TurnItem): item is TurnEventItem {
@@ -540,6 +558,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   let inFlightEntryId: number | null = null;
 
   const send$ = new Subject<string>();
+  const sendScripted$ = new Subject<string>();
   const narrate$ = new Subject<string>();
   const open$ = new Subject<void>();
   const close$ = new Subject<void>();
@@ -550,13 +569,19 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
 
   let nextEntryId = 1; // 0 is the greeting entry
 
-  // send() and narrate() feed the SAME queue — merged upstream of concatMap
-  // so a narrate() arriving mid-send queues behind it (and vice versa), per
-  // JarvisIntents.narrate's doc.
+  // send(), sendScripted(), and narrate() feed the SAME queue — merged
+  // upstream of concatMap so any one arriving mid-turn queues behind
+  // whichever is in flight, per JarvisIntents.narrate's and
+  // JarvisIntents.sendScripted's docs.
   const turnRequests$: Observable<TurnRequest> = merge(
     send$.pipe(
       map((text): TurnRequest => {
         return { kind: "send", text };
+      }),
+    ),
+    sendScripted$.pipe(
+      map((text): TurnRequest => {
+        return { kind: "sendScripted", text };
       }),
     ),
     narrate$.pipe(
@@ -602,9 +627,15 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         text: "",
         done: false,
       };
+      // sendScripted() pins the turn's brain to "scripted" regardless of
+      // effectiveBrain — see JarvisIntents.sendScripted's doc. Every other
+      // request kind runs with the resolved effective brain, exactly as
+      // before.
+      const brain = req.kind === "sendScripted" ? "scripted" : effectiveBrain;
+
       return concat(
         of<TurnItem>({ kind: "start", userEntry, jarvisEntry }),
-        deps.port.ask(wireText, { brain: effectiveBrain, effort }).pipe(
+        deps.port.ask(wireText, { brain, effort }).pipe(
           map((event): TurnItem => {
             return { kind: "event", event, origin };
           }),
@@ -739,7 +770,16 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const openPatches$: Observable<Patch> = open$.pipe(
     map((): Patch => {
       return (s: JarvisState): JarvisState => {
-        return { ...s, open: true, unread: 0, unreadNarration: false };
+        return {
+          ...s,
+          open: true,
+          unread: 0,
+          unreadNarration: false,
+          // Guarded increment: bumps only on a genuine closed→open
+          // transition, not on a repeated open() while already open — see
+          // JarvisState.openCount's doc.
+          openCount: s.open ? s.openCount : s.openCount + 1,
+        };
       };
     }),
   );
@@ -761,6 +801,9 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
           open,
           unread: open ? 0 : s.unread,
           unreadNarration: open ? false : s.unreadNarration,
+          // Only the opening branch bumps — mirrors openPatches$'s own
+          // guarded increment (closing never touches it).
+          openCount: open ? s.openCount + 1 : s.openCount,
         };
       };
     }),
@@ -937,6 +980,9 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       send: (text: string) => {
         send$.next(text);
       },
+      sendScripted: (text: string) => {
+        sendScripted$.next(text);
+      },
       narrate: (prompt: string) => {
         narrate$.next(prompt);
       },
@@ -959,6 +1005,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       // subscription that was keeping state$ alive, and the side-channel
       // effort$ subscription alongside it.
       send$.complete();
+      sendScripted$.complete();
       narrate$.complete();
       open$.complete();
       close$.complete();

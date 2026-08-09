@@ -797,6 +797,21 @@
   color: var(--text-muted);
 }
 
+/* The footer's ⓘ DEMO GUIDE entry reuses `.hint`'s typography but is a real
+   `<button>` (unlike its plain-`<span>` siblings) — this scoped reset undoes
+   only the browser's button chrome, keyed off the tag so the plain hint
+   spans are untouched. */
+button.hint {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+button.hint:hover {
+  color: var(--text-primary);
+}
+
 .skinSwitch {
   display: flex;
   align-items: center;
@@ -821,6 +836,226 @@
 .skinButton[data-active="true"] {
   color: var(--accent-primary);
   text-shadow: 0 0 10px var(--accent-primary);
+}
+
+/* ---------------------------------------------------------- demo guide --- */
+
+/* Mirrors .closeButton exactly, offset one slot inward so the two controls
+   sit side by side without overlapping. */
+.guideToggle {
+  position: absolute;
+  top: 16px;
+  right: 62px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.guideToggle:hover,
+.guideToggle[aria-pressed="true"] {
+  border-color: var(--border-strong);
+  color: var(--accent-primary);
+}
+
+.guidePanel {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  bottom: 88px;
+  z-index: 3;
+  width: 314px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  box-shadow: var(--glow);
+}
+
+.guideHead {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+}
+
+.guideClose {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.guideClose:hover {
+  color: var(--text-primary);
+}
+
+.guideBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 14px;
+}
+
+.guideRun {
+  flex: none;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 3px;
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.guideRun:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.guideExplainer {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.guideSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guideSectionTitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent-2);
+}
+
+/* Full-width, left-aligned — `.hint`-adjacent typography (same mono family,
+   a size step up for legibility as a click target) rather than `.hint`
+   itself, since these rows carry an inline live-badge child `.hint` never
+   needs to accommodate. */
+.guideRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guideRow:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.guideRow:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.guideLiveBadge {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--accent-2);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.guideTips {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-primary);
+}
+
+.guideTips p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Footer-hint scale — same idiom as .demoStop/button.hint below. */
+.demoRun {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.demoRun:hover {
+  color: var(--text-primary);
+}
+
+.demoProgress {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+}
+
+.demoStop {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.demoStop:hover {
+  color: var(--text-primary);
 }
 
 /* ------------------------------------------------------- motion budgets --- */

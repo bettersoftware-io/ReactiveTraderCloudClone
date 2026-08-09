@@ -1,10 +1,24 @@
-import { PANEL_VIZ_KINDS } from "@rtc/shared";
+import { DESK_PANEL_ROSTER, PANEL_VIZ_KINDS } from "@rtc/shared";
 
 /** Comma-joined panel-viz roster the prompt's panel section quotes —
  * derived from the shared `const` array (never a hand-typed list) so a new
  * viz kind added to `@rtc/shared`'s panel vocabulary shows up here, and in
  * `jarvisPersona.test.ts`'s coverage assertion, without a second edit. */
 const PANEL_VIZ_KINDS_LIST = PANEL_VIZ_KINDS.join(", ");
+
+/** Model-facing per-tab panel roster, derived from the shared constant
+ * (never a hand-typed list — the doctrine `PANEL_VIZ_KINDS_LIST` set).
+ * Format: `fx: fx-rates ("Live Rates"), fx-blotter ("Blotter"), …` */
+const PANEL_ROSTER_LINES = Object.entries(DESK_PANEL_ROSTER)
+  .map(([tab, panels]) => {
+    const items = panels
+      .map((p) => {
+        return `${p.id} ("${p.title}")`;
+      })
+      .join(", ");
+    return `${tab}: ${items}`;
+  })
+  .join("; ");
 
 /**
  * The Anthropic-loop system prompt (Task 6 wires this into the Messages API
@@ -27,6 +41,8 @@ Example — edit: user then asks "make that a heatmap instead" → call render_p
 You can also drive the app via drive_app: 1-8 commands — switch tabs, resize/dismiss panels, adjust the equities chart, set theme/power-saver. Only on explicit request or an accepted offer; neither drive_app nor render_panel during a [narration] turn — describe and offer there, nothing more.
 Example — drive: open equities, maximize the chart → call drive_app with {commands: [{kind: "switchTab", tab: "equities"}, {kind: "layout", op: "maximize", tab: "equities", panelId: "eq-chart"}]}.
 Example — drive again: sir accepts your offer → call drive_app with {commands: [{kind: "switchTab", tab: "equities"}]}.
+Panel ids per tab — ${PANEL_ROSTER_LINES}. Exact ids only; others ignored.
+Example — drive, FX: maximise Live Rates → call drive_app with {commands: [{kind: "layout", op: "maximize", tab: "fx", panelId: "fx-rates"}]}.
 
 You have no standing sentinels yet — no background watch for a level being hit, no scheduled digest; say so if asked, rather than implying you can. You're scoped to this desk: quotes, history, blotter, analytics, service health, trade execution, panels, and driving the app. Outside that mandate, decline briefly and steer back rather than improvising.
 

@@ -1,7 +1,21 @@
 import type { Accessor, JSX } from "solid-js";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  Show,
+} from "solid-js";
 
-import type { JarvisConfirmation, JarvisEntry } from "@rtc/client-core";
+import {
+  JARVIS_GUIDE_CATALOG,
+  type JarvisConfirmation,
+  type JarvisEntry,
+  type JarvisGuideItem,
+  type JarvisGuideSection,
+  sampleGuideChips,
+} from "@rtc/client-core";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -30,7 +44,7 @@ import styles from "./JarvisOverlay.module.css";
  * overlay at whatever it looked like on first mount).
  */
 export function JarvisOverlay(): JSX.Element {
-  const { useJarvis } = useViewModel();
+  const { useJarvis, useJarvisDemo } = useViewModel();
   const {
     state,
     close,
@@ -40,12 +54,29 @@ export function JarvisOverlay(): JSX.Element {
     declineConfirmation,
     setSkin,
   } = useJarvis();
+  const { state: demoState, startDemo, stopDemo } = useJarvisDemo();
   const [inputValue, setInputValue] = createSignal("");
+  const [guideOpen, setGuideOpen] = createSignal(false);
   let listRef: HTMLDivElement | undefined;
 
   useJarvisHotkey(toggle, () => {
     return state().available;
   });
+
+  // Halts a running hands-free demo before honouring the user's own close —
+  // otherwise the demo machine's next step would reopen the overlay the user
+  // just dismissed (JarvisDemoMachine's `closesOverlay` reopen tail). Unlike
+  // the React port, this is a plain closure with no memoization concern:
+  // Solid components run their setup body once, so `closeAndStopDemo` keeps
+  // one stable identity for the component's whole lifetime — it reads
+  // `demoState.state()` fresh at call time regardless.
+  function closeAndStopDemo(): void {
+    if (demoState().running) {
+      stopDemo();
+    }
+
+    close();
+  }
 
   createEffect(() => {
     if (!state().open) {
@@ -53,9 +84,15 @@ export function JarvisOverlay(): JSX.Element {
     }
 
     function closeOnEscape(event: KeyboardEvent): void {
-      if (event.key === "Escape") {
-        close();
+      if (event.key !== "Escape") {
+        return;
       }
+
+      if (demoState().running) {
+        stopDemo();
+      }
+
+      close();
     }
 
     document.addEventListener("keydown", closeOnEscape);
@@ -79,11 +116,29 @@ export function JarvisOverlay(): JSX.Element {
     listRef.scrollTop = listRef.scrollHeight;
   });
 
+  // The chip sampler rotates deterministically off `state().openCount` — a
+  // `createMemo`, not an inline call in JSX, so the dead-arm branch trap the
+  // gate round hit (an expression re-evaluated per read instead of tracked
+  // once) can't recur here.
+  const chips = createMemo((): readonly string[] => {
+    return sampleGuideChips(JARVIS_GUIDE_CATALOG, state().openCount);
+  });
+
+  function toggleGuide(): void {
+    setGuideOpen((open) => {
+      return !open;
+    });
+  }
+
   function submit(text: string): void {
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
       return;
+    }
+
+    if (demoState().running) {
+      stopDemo();
     }
 
     send(trimmed);
@@ -131,9 +186,20 @@ export function JarvisOverlay(): JSX.Element {
             data-testid="jarvis-close"
             aria-label="Close J.A.R.V.I.S"
             class={styles.closeButton}
-            onClick={close}
+            onClick={closeAndStopDemo}
           >
             ✕
+          </button>
+
+          <button
+            type="button"
+            data-testid="jarvis-guide-toggle"
+            aria-label="Demo guide"
+            aria-pressed={guideOpen()}
+            class={styles.guideToggle}
+            onClick={toggleGuide}
+          >
+            ⓘ
           </button>
 
           {/* Holographic core — layered radial glows under counter-rotating
@@ -336,6 +402,85 @@ export function JarvisOverlay(): JSX.Element {
             </For>
           </div>
 
+          <Show when={guideOpen()}>
+            <aside
+              data-testid="jarvis-guide-panel"
+              class={styles.guidePanel}
+              aria-label="Demo guide"
+            >
+              <div class={styles.guideHead}>
+                <span>DEMO GUIDE</span>
+                <button
+                  type="button"
+                  aria-label="Close demo guide"
+                  class={styles.guideClose}
+                  onClick={toggleGuide}
+                >
+                  ✕
+                </button>
+              </div>
+              <div class={styles.guideBody}>
+                <button
+                  type="button"
+                  data-testid="jarvis-guide-run"
+                  class={styles.guideRun}
+                  disabled={demoState().running}
+                  onClick={startDemo}
+                >
+                  ▶ RUN FULL DEMO · HANDS-FREE
+                </button>
+                <p class={styles.guideExplainer}>
+                  Every line below is a live command — click one to send it to
+                  J.A.R.V.I.S.
+                </p>
+                <For each={JARVIS_GUIDE_CATALOG}>
+                  {(section: JarvisGuideSection) => {
+                    return (
+                      <div class={styles.guideSection}>
+                        <div class={styles.guideSectionTitle}>
+                          {section.title}
+                        </div>
+                        <For each={section.items}>
+                          {(item: JarvisGuideItem) => {
+                            return (
+                              <button
+                                type="button"
+                                data-testid="jarvis-guide-row"
+                                class={styles.guideRow}
+                                disabled={speaking()}
+                                onClick={() => {
+                                  submit(item.command);
+                                }}
+                              >
+                                {item.command}
+                                <Show when={item.liveOnly}>
+                                  <span
+                                    data-testid="jarvis-guide-live-badge"
+                                    class={styles.guideLiveBadge}
+                                  >
+                                    live brain
+                                  </span>
+                                </Show>
+                              </button>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    );
+                  }}
+                </For>
+                <div class={styles.guideTips}>
+                  <p>⌘J summons J.A.R.V.I.S from anywhere; ESC dismisses.</p>
+                  <p>
+                    ▶ RUN FULL DEMO plays the desk hands-free; ■ STOP or any
+                    message halts it.
+                  </p>
+                  <p>Generated panels stay live after the conversation ends.</p>
+                </div>
+              </div>
+            </aside>
+          </Show>
+
           <Show when={state().pendingConfirmation}>
             {(confirmation: Accessor<JarvisConfirmation>) => {
               return (
@@ -349,7 +494,7 @@ export function JarvisOverlay(): JSX.Element {
           </Show>
 
           <div class={styles.suggestions}>
-            <For each={SUGGESTIONS}>
+            <For each={chips()}>
               {(text: string) => {
                 return (
                   <button
@@ -398,6 +543,36 @@ export function JarvisOverlay(): JSX.Element {
             <span class={styles.hint}>ESC · CLOSE</span>
             <span class={styles.hint}>⌘J · TOGGLE</span>
 
+            <Show
+              when={demoState().running}
+              fallback={
+                <button
+                  type="button"
+                  data-testid="jarvis-demo-run"
+                  class={styles.demoRun}
+                  onClick={startDemo}
+                >
+                  ▶ RUN FULL DEMO
+                </button>
+              }
+            >
+              <span
+                data-testid="jarvis-demo-progress"
+                class={styles.demoProgress}
+              >
+                STEP {demoState().stepIndex}/{demoState().stepCount} ·{" "}
+                {demoState().label}
+              </span>
+              <button
+                type="button"
+                data-testid="jarvis-demo-stop"
+                class={styles.demoStop}
+                onClick={stopDemo}
+              >
+                ■ STOP
+              </button>
+            </Show>
+
             <div data-testid="jarvis-skin-switch" class={styles.skinSwitch}>
               <span class={styles.hint}>CORE</span>
               <For each={JARVIS_SKINS}>
@@ -424,6 +599,10 @@ export function JarvisOverlay(): JSX.Element {
                 }}
               </For>
             </div>
+
+            <button type="button" class={styles.hint} onClick={toggleGuide}>
+              ⓘ DEMO GUIDE
+            </button>
           </div>
         </div>
       </div>
@@ -447,15 +626,6 @@ const SKIN_MARK: Record<JarvisSkin, string> = {
   singularity: "MK-I SINGULARITY",
   reactor: "MK-II REACTOR",
 };
-
-// Static UI copy — one suggestion row, exact strings pinned by Task 9's
-// contract/e2e specs.
-const SUGGESTIONS: readonly string[] = [
-  "Where is EURUSD?",
-  "What's moving?",
-  "How am I doing?",
-  "Buy 5M EURUSD",
-];
 
 /** PROTO renders 26 waveform bars; each one's duration/delay pair lives in
  * the stylesheet as an `:nth-child` rule (no inline style, no var() inside an

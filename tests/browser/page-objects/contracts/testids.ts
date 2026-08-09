@@ -203,6 +203,22 @@ export const TESTIDS = {
     panelLine: "jarvis-panel-line",
     panelHeatmap: "jarvis-panel-heatmap",
     panelDismiss: "jarvis-panel-dismiss",
+    /** The ⓘ toggle beside the overlay's ✕ (JarvisOverlay.tsx) that opens/
+     * closes the demo guide panel below. */
+    guideToggle: "jarvis-guide-toggle",
+    /** The guide panel itself (`aside`), rendered only while `guideOpen`. */
+    guidePanel: "jarvis-guide-panel",
+    /** One button per catalog command inside the guide panel — shared
+     * testid across every row, its own visible text IS the command. */
+    guideRow: "jarvis-guide-row",
+    /** Footer's always-visible ▶ RUN FULL DEMO button (hidden while the
+     * demo is running, replaced by `demoProgress`/`demoStop`). */
+    demoRun: "jarvis-demo-run",
+    /** Footer's `STEP i/7 · LABEL` readout, rendered only while the demo
+     * (`JarvisDemoMachine`) is running. */
+    demoProgress: "jarvis-demo-progress",
+    /** Footer's ■ STOP button, rendered only while the demo is running. */
+    demoStop: "jarvis-demo-stop",
   },
   /**
    * LoginScreen (packages/client-react/src/ui/shell/auth/LoginScreen.tsx),

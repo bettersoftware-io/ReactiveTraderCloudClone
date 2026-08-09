@@ -30,6 +30,8 @@ export type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,
 } from "./fx/referenceDataDto.js";
+export type { DeskPanelInfo } from "./jarvis/deskPanels.js";
+export { DESK_PANEL_ROSTER } from "./jarvis/deskPanels.js";
 // Jarvis
 export type {
   DriveBatchParseResult,
@@ -61,6 +63,8 @@ export type {
   JarvisGateLevel,
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
+export type { JarvisIntent, JarvisTradeIntent } from "./jarvis/jarvisIntent.js";
+export { matchJarvisIntent } from "./jarvis/jarvisIntent.js";
 export type {
   AdminJarvisUsagePayload,
   JarvisBrainUsageRow,
