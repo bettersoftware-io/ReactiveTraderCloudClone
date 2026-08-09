@@ -100,13 +100,25 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
   // request is exactly what effects are for (ADR-005), unlike the brush
   // primitive's gesture translation which stays effect-free. One window of
   // margin: fetch before the user can hit the wall at normal pan speed,
-  // never fetch on an idle chart.
+  // never fetch on an idle chart. With a comparison active the ONE trigger
+  // pages BOTH series: the gate fires while ANY participating series can
+  // still grow (either-series gate — if the primary exhausts first, the
+  // compare keeps paging), and the handler side fires both loads, relying
+  // on CandleSeriesPresenter's per-(symbol|timeframe) single-flight/
+  // exhaustion/cooldown to no-op the ineligible one.
   createEffect(() => {
     const viewport = g.viewport();
     const span = viewport.end - viewport.start;
     const nearLeftEdge = viewport.start < span;
+    const primaryEligible = !props.loadingOlder && !props.historyExhausted;
+    const cb = props.compareBackfill;
+    const compareEligible =
+      props.compare !== undefined &&
+      cb !== undefined &&
+      !cb.loadingOlder &&
+      !cb.historyExhausted;
 
-    if (nearLeftEdge && !props.loadingOlder && !props.historyExhausted) {
+    if (nearLeftEdge && (primaryEligible || compareEligible)) {
       props.onLoadOlder();
     }
   });
@@ -406,6 +418,16 @@ export interface CandleChartProps {
    * the compare symbol's data is still loading percent-projects the primary
    * alone (the axis is already %, so the line's arrival doesn't reflow). */
   compare?: { readonly series: readonly Candle[] };
+  /** The comparison symbol's backfill flags — powers the near-edge
+   * trigger's either-series gate below. Silent paging: these flags never
+   * drive the chips, which stay the primary's. Declared structurally (the
+   * bindings' CandleBackfillState satisfies it) so ui-contract's props
+   * mirror never needs a bindings import. Omitted ⇒ the compare series
+   * never gates the trigger — exactly the pre-parity behaviour. */
+  compareBackfill?: {
+    readonly loadingOlder: boolean;
+    readonly historyExhausted: boolean;
+  };
   /** The timeframe's default visible-candle count (`CANDLE_DEFAULT_VISIBLE`)
    * — seeds `createChartGestures`'s initial/reset viewport. ChartPanel
    * already computes this from the selected timeframe. */
