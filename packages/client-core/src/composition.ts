@@ -368,12 +368,13 @@ const WORKSPACE_TABS: readonly WorkspaceTab[] = [
  * default tree's id set is exactly the live set too). Also used by the
  * client-core conformance test to verify DESK_PANEL_ROSTER against the
  * real layout trees. */
-export const LAYOUT_PANEL_IDS: Readonly<Record<WorkspaceTab, readonly string[]>> =
-  Object.fromEntries(
-    WORKSPACE_TABS.map((tab) => {
-      return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
-    }),
-  ) as Readonly<Record<WorkspaceTab, readonly string[]>>;
+export const LAYOUT_PANEL_IDS: Readonly<
+  Record<WorkspaceTab, readonly string[]>
+> = Object.fromEntries(
+  WORKSPACE_TABS.map((tab) => {
+    return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
+  }),
+) as Readonly<Record<WorkspaceTab, readonly string[]>>;
 
 /**
  * Defensive guard, currently UNREACHABLE in production — kept so a natural
