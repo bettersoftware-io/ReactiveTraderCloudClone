@@ -102,3 +102,14 @@ function vmWith(
     },
   } as unknown as ViewModel;
 }
+
+// `vmWith` doesn't stub `usePowerSaver`, which `OrderCeremony`'s fill/reject
+// toast would otherwise call via `useShellMotionEnabled` on the filled/
+// rejected phases — mirrors TradeView.test.tsx / EquitiesScreen.test.tsx.
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});
