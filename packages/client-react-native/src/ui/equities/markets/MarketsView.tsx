@@ -8,13 +8,15 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { MoversBoard } from "#/ui/equities/markets/MoversBoard";
+import { RankByChips } from "#/ui/equities/markets/RankByChips";
 import { SectorHeatmap } from "#/ui/equities/markets/SectorHeatmap";
-import { Watchlist } from "#/ui/equities/markets/Watchlist";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Markets sub-view: watchlist over sector heatmap. Selecting an instrument in
- * either flows up through `onSelect`. */
+/** Markets sub-view: the ranked movers board (RANK BY chips + `MoversBoard`,
+ * superseding the plain `Watchlist`) over the sector heatmap. Selecting an
+ * instrument in either flows up through `onSelect`. */
 export function MarketsView({
   selectedSymbol,
   onSelect,
@@ -27,8 +29,11 @@ export function MarketsView({
       contentContainerStyle={styles.content}
     >
       <View style={styles.section}>
-        <Text style={styles.heading}>WATCHLIST</Text>
-        <Watchlist selectedSymbol={selectedSymbol} onSelect={onSelect} />
+        <Text style={styles.heading}>MOVERS</Text>
+        <View style={styles.rankRow}>
+          <RankByChips />
+        </View>
+        <MoversBoard selectedSymbol={selectedSymbol} onSelect={onSelect} />
       </View>
       <View style={styles.section}>
         <Text style={styles.heading}>SECTORS</Text>
@@ -48,6 +53,7 @@ interface MarketsViewStyles {
   content: ViewStyle;
   section: ViewStyle;
   heading: TextStyle;
+  rankRow: ViewStyle;
 }
 
 function makeStyles(t: RnTheme): MarketsViewStyles {
@@ -61,5 +67,6 @@ function makeStyles(t: RnTheme): MarketsViewStyles {
       fontFamily: t.fontMono,
       paddingHorizontal: 12,
     },
+    rankRow: { paddingHorizontal: 12 },
   });
 }

@@ -26,9 +26,9 @@ test("Trade prompts until a symbol is chosen", async () => {
   expect(screen.getByTestId("trade-empty")).toBeTruthy();
 });
 
-test("selecting a watchlist instrument jumps to Trade for that symbol", async () => {
+test("selecting a movers-board instrument jumps to Trade for that symbol", async () => {
   await renderScreen();
-  await fireEvent.press(screen.getByTestId("watchlist-row-AAPL"));
+  await fireEvent.press(screen.getByTestId("eq-mover-AAPL"));
   expect(screen.getByTestId("instrument-tab-AAPL")).toBeTruthy();
   expect(screen.getByTestId("order-ticket")).toBeTruthy();
 });
@@ -58,6 +58,9 @@ function vm(): ViewModel {
     },
     useEquityPositions: () => {
       return [];
+    },
+    useEqWatchlistSort: () => {
+      return { sort: "chg", setSort: () => {}, cycle: () => {} };
     },
     useOrderTicket: () => {
       return {
