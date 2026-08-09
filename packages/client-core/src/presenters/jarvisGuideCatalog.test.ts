@@ -11,9 +11,11 @@ const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "EURGBP", "AUDUSD"];
 
 describe("JARVIS_GUIDE_CATALOG", () => {
   it("has the four sections in display order", () => {
-    expect(JARVIS_GUIDE_CATALOG.map((s) => {
-      return s.title;
-    })).toEqual([
+    expect(
+      JARVIS_GUIDE_CATALOG.map((s) => {
+        return s.title;
+      }),
+    ).toEqual([
       "DESK INTELLIGENCE",
       "GENERATIVE UI",
       "DESK CONTROL",
@@ -68,9 +70,13 @@ describe("sampleGuideChips", () => {
     const seeds = [1, 2, 3].map((s) => {
       return sampleGuideChips(JARVIS_GUIDE_CATALOG, s);
     });
-    expect(new Set(seeds.map((c) => {
-      return c.join("|");
-    })).size).toBeGreaterThan(1);
+    expect(
+      new Set(
+        seeds.map((c) => {
+          return c.join("|");
+        }),
+      ).size,
+    ).toBeGreaterThan(1);
   });
 
   it("cycles within each section's non-liveOnly items", () => {
@@ -80,12 +86,9 @@ describe("sampleGuideChips", () => {
     });
 
     const seen = new Set(
-      Array.from(
-        { length: pool.length },
-        (_, s) => {
-          return sampleGuideChips(JARVIS_GUIDE_CATALOG, s + 1)[0];
-        },
-      ),
+      Array.from({ length: pool.length }, (_, s) => {
+        return sampleGuideChips(JARVIS_GUIDE_CATALOG, s + 1)[0];
+      }),
     );
     expect(seen.size).toBe(pool.length);
   });
