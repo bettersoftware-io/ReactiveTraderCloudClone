@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { DepthLadder } from "#/ui/equities/trade/DepthLadder";
+import { InstrumentHeader } from "#/ui/equities/trade/InstrumentHeader";
 import { InstrumentTabs } from "#/ui/equities/trade/InstrumentTabs";
 import { OrderTicket } from "#/ui/equities/trade/OrderTicket";
 import { PriceChart } from "#/ui/equities/trade/PriceChart";
@@ -35,6 +36,7 @@ export function TradeView({
     <View style={styles.container}>
       <InstrumentTabs selectedSymbol={selectedSymbol} onSelect={onSelect} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <InstrumentHeader symbol={selectedSymbol} />
         <View style={styles.section}>
           <Text style={styles.heading}>{selectedSymbol} — PRICE</Text>
           <PriceChart symbol={selectedSymbol} />

@@ -1,8 +1,13 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 
 import type { OrderTicketState } from "@rtc/client-core";
-import type { Candle, DepthBook, EquityInstrument } from "@rtc/domain";
+import type {
+  Candle,
+  DepthBook,
+  EquityInstrument,
+  EquityQuote,
+} from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { TradeView } from "#/ui/equities/trade/TradeView";
@@ -40,6 +45,16 @@ function fullVM(): ViewModel {
     useWatchlist: (): readonly EquityInstrument[] => {
       return [{ symbol: "AAPL", name: "Apple", exchange: "NASDAQ" }];
     },
+    useEquityQuote: (): EquityQuote => {
+      return {
+        symbol: "AAPL",
+        bid: 0,
+        ask: 0,
+        last: 189.5,
+        changePct: 0.42,
+        timestamp: 0,
+      };
+    },
     useCandles: (): readonly Candle[] => {
       return [];
     },
@@ -59,3 +74,14 @@ function fullVM(): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+// `fullVM()` doesn't stub `usePowerSaver`, which InstrumentHeader's
+// useShellMotionEnabled would otherwise call — mirrors
+// InstrumentHeader.test.tsx / SpotTile.test.tsx.
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});
