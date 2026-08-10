@@ -102,6 +102,31 @@ test("renders an empty state rather than a bare list", async () => {
   expect(screen.getByTestId("eq-movers-empty")).toBeTruthy();
 });
 
+// The `!motionEnabled` branch (MoversBoard.tsx) renders a materially
+// different tree — a plain `View`, no `LinearTransition`/`FadeIn`/`FadeOut`,
+// and no `eq-mover-*-glow` overlay at all — which every OTHER test in this
+// file never exercises (they all get the `true` default below). This is also
+// the tree the `equities/markets` visual golden actually captures: that
+// scenario seeds `powerSaverLevel="freeze"`, under which
+// `useShellMotionEnabled` returns false.
+test("renders static rows with no glow overlay when motion is disabled", async () => {
+  // `mockReturnValue` (not `-Once`): MoversBoardRow's `onQuote` effect fires
+  // synchronously after mount and re-renders MoversBoard, which reads
+  // `useShellMotionEnabled()` a second time — a `-Once` stub would answer
+  // that second call with the mock's default (`true`) and silently exercise
+  // the wrong branch.
+  mockMotionEnabled.mockReturnValue(false);
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm("chg")}>
+      <MoversBoard selectedSymbol={null} onSelect={(): void => {}} />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("eq-mover-AAPL")).toBeTruthy();
+  expect(screen.getByTestId("eq-mover-TSLA")).toBeTruthy();
+  expect(screen.queryAllByTestId(/-glow$/)).toHaveLength(0);
+  mockMotionEnabled.mockReturnValue(true);
+});
+
 // `vm()` doesn't stub `usePowerSaver`; each row's `useRankMoveGlide` reads it
 // via `useShellMotionEnabled`. These tests assert ranking/empty-state, not
 // motion behaviour, so — mirroring InstrumentHeader.test.tsx/SpotTile.test.tsx
@@ -109,10 +134,19 @@ test("renders an empty state rather than a bare list", async () => {
 // partial ViewModel through `ViewModelProvider` crashes with `TypeError:
 // usePowerSaver is not a function` otherwise (a known trap this phase — see
 // SpotTile.test.tsx/InstrumentHeader.test.tsx for the same fix).
+//
+// A toggleable `jest.fn` (not a hardcoded `true`, mirroring
+// `OrderCeremony.test.tsx`'s mock) — the previous constant-`true` mock could
+// never exercise the `!motionEnabled` branch above, which is the tree the
+// registered `equities/markets` visual golden actually renders.
+const mockMotionEnabled = jest.fn<() => boolean>(() => {
+  return true;
+});
+
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
     useShellMotionEnabled: () => {
-      return true;
+      return mockMotionEnabled();
     },
   };
 });
