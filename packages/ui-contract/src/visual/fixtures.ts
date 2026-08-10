@@ -1440,9 +1440,9 @@ const equityQuotes: Record<string, EquityQuote> = {
 // 40 AAPL candles with clear up-down movement (GBM-like but hand-crafted).
 // Starts around 165, climbs to ~180 with volatility, so the chart renders
 // meaningfully with both green and red candles.
-// Exported so canvas/drawChartScene.ts's spikeScene() can build a ChartScene
-// from the SAME seeded series the equities-loaded fixture renders, rather
-// than inventing a second candle set.
+// Exported so the equities/chart-canvas composite visual scenario builds its
+// ChartScene from the SAME seeded series the equities-loaded fixture
+// renders, rather than inventing a second candle set.
 export const aaplCandles: readonly Candle[] = [
   {
     time: 1_749_600_000,

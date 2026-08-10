@@ -193,3 +193,71 @@ the comparison series. Standard shipping rules (worktree
 - RN/Skia rendering; the navigator strip; FX charts (sparklines are cheap).
 - A rAF-driven animation loop or any canvas-side animation machinery.
 - A charting library (permanently excluded by the interactivity spec).
+
+## 8. Receipt (measured)
+
+### 8.1 Node counts (enforced perf receipt)
+
+Measured by the Task 5 contract case (`CanvasSubstrate.contract.spec.ts`'s
+node-count pin), fixture: `panes: ["rsi", "macd"]` + a compare series + 2
+drawings, over the 300-candle fixture at the default 60-candle visible
+window (the viewport only ever paints `defaultVisible` candles, never the
+full fixture):
+
+| | DOM mode | Canvas mode |
+|---|---|---|
+| Nodes under the plot wrap | **287** | **28** |
+
+Identical on `client-react` and `client-solid` — no compiler-emitted
+wrapper-node skew here (unlike the coverage report's statement counts).
+
+**What the pin enforces:** `canvasNodes < domNodes - 200` (a margin, not the
+literal 287→28 gap, so the test doesn't need updating on ordinary DOM-side
+churn) **and** a literal ceiling `canvasNodes <= 60` — both comfortably
+bracket the measured 28, and the pin fails loudly if canvas mode ever
+regresses toward per-datum nodes again.
+
+### 8.2 Trace comparison (documented, one-off)
+
+**Method.** An automated Playwright + CDP script (scratch, not committed —
+lives only for the duration of this measurement, per this section's own
+brief) drove `client-react` in simulator mode (`vite` on a bare port, no
+server): log in via the seeded e2e session, open Equities, toggle both the
+RSI and MACD panes and an MSFT comparison, then press `Home` on the focused
+plot six times (each triggering the near-left-edge backfill trigger) to pull
+in several older pages of history. With that state established, a
+`Performance.getMetrics()` CDP snapshot was taken, then a 10-second window
+ran continuous interaction — an oscillating crosshair `mousemove` between two
+plot-relative points plus an `ArrowLeft` pan step every ~120ms — after which
+a second snapshot was taken and diffed. The whole sequence (fresh page load
+→ setup → backfill → optional substrate switch via the real
+`PreferencesModal` → trace window) ran twice per substrate, DOM and canvas,
+each from a clean browser context.
+
+**Results** (metric deltas over the 10s window; times converted from the
+CDP metrics' native seconds to ms):
+
+| metric | DOM run 1 | DOM run 2 | Canvas run 1 | Canvas run 2 |
+|---|---|---|---|---|
+| TaskDuration (ms) | 2459 | 2453 | 1830 | 1881 |
+| ScriptDuration (ms) | 1807 | 1828 | 1330 | 1372 |
+| LayoutDuration (ms) | 71 | 68 | 44 | 46 |
+| RecalcStyleDuration (ms) | 143 | 129 | 83 | 88 |
+| LayoutCount | 321 | 335 | 333 | 353 |
+| RecalcStyleCount | 810 | 841 | 1669 | 1711 |
+| JSHeapUsedSize (bytes) | 3,027,492 | 16,089,236 | 13,217,504 | 6,463,052 |
+
+**Interpretation.** Across both runs, canvas mode used consistently *less*
+main-thread time than DOM mode on every duration metric (TaskDuration,
+ScriptDuration, LayoutDuration, RecalcStyleDuration all lower, by roughly
+20-40%) even though `RecalcStyleCount` is *higher* in canvas mode (~2×) —
+plausibly `readChartPalette`'s per-draw `getComputedStyle` reads across
+three `SceneCanvas` regions firing more style recalcs than the DOM path's
+per-tick reflow, but each one cheaper because far fewer nodes are involved;
+`JSHeapUsedSize` swung in both directions across the two runs (16MB vs
+3MB, then 13MB vs 6MB) and is too noisy from two samples to draw a
+directional conclusion — a browser-GC-timing artifact, not a substrate
+signal, would need many more samples to separate from noise. The headline,
+reproducible number is the node-count collapse in §8.1; this trace is a
+single-machine, two-run spot-check consistent with (not an additional proof
+of) that same direction, not a benchmarked, CI-gated claim.

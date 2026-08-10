@@ -149,6 +149,15 @@ numeric `foo`.
 
 ## 5. Canvas spike
 
+> **Superseded (2026-08-10):** the spike this section describes — engine in
+> `ui-contract`, the `equities/chart-canvas-spike` golden, the 4-key
+> `ChartPalette` — is retired. The engine moved to `@rtc/motion-core` typed
+> against a structural `Canvas2D` interface (the palette-port need this
+> section already flagged is now built), and grew into the production
+> switchable substrate. See
+> [Canvas Chart Substrate — Productionization](2026-08-09-canvas-substrate-design.md).
+> The rest of this section is kept for historical context.
+
 > **Placement refinement (discovered at planning, supersedes the draft's
 > client-react placement):** the visual scenario matrix is framework-
 > neutral — both clients enumerate the same shared `scenarios` object, and

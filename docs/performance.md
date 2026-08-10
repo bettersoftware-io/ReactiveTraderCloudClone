@@ -198,6 +198,19 @@ names.
   even that residual per-frame cost is CPU-rasterised and streamed as pixels
   (no compositor to absorb it) — the **Freeze** level is the hard floor for
   that case; see ["Why a Freeze tier exists"](power-saver-mode.md#why-a-freeze-tier-exists).
+- **Retained-DOM node count has its own escape hatch now: a switchable
+  canvas substrate for the equities chart (2026-08-10).** A persisted
+  `ChartSubstrate` preference swaps the plot's per-datum geometry (candles,
+  volume bars, drawings, indicator-pane series, crosshair lines) from DOM
+  nodes to one `<canvas>` per region, drawn event-driven (no `rAF` loop) by
+  a structural-`Canvas2D` engine in `@rtc/motion-core`; text stays DOM
+  permanently. The contract-tier node-count pin measured **287 DOM-mode →
+  28 canvas-mode** nodes for the same scene (panes + compare + drawings).
+  DOM/SVG stays the default — this is the escape hatch to reach for if
+  node-count costs ever bite in practice, not a replacement for the fix
+  patterns above. Receipt and architecture:
+  [canvas-substrate-design.md §8](superpowers/specs/2026-08-09-canvas-substrate-design.md#8-receipt-measured),
+  `docs/architecture/17-web-client-up-close.md` §17.8.
 
 ---
 
