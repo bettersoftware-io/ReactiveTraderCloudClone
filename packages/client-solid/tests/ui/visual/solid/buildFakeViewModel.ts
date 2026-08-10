@@ -56,6 +56,9 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
   // No fixture exercises a budget gate (Task 6/8 scenarios add that
   // separately) — every existing golden stays pixel-identical.
   gate: null,
+  // Matches INITIAL's own 0 (never-opened session) — mirrors the react
+  // driver's DEFAULT_JARVIS_STATE_FOR_FIXTURES exactly.
+  openCount: 0,
 };
 
 import type { AppData } from "@ui-visual-shared/appData";
@@ -64,6 +67,7 @@ import { createSignal } from "solid-js";
 
 import type {
   BootSequenceState,
+  JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
@@ -71,7 +75,11 @@ import type {
   SessionUser,
   WorkspaceNavState,
 } from "@rtc/client-core";
-import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  JARVIS_DEMO_STEPS,
+  type WorkspaceTab,
+} from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
 
 function noop(): void {}
@@ -560,6 +568,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggle: noop,
         send: noop,
         narrate: noop,
+        sendScripted: noop,
         approveConfirmation: noop,
         declineConfirmation: noop,
         setSkin: noop,
@@ -612,6 +621,21 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // driven-pulse cue never fires here (pixel-neutral for every golden).
     useJarvisDriver: () => {
       return at<JarvisDriverState>({ lastBatch: [] });
+    },
+    // Jarvis hands-free scripted demo — static idle filler, no-op intents
+    // (Task 6/7 of this round wire up a consuming UI; no static screenshot
+    // drives it yet, so this stays pixel-neutral for every existing golden).
+    useJarvisDemo: () => {
+      return {
+        state: at<JarvisDemoState>({
+          running: false,
+          stepIndex: 0,
+          stepCount: JARVIS_DEMO_STEPS.length,
+          label: null,
+        }),
+        startDemo: noop,
+        stopDemo: noop,
+      };
     },
   };
 }

@@ -800,6 +800,13 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "JarvisOverlay",
     fixtureKey: "jarvis-confirm",
   },
+  // Demo guide panel (Tasks 6/7): reuses the jarvis-chat fixture (open, one
+  // completed turn) — the guide overlays it, so no dedicated fixture is
+  // needed (openCount: 1 already lands as part of that fixture).
+  "jarvis/overlay-guide": {
+    componentKey: "JarvisOverlay",
+    fixtureKey: "jarvis-chat",
+  },
   // Task 10 (Phase 3, brain picker): the footer status chip, reused off the
   // full StatusBar component (there's no standalone chip token) — the
   // scripted vs. default-brain (haiku) label is the only visible delta.

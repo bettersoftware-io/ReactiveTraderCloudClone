@@ -2220,6 +2220,10 @@ const jarvisStateIdle: JarvisState = {
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  // 1, not 0: these fixtures render the overlay open, so the goldens must
+  // show the seed-1 chip set rather than the machine's true closed-session
+  // default (0) — see JarvisState.openCount's doc.
+  openCount: 1,
 };
 fixtures["jarvis-idle"] = makeAppData({ jarvis: jarvisStateIdle });
 
@@ -2251,6 +2255,7 @@ const jarvisStateChat: JarvisState = {
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  openCount: 1,
 };
 fixtures["jarvis-chat"] = makeAppData({ jarvis: jarvisStateChat });
 
@@ -2292,6 +2297,7 @@ const jarvisStateConfirm: JarvisState = {
   brains: JARVIS_BRAINS,
   effectiveBrain: DEFAULT_JARVIS_BRAIN,
   gate: null,
+  openCount: 1,
 };
 fixtures["jarvis-confirm"] = makeAppData({ jarvis: jarvisStateConfirm });
 

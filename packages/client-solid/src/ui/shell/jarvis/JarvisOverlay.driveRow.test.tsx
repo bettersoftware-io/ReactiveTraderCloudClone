@@ -72,6 +72,7 @@ function renderOverlay(entries: readonly JarvisEntry[]): void {
         state: () => {
           return {
             open: true,
+            openCount: 1,
             skin: "singularity",
             unread: 0,
             unreadNarration: false,
@@ -87,6 +88,20 @@ function renderOverlay(entries: readonly JarvisEntry[]): void {
         approveConfirmation: () => {},
         declineConfirmation: () => {},
         setSkin: () => {},
+      };
+    },
+    useJarvisDemo: () => {
+      return {
+        state: () => {
+          return {
+            running: false,
+            stepIndex: 0,
+            stepCount: 0,
+            label: null,
+          };
+        },
+        startDemo: () => {},
+        stopDemo: () => {},
       };
     },
   } as unknown as ViewModel;

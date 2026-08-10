@@ -12,6 +12,7 @@ import { catchError, map } from "rxjs/operators";
 
 import type {
   DriveOutcome,
+  JarvisDemoMachineHandle,
   JarvisDriverMachineHandle,
   JarvisMachineHandle,
   JarvisPanelVm,
@@ -29,6 +30,7 @@ import {
   CandleSeriesPresenter,
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisDemoMachine,
   createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
@@ -443,6 +445,36 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
   }
 
   return driver;
+}
+
+/** The REAL `createJarvisDemoMachine`, one shared instance PER WORLD —
+ * mirrors `jarvisDrivers`'s per-World cache above. Reads `getJarvisMachine
+ * (world).state$`/`.events$` (the SAME `catchError(() => EMPTY)` guard
+ * `getJarvisDriverMachine` applies to `events$` — its own `events$` input is
+ * equally terminal on error) and `jarvis.intents` narrowed to the four
+ * members the demo actually drives, exactly like `composition.ts`'s own
+ * `jarvisDemo` wiring. */
+const jarvisDemos = new WeakMap<World, JarvisDemoMachineHandle>();
+
+function getJarvisDemoMachine(world: World): JarvisDemoMachineHandle {
+  let demo = jarvisDemos.get(world);
+
+  if (!demo) {
+    const machine = getJarvisMachine(world);
+    demo = createJarvisDemoMachine({
+      jarvisState$: machine.state$,
+      jarvisEvents$: machine.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+      jarvis: machine.intents,
+      powerSaverLevel$: world.powerSaverLevel,
+    });
+    jarvisDemos.set(world, demo);
+  }
+
+  return demo;
 }
 
 /**
@@ -1169,6 +1201,13 @@ export function reactViewModel(world: World): ViewModel {
     useJarvisDriver: () => {
       const driver = getJarvisDriverMachine(world);
       return useMachineState(driver.state$);
+    },
+    useJarvisDemo: () => {
+      const demo = getJarvisDemoMachine(world);
+      return {
+        state: useMachineState(demo.state$),
+        ...demo.intents,
+      };
     },
     // The app's active workspace tab (Task 12/P5): the REAL
     // createWorkspaceNavMachine SINGLETON (getWorkspaceNav above), mirroring

@@ -52,6 +52,7 @@ describe("createJarvisMachine", () => {
         brains: ["scripted"],
         effectiveBrain: "scripted",
         gate: null,
+        openCount: 0,
       });
       sub.unsubscribe();
       machine.dispose();
@@ -514,6 +515,331 @@ describe("createJarvisMachine", () => {
     expect(states.at(-1)?.unread).toBe(0);
   });
 
+  describe("openCount", () => {
+    it("increments on a closed→open transition via open() or toggle(), never on close() or a repeated open()", () => {
+      const ts = scheduler();
+      ts.run(({ flush }) => {
+        const machine = createJarvisMachine({
+          port: basePort(ts),
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          ...baseBrainDeps(),
+        });
+        const seen: JarvisState[] = [];
+        const sub = machine.state$.subscribe((s) => {
+          seen.push(s);
+        });
+
+        expect(seen.at(-1)?.openCount).toBe(0);
+
+        machine.intents.open();
+        expect(seen.at(-1)?.openCount).toBe(1);
+
+        // Already open — a repeated open() must not bump it again.
+        machine.intents.open();
+        expect(seen.at(-1)?.openCount).toBe(1);
+
+        machine.intents.close();
+        expect(seen.at(-1)?.openCount).toBe(1);
+
+        machine.intents.toggle(); // closed -> open
+        expect(seen.at(-1)?.openCount).toBe(2);
+
+        machine.intents.toggle(); // open -> closed
+        expect(seen.at(-1)?.openCount).toBe(2);
+
+        flush();
+        sub.unsubscribe();
+        machine.dispose();
+      });
+    });
+  });
+
+  describe("sendScripted", () => {
+    it("asks with brain 'scripted' regardless of the effective brain", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("Where is EURUSD?");
+          }, 1);
+        },
+      );
+
+      expect(port?.askCalls).toEqual([
+        {
+          text: "Where is EURUSD?",
+          options: { brain: "scripted", effort: "medium" },
+        },
+      ]);
+    });
+
+    it("send still asks with the effective brain after a sendScripted turn", () => {
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("Where is EURUSD?");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.send("What's moving?");
+          }, 2);
+        },
+      );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["scripted", "claude-haiku-4-5"]);
+    });
+
+    it("appends an ordinary user entry — origin stays unset, unlike narrate()'s", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("Where is EURUSD?");
+          }, 1);
+        },
+      );
+
+      const userEntry = states.at(-1)?.entries.find((e) => {
+        return e.role === "user";
+      });
+      expect(userEntry).toMatchObject({
+        text: "Where is EURUSD?",
+        done: true,
+      });
+      expect(userEntry?.origin).toBeUndefined();
+    });
+
+    it("sendScripted() while unavailable is a no-op: no user entry appended, port.ask not called", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: ts.createColdObservable<JarvisAvailability>("f", {
+              f: {
+                available: false,
+                brains: [],
+                defaultBrain: "scripted",
+                gate: null,
+              },
+            }),
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("hello");
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.available).toBe(false);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+      ]);
+      expect(port?.asks).toEqual([]);
+    });
+
+    it("a sendScripted() during an in-flight send() queues behind it (same concatMap queue)", () => {
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...baseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.sendScripted("second");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.entries.map((e) => {
+          return e.text;
+        }),
+      ).toEqual([JARVIS_GREETING, "first", "", "second", ""]);
+      expect(port?.asks).toEqual(["first", "second"]);
+    });
+
+    it("REGRESSION: a sendScripted() queued behind an in-flight haiku send() still runs on 'scripted' — the pin doesn't leak from the queued turn ahead of it", () => {
+      // The queue-interleaving test above only asserts entry text / ask
+      // ORDER, which would stay green even if sendScripted's brain pin
+      // leaked (e.g. if it accidentally inherited whatever brain the turn
+      // ahead of it in the queue used). This pins the actual per-turn
+      // brain under queueing, on availability/preference deps where
+      // effectiveBrain is genuinely "claude-haiku-4-5" (not "scripted",
+      // which baseBrainDeps() resolves to — a leak in either direction
+      // would be invisible there).
+      let port: FakeJarvisPort | undefined;
+      run(
+        (ts) => {
+          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-haiku-4-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            preferredBrain$: of<JarvisBrain>("claude-haiku-4-5"),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.send("first");
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.sendScripted("second");
+          }, 2);
+        },
+      );
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["claude-haiku-4-5", "scripted"]);
+    });
+
+    it("REGRESSION: a send() queued behind a sendScripted() turn still resolves the effective brain at DEQUEUE time — a preference flip while the scripted turn is in flight re-prices the queued send(), unaffected by the pinned turn ahead of it", () => {
+      // Mirrors the "queued turn resolves brain/effort at DEQUEUE time" test
+      // in the "brain + effort resolution" describe above (turn 1 there is
+      // an ordinary send()); this variant proves the SAME dequeue-time
+      // resolution holds when the turn ahead in the queue is a
+      // sendScripted() — i.e. sendScripted's pin is per-turn only and
+      // never bleeds into effectiveBrain's own resolution for a later
+      // queued send().
+      let port: FakeJarvisPort | undefined;
+      const states = run(
+        (ts) => {
+          port = fakePort(ts, "a-b-c-(d|)", {
+            a: { type: "delta", text: "EUR" },
+            b: { type: "delta", text: "USD" },
+            c: { type: "delta", text: " is up" },
+            d: { type: "done" },
+          });
+          return {
+            port,
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            availability$: of<JarvisAvailability>({
+              available: true,
+              brains: ["scripted", "claude-opus-5"],
+              defaultBrain: "scripted",
+              gate: null,
+            }),
+            // Relative to ITS OWN subscribe at machine-construction time
+            // (frame 0, not turn 1's frame-1 ask() subscribe): "scripted"
+            // at frame 0, flips to "claude-opus-5" at frame 6 — strictly
+            // between turn 2's frame-4 enqueue and turn 1's frame-7 done,
+            // so the flip lands while turn 2 is queued but not yet
+            // dequeued. (Irrelevant to turn 1's own brain — sendScripted
+            // always pins "scripted" regardless of this feed — but it's
+            // what turn 2's send() resolves against.)
+            preferredBrain$: ts.createColdObservable<JarvisBrain>("a-----b", {
+              a: "scripted",
+              b: "claude-opus-5",
+            }),
+            effort$: of<JarvisEffort>("medium"),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.sendScripted("first");
+          }, 1);
+          // Same frame math as the send-ahead-of-send regression: turn 1's
+          // deltas land at frames 1/3/5 and done at frame 7, so frame 4 is
+          // strictly between the "USD" and " is up" deltas — turn 1 is
+          // genuinely still in flight and concatMap actually queues this.
+          ts.schedule(() => {
+            machine.intents.send("second");
+          }, 4);
+        },
+      );
+
+      // Turn 2 only starts once turn 1's done has folded — proving it was
+      // truly queued, not run concurrently.
+      const turn1Done = states.findIndex((s) => {
+        return s.entries.at(-1)?.text === "EURUSD is up";
+      });
+
+      const turn2Started = states.findIndex((s) => {
+        return s.entries.some((e) => {
+          return e.role === "user" && e.text === "second";
+        });
+      });
+      expect(turn2Started).toBeGreaterThan(turn1Done);
+
+      expect(
+        port?.askCalls.map((c) => {
+          return c.options?.brain;
+        }),
+      ).toEqual(["scripted", "claude-opus-5"]);
+    });
+  });
+
   it("setSkin(s) calls deps.setSkin; state.skin follows skin$, the source of truth", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
@@ -560,6 +886,7 @@ describe("createJarvisMachine", () => {
       const beforeDispose = seen.length;
       machine.dispose();
       machine.intents.send("hello");
+      machine.intents.sendScripted("hello");
       machine.intents.open();
       machine.intents.close();
       machine.intents.toggle();

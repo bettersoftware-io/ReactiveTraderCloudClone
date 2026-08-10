@@ -74,4 +74,35 @@ export interface JarvisPO {
    * a long wait for a cooldown that cannot have expired).
    */
   narrationEntryCount(): Promise<number>;
+  /** Click the ⓘ toggle beside the overlay's ✕ to open the demo guide panel. */
+  openGuide(): Promise<void>;
+  /**
+   * Click the guide row whose label is exactly `text` — each row is a
+   * button rendered from `JARVIS_GUIDE_CATALOG`, its own visible text being
+   * the literal command it sends (see `JarvisOverlay.tsx`'s `guideRow`
+   * mapping).
+   */
+  clickGuideCommand(text: string): Promise<void>;
+  /**
+   * Click the footer's ▶ RUN FULL DEMO button (`jarvis-demo-run`) — starts
+   * `JarvisDemoMachine`'s hands-free run. Distinct from the guide panel's
+   * own "▶ RUN FULL DEMO · HANDS-FREE" row; this is the always-visible
+   * footer affordance, reachable without opening the guide first.
+   */
+  startFullDemo(): Promise<void>;
+  /**
+   * Snapshot: the footer's `jarvis-demo-progress` text (`STEP i/7 · LABEL`),
+   * or `null` once the demo isn't running (the progress/stop pair unmounts
+   * and the footer reverts to the ▶ RUN FULL DEMO button).
+   */
+  demoProgress(): Promise<string | null>;
+  /** Click the footer's ■ STOP button (`jarvis-demo-stop`) to halt the run. */
+  stopFullDemo(): Promise<void>;
+  /**
+   * Poll `jarvis-demo-progress`'s text until it reads `STEP ${n}/` — the
+   * cheapest witness that step `n` has actually started (a prior step's
+   * scripted turn settled and `JarvisDemoMachine`'s fold advanced), since
+   * each step's own typed-reveal reply can take several real seconds.
+   */
+  waitForDemoStep(n: number): Promise<void>;
 }

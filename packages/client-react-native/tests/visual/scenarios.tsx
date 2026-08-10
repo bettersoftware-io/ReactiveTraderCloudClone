@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { BlottersView } from "#/ui/equities/blotters/BlottersView";
+import { MarketsView } from "#/ui/equities/markets/MarketsView";
+import { TradeView } from "#/ui/equities/trade/TradeView";
 import { RatesModule } from "#/ui/rates/RatesModule";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
@@ -168,6 +171,41 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * - `lock/hold` — `HoldToUnlockRing` alone at a fixed mid-fill `progress`
  *   (`fixtures.tsx`'s `LOCK_HOLD_PROGRESS`), with a freshly-built,
  *   never-triggered `LongPressGesture` satisfying its `gesture` prop.
+ *
+ * - `equities/markets` / `equities/trade` / `equities/blotter` — Phase 5b
+ *   Task 10, the Equities module's first three scenarios. Each mounts one
+ *   sub-view content-only (`MarketsView`/`TradeView`/`BlottersView`, the same
+ *   pieces `EquitiesScreen` switches between), inside `ScreenContentFixture`
+ *   like `blotter/seeded` — none of the three is full-bleed. All three seed
+ *   `powerSaverLevel="freeze"`: this module has the widest Reanimated surface
+ *   of any phase so far — `MoversBoard`'s rank-glide
+ *   `LinearTransition`/`FadeIn`/`FadeOut`, `InstrumentHeader`'s tick-flash,
+ *   `OrderCeremony`'s `FadeIn`, `OrdersBlotter`'s newest-row flash — every one
+ *   gated by `useShellMotionEnabled`, which reads power-saver rather than
+ *   `forceReduceMotion` (the `animatedBackground`-only gate; see
+ *   `analytics/dashboard` and `shell/chrome` above). `markets`/`trade` pin
+ *   `selectedSymbol="AAPL"` (the watchlist's first instrument) so the golden
+ *   also covers the selected-row ring in `MoversRow`/`SectorHeatmap` and
+ *   `TradeView` never falls into its unselected "Select an instrument…"
+ *   empty state.
+ *
+ *   **`markets` and `trade` carry a KNOWN, UNPROVEN determinism risk — the
+ *   same class as the dropped `credit/rfq-tiles-empty`.** `rates/grid` and
+ *   `blotter/seeded` are captured over data the harness can freeze
+ *   (`PortFactoryDeps.pricingPinMs` / `blotterSeedBaseMs`); the equities
+ *   `EquityMarketDataSimulator` `createSimulatorPorts` builds here has NO
+ *   equivalent pin, and its per-symbol quote stream ticks live on a real
+ *   500 ms `interval` regardless of power-saver level (freeze only gates
+ *   ANIMATION, not the underlying price data). `MoversRow`'s price/pct
+ *   column and `InstrumentHeader`'s price text can therefore differ between
+ *   captures depending on how many ticks land before the driver's
+ *   `postReadySettleMs` screenshot — a risk this task's own scope (no booted
+ *   simulator) cannot settle. `blotter` is unaffected: `EquityPositionSimulator`
+ *   /`EquityOrderSimulator` both start empty with no seed and subscribe to no
+ *   price stream until an order is placed. See `docs/rn-open-items.md` T46
+ *   for the full writeup and what to do if a native capture proves
+ *   `markets`/`trade` non-reproducible (the `credit/rfq-tiles-empty` playbook:
+ *   drop it, or add a pin the way T6 added `pricingPinMs`).
  */
 export const SCENARIOS: readonly Scenario[] = [
   {
@@ -415,6 +453,63 @@ export const SCENARIOS: readonly Scenario[] = [
       );
     },
   },
+  {
+    id: "equities/markets",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // freeze is load-bearing here, exactly as for `credit/rfq-tiles`: it
+        // is the only gate that holds MoversBoard's rank-glide
+        // LinearTransition/FadeIn/FadeOut at rest.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ScreenContentFixture>
+            <MarketsView
+              selectedSymbol={PINNED_EQUITY_SYMBOL}
+              onSelect={(): void => {}}
+            />
+          </ScreenContentFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "equities/trade",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // freeze holds InstrumentHeader's tick-flash and OrderCeremony's
+        // FadeIn at rest, mirroring `equities/markets` above.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ScreenContentFixture>
+            <TradeView
+              selectedSymbol={PINNED_EQUITY_SYMBOL}
+              onSelect={(): void => {}}
+            />
+          </ScreenContentFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "equities/blotter",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // freeze holds OrdersBlotter's newest-row flash at rest; moot today
+        // (BlottersView mounts with no orders/positions seeded — see the
+        // header comment above), kept for the same "pin it, don't rely on an
+        // empty seed staying empty" reasoning as the other two.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+          <ScreenContentFixture>
+            <BlottersView />
+          </ScreenContentFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
 ];
 
 export function getScenario(id: string): Scenario | undefined {
@@ -422,3 +517,12 @@ export function getScenario(id: string): Scenario | undefined {
     return s.id === id;
   });
 }
+
+/** Symbol pinned for `equities/markets`/`equities/trade`: the watchlist's
+ * first instrument (`EquityMarketDataSimulator`'s `WATCHLIST`/`SEED_PRICES`,
+ * domain-internal and not exported, so repeated here as a literal — same
+ * move `fixtures.tsx`'s `PINNED_INSTRUMENTS` makes for Credit). Selecting one
+ * also exercises the selected-row ring in `MoversRow`/`SectorHeatmap` and
+ * keeps `TradeView` out of its unselected "Select an instrument…" empty
+ * state. */
+const PINNED_EQUITY_SYMBOL = "AAPL";

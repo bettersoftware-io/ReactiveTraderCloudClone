@@ -303,6 +303,17 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "EURUSD is quoting 1.09213 / 1.09227, up on the session.",
   },
   "jarvis/overlay-confirm": { fullPage: true },
+  // Demo guide panel: click the ⓘ toggle, then wait for copy that only
+  // exists inside the open `<aside>` itself — "DEMO GUIDE" alone also
+  // case-insensitively matches the footer's own "ⓘ DEMO GUIDE" toggle
+  // button, which is a strict-mode ambiguity (both are always in the DOM
+  // once open) — proof the panel actually mounted, not just its toggle
+  // chrome (mirrors the panel scenarios' first-mount-race guard below).
+  "jarvis/overlay-guide": {
+    fullPage: true,
+    click: "jarvis-guide-toggle",
+    waitForText: "RUN FULL DEMO · HANDS-FREE",
+  },
 
   // Task 10 (generative-UI round 1): JarvisPanelLayer is `position: fixed`
   // (top-right cascade, same as the overlay above), so it needs the same

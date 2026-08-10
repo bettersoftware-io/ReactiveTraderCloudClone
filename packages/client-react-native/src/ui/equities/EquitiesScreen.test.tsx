@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { fireEvent, screen } from "@testing-library/react-native";
 
 import type { OrderTicketState } from "@rtc/client-core";
@@ -26,9 +26,9 @@ test("Trade prompts until a symbol is chosen", async () => {
   expect(screen.getByTestId("trade-empty")).toBeTruthy();
 });
 
-test("selecting a watchlist instrument jumps to Trade for that symbol", async () => {
+test("selecting a movers-board instrument jumps to Trade for that symbol", async () => {
   await renderScreen();
-  await fireEvent.press(screen.getByTestId("watchlist-row-AAPL"));
+  await fireEvent.press(screen.getByTestId("eq-mover-AAPL"));
   expect(screen.getByTestId("instrument-tab-AAPL")).toBeTruthy();
   expect(screen.getByTestId("order-ticket")).toBeTruthy();
 });
@@ -59,6 +59,9 @@ function vm(): ViewModel {
     useEquityPositions: () => {
       return [];
     },
+    useEqWatchlistSort: () => {
+      return { sort: "chg", setSort: () => {}, cycle: () => {} };
+    },
     useOrderTicket: () => {
       return {
         state: editing,
@@ -80,3 +83,21 @@ async function renderScreen(): Promise<void> {
     </ViewModelProvider>,
   );
 }
+
+// `vm()` doesn't stub `usePowerSaver`; `OrdersBlotter`'s row-insert flash and
+// `InstrumentHeader`'s tick flash both read it via `useShellMotionEnabled`.
+// This file's tests assert screen-level navigation/reachability, not motion
+// behaviour, so — mirroring InstrumentHeader.test.tsx/SpotTile.test.tsx — the
+// hook is stubbed directly rather than widening `vm()`. Pinned to `true`
+// (motion enabled) rather than toggled per test: the disabled/static-end-state
+// branch already has dedicated coverage in useShellMotionEnabled.test.tsx and
+// useRowInsertFlash.test.tsx, and no assertion here depends on which branch
+// runs, so re-proving it a third time at this screen-integration level would
+// be redundant rather than additive.
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});

@@ -79,6 +79,7 @@ function renderOverlay(
           entries,
           pendingConfirmation: null,
           available: true,
+          openCount: 0,
         },
         close: () => {},
         toggle: () => {},
@@ -86,6 +87,13 @@ function renderOverlay(
         approveConfirmation: () => {},
         declineConfirmation: () => {},
         setSkin: () => {},
+      };
+    },
+    useJarvisDemo: () => {
+      return {
+        state: { running: false, stepIndex: 0, stepCount: 7, label: null },
+        startDemo: () => {},
+        stopDemo: () => {},
       };
     },
   } as unknown as ViewModel;

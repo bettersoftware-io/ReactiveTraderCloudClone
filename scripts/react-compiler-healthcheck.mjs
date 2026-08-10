@@ -80,6 +80,29 @@ const TRACKED = [
     values: ["paths"],
   },
   {
+    // The movers-row sparkline: lifted `useCandles(symbol)` out of this
+    // component (into MoversBoard's MoversBoardRow) specifically so it would
+    // compile here — a ViewModel-seam read bails the compiler outright (see
+    // MoversBoard below, still bailing for that reason). `path` is the
+    // memoized binding; `svgPath` fuses into the same memo block feeding it
+    // (a different compiled shape than a standalone bare-temp binding — see
+    // the discriminator note above — so it isn't separately tracked).
+    file: "packages/client-react-native/src/ui/equities/markets/RowSparkline.tsx",
+    fn: "RowSparkline",
+    values: ["path"],
+  },
+  {
+    // The Skia candlestick chart: same lift-the-seam-read fix as
+    // RowSparkline above (TradeView now owns `useCandles`, passing `candles`
+    // down as a prop). `bars`/`keyedBars` fuse into the same memo block as
+    // the JSX they feed rather than compiling as their own bare-temp
+    // bindings, so no single value is worth tracking — whole-function form
+    // asserts the fused block memoized something.
+    file: "packages/client-react-native/src/ui/equities/trade/CandleChart.tsx",
+    fn: "CandleChart",
+    values: null,
+  },
+  {
     file: "packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.ts",
     fn: "useBootSceneFonts",
     values: null,
@@ -96,6 +119,13 @@ const TRACKED = [
 // - `useRecording.ts` bails on a compiler limitation (value blocks inside
 //   try/catch), but its callbacks were pure caching with no memo boundary —
 //   nothing was traded away, so there is nothing to protect.
+// - `MoversBoard.tsx`'s own `MoversBoard`/`MoversBoardRow` bail on the
+//   ViewModel seam (`useWatchlist`/`useEqWatchlistSort`/`useEquityQuote`/
+//   `useCandles` all read off `useViewModel()`) and carry no doc comment
+//   claiming otherwise — unlike `RowSparkline`/`CandleChart` above, which
+//   were lifted specifically so THEY would compile, `MoversBoard` is the
+//   seam-reading parent that makes that lift possible and was never a
+//   candidate for compiler memoization itself.
 // - `ThemeProvider.tsx` bails on the ViewModel seam; its memo was replaced by a
 //   module-scope lookup table, not by compiler memoization.
 // - `InspectorApp.tsx` holds a build-once INSTANCE via ref, not compiler-

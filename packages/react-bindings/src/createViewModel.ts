@@ -5,6 +5,7 @@ import type {
   ActivityEntry,
   AdminJarvisUsagePayload,
   AppCommands,
+  JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
@@ -143,9 +144,24 @@ export interface UseJarvisResult {
   toggle: () => void;
   send: (text: string) => void;
   narrate: (prompt: string) => void;
+  /** Queue a turn pinned to the scripted brain — `JarvisDemoMachine`'s sole
+   * way of driving a real turn (see `UseJarvisDemoResult`); the user's own
+   * brain preference is untouched. Mirrors `JarvisIntents.sendScripted`'s
+   * doc. */
+  sendScripted: (text: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
+}
+
+/** J.A.R.V.I.S. hands-free scripted demo (singleton, app-level) — progress
+ * state plus the start/stop intents. Reads `presenters.jarvisDemo.state$`
+ * directly via `useStateObservable`, same shared-singleton pattern as
+ * `useJarvisDriver` below (no per-mount machine). */
+export interface UseJarvisDemoResult {
+  state: JarvisDemoState;
+  startDemo: () => void;
+  stopDemo: () => void;
 }
 
 /** The three Jarvis desk-assistant preferences — which brain to use, the
@@ -446,6 +462,10 @@ export interface ViewModel {
    * flash the nav rail / workspace wrapper on a new applied outcome. Starts
    * `{ lastBatch: [] }`. */
   useJarvisDriver: () => JarvisDriverState;
+  /** The hands-free scripted demo's progress state (singleton, app-level)
+   * plus the `startDemo`/`stopDemo` intents. Starts `{ running: false,
+   * stepIndex: 0, stepCount: JARVIS_DEMO_STEPS.length, label: null }`. */
+  useJarvisDemo: () => UseJarvisDemoResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -938,6 +958,12 @@ export function createViewModel(
     return useStateObservable(presenters.jarvisDriver.state$);
   }
 
+  // Jarvis hands-free demo — shared single instance, same
+  // useStateObservable-direct pattern as jarvisDriver above.
+  function useJarvisDemoState(): JarvisDemoState {
+    return useStateObservable(presenters.jarvisDemo.state$);
+  }
+
   // Jarvis AI assistant — shared single instance. Reads
   // presenters.jarvis.state$ DIRECTLY via useStateObservable, NOT via
   // bind() (mirroring the eqWorkspace pattern — see its comment for why).
@@ -1269,6 +1295,12 @@ export function createViewModel(
     },
     useJarvisPanelData: useJarvisPanelDataValue,
     useJarvisDriver: useJarvisDriverState,
+    useJarvisDemo: () => {
+      return {
+        state: useJarvisDemoState(),
+        ...presenters.jarvisDemo.intents,
+      };
+    },
     useMetrics: () => {
       return {
         throughput: useThroughputSamples(),
