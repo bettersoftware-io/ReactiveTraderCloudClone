@@ -618,7 +618,7 @@ all against both clients. The visual tier gets one rich composite
 scenario (`equities/chart-canvas`: candles + volume + compare + drawings
 + a MACD pane + crosshair) through the standard 10-combo skin×mode
 matrix, so the palette port is the thing actually under pixel test. One
-Gherkin e2e journey (`tests/browser/scenarios/equitiesChart.ts`) drives
+e2e journey (`tests/browser/playwright/equitiesChart.spec.ts`) drives
 the switch through `PreferencesModal` for real — the repo's first e2e
 page-object surface over that modal — and proves the chart survives a
 substrate round-trip while a trendline drawn in canvas mode persists
