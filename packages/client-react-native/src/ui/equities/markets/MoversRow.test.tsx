@@ -77,6 +77,6 @@ test("pressing the row selects its symbol", async () => {
       candles={NO_CANDLES}
     />,
   );
-  fireEvent.press(screen.getByTestId("eq-mover-TSLA"));
+  await fireEvent.press(screen.getByTestId("eq-mover-TSLA"));
   expect(onSelect).toHaveBeenCalledWith("TSLA");
 });

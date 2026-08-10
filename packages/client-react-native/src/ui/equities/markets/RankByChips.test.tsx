@@ -27,7 +27,7 @@ test("pressing a chip sets that sort directly", async () => {
       <RankByChips />
     </ViewModelProvider>,
   );
-  fireEvent.press(screen.getByTestId("eq-rank-price"));
+  await fireEvent.press(screen.getByTestId("eq-rank-price"));
   expect(setSort).toHaveBeenCalledWith("price");
 });
 
