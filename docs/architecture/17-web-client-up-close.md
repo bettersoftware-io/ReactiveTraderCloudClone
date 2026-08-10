@@ -486,10 +486,11 @@ consume (`chartVm` et al.) are a *projection* of that scene
 contract: percent (0–100) plot-box coordinates, `number`/`boolean`/label-
 text fields only, no CSS syntax (a neutrality walker and a type-level
 check in motion-core enforce this). `drawChartScene`
-(`@rtc/ui-contract`) proves the seam: a framework-free Canvas-2D engine
-renders the same `ChartScene` whose projection (`chartVm`) both clients'
-DOM shells consume, pinned by the `equities/chart-canvas-spike` golden
-driven by hosts in both clients' visual trees.
+(originally `@rtc/ui-contract`, now `@rtc/motion-core` — §17.8 below)
+proves the seam: a framework-free Canvas-2D engine renders the same
+`ChartScene` whose projection (`chartVm`) both clients' DOM shells
+consume. The seam's original pixel witness, the `equities/chart-canvas-spike`
+golden, is retired; §17.8 covers its production successor.
 
 **What "prerequisite for the TradingView tier" means.** The TradingView
 tier (drawing tools, indicator panes, thousands of bars) is achievable on
@@ -543,3 +544,91 @@ The log price axis (spec 2026-08-04) is the seam's second proof point at one lev
 Drawing tools (3a, spec 2026-08-05) push the seam into user-generated content: annotations anchor in data space (candle index + price) and project through the same viewport-x/priceToY pair, so a trendline survives pan, zoom, backfill prepends (anchor shifting), and scale-mode flips without any drawing-specific geometry code in either client. Drag-edit (3b) rides the same seam: `hitTestGrip` arbitrates handle-vs-body-vs-pan at pointer-down (selected drawing only), the in-flight drag lives in the gesture hook as an `editDrag` twin of the draw draft, and `dragDrawing` — shared verbatim by the preview and the pointer-up `updateDrawing` commit — keeps a body drag rigid under log scale by translating in projected-y space.
 
 Comparison series completes the tier: a `compare` symbol on the shared eqWorkspace machine overlays a second symbol's close-line on a percent axis — `chartScene`'s `compare` option derives a percent `ChartScale` (`base` = the first visible close, pct-range union back-converted to price units, series aligned by time), so drawings and the crosshair invert through the same scale unchanged, and clearing the comparison restores the stored linear/log choice.
+
+### 17.8 The canvas substrate
+
+> Full design rationale lives in
+> [Canvas Chart Substrate — Productionization](../superpowers/specs/2026-08-09-canvas-substrate-design.md)
+> — a follow-up to the renderer-seam spec §17.7 already documents. This
+> section covers only the architecture that shipped.
+
+**A persisted preference switches the plot's geometry between DOM and
+canvas; nothing else about the chart changes.** `ChartSubstrate = "dom" |
+"canvas"` (`@rtc/domain`'s `preferences.ts`, default `"dom"`) sits beside
+power-saver in the preferences entity, with the same ~10-site plumbing
+shape that preference class always takes: entity, both storage adapters,
+`ChartSubstratePresenter`, both bindings, the `useChartSubstrate()` hook
+each client exposes, the ui-contract mirror, and a "Chart renderer" row in
+`PreferencesModal` (DOM | Canvas). Only `ChartPanel` reads the preference;
+`CandleChart`/`ChartPlot`/`VolumePane`/`IndicatorPane` all take `substrate`
+as a plain controlled prop, so the contract tier can force either branch
+without touching the preference machinery at all.
+
+**Geometry moves to canvas; text never does.** In canvas mode, each
+region swaps its per-datum DOM children — candle/wick divs, the
+`SvgPathLayer` line/area path, volume bars, drawing strokes and grips, the
+crosshair's hairline divs — for one `SceneCanvas` per region (plot,
+volume, each indicator pane); price/time labels, the crosshair readout
+strip, chips, and pills render identically in both modes. That split is
+the whole design: the node-count problem is per-datum geometry, and text
+is both cheap (O(10) nodes) and the one thing a canvas font-rasterization
+golden trap would actually bite.
+
+**`SceneCanvas` (`packages/client-react/src/ui/equities/chart/SceneCanvas.tsx`,
+Solid twin alongside it) is a thin host, not a renderer.** It owns a
+`ResizeObserver` for box size, `devicePixelRatio` scaling via
+`ctx.setTransform`, and one `draw` slot each region binds to its engine
+entry point (`drawPlotScene` / `drawVolumeScene` / `drawPaneScene`,
+`@rtc/motion-core`). The palette is re-read from the live CSS cascade —
+`readChartPalette(el)` walks `CHART_PALETTE_TOKENS`, a 16-key
+`ChartPalette → --custom-property` map, via `getComputedStyle` — on
+**every** draw, not cached: a theme switch or skin change repaints
+correctly on the very next redraw with no separate invalidation path.
+The two hosts' redraw cadence differs slightly by framework: React's
+draw effect is deliberately dependency-less (any parent render repaints,
+so a theme flip repaints immediately), while Solid's is tracked (box,
+draw slot, scene reads), so after a theme flip the Solid canvas holds the
+old palette until the next tick/pointer/resize — self-correcting within
+one tick on a live stream, and invisible to the visual tier's fresh
+per-theme mounts.
+
+**The engine lives in `@rtc/motion-core`, typed against a structural
+`Canvas2D`, not `@rtc/ui-contract`.** The renderer-seam spike placed
+`drawChartScene` in `ui-contract` "purely because it typed against
+`CanvasRenderingContext2D`"; declaring `Canvas2D` as the structural subset
+the three draw functions actually call (`clearRect`/`fillRect`,
+`beginPath`/`moveTo`/`lineTo`/`closePath`/`stroke`/`fill`, `arc`,
+`setLineDash`, `createLinearGradient`, and the style setters including
+`shadowBlur`/`shadowColor` — no text members at all) dissolves that
+reason without
+motion-core touching `lib.dom` or losing its zero-runtime-dependency,
+no-DOM standing: a structural type declaration is not DOM access, and the
+real 2D context satisfies it structurally at each host's call site.
+`ui-contract` is devDependency-only and can never serve a shipping
+renderer, so the production engine could not have stayed there.
+
+**No `requestAnimationFrame` loop anywhere — redraw is purely
+event-driven.** `SceneCanvas`'s draw effect fires on `[scene, palette,
+size]` identity change: a data tick, a pointer move, a resize, a theme
+flip. A quiet stream costs nothing, and power-saver Freeze is respected
+for free — there is no per-frame timer to gate. Glow/flash render as
+static state read straight off the scene's existing booleans, the same
+way the DOM path already did.
+
+**Witness strategy: DOM summaries where pixels can't be asserted, one
+composite golden where they can.** jsdom has no 2D context, so the
+contract tier proves canvas-mode correctness through `data-*` summary
+attributes `SceneCanvas` carries on the canvas element itself
+(`data-candles`, `data-drawings`, `data-compare`) plus DOM node counts —
+five shared contract cases pin the substrate switch, a node-count budget
+(`canvasNodes < domNodes - 200`, ceiling `canvasNodes <= 60`), crosshair
+readout text, a drawing-commit round-trip, and the compare percent axis,
+all against both clients. The visual tier gets one rich composite
+scenario (`equities/chart-canvas`: candles + volume + compare + drawings
++ a MACD pane + crosshair) through the standard 10-combo skin×mode
+matrix, so the palette port is the thing actually under pixel test. One
+e2e journey (`tests/browser/playwright/equitiesChart.spec.ts`) drives
+the switch through `PreferencesModal` for real — the repo's first e2e
+page-object surface over that modal — and proves the chart survives a
+substrate round-trip while a trendline drawn in canvas mode persists
+after switching back to DOM.

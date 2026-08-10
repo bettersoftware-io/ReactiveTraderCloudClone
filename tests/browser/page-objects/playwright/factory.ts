@@ -17,6 +17,7 @@ import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
 import { PlaywrightLoginScreen } from "./LoginScreen";
 import { PlaywrightPositionsPanel } from "./PositionsPanel";
 import { PlaywrightPowerSaver } from "./PowerSaver";
+import { PlaywrightPreferences } from "./Preferences";
 import { PlaywrightThemeToggle } from "./ThemeToggle";
 import { PlaywrightWorkspace } from "./Workspace";
 
@@ -36,6 +37,7 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     equitiesChart: new PlaywrightEquitiesChart(page),
     layout: new PlaywrightLayout(page),
     jarvis: new PlaywrightJarvis(page),
+    preferences: new PlaywrightPreferences(page),
     inspector: new PlaywrightInspector(page),
     login: new PlaywrightLoginScreen(page),
     powerSaver: new PlaywrightPowerSaver(page),

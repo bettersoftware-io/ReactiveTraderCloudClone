@@ -4,6 +4,7 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { formatGateResetTime, type JarvisState } from "@rtc/client-core";
 import type {
   AmbientStyle,
+  ChartSubstrate,
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
@@ -37,10 +38,11 @@ import styles from "./PreferencesModal.module.css";
  * (added later) sits at the foot of column 2, so it doesn't reopen that
  * balance.
  *
- * NINE rows are wired to real ports — Animated background
+ * TEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
- * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Always play
- * boot animation (`useForceBootAnimation`), the two login-wait rows
+ * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
+ * (`useChartSubstrate`), Always play boot animation
+ * (`useForceBootAnimation`), the two login-wait rows
  * (`useLoginWaitPreferences`), and the three Jarvis rows
  * (`useJarvisPreferences` for the stored brain/effort/narrator, `useJarvis`
  * read-only for which brains the server is currently offering); every other
@@ -54,6 +56,7 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
     useAnimatedBackground,
     usePowerSaver,
     useAmbientStyle,
+    useChartSubstrate,
     useForceBootAnimation,
     useLoginWaitPreferences,
     useJarvis,
@@ -66,6 +69,8 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
+  const { substrate: chartSubstrate, setSubstrate: setChartSubstrate } =
+    useChartSubstrate();
 
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
@@ -229,6 +234,16 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
                     setAmbientStyle(value as AmbientStyle);
                   }}
                   testid="pref-segment-ambientStyle"
+                />
+                <PrefSegment
+                  label="Chart renderer"
+                  description="Retained DOM/SVG geometry, or immediate-mode canvas (fewer live DOM nodes)."
+                  options={CHART_SUBSTRATE_OPTIONS}
+                  value={chartSubstrate()}
+                  onChange={(value: string) => {
+                    setChartSubstrate(value as ChartSubstrate);
+                  }}
+                  testid="pref-segment-chartSubstrate"
                 />
                 <ToggleGroup
                   defs={MOTION_TOGGLES}
@@ -439,6 +454,13 @@ interface SegmentDef {
 const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "aurora", label: "Aurora" },
   { value: "rays", label: "Rays" },
+];
+
+// The options for the real "Chart renderer" segment row, wired to
+// useChartSubstrate (not decorative — see PrefSegment call site above).
+const CHART_SUBSTRATE_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "dom", label: "DOM" },
+  { value: "canvas", label: "Canvas" },
 ];
 
 // Options for the two real login-wait rows (useLoginWaitPreferences). "Auto"

@@ -1,5 +1,6 @@
 import {
   type CurrencyPair,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -407,6 +408,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return { loadingOlder: false, historyExhausted: false };
     },
     loadOlderCandles: noop,
+    // No visual fixture exercises the canvas substrate yet (Task 6 owns the
+    // pixel tier) — a fixed "dom" default keeps every existing golden's
+    // geometry layer unchanged.
+    useChartSubstrate: () => {
+      return { substrate: DEFAULT_CHART_SUBSTRATE, setSubstrate: noop };
+    },
     useDepth: (symbol: string) => {
       return data.equityDepth?.[symbol] ?? null;
     },

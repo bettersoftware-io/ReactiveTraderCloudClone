@@ -54,7 +54,7 @@ import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
-import { EquitiesChartCanvasSpike } from "./EquitiesChartCanvasSpike.visual";
+import { EquitiesChartCanvas } from "./EquitiesChartCanvas.visual";
 import {
   EquitiesChartArea,
   EquitiesChartCompare,
@@ -608,12 +608,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   EquitiesChartPanesBoth: () => {
     return <EquitiesChartPanesBoth />;
   },
-  // Renderer-seam proof (spec 2026-08-02): the framework-free drawChartScene
-  // engine painting spikeScene() onto a bare <canvas>. See
-  // EquitiesChartCanvasSpike.visual.tsx's doc comment for why the draw runs
-  // in useLayoutEffect rather than useEffect.
-  EquitiesChartCanvasSpike: () => {
-    return <EquitiesChartCanvasSpike />;
+  // Composite canvas-substrate scenario (Task 6, spec
+  // 2026-08-09-canvas-substrate): forced-state wrapper in
+  // EquitiesChartCanvas.visual.tsx mounting the real ChartPlot with
+  // substrate="canvas" and every canvas layer forced on at once.
+  EquitiesChartCanvas: () => {
+    return <EquitiesChartCanvas />;
   },
   EquitiesWatchlistPanel: () => {
     return (

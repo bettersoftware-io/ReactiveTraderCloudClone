@@ -24,6 +24,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "devDependencies": {
+    "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
     "tsc-alias": "1.9.0",

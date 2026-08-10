@@ -1,16 +1,23 @@
 import { type Accessor, Index, type JSX, Show } from "solid-js";
 
 import type { EqChartType } from "@rtc/client-core";
-import type {
-  ChartVarStyle,
-  ChartVm,
-  CrosshairVm,
-  DrawingSceneItem,
-  EqPaneKind,
-  NavigatorVm,
-  PaneReadoutRow,
-  PaneScene,
-  VolumeBarVm,
+import type { ChartSubstrate } from "@rtc/domain";
+import {
+  type Canvas2D,
+  type CanvasSize,
+  type ChartPalette,
+  type ChartVarStyle,
+  type ChartVm,
+  type CrosshairVm,
+  type DrawingSceneItem,
+  drawPlotScene,
+  type EqPaneKind,
+  type NavigatorVm,
+  type PaneReadoutRow,
+  type PaneScene,
+  type PlotCanvasScene,
+  type VolumeBarVm,
+  type VolumeSceneBar,
 } from "@rtc/motion-core";
 
 import { BackfillChips } from "./BackfillChips";
@@ -22,6 +29,7 @@ import type { NavigatorStripProps } from "./createNavigatorBrush";
 import { DrawingsLayer } from "./DrawingsLayer";
 import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
+import { SceneCanvas } from "./SceneCanvas";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { SvgPathLayer } from "./SvgPathLayer";
 import { TimeAxis } from "./TimeAxis";
@@ -72,17 +80,6 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onKeyDown={props.plotProps?.onKeyDown}
       >
-        <Index each={props.vm.grid}>
-          {(gr: Accessor<ChartVm["grid"][number]>): JSX.Element => {
-            return (
-              <div
-                class={styles.grid}
-                style={gr().style}
-                data-testid="chart-grid-line"
-              />
-            );
-          }}
-        </Index>
         <Index each={props.vm.labels}>
           {(l: Accessor<ChartVm["labels"][number]>): JSX.Element => {
             return (
@@ -96,19 +93,64 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
             );
           }}
         </Index>
-        <Show when={props.kind === "candles"}>
-          <CandleBars candles={props.vm.candles} />
+        <Show
+          when={props.substrate === "canvas" && props.canvasPlot}
+          fallback={
+            <>
+              <Index each={props.vm.grid}>
+                {(gr: Accessor<ChartVm["grid"][number]>): JSX.Element => {
+                  return (
+                    <div
+                      class={styles.grid}
+                      style={gr().style}
+                      data-testid="chart-grid-line"
+                    />
+                  );
+                }}
+              </Index>
+              <Show when={props.kind === "candles"}>
+                <CandleBars candles={props.vm.candles} />
+              </Show>
+              <SvgPathLayer
+                linePoints={props.vm.linePoints}
+                kind={props.kind}
+                indicatorPaths={props.indicatorPaths}
+                comparePoints={props.vm.compareLinePoints}
+              />
+              <DrawingsLayer items={props.drawItems ?? []} />
+            </>
+          }
+        >
+          {(canvasPlot: Accessor<PlotCanvasScene>): JSX.Element => {
+            return (
+              <SceneCanvas
+                testid="chart-canvas-plot"
+                summary={{
+                  "data-candles": String(canvasPlot().scene.candles.length),
+                  "data-drawings": String(
+                    canvasPlot().drawings.filter((d) => {
+                      return d.id !== "draft";
+                    }).length,
+                  ),
+                  "data-compare": String(
+                    canvasPlot().scene.compareLinePoints.length > 0,
+                  ),
+                }}
+                draw={(
+                  ctx: Canvas2D,
+                  palette: ChartPalette,
+                  size: CanvasSize,
+                ) => {
+                  drawPlotScene(ctx, canvasPlot(), palette, size);
+                }}
+              />
+            );
+          }}
         </Show>
-        <SvgPathLayer
-          linePoints={props.vm.linePoints}
-          kind={props.kind}
-          indicatorPaths={props.indicatorPaths}
-          comparePoints={props.vm.compareLinePoints}
-        />
-        <DrawingsLayer items={props.drawItems ?? []} />
         <CrosshairOverlay
           vm={props.cross}
           showHorizontal={props.showHorizontal ?? true}
+          linesHidden={props.substrate === "canvas"}
         />
         <BackfillChips
           loadingOlder={props.loadingOlder}
@@ -118,7 +160,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
           <BackToLiveButton onClick={props.onBackToLive} />
         </Show>
       </div>
-      <VolumePane bars={props.volumeBars} />
+      <VolumePane bars={props.volumeBars} canvasBars={props.canvasVolume} />
       <Index each={props.panes ?? []}>
         {(p: Accessor<PaneVm>): JSX.Element => {
           return (
@@ -128,6 +170,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
               readout={p().readout}
               crosshairStyle={props.paneCrosshairStyle ?? null}
               hoverProps={props.paneHoverProps ?? NOOP_PANE_HOVER_PROPS}
+              substrate={props.substrate}
             />
           );
         }}
@@ -190,4 +233,17 @@ export interface ChartPlotProps {
   readonly showHorizontal?: boolean;
   /** Forwarded onto every rendered `IndicatorPane` — omit alongside `panes`. */
   readonly paneHoverProps?: PaneHoverProps;
+  /** The rendering substrate for the plot/volume/pane geometry layers —
+   * `"canvas"` swaps grid/candles/overlay-lines/drawings for one
+   * `SceneCanvas`, the volume bars for another, and each `IndicatorPane`'s
+   * SVG geometry for a third; text (labels, readouts, chips) always stays
+   * DOM. Omit for the pre-substrate DOM behaviour. */
+  readonly substrate?: ChartSubstrate;
+  /** The canvas-substrate plot scene — required alongside
+   * `substrate === "canvas"` to render `chart-canvas-plot`; omitted (or
+   * substrate !== "canvas") keeps the DOM geometry arm. */
+  readonly canvasPlot?: PlotCanvasScene;
+  /** The canvas-substrate volume bars, forwarded to `VolumePane` — omitted
+   * (or substrate !== "canvas") keeps `VolumePane`'s own DOM bars. */
+  readonly canvasVolume?: readonly VolumeSceneBar[];
 }

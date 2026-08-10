@@ -9,7 +9,7 @@ import type {
   EqPaneId,
   EqYScale,
 } from "@rtc/client-core";
-import type { Candle } from "@rtc/domain";
+import type { Candle, ChartSubstrate } from "@rtc/domain";
 
 /** Props CandleChart reads (Task C2/C3's interactive-plot contract: the
  * component owns the gesture hook itself, so it takes the raw series + live
@@ -41,6 +41,12 @@ export interface CandleChartProps {
     readonly loadingOlder: boolean;
     readonly historyExhausted: boolean;
   };
+  /** The rendering substrate for the plot/volume/pane geometry layers.
+   * Defaults to `"dom"` (the existing SVG/div geometry, byte-identical to
+   * before this prop existed); `"canvas"` swaps those three geometry
+   * layers for per-region `SceneCanvas` hosts — text (price labels, time
+   * axis, crosshair readout, chips, BackToLive) always stays DOM. */
+  substrate?: ChartSubstrate;
   defaultVisible: number;
   /** Whether an older history page is currently in flight for this series —
    * drives the LOADING OLDER… chip and gates re-triggering. */
@@ -93,6 +99,7 @@ const BACK_TO_LIVE_TESTID = "chart-back-to-live";
 const CROSSHAIR_READOUT_TESTID = "chart-crosshair-readout";
 const NAVIGATOR_TESTID = "chart-navigator";
 const NAVIGATOR_WINDOW_TESTID = "navigator-window";
+const CANVAS_PLOT_TESTID = "chart-canvas-plot";
 
 /** Stand-in plot geometry for jsdom, whose getBoundingClientRect() is
  * all-zeros absent real layout — same 500×50-at-the-origin rect
@@ -391,6 +398,24 @@ export class CandleChartPage extends MountedComponent<CandleChartProps> {
     return (
       this.root.querySelector('[data-testid="chart-compare-line"]') !== null
     );
+  }
+
+  /** The canvas-substrate plot's rendered `<canvas>` host (`chart-canvas-plot`),
+   * or `null` in DOM mode (`substrate !== "canvas"`, or no `canvasPlot` scene
+   * supplied) — see `ChartPlot`'s substrate branch. */
+  canvasPlot(): HTMLElement | null {
+    return this.root.querySelector(`[data-testid="${CANVAS_PLOT_TESTID}"]`);
+  }
+
+  /** One of `chart-canvas-plot`'s scene-level witness attributes
+   * (`data-candles`/`data-drawings`/`data-compare`, set via `SceneCanvas`'s
+   * `summary` prop) — jsdom has no 2D context, so these are the only
+   * cross-substrate signal a canvas-mode case can read for what the scene
+   * would have painted. `null` while {@link canvasPlot} is absent. */
+  canvasAttr(
+    name: "data-candles" | "data-drawings" | "data-compare",
+  ): string | null {
+    return this.canvasPlot()?.getAttribute(name) ?? null;
   }
 
   /** A candle body's inline CSS custom property (e.g. "--top") — geometry

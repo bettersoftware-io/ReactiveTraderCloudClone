@@ -8,11 +8,13 @@ import type {
   EqPaneId,
   EqYScale,
 } from "@rtc/client-core";
-import type { Candle } from "@rtc/domain";
+import type { Candle, ChartSubstrate } from "@rtc/domain";
 import {
   type ChartViewport,
   type ChartVm,
+  chartScene,
   chartVm,
+  crosshairScene,
   crosshairVm,
   type DrawingGrip,
   type DrawingSceneItem,
@@ -25,9 +27,11 @@ import {
   type NavigatorVm,
   navigatorLinePoints,
   navigatorWindowStyle,
+  type PlotCanvasScene,
   paneReadout,
   paneScene,
   pointerToAnchor,
+  volumeScene,
   volumeVm,
 } from "@rtc/motion-core";
 
@@ -370,6 +374,55 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     };
   });
 
+  // Canvas-substrate scenes — assembled from the SAME motion-core calls the
+  // DOM path already uses (chartVm/crosshairVm above are the DOM twins),
+  // computed only in canvas mode so the DOM path pays nothing for it.
+  // `substrate` defaults to "dom" (props.substrate read live inside this
+  // tracked memo — never destructured — so a preference flip re-runs it).
+  const canvasPlot = createMemo((): PlotCanvasScene | null => {
+    if ((props.substrate ?? "dom") !== "canvas") {
+      return null;
+    }
+
+    return {
+      scene: chartScene(props.candles, props.liveRate, props.flashOn, {
+        viewport: g.viewport(),
+        kind: props.kind,
+        yScale: props.yScale ?? "linear",
+        compare: props.compare,
+      }),
+      overlays: props.indicators.map((id) => {
+        return {
+          id,
+          points: indicatorPoints(
+            indicatorValues(closes(), id),
+            g.viewport(),
+            vm().scale,
+          ),
+        };
+      }),
+      drawings: drawItems(),
+      crosshair: (() => {
+        const cursor = g.cursor();
+        return cursor
+          ? crosshairScene(
+              cursor.xFrac,
+              cursor.yFrac,
+              props.candles,
+              g.viewport(),
+              vm().scale,
+            )
+          : null;
+      })(),
+    };
+  });
+
+  const canvasVolume = createMemo(() => {
+    return (props.substrate ?? "dom") === "canvas"
+      ? volumeScene(props.candles, g.viewport())
+      : undefined;
+  });
+
   return (
     <ChartPlot
       vm={vm()}
@@ -390,6 +443,9 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
       paneCrosshairStyle={cross()?.style ?? null}
       showHorizontal={g.cursor()?.inPlot ?? false}
       paneHoverProps={g.paneHoverProps}
+      substrate={props.substrate ?? "dom"}
+      canvasPlot={canvasPlot() ?? undefined}
+      canvasVolume={canvasVolume()}
     />
   );
 }
@@ -418,6 +474,12 @@ export interface CandleChartProps {
    * the compare symbol's data is still loading percent-projects the primary
    * alone (the axis is already %, so the line's arrival doesn't reflow). */
   compare?: { readonly series: readonly Candle[] };
+  /** The rendering substrate for the plot/volume/pane geometry layers.
+   * Defaults to `"dom"` (the existing SVG/div geometry, byte-identical to
+   * before this prop existed); `"canvas"` swaps those three geometry
+   * layers for per-region `SceneCanvas` hosts — text (price labels, time
+   * axis, crosshair readout, chips, BackToLive) always stays DOM. */
+  substrate?: ChartSubstrate;
   /** The comparison symbol's backfill flags — powers the near-edge
    * trigger's either-series gate below. Silent paging: these flags never
    * drive the chips, which stay the primary's. Declared structurally (the

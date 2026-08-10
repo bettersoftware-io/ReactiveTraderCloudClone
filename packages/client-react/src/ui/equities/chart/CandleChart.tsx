@@ -8,9 +8,11 @@ import type {
   EqPaneId,
   EqYScale,
 } from "@rtc/client-core";
-import type { Candle } from "@rtc/domain";
+import type { Candle, ChartSubstrate } from "@rtc/domain";
 import {
+  chartScene,
   chartVm,
+  crosshairScene,
   crosshairVm,
   type DrawingGrip,
   dragDrawing,
@@ -21,9 +23,11 @@ import {
   indicatorValues,
   navigatorLinePoints,
   navigatorWindowStyle,
+  type PlotCanvasScene,
   paneReadout,
   paneScene,
   pointerToAnchor,
+  volumeScene,
   volumeVm,
 } from "@rtc/motion-core";
 
@@ -56,6 +60,7 @@ export function CandleChart({
   panes,
   yScale = "linear",
   compare,
+  substrate = "dom",
   compareBackfill,
   defaultVisible,
   loadingOlder,
@@ -314,6 +319,45 @@ export function CandleChart({
     windowStyle: navigatorWindowStyle(viewport, candles.length),
   };
 
+  // Canvas-substrate scenes — assembled from the SAME motion-core calls the
+  // DOM path already uses (chartVm/crosshairVm above are the DOM twins),
+  // computed only in canvas mode so the DOM path pays nothing for it.
+  const scene =
+    substrate === "canvas"
+      ? chartScene(candles, liveRate, flashOn, {
+          viewport,
+          kind,
+          yScale,
+          compare,
+        })
+      : null;
+
+  const canvasPlot: PlotCanvasScene | null = scene
+    ? {
+        scene,
+        overlays: indicators.map((id) => {
+          return {
+            id,
+            points: indicatorPoints(
+              indicatorValues(closes, id),
+              viewport,
+              vm.scale,
+            ),
+          };
+        }),
+        drawings: drawItems,
+        crosshair: cursor
+          ? crosshairScene(
+              cursor.xFrac,
+              cursor.yFrac,
+              candles,
+              viewport,
+              vm.scale,
+            )
+          : null,
+      }
+    : null;
+
   return (
     <ChartPlot
       vm={vm}
@@ -334,6 +378,11 @@ export function CandleChart({
       paneCrosshairStyle={cross?.style ?? null}
       showHorizontal={cursor?.inPlot ?? false}
       paneHoverProps={paneHoverProps}
+      substrate={substrate}
+      canvasPlot={canvasPlot ?? undefined}
+      canvasVolume={
+        substrate === "canvas" ? volumeScene(candles, viewport) : undefined
+      }
     />
   );
 }
@@ -362,6 +411,12 @@ export interface CandleChartProps {
    * the compare symbol's data is still loading percent-projects the primary
    * alone (the axis is already %, so the line's arrival doesn't reflow). */
   compare?: { readonly series: readonly Candle[] };
+  /** The rendering substrate for the plot/volume/pane geometry layers.
+   * Defaults to `"dom"` (the existing SVG/div geometry, byte-identical to
+   * before this prop existed); `"canvas"` swaps those three geometry
+   * layers for per-region `SceneCanvas` hosts — text (price labels, time
+   * axis, crosshair readout, chips, BackToLive) always stays DOM. */
+  substrate?: ChartSubstrate;
   /** The comparison symbol's backfill flags — powers the near-edge
    * trigger's either-series gate below. Silent paging: these flags never
    * drive the chips, which stay the primary's. Declared structurally (the

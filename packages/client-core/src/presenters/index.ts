@@ -11,6 +11,7 @@ export * from "#/presenters/BootGatePresenter";
 export * from "#/presenters/BootPreferencePresenter";
 export * from "#/presenters/BootSequenceMachine";
 export * from "#/presenters/CandleSeriesPresenter";
+export * from "#/presenters/ChartSubstratePresenter";
 export * from "#/presenters/ConnectionStatusPresenter";
 export * from "#/presenters/CreditRfqFilterPreferencePresenter";
 export * from "#/presenters/CurrencyPairsPresenter";

@@ -5,10 +5,13 @@ import {
   type AmbientStyle,
   BOOT_VARIANTS,
   type BootVariant,
+  CHART_SUBSTRATES,
+  type ChartSubstrate,
   type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -64,6 +67,7 @@ export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
+export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -78,6 +82,12 @@ function isThemeModePreference(
 function isAmbientStyle(value: string | null): value is AmbientStyle {
   return (
     value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
+  );
+}
+
+function isChartSubstrate(value: string | null): value is ChartSubstrate {
+  return (
+    value !== null && (CHART_SUBSTRATES as readonly string[]).includes(value)
   );
 }
 
@@ -230,6 +240,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
+  private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
+
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
   private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
@@ -311,6 +323,13 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         AMBIENT_STYLE_STORAGE_KEY,
         isAmbientStyle,
         DEFAULT_AMBIENT_STYLE,
+      ),
+    );
+    this.chartSubstrate = new BehaviorSubject<ChartSubstrate>(
+      readStored(
+        CHART_SUBSTRATE_STORAGE_KEY,
+        isChartSubstrate,
+        DEFAULT_CHART_SUBSTRATE,
       ),
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
@@ -459,6 +478,15 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setAmbientStyle(style: AmbientStyle): void {
     writeStored(AMBIENT_STYLE_STORAGE_KEY, style);
     this.ambientStyle.next(style);
+  }
+
+  chartSubstrate$(): Observable<ChartSubstrate> {
+    return this.chartSubstrate.pipe(distinctUntilChanged());
+  }
+
+  setChartSubstrate(substrate: ChartSubstrate): void {
+    writeStored(CHART_SUBSTRATE_STORAGE_KEY, substrate);
+    this.chartSubstrate.next(substrate);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

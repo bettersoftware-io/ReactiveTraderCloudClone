@@ -1,5 +1,6 @@
 import {
   type CurrencyPair,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -428,6 +429,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return at({ loadingOlder: false, historyExhausted: false });
     },
     loadOlderCandles: noop,
+    // No visual fixture exercises the canvas substrate yet (Task 6 owns the
+    // pixel tier) — a fixed "dom" default keeps every existing golden's
+    // geometry layer unchanged. Mirrors the react driver's
+    // buildFakeViewModel.ts useChartSubstrate exactly.
+    useChartSubstrate: () => {
+      return { substrate: at(DEFAULT_CHART_SUBSTRATE), setSubstrate: noop };
+    },
     useDepth: (symbol: string) => {
       return at(data.equityDepth?.[symbol] ?? null);
     },

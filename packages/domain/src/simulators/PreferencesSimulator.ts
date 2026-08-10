@@ -4,10 +4,12 @@ import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   type AmbientStyle,
   type BootVariant,
+  type ChartSubstrate,
   type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -44,6 +46,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   ambientStyle?: AmbientStyle;
+  chartSubstrate?: ChartSubstrate;
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
@@ -74,6 +77,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly animatedBg: BehaviorSubject<boolean>;
 
   private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
+
+  private readonly chartSubstrateSubject: BehaviorSubject<ChartSubstrate>;
 
   private readonly jarvisSkinSubject: BehaviorSubject<JarvisSkin>;
 
@@ -116,6 +121,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.ambientStyleSubject = new BehaviorSubject<AmbientStyle>(
       seed.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
+    );
+    this.chartSubstrateSubject = new BehaviorSubject<ChartSubstrate>(
+      seed.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
     );
     this.jarvisSkinSubject = new BehaviorSubject<JarvisSkin>(
       seed.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -196,6 +204,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setAmbientStyle(style: AmbientStyle): void {
     this.ambientStyleSubject.next(style);
+  }
+
+  chartSubstrate$(): Observable<ChartSubstrate> {
+    return this.chartSubstrateSubject.pipe(distinctUntilChanged());
+  }
+
+  setChartSubstrate(substrate: ChartSubstrate): void {
+    this.chartSubstrateSubject.next(substrate);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

@@ -55,10 +55,12 @@ import {
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
+  type ChartSubstrate,
   ConnectionStatus,
   type CreditRfqFilter,
   type CurrencyPair,
   DEFAULT_AMBIENT_STYLE,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -230,6 +232,11 @@ interface UseAmbientStyleResult {
   setStyle: (style: AmbientStyle) => void;
 }
 
+interface UseChartSubstrateResult {
+  substrate: Accessor<ChartSubstrate>;
+  setSubstrate: (substrate: ChartSubstrate) => void;
+}
+
 interface UsePowerSaverResult {
   level: Accessor<PowerSaverLevel>;
   isCalm: Accessor<boolean>;
@@ -372,6 +379,9 @@ export interface ViewModel {
   /** Global ambient-background style preference (aurora | rays) — current
    * style plus the write intent. */
   useAmbientStyle: () => UseAmbientStyleResult;
+  /** Global chart-rendering-substrate preference (dom | canvas) — current
+   * substrate plus the write intent. */
+  useChartSubstrate: () => UseChartSubstrateResult;
   /** Global power-saver master override — 3-state level (off/calm/freeze)
    * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
@@ -620,6 +630,15 @@ export function createViewModel(
 
   function setAmbientStyle(style: AmbientStyle): void {
     presenters.ambientStyle.setStyle(style);
+  }
+
+  const chartSubstrateState = state(
+    presenters.chartSubstrate.substrate$,
+    DEFAULT_CHART_SUBSTRATE,
+  );
+
+  function setChartSubstrate(substrate: ChartSubstrate): void {
+    presenters.chartSubstrate.setSubstrate(substrate);
   }
 
   const animatedBgState = state(presenters.animatedBackground.enabled$, false);
@@ -1117,6 +1136,12 @@ export function createViewModel(
     },
     useAmbientStyle: () => {
       return { style: toSignal(ambientStyleState), setStyle: setAmbientStyle };
+    },
+    useChartSubstrate: () => {
+      return {
+        substrate: toSignal(chartSubstrateState),
+        setSubstrate: setChartSubstrate,
+      };
     },
     useAnimatedBackground: () => {
       const enabled = toSignal(animatedBgState);

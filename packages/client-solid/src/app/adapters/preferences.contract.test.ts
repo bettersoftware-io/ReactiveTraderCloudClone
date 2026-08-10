@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   DEFAULT_AMBIENT_STYLE,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
@@ -19,6 +20,7 @@ import {
   AMBIENT_STYLE_STORAGE_KEY,
   ANIMATED_BG_STORAGE_KEY,
   BOOT_VARIANT_STORAGE_KEY,
+  CHART_SUBSTRATE_STORAGE_KEY,
   CREDIT_RFQ_FILTER_STORAGE_KEY,
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
@@ -121,6 +123,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, seed.ambientStyle);
       }
 
+      if (seed.chartSubstrate) {
+        localStorage.setItem(CHART_SUBSTRATE_STORAGE_KEY, seed.chartSubstrate);
+      }
+
       if (seed.jarvisSkin) {
         localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, seed.jarvisSkin);
       }
@@ -219,6 +225,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     );
   });
 
+  it("falls back to defaults for an invalid stored chartSubstrate", async () => {
+    localStorage.setItem(CHART_SUBSTRATE_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.chartSubstrate$())).toBe(
+      DEFAULT_CHART_SUBSTRATE,
+    );
+  });
+
   it("falls back to defaults for an invalid stored jarvisSkin", async () => {
     localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, "nonsense");
     const port = new LocalStoragePreferencesAdapter();
@@ -264,6 +278,7 @@ function clearStorage(): void {
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
+  localStorage.removeItem(CHART_SUBSTRATE_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
   localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);

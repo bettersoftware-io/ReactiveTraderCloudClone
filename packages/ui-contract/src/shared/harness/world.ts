@@ -28,10 +28,12 @@ import {
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
+  type ChartSubstrate,
   ConnectionStatus,
   type CreateRfqInput,
   type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -378,6 +380,9 @@ export interface World {
   /** Reactive ambient-style preference backing useAmbientStyle (drives AmbientBackground's
    * Aurora/Rays branch + PreferencesModal's "Ambient style" segment). */
   readonly ambientStyle: BehaviorSubject<AmbientStyle>;
+  /** Reactive chart-substrate preference backing useChartSubstrate (drives
+   * PreferencesModal's "Chart renderer" segment). */
+  readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
   /** Reactive Jarvis skin preference backing the REAL JarvisMachine's skin$ dep
    * (drives JarvisOrb/JarvisOverlay's `data-skin`) — mirrors themeSkin above.
    * Defaults to DEFAULT_JARVIS_SKIN ("singularity"), matching the app default. */
@@ -592,6 +597,8 @@ export function createWorld(
   jarvisEffortSeed?: JarvisEffort,
   /** Seeds `World.jarvisNarrator` (P5); defaults to DEFAULT_JARVIS_NARRATOR. */
   jarvisNarratorSeed?: JarvisNarratorPreference,
+  /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
+  chartSubstrateSeed?: ChartSubstrate,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -767,6 +774,10 @@ export function createWorld(
   // stays unaffected until a spec explicitly seeds "aurora".
   const ambientStyle = new BehaviorSubject<AmbientStyle>(
     ambientStyleSeed ?? "rays",
+  );
+
+  const chartSubstrate = new BehaviorSubject<ChartSubstrate>(
+    chartSubstrateSeed ?? DEFAULT_CHART_SUBSTRATE,
   );
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
@@ -979,6 +990,7 @@ export function createWorld(
     themeMode,
     themeSkin,
     ambientStyle,
+    chartSubstrate,
     jarvisSkin,
     jarvis,
     panelStreamDeps,

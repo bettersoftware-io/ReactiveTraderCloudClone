@@ -161,6 +161,48 @@ export const TESTIDS = {
       /** The comparison close-line polyline overlay (SvgPathLayer.tsx),
        * rendered while a comparison is active. */
       compareLine: "chart-compare-line",
+      /** The canvas-substrate plot (SceneCanvas), rendered instead of the
+       * DOM grid/candles/drawings tree when the Chart renderer preference
+       * (`useChartSubstrate`) is "canvas" (ChartPlot.tsx). Carries
+       * `data-candles`/`data-drawings`/`data-compare` witness attributes
+       * (SceneCanvas's `summary` prop) — the only cross-substrate geometry
+       * signal available, since the canvas painting itself isn't
+       * inspectable. */
+      canvasPlot: "chart-canvas-plot",
+      /** The main plot's crosshair OHLCV + time readout chip
+       * (CrosshairOverlay.tsx) — rendered in BOTH substrates (only the
+       * hairlines are substrate-gated, see the component's `linesHidden`
+       * doc). */
+      crosshairReadout: "chart-crosshair-readout",
+    },
+  },
+  /**
+   * The Preferences catalogue modal (PreferencesModal.tsx) plus the
+   * account-menu chrome needed to reach it (AccountMenu.tsx) — the repo's
+   * FIRST e2e page-object surface driving this modal. Only the ids the
+   * canvas-substrate journey needs (Chart renderer / `useChartSubstrate`);
+   * the modal's fuller catalogue (Display/Motion/Trading/Jarvis rows, etc.)
+   * is exercised by unit + contract tests instead.
+   */
+  prefs: {
+    /** Account-menu trigger (AccountMenu.tsx) — reveals the ⚙ Preferences
+     * row below once clicked. */
+    accountToggle: "account-toggle",
+    /** The ⚙ Preferences row inside the opened account panel; opens the
+     * modal (`onOpenPrefs`, HeaderChrome.tsx). */
+    openTrigger: "account-prefs",
+    modal: "prefs-modal",
+    /** Header ✕ close button — dismisses the modal identically to `done`
+     * below (PreferencesModal.tsx's shared `onClose`). */
+    close: "prefs-close",
+    /** Footer DONE button — dismisses the modal identically to `close`
+     * above. */
+    done: "prefs-done",
+    /** The Chart renderer segment row's two options (PrefSegment.tsx
+     * composes `${testid}-${option.value}`, testid=
+     * "pref-segment-chartSubstrate"). */
+    chartSubstrateSegment: (value: "dom" | "canvas") => {
+      return `pref-segment-chartSubstrate-${value}`;
     },
   },
   layout: {

@@ -10,6 +10,7 @@ import type {
 } from "@rtc/client-core";
 import type {
   AmbientStyle,
+  ChartSubstrate,
   CreditRfqFilter,
   EquityInstrument,
   EquityOrder,
@@ -95,6 +96,8 @@ export interface MountOptions<P> {
   /** Seed the initial STORED Jarvis narrator preference (useJarvisPreferences);
    * defaults to DEFAULT_JARVIS_NARRATOR. */
   jarvisNarrator?: JarvisNarratorPreference;
+  /** Seeds `useChartSubstrate`; defaults to `"dom"`. */
+  chartSubstrate?: ChartSubstrate;
 }
 
 const mounted: MountedRoot[] = [];
@@ -271,6 +274,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.jarvisBrain,
     opts.jarvisEffort,
     opts.jarvisNarrator,
+    opts.chartSubstrate,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

@@ -424,14 +424,6 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesChartPanesBoth",
     fixtureKey: "equities-loaded",
   },
-  // Canvas-spike (renderer-seam proof, spec 2026-08-02): the framework-free
-  // drawChartScene engine rendering the numeric ChartScene onto a <canvas> —
-  // the same scene drives both frameworks' hosts to one golden. Geometry
-  // only (no text): font rasterization is the nondeterminism trap.
-  "equities/chart-canvas-spike": {
-    componentKey: "EquitiesChartCanvasSpike",
-    fixtureKey: "equities-loaded",
-  },
   // Log price axis (spec 2026-08-04): the real CandleChart mounted with
   // yScale="log" — a real prop like kind/indicators, so no ChartPlot bypass
   // is needed; default (untouched) gesture state keeps it deterministic.
@@ -456,6 +448,15 @@ const baseScenarios: Record<string, Scenario> = {
   // by construction.
   "equities/chart-drawings": {
     componentKey: "EquitiesChartDrawings",
+    fixtureKey: "equities-loaded",
+  },
+  // Canvas substrate (production engine, spec 2026-08-09): the full-scene
+  // drawPlotScene/drawVolumeScene/drawPaneScene composite — candles + volume
+  // + compare + drawings + macd pane + crosshair — with the palette read
+  // from each theme's live token cascade, so the 10-combo matrix is the
+  // palette port's pixel witness. Text stays DOM (labels/readout/chips).
+  "equities/chart-canvas": {
+    componentKey: "EquitiesChartCanvas",
     fixtureKey: "equities-loaded",
   },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).

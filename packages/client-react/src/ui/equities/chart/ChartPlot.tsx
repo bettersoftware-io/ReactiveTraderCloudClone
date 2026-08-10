@@ -1,16 +1,23 @@
 import type { ReactElement } from "react";
 
 import type { EqChartType } from "@rtc/client-core";
-import type {
-  ChartVarStyle,
-  ChartVm,
-  CrosshairVm,
-  DrawingSceneItem,
-  EqPaneKind,
-  NavigatorVm,
-  PaneReadoutRow,
-  PaneScene,
-  VolumeBarVm,
+import type { ChartSubstrate } from "@rtc/domain";
+import {
+  type Canvas2D,
+  type CanvasSize,
+  type ChartPalette,
+  type ChartVarStyle,
+  type ChartVm,
+  type CrosshairVm,
+  type DrawingSceneItem,
+  drawPlotScene,
+  type EqPaneKind,
+  type NavigatorVm,
+  type PaneReadoutRow,
+  type PaneScene,
+  type PlotCanvasScene,
+  type VolumeBarVm,
+  type VolumeSceneBar,
 } from "@rtc/motion-core";
 
 import { BackfillChips } from "./BackfillChips";
@@ -20,6 +27,7 @@ import { CrosshairOverlay } from "./CrosshairOverlay";
 import { DrawingsLayer } from "./DrawingsLayer";
 import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
+import { SceneCanvas } from "./SceneCanvas";
 import type { IndicatorPath } from "./SvgPathLayer";
 import { SvgPathLayer } from "./SvgPathLayer";
 import { TimeAxis } from "./TimeAxis";
@@ -62,6 +70,9 @@ export function ChartPlot({
   paneCrosshairStyle = null,
   showHorizontal = true,
   paneHoverProps = NOOP_PANE_HOVER_PROPS,
+  substrate = "dom",
+  canvasPlot,
+  canvasVolume,
 }: ChartPlotProps): ReactElement {
   return (
     <div
@@ -78,16 +89,46 @@ export function ChartPlot({
         ref={plotRef}
         {...plotProps}
       >
-        {vm.grid.map((gr) => {
-          return (
-            <div
-              key={gr.key}
-              className={styles.grid}
-              style={gr.style}
-              data-testid="chart-grid-line"
+        {substrate === "canvas" && canvasPlot ? (
+          <SceneCanvas
+            testid="chart-canvas-plot"
+            summary={{
+              "data-candles": String(canvasPlot.scene.candles.length),
+              "data-drawings": String(
+                canvasPlot.drawings.filter((d) => {
+                  return d.id !== "draft";
+                }).length,
+              ),
+              "data-compare": String(
+                canvasPlot.scene.compareLinePoints.length > 0,
+              ),
+            }}
+            draw={(ctx: Canvas2D, palette: ChartPalette, size: CanvasSize) => {
+              drawPlotScene(ctx, canvasPlot, palette, size);
+            }}
+          />
+        ) : (
+          <>
+            {vm.grid.map((gr) => {
+              return (
+                <div
+                  key={gr.key}
+                  className={styles.grid}
+                  style={gr.style}
+                  data-testid="chart-grid-line"
+                />
+              );
+            })}
+            {kind === "candles" && <CandleBars candles={vm.candles} />}
+            <SvgPathLayer
+              linePoints={vm.linePoints}
+              kind={kind}
+              indicatorPaths={indicatorPaths}
+              comparePoints={vm.compareLinePoints}
             />
-          );
-        })}
+            <DrawingsLayer items={drawItems} />
+          </>
+        )}
         {vm.labels.map((l) => {
           return (
             <div
@@ -100,22 +141,18 @@ export function ChartPlot({
             </div>
           );
         })}
-        {kind === "candles" && <CandleBars candles={vm.candles} />}
-        <SvgPathLayer
-          linePoints={vm.linePoints}
-          kind={kind}
-          indicatorPaths={indicatorPaths}
-          comparePoints={vm.compareLinePoints}
+        <CrosshairOverlay
+          vm={cross}
+          showHorizontal={showHorizontal}
+          linesHidden={substrate === "canvas"}
         />
-        <DrawingsLayer items={drawItems} />
-        <CrosshairOverlay vm={cross} showHorizontal={showHorizontal} />
         <BackfillChips
           loadingOlder={loadingOlder}
           historyStart={historyStart}
         />
         {!atLiveEdge && <BackToLiveButton onClick={onBackToLive} />}
       </div>
-      <VolumePane bars={volumeBars} />
+      <VolumePane bars={volumeBars} canvasBars={canvasVolume} />
       {panes.map((p) => {
         return (
           <IndicatorPane
@@ -125,6 +162,7 @@ export function ChartPlot({
             readout={p.readout}
             crosshairStyle={paneCrosshairStyle}
             hoverProps={paneHoverProps}
+            substrate={substrate}
           />
         );
       })}
@@ -186,4 +224,17 @@ export interface ChartPlotProps {
   readonly showHorizontal?: boolean;
   /** Forwarded onto every rendered `IndicatorPane` — omit alongside `panes`. */
   readonly paneHoverProps?: PaneHoverProps;
+  /** The rendering substrate for the plot/volume/pane geometry layers —
+   * defaults to `"dom"` (unchanged geometry). Forwarded to every rendered
+   * `IndicatorPane`; `"canvas"` swaps this component's own geometry
+   * children for a `chart-canvas-plot` `SceneCanvas` when `canvasPlot` is
+   * also supplied. */
+  readonly substrate?: ChartSubstrate;
+  /** The plot's canvas-mode scene (candles/line/area, overlays, drawings,
+   * crosshair) — required for the canvas arm to render; omitted in DOM
+   * mode. */
+  readonly canvasPlot?: PlotCanvasScene;
+  /** The volume pane's canvas-mode bars — forwarded verbatim to
+   * `VolumePane`'s `canvasBars`; omitted in DOM mode. */
+  readonly canvasVolume?: readonly VolumeSceneBar[];
 }

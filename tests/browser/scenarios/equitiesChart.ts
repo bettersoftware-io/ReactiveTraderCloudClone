@@ -3,6 +3,7 @@ import type {
   EquitiesPaneKind,
   PlotFraction,
 } from "../page-objects/contracts/EquitiesChart";
+import type { PrefsChartSubstrate } from "../page-objects/contracts/Preferences";
 import type { TestContext } from "../testContext";
 import { assertEquals, assertTrue } from "./assert";
 
@@ -349,4 +350,79 @@ export async function expectDrawingGoneWithin(
   seconds: number,
 ): Promise<void> {
   await ctx.po.equitiesChart.waitDrawingGone(seconds * 1_000);
+}
+
+/**
+ * Opens Preferences via the account menu, selects the Chart renderer row's
+ * DOM/Canvas option, then closes the modal — the substrate takes effect
+ * immediately (`useChartSubstrate` persists + pushes synchronously), so no
+ * extra settle wait is needed here; callers assert the resulting mode via
+ * {@link expectCanvasMode}/{@link expectDomMode}.
+ */
+export async function openPreferencesAndSelectSubstrate(
+  ctx: TestContext,
+  value: PrefsChartSubstrate,
+): Promise<void> {
+  await ctx.po.preferences.open();
+  await ctx.po.preferences.waitModalVisible(3_000);
+  await ctx.po.preferences.selectChartSubstrate(value);
+  await ctx.po.preferences.close();
+  await ctx.po.preferences.waitModalHidden(3_000);
+}
+
+/**
+ * Asserts the chart has switched to the canvas substrate: the canvas plot
+ * renders, DOM-mode candles are gone, AND the canvas scene itself reports a
+ * real (non-zero) candle count — the outcome witness, not just DOM
+ * structure, since a broken canvas projection could still satisfy the first
+ * two checks with an empty scene.
+ */
+export async function expectCanvasMode(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCanvasPlotVisible(seconds * 1_000);
+  await ctx.po.equitiesChart.waitDomCandlesHidden(seconds * 1_000);
+  const summary = await ctx.po.equitiesChart.readCanvasSummary();
+  assertTrue(
+    summary.candles > 0,
+    `expected the canvas scene to report candles, got ${JSON.stringify(summary)}`,
+  );
+}
+
+/** Asserts the chart is back on the DOM substrate: the canvas plot is gone
+ * and DOM-mode candle nodes have returned. */
+export async function expectDomMode(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCanvasPlotHidden(seconds * 1_000);
+  await ctx.po.equitiesChart.waitDomCandlesVisible(seconds * 1_000);
+}
+
+/** Waits for the canvas plot's `data-drawings` witness attribute to equal
+ * `count` — the canvas-mode analogue of {@link expectDrawingVisibleWithin}. */
+export async function expectCanvasDrawingsCount(
+  ctx: TestContext,
+  count: number,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCanvasDrawingsCount(count, seconds * 1_000);
+}
+
+/** A real pointer move to a fractional point on the plot (no down/up) — the
+ * gesture that activates the shared crosshair cursor. */
+export async function moveCrosshairOnPlot(
+  ctx: TestContext,
+  x: number,
+  y: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.moveCrosshairOnPlot({ x, y });
+}
+
+export async function expectCrosshairReadoutVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.equitiesChart.waitCrosshairReadoutVisible(seconds * 1_000);
 }
