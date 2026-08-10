@@ -74,6 +74,7 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
 
     // DOM mode: every per-datum geometry layer is real DOM.
     expect(chart.candleCount()).toBeGreaterThan(0);
+    expect(chart.gridLineCount()).toBeGreaterThan(0);
     expect(chart.visibleTestids("chart-indicator-path")).toBe(1);
     expect(chart.drawings()).toHaveLength(1);
     expect(chart.visibleTestids("chart-crosshair-v")).toBe(1);
@@ -89,6 +90,7 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
     // text (price labels, time axis) stays DOM either way.
     expect(chart.visibleTestids("chart-canvas-plot")).toBe(1);
     expect(chart.candleCount()).toBe(0);
+    expect(chart.gridLineCount()).toBe(0);
     expect(chart.visibleTestids("chart-indicator-path")).toBe(0);
     expect(chart.drawings()).toHaveLength(0);
     expect(chart.visibleTestids("chart-crosshair-v")).toBe(0);
@@ -105,6 +107,7 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
     // Flipping back restores the DOM geometry byte-for-byte.
     expect(chart.visibleTestids("chart-canvas-plot")).toBe(0);
     expect(chart.candleCount()).toBeGreaterThan(0);
+    expect(chart.gridLineCount()).toBeGreaterThan(0);
     expect(chart.visibleTestids("chart-indicator-path")).toBe(1);
     expect(chart.drawings()).toHaveLength(1);
   });
@@ -198,7 +201,14 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
     ).toEqual(["trendline"]);
   });
 
-  it("canvas-mode compare: pills + percent axis + data-compare witness", () => {
+  // Title says exactly what this asserts — no pill. The PCT pill itself is
+  // head-level eqWorkspace machine state, substrate-independent (EqChartHead
+  // never reads `substrate`), and its lock (pill label "PCT" + disabled)
+  // is already pinned substrate-independently by ChartCompare.contract.spec.ts's
+  // workspace-mounted "picking a comparison switches the axis to percent…"
+  // case — re-asserting it here would just be a second, narrower copy of
+  // that same coverage under a different substrate that can't move it.
+  it("canvas-mode compare: percent axis + data-compare witness, compare line never DOM", () => {
     const chart = mountChart({
       substrate: "canvas",
       compare: { series: COMPARE_CANDLES },
