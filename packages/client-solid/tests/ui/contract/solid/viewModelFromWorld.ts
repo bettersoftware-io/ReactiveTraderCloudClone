@@ -14,6 +14,7 @@ import { createSignal } from "solid-js";
 
 import type {
   DriveOutcome,
+  JarvisDemoMachineHandle,
   JarvisDriverMachineHandle,
   JarvisDriverState,
   JarvisMachineHandle,
@@ -33,6 +34,7 @@ import {
   CandleSeriesPresenter,
   createBootSequenceMachine,
   createDefaultLayoutPort,
+  createJarvisDemoMachine,
   createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
@@ -408,6 +410,34 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
   }
 
   return driver;
+}
+
+/** The REAL `createJarvisDemoMachine`, one shared instance PER WORLD —
+ * mirrors the react driver's own `jarvisDemos` cache; see that file's doc
+ * for the full wiring rationale (same catchError/EMPTY guard on
+ * `events$`, `jarvis.intents` narrowed to the four members the demo
+ * actually drives). */
+const jarvisDemos = new WeakMap<World, JarvisDemoMachineHandle>();
+
+function getJarvisDemoMachine(world: World): JarvisDemoMachineHandle {
+  let demo = jarvisDemos.get(world);
+
+  if (!demo) {
+    const machine = getJarvisMachine(world);
+    demo = createJarvisDemoMachine({
+      jarvisState$: machine.state$,
+      jarvisEvents$: machine.events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+      jarvis: machine.intents,
+      powerSaverLevel$: world.powerSaverLevel,
+    });
+    jarvisDemos.set(world, demo);
+  }
+
+  return demo;
 }
 
 /** The REAL `JarvisPanelsPresenter` (Task 9), one shared instance PER WORLD
@@ -1121,6 +1151,13 @@ export function solidViewModel(world: World): ViewModel {
     useJarvisDriver: (): Accessor<JarvisDriverState> => {
       const driver = getJarvisDriverMachine(world);
       return toSignal(driver.state$);
+    },
+    useJarvisDemo: () => {
+      const demo = getJarvisDemoMachine(world);
+      return {
+        state: toSignal(demo.state$),
+        ...demo.intents,
+      };
     },
     useTopology: () => {
       return wrapSubject(world.topology$);

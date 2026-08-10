@@ -16,6 +16,40 @@ const QUOTE_REPLY_FRAGMENT = "EURUSD is trading at";
  * that still happens to move a blotter row (or vice versa). */
 const TRADE_FILLED_REPLY_FRAGMENT = "the trade is on your blotter";
 
+/** Round-trips the demo guide: open it, click a catalog command row (the
+ * SAME quote question `expectQuoteReply` types by hand), and assert the
+ * scripted brain answers exactly as it would for a typed turn — proving the
+ * guide row is a genuine shortcut, not a separate/divergent code path. */
+export async function expectGuideCommandRoundTrip(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.openGuide();
+  await ctx.po.jarvis.clickGuideCommand("Where is EURUSD?");
+  await ctx.po.jarvis.waitForReplyDone();
+  assertContains(await ctx.po.jarvis.lastReplyText(), QUOTE_REPLY_FRAGMENT);
+}
+
+/**
+ * Starts the hands-free full demo from the footer's ▶ RUN FULL DEMO button
+ * and stops it. Proves boot-to-browser wiring only — the full 7-step script
+ * is machine-tier coverage (`JarvisDemoMachine.test.ts`); waiting for step 2
+ * (`waitForDemoStep(2)`) is the cheapest witness that step 1's own scripted
+ * turn (a real end-to-end typed-reveal reply) settled and the fold advanced,
+ * without paying for all 7 steps in an e2e ride. Stopping and asserting
+ * `demoProgress()` is `null` proves the STOP affordance actually halts the
+ * run rather than merely hiding it.
+ */
+export async function expectFullDemoStartsAndStops(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.startFullDemo();
+  await ctx.po.jarvis.waitForDemoStep(2); // proves step 1 completed end-to-end
+  await ctx.po.jarvis.stopFullDemo();
+  assertEquals(await ctx.po.jarvis.demoProgress(), null);
+}
+
 /** Ask a live-desk quote question and assert the scripted brain's reply. */
 export async function expectQuoteReply(ctx: TestContext): Promise<void> {
   await ctx.po.jarvis.openViaOrb();

@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   AdminJarvisUsagePayload,
   AppCommands,
+  JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
@@ -168,9 +169,25 @@ export type UseJarvisResult = {
   toggle: () => void;
   send: (text: string) => void;
   narrate: (prompt: string) => void;
+  /** Queue a turn pinned to the scripted brain — `JarvisDemoMachine`'s sole
+   * way of driving a real turn (see `UseJarvisDemoResult`); the user's own
+   * brain preference is untouched. Mirrors `JarvisIntents.sendScripted`'s
+   * doc. */
+  sendScripted: (text: string) => void;
   approveConfirmation: () => void;
   declineConfirmation: () => void;
   setSkin: (skin: JarvisSkin) => void;
+};
+
+/** J.A.R.V.I.S. hands-free scripted demo (singleton, app-level) — progress
+ * state plus the start/stop intents. Reads `presenters.jarvisDemo.state$`
+ * directly via `toSignal`, same shared-singleton pattern as
+ * `useJarvisDriver` below (no per-mount machine). */
+export type UseJarvisDemoResult = {
+  state: Accessor<JarvisDemoState>;
+} & {
+  startDemo: () => void;
+  stopDemo: () => void;
 };
 
 /** The AdminPanel throughput view: slider/input value, initial-load flag, and
@@ -484,6 +501,10 @@ export interface ViewModel {
    * flash the nav rail / workspace wrapper on a new applied outcome. Starts
    * `{ lastBatch: [] }`. */
   useJarvisDriver: () => Accessor<JarvisDriverState>;
+  /** The hands-free scripted demo's progress state (singleton, app-level)
+   * plus the `startDemo`/`stopDemo` intents. Starts `{ running: false,
+   * stepIndex: 0, stepCount: JARVIS_DEMO_STEPS.length, label: null }`. */
+  useJarvisDemo: () => UseJarvisDemoResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -1303,6 +1324,12 @@ export function createViewModel(
     },
     useJarvisDriver: () => {
       return toSignal(presenters.jarvisDriver.state$);
+    },
+    useJarvisDemo: () => {
+      return {
+        state: toSignal(presenters.jarvisDemo.state$),
+        ...presenters.jarvisDemo.intents,
+      };
     },
     useMetrics: () => {
       return {

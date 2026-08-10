@@ -52,6 +52,7 @@ import {
   createEqDrawingsMachine,
   createEqWorkspaceMachine,
   createIncidentMachine,
+  createJarvisDemoMachine,
   createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
@@ -78,6 +79,7 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
+  type JarvisDemoMachineHandle,
   type JarvisDriverMachineHandle,
   type JarvisEntry,
   type JarvisMachineHandle,
@@ -245,6 +247,16 @@ export interface Presenters {
    * `JarvisDriverMachine`'s doc for the total-interpreter/choreography
    * contract. */
   jarvisDriver: JarvisDriverMachineHandle;
+  /** J.A.R.V.I.S. hands-free scripted demo — a session-lifetime composition
+   * singleton (same no-dispose doctrine as `jarvisPanels`/`jarvisDriver`
+   * above) that drives `jarvis`'s REAL `sendScripted`/`declineConfirmation`
+   * intents through the fixed `JARVIS_DEMO_STEPS` script, one real
+   * scripted-brain turn per step. See `JarvisDemoMachine`'s doc for the
+   * settle-detection design (correlated via `jarvis.state$`'s `entries`
+   * PLUS the raw `jarvis.events$` terminal event — narrator-turn-safe and
+   * able to tell an errored turn from a done one, which `entries` alone
+   * cannot). */
+  jarvisDemo: JarvisDemoMachineHandle;
 }
 
 export interface AppCommands {
@@ -365,13 +377,16 @@ const WORKSPACE_TABS: readonly WorkspaceTab[] = [
  * `"layout"` DriveCommand's membership check. Deliberately the tree's
  * default shape, not whatever a live per-mount layout machine's current
  * `root` happens to be (panel ids never move between tabs at runtime, so the
- * default tree's id set is exactly the live set too). */
-const LAYOUT_PANEL_IDS: Readonly<Record<WorkspaceTab, readonly string[]>> =
-  Object.fromEntries(
-    WORKSPACE_TABS.map((tab) => {
-      return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
-    }),
-  ) as Readonly<Record<WorkspaceTab, readonly string[]>>;
+ * default tree's id set is exactly the live set too). Also used by the
+ * client-core conformance test to verify DESK_PANEL_ROSTER against the
+ * real layout trees. */
+export const LAYOUT_PANEL_IDS: Readonly<
+  Record<WorkspaceTab, readonly string[]>
+> = Object.fromEntries(
+  WORKSPACE_TABS.map((tab) => {
+    return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
+  }),
+) as Readonly<Record<WorkspaceTab, readonly string[]>>;
 
 /**
  * Defensive guard, currently UNREACHABLE in production — kept so a natural
@@ -701,6 +716,26 @@ export function createApp(ports: AppPorts): App {
     jarvis.intents.recordDriveOutcome(outcome);
   });
 
+  // JarvisDemoMachine: the hands-free scripted demo. Same catchError/EMPTY
+  // guard on jarvis.events$ as jarvisPanels/jarvisDriver above — its own
+  // events$ input is equally terminal on error (see JarvisDemoDeps.jarvisEvents$'s
+  // doc for why it needs the raw event stream at all: entries alone can't
+  // tell a "done" turn from an "error" one). `jarvis.intents` is narrowed to
+  // the four members the demo actually drives (Pick<...>) rather than
+  // passed through whole, so this machine can never reach for `send`/
+  // `narrate`/`approveConfirmation` — it must only ever run SCRIPTED,
+  // never-approve turns.
+  const jarvisDemo = createJarvisDemoMachine({
+    jarvisState$: jarvis.state$,
+    jarvisEvents$: jarvis.events$.pipe(
+      catchError(() => {
+        return EMPTY;
+      }),
+    ),
+    jarvis: jarvis.intents,
+    powerSaverLevel$: powerSaver.level$,
+  });
+
   // NarratorMachine (Task 9): the capped client-side proactive narration
   // loop. A composition-root singleton, same doctrine as jarvisPanels/
   // jarvisDriver above — built once, warm-subscribed for the app's whole
@@ -873,6 +908,7 @@ export function createApp(ports: AppPorts): App {
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
     jarvisPanels,
     jarvisDriver,
+    jarvisDemo,
   };
 
   wireJarvisHistorySource(ports.jarvis, presenters.jarvis);

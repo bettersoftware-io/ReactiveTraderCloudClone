@@ -40,6 +40,12 @@ const NARRATION_FLARE_TIMEOUT_MS = 30_000;
  * outcomes stream through `recordDriveOutcome` — generous for CI. */
 const DRIVE_ROW_TIMEOUT_MS = 15_000;
 
+/** `JarvisDemoMachine` beats `DEMO_STEP_BEAT_MS` (1200ms) between one step
+ * settling and the next `sendScripted`, on top of that next step's own
+ * typed-reveal-paced reply (a multi-sentence reply can run several real
+ * seconds) — generous for CI. */
+const DEMO_STEP_TIMEOUT_MS = 20_000;
+
 export class PlaywrightJarvis implements JarvisPO {
   constructor(private readonly page: Page) {}
 
@@ -120,6 +126,35 @@ export class PlaywrightJarvis implements JarvisPO {
 
   private confirmApprove(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.confirmApprove);
+  }
+
+  private guideToggle(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.guideToggle);
+  }
+
+  private guidePanel(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.guidePanel);
+  }
+
+  /** Matched by substring, same pattern as `driveRows()` above — every
+   * command in the catalog is a unique string, so a substring match never
+   * risks hitting more than one row. */
+  private guideRow(text: string): Locator {
+    return this.guidePanel()
+      .getByTestId(TESTIDS.jarvis.guideRow)
+      .filter({ hasText: text });
+  }
+
+  private demoRun(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.demoRun);
+  }
+
+  private demoProgressEl(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.demoProgress);
+  }
+
+  private demoStop(): Locator {
+    return this.page.getByTestId(TESTIDS.jarvis.demoStop);
   }
 
   async openViaOrb(): Promise<void> {
@@ -214,5 +249,36 @@ export class PlaywrightJarvis implements JarvisPO {
 
   async narrationEntryCount(): Promise<number> {
     return await this.narratorEntries().count();
+  }
+
+  async openGuide(): Promise<void> {
+    await this.guideToggle().click();
+    await expect(this.guidePanel()).toBeVisible();
+  }
+
+  async clickGuideCommand(text: string): Promise<void> {
+    await this.guideRow(text).click();
+  }
+
+  async startFullDemo(): Promise<void> {
+    await this.demoRun().click();
+  }
+
+  async demoProgress(): Promise<string | null> {
+    if ((await this.demoProgressEl().count()) === 0) {
+      return null;
+    }
+
+    return await this.demoProgressEl().innerText();
+  }
+
+  async stopFullDemo(): Promise<void> {
+    await this.demoStop().click();
+  }
+
+  async waitForDemoStep(n: number): Promise<void> {
+    await expect(this.demoProgressEl()).toHaveText(new RegExp(`^STEP ${n}/`), {
+      timeout: DEMO_STEP_TIMEOUT_MS,
+    });
   }
 }
