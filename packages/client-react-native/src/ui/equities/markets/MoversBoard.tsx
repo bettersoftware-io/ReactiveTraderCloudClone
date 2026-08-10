@@ -135,8 +135,9 @@ function MoversBoardRow({
   riseColor,
   fallColor,
 }: MoversBoardRowProps): JSX.Element {
-  const { useEquityQuote } = useViewModel();
+  const { useEquityQuote, useCandles } = useViewModel();
   const quote = useEquityQuote(row.symbol);
+  const candles = useCandles(row.symbol);
   const styles = useThemedStyles(makeStyles);
   const { overlayStyle } = useRankMoveGlide(
     rank,
@@ -161,6 +162,7 @@ function MoversBoardRow({
           rank={rank}
           selected={selected}
           onSelect={onSelect}
+          candles={candles}
         />
       </View>
     );
@@ -178,6 +180,7 @@ function MoversBoardRow({
         rank={rank}
         selected={selected}
         onSelect={onSelect}
+        candles={candles}
       />
       <Animated.View
         testID={`eq-mover-${row.symbol}-glow`}

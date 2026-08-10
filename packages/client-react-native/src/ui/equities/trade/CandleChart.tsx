@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { useViewModel } from "@rtc/react-bindings";
+import type { Candle } from "@rtc/domain";
 
 import {
   buildCandleScene,
@@ -23,10 +23,18 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /**
  * The Skia candlestick chart. Geometry from the pure `buildCandleScene` —
- * written as a plain derived value (compiler-memoized, ADR-003: manual
- * `useMemo` is banned here, the React Compiler does this job) recomputed
- * during the ordinary re-render — and handed to one declarative `<Rect>` per
- * body and per wick.
+ * written as a plain derived value, recomputed during the ordinary re-render
+ * — and handed to one declarative `<Rect>` per body and per wick.
+ * Compiler-memoized, ADR-003; verified via
+ * `scripts/react-compiler-healthcheck.mjs`, whole-function form: the
+ * compiler fuses `bars` and `keyedBars` into the same memo block as the JSX
+ * they feed, keyed on `candles`/`styles`/`theme`/`width`, so no single
+ * binding is worth tracking on its own — only that the fused block memoized
+ * something. `candles` arrives as a prop rather than
+ * this component reading `useCandles(symbol)` off the ViewModel seam itself
+ * — the seam read lives in `TradeView` (which already has to special-case
+ * the "no symbol selected" state), specifically so THIS component stays
+ * plain-props and therefore compiler-memoizable.
  *
  * NO `createPicture` RECORDER. Like `PnlChart`, this surface redraws on
  * ordinary candle ticks, not a 60fps clock — a plain derived value on the JS
@@ -38,12 +46,10 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * the perf doctrine. Here bar geometry is a Skia draw parameter recomputed
  * per candle update, which is legal and needs no `useShellMotionEnabled`
  * gate: there is no continuous animation to gate, only a snap to the new
- * geometry each time `useCandles` emits (mirrors `PnlChart`, which is the
+ * geometry each time `candles` changes (mirrors `PnlChart`, which is the
  * same "redraw on data, not on a clock" shape and is likewise ungated).
  */
-export function CandleChart({ symbol }: CandleChartProps): JSX.Element {
-  const { useCandles } = useViewModel();
-  const candles = useCandles(symbol);
+export function CandleChart({ candles }: CandleChartProps): JSX.Element {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [width, setWidth] = useState(CANDLE_CHART_WIDTH);
@@ -139,7 +145,7 @@ interface CandleBarShapesProps {
 }
 
 interface CandleChartProps {
-  symbol: string;
+  candles: readonly Candle[];
 }
 
 interface CandleChartStyles {

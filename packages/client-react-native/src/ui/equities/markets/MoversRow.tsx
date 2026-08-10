@@ -8,6 +8,9 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import type { Candle } from "@rtc/domain";
+
+import { formatChangePct } from "#/ui/equities/equityHeat";
 import type { MoverRow } from "#/ui/equities/markets/moversVm";
 import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
 import { SPACING } from "#/ui/theme/spacing";
@@ -18,10 +21,12 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * over the company name, an inline close-price sparkline, the last price,
  * and a tinted signed-percentage pill. Ported from the design's mover row
  * (dc.html ~L339): rank | symbol + name | sparkline | price + pct pill.
- * `MoverRow` itself carries no close series — `RowSparkline` derives its own
- * from `useCandles(symbol)`, there being no equities tick-history stream to
- * pull one from. The board (a later task) supplies `rank` and owns sort
- * order; this component only renders one row of it.
+ * `MoverRow` itself carries no close series — `candles` arrives as a prop
+ * (read off the ViewModel seam one level up, by `MoversBoard`'s
+ * `MoversBoardRow`, which already bails on the seam for `useEquityQuote`) and
+ * is handed straight to `RowSparkline`, there being no equities tick-history
+ * stream to pull one from. The board (a later task) supplies `rank` and owns
+ * sort order; this component only renders one row of it.
  *
  * `last`/`changePct` arrive together and are both null until the first quote
  * for that symbol lands (see `moversVm`'s `MoverRow` doc) — so before that,
@@ -32,6 +37,7 @@ export function MoversRow({
   rank,
   selected,
   onSelect,
+  candles,
 }: MoversRowProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
@@ -52,7 +58,11 @@ export function MoversRow({
           {row.name}
         </Text>
       </View>
-      <RowSparkline symbol={row.symbol} positive={(row.changePct ?? 0) >= 0} />
+      <RowSparkline
+        symbol={row.symbol}
+        positive={(row.changePct ?? 0) >= 0}
+        candles={candles}
+      />
       <View style={styles.priceCol}>
         <Text style={styles.price}>
           {row.last === null ? "—" : row.last.toFixed(2)}
@@ -72,14 +82,7 @@ interface MoversRowProps {
   rank: number;
   selected: boolean;
   onSelect: (symbol: string) => void;
-}
-
-// `row.changePct` is only formatted once its caller has already excluded
-// `null` (see the render's guard above) — before the first quote arrives
-// there is no percentage to sign, so the pill is omitted entirely rather
-// than showing a placeholder pct.
-function formatChangePct(pct: number): string {
-  return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+  candles: readonly Candle[];
 }
 
 /** The pct pill's colour pair — `color`/`backgroundColor` stay required plain
@@ -164,7 +167,11 @@ function makeStyles(t: RnTheme): MoversRowStyles {
       fontFamily: t.fontMono,
       marginTop: 1,
     },
-    priceCol: { alignItems: "flex-end" },
+    // `minHeight` reserves room for the pct pill line even when it's absent
+    // (no quote yet, or `changePct === null`) — otherwise an unpriced row is
+    // shorter than a priced one, which reads as a layout jump in a list built
+    // for scanning.
+    priceCol: { alignItems: "flex-end", minHeight: 30 },
     price: {
       fontSize: 11.5,
       fontWeight: "600",
