@@ -584,14 +584,23 @@ entry point (`drawPlotScene` / `drawVolumeScene` / `drawPaneScene`,
 `ChartPalette → --custom-property` map, via `getComputedStyle` — on
 **every** draw, not cached: a theme switch or skin change repaints
 correctly on the very next redraw with no separate invalidation path.
+The two hosts' redraw cadence differs slightly by framework: React's
+draw effect is deliberately dependency-less (any parent render repaints,
+so a theme flip repaints immediately), while Solid's is tracked (box,
+draw slot, scene reads), so after a theme flip the Solid canvas holds the
+old palette until the next tick/pointer/resize — self-correcting within
+one tick on a live stream, and invisible to the visual tier's fresh
+per-theme mounts.
 
 **The engine lives in `@rtc/motion-core`, typed against a structural
 `Canvas2D`, not `@rtc/ui-contract`.** The renderer-seam spike placed
 `drawChartScene` in `ui-contract` "purely because it typed against
 `CanvasRenderingContext2D`"; declaring `Canvas2D` as the structural subset
-the three draw functions actually call (`fillRect`, `beginPath`/`moveTo`/
-`lineTo`/`stroke`/`fill`, `arc`, `save`/`restore`, `setTransform`, the
-style setters — no text members at all) dissolves that reason without
+the three draw functions actually call (`clearRect`/`fillRect`,
+`beginPath`/`moveTo`/`lineTo`/`closePath`/`stroke`/`fill`, `arc`,
+`setLineDash`, `createLinearGradient`, and the style setters including
+`shadowBlur`/`shadowColor` — no text members at all) dissolves that
+reason without
 motion-core touching `lib.dom` or losing its zero-runtime-dependency,
 no-DOM standing: a structural type declaration is not DOM access, and the
 real 2D context satisfies it structurally at each host's call site.

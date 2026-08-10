@@ -35,7 +35,8 @@ golden trap out of the picture and text accessible. Both web clients.
    The known ~10-site preference blast radius (entity, adapters, presenter,
    both bindings, ui-contract mirror, fixtures) is accepted; RN gains the
    field mechanically but nothing reads it there.
-4. **Goldens: one rich composite scenario through the full 12-theme matrix**
+4. **Goldens: one rich composite scenario through the full theme matrix
+   (10 combos: 5 skins × 2 modes)**
    — the palette port makes canvas pixels theme-dependent, so the matrix
    genuinely exercises every skin×mode mapping.
 5. **Perf receipt: node-count pin + documented profile.** An enforced
@@ -157,7 +158,8 @@ protocol, server: untouched. No charting library (permanently excluded).
      DOM-mode.
 - **Visual:** one composite canvas scenario (candles + volume + compare +
   drawings + one indicator pane + crosshair, deterministic seeded fixture)
-  through the standard 12-theme matrix. Standard dual-set flow: react
+  through the standard theme matrix (10 combos: 5 skins × 2 modes).
+  Standard dual-set flow: react
   writes arm64 in-branch, x86 via post-merge dispatch + sync PR, solid
   asserts the same set. Spike scenario + goldens retired in the same
   stroke.
