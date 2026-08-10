@@ -2,19 +2,24 @@ import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 import { StyleSheet, type ViewStyle } from "react-native";
 
+import type { EquityOrder } from "@rtc/domain";
+
 import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 const Haptics = require("expo-haptics") as MockedHaptics;
 
-const ORDER = {
+const ORDER: EquityOrder = {
   id: "o1",
   symbol: "NVDA",
   side: "buy",
+  type: "market",
   qty: 500,
-  price: 131.14,
   status: "filled",
-} as never;
+  filledQty: 500,
+  avgPrice: 131.14,
+  createdAt: 0,
+};
 
 test("shows a fill toast on the filled phase", async () => {
   await renderWithTheme(

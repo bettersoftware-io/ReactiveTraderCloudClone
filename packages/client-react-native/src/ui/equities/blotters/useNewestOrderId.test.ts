@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import type { EquityOrder } from "@rtc/domain";
+
 import { newestUnseenId } from "./useNewestOrderId";
 
 describe("newestUnseenId", () => {
@@ -20,6 +22,15 @@ describe("newestUnseenId", () => {
   });
 });
 
-function order(id: string): never {
-  return { id } as never;
+function order(id: string): EquityOrder {
+  return {
+    id,
+    symbol: "NVDA",
+    side: "buy",
+    type: "market",
+    qty: 500,
+    status: "working",
+    filledQty: 0,
+    createdAt: 0,
+  };
 }

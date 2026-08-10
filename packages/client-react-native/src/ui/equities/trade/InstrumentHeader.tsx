@@ -10,6 +10,7 @@ import Animated from "react-native-reanimated";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { formatChangePct } from "#/ui/equities/equityHeat";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -54,7 +55,7 @@ export function InstrumentHeader({
           </Text>
         </Animated.View>
         <Text style={[styles.change, { color: priceColor }]}>
-          {quote !== null ? `${up ? "+" : ""}${changePct.toFixed(2)}%` : "—"}
+          {quote !== null ? formatChangePct(changePct) : "—"}
         </Text>
       </View>
     </View>
