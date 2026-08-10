@@ -115,6 +115,7 @@ import type {
 import type {
   Candle,
   CandleTimeframe,
+  ChartSubstrate,
   CreditRfqFilter,
   CurrencyCategory,
   CurrencyPair,
@@ -956,6 +957,10 @@ export const registry = new Map<AnyToken, ElementFor>([
                 }
               | undefined
           }
+          // Task 4's canvas-substrate prop (CanvasSubstrate.contract.spec.ts,
+          // Task 5) — forwarded verbatim like every other optional prop above;
+          // undefined lets CandleChart's own "dom" default apply.
+          substrate={p().substrate as ChartSubstrate | undefined}
           defaultVisible={(p().defaultVisible as number) ?? 50}
           loadingOlder={(p().loadingOlder as boolean) ?? false}
           historyExhausted={(p().historyExhausted as boolean) ?? false}
