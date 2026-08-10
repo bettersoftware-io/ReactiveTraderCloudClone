@@ -37,7 +37,20 @@ test("marks the active chip from the preference", async () => {
       <RankByChips />
     </ViewModelProvider>,
   );
-  expect(screen.getByTestId("eq-rank-sym-active")).toBeTruthy();
+  // The testID stays stable across active/inactive (`eq-rank-${target}`) —
+  // an earlier ruling: a testID must not change identity with its state, or
+  // `getByTestId` breaks exactly when the state occurs. The active state is
+  // exposed via `accessibilityState.selected` instead.
+  const active = screen.getByTestId("eq-rank-sym").props.accessibilityState as
+    | { selected?: boolean }
+    | undefined;
+
+  const inactive = screen.getByTestId("eq-rank-chg").props.accessibilityState as
+    | { selected?: boolean }
+    | undefined;
+
+  expect(active?.selected).toBe(true);
+  expect(inactive?.selected).toBe(false);
 });
 
 test("chips never stretch — the Phase 4a full-height-bar bug", async () => {

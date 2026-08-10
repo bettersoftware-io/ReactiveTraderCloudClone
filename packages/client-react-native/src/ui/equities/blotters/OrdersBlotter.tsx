@@ -98,9 +98,12 @@ function OrderRow({
 
   return (
     <Animated.View
-      testID={
-        isNewest ? `order-row-${order.id}-newest` : `order-row-${order.id}`
-      }
+      testID={`order-row-${order.id}`}
+      // A testID must stay stable across a row's own state — mutating it to
+      // `-newest` broke `getByTestId(id)` exactly when a row became newest,
+      // the normal live path (see `RankByChips`'s `eq-rank-${sort}` for the
+      // same fix). `isNewest` is observable via `accessibilityState` instead.
+      accessibilityState={{ selected: isNewest }}
       style={[styles.row, flashStyle]}
     >
       <Text style={styles.cell}>{order.symbol}</Text>

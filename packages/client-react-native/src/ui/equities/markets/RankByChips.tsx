@@ -35,7 +35,9 @@ export function RankByChips(): JSX.Element {
         return (
           <Pressable
             key={target}
-            testID={active ? `eq-rank-${target}-active` : `eq-rank-${target}`}
+            testID={`eq-rank-${target}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             style={active ? styles.chipActive : styles.chip}
             onPress={() => {
               setSort(target);

@@ -6,6 +6,8 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { OrdersBlotter } from "#/ui/equities/blotters/OrdersBlotter";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { ThemeContext } from "#/ui/theme/ThemeContext";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 test("renders a row per order", async () => {
   const orders: readonly EquityOrder[] = [
@@ -60,33 +62,53 @@ test("two orders sharing a status each still carry their own pill", async () => 
   expect(screen.getByTestId("eq-order-status-o2")).toHaveTextContent("WORKING");
 });
 
-test("flags exactly one newest row, never two", async () => {
+// Split from a single test that only proved the mount guard ("nothing counts
+// as newest on first mount" — `useNewestOrderId`'s own doc) while its title
+// claimed "never two", which was never exercised. `order-row-${id}` is a
+// STABLE testID (Important 3): it does not mutate to `-newest`, so "newest"
+// is read back via `accessibilityState.selected` instead.
+test("flags no row as newest on first mount", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={vm()}>
       <OrdersBlotter />
     </ViewModelProvider>,
   );
-  expect(screen.queryAllByTestId(/-newest$/)).toHaveLength(0);
+  expect(selected("o1")).toBe(false);
+  expect(selected("o2")).toBe(false);
 });
 
-const ORDERS = [
-  {
-    id: "o1",
-    symbol: "NVDA",
-    side: "buy",
-    qty: 500,
-    price: 131.14,
-    status: "working",
-  },
-  {
-    id: "o2",
-    symbol: "AAPL",
-    side: "sell",
-    qty: 100,
-    price: 227.17,
-    status: "filled",
-  },
-] as never;
+test("flags exactly one row — the newly appended order — as newest", async () => {
+  const { rerender } = await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(ORDERS)}>
+      <OrdersBlotter />
+    </ViewModelProvider>,
+  );
+  expect(selected("o1")).toBe(false);
+  expect(selected("o2")).toBe(false);
+
+  const appended: readonly EquityOrder[] = [...ORDERS, order("o3", "TSLA")];
+
+  // `rerender` (unlike `render`/`renderWithTheme`) swaps the tree at the SAME
+  // root verbatim — it does NOT re-apply `renderWithTheme`'s own
+  // `ThemeContext.Provider` wrapping (see MoversBoard.test.tsx for the same
+  // note), so it's reapplied explicitly here.
+  await rerender(
+    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+      <ViewModelProvider viewModel={vmWith(appended)}>
+        <OrdersBlotter />
+      </ViewModelProvider>
+    </ThemeContext.Provider>,
+  );
+
+  expect(selected("o1")).toBe(false);
+  expect(selected("o2")).toBe(false);
+  expect(selected("o3")).toBe(true);
+});
+
+const ORDERS: readonly EquityOrder[] = [
+  order("o1", "NVDA", "working"),
+  order("o2", "AAPL", "filled"),
+];
 
 // The regression fixture for the id-scoped testID fix: two DIFFERENT orders
 // sharing the SAME status ("working" is the commonest live blotter state).
@@ -115,6 +137,30 @@ const TWO_WORKING_ORDERS: readonly EquityOrder[] = [
     createdAt: 0,
   },
 ];
+
+function order(
+  id: string,
+  symbol: string,
+  status: EquityOrder["status"] = "working",
+): EquityOrder {
+  return {
+    id,
+    symbol,
+    side: "buy",
+    type: "market",
+    qty: 500,
+    status,
+    filledQty: status === "filled" ? 500 : 0,
+    avgPrice: status === "filled" ? 131.14 : undefined,
+    createdAt: 0,
+  };
+}
+
+function selected(orderId: string): boolean {
+  const state = screen.getByTestId(`order-row-${orderId}`).props
+    .accessibilityState as { selected?: boolean } | undefined;
+  return state?.selected === true;
+}
 
 function vmWith(orders: readonly EquityOrder[]): ViewModel {
   return {
