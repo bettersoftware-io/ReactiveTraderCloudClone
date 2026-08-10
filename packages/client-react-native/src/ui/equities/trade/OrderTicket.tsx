@@ -9,8 +9,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import type { OrderTicketState } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -19,7 +21,11 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Equity order ticket — side/type toggles, qty, optional limit price, Submit,
  * plus the terminal/in-flight phases (submitting/working/partiallyFilled/
  * filled/rejected). All state + intents from `useOrderTicket(symbol)`. Ported
- * from web `OrderTicket` without the web-only fill animation intent. */
+ * from web `OrderTicket` without the web-only fill animation intent. Every
+ * phase's `Ticket` shell also carries `OrderCeremony`, which OWNS the
+ * phase-status text (busy pill / fill-or-reject toast) — this component
+ * itself renders none of it, so the same fact (e.g. "FILLED — 100 @ 182.40")
+ * never appears twice in one card. */
 export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const { useOrderTicket } = useViewModel();
   const ticket = useOrderTicket(symbol);
@@ -27,31 +33,12 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
   if (state.phase === "submitting") {
-    return (
-      <Ticket styles={styles}>
-        <Text style={styles.status}>SUBMITTING…</Text>
-      </Ticket>
-    );
+    return <Ticket state={state} styles={styles} />;
   }
 
-  if (state.phase === "working") {
+  if (state.phase === "working" || state.phase === "partiallyFilled") {
     return (
-      <Ticket styles={styles}>
-        <Text style={styles.status}>
-          WORKING — {state.order.filledQty}/{state.order.qty} filled
-        </Text>
-        <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
-      </Ticket>
-    );
-  }
-
-  if (state.phase === "partiallyFilled") {
-    return (
-      <Ticket styles={styles}>
-        <Text style={styles.status}>
-          PARTIAL — {state.order.filledQty}/{state.order.qty} @{" "}
-          {state.order.avgPrice?.toFixed(2) ?? "—"}
-        </Text>
+      <Ticket state={state} styles={styles}>
         <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -59,10 +46,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
 
   if (state.phase === "filled") {
     return (
-      <Ticket styles={styles}>
-        <Text style={styles.status}>
-          FILLED — {state.order.qty} @ {state.order.avgPrice?.toFixed(2) ?? "—"}
-        </Text>
+      <Ticket state={state} styles={styles}>
         <ResetButton label="NEW ORDER" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -70,8 +54,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
 
   if (state.phase === "rejected") {
     return (
-      <Ticket styles={styles}>
-        <Text style={styles.status}>REJECTED — {state.reason}</Text>
+      <Ticket state={state} styles={styles}>
         <ResetButton label="RETRY" onPress={ticket.reset} styles={styles} />
       </Ticket>
     );
@@ -82,7 +65,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const buy = form.side === "buy";
 
   return (
-    <Ticket styles={styles}>
+    <Ticket state={state} styles={styles}>
       <View style={styles.toggleGroup}>
         <Pressable
           testID="order-ticket-side-buy"
@@ -190,16 +173,22 @@ interface OrderTicketProps {
 }
 
 interface TicketProps {
+  state: OrderTicketState;
   styles: OrderTicketStyles;
-  children: ReactNode;
+  // Optional: `submitting` has no other content — `OrderCeremony` alone (its
+  // busy pill) is the whole card.
+  children?: ReactNode;
 }
 
 /** Shared `order-ticket` card shell — every phase branch (submitting/working/
  * partiallyFilled/filled/rejected/editing) renders through this one wrapper
- * so the SurfaceCard chrome isn't duplicated per branch. */
-function Ticket({ styles, children }: TicketProps): JSX.Element {
+ * so the SurfaceCard chrome isn't duplicated per branch. Carries the
+ * `OrderCeremony` flourish above `children` for every phase — it renders
+ * nothing itself while editing. */
+function Ticket({ state, styles, children }: TicketProps): JSX.Element {
   return (
     <SurfaceCard variant="panel" testID="order-ticket" style={styles.ticket}>
+      <OrderCeremony state={state} />
       {children}
     </SurfaceCard>
   );
@@ -229,7 +218,6 @@ function ResetButton({
 
 interface OrderTicketStyles {
   ticket: ViewStyle;
-  status: TextStyle;
   toggleGroup: ViewStyle;
   toggle: ViewStyle;
   buyActive: ViewStyle;
@@ -270,7 +258,6 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       gap: 10,
       padding: SPACING.md,
     },
-    status: { fontSize: 13, color: t.textPrimary, fontFamily: t.fontMono },
     toggleGroup: { flexDirection: "row", gap: SPACING.sm },
     toggle: baseToggle,
     buyActive: {

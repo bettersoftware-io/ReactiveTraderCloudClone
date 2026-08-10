@@ -1,0 +1,43 @@
+appId: io.bettersoftware.rtcmobile
+---
+# Step 1: load the Metro bundle via the dev client (two-step deep link).
+- openLink:
+    link: "exp+rtc-mobile://expo-development-client/?url=http://localhost:${MAESTRO_METRO_PORT}"
+# Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
+# REQUIRED on a COLD simulator, and easy to miss: on a dev machine the app
+# has been launched before, so iOS already trusts the scheme and this dialog
+# never shows. On a freshly created simulator with a never-launched app it
+# ALWAYS shows — and while it sits unanswered the app cannot launch, so the
+# `login-screen` wait below burns its whole timeout against the iOS home
+# screen. Diagnosed from a CI failure screenshot (the flow reported only
+# `Assertion is false: id: login-screen is visible`, which named what was
+# absent and nothing about the dialog that caused it).
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+# Wait for the app to boot (bundle loaded). The unauthenticated LoginScreen
+# is the stable, scenario-agnostic boot marker; `visual-ready` only appears
+# AFTER the scenario deep link below, so waiting for it here would always
+# time out on the login screen.
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 120000
+# Step 2: in-app navigation to the scenario route (release scheme).
+- openLink:
+    link: "rtcmobile://__visual/equities/trade"
+# Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+# Maestro CAN query the a11y tree (XCUITest) — unlike simctl/idb. Wait for
+# the harness to signal ready (one frame after fonts load) before shooting.
+- extendedWaitUntil:
+    visible:
+      id: "visual-ready"
+    timeout: 60000
+- takeScreenshot: shots/equities_trade

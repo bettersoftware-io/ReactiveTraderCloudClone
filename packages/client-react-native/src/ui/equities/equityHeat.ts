@@ -6,6 +6,14 @@ export function heat(changePct: number): number {
   return Math.min(1, Math.abs(changePct) / 10);
 }
 
+/** Signed percentage formatter — `+1.23%` / `-1.23%`. Shared by
+ * `MoversRow`'s pct pill and `InstrumentHeader`'s price-line change, which
+ * both format the same `changePct` value the same way and must not drift
+ * into two independent implementations. */
+export function formatChangePct(pct: number): string {
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+}
+
 /** Static sector classification used to group instruments visually (from web SectorHeatmap). */
 export const SECTOR_MAP: Readonly<Record<string, string>> = {
   AAPL: "Technology",

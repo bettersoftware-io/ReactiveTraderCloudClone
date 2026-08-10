@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { fireEvent, screen } from "@testing-library/react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -28,3 +28,15 @@ function vm(): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+// `vm()` only stubs `useEquityOrders`/`useEquityPositions`; the orders tab's
+// row-insert-flash reads `usePowerSaver` off the same ViewModel context via
+// `useShellMotionEnabled`, so it's mocked directly here — mirrors
+// OrdersBlotter.test.tsx.
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});

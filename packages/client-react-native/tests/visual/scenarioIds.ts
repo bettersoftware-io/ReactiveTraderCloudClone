@@ -79,4 +79,28 @@ export const SCENARIO_IDS = [
   // ACCEPT halo can be caught mid-flight.
   "credit/rfq-tiles",
   "credit/sell-side",
+  // Phase 5b Task 10: the Equities module's first three scenarios — Markets
+  // (movers board + sector heatmap), Trade (instrument header, candle chart,
+  // depth ladder, order ticket) and Blotters (orders/positions). All three
+  // seed `powerSaverLevel="freeze"`, the same pin `credit/rfq-tiles` and
+  // `shell/chrome` use: this module has the widest Reanimated surface of any
+  // phase so far (rank-glide LinearTransition/FadeIn/FadeOut, the tick-flash
+  // header, the order ceremony's FadeIn), all gated by `useShellMotionEnabled`
+  // and NOT by `forceReduceMotion` (see `scenarios.tsx`'s header comment on
+  // that distinction). UNLIKE `rates/grid`'s `PricingSimulator`, the equities
+  // `EquityMarketDataSimulator` `portFactory.ts` builds here has NO injectable
+  // pin (`PortFactoryDeps` carries `pricingPinMs`/`blotterSeedBaseMs`, nothing
+  // equities-shaped) — its per-symbol quote stream ticks live on a real 500ms
+  // `interval` with no way to freeze it from this harness. `markets` and
+  // `trade` are therefore the SAME risk class as the dropped
+  // `credit/rfq-tiles-empty`: registered here because Task 10's own scope
+  // stops short of a booted simulator, but NOT yet proven to reproduce.
+  // `blotter` is unaffected — `EquityPositionSimulator`/`EquityOrderSimulator`
+  // both start empty with no seed and touch no price stream until an order is
+  // placed, so it never subscribes to the ticking simulator at all. See
+  // docs/rn-open-items.md T46 for the full risk writeup and what to do if a
+  // native capture proves `markets`/`trade` non-deterministic.
+  "equities/markets",
+  "equities/trade",
+  "equities/blotter",
 ] as const;
