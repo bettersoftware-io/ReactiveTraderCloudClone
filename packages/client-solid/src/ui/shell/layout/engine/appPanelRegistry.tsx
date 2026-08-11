@@ -1,3 +1,5 @@
+import type { Accessor } from "solid-js";
+
 import type { JarvisPanelVm, PanelId, PanelSpec } from "@rtc/client-core";
 
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
@@ -89,20 +91,38 @@ export const appPanelRegistry: PanelRegistry = {
 
 /** The DYNAMIC id→component slice for the currently DOCKED desk panels —
  * merged with `appPanelRegistry` above in `App.tsx`'s `WorkspaceEngine`
- * (`{ ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) }`), rebuilt
- * fresh whenever `WorkspaceEngine`'s `dockedPanels()` list changes (cheap:
- * plain object literals over ≤`MAX_DOCKED_PANELS` entries), so a dock/undock
- * or a live spec edit is reflected without any manual invalidation. Each
- * entry closes over its own `JarvisPanelVm` row rather than re-deriving it
- * by id inside `JarvisDockedPanelBody` — see that component's doc. */
+ * (`{ ...appPanelRegistry, ...dockedRegistryFor(dockedIds, dockedPanels) }`).
+ *
+ * Takes the DOCKED ID SET (`dockedIds: readonly string[]`, `App.tsx`'s
+ * `dockedIds` memo — value-stable across a same-membership tick), NOT the
+ * `JarvisPanelVm` row array — see the identity-churn fix documented on
+ * `App.tsx`'s `registry` memo for why: this function's OUTPUT is a map of
+ * COMPONENT-PRODUCING closures rendered through a tracked JSX insert
+ * position in `InhouseLayoutEngine`, so its own identity churning on every
+ * unrelated panels-machine tick would remount every leaf in the tree, not
+ * just a docked one.
+ *
+ * Each closure captures only the stable `panelId` plus the `dockedPanels`
+ * ACCESSOR itself (a function reference, never re-created — passing it does
+ * NOT establish a dependency the way calling it would) — `JarvisDockedPanelBody`
+ * does its OWN reactive lookup into `dockedPanels()` by id, so a restyle
+ * ("make it a table") updates that one already-mounted leaf's body in
+ * place, without this registry (or `App.tsx`'s `registry` memo) ever
+ * needing to change. */
 export function dockedRegistryFor(
-  dockedPanels: readonly JarvisPanelVm[],
+  dockedIds: readonly string[],
+  dockedPanels: Accessor<readonly JarvisPanelVm[]>,
 ): PanelRegistry {
-  const entries = dockedPanels.map((panel) => {
+  const entries = dockedIds.map((panelId) => {
     return [
-      panel.panelId,
+      panelId,
       () => {
-        return <JarvisDockedPanelBody panel={panel} />;
+        return (
+          <JarvisDockedPanelBody
+            panelId={panelId}
+            dockedPanels={dockedPanels}
+          />
+        );
       },
     ] as const;
   });
@@ -117,12 +137,25 @@ export function dockedRegistryFor(
  * just `{id, title}`, mirroring `PANEL_SPECS`'s own static entries. (Note:
  * `PanelSpec.pinned?: boolean` is an UNRELATED existing flag — "kept out of
  * a resizable split's sizing" — not this L3 "docked" concept; a docked
- * desk panel does not set it.) */
+ * desk panel does not set it.)
+ *
+ * `specs` is plain data, not a component map, so (unlike `dockedRegistryFor`
+ * above) its own identity churning is harmless for remounting — but it
+ * takes the same `dockedIds` + an UNTRACKED `dockedPanels` snapshot shape
+ * for consistency with the fix's uniform identity story (see `App.tsx`'s
+ * `specs` memo doc): `title` is captured once per membership change, not
+ * kept live — the docked head's own reactive title lookup is what stays
+ * live for a title rename while docked; this fallback is read only by the
+ * engine's own generic maximize/collapse aria-labels. */
 export function dockedSpecsFor(
+  dockedIds: readonly string[],
   dockedPanels: readonly JarvisPanelVm[],
 ): Readonly<Record<PanelId, PanelSpec>> {
-  const entries = dockedPanels.map((panel) => {
-    return [panel.panelId, { id: panel.panelId, title: panel.title }] as const;
+  const entries = dockedIds.map((panelId) => {
+    const panel = dockedPanels.find((row) => {
+      return row.panelId === panelId;
+    });
+    return [panelId, { id: panelId, title: panel?.title ?? panelId }] as const;
   });
   return Object.fromEntries(entries);
 }

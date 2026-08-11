@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, Show } from "solid-js";
+import { createMemo, Show, untrack } from "solid-js";
 
 import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -99,29 +99,96 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   );
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged
-  // on top of the static app registries so a dock/undock or a live spec
-  // edit ("make it a table" while docked) is reflected on the very next
-  // reactive tick, regardless of which tab the panel was docked into.
-  // createMemo (not inline object literals, unlike react's own version of
-  // this merge): Solid has no compiler to memoize an inline `{...a, ...b}`
-  // for us, and these three merges feed straight into InhouseLayoutEngine's
-  // props, so an un-memoized literal would rebuild — and therefore look
-  // "changed" to every JSX read of `registry`/`specs`/`headRegistry` below —
-  // on every unrelated reactive read in this scope, not just a genuine
-  // dockedPanels() change.
+  // on top of the static app registries so a dock/undock is reflected on
+  // the very next reactive tick, regardless of which tab the panel was
+  // docked into. createMemo (not inline object literals, unlike react's own
+  // version of this merge): Solid has no compiler to memoize an inline
+  // `{...a, ...b}` for us, and these three merges feed straight into
+  // InhouseLayoutEngine's props.
+  //
+  // IDENTITY CHURN GUARD (fix round 1, review Critical finding): `registry`/
+  // `headRegistry` hold COMPONENT-PRODUCING closures, rendered through
+  // InhouseLayoutEngine's `PanelLeaf` at a TRACKED JSX "insert" position
+  // (`{props.registry[props.panelId]?.()}` / `{props.headRegistry?.[...]?.()}`
+  // — see that file). Solid disposes and re-mounts whatever that position
+  // last inserted whenever the read object's REFERENCE changes — not just
+  // the one panel that changed, EVERY leaf currently in the tab's tree,
+  // since they all read through the same `registry`/`headRegistry` object.
+  // `dockedPanels()` is NOT a safe memo dependency for these two: its
+  // underlying stream (`JarvisPanelsPresenter.dockedPanels$`) is built by
+  // `.filter()` over `panels$`, which itself `.map()`s a fresh array on
+  // EVERY `JarvisPanelsMachine` state change — spawn, edit, dismiss, dock,
+  // *or* undock of ANY panel, not only a change to DOCKED membership. A
+  // memo that reads `dockedPanels()` directly would therefore recompute (and
+  // hand `InhouseLayoutEngine` a fresh-identity registry/headRegistry) on
+  // every one of those unrelated ticks, remounting every already-mounted
+  // panel and losing its in-flight component state (form drafts, scroll
+  // position, canvas state) along with every `shareReplay({refCount:true})`
+  // port subscription it owned (the stream-resubscribe trap — see #171-#173).
+  //
+  // Fix: gate identity on the DOCKED ID SET, not the row array. `dockedIdsKey`
+  // reduces `dockedPanels()` to a sorted, comma-joined STRING (mirrors
+  // CreditBlotter.tsx's `tradeIdsKey`/RfqsPanel.tsx's `allIdsKey` — this
+  // repo's established idiom for exactly this "changed" vs. "different
+  // reference, same content" distinction; a plain delimiter, never a control
+  // byte — #250). Its own computation reruns on every `dockedPanels()` tick
+  // (cheap: ≤`MAX_DOCKED_PANELS` short strings), but two JS string
+  // PRIMITIVES with the same content compare `===`, so `createMemo` only
+  // propagates a change to `dockedIdsKey`'s own dependents (`dockedIds`, and
+  // therefore `registry`/`specs`/`headRegistry` below) when the SET of
+  // docked ids genuinely changed. `dockedPanels` (the accessor itself, a
+  // stable function reference for this component's whole lifetime) is
+  // threaded down into `dockedRegistryFor`/`dockedHeadsFor` so each docked
+  // panel's body/head can look up its OWN current row reactively and update
+  // in place — a restyle ("make it a table") while docked, or a title
+  // rename, updates that one mounted leaf's content directly, without ever
+  // touching `registry`/`headRegistry`'s identity or remounting anything.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
-  const registry = createMemo(() => {
-    return { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels()) };
+
+  const dockedIdsKey = createMemo((): string => {
+    return dockedPanels()
+      .map((panel) => {
+        return panel.panelId;
+      })
+      .sort()
+      .join(",");
   });
 
+  const dockedIds = createMemo((): readonly string[] => {
+    const key = dockedIdsKey();
+    return key === "" ? [] : key.split(",");
+  });
+
+  const registry = createMemo(() => {
+    return {
+      ...appPanelRegistry,
+      ...dockedRegistryFor(dockedIds(), dockedPanels),
+    };
+  });
+
+  // `specs` is plain data (id/title only), never a component-producing
+  // closure, so its OWN identity churning would be harmless for remounting
+  // — InhouseLayoutEngine's PanelLeaf reads it only at plain text/attribute
+  // JSX positions (title spans, aria-labels), which update in place
+  // regardless of object identity. Still gated the same way as the other
+  // two, per the fix's uniform-identity shape: `untrack(dockedPanels)`
+  // reads the CURRENT rows without subscribing to their churn, so this
+  // memo's own identity is likewise stable across a same-membership tick —
+  // its captured `title` only refreshes on the next dock/undock, not on a
+  // later restyle (the docked head's own reactive title lookup below is
+  // what stays live for that; PANEL_SPECS's title is a maximize/collapse
+  // aria-label fallback only, never the primary display for a docked panel).
   const specs = createMemo(() => {
-    return { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels()) };
+    return {
+      ...PANEL_SPECS,
+      ...dockedSpecsFor(dockedIds(), untrack(dockedPanels)),
+    };
   });
 
   const headRegistry = createMemo(() => {
     return {
       ...appHeadRegistry,
-      ...dockedHeadsFor(dockedPanels(), undockPanel, dismissPanel),
+      ...dockedHeadsFor(dockedIds(), dockedPanels, undockPanel, dismissPanel),
     };
   });
 

@@ -1,4 +1,5 @@
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
 import type { JarvisPanelVm } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -16,31 +17,42 @@ import { JarvisPanelBody } from "./JarvisPanelBody";
  * `JarvisDockedPanelHead`, plus the engine's own collapse/maximize
  * controls) differs from the floating card's.
  *
- * `panel` is a plain `JarvisPanelVm` (not an accessor) — the same row
- * `dockedRegistryFor` closed over when it built this registry entry.
- * `InhouseLayoutEngine`'s `PanelLeaf` reads `props.registry[panelId]?.()`
- * reactively (see that file's doc), so a fresh closure — and a fresh mount
- * of this component — is produced whenever `WorkspaceEngine`'s merged
- * `registry` memo re-runs (any dock/undock/edit); a second, independent
- * re-derivation by id inside this component would be redundant.
- * `useJarvisPanelData` is still the one independent, per-panel subscription
- * (mirrors `JarvisPanelCard`'s own split) so this panel's tick cadence
- * never forces a re-render of its siblings.
+ * `panelId` is a plain, stable string (this component is mounted once per
+ * docked id — see `dockedRegistryFor`'s doc for why the REGISTRY itself no
+ * longer changes identity on a same-membership tick) — `dockedPanels` is
+ * the shared `useJarvisPanels()` accessor threaded down from `App.tsx`'s
+ * `WorkspaceEngine` rather than re-subscribed here, so this component does
+ * its OWN reactive lookup for its current row: a restyle updates THIS one
+ * already-mounted leaf's body in place, without the containing registry
+ * ever needing to change (which is what caused the identity-churn bug this
+ * shape fixes — see `App.tsx`'s `registry` memo doc). `useJarvisPanelData`
+ * is still the one independent, per-panel subscription (mirrors
+ * `JarvisPanelCard`'s own split) so this panel's tick cadence never forces
+ * a re-render of its siblings.
  */
 export function JarvisDockedPanelBody(
   props: JarvisDockedPanelBodyProps,
 ): JSX.Element {
   const { useJarvisPanelData } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: `props.panel` is a plain (non-signal) value, fixed for this component's whole lifetime — see the doc comment above.
-  const data = useJarvisPanelData(props.panel.panelId);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: `props.panelId` is a plain string, fixed for this component's whole lifetime (one mount per docked id — see the doc comment above), not a captured object field the way it was before this file's identity-churn fix; `solid/reactivity` flags any `props.x` read outside a tracked scope regardless of nesting depth, so the rule still fires on the simpler shape too — verified empirically, this disable does not become removable.
+  const data = useJarvisPanelData(props.panelId);
 
-  function panel(): JarvisPanelVm {
-    return props.panel;
-  }
+  const panel = createMemo((): JarvisPanelVm | undefined => {
+    return props.dockedPanels().find((row) => {
+      return row.panelId === props.panelId;
+    });
+  });
 
-  return <JarvisPanelBody panel={panel} data={data()} />;
+  return (
+    <Show when={panel()}>
+      {(currentPanel: Accessor<JarvisPanelVm>): JSX.Element => {
+        return <JarvisPanelBody panel={currentPanel} data={data()} />;
+      }}
+    </Show>
+  );
 }
 
 interface JarvisDockedPanelBodyProps {
-  panel: JarvisPanelVm;
+  panelId: string;
+  dockedPanels: Accessor<readonly JarvisPanelVm[]>;
 }

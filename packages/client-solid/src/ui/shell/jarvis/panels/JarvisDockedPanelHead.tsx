@@ -1,4 +1,7 @@
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
+import { createMemo } from "solid-js";
+
+import type { JarvisPanelVm } from "@rtc/client-core";
 
 import styles from "./JarvisDockedPanelHead.module.css";
 
@@ -10,10 +13,26 @@ import styles from "./JarvisDockedPanelHead.module.css";
  * (see `LiveRatesHead`'s doc for the same convention), so this component
  * carries its own title. The engine's collapse/maximize controls render
  * separately in `.panelControls`, untouched by this slot.
+ *
+ * `title` is looked up reactively from `dockedPanels` (the shared
+ * `useJarvisPanels()` accessor threaded down from `WorkspaceEngine`, not a
+ * captured string prop) so a title rename while docked updates this
+ * already-mounted head in place — see `dockedHeadsFor`'s doc for why the
+ * containing registry no longer changes identity on a same-membership tick.
+ * Falls back to `panelId` for the same reason `PanelLeaf`'s own `title()`
+ * does: a defensive default for the (expected-transient-or-never) tick
+ * where this id isn't found in `dockedPanels()` yet.
  */
 export function JarvisDockedPanelHead(
   props: JarvisDockedPanelHeadProps,
 ): JSX.Element {
+  const title = createMemo((): string => {
+    const panel = props.dockedPanels().find((row) => {
+      return row.panelId === props.panelId;
+    });
+    return panel?.title ?? props.panelId;
+  });
+
   function undockThisPanel(): void {
     props.onUndock(props.panelId);
   }
@@ -24,11 +43,11 @@ export function JarvisDockedPanelHead(
 
   return (
     <div class={styles.head}>
-      <span class={styles.title}>{props.title}</span>
+      <span class={styles.title}>{title()}</span>
       <button
         type="button"
         data-testid="jarvis-panel-undock"
-        aria-label={`Unpin ${props.title}`}
+        aria-label={`Unpin ${title()}`}
         class={styles.action}
         onClick={undockThisPanel}
       >
@@ -37,7 +56,7 @@ export function JarvisDockedPanelHead(
       <button
         type="button"
         data-testid="jarvis-panel-close"
-        aria-label={`Close ${props.title}`}
+        aria-label={`Close ${title()}`}
         class={styles.action}
         onClick={dismissThisPanel}
       >
@@ -49,7 +68,7 @@ export function JarvisDockedPanelHead(
 
 interface JarvisDockedPanelHeadProps {
   panelId: string;
-  title: string;
+  dockedPanels: Accessor<readonly JarvisPanelVm[]>;
   /** Slot — fired with `panelId` to undock this panel back to the floating
    * overlay. */
   onUndock: (panelId: string) => void;

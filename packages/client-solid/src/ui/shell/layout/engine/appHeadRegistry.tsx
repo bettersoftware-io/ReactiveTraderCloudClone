@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
 
 import type { JarvisPanelVm, PanelId } from "@rtc/client-core";
 
@@ -63,23 +63,29 @@ export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
 
 /** The DYNAMIC `headRegistry` slice for the currently docked desk panels —
  * merged with `appHeadRegistry` above in `App.tsx`'s `WorkspaceEngine`
- * (`{ ...appHeadRegistry, ...dockedHeadsFor(dockedPanels, undockPanel,
- * dismissPanel) }`). Mirrors `dockedRegistryFor` (`appPanelRegistry.tsx`):
- * rebuilt fresh whenever `WorkspaceEngine`'s `dockedPanels()` list
- * changes. */
+ * (`{ ...appHeadRegistry, ...dockedHeadsFor(dockedIds, dockedPanels,
+ * undockPanel, dismissPanel) }`). Mirrors `dockedRegistryFor`
+ * (`appPanelRegistry.tsx`) exactly: takes the DOCKED ID SET (value-stable
+ * across a same-membership tick), not the row array — see that function's
+ * doc and `App.tsx`'s `registry` memo for the full identity-churn fix this
+ * is part of. Each closure passes the stable `dockedPanels` ACCESSOR down
+ * so `JarvisDockedPanelHead` can look up its own current row reactively —
+ * a title rename while docked updates that one already-mounted head in
+ * place. */
 export function dockedHeadsFor(
-  dockedPanels: readonly JarvisPanelVm[],
+  dockedIds: readonly string[],
+  dockedPanels: Accessor<readonly JarvisPanelVm[]>,
   undockPanel: (panelId: string) => void,
   dismissPanel: (panelId: string) => void,
 ): Partial<Record<PanelId, () => JSX.Element>> {
-  const entries = dockedPanels.map((panel) => {
+  const entries = dockedIds.map((panelId) => {
     return [
-      panel.panelId,
+      panelId,
       () => {
         return (
           <JarvisDockedPanelHead
-            panelId={panel.panelId}
-            title={panel.title}
+            panelId={panelId}
+            dockedPanels={dockedPanels}
             onUndock={undockPanel}
             onDismiss={dismissPanel}
           />
