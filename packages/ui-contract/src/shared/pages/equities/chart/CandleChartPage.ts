@@ -79,6 +79,9 @@ export interface CandleChartProps {
   /** Shifts every trendline anchor index by `by` (a live prepend keeping
    * drawings pinned to their candles). Slot: default no-op. */
   onShiftAnchors?: (by: number) => void;
+  /** Replaces a drawing after a finished drag-edit (the same id, new
+   * anchors). Slot: default no-op. */
+  onUpdateDrawing?: (drawing: EqDrawing) => void;
 }
 
 /** The BACK TO LIVE pill's presence + a click helper. */
