@@ -435,20 +435,43 @@ async function waitForAppBoot(
   { timeoutMs, pollIntervalMs, scenarioId }: AppBootWaitConfig,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  // Kept so the timeout can say what actually went wrong. Swallowing these
+  // entirely made a broken `idb` invocation indistinguishable from a genuinely
+  // stuck launcher: passing the `simctl`-only `"booted"` alias through to `idb`
+  // failed EVERY poll, and the timeout then reported, confidently and wrongly,
+  // that the simulator was showing the dev-client launcher — while the app was
+  // in fact running fine on screen. A diagnosis nobody can check is worse than
+  // no diagnosis.
+  let lastDescribeError: unknown;
+  let sawTree = false;
 
   while (Date.now() < deadline) {
     try {
       const tree = await describeAll(idbPath, udid);
 
+      sawTree = true;
+
       if (!looksLikeLauncherHome(tree) && !looksLikeSpringBoard(tree)) {
         return;
       }
-    } catch {
+    } catch (error: unknown) {
       // `idb ui describe-all` can transiently fail while the app is mid
       // relaunch; keep polling rather than failing on the blip.
+      lastDescribeError = error;
     }
 
     await delay(pollIntervalMs);
+  }
+
+  if (!sawTree) {
+    throw new Error(
+      `Timed out after ${timeoutMs}ms for scenario "${scenarioId}" without ` +
+        `ever reading the a11y tree — every \`idb ui describe-all\` call ` +
+        `failed, so the app's state was never observed and this is a TOOLING ` +
+        `failure, not a launcher one. Check that \`idb\` is installed and that ` +
+        `the udid is a concrete device id (\`idb\` rejects the \`simctl\` ` +
+        `"booted" alias). Last error: ${String(lastDescribeError)}`,
+    );
   }
 
   throw new Error(
