@@ -168,10 +168,12 @@ future free-float engine) actually needs. Concretely:
   client, with an in-memory default in composition. The app never parses
   the blob — the same guarantee the ADR asked for, just not funnelled
   through `PreferencesPort` itself.
-- **`dockview-core` is confined to `@rtc/layout-dockview`** by two
-  dependency-cruiser rules (`layout-dockview-stays-pure`,
-  `dockview-only-in-layout-dockview`) — the engine stays swappable by
-  replacing one package, which is the property this ADR exists to buy. The
+- **`dockview` (the supported vanilla-JS entry point that wraps the
+  internal `dockview-core`, per the package's own README) is confined to
+  `@rtc/layout-dockview`** by two dependency-cruiser rules
+  (`layout-dockview-stays-pure`, `dockview-only-in-layout-dockview`) — the
+  engine stays swappable by replacing one package, which is the property
+  this ADR exists to buy. The
   package exports `createDockEngine` (seed-tree → `SerializedDockview`
   conversion, `api.layout()` called before `restore()` so proportions hold,
   opaque-blob restore with a seed fallback, debounced serialisation, a
@@ -270,6 +272,10 @@ seam — `WorkspaceEngine`'s engine branch + the registries + `DockLayoutStore`
   layout-engine swap unchanged (same guarantee as the UI-framework swap).
 
 ## Open questions (to resolve before building an adapter)
+
+*These are about the un-extracted thin `LayoutPort` interface, not the
+shipped Dockview engine — see "As implemented" above for what actually
+built and how it sidesteps the port question for now.*
 
 1. **Does the shell need a tree/group concept at all**, or is "set of open
    panels + focus + opaque blob" sufficient? (Leaning: keep the port that thin;
