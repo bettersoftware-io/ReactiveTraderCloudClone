@@ -1,0 +1,32 @@
+/* Dockview chrome mapped onto the app's token cascade. The base stylesheet
+ * ships with dockview-core; consumers import this ONE file. Token names read
+ * from packages/client-react/src/ui/shell/layout/engine/InhouseLayoutEngine.module.css
+ * and packages/client-react/src/ui/shell/theme/tokens.ts (identical across
+ * both clients); the fallback hexes are the classic-dark cell of that token
+ * store, keeping the chrome legible before theming. */
+@import "dockview-core/dist/styles/dockview.css";
+
+.dockview-theme-rtc {
+  --dv-group-view-background-color: var(--panel, #1e293b);
+  --dv-tabs-and-actions-container-background-color: var(--panel-head, #1f2937);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--panel, #1e293b);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--panel-head, #1f2937);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel, #1e293b);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(
+    --panel-head,
+    #1f2937
+  );
+  --dv-activegroup-visiblepanel-tab-color: var(--text-primary, #f1f5f9);
+  --dv-activegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--text-muted, #64748b);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
+  --dv-separator-border: var(--border-primary, #334155);
+  --dv-paneview-active-outline-color: var(--accent-primary, #3b82f6);
+  --dv-active-sash-color: var(--accent-primary, #3b82f6);
+  --dv-drag-over-background-color: color-mix(
+    in srgb,
+    var(--accent-primary, #3b82f6) 15%,
+    transparent
+  );
+  --dv-tabs-and-actions-container-height: 28px;
+}

@@ -171,6 +171,22 @@ module.exports = {
       to: { path: "^packages/", pathNot: "^packages/boot-splash/" },
     },
     {
+      name: "layout-dockview-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/layout-dockview is the framework-neutral Dockview wrapper — it must not import any other @rtc package (it may touch the DOM: dockview-core mounts into a container element).",
+      from: { path: "^packages/layout-dockview/src" },
+      to: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
+    },
+    {
+      name: "dockview-core-only-in-layout-dockview",
+      severity: "error",
+      comment:
+        "dockview-core is confined to @rtc/layout-dockview — the engine must stay swappable by replacing one package (ADR-002); a direct client import would leak the engine's vocabulary.",
+      from: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
+      to: { path: "node_modules/dockview-core" },
+    },
+    {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
@@ -269,8 +285,18 @@ module.exports = {
     // cross-package edges. See tsconfig.depcruise.json for the full rationale.
     tsConfig: { fileName: "tsconfig.depcruise.json" },
     doNotFollow: { path: "node_modules" },
+    // The `/dist/` alternative is anchored to `^packages/[^/]+/dist/` — a
+    // workspace package's OWN built output — not a bare `/dist/` substring.
+    // Unanchored, it also matched node_modules packages whose entry happens
+    // to live under a dist/ folder (most do, e.g. dockview-core resolves to
+    // .../node_modules/dockview-core/dist/esm/index.js), which silently
+    // dropped the edge from the graph before any `to: { path: "node_modules/…" }`
+    // rule ever saw it — discovered while adding dockview-core-only-in-
+    // layout-dockview, which was a no-op against the unanchored pattern. The
+    // same gap had already made no-mcp-sdk-outside-server dormant, since
+    // @modelcontextprotocol/sdk resolves under its own dist/ too.
     exclude: {
-      path: "(\\.cache|/dist/|/__screenshots__/|\\.turbo)",
+      path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo)",
     },
     enhancedResolveOptions: {
       exportsFields: ["exports"],
