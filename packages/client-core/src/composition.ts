@@ -422,6 +422,24 @@ export const LAYOUT_PANEL_IDS: Readonly<
 ) as Readonly<Record<WorkspaceTab, readonly string[]>>;
 
 /**
+ * Union of every static panel id across ALL FOUR tabs' default layout trees
+ * — `dockPanelIntoWorkspace`'s id-collision guard reads this, not just the
+ * active tab's slice of `LAYOUT_PANEL_IDS`. Reason for the union rather than
+ * a per-tab check: `App.tsx`'s registry/spec/head merge
+ * (`{...appPanelRegistry, ...dockedRegistryFor(dockedPanels, ...)}`) is
+ * GLOBAL — one `PanelId → renderer` map shared by every tab's
+ * `InhouseLayoutEngine` — so a wire-minted "fx-rates" panel would shadow
+ * Live Rates' body/head/title in `credit`/`equities`/`admin` too, not only
+ * in `fx`. A wire-minted panelId only needs to collide with SOME tab's
+ * static roster to poison all of them.
+ */
+export const STATIC_WORKSPACE_PANEL_IDS: ReadonlySet<string> = new Set(
+  WORKSPACE_TABS.flatMap((tab) => {
+    return LAYOUT_PANEL_IDS[tab];
+  }),
+);
+
+/**
  * Defensive guard, currently UNREACHABLE in production — kept so a natural
  * future refactor doesn't silently reintroduce a double-send bug. Read
  * `wireJarvisHistorySource`'s doc first for why `ask()`'s `historySource()`
@@ -799,8 +817,46 @@ export function createApp(ports: AppPorts): App {
    * machine goes FIRST because it owns every no-op rule (unknown id, already
    * docked, `MAX_DOCKED_PANELS` reached); the layout mutation only follows
    * when that call genuinely changed the docked set, so a rejected dock can
-   * never leave an orphan leaf behind in the tree. */
+   * never leave an orphan leaf behind in the tree.
+   *
+   * ID-COLLISION GUARD (first check, before either machine is touched): a
+   * panelId arriving off the wire is validated by `JarvisPanelsMachine` only
+   * for length, so nothing stops the brain from minting one that collides
+   * with a STATIC workspace panel id (e.g. "fx-rates"). Docking such an id
+   * would be doubly destructive:
+   *   1. `App.tsx` spreads the docked-registry helpers LAST over
+   *      `appPanelRegistry`/`PANEL_SPECS`/`appHeadRegistry`
+   *      (`{...appPanelRegistry, ...dockedRegistryFor(...)}`), so the docked
+   *      entry would silently REPLACE the static panel's body/head/title —
+   *      see `STATIC_WORKSPACE_PANEL_IDS`'s doc for why this reaches every
+   *      tab, not just the one being docked into.
+   *   2. `parseWorkspaceLayout`'s reconciliation classifies each dock-column
+   *      leaf by static-id membership; a docked leaf carrying a static id
+   *      does not reconcile as a docked leaf, so the whole payload is
+   *      rejected — silently killing persistence for the rest of the
+   *      session (every later write from `layoutFor`'s `skip(1)` subscriber
+   *      would be validated against, and fail, the same parser on reload).
+   * Guarding here — before either machine is touched — keeps the panel
+   * genuinely undocked and the tree untouched, so persistence stays healthy.
+   *
+   * KNOWN RESIDUAL (documented, not fixed here — see task-7-report.md fix
+   * round 1): `JarvisDriverMachine`'s `dockPanel` case (the DriveCommand
+   * path a scripted/AI turn uses) checks only `livePanelIds`/
+   * `dockedPanelIds`/`MAX_DOCKED_PANELS` before calling `deps.dockPanel` —
+   * it has no visibility into this guard, so for a colliding id it still
+   * reports `{status: "applied"}` even though this function no-ops. The
+   * driver's four pinned skip-reason strings ("unknown panelId", "already
+   * docked", "dock full", "not docked") don't cover this case, and minting a
+   * fifth string is out of scope for this fix round. The UI-visible effect
+   * is limited to a misleading driver-reply status text for this one
+   * scripted/AI path — the panel itself never docks, the static panel is
+   * never shadowed, and persistence never breaks, because this guard runs
+   * first regardless of caller. */
   function dockPanelIntoWorkspace(panelId: string): void {
+    if (STATIC_WORKSPACE_PANEL_IDS.has(panelId)) {
+      return;
+    }
+
     if (isPanelDocked(panelId)) {
       return;
     }

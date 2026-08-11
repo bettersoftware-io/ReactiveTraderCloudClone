@@ -187,6 +187,51 @@ describe("composition — workspace-layout writer", () => {
     expect(write).not.toHaveBeenCalled();
   });
 
+  // Review finding I3: a wire-minted panelId can collide with a static
+  // workspace panel id ("fx-rates" is `fx`'s Live Rates panel — see
+  // `defaultLayoutPort.ts`). `dockPanelIntoWorkspace`'s id-collision guard
+  // must refuse this BEFORE either the panels machine or the layout machine
+  // is touched, so the panel stays undocked, no leaf lands in any tree, and
+  // — the second half of the finding — persistence keeps round-tripping
+  // through `parseWorkspaceLayout` afterwards (a docked leaf carrying a
+  // static id is exactly what that parser's reconciliation rejects).
+  it("dockPanel on a panelId colliding with a static panel id is refused — no dock, no leaf, persistence stays healthy", async () => {
+    const { presenters, preferences, spawnPanel } = bootApp(null);
+    spawnPanel("fx-rates");
+
+    presenters.dockPanel("fx-rates");
+
+    // Not docked: the panel is still a live floating panel, not a docked one.
+    const docked = await firstValueFrom(presenters.jarvisPanels.dockedPanels$);
+    expect(docked).toEqual([]);
+    const floating = await firstValueFrom(
+      presenters.jarvisPanels.floatingPanels$,
+    );
+    expect(
+      floating.map((panel) => {
+        return panel.panelId;
+      }),
+    ).toEqual(["fx-rates"]);
+
+    // No leaf inserted into the active tab's (fx's) tree.
+    expect(await dockedLeavesOf(presenters, "fx")).toEqual([]);
+
+    // The no-op'd dock attempt itself changed nothing worth writing (the
+    // layout machine was never mutated), so drive one genuine, unrelated
+    // dock afterwards and confirm the writer/parser pair is still healthy —
+    // a subsequent persistence write still round-trips non-null, with no
+    // trace of the refused "fx-rates" collision anywhere in the payload.
+    spawnPanel("jarvis-1");
+    presenters.dockPanel("jarvis-1");
+    await vi.advanceTimersByTimeAsync(PAST_DEBOUNCE_MS);
+
+    const payload = await storedPayload(preferences);
+    expect(payload).not.toBeNull();
+    expect(payload?.tabs.fx?.docked).toEqual([
+      { panelId: "jarvis-1", spec: SPEC },
+    ]);
+  });
+
   it("leaves a tab whose layout machine was never created untouched in the payload", async () => {
     const seeded: WorkspaceLayoutV1 = {
       v: 1,
