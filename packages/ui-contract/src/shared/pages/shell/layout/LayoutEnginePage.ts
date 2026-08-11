@@ -2,6 +2,8 @@ import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
+import { PANEL_RENDERER_TESTIDS } from "../jarvis/JarvisPanelLayerPage";
+
 export interface LayoutEngineProps {
   /** Panel ids that should receive a custom head-slot test double (renders
    * `data-testid="custom-head"` in place of the title span). Undefined/empty
@@ -111,6 +113,30 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return label?.startsWith(UNPIN_LABEL_PREFIX) === true
       ? label.slice(UNPIN_LABEL_PREFIX.length)
       : label;
+  }
+
+  /** Which renderer testid (line/table/gauge/spark-grid/heatmap/unsupported)
+   * is currently mounted inside a DOCKED panel's body, or null while pending
+   * (`data$` hasn't emitted yet — the "Connecting…" placeholder). Scans the
+   * SAME {@link PANEL_RENDERER_TESTIDS} list as
+   * `JarvisPanelLayerPage.rendererTestId`, scoped inside the `panel-<id>`
+   * section, because a docked leaf renders the very same `JarvisPanelBody`
+   * switch — only its chrome differs.
+   *
+   * This is the only accessor here that witnesses a docked panel's BODY.
+   * Every other docked check on this page reads the docked HEAD, so a leaf
+   * that rendered head-only — or a restored panel whose `panelData$`
+   * subscription was never re-established — would satisfy all of them. */
+  dockedRendererTestId(id: string): string | null {
+    const panel = this.panel(id);
+
+    for (const testid of PANEL_RENDERER_TESTIDS) {
+      if (within(panel).queryByTestId(testid)) {
+        return testid;
+      }
+    }
+
+    return null;
   }
 
   /** The docked head's unpin-control accessible name (`Unpin <title>`). */

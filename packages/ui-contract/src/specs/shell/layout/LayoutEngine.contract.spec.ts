@@ -1,5 +1,5 @@
 import { AppShell, LayoutEngine } from "@ui-contract/components";
-import type { World } from "@ui-contract/harness/world";
+import type { HookValues, World } from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -279,8 +279,8 @@ describe("InhouseLayoutEngine", () => {
  * World A and boots a genuinely SEPARATE World B from it.
  */
 describe("InhouseLayoutEngine docked desk panels", () => {
-  it("renders a docked panel as a leaf beside the tab's static panels, which are untouched", async () => {
-    const world = createWorld();
+  it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
+    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
     const app = mountWith(world, AppShell);
 
     await app.overlay.pressHotkey();
@@ -292,6 +292,16 @@ describe("InhouseLayoutEngine docked desk panels", () => {
     await app.panels.dockPanel(DOCKED_PANEL_ID);
 
     expect(app.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
+    // The BODY, not just the head. Every other docked witness on this page
+    // reads `JarvisDockedPanelHead` (the unpin control, the title parsed off
+    // its aria-label), so a leaf that rendered head-only would satisfy them
+    // all — this is the assertion that proves the registry's body half is
+    // wired and its `panelData$` subscription is live. The World's seeded
+    // analytics make the table deterministic rather than the "Connecting…"
+    // pending fallback.
+    expect(app.layout.dockedRendererTestId(DOCKED_PANEL_ID)).toBe(
+      "jarvis-panel-table",
+    );
     // The fx default tree is intact around it — the dock column is added
     // beside the static panels, never in place of them.
     expect(app.layout.maximizeAriaLabel("fx-rates")).toBe(
@@ -305,7 +315,7 @@ describe("InhouseLayoutEngine docked desk panels", () => {
   });
 
   it("a FRESH world seeded with the persisted payload boots with the panel already docked", async () => {
-    const first = createWorld();
+    const first = createWorld({ useAnalytics: ANALYTICS_SEED });
     const firstApp = mountWith(first, AppShell);
 
     await firstApp.overlay.pressHotkey();
@@ -322,12 +332,22 @@ describe("InhouseLayoutEngine docked desk panels", () => {
 
     // A SECOND World — new machines, new presenter, nothing shared with the
     // first but this string. This is the whole point (see the block doc).
-    const second = createWorldSeededWith(persisted);
+    const second = createWorldSeededWith(persisted, {
+      useAnalytics: ANALYTICS_SEED,
+    });
     const secondApp = mountWith(second, AppShell);
 
     expect(secondApp.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
     expect(secondApp.layout.dockedTitle(DOCKED_PANEL_ID)).toBe(
       "Desk Positions",
+    );
+    // The restored panel's BODY is live too — `restoreDockedPanel` re-admitted
+    // the persisted SPEC, and the presenter re-established this panelId's
+    // `panelData$` subscription over World B's own ports. Head-only witnesses
+    // (isDocked/dockedTitle above) cannot tell that apart from a leaf whose
+    // data stream was never rebuilt.
+    expect(secondApp.layout.dockedRendererTestId(DOCKED_PANEL_ID)).toBe(
+      "jarvis-panel-table",
     );
     // Restored DOCKED, not floating: the layer renders `floatingPanels` only.
     expect(secondApp.panels.isPresent()).toBe(false);
@@ -347,9 +367,25 @@ describe("InhouseLayoutEngine docked desk panels", () => {
   });
 });
 
-/** The panel this block docks — an `analytics`-sourced table, the cheapest
- * spec whose body needs no seeded World data to mount. */
+/** The panel this block docks — an `analytics`-sourced table. */
 const DOCKED_PANEL_ID = "panel-desk-positions";
+
+/** Desk analytics for the docked panel's BODY. `PanelTable` early-returns a
+ * testid-less "No data yet" placeholder over zero rows, so a body assertion
+ * needs the World's `useAnalytics` source seeded — `composePanelStream` reads
+ * it through `World.panelStreamDeps`, the same route every other panel spec
+ * seeds data by (mirrors `JarvisPanelLayer.contract.spec.ts`'s own seed). */
+const ANALYTICS_SEED = {
+  currentPositions: [
+    {
+      symbol: "EURUSD",
+      basePnl: 12_000,
+      baseTradedAmount: 1_000_000,
+      counterTradedAmount: 1_080_000,
+    },
+  ],
+  history: [],
+};
 
 /** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
  * borrows the type off the one already-exported `PanelSpecV1`-typed const —
@@ -368,10 +404,15 @@ const DESK_POSITIONS_SPEC: PanelSpecV1 = {
  * positional parameter, reached past every earlier seed (see
  * `harness/world.ts`; `mount()`'s `MountOptions.workspaceLayout` is the same
  * seed for the single-mount case, but these scenarios need the World object
- * itself to read the persisted string back off). */
-function createWorldSeededWith(seed: string | null): World {
+ * itself to read the persisted string back off). `hooks` is the FIRST
+ * positional (nullary hook seeds), so a rehydrated World can carry the desk
+ * data its restored panel's body renders from. */
+function createWorldSeededWith(
+  seed: string | null,
+  hooks: Partial<HookValues> = {},
+): World {
   return createWorld(
-    undefined,
+    hooks,
     undefined,
     undefined,
     undefined,

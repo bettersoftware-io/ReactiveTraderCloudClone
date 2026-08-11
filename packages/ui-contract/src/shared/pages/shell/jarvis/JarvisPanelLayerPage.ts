@@ -5,8 +5,14 @@ import { MountedComponent } from "@ui-contract/harness/component";
 /** The `data-testid` of a panel's rendered body — the discriminating marker
  * for whichever viz kind (or the unsupported card) it currently resolves to.
  * Order matters only for {@link JarvisPanelLayerPage.rendererTestId}'s scan;
- * it is not otherwise significant. */
-const RENDERER_TESTIDS = [
+ * it is not otherwise significant.
+ *
+ * Exported because a DOCKED panel renders the very same `JarvisPanelBody`
+ * switch inside the workspace engine's leaf rather than in this layer (see
+ * `JarvisDockedPanelBody`), so `LayoutEnginePage.dockedRendererTestId` scans
+ * this same list — one list, so a new viz kind can never be added to the
+ * floating scan and silently missed by the docked one. */
+export const PANEL_RENDERER_TESTIDS = [
   "jarvis-panel-line",
   "jarvis-panel-table",
   "jarvis-panel-gauge",
@@ -105,7 +111,7 @@ export class JarvisPanelLayerPage extends MountedComponent<
   rendererTestId(panelId: string): string | null {
     const panel = this.panel(panelId);
 
-    for (const testid of RENDERER_TESTIDS) {
+    for (const testid of PANEL_RENDERER_TESTIDS) {
       if (within(panel).queryByTestId(testid)) {
         return testid;
       }
