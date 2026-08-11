@@ -7,6 +7,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   PowerSaverLevel,
@@ -37,11 +38,11 @@ import styles from "./PreferencesModal.module.css";
  * (added later) sits at the foot of column 2, so it doesn't reopen that
  * balance.
  *
- * TEN rows are wired to real ports — Animated background
+ * ELEVEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
- * (`useChartSubstrate`), Always play boot animation
- * (`useForceBootAnimation`), the two login-wait rows
+ * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Always play boot
+ * animation (`useForceBootAnimation`), the two login-wait rows
  * (`useLoginWaitPreferences`), and the three Jarvis rows
  * (`useJarvisPreferences` for the stored brain/effort/narrator, `useJarvis`
  * read-only for which brains the server is currently offering); every other
@@ -59,6 +60,7 @@ export function PreferencesModal({
     usePowerSaver,
     useAmbientStyle,
     useChartSubstrate,
+    useLayoutEngine,
     useForceBootAnimation,
     useLoginWaitPreferences,
     useJarvis,
@@ -73,6 +75,8 @@ export function PreferencesModal({
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
   const { substrate: chartSubstrate, setSubstrate: setChartSubstrate } =
     useChartSubstrate();
+  const { engine: layoutEngine, setEngine: setLayoutEngine } =
+    useLayoutEngine();
 
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
@@ -228,6 +232,16 @@ export function PreferencesModal({
                   setChartSubstrate(value as ChartSubstrate);
                 }}
                 testid="pref-segment-chartSubstrate"
+              />
+              <PrefSegment
+                label="Layout engine"
+                description="In-house split engine, or Dockview docking — drag tabs to re-arrange; layout persists per workspace tab."
+                options={LAYOUT_ENGINE_OPTIONS}
+                value={layoutEngine}
+                onChange={(value: string) => {
+                  setLayoutEngine(value as LayoutEngine);
+                }}
+                testid="pref-segment-layoutEngine"
               />
               <ToggleGroup
                 defs={MOTION_TOGGLES}
@@ -452,6 +466,13 @@ const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
 const CHART_SUBSTRATE_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "dom", label: "DOM" },
   { value: "canvas", label: "Canvas" },
+];
+
+// The options for the real "Layout engine" segment row, wired to
+// useLayoutEngine (not decorative — see PrefSegment call site above).
+const LAYOUT_ENGINE_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "inhouse", label: "In-house" },
+  { value: "dockview", label: "Dockview" },
 ];
 
 // Options for the two real login-wait rows (useLoginWaitPreferences). "Auto"

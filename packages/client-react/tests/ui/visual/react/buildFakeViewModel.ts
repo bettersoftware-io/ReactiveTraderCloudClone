@@ -6,6 +6,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -413,6 +414,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // geometry layer unchanged.
     useChartSubstrate: () => {
       return { substrate: DEFAULT_CHART_SUBSTRATE, setSubstrate: noop };
+    },
+    // No visual fixture exercises the dockview engine yet — a fixed
+    // "inhouse" default keeps every existing golden's layout unchanged.
+    useLayoutEngine: () => {
+      return { engine: DEFAULT_LAYOUT_ENGINE, setEngine: noop };
     },
     useDepth: (symbol: string) => {
       return data.equityDepth?.[symbol] ?? null;

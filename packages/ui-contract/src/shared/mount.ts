@@ -18,6 +18,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
+  LayoutEngine,
   LogEvent,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -98,6 +99,8 @@ export interface MountOptions<P> {
   jarvisNarrator?: JarvisNarratorPreference;
   /** Seeds `useChartSubstrate`; defaults to `"dom"`. */
   chartSubstrate?: ChartSubstrate;
+  /** Seeds `useLayoutEngine`; defaults to DEFAULT_LAYOUT_ENGINE ("inhouse"). */
+  layoutEngine?: LayoutEngine;
 }
 
 const mounted: MountedRoot[] = [];
@@ -275,6 +278,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.jarvisEffort,
     opts.jarvisNarrator,
     opts.chartSubstrate,
+    opts.layoutEngine,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

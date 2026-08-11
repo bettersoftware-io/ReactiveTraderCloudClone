@@ -64,6 +64,7 @@ import type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   MarketDataPort,
@@ -873,6 +874,18 @@ export function reactViewModel(world: World): ViewModel {
         substrate,
         setSubstrate: (next: ChartSubstrate) => {
           world.chartSubstrate.next(next);
+        },
+      };
+    },
+    // Layout engine: reactive view backed by the World subject (mirrors
+    // useChartSubstrate above); setEngine pushes back so a click through the
+    // seam (PreferencesModal's "Layout engine" segment) flips the value.
+    useLayoutEngine: () => {
+      const engine = useSubject(world.layoutEngine);
+      return {
+        engine,
+        setEngine: (next: LayoutEngine) => {
+          world.layoutEngine.next(next);
         },
       };
     },

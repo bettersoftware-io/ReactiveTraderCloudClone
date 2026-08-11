@@ -66,6 +66,7 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -86,6 +87,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -223,6 +225,11 @@ interface UseChartSubstrateResult {
   setSubstrate: (substrate: ChartSubstrate) => void;
 }
 
+interface UseLayoutEngineResult {
+  engine: LayoutEngine;
+  setEngine: (engine: LayoutEngine) => void;
+}
+
 interface UsePowerSaverResult {
   level: PowerSaverLevel;
   isCalm: boolean;
@@ -345,6 +352,9 @@ export interface ViewModel {
   /** Global chart-rendering-substrate preference (dom | canvas) — current
    * substrate plus the write intent. */
   useChartSubstrate: () => UseChartSubstrateResult;
+  /** Global workspace layout-engine preference (inhouse | dockview) — current
+   * engine plus the write intent. */
+  useLayoutEngine: () => UseLayoutEngineResult;
   /** Global power-saver master override — 3-state level (off/calm/freeze)
    * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
@@ -587,6 +597,15 @@ export function createViewModel(
 
   function setChartSubstrate(substrate: ChartSubstrate): void {
     presenters.chartSubstrate.setSubstrate(substrate);
+  }
+
+  const [useLayoutEngineValue] = bind(
+    presenters.layoutEngine.engine$,
+    DEFAULT_LAYOUT_ENGINE,
+  );
+
+  function setLayoutEngine(engine: LayoutEngine): void {
+    presenters.layoutEngine.setEngine(engine);
   }
 
   const [useAnimatedBgValue] = bind(
@@ -1115,6 +1134,12 @@ export function createViewModel(
       return {
         substrate: useChartSubstrateValue(),
         setSubstrate: setChartSubstrate,
+      };
+    },
+    useLayoutEngine: () => {
+      return {
+        engine: useLayoutEngineValue(),
+        setEngine: setLayoutEngine,
       };
     },
     useAnimatedBackground: () => {

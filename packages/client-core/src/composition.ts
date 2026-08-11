@@ -88,6 +88,7 @@ import {
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
   LatencyPresenter,
+  LayoutEnginePresenter,
   type LayoutIntents,
   LoginWaitPreferencesPresenter,
   type Machine,
@@ -156,6 +157,7 @@ export interface Presenters {
   animatedBackground: AnimatedBackgroundPresenter;
   ambientStyle: AmbientStylePresenter;
   chartSubstrate: ChartSubstratePresenter;
+  layoutEngine: LayoutEnginePresenter;
   forceBootAnimation: ForceBootAnimationPresenter;
   powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
@@ -801,6 +803,7 @@ export function createApp(ports: AppPorts): App {
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     ambientStyle: new AmbientStylePresenter(ports.preferences),
     chartSubstrate: new ChartSubstratePresenter(ports.preferences),
+    layoutEngine: new LayoutEnginePresenter(ports.preferences),
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
