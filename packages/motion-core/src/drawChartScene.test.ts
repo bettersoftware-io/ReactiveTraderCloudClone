@@ -230,7 +230,7 @@ describe("drawPlotScene: candles", () => {
 describe("drawPlotScene: line", () => {
   const plot = plotOf(lineScene);
 
-  it("draws no candle rects and strokes one polyline over linePoints at lineWidth 2", () => {
+  it("draws no candle rects and strokes one polyline over linePoints at lineWidth 1.5", () => {
     const { ctx, calls } = recorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
@@ -248,7 +248,7 @@ describe("drawPlotScene: line", () => {
     const lineWidthAfter = calls.slice(lineStrokeStyleIdx).find((c) => {
       return c.op === "lineWidth";
     });
-    expect(lineWidthAfter).toEqual({ op: "lineWidth", args: [2] });
+    expect(lineWidthAfter).toEqual({ op: "lineWidth", args: [1.5] });
 
     const strokeCount = calls.filter((c) => {
       return c.op === "stroke";
@@ -451,6 +451,101 @@ describe("drawPlotScene: drawings", () => {
         return c.op === "fillStyle" && c.args[0] === PALETTE.grip;
       }),
     ).toBe(true);
+  });
+});
+
+describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () => {
+  // Each stroking layer must set its own width — before the width
+  // constants existed, overlays/compare/drawings inherited whatever the
+  // previous layer left behind, so their weight varied by scene kind.
+  // The pinned values mirror the DOM stylesheets' stroke-widths
+  // (SvgPathLayer/DrawingsLayer/IndicatorPane .module.css).
+  it("overlays stroke at 1, the compare line at 1.5, regardless of scene kind", () => {
+    const { ctx, calls } = recorderCtx();
+    drawPlotScene(ctx, plotOf(compareScene, OVERLAYS), PALETTE, SIZE);
+
+    const stroked = strokedWidths(calls);
+    const overlayWidths = stroked
+      .filter((s) => {
+        return s.style === PALETTE.sma20 || s.style === PALETTE.ema50;
+      })
+      .map((s) => {
+        return s.width;
+      });
+    expect(overlayWidths).toEqual([1, 1]);
+
+    const compareStrokes = stroked.filter((s) => {
+      return s.style === PALETTE.compare;
+    });
+    expect(compareStrokes).toEqual([{ style: PALETTE.compare, width: 1.5 }]);
+  });
+
+  it("drawings stroke at 1.5, a selected drawing at 2", () => {
+    const selected: DrawingSceneItem = {
+      id: "a",
+      kind: "trendline",
+      x1: 10,
+      y1: 10,
+      x2: 40,
+      y2: 40,
+      selected: true,
+      handles: [{ x: 10, y: 10 }],
+    };
+    const unselected: DrawingSceneItem = {
+      id: "b",
+      kind: "hline",
+      y: 60,
+      selected: false,
+      handles: [],
+    };
+
+    const { ctx, calls } = recorderCtx();
+    drawPlotScene(
+      ctx,
+      plotOf(candleChartScene, [], [selected, unselected]),
+      PALETTE,
+      SIZE,
+    );
+
+    const stroked = strokedWidths(calls);
+    expect(
+      stroked.filter((s) => {
+        return s.style === PALETTE.drawing;
+      }),
+    ).toEqual([{ style: PALETTE.drawing, width: 2 }]);
+    expect(
+      stroked.filter((s) => {
+        return s.style === PALETTE.drawingLevel;
+      }),
+    ).toEqual([{ style: PALETTE.drawingLevel, width: 1.5 }]);
+  });
+
+  it("pane lines stroke at 1.25 over 1-wide guides", () => {
+    const scene = paneScene("macd", pseudoRandomCloses(60), {
+      start: 0,
+      end: 60,
+    });
+    const { ctx, calls } = recorderCtx();
+    drawPaneScene(ctx, scene, PALETTE, SIZE);
+
+    const stroked = strokedWidths(calls);
+    const guideWidths = stroked
+      .filter((s) => {
+        return s.style === PALETTE.paneGuide;
+      })
+      .map((s) => {
+        return s.width;
+      });
+    expect(new Set(guideWidths)).toEqual(new Set([1]));
+
+    const lineWidths = stroked
+      .filter((s) => {
+        return s.style === PALETTE.paneMacd || s.style === PALETTE.paneSignal;
+      })
+      .map((s) => {
+        return s.width;
+      });
+    expect(lineWidths).toEqual([1.25, 1.25]);
   });
 });
 
@@ -710,6 +805,29 @@ interface RecordedCall {
 interface RecorderCtx {
   readonly ctx: Canvas2D;
   readonly calls: RecordedCall[];
+}
+
+// Replays a recorded call list, tracking the strokeStyle/lineWidth in
+// effect at each `stroke` op — the observable a width pin cares about,
+// since a layer may set its width once ahead of several strokes.
+function strokedWidths(
+  calls: readonly RecordedCall[],
+): readonly { style: unknown; width: unknown }[] {
+  const out: { style: unknown; width: unknown }[] = [];
+  let style: unknown = "";
+  let width: unknown = 0;
+
+  for (const c of calls) {
+    if (c.op === "strokeStyle") {
+      style = c.args[0];
+    } else if (c.op === "lineWidth") {
+      width = c.args[0];
+    } else if (c.op === "stroke") {
+      out.push({ style, width });
+    }
+  }
+
+  return out;
 }
 
 // Fake Canvas2D: records every method call and property set instead of
