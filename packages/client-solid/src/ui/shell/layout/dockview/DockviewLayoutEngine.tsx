@@ -80,8 +80,15 @@ export function DockviewLayoutEngine(
   });
 
   onCleanup(() => {
-    engine?.dispose();
+    // Null the ref BEFORE disposing: dispose() synchronously flushes a final
+    // layout serialization through onLayoutChange's `engine?.groupCount() ??
+    // 0` read, so the ref must already read null at that point — mirrors
+    // react's cleanup ordering (engineRef.current = null before
+    // engine.dispose()), keeping the two bridges' dispose-time behaviour
+    // identical rather than just their steady-state behaviour.
+    const disposed = engine;
     engine = null;
+    disposed?.dispose();
   });
 
   createEffect(() => {
@@ -116,6 +123,15 @@ export function DockviewLayoutEngine(
                     return <div class={styles.headStrip}>{head()()}</div>;
                   }}
                 </Show>
+                {/* Solid's compiler lowers this dynamic `title` attribute to
+                 * a `get title()` accessor on PanelErrorBoundary's props, so
+                 * it only runs when PanelErrorBoundary's own fallback reads
+                 * it — which happens only after a panel body throws. No
+                 * DockviewEngine.contract.spec.ts case crashes a panel, so
+                 * this getter is a coverage artifact (defined, never
+                 * invoked) rather than an untested code path — the fallback
+                 * render itself is exercised by
+                 * InhouseLayoutEngine.smoke.test.tsx's error-boundary case. */}
                 <PanelErrorBoundary
                   title={
                     (props.specs ?? PANEL_SPECS)[p.panelId]?.title ?? p.panelId
