@@ -1,11 +1,7 @@
-import {
-  createDockview,
-  type DockviewApi,
-  type GroupPanelPartInitParameters,
-  type IContentRenderer,
-} from "dockview-core";
+import { createDockview, type DockviewApi } from "dockview-core";
 
 import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
+import { HookContentRenderer } from "#/HookContentRenderer";
 
 export interface DockPanelHooks {
   title(panelId: string): string;
@@ -18,7 +14,10 @@ export interface DockEngineOptions {
   seed: DockSeedNode;
   blob: string | null;
   panels: DockPanelHooks;
-  onLayoutChange(blob: string): void;
+  // Property (slot) syntax, not a method: the declarer never knows what gets
+  // attached, so rtc/name-functions-by-effect exempts it — see
+  // docs/handler-naming.md's slot-vs-handler doctrine.
+  onLayoutChange: (blob: string) => void;
   /** Debounce for onLayoutChange serialisation; default 250. Tests pass 0. */
   debounceMs?: number;
 }
@@ -28,25 +27,6 @@ export interface DockEngine {
   exitMaximize(): void;
   groupCount(): number;
   dispose(): void;
-}
-
-class HookContentRenderer implements IContentRenderer {
-  readonly element: HTMLElement;
-  private disposeContent: (() => void) | null = null;
-
-  constructor(private readonly hooks: DockPanelHooks) {
-    this.element = document.createElement("div");
-    this.element.className = "rtc-dock-panel-content";
-  }
-
-  init(parameters: GroupPanelPartInitParameters): void {
-    this.disposeContent = this.hooks.mount(parameters.api.id, this.element);
-  }
-
-  dispose(): void {
-    this.disposeContent?.();
-    this.disposeContent = null;
-  }
 }
 
 export function createDockEngine(opts: DockEngineOptions): DockEngine {
@@ -64,16 +44,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   const debounceMs = opts.debounceMs ?? 250;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  const serialize = (): void => {
+
+  function serializeLayout(): void {
     opts.onLayoutChange(JSON.stringify(api.toJSON()));
-  };
+  }
+
   const changeSub = api.onDidLayoutChange(() => {
     if (timer !== null) {
       clearTimeout(timer);
     }
+
     timer = setTimeout(() => {
       timer = null;
-      serialize();
+      serializeLayout();
     }, debounceMs);
   });
 
@@ -91,6 +74,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     },
     dispose: () => {
       changeSub.dispose();
+
       // The last layout mutation must survive dispose. Dockview's model
       // updates synchronously (only its onDidLayoutChange notification is
       // microtask-deferred, via AsapEvent), so a mutation right before
@@ -102,7 +86,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         clearTimeout(timer);
         timer = null;
       }
-      serialize();
+
+      serializeLayout();
       api.dispose();
     },
   };
@@ -124,6 +109,7 @@ function loadBlobOrSeed(
       // fall through to the seed
     }
   }
+
   api.fromJSON(toSerializedDockview(opts.seed, width, height));
 }
 

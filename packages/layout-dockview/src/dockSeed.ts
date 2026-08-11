@@ -17,7 +17,11 @@ interface ConversionState {
   panels: Record<string, GroupviewPanelState>;
 }
 
-type SeedSplit = Extract<DockSeedNode, { kind: "split" }>;
+interface SplitDiscriminant {
+  readonly kind: "split";
+}
+
+type SeedSplit = Extract<DockSeedNode, SplitDiscriminant>;
 // GroupPanelViewState (the grid leaf's `data` shape: views/activeView/id) is
 // an internal dockview-core type not re-exported from the package root —
 // pull the same type through SerializedDockview's own field instead of
@@ -66,6 +70,7 @@ function convertNode(
   if (node.kind === "panel") {
     return convertLeaf(node.panelId, state);
   }
+
   return convertSplit(node, width, height, state);
 }
 
@@ -108,6 +113,7 @@ function flattenSplit(
   const entries: Array<[DockSeedNode, number]> = [];
   node.children.forEach((child, index) => {
     const fraction = (node.sizes[index] ?? 0) * parentFraction;
+
     if (child.kind === "split" && child.dir === node.dir) {
       entries.push(...flattenSplit(child, fraction));
     } else {

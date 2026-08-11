@@ -10,7 +10,9 @@ beforeAll(() => {
     // biome-ignore lint/suspicious/noExplicitAny: test-only global patch
     (globalThis as any).ResizeObserver = class {
       observe(): void {}
+
       unobserve(): void {}
+
       disconnect(): void {}
     };
   }
@@ -36,28 +38,6 @@ const FX_LIKE = {
 
 const attachedContainers: HTMLElement[] = [];
 
-function base(): DockEngineOptions {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  attachedContainers.push(container);
-  return {
-    container,
-    seed: FX_LIKE,
-    blob: null,
-    panels: {
-      title: (id: string) => {
-        return id.toUpperCase();
-      },
-      mount: (_id: string, el: HTMLElement) => {
-        el.textContent = `content:${_id}`;
-        return () => {};
-      },
-    },
-    onLayoutChange: () => {},
-    debounceMs: 0,
-  };
-}
-
 afterEach(() => {
   for (const el of attachedContainers.splice(0)) {
     el.remove();
@@ -81,6 +61,7 @@ describe("createDockEngine", () => {
         mount: (id: string, el: HTMLElement) => {
           mounted.push(id);
           el.textContent = `content:${id}`;
+
           return () => {
             mounted.splice(mounted.indexOf(id), 1);
           };
@@ -138,4 +119,73 @@ describe("createDockEngine", () => {
     engine.exitMaximize();
     engine.dispose();
   });
+
+  it("applies the hook-supplied title to each panel's tab", () => {
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    // DockEngine exposes no title-reading accessor of its own, so assert
+    // through dockview's own rendered DOM: its default tab renderer writes
+    // each panel's title into a `.dv-default-tab-content` node inside the
+    // container it owns (verified in dockview-core's own DefaultTab source).
+    expect(opts.container.textContent).toContain("FX-RATES");
+    expect(opts.container.textContent).toContain("FX-BLOTTER");
+    expect(opts.container.textContent).toContain("FX-ANALYTICS");
+    engine.dispose();
+  });
+
+  it("coalesces two rapid layout mutations into a single onLayoutChange call", async () => {
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      debounceMs: 30,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    // Each mutation's onDidLayoutChange notification is itself microtask-
+    // deferred by dockview-core (AsapEvent), so a bare `await Promise.resolve()`
+    // after each call is enough to let it reach our debounce layer — one
+    // microtask hop, no fake timers needed.
+    engine.maximizePanel("fx-rates");
+    await Promise.resolve();
+    engine.exitMaximize();
+    await Promise.resolve();
+
+    // Both mutations landed inside the same 30ms debounce window: the second
+    // notification must have cancelled the first mutation's pending timer and
+    // armed a fresh one, so nothing has fired yet.
+    expect(calls).toHaveLength(0);
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 60);
+    });
+    expect(calls).toHaveLength(1); // exactly one save for the two mutations
+
+    engine.dispose(); // dispose's own unconditional flush — a second, separate call
+    expect(calls).toHaveLength(2);
+  });
 });
+
+function base(): DockEngineOptions {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  attachedContainers.push(container);
+  return {
+    container,
+    seed: FX_LIKE,
+    blob: null,
+    panels: {
+      title: (id: string) => {
+        return id.toUpperCase();
+      },
+      mount: (_id: string, el: HTMLElement) => {
+        el.textContent = `content:${_id}`;
+        return () => {};
+      },
+    },
+    onLayoutChange: () => {},
+    debounceMs: 0,
+  };
+}
