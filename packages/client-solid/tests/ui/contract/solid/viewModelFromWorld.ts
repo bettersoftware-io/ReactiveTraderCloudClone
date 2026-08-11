@@ -373,6 +373,16 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
 
   if (!driver) {
     const machine = getJarvisMachine(world);
+    // Minimal fixture wiring for the pinned-panels round's dockPanel/
+    // undockPanel drive commands — delegates straight to the REAL
+    // JarvisPanelsPresenter's own dockPanel/undockPanel (same idiom as
+    // dismissPanel below), and derives livePanelIds$/dockedPanelIds$ from
+    // its existing panels$ VM stream. This does NOT reproduce
+    // composition.ts's dockPanelIntoWorkspace/undockPanelFromWorkspace
+    // layout-tree integration (docking a panel into the active tab's layout
+    // tree) — Task 9 owns building that into this fixture for the dock
+    // contract specs.
+    const panelsPresenter = getJarvisPanelsPresenter(world);
     driver = createJarvisDriverMachine({
       events$: machine.events$.pipe(
         catchError(() => {
@@ -393,6 +403,12 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
       dismissPanel: (panelId: string) => {
         getJarvisPanelsPresenter(world).dismissPanel(panelId);
       },
+      dockPanel: (panelId: string) => {
+        panelsPresenter.dockPanel(panelId);
+      },
+      undockPanel: (panelId: string) => {
+        panelsPresenter.undockPanel(panelId);
+      },
       knownLayoutPanelIds,
       knownSymbols$: world.watchlist.pipe(
         map((list) => {
@@ -402,6 +418,24 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
         }),
       ),
       powerSaverLevel$: world.powerSaverLevel,
+      livePanelIds$: panelsPresenter.panels$.pipe(
+        map((rows) => {
+          return rows.map((row) => {
+            return row.panelId;
+          });
+        }),
+      ),
+      dockedPanelIds$: panelsPresenter.panels$.pipe(
+        map((rows) => {
+          return rows
+            .filter((row) => {
+              return row.docked;
+            })
+            .map((row) => {
+              return row.panelId;
+            });
+        }),
+      ),
     });
     jarvisDrivers.set(world, driver);
 
