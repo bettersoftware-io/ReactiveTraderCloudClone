@@ -16,6 +16,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -28,6 +29,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type LayoutEngine,
   type LoginWaitDelay,
   type LoginWaitStyle,
   type LoginWaitVariant,
@@ -56,6 +58,7 @@ export interface PreferencesSeed {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  layoutEngine?: LayoutEngine;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -459,6 +462,33 @@ export function describePreferencesPortContract(
     it("reads back a seeded chartSubstrate", async () => {
       const port = makeSeeded({ chartSubstrate: "canvas" });
       expect(await firstValueFrom(port.chartSubstrate$())).toBe("canvas");
+    });
+
+    it("defaults layoutEngine to inhouse and round-trips a write", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.layoutEngine$())).toBe(
+        DEFAULT_LAYOUT_ENGINE,
+      );
+      port.setLayoutEngine("dockview");
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
+      // late subscriber sees the current value synchronously (replay-current)
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
+    });
+
+    it("setLayoutEngine persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: LayoutEngine[] = [];
+      const sub = port.layoutEngine$().subscribe((engine) => {
+        return seen.push(engine);
+      });
+      port.setLayoutEngine("dockview");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_LAYOUT_ENGINE, "dockview"]);
+    });
+
+    it("reads back a seeded layoutEngine", async () => {
+      const port = makeSeeded({ layoutEngine: "dockview" });
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
     });
 
     it("defaults jarvisSkin to singularity and round-trips a write", async () => {
