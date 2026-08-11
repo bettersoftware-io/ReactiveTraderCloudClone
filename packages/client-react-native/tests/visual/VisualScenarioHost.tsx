@@ -1,27 +1,15 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
-import { of } from "rxjs";
 
-import {
-  createApp,
-  createMachineFactories,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
-import {
-  AuthSimulator,
-  type ConnectionEventsPort,
-  type PowerSaverLevel,
-  PreferencesSimulator,
-  type ThemeMode,
-  type ThemeSkin,
-} from "@rtc/domain";
-import { createViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import type { PowerSaverLevel, ThemeMode, ThemeSkin } from "@rtc/domain";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
 import { useAppFonts } from "#/ui/theme/fonts";
 import { ThemeProvider } from "#/ui/theme/ThemeProvider";
 import { useTheme } from "#/ui/theme/useTheme";
+
+import { buildFakeViewModel } from "./buildFakeViewModel";
 
 interface Props {
   skin: ThemeSkin;
@@ -29,10 +17,11 @@ interface Props {
   /** Freezes ambient/animated-background motion for a deterministic capture.
    * Default true — this host exists to be screenshotted, so a scenario should
    * never be caught mid-animation (rehaul Phase 1 amendment A5). Threaded
-   * through the seeded `PreferencesSimulator`'s `animatedBackground` gate —
-   * the same production knob a device's OS-level "reduce motion" already
-   * collapses to (see `packages/domain/src/preferences/preferences.ts`), so
-   * this needs no new ThemeProvider surface. */
+   * through as `buildFakeViewModel`'s `animatedBackground` option (inverted:
+   * `forceReduceMotion` true means `animatedBackground` false) — the same
+   * production knob a device's OS-level "reduce motion" already collapses to
+   * (see `packages/domain/src/preferences/preferences.ts`), so this needs no
+   * new ThemeProvider surface. */
   forceReduceMotion?: boolean;
   /**
    * Power-saver tier to seed, default `off` (production's default, so existing
@@ -52,6 +41,14 @@ interface Props {
    * state, which is exactly what a golden should hold.
    */
   powerSaverLevel?: PowerSaverLevel;
+  /**
+   * Per-scenario hook replacements, threaded straight through to
+   * `buildFakeViewModel`'s `overrides` option — for pinning a state the
+   * shared fixtures do not cover (an error arm, an empty collection, a
+   * specific machine phase). Applied last, after every other fixture, so it
+   * always wins.
+   */
+  viewModelOverrides?: Partial<ViewModel>;
   children: ReactNode;
 }
 
@@ -60,14 +57,18 @@ interface Props {
  * sites a caller declares, so one entry is enough to observe the load. */
 const HARNESS_FONT_PROBE = { probe: { size: 12 } } as const;
 
-/** Mounts one full, isolated app composition per scenario — sim ports only,
- * a skin×mode pinned via a seeded `PreferencesSimulator` (not the persisted
- * device preference), and no shared `reconnect$`/`incident$` wiring (each
- * mount is self-contained, so scenarios never leak state between captures).
+/** Mounts one static, isolated `ViewModel` per scenario, built by
+ * `buildFakeViewModel` — fixed snapshots and no-op intents, not a live
+ * simulator composition, so a capture is deterministic by construction
+ * rather than by remembering to pin each simulator (see
+ * `buildFakeViewModel.ts`'s own doc for why). A skin×mode is pinned via the
+ * fake's shell slice (not the persisted device preference), and each mount
+ * is self-contained, so scenarios never leak state between captures.
  * `ThemeProvider` reads skin/mode from the ViewModel's preference presenters
  * (confirmed against `ThemeProvider.tsx` — it takes no skin/mode props), so
- * pinning happens by SEEDING the preferences port, not by a ThemeProvider
- * override; no production touch was needed for the skin/mode axis.
+ * pinning happens by building the fake with those options, not by a
+ * ThemeProvider override; no production touch was needed for the skin/mode
+ * axis.
  *
  * Sets `testID="visual-ready"` on the root one frame after BOTH font paths
  * finish loading — the RN text families (`useAppFonts`) and the Skia
@@ -79,6 +80,7 @@ export function VisualScenarioHost({
   mode,
   forceReduceMotion = true,
   powerSaverLevel = "off",
+  viewModelOverrides,
   children,
 }: Props): ReactNode {
   const fontsLoaded = useAppFonts();
@@ -92,12 +94,13 @@ export function VisualScenarioHost({
   // same trap one level up.
   const skiaFontsLoaded = useBootSceneFonts(HARNESS_FONT_PROBE) !== null;
   const [viewModel] = useState(() => {
-    return buildScenarioViewModel(
+    return buildFakeViewModel({
       skin,
       mode,
-      forceReduceMotion,
       powerSaverLevel,
-    );
+      animatedBackground: !forceReduceMotion,
+      overrides: viewModelOverrides,
+    });
   });
   const [ready, setReady] = useState(false);
 
@@ -187,81 +190,4 @@ function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
 interface SurfaceProps {
   readonly ready: boolean;
   readonly children: ReactNode;
-}
-
-/**
- * The instant `blotter/seeded`'s five trade dates are measured back from.
- *
- * Without it those dates come from `Date.now()`, so the golden re-dated itself
- * every calendar day — found 2026-08-02 when a verify pass showed all five rows
- * byte-identical to the golden except every date, each shifted forward by one
- * (T32). It passed regardless: five short date strings are ~0.1% of the frame
- * against a 6% tolerance, so the tier could never report it.
- *
- * **Noon, and UTC, deliberately** — and so NOT `fixtures.tsx`'s
- * `PINNED_WALL_CLOCK`, which is local-time on purpose. That one feeds
- * `boot/topo`, which *renders* a wall-clock stamp and must therefore be pinned
- * in the timezone the pixels are captured in. These are date-only strings taken
- * through `toISOString()`, so they must be pinned in the timezone the
- * derivation happens in instead: noon UTC yields the same ISO date everywhere
- * from UTC-11 to UTC+12, where a local-morning base would slide a day for
- * anyone far enough east. Same word, opposite construction.
- */
-const BLOTTER_SEED_BASE_MS = Date.UTC(2026, 6, 27, 12, 0, 0);
-
-/**
- * Freezes FX pricing for every scenario, so a grid of prices can be captured at
- * all. Without it each cell moves twice over — a `Math.random()` seed walk and
- * a live tick loop — and no Rates golden could reproduce itself (T6).
- *
- * Applied HOST-WIDE rather than per-scenario, because a live price stream is
- * never something a pixel golden wants: scenarios that render no prices are
- * unaffected, and one that starts rendering them later inherits the pin instead
- * of silently becoming unreproducible — the lesson `boot/topo` taught when it
- * began printing a wall clock (T10).
- *
- * Same instant as the blotter pin, for one readable clock across the tier.
- */
-const PRICING_PIN_MS: number = BLOTTER_SEED_BASE_MS;
-
-function buildScenarioViewModel(
-  skin: ThemeSkin,
-  mode: ThemeMode,
-  forceReduceMotion: boolean,
-  powerSaverLevel: PowerSaverLevel,
-): ReturnType<typeof createViewModel> {
-  const preferences = new PreferencesSimulator({
-    themeSkin: skin,
-    themeMode: mode,
-    animatedBackground: !forceReduceMotion,
-    powerSaverLevel,
-  });
-  // Never authenticated (chosen scenarios need no user session); the roster
-  // lookup simply never succeeds since login is never called.
-  const auth = new AuthSimulator({});
-  const sessionStore = new InMemorySessionStore();
-  // One-shot synchronous connect, isolated from the app's real reconnect$/
-  // incident$ singletons — a scenario mount never reacts to another mount's
-  // (or the real app's) connection events.
-  const connectionEvents: ConnectionEventsPort = {
-    events: () => {
-      return of({ type: "gatewayConnected" as const });
-    },
-  };
-
-  const { presenters, commands } = createApp({
-    ...createSimulatorPorts({
-      preferences,
-      auth,
-      sessionStore,
-      blotterSeedBaseMs: BLOTTER_SEED_BASE_MS,
-      pricingPinMs: PRICING_PIN_MS,
-    }),
-    connectionEvents,
-  });
-  return createViewModel(
-    presenters,
-    createMachineFactories(presenters),
-    commands,
-  );
 }

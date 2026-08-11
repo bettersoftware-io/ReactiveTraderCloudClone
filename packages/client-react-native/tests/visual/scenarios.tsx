@@ -1,6 +1,8 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { ReactNode } from "react";
 
+import { ConnectionStatus } from "@rtc/domain";
+
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { BlottersView } from "#/ui/equities/blotters/BlottersView";
@@ -68,10 +70,13 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   the populated list is exactly as deterministic as an empty one would
  *   have been — renamed to match reality rather than forcing an artificial
  *   empty premise.
- * - `shell/connection-banner` — the connection-status pill. The simulator's
- *   `ConnectionEventsPort` (built fresh per host mount, not the shared
- *   `ConnectionEventsSimulator` used by the real app) emits a single
- *   synchronous `gatewayConnected`, so the pill always settles on "Live".
+ * - `shell/connection-banner` — the connection-status pill. The fake's
+ *   `useConnectionStatus` defaults to CONNECTED everywhere (matching what the
+ *   old live composition produced for every scenario), so this is the one
+ *   scenario that pins a `viewModelOverrides` DISCONNECTED instead — it
+ *   exists to capture the banner's full surface INCLUDING its Reconnect
+ *   affordance, which only renders when the status is neither CONNECTED nor
+ *   CONNECTING.
  * A third fixture, `credit/rfq-tiles-empty`, was TRIED and DROPPED: on-device
  * golden verification proved it non-deterministic. `CreditRfqSimulator` emits
  * NEW Live RFQs over time, so the default "No RFQs to display" view is only
@@ -228,7 +233,21 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "light",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="classic" mode="light">
+        <VisualScenarioHost
+          skin="classic"
+          mode="light"
+          // The fake defaults `useConnectionStatus` to CONNECTED — matching
+          // what the old live composition produced for every scenario — so
+          // this is the one scenario that opts out: it exists to capture the
+          // banner's full surface INCLUDING its Reconnect affordance, which
+          // `ConnectionBanner` only renders when the status is neither
+          // CONNECTED nor CONNECTING.
+          viewModelOverrides={{
+            useConnectionStatus: () => {
+              return ConnectionStatus.DISCONNECTED;
+            },
+          }}
+        >
           <ScreenContentFixture>
             <ConnectionBanner />
           </ScreenContentFixture>
