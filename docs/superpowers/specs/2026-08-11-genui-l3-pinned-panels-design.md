@@ -169,3 +169,76 @@ row updates accordingly.
 - Cross-device layout sync (needs Auth Phase 2 per-user accounts).
 - The drive correction-signal **wire** change (client-side membership skips
   only; still ledgered).
+
+## Implementation addendum (2026-08-11)
+
+Shipped: T1–T10 complete, reviewed, gates green; ADR-002 rewritten (§8,
+`docs/adr/ADR-002-layout-management-port.md`). This addendum records what
+shipped **differently** than this spec's original text, and why — plan-time
+deviations first, then rulings made during the round.
+
+**Plan-time deviations (ruled before implementation, from the fact-sheet audit):**
+
+1. **Vocabulary is `docked`/`dock`, never `pinned`/`pin`,** in all code and
+   testids (`jarvis-panel-dock`/`-undock`) — `PanelSpec.pinned` already meant
+   "fixed bottom strip." Human-facing copy may still say "Pin"/📌.
+2. **Docked panels get their own global cap, `MAX_DOCKED_PANELS = 4`** — the
+   presenter holds one uncapped warm subscription per live panel; a dock at
+   cap is a UI-disabled no-op (drive op → `skipped`, reason `"dock full"`).
+3. **The floating evict rule needed an explicit rewrite**, not reuse —
+   `applyPanelEvent` now filters on `!docked` before counting/evicting.
+4. **`specs`/`headRegistry` became threaded props**, not module defaults —
+   both clients pass merged static+dynamic registry/specs/headRegistry; the
+   engine itself stayed untouched.
+5. **The persistence writer is lazy by construction** — no eager
+   `combineLatest` over all four tabs; `layoutFor` registers each machine's
+   `state$` as it's created, and a never-opened tab keeps its stored value.
+6. **Contract-tier rehydration is witnessed on a fresh `World`**, not a
+   same-world remount (which reuses WeakMap-cached machines and proves
+   nothing) — a new `World` field + 23rd `createWorld` param.
+7. **`workspaceLayoutV1` is the repo's first optional string preference** —
+   `workspaceLayout$(): Observable<string | null>` /
+   `setWorkspaceLayout(value: string | null)`, storage-guarded to
+   `typeof value === "string"`, real validation left to the client-core
+   parser; all adapters + simulator + port contract follow the pattern.
+8. **The persona guard was raised 3600 → 3800** (measured 3695, not the
+   ~3650–3700 estimated at plan time).
+9. **A new `PrefAction` row component** was added to both clients — no
+   action-row precedent existed in the Preferences modal.
+10. **Reset semantics**: clear the preference, reset every *created* layout
+    machine to its default (new `reset()` intent), and dismiss all docked
+    panels; floating panels are untouched.
+
+**In-round rulings (from the SDD ledger, `.superpowers/sdd/2026-08-11-genui-l3-pinned-panels/progress.md`):**
+
+- **`insertDockedLeaf` takes a `staticIds` param** — ruled justified: the
+  FX/equities rails are structurally identical to the dock column, so the
+  insert path needed to know which leaves are static vs. dynamic.
+- **`staticIds`/`reset()` derive from `port.initial`, not the persisted
+  seed** — the persistence task keeps the machine's default-tree identity
+  separate from any rehydrated state, so a restored docked leaf is never
+  misclassified as static and `reset()` never returns the saved layout.
+- **The dismiss bridge detaches the leaf directly**, rather than routing
+  through undock-first — undocking would incorrectly evict an unrelated
+  floating panel.
+- **The persistence parser reconciles the tree against the docked list**,
+  enforcing the global `MAX_DOCKED_PANELS` cap and a tree depth bound, and
+  falls back to defaults on anything corrupt, truncated, or
+  version-mismatched.
+- **The composition dock bridge guards against a wire `panelId` shadowing a
+  static panel** via the registry merge (which would otherwise null the
+  persistence payload). Residual, ledgered for a future round: driver
+  `dockPanel` still reports `"applied"` for that same static-id collision
+  while composition silently no-ops — a 5th skip reason is needed; this
+  round's `DriveCommand` result type pinned exactly 4.
+- **Solid's registry memos are keyed by an id-set with a custom equals**,
+  not a plain object/string key — fixes a Critical where merged
+  registry/headRegistry object churn remounted every Solid workspace panel
+  on any panels-machine emission (React was immune; Solid has no VDOM
+  reconciliation over that shape). A genuine dock/undock still remounts
+  every mounted leaf in the tab (membership change re-keys by design) —
+  disclosed and accepted.
+- **Docked-body contract witnesses** were added after review found the
+  contract tier only ever asserted a docked panel's *head* controls — a
+  dead body stream would have passed the gate; both the drive-op spec and
+  the fresh-world rehydration spec now assert the live body too.
