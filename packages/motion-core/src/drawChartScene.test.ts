@@ -491,6 +491,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
       selected: true,
       handles: [{ x: 10, y: 10 }],
     };
+
     const unselected: DrawingSceneItem = {
       id: "b",
       kind: "hline",
@@ -807,13 +808,18 @@ interface RecorderCtx {
   readonly calls: RecordedCall[];
 }
 
+/** The strokeStyle/lineWidth pair in effect at one `stroke` op — what
+ * {@link strokedWidths} replays a recording into. */
+interface StrokedCall {
+  readonly style: unknown;
+  readonly width: unknown;
+}
+
 // Replays a recorded call list, tracking the strokeStyle/lineWidth in
 // effect at each `stroke` op — the observable a width pin cares about,
 // since a layer may set its width once ahead of several strokes.
-function strokedWidths(
-  calls: readonly RecordedCall[],
-): readonly { style: unknown; width: unknown }[] {
-  const out: { style: unknown; width: unknown }[] = [];
+function strokedWidths(calls: readonly RecordedCall[]): readonly StrokedCall[] {
+  const out: StrokedCall[] = [];
   let style: unknown = "";
   let width: unknown = 0;
 
