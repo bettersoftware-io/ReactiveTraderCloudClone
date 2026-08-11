@@ -48,6 +48,31 @@ export interface JarvisPO {
    */
   waitForNoPanels(): Promise<void>;
   /**
+   * Click the floating panel's 📌 dock button, pinning it into the
+   * workspace as an `InhouseLayoutEngine` leaf, and wait for the debounced
+   * `rtc-workspace-layout-v1` write to actually land in `localStorage` —
+   * folded into this action so a caller that immediately reloads the page
+   * never races the 500ms debounce.
+   */
+  dockPanel(panelId: string): Promise<void>;
+  /**
+   * Snapshot: is this panel id currently rendered as a DOCKED workspace leaf
+   * (its `JarvisDockedPanelHead` unpin control present), as opposed to
+   * floating or absent.
+   */
+  isPanelDocked(panelId: string): Promise<boolean>;
+  /** Click a docked panel's own 📌 unpin button, returning it to the
+   * floating layer. */
+  undockPanel(panelId: string): Promise<void>;
+  /**
+   * Wait for the given panel id to be rendered as a DOCKED workspace leaf
+   * (`InhouseLayoutEngine`'s `panel-<id>` section) with its body renderer
+   * mounted — the docked counterpart of `waitForPanelLive` +
+   * `waitForPanelLineRenderer` combined, since a docked leaf carries no
+   * `data-status="live"` attribute of its own.
+   */
+  waitForPanelDockedLive(panelId: string): Promise<void>;
+  /**
    * Wait for the header orb to flare into "attention" — set once a
    * narrator-origin turn completes while the chat overlay is still closed
    * (see `NarratorMachine`/`JarvisMachine`'s `unreadNarration` fold).
