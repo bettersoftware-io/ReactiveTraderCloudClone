@@ -3,6 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import type {
   PreferencesPO,
   PrefsChartSubstrate,
+  PrefsLayoutEngine,
 } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
 
@@ -23,6 +24,12 @@ export class PlaywrightPreferences implements PreferencesPO {
   async selectChartSubstrate(value: PrefsChartSubstrate): Promise<void> {
     await this.page
       .getByTestId(TESTIDS.prefs.chartSubstrateSegment(value))
+      .click();
+  }
+
+  async selectLayoutEngine(value: PrefsLayoutEngine): Promise<void> {
+    await this.page
+      .getByTestId(TESTIDS.prefs.layoutEngineSegment(value))
       .click();
   }
 
