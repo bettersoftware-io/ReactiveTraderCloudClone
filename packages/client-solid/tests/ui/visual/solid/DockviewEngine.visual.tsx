@@ -26,19 +26,29 @@ import styles from "./DockviewEngine.visual.module.css";
  * `createDefaultLayoutPort("fx").initial.root` on mount. A Solid component
  * body runs once, so the plain `new InMemoryDockLayoutStore()` below (unlike
  * react's build-once ref) is already build-once by construction.
+ *
+ * Body copy is deliberately `"FX-RATES-BODY"` etc — NOT the contract tier's
+ * plain `"RATES"`/`"ANALYTICS"`/... — because `scenarioActionFor`'s
+ * `waitForText` resolves through Playwright's `getByText`, a case-insensitive
+ * SUBSTRING match with no `exact` option in `ScenarioAction`. Dockview's own
+ * tab title for fx-rates is "Live Rates" (PANEL_SPECS), which contains
+ * "Rates" — a plain "RATES" body would strict-mode-violate (2 matches: the
+ * stub body AND the tab). The hyphenated all-caps form shares no substring
+ * with any PANEL_SPECS title. Solid asserts against react's goldens, so this
+ * copy must match client-react's twin exactly.
  */
 const visualDockPanelRegistry: PanelRegistry = {
   "fx-rates": () => {
-    return <div data-testid="fx-rates-body">RATES</div>;
+    return <div data-testid="fx-rates-body">FX-RATES-BODY</div>;
   },
   "fx-analytics": () => {
-    return <div data-testid="fx-analytics-body">ANALYTICS</div>;
+    return <div data-testid="fx-analytics-body">FX-ANALYTICS-BODY</div>;
   },
   "fx-positions": () => {
-    return <div data-testid="fx-positions-body">POSITIONS</div>;
+    return <div data-testid="fx-positions-body">FX-POSITIONS-BODY</div>;
   },
   "fx-blotter": () => {
-    return <div data-testid="fx-blotter-body">BLOTTER</div>;
+    return <div data-testid="fx-blotter-body">FX-BLOTTER-BODY</div>;
   },
 };
 

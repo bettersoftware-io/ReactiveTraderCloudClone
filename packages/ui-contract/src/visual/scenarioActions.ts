@@ -103,10 +103,15 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // useEffect-driven portal (DockviewLayoutEngine's `mounted` state, set
   // once createDockEngine's panel-mount callback fires), unlike the in-house
   // engine's synchronous render — so this needs a waitForText the sync
-  // layout/fx-* scenarios don't. "RATES" is the fx-rates stub's full body
-  // text (the visual wrapper's own 4-panel registry, not the in-house
-  // engine's "LIVE RATES" stub).
-  "shell/layout-dockview": { waitForText: "RATES" },
+  // layout/fx-* scenarios don't. "FX-RATES-BODY" is the fx-rates stub's full
+  // body text (the visual wrapper's own 4-panel registry, not the in-house
+  // engine's "LIVE RATES" stub or the contract tier's plain "RATES"). Must be
+  // this specific, non-generic string: `getByText` is a case-insensitive
+  // SUBSTRING match with no `exact` option on `ScenarioAction`, and
+  // dockview's own tab title for fx-rates is "Live Rates" (PANEL_SPECS) — a
+  // plain "RATES" here strict-mode-violated (matched both the stub body and
+  // the tab).
+  "shell/layout-dockview": { waitForText: "FX-RATES-BODY" },
 
   // --- Phase V testid-gated interaction scenarios ---
   // Blotter: click a column header to sort (ascending arrow appears). No
