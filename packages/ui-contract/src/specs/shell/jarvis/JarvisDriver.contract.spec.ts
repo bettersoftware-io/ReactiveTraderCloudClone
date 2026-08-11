@@ -33,7 +33,10 @@ import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EqWorkspaceState, JarvisEvent } from "@rtc/client-core";
-import { DRIVE_STAGGER_MS } from "@rtc/client-core";
+import {
+  DRIVE_STAGGER_MS,
+  type UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/client-core";
 
 /** Mirrors `ScriptedJarvisEngine`'s own canned `setupWorkspace` demo batch
  * (`SCRIPTED_VOL_WORKSPACE_BATCH`, module-private there) — a real scripted
@@ -245,6 +248,205 @@ describe("JarvisDriver", () => {
     ]);
   });
 
+  // --- Pinned panels (GenUI L3): the dockPanel/undockPanel commands ---------
+  // These ride the same interpreter chain as every scenario above, but their
+  // effect is two machines deep (panels roster + the active tab's layout
+  // tree), so each asserts the WORKSPACE, not just the roster: a docked panel
+  // leaves the floating cascade (`app.panels`) and appears as an engine leaf
+  // (`app.layout.isDocked`). The four SKIP paths are asserted by their
+  // observable consequence — nothing moves, and no `drive: <kind>` transcript
+  // row folds (only APPLIED outcomes do). The skip REASON strings themselves
+  // (`unknown panelId "…"` / `already docked` / `dock full` / `not docked`)
+  // are pinned verbatim by `JarvisDriverMachine.test.ts`; they reach no DOM
+  // surface, so this tier cannot — and deliberately does not — re-assert them.
+  it("a driven dockPanel command pins the panel into the active tab, and undockPanel floats it again", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions and pin it");
+
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DRIVEN_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [{ kind: "dockPanel", panelId: DRIVEN_PANEL_ID }],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.layout.isDocked(DRIVEN_PANEL_ID)).toBe(true);
+    expect(app.panels.isPresent()).toBe(false);
+    expect(driveRowTexts(app.overlay.entries())).toEqual(["drive: dockPanel"]);
+
+    // A second TURN — `done` completed the first one, and a completed turn
+    // swallows every later event silently. Real timers around the
+    // `userEvent`-backed send (the file doc's rule), fake ones again for the
+    // stagger.
+    vi.useRealTimers();
+    await app.overlay.send("now unpin it");
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [{ kind: "undockPanel", panelId: DRIVEN_PANEL_ID }],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.layout.isDocked(DRIVEN_PANEL_ID)).toBe(false);
+    expect(app.panels.panelIds()).toEqual([DRIVEN_PANEL_ID]);
+    expect(driveRowTexts(app.overlay.entries())).toEqual([
+      "drive: dockPanel",
+      "drive: undockPanel",
+    ]);
+  });
+
+  it("dockPanel of an id no panel carries is skipped (unknown panelId) — nothing docks, nothing folds", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("pin a panel that doesn't exist");
+
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [{ kind: "dockPanel", panelId: "panel-never-spawned" }],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.layout.isDocked("panel-never-spawned")).toBe(false);
+    expect(driveRowTexts(app.overlay.entries())).toEqual([]);
+  });
+
+  it("dockPanel of an already-docked panel is skipped — it stays docked exactly once", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("pin it twice");
+
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DRIVEN_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [
+            { kind: "dockPanel", panelId: DRIVEN_PANEL_ID },
+            { kind: "dockPanel", panelId: DRIVEN_PANEL_ID },
+          ],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.layout.isDocked(DRIVEN_PANEL_ID)).toBe(true);
+    // The second command applied nothing — one row, not two (and, crucially,
+    // no second leaf: a duplicate insert would corrupt the persisted tree).
+    expect(driveRowTexts(app.overlay.entries())).toEqual(["drive: dockPanel"]);
+  });
+
+  it("dockPanel past the cap is skipped (dock full) — the fifth panel keeps floating", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("pin everything");
+
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-1", spec: DESK_POSITIONS_SPEC },
+      { type: "panel", panelId: "panel-2", spec: DESK_POSITIONS_SPEC },
+      { type: "panel", panelId: "panel-3", spec: DESK_POSITIONS_SPEC },
+      { type: "panel", panelId: "panel-4", spec: DESK_POSITIONS_SPEC },
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [
+            { kind: "dockPanel", panelId: "panel-1" },
+            { kind: "dockPanel", panelId: "panel-2" },
+            { kind: "dockPanel", panelId: "panel-3" },
+            { kind: "dockPanel", panelId: "panel-4" },
+          ],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    // A second turn (see the dock/undock scenario's note on completed turns).
+    vi.useRealTimers();
+    await app.overlay.send("and pin one more");
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-5", spec: DESK_POSITIONS_SPEC },
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [{ kind: "dockPanel", panelId: "panel-5" }],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.layout.isDocked("panel-5")).toBe(false);
+    expect(app.panels.panelIds()).toEqual(["panel-5"]);
+    expect(driveRowTexts(app.overlay.entries())).toEqual([
+      "drive: dockPanel",
+      "drive: dockPanel",
+      "drive: dockPanel",
+      "drive: dockPanel",
+    ]);
+  });
+
+  it("undockPanel of a panel that is not docked is skipped — the floating panel is untouched", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("unpin something that was never pinned");
+
+    vi.useFakeTimers();
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DRIVEN_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      {
+        type: "command",
+        batch: {
+          v: 1,
+          commands: [{ kind: "undockPanel", panelId: DRIVEN_PANEL_ID }],
+        },
+      },
+      { type: "done" },
+    ]);
+    await vi.advanceTimersByTimeAsync(DRIVE_SETTLE_MS);
+
+    expect(app.panels.panelIds()).toEqual([DRIVEN_PANEL_ID]);
+    expect(app.layout.isDocked(DRIVEN_PANEL_ID)).toBe(false);
+    expect(driveRowTexts(app.overlay.entries())).toEqual([]);
+  });
+
   it("a narrate turn while the overlay is closed flares the orb's unread-narration attention state", async () => {
     const world = createWorld();
     const app = mountWith(world, AppShell);
@@ -300,6 +502,43 @@ interface CommandEventTag {
 }
 
 type DriveBatchV1 = Extract<JarvisEvent, CommandEventTag>["batch"];
+
+/** The panel the pinned-panel scenarios drive — an `analytics`-sourced table,
+ * the cheapest spec whose body mounts without any seeded World data. */
+const DRIVEN_PANEL_ID = "panel-desk-positions";
+
+/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract` — same
+ * borrow-the-type-off-an-exported-const trick this file already uses for
+ * `DriveBatchV1`, and `JarvisPanelLayer.contract.spec.ts` for its own specs. */
+type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
+
+const DESK_POSITIONS_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "Desk Positions",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+/** The transcript's `drive: <kind>` rows, in order — one per APPLIED command
+ * (`recordDriveOutcome`'s applied-only filter), so this doubles as the
+ * skipped-command assertion every pinned-panel scenario below leans on. */
+function driveRowTexts(entries: readonly TranscriptEntry[]): string[] {
+  return entries
+    .map((entry) => {
+      return entry.text;
+    })
+    .filter((text) => {
+      return text.startsWith("drive:");
+    });
+}
+
+/** Structural mirror of one `JarvisOverlayPage.entries()` row — only the
+ * field `driveRowTexts` reads, so this stays a plain local shape rather than
+ * importing the page object's own type. */
+interface TranscriptEntry {
+  readonly text: string;
+}
 
 /** Synchronous snapshot of the shared eqWorkspace machine's current state —
  * `World.eqWorkspace.state$` is always warm (a `StateObservable`), so a

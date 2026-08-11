@@ -32,11 +32,19 @@
  * between the React and Solid ports (react: per-span; solid: per-row/cell).
  */
 
-import { JarvisOverlay, JarvisPanelLayer } from "@ui-contract/components";
+import {
+  AppShell,
+  JarvisOverlay,
+  JarvisPanelLayer,
+} from "@ui-contract/components";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { MAX_LIVE_PANELS, UNSUPPORTED_SENTINEL_SPEC } from "@rtc/client-core";
+import {
+  MAX_DOCKED_PANELS,
+  MAX_LIVE_PANELS,
+  UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/client-core";
 import type { PriceTick } from "@rtc/domain";
 
 /** Mirrors `ScriptedJarvisEngine`'s own canned demo panel (`GBP_VOLATILITY_
@@ -352,6 +360,174 @@ describe("JarvisPanelLayer", () => {
     expect(layer.rendererTestId("panel-gauge")).toBe("jarvis-panel-gauge");
     expect(layer.rendererTestId("panel-table")).toBe("jarvis-panel-table");
     expect(layer.rendererTestId("panel-spark")).toBe("jarvis-panel-spark-grid");
+  });
+});
+
+/**
+ * Pinning (GenUI L3). One notch wider than the block above: docking is a
+ * TWO-machine operation — the panels roster flags the panel `docked`, and the
+ * ACTIVE tab's layout machine gains a leaf for it — and the panel then renders
+ * in the workspace engine, not in this layer at all. Nothing shallower than
+ * the real `App` shell (`AppShell` token, `JarvisDriverPage`) has both halves
+ * on screen at once, so every scenario here mounts it and reads the floating
+ * cascade through `app.panels` and the workspace tree through `app.layout`
+ * (the same `LayoutEnginePage` `LayoutEngine.contract.spec.ts` drives
+ * standalone). Panels still arrive the same way as above — `overlay.send(...)`
+ * opens a turn, `overlay.emitEvents([{ type: "panel", … }])` pushes them.
+ */
+describe("JarvisPanelLayer pinning", () => {
+  it("pinning moves a panel out of the floating cascade and into the active tab's tree, with unpin + close controls", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me gbp volatility");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_SPEC },
+      { type: "done" },
+    ]);
+    expect(app.panels.panelIds()).toEqual([SCRIPTED_PANEL_ID]);
+    expect(app.layout.isDocked(SCRIPTED_PANEL_ID)).toBe(false);
+
+    await app.panels.dockPanel(SCRIPTED_PANEL_ID);
+
+    // Gone from the floating layer entirely — the layer renders
+    // `floatingPanels` only, so with nothing else live it disappears.
+    expect(app.panels.isPresent()).toBe(false);
+    // …and present as a workspace leaf carrying the docked head's controls.
+    expect(app.layout.isDocked(SCRIPTED_PANEL_ID)).toBe(true);
+    expect(app.layout.dockedTitle(SCRIPTED_PANEL_ID)).toBe("GBP Volatility");
+  });
+
+  it("the three pin/unpin/close controls name the panel in their accessible labels", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me gbp volatility");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_SPEC },
+      { type: "done" },
+    ]);
+
+    expect(app.panels.dockLabel(SCRIPTED_PANEL_ID)).toBe(
+      "Pin GBP Volatility to workspace",
+    );
+
+    await app.panels.dockPanel(SCRIPTED_PANEL_ID);
+
+    expect(app.layout.undockLabel(SCRIPTED_PANEL_ID)).toBe(
+      "Unpin GBP Volatility",
+    );
+    expect(app.layout.closeLabel(SCRIPTED_PANEL_ID)).toBe(
+      "Close GBP Volatility",
+    );
+  });
+
+  it("unpinning returns the panel to the floating cascade and drops its leaf", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me gbp volatility");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(SCRIPTED_PANEL_ID);
+
+    await app.layout.undock(SCRIPTED_PANEL_ID);
+
+    expect(app.layout.isDocked(SCRIPTED_PANEL_ID)).toBe(false);
+    expect(app.panels.panelIds()).toEqual([SCRIPTED_PANEL_ID]);
+  });
+
+  it("closing a docked panel drops it from the tree AND the roster — it does not float back", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me gbp volatility");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: SCRIPTED_PANEL_ID, spec: GBP_VOLATILITY_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(SCRIPTED_PANEL_ID);
+
+    await app.layout.closeDocked(SCRIPTED_PANEL_ID);
+
+    expect(app.layout.isDocked(SCRIPTED_PANEL_ID)).toBe(false);
+    expect(app.panels.isPresent()).toBe(false);
+  });
+
+  it(`a pinned panel stops counting toward the floating cap, so a later spawn evicts nobody (MAX_LIVE_PANELS = ${MAX_LIVE_PANELS})`, async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("spawn four panels");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-1", spec: minimalBlotterSpec("One") },
+      { type: "panel", panelId: "panel-2", spec: minimalBlotterSpec("Two") },
+      { type: "panel", panelId: "panel-3", spec: minimalBlotterSpec("Three") },
+      { type: "panel", panelId: "panel-4", spec: minimalBlotterSpec("Four") },
+      { type: "done" },
+    ]);
+    expect(app.panels.panelIds()).toHaveLength(MAX_LIVE_PANELS);
+
+    await app.panels.dockPanel("panel-1");
+    await app.overlay.send("and one more");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-5", spec: minimalBlotterSpec("Five") },
+      { type: "done" },
+    ]);
+
+    // Without the docked-panels-are-invisible-to-the-cap rule, "panel-1"
+    // (the oldest entry overall) would have been the FIFO eviction target —
+    // a pinned panel silently vanishing out of the user's workspace.
+    expect(app.layout.isDocked("panel-1")).toBe(true);
+    expect(app.panels.panelIds()).toEqual([
+      "panel-2",
+      "panel-3",
+      "panel-4",
+      "panel-5",
+    ]);
+  });
+
+  it(`the pin control is disabled once ${MAX_DOCKED_PANELS} panels are pinned`, async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("spawn four panels");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-1", spec: minimalBlotterSpec("One") },
+      { type: "panel", panelId: "panel-2", spec: minimalBlotterSpec("Two") },
+      { type: "panel", panelId: "panel-3", spec: minimalBlotterSpec("Three") },
+      { type: "panel", panelId: "panel-4", spec: minimalBlotterSpec("Four") },
+      { type: "done" },
+    ]);
+
+    for (const panelId of ["panel-1", "panel-2", "panel-3", "panel-4"]) {
+      await app.panels.dockPanel(panelId);
+    }
+
+    // Every dock freed a floating slot, so this fifth spawn evicts nothing.
+    await app.overlay.send("and one more");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-5", spec: minimalBlotterSpec("Five") },
+      { type: "done" },
+    ]);
+
+    expect(app.panels.panelIds()).toEqual(["panel-5"]);
+    expect(app.panels.isDockDisabled("panel-5")).toBe(true);
+
+    await app.panels.dockPanel("panel-5");
+
+    // A disabled control fires nothing — the cap is legible in the UI rather
+    // than a click the panels machine silently swallows.
+    expect(app.layout.isDocked("panel-5")).toBe(false);
+    expect(app.panels.panelIds()).toEqual(["panel-5"]);
   });
 });
 

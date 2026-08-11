@@ -71,12 +71,14 @@ import type {
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
+  LayoutState,
   NotionalView,
   SessionUser,
   WorkspaceNavState,
 } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
+  createLayoutMachine,
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
@@ -390,7 +392,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // arrangement with noop intents (no drag, no maximize during capture).
     useLayout: (tab: WorkspaceTab) => {
       return {
-        state: at(createDefaultLayoutPort(tab).initial),
+        state: at(dockedLayoutStateFor(tab, dockedPanelIdsIn(data))),
         maximize: noop,
         restore: noop,
         collapse: noop,
@@ -663,4 +665,64 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
     },
   };
+}
+
+/** The tab's default arrangement, plus a docked leaf for every desk panel the
+ * fixture marks `docked: true` (GenUI L3). Built by driving the REAL
+ * `createLayoutMachine`'s `insertPanel` intent over the tab's DEFAULT port —
+ * the same code path `Presenters.dockPanel` runs in the app — rather than
+ * hand-writing a dock-column tree literal that would drift the moment
+ * `insertDockedLeaf` changed. The machine is warm, so its post-insert state is
+ * readable synchronously.
+ *
+ * No tab attribution: the fixture format has none, and a static screenshot
+ * frames exactly one tab, so a docked panel is inserted into whichever tab is
+ * asked for. Result is memoized per (tab, ids) because `useLayout` is read on
+ * every render.
+ */
+function dockedLayoutStateFor(
+  tab: WorkspaceTab,
+  dockedPanelIds: readonly string[],
+): LayoutState {
+  const port = createDefaultLayoutPort(tab);
+
+  if (dockedPanelIds.length === 0) {
+    return port.initial;
+  }
+
+  const key = `${tab}|${dockedPanelIds.join(",")}`;
+  const cached = dockedLayoutStates.get(key);
+
+  if (cached) {
+    return cached;
+  }
+
+  const machine = createLayoutMachine(port);
+
+  for (const panelId of dockedPanelIds) {
+    machine.intents.insertPanel(panelId);
+  }
+
+  let built = port.initial;
+  machine.state$
+    .subscribe((layoutState) => {
+      built = layoutState;
+    })
+    .unsubscribe();
+  machine.dispose();
+  dockedLayoutStates.set(key, built);
+  return built;
+}
+
+const dockedLayoutStates = new Map<string, LayoutState>();
+
+/** The fixture's docked desk-panel ids, in order. */
+function dockedPanelIdsIn(data: AppData): readonly string[] {
+  return (data.jarvisPanels ?? [])
+    .filter((panel) => {
+      return panel.docked === true;
+    })
+    .map((panel) => {
+      return panel.panelId;
+    });
 }

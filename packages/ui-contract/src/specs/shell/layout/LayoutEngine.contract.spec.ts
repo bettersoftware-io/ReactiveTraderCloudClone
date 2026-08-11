@@ -1,6 +1,14 @@
-import { LayoutEngine } from "@ui-contract/components";
-import { cleanupMounted, mount } from "@ui-contract/mount";
+import { AppShell, LayoutEngine } from "@ui-contract/components";
+import type { World } from "@ui-contract/harness/world";
+import {
+  cleanupMounted,
+  createWorld,
+  mount,
+  mountWith,
+} from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
+
+import type { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/client-core";
 
 afterEach(() => {
   cleanupMounted();
@@ -253,3 +261,149 @@ describe("InhouseLayoutEngine", () => {
     });
   });
 });
+
+/**
+ * Docked desk panels + workspace persistence (GenUI L3). These mount the real
+ * `App` shell rather than this file's standalone `LayoutEngine`: a docked
+ * panel's leaf is inserted by the dock BRIDGE (panels roster + the active
+ * tab's layout machine + the persistence writer, all composed above the
+ * engine), and the engine itself stays as dumb as the block above proves it
+ * is. `app.layout` is this same `LayoutEnginePage`, pointed at the shell's
+ * active-tab engine.
+ *
+ * REHYDRATION IS NOT A REMOUNT. Unmounting and re-mounting on the SAME World
+ * reuses the identical layout/panels machines (they are cached in
+ * `WeakMap<World, …>` in each framework's driver and survive
+ * `cleanupMounted()`), so such a test passes with no persistence whatsoever.
+ * The scenario below therefore reads the string the writer actually stored on
+ * World A and boots a genuinely SEPARATE World B from it.
+ */
+describe("InhouseLayoutEngine docked desk panels", () => {
+  it("renders a docked panel as a leaf beside the tab's static panels, which are untouched", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DOCKED_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(DOCKED_PANEL_ID);
+
+    expect(app.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
+    // The fx default tree is intact around it — the dock column is added
+    // beside the static panels, never in place of them.
+    expect(app.layout.maximizeAriaLabel("fx-rates")).toBe(
+      "Maximize Live Rates",
+    );
+    expect(app.layout.isDocked("fx-rates")).toBe(false);
+    // …and the docked leaf is a full engine panel: it maximizes like any
+    // other, addressed by its own panel id.
+    app.layout.maximize(DOCKED_PANEL_ID);
+    expect(app.maximizedPanelId()).toBe(DOCKED_PANEL_ID);
+  });
+
+  it("a FRESH world seeded with the persisted payload boots with the panel already docked", async () => {
+    const first = createWorld();
+    const firstApp = mountWith(first, AppShell);
+
+    await firstApp.overlay.pressHotkey();
+    await firstApp.overlay.send("show me desk positions");
+    firstApp.overlay.emitEvents([
+      { type: "panel", panelId: DOCKED_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await firstApp.panels.dockPanel(DOCKED_PANEL_ID);
+    await flushWorkspacePersistence();
+
+    const persisted = first.workspaceLayout.getValue();
+    expect(persisted).not.toBeNull();
+
+    // A SECOND World — new machines, new presenter, nothing shared with the
+    // first but this string. This is the whole point (see the block doc).
+    const second = createWorldSeededWith(persisted);
+    const secondApp = mountWith(second, AppShell);
+
+    expect(secondApp.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
+    expect(secondApp.layout.dockedTitle(DOCKED_PANEL_ID)).toBe(
+      "Desk Positions",
+    );
+    // Restored DOCKED, not floating: the layer renders `floatingPanels` only.
+    expect(secondApp.panels.isPresent()).toBe(false);
+  });
+
+  it("a corrupt persisted payload is discarded whole — the workspace boots on defaults", () => {
+    // `parseWorkspaceLayout` is fail-closed on the WHOLE payload, so a
+    // half-written / hand-edited string must not half-restore anything.
+    const world = createWorldSeededWith('{"v":1,"tabs":{"fx":{"layout":');
+    const app = mountWith(world, AppShell);
+
+    expect(app.layout.maximizeAriaLabel("fx-rates")).toBe(
+      "Maximize Live Rates",
+    );
+    expect(app.layout.isDocked(DOCKED_PANEL_ID)).toBe(false);
+    expect(app.panels.isPresent()).toBe(false);
+  });
+});
+
+/** The panel this block docks — an `analytics`-sourced table, the cheapest
+ * spec whose body needs no seeded World data to mount. */
+const DOCKED_PANEL_ID = "panel-desk-positions";
+
+/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
+ * borrows the type off the one already-exported `PanelSpecV1`-typed const —
+ * the identical trick `JarvisPanelLayer.contract.spec.ts` uses. */
+type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
+
+const DESK_POSITIONS_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "Desk Positions",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+/** `createWorld` with a seeded `workspaceLayoutV1` string — the 23rd
+ * positional parameter, reached past every earlier seed (see
+ * `harness/world.ts`; `mount()`'s `MountOptions.workspaceLayout` is the same
+ * seed for the single-mount case, but these scenarios need the World object
+ * itself to read the persisted string back off). */
+function createWorldSeededWith(seed: string | null): World {
+  return createWorld(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    seed,
+  );
+}
+
+/** One macrotask — the whole window of the contract fixture's workspace
+ * persistence writer. It is the REAL `createWorkspacePersistenceWriter`, wired
+ * at `debounceMs: 0` (the tier asserts WHAT gets persisted, never the settle
+ * window — coalescing has its own unit test), and a zero debounce still
+ * schedules its emission on a macrotask. */
+function flushWorkspacePersistence(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

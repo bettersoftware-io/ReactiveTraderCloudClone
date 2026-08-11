@@ -649,6 +649,17 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "app-fx",
   },
 
+  // GenUI L3: the FX workspace with one desk panel PINNED into it — the
+  // engine's dock column, the docked head (unpin + close) and a docked
+  // panel body, all inside the real App chrome. `App` rather than a static
+  // engine: the dock column is assembled ABOVE the engine (registry/specs/
+  // head merge in App.tsx), so a standalone engine shot would only pin the
+  // synthetic stub registry, not the real docked-panel plumbing.
+  "layout/fx-docked-panel": {
+    componentKey: "App",
+    fixtureKey: "app-fx-docked-panel",
+  },
+
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is
