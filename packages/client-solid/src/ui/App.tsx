@@ -126,17 +126,26 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // position, canvas state) along with every `shareReplay({refCount:true})`
   // port subscription it owned (the stream-resubscribe trap — see #171-#173).
   //
-  // Fix: gate identity on the DOCKED ID SET, not the row array. `dockedIdsKey`
-  // reduces `dockedPanels()` to a sorted, comma-joined STRING (mirrors
-  // CreditBlotter.tsx's `tradeIdsKey`/RfqsPanel.tsx's `allIdsKey` — this
-  // repo's established idiom for exactly this "changed" vs. "different
-  // reference, same content" distinction; a plain delimiter, never a control
-  // byte — #250). Its own computation reruns on every `dockedPanels()` tick
-  // (cheap: ≤`MAX_DOCKED_PANELS` short strings), but two JS string
-  // PRIMITIVES with the same content compare `===`, so `createMemo` only
-  // propagates a change to `dockedIdsKey`'s own dependents (`dockedIds`, and
-  // therefore `registry`/`specs`/`headRegistry` below) when the SET of
-  // docked ids genuinely changed. `dockedPanels` (the accessor itself, a
+  // Fix: gate identity on the DOCKED ID SET, not the row array. `dockedIds`
+  // reduces `dockedPanels()` to a SORTED array of ids, with a CUSTOM `equals`
+  // (element-wise compare) as the memo's own change gate — NOT a joined
+  // string: `panelId` is a freeform string validated only for length 1..64
+  // (see `driveCommand.ts`'s dock-command guard), no charset restriction, so
+  // a wire-minted id CAN legally contain a comma. `CreditBlotter.tsx`'s
+  // `tradeIdsKey`/`RfqsPanel.tsx`'s `allIdsKey` join NUMBER arrays, where a
+  // comma is structurally impossible in an element — that plain-join idiom
+  // is unsound here: id `"x,y"` alone would key identically to ids `"x"` +
+  // `"y"` together, so a membership transition between colliding sets
+  // wouldn't re-key at all (registries would go silently stale, rendering
+  // nothing for a real docked panel) — a round-trip through a joined string
+  // has the same problem the other direction, splitting `"x,y"` back into
+  // two wrong ids even with no collision in play. An array-valued memo with
+  // an element-wise `equals` sidesteps encoding entirely — there is no
+  // string for two distinct id sets to collide into. This memo's own
+  // computation reruns on every `dockedPanels()` tick (cheap: ≤
+  // `MAX_DOCKED_PANELS` short strings, sorted), but `equals` short-circuits
+  // propagation to its dependents (`registry`/`specs`/`headRegistry` below)
+  // whenever the SET is unchanged. `dockedPanels` (the accessor itself, a
   // stable function reference for this component's whole lifetime) is
   // threaded down into `dockedRegistryFor`/`dockedHeadsFor` so each docked
   // panel's body/head can look up its OWN current row reactively and update
@@ -145,19 +154,26 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // touching `registry`/`headRegistry`'s identity or remounting anything.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
 
-  const dockedIdsKey = createMemo((): string => {
-    return dockedPanels()
-      .map((panel) => {
-        return panel.panelId;
-      })
-      .sort()
-      .join(",");
-  });
-
-  const dockedIds = createMemo((): readonly string[] => {
-    const key = dockedIdsKey();
-    return key === "" ? [] : key.split(",");
-  });
+  const dockedIds = createMemo<readonly string[]>(
+    () => {
+      return dockedPanels()
+        .map((panel) => {
+          return panel.panelId;
+        })
+        .sort();
+    },
+    [],
+    {
+      equals: (prev: readonly string[], next: readonly string[]): boolean => {
+        return (
+          prev.length === next.length &&
+          prev.every((id, index) => {
+            return id === next[index];
+          })
+        );
+      },
+    },
+  );
 
   const registry = createMemo(() => {
     return {
