@@ -1,10 +1,31 @@
-import { createDockview, type DockviewApi } from "dockview";
+import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
 import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { TitleOnlyTab } from "#/TitleOnlyTab";
 
 const RTC_TAB_COMPONENT = "rtc-tab";
+
+// dockview's own built-in themes (theme.ts: themeDark, themeAbyss, …) apply
+// their `className` via the `theme` OPTION, not via a class a consumer puts
+// on the container. That option lands the class on dockview's own internal
+// "shell" element — the closest ancestor of `.dv-dockview` — deliberately
+// NOT on `.dv-dockview` itself (dockview's own source comment: doing so
+// "would block consumer overrides"). CSS custom properties resolve from the
+// NEAREST ancestor with an explicit declaration, not by selector specificity,
+// so a `dockview-theme-rtc` class applied only to an outer wrapper div (as
+// the client shells do, for other styling purposes) sits further from
+// `.dv-dockview` than the shell dockview creates internally — and loses. With
+// no `theme` option supplied at all, dockview defaults to `themeAbyss`,
+// which is exactly the unthemed dark chrome every skin/mode rendered
+// identically (visual-tier finding, task-7 report). Passing our OWN
+// `DockviewTheme` here (matching `dockview-hud.css`'s `.dockview-theme-rtc`
+// selector) is the same mechanism dockview's built-ins use, so the mapped
+// `--dv-*` vars finally win the cascade at the correct DOM level.
+const RTC_DOCKVIEW_THEME: DockviewTheme = {
+  name: "rtc",
+  className: "dockview-theme-rtc",
+};
 
 export interface DockPanelHooks {
   title(panelId: string): string;
@@ -48,6 +69,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     createTabComponent: () => {
       return new TitleOnlyTab();
     },
+    // See RTC_DOCKVIEW_THEME's own doc comment: this is what actually routes
+    // the HUD theme's --dv-* variables past dockview's internal defaults.
+    theme: RTC_DOCKVIEW_THEME,
   });
 
   const width = opts.container.clientWidth || 1200;

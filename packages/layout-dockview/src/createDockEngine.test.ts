@@ -147,6 +147,34 @@ describe("createDockEngine", () => {
     engine.dispose();
   });
 
+  it("routes the HUD theme class onto dockview's own internal shell element", () => {
+    // Regression pin (visual-tier finding, task-7 report): dockview's own
+    // built-in themes (themeDark, themeAbyss, …) apply their `className` via
+    // the `theme` OPTION, which lands the class on dockview's internal
+    // "shell" element — the closest ancestor of `.dv-dockview` — NOT on
+    // whatever element the consumer's own container div carries. CSS custom
+    // properties resolve from the nearest ancestor with an explicit
+    // declaration, not by selector specificity, so a `dockview-theme-rtc`
+    // class applied only to an OUTER wrapper div (as the client shells do,
+    // for other styling) sits further from `.dv-dockview` than dockview's
+    // own internal shell — and loses to dockview's default `themeAbyss`
+    // colours regardless of skin/mode. This test pins the mechanism, not the
+    // pixels (that's the playwright visual tier's job): the theme class must
+    // land on an element INSIDE the container that createDockEngine did not
+    // itself create — i.e. on dockview's own shell, not merely on the
+    // consumer-supplied container.
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    const themedDescendant = opts.container.querySelector(
+      ".dockview-theme-rtc",
+    );
+    expect(themedDescendant).not.toBeNull();
+    expect(themedDescendant).not.toBe(opts.container);
+
+    engine.dispose();
+  });
+
   it("honours the seed's proportions rather than distributing evenly", () => {
     // Regression pin (live-browser finding): without an explicit, real-
     // dimensioned `api.layout(width, height)` call before `fromJSON`,
