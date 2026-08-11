@@ -14,8 +14,12 @@
  * Levels:
  *  - `off`   — inventory only: the full expected animation roster.
  *  - `calm`  — inventory only: loops should be paused, data feedback stays.
- *  - `freeze`— ASSERTED: zero live animations and zero rAF activity. Any leak
- *              is listed and the process exits 1.
+ *  - `freeze`— ASSERTED: zero live animations and zero non-diagnostic rAF
+ *              activity. Any leak is listed and the process exits 1. The FPS
+ *              meter's sampling loop carries the `rtcDiagnosticRafLoop`
+ *              marker and keeps running under freeze by design (diagnostic
+ *              instrumentation, not decorative motion — see
+ *              docs/power-saver-mode.md); it is counted separately.
  *
  * Usage (normally via the root scripts, which start the dev server for you):
  *   pnpm perf:motion-audit           # react client
@@ -117,17 +121,23 @@ async function main(): Promise<void> {
 }
 
 function report(view: string, sample: MotionSample): void {
-  const rafPerSecond =
-    sample.elapsedMs > 0
-      ? Math.round((sample.rafCallbacks / sample.elapsedMs) * 1000)
-      : 0;
+  const rafPerSecond = perSecond(sample.rafCallbacks, sample.elapsedMs);
+  const diagnosticPerSecond = perSecond(
+    sample.diagnosticRafCallbacks,
+    sample.elapsedMs,
+  );
+
   console.log(
-    `-- ${view}: rAF ${rafPerSecond}/s, live animations ${sample.liveAnimations.length}`,
+    `-- ${view}: rAF ${rafPerSecond}/s (+${diagnosticPerSecond}/s diagnostic), live animations ${sample.liveAnimations.length}`,
   );
 
   for (const animation of sample.liveAnimations) {
     console.log(`     ${animation}`);
   }
+}
+
+function perSecond(count: number, elapsedMs: number): number {
+  return elapsedMs > 0 ? Math.round((count / elapsedMs) * 1000) : 0;
 }
 
 /** esbuild's keepNames helper slot — see the `addInitScript` shim above. */

@@ -60,22 +60,23 @@ describe("useLiveMetrics", () => {
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  // Power-saver's Freeze tier pauses the rAF loop the same way the
-  // LiveMetricsContext harness override does — no context override here,
-  // just `usePowerSaver().isFreeze` reached through the real ViewModel seam.
-  it("never starts the loop and holds the last value when power-saver is frozen", () => {
-    const { result, rerender } = renderHook(
+  // Power-saver's Freeze tier deliberately does NOT pause the meter — the FPS
+  // readout is diagnostic instrumentation, exempt from freeze's motion kill.
+  // The motion probe recognises the loop by its `rtcDiagnosticRafLoop` marker
+  // (tests/browser/motionProbe.ts), so that marker is pinned here too.
+  it("keeps sampling under power-saver freeze and marks its loop diagnostic", () => {
+    renderHook(
       () => {
         return useLiveMetrics();
       },
       { wrapper: withPowerSaver(true) },
     );
 
-    expect(result.current.fps).toBeNull();
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
-
-    rerender();
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
+    expect(
+      (rafCb as { rtcDiagnosticRafLoop?: boolean } | null)
+        ?.rtcDiagnosticRafLoop,
+    ).toBe(true);
   });
 
   it("starts null, then publishes fps + tone counted over the ~1s window", () => {
@@ -145,7 +146,9 @@ interface WrapperProps {
   children: ReactNode;
 }
 
-/** Minimal ViewModel stub — useLiveMetrics only reads `usePowerSaver().isFreeze`. */
+/** Minimal ViewModel stub. The hook no longer reads the ViewModel at all —
+ *  the provider is kept so the freeze test above renders under a
+ *  freeze-shaped ViewModel and pins the diagnostics exemption. */
 function viewModelWith(isFreeze: boolean): ViewModel {
   return {
     usePowerSaver: () => {

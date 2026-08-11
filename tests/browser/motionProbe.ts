@@ -13,7 +13,10 @@
  *  - `requestAnimationFrame` registrations — an imperative JS loop that
  *    slipped past its TS freeze gate re-registers every frame, so counting
  *    registrations over a window catches it even when instrumentation starts
- *    after the loop did.
+ *    after the loop did. Callbacks carrying the `rtcDiagnosticRafLoop`
+ *    marker (the FPS meter's sampling loop, which deliberately keeps running
+ *    under Freeze — see `useLiveMetrics`) are counted separately as
+ *    diagnostic, not as motion.
  *
  * `sampleMotion` MUST stay self-contained — Playwright serialises the
  * function source and evaluates it in the page, so it cannot close over
@@ -28,8 +31,14 @@ export interface MotionSampleOptions {
 }
 
 export interface MotionSample {
-  /** rAF callbacks registered while sampling ran. 0 under freeze. */
+  /** Non-diagnostic rAF callbacks registered while sampling ran. 0 under
+   *  freeze. */
   readonly rafCallbacks: number;
+  /** rAF callbacks carrying the `rtcDiagnosticRafLoop` marker — the FPS
+   *  meter's sampling loop, exempt from the freeze census because it is
+   *  diagnostic instrumentation, not decorative motion. Under freeze this
+   *  stays >0: the meter keeps running by design. */
+  readonly diagnosticRafCallbacks: number;
   /** Sampling wall-clock, for turning rafCallbacks into a rate. */
   readonly elapsedMs: number;
   /**
@@ -47,10 +56,19 @@ export async function sampleMotion(
 ): Promise<MotionSample> {
   const started = performance.now();
   let rafCallbacks = 0;
+  let diagnosticRafCallbacks = 0;
   const originalRaf = window.requestAnimationFrame.bind(window);
 
   window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
-    rafCallbacks += 1;
+    const marked = callback as FrameRequestCallback & {
+      rtcDiagnosticRafLoop?: boolean;
+    };
+
+    if (marked.rtcDiagnosticRafLoop === true) {
+      diagnosticRafCallbacks += 1;
+    } else {
+      rafCallbacks += 1;
+    }
 
     return originalRaf(callback);
   };
@@ -111,6 +129,7 @@ export async function sampleMotion(
 
   return {
     rafCallbacks,
+    diagnosticRafCallbacks,
     elapsedMs: performance.now() - started,
     liveAnimations: Array.from(seen.entries()).map(([key, count]) => {
       return `${key} x${count}/${options.samples}`;
