@@ -68,6 +68,7 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
+export const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -87,6 +88,13 @@ function isChartSubstrate(value: string | null): value is ChartSubstrate {
 
 function isJarvisSkin(value: string | null): value is JarvisSkin {
   return value !== null && (JARVIS_SKINS as readonly string[]).includes(value);
+}
+
+/** Guard for the first OPTIONAL preference: trivially true for anything
+ * AsyncStorage returns — there is no roster to validate against, only the
+ * "is this a string" check. */
+function isStoredString(value: string | null): value is string {
+  return typeof value === "string";
 }
 
 function isThemeModePreference(
@@ -159,6 +167,10 @@ interface StoredPreferences {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  /** The first OPTIONAL preference. Absent here (as with every other key)
+   * means "fall back to the default", which for this one is `null` — the
+   * same value, so there is nothing extra to distinguish. */
+  workspaceLayout?: string;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -187,6 +199,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       eqBlotterView,
       ambientStyle,
       chartSubstrate,
+      workspaceLayout,
       jarvisSkin,
       jarvisBrain,
       jarvisEffort,
@@ -207,6 +220,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
       AsyncStorage.getItem(CHART_SUBSTRATE_STORAGE_KEY),
+      AsyncStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
@@ -279,6 +293,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
 
     if (isChartSubstrate(chartSubstrate)) {
       stored.chartSubstrate = chartSubstrate;
+    }
+
+    if (isStoredString(workspaceLayout)) {
+      stored.workspaceLayout = workspaceLayout;
     }
 
     if (isJarvisSkin(jarvisSkin)) {
@@ -361,6 +379,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
 
+  private readonly workspaceLayout: BehaviorSubject<string | null>;
+
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
   private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
@@ -416,6 +436,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.chartSubstrate = new BehaviorSubject<ChartSubstrate>(
       s.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
+    );
+    this.workspaceLayout = new BehaviorSubject<string | null>(
+      s.workspaceLayout ?? null,
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -497,6 +520,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.chartSubstrate !== undefined) {
       this.chartSubstrate.next(s.chartSubstrate);
+    }
+
+    if (s.workspaceLayout !== undefined) {
+      this.workspaceLayout.next(s.workspaceLayout);
     }
 
     if (s.jarvisSkin !== undefined) {
@@ -673,6 +700,24 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.chartSubstrate.next(substrate);
+  }
+
+  workspaceLayout$(): Observable<string | null> {
+    return this.workspaceLayout.pipe(distinctUntilChanged());
+  }
+
+  setWorkspaceLayout(value: string | null): void {
+    if (value === null) {
+      void AsyncStorage.removeItem(WORKSPACE_LAYOUT_STORAGE_KEY).catch(
+        () => {},
+      );
+    } else {
+      void AsyncStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, value).catch(
+        () => {},
+      );
+    }
+
+    this.workspaceLayout.next(value);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

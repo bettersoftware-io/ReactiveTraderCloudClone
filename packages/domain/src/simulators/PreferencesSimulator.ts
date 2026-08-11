@@ -47,6 +47,8 @@ export interface PreferencesSeed {
   animatedBackground?: boolean;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  /** Seeds the first OPTIONAL preference. Default `null` (no layout saved). */
+  workspaceLayoutSeed?: string | null;
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
@@ -79,6 +81,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
 
   private readonly chartSubstrateSubject: BehaviorSubject<ChartSubstrate>;
+
+  private readonly workspaceLayoutSubject: BehaviorSubject<string | null>;
 
   private readonly jarvisSkinSubject: BehaviorSubject<JarvisSkin>;
 
@@ -124,6 +128,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.chartSubstrateSubject = new BehaviorSubject<ChartSubstrate>(
       seed.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
+    );
+    this.workspaceLayoutSubject = new BehaviorSubject<string | null>(
+      seed.workspaceLayoutSeed ?? null,
     );
     this.jarvisSkinSubject = new BehaviorSubject<JarvisSkin>(
       seed.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -212,6 +219,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setChartSubstrate(substrate: ChartSubstrate): void {
     this.chartSubstrateSubject.next(substrate);
+  }
+
+  workspaceLayout$(): Observable<string | null> {
+    return this.workspaceLayoutSubject.pipe(distinctUntilChanged());
+  }
+
+  setWorkspaceLayout(value: string | null): void {
+    this.workspaceLayoutSubject.next(value);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

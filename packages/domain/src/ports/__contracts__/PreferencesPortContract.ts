@@ -56,6 +56,8 @@ export interface PreferencesSeed {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  /** Seeds the first OPTIONAL preference. Default `null` (no layout saved). */
+  workspaceLayoutSeed?: string | null;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -459,6 +461,39 @@ export function describePreferencesPortContract(
     it("reads back a seeded chartSubstrate", async () => {
       const port = makeSeeded({ chartSubstrate: "canvas" });
       expect(await firstValueFrom(port.chartSubstrate$())).toBe("canvas");
+    });
+
+    describe("workspaceLayout", () => {
+      it("defaults to null and round-trips a write", async () => {
+        const port = makeEmpty();
+        expect(await firstValueFrom(port.workspaceLayout$())).toBeNull();
+        port.setWorkspaceLayout('{"panels":[]}');
+        expect(await firstValueFrom(port.workspaceLayout$())).toBe(
+          '{"panels":[]}',
+        );
+        // late subscriber sees the current value synchronously (replay-current)
+        expect(await firstValueFrom(port.workspaceLayout$())).toBe(
+          '{"panels":[]}',
+        );
+      });
+
+      it("setWorkspaceLayout persists and pushes to existing subscribers", () => {
+        const port = makeEmpty();
+        const seen: Array<string | null> = [];
+        const sub = port.workspaceLayout$().subscribe((v) => {
+          return seen.push(v);
+        });
+        port.setWorkspaceLayout("layout-a");
+        sub.unsubscribe();
+        expect(seen).toEqual([null, "layout-a"]);
+      });
+
+      it("setWorkspaceLayout(null) clears a previously stored value", async () => {
+        const port = makeSeeded({ workspaceLayoutSeed: "layout-a" });
+        expect(await firstValueFrom(port.workspaceLayout$())).toBe("layout-a");
+        port.setWorkspaceLayout(null);
+        expect(await firstValueFrom(port.workspaceLayout$())).toBeNull();
+      });
     });
 
     it("defaults jarvisSkin to singularity and round-trips a write", async () => {

@@ -37,6 +37,7 @@ import {
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
   VIEW_MODE_STORAGE_KEY,
+  WORKSPACE_LAYOUT_STORAGE_KEY,
 } from "./LocalStoragePreferencesAdapter";
 
 describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
@@ -125,6 +126,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
 
       if (seed.chartSubstrate) {
         localStorage.setItem(CHART_SUBSTRATE_STORAGE_KEY, seed.chartSubstrate);
+      }
+
+      if (seed.workspaceLayoutSeed) {
+        localStorage.setItem(
+          WORKSPACE_LAYOUT_STORAGE_KEY,
+          seed.workspaceLayoutSeed,
+        );
       }
 
       if (seed.jarvisSkin) {
@@ -233,6 +241,22 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     );
   });
 
+  it("persists a workspaceLayout write to its own key", () => {
+    const port = new LocalStoragePreferencesAdapter();
+    port.setWorkspaceLayout('{"panels":["fx"]}');
+    expect(localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY)).toBe(
+      '{"panels":["fx"]}',
+    );
+  });
+
+  it("setWorkspaceLayout(null) removes the stored key rather than writing a literal null", () => {
+    const port = new LocalStoragePreferencesAdapter();
+    port.setWorkspaceLayout("layout-a");
+    expect(localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY)).toBe("layout-a");
+    port.setWorkspaceLayout(null);
+    expect(localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY)).toBeNull();
+  });
+
   it("falls back to defaults for an invalid stored jarvisSkin", async () => {
     localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, "nonsense");
     const port = new LocalStoragePreferencesAdapter();
@@ -279,6 +303,7 @@ function clearStorage(): void {
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
   localStorage.removeItem(CHART_SUBSTRATE_STORAGE_KEY);
+  localStorage.removeItem(WORKSPACE_LAYOUT_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
   localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);

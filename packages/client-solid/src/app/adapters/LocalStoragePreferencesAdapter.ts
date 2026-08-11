@@ -68,6 +68,7 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
+export const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -157,6 +158,36 @@ function readStored<T extends string>(
   return fallback;
 }
 
+/** Reads the first OPTIONAL preference: `localStorage.getItem` already
+ * returns `string | null`, and absent-key already returns `null` — the same
+ * value as this preference's default — so there is no roster to validate
+ * against, only the trivial "is this a string" guard. */
+function readNullableString(key: string): string | null {
+  try {
+    const stored = localStorage.getItem(key);
+
+    if (typeof stored === "string") {
+      return stored;
+    }
+  } catch {
+    // localStorage may be unavailable (private mode, disabled cookies, etc.)
+  }
+
+  return null;
+}
+
+function writeNullableString(key: string, value: string | null): void {
+  try {
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // ignore — persistence is best-effort
+  }
+}
+
 function readBool(key: string, fallback: boolean): boolean {
   try {
     const stored = localStorage.getItem(key);
@@ -241,6 +272,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
   private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
+
+  private readonly workspaceLayout: BehaviorSubject<string | null>;
 
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
@@ -331,6 +364,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         isChartSubstrate,
         DEFAULT_CHART_SUBSTRATE,
       ),
+    );
+    this.workspaceLayout = new BehaviorSubject<string | null>(
+      readNullableString(WORKSPACE_LAYOUT_STORAGE_KEY),
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       readStored(JARVIS_SKIN_STORAGE_KEY, isJarvisSkin, DEFAULT_JARVIS_SKIN),
@@ -487,6 +523,15 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setChartSubstrate(substrate: ChartSubstrate): void {
     writeStored(CHART_SUBSTRATE_STORAGE_KEY, substrate);
     this.chartSubstrate.next(substrate);
+  }
+
+  workspaceLayout$(): Observable<string | null> {
+    return this.workspaceLayout.pipe(distinctUntilChanged());
+  }
+
+  setWorkspaceLayout(value: string | null): void {
+    writeNullableString(WORKSPACE_LAYOUT_STORAGE_KEY, value);
+    this.workspaceLayout.next(value);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {
