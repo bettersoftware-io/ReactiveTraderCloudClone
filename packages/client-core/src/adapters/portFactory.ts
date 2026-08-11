@@ -81,6 +81,7 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
+import type { DockLayoutStore } from "./dockLayoutStore";
 import type { IWsAdapter } from "./IWsAdapter";
 import type { JarvisPort } from "./jarvisPort";
 import type { JarvisUsagePort } from "./jarvisUsagePort";
@@ -137,6 +138,12 @@ export interface AppPorts {
   /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
    * Browser implementation: `MediaQueryColorSchemeAdapter` (client-react). */
   colorScheme?: ColorSchemeSource;
+  /** Per-tab persistence for the Dockview engine's serialized layout blob.
+   * Optional — omitting it costs no fake-ports builder a change; `Presenters
+   * .dockLayoutStore` falls back to a fresh `InMemoryDockLayoutStore` when
+   * absent. Browser implementation: `LocalStorageDockLayoutStore`
+   * (client-react). */
+  dockLayoutStore?: DockLayoutStore;
   /** One-shot boot-splash decision, read once at composition time to seed the
    * BootGatePresenter. Optional — omit in tests/simulators to default to
    * playing the splash. Browser implementation: `shouldPlayBootSplash`

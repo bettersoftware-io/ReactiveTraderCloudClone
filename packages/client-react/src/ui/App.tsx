@@ -10,6 +10,7 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
+import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -60,21 +61,33 @@ interface WorkspaceEngineProps {
 }
 
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout } = useViewModel();
+  const { useLayout, useLayoutEngine, useDockLayoutStore } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  const { engine } = useLayoutEngine();
+  const dockLayoutStore = useDockLayoutStore();
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        <InhouseLayoutEngine
-          state={state}
-          registry={appPanelRegistry}
-          headRegistry={appHeadRegistry}
-          onMaximize={maximize}
-          onRestore={restore}
-          onCollapse={collapse}
-          onExpand={expand}
-          onResize={resize}
-        />
+        {engine === "dockview" ? (
+          <DockviewLayoutEngine
+            tab={tab}
+            registry={appPanelRegistry}
+            headRegistry={appHeadRegistry}
+            store={dockLayoutStore}
+            maximized={state.maximized}
+          />
+        ) : (
+          <InhouseLayoutEngine
+            state={state}
+            registry={appPanelRegistry}
+            headRegistry={appHeadRegistry}
+            onMaximize={maximize}
+            onRestore={restore}
+            onCollapse={collapse}
+            onExpand={expand}
+            onResize={resize}
+          />
+        )}
       </CreditViewProvider>
     </FxViewProvider>
   );

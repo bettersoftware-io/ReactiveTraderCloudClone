@@ -20,7 +20,12 @@ const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
 // Every DOMAIN is ported (Tasks 13-16: FX, Credit, Equities, Admin), and
 // shell/auth (LoginScreen, AuthGate) is now ported to @rtc/client-solid.
-const notYetPortedSpecs: string[] = [];
+// DockviewEngine.contract.spec.ts (Task 4 of the Dockview layout-engine
+// workstream) is React-only for now — the Solid `DockviewLayoutEngine`
+// bridge + host + registry entry are Task 5's job. Task 5 removes this.
+const notYetPortedSpecs: string[] = [
+  `${specsDir}/shell/layout/DockviewEngine.contract.spec.ts`,
+];
 
 export default defineConfig({
   // hot: false (Task 12/P5) — vite-plugin-solid enables solid-refresh HMR

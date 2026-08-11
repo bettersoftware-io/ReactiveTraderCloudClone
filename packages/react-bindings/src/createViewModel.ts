@@ -5,6 +5,7 @@ import type {
   ActivityEntry,
   AdminJarvisUsagePayload,
   AppCommands,
+  DockLayoutStore,
   JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
@@ -355,6 +356,10 @@ export interface ViewModel {
   /** Global workspace layout-engine preference (inhouse | dockview) — current
    * engine plus the write intent. */
   useLayoutEngine: () => UseLayoutEngineResult;
+  /** Injected per-tab dock-layout blob store for the Dockview engine — plain
+   * passthrough, no stream (the store itself isn't a stream; it's a
+   * load/save pair the engine calls at mount/onLayoutChange). */
+  useDockLayoutStore: () => DockLayoutStore;
   /** Global power-saver master override — 3-state level (off/calm/freeze)
    * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
@@ -1141,6 +1146,9 @@ export function createViewModel(
         engine: useLayoutEngineValue(),
         setEngine: setLayoutEngine,
       };
+    },
+    useDockLayoutStore: () => {
+      return presenters.dockLayoutStore;
     },
     useAnimatedBackground: () => {
       const enabled = useAnimatedBgValue();

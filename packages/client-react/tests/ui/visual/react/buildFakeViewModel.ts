@@ -74,12 +74,19 @@ import type {
 } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
+  InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/react-bindings";
 
 function noop(): void {}
+
+// No visual fixture exercises the dockview engine yet (useLayoutEngine below
+// is pinned to "inhouse"), so this store is never actually read/written by a
+// golden scenario — a single module-level instance is fine (no per-call
+// isolation needed, unlike the contract tier's per-World store).
+const dockStore = new InMemoryDockLayoutStore();
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
 // was retired with the login/auth workstream; this local stand-in keeps the
@@ -419,6 +426,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // "inhouse" default keeps every existing golden's layout unchanged.
     useLayoutEngine: () => {
       return { engine: DEFAULT_LAYOUT_ENGINE, setEngine: noop };
+    },
+    useDockLayoutStore: () => {
+      return dockStore;
     },
     useDepth: (symbol: string) => {
       return data.equityDepth?.[symbol] ?? null;
