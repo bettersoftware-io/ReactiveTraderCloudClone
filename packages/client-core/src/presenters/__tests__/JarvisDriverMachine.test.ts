@@ -20,6 +20,7 @@ import {
   type JarvisDriverDeps,
   type JarvisDriverState,
 } from "../JarvisDriverMachine";
+import { MAX_DOCKED_PANELS } from "../JarvisPanelsMachine";
 import { createLayoutMachine } from "../LayoutMachine";
 import { createWorkspaceNavMachine } from "../WorkspaceNavMachine";
 
@@ -520,6 +521,177 @@ describe("createJarvisDriverMachine", () => {
     ]);
   });
 
+  it("dockPanel: an unknown panelId (not in livePanelIds$) is skipped with a reason; the injected dockPanel is never called", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "dockPanel", panelId: "not-a-real-panel" }]),
+          );
+        }, 1);
+      },
+      { livePanelIds$: of(["panel-scripted-1"]), dockedPanelIds$: of([]) },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "dockPanel", panelId: "not-a-real-panel" },
+        status: "skipped",
+        reason: 'unknown panelId "not-a-real-panel"',
+      },
+    ]);
+    expect(harness.dockPanel).not.toHaveBeenCalled();
+  });
+
+  it("dockPanel: a panelId already in dockedPanelIds$ is skipped 'already docked'", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "dockPanel", panelId: "panel-scripted-1" }]),
+          );
+        }, 1);
+      },
+      {
+        livePanelIds$: of(["panel-scripted-1"]),
+        dockedPanelIds$: of(["panel-scripted-1"]),
+      },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "dockPanel", panelId: "panel-scripted-1" },
+        status: "skipped",
+        reason: "already docked",
+      },
+    ]);
+    expect(harness.dockPanel).not.toHaveBeenCalled();
+  });
+
+  it("dockPanel: at MAX_DOCKED_PANELS already docked (elsewhere) is skipped 'dock full'", () => {
+    const dockedElsewhere = Array.from(
+      { length: MAX_DOCKED_PANELS },
+      (_, i) => {
+        return `docked-${i}`;
+      },
+    );
+
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "dockPanel", panelId: "panel-scripted-1" }]),
+          );
+        }, 1);
+      },
+      {
+        livePanelIds$: of(["panel-scripted-1", ...dockedElsewhere]),
+        dockedPanelIds$: of(dockedElsewhere),
+      },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "dockPanel", panelId: "panel-scripted-1" },
+        status: "skipped",
+        reason: "dock full",
+      },
+    ]);
+    expect(harness.dockPanel).not.toHaveBeenCalled();
+  });
+
+  it("dockPanel: a known, undocked panelId under the cap is applied — the injected dockPanel is called", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "dockPanel", panelId: "panel-scripted-1" }]),
+          );
+        }, 1);
+      },
+      { livePanelIds$: of(["panel-scripted-1"]), dockedPanelIds$: of([]) },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "dockPanel", panelId: "panel-scripted-1" },
+        status: "applied",
+      },
+    ]);
+    expect(harness.dockPanel).toHaveBeenCalledWith("panel-scripted-1");
+  });
+
+  it("undockPanel: a panelId not in dockedPanelIds$ is skipped 'not docked'; the injected undockPanel is never called", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              { kind: "undockPanel", panelId: "panel-scripted-1" },
+            ]),
+          );
+        }, 1);
+      },
+      { dockedPanelIds$: of([]) },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "undockPanel", panelId: "panel-scripted-1" },
+        status: "skipped",
+        reason: "not docked",
+      },
+    ]);
+    expect(harness.undockPanel).not.toHaveBeenCalled();
+  });
+
+  it("undockPanel: a docked panelId is applied — the injected undockPanel is called", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              { kind: "undockPanel", panelId: "panel-scripted-1" },
+            ]),
+          );
+        }, 1);
+      },
+      { dockedPanelIds$: of(["panel-scripted-1"]) },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "undockPanel", panelId: "panel-scripted-1" },
+        status: "applied",
+      },
+    ]);
+    expect(harness.undockPanel).toHaveBeenCalledWith("panel-scripted-1");
+  });
+
+  it("layout: the membership gate widens to STATIC ids ∪ dockedPanelIds$ — a docked panel outside the tab's default layout tree is a legitimate layout target", () => {
+    const { harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              {
+                kind: "layout",
+                op: "maximize",
+                tab: "equities",
+                panelId: "panel-docked-only",
+              },
+            ]),
+          );
+        }, 1);
+      },
+      { dockedPanelIds$: of(["panel-docked-only"]) },
+    );
+
+    // Reaching layout(tab) at all proves the membership check passed —
+    // "panel-docked-only" is not in KNOWN_PANEL_IDS.equities.
+    expect(harness.layoutSpy).toHaveBeenCalledWith("equities");
+  });
+
   it("an unknown command kind (cast around the closed union) is skipped, never thrown", () => {
     const bogus = { kind: "doTheImpossible" } as unknown as DriveCommandV1;
     let thrown: unknown;
@@ -821,12 +993,16 @@ interface Harness {
     typeof vi.fn<(level: PowerSaverLevel) => void>
   >;
   readonly dismissPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
+  readonly dockPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
+  readonly undockPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
 }
 
 interface HarnessOverrides {
   readonly knownSymbols$?: JarvisDriverDeps["knownSymbols$"];
   readonly powerSaverLevel$?: JarvisDriverDeps["powerSaverLevel$"];
   readonly initialEqSymbol?: string;
+  readonly livePanelIds$?: JarvisDriverDeps["livePanelIds$"];
+  readonly dockedPanelIds$?: JarvisDriverDeps["dockedPanelIds$"];
 }
 
 function buildHarness(
@@ -848,6 +1024,8 @@ function buildHarness(
     setThemeSkin: vi.fn<(skin: ThemeSkin) => void>(),
     setPowerSaver: vi.fn<(level: PowerSaverLevel) => void>(),
     dismissPanel: vi.fn<(panelId: string) => void>(),
+    dockPanel: vi.fn<(panelId: string) => void>(),
+    undockPanel: vi.fn<(panelId: string) => void>(),
   };
 }
 
@@ -863,11 +1041,15 @@ function depsFrom(
     setThemeSkin: h.setThemeSkin,
     setPowerSaver: h.setPowerSaver,
     dismissPanel: h.dismissPanel,
+    dockPanel: h.dockPanel,
+    undockPanel: h.undockPanel,
     knownLayoutPanelIds: (tab: WorkspaceTab) => {
       return KNOWN_PANEL_IDS[tab];
     },
     knownSymbols$: overrides.knownSymbols$ ?? of(["EURUSD", "GBPUSD"]),
     powerSaverLevel$: overrides.powerSaverLevel$ ?? of<PowerSaverLevel>("off"),
+    livePanelIds$: overrides.livePanelIds$ ?? of(["panel-scripted-1"]),
+    dockedPanelIds$: overrides.dockedPanelIds$ ?? of([]),
     scheduler: h.ts,
   };
 }
