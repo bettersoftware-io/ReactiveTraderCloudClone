@@ -731,7 +731,7 @@ importers:
 
   packages/layout-dockview:
     dependencies:
-      dockview-core:
+      dockview:
         specifier: 7.0.4
         version: 7.0.4
     devDependencies:
@@ -4278,6 +4278,9 @@ packages:
 
   dockview-core@7.0.4:
     resolution: {integrity: sha512-AiIzD6ov153L/VuhqVBg5KD5oSAgJGH7L1xvzV/X+ghIEOTFfEQYEBGNd/ys+ZjQfdGRogHSeQ0v9JF/L6JrPg==}
+
+  dockview@7.0.4:
+    resolution: {integrity: sha512-n6n9WpYZgp/WY8SgvP4hr9qh01ZXhSGIRmlhoJXxRU3f34bwxCbFyOhBArV4W8quolX8OQe1yPfAUwUUjdnZPA==}
 
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
@@ -11563,6 +11566,10 @@ snapshots:
   dnssd-advertise@1.1.6: {}
 
   dockview-core@7.0.4: {}
+
+  dockview@7.0.4:
+    dependencies:
+      dockview-core: 7.0.4
 
   dom-accessibility-api@0.5.16: {}
 

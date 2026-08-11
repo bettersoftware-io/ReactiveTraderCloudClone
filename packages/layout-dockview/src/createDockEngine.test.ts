@@ -125,12 +125,88 @@ describe("createDockEngine", () => {
     const engine = createDockEngine(opts);
 
     // DockEngine exposes no title-reading accessor of its own, so assert
-    // through dockview's own rendered DOM: its default tab renderer writes
-    // each panel's title into a `.dv-default-tab-content` node inside the
-    // container it owns (verified in dockview-core's own DefaultTab source).
+    // through the rendered DOM: TitleOnlyTab (the engine's own tab renderer —
+    // see the close-action test below for why it replaces dockview's
+    // default) writes each panel's title into a `.dv-default-tab-content`
+    // node inside the container it owns.
     expect(opts.container.textContent).toContain("FX-RATES");
     expect(opts.container.textContent).toContain("FX-BLOTTER");
     expect(opts.container.textContent).toContain("FX-ANALYTICS");
+    engine.dispose();
+  });
+
+  it("renders no tab close action (panel close/reopen is out of v1 scope)", () => {
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    // dockview's DEFAULT tab renderer always includes a `.dv-default-tab-action`
+    // close (×) button; the engine supplies TitleOnlyTab via
+    // `createTabComponent` instead, so the close-action element must never
+    // exist in the DOM at all (not merely be hidden by CSS).
+    expect(opts.container.querySelector(".dv-default-tab-action")).toBeNull();
+    engine.dispose();
+  });
+
+  it("honours the seed's proportions rather than distributing evenly", () => {
+    // Regression pin (live-browser finding): without an explicit, real-
+    // dimensioned `api.layout(width, height)` call before `fromJSON`,
+    // dockview-core's freshly-constructed grid is still at its 0×0
+    // construction size, and every SplitView falls back to distributing
+    // space EVENLY among children — see the identical root-cause comment on
+    // createDockEngine's own `api.layout()` call, and the raw dockview-core
+    // round trip pinned in dockSeed.test.ts.
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    attachedContainers.push(container);
+
+    const engine = createDockEngine({
+      container,
+      seed: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.73, 0.27],
+        children: [
+          { kind: "panel", panelId: "left" },
+          { kind: "panel", panelId: "right" },
+        ],
+      },
+      blob: null,
+      panels: {
+        title: (id: string) => {
+          return id;
+        },
+        mount: () => {
+          return () => {};
+        },
+      },
+      onLayoutChange: () => {},
+      debounceMs: 0,
+    });
+
+    // dockview-core drives sizing by setting each grid view's pixel width
+    // directly as an inline style (splitview.js: `view.container.style.width`),
+    // not via CSS layout — so it's readable in jsdom without a real layout
+    // engine. dockview wraps the deserialized tree in its own top-level
+    // scaffold views (the grid always self-wraps, contributing extra
+    // `.dv-view` elements at other widths/heights), so assert the two
+    // EXPECTED leaf widths are present rather than the exact element count.
+    const viewWidths = Array.from(
+      container.querySelectorAll<HTMLElement>(".dv-view"),
+    )
+      .map((v) => {
+        return Number.parseInt(v.style.width, 10);
+      })
+      .filter((w) => {
+        return !Number.isNaN(w);
+      });
+
+    // jsdom containers always measure 0×0, so createDockEngine's fallback
+    // extent (1200×800) applies: 0.73 × 1200 = 876, remainder = 324. Also
+    // assert against the even-50/50 collapse this test regresses on.
+    expect(viewWidths).toContain(876);
+    expect(viewWidths).toContain(324);
+    expect(viewWidths).not.toContain(600);
+
     engine.dispose();
   });
 

@@ -1,7 +1,4 @@
-import type {
-  GroupPanelPartInitParameters,
-  IContentRenderer,
-} from "dockview-core";
+import type { GroupPanelPartInitParameters, IContentRenderer } from "dockview";
 
 import type { DockPanelHooks } from "#/createDockEngine";
 

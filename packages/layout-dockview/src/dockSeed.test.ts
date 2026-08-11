@@ -1,6 +1,24 @@
-import { describe, expect, it } from "vitest";
+import { createDockview } from "dockview";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { toSerializedDockview } from "#/dockSeed";
+
+// jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
+// dockview-core's own unit tests run under jsdom with the same stub. Needed
+// only by the round-trip describe block below, which mounts a real
+// DockviewApi — the pure-conversion tests above never touch dockview-core.
+beforeAll(() => {
+  if (typeof ResizeObserver === "undefined") {
+    // biome-ignore lint/suspicious/noExplicitAny: test-only global patch
+    (globalThis as any).ResizeObserver = class {
+      observe(): void {}
+
+      unobserve(): void {}
+
+      disconnect(): void {}
+    };
+  }
+});
 
 const FX_LIKE = {
   kind: "split",
@@ -120,6 +138,48 @@ describe("toSerializedDockview", () => {
     );
 
     expect(Object.keys(s.panels).sort()).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("toSerializedDockview × dockview-core round trip", () => {
+  it("honours the seed's proportions through a real fromJSON/toJSON cycle", () => {
+    // Regression pin for a bug found in the live browser (drag-docking and
+    // reload-persistence both worked, but the default seed's [0.75, 0.25] /
+    // [0.6, 0.4] proportions rendered as an even ~50/50 split on both axes).
+    // Root cause: dockview-core needs an explicit, real-dimensioned
+    // `api.layout(width, height)` call BEFORE `fromJSON` restores a tree —
+    // without one, a freshly-constructed grid is still at its 0×0
+    // construction size, and every SplitView falls back to distributing
+    // space EVENLY among children rather than honouring the `size` fields in
+    // the restored JSON. Confirmed empirically: omitting the `api.layout()`
+    // call below makes every leaf come back sized 100/100 regardless of
+    // input ratio; with it, sizes land exactly on the requested split. This
+    // is the exact mechanism `createDockEngine`'s own `api.layout(width,
+    // height)` call — made right before restoring — exists to avoid.
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const api = createDockview(container, {
+      createComponent: () => {
+        return {
+          element: document.createElement("div"),
+          init: () => {},
+        };
+      },
+    });
+
+    api.layout(1000, 800);
+    api.fromJSON(toSerializedDockview(FX_LIKE, 1000, 800));
+
+    const root = api.toJSON().grid.root as SerializedNode;
+    const [left, right] = root.data as SerializedNode[];
+    expect(left.size).toBe(750);
+    expect(right.size).toBe(250);
+
+    const [top, bottom] = left.data as SerializedNode[];
+    expect(top.size).toBe(480);
+    expect(bottom.size).toBe(320);
+
+    api.dispose();
   });
 });
 

@@ -1,7 +1,10 @@
-import { createDockview, type DockviewApi } from "dockview-core";
+import { createDockview, type DockviewApi } from "dockview";
 
 import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
 import { HookContentRenderer } from "#/HookContentRenderer";
+import { TitleOnlyTab } from "#/TitleOnlyTab";
+
+const RTC_TAB_COMPONENT = "rtc-tab";
 
 export interface DockPanelHooks {
   title(panelId: string): string;
@@ -34,10 +37,34 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     createComponent: () => {
       return new HookContentRenderer(opts.panels);
     },
+    // Panel close/reopen is out of v1 scope — see TitleOnlyTab's own doc
+    // comment for why this replaces the default tab renderer entirely
+    // instead of hiding the close button with CSS. `defaultTabComponent`
+    // must ALSO be set: without a `tabComponent` id on the panel (which
+    // `fromJSON`-restored panels never carry), dockview falls back to its
+    // own built-in `DefaultTab` — WITH the close action — and never calls
+    // `createTabComponent` at all.
+    defaultTabComponent: RTC_TAB_COMPONENT,
+    createTabComponent: () => {
+      return new TitleOnlyTab();
+    },
   });
 
   const width = opts.container.clientWidth || 1200;
   const height = opts.container.clientHeight || 800;
+
+  // dockview-core needs an explicit, real-dimensioned layout() call before
+  // fromJSON restores a tree: absent one, its internal grid is still at its
+  // 0×0 construction size (a fresh container hasn't been measured yet — e.g.
+  // a portal mount that hasn't painted, or jsdom, which never resizes at
+  // all), and each SplitView falls back to distributing space EVENLY among
+  // children instead of honouring the sizes embedded in the restored JSON —
+  // seed/blob proportions silently collapse to ~50/50 (confirmed empirically:
+  // without this call every leaf comes back sized 100/100 regardless of the
+  // 0.75/0.25 input; with it, sizes land exactly on the requested ratio).
+  // dockview's own ResizeObserver will proportionally rescale from here once
+  // the container's real size is known, so a stale fallback self-corrects.
+  api.layout(width, height);
 
   loadBlobOrSeed(api, opts, width, height);
   applyTitles(api, opts.panels);

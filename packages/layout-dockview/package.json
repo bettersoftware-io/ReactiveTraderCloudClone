@@ -25,7 +25,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "dockview-core": "7.0.4"
+    "dockview": "7.0.4"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",

@@ -179,12 +179,12 @@ module.exports = {
       to: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
     },
     {
-      name: "dockview-core-only-in-layout-dockview",
+      name: "dockview-only-in-layout-dockview",
       severity: "error",
       comment:
-        "dockview-core is confined to @rtc/layout-dockview — the engine must stay swappable by replacing one package (ADR-002); a direct client import would leak the engine's vocabulary.",
+        "dockview (the supported vanilla-JS entry point — see the layout-dockview README for why it replaced dockview-core as the direct dependency) is confined to @rtc/layout-dockview — the engine must stay swappable by replacing one package (ADR-002); a direct client import would leak the engine's vocabulary. The unanchored `node_modules/dockview` path also nets `node_modules/dockview-core` as a substring match, so a direct dockview-core import stays caught too even though nothing in the tree declares it directly.",
       from: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
-      to: { path: "node_modules/dockview-core" },
+      to: { path: "node_modules/dockview" },
     },
     {
       name: "ui-contract-stays-neutral",
@@ -291,8 +291,10 @@ module.exports = {
     // to live under a dist/ folder (most do, e.g. dockview-core resolves to
     // .../node_modules/dockview-core/dist/esm/index.js), which silently
     // dropped the edge from the graph before any `to: { path: "node_modules/…" }`
-    // rule ever saw it — discovered while adding dockview-core-only-in-
-    // layout-dockview, which was a no-op against the unanchored pattern. The
+    // rule ever saw it — discovered while adding what is now named
+    // dockview-only-in-layout-dockview (originally targeting dockview-core
+    // directly, before the swap to the `dockview` entry package — see that
+    // rule's own comment), which was a no-op against the unanchored pattern. The
     // same gap had already made no-mcp-sdk-outside-server dormant, since
     // @modelcontextprotocol/sdk resolves under its own dist/ too.
     exclude: {

@@ -1,5 +1,5 @@
-import type { GroupviewPanelState, SerializedDockview } from "dockview-core";
-import { Orientation } from "dockview-core";
+import type { GroupviewPanelState, SerializedDockview } from "dockview";
+import { Orientation } from "dockview";
 
 const RTC_PANEL_COMPONENT = "rtc-panel";
 
