@@ -1,0 +1,18 @@
+/* Fixed-size stage for the Dockview engine golden (Task 7, spec
+ * 2026-08-11-dockview-layout-engine): DockviewLayoutEngine's `.engine` root is
+ * `flex: 1` (see DockviewLayoutEngine.module.css) — it FILLS a sized flex
+ * parent exactly as it does in the real app (App.tsx nests it in the flex
+ * column `.app` between the header and status bar). Mounted bare in the
+ * harness it has no parent to fill, so `flex: 1` collapses to near-zero.
+ * Mirrors the in-house engine's `staticEngine` wrapper in registry.tsx
+ * (1920x994, the real workspace region) but at a smaller, still-representative
+ * 1200x700 — plenty of room for the 4-panel default arrangement's tabs/
+ * borders/sashes, and a distinct footprint from the in-house goldens so the
+ * two engines' capture sizes never accidentally collide. Fixed dimensions
+ * also pin the capture size deterministically (the #width-flake rule). */
+.stage {
+  display: flex;
+  flex-direction: column;
+  width: 1200px;
+  height: 700px;
+}
