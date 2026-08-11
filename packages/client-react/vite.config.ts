@@ -146,20 +146,34 @@ export default defineConfig({
     // .map files, so an external map is generated + linked but never fetchable;
     // an inline data: URI has no separate request to block. See docs/DEPLOY.md.
     sourcemap: debugBuild ? "inline" : false,
-    // Debug builds emit distinct `-dbg-` filenames so the sourcemap build and the
-    // lean build can never collide at the same hashed URL (Vite hashes code, not
-    // the appended map) — which previously let a stale lean bundle serve in place
-    // of a sourcemap deploy. Lean build keeps Vite's default names.
-    ...(debugBuild
-      ? {
-          rollupOptions: {
-            output: {
+    rolldownOptions: {
+      output: {
+        // React DevTools names components from each function's runtime `.name`
+        // / `displayName`, not from sourcemaps — so a minified deploy shows
+        // `Ph`/`qd` in the component tree even when inline maps are shipped.
+        // keepNames makes the bundler re-attach the original name after Oxc's
+        // identifier mangling; identifiers stay shortened, only `.name`
+        // survives. Debug builds only: it costs ~7% gzip (measured at
+        // adoption), so the lean deploy stays name-mangled and byte-identical
+        // to a pre-keepNames build — full DevTools names ride the same
+        // include_sourcemaps deploy flag as the inline maps. Must live HERE:
+        // this Vite is rolldown-based, where the classic
+        // `esbuild: { keepNames: true }` knob is a silent no-op (the only
+        // esbuild→rolldown compat mapping is for optimizeDeps).
+        keepNames: debugBuild,
+        // Debug builds emit distinct `-dbg-` filenames so the sourcemap build
+        // and the lean build can never collide at the same hashed URL (Vite
+        // hashes code, not the appended map) — which previously let a stale
+        // lean bundle serve in place of a sourcemap deploy. Lean build keeps
+        // Vite's default names.
+        ...(debugBuild
+          ? {
               entryFileNames: "assets/[name]-dbg-[hash].js",
               chunkFileNames: "assets/[name]-dbg-[hash].js",
               assetFileNames: "assets/[name]-dbg-[hash][extname]",
-            },
-          },
-        }
-      : {}),
+            }
+          : {}),
+      },
+    },
   },
 });
