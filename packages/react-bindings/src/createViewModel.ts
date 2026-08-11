@@ -180,11 +180,25 @@ export interface UseJarvisPreferencesResult {
 }
 
 /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session —
- * starts empty. `dismissPanel` closes one by id (a no-op for an already-gone
- * id — dismissing twice, or racing an eviction, is silently fine). */
+ * starts empty. `panels` is the full roster (docked + floating);
+ * `dockedPanels`/`floatingPanels` are the same rows pre-split, mirroring
+ * `JarvisPanelsPresenter.dockedPanels$`/`floatingPanels$` — the floating
+ * layer renders `floatingPanels` only, the workspace engine's dynamic
+ * registry renders `dockedPanels`. `dismissPanel` closes one by id (a
+ * no-op for an already-gone id — dismissing twice, or racing an eviction,
+ * is silently fine); it is the DOCKED-SAFE dismissal (`Presenters.dismissPanel`),
+ * not the raw `JarvisPanelsPresenter.dismissPanel`, so it detaches a docked
+ * panel's layout leaf first. `dockPanel`/`undockPanel` are the composition
+ * bridges (`Presenters.dockPanel`/`undockPanel`) — NOT re-exported from
+ * `JarvisPanelsPresenter`, which deliberately drops them (docking is half a
+ * layout-tree operation composition alone can complete). */
 export interface UseJarvisPanelsResult {
   panels: readonly JarvisPanelVm[];
+  dockedPanels: readonly JarvisPanelVm[];
+  floatingPanels: readonly JarvisPanelVm[];
   dismissPanel: (panelId: string) => void;
+  dockPanel: (panelId: string) => void;
+  undockPanel: (panelId: string) => void;
 }
 
 interface MetricsView {
@@ -384,6 +398,13 @@ export interface ViewModel {
   useAnimationIntents: (target: string) => AnimationIntent | null;
   /** Layout view-model + intents for a workspace tab (the in-house engine). */
   useLayout: (tab: WorkspaceTab) => UseLayoutResult;
+  /** Discards the persisted workspace layout, puts every open tab back on
+   * its default tree, and dismisses every docked panel — the Preferences
+   * modal's "Reset workspace layout" action. Mirrors `useReconnect`'s bare
+   * `() => void` shape below: `Presenters.resetWorkspaceLayout` is already
+   * a stable, composition-owned function, so the hook is a direct
+   * passthrough with no further wrapping. */
+  useWorkspaceReset: () => () => void;
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
   useBootSequence: (onDone: () => void) => UseBootSequenceResult;
@@ -850,8 +871,32 @@ export function createViewModel(
     [] as readonly JarvisPanelVm[],
   );
 
+  const [useDockedJarvisPanelsValue] = bind(
+    presenters.jarvisPanels.dockedPanels$,
+    [] as readonly JarvisPanelVm[],
+  );
+
+  const [useFloatingJarvisPanelsValue] = bind(
+    presenters.jarvisPanels.floatingPanels$,
+    [] as readonly JarvisPanelVm[],
+  );
+
+  // Docked-safe dismissal — see `Presenters.dismissPanel`'s doc. Routes
+  // through composition's `dismissPanelFromWorkspace`, not the raw
+  // `JarvisPanelsPresenter.dismissPanel`, so a docked panel's layout leaf is
+  // detached first (leaving it undetached would strand an empty pane, hand
+  // the panel back on the next reload, and could push the persisted docked
+  // total past MAX_DOCKED_PANELS).
   function dismissJarvisPanel(panelId: string): void {
-    presenters.jarvisPanels.dismissPanel(panelId);
+    presenters.dismissPanel(panelId);
+  }
+
+  function dockJarvisPanel(panelId: string): void {
+    presenters.dockPanel(panelId);
+  }
+
+  function undockJarvisPanel(panelId: string): void {
+    presenters.undockPanel(panelId);
   }
 
   // Keyed bind — one cached stream per panelId, mirroring useCandles/useDepth
@@ -1222,6 +1267,9 @@ export function createViewModel(
         ...layoutMachine.intents,
       };
     },
+    useWorkspaceReset: () => {
+      return presenters.resetWorkspaceLayout;
+    },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
         return machines.boot(onDone);
@@ -1290,7 +1338,11 @@ export function createViewModel(
     useJarvisPanels: () => {
       return {
         panels: useJarvisPanelsValue(),
+        dockedPanels: useDockedJarvisPanelsValue(),
+        floatingPanels: useFloatingJarvisPanelsValue(),
         dismissPanel: dismissJarvisPanel,
+        dockPanel: dockJarvisPanel,
+        undockPanel: undockJarvisPanel,
       };
     },
     useJarvisPanelData: useJarvisPanelDataValue,

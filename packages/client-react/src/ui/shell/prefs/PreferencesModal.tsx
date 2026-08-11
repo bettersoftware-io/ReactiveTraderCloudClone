@@ -19,6 +19,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { PrefAction } from "./PrefAction";
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
 import { useDraggableDialog } from "./useDraggableDialog";
@@ -30,25 +31,30 @@ import styles from "./PreferencesModal.module.css";
  * two-column DISPLAY / MOTION | TRADING / NOTIFICATIONS / DATA / JARVIS grid
  * of toggle + segment rows.
  *
- * The columns are balanced by ROW COUNT (13 each), which is why MOTION exists:
- * DISPLAY had grown to hold every movement-related control and left the grid
- * lopsided 15/9. Splitting "how it looks" from "how it moves" evens the
- * columns AND gives the login-wait rows an honest home. The JARVIS section
- * (added later) sits at the foot of column 2, so it doesn't reopen that
- * balance.
+ * The columns are loosely balanced by ROW COUNT — column 1 (DISPLAY/MOTION)
+ * holds 14 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 17
+ * (measured directly against this file's rendered rows, counting the new
+ * "Reset workspace layout" row below; the un-counted Brain-row gate hint
+ * is conditional decoration, not a row). MOTION exists because DISPLAY had
+ * grown to hold every movement-related control and left the grid lopsided
+ * 15/9 — splitting "how it looks" from "how it moves" rebalanced it at the
+ * time. The JARVIS section (added later) and this Reset row both landed at
+ * the foot/tail of column 2 without reopening that original rebalance, so
+ * the two columns have drifted apart again since; treat the counts above as
+ * a snapshot, not an invariant to re-defend on every future row.
  *
- * TEN rows are wired to real ports — Animated background
+ * ELEVEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
  * (`useChartSubstrate`), Always play boot animation
  * (`useForceBootAnimation`), the two login-wait rows
- * (`useLoginWaitPreferences`), and the three Jarvis rows
- * (`useJarvisPreferences` for the stored brain/effort/narrator, `useJarvis`
- * read-only for which brains the server is currently offering); every other
- * row is decorative (see the comment on the catalogue below). Dumb
- * component: consumes `useViewModel()` destructured only, holds no
- * app-layer state / persistence / transport / timers, and renders only when
- * `open`.
+ * (`useLoginWaitPreferences`), the three Jarvis rows (`useJarvisPreferences`
+ * for the stored brain/effort/narrator, `useJarvis` read-only for which
+ * brains the server is currently offering), and Reset workspace layout
+ * (`useWorkspaceReset`); every other row is decorative (see the comment on
+ * the catalogue below). Dumb component: consumes `useViewModel()`
+ * destructured only, holds no app-layer state / persistence / transport /
+ * timers, and renders only when `open`.
  */
 export function PreferencesModal({
   open,
@@ -63,7 +69,10 @@ export function PreferencesModal({
     useLoginWaitPreferences,
     useJarvis,
     useJarvisPreferences,
+    useWorkspaceReset,
   } = useViewModel();
+
+  const resetWorkspaceLayout = useWorkspaceReset();
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
@@ -292,6 +301,13 @@ export function PreferencesModal({
                 defs={DATA_TOGGLES}
                 values={toggles}
                 onToggle={toggleCosmetic}
+              />
+              <PrefAction
+                label="Reset workspace layout"
+                description="Restores every tab's default panel arrangement and unpins every docked desk panel."
+                buttonLabel="RESET"
+                testid="pref-reset-workspace-layout"
+                onPress={resetWorkspaceLayout}
               />
 
               <div className={styles.sectionHead}>JARVIS</div>

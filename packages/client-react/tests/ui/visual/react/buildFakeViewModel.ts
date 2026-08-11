@@ -380,6 +380,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         reset: noop,
       };
     },
+    // Reset workspace layout (Preferences → DATA & PRIVACY): static
+    // screenshots never fire it.
+    useWorkspaceReset: () => {
+      return noop;
+    },
     // Boot sequence: visual goldens capture post-boot UI; return a static initial
     // state with noop skip. The BootSequence component is not rendered in any
     // existing golden scenario.
@@ -558,15 +563,28 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // pre-Task-10-of-this-round empty stub (layer renders null). `data$` is
     // never read by JarvisPanelLayer (it reads the panel body separately via
     // useJarvisPanelData below), so EMPTY is a safe filler satisfying
-    // JarvisPanelVm's shape without a real stream. dismissPanel stays a
-    // no-op — static screenshots never fire it.
+    // JarvisPanelVm's shape without a real stream. dismissPanel/dockPanel/
+    // undockPanel all stay no-ops — static screenshots never fire them.
+    // dockedPanels/floatingPanels are the same rows pre-split by `.docked`,
+    // mirroring JarvisPanelsPresenter.dockedPanels$/floatingPanels$.
     useJarvisPanels: () => {
       const panels: readonly JarvisPanelVm[] = (data.jarvisPanels ?? []).map(
         (panel) => {
           return { ...panel, data$: EMPTY, docked: panel.docked ?? false };
         },
       );
-      return { panels, dismissPanel: noop };
+      return {
+        panels,
+        dockedPanels: panels.filter((panel) => {
+          return panel.docked;
+        }),
+        floatingPanels: panels.filter((panel) => {
+          return !panel.docked;
+        }),
+        dismissPanel: noop,
+        dockPanel: noop,
+        undockPanel: noop,
+      };
     },
     // Per-panelId rendered body, paired with useJarvisPanels above — reads
     // AppData.jarvisPanelData directly (no stream involved in a static

@@ -602,6 +602,33 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
   return bridge;
 }
 
+/** Minimal fixture stand-in for `Presenters.resetWorkspaceLayout` — resets
+ * every per-tab layout machine CREATED so far (mirrors `layoutHandles`
+ * above; a tab never opened this session has no machine to reset, same as
+ * composition's own read-modify-write scoping) and dismisses every
+ * currently docked panel via the bridge. Does NOT touch a persisted
+ * preference — this fixture world has no `PreferencesPort`-backed
+ * workspace-layout seed to clear (Task 9's scope, alongside the rest of
+ * dockPanelIntoWorkspace/undockPanelFromWorkspace's layout-tree
+ * integration — see `getJarvisDriverMachine`'s doc). */
+function resetWorkspaceLayoutFor(world: World): void {
+  const byTab = layoutHandles.get(world);
+
+  if (byTab) {
+    for (const machine of byTab.values()) {
+      machine.intents.reset();
+    }
+  }
+
+  const bridge = getJarvisPanelsBridge(world);
+
+  for (const panel of bridge.panels$.value) {
+    if (panel.docked) {
+      bridge.dismissPanel(panel.panelId);
+    }
+  }
+}
+
 /** Build a reactive ViewModel backed by the neutral World. */
 export function reactViewModel(world: World): ViewModel {
   const s = world.sources;
@@ -1089,6 +1116,13 @@ export function reactViewModel(world: World): ViewModel {
       const state = useMachineState(machine.state$);
       return { state, ...machine.intents };
     },
+    // Reset workspace layout (Preferences → DATA & PRIVACY): see
+    // resetWorkspaceLayoutFor's doc for this fixture's minimal scope.
+    useWorkspaceReset: () => {
+      return () => {
+        resetWorkspaceLayoutFor(world);
+      };
+    },
     // Boot sequence: no contract spec exercises the boot sequence in Phase 2;
     // use the REAL machine with a fixed "core" variant and noop advance so it
     // compiles and disposes cleanly without touching real preferences.
@@ -1231,12 +1265,25 @@ export function reactViewModel(world: World): ViewModel {
     },
     // Generative-UI desk panels (Task 9): the REAL JarvisPanelsPresenter,
     // fed by the same jarvis.events$ the REAL JarvisMachine above emits —
-    // see getJarvisPanelsBridge's doc for the full wiring.
+    // see getJarvisPanelsBridge's doc for the full wiring. dockedPanels/
+    // floatingPanels are the same rows pre-split by `.docked`, mirroring
+    // JarvisPanelsPresenter.dockedPanels$/floatingPanels$; dockPanel/
+    // undockPanel are the bridge's panels-machine-level (not
+    // layout-tree-integrated — see getJarvisDriverMachine's doc) intents.
     useJarvisPanels: () => {
       const bridge = getJarvisPanelsBridge(world);
+      const panels = useSubject(bridge.panels$);
       return {
-        panels: useSubject(bridge.panels$),
+        panels,
+        dockedPanels: panels.filter((panel) => {
+          return panel.docked;
+        }),
+        floatingPanels: panels.filter((panel) => {
+          return !panel.docked;
+        }),
         dismissPanel: bridge.dismissPanel,
+        dockPanel: bridge.dockPanel,
+        undockPanel: bridge.undockPanel,
       };
     },
     useJarvisPanelData: (panelId: string) => {

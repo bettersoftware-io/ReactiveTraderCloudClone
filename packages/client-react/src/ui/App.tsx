@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "./credit/CreditViewProvider";
@@ -10,8 +11,15 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
-import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
+import {
+  appHeadRegistry,
+  dockedHeadsFor,
+} from "./shell/layout/engine/appHeadRegistry";
+import {
+  appPanelRegistry,
+  dockedRegistryFor,
+  dockedSpecsFor,
+} from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
@@ -60,15 +68,28 @@ interface WorkspaceEngineProps {
 }
 
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout } = useViewModel();
+  const { useLayout, useJarvisPanels } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  // Docked desk panels render as leaves inside THIS engine (not the
+  // floating JarvisPanelLayer, which renders floatingPanels only) — merged
+  // on top of the static app registries so a dock/undock or a live spec
+  // edit ("make it a table" while docked) is reflected on the very next
+  // render, regardless of which tab the panel was docked into.
+  const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
+  const registry = { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) };
+  const specs = { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels) };
+  const headRegistry = {
+    ...appHeadRegistry,
+    ...dockedHeadsFor(dockedPanels, undockPanel, dismissPanel),
+  };
   return (
     <FxViewProvider>
       <CreditViewProvider>
         <InhouseLayoutEngine
           state={state}
-          registry={appPanelRegistry}
-          headRegistry={appHeadRegistry}
+          registry={registry}
+          specs={specs}
+          headRegistry={headRegistry}
           onMaximize={maximize}
           onRestore={restore}
           onCollapse={collapse}

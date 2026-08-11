@@ -221,6 +221,11 @@ function renderModal(
         setEffort: setJarvisEffort,
       };
     },
+    // Not exercised here (no test in this file clicks RESET) — but the
+    // modal destructures it, so a fake that omits it fails to render at all.
+    useWorkspaceReset: () => {
+      return vi.fn();
+    },
   } as unknown as ViewModel;
 
   return render(
