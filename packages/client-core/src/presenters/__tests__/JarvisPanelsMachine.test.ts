@@ -9,6 +9,7 @@ import type { JarvisEvent } from "#/adapters/jarvisPort";
 import {
   createJarvisPanelsMachine,
   type JarvisPanelsState,
+  MAX_DOCKED_PANELS,
   MAX_LIVE_PANELS,
   type PanelInstance,
   UNSUPPORTED_SENTINEL_SPEC,
@@ -43,7 +44,12 @@ describe("createJarvisPanelsMachine", () => {
 
     const last = states.at(-1);
     expect(last?.panels).toEqual([
-      { panelId: "p1", spec: makeSpec("EURUSD vol"), status: "live" },
+      {
+        panelId: "p1",
+        spec: makeSpec("EURUSD vol"),
+        status: "live",
+        docked: false,
+      },
     ]);
   });
 
@@ -77,11 +83,13 @@ describe("createJarvisPanelsMachine", () => {
       panelId: "p1",
       spec: makeSpec("first-edited"),
       status: "live",
+      docked: false,
     });
     expect(last?.panels[1]).toEqual({
       panelId: "p2",
       spec: makeSpec("second"),
       status: "live",
+      docked: false,
     });
   });
 
@@ -226,6 +234,7 @@ describe("createJarvisPanelsMachine", () => {
       panelId: "p1",
       spec: makeSpec("p1-reborn"),
       status: "live",
+      docked: false,
     });
   });
 
@@ -243,7 +252,7 @@ describe("createJarvisPanelsMachine", () => {
 
     const last = states.at(-1);
     expect(last?.panels).toEqual([
-      { panelId: "p1", spec: null, status: "unsupported" },
+      { panelId: "p1", spec: null, status: "unsupported", docked: false },
     ]);
   });
 
@@ -270,7 +279,7 @@ describe("createJarvisPanelsMachine", () => {
 
     const last = states.at(-1);
     expect(last?.panels).toEqual([
-      { panelId: "p1", spec: lookalike, status: "live" },
+      { panelId: "p1", spec: lookalike, status: "live", docked: false },
     ]);
   });
 
@@ -321,7 +330,7 @@ describe("createJarvisPanelsMachine", () => {
       flush();
       earlySub.unsubscribe();
       expect(late).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live" },
+        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
       ]);
     });
   });
@@ -355,7 +364,12 @@ describe("createJarvisPanelsMachine", () => {
           current = s;
         });
         expect(current?.panels).toEqual([
-          { panelId: "p1", spec: makeSpec("p1"), status: "live" },
+          {
+            panelId: "p1",
+            spec: makeSpec("p1"),
+            status: "live",
+            docked: false,
+          },
         ]);
         sub.unsubscribe();
       });
@@ -400,6 +414,441 @@ describe("createJarvisPanelsMachine", () => {
         expect(subscribeCount).toBe(1);
         secondSub.unsubscribe();
       });
+    });
+  });
+
+  describe("docked panels", () => {
+    it("dockPanel on an unknown panelId is a silent no-op", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("does-not-exist");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+      ]);
+    });
+
+    it("dockPanel sets docked: true IN PLACE — array position among siblings is unchanged", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            events$.next(panelEvent("p2", makeSpec("p2")));
+          }, 2);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["p1", "p2"]);
+      expect(last?.panels[0]).toEqual({
+        panelId: "p1",
+        spec: makeSpec("p1"),
+        status: "live",
+        docked: true,
+      });
+      expect(last?.panels[1]?.docked).toBe(false);
+    });
+
+    it("dockPanel on an already-docked panelId is a no-op", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: true },
+      ]);
+    });
+
+    it(`dockPanel at ${MAX_DOCKED_PANELS} already-docked panels is a no-op`, () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          // Spawn-then-dock each one at a time, so the floating pool never
+          // exceeds MAX_LIVE_PANELS in between (docking a panel right after
+          // spawning it keeps this scenario isolated from the floating cap
+          // — MAX_LIVE_PANELS and MAX_DOCKED_PANELS both happen to be 4).
+          ["d1", "d2", "d3", "d4"].forEach((panelId, i) => {
+            ts.schedule(
+              () => {
+                events$.next(panelEvent(panelId, makeSpec(panelId)));
+              },
+              2 * i + 1,
+            );
+            ts.schedule(
+              () => {
+                machine.dockPanel(panelId);
+              },
+              2 * i + 2,
+            );
+          });
+          ts.schedule(() => {
+            events$.next(panelEvent("d5", makeSpec("d5")));
+          }, 9);
+          ts.schedule(() => {
+            // d1..d4 already fill MAX_DOCKED_PANELS — docking a 5th must
+            // no-op, leaving d5 floating.
+            machine.dockPanel("d5");
+          }, 10);
+        },
+      );
+
+      const last = states.at(-1);
+      const docked = last?.panels.filter((p) => {
+        return p.docked;
+      });
+      expect(
+        docked?.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["d1", "d2", "d3", "d4"]);
+      expect(
+        last?.panels.find((p) => {
+          return p.panelId === "d5";
+        })?.docked,
+      ).toBe(false);
+    });
+
+    it("undockPanel on an unknown panelId is a silent no-op", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.undockPanel("does-not-exist");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels[0]?.docked).toBe(false);
+    });
+
+    it("undockPanel on a panel that is not docked (already floating) is a no-op", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.undockPanel("p1");
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+      ]);
+    });
+
+    it("undockPanel sets docked: false", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ts.schedule(() => {
+            machine.undockPanel("p1");
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+      ]);
+    });
+
+    it("dismissPanel removes a docked panel just like a floating one", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ts.schedule(() => {
+            machine.dismissPanel("p1");
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([]);
+    });
+
+    it("docking a panel frees a floating slot — with the floating pool already at MAX_LIVE_PANELS, docking one and then spawning a new wire panel does NOT evict any of the remaining floating panels", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              events$.next(panelEvent(panelId, makeSpec(panelId)));
+            }, i + 1);
+          });
+          ts.schedule(() => {
+            machine.dockPanel("p2");
+          }, 5);
+          ts.schedule(() => {
+            events$.next(panelEvent("p5", makeSpec("p5")));
+          }, 6);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+      expect(
+        last?.panels.find((p) => {
+          return p.panelId === "p2";
+        })?.docked,
+      ).toBe(true);
+    });
+
+    it("a wire spawn evicts the oldest FLOATING panel while an older DOCKED panel survives at its index", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ["p2", "p3", "p4", "p5"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              events$.next(panelEvent(panelId, makeSpec(panelId)));
+            }, 3 + i);
+          });
+          ts.schedule(() => {
+            // Floating pool (p2..p5) is now at MAX_LIVE_PANELS; this 6th
+            // distinct panelId is a genuine spawn and must evict the oldest
+            // FLOATING entry (p2) — p1, docked, is invisible to the cap and
+            // survives at index 0.
+            events$.next(panelEvent("p6", makeSpec("p6")));
+          }, 7);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["p1", "p3", "p4", "p5", "p6"]);
+      expect(last?.panels[0]?.docked).toBe(true);
+    });
+
+    it("a wire edit to an already-DOCKED panelId morphs its spec in place without undocking it (restyle-while-docked)", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1-restyled")));
+          }, 3);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        {
+          panelId: "p1",
+          spec: makeSpec("p1-restyled"),
+          status: "live",
+          docked: true,
+        },
+      ]);
+    });
+
+    it("undockPanel at a full floating cap evicts the oldest OTHER floating panel, never the panel being undocked itself", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          ts.schedule(() => {
+            events$.next(panelEvent("p1", makeSpec("p1")));
+          }, 1);
+          ts.schedule(() => {
+            machine.dockPanel("p1");
+          }, 2);
+          ["p2", "p3", "p4", "p5"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              events$.next(panelEvent(panelId, makeSpec(panelId)));
+            }, 3 + i);
+          });
+          ts.schedule(() => {
+            // Floating pool (p2..p5) is already at MAX_LIVE_PANELS. Undocking
+            // p1 would push it to 5 — p1 (array index 0, the oldest overall)
+            // must NOT be the one evicted; the oldest OTHER floating panel
+            // (p2) is evicted instead.
+            machine.undockPanel("p1");
+          }, 7);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["p1", "p3", "p4", "p5"]);
+      expect(last?.panels[0]?.docked).toBe(false);
+    });
+
+    it("restoreDockedPanel appends a docked live panel", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.restoreDockedPanel("r1", makeSpec("r1"));
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        { panelId: "r1", spec: makeSpec("r1"), status: "live", docked: true },
+      ]);
+    });
+
+    it("restoreDockedPanel dedupes by id — a second call for an id already present is a no-op", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.restoreDockedPanel("r1", makeSpec("first"));
+          }, 1);
+          ts.schedule(() => {
+            machine.restoreDockedPanel("r1", makeSpec("second"));
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels).toEqual([
+        {
+          panelId: "r1",
+          spec: makeSpec("first"),
+          status: "live",
+          docked: true,
+        },
+      ]);
+    });
+
+    it(`restoreDockedPanel drops entries beyond ${MAX_DOCKED_PANELS} — the cap is enforced, excess silently dropped`, () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ machine, ts }) => {
+          ["r1", "r2", "r3", "r4", "r5"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              machine.restoreDockedPanel(panelId, makeSpec(panelId));
+            }, i + 1);
+          });
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["r1", "r2", "r3", "r4"]);
+      expect(last?.panels).toHaveLength(MAX_DOCKED_PANELS);
+    });
+
+    it("restoreDockedPanel never constructs a spec reference-equal to UNSUPPORTED_SENTINEL_SPEC — a restored panel is always status: live", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.restoreDockedPanel("r1", makeSpec("r1"));
+          }, 1);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.panels[0]?.spec).not.toBe(UNSUPPORTED_SENTINEL_SPEC);
+      expect(last?.panels[0]?.status).toBe("live");
     });
   });
 });

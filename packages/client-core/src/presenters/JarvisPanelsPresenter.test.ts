@@ -312,6 +312,98 @@ describe("JarvisPanelsPresenter", () => {
     expect(second.kind).toBe("line");
     expect(second.series[0]?.label).toBe("SYMB");
   });
+
+  describe("docked panels", () => {
+    it("a JarvisPanelVm row's docked field mirrors the machine state (false for a fresh wire spawn)", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      });
+
+      const row = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(row?.docked).toBe(false);
+    });
+
+    it("re-exports dockPanel/undockPanel from the machine, driving the VM row's docked field", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      });
+
+      presenter.dockPanel("p1");
+      const dockedRow = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(dockedRow?.docked).toBe(true);
+
+      presenter.undockPanel("p1");
+      const undockedRow = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(undockedRow?.docked).toBe(false);
+    });
+
+    it("re-exports restoreDockedPanel from the machine, appending a docked live row", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+      presenter.restoreDockedPanel(
+        "r1",
+        makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      );
+
+      const row = latest(presenter.panels$).find((r) => {
+        return r.panelId === "r1";
+      });
+      expect(row).toMatchObject({
+        panelId: "r1",
+        status: "live",
+        docked: true,
+      });
+    });
+
+    it("dockedPanels$ and floatingPanels$ split panels$ rows by the docked flag", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      });
+      events$.next({
+        type: "panel",
+        panelId: "p2",
+        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      });
+      presenter.dockPanel("p1");
+
+      expect(
+        latest(presenter.dockedPanels$).map((r) => {
+          return r.panelId;
+        }),
+      ).toEqual(["p1"]);
+      expect(
+        latest(presenter.floatingPanels$).map((r) => {
+          return r.panelId;
+        }),
+      ).toEqual(["p2"]);
+    });
+  });
 });
 
 // A named tag (rather than an inline `{ kind: "line" }` literal) so

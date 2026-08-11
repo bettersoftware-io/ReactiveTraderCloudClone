@@ -25,6 +25,8 @@ export interface JarvisPanelVm {
   readonly status: PanelStatus;
   readonly vizKind: PanelViz["kind"] | null;
   readonly data$: Observable<PanelData>;
+  /** Mirrors `PanelInstance.docked` — see that field's doc. */
+  readonly docked: boolean;
 }
 
 /** Title shown for a panel the render adapter (Task 4) substituted with
@@ -56,6 +58,7 @@ function buildPanelVm(
       status: "unsupported",
       vizKind: null,
       data$: EMPTY,
+      docked: panel.docked,
     };
   }
 
@@ -67,6 +70,7 @@ function buildPanelVm(
     status: "live",
     vizKind: spec.viz.kind,
     data$: cache.get(panel.panelId)?.data$ ?? EMPTY,
+    docked: panel.docked,
   };
 }
 
@@ -116,15 +120,48 @@ export class JarvisPanelsPresenter {
 
   readonly panels$: Observable<readonly JarvisPanelVm[]>;
 
+  /** `panels$`, filtered to the docked subset — what the engine's dynamic
+   * registry (Task 5+) consumes. */
+  readonly dockedPanels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** `panels$`, filtered to the floating (`!docked`) subset — what the
+   * overlay layer consumes. */
+  readonly floatingPanels$: Observable<readonly JarvisPanelVm[]>;
+
   readonly dismissPanel: (panelId: string) => void;
+
+  readonly dockPanel: (panelId: string) => void;
+
+  readonly undockPanel: (panelId: string) => void;
+
+  readonly restoreDockedPanel: (panelId: string, spec: PanelSpecV1) => void;
 
   constructor(machine: JarvisPanelsMachineHandle, deps: PanelStreamDeps) {
     this.dismissPanel = machine.dismissPanel;
+    this.dockPanel = machine.dockPanel;
+    this.undockPanel = machine.undockPanel;
+    this.restoreDockedPanel = machine.restoreDockedPanel;
 
     this.panels$ = machine.state$.pipe(
       map((s) => {
         return s.panels.map((panel) => {
           return buildPanelVm(panel, this.cache);
+        });
+      }),
+    );
+
+    this.dockedPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return row.docked;
+        });
+      }),
+    );
+
+    this.floatingPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return !row.docked;
         });
       }),
     );
