@@ -23,6 +23,7 @@ import {
   DateFilter,
   DepthLadder,
   DeskPnlGauge,
+  DockviewEngine,
   EqBlotterHead,
   EqBlotterPanel,
   EqChartHead,
@@ -229,6 +230,7 @@ import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
 
 import { AnimationProbe as AnimationProbeComponent } from "./AnimationProbe";
+import { DockviewEngineHost } from "./DockviewEngineHost";
 import { LayoutEngineHost } from "./LayoutEngineHost";
 
 function noopFilter(_f: ColumnFilter | null): void {}
@@ -851,6 +853,18 @@ export const registry = new Map<AnyToken, ElementFor>([
         <LayoutEngineHost
           headRegistry={headRegistry}
           pinnedFixture={(p().pinnedFixture as boolean | undefined) ?? false}
+        />
+      );
+    },
+  ],
+  [
+    DockviewEngine,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <DockviewEngineHost
+          seedBlob={p().seedBlob as string | undefined}
+          withHeads={(p().withHeads as boolean | undefined) ?? false}
+          maximized={(p().maximized as string | null | undefined) ?? null}
         />
       );
     },

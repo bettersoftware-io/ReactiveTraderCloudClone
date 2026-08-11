@@ -497,6 +497,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/layout-dockview':
+        specifier: workspace:*
+        version: link:../layout-dockview
       '@rtc/motion-core':
         specifier: workspace:*
         version: link:../motion-core

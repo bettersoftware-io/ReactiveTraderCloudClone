@@ -12,6 +12,7 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
+import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -84,25 +85,40 @@ interface WorkspaceEngineProps {
  * resetting — a driven "layout" DriveCommand's target stays the same
  * instance the mounted view reads from either way. */
 function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
-  const { useLayout } = useViewModel();
+  const { useLayout, useLayoutEngine, useDockLayoutStore } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
     // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
     props.tab,
   );
+  const { engine } = useLayoutEngine();
+  const dockLayoutStore = useDockLayoutStore();
 
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        <InhouseLayoutEngine
-          state={state()}
-          registry={appPanelRegistry}
-          headRegistry={appHeadRegistry}
-          onMaximize={maximize}
-          onRestore={restore}
-          onCollapse={collapse}
-          onExpand={expand}
-          onResize={resize}
-        />
+        <Show
+          when={engine() === "dockview"}
+          fallback={
+            <InhouseLayoutEngine
+              state={state()}
+              registry={appPanelRegistry}
+              headRegistry={appHeadRegistry}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
+              onResize={resize}
+            />
+          }
+        >
+          <DockviewLayoutEngine
+            tab={props.tab}
+            registry={appPanelRegistry}
+            headRegistry={appHeadRegistry}
+            store={dockLayoutStore}
+            maximized={state().maximized}
+          />
+        </Show>
       </CreditViewProvider>
     </FxViewProvider>
   );

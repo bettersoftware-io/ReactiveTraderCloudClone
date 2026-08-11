@@ -18,15 +18,6 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 // node_modules symlink) sidesteps that exclude entirely.
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
-// Every DOMAIN is ported (Tasks 13-16: FX, Credit, Equities, Admin), and
-// shell/auth (LoginScreen, AuthGate) is now ported to @rtc/client-solid.
-// DockviewEngine.contract.spec.ts (Task 4 of the Dockview layout-engine
-// workstream) is React-only for now — the Solid `DockviewLayoutEngine`
-// bridge + host + registry entry are Task 5's job. Task 5 removes this.
-const notYetPortedSpecs: string[] = [
-  `${specsDir}/shell/layout/DockviewEngine.contract.spec.ts`,
-];
-
 export default defineConfig({
   // hot: false (Task 12/P5) — vite-plugin-solid enables solid-refresh HMR
   // wrapping whenever `command === "serve"`, which vitest's own dev server
@@ -73,7 +64,6 @@ export default defineConfig({
     root: fileURLToPath(new URL("../../..", import.meta.url)),
     environment: "jsdom",
     include: [`${specsDir}/**/*.contract.spec.ts`],
-    exclude: notYetPortedSpecs,
     setupFiles: [
       "./tests/setup/jsdom-storage.ts",
       "./tests/ui/contract/solid/setup.ts",
