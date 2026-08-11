@@ -73,6 +73,7 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
   const { substrate: chartSubstrate, setSubstrate: setChartSubstrate } =
     useChartSubstrate();
+
   const { engine: layoutEngine, setEngine: setLayoutEngine } =
     useLayoutEngine();
 

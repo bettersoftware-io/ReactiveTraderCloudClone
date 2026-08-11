@@ -75,6 +75,7 @@ export function PreferencesModal({
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
   const { substrate: chartSubstrate, setSubstrate: setChartSubstrate } =
     useChartSubstrate();
+
   const { engine: layoutEngine, setEngine: setLayoutEngine } =
     useLayoutEngine();
 
