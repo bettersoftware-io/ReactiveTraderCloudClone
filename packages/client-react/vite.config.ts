@@ -153,11 +153,14 @@ export default defineConfig({
         // `Ph`/`qd` in the component tree even when inline maps are shipped.
         // keepNames makes the bundler re-attach the original name after Oxc's
         // identifier mangling; identifiers stay shortened, only `.name`
-        // survives. Cost is bundle size only (~7% gzip at adoption), paid at
-        // load, never per frame. Must live HERE: this Vite is rolldown-based, where the
-        // classic `esbuild: { keepNames: true }` knob is a silent no-op (the
-        // only esbuild→rolldown compat mapping is for optimizeDeps).
-        keepNames: true,
+        // survives. Debug builds only: it costs ~7% gzip (measured at
+        // adoption), so the lean deploy stays name-mangled and byte-identical
+        // to a pre-keepNames build — full DevTools names ride the same
+        // include_sourcemaps deploy flag as the inline maps. Must live HERE:
+        // this Vite is rolldown-based, where the classic
+        // `esbuild: { keepNames: true }` knob is a silent no-op (the only
+        // esbuild→rolldown compat mapping is for optimizeDeps).
+        keepNames: debugBuild,
         // Debug builds emit distinct `-dbg-` filenames so the sourcemap build
         // and the lean build can never collide at the same hashed URL (Vite
         // hashes code, not the appended map) — which previously let a stale

@@ -143,11 +143,12 @@ export default defineConfig({
         // Same as client-react (kept in lockstep): component-inspector names
         // come from each function's runtime `.name`, which Oxc's identifier
         // mangling destroys and sourcemaps cannot restore. keepNames
-        // re-attaches the original name after mangling so the deployed build
-        // stays inspectable (~6% gzip at adoption). Must live HERE: this Vite
-        // is rolldown-based, where `esbuild: { keepNames: true }` is a silent
-        // no-op.
-        keepNames: true,
+        // re-attaches the original name after mangling so a debuggable deploy
+        // stays inspectable. Debug builds only — it costs ~6% gzip (measured
+        // at adoption), so the lean deploy stays name-mangled. Must live HERE:
+        // this Vite is rolldown-based, where `esbuild: { keepNames: true }` is
+        // a silent no-op.
+        keepNames: debugBuild,
         // Debug builds emit distinct `-dbg-` filenames so the sourcemap build
         // and the lean build can never collide at the same hashed URL (Vite
         // hashes code, not the appended map) — which previously let a stale
