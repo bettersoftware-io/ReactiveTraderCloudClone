@@ -1,7 +1,7 @@
 # ADR-002: Layout / panel / window management as a swappable port
 
-**Status:** Proposed (exploratory — records the intended direction and the
-research behind it; no adapter is implemented yet).
+**Status:** Accepted (first adapter shipped 2026-08; the thin-port refactor
+stays deferred).
 
 > Sibling decision record. ADR-001 lives co-located with its concern at
 > `packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md`. This
@@ -140,6 +140,61 @@ precisely so that a docking-tree engine **and** a free-float engine can both
 honour it. That constraint is the whole reason this is an ADR and not just
 "add Dockview."
 
+## As implemented (2026-08)
+
+Dockview shipped as the first adapter — but **behind the existing
+tree-shaped layout seam, not the sketched thin `LayoutPort`**. The port
+above stays a design target; building it now, with only one adapter to
+generalise from, would be guessing at the shape a second adapter (the
+future free-float engine) actually needs. Concretely:
+
+- **A `LayoutEngine` preference** (`"inhouse" | "dockview"`,
+  `packages/domain/src/preferences/preferences.ts`) selects between the
+  pre-existing fixed tab/grid shell and Dockview at the composition root,
+  surfaced as a "Layout engine" row in both clients' preferences modal.
+  Defaults to `"inhouse"`, so the shipped behaviour is unchanged unless a
+  user opts in.
+- **Content/placement separation held**, exactly as designed above — panel
+  *content* is still addressed by stable id through the existing
+  `appPanelRegistry`/`appHeadRegistry`; the new `@rtc/layout-dockview`
+  package owns placement, chrome, drag, split, and float entirely
+  internally. A per-client `DockviewLayoutEngine.tsx` bridge portal-mounts
+  registry content into Dockview's panels so the `ViewModel`/`FxView`/
+  `CreditView` React/Solid contexts keep flowing through unchanged.
+- **Persistence stayed opaque**, per the ADR's design, but through a new
+  narrow port rather than the existing `PreferencesPort`: `DockLayoutStore`
+  (an optional `AppPorts` member) round-trips Dockview's serialized layout
+  blob through a `localStorage` adapter keyed `rtc-dock-layout-<tab>` per
+  client, with an in-memory default in composition. The app never parses
+  the blob — the same guarantee the ADR asked for, just not funnelled
+  through `PreferencesPort` itself.
+- **`dockview-core` is confined to `@rtc/layout-dockview`** by two
+  dependency-cruiser rules (`layout-dockview-stays-pure`,
+  `dockview-only-in-layout-dockview`) — the engine stays swappable by
+  replacing one package, which is the property this ADR exists to buy. The
+  package exports `createDockEngine` (seed-tree → `SerializedDockview`
+  conversion, `api.layout()` called before `restore()` so proportions hold,
+  opaque-blob restore with a seed fallback, debounced serialisation, a
+  dispose-time final flush, a maximize bridge mirrored from Jarvis/the
+  layout state machine, and a close-button-free `TitleOnlyTab` — no close
+  affordance in v1 scope) plus a `dockview-hud.css` HUD token mapping.
+- **What did NOT land**: the `LayoutPort` interface itself. The engine
+  branch lives inside the pre-existing `WorkspaceEngine` (in-house vs.
+  Dockview), not behind a new port boundary each engine implements
+  symmetrically. Extracting the thin `LayoutPort` sketched above is
+  deferred until a **second** docking adapter (Golden Layout, or the
+  future free-float engine) exists to generalise the contract from — one
+  real adapter is not enough evidence to fix an interface shape, and
+  guessing now risks the exact "leaky facade" this ADR warns against.
+- **Verification**: a shared `DockviewEngine.contract.spec.ts` (4 cases,
+  run against both clients), 15 package-level unit tests in
+  `@rtc/layout-dockview`, a Playwright e2e journey (switch engine → drag-
+  dock → reload persists → revert), and a `shell/layout-dockview` visual
+  scenario (10-combo matrix) alongside re-pinned preferences-modal goldens.
+- **See also:** the implementation spec and plan —
+  [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
+  and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
+
 ## Solution landscape (shortlist)
 
 The full survey — seven categories, ~25 libraries, framework + licence per row,
@@ -186,11 +241,18 @@ only genuinely custom piece — Muuri's source is a useful reference). Full
 build-block table and the Flex prior-art sidebar are in the
 [research note](../research/2026-06-22-layout-management-landscape.md#the-custom-free-floating-engine--build-blocks).
 
-## Replaceability matrix row (to fold into architecture.md §8 when adopted)
+## Replaceability matrix row
+
+Folded into
+[architecture.md §8](../architecture/08-replaceability-matrix.md#8-replaceability-matrix)
+now that Dockview has shipped; see that table for the current cost/contract/
+verification wording (adjusted from the sketch below to name the actual
+seam — `WorkspaceEngine`'s engine branch + the registries + `DockLayoutStore`
+— since the thin `LayoutPort` itself hasn't landed yet):
 
 | Component | Currently | Cost to replace | Contract that must hold | Tests that verify |
 |---|---|---|---|---|
-| **Layout / panel manager** | (none yet → Dockview) | ~1 dev-week per adapter | `LayoutPort` (panel lifecycle + opaque persistence); panel content addressed by stable id | `LayoutPort` contract tests (parameterised over adapters) + visual goldens for panel *content* |
+| **Layout / panel manager** | in-house tab/grid shell + Dockview (`LayoutEngine` preference) | ~1 dev-week per adapter | Engine branch in `WorkspaceEngine` + panel registries + `DockLayoutStore` (opaque persistence; panel content addressed by stable id) | Shared `DockviewEngine.contract.spec.ts` + e2e journey (switch → drag-dock → reload persists → revert) |
 
 ## Test strategy
 

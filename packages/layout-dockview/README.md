@@ -33,3 +33,15 @@ before switching:
   `dockview-core`'s).
 
 So the swap is a drop-in: same imports, same behaviour, warning gone.
+
+## A cost of the `dockview` entry package worth knowing
+
+Importing `dockview` (rather than `dockview-core` directly) registers four
+extra feature modules at import time — TabGroupChips, ContextMenu,
+AdvancedDnD, and Accessibility. Their services attach **document-level**
+capture listeners on construction, not on first use. Those listeners stay
+dormant while the `keyboardNavigation` option is left unset (this package's
+default), so today there is no measured cost — but it is a real divergence
+from bare `dockview-core`, worth knowing on a perf-sensitive HUD where every
+document-level listener is one more thing evaluated on every keydown/click,
+whether or not Dockview is the active layout engine.

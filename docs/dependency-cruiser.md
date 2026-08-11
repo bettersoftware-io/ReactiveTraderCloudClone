@@ -33,11 +33,13 @@ graph TD
     proto["@rtc/client-prototype<br/>(design island — no @rtc/* deps)"]
     motion["@rtc/motion-core<br/>(view-layer motion math — zero deps)"]
     boot["@rtc/boot-splash<br/>(boot/splash canvas engine + gate — no @rtc/* deps)"]
+    dockv["@rtc/layout-dockview<br/>(Dockview wrapper — no @rtc/* deps, dockview@7.0.4 confined here)"]
 
     webc -->|allowed| rb
     webc -->|allowed| core
     webc -->|allowed| domain
     webc -->|allowed| motion
+    webc -->|allowed| dockv
     rnc -->|allowed| rb
     rnc -->|allowed| core
     rnc -->|allowed| domain
@@ -57,6 +59,7 @@ graph TD
     wse -. "forbidden:<br/>ws-effects-stays-pure" .-x domain
     motion -. "forbidden:<br/>motion-core-stays-pure" .-x domain
     boot -. "forbidden:<br/>boot-splash-stays-pure" .-x domain
+    dockv -. "forbidden:<br/>layout-dockview-stays-pure" .-x domain
 
     classDef pure fill:#4CAF50,color:#fff;
     classDef dto fill:#2196F3,color:#fff;
@@ -69,7 +72,7 @@ graph TD
     class core,rb coreC;
     class webc,rnc app;
     class server,wse srv;
-    class proto,motion,boot isle;
+    class proto,motion,boot,dockv isle;
 ```
 
 Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
@@ -81,6 +84,12 @@ the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 `boot-splash-stays-pure` keeps the boot/splash canvas engine and gate a
 zero-`@rtc/*`-dependency leaf the same way (unlike `motion-core`, it is allowed
 to touch the DOM directly -- the canvas 2D context and `navigator`/`location`);
+`layout-dockview-stays-pure` keeps `@rtc/layout-dockview` (the Dockview
+wrapper behind the `LayoutEngine` preference, [ADR-002](adr/ADR-002-layout-management-port.md))
+a zero-`@rtc/*`-dependency leaf the same way -- also DOM-touching, since
+`createDockEngine` mounts Dockview into a container element -- and a second
+rule, `dockview-only-in-layout-dockview`, confines its one runtime dependency
+(`dockview@7.0.4`) to this package so a client can never import it directly;
 the apps may reach inward but never reach across to each other.
 
 ## The forbidden rules
@@ -130,6 +139,8 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `prototype-isolated` | `^packages/client-prototype/src` | nothing (`pathNot ^packages/client-prototype/`) | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
 | `motion-core-stays-pure` | `^packages/motion-core/src` | nothing (`pathNot ^packages/motion-core/`) | The view-layer motion-math package stays a zero-dependency pure leaf |
 | `boot-splash-stays-pure` | `^packages/boot-splash/src` | nothing (`pathNot ^packages/boot-splash/`) | The boot/splash canvas engine + gate stays a zero-`@rtc/*` leaf (DOM access to canvas/`navigator`/`location` is allowed) |
+| `layout-dockview-stays-pure` | `^packages/layout-dockview/src` | nothing (`pathNot ^packages/layout-dockview/`) | `@rtc/layout-dockview` stays a zero-`@rtc/*` leaf (DOM access to mount Dockview into a container element is allowed) |
+| `dockview-only-in-layout-dockview` | `^packages/` **except** `^packages/layout-dockview/` | — (rejects `node_modules/dockview`, which also nets `node_modules/dockview-core` as a substring match) | `dockview`/`dockview-core` is confined to `@rtc/layout-dockview` so the layout engine stays swappable by replacing one package ([ADR-002](adr/ADR-002-layout-management-port.md)) |
 
 (Framework-only rules `solid-stays-react-free` and `react-clients-stay-solid-free`
 guard the React/Solid split against `node_modules/(react\|solid-js)` and are
@@ -140,16 +151,17 @@ allowlist is matched against the **bare package path** (e.g. `^packages/server/`
 so importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** every one of the eighteen workspace packages is either the
+**Full coverage:** every one of the twenty workspace packages is either the
 `from` of a package-boundary rule or reachable only inward. The pure leaves
-(`domain`, `motion-core`, `boot-splash`, `ws-effects`, `devtools-core`,
-`devtools-relay`, `client-prototype`) allow *nothing*; the bridges and harness
-(`react-bindings`, `solid-bindings`, `ui-contract`, `client-core`) allow a small
-inward set; the clients are guarded against each other and the server. Two
-backstops complement these rules: `no-circular`, and pnpm strict mode (a package
-cannot even resolve an **undeclared** `@rtc/*` import). The allowlist rules add
-the layer pnpm-strict can't — a **declared but architecturally forbidden** edge
-(e.g. adding `@rtc/client-react` to `motion-core`'s deps and importing it).
+(`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
+`devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
+bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
+`client-core`) allow a small inward set; the clients are guarded against each
+other and the server. Two backstops complement these rules: `no-circular`, and
+pnpm strict mode (a package cannot even resolve an **undeclared** `@rtc/*`
+import). The allowlist rules add the layer pnpm-strict can't — a **declared
+but architecturally forbidden** edge (e.g. adding `@rtc/client-react` to
+`motion-core`'s deps and importing it).
 
 ## The `options` block (how the graph is built)
 
@@ -158,7 +170,7 @@ options: {
   tsPreCompilationDeps: false,
   tsConfig: { fileName: "tsconfig.depcruise.json" },
   doNotFollow: { path: "node_modules" },
-  exclude: { path: "(\\.cache|/dist/|/__screenshots__/|\\.turbo)" },
+  exclude: { path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo)" },
   enhancedResolveOptions: {
     exportsFields: ["exports"],
     conditionNames: ["import", "types", "node", "default"],
@@ -166,18 +178,20 @@ options: {
 }
 ```
 
-> **Resolution matters as much as the rules.** Seventeen of the eighteen
-> packages publish `"." : "./dist/…"`. If the cruiser resolves an `@rtc/<pkg>`
-> import to `packages/<pkg>/dist/index.js`, the `exclude: /dist/` below drops it
-> from the graph — and in an unbuilt tree it resolves to a bare, unresolvable
-> specifier instead. Either way the target never matches a rule's
-> `^packages/…` pattern, so **every package-boundary rule silently matches
-> nothing.** `tsconfig.depcruise.json` fixes this: it maps `@rtc/<pkg>` (and
-> `@rtc/<pkg>/*` subpaths) to that package's **`src`**, so cross-package edges
-> resolve to a real, non-excluded path and the rules actually fire, independent
-> of whether `dist/` has been built. Before this mapping, only ~7 of ~603
-> cross-`@rtc` edges were rule-checkable (the handful whose exports already
-> point at `src`); after it, all 603 are.
+> **Resolution matters as much as the rules.** Thirteen of the twenty
+> packages publish `"." : "./dist/…"` (the `tsc`-built inner libraries;
+> the apps and the few source-exporting packages don't). If the cruiser
+> resolves an `@rtc/<pkg>`
+> import to `packages/<pkg>/dist/index.js`, the `exclude` pattern below drops
+> it from the graph — and in an unbuilt tree it resolves to a bare,
+> unresolvable specifier instead. Either way the target never matches a
+> rule's `^packages/…` pattern, so **every package-boundary rule silently
+> matches nothing.** `tsconfig.depcruise.json` fixes this: it maps
+> `@rtc/<pkg>` (and `@rtc/<pkg>/*` subpaths) to that package's **`src`**, so
+> cross-package edges resolve to a real, non-excluded path and the rules
+> actually fire, independent of whether `dist/` has been built. Before this
+> mapping, only ~7 of ~603 cross-`@rtc` edges were rule-checkable (the
+> handful whose exports already point at `src`); after it, all 603 are.
 
 - **`tsPreCompilationDeps: false`** — the most important line. It drops
   `import type` edges, which disappear after compilation. Counting them produces
@@ -193,11 +207,23 @@ options: {
   the same way it needs a forbidden rule and a knip entry.
 - **`doNotFollow: node_modules`** — map first-party code only; don't descend
   into third-party packages.
-- **`exclude: (\.cache|/dist/|/__screenshots__/|\.turbo)`** — skip build
-  artifacts: compiled `dist/`, Turborepo's `.turbo`, visual-test
+- **`exclude: (\.cache|^packages/[^/]+/dist/|/__screenshots__/|\.turbo)`** —
+  skip build artifacts: compiled `dist/`, Turborepo's `.turbo`, visual-test
   `__screenshots__`, and the Playwright-CT Vite host `.cache`. (The `.cache`
   entry exists because a Vite-bundled host cache produced a false `no-circular`
-  during adoption — the cache is generated output, not source.)
+  during adoption — the cache is generated output, not source.) **The `dist/`
+  alternative is anchored to `^packages/[^/]+/dist/` — a workspace package's
+  own built output — not a bare `/dist/` substring.** It used to be
+  unanchored, which also matched any `node_modules` package whose entry
+  happens to live under its own `dist/` folder (most do — e.g. `dockview-core`
+  resolves to `.../node_modules/dockview-core/dist/esm/index.js`), silently
+  dropping that edge from the graph before any `to: { path: "node_modules/…" }`
+  rule ever saw it. Discovered while adding `dockview-only-in-layout-dockview`
+  (a no-op against the unanchored pattern) — and the identical gap had
+  already left `no-mcp-sdk-outside-server` dormant too, since
+  `@modelcontextprotocol/sdk` resolves under its own `dist/` the same way.
+  Anchoring the pattern to `^packages/` fixed both without touching either
+  rule.
 - **`enhancedResolveOptions`** — `exportsFields` + `conditionNames` make the
   cruiser honor `package.json` `"exports"`/`"imports"`. This is how the repo's
   `#/` subpath-alias imports resolve to source files.
