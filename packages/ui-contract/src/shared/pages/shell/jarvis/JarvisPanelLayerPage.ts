@@ -137,4 +137,31 @@ export class JarvisPanelLayerPage extends MountedComponent<
       within(this.panel(panelId)).getByTestId("jarvis-panel-dismiss"),
     );
   }
+
+  /** Click a floating panel's dock (📌) control — pins it into the ACTIVE
+   * tab's workspace tree, where it stops rendering here and starts rendering
+   * as a `panel-<id>` leaf (see `LayoutEnginePage.isDocked`). A no-op click
+   * while {@link isDockDisabled} is true (the control is natively
+   * `disabled`), matching the cap the panels machine enforces anyway. */
+  async dockPanel(panelId: string): Promise<void> {
+    await this.user.click(this.dockButton(panelId));
+  }
+
+  /** True when the dock (📌) control is natively disabled — `MAX_DOCKED_PANELS`
+   * are already pinned, so the cap is legible in the UI rather than swallowed
+   * as a silent no-op. */
+  isDockDisabled(panelId: string): boolean {
+    return this.dockButton(panelId).hasAttribute("disabled");
+  }
+
+  /** The dock control's accessible name (`Pin <title> to workspace`) — the
+   * floating half of the pin/unpin aria-label pair (`LayoutEnginePage`'s
+   * `undockLabel`/`closeLabel` carry the docked half). */
+  dockLabel(panelId: string): string | null {
+    return this.dockButton(panelId).getAttribute("aria-label");
+  }
+
+  private dockButton(panelId: string): HTMLElement {
+    return within(this.panel(panelId)).getByTestId("jarvis-panel-dock");
+  }
 }

@@ -6,13 +6,15 @@ import {
   EMPTY,
   type Observable,
   of,
+  Subject,
   throwError,
 } from "rxjs";
-import { catchError, map } from "rxjs/operators";
+import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type {
+  DockedPanelPlacement,
   DriveOutcome,
   JarvisDemoMachineHandle,
   JarvisDriverMachineHandle,
@@ -25,8 +27,10 @@ import type {
   LayoutState,
   Machine,
   PanelData,
+  PanelInstance,
   RfqSubmissionState,
   TicketSubmissionState,
+  WorkspaceLayoutV1,
   WorkspaceNavIntents,
   WorkspaceNavState,
   WorkspaceTab,
@@ -48,7 +52,10 @@ import {
   createStaleFlagMachine,
   createTileExecutionMachine,
   createWorkspaceNavMachine,
+  createWorkspacePersistenceWriter,
   JarvisPanelsPresenter,
+  parseWorkspaceLayout,
+  STATIC_WORKSPACE_PANEL_IDS,
 } from "@rtc/client-core";
 import type {
   AmbientStyle,
@@ -234,12 +241,226 @@ function getLayoutFor(
   let machine = byTab.get(tab);
 
   if (!machine) {
-    machine = createLayoutMachine(createDefaultLayoutPort(tab));
+    const dock = getWorkspaceDock(world);
+    // Seeded from the persisted payload exactly like `composition.ts`'s own
+    // `layoutFor`: the DEFAULT port is passed unchanged (so a restored dock
+    // column is still recognised as one and `reset()` still returns the
+    // default tree) and the stored tree goes in as `seedState`. Lazy, so
+    // this consults `dock.persisted` afresh per tab — including after a
+    // reset has nulled it.
+    machine = createLayoutMachine(createDefaultLayoutPort(tab), {
+      seedState: dock.persisted?.tabs[tab]?.layout,
+    });
     byTab.set(tab, machine);
+
+    machine.state$.subscribe((layoutState) => {
+      dock.layoutStates.set(tab, layoutState);
+    });
+    // `skip(1)` drops the replay of the state this machine was created with —
+    // merely OPENING a tab is not a change worth persisting (composition's
+    // own reasoning, reproduced).
+    machine.state$.pipe(skip(1)).subscribe(() => {
+      dock.kick$.next();
+    });
   }
 
   return machine;
 }
+
+/** Everything `composition.ts` keeps BESIDE its layout/panels machines to make
+ * docking and workspace persistence work, mirrored here per World — the twin
+ * of the react driver's `WorkspaceDock` (see that file for the full
+ * rationale). Docking is a two-machine operation (the panels roster AND the
+ * active tab's layout tree) and the persisted payload is assembled from both,
+ * so neither the panels presenter nor `getLayoutFor` can own this alone.
+ *
+ * `persisted` is MUTABLE and load-bearing: `getLayoutFor` is lazy, so a tab
+ * opened for the first time AFTER a `resetWorkspaceLayout()` would otherwise
+ * seed straight back out of the stale snapshot. */
+interface WorkspaceDock {
+  /** The payload this World booted with (`World.workspaceLayout`'s seed),
+   * parsed once — fail-closed, so a corrupt seed is simply `null`. */
+  persisted: WorkspaceLayoutV1 | null;
+  /** Which tab each docked panel was docked INTO. */
+  readonly dockedTabs: Map<string, WorkspaceTab>;
+  /** Current `LayoutState` of every tab whose machine has been CREATED. */
+  readonly layoutStates: Map<WorkspaceTab, LayoutState>;
+  /** One kick per change worth persisting. */
+  readonly kick$: Subject<void>;
+}
+
+const workspaceDocks = new WeakMap<World, WorkspaceDock>();
+
+/** The four workspace tabs, mirroring `composition.ts`'s module-private
+ * `WORKSPACE_TABS` — same "keep a fixture copy rather than reach into
+ * composition-root internals" doctrine as `knownLayoutPanelIds`. */
+const FIXTURE_WORKSPACE_TABS: readonly WorkspaceTab[] = [
+  "fx",
+  "credit",
+  "admin",
+  "equities",
+];
+
+function getWorkspaceDock(world: World): WorkspaceDock {
+  const cached = workspaceDocks.get(world);
+
+  if (cached) {
+    return cached;
+  }
+
+  const dock: WorkspaceDock = {
+    persisted: parseWorkspaceLayout(world.workspaceLayout.getValue()),
+    dockedTabs: new Map(),
+    layoutStates: new Map(),
+    kick$: new Subject<void>(),
+  };
+  workspaceDocks.set(world, dock);
+
+  // The REAL debounced writer over `World.workspaceLayout` — so a dock/undock
+  // /layout change genuinely re-serializes through `serializeWorkspaceLayout`
+  // (orphan/ghost reconciliation included) and a rehydration spec can hand
+  // the result to a SECOND `createWorld`. `debounceMs: 0` because the
+  // contract tier asserts WHAT gets persisted, never the settle window —
+  // coalescing has its own unit test (`workspacePersistenceWriter.test.ts`).
+  createWorkspacePersistenceWriter({
+    kick$: dock.kick$,
+    readStoredLayout: () => {
+      return world.workspaceLayout.getValue();
+    },
+    writeStoredLayout: (value: string) => {
+      world.workspaceLayout.next(value);
+    },
+    createdLayouts: () => {
+      return dock.layoutStates;
+    },
+    dockedPanels: () => {
+      return dockedPlacementsFor(world, dock);
+    },
+    debounceMs: 0,
+  });
+
+  return dock;
+}
+
+/** The writer's `dockedPanels()` source. Reads the panels machine only if this
+ * World has ALREADY built one: a kick can come from a layout machine alone,
+ * and building a panels machine as a side effect of a write would be a
+ * surprising place to do it. */
+function dockedPlacementsFor(
+  world: World,
+  dock: WorkspaceDock,
+): readonly DockedPanelPlacement[] {
+  const cell = panelInstances.get(world);
+
+  if (!cell) {
+    return [];
+  }
+
+  return cell.current.flatMap((panel): readonly DockedPanelPlacement[] => {
+    const tab = dock.dockedTabs.get(panel.panelId);
+
+    // A docked panel with no spec (an "unsupported" instance) or no recorded
+    // tab cannot be persisted — the writer prunes its leaf instead.
+    if (!panel.docked || !panel.spec || !tab) {
+      return [];
+    }
+
+    return [{ panelId: panel.panelId, spec: panel.spec, tab }];
+  });
+}
+
+/** Current value of a warm machine `state$`, read synchronously by
+ * subscribing and immediately unsubscribing — this repo's convention for an
+ * un-defaulted `StateObservable` whose `getValue()` types as
+ * `T | StatePromise<T>` (see `resetWorkspaceLayoutFor`'s own note below). */
+function readStateNow<T>(state$: Observable<T>, fallback: T): T {
+  let value = fallback;
+  state$
+    .subscribe((next) => {
+      value = next;
+    })
+    .unsubscribe();
+  return value;
+}
+
+function isPanelDockedIn(world: World, panelId: string): boolean {
+  return panelInstancesFor(world).some((panel) => {
+    return panel.panelId === panelId && panel.docked;
+  });
+}
+
+/** `Presenters.dockPanel` — the layout-tree-integrated dock bridge, mirroring
+ * `composition.ts`'s `dockPanelIntoWorkspace` step for step: the static-id
+ * collision guard first (docking e.g. "fx-rates" would shadow the static
+ * panel through App.tsx's global registry merge AND make every later payload
+ * unparseable), then the panels machine — which owns every no-op rule
+ * (unknown id / already docked / `MAX_DOCKED_PANELS`) — and only then, if the
+ * docked set genuinely changed, the leaf insertion into the ACTIVE tab. */
+function dockPanelIntoWorkspace(world: World, panelId: string): void {
+  if (STATIC_WORKSPACE_PANEL_IDS.has(panelId)) {
+    return;
+  }
+
+  if (isPanelDockedIn(world, panelId)) {
+    return;
+  }
+
+  getJarvisPanelsMachine(world).dockPanel(panelId);
+
+  if (!isPanelDockedIn(world, panelId)) {
+    return;
+  }
+
+  const tab = readStateNow(
+    getWorkspaceNav(world).state$,
+    FALLBACK_NAV_STATE,
+  ).activeTab;
+  getWorkspaceDock(world).dockedTabs.set(panelId, tab);
+  getLayoutFor(world, tab).intents.insertPanel(panelId);
+}
+
+/** `Presenters.undockPanel` — the inverse; the leaf leaves the tab the panel
+ * was docked INTO, which is not necessarily the tab on screen now. */
+function undockPanelFromWorkspace(world: World, panelId: string): void {
+  if (!isPanelDockedIn(world, panelId)) {
+    return;
+  }
+
+  getJarvisPanelsMachine(world).undockPanel(panelId);
+
+  if (isPanelDockedIn(world, panelId)) {
+    return;
+  }
+
+  detachDockedLeaf(world, panelId);
+}
+
+function detachDockedLeaf(world: World, panelId: string): void {
+  const dock = getWorkspaceDock(world);
+  const tab = dock.dockedTabs.get(panelId);
+  dock.dockedTabs.delete(panelId);
+
+  if (tab) {
+    getLayoutFor(world, tab).intents.removePanel(panelId);
+  }
+}
+
+/** `Presenters.dismissPanel` — the DOCKED-SAFE dismiss the UI and the driver
+ * must both use. The leaf is detached directly rather than by undocking
+ * first: `undockPanel` re-admits the panel to the floating set, which can
+ * evict an unrelated floating panel to stay inside `MAX_LIVE_PANELS`. */
+function dismissPanelFromWorkspace(world: World, panelId: string): void {
+  if (isPanelDockedIn(world, panelId)) {
+    detachDockedLeaf(world, panelId);
+  }
+
+  getJarvisPanelsPresenter(world).dismissPanel(panelId);
+}
+
+/** `readStateNow`'s fallback for the nav machine — never observed in practice
+ * (`createWorkspaceNavMachine`'s state$ is warm and defaulted), but the read
+ * needs a total type. Mirrors the machine's own INITIAL. */
+const FALLBACK_NAV_STATE: WorkspaceNavState = { activeTab: "fx" };
 
 /** The REAL `CandleSeriesPresenter`, one shared instance PER WORLD (same
  * per-World-singleton doctrine as `getLayoutFor`/`getWorkspaceNav` above) —
@@ -376,14 +597,12 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
     const machine = getJarvisMachine(world);
     // Minimal fixture wiring for the pinned-panels round's dockPanel/
     // undockPanel drive commands — delegates to the REAL JarvisPanelsMachine's
-    // own dock/undock intents (the presenter deliberately does not re-export
-    // them: docking is only half a panels-machine operation, see
-    // JarvisPanelsPresenter's class doc), and derives livePanelIds$/
-    // dockedPanelIds$ from its existing panels$ VM stream. This does NOT reproduce
-    // composition.ts's dockPanelIntoWorkspace/undockPanelFromWorkspace
-    // layout-tree integration (docking a panel into the active tab's layout
-    // tree) — Task 9 owns building that into this fixture for the dock
-    // contract specs.
+    // (`dockPanelIntoWorkspace` & co. above), NOT the raw panels machine's
+    // intents — exactly what `composition.ts` hands this machine, and what
+    // makes a driven `dockPanel` command observable as a workspace leaf
+    // rather than only as a `docked: true` flag. livePanelIds$/
+    // dockedPanelIds$ are derived from the presenter's existing panels$ VM
+    // stream rather than a second read of the raw machine.
     const panelsPresenter = getJarvisPanelsPresenter(world);
     driver = createJarvisDriverMachine({
       events$: machine.events$.pipe(
@@ -403,13 +622,13 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
         world.powerSaverLevel.next(level);
       },
       dismissPanel: (panelId: string) => {
-        getJarvisPanelsPresenter(world).dismissPanel(panelId);
+        dismissPanelFromWorkspace(world, panelId);
       },
       dockPanel: (panelId: string) => {
-        getJarvisPanelsMachine(world).dockPanel(panelId);
+        dockPanelIntoWorkspace(world, panelId);
       },
       undockPanel: (panelId: string) => {
-        getJarvisPanelsMachine(world).undockPanel(panelId);
+        undockPanelFromWorkspace(world, panelId);
       },
       knownLayoutPanelIds,
       knownSymbols$: world.watchlist.pipe(
@@ -496,6 +715,24 @@ const jarvisPanelsPresenters = new WeakMap<World, JarvisPanelsPresenter>();
  * composition.ts holds the handle itself for the same reason. */
 const jarvisPanelsMachines = new WeakMap<World, JarvisPanelsMachineHandle>();
 
+/** A World's CURRENT raw panel rows, held in a mutable cell so the writer and
+ * the dock bridges read the same live value. `JarvisPanelVm` drops the spec,
+ * and both the bridges (is this id docked right now?) and the persistence
+ * writer (what spec does this docked panel carry?) need it — composition's
+ * own `latestPanels` session-lifetime mirror. */
+interface PanelInstancesCell {
+  current: readonly PanelInstance[];
+}
+
+const panelInstances = new WeakMap<World, PanelInstancesCell>();
+
+/** The rows, CREATING this World's panels machine if it has none yet (the
+ * dock bridges' read; `dockedPlacementsFor` deliberately does not). */
+function panelInstancesFor(world: World): readonly PanelInstance[] {
+  getJarvisPanelsMachine(world);
+  return panelInstances.get(world)?.current ?? [];
+}
+
 function getJarvisPanelsMachine(world: World): JarvisPanelsMachineHandle {
   let machine = jarvisPanelsMachines.get(world);
 
@@ -508,6 +745,47 @@ function getJarvisPanelsMachine(world: World): JarvisPanelsMachineHandle {
       ),
     );
     jarvisPanelsMachines.set(world, machine);
+
+    // Session-lifetime mirror of the raw fold (composition's `latestPanels`),
+    // plus the writer kick. `map` + `distinctUntilChanged` on the panels
+    // ARRAY, not the state object: every intent produces a fresh state object
+    // even when its reducer was a no-op, so subscribing to `state$` directly
+    // would persist on a REJECTED dock of an unknown id.
+    const cell: PanelInstancesCell = { current: [] };
+    panelInstances.set(world, cell);
+    machine.state$.subscribe((panelsState) => {
+      cell.current = panelsState.panels;
+    });
+
+    const dock = getWorkspaceDock(world);
+    machine.state$
+      .pipe(
+        map((panelsState) => {
+          return panelsState.panels;
+        }),
+        distinctUntilChanged(),
+        skip(1),
+      )
+      .subscribe(() => {
+        dock.kick$.next();
+      });
+
+    // Boot rehydration: re-admit every persisted docked panel to the roster
+    // (their LEAVES arrive separately, already in each tab's seeded tree —
+    // see `getLayoutFor`), and restore the tab attribution the writer
+    // persists by.
+    for (const tab of FIXTURE_WORKSPACE_TABS) {
+      const persistedTab = dock.persisted?.tabs[tab];
+
+      if (!persistedTab) {
+        continue;
+      }
+
+      for (const entry of persistedTab.docked) {
+        machine.restoreDockedPanel(entry.panelId, entry.spec);
+        dock.dockedTabs.set(entry.panelId, tab);
+      }
+    }
   }
 
   return machine;
@@ -527,25 +805,17 @@ function getJarvisPanelsPresenter(world: World): JarvisPanelsPresenter {
   return presenter;
 }
 
-/** Minimal fixture stand-in for `Presenters.resetWorkspaceLayout` — resets
- * every per-tab layout machine CREATED so far (mirrors `layoutHandles`
- * above; a tab never opened this session has no machine to reset, same as
- * composition's own read-modify-write scoping) and dismisses every
- * currently docked panel via the presenter. Does NOT touch a persisted
- * preference — this fixture world has no `PreferencesPort`-backed
- * workspace-layout seed to clear (Task 9's scope, alongside the rest of
- * dockPanelIntoWorkspace/undockPanelFromWorkspace's layout-tree
- * integration — see `getJarvisDriverMachine`'s doc).
- *
- * Reads `presenter.panels$`'s CURRENT value via a synchronous
- * subscribe-then-unsubscribe (not `machine.state$.getValue()`): the raw
- * machine's `state$` is an un-defaulted `StateObservable`, whose
- * `getValue()` types as `T | StatePromise<T>` — see
- * `wireJarvisHistorySource`'s doc in `composition.ts` for the identical
- * tradeoff and why this repo's convention is to subscribe once instead.
- * `panels$` is a `.pipe(map(...))` over that same warm `state$`, so a
- * subscriber receives the current value synchronously. */
+/** `Presenters.resetWorkspaceLayout` — clears the stored string, forgets the
+ * boot snapshot (so a tab opened later cannot resurrect it), returns every
+ * CREATED layout machine to its default tree, and dismisses every docked
+ * panel. The reset's own state changes still kick the writer, so the next
+ * write re-persists the now-default, docked-free workspace rather than
+ * leaving the cleared preference and live state disagreeing. */
 function resetWorkspaceLayoutFor(world: World): void {
+  world.workspaceLayout.next(null);
+  const dock = getWorkspaceDock(world);
+  dock.persisted = null;
+
   const byTab = layoutHandles.get(world);
 
   if (byTab) {
@@ -555,19 +825,14 @@ function resetWorkspaceLayoutFor(world: World): void {
   }
 
   const presenter = getJarvisPanelsPresenter(world);
-  let currentPanels: readonly JarvisPanelVm[] = [];
 
-  presenter.panels$
-    .subscribe((rows) => {
-      currentPanels = rows;
-    })
-    .unsubscribe();
-
-  for (const panel of currentPanels) {
+  for (const panel of panelInstancesFor(world)) {
     if (panel.docked) {
       presenter.dismissPanel(panel.panelId);
     }
   }
+
+  dock.dockedTabs.clear();
 }
 
 /** Build a reactive ViewModel backed by the neutral World — the Solid
@@ -1065,7 +1330,8 @@ export function solidViewModel(world: World): ViewModel {
       return { state: toSignal(machine.state$), ...machine.intents };
     },
     // Reset workspace layout (Preferences → DATA & PRIVACY): see
-    // resetWorkspaceLayoutFor's doc for this fixture's minimal scope.
+    // resetWorkspaceLayoutFor's doc — the REAL Presenters.resetWorkspaceLayout
+    // shape, persisted preference included.
     useWorkspaceReset: () => {
       return () => {
         resetWorkspaceLayoutFor(world);
@@ -1246,13 +1512,12 @@ export function solidViewModel(world: World): ViewModel {
     // see getJarvisPanelsPresenter's doc for the full wiring. dockedPanels/
     // floatingPanels mirror JarvisPanelsPresenter.dockedPanels$/
     // floatingPanels$ directly (the presenter already exposes the
-    // pre-split streams); dockPanel/undockPanel are the raw panels
-    // MACHINE's own intents (the presenter deliberately does not re-export
-    // them — see JarvisPanelsPresenter's class doc), not
-    // layout-tree-integrated — see getJarvisDriverMachine's doc.
+    // pre-split streams); dismissPanel/dockPanel/undockPanel are the
+    // LAYOUT-TREE-INTEGRATED bridges (`Presenters.dismissPanel`/`dockPanel`/
+    // `undockPanel`), so a pin from the floating card's 📌 really does insert
+    // a leaf into the active tab.
     useJarvisPanels: () => {
       const presenter = getJarvisPanelsPresenter(world);
-      const machine = getJarvisPanelsMachine(world);
       return {
         panels: toSignal(
           state(presenter.panels$, [] as readonly JarvisPanelVm[]),
@@ -1263,9 +1528,15 @@ export function solidViewModel(world: World): ViewModel {
         floatingPanels: toSignal(
           state(presenter.floatingPanels$, [] as readonly JarvisPanelVm[]),
         ),
-        dismissPanel: presenter.dismissPanel,
-        dockPanel: machine.dockPanel,
-        undockPanel: machine.undockPanel,
+        dismissPanel: (panelId: string) => {
+          dismissPanelFromWorkspace(world, panelId);
+        },
+        dockPanel: (panelId: string) => {
+          dockPanelIntoWorkspace(world, panelId);
+        },
+        undockPanel: (panelId: string) => {
+          undockPanelFromWorkspace(world, panelId);
+        },
       };
     },
     useJarvisPanelData: (panelId: string) => {

@@ -439,6 +439,21 @@ export interface World {
   readonly jarvisUsage$: BehaviorSubject<AdminJarvisUsagePayload | null>;
   /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
   setJarvisUsage(value: AdminJarvisUsagePayload | null): void;
+  /** The persisted `workspaceLayoutV1` preference string (GenUI L3's pinned
+   * panels) — the ONLY `string | null` preference on this World, and the one
+   * every other one is not: it is both READ (each framework's
+   * viewModelFromWorld seeds the per-tab layout machines and re-docks the
+   * stored panel specs from it at World construction) and WRITTEN (the REAL
+   * `createWorkspacePersistenceWriter`, wired over this subject, re-serializes
+   * the workspace on every dock/undock/layout change).
+   *
+   * That read half is why a spec CANNOT witness rehydration by unmounting and
+   * re-mounting on the same World: every machine that would have to be rebuilt
+   * is cached in a `WeakMap<World, …>` in the per-framework driver and
+   * survives `cleanupMounted()` intact. A genuine reload is a SECOND
+   * `createWorld(…, workspaceLayoutSeed)` seeded with the string read back off
+   * the first World — see `createWorld`'s `workspaceLayoutSeed` parameter. */
+  readonly workspaceLayout: BehaviorSubject<string | null>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -599,6 +614,13 @@ export function createWorld(
   jarvisNarratorSeed?: JarvisNarratorPreference,
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
   chartSubstrateSeed?: ChartSubstrate,
+  /** Seeds `World.workspaceLayout` (GenUI L3) — the serialized
+   * `workspaceLayoutV1` string a previous session would have stored.
+   * Defaults to `null` (a fresh install: default trees, nothing docked). A
+   * corrupt/unparseable string is a normal value here, not a test error: the
+   * fixture's `parseWorkspaceLayout` is fail-closed, so the World simply
+   * boots on defaults. */
+  workspaceLayoutSeed?: string | null,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -778,6 +800,10 @@ export function createWorld(
 
   const chartSubstrate = new BehaviorSubject<ChartSubstrate>(
     chartSubstrateSeed ?? DEFAULT_CHART_SUBSTRATE,
+  );
+
+  const workspaceLayout = new BehaviorSubject<string | null>(
+    workspaceLayoutSeed ?? null,
   );
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
@@ -1002,6 +1028,7 @@ export function createWorld(
     setJarvisUsage: (value: AdminJarvisUsagePayload | null) => {
       return jarvisUsage$.next(value);
     },
+    workspaceLayout,
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,
