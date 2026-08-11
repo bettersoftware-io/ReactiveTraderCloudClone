@@ -158,6 +158,15 @@ function buildPayload(deps: WorkspacePersistenceWriterDeps): WorkspaceLayoutV1 {
   return { v: 1, tabs };
 }
 
+/** Skipping a write is invisible from the outside — the app keeps running on
+ * live state and only a LATER reload reveals that nothing was saved — so the
+ * skip leaves a breadcrumb. Once per session, not once per kick: a divergence
+ * that survives one debounce window survives all of them, and this writer
+ * fires on every layout drag settle, so an unguarded log would flood the
+ * console for the rest of the session. Plain `console` matches the only other
+ * client-core logging precedent (`WsAdapter`'s connect/retry lines). */
+let warnedAboutUnwritablePayload = false;
+
 function writeWorkspaceLayout(deps: WorkspacePersistenceWriterDeps): void {
   const raw = serializeWorkspaceLayout(buildPayload(deps));
 
@@ -167,10 +176,23 @@ function writeWorkspaceLayout(deps: WorkspacePersistenceWriterDeps): void {
   // better than replacing it with a payload the next boot would discard
   // wholesale — including the tabs this session never touched.
   if (parseWorkspaceLayout(raw) === null) {
+    if (!warnedAboutUnwritablePayload) {
+      warnedAboutUnwritablePayload = true;
+      console.warn(
+        "[workspacePersistence] assembled a payload the parser rejects — keeping the last stored layout and skipping every further write this session",
+      );
+    }
+
     return;
   }
 
   deps.writeStoredLayout(raw);
+}
+
+/** Test-only: clears the once-per-session breadcrumb latch above so a spec
+ * asserting the warning does not depend on which spec ran first. */
+export function resetUnwritablePayloadWarning(): void {
+  warnedAboutUnwritablePayload = false;
 }
 
 /**

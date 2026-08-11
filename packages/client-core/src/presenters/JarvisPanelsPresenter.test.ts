@@ -331,7 +331,12 @@ describe("JarvisPanelsPresenter", () => {
       expect(row?.docked).toBe(false);
     });
 
-    it("re-exports dockPanel/undockPanel from the machine, driving the VM row's docked field", () => {
+    // The presenter deliberately does NOT re-export dockPanel/undockPanel —
+    // docking is only half a panels-machine operation (the layout leaf and
+    // the tab attribution are composition's half), so a same-named pair on
+    // the UI seam would dock with neither. The VM row still has to mirror
+    // the machine's own intents, which is what this pins.
+    it("the VM row's docked field mirrors the MACHINE's dock/undock intents", () => {
       const events$ = new Subject<JarvisEvent>();
       const machine = createJarvisPanelsMachine(events$);
       const presenter = new JarvisPanelsPresenter(machine, makeDeps());
@@ -342,13 +347,13 @@ describe("JarvisPanelsPresenter", () => {
         spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
       });
 
-      presenter.dockPanel("p1");
+      machine.dockPanel("p1");
       const dockedRow = latest(presenter.panels$).find((r) => {
         return r.panelId === "p1";
       });
       expect(dockedRow?.docked).toBe(true);
 
-      presenter.undockPanel("p1");
+      machine.undockPanel("p1");
       const undockedRow = latest(presenter.panels$).find((r) => {
         return r.panelId === "p1";
       });
@@ -390,7 +395,7 @@ describe("JarvisPanelsPresenter", () => {
         panelId: "p2",
         spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
       });
-      presenter.dockPanel("p1");
+      machine.dockPanel("p1");
 
       expect(
         latest(presenter.dockedPanels$).map((r) => {

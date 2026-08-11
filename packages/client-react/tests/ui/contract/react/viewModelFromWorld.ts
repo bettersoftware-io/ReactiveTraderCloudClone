@@ -408,11 +408,13 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
   if (!driver) {
     const machine = getJarvisMachine(world);
     // Minimal fixture wiring for the pinned-panels round's dockPanel/
-    // undockPanel drive commands — delegates straight to the REAL
-    // JarvisPanelsPresenter's dockPanel/undockPanel (same idiom as
-    // dismissPanel below), and derives livePanelIds$/dockedPanelIds$ from
-    // its existing panels$ VM stream rather than standing up a second read
-    // of the raw machine. This does NOT reproduce composition.ts's
+    // undockPanel drive commands — delegates to the REAL
+    // JarvisPanelsMachine's own dock/undock intents (the presenter
+    // deliberately does not re-export them: docking is only half a
+    // panels-machine operation, see JarvisPanelsPresenter's class doc), and
+    // derives livePanelIds$/dockedPanelIds$ from the bridge's existing
+    // panels$ VM stream rather than standing up a second read of the raw
+    // machine. This does NOT reproduce composition.ts's
     // dockPanelIntoWorkspace/undockPanelFromWorkspace layout-tree
     // integration (docking a panel into the active tab's layout tree) — Task
     // 9 owns building that into this fixture for the dock contract specs.
@@ -532,12 +534,14 @@ function getJarvisDemoMachine(world: World): JarvisDemoMachineHandle {
 interface JarvisPanelsBridge {
   readonly panels$: BehaviorSubject<readonly JarvisPanelVm[]>;
   readonly dismissPanel: (panelId: string) => void;
-  /** `JarvisPanelsPresenter.dockPanel`/`undockPanel` passed straight through
-   * — the panels-machine-level dock/undock only (unknown-id/already-docked/
-   * dock-full no-ops), NOT composition.ts's layout-tree-integrated
-   * `dockPanelIntoWorkspace`/`undockPanelFromWorkspace` wrappers. See
-   * `getJarvisDriverMachine`'s doc for why that's the deliberate minimal
-   * scope here. */
+  /** `JarvisPanelsMachineHandle.dockPanel`/`undockPanel` passed straight
+   * through — the panels-machine-level dock/undock only (unknown-id/
+   * already-docked/dock-full no-ops), NOT composition.ts's
+   * layout-tree-integrated `dockPanelIntoWorkspace`/
+   * `undockPanelFromWorkspace` wrappers. Taken from the machine handle
+   * because the presenter deliberately does not re-export them (see its
+   * class doc); see `getJarvisDriverMachine`'s doc for why that's the
+   * deliberate minimal scope here. */
   readonly dockPanel: (panelId: string) => void;
   readonly undockPanel: (panelId: string) => void;
   panelData$(panelId: string): BehaviorSubject<PanelData | null>;
@@ -556,14 +560,16 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
   // `createJarvisPanelsMachine`'s `events$` input is TERMINAL on error (kills
   // its fold) — same catchError/EMPTY guard composition.ts applies to the
   // real `jarvis.events$` before handing it to the same factory.
-  const presenter = new JarvisPanelsPresenter(
-    createJarvisPanelsMachine(
-      machine.events$.pipe(
-        catchError(() => {
-          return EMPTY;
-        }),
-      ),
+  const panelsMachine = createJarvisPanelsMachine(
+    machine.events$.pipe(
+      catchError(() => {
+        return EMPTY;
+      }),
     ),
+  );
+
+  const presenter = new JarvisPanelsPresenter(
+    panelsMachine,
     world.panelStreamDeps,
   );
 
@@ -588,8 +594,8 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
   const bridge: JarvisPanelsBridge = {
     panels$,
     dismissPanel: presenter.dismissPanel,
-    dockPanel: presenter.dockPanel,
-    undockPanel: presenter.undockPanel,
+    dockPanel: panelsMachine.dockPanel,
+    undockPanel: panelsMachine.undockPanel,
     panelData$,
   };
   jarvisPanelsBridges.set(world, bridge);

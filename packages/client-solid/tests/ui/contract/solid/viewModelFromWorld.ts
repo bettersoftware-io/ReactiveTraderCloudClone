@@ -18,6 +18,7 @@ import type {
   JarvisDriverMachineHandle,
   JarvisDriverState,
   JarvisMachineHandle,
+  JarvisPanelsMachineHandle,
   JarvisPanelVm,
   LayoutIntents,
   LayoutNode,
@@ -374,10 +375,11 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
   if (!driver) {
     const machine = getJarvisMachine(world);
     // Minimal fixture wiring for the pinned-panels round's dockPanel/
-    // undockPanel drive commands — delegates straight to the REAL
-    // JarvisPanelsPresenter's own dockPanel/undockPanel (same idiom as
-    // dismissPanel below), and derives livePanelIds$/dockedPanelIds$ from
-    // its existing panels$ VM stream. This does NOT reproduce
+    // undockPanel drive commands — delegates to the REAL JarvisPanelsMachine's
+    // own dock/undock intents (the presenter deliberately does not re-export
+    // them: docking is only half a panels-machine operation, see
+    // JarvisPanelsPresenter's class doc), and derives livePanelIds$/
+    // dockedPanelIds$ from its existing panels$ VM stream. This does NOT reproduce
     // composition.ts's dockPanelIntoWorkspace/undockPanelFromWorkspace
     // layout-tree integration (docking a panel into the active tab's layout
     // tree) — Task 9 owns building that into this fixture for the dock
@@ -404,10 +406,10 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
         getJarvisPanelsPresenter(world).dismissPanel(panelId);
       },
       dockPanel: (panelId: string) => {
-        panelsPresenter.dockPanel(panelId);
+        getJarvisPanelsMachine(world).dockPanel(panelId);
       },
       undockPanel: (panelId: string) => {
-        panelsPresenter.undockPanel(panelId);
+        getJarvisPanelsMachine(world).undockPanel(panelId);
       },
       knownLayoutPanelIds,
       knownSymbols$: world.watchlist.pipe(
@@ -487,19 +489,36 @@ function getJarvisDemoMachine(world: World): JarvisDemoMachineHandle {
  * never throws even before this presenter's own panels have ticked. */
 const jarvisPanelsPresenters = new WeakMap<World, JarvisPanelsPresenter>();
 
+/** The raw panels MACHINE behind `getJarvisPanelsPresenter`'s presenter, kept
+ * per World so the driver fixture can reach `dockPanel`/`undockPanel`: the
+ * presenter deliberately does not re-export those intents (docking is only
+ * half a panels-machine operation — see its class doc), exactly as
+ * composition.ts holds the handle itself for the same reason. */
+const jarvisPanelsMachines = new WeakMap<World, JarvisPanelsMachineHandle>();
+
+function getJarvisPanelsMachine(world: World): JarvisPanelsMachineHandle {
+  let machine = jarvisPanelsMachines.get(world);
+
+  if (!machine) {
+    machine = createJarvisPanelsMachine(
+      getJarvisMachine(world).events$.pipe(
+        catchError(() => {
+          return EMPTY;
+        }),
+      ),
+    );
+    jarvisPanelsMachines.set(world, machine);
+  }
+
+  return machine;
+}
+
 function getJarvisPanelsPresenter(world: World): JarvisPanelsPresenter {
   let presenter = jarvisPanelsPresenters.get(world);
 
   if (!presenter) {
-    const machine = getJarvisMachine(world);
     presenter = new JarvisPanelsPresenter(
-      createJarvisPanelsMachine(
-        machine.events$.pipe(
-          catchError(() => {
-            return EMPTY;
-          }),
-        ),
-      ),
+      getJarvisPanelsMachine(world),
       world.panelStreamDeps,
     );
     jarvisPanelsPresenters.set(world, presenter);

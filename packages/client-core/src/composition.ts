@@ -260,6 +260,15 @@ export interface Presenters {
    * the leaf from the tab the panel was docked INTO (not whichever tab
    * happens to be active now). */
   undockPanel: (panelId: string) => void;
+  /** Dismiss a desk panel — the DOCKED-SAFE dismissal, and the one both the
+   * UI and the driver must use in place of `jarvisPanels.dismissPanel`.
+   * Dismissing a docked panel through the raw presenter/machine intent
+   * leaves its leaf stranded in the layout tree (an empty pane with no
+   * removal control), lets the stored entry hand the panel back at the next
+   * reload, and can push the persisted docked total past
+   * `MAX_DOCKED_PANELS` — which makes the writer refuse every later write
+   * for the session. This detaches the leaf first. */
+  dismissPanel: (panelId: string) => void;
   /** Discard the whole persisted workspace: clears the stored preference,
    * resets every layout machine created this session back to its tab's
    * default tree, and dismisses every docked panel. */
@@ -654,7 +663,16 @@ export function createApp(ports: AppPorts): App {
   // fail-closed on the WHOLE payload — a non-null result can be replayed
   // blindly: every tab in it is internally consistent, its docked entries
   // reconcile with its tree, and the global docked total is within the cap.
-  const persistedWorkspace = parseWorkspaceLayout(
+  //
+  // MUTABLE, and it matters: `layoutFor` is lazy, so this seed is consulted
+  // again every time a tab is opened for the FIRST time — which can be long
+  // after boot, and after a `resetWorkspaceLayout()`. Left `const`, Reset
+  // would clear the preference and the machines that happen to exist, then
+  // the next never-opened tab would seed straight back out of this stale
+  // snapshot and resurrect the pre-reset tree (docked leaves included), which
+  // the next debounced write would re-persist. `resetWorkspaceLayout` nulls
+  // it for exactly that reason.
+  let persistedWorkspace = parseWorkspaceLayout(
     readPreferenceNow(ports.preferences.workspaceLayout$(), null),
   );
 
@@ -787,7 +805,7 @@ export function createApp(ports: AppPorts): App {
       return;
     }
 
-    jarvisPanels.dockPanel(panelId);
+    jarvisPanelsMachine.dockPanel(panelId);
 
     if (!isPanelDocked(panelId)) {
       return;
@@ -806,12 +824,21 @@ export function createApp(ports: AppPorts): App {
       return;
     }
 
-    jarvisPanels.undockPanel(panelId);
+    jarvisPanelsMachine.undockPanel(panelId);
 
     if (isPanelDocked(panelId)) {
       return;
     }
 
+    detachDockedLeaf(panelId);
+  }
+
+  /** Drop `panelId`'s docked leaf from the tab it was docked into, and forget
+   * its attribution. `layoutFor(tab)` CREATES that tab's machine if this
+   * session never opened it — deliberately: the writer only ever rewrites
+   * tabs whose machine exists, so without this the tab's stored entry would
+   * keep the now-dead docked panel and hand it back at the next boot. */
+  function detachDockedLeaf(panelId: string): void {
     const tab = dockedPanelTabs.get(panelId);
     dockedPanelTabs.delete(panelId);
 
@@ -820,15 +847,45 @@ export function createApp(ports: AppPorts): App {
     }
   }
 
+  /** Dismiss bridge — the docked-safe `dismissPanel`, and the one the UI and
+   * the driver must both use.
+   *
+   * `JarvisPanelsMachine.dismissPanel` alone drops the panel from the roster
+   * while leaving its leaf in whichever layout tree it was docked into: an
+   * empty pane with no removal control, a stored entry that resurrects the
+   * panel on the next reload, and — worst — a payload whose docked total can
+   * climb past `MAX_DOCKED_PANELS`, at which point the writer's own guard
+   * refuses every later write for the session.
+   *
+   * The leaf is detached DIRECTLY rather than by running the undock bridge
+   * first, even though undock-then-dismiss reads more symmetrically:
+   * `undockPanel`'s reducer re-admits the panel to the floating set, which
+   * can evict an unrelated floating panel to stay inside `MAX_LIVE_PANELS` —
+   * a panel the user never touched, lost to a dismissal of a different one.
+   * Detaching the leaf skips that entirely. */
+  function dismissPanelFromWorkspace(panelId: string): void {
+    if (isPanelDocked(panelId)) {
+      detachDockedLeaf(panelId);
+    }
+
+    jarvisPanels.dismissPanel(panelId);
+  }
+
   /** Discard the persisted workspace — see `Presenters.resetWorkspaceLayout`.
    * `dismissPanel` works on a docked panel directly, so there is no
    * undock-then-dismiss dance; the layout machines are reset wholesale
    * anyway, which drops every docked leaf with them. The reset's own state
    * changes still kick the writer, so the next debounced write re-persists
    * the (now default, docked-free) workspace rather than leaving the cleared
-   * preference and live state disagreeing. */
+   * preference and live state disagreeing.
+   *
+   * Clearing `persistedWorkspace` is as load-bearing as clearing the stored
+   * string: `layoutFor` is lazy, so a tab opened for the first time AFTER a
+   * reset would otherwise seed from this snapshot and resurrect exactly the
+   * tree the user just discarded (see the seed's own doc). */
   function resetWorkspaceLayout(): void {
     ports.preferences.setWorkspaceLayout(null);
+    persistedWorkspace = null;
 
     for (const machine of layoutHandles.values()) {
       machine.intents.reset();
@@ -924,9 +981,7 @@ export function createApp(ports: AppPorts): App {
     setPowerSaver: (level: PowerSaverLevel): void => {
       powerSaver.setLevel(level);
     },
-    dismissPanel: (panelId: string): void => {
-      jarvisPanels.dismissPanel(panelId);
-    },
+    dismissPanel: dismissPanelFromWorkspace,
     knownLayoutPanelIds: (tab: WorkspaceTab): readonly string[] => {
       return LAYOUT_PANEL_IDS[tab];
     },
@@ -1177,6 +1232,7 @@ export function createApp(ports: AppPorts): App {
     jarvisPanels,
     dockPanel: dockPanelIntoWorkspace,
     undockPanel: undockPanelFromWorkspace,
+    dismissPanel: dismissPanelFromWorkspace,
     resetWorkspaceLayout,
     jarvisDriver,
     jarvisDemo,

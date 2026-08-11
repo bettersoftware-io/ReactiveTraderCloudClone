@@ -1,5 +1,5 @@
 import { Subject, VirtualTimeScheduler } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PanelSpecV1 } from "@rtc/shared";
 
@@ -13,7 +13,10 @@ import {
   serializeWorkspaceLayout,
 } from "../workspaceLayoutPersistence";
 import type { DockedPanelPlacement } from "../workspacePersistenceWriter";
-import { createWorkspacePersistenceWriter } from "../workspacePersistenceWriter";
+import {
+  createWorkspacePersistenceWriter,
+  resetUnwritablePayloadWarning,
+} from "../workspacePersistenceWriter";
 
 const SPEC: PanelSpecV1 = {
   v: 1,
@@ -160,6 +163,44 @@ describe("createWorkspacePersistenceWriter", () => {
     for (const raw of h.writes) {
       expect(parseWorkspaceLayout(raw)).not.toBeNull();
     }
+  });
+});
+
+// The last line of defence, unreachable through `reconcileTabEntry` but
+// pinned so a future refactor cannot turn it into a silent data-loss path:
+// a payload the parser would reject is NOT written (the previously stored
+// good value survives), and the skip announces itself once.
+describe("createWorkspacePersistenceWriter — unwritable payload guard", () => {
+  beforeEach(() => {
+    resetUnwritablePayloadWarning();
+  });
+
+  it("keeps the stored value and warns once instead of writing a payload the parser rejects", () => {
+    const good = serializeWorkspaceLayout({
+      v: 1,
+      tabs: { fx: { layout: withDocked("fx", []), docked: [] } },
+    });
+    const h = harness(good);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+      // silenced: the message is asserted, not printed
+    });
+
+    // `maximized` naming a panel that is in no tree at all — a corruption
+    // reconciliation does not (and cannot) repair, since only pruned leaves
+    // clear it.
+    h.setLayouts(
+      new Map([["fx", { ...withDocked("fx", []), maximized: "ghost-panel" }]]),
+    );
+
+    h.kick();
+    h.flush();
+    h.kick();
+    h.flush();
+
+    expect(h.writes).toEqual([]);
+    expect(h.stored()).toBe(good);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 });
 
