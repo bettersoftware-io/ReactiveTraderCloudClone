@@ -52,14 +52,11 @@ export function SceneCanvas({
     canvas.width = Math.round(box.w * dpr);
     canvas.height = Math.round(box.h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // The real CanvasRenderingContext2D structurally satisfies every method
-    // Canvas2D declares, but its `fillStyle` setter's DOM-lib type also
-    // accepts CanvasPattern — a case Canvas2D deliberately excludes (see its
-    // doc in @rtc/motion-core) — so a direct structural assignment doesn't
-    // typecheck. The double assertion is narrowing, not widening: every
-    // fillStyle value this codebase ever assigns is a string or a
-    // CanvasGradient2D-shaped gradient, never a CanvasPattern.
-    draw(ctx as unknown as Canvas2D, readChartPalette(canvas), box);
+    // The real CanvasRenderingContext2D satisfies Canvas2D structurally —
+    // its style properties are covered by Canvas2D's divergent read/write
+    // accessor types (see the interface doc in @rtc/motion-core), so this
+    // direct pass is also the compile-time pin that keeps the two in sync.
+    draw(ctx, readChartPalette(canvas), box);
   });
 
   return (
