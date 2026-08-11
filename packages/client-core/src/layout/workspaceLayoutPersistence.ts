@@ -40,7 +40,7 @@ import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds } from "./dockColumn";
 import type { LayoutNode, LayoutState, SplitDir } from "./layoutPort";
 
-interface DockedPanelEntry {
+export interface DockedPanelEntry {
   readonly panelId: string;
   readonly spec: PanelSpecV1;
 }

@@ -337,6 +337,71 @@ describe("createLayoutMachine", () => {
       m.dispose();
     });
   });
+
+  // The workspace-layout rehydration seam (`composition.ts`'s `layoutFor`).
+  // `seedState` moves ONLY the fold's starting value; `port` keeps owning the
+  // tab's DEFAULT-tree identity, which two separate things read:
+  //   - `staticIds` (which leaf ids are the tab's own static panels), so a
+  //     restored dock column is still recognised as a dock column;
+  //   - `reset()`, which must return the DEFAULT tree, not the restored one.
+  // Seeding through `port.initial` instead would break both at once — the
+  // restored dock leaves would be misclassified as static (so the next
+  // insert appends a SECOND dock column beside the restored one), and
+  // `reset()` would hand back the saved layout it is supposed to discard.
+  describe("seedState (workspace-layout rehydration)", () => {
+    const seededRoot: LayoutNode = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      children: [root, { kind: "panel", panelId: "jarvis-1" }],
+      initialPx: [undefined, 360],
+    };
+
+    const seeded: LayoutState = {
+      root: seededRoot,
+      maximized: null,
+      collapsed: [],
+    };
+
+    it("starts the fold from seedState rather than port.initial", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      expect(current(m)).toEqual(seeded);
+      m.dispose();
+    });
+
+    it("reset() after a seed returns the DEFAULT tree, not the seeded one", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      m.intents.reset();
+      expect(current(m)).toEqual(initial);
+      expect(current(m).root).toBe(initial.root);
+      m.dispose();
+    });
+
+    it("insertPanel() after a seed grows the RESTORED dock column instead of appending a second one", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      // Still two children: the original tree plus ONE dock column, now a
+      // 2-child column split — not three children with a second dock column.
+      expect(r.children).toHaveLength(2);
+      expect(r.children[0]).toBe(root);
+      expect(r.children[1]).toEqual({
+        kind: "split",
+        dir: "column",
+        children: [
+          { kind: "panel", panelId: "jarvis-1" },
+          { kind: "panel", panelId: "jarvis-2" },
+        ],
+        sizes: [0.5, 0.5],
+      });
+      m.dispose();
+    });
+  });
 });
 
 function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {

@@ -143,14 +143,34 @@ function makeReduce(
   };
 }
 
+export interface LayoutMachineOptions {
+  /** Starting value for the fold — a workspace layout restored from the
+   * persisted payload (see `composition.ts`'s `layoutFor`). Deliberately
+   * SEPARATE from `port.initial`, which keeps owning the tab's DEFAULT-tree
+   * identity for the two things that must not follow the restored tree:
+   * - `staticIds` below, derived from `port.initial.root`, is what tells a
+   *   dock column apart from a real rail. Seeded through `port.initial`
+   *   instead, a restored tree's docked leaves would count as STATIC ids, so
+   *   the next `insertPanel` would not recognise the restored dock column
+   *   and would append a SECOND one beside it.
+   * - `reset()` returns `port.initial`, i.e. the default tree — the whole
+   *   point of the intent. Seeded through `port.initial` it would hand back
+   *   the saved layout it is supposed to discard.
+   * Absent (the ordinary case) the fold starts at `port.initial`, so this
+   * option changes nothing for a machine created without it. */
+  readonly seedState?: LayoutState;
+}
+
 /** Neutral layout view-model. Holds the tree, applies the five intents over an
  * immutable reducer, and emits LayoutState. No DOM. Mirrors the NotionalMachine
  * intent-driven precedent: Subjects → merged events → scan → state() + a warm
  * subscription released in dispose(). */
 export function createLayoutMachine(
   port: LayoutPort,
+  options?: LayoutMachineOptions,
 ): Machine<LayoutState, LayoutIntents> {
   const staticIds = dockedLeafIds(port.initial.root, []);
+  const startState = options?.seedState ?? port.initial;
 
   const maximize$ = new Subject<PanelId>();
   const restore$ = new Subject<void>();
@@ -204,11 +224,11 @@ export function createLayoutMachine(
     ),
   );
 
-  const stream$ = events$.pipe(scan(makeReduce(port, staticIds), port.initial));
+  const stream$ = events$.pipe(scan(makeReduce(port, staticIds), startState));
 
   const state$: DefaultedStateObservable<LayoutState> = state(
     stream$,
-    port.initial,
+    startState,
   );
 
   // Keep state$ warm so it carries its default before useMachine first renders.
