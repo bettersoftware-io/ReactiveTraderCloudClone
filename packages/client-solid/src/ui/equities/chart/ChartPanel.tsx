@@ -155,6 +155,19 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     }
   }
 
+  // Pages ONLY the comparison — the catch-up gate's intent (a compare
+  // activated or swapped after the primary already backfilled must page
+  // itself level with the visible window WITHOUT the primary fetching
+  // pages nobody scrolled to). Reads the compare symbol at CALL time, like
+  // loadOlderForChart above.
+  function loadOlderForCompare(): void {
+    const sym = state().compare;
+
+    if (sym !== null) {
+      loadOlderCandles(sym, props.timeframe);
+    }
+  }
+
   return (
     <div class={styles.body}>
       <div class={styles.chartArea}>
@@ -187,6 +200,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           loadingOlder={backfill().loadingOlder}
           historyExhausted={backfill().historyExhausted}
           onLoadOlder={loadOlderForChart}
+          onLoadOlderCompare={loadOlderForCompare}
           drawTool={drawState().tool}
           drawings={drawState().drawings[props.symbol] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState().selectedId}

@@ -240,6 +240,108 @@ describe("Comparison backfill parity — the near-edge trigger pages both series
   });
 });
 
+describe("Comparison catch-up — a late or swapped compare backfills to the visible window", () => {
+  it("REGRESSION: a shallow compare at rest pages the COMPARE ONLY — no gesture, primary untouched", () => {
+    const onLoadOlder = vi.fn();
+    const onLoadOlderCompare = vi.fn();
+    mountCompareBackfillChart(onLoadOlder, {
+      compare: { series: newestCompare(30) },
+      compareBackfill: { loadingOlder: false, historyExhausted: false },
+      onLoadOlderCompare,
+    });
+
+    expect(onLoadOlderCompare).toHaveBeenCalledTimes(1);
+    expect(onLoadOlder).not.toHaveBeenCalled();
+  });
+
+  it("a compare already covering the visible window stays quiescent", () => {
+    const onLoadOlder = vi.fn();
+    const onLoadOlderCompare = vi.fn();
+    mountCompareBackfillChart(onLoadOlder, {
+      compare: { series: newestCompare(DEFAULT_VISIBLE) },
+      compareBackfill: { loadingOlder: false, historyExhausted: false },
+      onLoadOlderCompare,
+    });
+
+    expect(onLoadOlderCompare).not.toHaveBeenCalled();
+    expect(onLoadOlder).not.toHaveBeenCalled();
+  });
+
+  it("compare exhaustion ends the catch-up (a genuinely shorter history stays partial)", () => {
+    const onLoadOlderCompare = vi.fn();
+    mountCompareBackfillChart(vi.fn(), {
+      compare: { series: newestCompare(30) },
+      compareBackfill: { loadingOlder: false, historyExhausted: true },
+      onLoadOlderCompare,
+    });
+
+    expect(onLoadOlderCompare).not.toHaveBeenCalled();
+  });
+
+  it("an in-flight compare page pauses the catch-up; its landing re-arms it", () => {
+    const onLoadOlderCompare = vi.fn();
+    const chart = mountCompareBackfillChart(vi.fn(), {
+      compare: { series: newestCompare(30) },
+      compareBackfill: { loadingOlder: true, historyExhausted: false },
+      onLoadOlderCompare,
+    });
+
+    expect(onLoadOlderCompare).not.toHaveBeenCalled();
+
+    chart.setProps({
+      compareBackfill: { loadingOlder: false, historyExhausted: false },
+    });
+
+    expect(onLoadOlderCompare).toHaveBeenCalledTimes(1);
+  });
+
+  it("each landed page re-fires the catch-up until the window is covered, then stops", () => {
+    const onLoadOlderCompare = vi.fn();
+    const chart = mountCompareBackfillChart(vi.fn(), {
+      compare: { series: newestCompare(20) },
+      compareBackfill: { loadingOlder: false, historyExhausted: false },
+      onLoadOlderCompare,
+    });
+
+    expect(onLoadOlderCompare).toHaveBeenCalledTimes(1);
+
+    // The first page lands: still short of the window's first candle.
+    chart.setProps({ compare: { series: newestCompare(40) } });
+    expect(onLoadOlderCompare).toHaveBeenCalledTimes(2);
+
+    // The second page lands: the window is covered — the loop goes quiet.
+    chart.setProps({ compare: { series: newestCompare(DEFAULT_VISIBLE) } });
+    expect(onLoadOlderCompare).toHaveBeenCalledTimes(2);
+  });
+
+  it("activating a comparison late pages the compare symbol with NO gesture (ChartPanel route)", async () => {
+    const { head, panel, world } = mountPillWorkspace({
+      AAPL: CANDLES,
+      MSFT: newestCompare(30),
+      TSLA: COMPARE_CANDLES,
+    });
+    const historySpy = vi.spyOn(world, "candleHistory");
+
+    await head.toggleCompare("MSFT");
+    await panel.waitUntilYScaleAttr("percent");
+
+    const symbols = historySpy.mock.calls.map((call) => {
+      return call[0];
+    });
+    expect(symbols).toContain("MSFT");
+    expect(symbols).not.toContain("AAPL");
+    expect(symbols).not.toContain("");
+  });
+});
+
+/** The catch-up scenarios' shallow series: the newest `n` compare candles
+ * only — exactly what a comparison activated AFTER the primary backfilled
+ * (or swapped mid-session) holds: its fresh seed window, on the same time
+ * buckets as the primary's newest `n`. */
+function newestCompare(n: number): readonly Candle[] {
+  return COMPARE_CANDLES.slice(COMPARE_CANDLES.length - n);
+}
+
 interface PillWorkspace {
   readonly head: EqChartHeadPage;
   readonly panel: ChartPanelPage;
@@ -249,8 +351,15 @@ interface PillWorkspace {
 /** Mounts EqChartHead + ChartPanel on one shared World (mountWith) so a VS
  * pill click on the head drives the real eqWorkspace machine's `compare`
  * field that ChartPanel's CandleChart renders from — the coupling-spec
- * pattern ChartYScale.contract.spec.ts uses for the LOG pill. */
-function mountPillWorkspace(): PillWorkspace {
+ * pattern ChartYScale.contract.spec.ts uses for the LOG pill. The optional
+ * `candles` override lets the catch-up case seed a SHALLOW compare symbol. */
+function mountPillWorkspace(
+  candles: Record<string, readonly Candle[]> = {
+    AAPL: CANDLES,
+    MSFT: COMPARE_CANDLES,
+    TSLA: COMPARE_CANDLES,
+  },
+): PillWorkspace {
   const world = createWorld(
     undefined,
     undefined,
@@ -263,11 +372,7 @@ function mountPillWorkspace(): PillWorkspace {
     undefined,
     {
       watchlist: INSTRUMENTS,
-      candles: {
-        AAPL: CANDLES,
-        MSFT: COMPARE_CANDLES,
-        TSLA: COMPARE_CANDLES,
-      },
+      candles,
       quotes: { AAPL: quote() },
     },
   );
@@ -319,6 +424,10 @@ interface CompareBackfillMountOptions {
     readonly loadingOlder: boolean;
     readonly historyExhausted: boolean;
   };
+  /** The compare-only catch-up slot — omitted mounts leave it unwired
+   * (the component's own no-op default), matching production charts
+   * without a comparison. */
+  onLoadOlderCompare?: () => void;
 }
 
 /** mountChart's backfill-flavoured sibling: a compare overlay by default,
@@ -349,6 +458,7 @@ function mountCompareBackfillChart(
       loadingOlder: false,
       historyExhausted: opts.historyExhausted ?? false,
       onLoadOlder,
+      onLoadOlderCompare: opts.onLoadOlderCompare,
     },
   });
 }
