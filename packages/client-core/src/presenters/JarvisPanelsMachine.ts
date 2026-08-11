@@ -14,7 +14,7 @@ import type { JarvisEvent } from "#/adapters/jarvisPort";
  * among the `!docked` ("floating") subset. */
 export const MAX_LIVE_PANELS = 4;
 
-/** Docked desk panels (pinned into the workspace, out of the floating
+/** Docked desk panels (docked into the workspace, out of the floating
  * overlay) are capped separately, at four — see `dockPanel` / `restoreDockedPanel`. */
 export const MAX_DOCKED_PANELS = 4;
 

@@ -560,7 +560,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useJarvisPanels: () => {
       const panels: readonly JarvisPanelVm[] = (data.jarvisPanels ?? []).map(
         (panel) => {
-          return { ...panel, data$: EMPTY };
+          return { ...panel, data$: EMPTY, docked: panel.docked ?? false };
         },
       );
       return { panels, dismissPanel: noop };

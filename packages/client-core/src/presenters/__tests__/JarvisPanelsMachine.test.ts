@@ -834,6 +834,48 @@ describe("createJarvisPanelsMachine", () => {
       expect(last?.panels).toHaveLength(MAX_DOCKED_PANELS);
     });
 
+    it("restoreDockedPanel ignores the floating cap entirely — with the floating pool already full at MAX_LIVE_PANELS, MAX_DOCKED_PANELS restores all land, none evicted", () => {
+      const states = run(
+        () => {
+          return undefined;
+        },
+        ({ events$, machine, ts }) => {
+          // Fill the floating pool to its cap first.
+          ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              events$.next(panelEvent(panelId, makeSpec(panelId)));
+            }, i + 1);
+          });
+          // Then restore MAX_DOCKED_PANELS docked panels — the floating cap
+          // must have zero effect on this path (restoreDockedPanel is
+          // boot-time rehydration, gated only by MAX_DOCKED_PANELS).
+          ["r1", "r2", "r3", "r4"].forEach((panelId, i) => {
+            ts.schedule(() => {
+              machine.restoreDockedPanel(panelId, makeSpec(panelId));
+            }, 10 + i);
+          });
+        },
+      );
+
+      const last = states.at(-1);
+      expect(
+        last?.panels.map((p) => {
+          return p.panelId;
+        }),
+      ).toEqual(["p1", "p2", "p3", "p4", "r1", "r2", "r3", "r4"]);
+      expect(last?.panels).toHaveLength(8);
+      expect(
+        last?.panels.filter((p) => {
+          return p.docked;
+        }),
+      ).toHaveLength(MAX_DOCKED_PANELS);
+      expect(
+        last?.panels.filter((p) => {
+          return !p.docked;
+        }),
+      ).toHaveLength(MAX_LIVE_PANELS);
+    });
+
     it("restoreDockedPanel never constructs a spec reference-equal to UNSUPPORTED_SENTINEL_SPEC — a restored panel is always status: live", () => {
       const states = run(
         () => {
