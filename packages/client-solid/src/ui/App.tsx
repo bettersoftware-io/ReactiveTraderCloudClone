@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
+import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
@@ -12,8 +13,15 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
-import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
+import {
+  appHeadRegistry,
+  dockedHeadsFor,
+} from "./shell/layout/engine/appHeadRegistry";
+import {
+  appPanelRegistry,
+  dockedRegistryFor,
+  dockedSpecsFor,
+} from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
@@ -84,19 +92,47 @@ interface WorkspaceEngineProps {
  * resetting — a driven "layout" DriveCommand's target stays the same
  * instance the mounted view reads from either way. */
 function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
-  const { useLayout } = useViewModel();
+  const { useLayout, useJarvisPanels } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
     // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
     props.tab,
   );
+  // Docked desk panels render as leaves inside THIS engine (not the
+  // floating JarvisPanelLayer, which renders floatingPanels only) — merged
+  // on top of the static app registries so a dock/undock or a live spec
+  // edit ("make it a table" while docked) is reflected on the very next
+  // reactive tick, regardless of which tab the panel was docked into.
+  // createMemo (not inline object literals, unlike react's own version of
+  // this merge): Solid has no compiler to memoize an inline `{...a, ...b}`
+  // for us, and these three merges feed straight into InhouseLayoutEngine's
+  // props, so an un-memoized literal would rebuild — and therefore look
+  // "changed" to every JSX read of `registry`/`specs`/`headRegistry` below —
+  // on every unrelated reactive read in this scope, not just a genuine
+  // dockedPanels() change.
+  const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
+  const registry = createMemo(() => {
+    return { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels()) };
+  });
+
+  const specs = createMemo(() => {
+    return { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels()) };
+  });
+
+  const headRegistry = createMemo(() => {
+    return {
+      ...appHeadRegistry,
+      ...dockedHeadsFor(dockedPanels(), undockPanel, dismissPanel),
+    };
+  });
 
   return (
     <FxViewProvider>
       <CreditViewProvider>
         <InhouseLayoutEngine
           state={state()}
-          registry={appPanelRegistry}
-          headRegistry={appHeadRegistry}
+          registry={registry()}
+          specs={specs()}
+          headRegistry={headRegistry()}
           onMaximize={maximize}
           onRestore={restore}
           onCollapse={collapse}

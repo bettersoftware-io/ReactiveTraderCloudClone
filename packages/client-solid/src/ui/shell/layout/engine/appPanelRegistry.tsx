@@ -1,3 +1,5 @@
+import type { JarvisPanelVm, PanelId, PanelSpec } from "@rtc/client-core";
+
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
@@ -13,6 +15,7 @@ import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
+import { JarvisDockedPanelBody } from "#/ui/shell/jarvis/panels/JarvisDockedPanelBody";
 
 import type { PanelRegistry } from "./panelRegistry";
 
@@ -83,3 +86,43 @@ export const appPanelRegistry: PanelRegistry = {
     return <EqSectorsDock />;
   },
 };
+
+/** The DYNAMIC id→component slice for the currently DOCKED desk panels —
+ * merged with `appPanelRegistry` above in `App.tsx`'s `WorkspaceEngine`
+ * (`{ ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) }`), rebuilt
+ * fresh whenever `WorkspaceEngine`'s `dockedPanels()` list changes (cheap:
+ * plain object literals over ≤`MAX_DOCKED_PANELS` entries), so a dock/undock
+ * or a live spec edit is reflected without any manual invalidation. Each
+ * entry closes over its own `JarvisPanelVm` row rather than re-deriving it
+ * by id inside `JarvisDockedPanelBody` — see that component's doc. */
+export function dockedRegistryFor(
+  dockedPanels: readonly JarvisPanelVm[],
+): PanelRegistry {
+  const entries = dockedPanels.map((panel) => {
+    return [
+      panel.panelId,
+      () => {
+        return <JarvisDockedPanelBody panel={panel} />;
+      },
+    ] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+/** The DYNAMIC `specs` slice for the currently docked panels — merged with
+ * `PANEL_SPECS` (`@rtc/client-core`) the same way `dockedRegistryFor` merges
+ * with `appPanelRegistry`. `InhouseLayoutEngine` reads `specs[panelId]` for
+ * the head's title fallback, `maximizable`, and `maximizeScope`; a docked
+ * desk panel accepts every default (full-dock maximize, maximizable) —
+ * just `{id, title}`, mirroring `PANEL_SPECS`'s own static entries. (Note:
+ * `PanelSpec.pinned?: boolean` is an UNRELATED existing flag — "kept out of
+ * a resizable split's sizing" — not this L3 "docked" concept; a docked
+ * desk panel does not set it.) */
+export function dockedSpecsFor(
+  dockedPanels: readonly JarvisPanelVm[],
+): Readonly<Record<PanelId, PanelSpec>> {
+  const entries = dockedPanels.map((panel) => {
+    return [panel.panelId, { id: panel.panelId, title: panel.title }] as const;
+  });
+  return Object.fromEntries(entries);
+}

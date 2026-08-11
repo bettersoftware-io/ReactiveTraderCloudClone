@@ -527,6 +527,49 @@ function getJarvisPanelsPresenter(world: World): JarvisPanelsPresenter {
   return presenter;
 }
 
+/** Minimal fixture stand-in for `Presenters.resetWorkspaceLayout` — resets
+ * every per-tab layout machine CREATED so far (mirrors `layoutHandles`
+ * above; a tab never opened this session has no machine to reset, same as
+ * composition's own read-modify-write scoping) and dismisses every
+ * currently docked panel via the presenter. Does NOT touch a persisted
+ * preference — this fixture world has no `PreferencesPort`-backed
+ * workspace-layout seed to clear (Task 9's scope, alongside the rest of
+ * dockPanelIntoWorkspace/undockPanelFromWorkspace's layout-tree
+ * integration — see `getJarvisDriverMachine`'s doc).
+ *
+ * Reads `presenter.panels$`'s CURRENT value via a synchronous
+ * subscribe-then-unsubscribe (not `machine.state$.getValue()`): the raw
+ * machine's `state$` is an un-defaulted `StateObservable`, whose
+ * `getValue()` types as `T | StatePromise<T>` — see
+ * `wireJarvisHistorySource`'s doc in `composition.ts` for the identical
+ * tradeoff and why this repo's convention is to subscribe once instead.
+ * `panels$` is a `.pipe(map(...))` over that same warm `state$`, so a
+ * subscriber receives the current value synchronously. */
+function resetWorkspaceLayoutFor(world: World): void {
+  const byTab = layoutHandles.get(world);
+
+  if (byTab) {
+    for (const machine of byTab.values()) {
+      machine.intents.reset();
+    }
+  }
+
+  const presenter = getJarvisPanelsPresenter(world);
+  let currentPanels: readonly JarvisPanelVm[] = [];
+
+  presenter.panels$
+    .subscribe((rows) => {
+      currentPanels = rows;
+    })
+    .unsubscribe();
+
+  for (const panel of currentPanels) {
+    if (panel.docked) {
+      presenter.dismissPanel(panel.panelId);
+    }
+  }
+}
+
 /** Build a reactive ViewModel backed by the neutral World — the Solid
  * counterpart of the react driver's `reactViewModel`. Member-by-member this
  * mirrors that file (same World, same machine factories, same command
@@ -1021,6 +1064,13 @@ export function solidViewModel(world: World): ViewModel {
       const machine = getLayoutFor(world, tab);
       return { state: toSignal(machine.state$), ...machine.intents };
     },
+    // Reset workspace layout (Preferences → DATA & PRIVACY): see
+    // resetWorkspaceLayoutFor's doc for this fixture's minimal scope.
+    useWorkspaceReset: () => {
+      return () => {
+        resetWorkspaceLayoutFor(world);
+      };
+    },
     // Boot sequence: no contract spec exercises the boot sequence beyond its
     // own BootSequence.contract.spec.ts (Task 9); use the REAL machine with a
     // fixed "core" variant and noop advance so it compiles and disposes
@@ -1193,14 +1243,29 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Generative-UI desk panels (Task 9): the REAL JarvisPanelsPresenter,
     // fed by the same jarvis.events$ the REAL JarvisMachine above emits —
-    // see getJarvisPanelsPresenter's doc for the full wiring.
+    // see getJarvisPanelsPresenter's doc for the full wiring. dockedPanels/
+    // floatingPanels mirror JarvisPanelsPresenter.dockedPanels$/
+    // floatingPanels$ directly (the presenter already exposes the
+    // pre-split streams); dockPanel/undockPanel are the raw panels
+    // MACHINE's own intents (the presenter deliberately does not re-export
+    // them — see JarvisPanelsPresenter's class doc), not
+    // layout-tree-integrated — see getJarvisDriverMachine's doc.
     useJarvisPanels: () => {
       const presenter = getJarvisPanelsPresenter(world);
+      const machine = getJarvisPanelsMachine(world);
       return {
         panels: toSignal(
           state(presenter.panels$, [] as readonly JarvisPanelVm[]),
         ),
+        dockedPanels: toSignal(
+          state(presenter.dockedPanels$, [] as readonly JarvisPanelVm[]),
+        ),
+        floatingPanels: toSignal(
+          state(presenter.floatingPanels$, [] as readonly JarvisPanelVm[]),
+        ),
         dismissPanel: presenter.dismissPanel,
+        dockPanel: machine.dockPanel,
+        undockPanel: machine.undockPanel,
       };
     },
     useJarvisPanelData: (panelId: string) => {
