@@ -396,6 +396,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         collapse: noop,
         expand: noop,
         resize: noop,
+        insertPanel: noop,
+        removePanel: noop,
+        reset: noop,
       };
     },
     // Boot sequence: visual goldens capture post-boot UI; return a static initial

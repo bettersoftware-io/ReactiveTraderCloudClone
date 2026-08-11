@@ -29,7 +29,12 @@ export interface LayoutIntents {
   insertPanel(panelId: PanelId): void;
   /** Undock a leaf. Once the dock column it lived in empties out, the tree
    * is restored exactly to what it was before any docking — see
-   * `dockColumn.ts`'s `removeDockedLeaf`. An unknown `id` is a no-op. */
+   * `dockColumn.ts`'s `removeDockedLeaf`. Also clears `maximized` if it named
+   * this panel, and drops it from `collapsed` — otherwise a removed-while-
+   * maximized panel would leave every other panel stripped with nothing
+   * maximized, and a removed-while-collapsed panel would silently come back
+   * pre-collapsed on a later re-insert of the same id. An unknown `id` is a
+   * no-op. */
   removePanel(panelId: PanelId): void;
   /** Discard the tree, `maximized`, and `collapsed` back to `port.initial` —
    * the port this machine was created with. */
@@ -126,6 +131,11 @@ function makeReduce(
         return {
           ...layoutState,
           root: removeDockedLeaf(layoutState.root, event.id),
+          maximized:
+            layoutState.maximized === event.id ? null : layoutState.maximized,
+          collapsed: layoutState.collapsed.filter((id) => {
+            return id !== event.id;
+          }),
         };
       case "reset":
         return port.initial;

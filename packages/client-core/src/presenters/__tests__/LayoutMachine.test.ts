@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
 
 import { createLayoutMachine } from "../LayoutMachine";
@@ -263,6 +264,46 @@ describe("createLayoutMachine", () => {
       expect(state.root).toEqual(root);
       expect(state.maximized).toBe("fx-rates");
       expect(state.collapsed).toEqual(["fx-analytics"]);
+      m.dispose();
+    });
+
+    it("removePanel() clears maximized when it names the removed panel (a stale reference would strip every panel with none maximized)", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).maximized).toBeNull();
+      m.dispose();
+    });
+
+    it("removePanel() drops the removed panel from collapsed (a stale ghost id would silently pre-collapse a later re-insert of the same id)", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.collapse("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).collapsed).toEqual([]);
+      m.dispose();
+    });
+
+    it("insertPanel() on the real FX default port appends a new dock column after the static rail, never grows it — witnesses that staticIds is truly derived from port.initial.root, not an empty/no-op set", () => {
+      const { initial: fxInitial } = createDefaultLayoutPort("fx");
+      const m = createLayoutMachine({ initial: fxInitial });
+      m.intents.insertPanel("jarvis-1");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      if (fxInitial.root.kind !== "split") {
+        throw new Error("fx default root is a split");
+      }
+
+      expect(r.children).toHaveLength(3);
+      // the real analytics/positions rail (children[1]) is untouched — it was
+      // never mistaken for a dock column and grown/replaced in place.
+      expect(r.children[1]).toEqual(fxInitial.root.children[1]);
+      expect(r.children[2]).toEqual({ kind: "panel", panelId: "jarvis-1" });
       m.dispose();
     });
 

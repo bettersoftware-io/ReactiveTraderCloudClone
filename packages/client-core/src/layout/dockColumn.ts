@@ -12,12 +12,6 @@ export const DOCK_COLUMN_INITIAL_PX = 360;
  * weights are unchanged (see `appendColumnToRow`'s doc). */
 const DOCK_COLUMN_FRACTION = 0.25;
 
-/** Reserved for the pure-helper surface's public shape; `insertDockedLeaf`
- * itself returns the bare `LayoutNode` (see its doc). */
-export interface DockInsertResult {
-  readonly root: LayoutNode;
-}
-
 function collectLeafIds(node: LayoutNode): readonly PanelId[] {
   if (node.kind === "panel") {
     return [node.panelId];
