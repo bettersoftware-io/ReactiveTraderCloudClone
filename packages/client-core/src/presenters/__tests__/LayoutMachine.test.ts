@@ -184,6 +184,118 @@ describe("createLayoutMachine", () => {
     }).not.toThrow();
     m.dispose();
   });
+
+  describe("insertPanel / removePanel / reset", () => {
+    it("insertPanel() docks a new leaf, wrapping the root in a new row when it isn't already one", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.dir).toBe("row");
+      expect(r.children).toEqual([
+        root,
+        { kind: "panel", panelId: "jarvis-1" },
+      ]);
+      expect(r.sizes).toEqual([0.75, 0.25]);
+      expect(r.initialPx).toEqual([undefined, 360]);
+      m.dispose();
+    });
+
+    it("insertPanel() twice grows the same dock column, keeping the rest of the tree untouched", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.children[0]).toEqual(root);
+
+      const dockColumn = r.children[1];
+
+      if (dockColumn.kind !== "split") {
+        throw new Error("dock column split expected");
+      }
+
+      expect(dockColumn.children).toEqual([
+        { kind: "panel", panelId: "jarvis-1" },
+        { kind: "panel", panelId: "jarvis-2" },
+      ]);
+      expect(dockColumn.sizes).toEqual([0.5, 0.5]);
+      m.dispose();
+    });
+
+    it("insertPanel() with a duplicate id (an existing static panel) is a no-op", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("fx-rates");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() undocks a leaf, restoring the exact pre-insert tree once the dock column empties", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() with an unknown id is a no-op", () => {
+      const m = createLayoutMachine(port);
+      m.intents.removePanel("does-not-exist");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() on a docked leaf that a resize/maximize/collapse already touched doesn't disturb maximized/collapsed", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("fx-rates");
+      m.intents.collapse("fx-analytics");
+      m.intents.removePanel("jarvis-1");
+      const state = current(m);
+      expect(state.root).toEqual(root);
+      expect(state.maximized).toBe("fx-rates");
+      expect(state.collapsed).toEqual(["fx-analytics"]);
+      m.dispose();
+    });
+
+    it("reset() returns exactly port.initial, discarding docked leaves, maximize, collapse, and resizes", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("fx-rates");
+      m.intents.collapse("fx-analytics");
+      m.intents.resize([], [0.4, 0.6]);
+      m.intents.reset();
+      expect(current(m)).toEqual(initial);
+      expect(current(m).root).toBe(initial.root);
+      m.dispose();
+    });
+
+    it("reset() is idempotent and can be followed by further intents", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.reset();
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.children).toEqual([
+        root,
+        { kind: "panel", panelId: "jarvis-2" },
+      ]);
+      m.dispose();
+    });
+  });
 });
 
 function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {

@@ -2,6 +2,11 @@ import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
+import {
+  dockedLeafIds,
+  insertDockedLeaf,
+  removeDockedLeaf,
+} from "#/layout/dockColumn";
 import type {
   LayoutNode,
   LayoutPort,
@@ -17,6 +22,18 @@ export interface LayoutIntents {
   collapse(id: PanelId): void;
   expand(id: PanelId): void;
   resize(path: readonly number[], sizes: readonly number[]): void;
+  /** Dock a new leaf onto the tree (an ordinary panel by every other
+   * measure — maximize/collapse/resize need no changes to reach it). See
+   * `dockColumn.ts`'s `insertDockedLeaf` for the placement rules. A
+   * duplicate `id` (already present anywhere in the tree) is a no-op. */
+  insertPanel(panelId: PanelId): void;
+  /** Undock a leaf. Once the dock column it lived in empties out, the tree
+   * is restored exactly to what it was before any docking — see
+   * `dockColumn.ts`'s `removeDockedLeaf`. An unknown `id` is a no-op. */
+  removePanel(panelId: PanelId): void;
+  /** Discard the tree, `maximized`, and `collapsed` back to `port.initial` —
+   * the port this machine was created with. */
+  reset(): void;
 }
 
 type LayoutEvent =
@@ -24,7 +41,10 @@ type LayoutEvent =
   | { type: "restore" }
   | { type: "collapse"; id: PanelId }
   | { type: "expand"; id: PanelId }
-  | { type: "resize"; path: readonly number[]; sizes: readonly number[] };
+  | { type: "resize"; path: readonly number[]; sizes: readonly number[] }
+  | { type: "insertPanel"; id: PanelId }
+  | { type: "removePanel"; id: PanelId }
+  | { type: "reset" };
 
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
 
@@ -66,29 +86,51 @@ function resizeAt(
   return { ...node, children };
 }
 
-function reduce(layoutState: LayoutState, event: LayoutEvent): LayoutState {
-  switch (event.type) {
-    case "maximize":
-      return { ...layoutState, maximized: event.id };
-    case "restore":
-      return { ...layoutState, maximized: null };
-    case "collapse":
-      return layoutState.collapsed.includes(event.id)
-        ? layoutState
-        : { ...layoutState, collapsed: [...layoutState.collapsed, event.id] };
-    case "expand":
-      return {
-        ...layoutState,
-        collapsed: layoutState.collapsed.filter((id) => {
-          return id !== event.id;
-        }),
-      };
-    case "resize":
-      return {
-        ...layoutState,
-        root: resizeAt(layoutState.root, event.path, event.sizes),
-      };
-  }
+/** Builds this machine's reducer, closed over `port` (for `reset`) and
+ * `staticIds` — the tab's static-tree leaf-id set, derived once from
+ * `port.initial.root` and threaded into every `insertDockedLeaf` call so it
+ * can tell a genuine dock column apart from a real rail (see
+ * `dockColumn.ts`). `removeDockedLeaf` needs no such context. */
+function makeReduce(
+  port: LayoutPort,
+  staticIds: readonly PanelId[],
+): (layoutState: LayoutState, event: LayoutEvent) => LayoutState {
+  return (layoutState: LayoutState, event: LayoutEvent): LayoutState => {
+    switch (event.type) {
+      case "maximize":
+        return { ...layoutState, maximized: event.id };
+      case "restore":
+        return { ...layoutState, maximized: null };
+      case "collapse":
+        return layoutState.collapsed.includes(event.id)
+          ? layoutState
+          : { ...layoutState, collapsed: [...layoutState.collapsed, event.id] };
+      case "expand":
+        return {
+          ...layoutState,
+          collapsed: layoutState.collapsed.filter((id) => {
+            return id !== event.id;
+          }),
+        };
+      case "resize":
+        return {
+          ...layoutState,
+          root: resizeAt(layoutState.root, event.path, event.sizes),
+        };
+      case "insertPanel":
+        return {
+          ...layoutState,
+          root: insertDockedLeaf(layoutState.root, event.id, staticIds),
+        };
+      case "removePanel":
+        return {
+          ...layoutState,
+          root: removeDockedLeaf(layoutState.root, event.id),
+        };
+      case "reset":
+        return port.initial;
+    }
+  };
 }
 
 /** Neutral layout view-model. Holds the tree, applies the five intents over an
@@ -98,11 +140,16 @@ function reduce(layoutState: LayoutState, event: LayoutEvent): LayoutState {
 export function createLayoutMachine(
   port: LayoutPort,
 ): Machine<LayoutState, LayoutIntents> {
+  const staticIds = dockedLeafIds(port.initial.root, []);
+
   const maximize$ = new Subject<PanelId>();
   const restore$ = new Subject<void>();
   const collapse$ = new Subject<PanelId>();
   const expand$ = new Subject<PanelId>();
   const resize$ = new Subject<ResizePayload>();
+  const insertPanel$ = new Subject<PanelId>();
+  const removePanel$ = new Subject<PanelId>();
+  const reset$ = new Subject<void>();
 
   const events$ = merge(
     maximize$.pipe(
@@ -130,9 +177,24 @@ export function createLayoutMachine(
         return { type: "resize", path, sizes };
       }),
     ),
+    insertPanel$.pipe(
+      map((id): LayoutEvent => {
+        return { type: "insertPanel", id };
+      }),
+    ),
+    removePanel$.pipe(
+      map((id): LayoutEvent => {
+        return { type: "removePanel", id };
+      }),
+    ),
+    reset$.pipe(
+      map((): LayoutEvent => {
+        return { type: "reset" };
+      }),
+    ),
   );
 
-  const stream$ = events$.pipe(scan(reduce, port.initial));
+  const stream$ = events$.pipe(scan(makeReduce(port, staticIds), port.initial));
 
   const state$: DefaultedStateObservable<LayoutState> = state(
     stream$,
@@ -160,6 +222,15 @@ export function createLayoutMachine(
       resize: (path: readonly number[], sizes: readonly number[]) => {
         resize$.next({ path, sizes });
       },
+      insertPanel: (panelId: PanelId) => {
+        insertPanel$.next(panelId);
+      },
+      removePanel: (panelId: PanelId) => {
+        removePanel$.next(panelId);
+      },
+      reset: () => {
+        reset$.next();
+      },
     },
     dispose: () => {
       maximize$.complete();
@@ -167,6 +238,9 @@ export function createLayoutMachine(
       collapse$.complete();
       expand$.complete();
       resize$.complete();
+      insertPanel$.complete();
+      removePanel$.complete();
+      reset$.complete();
       warm.unsubscribe();
     },
   };
