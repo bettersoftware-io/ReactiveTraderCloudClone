@@ -17,13 +17,27 @@ import styles from "@rtc/boot-splash/styles/BootSequence.module.css";
 import type { BootVariant } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
+import { themeTokens } from "#/ui/shell/theme/tokens";
+
 export function BootSequence(props: BootSequenceProps): JSX.Element {
-  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
-    useViewModel();
+  const {
+    useBootSequence,
+    useForceBootAnimation,
+    usePowerSaver,
+    useThemePreference,
+    useThemeSkinPreference,
+  } = useViewModel();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
   const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();
+  // The theme preference hydrates asynchronously, so the first frames can run
+  // on the pre-hydration default (dark holo). The canvas effect below tracks
+  // both signals: the hydration flip rebuilds the draw context on the right
+  // token row instead of drawing the wrong palette — grey-on-light, holo
+  // accents under another skin — for the whole boot.
+  const { mode } = useThemePreference();
+  const { skin } = useThemeSkinPreference();
   let canvasEl!: HTMLCanvasElement;
 
   // The machine emits a FRESH state object every 90ms tick (~47 per boot)
@@ -55,6 +69,10 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     // signal, never an explicit Freeze.
     const freeze = isFreeze();
     const forceOn = forced();
+    // Track mode AND skin before any early return: either flipping (the async
+    // preference hydration) must rebuild the draw context on fresh tokens.
+    const currentMode = mode();
+    const currentSkin = skin();
 
     if (freeze || (prefersReduced && !forceOn)) {
       return;
@@ -69,16 +87,21 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
       return; // jsdom / no-GPU: render chrome only
     }
 
-    const cs = getComputedStyle(document.documentElement);
+    // Straight from the token store, keyed by the tracked skin×mode — the
+    // same values ThemeProvider paints on :root. Reading the painted CSS vars
+    // via getComputedStyle here would hide this effect's real dependency on
+    // the theme behind a side channel (and needed per-token fallbacks).
+    const tokens = themeTokens[currentSkin][currentMode];
     const d: BootDrawCtx = {
       canvas,
       ctx,
       start: performance.now(),
-      accent: cs.getPropertyValue("--accent-primary").trim() || "#00e5ff",
-      accent2: cs.getPropertyValue("--accent-2").trim() || "#00b0ff",
-      buy: cs.getPropertyValue("--accent-positive").trim() || "#00e676",
-      sell: cs.getPropertyValue("--accent-negative").trim() || "#ff1744",
+      accent: tokens["--accent-primary"],
+      accent2: tokens["--accent-2"],
+      buy: tokens["--accent-positive"],
+      sell: tokens["--accent-negative"],
       pointer: { mx: 0, my: 0 },
+      light: currentMode === "light",
     };
 
     // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on

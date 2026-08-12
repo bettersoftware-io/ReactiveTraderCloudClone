@@ -106,14 +106,28 @@ function pkgSrc(name: string): string {
 // specifier straight to src/index.ts is correct. If a production `src` file ever
 // adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
 // otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
+// @rtc/layout-dockview also has a `./styles/*` subpath export (mirrors
+// @rtc/boot-splash), and its bare specifier IS mapped below (the debug build
+// needs its source). Vite's string alias keys match at `/` boundaries, so the
+// bare entry alone would rewrite `@rtc/layout-dockview/styles/dockview-hud.css`
+// to `.../src/index.ts/styles/...` (ENOTDIR — broke the 2026-08-12 deploy).
+// The longer `/styles` key below is listed FIRST so it wins the prefix match.
 const rtcSourceAlias: Record<string, string> = debugBuild
   ? {
+      "@rtc/layout-dockview/styles": resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "layout-dockview",
+        "src",
+        "styles",
+      ),
       "@rtc/client-core": pkgSrc("client-core"),
       "@rtc/domain": pkgSrc("domain"),
       "@rtc/shared": pkgSrc("shared"),
       "@rtc/motion-core": pkgSrc("motion-core"),
       "@rtc/devtools-core": pkgSrc("devtools-core"),
       "@rtc/react-bindings": pkgSrc("react-bindings"),
+      "@rtc/layout-dockview": pkgSrc("layout-dockview"),
     }
   : {};
 

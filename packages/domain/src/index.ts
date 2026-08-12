@@ -149,6 +149,9 @@ export type {
   WorkflowPort,
 } from "./ports/workflowPort.js";
 // Preferences
+// NOTE: `workspaceLayoutV1` (see PreferencesPort) has no type alias or
+// DEFAULT_*/roster constant to barrel here — see preferences.ts's block
+// comment above ChartSubstrate for why.
 export type {
   AmbientStyle,
   BootVariant,
@@ -160,6 +163,7 @@ export type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   LoginWaitVariant,
@@ -185,6 +189,7 @@ export {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -203,6 +208,7 @@ export {
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,
   JARVIS_SKINS,
+  LAYOUT_ENGINES,
   LOGIN_WAIT_DELAY_MS,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,

@@ -20,6 +20,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -39,6 +40,8 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  LAYOUT_ENGINES,
+  type LayoutEngine,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
   LOGIN_WAIT_VARIANTS,
@@ -68,6 +71,8 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
+export const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
+export const LAYOUT_ENGINE_STORAGE_KEY = "rtc-layout-engine";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -88,6 +93,12 @@ function isAmbientStyle(value: string | null): value is AmbientStyle {
 function isChartSubstrate(value: string | null): value is ChartSubstrate {
   return (
     value !== null && (CHART_SUBSTRATES as readonly string[]).includes(value)
+  );
+}
+
+function isLayoutEngine(value: string | null): value is LayoutEngine {
+  return (
+    value !== null && (LAYOUT_ENGINES as readonly string[]).includes(value)
   );
 }
 
@@ -155,6 +166,36 @@ function readStored<T extends string>(
   }
 
   return fallback;
+}
+
+/** Reads the first OPTIONAL preference: `localStorage.getItem` already
+ * returns `string | null`, and absent-key already returns `null` — the same
+ * value as this preference's default — so there is no roster to validate
+ * against, only the trivial "is this a string" guard. */
+function readNullableString(key: string): string | null {
+  try {
+    const stored = localStorage.getItem(key);
+
+    if (typeof stored === "string") {
+      return stored;
+    }
+  } catch {
+    // localStorage may be unavailable (private mode, disabled cookies, etc.)
+  }
+
+  return null;
+}
+
+function writeNullableString(key: string, value: string | null): void {
+  try {
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // ignore — persistence is best-effort
+  }
 }
 
 function readBool(key: string, fallback: boolean): boolean {
@@ -241,6 +282,10 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
 
   private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
+
+  private readonly workspaceLayout: BehaviorSubject<string | null>;
+
+  private readonly layoutEngine: BehaviorSubject<LayoutEngine>;
 
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
@@ -330,6 +375,16 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         CHART_SUBSTRATE_STORAGE_KEY,
         isChartSubstrate,
         DEFAULT_CHART_SUBSTRATE,
+      ),
+    );
+    this.workspaceLayout = new BehaviorSubject<string | null>(
+      readNullableString(WORKSPACE_LAYOUT_STORAGE_KEY),
+    );
+    this.layoutEngine = new BehaviorSubject<LayoutEngine>(
+      readStored(
+        LAYOUT_ENGINE_STORAGE_KEY,
+        isLayoutEngine,
+        DEFAULT_LAYOUT_ENGINE,
       ),
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
@@ -487,6 +542,24 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setChartSubstrate(substrate: ChartSubstrate): void {
     writeStored(CHART_SUBSTRATE_STORAGE_KEY, substrate);
     this.chartSubstrate.next(substrate);
+  }
+
+  workspaceLayout$(): Observable<string | null> {
+    return this.workspaceLayout.pipe(distinctUntilChanged());
+  }
+
+  setWorkspaceLayout(value: string | null): void {
+    writeNullableString(WORKSPACE_LAYOUT_STORAGE_KEY, value);
+    this.workspaceLayout.next(value);
+  }
+
+  layoutEngine$(): Observable<LayoutEngine> {
+    return this.layoutEngine.pipe(distinctUntilChanged());
+  }
+
+  setLayoutEngine(engine: LayoutEngine): void {
+    writeStored(LAYOUT_ENGINE_STORAGE_KEY, engine);
+    this.layoutEngine.next(engine);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

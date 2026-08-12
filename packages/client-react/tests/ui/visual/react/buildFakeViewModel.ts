@@ -6,6 +6,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -68,17 +69,26 @@ import type {
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
+  LayoutState,
   NotionalView,
   SessionUser,
 } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
+  createLayoutMachine,
+  InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/react-bindings";
 
 function noop(): void {}
+
+// No visual fixture exercises the dockview engine yet (useLayoutEngine below
+// is pinned to "inhouse"), so this store is never actually read/written by a
+// golden scenario — a single module-level instance is fine (no per-call
+// isolation needed, unlike the contract tier's per-World store).
+const dockStore = new InMemoryDockLayoutStore();
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
 // was retired with the login/auth workstream; this local stand-in keeps the
@@ -369,13 +379,21 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // arrangement with noop intents (no drag, no maximize during capture).
     useLayout: (tab: WorkspaceTab) => {
       return {
-        state: createDefaultLayoutPort(tab).initial,
+        state: dockedLayoutStateFor(tab, dockedPanelIdsIn(data)),
         maximize: noop,
         restore: noop,
         collapse: noop,
         expand: noop,
         resize: noop,
+        insertPanel: noop,
+        removePanel: noop,
+        reset: noop,
       };
+    },
+    // Reset workspace layout (Preferences → DATA & PRIVACY): static
+    // screenshots never fire it.
+    useWorkspaceReset: () => {
+      return noop;
     },
     // Boot sequence: visual goldens capture post-boot UI; return a static initial
     // state with noop skip. The BootSequence component is not rendered in any
@@ -413,6 +431,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // geometry layer unchanged.
     useChartSubstrate: () => {
       return { substrate: DEFAULT_CHART_SUBSTRATE, setSubstrate: noop };
+    },
+    // No visual fixture exercises the dockview engine yet — a fixed
+    // "inhouse" default keeps every existing golden's layout unchanged.
+    useLayoutEngine: () => {
+      return { engine: DEFAULT_LAYOUT_ENGINE, setEngine: noop };
+    },
+    useDockLayoutStore: () => {
+      return dockStore;
     },
     useDepth: (symbol: string) => {
       return data.equityDepth?.[symbol] ?? null;
@@ -555,15 +581,28 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // pre-Task-10-of-this-round empty stub (layer renders null). `data$` is
     // never read by JarvisPanelLayer (it reads the panel body separately via
     // useJarvisPanelData below), so EMPTY is a safe filler satisfying
-    // JarvisPanelVm's shape without a real stream. dismissPanel stays a
-    // no-op — static screenshots never fire it.
+    // JarvisPanelVm's shape without a real stream. dismissPanel/dockPanel/
+    // undockPanel all stay no-ops — static screenshots never fire them.
+    // dockedPanels/floatingPanels are the same rows pre-split by `.docked`,
+    // mirroring JarvisPanelsPresenter.dockedPanels$/floatingPanels$.
     useJarvisPanels: () => {
       const panels: readonly JarvisPanelVm[] = (data.jarvisPanels ?? []).map(
         (panel) => {
-          return { ...panel, data$: EMPTY };
+          return { ...panel, data$: EMPTY, docked: panel.docked ?? false };
         },
       );
-      return { panels, dismissPanel: noop };
+      return {
+        panels,
+        dockedPanels: panels.filter((panel) => {
+          return panel.docked;
+        }),
+        floatingPanels: panels.filter((panel) => {
+          return !panel.docked;
+        }),
+        dismissPanel: noop,
+        dockPanel: noop,
+        undockPanel: noop,
+      };
     },
     // Per-panelId rendered body, paired with useJarvisPanels above — reads
     // AppData.jarvisPanelData directly (no stream involved in a static
@@ -591,4 +630,64 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return { state, startDemo: noop, stopDemo: noop };
     },
   };
+}
+
+/** The tab's default arrangement, plus a docked leaf for every desk panel the
+ * fixture marks `docked: true` (GenUI L3). Built by driving the REAL
+ * `createLayoutMachine`'s `insertPanel` intent over the tab's DEFAULT port —
+ * the same code path `Presenters.dockPanel` runs in the app — rather than
+ * hand-writing a dock-column tree literal that would drift the moment
+ * `insertDockedLeaf` changed. The machine is warm, so its post-insert state is
+ * readable synchronously.
+ *
+ * No tab attribution: the fixture format has none, and a static screenshot
+ * frames exactly one tab, so a docked panel is inserted into whichever tab is
+ * asked for. Result is memoized per (tab, ids) because `useLayout` is read on
+ * every render.
+ */
+function dockedLayoutStateFor(
+  tab: WorkspaceTab,
+  dockedPanelIds: readonly string[],
+): LayoutState {
+  const port = createDefaultLayoutPort(tab);
+
+  if (dockedPanelIds.length === 0) {
+    return port.initial;
+  }
+
+  const key = `${tab}|${dockedPanelIds.join(",")}`;
+  const cached = dockedLayoutStates.get(key);
+
+  if (cached) {
+    return cached;
+  }
+
+  const machine = createLayoutMachine(port);
+
+  for (const panelId of dockedPanelIds) {
+    machine.intents.insertPanel(panelId);
+  }
+
+  let built = port.initial;
+  machine.state$
+    .subscribe((layoutState) => {
+      built = layoutState;
+    })
+    .unsubscribe();
+  machine.dispose();
+  dockedLayoutStates.set(key, built);
+  return built;
+}
+
+const dockedLayoutStates = new Map<string, LayoutState>();
+
+/** The fixture's docked desk-panel ids, in order. */
+function dockedPanelIdsIn(data: AppData): readonly string[] {
+  return (data.jarvisPanels ?? [])
+    .filter((panel) => {
+      return panel.docked === true;
+    })
+    .map((panel) => {
+      return panel.panelId;
+    });
 }

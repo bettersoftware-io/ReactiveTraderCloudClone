@@ -1,14 +1,10 @@
 import type { Accessor, JSX } from "solid-js";
-import { createMemo, For, Match, Show, Switch } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 
-import type { JarvisPanelVm, PanelData } from "@rtc/client-core";
+import { type JarvisPanelVm, MAX_DOCKED_PANELS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
-import { PanelGauge, type PanelGaugeProps } from "./PanelGauge";
-import { PanelHeatmap, type PanelHeatmapProps } from "./PanelHeatmap";
-import { PanelLine, type PanelLineProps } from "./PanelLine";
-import { PanelSparkGrid, type PanelSparkGridProps } from "./PanelSparkGrid";
-import { PanelTable, type PanelTableProps } from "./PanelTable";
+import { JarvisPanelBody } from "./JarvisPanelBody";
 
 import styles from "./JarvisPanelLayer.module.css";
 
@@ -18,14 +14,21 @@ import styles from "./JarvisPanelLayer.module.css";
  * SIBLING in App.tsx, not its child: panels keep rendering (and their own
  * `data$` keeps ticking) whether the chat overlay is open or closed.
  *
- * Chrome (title/rationale/dismiss/testids) reads only `useJarvisPanels()` —
- * the list that changes on spawn/dismiss/edit. Each panel's BODY reads its
- * own `useJarvisPanelData(panelId)` independently (a keyed `state()` in
- * solid-bindings mirroring `useCandles`/`useDepth`), so one panel's tick
- * cadence never re-renders its siblings or the chrome list itself.
+ * Renders `floatingPanels` ONLY — a docked panel leaves this layer entirely
+ * and renders instead as a leaf inside the workspace engine (see
+ * `dockedRegistryFor` in `appPanelRegistry.tsx`, wired from `App.tsx`).
+ * `dockedPanels().length` still needs reading here, though, to gate the 📌
+ * dock button once `MAX_DOCKED_PANELS` is reached.
  *
- * `panels$` re-maps a FRESH `JarvisPanelVm[]` on every machine-state
- * emission (spawn/dismiss/edit of ANY panel), so a naive `<For each={panels()}>`
+ * Chrome (title/rationale/dismiss/dock/testids) reads only
+ * `useJarvisPanels()` — the list that changes on spawn/dismiss/edit/dock.
+ * Each panel's BODY reads its own `useJarvisPanelData(panelId)`
+ * independently (a keyed `state()` in solid-bindings mirroring
+ * `useCandles`/`useDepth`), so one panel's tick cadence never re-renders its
+ * siblings or the chrome list itself.
+ *
+ * `floatingPanels$` re-maps a FRESH `JarvisPanelVm[]` on every machine-state
+ * emission (spawn/dismiss/edit/dock of ANY panel), so a naive `<For each={floatingPanels()}>`
  * would remount every card on every list change, not just the affected one
  * (Solid's `<For>` diffs by item identity). The id-then-lookup pattern below
  * (`panelIds()` — an array of stable `panelId` strings — feeding `<For>`,
@@ -40,21 +43,31 @@ import styles from "./JarvisPanelLayer.module.css";
  */
 export function JarvisPanelLayer(): JSX.Element {
   const { useJarvisPanels } = useViewModel();
-  const { panels, dismissPanel } = useJarvisPanels();
+  const { dockedPanels, floatingPanels, dismissPanel, dockPanel } =
+    useJarvisPanels();
 
   const panelIds = createMemo((): string[] => {
-    return panels().map((panel) => {
+    return floatingPanels().map((panel) => {
       return panel.panelId;
     });
   });
 
+  // `dockedPanels.length >= MAX_DOCKED_PANELS` — disables the 📌 dock
+  // button rather than letting it fire a no-op the panels machine would
+  // silently swallow anyway, so the cap is legible in the UI. An Accessor
+  // (not a plain boolean), matching `panel` below, so every mounted card
+  // reflects the cap live as OTHER panels dock/undock, not just its own.
+  const dockFull = createMemo((): boolean => {
+    return dockedPanels().length >= MAX_DOCKED_PANELS;
+  });
+
   return (
-    <Show when={panels().length > 0}>
+    <Show when={floatingPanels().length > 0}>
       <div data-testid="jarvis-panel-layer" class={styles.layer}>
         <For each={panelIds()}>
           {(panelId: string): JSX.Element => {
             const panel = createMemo((): JarvisPanelVm | undefined => {
-              return panels().find((p) => {
+              return floatingPanels().find((p) => {
                 return p.panelId === panelId;
               });
             });
@@ -65,7 +78,9 @@ export function JarvisPanelLayer(): JSX.Element {
                   return (
                     <JarvisPanelCard
                       panel={currentPanel}
+                      dockFull={dockFull}
                       onDismiss={dismissPanel}
+                      onDock={dockPanel}
                     />
                   );
                 }}
@@ -80,7 +95,11 @@ export function JarvisPanelLayer(): JSX.Element {
 
 interface JarvisPanelCardProps {
   panel: Accessor<JarvisPanelVm>;
+  /** `dockedPanels.length >= MAX_DOCKED_PANELS` — see `dockFull`'s doc in
+   * `JarvisPanelLayer` above. */
+  dockFull: Accessor<boolean>;
   onDismiss: (panelId: string) => void;
+  onDock: (panelId: string) => void;
 }
 
 function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
@@ -106,6 +125,10 @@ function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
   // rejection would otherwise fail silently).
   function dismissThisPanel(): void {
     void animateOutThenDismissPanel();
+  }
+
+  function dockThisPanel(): void {
+    props.onDock(props.panel().panelId);
   }
 
   async function animateOutThenDismissPanel(): Promise<void> {
@@ -140,15 +163,27 @@ function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
     >
       <div class={styles.head}>
         <span class={styles.title}>{props.panel().title}</span>
-        <button
-          type="button"
-          data-testid="jarvis-panel-dismiss"
-          aria-label={`Dismiss ${props.panel().title}`}
-          class={styles.dismiss}
-          onClick={dismissThisPanel}
-        >
-          ✕
-        </button>
+        <div class={styles.actions}>
+          <button
+            type="button"
+            data-testid="jarvis-panel-dock"
+            aria-label={`Pin ${props.panel().title} to workspace`}
+            class={styles.dismiss}
+            disabled={props.dockFull()}
+            onClick={dockThisPanel}
+          >
+            📌
+          </button>
+          <button
+            type="button"
+            data-testid="jarvis-panel-dismiss"
+            aria-label={`Dismiss ${props.panel().title}`}
+            class={styles.dismiss}
+            onClick={dismissThisPanel}
+          >
+            ✕
+          </button>
+        </div>
       </div>
       {/* Keyed by the resolved viz kind (falling back to a stable sentinel
           while unresolved/unsupported) so a spec EDIT that swaps viz kind
@@ -165,82 +200,6 @@ function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
         }}
       </Show>
     </div>
-  );
-}
-
-interface JarvisPanelBodyProps {
-  panel: Accessor<JarvisPanelVm>;
-  data: PanelData | null;
-}
-
-function JarvisPanelBody(props: JarvisPanelBodyProps): JSX.Element {
-  // Narrows `props.data | null` to each variant, reactively — Match's keyed
-  // render-prop form below hands the narrowed props straight to the leaf
-  // renderer via `{...data()}` (a JSX spread, which Solid compiles to a lazy
-  // getter — see PanelLine.tsx's sibling components for why a PLAIN function
-  // call snapshotting `data()` outside a JSX position would freeze on the
-  // first tick instead).
-  const lineData = createMemo((): PanelLineProps | undefined => {
-    const d = props.data;
-    return d && d.kind === "line" ? d : undefined;
-  });
-
-  const tableData = createMemo((): PanelTableProps | undefined => {
-    const d = props.data;
-    return d && d.kind === "table" ? d : undefined;
-  });
-
-  const gaugeData = createMemo((): PanelGaugeProps | undefined => {
-    const d = props.data;
-    return d && d.kind === "gauge" ? d : undefined;
-  });
-
-  const sparkGridData = createMemo((): PanelSparkGridProps | undefined => {
-    const d = props.data;
-    return d && d.kind === "sparkGrid" ? d : undefined;
-  });
-
-  const heatmapData = createMemo((): PanelHeatmapProps | undefined => {
-    const d = props.data;
-    return d && d.kind === "heatmap" ? d : undefined;
-  });
-
-  return (
-    <Switch fallback={<div class={styles.pending}>Connecting…</div>}>
-      <Match when={props.panel().status === "unsupported"}>
-        <div data-testid="jarvis-panel-unsupported" class={styles.unsupported}>
-          <div class={styles.unsupportedTitle}>UNSUPPORTED PANEL</div>
-          <div class={styles.unsupportedText}>
-            This build has no renderer for what J.A.R.V.I.S proposed.
-          </div>
-        </div>
-      </Match>
-      <Match when={lineData()}>
-        {(data: Accessor<PanelLineProps>): JSX.Element => {
-          return <PanelLine {...data()} />;
-        }}
-      </Match>
-      <Match when={tableData()}>
-        {(data: Accessor<PanelTableProps>): JSX.Element => {
-          return <PanelTable {...data()} />;
-        }}
-      </Match>
-      <Match when={gaugeData()}>
-        {(data: Accessor<PanelGaugeProps>): JSX.Element => {
-          return <PanelGauge {...data()} />;
-        }}
-      </Match>
-      <Match when={sparkGridData()}>
-        {(data: Accessor<PanelSparkGridProps>): JSX.Element => {
-          return <PanelSparkGrid {...data()} />;
-        }}
-      </Match>
-      <Match when={heatmapData()}>
-        {(data: Accessor<PanelHeatmapProps>): JSX.Element => {
-          return <PanelHeatmap {...data()} />;
-        }}
-      </Match>
-    </Switch>
   );
 }
 

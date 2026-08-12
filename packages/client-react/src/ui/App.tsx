@@ -1,5 +1,6 @@
-import type { ReactElement } from "react";
+import { lazy, type ReactElement, Suspense } from "react";
 
+import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "./credit/CreditViewProvider";
@@ -10,8 +11,15 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
-import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
+import {
+  appHeadRegistry,
+  dockedHeadsFor,
+} from "./shell/layout/engine/appHeadRegistry";
+import {
+  appPanelRegistry,
+  dockedRegistryFor,
+  dockedSpecsFor,
+} from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
@@ -59,22 +67,66 @@ interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
 
+// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
+// serves ~100% of users — split it into its own chunk instead of shipping
+// it to everyone.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout } = useViewModel();
+  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
+    useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  // Docked desk panels render as leaves inside THIS engine (not the
+  // floating JarvisPanelLayer, which renders floatingPanels only) — merged
+  // on top of the static app registries so a dock/undock or a live spec
+  // edit ("make it a table" while docked) is reflected on the very next
+  // render, regardless of which tab the panel was docked into.
+  const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
+  const registry = { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) };
+  const specs = { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels) };
+  const headRegistry = {
+    ...appHeadRegistry,
+    ...dockedHeadsFor(dockedPanels, undockPanel, dismissPanel),
+  };
+  const { engine } = useLayoutEngine();
+  const dockLayoutStore = useDockLayoutStore();
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        <InhouseLayoutEngine
-          state={state}
-          registry={appPanelRegistry}
-          headRegistry={appHeadRegistry}
-          onMaximize={maximize}
-          onRestore={restore}
-          onCollapse={collapse}
-          onExpand={expand}
-          onResize={resize}
-        />
+        {engine === "dockview" ? (
+          <Suspense fallback={null}>
+            {/* Same merged registries as the in-house branch: dockview looks
+                a docked panel's body/head/spec up by id exactly as the
+                in-house engine does. Its SEED tree is still the static
+                default (createDefaultLayoutPort), so a pinned panel only
+                surfaces here once its id is in the persisted blob — docking
+                a Jarvis panel INTO dockview is not wired this round. */}
+            <DockviewLayoutEngine
+              tab={tab}
+              registry={registry}
+              specs={specs}
+              headRegistry={headRegistry}
+              store={dockLayoutStore}
+              maximized={state.maximized}
+            />
+          </Suspense>
+        ) : (
+          <InhouseLayoutEngine
+            state={state}
+            registry={registry}
+            specs={specs}
+            headRegistry={headRegistry}
+            onMaximize={maximize}
+            onRestore={restore}
+            onCollapse={collapse}
+            onExpand={expand}
+            onResize={resize}
+          />
+        )}
       </CreditViewProvider>
     </FxViewProvider>
   );

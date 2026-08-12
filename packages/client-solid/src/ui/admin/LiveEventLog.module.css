@@ -4,7 +4,7 @@
   height: 100%;
   padding: 14px;
   overflow: hidden;
-  background: var(--panel);
+  background: var(--tile);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
 }

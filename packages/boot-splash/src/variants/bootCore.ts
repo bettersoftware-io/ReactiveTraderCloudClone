@@ -151,7 +151,7 @@ export function createBootCore(scene: BootDrawCtx): BootFrameFn {
     const centerY = height / 2 - 20;
     const globeRadius = Math.min(width, height) * 0.24;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(0,3,6,0.5)";
+    ctx.fillStyle = scene.light ? "rgba(255,255,255,0.5)" : "rgba(0,3,6,0.5)";
     ctx.fillRect(0, 0, width, height);
     let flickerAlpha =
       0.88 + 0.12 * Math.sin(elapsedSec * 36 + Math.sin(elapsedSec * 9) * 4);
@@ -538,7 +538,7 @@ export function createBootCore(scene: BootDrawCtx): BootFrameFn {
 
       ctx.stroke();
       const head = projectArcPoint(arcProgress, fromVec, toVec);
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = scene.light ? color : "#fff";
       ctx.shadowColor = color;
       ctx.shadowBlur = 10;
       ctx.beginPath();

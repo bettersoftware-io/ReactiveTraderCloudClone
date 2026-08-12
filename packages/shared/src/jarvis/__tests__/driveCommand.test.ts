@@ -91,6 +91,22 @@ describe("parseDriveBatch — one valid batch per kind", () => {
     };
     expect(parseDriveBatch(batch)).toEqual({ ok: true, batch });
   });
+
+  it("accepts dockPanel", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "dockPanel", panelId: "analytics" }],
+    };
+    expect(parseDriveBatch(batch)).toEqual({ ok: true, batch });
+  });
+
+  it("accepts undockPanel", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "undockPanel", panelId: "analytics" }],
+    };
+    expect(parseDriveBatch(batch)).toEqual({ ok: true, batch });
+  });
 });
 
 describe("parseDriveBatch — command count bounds", () => {
@@ -470,6 +486,72 @@ describe("parseDriveBatch — per-variant field validation", () => {
     const batch = {
       v: 1,
       commands: [{ kind: "dismissPanel", panelId: "x".repeat(64) }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(true);
+  });
+
+  it("dockPanel: rejects a missing panelId", () => {
+    const batch = { v: 1, commands: [{ kind: "dockPanel" }] };
+    const result = parseDriveBatch(batch);
+    expect(result).toEqual({
+      ok: false,
+      error: expect.stringContaining("commands[0].panelId:"),
+    });
+  });
+
+  it("dockPanel: rejects an empty panelId", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "dockPanel", panelId: "" }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(false);
+  });
+
+  it("dockPanel: rejects a panelId over 64 chars", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "dockPanel", panelId: "x".repeat(65) }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(false);
+  });
+
+  it("dockPanel: accepts a panelId at exactly 64 chars (the maximum)", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "dockPanel", panelId: "x".repeat(64) }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(true);
+  });
+
+  it("undockPanel: rejects a missing panelId", () => {
+    const batch = { v: 1, commands: [{ kind: "undockPanel" }] };
+    const result = parseDriveBatch(batch);
+    expect(result).toEqual({
+      ok: false,
+      error: expect.stringContaining("commands[0].panelId:"),
+    });
+  });
+
+  it("undockPanel: rejects an empty panelId", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "undockPanel", panelId: "" }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(false);
+  });
+
+  it("undockPanel: rejects a panelId over 64 chars", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "undockPanel", panelId: "x".repeat(65) }],
+    };
+    expect(parseDriveBatch(batch).ok).toBe(false);
+  });
+
+  it("undockPanel: accepts a panelId at exactly 64 chars (the maximum)", () => {
+    const batch = {
+      v: 1,
+      commands: [{ kind: "undockPanel", panelId: "x".repeat(64) }],
     };
     expect(parseDriveBatch(batch).ok).toBe(true);
   });

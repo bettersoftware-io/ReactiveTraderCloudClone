@@ -64,4 +64,25 @@ export default {
       },
     ],
   },
+  overrides: [
+    {
+      // dockview-hud.css is never processed as a CSS Module — it ships raw
+      // (like the rest of @rtc/layout-dockview's styles export) and its
+      // `.dockview-theme-rtc` selector is applied as a literal className,
+      // matching dockview-core's own theme-class convention
+      // (`dockview-theme-abyss`, `-light`, …: kebab-case `dockview-theme-<name>`).
+      // The JS-identifier camelCase rule above is a CSS Modules concern and
+      // doesn't apply to this file.
+      files: ["packages/layout-dockview/src/styles/dockview-hud.css"],
+      rules: {
+        "selector-class-pattern": [
+          "^dockview-theme-[a-z0-9-]+$",
+          {
+            message:
+              "dockview-hud.css class names follow dockview-core's own theme-class convention (kebab-case dockview-theme-<name>), not the CSS Modules camelCase rule.",
+          },
+        ],
+      },
+    },
+  ],
 };

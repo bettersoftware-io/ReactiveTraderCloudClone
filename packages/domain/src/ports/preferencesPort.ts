@@ -11,6 +11,7 @@ import type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   LoginWaitVariant,
@@ -56,6 +57,17 @@ export interface PreferencesPort {
    * Selects retained DOM/SVG geometry vs immediate-mode canvas drawing. */
   chartSubstrate$(): Observable<ChartSubstrate>;
   setChartSubstrate(substrate: ChartSubstrate): void;
+  /** Replay-current workspace-layout stream; emits synchronously on
+   * subscribe. The first OPTIONAL preference: an opaque, unvalidated
+   * serialized layout payload whose shape a later task defines. `null` is
+   * the default and a first-class state — "no layout saved" — not a
+   * placeholder for one. */
+  workspaceLayout$(): Observable<string | null>;
+  setWorkspaceLayout(value: string | null): void;
+  /** Replay-current layout-engine stream; emits synchronously on subscribe.
+   * Selects the in-house split-tree engine vs the Dockview docking engine. */
+  layoutEngine$(): Observable<LayoutEngine>;
+  setLayoutEngine(engine: LayoutEngine): void;
   /** Replay-current J.A.R.V.I.S skin stream; emits synchronously on subscribe. */
   jarvisSkin$(): Observable<JarvisSkin>;
   setJarvisSkin(skin: JarvisSkin): void;

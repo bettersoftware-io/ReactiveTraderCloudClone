@@ -302,6 +302,56 @@ test("setChartSubstrate writes through to AsyncStorage and emits", async () => {
   expect(store.get("rtc-chart-substrate")).toBe("canvas");
 });
 
+test("emits the default workspaceLayout (null) synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.workspaceLayout$());
+  expect(first).toBeNull();
+});
+
+test("hydrates a stored, non-default workspaceLayout after construction", async () => {
+  store.set("rtc-workspace-layout-v1", '{"panels":["fx"]}');
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.workspaceLayout$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe('{"panels":["fx"]}');
+});
+
+test("setWorkspaceLayout writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setWorkspaceLayout("layout-a");
+  const next = await firstValueFrom(prefs.workspaceLayout$());
+  expect(next).toBe("layout-a");
+  expect(store.get("rtc-workspace-layout-v1")).toBe("layout-a");
+});
+
+test("setWorkspaceLayout(null) removes the stored key rather than writing a literal null", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setWorkspaceLayout("layout-a");
+  await firstValueFrom(prefs.workspaceLayout$());
+  prefs.setWorkspaceLayout(null);
+  const next = await firstValueFrom(prefs.workspaceLayout$());
+  expect(next).toBeNull();
+  expect(store.has("rtc-workspace-layout-v1")).toBe(false);
+});
+
+test("hydrates a stored, non-default layoutEngine after construction", async () => {
+  store.set("rtc-layout-engine", "dockview");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.layoutEngine$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("dockview");
+});
+
+test("setLayoutEngine writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setLayoutEngine("dockview");
+  const next = await firstValueFrom(prefs.layoutEngine$());
+  expect(next).toBe("dockview");
+  expect(store.get("rtc-layout-engine")).toBe("dockview");
+});
+
 test("emits the default jarvisSkin (singularity) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.jarvisSkin$());
@@ -487,6 +537,10 @@ vi.mock("@react-native-async-storage/async-storage", () => {
       },
       setItem: (key: string, value: string) => {
         store.set(key, value);
+        return Promise.resolve();
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
         return Promise.resolve();
       },
     },

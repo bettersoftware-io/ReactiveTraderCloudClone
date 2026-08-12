@@ -25,6 +25,8 @@ export interface JarvisPanelVm {
   readonly status: PanelStatus;
   readonly vizKind: PanelViz["kind"] | null;
   readonly data$: Observable<PanelData>;
+  /** Mirrors `PanelInstance.docked` — see that field's doc. */
+  readonly docked: boolean;
 }
 
 /** Title shown for a panel the render adapter (Task 4) substituted with
@@ -56,6 +58,7 @@ function buildPanelVm(
       status: "unsupported",
       vizKind: null,
       data$: EMPTY,
+      docked: panel.docked,
     };
   }
 
@@ -67,6 +70,7 @@ function buildPanelVm(
     status: "live",
     vizKind: spec.viz.kind,
     data$: cache.get(panel.panelId)?.data$ ?? EMPTY,
+    docked: panel.docked,
   };
 }
 
@@ -95,6 +99,16 @@ function buildPanelVm(
  * turn) the stale entry is torn down and replaced the same way, so a
  * restyled panel never keeps its old interpretation running underneath the
  * new one.
+ *
+ * Deliberately does NOT re-export the machine's `dockPanel`/`undockPanel`
+ * intents. Docking is only half a panels-machine operation: the other half is
+ * inserting/removing the matching leaf in the active tab's layout tree and
+ * recording which tab the panel belongs to, both of which live in
+ * `composition.ts` (`dockPanelIntoWorkspace`/`undockPanelFromWorkspace`,
+ * exposed as `Presenters.dockPanel`/`undockPanel`). Re-exporting them here
+ * would put a same-named, half-working pair on the very object the UI seam
+ * reads from — dock with no leaf and no tab attribution. Composition holds
+ * the `JarvisPanelsMachineHandle` directly for the half it needs.
  */
 export class JarvisPanelsPresenter {
   private readonly cache = new Map<string, PanelCacheEntry>();
@@ -116,15 +130,50 @@ export class JarvisPanelsPresenter {
 
   readonly panels$: Observable<readonly JarvisPanelVm[]>;
 
+  /** `panels$`, filtered to the docked subset — what the engine's dynamic
+   * registry (Task 5+) consumes. */
+  readonly dockedPanels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** `panels$`, filtered to the floating (`!docked`) subset — what the
+   * overlay layer consumes. */
+  readonly floatingPanels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** The RAW dismissal — it drops the panel from the roster and nothing
+   * else. A DOCKED panel dismissed this way leaves its leaf behind in the
+   * layout tree, so the UI seam is `Presenters.dismissPanel` (composition's
+   * `dismissPanelFromWorkspace`), which detaches the leaf first. This member
+   * stays for the floating-only callers that predate docking. */
   readonly dismissPanel: (panelId: string) => void;
+
+  /** Boot-time rehydration only, and composition-only: it appends a docked
+   * panel with no matching layout leaf, which is correct exactly once — when
+   * the leaf is already in the tree the persisted payload seeded. */
+  readonly restoreDockedPanel: (panelId: string, spec: PanelSpecV1) => void;
 
   constructor(machine: JarvisPanelsMachineHandle, deps: PanelStreamDeps) {
     this.dismissPanel = machine.dismissPanel;
+    this.restoreDockedPanel = machine.restoreDockedPanel;
 
     this.panels$ = machine.state$.pipe(
       map((s) => {
         return s.panels.map((panel) => {
           return buildPanelVm(panel, this.cache);
+        });
+      }),
+    );
+
+    this.dockedPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return row.docked;
+        });
+      }),
+    );
+
+    this.floatingPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return !row.docked;
         });
       }),
     );

@@ -1,8 +1,18 @@
-import { PreferencesModal } from "@ui-contract/components";
-import { cleanupMounted, mount } from "@ui-contract/mount";
+import { AppShell, PreferencesModal } from "@ui-contract/components";
+import {
+  cleanupMounted,
+  createWorld,
+  mount,
+  mountWith,
+} from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { formatGateResetTime } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  formatGateResetTime,
+  parseWorkspaceLayout,
+  type UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/client-core";
 import { JARVIS_BRAINS } from "@rtc/domain";
 
 afterEach(() => {
@@ -242,6 +252,21 @@ describe("PreferencesModal", () => {
     expect(page.chartSubstrateActive("dom")).toBe(false);
   });
 
+  it("shows the REAL Layout engine segment reflecting the active option, and writes through the seam on select", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      layoutEngine: "inhouse",
+    });
+
+    expect(page.layoutEngineActive("inhouse")).toBe(true);
+    expect(page.layoutEngineActive("dockview")).toBe(false);
+
+    await page.selectLayoutEngine("dockview");
+
+    expect(page.layoutEngineActive("dockview")).toBe(true);
+    expect(page.layoutEngineActive("inhouse")).toBe(false);
+  });
+
   it("renders the Jarvis brain segment with all four options", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
@@ -414,3 +439,95 @@ describe("PreferencesModal", () => {
     expect(page.segmentActive("jarvisNarrator", "on")).toBe(false);
   });
 });
+
+/**
+ * DATA & PRIVACY → "Reset workspace layout" (GenUI L3). The one `PrefAction`
+ * row in the modal: an action, not a stored value, so there is nothing to
+ * reflect back — what it does is only observable in the WORKSPACE. Both
+ * surfaces are therefore mounted on ONE shared World (`mountWith`, the
+ * `JarvisPanelLayer.contract.spec.ts` pattern): the modal to press RESET, the
+ * real `App` shell to witness the tree, the docked panels and the persisted
+ * preference return to their defaults.
+ */
+describe("PreferencesModal — reset workspace layout", () => {
+  it("restores every tab's default tree, unpins every docked panel, and clears the stored preference", async () => {
+    const world = createWorld();
+    const app = mountWith(world, AppShell);
+    const prefs = mountWith(world, PreferencesModal, {
+      open: true,
+      onClose: () => {},
+    });
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: RESET_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(RESET_PANEL_ID);
+    expect(app.layout.isDocked(RESET_PANEL_ID)).toBe(true);
+
+    // A non-default TREE too, so the reset has both halves to undo. Asserted
+    // before the maximize is applied to the docked leaf's own head: a
+    // maximized sibling turns every other panel into a strip, which replaces
+    // the docked head (and its unpin control) with a restore bar.
+    app.layout.maximize("fx-rates");
+    await flushWorkspacePersistence();
+
+    expect(app.maximizedPanelId()).toBe("fx-rates");
+    const pinned = world.workspaceLayout.getValue();
+    expect(pinned).not.toBeNull();
+    expect(parseWorkspaceLayout(pinned)?.tabs.fx?.docked).toHaveLength(1);
+
+    await prefs.resetWorkspaceLayout();
+
+    expect(app.layout.isDocked(RESET_PANEL_ID)).toBe(false);
+    expect(app.maximizedPanelId()).toBe("");
+    // Unpinned by DISMISSAL, not by undocking — the panel is gone entirely,
+    // it does not reappear in the floating cascade.
+    expect(app.panels.isPresent()).toBe(false);
+
+    // The STORED preference: reset nulls it, but the reset's own state
+    // changes immediately kick the writer, so what a later boot would read is
+    // a re-persisted DEFAULT workspace — deliberate (composition's own doc:
+    // better than leaving the cleared preference and live state disagreeing).
+    // The bare `null` in between is not observable from here, because
+    // awaiting the click already yields to the task the writer runs on.
+    await flushWorkspacePersistence();
+    const rewritten = parseWorkspaceLayout(world.workspaceLayout.getValue());
+    expect(rewritten?.tabs.fx?.docked).toEqual([]);
+    expect(rewritten?.tabs.fx?.layout.maximized).toBeNull();
+    // …and the tree itself is the DEFAULT one, compared against the same
+    // `createDefaultLayoutPort` the machine's own `reset()` returns to rather
+    // than a hand-copied literal.
+    expect(rewritten?.tabs.fx?.layout).toEqual(
+      createDefaultLayoutPort("fx").initial,
+    );
+  });
+});
+
+/** The panel the reset scenario pins — an `analytics`-sourced table, the
+ * cheapest spec whose body mounts without any seeded World data. */
+const RESET_PANEL_ID = "panel-desk-positions";
+
+/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
+ * borrows the type off the one already-exported `PanelSpecV1`-typed const —
+ * the same trick `JarvisPanelLayer.contract.spec.ts` uses. */
+type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
+
+const DESK_POSITIONS_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "Desk Positions",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+/** One macrotask — the whole window of the contract fixture's workspace
+ * persistence writer (the REAL `createWorkspacePersistenceWriter` at
+ * `debounceMs: 0`; see `LayoutEngine.contract.spec.ts`'s twin helper). */
+function flushWorkspacePersistence(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
