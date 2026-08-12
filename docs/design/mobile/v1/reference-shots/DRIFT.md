@@ -17,7 +17,7 @@ iOS status bar and dynamic island; the prototype column does not, because those
 are drawn by the simulated bezel outside the captured element. Hardware standing
 in for hardware.
 
-## Paired — 14 scenarios
+## Paired — 16 scenarios
 
 | scenario | app | prototype |
 |---|---|---|
@@ -35,20 +35,22 @@ in for hardware.
 | **credit/sell-side** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/credit/sell-side.png" width="300"> | <img src="./credit/sell-side.png" width="300"> |
 | **shell/appearance** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/shell/appearance.png" width="300"> | <img src="./shell/appearance.png" width="300"> |
 | **lock/hold** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/lock/hold.png" width="300"> | <img src="./lock/hold.png" width="300"> |
+| **rates/grid** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/rates/grid.png" width="300"> | <img src="./rates/grid.png" width="300"> |
+| **equities/blotter** | <img src="../../../../../packages/client-react-native/tests/visual/__screenshots__/ios-iphone17-26/simctl/equities/blotter.png" width="300"> | <img src="./equities/blotter.png" width="300"> |
 
-## Prototype only — 7
+## Prototype only — 5
 
-Surfaces the app has no golden for. Not drift — design reference. `rates/*`
-exists because that golden was never pinned; `equities/*` because the module is
-not built yet, so these are Phase 5b's reference.
+Surfaces the app has no golden for. Not drift — design reference. A surface
+lands here when the prototype has a shot and the app's golden tree does not:
+either no scenario is registered for it, or one is and has never been captured.
+This list is derived from the golden tree on every run, so it shrinks by itself
+as goldens land — it does not need editing.
 
 | scenario | prototype |
 |---|---|
-| **rates/grid** | <img src="./rates/grid.png" width="300"> |
 | **rates/ticket** | <img src="./rates/ticket.png" width="300"> |
 | **equities/markets** | <img src="./equities/markets.png" width="300"> |
 | **equities/trade** | <img src="./equities/trade.png" width="300"> |
-| **equities/blotter** | <img src="./equities/blotter.png" width="300"> |
 | **credit/new-rfq** | <img src="./credit/new-rfq.png" width="300"> |
 | **shell/dock-open** | <img src="./shell/dock-open.png" width="300"> |
 
@@ -64,10 +66,11 @@ the dependency this corpus exists to remove.
 | **credit/accept-ceremony** | 0, 0.4, 0.9, 1.8 | <img src="./filmstrips/credit/accept-ceremony.png" width="620"> |
 | **credit/countdown-ring** | 0, 3, 6, 9 | <img src="./filmstrips/credit/countdown-ring.png" width="620"> |
 
-## App only — 2
+## App only — 3
 
 The app has these; the design never specified them. Worth knowing: a corpus that
 only looked for missing app surfaces would never surface this direction.
 
 - `boot/static`
+- `shell/chrome`
 - `shell/connection-banner`

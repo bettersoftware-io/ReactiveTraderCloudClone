@@ -27,8 +27,17 @@ export interface CanvasGradient2D {
  * layered over the canvas, never `fillText`/`strokeText`).
  */
 export interface Canvas2D {
-  fillStyle: string | CanvasGradient2D;
-  strokeStyle: string;
+  /* fillStyle/strokeStyle use divergent read/write types (TS 4.3+): the
+   * engine only ever WRITES styles, so the read type is unconstrained
+   * (`unknown`) while the write type stays strict. That makes the real
+   * `CanvasRenderingContext2D` structurally assignable with no cast — its
+   * wider `string | CanvasGradient | CanvasPattern` read type is covered
+   * by `unknown`, and the strict setters still reject a `CanvasPattern`
+   * (or a gradient stroke) inside the engine at compile time. */
+  get fillStyle(): unknown;
+  set fillStyle(value: string | CanvasGradient2D);
+  get strokeStyle(): unknown;
+  set strokeStyle(value: string);
   lineWidth: number;
   globalAlpha: number;
   shadowBlur: number;
@@ -144,6 +153,19 @@ const FULL_TURN: number = Math.PI * 2;
 const AREA_FILL_ALPHA = 0.35;
 /** `setLineDash` pattern for an in-progress ("draft") drawing. */
 const DRAFT_DASH: readonly number[] = [4, 4];
+
+/* Per-layer stroke widths, mirroring the DOM chart's stylesheet
+ * `stroke-width` values (SvgPathLayer/DrawingsLayer/IndicatorPane
+ * `.module.css`) so the two substrates weight their lines identically.
+ * Every stroking layer sets its own width explicitly — before these
+ * existed, overlays/compare/drawings inherited whatever width the
+ * previous layer left behind, so their weight varied by scene kind. */
+const CLOSE_LINE_WIDTH = 1.5;
+const OVERLAY_LINE_WIDTH = 1;
+const COMPARE_LINE_WIDTH = 1.5;
+const DRAWING_LINE_WIDTH = 1.5;
+const DRAWING_SELECTED_LINE_WIDTH = 2;
+const PANE_LINE_WIDTH = 1.25;
 /** `setLineDash` pattern that restores a solid stroke. */
 const SOLID_DASH: readonly number[] = [];
 
@@ -155,9 +177,10 @@ function px(pct: number, span: number): number {
 }
 
 /** Strokes one open polyline through `points` (percent coordinates,
- * projected via {@link px}) using whatever `strokeStyle`/`lineWidth` the
- * caller already set. A single point or an empty array draws nothing —
- * there is no line to trace. */
+ * projected via {@link px}) using the `strokeStyle`/`lineWidth` the
+ * caller set — every stroking layer sets both explicitly (see the
+ * per-layer width constants above). A single point or an empty array
+ * draws nothing — there is no line to trace. */
 function strokePolyline(
   ctx: Canvas2D,
   points: readonly ChartPoint[],
@@ -351,6 +374,9 @@ function drawDrawings(
       ctx.setLineDash(DRAFT_DASH);
     }
 
+    ctx.lineWidth = item.selected
+      ? DRAWING_SELECTED_LINE_WIDTH
+      : DRAWING_LINE_WIDTH;
     ctx.beginPath();
 
     if (item.kind === "trendline") {
@@ -442,8 +468,12 @@ export function drawPlotScene(
     }
 
     ctx.strokeStyle = palette.line;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = CLOSE_LINE_WIDTH;
     strokePolyline(ctx, scene.linePoints, size);
+  }
+
+  if (overlays.length > 0) {
+    ctx.lineWidth = OVERLAY_LINE_WIDTH;
   }
 
   for (const overlay of overlays) {
@@ -453,6 +483,7 @@ export function drawPlotScene(
 
   if (scene.compareLinePoints.length > 0) {
     ctx.strokeStyle = palette.compare;
+    ctx.lineWidth = COMPARE_LINE_WIDTH;
     strokePolyline(ctx, scene.compareLinePoints, size);
   }
 
@@ -533,6 +564,10 @@ export function drawPaneScene(
       w,
       h,
     );
+  }
+
+  if (scene.lines.length > 0) {
+    ctx.lineWidth = PANE_LINE_WIDTH;
   }
 
   for (const line of scene.lines) {

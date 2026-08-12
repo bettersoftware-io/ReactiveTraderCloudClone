@@ -85,7 +85,10 @@ export async function expectConnectionDotFrozen(
 /**
  * Asserts freeze leaves NO live motion machinery while quotes stream: zero
  * non-`finished` animations across repeated `document.getAnimations()`
- * snapshots, and zero `requestAnimationFrame` registrations. This is the
+ * snapshots, and zero non-diagnostic `requestAnimationFrame` registrations —
+ * the FPS meter's marked sampling loop is exempt (diagnostic instrumentation,
+ * see `useLiveMetrics`) and asserted PRESENT below, so the exemption cannot
+ * silently paper over the meter being gone. This is the
  * churn gate: the original catch-all's global 0.01ms `transition-duration`
  * manufactured a CSSTransition per data-driven style change and the flash
  * keyframes respawned a 0.01ms Animation per quote — visually frozen, but
@@ -111,6 +114,10 @@ export async function expectNoLiveMotionMachinery(
   assertEquals(
     sample.rafCallbacks,
     0,
-    `expected no requestAnimationFrame activity under freeze, got ${sample.rafCallbacks} registrations in ${Math.round(sample.elapsedMs)}ms`,
+    `expected no non-diagnostic requestAnimationFrame activity under freeze, got ${sample.rafCallbacks} registrations in ${Math.round(sample.elapsedMs)}ms`,
+  );
+  assertTrue(
+    sample.diagnosticRafCallbacks > 0,
+    `expected the FPS meter's diagnostic rAF loop to keep sampling under freeze, got 0 marked registrations in ${Math.round(sample.elapsedMs)}ms`,
   );
 }

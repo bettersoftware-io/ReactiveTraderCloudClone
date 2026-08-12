@@ -58,6 +58,12 @@ export interface CandleChartProps {
   /** Fetches one older history page — the near-edge trigger's intent.
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
+  /** Fetches one older history page for the COMPARE series alone — the
+   * catch-up trigger's intent (a comparison activated or swapped after the
+   * primary already backfilled starts at its seed window, and the near-edge
+   * trigger is keyed to the primary's left wall, so it never fires
+   * mid-history). Optional: omitted mounts (no comparison) never fire it. */
+  onLoadOlderCompare?: () => void;
   /** The active draw tool — defaults to "cursor" (no drawing gesture
    * active) when omitted. Drives `useChartGestures`' pointer-down fork
    * (hline commits immediately, trendline opens a draft, cursor clicks
@@ -79,6 +85,9 @@ export interface CandleChartProps {
   /** Shifts every trendline anchor index by `by` (a live prepend keeping
    * drawings pinned to their candles). Slot: default no-op. */
   onShiftAnchors?: (by: number) => void;
+  /** Replaces a drawing after a finished drag-edit (the same id, new
+   * anchors). Slot: default no-op. */
+  onUpdateDrawing?: (drawing: EqDrawing) => void;
 }
 
 /** The BACK TO LIVE pill's presence + a click helper. */

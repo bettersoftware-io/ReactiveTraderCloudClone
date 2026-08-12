@@ -27,12 +27,14 @@ export interface PowerSaverPO {
   connectionDotAnimationDuration(): Promise<string>;
   /**
    * Runs the shared motion probe (see `tests/browser/motionProbe.ts`) in the
-   * live page: counts `requestAnimationFrame` registrations and censuses
-   * non-`finished` animations across repeated `document.getAnimations()`
-   * snapshots. Under freeze both must come back empty/zero even while quotes
-   * stream — the churn channels (manufactured transitions, retriggered flash
-   * keyframes, paused resident loops, ungated rAF) are invisible to every
-   * other tier.
+   * live page: counts `requestAnimationFrame` registrations (diagnostic-
+   * marked ones separately) and censuses non-`finished` animations across
+   * repeated `document.getAnimations()` snapshots. Under freeze the animation
+   * census and the non-diagnostic rAF count must come back empty/zero even
+   * while quotes stream — the churn channels (manufactured transitions,
+   * retriggered flash keyframes, paused resident loops, ungated rAF) are
+   * invisible to every other tier. The FPS meter's marked sampling loop is
+   * the one deliberate exemption.
    */
   sampleMotion(options: MotionSampleOptions): Promise<MotionSample>;
 }

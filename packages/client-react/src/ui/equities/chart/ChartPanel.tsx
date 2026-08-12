@@ -81,6 +81,16 @@ export function ChartPanel(): ReactElement {
     }
   }
 
+  // Pages ONLY the comparison — the catch-up gate's intent (a compare
+  // activated or swapped after the primary already backfilled must page
+  // itself level with the visible window WITHOUT the primary fetching
+  // pages nobody scrolled to).
+  function loadOlderForCompare(): void {
+    if (compare !== null) {
+      loadOlderCandles(compare, timeframe);
+    }
+  }
+
   return (
     <div className={styles.body}>
       <div className={styles.chartArea}>
@@ -114,6 +124,7 @@ export function ChartPanel(): ReactElement {
           loadingOlder={backfill.loadingOlder}
           historyExhausted={backfill.historyExhausted}
           onLoadOlder={loadOlderForChart}
+          onLoadOlderCompare={loadOlderForCompare}
           drawTool={drawState.tool}
           drawings={drawState.drawings[sel] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState.selectedId}
