@@ -171,6 +171,10 @@ export interface AppData {
     readonly rationale: string | null;
     readonly status: PanelStatus;
     readonly vizKind: PanelData["kind"] | null;
+    /** Mirrors `JarvisPanelVm.docked` — optional here (defaults to `false`
+     * in both fake-VM builders) since most fixtures never exercise a docked
+     * panel. */
+    readonly docked?: boolean;
   }[];
   /** Per-panelId rendered body (useJarvisPanelData), paired with
    * `jarvisPanels` above; a missing key returns null (the layer's

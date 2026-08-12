@@ -6,6 +6,7 @@ import {
   assertGreaterThanZero,
   assertTrue,
 } from "./assert";
+import * as common from "./common";
 
 const QUOTE_REPLY_FRAGMENT = "EURUSD is trading at";
 
@@ -136,6 +137,54 @@ export async function expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(
   await ctx.po.jarvis.closeViaButton();
   await ctx.po.jarvis.dismissPanel(SCRIPTED_PANEL_ID);
   await ctx.po.jarvis.waitForNoPanels();
+}
+
+/**
+ * Docks the scripted GBP-volatility panel into the workspace, reloads the
+ * page, and asserts it rehydrates DOCKED and live — proving
+ * `workspaceLayoutV1` persistence round-trips a real desk panel, not just
+ * the static tab layout. Finishes by unpinning it and asserting it lands
+ * back in the floating layer, so both halves of the dock/undock round trip
+ * are witnessed in one ride.
+ */
+export async function expectDockedPanelSurvivesReload(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.ask("show me gbp volatility");
+  await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForReplyDone();
+
+  // The full-screen overlay dims/covers the desk (and the panel cascade sits
+  // on the desk, not inside the overlay) — close it first, same as
+  // `expectPanelSurvivesOverlayCloseAndRestylesToHeatmap` above does for its
+  // dismiss click, so the dock click actually reaches the panel's own
+  // button instead of the overlay's stage intercepting the pointer event.
+  await ctx.po.jarvis.closeViaButton();
+
+  // dockPanel() itself waits for the debounced workspace-layout write to
+  // land before returning — see its doc in the playwright driver — so the
+  // reload right below never races WorkspacePersistenceWriter's debounce.
+  await ctx.po.jarvis.dockPanel(SCRIPTED_PANEL_ID);
+  assertTrue(
+    await ctx.po.jarvis.isPanelDocked(SCRIPTED_PANEL_ID),
+    "expected the panel to be docked before reload",
+  );
+
+  await common.reloadPage(ctx);
+
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+  assertTrue(
+    await ctx.po.jarvis.isPanelDocked(SCRIPTED_PANEL_ID),
+    "expected the panel to rehydrate docked after reload",
+  );
+
+  await ctx.po.jarvis.undockPanel(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
+  assertFalse(
+    await ctx.po.jarvis.isPanelDocked(SCRIPTED_PANEL_ID),
+    "expected the panel to return to the floating layer after undock",
+  );
 }
 
 /** The layout panel id the scripted vol-workspace drive batch maximizes

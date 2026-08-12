@@ -1,0 +1,47 @@
+/* A docked desk panel's headRegistry slot — title + unpin (📌) + close (✕),
+   filling InhouseLayoutEngine's `.panelHeadContent` (flex:1, min-width:0,
+   align-self:stretch — see that file's own CSS). No animation anywhere in
+   this file: this is static chrome, not a spawn/dismiss transition (those
+   stay owned by JarvisPanelLayer.module.css for the floating card). */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.action {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--accent-primary);
+  background: var(--chip);
+}

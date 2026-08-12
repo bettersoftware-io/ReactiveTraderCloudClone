@@ -1,5 +1,8 @@
 import { fireEvent, within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
+
+import { PANEL_RENDERER_TESTIDS } from "../jarvis/JarvisPanelLayerPage";
 
 export interface LayoutEngineProps {
   /** Panel ids that should receive a custom head-slot test double (renders
@@ -18,11 +21,18 @@ export interface LayoutEngineProps {
   pinnedFixture?: boolean;
 }
 
+/** The `aria-label` prefix `JarvisDockedPanelHead` builds its unpin control's
+ * label from (`` `Unpin ${title}` ``) — parsed back out by {@link
+ * LayoutEnginePage.dockedTitle}. */
+const UNPIN_LABEL_PREFIX = "Unpin ";
+
 /** Page object for the InhouseLayoutEngine. The engine is dumb: it renders a
  * LayoutState and calls intent callbacks. The contract spec mounts it with a
  * test PanelRegistry (Task 7 registry) and a seeded state, drives the controls,
  * and asserts the data-* render contract + recorded intent calls. */
 export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
+  private readonly user: UserEvent = userEvent.setup();
+
   private panel(id: string): HTMLElement {
     return within(this.root).getByTestId(`panel-${id}`);
   }
@@ -76,6 +86,87 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
 
   isPinned(id: string): boolean {
     return this.panel(id).getAttribute("data-pinned") === "true";
+  }
+
+  /** True when `id` currently renders as a DOCKED desk panel: a `panel-<id>`
+   * leaf whose head slot is `JarvisDockedPanelHead` (its unpin control is the
+   * discriminator). Deliberately NOT `data-pinned` — that attribute is the
+   * engine's own pre-existing "fixed bottom strip" concept and has nothing to
+   * do with GenUI L3 docking (see `isPinned` above). Returns false — never
+   * throws — for an id the active tab's tree has no leaf for, which is the
+   * shape an "it undocked / it closed" assertion needs. */
+  isDocked(id: string): boolean {
+    const panel = within(this.root).queryByTestId(`panel-${id}`);
+    return (
+      panel !== null &&
+      within(panel).queryByTestId("jarvis-panel-undock") !== null
+    );
+  }
+
+  /** A docked desk panel's own title, parsed back out of its unpin control's
+   * `aria-label` (`` `Unpin ${title}` ``) rather than read off a CSS-module
+   * class — the same indirection `JarvisPanelLayerPage.title` uses for the
+   * floating card. The docked head REPLACES the engine's default title span,
+   * so `titleText` reads null for these leaves. */
+  dockedTitle(id: string): string | null {
+    const label = this.undockLabel(id);
+    return label?.startsWith(UNPIN_LABEL_PREFIX) === true
+      ? label.slice(UNPIN_LABEL_PREFIX.length)
+      : label;
+  }
+
+  /** Which renderer testid (line/table/gauge/spark-grid/heatmap/unsupported)
+   * is currently mounted inside a DOCKED panel's body, or null while pending
+   * (`data$` hasn't emitted yet — the "Connecting…" placeholder). Scans the
+   * SAME {@link PANEL_RENDERER_TESTIDS} list as
+   * `JarvisPanelLayerPage.rendererTestId`, scoped inside the `panel-<id>`
+   * section, because a docked leaf renders the very same `JarvisPanelBody`
+   * switch — only its chrome differs.
+   *
+   * This is the only accessor here that witnesses a docked panel's BODY.
+   * Every other docked check on this page reads the docked HEAD, so a leaf
+   * that rendered head-only — or a restored panel whose `panelData$`
+   * subscription was never re-established — would satisfy all of them. */
+  dockedRendererTestId(id: string): string | null {
+    const panel = this.panel(id);
+
+    for (const testid of PANEL_RENDERER_TESTIDS) {
+      if (within(panel).queryByTestId(testid)) {
+        return testid;
+      }
+    }
+
+    return null;
+  }
+
+  /** The docked head's unpin-control accessible name (`Unpin <title>`). */
+  undockLabel(id: string): string | null {
+    return this.dockedControl(id, "jarvis-panel-undock").getAttribute(
+      "aria-label",
+    );
+  }
+
+  /** The docked head's close-control accessible name (`Close <title>`). */
+  closeLabel(id: string): string | null {
+    return this.dockedControl(id, "jarvis-panel-close").getAttribute(
+      "aria-label",
+    );
+  }
+
+  /** Click a docked desk panel's unpin (📌) control — it leaves the tree and
+   * floats again in `JarvisPanelLayer`. */
+  async undock(id: string): Promise<void> {
+    await this.user.click(this.dockedControl(id, "jarvis-panel-undock"));
+  }
+
+  /** Click a docked desk panel's close (✕) control — it leaves the tree AND
+   * the panel roster entirely (the docked-safe dismiss). */
+  async closeDocked(id: string): Promise<void> {
+    await this.user.click(this.dockedControl(id, "jarvis-panel-close"));
+  }
+
+  private dockedControl(id: string, testId: string): HTMLElement {
+    return within(this.panel(id)).getByTestId(testId);
   }
 
   /** The header's own maximize/restore control glyph: "⛶" while collapsed

@@ -108,6 +108,18 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return this.commandLog().forceBootAnimationSets;
   }
 
+  /** Press the DATA & PRIVACY section's "Reset workspace layout" RESET
+   * button (the modal's one `PrefAction` row — an action, not a stored
+   * value, so there is no `data-on` to read back). Fires
+   * `useWorkspaceReset()`: every created tab's layout machine returns to its
+   * default tree, every docked desk panel is dismissed, and the persisted
+   * `workspaceLayoutV1` string is cleared. */
+  async resetWorkspaceLayout(): Promise<void> {
+    await this.user.click(
+      within(this.root).getByTestId("pref-reset-workspace-layout"),
+    );
+  }
+
   /** Click the ✕ dismiss control. */
   async close(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("prefs-close"));

@@ -91,6 +91,16 @@
   color: var(--text-primary);
 }
 
+/* Groups the dock + dismiss buttons so `.head`'s flex layout keeps them
+   together at the row's end, instead of `justify-content: space-between`
+   spreading three direct children (title, dock, dismiss) apart evenly. */
+.actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .dismiss {
   flex: none;
   width: 20px;
@@ -110,6 +120,12 @@
 .dismiss:hover {
   color: var(--text-primary);
   background: var(--chip);
+}
+
+.dismiss:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .body {

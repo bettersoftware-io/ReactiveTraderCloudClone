@@ -64,6 +64,8 @@ export const DRIVE_COMMAND_KINDS = [
   "setTheme",
   "setPowerSaver",
   "dismissPanel",
+  "dockPanel",
+  "undockPanel",
 ] as const;
 
 export type DriveCommandV1 =
@@ -85,7 +87,9 @@ export type DriveCommandV1 =
   | { readonly kind: "eqPane"; readonly id: DrivePane; readonly on: boolean }
   | { readonly kind: "setTheme"; readonly skin: DriveSkin }
   | { readonly kind: "setPowerSaver"; readonly level: DrivePowerLevel }
-  | { readonly kind: "dismissPanel"; readonly panelId: string };
+  | { readonly kind: "dismissPanel"; readonly panelId: string }
+  | { readonly kind: "dockPanel"; readonly panelId: string }
+  | { readonly kind: "undockPanel"; readonly panelId: string };
 
 export interface DriveBatchV1 {
   readonly v: 1;
@@ -189,6 +193,32 @@ function validateBoolean(
   }
 
   return fieldOk(value);
+}
+
+/** The three command kinds whose entire payload beyond `kind` is a single
+ * `panelId` string — `dismissPanel`, `dockPanel`, `undockPanel`. Shared by
+ * `validateCommand`'s three matching branches so the panelId-length rule
+ * (`IDENTIFIER_MIN_LENGTH`..`IDENTIFIER_MAX_LENGTH`) lives in one place. */
+type PanelIdCommandKind = "dismissPanel" | "dockPanel" | "undockPanel";
+
+function validatePanelIdCommand(
+  raw: Record<string, unknown>,
+  prefix: string,
+  kind: PanelIdCommandKind,
+): FieldResult<DriveCommandV1> {
+  const panelIdResult = validateStringLength(
+    raw,
+    "panelId",
+    `${prefix}.panelId`,
+    IDENTIFIER_MIN_LENGTH,
+    IDENTIFIER_MAX_LENGTH,
+  );
+
+  if (!panelIdResult.ok) {
+    return panelIdResult;
+  }
+
+  return fieldOk({ kind, panelId: panelIdResult.value });
 }
 
 function validateCommand(
@@ -378,20 +408,16 @@ function validateCommand(
     return fieldOk({ kind, level: levelResult.value });
   }
 
-  // kind === "dismissPanel"
-  const panelIdResult = validateStringLength(
-    raw,
-    "panelId",
-    `${prefix}.panelId`,
-    IDENTIFIER_MIN_LENGTH,
-    IDENTIFIER_MAX_LENGTH,
-  );
-
-  if (!panelIdResult.ok) {
-    return panelIdResult;
+  if (kind === "dismissPanel") {
+    return validatePanelIdCommand(raw, prefix, kind);
   }
 
-  return fieldOk({ kind, panelId: panelIdResult.value });
+  if (kind === "dockPanel") {
+    return validatePanelIdCommand(raw, prefix, kind);
+  }
+
+  // kind === "undockPanel"
+  return validatePanelIdCommand(raw, prefix, kind);
 }
 
 function validateCommands(
@@ -566,6 +592,32 @@ const DRIVE_COMMAND_ITEM_SCHEMA: Record<string, unknown> = {
       type: "object",
       properties: {
         kind: { const: "dismissPanel" },
+        panelId: {
+          type: "string",
+          minLength: IDENTIFIER_MIN_LENGTH,
+          maxLength: IDENTIFIER_MAX_LENGTH,
+        },
+      },
+      required: ["kind", "panelId"],
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      properties: {
+        kind: { const: "dockPanel" },
+        panelId: {
+          type: "string",
+          minLength: IDENTIFIER_MIN_LENGTH,
+          maxLength: IDENTIFIER_MAX_LENGTH,
+        },
+      },
+      required: ["kind", "panelId"],
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      properties: {
+        kind: { const: "undockPanel" },
         panelId: {
           type: "string",
           minLength: IDENTIFIER_MIN_LENGTH,

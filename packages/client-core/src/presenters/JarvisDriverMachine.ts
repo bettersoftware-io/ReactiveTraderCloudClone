@@ -21,6 +21,7 @@ import type {
   EqWorkspaceIntents,
   EqWorkspaceState,
 } from "./EqWorkspaceMachine";
+import { MAX_DOCKED_PANELS } from "./JarvisPanelsMachine";
 import type { LayoutIntents } from "./LayoutMachine";
 import type { Machine } from "./machine";
 import type {
@@ -98,9 +99,32 @@ export interface JarvisDriverDeps {
    * for an unknown desk-panel id, so `dismissPanel` commands never need a
    * membership pre-check the way `layout`/`eqSelect` do). */
   readonly dismissPanel: (panelId: string) => void;
+  /** `JarvisPanelsMachineHandle.dockPanel` — the `dockPanel` command's
+   * effect, applied only after this machine's own membership/already-docked/
+   * dock-full pre-checks pass (unlike `dismissPanel`, docking is NOT
+   * idempotent-safe to call blindly: the reducer's own no-op guards exist,
+   * but `dockPanel`'s `DriveOutcome` needs to tell "already docked" and
+   * "dock full" apart, which only this machine's own reads of
+   * `livePanelIds$`/`dockedPanelIds$` can do). */
+  readonly dockPanel: (panelId: string) => void;
+  /** `JarvisPanelsMachineHandle.undockPanel` — the `undockPanel` command's
+   * effect, applied only after the `dockedPanelIds$` membership check below. */
+  readonly undockPanel: (panelId: string) => void;
   /** The static panel ids in `tab`'s default layout tree (e.g. "fx-rates",
    * "eq-chart") — the `layout` command's membership check. */
   readonly knownLayoutPanelIds: (tab: WorkspaceTab) => readonly string[];
+  /** Every currently-live desk panel id (floating + docked) — the
+   * `dockPanel` command's "does this panel exist at all" gate, read fresh
+   * per command like `knownSymbols$`. Source: `JarvisPanelsState.panels`. */
+  readonly livePanelIds$: Observable<readonly string[]>;
+  /** Every currently-docked desk panel id — the `dockPanel` "already
+   * docked" / dock-count gate and the `undockPanel` "not docked" gate, both
+   * read fresh per command. Source: `JarvisPanelsState.panels`, filtered on
+   * `docked`. Also widens the `layout` command's membership gate: a docked
+   * panel is invisible to `knownLayoutPanelIds` (the STATIC default-layout
+   * tree) but still a legitimate `layout` target once docked into the
+   * workspace. */
+  readonly dockedPanelIds$: Observable<readonly string[]>;
   /** Latest known equity symbols — the `eqSelect` command's membership
    * check. */
   readonly knownSymbols$: Observable<readonly string[]>;
@@ -179,7 +203,8 @@ function applyLayoutCommand(
   cmd: LayoutCommand,
   deps: JarvisDriverDeps,
 ): DriveOutcome {
-  const known = deps.knownLayoutPanelIds(cmd.tab);
+  const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
+  const known = [...deps.knownLayoutPanelIds(cmd.tab), ...dockedPanelIds];
 
   if (!known.includes(cmd.panelId)) {
     return {
@@ -297,6 +322,41 @@ function applyCommand(
     case "dismissPanel":
       deps.dismissPanel(cmd.panelId);
       return { command: cmd, status: "applied" };
+
+    case "dockPanel": {
+      const livePanelIds = readNow(deps.livePanelIds$, []);
+      const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
+
+      if (!livePanelIds.includes(cmd.panelId)) {
+        return {
+          command: cmd,
+          status: "skipped",
+          reason: `unknown panelId "${cmd.panelId}"`,
+        };
+      }
+
+      if (dockedPanelIds.includes(cmd.panelId)) {
+        return { command: cmd, status: "skipped", reason: "already docked" };
+      }
+
+      if (dockedPanelIds.length >= MAX_DOCKED_PANELS) {
+        return { command: cmd, status: "skipped", reason: "dock full" };
+      }
+
+      deps.dockPanel(cmd.panelId);
+      return { command: cmd, status: "applied" };
+    }
+
+    case "undockPanel": {
+      const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
+
+      if (!dockedPanelIds.includes(cmd.panelId)) {
+        return { command: cmd, status: "skipped", reason: "not docked" };
+      }
+
+      deps.undockPanel(cmd.panelId);
+      return { command: cmd, status: "applied" };
+    }
 
     default:
       return {

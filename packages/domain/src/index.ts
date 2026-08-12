@@ -149,6 +149,9 @@ export type {
   WorkflowPort,
 } from "./ports/workflowPort.js";
 // Preferences
+// NOTE: `workspaceLayoutV1` (see PreferencesPort) has no type alias or
+// DEFAULT_*/roster constant to barrel here — see preferences.ts's block
+// comment above ChartSubstrate for why.
 export type {
   AmbientStyle,
   BootVariant,

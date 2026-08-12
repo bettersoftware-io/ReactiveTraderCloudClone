@@ -2581,3 +2581,48 @@ fixtures["jarvis-panel-unsupported"] = makeAppData({
     },
   ],
 });
+
+// layout/fx-docked-panel: the FX workspace with ONE desk panel PINNED into it
+// (GenUI L3). The only fixture whose `jarvisPanels` entry carries
+// `docked: true` — which is what makes both fake ViewModels route it out of
+// the floating cascade and into the tab's layout tree (see each
+// buildFakeViewModel's `useLayout`, which derives the docked leaf by running
+// the REAL layout machine's `insertPanel` intent over the tab's default
+// port). Reuses app-fx's own market data so the surrounding FX page renders
+// exactly as `app/fx` does and the diff is the dock column alone.
+fixtures["app-fx-docked-panel"] = makeAppData({
+  ...fixtures["app-fx"],
+  jarvisPanels: [
+    {
+      panelId: "panel-desk-heat",
+      title: "Desk P&L Heat",
+      rationale: "Rolling desk P&L by pair, sir.",
+      status: "live",
+      vizKind: "heatmap",
+      docked: true,
+    },
+  ],
+  jarvisPanelData: {
+    "panel-desk-heat": {
+      kind: "heatmap",
+      rows: [
+        {
+          label: "EURUSD",
+          cells: [
+            { label: "1m", intensity: 0.4, text: "+0.12%" },
+            { label: "5m", intensity: -0.6, text: "-0.31%" },
+            { label: "15m", intensity: 0.9, text: "+0.54%" },
+          ],
+        },
+        {
+          label: "GBPUSD",
+          cells: [
+            { label: "1m", intensity: -0.2, text: "-0.05%" },
+            { label: "5m", intensity: 0.1, text: "+0.02%" },
+            { label: "15m", intensity: -0.8, text: "-0.44%" },
+          ],
+        },
+      ],
+    },
+  },
+});

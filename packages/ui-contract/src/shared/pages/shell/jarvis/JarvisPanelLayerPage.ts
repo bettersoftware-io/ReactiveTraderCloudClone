@@ -5,8 +5,14 @@ import { MountedComponent } from "@ui-contract/harness/component";
 /** The `data-testid` of a panel's rendered body — the discriminating marker
  * for whichever viz kind (or the unsupported card) it currently resolves to.
  * Order matters only for {@link JarvisPanelLayerPage.rendererTestId}'s scan;
- * it is not otherwise significant. */
-const RENDERER_TESTIDS = [
+ * it is not otherwise significant.
+ *
+ * Exported because a DOCKED panel renders the very same `JarvisPanelBody`
+ * switch inside the workspace engine's leaf rather than in this layer (see
+ * `JarvisDockedPanelBody`), so `LayoutEnginePage.dockedRendererTestId` scans
+ * this same list — one list, so a new viz kind can never be added to the
+ * floating scan and silently missed by the docked one. */
+export const PANEL_RENDERER_TESTIDS = [
   "jarvis-panel-line",
   "jarvis-panel-table",
   "jarvis-panel-gauge",
@@ -105,7 +111,7 @@ export class JarvisPanelLayerPage extends MountedComponent<
   rendererTestId(panelId: string): string | null {
     const panel = this.panel(panelId);
 
-    for (const testid of RENDERER_TESTIDS) {
+    for (const testid of PANEL_RENDERER_TESTIDS) {
       if (within(panel).queryByTestId(testid)) {
         return testid;
       }
@@ -136,5 +142,32 @@ export class JarvisPanelLayerPage extends MountedComponent<
     await this.user.click(
       within(this.panel(panelId)).getByTestId("jarvis-panel-dismiss"),
     );
+  }
+
+  /** Click a floating panel's dock (📌) control — pins it into the ACTIVE
+   * tab's workspace tree, where it stops rendering here and starts rendering
+   * as a `panel-<id>` leaf (see `LayoutEnginePage.isDocked`). A no-op click
+   * while {@link isDockDisabled} is true (the control is natively
+   * `disabled`), matching the cap the panels machine enforces anyway. */
+  async dockPanel(panelId: string): Promise<void> {
+    await this.user.click(this.dockButton(panelId));
+  }
+
+  /** True when the dock (📌) control is natively disabled — `MAX_DOCKED_PANELS`
+   * are already pinned, so the cap is legible in the UI rather than swallowed
+   * as a silent no-op. */
+  isDockDisabled(panelId: string): boolean {
+    return this.dockButton(panelId).hasAttribute("disabled");
+  }
+
+  /** The dock control's accessible name (`Pin <title> to workspace`) — the
+   * floating half of the pin/unpin aria-label pair (`LayoutEnginePage`'s
+   * `undockLabel`/`closeLabel` carry the docked half). */
+  dockLabel(panelId: string): string | null {
+    return this.dockButton(panelId).getAttribute("aria-label");
+  }
+
+  private dockButton(panelId: string): HTMLElement {
+    return within(this.panel(panelId)).getByTestId("jarvis-panel-dock");
   }
 }

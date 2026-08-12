@@ -89,6 +89,20 @@ export type AmbientStyle = "aurora" | "rays";
  * preference. */
 export type ChartSubstrate = "dom" | "canvas";
 
+/**
+ * `workspaceLayoutV1` (declared directly on `PreferencesPort` as a bare
+ * `string | null`, not as a named alias here) is the first OPTIONAL
+ * preference in this module — an opaque, unvalidated serialized layout
+ * payload a later task defines the shape of. `null` is not a stand-in for
+ * "no default chosen yet" the way it would be nowhere else in this file: it
+ * IS the default, and "no layout saved" is a fully first-class state.
+ * Deliberately no roster array and no `DEFAULT_*` constant exported for it —
+ * validating the payload beyond "is this a string" is the job of whichever
+ * later task parses it, not this layer. Persisted under
+ * `rtc-workspace-layout-v1` (web `localStorage`, RN AsyncStorage — the same
+ * key on both).
+ */
+
 /** The workspace layout engine. `"inhouse"` is the shipping split-tree
  * engine; `"dockview"` is the Dockview docking engine (drag tabs to
  * re-arrange, layout persisted per workspace tab). Orthogonal to every
