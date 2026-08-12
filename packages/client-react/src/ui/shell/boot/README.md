@@ -231,8 +231,9 @@ preference to prevent jank on inaccessible setups.
 
 Users who disable reduced motion in their OS but still want the boot splash can
 override reduced-motion via a persisted **`forceBootAnimation`** boolean (default
-off). The toggle is wired as a checkbox in the Preferences dialog's **DISPLAY**
-column: "Always play boot animation".
+on — showcase posture; reduced-motion users regain suppression by turning the
+toggle off). The toggle is wired as a checkbox in the Preferences dialog's
+**DISPLAY** column: "Always play boot animation".
 
 When enabled, reduced-motion's suppression is bypassed: the effective
 reduced-motion state becomes `prefersReduced && !forced` (in this folder's
