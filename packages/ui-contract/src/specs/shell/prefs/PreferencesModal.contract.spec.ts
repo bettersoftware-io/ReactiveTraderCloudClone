@@ -37,11 +37,11 @@ describe("PreferencesModal", () => {
   it("force-boot-animation toggle reflects the preference and writes it on toggle", async () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
-      forceBootAnimation: true,
+      forceBootAnimation: false,
     });
-    expect(page.forceBootAnimationOn()).toBe(true);
+    expect(page.forceBootAnimationOn()).toBe(false);
     await page.toggleForceBootAnimation();
-    expect(page.forceBootAnimationSets()).toEqual([false]);
+    expect(page.forceBootAnimationSets()).toEqual([true]);
   });
 
   it("closes on the dismiss (✕) control", async () => {

@@ -6,10 +6,10 @@ import { PreferencesSimulator } from "@rtc/domain";
 import { ForceBootAnimationPresenter } from "../ForceBootAnimationPresenter";
 
 describe("ForceBootAnimationPresenter", () => {
-  it("exposes the port's replay-current flag (default false)", async () => {
+  it("exposes the port's replay-current flag (default true)", async () => {
     const prefs = new PreferencesSimulator();
     const presenter = new ForceBootAnimationPresenter(prefs);
-    expect(await firstValueFrom(presenter.enabled$)).toBe(false);
+    expect(await firstValueFrom(presenter.enabled$)).toBe(true);
   });
 
   it("set(true) writes through to the port", async () => {

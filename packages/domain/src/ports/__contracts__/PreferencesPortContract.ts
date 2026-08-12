@@ -216,9 +216,9 @@ export function describePreferencesPortContract(
       expect(await firstValueFrom(port.powerSaverLevel$())).toBe("freeze");
     });
 
-    it("empty store emits the default forceBootAnimation=false", async () => {
+    it("empty store emits the default forceBootAnimation=true", async () => {
       const port = makeEmpty();
-      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(false);
+      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(true);
     });
 
     it("setForceBootAnimation persists and pushes to existing subscribers", () => {
@@ -227,14 +227,14 @@ export function describePreferencesPortContract(
       const sub = port.forceBootAnimation$().subscribe((on) => {
         return seen.push(on);
       });
-      port.setForceBootAnimation(true);
+      port.setForceBootAnimation(false);
       sub.unsubscribe();
-      expect(seen).toEqual([false, true]);
+      expect(seen).toEqual([true, false]);
     });
 
     it("reads back a seeded forceBootAnimation", async () => {
-      const port = makeSeeded({ forceBootAnimation: true });
-      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(true);
+      const port = makeSeeded({ forceBootAnimation: false });
+      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(false);
     });
 
     it("empty store emits the default bootVariant", async () => {
