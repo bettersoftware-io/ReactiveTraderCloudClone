@@ -5,7 +5,7 @@ import { argv, cwd, env, exit } from "node:process";
 import { promisify } from "node:util";
 
 import { SCENARIO_IDS } from "../scenarioIds";
-import { compareToGolden } from "../shared/diff";
+import { compareToGolden, toleranceFor } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
 
 const exec = promisify(execFile);
@@ -53,13 +53,17 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const result = await compareToGolden(png, gp);
+    const result = await compareToGolden(png, gp, {
+      allowedMismatchedPixelRatio: toleranceFor(id),
+    });
 
+    // Four decimals, not two: the bar is now exact reproduction, and at two
+    // decimals every ratio below 0.005% prints as a reassuring "0.00%".
     if (result.pass) {
-      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
+      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
     } else {
       failures += 1;
-      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
+      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
     }
   }
 

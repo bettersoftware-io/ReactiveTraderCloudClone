@@ -219,7 +219,20 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
+        // `powerSaverLevel="freeze"` is load-bearing, and this scenario was
+        // the last one still missing it. `TradeRow`'s newest-row flash and the
+        // list's entry transitions are gated by `useShellMotionEnabled`, which
+        // reads power-saver — NOT by `forceReduceMotion`, which seeds
+        // `animatedBackground` and gates the ambient layer alone (the same
+        // distinction `analytics/dashboard` and `credit/rfq-tiles` document).
+        //
+        // Measured 2026-08-12 across three captures of identical fixture data:
+        // 0.59% of pixels differed between runs without it, 0.08% with it. The
+        // drift was invisible for as long as it was because the live simulator
+        // delivered trades over time, so the rows had usually finished
+        // animating before the capture; a static fixture mounts all six rows at
+        // once and they animate together, right where the shot lands.
+        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
           <ScreenContentFixture>
             <BlotterModule />
           </ScreenContentFixture>
