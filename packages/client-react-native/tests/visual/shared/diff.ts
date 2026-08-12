@@ -40,17 +40,32 @@ const DEFAULT_RATIO = 0;
  * exists to report.
  */
 const MEASURED_TOLERANCE: Readonly<Record<string, number>> = {
-  /**
-   * 0.1107% measured 2026-08-12, and it is anti-aliasing on glyph edges rather
-   * than movement: two of three samples are byte-identical and the third
-   * differs only along the outlines of text and status-pill borders. Ruled out
-   * as a layout shift by cross-correlating the list band across ±14 px of
-   * vertical offset — best alignment is 0 px, so nothing moved. It is the
-   * densest text region in the matrix and the only scenario rendered through a
-   * `FlatList`. 0.0015 sits just above the measured figure.
-   */
-  "blotter/seeded": 0.0015,
+  // Empty, deliberately. See the `blotter/seeded` note below for the one
+  // scenario that has a reason to want an entry here and is not getting one.
 };
+
+/**
+ * **`blotter/seeded` is a known intermittent, and is deliberately NOT given an
+ * allowance here.** Measured 2026-08-12 over nine consecutive captures against
+ * a freshly pinned golden: eight reproduce at exactly 0 differing pixels, and
+ * one lands 0.5266% out. It is bimodal — never a spread, always exactly one of
+ * those two figures — and the failing state is the whole row list rendered
+ * about a pixel lower, with identical content. A separate verify loop
+ * alternated pass/fail on four consecutive runs, so the rate is somewhere
+ * between 1-in-9 and 1-in-2 and is not yet understood.
+ *
+ * Silencing it would take a budget of ~0.006. That is six times the entire
+ * rest of the matrix, and this tier has already shown what such a budget
+ * costs: rewriting `shell/connection-banner`'s status — text, colour, and a
+ * whole new button — moves only 0.0833%. An allowance big enough to hide the
+ * flake is big enough to hide the next real change to the busiest screen in
+ * the app, which is precisely the trade the old global 0.06 made and lost.
+ *
+ * So it stays exact and reports honestly. A red run on this one scenario is a
+ * true statement about the harness. Root-causing it is tracked as an open
+ * item; the likely family is the same font-metric/layout settling that forced
+ * `postReadySettleMs` up to 1500, since the residual survives that raise.
+ */
 
 /**
  * The pixel budget for one scenario: exact, unless it has a measured reason
