@@ -204,6 +204,12 @@ export const TESTIDS = {
     chartSubstrateSegment: (value: "dom" | "canvas") => {
       return `pref-segment-chartSubstrate-${value}`;
     },
+    /** The Layout engine segment row's two options (PrefSegment.tsx
+     * composes `${testid}-${option.value}`, testid=
+     * "pref-segment-layoutEngine"). */
+    layoutEngineSegment: (value: "inhouse" | "dockview") => {
+      return `pref-segment-layoutEngine-${value}`;
+    },
   },
   layout: {
     // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
@@ -214,6 +220,11 @@ export const TESTIDS = {
     panel: (panelId: string) => {
       return `panel-${panelId}`;
     },
+    /** The active layout engine's own root (InhouseLayoutEngine.tsx /
+     * DockviewLayoutEngine.tsx — the two are alternates, never both
+     * mounted at once). Carries `data-engine` ("inhouse"|"dockview") and,
+     * dockview only, `data-groups` (the live dockview group count). */
+    engineRoot: "layout-engine",
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,

@@ -99,6 +99,20 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // Admin panel loaded state: the seam fake provides a loaded value (250).
   "admin/panel-loaded": { waitForText: "Throughput Control" },
 
+  // Dockview engine (spec 2026-08-11): the 4 fx panels mount async via a
+  // useEffect-driven portal (DockviewLayoutEngine's `mounted` state, set
+  // once createDockEngine's panel-mount callback fires), unlike the in-house
+  // engine's synchronous render — so this needs a waitForText the sync
+  // layout/fx-* scenarios don't. "FX-RATES-BODY" is the fx-rates stub's full
+  // body text (the visual wrapper's own 4-panel registry, not the in-house
+  // engine's "LIVE RATES" stub or the contract tier's plain "RATES"). Must be
+  // this specific, non-generic string: `getByText` is a case-insensitive
+  // SUBSTRING match with no `exact` option on `ScenarioAction`, and
+  // dockview's own tab title for fx-rates is "Live Rates" (PANEL_SPECS) — a
+  // plain "RATES" here strict-mode-violated (matched both the stub body and
+  // the tab).
+  "shell/layout-dockview": { waitForText: "FX-RATES-BODY" },
+
   // --- Phase V testid-gated interaction scenarios ---
   // Blotter: click a column header to sort (ascending arrow appears). No
   // waitForText: the click is synchronous and "Notional" is non-unique.

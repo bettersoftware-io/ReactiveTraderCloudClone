@@ -54,6 +54,7 @@ import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
+import { DockviewEngineVisual } from "./DockviewEngine.visual";
 import { EquitiesChartCanvas } from "./EquitiesChartCanvas.visual";
 import {
   EquitiesChartArea,
@@ -726,5 +727,10 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // rates/blotter and the rail's 360px width are untouched.
   LayoutEngineRailMaximized: () => {
     return staticEngine({ ...fxState, maximized: "fx-analytics" });
+  },
+  // Dockview engine (Task 7): the bridge owns its own fixed-size stage +
+  // static 4-panel registry — see DockviewEngine.visual.tsx.
+  DockviewEngine: () => {
+    return <DockviewEngineVisual />;
   },
 };

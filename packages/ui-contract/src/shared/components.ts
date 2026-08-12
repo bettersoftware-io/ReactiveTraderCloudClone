@@ -178,6 +178,10 @@ import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
 import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
 import { JarvisPanelLayerPage } from "./pages/shell/jarvis/JarvisPanelLayerPage";
 import {
+  DockviewEnginePage,
+  type DockviewEngineProps,
+} from "./pages/shell/layout/DockviewEnginePage";
+import {
   LayoutEnginePage,
   type LayoutEngineProps,
 } from "./pages/shell/layout/LayoutEnginePage";
@@ -499,6 +503,13 @@ export const LayoutEngine = component<LayoutEngineProps, LayoutEnginePage>(
     return new LayoutEnginePage(ctx);
   },
 );
+
+export const DockviewEngine = component<
+  DockviewEngineProps,
+  DockviewEnginePage
+>((ctx) => {
+  return new DockviewEnginePage(ctx);
+});
 
 export const BootSequence = component<Record<string, never>, BootSequencePage>(
   (ctx) => {

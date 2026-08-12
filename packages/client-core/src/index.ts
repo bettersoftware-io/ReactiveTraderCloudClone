@@ -1,5 +1,7 @@
 export * from "#/adapters/delayedAuthPort";
+export * from "#/adapters/dockLayoutStore";
 export * from "#/adapters/HttpAuthAdapter";
+export * from "#/adapters/InMemoryDockLayoutStore";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/jarvisPort";

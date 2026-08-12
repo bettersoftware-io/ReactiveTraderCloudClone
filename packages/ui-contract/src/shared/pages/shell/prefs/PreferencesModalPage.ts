@@ -8,6 +8,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
 } from "@rtc/domain";
@@ -231,6 +232,18 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
    * writing through the useChartSubstrate seam. */
   async selectChartSubstrate(substrate: ChartSubstrate): Promise<void> {
     await this.selectSegment("chartSubstrate", substrate);
+  }
+
+  /** True when the given layout-engine option is the active one in the REAL
+   * "Layout engine" segment row (its `data-on`). */
+  layoutEngineActive(engine: LayoutEngine): boolean {
+    return this.segmentActive("layoutEngine", engine);
+  }
+
+  /** Select a layout-engine option through the REAL "Layout engine" segment,
+   * writing through the useLayoutEngine seam. */
+  async selectLayoutEngine(engine: LayoutEngine): Promise<void> {
+    await this.selectSegment("layoutEngine", engine);
   }
 
   /** True when the given Jarvis brain option is disabled (native `disabled`

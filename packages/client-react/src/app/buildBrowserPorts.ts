@@ -22,6 +22,7 @@ import {
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
+import { LocalStorageDockLayoutStore } from "#/app/adapters/LocalStorageDockLayoutStore";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
@@ -97,6 +98,7 @@ export function buildBrowserPorts(): AppPorts {
   const preferences = new LocalStoragePreferencesAdapter();
   const sessionStore = new LocalStorageSessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
+  const dockLayoutStore = new LocalStorageDockLayoutStore();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
@@ -145,6 +147,7 @@ export function buildBrowserPorts(): AppPorts {
       ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
       connectionEvents,
       colorScheme,
+      dockLayoutStore,
       bootSplash,
       transport: ws,
       narratorConfig,
@@ -188,6 +191,7 @@ export function buildBrowserPorts(): AppPorts {
     ...createSimulatorPorts({ preferences, auth, sessionStore }),
     connectionEvents,
     colorScheme,
+    dockLayoutStore,
     bootSplash,
     narratorConfig,
   };
