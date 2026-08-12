@@ -1,3 +1,7 @@
+/* No background of its own: the layout engine's .panel already paints
+   var(--panel) behind every dock, and repainting --bg-secondary here made
+   this the one pane whose body didn't match the others (--bg-secondary
+   doubles as the app backdrop tone, so it read as a hole in the panel). */
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -5,7 +9,6 @@
   gap: 14px;
   padding: 16px;
   overflow: auto;
-  background-color: var(--bg-secondary);
 }
 
 /* PROTO AdminScreen.module.css `.charts` — MESSAGE THROUGHPUT gets the wider

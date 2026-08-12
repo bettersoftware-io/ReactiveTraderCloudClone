@@ -175,7 +175,7 @@ export function createBootLayers(scene: BootDrawCtx): BootFrameFn {
     const centerX = width / 2;
     const centerY = height / 2;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(0,3,6,0.55)";
+    ctx.fillStyle = scene.light ? "rgba(255,255,255,0.55)" : "rgba(0,3,6,0.55)";
     ctx.fillRect(0, 0, width, height);
 
     // phases: draw-in → explode → orbit/pull → recomposite
@@ -420,7 +420,7 @@ export function createBootLayers(scene: BootDrawCtx): BootFrameFn {
         return;
       }
 
-      fillQuad(0, 0, 1, 1, "#04141d", 0.42 * alpha);
+      fillQuad(0, 0, 1, 1, scene.light ? "#ffffff" : "#04141d", 0.42 * alpha);
 
       if (pulled) {
         ctx.shadowColor = accent;

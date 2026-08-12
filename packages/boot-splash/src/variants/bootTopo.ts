@@ -363,7 +363,7 @@ export function createBootTopo(scene: BootDrawCtx): BootFrameFn {
     const centerX = width / 2;
     const centerY = height / 2 + 10;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(0,3,6,0.55)";
+    ctx.fillStyle = scene.light ? "rgba(255,255,255,0.55)" : "rgba(0,3,6,0.55)";
     ctx.fillRect(0, 0, width, height);
     const yaw = 0.5 + elapsedSec * 0.16 + pointerX * 0.35;
     const pitch = 0.55 + 0.05 * Math.sin(elapsedSec * 0.3) + pointerY * 0.15;
