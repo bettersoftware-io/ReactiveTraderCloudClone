@@ -1,7 +1,11 @@
-/* No background of its own: the layout engine's .panel already paints
-   var(--panel) behind every dock, and repainting --bg-secondary here made
-   this the one pane whose body didn't match the others (--bg-secondary
-   doubles as the app backdrop tone, so it read as a hole in the panel). */
+/* No body fill: the layout engine's .panel already paints var(--panel)
+   behind every dock (same rule as AnalyticsPanel.module.css), so the pane
+   surface stays exactly as solid or as glassy as every sibling dock in the
+   active skin. The boxes inside all sit on var(--tile) — the standard card
+   surface (FX tiles, analytics cards) — not the mixed --panel/--bg-secondary
+   fills they had, and not the --bg-secondary this body once painted, which
+   doubles as the app backdrop tone and made the pane read as a hole in the
+   panel chrome. */
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -52,7 +56,7 @@
   min-height: 0;
   padding: 14px;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--tile);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
 }

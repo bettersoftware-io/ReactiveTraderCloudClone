@@ -14,15 +14,21 @@
  * "running"/"paused" via an inline style on the root, which every layer's
  * animation-play-state reads through inheritance. */
 
-/* z-index: 0 pins the whole backdrop (PROTO AmbientBackground L8) to the
- * bottom of the shell's stacking context (`.app` isolates — App.module.css):
- * without it the wrap creates no stacking context when its opacity computes
- * to 1, so the z-index: 1 vignette below escaped and painted over the
- * z-auto workspace panels. */
+/* z-index: -1 pins the whole backdrop behind the in-flow workspace, on top
+ * of `.app`'s own page wash (`.app` isolates — App.module.css — so -1 cannot
+ * escape the shell). It must be NEGATIVE: the previous z-index: 0 read as
+ * "bottom of the stacking context" but positioned z-0 content paints ABOVE
+ * in-flow static content, so every layer here — aurora curtains included —
+ * washed over the panels themselves; imperceptible on busy tiles, but on the
+ * admin dashboard's large flat surface the curtain shafts visibly hazed the
+ * panel and its header. Translucent skins still show the backdrop through
+ * their glass panels; it just no longer paints on top of them. The wrap
+ * still creates its own stacking context, so the z-index: 1 vignette below
+ * stays contained instead of escaping over the workspace. */
 .wrap {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   overflow: hidden;
   pointer-events: none;
   opacity: clamp(0, var(--aurora-opacity) * 100, 1);
