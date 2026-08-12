@@ -124,6 +124,33 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
 
     if (nearLeftEdge && (primaryEligible || compareEligible)) {
       props.onLoadOlder();
+      return;
+    }
+
+    // The compare catch-up gate — the near-edge trigger's sibling
+    // condition. The invariant the comparison needs is COVERAGE ("the
+    // compare series spans the visible window"), and the near-edge gate
+    // alone cannot maintain it: a comparison activated (or swapped) AFTER
+    // the primary has already backfilled starts at its fresh seed window,
+    // and the near-edge gate is keyed to the PRIMARY's left wall, so
+    // mid-history it never fires. This gate fires while the compare's
+    // oldest candle is still NEWER than the visible window's first candle,
+    // paging the compare ALONE (onLoadOlderCompare) so the primary never
+    // fetches pages nobody scrolled to. Each landed page moves the
+    // compare's first time older and re-runs this effect — the same
+    // self-retriggering loop the at-the-wall path already rides — until
+    // covered or exhausted.
+    const windowFirstTime =
+      props.candles[Math.max(0, Math.floor(viewport.start))]?.time;
+    const compareFirstTime = props.compare?.series[0]?.time;
+
+    if (
+      compareEligible &&
+      compareFirstTime !== undefined &&
+      windowFirstTime !== undefined &&
+      compareFirstTime > windowFirstTime
+    ) {
+      props.onLoadOlderCompare?.();
     }
   });
 
@@ -504,6 +531,10 @@ export interface CandleChartProps {
   /** Fetches one older history page — the near-edge trigger's intent.
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
+  /** Fetches one older history page for the COMPARE series alone — the
+   * catch-up trigger's intent (see that trigger's comment). Slot: optional,
+   * so this component stays mountable without a comparison wired up. */
+  onLoadOlderCompare?: () => void;
   /** The active draw tool — defaults to `"cursor"` (no drawing gesture
    * active). Drives `createChartGestures`' pointer-down fork (hline commits
    * immediately, trendline opens a draft, cursor clicks hit-test). */

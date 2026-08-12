@@ -1,7 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 
 import { computeFps, formatHeapMb, fpsTone } from "@rtc/motion-core";
-import { useViewModel } from "@rtc/react-bindings";
 
 import { type LiveMetrics, LiveMetricsContext } from "./LiveMetricsContext";
 
@@ -22,25 +21,35 @@ function readHeapBytes(): number | null {
   return perf.memory ? perf.memory.usedJSHeapSize : null;
 }
 
+/** The rAF-callback shape the motion probe recognises: `rtcDiagnosticRafLoop`
+ *  marks a loop as diagnostic instrumentation, exempt from the freeze motion
+ *  census — see `tests/browser/motionProbe.ts`. */
+interface DiagnosticFrameLoop {
+  (now: number): void;
+  rtcDiagnosticRafLoop?: boolean;
+}
+
 /**
  * Live FPS + MEM for the HUD status bar. Runs a single rAF loop that counts
  * frames and, once ~1s has elapsed, publishes `{ fps, fpsTone, mem }` (throttle
  * time-gated inside the loop via `performance.now()` — no polling-interval
- * timer, per grep-gate 29). When `LiveMetricsContext` supplies a frozen value
- * (harnesses), the loop never starts and the frozen value is returned — see
- * ADR-005 §②. Power-saver's Freeze tier (`usePowerSaver().isFreeze`) is
- * treated the same way: the rAF loop never starts and the readout holds
- * whatever it last published (there's no meaningful FPS to report while the
- * app's own animation loops are frozen).
+ * timer, per grep-gate 29). When `LiveMetricsContext` supplies frozen metrics
+ * (harnesses), the loop never starts and that value is returned — see
+ * ADR-005 §②.
+ *
+ * Deliberately NOT gated on power-saver's Freeze tier: Freeze exists to spare
+ * GPU-less (VDI/Citrix) machines the paint/composite cost of decorative
+ * animations, and this meter is diagnostic instrumentation — one counter
+ * increment per frame plus one state commit per second — most valuable
+ * exactly when the machine is struggling. The freeze motion census exempts it
+ * via the `rtcDiagnosticRafLoop` marker.
  */
 export function useLiveMetrics(): LiveMetrics {
-  const frozen = useContext(LiveMetricsContext);
-  const { usePowerSaver } = useViewModel();
-  const { isFreeze } = usePowerSaver();
-  const [live, setLive] = useState<LiveMetrics>(INITIAL);
+  const frozenMetrics = useContext(LiveMetricsContext);
+  const [liveMetrics, setLiveMetrics] = useState<LiveMetrics>(INITIAL);
 
   useEffect(() => {
-    if (frozen || isFreeze) {
+    if (frozenMetrics) {
       return;
     }
 
@@ -55,7 +64,7 @@ export function useLiveMetrics(): LiveMetrics {
       if (elapsed >= PUBLISH_MS) {
         const fps = computeFps(frames, elapsed);
         const heap = readHeapBytes();
-        setLive({
+        setLiveMetrics({
           fps,
           fpsTone: fpsTone(fps),
           mem: heap === null ? null : formatHeapMb(heap),
@@ -67,12 +76,14 @@ export function useLiveMetrics(): LiveMetrics {
       raf = requestAnimationFrame(loop);
     }
 
+    (loop as DiagnosticFrameLoop).rtcDiagnosticRafLoop = true;
+
     raf = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [frozen, isFreeze]);
+  }, [frozenMetrics]);
 
-  return frozen ?? live;
+  return frozenMetrics ?? liveMetrics;
 }

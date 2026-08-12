@@ -55,12 +55,19 @@ function stripRow(shot: Shot): string {
   return `| **${shot.id}** | ${instants} | <img src="./filmstrips/${shot.id}.png" width="620"> |`;
 }
 
+// Classification is derived from the golden tree on disk, NOT from the
+// hand-declared `shot.appTwin`. It used to read the flag, which made this
+// "generated" document unable to notice reality: `rates/grid` sat under
+// "Prototype only" long after `rates/grid.png` was captured, because nobody
+// flipped the boolean — and regenerating could never fix it. `appTwin` is now
+// intent only; `check:prototype-shots` asserts intent matches the tree, so a
+// captured-but-undeclared golden fails CI instead of silently mis-rendering.
 const paired = SHOTS.filter((shot) => {
-  return shot.appTwin && shot.filmstrip === undefined;
+  return shot.filmstrip === undefined && hasAppGolden(shot);
 });
 
 const protoOnly = SHOTS.filter((shot) => {
-  return !shot.appTwin && shot.filmstrip === undefined;
+  return shot.filmstrip === undefined && !hasAppGolden(shot);
 });
 
 const strips = SHOTS.filter((shot) => {
@@ -110,9 +117,11 @@ ${paired.map(pairedRow).join("\n")}
 
 ## Prototype only — ${protoOnly.length}
 
-Surfaces the app has no golden for. Not drift — design reference. \`rates/*\`
-exists because that golden was never pinned; \`equities/*\` because the module is
-not built yet, so these are Phase 5b's reference.
+Surfaces the app has no golden for. Not drift — design reference. A surface
+lands here when the prototype has a shot and the app's golden tree does not:
+either no scenario is registered for it, or one is and has never been captured.
+This list is derived from the golden tree on every run, so it shrinks by itself
+as goldens land — it does not need editing.
 
 | scenario | prototype |
 |---|---|

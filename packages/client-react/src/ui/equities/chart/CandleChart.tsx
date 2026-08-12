@@ -66,6 +66,7 @@ export function CandleChart({
   loadingOlder,
   historyExhausted,
   onLoadOlder,
+  onLoadOlderCompare = NOOP_LOAD_OLDER_COMPARE,
   drawTool = "cursor",
   drawings = EMPTY_DRAWINGS,
   selectedDrawingId = null,
@@ -136,11 +137,50 @@ export function CandleChart({
     !compareBackfill.loadingOlder &&
     !compareBackfill.historyExhausted;
 
+  // The compare catch-up gate — the near-edge trigger's sibling condition.
+  // The invariant the comparison needs is COVERAGE ("the compare series
+  // spans the visible window"), and the near-edge gate alone cannot
+  // maintain it: a comparison activated (or swapped) AFTER the primary has
+  // already backfilled starts at its fresh seed window, and the near-edge
+  // gate is keyed to the PRIMARY's left wall, so mid-history it never
+  // fires. This gate fires while the compare's oldest candle is still
+  // NEWER than the visible window's first candle, paging the compare ALONE
+  // (onLoadOlderCompare) so the primary never fetches pages nobody scrolled
+  // to. Each landed page moves compareFirstTime older and re-runs the
+  // effect — the same self-retriggering loop the at-the-wall path already
+  // rides — until covered or exhausted.
+  // The RAW first-times are the effect's dependencies — not a folded
+  // "behind?" boolean, which would stay `true` across a landed page that
+  // leaves the compare still short (older first-time, same boolean, no
+  // re-run) and stall the loop one page in.
+  const windowFirstTime =
+    candles[Math.max(0, Math.floor(viewport.start))]?.time;
+  const compareFirstTime = compare?.series[0]?.time;
+
   useEffect(() => {
     if (nearLeftEdge && (primaryEligible || compareEligible)) {
       onLoadOlder();
+      return;
     }
-  }, [nearLeftEdge, primaryEligible, compareEligible, onLoadOlder]);
+
+    const compareBehindWindow =
+      compareEligible &&
+      compareFirstTime !== undefined &&
+      windowFirstTime !== undefined &&
+      compareFirstTime > windowFirstTime;
+
+    if (compareBehindWindow) {
+      onLoadOlderCompare();
+    }
+  }, [
+    nearLeftEdge,
+    primaryEligible,
+    compareEligible,
+    compareFirstTime,
+    windowFirstTime,
+    onLoadOlder,
+    onLoadOlderCompare,
+  ]);
 
   // Backfill prepend detection — same "an effect, not render-time" call as
   // the near-edge fetch trigger above: every trendline anchor is a candle
@@ -441,6 +481,10 @@ export interface CandleChartProps {
   /** Fetches one older history page — the near-edge trigger's intent.
    * Slot: the caller decides what "load older" means for this series. */
   onLoadOlder: () => void;
+  /** Fetches one older history page for the COMPARE series alone — the
+   * catch-up trigger's intent (see that trigger's comment). Slot: default
+   * no-op keeps this component mountable without a comparison wired up. */
+  onLoadOlderCompare?: () => void;
   /** The active draw tool — defaults to `"cursor"` (no drawing gesture
    * active). Drives `useChartGestures`' pointer-down fork (hline commits
    * immediately, trendline opens a draft, cursor clicks hit-test). */
@@ -485,6 +529,8 @@ function NOOP_DELETE_SELECTED(): void {}
 function NOOP_SHIFT_ANCHORS(_by: number): void {}
 
 function NOOP_UPDATE_DRAWING(_drawing: EqDrawing): void {}
+
+function NOOP_LOAD_OLDER_COMPARE(): void {}
 
 /** Projects each active indicator's value series into the visible viewport,
  * pre-joined into the SVG `points` string SvgPathLayer renders verbatim

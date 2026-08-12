@@ -27,8 +27,17 @@ export interface CanvasGradient2D {
  * layered over the canvas, never `fillText`/`strokeText`).
  */
 export interface Canvas2D {
-  fillStyle: string | CanvasGradient2D;
-  strokeStyle: string;
+  /* fillStyle/strokeStyle use divergent read/write types (TS 4.3+): the
+   * engine only ever WRITES styles, so the read type is unconstrained
+   * (`unknown`) while the write type stays strict. That makes the real
+   * `CanvasRenderingContext2D` structurally assignable with no cast — its
+   * wider `string | CanvasGradient | CanvasPattern` read type is covered
+   * by `unknown`, and the strict setters still reject a `CanvasPattern`
+   * (or a gradient stroke) inside the engine at compile time. */
+  get fillStyle(): unknown;
+  set fillStyle(value: string | CanvasGradient2D);
+  get strokeStyle(): unknown;
+  set strokeStyle(value: string);
   lineWidth: number;
   globalAlpha: number;
   shadowBlur: number;

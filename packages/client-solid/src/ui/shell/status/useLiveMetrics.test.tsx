@@ -71,19 +71,20 @@ describe("useLiveMetrics (solid)", () => {
     expect(result().fpsTone).toBe("positive");
   });
 
-  // Power-saver's Freeze tier pauses the rAF loop the same way the
-  // LiveMetricsContext harness override does — no context override here,
-  // just `usePowerSaver().isFreeze` reached through the real ViewModel seam.
-  it("never starts the loop and holds the last value when power-saver is frozen", () => {
-    const { result } = renderHook(useLiveMetrics, {
+  // Power-saver's Freeze tier deliberately does NOT pause the meter — the FPS
+  // readout is diagnostic instrumentation, exempt from freeze's motion kill.
+  // The motion probe recognises the loop by its `rtcDiagnosticRafLoop` marker
+  // (tests/browser/motionProbe.ts), so that marker is pinned here too.
+  it("keeps sampling under power-saver freeze and marks its loop diagnostic", () => {
+    renderHook(useLiveMetrics, {
       wrapper: withPowerSaver(true),
     });
 
-    expect(result().fps).toBeNull();
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
-
-    frame(1000);
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
+    expect(
+      (rafCb as { rtcDiagnosticRafLoop?: boolean } | null)
+        ?.rtcDiagnosticRafLoop,
+    ).toBe(true);
   });
 });
 
@@ -91,11 +92,11 @@ interface WrapperProps {
   children: JSX.Element;
 }
 
-/** Minimal ViewModel stub — useLiveMetrics only reads `usePowerSaver().isFreeze`.
- *  `isFreeze` is a real Solid signal (matching production's `Accessor<boolean>`
- *  shape), not a plain closure — the hook reads it inside a tracked
- *  `createEffect`, so a plain-function double would still work for these
- *  fixed-value tests, but a signal keeps the double honest with production. */
+/** Minimal ViewModel stub. The hook no longer reads the ViewModel at all —
+ *  the provider is kept so the freeze test above renders under a
+ *  freeze-shaped ViewModel (with `isFreeze` as a real signal, matching
+ *  production's `Accessor<boolean>` shape) and pins the diagnostics
+ *  exemption. */
 function viewModelWith(isFreeze: boolean): ViewModel {
   const [freeze] = createSignal(isFreeze);
   return {

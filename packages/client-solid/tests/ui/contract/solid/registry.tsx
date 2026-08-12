@@ -979,6 +979,9 @@ export const registry = new Map<AnyToken, ElementFor>([
           loadingOlder={(p().loadingOlder as boolean) ?? false}
           historyExhausted={(p().historyExhausted as boolean) ?? false}
           onLoadOlder={(p().onLoadOlder as () => void) ?? ((): void => {})}
+          onLoadOlderCompare={
+            p().onLoadOlderCompare as (() => void) | undefined
+          }
           drawTool={p().drawTool as EqDrawTool | undefined}
           drawings={p().drawings as readonly EqDrawing[] | undefined}
           selectedDrawingId={p().selectedDrawingId as string | null | undefined}

@@ -66,8 +66,8 @@ function renderProbe(frozen: FrozenTelemetryFixture | null): Promise<unknown> {
 
 // `useShellTelemetry` imports `useFrameCallback` + `runOnJS` + `useSharedValue`
 // from reanimated; stub all three so the local override doesn't drop a
-// binding the module loads. Motion is forced off so the meter is inert and
-// the seed/frozen path is deterministic.
+// binding the module loads. The `useFrameCallback` stub never invokes the
+// worklet, so the meter is inert and the seed/frozen path is deterministic.
 jest.mock("react-native-reanimated", () => {
   return {
     useFrameCallback: (): void => {
@@ -78,14 +78,6 @@ jest.mock("react-native-reanimated", () => {
     },
     useSharedValue: <T,>(initial: T): SharedValueStub<T> => {
       return { value: initial };
-    },
-  };
-});
-
-jest.mock("./useShellMotionEnabled", () => {
-  return {
-    useShellMotionEnabled: (): boolean => {
-      return false;
     },
   };
 });

@@ -42,7 +42,7 @@ it in sync with the implementation when the behaviour changes.
 | **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **off (`transition-property: none` — snap)** |
 | **FLIP tile/row reorder, rank-glide** (WAAPI) | glide | glide | **snap, no glide** |
 | **Spinners, infinite pulses, row-flash keyframes** | on | on | **frozen** |
-| FPS-meter `rAF` loop | running | running | **paused** |
+| FPS-meter `rAF` loop | running | running | **running — diagnostic exemption** |
 | Boot splash canvas | plays | plays | **skipped** (persisted Freeze) |
 | Static neon (box/text-shadow), grid, vignette | on | on | **kept** |
 | Countdown fill bars (RFQ / credit) | animate | animate | **frozen bar — expiry still fires** |
@@ -212,8 +212,15 @@ Two things Freeze deliberately does *not* take away:
     into that same branch — it reuses the reduced-motion no-op rather than
     adding a parallel code path.
   - **rAF** — `useLiveMetrics`'s permanent `requestAnimationFrame` loop for
-    the FPS/MEM HUD readout is paused under Freeze; it shows the last sampled
-    value instead of continuing to sample every frame.
+    the FPS/MEM HUD readout deliberately KEEPS running under Freeze. It is
+    diagnostic instrumentation — one counter increment per frame plus one
+    commit per second — not decorative motion, and a live main-thread health
+    readout is most valuable on exactly the GPU-less boxes Freeze targets
+    (pausing it also meant the readout silently held a stale number). The
+    loop callback carries the `rtcDiagnosticRafLoop` marker; the motion probe
+    (`tests/browser/motionProbe.ts`) counts marked callbacks separately, and
+    the freeze census asserts zero NON-diagnostic rAF plus the marked loop
+    still present.
   - **Boot** — `BootSequence` already skips its `rAF` canvas splash under
     `prefers-reduced-motion`. Because a persisted Freeze level is read before
     first paint (no flash), `PowerSaverRoot` sets the attribute early enough

@@ -329,5 +329,9 @@ export const SHOTS: readonly Shot[] = [
  * boot-canvas telemetry (dc.html:1298, :1788, :1861, :2038). */
 export const APP_ONLY_IDS: readonly string[] = [
   "boot/static",
+  // Captured for Phase 3's shell work and absent here for two months, which is
+  // why this list is now cross-checked against the golden tree rather than
+  // trusted: a golden nobody declares is invisible in both directions.
+  "shell/chrome",
   "shell/connection-banner",
 ];

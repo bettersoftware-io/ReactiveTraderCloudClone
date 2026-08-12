@@ -77,6 +77,32 @@ const CLOSES: readonly number[] = CANDLES.map((c) => {
   return c.close;
 });
 
+// The macd pane draws from its own zigzag close series, not CLOSES: the
+// main series' smooth climb makes MACD's histogram sub-pixel (the exact
+// finding EquitiesChartPanes.visual.tsx documents for its BOTH_* fixture),
+// which left the composite golden's histogram invisible. Fixed-length legs
+// reversing every PANE_LEG_LEN candles keep macd/signal crossing and the
+// histogram multi-pixel in both directions — deterministic literal formula,
+// and the pane readout reads the SAME series so text matches the pixels.
+const PANE_LEG_LEN = 15;
+const PANE_STEP = 2;
+const PANE_START_PRICE = 200;
+
+function buildPaneCloses(): readonly number[] {
+  const out: number[] = [];
+  let close = PANE_START_PRICE;
+
+  for (let i = 0; i < CANDLE_COUNT; i++) {
+    const direction = Math.floor(i / PANE_LEG_LEN) % 2 === 0 ? 1 : -1;
+    close += direction * PANE_STEP;
+    out.push(close);
+  }
+
+  return out;
+}
+
+const PANE_CLOSES: readonly number[] = buildPaneCloses();
+
 // Same formula as the React twin's COMPARE_SERIES — steeper slope so the two
 // percent paths visibly diverge in the default {240,300} window.
 const COMPARE_SERIES: readonly Candle[] = Array.from(
@@ -158,8 +184,8 @@ const CANVAS_PLOT: PlotCanvasScene = {
 
 const MACD_PANE: PaneVm = {
   kind: "macd",
-  scene: paneScene("macd", CLOSES, VIEWPORT),
-  readout: CROSS ? paneReadout("macd", CLOSES, CROSS.idx) : null,
+  scene: paneScene("macd", PANE_CLOSES, VIEWPORT),
+  readout: CROSS ? paneReadout("macd", PANE_CLOSES, CROSS.idx) : null,
 };
 
 export function EquitiesChartCanvas(): JSX.Element {
