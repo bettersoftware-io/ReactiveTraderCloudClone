@@ -511,7 +511,7 @@ export function createBootGeo(scene: BootDrawCtx): BootFrameFn {
     const centerX = width / 2;
     const centerY = height / 2 - 6;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(0,3,6,0.5)";
+    ctx.fillStyle = scene.light ? "rgba(255,255,255,0.5)" : "rgba(0,3,6,0.5)";
     ctx.fillRect(0, 0, width, height);
     const yaw = elapsedSec * 0.28 + 0.35;
     const cosPitch = Math.cos(0.52);
@@ -676,7 +676,7 @@ export function createBootGeo(scene: BootDrawCtx): BootFrameFn {
         if (pointCount < poly.length + 1) {
           const headVertex = poly[(pointCount - 1) % poly.length];
           const headPoint = project(headVertex[0], GY, headVertex[1]);
-          ctx.fillStyle = "#fff";
+          ctx.fillStyle = scene.light ? accent : "#fff";
           ctx.shadowColor = accent;
           ctx.shadowBlur = 14;
           ctx.beginPath();
@@ -827,7 +827,7 @@ export function createBootGeo(scene: BootDrawCtx): BootFrameFn {
 
       ctx.stroke();
       const headPoint = arcPoint(flightFrac);
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = scene.light ? color : "#fff";
       ctx.shadowColor = color;
       ctx.shadowBlur = 12;
       ctx.beginPath();

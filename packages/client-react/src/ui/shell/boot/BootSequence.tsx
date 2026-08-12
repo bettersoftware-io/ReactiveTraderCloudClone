@@ -17,12 +17,26 @@ import styles from "@rtc/boot-splash/styles/BootSequence.module.css";
 import type { BootVariant } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { themeTokens } from "#/ui/shell/theme/tokens";
+
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
-    useViewModel();
+  const {
+    useBootSequence,
+    useForceBootAnimation,
+    usePowerSaver,
+    useThemePreference,
+    useThemeSkinPreference,
+  } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
   const forced = useForceBootAnimation().enabled;
   const { isFreeze } = usePowerSaver();
+  // The theme preference hydrates asynchronously, so the first frames can run
+  // on the pre-hydration default (dark holo). mode/skin sit in the canvas
+  // effect's deps: the hydration flip rebuilds the draw context on the right
+  // token row instead of drawing the wrong palette — grey-on-light, holo
+  // accents under another skin — for the whole boot.
+  const { mode } = useThemePreference();
+  const { skin } = useThemeSkinPreference();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -52,16 +66,21 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       return; // jsdom / no-GPU: render chrome only
     }
 
-    const cs = getComputedStyle(document.documentElement);
+    // Straight from the token store, keyed by the tracked skin×mode — the
+    // same values ThemeProvider paints on :root. Reading the painted CSS vars
+    // via getComputedStyle here would hide this effect's real dependency on
+    // the theme behind a side channel (and needed per-token fallbacks).
+    const tokens = themeTokens[skin][mode];
     const d: BootDrawCtx = {
       canvas,
       ctx,
       start: performance.now(),
-      accent: cs.getPropertyValue("--accent-primary").trim() || "#00e5ff",
-      accent2: cs.getPropertyValue("--accent-2").trim() || "#00b0ff",
-      buy: cs.getPropertyValue("--accent-positive").trim() || "#00e676",
-      sell: cs.getPropertyValue("--accent-negative").trim() || "#ff1744",
+      accent: tokens["--accent-primary"],
+      accent2: tokens["--accent-2"],
+      buy: tokens["--accent-positive"],
+      sell: tokens["--accent-negative"],
       pointer: { mx: 0, my: 0 },
+      light: mode === "light",
     };
 
     // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on
@@ -90,7 +109,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.removeEventListener("mousemove", updatePointerPosition);
       cancelAnimationFrame(raf);
     };
-  }, [state.variant, forced, isFreeze]);
+  }, [state.variant, forced, isFreeze, mode, skin]);
 
   return (
     <div

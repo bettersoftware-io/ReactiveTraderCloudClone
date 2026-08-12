@@ -175,7 +175,7 @@ export function createBootHologram(scene: BootDrawCtx): BootFrameFn {
     const centerX = width / 2;
     const centerY = height / 2 - 10;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(0,3,6,0.5)";
+    ctx.fillStyle = scene.light ? "rgba(255,255,255,0.5)" : "rgba(0,3,6,0.5)";
     ctx.fillRect(0, 0, width, height);
 
     // sparse hex field backdrop
@@ -560,7 +560,9 @@ export function createBootHologram(scene: BootDrawCtx): BootFrameFn {
       ctx.moveTo(point.x, point.y);
       ctx.lineTo(panelX + 58, panelY + (panelY < centerY ? 50 : -6));
       ctx.stroke();
-      ctx.fillStyle = "rgba(0,10,16,0.65)";
+      ctx.fillStyle = scene.light
+        ? "rgba(255,255,255,0.65)"
+        : "rgba(0,10,16,0.65)";
       ctx.fillRect(panelX, panelY, 116, 44);
       ctx.strokeStyle = hexToRgba(accent, 0.5);
       ctx.strokeRect(panelX, panelY, 116, 44);

@@ -8,7 +8,7 @@
   position: relative;
   overflow: hidden;
   padding: 14px;
-  background: var(--panel);
+  background: var(--tile);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
 }
