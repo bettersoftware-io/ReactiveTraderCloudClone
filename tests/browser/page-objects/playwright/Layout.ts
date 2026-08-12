@@ -1,9 +1,17 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { LayoutPO } from "../contracts/Layout";
+import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
 
 const HANDLE = `hr[data-testid^="${TESTIDS.layout.handlePrefix}"]`;
+// dockview-core's own draggable tab wrapper (see dockview-core's Tab
+// component — `_element.className = 'dv-tab'`), NOT our TitleOnlyTab's
+// content classes (`dv-default-tab`/`dv-default-tab-content`, which merely
+// render the label text inside it). The drag gesture must target THIS
+// element: it is the one dockview attaches its HTML5 `draggable` + drop-zone
+// listeners to.
+const DOCK_TAB = ".dv-tab";
 
 export class PlaywrightLayout implements LayoutPO {
   constructor(private readonly page: Page) {}
@@ -14,6 +22,10 @@ export class PlaywrightLayout implements LayoutPO {
 
   private panel(panelId: string): Locator {
     return this.page.getByTestId(TESTIDS.layout.panel(panelId));
+  }
+
+  private engineRoot(): Locator {
+    return this.page.getByTestId(TESTIDS.layout.engineRoot);
   }
 
   async resizeHandleCount(): Promise<number> {
@@ -53,5 +65,72 @@ export class PlaywrightLayout implements LayoutPO {
       "true",
       { timeout: timeoutMs },
     );
+  }
+
+  async waitEngine(
+    engine: PrefsLayoutEngine,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute("data-engine", engine, {
+      timeout: timeoutMs,
+    });
+  }
+
+  async waitDockGroupCount(count: number, timeoutMs: number): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-groups",
+      String(count),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async dragDockTabOnto(tabTitle: string, targetTestId: string): Promise<void> {
+    const tab = this.engineRoot()
+      .locator(DOCK_TAB)
+      .filter({ has: this.page.getByText(tabTitle, { exact: true }) });
+
+    // dockview's drop-zone detection reads the pointer's position relative
+    // to the whole GROUP body, not the specific dropped-on element: a point
+    // near an edge of that body registers as a SPLIT (a new group), only a
+    // point nearer its centre registers as a MERGE (a new tab in the
+    // existing group). `targetTestId` names a small element that can sit
+    // anywhere inside the panel (e.g. near its top edge), so its own
+    // bounding box is the wrong thing to drop onto — walk up to the
+    // enclosing `.dv-content-container` (dockview-core's own panel-body
+    // wrapper) and use ITS centre instead. Confirmed empirically: dropping
+    // on the raw testid's box left `data-groups` unchanged (a split, tab
+    // relocated but group count constant); dropping on the container's
+    // centre reliably merges (10/10 local runs).
+    const target = this.page
+      .getByTestId(targetTestId)
+      .locator(
+        "xpath=ancestor::*[contains(concat(' ', @class, ' '), ' dv-content-container ')]",
+      )
+      .first();
+    const srcBox = await tab.boundingBox();
+    const dstBox = await target.boundingBox();
+
+    if (srcBox === null || dstBox === null) {
+      throw new Error(
+        `dragDockTabOnto: missing bounding box for tab ${JSON.stringify(tabTitle)} or drop target ${JSON.stringify(targetTestId)}`,
+      );
+    }
+
+    const srcX = srcBox.x + srcBox.width / 2;
+    const srcY = srcBox.y + srcBox.height / 2;
+    const dstX = dstBox.x + dstBox.width / 2;
+    const dstY = dstBox.y + dstBox.height / 2;
+
+    // Locator.dragTo's single-jump move (down, ONE move, up) never crosses
+    // the browser's native-HTML5-drag movement threshold — dockview's tab
+    // is `draggable=true` and relies on real incremental pointer movement to
+    // promote a mousedown into a `dragstart` (confirmed against dockview-
+    // core's own pointer-backend threshold detection). A multi-step
+    // `mouse.move` (like `dragFirstHandleBy`'s splitter drag) supplies that
+    // incremental movement in one gesture.
+    await this.page.mouse.move(srcX, srcY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(dstX, dstY, { steps: 12 });
+    await this.page.mouse.up();
   }
 }

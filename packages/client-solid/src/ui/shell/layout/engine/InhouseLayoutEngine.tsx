@@ -85,6 +85,7 @@ export function InhouseLayoutEngine(
   return (
     <main
       data-testid="layout-engine"
+      data-engine="inhouse"
       class={styles.engine}
       data-maximized={props.state.maximized ?? ""}
     >

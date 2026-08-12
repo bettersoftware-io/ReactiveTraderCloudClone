@@ -89,6 +89,12 @@ export type AmbientStyle = "aurora" | "rays";
  * preference. */
 export type ChartSubstrate = "dom" | "canvas";
 
+/** The workspace layout engine. `"inhouse"` is the shipping split-tree
+ * engine; `"dockview"` is the Dockview docking engine (drag tabs to
+ * re-arrange, layout persisted per workspace tab). Orthogonal to every
+ * other display preference. */
+export type LayoutEngine = "inhouse" | "dockview";
+
 /** J.A.R.V.I.S orb/overlay visual core. Rendered in order by the skin switch. */
 export type JarvisSkin = "singularity" | "reactor";
 
@@ -155,6 +161,9 @@ export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
 /** Chart rendering substrate default. Users who pick "canvas" keep that choice
  * (persisted under `rtc-chart-substrate`). */
 export const DEFAULT_CHART_SUBSTRATE: ChartSubstrate = "dom";
+/** Workspace layout-engine default. Users who pick "dockview" keep that
+ * choice (persisted under `rtc-layout-engine`). */
+export const DEFAULT_LAYOUT_ENGINE: LayoutEngine = "inhouse";
 /** J.A.R.V.I.S visual core default. Users who pick "reactor" keep that choice
  * (persisted under `rtc-jarvis-skin`). */
 export const DEFAULT_JARVIS_SKIN: JarvisSkin = "singularity";
@@ -194,6 +203,9 @@ export const AMBIENT_STYLES: readonly AmbientStyle[] = ["aurora", "rays"];
 
 /** The Preferences "Chart renderer" segmented control renders these in order. */
 export const CHART_SUBSTRATES: readonly ChartSubstrate[] = ["dom", "canvas"];
+
+/** The Preferences "Layout engine" segmented control renders these in order. */
+export const LAYOUT_ENGINES: readonly LayoutEngine[] = ["inhouse", "dockview"];
 
 /** The J.A.R.V.I.S skin switch renders these in order. */
 export const JARVIS_SKINS: readonly JarvisSkin[] = ["singularity", "reactor"];

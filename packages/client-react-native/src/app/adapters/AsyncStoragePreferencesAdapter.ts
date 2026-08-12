@@ -20,6 +20,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -39,6 +40,8 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  LAYOUT_ENGINES,
+  type LayoutEngine,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
   LOGIN_WAIT_VARIANTS,
@@ -68,6 +71,7 @@ export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 export const CHART_SUBSTRATE_STORAGE_KEY = "rtc-chart-substrate";
+export const LAYOUT_ENGINE_STORAGE_KEY = "rtc-layout-engine";
 export const JARVIS_SKIN_STORAGE_KEY = "rtc-jarvis-skin";
 export const JARVIS_BRAIN_STORAGE_KEY = "rt-jarvis-brain";
 export const JARVIS_EFFORT_STORAGE_KEY = "rt-jarvis-effort";
@@ -82,6 +86,12 @@ function isAmbientStyle(value: string | null): value is AmbientStyle {
 function isChartSubstrate(value: string | null): value is ChartSubstrate {
   return (
     value !== null && (CHART_SUBSTRATES as readonly string[]).includes(value)
+  );
+}
+
+function isLayoutEngine(value: string | null): value is LayoutEngine {
+  return (
+    value !== null && (LAYOUT_ENGINES as readonly string[]).includes(value)
   );
 }
 
@@ -159,6 +169,7 @@ interface StoredPreferences {
   eqBlotterView?: EqBlotterView;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  layoutEngine?: LayoutEngine;
   jarvisSkin?: JarvisSkin;
   jarvisBrain?: JarvisBrain;
   jarvisEffort?: JarvisEffort;
@@ -187,6 +198,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       eqBlotterView,
       ambientStyle,
       chartSubstrate,
+      layoutEngine,
       jarvisSkin,
       jarvisBrain,
       jarvisEffort,
@@ -207,6 +219,7 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
       AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
       AsyncStorage.getItem(CHART_SUBSTRATE_STORAGE_KEY),
+      AsyncStorage.getItem(LAYOUT_ENGINE_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_SKIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_BRAIN_STORAGE_KEY),
       AsyncStorage.getItem(JARVIS_EFFORT_STORAGE_KEY),
@@ -279,6 +292,10 @@ async function readStoredPreferences(): Promise<StoredPreferences> {
 
     if (isChartSubstrate(chartSubstrate)) {
       stored.chartSubstrate = chartSubstrate;
+    }
+
+    if (isLayoutEngine(layoutEngine)) {
+      stored.layoutEngine = layoutEngine;
     }
 
     if (isJarvisSkin(jarvisSkin)) {
@@ -361,6 +378,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
 
+  private readonly layoutEngine: BehaviorSubject<LayoutEngine>;
+
   private readonly jarvisSkin: BehaviorSubject<JarvisSkin>;
 
   private readonly jarvisBrainSubject: BehaviorSubject<JarvisBrain>;
@@ -416,6 +435,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     );
     this.chartSubstrate = new BehaviorSubject<ChartSubstrate>(
       s.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
+    );
+    this.layoutEngine = new BehaviorSubject<LayoutEngine>(
+      s.layoutEngine ?? DEFAULT_LAYOUT_ENGINE,
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -497,6 +519,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
     if (s.chartSubstrate !== undefined) {
       this.chartSubstrate.next(s.chartSubstrate);
+    }
+
+    if (s.layoutEngine !== undefined) {
+      this.layoutEngine.next(s.layoutEngine);
     }
 
     if (s.jarvisSkin !== undefined) {
@@ -673,6 +699,17 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.chartSubstrate.next(substrate);
+  }
+
+  layoutEngine$(): Observable<LayoutEngine> {
+    return this.layoutEngine.pipe(distinctUntilChanged());
+  }
+
+  setLayoutEngine(engine: LayoutEngine): void {
+    void AsyncStorage.setItem(LAYOUT_ENGINE_STORAGE_KEY, engine).catch(
+      () => {},
+    );
+    this.layoutEngine.next(engine);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

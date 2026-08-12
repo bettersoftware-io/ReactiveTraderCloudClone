@@ -171,6 +171,22 @@ module.exports = {
       to: { path: "^packages/", pathNot: "^packages/boot-splash/" },
     },
     {
+      name: "layout-dockview-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/layout-dockview is the framework-neutral Dockview wrapper — it must not import any other @rtc package (it may touch the DOM: dockview-core mounts into a container element).",
+      from: { path: "^packages/layout-dockview/src" },
+      to: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
+    },
+    {
+      name: "dockview-only-in-layout-dockview",
+      severity: "error",
+      comment:
+        "dockview (the supported vanilla-JS entry point — see the layout-dockview README for why it replaced dockview-core as the direct dependency) is confined to @rtc/layout-dockview — the engine must stay swappable by replacing one package (ADR-002); a direct client import would leak the engine's vocabulary. The unanchored `node_modules/dockview` path also nets `node_modules/dockview-core` as a substring match, so a direct dockview-core import stays caught too even though nothing in the tree declares it directly.",
+      from: { path: "^packages/", pathNot: "^packages/layout-dockview/" },
+      to: { path: "node_modules/dockview" },
+    },
+    {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
@@ -269,8 +285,24 @@ module.exports = {
     // cross-package edges. See tsconfig.depcruise.json for the full rationale.
     tsConfig: { fileName: "tsconfig.depcruise.json" },
     doNotFollow: { path: "node_modules" },
+    // The `/dist/` alternative is anchored to `^packages/[^/]+/dist/` — a
+    // workspace package's OWN built output — not a bare `/dist/` substring.
+    // Unanchored, it also matched node_modules packages whose entry happens
+    // to live under a dist/ folder (most do, e.g. dockview-core resolves to
+    // .../node_modules/dockview-core/dist/esm/index.js), which silently
+    // dropped the edge from the graph before any `to: { path: "node_modules/…" }`
+    // rule ever saw it — discovered while adding what is now named
+    // dockview-only-in-layout-dockview (originally targeting dockview-core
+    // directly, before the swap to the `dockview` entry package — see that
+    // rule's own comment), which was a no-op against the unanchored pattern. The
+    // same gap had already made no-mcp-sdk-outside-server dormant, since
+    // @modelcontextprotocol/sdk resolves under its own dist/ too. The class is
+    // general, not specific to those two packages: any rule whose `to` targets
+    // a node_modules package that resolves through its own `dist/` (solid-js,
+    // rxjs, the MCP SDK, …) was blind before this anchor — react-clients-stay-
+    // solid-free (targeting node_modules/solid-js/) among them.
     exclude: {
-      path: "(\\.cache|/dist/|/__screenshots__/|\\.turbo)",
+      path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo)",
     },
     enhancedResolveOptions: {
       exportsFields: ["exports"],

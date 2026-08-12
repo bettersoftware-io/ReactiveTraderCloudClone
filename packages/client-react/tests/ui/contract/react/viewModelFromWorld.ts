@@ -43,6 +43,7 @@ import {
   createStaleFlagMachine,
   createTileExecutionMachine,
   createWorkspaceNavMachine,
+  InMemoryDockLayoutStore,
   JarvisPanelsPresenter,
   type WorkspaceTab,
 } from "@rtc/client-core";
@@ -64,6 +65,7 @@ import type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   MarketDataPort,
@@ -555,6 +557,10 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
 /** Build a reactive ViewModel backed by the neutral World. */
 export function reactViewModel(world: World): ViewModel {
   const s = world.sources;
+  // Dock-layout store: world-scoped (not module-level), so each World built
+  // by a spec gets its own fresh store — mirrors the real
+  // Presenters.dockLayoutStore's per-app-instance lifetime.
+  const dockStore = new InMemoryDockLayoutStore();
   return {
     // Parametric query hooks: each call subscribes to the World's per-key
     // subject, so a tile reading usePrice("EURUSD") re-renders only when that
@@ -875,6 +881,23 @@ export function reactViewModel(world: World): ViewModel {
           world.chartSubstrate.next(next);
         },
       };
+    },
+    // Layout engine: reactive view backed by the World subject (mirrors
+    // useChartSubstrate above); setEngine pushes back so a click through the
+    // seam (PreferencesModal's "Layout engine" segment) flips the value.
+    useLayoutEngine: () => {
+      const engine = useSubject(world.layoutEngine);
+      return {
+        engine,
+        setEngine: (next: LayoutEngine) => {
+          world.layoutEngine.next(next);
+        },
+      };
+    },
+    // Dock-layout store: plain passthrough (no rx) — the store itself is not
+    // a stream, so no useSubject here, unlike every preference hook above.
+    useDockLayoutStore: () => {
+      return dockStore;
     },
     // Global force-boot-animation preference: reactive flag backed by the World
     // subject; setEnabled/toggle push back so a click through the seam flips

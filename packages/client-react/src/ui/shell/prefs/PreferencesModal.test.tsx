@@ -189,6 +189,12 @@ function renderModal(
     useChartSubstrate: () => {
       return { substrate: "dom", setSubstrate: vi.fn() };
     },
+    // Not exercised here (the shared ui-contract tier covers the Layout
+    // engine row) — but the modal destructures it, so a fake that omits it
+    // fails to render at all.
+    useLayoutEngine: () => {
+      return { engine: "inhouse", setEngine: vi.fn() };
+    },
     useForceBootAnimation: () => {
       return { enabled: false, toggle: vi.fn() };
     },

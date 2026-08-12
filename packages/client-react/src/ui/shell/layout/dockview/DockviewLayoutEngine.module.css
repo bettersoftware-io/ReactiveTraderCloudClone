@@ -1,0 +1,29 @@
+/* Mirrors InhouseLayoutEngine.module.css's .engine: fills the workspace
+ * region, no padding here — dockview draws its own group chrome (tabs,
+ * borders) right up to the edge, unlike the in-house engine's inset splits. */
+.engine {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The dockview-core mount point — must be a positioned, sized block for
+ * dockview's own absolutely-positioned grid children to fill (dockview reads
+ * this element's box on init/resize). */
+.container {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.headStrip {
+  flex: 0 0 auto;
+}
