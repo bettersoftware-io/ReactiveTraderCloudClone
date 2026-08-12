@@ -301,6 +301,10 @@ const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "AWAITING AUTH GRANT",
   },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
+  // Element shot (scenario-root). "Narrator" is the last row of column 2, so
+  // waiting for it proves the whole grid — incl. the JARVIS section that
+  // prefs/modal clips — is rendered before capture.
+  "prefs/content": { waitForText: "Narrator" },
 
   // --- Phase 1: J.A.R.V.I.S overlay --- fixed-position viewport overlay,
   // same treatment as prefs/modal above — full-page capture, no interaction

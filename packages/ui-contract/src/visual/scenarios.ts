@@ -737,6 +737,14 @@ const baseScenarios: Record<string, Scenario> = {
   },
   "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },
   "prefs/modal": { componentKey: "PreferencesModal", fixtureKey: "prefs-open" },
+  // Content-only mount of the preferences grid — the ModalShell (and its 86vh
+  // clamp) is deliberately absent, so every row renders at natural height and
+  // gets pixel-asserted; prefs/modal keeps documenting the clamped in-shell
+  // view. Same fixture as prefs/modal.
+  "prefs/content": {
+    componentKey: "PreferencesContent",
+    fixtureKey: "prefs-open",
+  },
 
   // --- Phase 5: Admin observability dashboard scenarios ---
   // Full AdminDashboard with all telemetry cards rendered from seeded data.
