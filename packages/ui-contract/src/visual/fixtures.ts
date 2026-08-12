@@ -1371,7 +1371,12 @@ export const fixtures: Record<string, AppData> = {
   // Boot sequence: the deterministic chrome is captured under reduced motion
   // (the canvas art is animated and intentionally not pixel-golden'd — see the
   // shell visual specs). The default fake reports progress 0 / "core" variant.
-  boot: makeAppData({}),
+  // Explicit non-default seed: forceBootAnimation now defaults to true
+  // (DEFAULT_FORCE_BOOT_ANIMATION), which would override this scenario's
+  // emulated reduced-motion and paint the live canvas globe instead of the
+  // deterministic chrome-only frame the golden documents (same fix as the
+  // BootGate contract spec, commit 8229f313).
+  boot: makeAppData({ forceBootAnimation: false }),
 };
 
 // ── Phase 4 Equities fixtures ──────────────────────────────────────────────

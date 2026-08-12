@@ -277,7 +277,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     useForceBootAnimation: () => {
       return {
-        enabled: DEFAULT_FORCE_BOOT_ANIMATION,
+        enabled: data.forceBootAnimation ?? DEFAULT_FORCE_BOOT_ANIMATION,
         setEnabled: noop,
         toggle: noop,
       };
