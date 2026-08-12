@@ -69,11 +69,16 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
    * microtask-deferred, so a spec awaits this rather than asserting
    * synchronously. */
   async waitForSave(): Promise<void> {
-    await waitFor(() => {
-      if (Number(this.hostEl().getAttribute("data-saved") ?? "0") < 1) {
-        throw new Error("DockviewLayoutEngine has not saved a layout yet");
-      }
-    });
+    await waitFor(
+      () => {
+        if (Number(this.hostEl().getAttribute("data-saved") ?? "0") < 1) {
+          throw new Error("DockviewLayoutEngine has not saved a layout yet");
+        }
+      },
+      // Explicit, generous timeout: the bridge's real save debounce (250ms)
+      // races waitFor's 1s default too closely on a loaded CI runner.
+      { timeout: 3000 },
+    );
   }
 
   /** True when the host's last-saved blob JSON.parses and mentions the

@@ -223,7 +223,11 @@ options: {
   already left `no-mcp-sdk-outside-server` dormant too, since
   `@modelcontextprotocol/sdk` resolves under its own `dist/` the same way.
   Anchoring the pattern to `^packages/` fixed both without touching either
-  rule.
+  rule. The class is general, not specific to those two packages: any rule
+  whose `to` targets a node_modules package that resolves through its own
+  `dist/` (`solid-js`, `rxjs`, the MCP SDK, …) was blind before the anchor —
+  `react-clients-stay-solid-free` (targeting `node_modules/solid-js/`) among
+  them.
 - **`enhancedResolveOptions`** — `exportsFields` + `conditionNames` make the
   cruiser honor `package.json` `"exports"`/`"imports"`. This is how the repo's
   `#/` subpath-alias imports resolve to source files.

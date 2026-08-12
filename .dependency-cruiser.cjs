@@ -296,7 +296,11 @@ module.exports = {
     // directly, before the swap to the `dockview` entry package — see that
     // rule's own comment), which was a no-op against the unanchored pattern. The
     // same gap had already made no-mcp-sdk-outside-server dormant, since
-    // @modelcontextprotocol/sdk resolves under its own dist/ too.
+    // @modelcontextprotocol/sdk resolves under its own dist/ too. The class is
+    // general, not specific to those two packages: any rule whose `to` targets
+    // a node_modules package that resolves through its own `dist/` (solid-js,
+    // rxjs, the MCP SDK, …) was blind before this anchor — react-clients-stay-
+    // solid-free (targeting node_modules/solid-js/) among them.
     exclude: {
       path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo)",
     },

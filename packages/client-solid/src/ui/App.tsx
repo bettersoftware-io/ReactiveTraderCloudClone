@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { lazy, Show, Suspense } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -12,7 +12,6 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -70,6 +69,15 @@ interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
 
+// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
+// serves ~100% of users — split it into its own chunk instead of shipping
+// it to everyone.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 /** Owns the active tab's `useLayout(tab)` machine and nests BOTH domain
  * view-context seams (`FxViewProvider` → `CreditViewProvider`), mirroring the
  * react `App.tsx`'s single `WorkspaceEngine` that serves all tabs from one
@@ -111,13 +119,15 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
             />
           }
         >
-          <DockviewLayoutEngine
-            tab={props.tab}
-            registry={appPanelRegistry}
-            headRegistry={appHeadRegistry}
-            store={dockLayoutStore}
-            maximized={state().maximized}
-          />
+          <Suspense fallback={null}>
+            <DockviewLayoutEngine
+              tab={props.tab}
+              registry={appPanelRegistry}
+              headRegistry={appHeadRegistry}
+              store={dockLayoutStore}
+              maximized={state().maximized}
+            />
+          </Suspense>
         </Show>
       </CreditViewProvider>
     </FxViewProvider>

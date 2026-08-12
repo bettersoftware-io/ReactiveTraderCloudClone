@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { lazy, type ReactElement, Suspense } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -10,7 +10,6 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
@@ -60,6 +59,15 @@ interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
 
+// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
+// serves ~100% of users — split it into its own chunk instead of shipping
+// it to everyone.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   const { useLayout, useLayoutEngine, useDockLayoutStore } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
@@ -69,13 +77,15 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
     <FxViewProvider>
       <CreditViewProvider>
         {engine === "dockview" ? (
-          <DockviewLayoutEngine
-            tab={tab}
-            registry={appPanelRegistry}
-            headRegistry={appHeadRegistry}
-            store={dockLayoutStore}
-            maximized={state.maximized}
-          />
+          <Suspense fallback={null}>
+            <DockviewLayoutEngine
+              tab={tab}
+              registry={appPanelRegistry}
+              headRegistry={appHeadRegistry}
+              store={dockLayoutStore}
+              maximized={state.maximized}
+            />
+          </Suspense>
         ) : (
           <InhouseLayoutEngine
             state={state}
