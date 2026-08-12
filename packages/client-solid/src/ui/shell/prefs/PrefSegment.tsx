@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 
-import styles from "./PreferencesModal.module.css";
+import styles from "./PreferencesContent.module.css";
 
 /**
  * Reusable preferences row carrying a label and a segmented button group (the
