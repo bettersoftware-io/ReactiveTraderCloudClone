@@ -26,6 +26,23 @@ const PANEL_RENDERER_TIMEOUT_MS = 15_000;
  * reduced-motion) before the underlying intent fires — generous for CI. */
 const PANEL_DISMISS_TIMEOUT_MS = 15_000;
 
+/** The docked leaf (`InhouseLayoutEngine`'s `panel-<id>` section) mounts
+ * synchronously off the same `dockedPanels` VM list `dockPanel`'s click
+ * updates, and its body renderer one tick after that (own `data$`
+ * subscription, same as the floating card) — generous for CI. */
+const PANEL_DOCKED_LIVE_TIMEOUT_MS = 15_000;
+
+/** `WorkspacePersistenceWriter` debounces the `rtc-workspace-layout-v1`
+ * `localStorage` write by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
+ * `packages/client-core/src/layout/workspacePersistenceWriter.ts`) —
+ * generous margin over that for CI jitter. Hardcoded here rather than
+ * imported from a client package, same reasoning as `E2E_SESSION_KEY` in
+ * `authSeed.ts`: the suite runs against either `@rtc/client-react` or
+ * `@rtc/client-solid` via `RTC_CLIENT_PKG`, and both adapters export the
+ * identical string. */
+const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
+const WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS = 15_000;
+
 /** With the `?narratorThresholds=test` seam's relaxed config
  * (`minWindowFill: 4`), the anomaly detector can evaluate as soon as 4 ticks
  * have arrived for one symbol (~150ms-1s each — see PricingSimulator's tick
@@ -91,6 +108,24 @@ export class PlaywrightJarvis implements JarvisPO {
 
   private panelDismiss(panelId: string): Locator {
     return this.panel(panelId).getByTestId(TESTIDS.jarvis.panelDismiss);
+  }
+
+  private panelDock(panelId: string): Locator {
+    return this.panel(panelId).getByTestId(TESTIDS.jarvis.panelDock);
+  }
+
+  /** A DOCKED panel's own `InhouseLayoutEngine` leaf section — distinct from
+   * `panel()` above, which locates the FLOATING card. */
+  private dockedPanel(panelId: string): Locator {
+    return this.page.getByTestId(TESTIDS.layout.panel(panelId));
+  }
+
+  private dockedPanelUndock(panelId: string): Locator {
+    return this.dockedPanel(panelId).getByTestId(TESTIDS.jarvis.panelUndock);
+  }
+
+  private dockedPanelLine(panelId: string): Locator {
+    return this.dockedPanel(panelId).getByTestId(TESTIDS.jarvis.panelLine);
   }
 
   /** Every message row (user and jarvis) shares this testid — filter by the
@@ -232,6 +267,38 @@ export class PlaywrightJarvis implements JarvisPO {
   async waitForNoPanels(): Promise<void> {
     await expect(this.panelLayer()).toHaveCount(0, {
       timeout: PANEL_DISMISS_TIMEOUT_MS,
+    });
+  }
+
+  async dockPanel(panelId: string): Promise<void> {
+    await this.panelDock(panelId).click();
+    // Fold the debounced-write wait into the action itself (see the timeout
+    // constants' doc above) so a caller that reloads right after never races
+    // WorkspacePersistenceWriter's 500ms debounce.
+    await this.page.waitForFunction(
+      ({ key, id }) => {
+        const raw = localStorage.getItem(key);
+        return raw?.includes(id) ?? false;
+      },
+      { key: WORKSPACE_LAYOUT_STORAGE_KEY, id: panelId },
+      { timeout: WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS },
+    );
+  }
+
+  async isPanelDocked(panelId: string): Promise<boolean> {
+    return (await this.dockedPanelUndock(panelId).count()) > 0;
+  }
+
+  async undockPanel(panelId: string): Promise<void> {
+    await this.dockedPanelUndock(panelId).click();
+  }
+
+  async waitForPanelDockedLive(panelId: string): Promise<void> {
+    await expect(this.dockedPanel(panelId)).toBeVisible({
+      timeout: PANEL_DOCKED_LIVE_TIMEOUT_MS,
+    });
+    await expect(this.dockedPanelLine(panelId)).toBeVisible({
+      timeout: PANEL_DOCKED_LIVE_TIMEOUT_MS,
     });
   }
 

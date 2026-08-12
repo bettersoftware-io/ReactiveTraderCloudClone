@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
 
 import { createLayoutMachine } from "../LayoutMachine";
@@ -183,6 +184,223 @@ describe("createLayoutMachine", () => {
       m.dispose();
     }).not.toThrow();
     m.dispose();
+  });
+
+  describe("insertPanel / removePanel / reset", () => {
+    it("insertPanel() docks a new leaf, wrapping the root in a new row when it isn't already one", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.dir).toBe("row");
+      expect(r.children).toEqual([
+        root,
+        { kind: "panel", panelId: "jarvis-1" },
+      ]);
+      expect(r.sizes).toEqual([0.75, 0.25]);
+      expect(r.initialPx).toEqual([undefined, 360]);
+      m.dispose();
+    });
+
+    it("insertPanel() twice grows the same dock column, keeping the rest of the tree untouched", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.children[0]).toEqual(root);
+
+      const dockColumn = r.children[1];
+
+      if (dockColumn.kind !== "split") {
+        throw new Error("dock column split expected");
+      }
+
+      expect(dockColumn.children).toEqual([
+        { kind: "panel", panelId: "jarvis-1" },
+        { kind: "panel", panelId: "jarvis-2" },
+      ]);
+      expect(dockColumn.sizes).toEqual([0.5, 0.5]);
+      m.dispose();
+    });
+
+    it("insertPanel() with a duplicate id (an existing static panel) is a no-op", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("fx-rates");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() undocks a leaf, restoring the exact pre-insert tree once the dock column empties", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() with an unknown id is a no-op", () => {
+      const m = createLayoutMachine(port);
+      m.intents.removePanel("does-not-exist");
+      expect(current(m).root).toEqual(root);
+      m.dispose();
+    });
+
+    it("removePanel() on a docked leaf that a resize/maximize/collapse already touched doesn't disturb maximized/collapsed", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("fx-rates");
+      m.intents.collapse("fx-analytics");
+      m.intents.removePanel("jarvis-1");
+      const state = current(m);
+      expect(state.root).toEqual(root);
+      expect(state.maximized).toBe("fx-rates");
+      expect(state.collapsed).toEqual(["fx-analytics"]);
+      m.dispose();
+    });
+
+    it("removePanel() clears maximized when it names the removed panel (a stale reference would strip every panel with none maximized)", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).maximized).toBeNull();
+      m.dispose();
+    });
+
+    it("removePanel() drops the removed panel from collapsed (a stale ghost id would silently pre-collapse a later re-insert of the same id)", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.collapse("jarvis-1");
+      m.intents.removePanel("jarvis-1");
+      expect(current(m).collapsed).toEqual([]);
+      m.dispose();
+    });
+
+    it("insertPanel() on the real FX default port appends a new dock column after the static rail, never grows it — witnesses that staticIds is truly derived from port.initial.root, not an empty/no-op set", () => {
+      const { initial: fxInitial } = createDefaultLayoutPort("fx");
+      const m = createLayoutMachine({ initial: fxInitial });
+      m.intents.insertPanel("jarvis-1");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      if (fxInitial.root.kind !== "split") {
+        throw new Error("fx default root is a split");
+      }
+
+      expect(r.children).toHaveLength(3);
+      // the real analytics/positions rail (children[1]) is untouched — it was
+      // never mistaken for a dock column and grown/replaced in place.
+      expect(r.children[1]).toEqual(fxInitial.root.children[1]);
+      expect(r.children[2]).toEqual({ kind: "panel", panelId: "jarvis-1" });
+      m.dispose();
+    });
+
+    it("reset() returns exactly port.initial, discarding docked leaves, maximize, collapse, and resizes", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.maximize("fx-rates");
+      m.intents.collapse("fx-analytics");
+      m.intents.resize([], [0.4, 0.6]);
+      m.intents.reset();
+      expect(current(m)).toEqual(initial);
+      expect(current(m).root).toBe(initial.root);
+      m.dispose();
+    });
+
+    it("reset() is idempotent and can be followed by further intents", () => {
+      const m = createLayoutMachine(port);
+      m.intents.insertPanel("jarvis-1");
+      m.intents.reset();
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.children).toEqual([
+        root,
+        { kind: "panel", panelId: "jarvis-2" },
+      ]);
+      m.dispose();
+    });
+  });
+
+  // The workspace-layout rehydration seam (`composition.ts`'s `layoutFor`).
+  // `seedState` moves ONLY the fold's starting value; `port` keeps owning the
+  // tab's DEFAULT-tree identity, which two separate things read:
+  //   - `staticIds` (which leaf ids are the tab's own static panels), so a
+  //     restored dock column is still recognised as a dock column;
+  //   - `reset()`, which must return the DEFAULT tree, not the restored one.
+  // Seeding through `port.initial` instead would break both at once — the
+  // restored dock leaves would be misclassified as static (so the next
+  // insert appends a SECOND dock column beside the restored one), and
+  // `reset()` would hand back the saved layout it is supposed to discard.
+  describe("seedState (workspace-layout rehydration)", () => {
+    const seededRoot: LayoutNode = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      children: [root, { kind: "panel", panelId: "jarvis-1" }],
+      initialPx: [undefined, 360],
+    };
+
+    const seeded: LayoutState = {
+      root: seededRoot,
+      maximized: null,
+      collapsed: [],
+    };
+
+    it("starts the fold from seedState rather than port.initial", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      expect(current(m)).toEqual(seeded);
+      m.dispose();
+    });
+
+    it("reset() after a seed returns the DEFAULT tree, not the seeded one", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      m.intents.reset();
+      expect(current(m)).toEqual(initial);
+      expect(current(m).root).toBe(initial.root);
+      m.dispose();
+    });
+
+    it("insertPanel() after a seed grows the RESTORED dock column instead of appending a second one", () => {
+      const m = createLayoutMachine(port, { seedState: seeded });
+      m.intents.insertPanel("jarvis-2");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      // Still two children: the original tree plus ONE dock column, now a
+      // 2-child column split — not three children with a second dock column.
+      expect(r.children).toHaveLength(2);
+      expect(r.children[0]).toBe(root);
+      expect(r.children[1]).toEqual({
+        kind: "split",
+        dir: "column",
+        children: [
+          { kind: "panel", panelId: "jarvis-1" },
+          { kind: "panel", panelId: "jarvis-2" },
+        ],
+        sizes: [0.5, 0.5],
+      });
+      m.dispose();
+    });
   });
 });
 

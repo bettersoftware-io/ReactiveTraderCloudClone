@@ -51,6 +51,11 @@ export interface BootDrawCtx {
    *  this shared object; the v3 cursor-tracked variants (layers/jarvis/topo)
    *  read it each frame. */
   readonly pointer: { mx: number; my: number };
+  /** True when the app theme mode is light. Every scene swaps its hardcoded
+   *  dark ink — full-canvas backdrop washes, HUD box fills, white glint
+   *  cores — for a light equivalent, so the splash reads on the light
+   *  themes' white page instead of compositing to a murky grey. */
+  readonly light: boolean;
 }
 
 /** Per-frame draw closure returned by the v3 variant factories — the factory
@@ -296,7 +301,7 @@ export function drawBootLaser(scene: BootDrawCtx): void {
   const width = canvas.width;
   const height = canvas.height;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.fillStyle = scene.light ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.42)";
   ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = hexToRgba(accent, 0.045);
   ctx.lineWidth = 1;
@@ -449,7 +454,7 @@ export function drawBootLaser(scene: BootDrawCtx): void {
     ctx.beginPath();
     ctx.arc(headPos.x, headPos.y, 7, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = scene.light ? accent : "#fff";
     ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.arc(headPos.x, headPos.y, 3, 0, Math.PI * 2);
@@ -486,20 +491,26 @@ export function drawBootDocking(scene: BootDrawCtx): void {
   const centerY = height / 2;
   const easedProgress = ease(progress);
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "rgba(0,2,4,0.64)";
+  ctx.fillStyle = scene.light ? "rgba(255,255,255,0.64)" : "rgba(0,2,4,0.64)";
   ctx.fillRect(0, 0, width, height);
-  const vignetteGradient = ctx.createRadialGradient(
-    centerX,
-    centerY,
-    Math.min(width, height) * 0.18,
-    centerX,
-    centerY,
-    Math.max(width, height) * 0.62,
-  );
-  vignetteGradient.addColorStop(0, "rgba(0,0,0,0)");
-  vignetteGradient.addColorStop(1, "rgba(0,0,0,0.55)");
-  ctx.fillStyle = vignetteGradient;
-  ctx.fillRect(0, 0, width, height);
+
+  // The edge vignette only exists to deepen a dark cockpit; on the light
+  // page it would re-introduce the grey ring this flag removes.
+  if (!scene.light) {
+    const vignetteGradient = ctx.createRadialGradient(
+      centerX,
+      centerY,
+      Math.min(width, height) * 0.18,
+      centerX,
+      centerY,
+      Math.max(width, height) * 0.62,
+    );
+    vignetteGradient.addColorStop(0, "rgba(0,0,0,0)");
+    vignetteGradient.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = vignetteGradient;
+    ctx.fillRect(0, 0, width, height);
+  }
+
   ctx.fillStyle = hexToRgba(accent, 0.035);
 
   for (let y = 0; y < height; y += 3) {
@@ -584,7 +595,7 @@ export function drawBootDocking(scene: BootDrawCtx): void {
   const radius = craftRadius;
   ctx.save();
   ctx.translate(targetX, targetY);
-  ctx.fillStyle = "rgba(8,16,22,0.5)";
+  ctx.fillStyle = scene.light ? "rgba(255,255,255,0.5)" : "rgba(8,16,22,0.5)";
   ctx.fillRect(-radius * 3.6, -radius * 1.6, radius * 7.2, radius * 3.2);
   ctx.strokeStyle = hexToRgba(accent, 0.12);
   ctx.lineWidth = 1;

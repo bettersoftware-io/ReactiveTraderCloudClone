@@ -10,6 +10,22 @@
   transition: opacity 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+/* Light mode boots on pure white, not the light themes' grey --bg-primary:
+   the scenes' accent strokes are too faint against grey (the canvas side of
+   this swap — the dark backdrop washes — is gated on BootDrawCtx.light). The
+   white-alpha bar track and skip border flip to dark ink for the same reason. */
+:global([data-mode="light"]) .boot {
+  background: #fff;
+}
+
+:global([data-mode="light"]) .bar {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:global([data-mode="light"]) .skip {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
 .boot[data-done="true"] {
   opacity: 0;
   pointer-events: none;

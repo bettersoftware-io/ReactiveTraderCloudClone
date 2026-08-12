@@ -49,6 +49,8 @@ export interface PreferencesSeed {
   animatedBackground?: boolean;
   ambientStyle?: AmbientStyle;
   chartSubstrate?: ChartSubstrate;
+  /** Seeds the first OPTIONAL preference. Default `null` (no layout saved). */
+  workspaceLayoutSeed?: string | null;
   layoutEngine?: LayoutEngine;
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
@@ -82,6 +84,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
 
   private readonly chartSubstrateSubject: BehaviorSubject<ChartSubstrate>;
+
+  private readonly workspaceLayoutSubject: BehaviorSubject<string | null>;
 
   private readonly layoutEngineSubject: BehaviorSubject<LayoutEngine>;
 
@@ -129,6 +133,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.chartSubstrateSubject = new BehaviorSubject<ChartSubstrate>(
       seed.chartSubstrate ?? DEFAULT_CHART_SUBSTRATE,
+    );
+    this.workspaceLayoutSubject = new BehaviorSubject<string | null>(
+      seed.workspaceLayoutSeed ?? null,
     );
     this.layoutEngineSubject = new BehaviorSubject<LayoutEngine>(
       seed.layoutEngine ?? DEFAULT_LAYOUT_ENGINE,
@@ -220,6 +227,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setChartSubstrate(substrate: ChartSubstrate): void {
     this.chartSubstrateSubject.next(substrate);
+  }
+
+  workspaceLayout$(): Observable<string | null> {
+    return this.workspaceLayoutSubject.pipe(distinctUntilChanged());
+  }
+
+  setWorkspaceLayout(value: string | null): void {
+    this.workspaceLayoutSubject.next(value);
   }
 
   layoutEngine$(): Observable<LayoutEngine> {

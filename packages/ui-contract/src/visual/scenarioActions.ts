@@ -60,6 +60,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // wrapper). #259 added the scenario without this action, so the harness fell
   // through to the element-capture branch and timed out waiting for scenario-root.
   "app/fx-aurora": { fullPage: true },
+  // The pinned-panel workspace is a full-bleed App scenario like app/fx (App
+  // renders no scenario-root wrapper), so it must capture full-page.
+  "layout/fx-docked-panel": { fullPage: true },
   // The credit blotter's in-body "Credit Trades" title is gone (its chrome
   // moved into the panel head) — the head tab's full text proves the credit
   // workspace rendered.

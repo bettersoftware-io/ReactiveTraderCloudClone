@@ -92,20 +92,20 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
     expect(lower).toContain("[narration]");
   });
 
-  it("carries three drive few-shot examples", () => {
+  it("carries four drive few-shot examples", () => {
     const driveExampleLines = exampleLines().filter((line) => {
       return line.includes("drive_app");
     });
 
-    expect(driveExampleLines).toHaveLength(3);
+    expect(driveExampleLines).toHaveLength(4);
   });
 
-  it("wraps all three drive few-shot examples in the tool's real input envelope ({commands: [{kind: …}]}), never a bare/mismatched shape (the R1 envelope-drift lesson)", () => {
+  it("wraps all four drive few-shot examples in the tool's real input envelope ({commands: [{kind: …}]}), never a bare/mismatched shape (the R1 envelope-drift lesson)", () => {
     const driveExampleLines = exampleLines().filter((line) => {
       return line.includes("drive_app");
     });
 
-    expect(driveExampleLines).toHaveLength(3);
+    expect(driveExampleLines).toHaveLength(4);
 
     for (const line of driveExampleLines) {
       expect(line).toMatch(/drive_app with \{commands: \[\{kind: /);
@@ -122,7 +122,7 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
       return line.includes("drive_app");
     });
 
-    expect(allExampleLines).toHaveLength(5);
+    expect(allExampleLines).toHaveLength(6);
     expect(panelExampleLines.length + driveExampleLines.length).toBe(
       allExampleLines.length,
     );
@@ -136,7 +136,11 @@ describe("JARVIS_SYSTEM_PROMPT", () => {
 
   it("stays within a focused length band (drift guard, not a style rule)", () => {
     expect(JARVIS_SYSTEM_PROMPT.length).toBeGreaterThanOrEqual(200);
-    expect(JARVIS_SYSTEM_PROMPT.length).toBeLessThanOrEqual(3_600);
+    expect(JARVIS_SYSTEM_PROMPT.length).toBeLessThanOrEqual(3_800);
+  });
+
+  it("mentions dockPanel — the drive vocabulary's pin-to-workspace op", () => {
+    expect(JARVIS_SYSTEM_PROMPT).toContain("dockPanel");
   });
 
   it("derives the panel roster from DESK_PANEL_ROSTER (never a hand-typed list)", () => {

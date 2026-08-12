@@ -1,16 +1,12 @@
 import type { ReactElement } from "react";
 import { useRef } from "react";
 
-import type { JarvisPanelVm, PanelData } from "@rtc/client-core";
+import { type JarvisPanelVm, MAX_DOCKED_PANELS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { animateOnce } from "#/ui/shell/motion";
 
-import { PanelGauge } from "./PanelGauge";
-import { PanelHeatmap } from "./PanelHeatmap";
-import { PanelLine } from "./PanelLine";
-import { PanelSparkGrid } from "./PanelSparkGrid";
-import { PanelTable } from "./PanelTable";
+import { JarvisPanelBody } from "./JarvisPanelBody";
 
 import styles from "./JarvisPanelLayer.module.css";
 
@@ -20,28 +16,39 @@ import styles from "./JarvisPanelLayer.module.css";
  * SIBLING in App.tsx, not its child: panels keep rendering (and their own
  * `data$` keeps ticking) whether the chat overlay is open or closed.
  *
- * Chrome (title/rationale/dismiss/testids) reads only `useJarvisPanels()` —
- * the list that changes on spawn/dismiss/edit. Each panel's BODY reads its
- * own `useJarvisPanelData(panelId)` independently (a keyed `bind()` in
- * react-bindings mirroring `useCandles`/`useDepth`), so one panel's tick
- * cadence never re-renders its siblings or the chrome list itself.
+ * Renders `floatingPanels` ONLY — a docked panel leaves this layer entirely
+ * and renders instead as a leaf inside the workspace engine (see
+ * `dockedRegistryFor` in `appPanelRegistry.tsx`, wired from `App.tsx`).
+ * `dockedPanels.length` still needs reading here, though, to gate the 📌
+ * dock button once `MAX_DOCKED_PANELS` is reached.
+ *
+ * Chrome (title/rationale/dismiss/dock/testids) reads only
+ * `useJarvisPanels()` — the list that changes on spawn/dismiss/edit/dock.
+ * Each panel's BODY reads its own `useJarvisPanelData(panelId)`
+ * independently (a keyed `bind()` in react-bindings mirroring
+ * `useCandles`/`useDepth`), so one panel's tick cadence never re-renders its
+ * siblings or the chrome list itself.
  */
 export function JarvisPanelLayer(): ReactElement | null {
   const { useJarvisPanels } = useViewModel();
-  const { panels, dismissPanel } = useJarvisPanels();
+  const { dockedPanels, floatingPanels, dismissPanel, dockPanel } =
+    useJarvisPanels();
+  const dockFull = dockedPanels.length >= MAX_DOCKED_PANELS;
 
-  if (panels.length === 0) {
+  if (floatingPanels.length === 0) {
     return null;
   }
 
   return (
     <div data-testid="jarvis-panel-layer" className={styles.layer}>
-      {panels.map((panel) => {
+      {floatingPanels.map((panel) => {
         return (
           <JarvisPanelCard
             key={panel.panelId}
             panel={panel}
+            dockFull={dockFull}
             onDismiss={dismissPanel}
+            onDock={dockPanel}
           />
         );
       })}
@@ -51,12 +58,19 @@ export function JarvisPanelLayer(): ReactElement | null {
 
 interface JarvisPanelCardProps {
   panel: JarvisPanelVm;
+  /** `dockedPanels.length >= MAX_DOCKED_PANELS` — disables the 📌 dock
+   * button rather than letting it fire a no-op the panels machine would
+   * silently swallow anyway, so the cap is legible in the UI. */
+  dockFull: boolean;
   onDismiss: (panelId: string) => void;
+  onDock: (panelId: string) => void;
 }
 
 function JarvisPanelCard({
   panel,
+  dockFull,
   onDismiss,
+  onDock,
 }: JarvisPanelCardProps): ReactElement {
   const { useJarvisPanelData, usePowerSaver } = useViewModel();
   const data = useJarvisPanelData(panel.panelId);
@@ -76,6 +90,10 @@ function JarvisPanelCard({
   // rejection would otherwise fail silently).
   function dismissThisPanel(): void {
     void animateOutThenDismissPanel();
+  }
+
+  function dockThisPanel(): void {
+    onDock(panel.panelId);
   }
 
   async function animateOutThenDismissPanel(): Promise<void> {
@@ -106,15 +124,27 @@ function JarvisPanelCard({
     >
       <div className={styles.head}>
         <span className={styles.title}>{panel.title}</span>
-        <button
-          type="button"
-          data-testid="jarvis-panel-dismiss"
-          aria-label={`Dismiss ${panel.title}`}
-          className={styles.dismiss}
-          onClick={dismissThisPanel}
-        >
-          ✕
-        </button>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            data-testid="jarvis-panel-dock"
+            aria-label={`Pin ${panel.title} to workspace`}
+            className={styles.dismiss}
+            disabled={dockFull}
+            onClick={dockThisPanel}
+          >
+            📌
+          </button>
+          <button
+            type="button"
+            data-testid="jarvis-panel-dismiss"
+            aria-label={`Dismiss ${panel.title}`}
+            className={styles.dismiss}
+            onClick={dismissThisPanel}
+          >
+            ✕
+          </button>
+        </div>
       </div>
       {/* Keyed by the resolved viz kind (falling back to a stable sentinel
           while unresolved/unsupported) so a spec EDIT that swaps viz kind
@@ -126,49 +156,6 @@ function JarvisPanelCard({
       </div>
     </div>
   );
-}
-
-interface JarvisPanelBodyProps {
-  panel: JarvisPanelVm;
-  data: PanelData | null;
-}
-
-function JarvisPanelBody({ panel, data }: JarvisPanelBodyProps): ReactElement {
-  if (panel.status === "unsupported") {
-    return (
-      <div
-        data-testid="jarvis-panel-unsupported"
-        className={styles.unsupported}
-      >
-        <div className={styles.unsupportedTitle}>UNSUPPORTED PANEL</div>
-        <div className={styles.unsupportedText}>
-          This build has no renderer for what J.A.R.V.I.S proposed.
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return <div className={styles.pending}>Connecting…</div>;
-  }
-
-  switch (data.kind) {
-    case "line":
-      return <PanelLine {...data} />;
-    case "table":
-      return <PanelTable {...data} />;
-    case "gauge":
-      return <PanelGauge {...data} />;
-    case "sparkGrid":
-      return <PanelSparkGrid {...data} />;
-    case "heatmap":
-      return <PanelHeatmap {...data} />;
-
-    default: {
-      const _exhaustive: never = data;
-      return _exhaustive;
-    }
-  }
 }
 
 function prefersReducedMotion(): boolean {

@@ -8,6 +8,10 @@ import {
   HeaderChromePage,
   type HeaderChromeProps,
 } from "../chrome/HeaderChromePage";
+import {
+  LayoutEnginePage,
+  type LayoutEngineProps,
+} from "../layout/LayoutEnginePage";
 import { JarvisOrbPage } from "./JarvisOrbPage";
 import { JarvisOverlayPage } from "./JarvisOverlayPage";
 import { JarvisPanelLayerPage } from "./JarvisPanelLayerPage";
@@ -41,6 +45,14 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
 
   readonly panels: JarvisPanelLayerPage;
 
+  /** The ACTIVE tab's `InhouseLayoutEngine`, read through the same page object
+   * `LayoutEngine.contract.spec.ts` drives standalone — the only way to
+   * witness a DOCKED desk panel, which renders as a `panel-<id>` leaf inside
+   * this engine rather than in `panels` (the floating layer). Same
+   * props-context cast as `header` above: every `LayoutEnginePage` accessor is
+   * a pure DOM query against `ctx.root` and none reads `LayoutEngineProps`. */
+  readonly layout: LayoutEnginePage;
+
   constructor(ctx: PageContext<Record<string, never>>) {
     super(ctx);
     const asHeaderCtx = ctx as unknown as PageContext<HeaderChromeProps>;
@@ -48,6 +60,9 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
     this.overlay = new JarvisOverlayPage(ctx);
     this.orb = new JarvisOrbPage(ctx);
     this.panels = new JarvisPanelLayerPage(ctx);
+    this.layout = new LayoutEnginePage(
+      ctx as unknown as PageContext<LayoutEngineProps>,
+    );
   }
 
   /** Every element carrying `data-jarvis-driven` in the mounted shell — the

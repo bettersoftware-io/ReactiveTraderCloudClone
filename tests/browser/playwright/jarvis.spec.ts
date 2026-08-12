@@ -35,6 +35,12 @@ test.describe("Jarvis assistant", () => {
     await jarvis.expectPanelSurvivesOverlayCloseAndRestylesToHeatmap(ctx);
   });
 
+  test("docks a panel, survives reload docked and live, then unpins back to floating", async ({
+    ctx,
+  }) => {
+    await jarvis.expectDockedPanelSurvivesReload(ctx);
+  });
+
   test("flagship ride: narrator flare -> setupWorkspace drive batch assembles the vol workspace, cooldown holds", async ({
     ctx,
   }) => {

@@ -127,3 +127,27 @@
   cursor: not-allowed;
   opacity: 0.35;
 }
+/* PrefAction's button — a bordered, transparent-fill action button (as
+   opposed to .sw's switch and .segButton's segmented-group member), for a
+   row that fires an intent instead of reflecting stored state. */
+.actionButton {
+  flex: none;
+  padding: 7px 16px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.actionButton:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}

@@ -61,7 +61,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     expect(cafSpy).toHaveBeenCalledWith(42);
   });
 
-  it("draws using CSS-var fallbacks when custom properties are not set", () => {
+  it("draws from the token store without any painted custom properties", () => {
     const onDone = vi.fn();
     expect(() => {
       render(() => {
@@ -410,6 +410,25 @@ function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
         },
         setLevel: vi.fn(),
         cycle: vi.fn(),
+      };
+    },
+    useThemePreference: () => {
+      return {
+        mode: () => {
+          return "dark" as const;
+        },
+        modePreference: () => {
+          return "dark" as const;
+        },
+        cycle: vi.fn(),
+      };
+    },
+    useThemeSkinPreference: () => {
+      return {
+        skin: () => {
+          return "holo" as const;
+        },
+        setSkin: vi.fn(),
       };
     },
     ...partialHooks,
