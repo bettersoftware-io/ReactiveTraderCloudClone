@@ -6,6 +6,7 @@ import type {
   ActivityEntry,
   AdminJarvisUsagePayload,
   AppCommands,
+  DockLayoutStore,
   JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
@@ -67,6 +68,7 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -87,6 +89,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -235,6 +238,11 @@ interface UseAmbientStyleResult {
 interface UseChartSubstrateResult {
   substrate: Accessor<ChartSubstrate>;
   setSubstrate: (substrate: ChartSubstrate) => void;
+}
+
+interface UseLayoutEngineResult {
+  engine: Accessor<LayoutEngine>;
+  setEngine: (engine: LayoutEngine) => void;
 }
 
 interface UsePowerSaverResult {
@@ -396,6 +404,13 @@ export interface ViewModel {
   /** Global chart-rendering-substrate preference (dom | canvas) — current
    * substrate plus the write intent. */
   useChartSubstrate: () => UseChartSubstrateResult;
+  /** Global workspace layout-engine preference (inhouse | dockview) — current
+   * engine plus the write intent. */
+  useLayoutEngine: () => UseLayoutEngineResult;
+  /** Injected per-tab dock-layout blob store for the Dockview engine — plain
+   * passthrough, no stream (the store itself isn't a stream; it's a
+   * load/save pair the engine calls at mount/onLayoutChange). */
+  useDockLayoutStore: () => DockLayoutStore;
   /** Global power-saver master override — 3-state level (off/calm/freeze)
    * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
@@ -660,6 +675,15 @@ export function createViewModel(
 
   function setChartSubstrate(substrate: ChartSubstrate): void {
     presenters.chartSubstrate.setSubstrate(substrate);
+  }
+
+  const layoutEngineState = state(
+    presenters.layoutEngine.engine$,
+    DEFAULT_LAYOUT_ENGINE,
+  );
+
+  function setLayoutEngine(engine: LayoutEngine): void {
+    presenters.layoutEngine.setEngine(engine);
   }
 
   const animatedBgState = state(presenters.animatedBackground.enabled$, false);
@@ -1187,6 +1211,15 @@ export function createViewModel(
         substrate: toSignal(chartSubstrateState),
         setSubstrate: setChartSubstrate,
       };
+    },
+    useLayoutEngine: () => {
+      return {
+        engine: toSignal(layoutEngineState),
+        setEngine: setLayoutEngine,
+      };
+    },
+    useDockLayoutStore: () => {
+      return presenters.dockLayoutStore;
     },
     useAnimatedBackground: () => {
       const enabled = toSignal(animatedBgState);

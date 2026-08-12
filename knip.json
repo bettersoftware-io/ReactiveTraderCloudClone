@@ -52,6 +52,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/layout-dockview": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/solid-bindings": {
       "entry": "src/index.ts",
       "project": "src/**/*.{ts,tsx}"

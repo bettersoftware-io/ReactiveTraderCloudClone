@@ -10,6 +10,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -29,6 +30,7 @@ import {
   JARVIS_EFFORT_STORAGE_KEY,
   JARVIS_NARRATOR_STORAGE_KEY,
   JARVIS_SKIN_STORAGE_KEY,
+  LAYOUT_ENGINE_STORAGE_KEY,
   LOGIN_WAIT_DELAY_STORAGE_KEY,
   LOGIN_WAIT_STYLE_STORAGE_KEY,
   LOGIN_WAIT_VARIANT_STORAGE_KEY,
@@ -133,6 +135,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
           WORKSPACE_LAYOUT_STORAGE_KEY,
           seed.workspaceLayoutSeed,
         );
+      }
+
+      if (seed.layoutEngine) {
+        localStorage.setItem(LAYOUT_ENGINE_STORAGE_KEY, seed.layoutEngine);
       }
 
       if (seed.jarvisSkin) {
@@ -257,6 +263,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY)).toBeNull();
   });
 
+  it("falls back to defaults for an invalid stored layoutEngine", async () => {
+    localStorage.setItem(LAYOUT_ENGINE_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.layoutEngine$())).toBe(
+      DEFAULT_LAYOUT_ENGINE,
+    );
+  });
+
   it("falls back to defaults for an invalid stored jarvisSkin", async () => {
     localStorage.setItem(JARVIS_SKIN_STORAGE_KEY, "nonsense");
     const port = new LocalStoragePreferencesAdapter();
@@ -304,6 +318,7 @@ function clearStorage(): void {
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
   localStorage.removeItem(CHART_SUBSTRATE_STORAGE_KEY);
   localStorage.removeItem(WORKSPACE_LAYOUT_STORAGE_KEY);
+  localStorage.removeItem(LAYOUT_ENGINE_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
   localStorage.removeItem(JARVIS_SKIN_STORAGE_KEY);
   localStorage.removeItem(JARVIS_BRAIN_STORAGE_KEY);

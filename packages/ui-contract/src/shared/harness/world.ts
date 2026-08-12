@@ -41,6 +41,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -61,6 +62,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
   type LoginWaitStyle,
@@ -383,6 +385,9 @@ export interface World {
   /** Reactive chart-substrate preference backing useChartSubstrate (drives
    * PreferencesModal's "Chart renderer" segment). */
   readonly chartSubstrate: BehaviorSubject<ChartSubstrate>;
+  /** Reactive layout-engine preference backing useLayoutEngine (drives
+   * PreferencesModal's "Layout engine" segment). */
+  readonly layoutEngine: BehaviorSubject<LayoutEngine>;
   /** Reactive Jarvis skin preference backing the REAL JarvisMachine's skin$ dep
    * (drives JarvisOrb/JarvisOverlay's `data-skin`) — mirrors themeSkin above.
    * Defaults to DEFAULT_JARVIS_SKIN ("singularity"), matching the app default. */
@@ -614,6 +619,8 @@ export function createWorld(
   jarvisNarratorSeed?: JarvisNarratorPreference,
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
   chartSubstrateSeed?: ChartSubstrate,
+  /** Seeds `World.layoutEngine`; defaults to DEFAULT_LAYOUT_ENGINE ("inhouse"). */
+  layoutEngineSeed?: LayoutEngine,
   /** Seeds `World.workspaceLayout` (GenUI L3) — the serialized
    * `workspaceLayoutV1` string a previous session would have stored.
    * Defaults to `null` (a fresh install: default trees, nothing docked). A
@@ -804,6 +811,10 @@ export function createWorld(
 
   const workspaceLayout = new BehaviorSubject<string | null>(
     workspaceLayoutSeed ?? null,
+  );
+
+  const layoutEngine = new BehaviorSubject<LayoutEngine>(
+    layoutEngineSeed ?? DEFAULT_LAYOUT_ENGINE,
   );
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
@@ -1017,6 +1028,7 @@ export function createWorld(
     themeSkin,
     ambientStyle,
     chartSubstrate,
+    layoutEngine,
     jarvisSkin,
     jarvis,
     panelStreamDeps,

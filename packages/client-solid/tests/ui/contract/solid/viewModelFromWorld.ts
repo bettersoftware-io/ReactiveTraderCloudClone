@@ -53,6 +53,7 @@ import {
   createTileExecutionMachine,
   createWorkspaceNavMachine,
   createWorkspacePersistenceWriter,
+  InMemoryDockLayoutStore,
   JarvisPanelsPresenter,
   parseWorkspaceLayout,
   STATIC_WORKSPACE_PANEL_IDS,
@@ -75,6 +76,7 @@ import type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   MarketDataPort,
@@ -846,6 +848,12 @@ function resetWorkspaceLayoutFor(world: World): void {
 export function solidViewModel(world: World): ViewModel {
   const s = world.sources;
 
+  // Dock-layout store: world-scoped (not module-level), so each World built
+  // by a spec gets its own fresh store — mirrors the real
+  // Presenters.dockLayoutStore's per-app-instance lifetime, and the react
+  // driver's own world-scoped dockStore.
+  const dockStore = new InMemoryDockLayoutStore();
+
   // Stable per-mount signals backing the two hand-rolled submission fakes
   // below (NewRfqPanel / TradeTicket haven't grown a real app-layer machine
   // yet — mirrors the react driver's useState-backed fakes). `useRfqSubmission`
@@ -1174,6 +1182,24 @@ export function solidViewModel(world: World): ViewModel {
           world.chartSubstrate.next(next);
         },
       };
+    },
+    // Layout engine: reactive view backed by the World subject (mirrors
+    // useChartSubstrate above); setEngine pushes back so a click through the
+    // seam (PreferencesModal's "Layout engine" segment) flips the value.
+    // Mirrors the react driver's useLayoutEngine exactly.
+    useLayoutEngine: () => {
+      return {
+        engine: wrapSubject(world.layoutEngine),
+        setEngine: (next: LayoutEngine) => {
+          world.layoutEngine.next(next);
+        },
+      };
+    },
+    // Dock-layout store: plain passthrough (no rx) — the store itself is not
+    // a stream, so no wrapSubject here, unlike every preference hook above.
+    // Mirrors the react driver's useDockLayoutStore exactly.
+    useDockLayoutStore: () => {
+      return dockStore;
     },
     // Global force-boot-animation preference: reactive flag backed by the World
     // subject; setEnabled/toggle push back so a click through the seam flips

@@ -252,6 +252,21 @@ describe("PreferencesModal", () => {
     expect(page.chartSubstrateActive("dom")).toBe(false);
   });
 
+  it("shows the REAL Layout engine segment reflecting the active option, and writes through the seam on select", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      layoutEngine: "inhouse",
+    });
+
+    expect(page.layoutEngineActive("inhouse")).toBe(true);
+    expect(page.layoutEngineActive("dockview")).toBe(false);
+
+    await page.selectLayoutEngine("dockview");
+
+    expect(page.layoutEngineActive("dockview")).toBe(true);
+    expect(page.layoutEngineActive("inhouse")).toBe(false);
+  });
+
   it("renders the Jarvis brain segment with all four options", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },

@@ -18,6 +18,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -31,6 +32,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type LayoutEngine,
   type LoginWaitDelay,
   type LoginWaitStyle,
   type LoginWaitVariant,
@@ -49,6 +51,7 @@ export interface PreferencesSeed {
   chartSubstrate?: ChartSubstrate;
   /** Seeds the first OPTIONAL preference. Default `null` (no layout saved). */
   workspaceLayoutSeed?: string | null;
+  layoutEngine?: LayoutEngine;
   powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
@@ -83,6 +86,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly chartSubstrateSubject: BehaviorSubject<ChartSubstrate>;
 
   private readonly workspaceLayoutSubject: BehaviorSubject<string | null>;
+
+  private readonly layoutEngineSubject: BehaviorSubject<LayoutEngine>;
 
   private readonly jarvisSkinSubject: BehaviorSubject<JarvisSkin>;
 
@@ -131,6 +136,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.workspaceLayoutSubject = new BehaviorSubject<string | null>(
       seed.workspaceLayoutSeed ?? null,
+    );
+    this.layoutEngineSubject = new BehaviorSubject<LayoutEngine>(
+      seed.layoutEngine ?? DEFAULT_LAYOUT_ENGINE,
     );
     this.jarvisSkinSubject = new BehaviorSubject<JarvisSkin>(
       seed.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
@@ -227,6 +235,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setWorkspaceLayout(value: string | null): void {
     this.workspaceLayoutSubject.next(value);
+  }
+
+  layoutEngine$(): Observable<LayoutEngine> {
+    return this.layoutEngineSubject.pipe(distinctUntilChanged());
+  }
+
+  setLayoutEngine(engine: LayoutEngine): void {
+    this.layoutEngineSubject.next(engine);
   }
 
   jarvisSkin$(): Observable<JarvisSkin> {

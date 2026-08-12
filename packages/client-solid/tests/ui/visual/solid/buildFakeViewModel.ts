@@ -6,6 +6,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -79,6 +80,7 @@ import type {
 import {
   createDefaultLayoutPort,
   createLayoutMachine,
+  InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
@@ -94,6 +96,13 @@ function at<T>(value: T): () => T {
     return value;
   };
 }
+
+// No visual fixture exercises the dockview engine yet (useLayoutEngine below
+// is pinned to "inhouse"), so this store is never actually read/written by a
+// golden scenario — a single module-level instance is fine (no per-call
+// isolation needed, unlike the contract tier's per-World store). Mirrors the
+// react driver's buildFakeViewModel.ts dockStore exactly.
+const dockStore = new InMemoryDockLayoutStore();
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
 // was retired with the login/auth workstream; this local stand-in keeps the
@@ -445,6 +454,16 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // buildFakeViewModel.ts useChartSubstrate exactly.
     useChartSubstrate: () => {
       return { substrate: at(DEFAULT_CHART_SUBSTRATE), setSubstrate: noop };
+    },
+    // No visual fixture exercises the dockview engine yet — a fixed
+    // "inhouse" default keeps every existing golden's layout unchanged.
+    // Mirrors the react driver's buildFakeViewModel.ts useLayoutEngine
+    // exactly.
+    useLayoutEngine: () => {
+      return { engine: at(DEFAULT_LAYOUT_ENGINE), setEngine: noop };
+    },
+    useDockLayoutStore: () => {
+      return dockStore;
     },
     useDepth: (symbol: string) => {
       return at(data.equityDepth?.[symbol] ?? null);

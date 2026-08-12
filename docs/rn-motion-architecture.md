@@ -9,7 +9,7 @@ doctrine (only `transform`/`opacity` composite, etc.); [rn-open-items.md](rn-ope
 is the live defect ledger; [adr/ADR-005-ui-logic-placement.md](adr/ADR-005-ui-logic-placement.md)
 decides where *logic* lives, this page decides where *motion* lives.
 
-**Last updated: 2026-08-02**
+**Last updated: 2026-08-12**
 
 ---
 
@@ -58,7 +58,7 @@ Reanimated supplies **time on the UI thread**; Skia consumes it to **draw a
 frame**. Neither library is animating anything by itself — Skia has no
 animation primitives here, and Reanimated is not drawing.
 
-That seam is where this repo's worst bugs live (§4).
+That seam is where this repo's worst bugs live (§5).
 
 ### 2.2 Two consequences of Skia that keep catching people
 
@@ -79,7 +79,76 @@ with both web clients. `ringCircumference`/`ringDashOffset` live there and are
 consumed by the RN countdown ring, the RN lock ring and the web clients alike.
 See ADR-005.
 
-## 3. Motion is always gated
+## 3. What a worklet actually is
+
+Reanimated's per-frame code runs off the main JS thread, and the mechanism is
+the **worklet**. It is not a React Native core concept: it comes from Software
+Mansion's [`react-native-worklets`](https://docs.swmansion.com/react-native-worklets/)
+(0.10.0 here), split out of Reanimated as its own package in Reanimated 4
+(we're on 4.5.0). Official docs:
+[react-native-worklets](https://docs.swmansion.com/react-native-worklets/) for
+the execution model,
+[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)
+for the animation APIs built on it.
+
+### 3.1 The execution model
+
+An RN app has one Hermes instance running the app bundle on the **JS thread**.
+The worklets runtime spins up a **second, small Hermes instance on the UI
+thread** (the "UI runtime"), so gesture/animation/drawing code can run
+synchronously with rendering instead of round-tripping the async bridge every
+frame. A worklet is a function the **Worklets Babel plugin** extracts at build
+time into a shippable package: its source as a string (recompiled by the UI
+runtime), plus a snapshot of every outer variable it references — **captured
+by value at module evaluation**. The `"worklet"` directive at the top of a
+function body is the marker; the inline arguments of `useAnimatedStyle`,
+`useDerivedValue`, `useFrameCallback` and gesture callbacks are workletized
+automatically without it.
+
+Because the closure is a copy, the two sides communicate only through explicit
+machinery:
+
+| Mechanism | Direction | Example here |
+|---|---|---|
+| `useSharedValue` | mutable cell visible on **both** sides (`.value`) | `framesSv`/`windowStartSv` in `useShellTelemetry` |
+| `runOnJS(fn)(args)` | UI runtime → JS thread (async) | `runOnJS(publishFps)(frames, elapsed)` — `setState` must happen JS-side |
+| `runOnUI` | JS thread → UI runtime | imperative kick-offs |
+
+### 3.2 The three rules that follow (each proven on device)
+
+1. **Workletization is transitive.** A worklet may only call functions that
+   are themselves worklets; anything else is a "Remote Function" stub on the
+   UI runtime and the call **throws on-device**. This is why the boot-scene
+   geometry modules are wall-to-wall directives.
+2. **Closure capture is by value, in file order.** A worklet referencing a
+   module-level `const` or function declared *later in the same file* captures
+   `undefined` — silently. Five boot scenes shipped dead this way; the full
+   investigation is
+   [research/2026-07-27-rn-boot-scenes-blank-on-device.md](research/2026-07-27-rn-boot-scenes-blank-on-device.md).
+3. **jest is structurally blind to both.** `babel.config.js` disables the
+   worklet plugins under `api.env("test")` and `jest.setup.ts` mocks
+   Reanimated wholesale, so in tests every worklet is an ordinary function in
+   the ordinary runtime. The witnesses are `pnpm check:worklet-order` (gates
+   all three classes: late function, late const, missing directive) and the
+   simulator.
+
+### 3.3 Where worklets live in this repo
+
+289 `"worklet"` directives across 27 files as of 2026-08-12 — the boot scenes
+and their geometry modules, the HUD (`useShellTelemetry`), and the Reanimated
+motion listed in §2. Two of those files are **not in the RN package**:
+`@rtc/motion-core`'s `countdownRing.ts` and `project3d.ts` mark their pure
+functions with `"worklet"` so the RN client can call them from the UI runtime,
+while web consumers are unaffected — off-RN the directive is an inert string
+literal, since no worklet plugin runs there. That is the pattern for sharing
+per-frame math with the web clients without forking it.
+
+It is also the codebase's **only** directive prologue: there is no
+`"use client"`/`"use server"` (no RSC), no `"use dom"` (no Expo DOM
+components), no React Compiler opt-outs, and every `'use strict'` in the tree
+sits in generated coverage-report artifacts, not source.
+
+## 4. Motion is always gated
 
 Every animation in the RN client is gated by `useShellMotionEnabled()` (or
 `useBootMotionEnabled()` for boot), which resolves OS reduced-motion **and** the
@@ -89,20 +158,27 @@ where the end-state carries no information, in which case render nothing:
 smear rather than a hint, while the ACCEPTED stamp holds its landed state
 because the word itself is the information.
 
-## 4. Case study: every boot scene was frozen at t=0
+The one deliberate exception is **telemetry, which is not motion**: the HUD
+FPS meter (`useShellTelemetry`) keeps its frame callback running under
+reduced-motion and Freeze alike — it is diagnostic instrumentation, most
+valuable exactly when the device is struggling. Same doctrine as the web
+clients' `useLiveMetrics` freeze exemption; see
+[power-saver-mode.md](power-saver-mode.md).
+
+## 5. Case study: every boot scene was frozen at t=0
 
 The most instructive bug this codebase has produced, because **three separate
 layers of tooling all reported success** while the feature was completely
 broken, and because React Compiler — which exists to make exactly this class go
 away — could not help.
 
-### 4.1 The symptom
+### 5.1 The symptom
 
 Every boot variant drew its first frame forever. The progress bar above it
 advanced normally, so the screen looked alive; the reported experience was *"the
 animation is stuck, flicking back and forth between the first two frames."*
 
-### 4.2 The cause
+### 5.2 The cause
 
 `BootCanvas` drove its clock like this:
 
@@ -129,9 +205,9 @@ tick, so `elapsedSec` was reset continuously and never escaped the first frame
 or two.
 
 The fix is the `useRef` + `current === null` build-once idiom (ADR-003 bans
-`useCallback`), plus an explicit `"worklet"` directive — see §4.5.
+`useCallback`), plus an explicit `"worklet"` directive — see §5.5.
 
-### 4.3 Why React Compiler did not save us
+### 5.3 Why React Compiler did not save us
 
 This is the part worth internalising. React Compiler memoises *values a
 component produces*. It does not, and cannot, know that **a third-party hook has
@@ -145,7 +221,7 @@ own values; it does not remove identity as an API surface of other people's
 hooks.** Any hook that puts a callback in a dependency array has made identity
 part of its contract, and nothing in the toolchain will tell you.
 
-### 4.4 Why every test tier missed it
+### 5.4 Why every test tier missed it
 
 | tier | why it passed |
 |---|---|
@@ -156,7 +232,7 @@ part of its contract, and nothing in the toolchain will tell you.
 Three green tiers, one dead feature. **A pinned clock and a stubbed clock cannot
 tell you a real clock is broken** — only a device can.
 
-### 4.5 The second trap, inside the fix
+### 5.5 The second trap, inside the fix
 
 Hoisting the callback out of the inline position broke it a different way:
 
@@ -168,7 +244,7 @@ that syntactic shape, so it stayed a plain JS function and the UI runtime threw
 on the first frame. **Any function that leaves an auto-workletized position must
 be given `"worklet"` explicitly.**
 
-### 4.6 How the measurement kept lying
+### 5.6 How the measurement kept lying
 
 Three separate measurements said the boot was fine before one said otherwise.
 Each failure is reusable:
@@ -186,16 +262,19 @@ Each failure is reusable:
 What finally worked was the cheapest thing available: three frames a second
 apart, side by side, reading `YAW 0.0° / 0.0° / 0.0°`.
 
-### 4.7 The same bug, still open
+### 5.7 The same bug's second appearance — fixed by resync, not hoisting
 
 `useShellTelemetry` passes an inline arrow to `useFrameCallback` too, so its
-window start is measured against a clock that keeps resetting — the status strip
-has been reporting **302, 485 and 1264 FPS**. Tracked as **T30** in
-[rn-open-items.md](rn-open-items.md); the obvious repair trips
-`react-hooks/immutability`, which tolerates shared-value writes in an inline
-frame callback but not in a hoisted one.
+window start was measured against a clock that kept resetting — the status
+strip reported **302, 485 and 1264 FPS** on device. §5.2's repair (hoisting
+the callback) trips `react-hooks/immutability` here — the rule tolerates
+shared-value writes in an inline frame callback but not in a hoisted one — so
+the fix (**T30**, resolved 2026-08-05 in [rn-open-items.md](rn-open-items.md))
+instead **detects the restart** (`frame.timeSinceFirstFrame <
+windowStartSv.value`) and resyncs, discarding the frames counted against the
+old clock. One dropped window is invisible; a wrong number is not.
 
-### 4.8 Checklist
+### 5.8 Checklist
 
 Before merging anything that animates in the RN client:
 

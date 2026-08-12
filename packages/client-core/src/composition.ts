@@ -28,6 +28,8 @@ import {
 import type { JarvisHistoryEntry } from "@rtc/shared";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
+import type { DockLayoutStore } from "#/adapters/dockLayoutStore";
+import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
@@ -93,6 +95,7 @@ import {
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
   LatencyPresenter,
+  LayoutEnginePresenter,
   type LayoutIntents,
   LoginWaitPreferencesPresenter,
   type Machine,
@@ -162,6 +165,12 @@ export interface Presenters {
   animatedBackground: AnimatedBackgroundPresenter;
   ambientStyle: AmbientStylePresenter;
   chartSubstrate: ChartSubstratePresenter;
+  layoutEngine: LayoutEnginePresenter;
+  /** Per-tab persistence for the Dockview engine's serialized layout blob —
+   * `ports.dockLayoutStore ?? new InMemoryDockLayoutStore()`. Consumed
+   * through `useDockLayoutStore` as a plain passthrough (no rx: the store
+   * itself is not a stream, just load/save). */
+  dockLayoutStore: DockLayoutStore;
   forceBootAnimation: ForceBootAnimationPresenter;
   powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
@@ -1177,6 +1186,8 @@ export function createApp(ports: AppPorts): App {
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     ambientStyle: new AmbientStylePresenter(ports.preferences),
     chartSubstrate: new ChartSubstratePresenter(ports.preferences),
+    layoutEngine: new LayoutEnginePresenter(ports.preferences),
+    dockLayoutStore: ports.dockLayoutStore ?? new InMemoryDockLayoutStore(),
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),

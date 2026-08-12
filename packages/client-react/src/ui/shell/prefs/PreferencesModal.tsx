@@ -7,6 +7,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   PowerSaverLevel,
@@ -32,22 +33,24 @@ import styles from "./PreferencesModal.module.css";
  * of toggle + segment rows.
  *
  * The columns are loosely balanced by ROW COUNT — column 1 (DISPLAY/MOTION)
- * holds 14 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 17
- * (measured directly against this file's rendered rows, counting the new
- * "Reset workspace layout" row below; the un-counted Brain-row gate hint
- * is conditional decoration, not a row). MOTION exists because DISPLAY had
- * grown to hold every movement-related control and left the grid lopsided
- * 15/9 — splitting "how it looks" from "how it moves" rebalanced it at the
- * time. The JARVIS section (added later) and this Reset row both landed at
- * the foot/tail of column 2 without reopening that original rebalance, so
- * the two columns have drifted apart again since; treat the counts above as
- * a snapshot, not an invariant to re-defend on every future row.
+ * holds 15 rows, column 2 (TRADING/NOTIFICATIONS/DATA & PRIVACY/JARVIS) 17
+ * (re-measured directly against this file's rendered rows after two rounds
+ * landed concurrently: the "Layout engine" segment in column 1's MOTION and
+ * the "Reset workspace layout" action in column 2's DATA & PRIVACY; the
+ * un-counted Brain-row gate hint is conditional decoration, not a row).
+ * MOTION exists because DISPLAY had grown to hold every movement-related
+ * control and left the grid lopsided 15/9 — splitting "how it looks" from
+ * "how it moves" rebalanced it at the time. The JARVIS section (added later)
+ * and the Reset row both landed at the foot/tail of column 2 without
+ * reopening that original rebalance, so the two columns have drifted apart
+ * again since; treat the counts above as a snapshot, not an invariant to
+ * re-defend on every future row.
  *
- * ELEVEN rows are wired to real ports — Animated background
+ * TWELVE rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
- * (`useChartSubstrate`), Always play boot animation
- * (`useForceBootAnimation`), the two login-wait rows
+ * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Always play boot
+ * animation (`useForceBootAnimation`), the two login-wait rows
  * (`useLoginWaitPreferences`), the three Jarvis rows (`useJarvisPreferences`
  * for the stored brain/effort/narrator, `useJarvis` read-only for which
  * brains the server is currently offering), and Reset workspace layout
@@ -65,6 +68,7 @@ export function PreferencesModal({
     usePowerSaver,
     useAmbientStyle,
     useChartSubstrate,
+    useLayoutEngine,
     useForceBootAnimation,
     useLoginWaitPreferences,
     useJarvis,
@@ -82,6 +86,9 @@ export function PreferencesModal({
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
   const { substrate: chartSubstrate, setSubstrate: setChartSubstrate } =
     useChartSubstrate();
+
+  const { engine: layoutEngine, setEngine: setLayoutEngine } =
+    useLayoutEngine();
 
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
@@ -237,6 +244,16 @@ export function PreferencesModal({
                   setChartSubstrate(value as ChartSubstrate);
                 }}
                 testid="pref-segment-chartSubstrate"
+              />
+              <PrefSegment
+                label="Layout engine"
+                description="In-house split engine, or Dockview docking — drag tabs to re-arrange; layout persists per workspace tab."
+                options={LAYOUT_ENGINE_OPTIONS}
+                value={layoutEngine}
+                onChange={(value: string) => {
+                  setLayoutEngine(value as LayoutEngine);
+                }}
+                testid="pref-segment-layoutEngine"
               />
               <ToggleGroup
                 defs={MOTION_TOGGLES}
@@ -468,6 +485,13 @@ const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
 const CHART_SUBSTRATE_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "dom", label: "DOM" },
   { value: "canvas", label: "Canvas" },
+];
+
+// The options for the real "Layout engine" segment row, wired to
+// useLayoutEngine (not decorative — see PrefSegment call site above).
+const LAYOUT_ENGINE_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "inhouse", label: "In-house" },
+  { value: "dockview", label: "Dockview" },
 ];
 
 // Options for the two real login-wait rows (useLoginWaitPreferences). "Auto"

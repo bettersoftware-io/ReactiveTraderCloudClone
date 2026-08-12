@@ -335,6 +335,23 @@ test("setWorkspaceLayout(null) removes the stored key rather than writing a lite
   expect(store.has("rtc-workspace-layout-v1")).toBe(false);
 });
 
+test("hydrates a stored, non-default layoutEngine after construction", async () => {
+  store.set("rtc-layout-engine", "dockview");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.layoutEngine$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("dockview");
+});
+
+test("setLayoutEngine writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setLayoutEngine("dockview");
+  const next = await firstValueFrom(prefs.layoutEngine$());
+  expect(next).toBe("dockview");
+  expect(store.get("rtc-layout-engine")).toBe("dockview");
+});
+
 test("emits the default jarvisSkin (singularity) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.jarvisSkin$());

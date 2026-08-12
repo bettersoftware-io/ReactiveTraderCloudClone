@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, Show, untrack } from "solid-js";
+import { createMemo, lazy, Show, Suspense, untrack } from "solid-js";
 
 import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -77,6 +77,15 @@ interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
 
+// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
+// serves ~100% of users — split it into its own chunk instead of shipping
+// it to everyone.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 /** Owns the active tab's `useLayout(tab)` machine and nests BOTH domain
  * view-context seams (`FxViewProvider` → `CreditViewProvider`), mirroring the
  * react `App.tsx`'s single `WorkspaceEngine` that serves all tabs from one
@@ -92,7 +101,9 @@ interface WorkspaceEngineProps {
  * resetting — a driven "layout" DriveCommand's target stays the same
  * instance the mounted view reads from either way. */
 function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
-  const { useLayout, useJarvisPanels } = useViewModel();
+  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
+    useViewModel();
+
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
     // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
     props.tab,
@@ -208,20 +219,45 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     };
   });
 
+  const { engine } = useLayoutEngine();
+  const dockLayoutStore = useDockLayoutStore();
+
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        <InhouseLayoutEngine
-          state={state()}
-          registry={registry()}
-          specs={specs()}
-          headRegistry={headRegistry()}
-          onMaximize={maximize}
-          onRestore={restore}
-          onCollapse={collapse}
-          onExpand={expand}
-          onResize={resize}
-        />
+        <Show
+          when={engine() === "dockview"}
+          fallback={
+            <InhouseLayoutEngine
+              state={state()}
+              registry={registry()}
+              specs={specs()}
+              headRegistry={headRegistry()}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
+              onResize={resize}
+            />
+          }
+        >
+          <Suspense fallback={null}>
+            {/* Same merged registries as the in-house branch: dockview looks
+                a docked panel's body/head/spec up by id exactly as the
+                in-house engine does. Its SEED tree is still the static
+                default (createDefaultLayoutPort), so a pinned panel only
+                surfaces here once its id is in the persisted blob — docking
+                a Jarvis panel INTO dockview is not wired this round. */}
+            <DockviewLayoutEngine
+              tab={props.tab}
+              registry={registry()}
+              specs={specs()}
+              headRegistry={headRegistry()}
+              store={dockLayoutStore}
+              maximized={state().maximized}
+            />
+          </Suspense>
+        </Show>
       </CreditViewProvider>
     </FxViewProvider>
   );

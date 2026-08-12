@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { lazy, type ReactElement, Suspense } from "react";
 
 import { PANEL_SPECS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
@@ -67,8 +67,18 @@ interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
 
+// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
+// serves ~100% of users — split it into its own chunk instead of shipping
+// it to everyone.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout, useJarvisPanels } = useViewModel();
+  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
+    useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged
@@ -82,20 +92,41 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
     ...appHeadRegistry,
     ...dockedHeadsFor(dockedPanels, undockPanel, dismissPanel),
   };
+  const { engine } = useLayoutEngine();
+  const dockLayoutStore = useDockLayoutStore();
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        <InhouseLayoutEngine
-          state={state}
-          registry={registry}
-          specs={specs}
-          headRegistry={headRegistry}
-          onMaximize={maximize}
-          onRestore={restore}
-          onCollapse={collapse}
-          onExpand={expand}
-          onResize={resize}
-        />
+        {engine === "dockview" ? (
+          <Suspense fallback={null}>
+            {/* Same merged registries as the in-house branch: dockview looks
+                a docked panel's body/head/spec up by id exactly as the
+                in-house engine does. Its SEED tree is still the static
+                default (createDefaultLayoutPort), so a pinned panel only
+                surfaces here once its id is in the persisted blob — docking
+                a Jarvis panel INTO dockview is not wired this round. */}
+            <DockviewLayoutEngine
+              tab={tab}
+              registry={registry}
+              specs={specs}
+              headRegistry={headRegistry}
+              store={dockLayoutStore}
+              maximized={state.maximized}
+            />
+          </Suspense>
+        ) : (
+          <InhouseLayoutEngine
+            state={state}
+            registry={registry}
+            specs={specs}
+            headRegistry={headRegistry}
+            onMaximize={maximize}
+            onRestore={restore}
+            onCollapse={collapse}
+            onExpand={expand}
+            onResize={resize}
+          />
+        )}
       </CreditViewProvider>
     </FxViewProvider>
   );

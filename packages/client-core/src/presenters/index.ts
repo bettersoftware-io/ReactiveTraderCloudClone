@@ -36,6 +36,7 @@ export * from "#/presenters/JarvisPreferencesPresenter";
 export * from "#/presenters/JarvisUsagePresenter";
 export * from "#/presenters/jarvisGuideCatalog";
 export * from "#/presenters/LatencyPresenter";
+export * from "#/presenters/LayoutEnginePresenter";
 export * from "#/presenters/LayoutMachine";
 export * from "#/presenters/LoginWaitPreferencesPresenter";
 export * from "#/presenters/machine";

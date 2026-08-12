@@ -3,8 +3,15 @@
 **Status:** Superseded in part (2026-08-11). This ADR's two goals split: the
 **decoupling** goal shipped, but on a different shape than the one designed
 here — an **in-house split-tree engine** (`LayoutMachine` +
-`InhouseLayoutEngine`), not a `LayoutPort` in front of a third-party library.
-See [What actually shipped](#what-actually-shipped) below for the honest
+`InhouseLayoutEngine`) is the default and the system of record, not a
+`LayoutPort` in front of a third-party library. Dockview *did* subsequently
+ship (2026-08-11, PR #534) — as a **switchable second engine** behind the
+`LayoutEngine` preference (`"inhouse" | "dockview"`, default in-house),
+packaged as `@rtc/layout-dockview` with a per-client bridge — but again
+without the sketched `LayoutPort`: the engine branch lives inside
+`WorkspaceEngine`, and the thin-port refactor stays deferred. See
+[What actually shipped](#what-actually-shipped) and
+[As implemented (2026-08)](#as-implemented-2026-08) below for the honest
 account, and [Superseded / still-true index](#superseded--still-true-index)
 for exactly which parts of the original text below still hold.
 
@@ -20,8 +27,9 @@ for exactly which parts of the original text below still hold.
 | Context (Golden Layout / Dockview framing, `Workspace.tsx`) | **Superseded** — `Workspace.tsx` was deleted; see [What actually shipped](#what-actually-shipped) |
 | Decision (`LayoutPort` behind app vocabulary) | **Superseded** — no such port exists; the real seam is the machine + engine-view pair, see below |
 | "The honest tension" / "Don't Over-Abstract" reasoning | **Still true**, and is exactly why no port got built — see below |
-| Sketch of the `LayoutPort` contract | **Never built** — kept verbatim for the historical record |
+| Sketch of the `LayoutPort` contract | **Never built** — kept verbatim for the historical record; Dockview shipped *without* it, see [As implemented](#as-implemented-2026-08) |
 | "The portability trap to avoid" | **Still true advice**, now scoped to a *hypothetical future* port rather than the shipped code |
+| Dockview as "the chosen first adapter" | **Shipped, but re-framed** — a switchable *second* engine behind the `LayoutEngine` preference (default in-house), not a replacement and not behind a `LayoutPort`; see [Dockview: re-costed](#dockview-re-costed-as-an-alternative-engine-2026-08-11) then [As implemented](#as-implemented-2026-08) |
 | Solution landscape / research note | **Still true** — the survey is reference material for any future engine swap, in-house or not |
 | The custom free-floating engine (future adapter) | **Still future**, unchanged — now targets the machine seam instead of `LayoutPort` |
 | Replaceability matrix row | **Rewritten** — see below |
@@ -213,11 +221,14 @@ Dockview," and it is the same reasoning behind rejecting a premature
 
 ## The real swap seam (what shipped instead)
 
-No `LayoutPort` interface exists, and none is planned unless a second engine
-actually gets built (see [Dockview: re-costed as an alternative
-engine](#dockview-re-costed-as-an-alternative-engine-2026-08-11) below). The
-seam that makes a swap tractable today is smaller and more concrete than the
-port sketched above:
+No `LayoutPort` interface exists — not even now that a second engine has
+actually been built. Dockview shipped later the same day (see
+[Dockview: re-costed](#dockview-re-costed-as-an-alternative-engine-2026-08-11)
+for the costing that preceded it and [As implemented](#as-implemented-2026-08)
+for what landed), and it plugged into *this* seam rather than motivating a
+port: the engine choice is a branch inside `WorkspaceEngine`, reading the
+same `LayoutState`/registries. The seam that makes a swap tractable is
+smaller and more concrete than the port sketched above:
 
 - **The machine is engine-agnostic already.** `LayoutMachine.ts` and
   `JarvisPanelsMachine.ts` (`packages/client-core`) know nothing about DOM,
@@ -226,10 +237,14 @@ port sketched above:
   than by wrapping a third-party engine.
 - **The engine-view is the one file a swap touches.** `InhouseLayoutEngine.tsx`
   (+ CSS module) per client is where a genuinely different engine — Dockview,
-  Golden Layout, or the custom free-float experiment — would plug in, reading
+  Golden Layout, or the custom free-float experiment — plugs in, reading
   the same `LayoutState`/registries the current renderer does. This is a
   *smaller* footprint than the original port design (one file vs. an adapter
   package per engine), because there is no port interface to also satisfy.
+  Dockview is the worked example: it added a sibling
+  `dockview/DockviewLayoutEngine.tsx` per client (plus the `@rtc/layout-dockview`
+  package that confines the library itself) and a preference-driven branch
+  between the two — no port, no adapter interface.
 - **The cost of an actual engine swap is therefore the honest cost of
   rewriting that one file per client** to a different rendering strategy,
   not "implement `LayoutPort`" — which is exactly why the
@@ -294,16 +309,89 @@ differentiators (user drag-rearrange, tabs, pop-out OS windows):
    `workspaceLayoutV1` opaque preference this round added (see
    [Persistence](#persistence-the-adrs-goal-a-different-mechanism) above).
 
-On top of the capability loss, a Dockview migration would fork the entire
+On top of the capability loss, a Dockview *migration* would fork the entire
 `app/*` visual golden family (panel geometry/chrome is engine-owned, so every
 workspace screenshot changes shape) — real cost, not free re-plumbing.
-**Dockview therefore stays a recorded *alternative engine*, not a
-prerequisite**: it remains the right first pick if a future round needs
-Dockview's actual differentiators (drag-rearrange, tabs, pop-out), at which
-point the honest cost is "reimplement these six capabilities on top of
-Dockview + regenerate `app/*` goldens" — not "add an adapter." The custom
-free-float engine below is unaffected by this finding; it was always
-scoped as a from-scratch build, not a Dockview alternative.
+**Dockview was therefore not adopted as a replacement**, and the in-house
+engine remains the default.
+
+**What happened next (same day).** A separate round took the other branch of
+this costing: rather than migrate, it shipped Dockview as a **switchable
+second engine** behind a `LayoutEngine` preference defaulting to
+`"inhouse"` — see [As implemented (2026-08)](#as-implemented-2026-08). That
+choice keeps every number above intact rather than contradicting them: no
+capability is lost (the six live on in the in-house engine, which every user
+still gets by default), and the `app/*` golden family never forked, because
+the dockview engine is shot by its own dedicated `shell/layout-dockview`
+scenario instead of re-shooting the workspace family. The six capabilities
+remain **unimplemented on Dockview**; opting into that engine trades them for
+Dockview's own differentiators (user drag-rearrange, tabs), which is exactly
+the trade the preference exists to let a user make. The custom free-float
+engine below is unaffected either way; it was always scoped as a from-scratch
+build, not a Dockview alternative.
+
+## As implemented (2026-08)
+
+Dockview shipped as a **switchable second engine** — but **behind the
+existing tree-shaped layout seam, not the sketched thin `LayoutPort`**, and
+**alongside** the in-house engine rather than replacing it. The port above
+stays a design target; building it now, with the engine choice expressible
+as a two-branch conditional, would be guessing at the shape a third engine
+(the future free-float one) actually needs. Concretely:
+
+- **A `LayoutEngine` preference** (`"inhouse" | "dockview"`,
+  `packages/domain/src/preferences/preferences.ts`) selects between the
+  in-house split-tree engine described in
+  [What actually shipped](#what-actually-shipped) and Dockview, branched in
+  `WorkspaceEngine` and surfaced as a "Layout engine" row in both clients'
+  preferences modal. Defaults to `"inhouse"`, so the shipped behaviour —
+  including the six capabilities counted in the
+  [re-costing](#dockview-re-costed-as-an-alternative-engine-2026-08-11) —
+  is unchanged unless a user opts in.
+- **Content/placement separation held**, exactly as designed above — panel
+  *content* is still addressed by stable id through the existing
+  `appPanelRegistry`/`appHeadRegistry`; the new `@rtc/layout-dockview`
+  package owns placement, chrome, drag, split, and float entirely
+  internally. A per-client `DockviewLayoutEngine.tsx` bridge portal-mounts
+  registry content into Dockview's panels so the `ViewModel`/`FxView`/
+  `CreditView` React/Solid contexts keep flowing through unchanged.
+- **Persistence stayed opaque**, per the ADR's design, but through a new
+  narrow port rather than the existing `PreferencesPort`: `DockLayoutStore`
+  (an optional `AppPorts` member) round-trips Dockview's serialized layout
+  blob through a `localStorage` adapter keyed `rtc-dock-layout-<tab>` per
+  client, with an in-memory default in composition. The app never parses
+  the blob — the same guarantee the ADR asked for, just not funnelled
+  through `PreferencesPort` itself.
+- **`dockview` (the supported vanilla-JS entry point that wraps the
+  internal `dockview-core`, per the package's own README) is confined to
+  `@rtc/layout-dockview`** by two dependency-cruiser rules
+  (`layout-dockview-stays-pure`, `dockview-only-in-layout-dockview`) — the
+  engine stays swappable by replacing one package, which is the property
+  this ADR exists to buy. The
+  package exports `createDockEngine` (seed-tree → `SerializedDockview`
+  conversion, `api.layout()` called before `restore()` so proportions hold,
+  opaque-blob restore with a seed fallback, debounced serialisation, a
+  dispose-time final flush, a maximize bridge mirrored from Jarvis/the
+  layout state machine, and a close-button-free `TitleOnlyTab` — no close
+  affordance in v1 scope) plus a `dockview-hud.css` HUD token mapping.
+- **What did NOT land**: the `LayoutPort` interface itself. The engine
+  branch lives inside the pre-existing `WorkspaceEngine` (in-house vs.
+  Dockview), not behind a new port boundary each engine implements
+  symmetrically. Extracting the thin `LayoutPort` sketched above is
+  deferred until a **third** engine (Golden Layout, or the future
+  free-float one) exists to generalise the contract from — two engines
+  whose asymmetry is this large (see the six capabilities the in-house one
+  has and Dockview does not) are not enough evidence to fix an interface
+  shape, and guessing now risks the exact "leaky facade" this ADR warns
+  against.
+- **Verification**: a shared `DockviewEngine.contract.spec.ts` (4 cases,
+  run against both clients), 15 package-level unit tests in
+  `@rtc/layout-dockview`, a Playwright e2e journey (switch engine → drag-
+  dock → reload persists → revert), and a `shell/layout-dockview` visual
+  scenario (10-combo matrix) alongside re-pinned preferences-modal goldens.
+- **See also:** the implementation spec and plan —
+  [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
+  and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
 
 ## Solution landscape (shortlist)
 
@@ -359,12 +447,15 @@ build-block table and the Flex prior-art sidebar are in the
 ## Replaceability matrix row
 
 Supersedes the original row (which described a `LayoutPort` that was never
-built); the shape below matches the actual shipped seam and is not yet
-folded into [architecture.md §8](../architecture/08-replaceability-matrix.md#8-replaceability-matrix).
+built). The shape below matches the actual shipped seam — `WorkspaceEngine`'s
+engine branch + the registries + `DockLayoutStore`, with no thin `LayoutPort`
+in play — and is folded into
+[architecture.md §8](../architecture/08-replaceability-matrix.md#8-replaceability-matrix);
+see that table for the canonical cost/contract/verification wording.
 
 | Component | Currently | Cost to replace | Contract that must hold | Tests that verify |
 |---|---|---|---|---|
-| **Layout / panel manager** | In-house split-tree engine (`LayoutMachine` + `InhouseLayoutEngine`); Dockview and a custom free-float engine remain recorded alternatives, not built | ~1 dev-week per client to replace `InhouseLayoutEngine.tsx` with a different renderer over the same `LayoutState`/registries (no adapter package — one file per client); Dockview specifically also costs reimplementing the six capabilities in [Dockview: re-costed](#dockview-re-costed-as-an-alternative-engine-2026-08-11) + a full `app/*` golden regen | `LayoutState`/`LayoutIntents` (machine surface, `client-core`) + `panelId → renderer` registries; panel content addressed by stable id, same as originally designed | `LayoutMachine`/`JarvisPanelsMachine` unit tests (`TestScheduler`) + `@rtc/ui-contract` behavioural specs (swap-trio, both clients) + visual goldens for panel content and the new `layout/fx-docked-panel` scenario |
+| **Layout / panel manager** | In-house split-tree engine (`LayoutMachine` + `InhouseLayoutEngine`, the default) + Dockview (`@rtc/layout-dockview`, opt-in via the `LayoutEngine` preference); a custom free-float engine remains a recorded alternative, not built | ~1 dev-week per client per engine — measured once (Dockview): a sibling engine-view file over the same `LayoutState`/registries, plus a library-confining package; *replacing* the in-house engine rather than adding beside it would additionally cost reimplementing the six capabilities in [Dockview: re-costed](#dockview-re-costed-as-an-alternative-engine-2026-08-11) + a full `app/*` golden regen | Engine branch in `WorkspaceEngine` over `LayoutState`/`LayoutIntents` (machine surface, `client-core`) + `panelId → renderer` registries + `DockLayoutStore` (opaque per-tab blob); panel content addressed by stable id, same as originally designed | `LayoutMachine`/`JarvisPanelsMachine` unit tests (`TestScheduler`) + `@rtc/ui-contract` behavioural specs incl. the shared `DockviewEngine.contract.spec.ts` (swap-trio, both clients) + `@rtc/layout-dockview` unit tests + e2e journey (switch engine → drag-dock → reload persists → revert) + visual goldens for panel content, `layout/fx-docked-panel`, and `shell/layout-dockview` |
 
 ## Test strategy
 
@@ -393,32 +484,45 @@ plan below, which assumed adapters that were never built):
 
 ## Open questions — resolved
 
-The original four questions assumed a `LayoutPort` would get built; since it
-didn't, they resolve by not-applying rather than by a design choice:
+The original four questions assumed a `LayoutPort` would get built. It still
+hasn't been — not even now that a second engine ships (see
+[As implemented](#as-implemented-2026-08)) — so they resolve against the real
+seam rather than by a port design choice:
 
 1. ~~Does the shell need a tree/group concept at all?~~ **Moot** — the
-   shipped `LayoutState` *is* a tree; there is no port to keep thin.
+   shipped `LayoutState` *is* a tree; there is no port to keep thin, and
+   Dockview consumes that tree as a seed rather than replacing it.
 2. ~~Pop-out OS windows: port-exposed or adapter-internal?~~ **Deferred** —
    out of scope for the in-house engine (recorded in the L3 spec's
-   out-of-scope list); revisit only if/when a Dockview or free-float engine
-   actually ships.
-3. ~~Layout-state migration across engine swaps?~~ **Answered, differently
-   than expected**: there is no engine-swap migration story today because
-   there is one engine — but `workspaceLayoutV1` establishes the intended
-   pattern (a versioned opaque string, parsed defensively, falling back to
-   defaults on any mismatch) for whenever a second engine or a breaking
-   schema change needs one.
+   out-of-scope list), and out of scope for the shipped Dockview engine too
+   (v1 ships without a close affordance, let alone pop-out). Revisit only
+   when a round actually needs it.
+3. ~~Layout-state migration across engine swaps?~~ **Answered** — *ignore
+   and re-seed*, as the original leaning guessed. The two engines persist
+   through two independent stores that never read each other's blobs:
+   `workspaceLayoutV1` (the in-house tree + docked panels, through
+   `PreferencesPort`) and `DockLayoutStore` (`rtc-dock-layout-<tab>`,
+   Dockview's own serialized blob). Switching engines re-seeds from
+   defaults rather than translating, so no neutral interchange format was
+   needed — and `workspaceLayoutV1` establishes the versioned-opaque-string
+   pattern (parsed defensively, falling back to defaults on any mismatch)
+   for whenever a breaking schema change does need one.
 4. ~~Where does the registry live?~~ **Resolved** — `panelRegistry.ts` /
    `appPanelRegistry.tsx` / `appHeadRegistry.tsx` per client, extended (not
-   replaced) this round to accept dynamic Jarvis-authored entries alongside
-   the static roster, threaded as props rather than a module default.
+   replaced) to accept dynamic Jarvis-authored entries alongside the static
+   roster, threaded as props rather than a module default. *Both* engines
+   read those same registries; the Dockview bridge portal-mounts their
+   output into its panels.
 
 ## Alternatives considered
 
 - **Bake Dockview directly into `Workspace.tsx`.** Rejected — exactly the
   third-party lock-in the architecture exists to prevent, and it would block the
   custom free-float experiment. (`Workspace.tsx` itself is gone now, replaced
-  by `InhouseLayoutEngine`, so this alternative is doubly moot.)
+  by `InhouseLayoutEngine`, so this alternative is doubly moot.) This one
+  held on shipping: Dockview's library surface is confined to
+  `@rtc/layout-dockview` by two dependency-cruiser rules, and the app-side
+  bridge speaks only registries + an opaque blob.
 - **Use a docking library's own persistence as application state.** Rejected —
   leaks the engine's tree model into the app and breaks the swap guarantee;
   persistence stays an opaque blob behind `PreferencesPort` — this held, and
@@ -427,17 +531,27 @@ didn't, they resolve by not-applying rather than by a design choice:
   violates "Don't Over-Abstract" and makes the free-float adapter impossible to
   fit.
 - **(2026-08-11) Build a thin `LayoutPort` in front of the shipped in-house
-  engine, purely for future-proofing.** Rejected — there is nothing to be
+  engine, purely for future-proofing.** Rejected — there was nothing to be
   polymorphic *over* with a single engine; a port with one implementation is
   exactly the "wrapping a WebSocket that will never be swapped" anti-pattern
-  the "Don't Over-Abstract" principle warns against. Build the port when (and
-  only when) a second engine is actually being built.
+  the "Don't Over-Abstract" principle warns against.
+- **(2026-08-11, revisited) Extract the `LayoutPort` now that Dockview
+  ships as a second engine.** Still rejected, for a narrower reason than
+  above: the two engines are deliberately *asymmetric* (six capabilities
+  exist only in-house), so a port generalised over them would either encode
+  the in-house engine's vocabulary — the leaky facade this ADR warns
+  against — or shrink to the two-branch conditional `WorkspaceEngine`
+  already is. Revisit when a **third** engine forces a real contract.
 
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and
   the Dockview re-costing:
   [superpowers/specs/2026-08-11-genui-l3-pinned-panels-design.md](../superpowers/specs/2026-08-11-genui-l3-pinned-panels-design.md)
+- **Dockview engine spec + plan (2026-08-11)** — the round that shipped
+  Dockview as the switchable second engine:
+  [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md),
+  [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md)
 - **The shipped engine, mechanism-level:**
   [architecture.md §17.2 The Layout System](../architecture/17-web-client-up-close.md#172-the-layout-system),
   [§10.11 Continuous UI without fighting the framework](../architecture/10-key-design-decisions.md#1011-continuous-ui-without-fighting-the-framework)

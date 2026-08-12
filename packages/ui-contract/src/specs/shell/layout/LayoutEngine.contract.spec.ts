@@ -400,7 +400,7 @@ const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   viz: { kind: "table" },
 };
 
-/** `createWorld` with a seeded `workspaceLayoutV1` string — the 23rd
+/** `createWorld` with a seeded `workspaceLayoutV1` string — the 24th
  * positional parameter, reached past every earlier seed (see
  * `harness/world.ts`; `mount()`'s `MountOptions.workspaceLayout` is the same
  * seed for the single-mount case, but these scenarios need the World object
@@ -413,6 +413,7 @@ function createWorldSeededWith(
 ): World {
   return createWorld(
     hooks,
+    undefined,
     undefined,
     undefined,
     undefined,

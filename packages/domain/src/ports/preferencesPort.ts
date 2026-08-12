@@ -11,6 +11,7 @@ import type {
   JarvisEffort,
   JarvisNarratorPreference,
   JarvisSkin,
+  LayoutEngine,
   LoginWaitDelay,
   LoginWaitStyle,
   LoginWaitVariant,
@@ -63,6 +64,10 @@ export interface PreferencesPort {
    * placeholder for one. */
   workspaceLayout$(): Observable<string | null>;
   setWorkspaceLayout(value: string | null): void;
+  /** Replay-current layout-engine stream; emits synchronously on subscribe.
+   * Selects the in-house split-tree engine vs the Dockview docking engine. */
+  layoutEngine$(): Observable<LayoutEngine>;
+  setLayoutEngine(engine: LayoutEngine): void;
   /** Replay-current J.A.R.V.I.S skin stream; emits synchronously on subscribe. */
   jarvisSkin$(): Observable<JarvisSkin>;
   setJarvisSkin(skin: JarvisSkin): void;

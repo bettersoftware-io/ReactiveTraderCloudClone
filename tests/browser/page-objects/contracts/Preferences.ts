@@ -7,6 +7,14 @@
 export type PrefsChartSubstrate = "dom" | "canvas";
 
 /**
+ * The two layout engines the Layout engine segment row toggles
+ * (PreferencesModal.tsx's `LAYOUT_ENGINE_OPTIONS` / `useLayoutEngine`) — the
+ * same values the engine root's own `data-engine` witness renders, so
+ * `LayoutPO` reuses this type rather than declaring its own duplicate union.
+ */
+export type PrefsLayoutEngine = "inhouse" | "dockview";
+
+/**
  * The Preferences catalogue modal (PreferencesModal.tsx), reached via the
  * account menu's ⚙ Preferences row (AccountMenu.tsx) — the repo's FIRST e2e
  * page-object surface driving this modal. Only the one row the
@@ -22,6 +30,9 @@ export interface PreferencesPO {
   /** Clicks the Chart renderer segment row's DOM/Canvas option
    * (PrefSegment.tsx composes `pref-segment-chartSubstrate-<value>`). */
   selectChartSubstrate(value: PrefsChartSubstrate): Promise<void>;
+  /** Clicks the Layout engine segment row's In-house/Dockview option
+   * (PrefSegment.tsx composes `pref-segment-layoutEngine-<value>`). */
+  selectLayoutEngine(value: PrefsLayoutEngine): Promise<void>;
   /** Dismisses the modal via its footer DONE button. */
   close(): Promise<void>;
   waitModalHidden(timeoutMs: number): Promise<void>;

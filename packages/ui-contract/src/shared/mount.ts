@@ -18,6 +18,7 @@ import type {
   JarvisBrain,
   JarvisEffort,
   JarvisNarratorPreference,
+  LayoutEngine,
   LogEvent,
   LoginWaitDelay,
   LoginWaitStyle,
@@ -105,6 +106,8 @@ export interface MountOptions<P> {
    * World per `mount()` call, but a spec that needs both Worlds' page objects
    * reaches for `createWorld` + `mountWith`). */
   workspaceLayout?: string | null;
+  /** Seeds `useLayoutEngine`; defaults to DEFAULT_LAYOUT_ENGINE ("inhouse"). */
+  layoutEngine?: LayoutEngine;
 }
 
 const mounted: MountedRoot[] = [];
@@ -282,6 +285,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.jarvisEffort,
     opts.jarvisNarrator,
     opts.chartSubstrate,
+    opts.layoutEngine,
     opts.workspaceLayout,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
