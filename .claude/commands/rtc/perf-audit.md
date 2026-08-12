@@ -1,5 +1,5 @@
 ---
-description: Audit live motion machinery (animations + rAF) per view per power-saver level — asserts freeze is motion-free
+description: Audit live motion machinery (animations + rAF) per view per power-saver level — asserts freeze is motion-free (FPS meter's marked diagnostic loop exempt)
 argument-hint: [react|solid|both] [freeze|all-levels]
 allowed-tools: Bash(pnpm:*), Bash(node:*), Bash(lsof:*), Bash(kill:*), Read
 ---
@@ -42,9 +42,12 @@ timing and target identity) and counts `requestAnimationFrame` registrations.
      `pnpm --filter @rtc/tests exec tsx scripts/motion-audit.ts --url http://localhost:5173`.
 
 2. Read the verdict:
-   - **freeze** is asserted by the script itself — any live animation or rAF
-     activity lists the offender (`Type:name dur state @ target`, with a
-     seen-in-N-of-M-samples count) and exits 1.
+   - **freeze** is asserted by the script itself — any live animation or
+     non-diagnostic rAF activity lists the offender (`Type:name dur state @
+     target`, with a seen-in-N-of-M-samples count) and exits 1. The FPS
+     meter's sampling loop is the one deliberate exemption: it carries the
+     `rtcDiagnosticRafLoop` marker and is reported separately as
+     `+N/s diagnostic` (expected ≈ refresh rate at every level).
    - **off** is inventory: the expected roster (ambient layers, spins,
      pulseDot, tick flashes, rank-glide WAAPI, admin pulses). Flag anything
      NEW here against `docs/performance.md`'s rules (compositor-only

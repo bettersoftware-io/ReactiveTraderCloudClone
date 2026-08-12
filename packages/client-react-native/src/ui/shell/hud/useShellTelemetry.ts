@@ -9,15 +9,17 @@ import {
 import { computeFps, fpsTone, type MetricTone } from "@rtc/motion-core";
 
 import { ShellTelemetryContext } from "./ShellTelemetryContext";
-import { useShellMotionEnabled } from "./useShellMotionEnabled";
 
 /** HUD status-strip telemetry. FPS is a live rolling-window meter (Reanimated
- * `useFrameCallback` → `computeFps`/`fpsTone`), stilled at the seed under
- * reduced-motion / power-saver Freeze — there is no meaningful frame rate to
- * report while the app's own loops are frozen. LAT/clock/build are decorative
- * static seeds (golden-stable chrome, mirroring the web `CosmeticMetrics`
- * design). A `ShellTelemetryContext` provider (visual harness) overrides FPS +
- * latency with a frozen snapshot.
+ * `useFrameCallback` → `computeFps`/`fpsTone`). Deliberately NOT gated on
+ * reduced-motion or power-saver Freeze (unlike the decorative shell motion
+ * behind `useShellMotionEnabled`): the meter is diagnostic instrumentation —
+ * one counter increment per frame plus one commit per second — most valuable
+ * exactly when the device is struggling. Mirrors the web `useLiveMetrics`
+ * freeze exemption. LAT/clock/build are decorative static seeds
+ * (golden-stable chrome, mirroring the web `CosmeticMetrics` design). A
+ * `ShellTelemetryContext` provider (visual harness) overrides FPS + latency
+ * with a frozen snapshot.
  *
  * The rolling-window counters live in `useSharedValue`s rather than a
  * per-render plain object: a plain object captured by the frame-callback
@@ -27,12 +29,11 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
  * Reanimated worklet plugin warns about. Shared values persist across
  * renders and are the sanctioned way to mutate state from a worklet. */
 export function useShellTelemetry(): ShellTelemetry {
-  const frozen = useContext(ShellTelemetryContext);
-  const enabled = useShellMotionEnabled();
+  const frozenTelemetry = useContext(ShellTelemetryContext);
   const [fps, setFps] = useState(SEED_FPS);
   const framesSv = useSharedValue(0);
   const windowStartSv = useSharedValue(0);
-  const active = frozen === null && enabled;
+  const active = frozenTelemetry === null;
 
   // `computeFps` is a plain @rtc/motion-core function — a Reanimated "Remote
   // Function" from the worklet's perspective. Calling it inside the worklet
@@ -48,7 +49,7 @@ export function useShellTelemetry(): ShellTelemetry {
   useFrameCallback((frame) => {
     "worklet";
 
-    if (frozen !== null || !enabled) {
+    if (frozenTelemetry !== null) {
       return;
     }
 
@@ -88,11 +89,11 @@ export function useShellTelemetry(): ShellTelemetry {
     }
   }, active);
 
-  if (frozen !== null) {
+  if (frozenTelemetry !== null) {
     return {
-      fps: frozen.fps,
-      fpsTone: fpsTone(frozen.fps),
-      latencyMs: frozen.latencyMs,
+      fps: frozenTelemetry.fps,
+      fpsTone: fpsTone(frozenTelemetry.fps),
+      latencyMs: frozenTelemetry.latencyMs,
       clock: SEED_CLOCK,
       build: BUILD_TAG,
     };
