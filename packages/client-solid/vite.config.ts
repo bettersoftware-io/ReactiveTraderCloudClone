@@ -101,16 +101,34 @@ function pkgSrc(name: string): string {
   );
 }
 
-// Bare package specifiers only. Every @rtc/* package currently exports just "."
-// (imported as `@rtc/client-core`, never `@rtc/client-core/sub`), so mapping the
-// specifier straight to src/index.ts is correct. If a production `src` file ever
-// adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
-// otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
-// @rtc/layout-dockview also has a `./styles/*` subpath export (mirrors
-// @rtc/boot-splash) — only its bare "." specifier is mapped here for the same
-// reason.
+function pkgPath(name: string, ...segments: string[]): string {
+  return resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    name,
+    ...segments,
+  );
+}
+
+// String alias keys PREFIX-match at "/" boundaries — they are not exact
+// matches, and entries match in insertion order (first match wins). So a
+// package whose only export is "." needs just its bare specifier mapped to
+// src/index.ts, but a package with subpath exports must map each subpath
+// BEFORE its bare key: the bare `@rtc/layout-dockview` entry alone rewrote
+// `@rtc/layout-dockview/styles/dockview-hud.css` to
+// `.../src/index.ts/styles/dockview-hud.css` (ENOTDIR), which broke the
+// 2026-08-12 deploy. Only deploy.yml sets RTC_SOURCEMAPS, so PR CI stays
+// green while every debug deploy fails — verify changes here with a local
+// `RTC_SOURCEMAPS=1 pnpm build`.
+// (@rtc/boot-splash is deliberately unaliased: its only client imports are
+// `./styles/*` CSS Modules, so a src alias buys it no debuggability.)
 const rtcSourceAlias: Record<string, string> = debugBuild
   ? {
+      "@rtc/layout-dockview/styles": pkgPath(
+        "layout-dockview",
+        "src",
+        "styles",
+      ),
       "@rtc/client-core": pkgSrc("client-core"),
       "@rtc/domain": pkgSrc("domain"),
       "@rtc/shared": pkgSrc("shared"),
