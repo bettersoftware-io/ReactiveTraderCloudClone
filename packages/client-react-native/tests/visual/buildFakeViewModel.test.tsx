@@ -29,11 +29,14 @@ const LIVE_SOURCE_PATTERN =
 /**
  * The total member count on `ViewModel`, partitioned across the seven slices.
  *
- * 68, not 67: `loadOlderCandles` is a bare command rather than a `use*` hook,
- * and a hand-written census that assumed the `use` prefix missed it while
- * reporting a confident 67 of 67.
+ * Was 68 when this landed; the Dockview/GenUI work then added
+ * `useDockLayoutStore`, `useLayoutEngine` and `useWorkspaceReset`. The
+ * compiler found all three on the next catch-up merge, because
+ * `buildFakeViewModel` is typed `ViewModel` with no cast — the same reason it
+ * caught `loadOlderCandles`, the one member without a `use` prefix, which a
+ * hand-written census had missed while reporting a confident 67 of 67.
  */
-const VIEW_MODEL_MEMBER_COUNT = 68;
+const VIEW_MODEL_MEMBER_COUNT = 71;
 
 describe("buildFakeViewModel", () => {
   test("returns identical values across instances — the whole point of the fake", () => {

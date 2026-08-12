@@ -10,13 +10,14 @@ import { PNG } from "pngjs";
  *
  * Once the harness renders a static fake rather than composing a live
  * simulator, nothing on screen moves, so "identical" is the honest bar.
- * Measured over three captures of all 21 scenarios: **20 of 21 reproduce at
- * exactly 0 differing pixels.** Only the one scenario that cannot gets an
- * allowance, in `MEASURED_TOLERANCE` below.
+ * Measured over repeated captures of all 21 scenarios: **20 of 21 reproduce
+ * at exactly 0 differing pixels**, every time. The 21st is a known
+ * intermittent that is deliberately NOT given an allowance — see the
+ * `blotter/seeded` note below.
  *
  * **Why a single global budget had to go, rather than just shrink.** The
- * obvious replacement was one number just above the measured noise floor of
- * 0.1107%. That is unsound, and the tier itself proves it: pinning
+ * obvious replacement was one number just above the observed noise. That is
+ * unsound, and the tier itself proves it: pinning
  * `shell/connection-banner` to a disconnected state — status text changed,
  * dot green to red, an entire "Reconnect" button added — moves **0.0833%** of
  * the frame. A real semantic change is SMALLER than this tier's worst
@@ -34,10 +35,11 @@ const DEFAULT_RATIO = 0;
 /**
  * The scenarios that provably cannot reproduce byte-exactly, and by how much.
  *
- * One entry only, and it is a measurement rather than a guess. Add to this map
- * ONLY with three fresh samples and a diagnosis of what is moving — never to
- * quiet a scenario that started failing, which is the failure the whole tier
- * exists to report.
+ * **Currently empty, and that is the intended steady state.** Add an entry
+ * ONLY with fresh samples and a diagnosis of what is moving — never to quiet a
+ * scenario that started failing, which is the failure the whole tier exists to
+ * report. An allowance is a claim that a difference is meaningless; it needs
+ * the same evidence as any other claim.
  */
 const MEASURED_TOLERANCE: Readonly<Record<string, number>> = {
   // Empty, deliberately. See the `blotter/seeded` note below for the one
@@ -46,13 +48,17 @@ const MEASURED_TOLERANCE: Readonly<Record<string, number>> = {
 
 /**
  * **`blotter/seeded` is a known intermittent, and is deliberately NOT given an
- * allowance here.** Measured 2026-08-12 over nine consecutive captures against
- * a freshly pinned golden: eight reproduce at exactly 0 differing pixels, and
- * one lands 0.5266% out. It is bimodal — never a spread, always exactly one of
- * those two figures — and the failing state is the whole row list rendered
- * about a pixel lower, with identical content. A separate verify loop
- * alternated pass/fail on four consecutive runs, so the rate is somewhere
- * between 1-in-9 and 1-in-2 and is not yet understood.
+ * allowance here.** Measured against a freshly pinned golden on 2026-08-12,
+ * it lands on one of at least THREE discrete values: exactly 0 (the large
+ * majority — eight of nine consecutive captures), 0.0846%, and 0.5266%. Never
+ * a continuous spread; always one of a small set. The 0.5266% state is the
+ * whole row list rendered about a pixel lower with identical content.
+ *
+ * A first reading of this called it bimodal, from a sample that had only
+ * produced two of the values. It is recorded here as wrong because the
+ * correction matters to whoever picks it up: a discrete-state bug with three
+ * states is a different search than one with two, and the third value was
+ * found only by re-verifying after an unrelated catch-up merge.
  *
  * Silencing it would take a budget of ~0.006. That is six times the entire
  * rest of the matrix, and this tier has already shown what such a budget
@@ -71,9 +77,12 @@ const MEASURED_TOLERANCE: Readonly<Record<string, number>> = {
  * The pixel budget for one scenario: exact, unless it has a measured reason
  * not to be.
  *
- * Re-measure before changing any of this, with **three samples minimum**.
- * `equities/markets` once read 0.00% between runs 1 and 2 and 1.60% between
- * runs 1 and 3 — two samples can certify a drifting scenario as stable.
+ * Re-measure before changing any of this, and take MORE than three samples.
+ * Three is the floor, not a sufficiency: `equities/markets` once read 0.00%
+ * between runs 1 and 2 and 1.60% between runs 1 and 3, so two samples can
+ * certify a drifting scenario as stable — and `blotter/seeded`'s third
+ * discrete state did not appear until a tenth capture, after three had
+ * "settled" the question twice.
  */
 export function toleranceFor(scenarioId: string): number {
   return MEASURED_TOLERANCE[scenarioId] ?? DEFAULT_RATIO;

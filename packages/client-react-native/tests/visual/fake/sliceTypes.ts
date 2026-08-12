@@ -16,15 +16,18 @@ import type { ViewModel } from "@rtc/react-bindings";
  * capture time as `undefined is not a function` — one scenario rendering
  * blank, which looks entirely plausible in a list of 21 filenames. With
  * `Pick`, `buildFakeViewModel` can be typed `ViewModel` with **no cast**, so
- * TypeScript proves at the composition site that every one of the 68 members
+ * TypeScript proves at the composition site that every member of `ViewModel`
  * is present. Completeness by construction, the same way the fake gets
  * determinism by construction.
  *
- * That guarantee has already paid for itself once: `loadOlderCandles` — the
+ * That guarantee has already paid for itself twice. `loadOlderCandles` — the
  * only member that is not a `use*` hook — was missing from the first draft of
- * this partition, and the hand-written verification of it reported 67 of 67
- * because it defined "member" as `use*`-prefixed on both sides of the
- * comparison. The compiler found it; the check could not.
+ * this partition, and the hand-written verification of it reported a confident
+ * 67 of 67 because it defined "member" as `use*`-prefixed on BOTH sides of the
+ * comparison, so it agreed with itself. Then a catch-up merge grew `ViewModel`
+ * by three (`useDockLayoutStore`, `useLayoutEngine`, `useWorkspaceReset`) and
+ * the compiler named all three immediately. Nobody has to remember to widen
+ * this file; the build refuses until someone does.
  *
  * Disjointness (no hook claimed by two slices) is not expressible here — it is
  * asserted at runtime by `buildFakeViewModel.test.tsx`, which counts the keys
@@ -136,6 +139,7 @@ export type AnalyticsSlice = Pick<
 export type InertSlice = Pick<
   ViewModel,
   | "useAnimationIntents"
+  | "useDockLayoutStore"
   | "useEventLog"
   | "useJarvis"
   | "useJarvisDemo"
@@ -145,10 +149,12 @@ export type InertSlice = Pick<
   | "useJarvisPreferences"
   | "useJarvisUsage"
   | "useLayout"
+  | "useLayoutEngine"
   | "useMetrics"
   | "useSessionCountSeries"
   | "useSessions"
   | "useThroughput"
   | "useTopology"
   | "useWorkspaceNav"
+  | "useWorkspaceReset"
 >;

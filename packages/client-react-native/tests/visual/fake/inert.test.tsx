@@ -3,9 +3,10 @@ import { describe, expect, it } from "@jest/globals";
 import { inertSlice } from "./inert";
 
 describe("inertSlice", () => {
-  it("has exactly the 16 hooks InertSlice names — no more, no fewer", () => {
+  it("has exactly the 19 hooks InertSlice names — no more, no fewer", () => {
     const expectedKeys = [
       "useAnimationIntents",
+      "useDockLayoutStore",
       "useEventLog",
       "useJarvis",
       "useJarvisDemo",
@@ -15,16 +16,18 @@ describe("inertSlice", () => {
       "useJarvisPreferences",
       "useJarvisUsage",
       "useLayout",
+      "useLayoutEngine",
       "useMetrics",
       "useSessionCountSeries",
       "useSessions",
       "useThroughput",
       "useTopology",
       "useWorkspaceNav",
+      "useWorkspaceReset",
     ].sort();
 
     expect(Object.keys(inertSlice).sort()).toStrictEqual(expectedKeys);
-    expect(Object.keys(inertSlice)).toHaveLength(16);
+    expect(Object.keys(inertSlice)).toHaveLength(expectedKeys.length);
   });
 });
 

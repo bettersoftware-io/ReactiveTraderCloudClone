@@ -15,6 +15,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   type LogEvent,
   type MetricSample,
   type SessionInfo,
@@ -24,6 +25,7 @@ import type {
   UseJarvisPanelsResult,
   UseJarvisPreferencesResult,
   UseJarvisResult,
+  ViewModel,
 } from "@rtc/react-bindings";
 
 import type { InertSlice } from "./sliceTypes";
@@ -94,6 +96,15 @@ export const inertSlice: InertSlice = {
   },
   useJarvisUsage: () => {
     return null;
+  },
+  useDockLayoutStore: () => {
+    return DOCK_LAYOUT_STORE;
+  },
+  useLayoutEngine: () => {
+    return LAYOUT_ENGINE_RESULT;
+  },
+  useWorkspaceReset: () => {
+    return noop;
   },
   useLayout: (_tab: WorkspaceTab) => {
     return LAYOUT_RESULT;
@@ -217,7 +228,11 @@ const JARVIS_PREFERENCES_RESULT: UseJarvisPreferencesResult = {
  * field, and is preferable per the shared brief. */
 const JARVIS_PANELS_RESULT: UseJarvisPanelsResult = {
   panels: [],
+  dockedPanels: [],
+  floatingPanels: [],
   dismissPanel: noop,
+  dockPanel: noop,
+  undockPanel: noop,
 };
 
 /** The emptiest `LayoutState` its own type admits: a single unnamed panel
@@ -238,6 +253,29 @@ const LAYOUT_RESULT: LayoutResult = {
   collapse: noop,
   expand: noop,
   resize: noop,
+  insertPanel: noop,
+  removePanel: noop,
+  reset: noop,
+};
+
+/** The Dockview engine's persistence port. Both sides are inert: `load`
+ * always reports "nothing saved", so a scenario can never restore a layout
+ * from a previous capture, and `save` discards. A store that remembered
+ * anything across mounts would be exactly the cross-capture state leak this
+ * whole harness was rebuilt to remove. */
+const DOCK_LAYOUT_STORE: ReturnType<ViewModel["useDockLayoutStore"]> = {
+  load: () => {
+    return null;
+  },
+  save: noop,
+};
+
+/** Layout-engine preference: the in-house split tree, which is the domain's
+ * own default (`DEFAULT_LAYOUT_ENGINE`). No RN surface offers the Dockview
+ * alternative — it is a web-only engine — so this never varies. */
+const LAYOUT_ENGINE_RESULT: ReturnType<ViewModel["useLayoutEngine"]> = {
+  engine: DEFAULT_LAYOUT_ENGINE,
+  setEngine: noop,
 };
 
 /**
