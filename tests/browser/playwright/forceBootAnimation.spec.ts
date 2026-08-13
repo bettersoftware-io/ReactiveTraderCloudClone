@@ -35,7 +35,9 @@ test.describe("force boot animation (reduced motion)", () => {
   test("pref OFF: the boot canvas stays hidden under reduced motion", async ({
     ctx,
   }) => {
-    await boot.openBoot(ctx);
+    // Explicit seed: DEFAULT_FORCE_BOOT_ANIMATION is now true, so an unseeded
+    // store would force-play and defeat this case — seed the non-default.
+    await boot.openBoot(ctx, { forceAnimation: false });
     await boot.expectForceAnimAttr(ctx, "false");
     // Real element present (asserted just above), but the reduced-motion CSS
     // hides the canvas — not a removed element.

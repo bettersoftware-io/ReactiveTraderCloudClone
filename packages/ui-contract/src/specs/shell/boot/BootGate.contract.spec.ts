@@ -36,7 +36,10 @@ describe("BootGate", () => {
 
   it("unmounts the splash immediately under reduced motion (no fade)", async () => {
     stubReducedMotion(true);
-    const page = mount(BootGate, {});
+    // Explicit non-default seed: forceBootAnimation now defaults to true
+    // (DEFAULT_FORCE_BOOT_ANIMATION), which would override reduced-motion and
+    // send dismissal down the fade path this case exists to rule out.
+    const page = mount(BootGate, { forceBootAnimation: false });
     await page.skip();
     expect(page.hasSplash()).toBe(false);
     expect(page.hasContent()).toBe(true);

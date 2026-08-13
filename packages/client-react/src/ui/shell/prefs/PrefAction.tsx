@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import styles from "./PreferencesModal.module.css";
+import styles from "./PreferencesContent.module.css";
 
 /**
  * Reusable preferences row for an ACTION rather than a stored value — a

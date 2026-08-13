@@ -98,27 +98,27 @@ test("setPowerSaverLevel writes through to AsyncStorage and emits", async () => 
   expect(store.get("rtc-power-saver")).toBe("freeze");
 });
 
-test("emits the default forceBootAnimation (false) synchronously", async () => {
+test("emits the default forceBootAnimation (true) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   const first = await firstValueFrom(prefs.forceBootAnimation$());
-  expect(first).toBe(false);
+  expect(first).toBe(true);
 });
 
 test("hydrates a stored boolean forceBootAnimation value", async () => {
-  store.set("rtc-force-boot-animation", "true");
+  store.set("rtc-force-boot-animation", "false");
   const prefs = new AsyncStoragePreferencesAdapter();
   const hydrated = await firstValueFrom(
     prefs.forceBootAnimation$().pipe(skip(1), take(1)),
   );
-  expect(hydrated).toBe(true);
+  expect(hydrated).toBe(false);
 });
 
 test("setForceBootAnimation writes through to AsyncStorage and emits", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
-  prefs.setForceBootAnimation(true);
+  prefs.setForceBootAnimation(false);
   const next = await firstValueFrom(prefs.forceBootAnimation$());
-  expect(next).toBe(true);
-  expect(store.get("rtc-force-boot-animation")).toBe("true");
+  expect(next).toBe(false);
+  expect(store.get("rtc-force-boot-animation")).toBe("false");
 });
 
 test("hydrates a stored theme mode", async () => {

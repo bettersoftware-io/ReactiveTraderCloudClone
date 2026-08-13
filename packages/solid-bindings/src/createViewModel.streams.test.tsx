@@ -223,15 +223,15 @@ describe("createViewModel — preferences", () => {
     expect(result.isFreeze()).toBe(true);
   });
 
-  it("useForceBootAnimation defaults off and toggle() flips it", () => {
+  it("useForceBootAnimation defaults on and toggle() flips it", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
       return vm.useForceBootAnimation();
     });
 
-    expect(result.enabled()).toBe(false);
-    result.toggle();
     expect(result.enabled()).toBe(true);
+    result.toggle();
+    expect(result.enabled()).toBe(false);
   });
 
   it("useViewModePreference reads viewMode and setViewMode writes it", () => {

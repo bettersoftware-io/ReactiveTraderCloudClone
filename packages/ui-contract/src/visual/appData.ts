@@ -92,6 +92,12 @@ export interface AppData {
   ambientStyle?: AmbientStyle;
   /** Animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
+  /** Force-boot-animation preference (useForceBootAnimation); defaults to
+   * DEFAULT_FORCE_BOOT_ANIMATION (true) in the fakes, matching the app. A
+   * fixture opts into the non-default "off" explicitly (see "boot" in
+   * fixtures.ts) when it needs reduced-motion's suppression to actually take
+   * effect — forced play overrides it otherwise. */
+  forceBootAnimation?: boolean;
   /** Power-saver master-override level (usePowerSaver); defaults to "off". */
   powerSaverLevel?: PowerSaverLevel;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */

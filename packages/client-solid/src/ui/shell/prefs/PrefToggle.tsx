@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
-import styles from "./PreferencesModal.module.css";
+import styles from "./PreferencesContent.module.css";
 
 /**
  * Reusable preferences row carrying a label/description and an on/off switch

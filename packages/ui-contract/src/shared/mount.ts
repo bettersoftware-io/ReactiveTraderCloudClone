@@ -69,7 +69,7 @@ export interface MountOptions<P> {
   animatedBackground?: boolean;
   /** Seed the initial power-saver master-override level (usePowerSaver); defaults to "off". */
   powerSaverLevel?: PowerSaverLevel;
-  /** Seed the initial force-boot-animation preference (useForceBootAnimation); defaults to false. */
+  /** Seed the initial force-boot-animation preference (useForceBootAnimation); defaults to true. */
   forceBootAnimation?: boolean;
   /** Seed the initial login-wait style (useLoginWaitPreferences); defaults to "auto". */
   loginWaitStyle?: LoginWaitStyle;
