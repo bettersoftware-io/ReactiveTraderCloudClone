@@ -115,10 +115,10 @@ test("hydrates a stored boolean forceBootAnimation value", async () => {
 
 test("setForceBootAnimation writes through to AsyncStorage and emits", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
-  prefs.setForceBootAnimation(true);
+  prefs.setForceBootAnimation(false);
   const next = await firstValueFrom(prefs.forceBootAnimation$());
-  expect(next).toBe(true);
-  expect(store.get("rtc-force-boot-animation")).toBe("true");
+  expect(next).toBe(false);
+  expect(store.get("rtc-force-boot-animation")).toBe("false");
 });
 
 test("hydrates a stored theme mode", async () => {

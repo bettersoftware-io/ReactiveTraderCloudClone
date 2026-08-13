@@ -12,11 +12,11 @@ describe("ForceBootAnimationPresenter", () => {
     expect(await firstValueFrom(presenter.enabled$)).toBe(true);
   });
 
-  it("set(true) writes through to the port", async () => {
+  it("set(false) writes through to the port", async () => {
     const prefs = new PreferencesSimulator();
     const presenter = new ForceBootAnimationPresenter(prefs);
-    presenter.set(true);
-    expect(await firstValueFrom(prefs.forceBootAnimation$())).toBe(true);
+    presenter.set(false);
+    expect(await firstValueFrom(prefs.forceBootAnimation$())).toBe(false);
   });
 
   it("toggle(current) flips the stored value", async () => {
