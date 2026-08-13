@@ -51,11 +51,32 @@ const DEFAULT_APP_BOOT_TIMEOUT_MS = 20_000;
  * times out. */
 const DEFAULT_READY_TIMEOUT_MS = 20_000;
 const DEFAULT_POLL_INTERVAL_MS = 400;
-/** Small buffer after `visual-ready` is observed, to let the frame that set
- * the marker fully composite before the shot. Short on purpose — the marker
- * itself (`VisualScenarioHost`, one frame after fonts load) is the real
- * readiness gate now, not a guessed fixed wait. */
-const DEFAULT_POST_READY_SETTLE_MS = 300;
+/**
+ * Buffer after `visual-ready` is observed, before the shot.
+ *
+ * **Raised 300 → 1500 from measurement, 2026-08-12.** `visual-ready` fires one
+ * frame after `useAppFonts()` resolves — but a font being *loaded* is not the
+ * same as every `<Text>` having been re-measured with it. Text laid out on
+ * fallback metrics and then repainted with the real face lands at a slightly
+ * different width, which shifts its flex siblings; in a list it shifts every
+ * row below. So the marker is a necessary readiness gate, not a sufficient one.
+ *
+ * This went unnoticed for as long as it did because the harness used to
+ * compose a live simulator app per scenario, and that startup work was slow
+ * enough to hide it: by the time the marker fired and 300 ms elapsed, layout
+ * had converged anyway. Replacing that composition with a static fake made the
+ * app reach ready much sooner and exposed the race — `rates/grid` and
+ * `analytics/dashboard` went from reproducing exactly to drifting 0.17%
+ * between captures of identical data. **Making the app faster broke the
+ * capture**, which is worth remembering the next time a golden starts moving
+ * for no reason anyone changed.
+ *
+ * 1500 is a measured-sufficient value, not a tuned minimum: at this figure
+ * both scenarios return to 0 differing pixels across three samples. The
+ * minimum that still works was not searched for — the cost is ~25 s across a
+ * 21-scenario run, which is not worth optimising against a flake this subtle.
+ */
+const DEFAULT_POST_READY_SETTLE_MS = 1500;
 /** Bounded wait for the dev client's "Tools" hint to retract on its own.
  * Measured on device: it clears between ~10s and ~15s after launch. */
 const DEFAULT_DEV_CHROME_TIMEOUT_MS = 25_000;

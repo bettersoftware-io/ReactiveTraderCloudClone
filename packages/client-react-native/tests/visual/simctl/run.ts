@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import type { VisualDriver } from "../driver";
 import { SCENARIO_IDS } from "../scenarioIds";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
-import { compareToGolden } from "../shared/diff";
+import { compareToGolden, toleranceFor } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
 import { createSimctlDriver } from "./capture";
 
@@ -138,13 +138,17 @@ async function runScenarios(
       continue;
     }
 
-    const result = await compareToGolden(png, gp);
+    const result = await compareToGolden(png, gp, {
+      allowedMismatchedPixelRatio: toleranceFor(id),
+    });
 
+    // Four decimals, not two: the bar is now exact reproduction, and at two
+    // decimals every ratio below 0.005% prints as a reassuring "0.00%".
     if (result.pass) {
-      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
+      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
     } else {
       failures += 1;
-      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
+      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
     }
   }
 
