@@ -182,8 +182,12 @@ export const DEFAULT_LAYOUT_ENGINE: LayoutEngine = "inhouse";
  * (persisted under `rtc-jarvis-skin`). */
 export const DEFAULT_JARVIS_SKIN: JarvisSkin = "singularity";
 /** Force the boot-splash animation to play even under prefers-reduced-motion.
- * Default false: absent an explicit opt-in, honour the accessibility signal. */
-export const DEFAULT_FORCE_BOOT_ANIMATION = false;
+ * Default true — showcase posture: the boot splash is part of the product
+ * identity, so it plays unless the user opts out via this preference.
+ * Reduced-motion users regain suppression by turning the toggle off; power-
+ * saver Freeze still unconditionally skips the boot canvas regardless of this
+ * value, and the webdriver/?nosplash automation gate is a separate layer. */
+export const DEFAULT_FORCE_BOOT_ANIMATION = true;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_LOGIN_WAIT_VARIANT: LoginWaitVariant = "handshake";

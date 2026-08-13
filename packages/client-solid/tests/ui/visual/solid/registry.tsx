@@ -51,6 +51,7 @@ import { JarvisPanelLayer } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { PreferencesContent } from "#/ui/shell/prefs/PreferencesContent";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
@@ -663,6 +664,20 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
         }}
       >
         <PreferencesModal open={true} onClose={() => {}} />
+      </div>
+    );
+  },
+  PreferencesContent: () => {
+    // (same comment as react's entry)
+    return (
+      <div
+        style={{
+          width: "800px",
+          padding: "4px 22px 14px",
+          "background-color": "var(--bg-secondary)",
+        }}
+      >
+        <PreferencesContent />
       </div>
     );
   },

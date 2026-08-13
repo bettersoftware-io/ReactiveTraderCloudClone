@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
+import { seedLocalStorageItem } from "#/browser/authSeed";
+
 import type { BootOpenOptions, BootPO } from "../contracts/Boot";
 import { TESTIDS } from "../contracts/testids";
 
@@ -17,10 +19,15 @@ export class PlaywrightBoot implements BootPO {
   constructor(private readonly page: Page) {}
 
   async open(options?: BootOpenOptions): Promise<void> {
-    if (options?.forceAnimation) {
-      await this.page.addInitScript((key: string) => {
-        window.localStorage.setItem(key, "true");
-      }, FORCE_BOOT_ANIMATION_KEY);
+    // Distinguish "seed false" from "leave unseeded": an empty store now
+    // falls back to DEFAULT_FORCE_BOOT_ANIMATION (true), so proving the
+    // reduced-motion-not-forced case requires writing the literal string
+    // "false", not merely skipping the write.
+    if (options?.forceAnimation !== undefined) {
+      await this.page.addInitScript(seedLocalStorageItem, {
+        key: FORCE_BOOT_ANIMATION_KEY,
+        value: options.forceAnimation ? "true" : "false",
+      });
     }
 
     // ?splash forces shouldPlayBootSplash() ON even though Playwright sets

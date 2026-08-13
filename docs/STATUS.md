@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-08-11**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-08-12**
 
 ## 🟡 In progress
 

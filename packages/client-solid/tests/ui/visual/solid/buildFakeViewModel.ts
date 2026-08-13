@@ -4,6 +4,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
   DEFAULT_LAYOUT_ENGINE,
@@ -314,7 +315,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     useForceBootAnimation: () => {
       return {
-        enabled: at(false),
+        enabled: at(data.forceBootAnimation ?? DEFAULT_FORCE_BOOT_ANIMATION),
         setEnabled: noop,
         toggle: noop,
       };

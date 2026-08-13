@@ -37,6 +37,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
@@ -899,7 +900,7 @@ export function createWorld(
   );
 
   const forceBootAnimation = new BehaviorSubject<boolean>(
-    forceBootAnimationSeed ?? false,
+    forceBootAnimationSeed ?? DEFAULT_FORCE_BOOT_ANIMATION,
   );
 
   const loginWaitStyle = new BehaviorSubject<LoginWaitStyle>(

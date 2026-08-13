@@ -51,6 +51,7 @@ import { JarvisPanelLayer } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { PreferencesContent } from "#/ui/shell/prefs/PreferencesContent";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
@@ -671,6 +672,23 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
         }}
       >
         <PreferencesModal open={true} onClose={() => {}} />
+      </div>
+    );
+  },
+  PreferencesContent: () => {
+    // Un-clamped content mount (the point of the scenario). Width is pinned to
+    // the dialog's 800px so text wrapping matches the in-shell render (content
+    // width from font metrics would flake — see StatusBar above), and the
+    // dialog's own background is painted behind the transparent grid.
+    return (
+      <div
+        style={{
+          width: "800px",
+          padding: "4px 22px 14px",
+          backgroundColor: "var(--bg-secondary)",
+        }}
+      >
+        <PreferencesContent />
       </div>
     );
   },

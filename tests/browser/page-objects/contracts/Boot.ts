@@ -20,8 +20,10 @@
 /** Options for {@link BootPO.open}. */
 export interface BootOpenOptions {
   /** Seed the `forceBootAnimation` preference into localStorage BEFORE any
-   *  page script runs, via `page.addInitScript` — otherwise the preference is
-   *  left at its default (off). */
+   *  page script runs, via `page.addInitScript`. Leaving this `undefined`
+   *  leaves the store unseeded, which now falls back to
+   *  `DEFAULT_FORCE_BOOT_ANIMATION` (true) — pass `false` explicitly to prove
+   *  a case against the non-default (reduced-motion, not forced) state. */
   forceAnimation?: boolean;
 }
 
