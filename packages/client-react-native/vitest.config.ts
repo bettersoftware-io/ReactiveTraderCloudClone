@@ -21,5 +21,20 @@ export default defineConfig({
     // `owl.config.json`, kept as documentation of the not-viable tier, and the
     // exclusion keeps that folder outside the runner for good.
     exclude: [...configDefaults.exclude, "tests/visual/owl/**"],
+    server: {
+      deps: {
+        // async-storage v3 dropped its CommonJS build: `exports["."].default`
+        // now points straight at `lib/module/index.js`, whose relative imports
+        // carry no file extension (`from "./createAsyncStorage"`) even though
+        // the package declares no `"type": "module"`. Vitest externalizes
+        // node_modules by default and hands them to Node, whose ESM resolver
+        // requires the extension — so the import throws before any test runs,
+        // taking down every file that reaches the two adapters transitively.
+        // Inlining routes it through Vite's resolver instead, which fills the
+        // extension in. v2 needed none of this: it shipped `lib/commonjs/` as
+        // `main`, and extensionless requires are legal in CJS.
+        inline: ["@react-native-async-storage/async-storage"],
+      },
+    },
   },
 });
