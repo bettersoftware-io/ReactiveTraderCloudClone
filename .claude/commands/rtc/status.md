@@ -70,41 +70,59 @@ Keep the whole thing readable on a phone. Terse beats complete.
 - If a `gh` call above returned an error rather than data, report that plainly
   instead of treating the empty result as "nothing open".
 
-## Authoring these blocks — no shell control flow
+## Authoring these blocks — keep them free of shell control flow
 
-**A `!` block must never contain `case`, `if`, a `for`/`while` loop, or a
-`{ …; }` group.** Claude Code parses each block with a shell grammar *before*
-running it, to decompose it into individual commands it can match against the
-`allowed-tools` frontmatter. Control-flow constructs don't decompose into a
-`git …`/`gh …` prefix, so the checker fails closed and the block never runs:
+**Do not use `case` (or any other control-flow construct) in a `!` block in
+this directory.** Claude Code parses each block with a shell grammar *before*
+running it, so it can decompose the block into individual commands and match
+them against the `allowed-tools` frontmatter. When it meets a construct it
+won't analyse, it fails closed and the block never runs:
 
 ```
 Error: Shell command permission check failed for pattern "!`case "" in backlog) …":
 Contains case_statement
 ```
 
-That kills the block outright — the command still runs, but with an error where
-its data should be, and **every** block written that way is dead.
+The command itself still runs — it just gets an error where that block's data
+should be, and **every** block written that way is dead.
 
 This is not hypothetical. The `$ARGUMENTS` handling here was originally five
 `case` statements (added 2026-07-26 in `10277e194`, "make `/rtc:status` args
-real"); all five failed this check, so the command was fully broken from that
+real"). All five failed this check, so the command was fully broken from that
 commit until 2026-08-14 — ~19 days — because nothing surfaces the defect until
-someone actually runs it. Reading the file looks fine. `git diff` looks fine.
+someone runs it. Reading the file looks fine; `git diff` looks fine.
 
-Consequences for anything added below:
+**What is actually established (measured 2026-08-14) — read this before
+"simplifying" the rule.** The rejection is *not* a plain property of the
+`case` keyword:
 
-- **Sequence with `;`, filter with pipes.** `cmd-a; cmd-b | head -5` parses and
-  decomposes cleanly. Pipelines are fine — each segment is checked separately,
-  which is why `awk`/`sed` work in `/rtc:gauntlet` despite not being listed in
-  its `allowed-tools`.
+| where the block lived | how it was invoked | `case` |
+|---|---|---|
+| `.claude/commands/rtc/status.md` (**project** scope) | typed as `/rtc:status` | ❌ `Contains case_statement` |
+| `~/.claude/commands/…` (**user** scope) | typed as `/…` | ✅ ran |
+| `~/.claude/commands/…` (**user** scope) | invoked via the Skill tool | ✅ ran |
+| n/a — a direct `Bash` tool call | — | ✅ ran |
+
+At user scope `if`, `for`, `{ …; }`, subshells and `&&`/`||` lists all ran too,
+with unlisted binaries and with `$ARGUMENTS` empty. The one variable left
+standing is **command scope**: the leading hypothesis is that `!` blocks in
+*project*-scoped commands (repo-supplied, so not authored by whoever runs them)
+get stricter static analysis than user-scoped ones. That is unconfirmed —
+confirming it needs a throwaway project-scoped probe, which means writing into
+the shared checkout, so it was not run.
+
+Practical rules for anything added below:
+
+- **Sequence with `;`, filter with pipes.** `cmd-a; cmd-b | head -5`
+  decomposes cleanly. Pipelines are fine, and unlisted binaries are fine —
+  which is why `awk`/`sed` work in `/rtc:gauntlet` despite not appearing in its
+  `allowed-tools`.
 - **Branch at render time, not in the shell.** Collect unconditionally and let
   the prose above decide what reaches the report.
 - **Quoted control-flow keywords are fine** — the `if … then … else … end`
   inside the `--jq` argument above is a single-quoted string to the shell, so
-  the parser never sees it as a construct.
-- **A Bash *tool call* proves nothing about a `!` block.** The two go through
-  different permission paths, and `case` succeeds as a tool call. The only real
-  test is running `/rtc:status` from the primary checkout — worktrees don't
-  supply the session's commands, so a fix verified only in a worktree is
-  unverified.
+  the parser never sees a construct.
+- **Verify by *typing* `/rtc:status` in the primary checkout.** Nothing else
+  reproduces the failing path: a `Bash` tool call doesn't, the Skill tool
+  doesn't, and a user-scope copy doesn't. Worktrees don't supply the session's
+  commands either, so a change verified only in a worktree is unverified.
