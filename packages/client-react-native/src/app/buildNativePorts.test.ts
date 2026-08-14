@@ -62,15 +62,16 @@ describe("simulator branch auth accepts every fallback roster credential", () =>
     ["demo", "mcdc2026"],
   ];
 
-  it.each(
-    fallbackCredentials,
-  )("login(%s, %s) succeeds", async (username, password) => {
-    const { ports } = buildNativePorts({ simulator: true });
-    const outcome: AuthOutcome = await firstValueFrom(
-      ports.auth.login(username, password),
-    );
-    expect(outcome.ok).toBe(true);
-  });
+  it.each(fallbackCredentials)(
+    "login(%s, %s) succeeds",
+    async (username, password) => {
+      const { ports } = buildNativePorts({ simulator: true });
+      const outcome: AuthOutcome = await firstValueFrom(
+        ports.auth.login(username, password),
+      );
+      expect(outcome.ok).toBe(true);
+    },
+  );
 
   it("rejects a wrong password for a valid roster username", async () => {
     const { ports } = buildNativePorts({ simulator: true });

@@ -48,16 +48,19 @@ describe("rfqCardVm", () => {
     [RfqState.Closed, "ACCEPTED", "accepted"],
     [RfqState.Cancelled, "CANCELLED", "terminated"],
     [RfqState.Expired, "EXPIRED", "terminated"],
-  ] as const)("maps %s to stateLabel %s and cardState %s", (state, stateLabel, cardState) => {
-    const vm = rfqCardVm(rfq({ state }), [], [instrument], dealers);
-    expect(vm.stateLabel).toBe(stateLabel);
-    expect(vm.cardState).toBe(cardState);
-    expect(vm.live).toBe(state === RfqState.Open);
-    expect(vm.accepted).toBe(state === RfqState.Closed);
-    expect(vm.terminated).toBe(
-      state === RfqState.Cancelled || state === RfqState.Expired,
-    );
-  });
+  ] as const)(
+    "maps %s to stateLabel %s and cardState %s",
+    (state, stateLabel, cardState) => {
+      const vm = rfqCardVm(rfq({ state }), [], [instrument], dealers);
+      expect(vm.stateLabel).toBe(stateLabel);
+      expect(vm.cardState).toBe(cardState);
+      expect(vm.live).toBe(state === RfqState.Open);
+      expect(vm.accepted).toBe(state === RfqState.Closed);
+      expect(vm.terminated).toBe(
+        state === RfqState.Cancelled || state === RfqState.Expired,
+      );
+    },
+  );
 
   it("marks the min-priced quote best for a Buy RFQ", () => {
     const quotes: Quote[] = [
@@ -235,27 +238,33 @@ describe("rfqCardVm", () => {
     ["pendingWithoutPrice", "pending", "…"],
     ["passed", "passed", "Passed"],
     ["rejectedWithoutPrice", "rejected", "Rejected"],
-  ] as const)("renders %s quote state as displayState=%s text=%s", (type, displayState, priceText) => {
-    const quotes: Quote[] = [
-      { id: 10, rfqId: 1, dealerId: 1, state: { type } },
-    ];
-    const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
-    expect(vm.quotes[0]?.state).toBe(displayState);
-    expect(vm.quotes[0]?.priceText).toBe(priceText);
-  });
+  ] as const)(
+    "renders %s quote state as displayState=%s text=%s",
+    (type, displayState, priceText) => {
+      const quotes: Quote[] = [
+        { id: 10, rfqId: 1, dealerId: 1, state: { type } },
+      ];
+      const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
+      expect(vm.quotes[0]?.state).toBe(displayState);
+      expect(vm.quotes[0]?.priceText).toBe(priceText);
+    },
+  );
 
   it.each([
     ["pendingWithPrice", "priced", "$97.50"],
     ["accepted", "accepted", "$97.50"],
     ["rejectedWithPrice", "rejected", "Rejected"],
-  ] as const)("renders priced %s quote state as displayState=%s text=%s", (type, displayState, priceText) => {
-    const quotes: Quote[] = [
-      { id: 10, rfqId: 1, dealerId: 1, state: { type, price: 97.5 } },
-    ];
-    const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
-    expect(vm.quotes[0]?.state).toBe(displayState);
-    expect(vm.quotes[0]?.priceText).toBe(priceText);
-  });
+  ] as const)(
+    "renders priced %s quote state as displayState=%s text=%s",
+    (type, displayState, priceText) => {
+      const quotes: Quote[] = [
+        { id: 10, rfqId: 1, dealerId: 1, state: { type, price: 97.5 } },
+      ];
+      const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
+      expect(vm.quotes[0]?.state).toBe(displayState);
+      expect(vm.quotes[0]?.priceText).toBe(priceText);
+    },
+  );
 
   it("resolves the accepted dealer's name once Closed", () => {
     const quotes: Quote[] = [

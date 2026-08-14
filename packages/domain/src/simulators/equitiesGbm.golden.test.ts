@@ -9,14 +9,12 @@ describe("equities GBM + candle helpers (golden)", () => {
     import.meta.url,
   ) as unknown as Golden;
 
-  it.each(g.gbm)("gbmStep(price=$price, rand=$rand) -> $expected", ({
-    price,
-    rand,
-    vol,
-    expected,
-  }) => {
-    expect(gbmStep(price, rand, vol)).toBeCloseTo(expected, 6);
-  });
+  it.each(g.gbm)(
+    "gbmStep(price=$price, rand=$rand) -> $expected",
+    ({ price, rand, vol, expected }) => {
+      expect(gbmStep(price, rand, vol)).toBeCloseTo(expected, 6);
+    },
+  );
 
   it("mulberry32(42) is deterministic for the first 3 draws", () => {
     const rng = mulberry32(42);

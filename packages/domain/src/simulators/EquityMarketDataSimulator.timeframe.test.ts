@@ -20,33 +20,32 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     expect(noArg).toHaveLength(CANDLE_HISTORY_TOTAL);
   });
 
-  it.each([
-    ["1W", 44] as const,
-    ["1M", 48] as const,
-    ["3M", 52] as const,
-  ])("'%s' returns CANDLE_HISTORY_TOTAL candles, newest %i with high >= low for every bar", async (tf, count) => {
-    const port = new EquityMarketDataSimulator(42);
-    const candles = await firstValueFrom(port.candles("AAPL", tf));
-    expect(candles).toHaveLength(CANDLE_HISTORY_TOTAL);
+  it.each([["1W", 44] as const, ["1M", 48] as const, ["3M", 52] as const])(
+    "'%s' returns CANDLE_HISTORY_TOTAL candles, newest %i with high >= low for every bar",
+    async (tf, count) => {
+      const port = new EquityMarketDataSimulator(42);
+      const candles = await firstValueFrom(port.candles("AAPL", tf));
+      expect(candles).toHaveLength(CANDLE_HISTORY_TOTAL);
 
-    for (const c of candles) {
-      expect(c.high).toBeGreaterThanOrEqual(c.low);
-    }
+      for (const c of candles) {
+        expect(c.high).toBeGreaterThanOrEqual(c.low);
+      }
 
-    // Real newest-window assertion (not just a length tautology on
-    // slice(-count)): every bar in the newest-`count` window keeps the OHLC
-    // invariant low <= open/close <= high, proving the named-period window
-    // is populated with real candles, not e.g. accidentally sliced/duped
-    // entries from the back-walk.
-    const newestWindow = candles.slice(-count);
+      // Real newest-window assertion (not just a length tautology on
+      // slice(-count)): every bar in the newest-`count` window keeps the OHLC
+      // invariant low <= open/close <= high, proving the named-period window
+      // is populated with real candles, not e.g. accidentally sliced/duped
+      // entries from the back-walk.
+      const newestWindow = candles.slice(-count);
 
-    for (const c of newestWindow) {
-      expect(c.open).toBeGreaterThanOrEqual(c.low);
-      expect(c.open).toBeLessThanOrEqual(c.high);
-      expect(c.close).toBeGreaterThanOrEqual(c.low);
-      expect(c.close).toBeLessThanOrEqual(c.high);
-    }
-  });
+      for (const c of newestWindow) {
+        expect(c.open).toBeGreaterThanOrEqual(c.low);
+        expect(c.open).toBeLessThanOrEqual(c.high);
+        expect(c.close).toBeGreaterThanOrEqual(c.low);
+        expect(c.close).toBeLessThanOrEqual(c.high);
+      }
+    },
+  );
 
   it("produces a monotonically increasing `time` series ending near now, for every timeframe", async () => {
     const port = new EquityMarketDataSimulator(42);
@@ -107,109 +106,106 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     );
   });
 
-  it.each([
-    "1D",
-    "1W",
-    "1M",
-    "3M",
-  ] as const)("'%s' generates real OHLC bodies — not every bar is a degenerate doji (I1 regression)", async (tf) => {
-    // Before the fix, candles() drew exactly ONE GBM sample per bucket, so
-    // every bar had open===high===low===close (a flat doji, zero-length
-    // wick) — the "candlestick chart" was a scatter of dashes.
-    const port = new EquityMarketDataSimulator(42);
-    const candles = await firstValueFrom(port.candles("AAPL", tf));
+  it.each(["1D", "1W", "1M", "3M"] as const)(
+    "'%s' generates real OHLC bodies — not every bar is a degenerate doji (I1 regression)",
+    async (tf) => {
+      // Before the fix, candles() drew exactly ONE GBM sample per bucket, so
+      // every bar had open===high===low===close (a flat doji, zero-length
+      // wick) — the "candlestick chart" was a scatter of dashes.
+      const port = new EquityMarketDataSimulator(42);
+      const candles = await firstValueFrom(port.candles("AAPL", tf));
 
-    const hasRealBody = candles.some((c) => {
-      return c.open !== c.close;
-    });
-
-    const hasRealWick = candles.some((c) => {
-      return c.high > c.low;
-    });
-
-    expect(hasRealBody).toBe(true);
-    expect(hasRealWick).toBe(true);
-  });
-
-  it.each([
-    "1D",
-    "1W",
-    "1M",
-    "3M",
-  ] as const)("'%s' anchors the last candle's close to the CURRENT live price, not an independent frozen walk (I1 regression)", async (tf) => {
-    // Before the fix, the candle walk (fresh mulberry32(seed) from s.open)
-    // and the live quote walk (a per-symbol RNG evolving since
-    // construction) were unrelated — chartVm's live-overlay stretched the
-    // last candle's high/low to reach the live price, producing a
-    // permanent full-height "wick" pillar wherever they'd diverged to.
-    const port = new EquityMarketDataSimulator(42);
-    const candles = await firstValueFrom(port.candles("MSFT", tf));
-    expect(candles.at(-1)?.close).toBeCloseTo(port.currentPrice("MSFT"), 6);
-  });
-
-  it.each([
-    "1D",
-    "1W",
-    "1M",
-    "3M",
-  ] as const)("'%s' uses a distinct deterministic seed per SYMBOL — the normalised chart SHAPE differs across symbols", async (tf) => {
-    // The per-symbol mirror of the per-timeframe seed test above, and the
-    // one case it never covered. Before the fix, candles() seeded its RNG
-    // from the timeframe alone (`mulberry32(seed)`), so every symbol drew
-    // the identical sequence of percentage moves. That was invisible in raw
-    // prices — each symbol starts from its own SEED_PRICES level, so the
-    // numbers differed — but gbmStep is purely multiplicative, so the
-    // starting price factors straight out and the series were exact scalar
-    // multiples of one another. chartVm autoscales each series to its own
-    // min/max and a constant factor cancels in that ratio, so the rendered
-    // charts were PIXEL-identical for every symbol.
-    //
-    // Hence: normalise each series to its own range before comparing —
-    // comparing raw closes would pass against the buggy code.
-    //
-    // And compare with a TOLERANCE, not `not.toEqual`. Under the bug the
-    // normalised series aren't bit-identical: the anchoring rescale leaves
-    // ~1e-14 of floating-point noise, so an exact `not.toEqual` passes
-    // vacuously while the charts are pixel-identical. Require the shapes to
-    // differ somewhere by at least MIN_SHAPE_DELTA of the plot's height —
-    // a difference a human can actually see.
-    const MIN_SHAPE_DELTA = 0.02;
-    const port = new EquityMarketDataSimulator(42);
-
-    function shape(candles: readonly Candle[]): readonly number[] {
-      const lo = Math.min(
-        ...candles.map((c) => {
-          return c.low;
-        }),
-      );
-
-      const hi = Math.max(
-        ...candles.map((c) => {
-          return c.high;
-        }),
-      );
-
-      const range = hi - lo || 1;
-      return candles.map((c) => {
-        return (c.close - lo) / range;
+      const hasRealBody = candles.some((c) => {
+        return c.open !== c.close;
       });
-    }
 
-    /** Largest gap between two normalised shapes, as a fraction of plot height. */
-    function maxShapeDelta(a: readonly number[], b: readonly number[]): number {
-      return a.reduce((worst, value, i) => {
-        return Math.max(worst, Math.abs(value - (b[i] ?? 0)));
-      }, 0);
-    }
+      const hasRealWick = candles.some((c) => {
+        return c.high > c.low;
+      });
 
-    const aapl = shape(await firstValueFrom(port.candles("AAPL", tf)));
-    const msft = shape(await firstValueFrom(port.candles("MSFT", tf)));
-    const xom = shape(await firstValueFrom(port.candles("XOM", tf)));
+      expect(hasRealBody).toBe(true);
+      expect(hasRealWick).toBe(true);
+    },
+  );
 
-    expect(maxShapeDelta(aapl, msft)).toBeGreaterThan(MIN_SHAPE_DELTA);
-    expect(maxShapeDelta(msft, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
-    expect(maxShapeDelta(aapl, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
-  });
+  it.each(["1D", "1W", "1M", "3M"] as const)(
+    "'%s' anchors the last candle's close to the CURRENT live price, not an independent frozen walk (I1 regression)",
+    async (tf) => {
+      // Before the fix, the candle walk (fresh mulberry32(seed) from s.open)
+      // and the live quote walk (a per-symbol RNG evolving since
+      // construction) were unrelated — chartVm's live-overlay stretched the
+      // last candle's high/low to reach the live price, producing a
+      // permanent full-height "wick" pillar wherever they'd diverged to.
+      const port = new EquityMarketDataSimulator(42);
+      const candles = await firstValueFrom(port.candles("MSFT", tf));
+      expect(candles.at(-1)?.close).toBeCloseTo(port.currentPrice("MSFT"), 6);
+    },
+  );
+
+  it.each(["1D", "1W", "1M", "3M"] as const)(
+    "'%s' uses a distinct deterministic seed per SYMBOL — the normalised chart SHAPE differs across symbols",
+    async (tf) => {
+      // The per-symbol mirror of the per-timeframe seed test above, and the
+      // one case it never covered. Before the fix, candles() seeded its RNG
+      // from the timeframe alone (`mulberry32(seed)`), so every symbol drew
+      // the identical sequence of percentage moves. That was invisible in raw
+      // prices — each symbol starts from its own SEED_PRICES level, so the
+      // numbers differed — but gbmStep is purely multiplicative, so the
+      // starting price factors straight out and the series were exact scalar
+      // multiples of one another. chartVm autoscales each series to its own
+      // min/max and a constant factor cancels in that ratio, so the rendered
+      // charts were PIXEL-identical for every symbol.
+      //
+      // Hence: normalise each series to its own range before comparing —
+      // comparing raw closes would pass against the buggy code.
+      //
+      // And compare with a TOLERANCE, not `not.toEqual`. Under the bug the
+      // normalised series aren't bit-identical: the anchoring rescale leaves
+      // ~1e-14 of floating-point noise, so an exact `not.toEqual` passes
+      // vacuously while the charts are pixel-identical. Require the shapes to
+      // differ somewhere by at least MIN_SHAPE_DELTA of the plot's height —
+      // a difference a human can actually see.
+      const MIN_SHAPE_DELTA = 0.02;
+      const port = new EquityMarketDataSimulator(42);
+
+      function shape(candles: readonly Candle[]): readonly number[] {
+        const lo = Math.min(
+          ...candles.map((c) => {
+            return c.low;
+          }),
+        );
+
+        const hi = Math.max(
+          ...candles.map((c) => {
+            return c.high;
+          }),
+        );
+
+        const range = hi - lo || 1;
+        return candles.map((c) => {
+          return (c.close - lo) / range;
+        });
+      }
+
+      /** Largest gap between two normalised shapes, as a fraction of plot height. */
+      function maxShapeDelta(
+        a: readonly number[],
+        b: readonly number[],
+      ): number {
+        return a.reduce((worst, value, i) => {
+          return Math.max(worst, Math.abs(value - (b[i] ?? 0)));
+        }, 0);
+      }
+
+      const aapl = shape(await firstValueFrom(port.candles("AAPL", tf)));
+      const msft = shape(await firstValueFrom(port.candles("MSFT", tf)));
+      const xom = shape(await firstValueFrom(port.candles("XOM", tf)));
+
+      expect(maxShapeDelta(aapl, msft)).toBeGreaterThan(MIN_SHAPE_DELTA);
+      expect(maxShapeDelta(msft, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
+      expect(maxShapeDelta(aapl, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
+    },
+  );
 
   it("is deterministic — repeated calls for the same symbol+timeframe reproduce the same close-price path", async () => {
     const port = new EquityMarketDataSimulator(42);

@@ -70,24 +70,25 @@ export function describeMarketDataPortContract(
       }
     });
 
-    it.each(
-      CANDLE_TIMEFRAMES,
-    )("candles(symbol, %s) emits an OHLC array with high >= low for each bar", async (timeframe) => {
-      const { port, driver, teardown } = makeHarness();
+    it.each(CANDLE_TIMEFRAMES)(
+      "candles(symbol, %s) emits an OHLC array with high >= low for each bar",
+      async (timeframe) => {
+        const { port, driver, teardown } = makeHarness();
 
-      try {
-        const promise = firstValueFrom(port.candles("AAPL", timeframe));
-        await driver.ackCandles("AAPL");
-        const candles = await promise;
-        expect(candles.length).toBeGreaterThan(0);
+        try {
+          const promise = firstValueFrom(port.candles("AAPL", timeframe));
+          await driver.ackCandles("AAPL");
+          const candles = await promise;
+          expect(candles.length).toBeGreaterThan(0);
 
-        for (const c of candles) {
-          expect(c.high).toBeGreaterThanOrEqual(c.low);
+          for (const c of candles) {
+            expect(c.high).toBeGreaterThanOrEqual(c.low);
+          }
+        } finally {
+          teardown();
         }
-      } finally {
-        teardown();
-      }
-    });
+      },
+    );
 
     // M5: this contract deliberately does NOT assert the page-continuity law
     // (a page's newest candle chains seamlessly into the series it was
