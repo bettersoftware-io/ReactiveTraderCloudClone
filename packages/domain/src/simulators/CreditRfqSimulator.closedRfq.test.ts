@@ -1,5 +1,4 @@
 import { firstValueFrom } from "rxjs";
-import { filter, take } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";

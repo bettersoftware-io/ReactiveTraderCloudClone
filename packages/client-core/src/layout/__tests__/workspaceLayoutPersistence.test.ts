@@ -31,17 +31,18 @@ const VALID_SPEC: PanelSpecV1 = {
 };
 
 describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () => {
-  it.each(
-    REAL_TABS,
-  )("round-trips the real default tree for %s plus a docked entry", (tab) => {
-    const payload: WorkspaceLayoutV1 = {
-      v: 1,
-      tabs: { [tab]: tabLayoutFor(tab) },
-    };
+  it.each(REAL_TABS)(
+    "round-trips the real default tree for %s plus a docked entry",
+    (tab) => {
+      const payload: WorkspaceLayoutV1 = {
+        v: 1,
+        tabs: { [tab]: tabLayoutFor(tab) },
+      };
 
-    const raw = serializeWorkspaceLayout(payload);
-    expect(parseWorkspaceLayout(raw)).toEqual(payload);
-  });
+      const raw = serializeWorkspaceLayout(payload);
+      expect(parseWorkspaceLayout(raw)).toEqual(payload);
+    },
+  );
 
   it("round-trips all four tabs together, each with a docked entry", () => {
     const payload: WorkspaceLayoutV1 = {

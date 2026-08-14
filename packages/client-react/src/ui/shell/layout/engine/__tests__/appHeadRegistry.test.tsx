@@ -68,7 +68,13 @@ describe("appHeadRegistry", () => {
 
   it("gives every panel a distinct head", () => {
     const heads = expected.map(([panelId]) => {
-      return (appHeadRegistry[panelId]?.() as ReactElement).type;
+      const head = appHeadRegistry[panelId];
+
+      if (!head) {
+        throw new Error(`no head registered for panel ${panelId}`);
+      }
+
+      return (head() as ReactElement).type;
     });
 
     // A copy-paste slip that points two ids at one head is the likeliest

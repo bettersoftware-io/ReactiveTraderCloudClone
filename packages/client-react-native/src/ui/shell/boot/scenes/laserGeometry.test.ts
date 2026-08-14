@@ -72,12 +72,12 @@ test.each(
   EXPECTED_PANELS.map((panel, index) => {
     return { index, panel };
   }),
-)("panel $index ($panel.kind) matches the web source verbatim", ({
-  index,
-  panel,
-}) => {
-  expect(LASER_PANELS[index]).toEqual(panel);
-});
+)(
+  "panel $index ($panel.kind) matches the web source verbatim",
+  ({ index, panel }) => {
+    expect(LASER_PANELS[index]).toEqual(panel);
+  },
+);
 
 test("panelRevealFraction is 0 before the trace window opens", () => {
   expect(panelRevealFraction(0, 0.3, 0.45)).toBe(0);

@@ -1,8 +1,7 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
-import { act, screen, waitFor } from "@testing-library/react-native";
-import type { JSX } from "react";
-import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, StyleSheet } from "react-native";
+import { screen, waitFor } from "@testing-library/react-native";
+import { useEffect, useRef } from "react";
+import { AccessibilityInfo, Animated } from "react-native";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";

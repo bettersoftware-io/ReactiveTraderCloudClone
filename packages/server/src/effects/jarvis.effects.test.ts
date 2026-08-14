@@ -781,37 +781,34 @@ describe("jarvis effects — defer() keeps a synchronous session.runTurn throw f
 });
 
 describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () => {
-  it.each(
-    WIRE_MAPPING_CASES,
-  )("maps a stubbed $event.type event to its wire type, minus the type field, plus turnId", ({
-    event,
-    wireType,
-    body,
-  }) => {
-    const loop: AgentLoop = {
-      createSession: () => {
-        return {
-          runTurn: () => {
-            return of(event);
-          },
-          resolveConfirmation: vi.fn(),
-          cancelTurn: vi.fn(),
-          dispose: vi.fn(),
-        };
-      },
-    };
-    const { messages$, sent } = stubHarness(loop);
+  it.each(WIRE_MAPPING_CASES)(
+    "maps a stubbed $event.type event to its wire type, minus the type field, plus turnId",
+    ({ event, wireType, body }) => {
+      const loop: AgentLoop = {
+        createSession: () => {
+          return {
+            runTurn: () => {
+              return of(event);
+            },
+            resolveConfirmation: vi.fn(),
+            cancelTurn: vi.fn(),
+            dispose: vi.fn(),
+          };
+        },
+      };
+      const { messages$, sent } = stubHarness(loop);
 
-    messages$.next({
-      type: CLIENT_MSG.JARVIS_CHAT,
-      payload: {
-        text: "irrelevant",
-        turnId: STUB_TURN_ID,
-      } satisfies JarvisChatPayload,
-    });
+      messages$.next({
+        type: CLIENT_MSG.JARVIS_CHAT,
+        payload: {
+          text: "irrelevant",
+          turnId: STUB_TURN_ID,
+        } satisfies JarvisChatPayload,
+      });
 
-    expect(sent).toEqual([{ type: wireType, payload: body }]);
-  });
+      expect(sent).toEqual([{ type: wireType, payload: body }]);
+    },
+  );
 });
 
 describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)", () => {
