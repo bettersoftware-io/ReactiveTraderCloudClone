@@ -81,6 +81,15 @@ so every worktree and session gets them):
 `/rtc:gauntlet` re-reads `ci.yml`'s step list on every run and warns if CI has
 gained a gate it doesn't know about, so it can't silently drift out of sync.
 
+**Authoring trap — no shell control flow in a `` !`…` `` block.** Those blocks
+are parsed and matched against the command's `allowed-tools` *before* they run,
+so `case`/`if`/loops/`{ …; }` fail closed (`Contains case_statement`) and the
+block silently yields an error instead of data. Sequence with `;` and filter
+with pipes instead, and branch on `$ARGUMENTS` when *rendering*, not in the
+shell. This broke `/rtc:status` entirely for 19 days — nothing surfaces it
+until someone runs the command. See the "Authoring these blocks" section in
+[`.claude/commands/rtc/status.md`](.claude/commands/rtc/status.md).
+
 ## Package Structure
 
 ```
