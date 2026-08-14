@@ -214,7 +214,13 @@ describe("admin jarvis usage effects", () => {
         payload: {},
       });
       expect(sent).toHaveLength(1);
-      expect((sent[0]?.payload as AdminJarvisUsagePayload).gateLevel).toBe(
+      const [leading] = sent;
+
+      if (!leading) {
+        throw new Error("expected the throttle's leading emission on the wire");
+      }
+
+      expect((leading.payload as AdminJarvisUsagePayload).gateLevel).toBe(
         "none",
       );
 

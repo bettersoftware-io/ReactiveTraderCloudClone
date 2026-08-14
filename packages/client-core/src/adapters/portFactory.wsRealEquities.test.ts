@@ -110,22 +110,21 @@ describe("orders.place", () => {
     expect(next.mock.calls[0]?.[0]).toMatchObject({ id: "o-1" });
   });
 
-  it.each([
-    "filled",
-    "cancelled",
-    "rejected",
-  ])("completes once the order reaches %s", async (status) => {
-    const complete = vi.fn();
+  it.each(["filled", "cancelled", "rejected"])(
+    "completes once the order reaches %s",
+    async (status) => {
+      const complete = vi.fn();
 
-    ports.orders.place(req).subscribe({ complete });
-    await ackPlace("o-1");
+      ports.orders.place(req).subscribe({ complete });
+      await ackPlace("o-1");
 
-    ws.emit(SERVER_MSG.ORDER_LIFECYCLE, { id: "o-1", status: "working" });
-    expect(complete).not.toHaveBeenCalled();
+      ws.emit(SERVER_MSG.ORDER_LIFECYCLE, { id: "o-1", status: "working" });
+      expect(complete).not.toHaveBeenCalled();
 
-    ws.emit(SERVER_MSG.ORDER_LIFECYCLE, { id: "o-1", status });
-    expect(complete).toHaveBeenCalledTimes(1);
-  });
+      ws.emit(SERVER_MSG.ORDER_LIFECYCLE, { id: "o-1", status });
+      expect(complete).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("errors on nack", async () => {
     const error = vi.fn();

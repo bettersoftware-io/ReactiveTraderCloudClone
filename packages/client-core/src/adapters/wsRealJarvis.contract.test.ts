@@ -1098,31 +1098,34 @@ describe("WsJarvisAdapter.availability$()", () => {
       { level: "hard", resetsAtMs: 0, gated: ["chatgpt"] },
     ],
     ["gate itself not an object", 7],
-  ])("GATE MALFORMED (%s): silently drops to gate:null while the rest of the frame still applies", (_label, malformedGate) => {
-    const ws = new FakeWsAdapter();
-    const adapter = new WsJarvisAdapter(ws);
-    const received: JarvisAvailability[] = [];
-    adapter.availability$().subscribe((availability) => {
-      received.push(availability);
-    });
+  ])(
+    "GATE MALFORMED (%s): silently drops to gate:null while the rest of the frame still applies",
+    (_label, malformedGate) => {
+      const ws = new FakeWsAdapter();
+      const adapter = new WsJarvisAdapter(ws);
+      const received: JarvisAvailability[] = [];
+      adapter.availability$().subscribe((availability) => {
+        received.push(availability);
+      });
 
-    ws.emitConnectionEvent("gatewayConnected");
-    ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
-      available: true,
-      brains: ["scripted", "claude-haiku-4-5"],
-      defaultBrain: "claude-haiku-4-5",
-      gate: malformedGate,
-    });
-
-    expect(received).toEqual([
-      {
+      ws.emitConnectionEvent("gatewayConnected");
+      ws.emit(SERVER_MSG.JARVIS_AVAILABILITY, {
         available: true,
         brains: ["scripted", "claude-haiku-4-5"],
         defaultBrain: "claude-haiku-4-5",
-        gate: null,
-      },
-    ]);
-  });
+        gate: malformedGate,
+      });
+
+      expect(received).toEqual([
+        {
+          available: true,
+          brains: ["scripted", "claude-haiku-4-5"],
+          defaultBrain: "claude-haiku-4-5",
+          gate: null,
+        },
+      ]);
+    },
+  );
 
   it("distinctUntilChanged: two frames identical except gate.level are NOT deduped", () => {
     const ws = new FakeWsAdapter();

@@ -160,18 +160,19 @@ test("setViewMode does not throw when AsyncStorage.setItem rejects", async () =>
  * advances through every variant, and one the guard rejects silently resets the
  * sequence to the default on cold launch.
  */
-test.each([
-  ...BOOT_VARIANTS,
-])("hydrates the stored boot variant %s", async (variant) => {
-  store.set("rt-boot-variant", variant);
-  const prefs = new AsyncStoragePreferencesAdapter();
-  // Poll the current value rather than awaiting a second emission: the
-  // default variant hydrates to the value the subject already holds, and
-  // `distinctUntilChanged` rightly suppresses that duplicate.
-  await vi.waitFor(async () => {
-    expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
-  });
-});
+test.each([...BOOT_VARIANTS])(
+  "hydrates the stored boot variant %s",
+  async (variant) => {
+    store.set("rt-boot-variant", variant);
+    const prefs = new AsyncStoragePreferencesAdapter();
+    // Poll the current value rather than awaiting a second emission: the
+    // default variant hydrates to the value the subject already holds, and
+    // `distinctUntilChanged` rightly suppresses that duplicate.
+    await vi.waitFor(async () => {
+      expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
+    });
+  },
+);
 
 test("falls back to the default boot variant when the stored value is unknown", async () => {
   store.set("rt-boot-variant", "not-a-real-variant");
@@ -186,14 +187,15 @@ test("falls back to the default boot variant when the stored value is unknown", 
 // constructor above — where the stored value only arrives on a LATER emission —
 // hydrate() seeds it as the FIRST value, so no `skip(1)` is needed here. Driven
 // off BOOT_VARIANTS so a new domain variant can't outrun the seed path either.
-test.each([
-  ...BOOT_VARIANTS,
-])("hydrate() seeds the stored boot variant %s on the first emission", async (variant) => {
-  store.set("rt-boot-variant", variant);
-  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
-  // No skip: the first emission is already the persisted value.
-  expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
-});
+test.each([...BOOT_VARIANTS])(
+  "hydrate() seeds the stored boot variant %s on the first emission",
+  async (variant) => {
+    store.set("rt-boot-variant", variant);
+    const prefs = await AsyncStoragePreferencesAdapter.hydrate();
+    // No skip: the first emission is already the persisted value.
+    expect(await firstValueFrom(prefs.bootVariant$())).toBe(variant);
+  },
+);
 
 test("hydrate() seeds defaults when nothing is stored", async () => {
   const prefs = await AsyncStoragePreferencesAdapter.hydrate();
@@ -489,17 +491,18 @@ test("emits the default login-wait variant synchronously on construction", async
  * "handshake" pre-hydration, so a bare wait on loginWaitVariant$ can't tell
  * the two apart.
  */
-test.each([
-  ...LOGIN_WAIT_VARIANTS,
-])("hydrates the stored login-wait variant %s", async (variant) => {
-  store.set("rt-login-wait-variant", variant);
-  store.set("rtc-view-mode", "price");
-  const prefs = new AsyncStoragePreferencesAdapter();
-  await vi.waitFor(async () => {
-    expect(await firstValueFrom(prefs.viewMode$())).toBe("price");
-  });
-  expect(await firstValueFrom(prefs.loginWaitVariant$())).toBe(variant);
-});
+test.each([...LOGIN_WAIT_VARIANTS])(
+  "hydrates the stored login-wait variant %s",
+  async (variant) => {
+    store.set("rt-login-wait-variant", variant);
+    store.set("rtc-view-mode", "price");
+    const prefs = new AsyncStoragePreferencesAdapter();
+    await vi.waitFor(async () => {
+      expect(await firstValueFrom(prefs.viewMode$())).toBe("price");
+    });
+    expect(await firstValueFrom(prefs.loginWaitVariant$())).toBe(variant);
+  },
+);
 
 test("falls back to the default login-wait variant when the stored value is unknown", async () => {
   store.set("rt-login-wait-variant", "not-a-real-variant");

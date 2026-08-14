@@ -248,17 +248,15 @@ describe("createDefaultLayoutPort", () => {
     }
   });
 
-  it.each<WorkspaceTab>([
-    "fx",
-    "credit",
-    "admin",
-    "equities",
-  ])("every adjacent pair in every split of the %s tab's default tree yields a resize handle", (tab) => {
-    const { initial } = createDefaultLayoutPort(tab);
-    const flags = collectHandleFlags(initial.root, PANEL_SPECS);
-    expect(flags.length > 0 || isSinglePanel(initial.root)).toBe(true);
-    expect(flags.every(Boolean)).toBe(true);
-  });
+  it.each<WorkspaceTab>(["fx", "credit", "admin", "equities"])(
+    "every adjacent pair in every split of the %s tab's default tree yields a resize handle",
+    (tab) => {
+      const { initial } = createDefaultLayoutPort(tab);
+      const flags = collectHandleFlags(initial.root, PANEL_SPECS);
+      expect(flags.length > 0 || isSinglePanel(initial.root)).toBe(true);
+      expect(flags.every(Boolean)).toBe(true);
+    },
+  );
 });
 
 function panelIds(node: LayoutNode): string[] {

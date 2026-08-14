@@ -263,80 +263,82 @@ describe("removeDockedLeaf", () => {
 });
 
 describe("structural round-trip: remove(insert(tree, id), id) === tree", () => {
-  it.each([
-    "fx",
-    "credit",
-    "equities",
-  ] as const)("%s default tree: a single dock insert then remove restores the exact original tree", (tab) => {
-    const { initial } = createDefaultLayoutPort(tab);
-    const staticIds = staticIdsOf(initial.root);
-    const inserted = insertDockedLeaf(initial.root, "jarvis-1", staticIds);
-    const restored = removeDockedLeaf(inserted, "jarvis-1");
-    expectSameTreeShape(restored, initial.root);
-  });
+  it.each(["fx", "credit", "equities"] as const)(
+    "%s default tree: a single dock insert then remove restores the exact original tree",
+    (tab) => {
+      const { initial } = createDefaultLayoutPort(tab);
+      const staticIds = staticIdsOf(initial.root);
+      const inserted = insertDockedLeaf(initial.root, "jarvis-1", staticIds);
+      const restored = removeDockedLeaf(inserted, "jarvis-1");
+      expectSameTreeShape(restored, initial.root);
+    },
+  );
 
-  it.each([
-    "fx",
-    "credit",
-    "equities",
-  ] as const)("%s default tree: two inserts then removing both (in insertion order) restores the exact original tree", (tab) => {
-    const { initial } = createDefaultLayoutPort(tab);
-    const staticIds = staticIdsOf(initial.root);
-    const afterInserts = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>(
-      (acc, id) => {
-        return insertDockedLeaf(acc, id, staticIds);
-      },
-      initial.root,
-    );
+  it.each(["fx", "credit", "equities"] as const)(
+    "%s default tree: two inserts then removing both (in insertion order) restores the exact original tree",
+    (tab) => {
+      const { initial } = createDefaultLayoutPort(tab);
+      const staticIds = staticIdsOf(initial.root);
+      const afterInserts = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>(
+        (acc, id) => {
+          return insertDockedLeaf(acc, id, staticIds);
+        },
+        initial.root,
+      );
 
-    const restored = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>((acc, id) => {
-      return removeDockedLeaf(acc, id);
-    }, afterInserts);
-    expectSameTreeShape(restored, initial.root);
-  });
+      const restored = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>(
+        (acc, id) => {
+          return removeDockedLeaf(acc, id);
+        },
+        afterInserts,
+      );
+      expectSameTreeShape(restored, initial.root);
+    },
+  );
 
-  it.each([
-    "fx",
-    "credit",
-    "equities",
-  ] as const)("%s default tree: two inserts then removing both (in REVERSE order) restores the exact original tree", (tab) => {
-    const { initial } = createDefaultLayoutPort(tab);
-    const staticIds = staticIdsOf(initial.root);
-    const afterInserts = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>(
-      (acc, id) => {
-        return insertDockedLeaf(acc, id, staticIds);
-      },
-      initial.root,
-    );
+  it.each(["fx", "credit", "equities"] as const)(
+    "%s default tree: two inserts then removing both (in REVERSE order) restores the exact original tree",
+    (tab) => {
+      const { initial } = createDefaultLayoutPort(tab);
+      const staticIds = staticIdsOf(initial.root);
+      const afterInserts = ["jarvis-1", "jarvis-2"].reduce<LayoutNode>(
+        (acc, id) => {
+          return insertDockedLeaf(acc, id, staticIds);
+        },
+        initial.root,
+      );
 
-    const restored = ["jarvis-2", "jarvis-1"].reduce<LayoutNode>((acc, id) => {
-      return removeDockedLeaf(acc, id);
-    }, afterInserts);
-    expectSameTreeShape(restored, initial.root);
-  });
+      const restored = ["jarvis-2", "jarvis-1"].reduce<LayoutNode>(
+        (acc, id) => {
+          return removeDockedLeaf(acc, id);
+        },
+        afterInserts,
+      );
+      expectSameTreeShape(restored, initial.root);
+    },
+  );
 
-  it.each([
-    "fx",
-    "credit",
-    "equities",
-  ] as const)("%s default tree: every intermediate split's sizes always sum to 1 across an insert/remove cycle", (tab) => {
-    const { initial } = createDefaultLayoutPort(tab);
-    const staticIds = staticIdsOf(initial.root);
-    let tree = initial.root;
-    const ids = ["jarvis-1", "jarvis-2", "jarvis-3"];
+  it.each(["fx", "credit", "equities"] as const)(
+    "%s default tree: every intermediate split's sizes always sum to 1 across an insert/remove cycle",
+    (tab) => {
+      const { initial } = createDefaultLayoutPort(tab);
+      const staticIds = staticIdsOf(initial.root);
+      let tree = initial.root;
+      const ids = ["jarvis-1", "jarvis-2", "jarvis-3"];
 
-    for (const id of ids) {
-      tree = insertDockedLeaf(tree, id, staticIds);
-      assertSizesSumToOne(tree);
-    }
+      for (const id of ids) {
+        tree = insertDockedLeaf(tree, id, staticIds);
+        assertSizesSumToOne(tree);
+      }
 
-    for (const id of ids) {
-      tree = removeDockedLeaf(tree, id);
-      assertSizesSumToOne(tree);
-    }
+      for (const id of ids) {
+        tree = removeDockedLeaf(tree, id);
+        assertSizesSumToOne(tree);
+      }
 
-    expectSameTreeShape(tree, initial.root);
-  });
+      expectSameTreeShape(tree, initial.root);
+    },
+  );
 });
 
 function assertSizesSumToOne(node: LayoutNode): void {
