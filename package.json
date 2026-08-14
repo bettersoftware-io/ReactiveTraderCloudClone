@@ -74,7 +74,7 @@
     "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.2",
+    "@biomejs/biome": "2.5.8",
     "@manypkg/cli": "^0.25.1",
     "dependency-cruiser": "^18.0.0",
     "eslint": "^10.5.0",

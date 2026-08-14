@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -256,6 +256,27 @@
         "rules": {
           "a11y": {
             "useSemanticElements": "off"
+          }
+        }
+      }
+    },
+    {
+      // Power-saver FREEZE is implemented as a global CSS catch-all: a
+      // `[data-power-saver="freeze"] *` block that collapses every
+      // animation/transition in the app to nothing. `!important` is what makes
+      // it a catch-all rather than a suggestion — it has to outrank arbitrary
+      // author-level animations it knows nothing about, including third-party
+      // CSS (Dockview's), so specificity alone cannot do the job. Biome's
+      // noImportantStyles fix is to DELETE the `!important`, which would
+      // silently reduce freeze to "whatever happens to lose the cascade" — the
+      // freeze contract's `transition-property` check would catch it, but only
+      // after the guarantee had already been broken. Scoped to the two web
+      // clients' root stylesheets, the only place the catch-all lives.
+      "includes": ["packages/client-*/src/index.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
           }
         }
       }

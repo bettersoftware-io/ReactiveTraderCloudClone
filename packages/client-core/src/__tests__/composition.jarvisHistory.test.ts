@@ -90,11 +90,17 @@ describe("composition — jarvis history-source wiring", () => {
     });
 
     presenters.jarvis.intents.send("first");
-    const firstTurnId = (
-      ws.sentMessages().find((m) => {
-        return m.type === CLIENT_MSG.JARVIS_CHAT;
-      })?.payload as ChatFramePayload
-    ).turnId;
+    const firstChat = ws.sentMessages().find((m) => {
+      return m.type === CLIENT_MSG.JARVIS_CHAT;
+    });
+
+    if (!firstChat) {
+      throw new Error(
+        "expected the first send to have put a CHAT frame on the wire",
+      );
+    }
+
+    const firstTurnId = (firstChat.payload as ChatFramePayload).turnId;
     ws.emit(SERVER_MSG.JARVIS_DELTA, {
       turnId: firstTurnId,
       text: "EUR/USD is 1.0850",
@@ -124,11 +130,17 @@ describe("composition — jarvis history-source wiring", () => {
     });
 
     presenters.jarvis.intents.send("first");
-    const firstTurnId = (
-      ws.sentMessages().find((m) => {
-        return m.type === CLIENT_MSG.JARVIS_CHAT;
-      })?.payload as ChatFramePayload
-    ).turnId;
+    const firstChat = ws.sentMessages().find((m) => {
+      return m.type === CLIENT_MSG.JARVIS_CHAT;
+    });
+
+    if (!firstChat) {
+      throw new Error(
+        "expected the first send to have put a CHAT frame on the wire",
+      );
+    }
+
+    const firstTurnId = (firstChat.payload as ChatFramePayload).turnId;
     ws.emit(SERVER_MSG.JARVIS_DELTA, {
       turnId: firstTurnId,
       text: "EUR/USD is 1.0850",
@@ -273,5 +285,10 @@ function lastChatHistory(
     return m.type === CLIENT_MSG.JARVIS_CHAT;
   });
   const last = chatFrames[chatFrames.length - 1];
-  return (last?.payload as ChatFramePayload).history;
+
+  if (!last) {
+    return undefined;
+  }
+
+  return (last.payload as ChatFramePayload).history;
 }
