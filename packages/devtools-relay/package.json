@@ -33,7 +33,7 @@
   "devDependencies": {
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
-    "tsc-alias": "1.9.0",
+    "tsc-alias": "1.9.1",
     "tsx": "^4",
     "vitest": "^4.1.10"
   }
