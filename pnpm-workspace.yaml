@@ -94,14 +94,22 @@ overrides:
   "js-yaml@>=4.0.0 <4.3.1": ^4.3.1
   # Force the transitive nanoid (arrives via @gorhom/portal and the expo-router
   # chain, prod-reachable through client-react-native) up from the vulnerable
-  # 3.3.15/3.3.16 to the PATCHED 3.3.17. Fixes BOTH HIGH infinite-loop
+  # 3.3.15/3.3.16/3.3.17 to the PATCHED 3.3.18. Fixes BOTH HIGH infinite-loop
   # advisories GHSA-28wg-ghj8-5hjv (non-secure generators, negative sizes,
-  # patched 3.3.16) and GHSA-2v37-7h3g-55p8 (custom generators, patched
-  # 3.3.17), which red CI gate 25 (`pnpm audit --prod`). SCOPED to the
-  # vulnerable range so the safe 5.x line elsewhere in the tree keeps its
-  # choice. 3.3.17 published 2026-08-03 — outside the minimumReleaseAge
-  # cooldown.
-  "nanoid@<3.3.17": ^3.3.17
+  # patched 3.3.16) and GHSA-2v37-7h3g-55p8 (custom generators), which red CI
+  # gate 25 (`pnpm audit --prod`). SCOPED to the vulnerable range so the safe
+  # 5.x line elsewhere in the tree keeps its choice. 3.3.18 published
+  # 2026-08-07 — outside the minimumReleaseAge cooldown.
+  # RE-SCOPED 2026-08-14: this entry read `nanoid@<3.3.17: ^3.3.17` because
+  # GHSA-2v37-7h3g-55p8 originally declared 3.3.17 patched. The advisory has
+  # since been revised to <3.3.18 vulnerable / >=3.3.18 patched (3.3.17 was an
+  # incomplete fix), which silently re-vulnerabilized the pinned 3.3.17 and
+  # reddened gate 25 with no local change — the same "advisory corrected after
+  # publication" pattern the brace-expansion note above records. A version-
+  # scoped override is a snapshot of the advisory as it read that day, not a
+  # permanent fix; when gate 25 reds on a package already listed here, suspect
+  # a re-scope before suspecting a new dependency.
+  "nanoid@<3.3.18": ^3.3.18
   # Force the transitive @xmldom/xmldom (pulled in by @expo/plist and plist —
   # Expo native-build tooling, exercised by `expo prebuild`/`run:ios` and every
   # `eas build`) up from the vulnerable <0.8.13 line to the PATCHED 0.8.13.
