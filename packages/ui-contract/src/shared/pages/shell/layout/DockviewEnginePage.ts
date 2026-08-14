@@ -14,6 +14,9 @@ export interface DockviewEngineProps {
   /** Mirrors the LayoutMachine's `state.maximized` the real WorkspaceEngine
    * threads into the bridge's `maximized` prop. */
   maximized?: string | null;
+  /** Mirrors the LayoutMachine's `state.collapsed`, threaded into the bridge's
+   * `collapsed` prop the same way. */
+  collapsed?: readonly string[];
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike
@@ -42,6 +45,16 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
 
   groupsAttr(): string | null {
     return this.engineEl().getAttribute("data-groups");
+  }
+
+  /** The collapse set the bridge received, as ids in prop order. Dockview
+   * emulates collapse by clamping a group's WIDTH — an internal size that
+   * leaves no DOM trace — so this witnesses the wiring while
+   * `createDockEngine`'s own tests cover the clamping itself. */
+  collapsedIds(): readonly string[] {
+    const raw = this.engineEl().getAttribute("data-collapsed") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
   }
 
   /** Visible dockview tab titles, in DOM order. `.dv-default-tab-content` is

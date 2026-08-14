@@ -255,6 +255,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               headRegistry={headRegistry()}
               store={dockLayoutStore}
               maximized={state().maximized}
+              collapsed={state().collapsed}
             />
           </Suspense>
         </Show>

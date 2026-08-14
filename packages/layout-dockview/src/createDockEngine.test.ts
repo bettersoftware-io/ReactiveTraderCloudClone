@@ -272,6 +272,135 @@ describe("createDockEngine", () => {
   });
 });
 
+describe("collapse / expand", () => {
+  it("strips a collapsed panel's group to the 38px bar", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    await flush();
+
+    // 0.25 of the 1200px fallback width before, the strip after.
+    expect(seen.sizeOf("fx-analytics")).toBe(STRIP);
+    engine.dispose();
+  });
+
+  it("restores the exact pre-collapse size on expand", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    await flush();
+    expect(seen.sizeOf("fx-analytics")).toBe(STRIP);
+
+    engine.expandPanel("fx-analytics");
+    await flush();
+
+    // Not merely "wider than the strip" — the SAME width it had before, which
+    // is what separates restoring from letting the splitview redistribute.
+    expect(seen.sizeOf("fx-analytics")).toBe(ANALYTICS_PX);
+    engine.dispose();
+  });
+
+  it("is idempotent — a second collapse cannot overwrite the remembered size", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    await flush();
+    // Without the `preCollapse.has` guard this second call would record the
+    // STRIP width as "pre-collapse", and expand would restore it to a strip.
+    engine.collapsePanel("fx-analytics");
+    await flush();
+    engine.expandPanel("fx-analytics");
+    await flush();
+
+    expect(seen.sizeOf("fx-analytics")).toBe(ANALYTICS_PX);
+    engine.dispose();
+  });
+
+  it("ignores expand for a panel this engine never collapsed", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.expandPanel("fx-analytics");
+    await flush();
+
+    // No layout mutation at all — an unguarded expand would have called
+    // setConstraints/setSize and produced a save.
+    expect(seen.saves).toBe(0);
+    engine.dispose();
+  });
+
+  it("ignores an unknown panel id", () => {
+    const engine = createDockEngine(base());
+
+    expect(() => {
+      engine.collapsePanel("nope");
+      engine.expandPanel("nope");
+    }).not.toThrow();
+    expect(engine.groupCount()).toBe(3);
+    engine.dispose();
+  });
+});
+
+const STRIP = 38;
+/** fx-analytics is the 0.25 side of FX_LIKE's row split, against the engine's
+ * 1200px fallback width (jsdom never gives the container a real size). */
+const ANALYTICS_PX = 300;
+
+function flush(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 5);
+  });
+}
+
+/** Captures every persisted layout so a test can read the size dockview
+ * actually recorded, rather than the DOM — jsdom never lays anything out. */
+interface LayoutTracker {
+  options: Pick<DockEngineOptions, "onLayoutChange" | "debounceMs">;
+  saves: number;
+  sizeOf(panelId: string): number | null;
+}
+
+function trackLayout(): LayoutTracker {
+  let blob = "";
+  const tracker = {
+    options: {
+      onLayoutChange: (next: string): void => {
+        blob = next;
+        tracker.saves += 1;
+      },
+      debounceMs: 0,
+    },
+    saves: 0,
+    sizeOf: (panelId: string): number | null => {
+      return blob === ""
+        ? null
+        : findLeafSize(JSON.parse(blob).grid.root, panelId);
+    },
+  };
+
+  return tracker;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+function findLeafSize(node: any, panelId: string): number | null {
+  if (node.type === "leaf") {
+    return node.data?.views?.includes(panelId) ? node.size : null;
+  }
+
+  for (const child of node.data ?? []) {
+    const hit = findLeafSize(child, panelId);
+
+    if (hit !== null) {
+      return hit;
+    }
+  }
+
+  return null;
+}
+
 function base(): DockEngineOptions {
   const container = document.createElement("div");
   document.body.appendChild(container);

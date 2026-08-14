@@ -70,6 +70,7 @@ export function DockviewEngineVisual(): ReactElement {
         registry={visualDockPanelRegistry}
         store={storeRef.current}
         maximized={null}
+        collapsed={[]}
       />
     </div>
   );

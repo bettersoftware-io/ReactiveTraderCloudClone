@@ -28,6 +28,7 @@ export function DockviewLayoutEngine({
   specs = PANEL_SPECS,
   store,
   maximized,
+  collapsed,
 }: DockviewLayoutEngineProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
@@ -93,11 +94,50 @@ export function DockviewLayoutEngine({
     }
   }, [maximized]);
 
+  // `collapsed` is a SET, not a single id like `maximized`, so this diffs
+  // against the last applied list rather than re-asserting the whole thing:
+  // `collapsePanel` remembers the pre-collapse geometry on the FIRST call for a
+  // panel, so blanket-reapplying is safe but pointless work every render.
+  // `tab` is a dep because switching tabs rebuilds the engine — the new one has
+  // nothing collapsed, so the previously-applied list must reset with it or the
+  // diff would skip re-collapsing panels the fresh engine has never seen.
+  const appliedCollapse = useRef<AppliedCollapse>({ tab, ids: [] });
+
+  useEffect(() => {
+    const engine = engineRef.current;
+
+    if (engine === null) {
+      return;
+    }
+
+    const previous =
+      appliedCollapse.current.tab === tab ? appliedCollapse.current.ids : [];
+
+    for (const panelId of collapsed) {
+      if (!previous.includes(panelId)) {
+        engine.collapsePanel(panelId);
+      }
+    }
+
+    for (const panelId of previous) {
+      if (!collapsed.includes(panelId)) {
+        engine.expandPanel(panelId);
+      }
+    }
+
+    appliedCollapse.current = { tab, ids: collapsed };
+  }, [collapsed, tab]);
+
+  // `data-collapsed` witnesses that the collapse set reached this bridge. The
+  // collapse itself is a dockview-internal group size and leaves no DOM trace
+  // to assert against — createDockEngine's own tests cover the mechanism, this
+  // covers the wiring, identically for both clients.
   return (
     <main
       data-testid="layout-engine"
       data-engine="dockview"
       data-groups={groups}
+      data-collapsed={collapsed.join(" ")}
       className={styles.engine}
     >
       <div
@@ -129,9 +169,21 @@ export interface DockviewLayoutEngineProps {
   store: DockLayoutStore;
   /** Mirrored from the LayoutMachine so Jarvis's layout DriveCommand still works. */
   maximized: PanelId | null;
+  /** Mirrored from the LayoutMachine, same reason as `maximized`. Dockview has
+   * no collapse primitive of its own — the engine emulates it by clamping the
+   * panel's group to a strip; see createDockEngine. */
+  collapsed: readonly PanelId[];
 }
 
 interface MountedPanel {
   readonly panelId: PanelId;
   readonly element: HTMLElement;
+}
+
+/** The collapse set last pushed into the engine, tagged with the tab it was
+ * pushed for — a tab switch rebuilds the engine, so the tag is what stops the
+ * diff from treating the fresh engine's empty state as already-applied. */
+interface AppliedCollapse {
+  tab: WorkspaceTab;
+  ids: readonly PanelId[];
 }

@@ -75,6 +75,7 @@ export function DockviewEngineHost(
         headRegistry={headRegistry()}
         store={store}
         maximized={(props.maximized as PanelId | null | undefined) ?? null}
+        collapsed={(props.collapsed as readonly PanelId[] | undefined) ?? []}
       />
     </div>
   );
@@ -84,4 +85,5 @@ interface DockviewEngineHostProps {
   seedBlob?: string;
   withHeads?: boolean;
   maximized?: string | null;
+  collapsed?: readonly string[];
 }
