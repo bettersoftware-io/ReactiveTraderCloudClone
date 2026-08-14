@@ -229,5 +229,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `check:react-coverage: ${discovered.size} React packages, all with an explicit policy`,
+  `check:react-policies: ${discovered.size} React packages, all with an explicit policy`,
 );

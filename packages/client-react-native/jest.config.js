@@ -16,6 +16,15 @@ module.exports = {
   // later renders in the same file pass once the runtime is warm. Raise the
   // per-test budget so this hardware/timing gap can't red the suite.
   testTimeout: 30_000,
+  // The `.tsx` half of this package's two-runner coverage split (the `.ts` half
+  // is vitest's — see vitest.config.ts). `collectCoverageFrom` is required, not
+  // cosmetic: without it jest reports only files a test already imported, so an
+  // entirely untested component would be absent from the denominator rather
+  // than sitting at 0% — which is the failure mode that let this package go
+  // unmeasured in the first place.
+  collectCoverageFrom: ["src/**/*.{ts,tsx}"],
+  coverageDirectory: "reports/native/coverage",
+  coverageReporters: ["text-summary", "html", "lcov"],
   moduleNameMapper: {
     "^#/(.*)$": "<rootDir>/src/$1",
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",

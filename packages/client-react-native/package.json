@@ -20,6 +20,9 @@
     "dev": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests && jest",
+    "test:coverage": "pnpm test:unit:coverage && pnpm test:native:coverage",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:native:coverage": "jest --coverage",
     "build": "tsc --noEmit",
     "export": "expo export --platform ios --output-dir dist",
     "smoke:ws": "tsx scripts/liveWsSmoke.ts",
@@ -27,7 +30,7 @@
     "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
     "test:rn:visual:maestro": "tsx tests/visual/maestro/run.ts",
     "test:rn:visual:maestro:update": "tsx tests/visual/maestro/run.ts --update",
-    "clean": "rm -rf dist .turbo coverage .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
+    "clean": "rm -rf dist .turbo reports coverage .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"
   },
   "dependencies": {

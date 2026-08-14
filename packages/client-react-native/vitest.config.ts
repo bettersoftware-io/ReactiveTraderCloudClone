@@ -21,6 +21,27 @@ export default defineConfig({
     // `owl.config.json`, kept as documentation of the not-viable tier, and the
     // exclusion keeps that folder outside the runner for good.
     exclude: [...configDefaults.exclude, "tests/visual/owl/**"],
+    // The `.ts` half of this package's two-tier coverage split. This is the
+    // only package in the repo running two test runners, so it has two coverage
+    // numbers rather than one: vitest owns `*.test.ts` (above), jest owns
+    // `*.test.tsx` because those component suites need the react-native runtime
+    // `jest-expo` bootstraps. Neither tier alone is "RN's coverage" and the two
+    // are NOT addable — different providers disagree on what a statement is.
+    // Read README-COVERAGE.md before quoting either number.
+    coverage: {
+      provider: "v8",
+      // Count every source file, not just the ones a test imports, so wholly
+      // untested modules surface at 0% instead of vanishing from the
+      // denominator — the repo-wide convention (see packages/domain).
+      //
+      // NOTE this denominator is the WHOLE package, `.tsx` included, while this
+      // tier runs only `.test.ts`. Deliberate: the number answers "how much of
+      // client-react-native does vitest alone reach", and refuses to flatter
+      // itself by shrinking the denominator to the half it happens to test.
+      include: ["src/**/*.{ts,tsx}"],
+      reporter: ["text-summary", "html", "lcov"],
+      reportsDirectory: "reports/unit/coverage",
+    },
     server: {
       deps: {
         // async-storage v3 dropped its CommonJS build: `exports["."].default`
