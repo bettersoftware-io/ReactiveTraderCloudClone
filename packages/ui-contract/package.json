@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc --build && tsc-alias -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run --passWithNoTests",
     "dev": "tsc-alias -w -p tsconfig.json & tsc --build --watch",
     "clean": "rm -rf dist .turbo *.tsbuildinfo reports coverage 2>/dev/null || true",

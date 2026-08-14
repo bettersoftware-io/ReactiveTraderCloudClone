@@ -93,10 +93,40 @@ function readManifest(dir) {
   }
 }
 
+// A package whose tsconfig pins `dist/tsconfig.tsbuildinfo` has its `build`
+// (`tsc --build`) writing that file. `tsconfig.base.json` sets `composite: true`
+// repo-wide, which implies `incremental`, so `tsc --noEmit` writes a buildinfo
+// too — and `turbo.json` declares `typecheck.dependsOn: ["^build"]`, the
+// UPSTREAM build rather than the package's own, so a package's `typecheck` and
+// `build` run CONCURRENTLY in the same directory. Aimed at one path they
+// corrupt each other, and the failure does not look like a race: CI run
+// 30204813551 reported ~40 `TS2305` errors — EVERY export of `@rtc/client-core`
+// missing at once — then `Segmentation fault (core dumped)` (exit 139), and a
+// rerun of the identical SHA was green. That reads as infrastructure and is
+// not. Each such `typecheck` must therefore name its own `--tsBuildInfoFile`.
+function pinsSharedBuildInfo(dir) {
+  try {
+    return readFileSync(join(repoRoot, dir, "tsconfig.json"), "utf8").includes(
+      "dist/tsconfig.tsbuildinfo",
+    );
+  } catch {
+    return false;
+  }
+}
+
+function sharesBuildInfoAcrossTasks(dir, scripts) {
+  const typecheck = scripts.typecheck ?? "";
+  if (!typecheck.includes("tsc --noEmit") || !pinsSharedBuildInfo(dir)) {
+    return false;
+  }
+  return !typecheck.includes("--tsBuildInfoFile");
+}
+
 const workspaceDirs = [
   ...new Set(readWorkspaceGlobs().flatMap(expandGlob)),
 ].sort();
 const violations = [];
+const buildInfoViolations = [];
 let checked = 0;
 
 for (const dir of workspaceDirs) {
@@ -113,6 +143,27 @@ for (const dir of workspaceDirs) {
   if (missing.length > 0) {
     violations.push({ name: manifest.name ?? dir, dir, missing });
   }
+  if (sharesBuildInfoAcrossTasks(dir, scripts)) {
+    buildInfoViolations.push({ name: manifest.name ?? dir, dir });
+  }
+}
+
+if (buildInfoViolations.length > 0) {
+  console.error(
+    "✖ Workspace script gate: `typecheck` and `build` would share one tsbuildinfo.\n",
+  );
+  for (const v of buildInfoViolations) {
+    console.error(`  ${v.name} (${v.dir})`);
+  }
+  console.error(
+    `\nThese packages pin dist/tsconfig.tsbuildinfo for \`tsc --build\`, and their\n` +
+      `\`typecheck\` runs \`tsc --noEmit\` with no --tsBuildInfoFile of its own. Because\n` +
+      `turbo's typecheck.dependsOn is ["^build"] (upstream only), the two tasks run\n` +
+      `concurrently in the same directory and corrupt that one file.\n` +
+      `Fix: append \`--tsBuildInfoFile .turbo/typecheck.tsbuildinfo\` to the typecheck\n` +
+      `script, then re-run \`pnpm check:scripts\`.`,
+  );
+  process.exit(1);
 }
 
 if (violations.length > 0) {
@@ -133,5 +184,6 @@ if (violations.length > 0) {
 }
 
 console.log(
-  `✓ Workspace script gate: all ${checked} workspaces declare the required scripts.`,
+  `✓ Workspace script gate: all ${checked} workspaces declare the required scripts, ` +
+    `and no package's typecheck shares a tsbuildinfo with its build.`,
 );
