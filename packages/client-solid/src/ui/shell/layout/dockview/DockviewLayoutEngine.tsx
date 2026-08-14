@@ -105,11 +105,41 @@ export function DockviewLayoutEngine(
     }
   });
 
+  // `collapsed` is a SET, not a single id like `maximized`, so this diffs
+  // against the last applied list rather than re-asserting the whole thing.
+  // No tab bookkeeping here, unlike the React twin: the caller mounts one of
+  // these per tab (see the seed comment above), so a tab switch destroys this
+  // component and `applied` starts empty alongside the fresh engine.
+  let applied: readonly PanelId[] = [];
+
+  createEffect(() => {
+    const collapsed = props.collapsed;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of collapsed) {
+      if (!applied.includes(panelId)) {
+        engine.collapsePanel(panelId);
+      }
+    }
+
+    for (const panelId of applied) {
+      if (!collapsed.includes(panelId)) {
+        engine.expandPanel(panelId);
+      }
+    }
+
+    applied = collapsed;
+  });
+
   return (
     <main
       data-testid="layout-engine"
       data-engine="dockview"
       data-groups={groups()}
+      data-collapsed={props.collapsed.join(" ")}
       class={styles.engine}
     >
       <div ref={containerEl} class={`${styles.container} dockview-theme-rtc`} />
@@ -156,6 +186,10 @@ export interface DockviewLayoutEngineProps {
   store: DockLayoutStore;
   /** Mirrored from the LayoutMachine so Jarvis's layout DriveCommand still works. */
   maximized: PanelId | null;
+  /** Mirrored from the LayoutMachine, same reason as `maximized`. Dockview has
+   * no collapse primitive of its own — the engine emulates it by clamping the
+   * panel's group to a strip; see createDockEngine. */
+  collapsed: readonly PanelId[];
 }
 
 interface MountedPanel {

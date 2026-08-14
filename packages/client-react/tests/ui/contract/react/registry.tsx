@@ -788,6 +788,7 @@ export const registry = new Map<AnyToken, ElementFor>([
           seedBlob={p.seedBlob as string | undefined}
           withHeads={(p.withHeads as boolean | undefined) ?? false}
           maximized={(p.maximized as string | null | undefined) ?? null}
+          collapsed={(p.collapsed as readonly string[] | undefined) ?? []}
         />
       );
     },

@@ -112,6 +112,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               headRegistry={headRegistry}
               store={dockLayoutStore}
               maximized={state.maximized}
+              collapsed={state.collapsed}
             />
           </Suspense>
         ) : (

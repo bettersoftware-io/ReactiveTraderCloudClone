@@ -62,6 +62,7 @@ export function DockviewEngineVisual(): JSX.Element {
         registry={visualDockPanelRegistry}
         store={store}
         maximized={null}
+        collapsed={[]}
       />
     </div>
   );

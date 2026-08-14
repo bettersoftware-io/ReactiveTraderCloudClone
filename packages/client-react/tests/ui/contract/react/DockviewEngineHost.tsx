@@ -24,6 +24,7 @@ export function DockviewEngineHost({
   seedBlob,
   withHeads,
   maximized,
+  collapsed,
 }: DockviewEngineHostProps): ReactElement {
   const [saveCount, setSaveCount] = useState(0);
   const [lastBlob, setLastBlob] = useState<string | null>(null);
@@ -75,6 +76,7 @@ export function DockviewEngineHost({
         headRegistry={headRegistry}
         store={storeRef.current}
         maximized={(maximized as PanelId | null | undefined) ?? null}
+        collapsed={(collapsed as readonly PanelId[] | undefined) ?? []}
       />
     </div>
   );
@@ -84,4 +86,5 @@ interface DockviewEngineHostProps {
   seedBlob?: string;
   withHeads?: boolean;
   maximized?: string | null;
+  collapsed?: readonly string[];
 }

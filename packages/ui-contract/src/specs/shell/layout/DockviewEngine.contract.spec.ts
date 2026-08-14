@@ -38,4 +38,20 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     const page = mount(DockviewEngine, { props: { withHeads: true } });
     expect(page.bodyVisible("custom-head")).toBe(true);
   });
+
+  it("threads the LayoutMachine's collapse set into the bridge", () => {
+    const page = mount(DockviewEngine, {
+      props: { collapsed: ["fx-analytics"] },
+    });
+    expect(page.collapsedIds()).toEqual(["fx-analytics"]);
+    // Collapse must not cost a group — the bridge strips a panel in place
+    // rather than removing it, so every seed leaf is still mounted.
+    expect(page.groupsAttr()).toBe("4");
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+  });
+
+  it("carries an empty collapse set when nothing is collapsed", () => {
+    const page = mount(DockviewEngine, { props: {} });
+    expect(page.collapsedIds()).toEqual([]);
+  });
 });

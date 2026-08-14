@@ -374,6 +374,24 @@ as a two-branch conditional, would be guessing at the shape a third engine
   dispose-time final flush, a maximize bridge mirrored from Jarvis/the
   layout state machine, and a close-button-free `TitleOnlyTab` — no close
   affordance in v1 scope) plus a `dockview-hud.css` HUD token mapping.
+- **Collapse/expand, added 2026-08-14.** Of the five intents, `maximize`,
+  `restore`, `collapse` and `expand` are now bridged, and `resize` needed no
+  bridge at all: it is the in-house sash-drag callback, whereas under Dockview
+  the user drags Dockview's own sashes, which already persist through
+  `onDidLayoutChange`. Collapse is the one intent Dockview cannot be *asked*
+  to perform — `setCollapsed`/`isCollapsed` exist in dockview-core but only
+  for **edge** groups (shell-docked sidebars), not the grid groups the
+  workspace uses. So the engine emulates it exactly as dockview's own edge
+  groups do: remember the group's pre-collapse width **and** constraints,
+  clamp both to the 38px strip (constraints first, or a sibling resize
+  re-widens it), and restore the remembered values on expand. The
+  panel-vs-group mismatch is resolved rather than papered over — in-house
+  `collapsed` names a *panel*, Dockview sizes a *group*, and a group can hold
+  several panels as tabs, so a shared-group panel is **ejected into its own
+  group first**. This is a live example of the asymmetry noted below: the
+  bridge is where an engine's missing capability gets emulated, which is
+  precisely the knowledge a premature `LayoutPort` would have had to encode
+  before it was known.
 - **What did NOT land**: the `LayoutPort` interface itself. The engine
   branch lives inside the pre-existing `WorkspaceEngine` (in-house vs.
   Dockview), not behind a new port boundary each engine implements

@@ -46,11 +46,33 @@ export interface DockEngineOptions {
   debounceMs?: number;
 }
 
+/** Width a collapsed group is clamped to, matching the in-house engine's
+ * vertical `.collapsedStrip` (38px outer, 1px borders inside) so the two
+ * engines strip a panel to the same bar. The in-house engine also has a 32px
+ * horizontal variant; dockview collapse clamps WIDTH only, which is the
+ * vertical case, so the one constant covers it. */
+const STRIP_PX = 38;
+
 export interface DockEngine {
   maximizePanel(panelId: string): void;
   exitMaximize(): void;
+  /** Strip this panel to a {@link STRIP_PX} bar. Idempotent. */
+  collapsePanel(panelId: string): void;
+  /** Restore a collapsed panel to the exact size/constraints it had before.
+   * No-op unless this engine collapsed it. */
+  expandPanel(panelId: string): void;
   groupCount(): number;
   dispose(): void;
+}
+
+/** What a group looked like before it was stripped, so expand restores rather
+ * than guesses. Constraints are captured too: dockview's default minimum width
+ * is not a documented constant, so reading the real values back beats hardcoding
+ * a floor that a dockview upgrade could silently change. */
+interface PreCollapseGeometry {
+  width: number;
+  minimumWidth: number;
+  maximumWidth: number;
 }
 
 export function createDockEngine(opts: DockEngineOptions): DockEngine {
@@ -111,6 +133,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }, debounceMs);
   });
 
+  // Dockview's dock has NO collapse primitive. `setCollapsed`/`isCollapsed`
+  // exist in dockview-core but only for EDGE groups (shell-docked sidebars),
+  // which these grid groups are not — so collapse is emulated by clamping the
+  // group's width, which is exactly how dockview's own edge groups do it
+  // (their `restoreExpandedSize` remembers the pre-collapse size the same way
+  // this map does).
+  const preCollapse = new Map<string, PreCollapseGeometry>();
+
   return {
     maximizePanel: (panelId: string) => {
       api.getPanel(panelId)?.api.maximize();
@@ -119,6 +149,60 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       if (api.hasMaximizedGroup()) {
         api.exitMaximizedGroup();
       }
+    },
+    collapsePanel: (panelId: string) => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined || preCollapse.has(panelId)) {
+        return;
+      }
+
+      // In-house `collapsed` names a PANEL; dockview sizes a GROUP, and a group
+      // can hold several panels as tabs. Clamping a shared group would strip
+      // this panel's tab siblings too, so eject it into its own group first and
+      // keep collapse meaning exactly the panel it names. `moveTo` with a
+      // non-center position relative to the panel's CURRENT group is what
+      // creates that new group — there is no separate "eject" call.
+      if (panel.group.panels.length > 1) {
+        panel.api.moveTo({ group: panel.group, position: "right" });
+      }
+
+      // Re-read: the move above reassigned `panel.group`.
+      const group = panel.group;
+
+      preCollapse.set(panelId, {
+        width: group.api.width,
+        minimumWidth: group.minimumWidth,
+        maximumWidth: group.maximumWidth,
+      });
+
+      // Constraints BEFORE size: a bare `setSize` leaves the group draggable
+      // back open and lets a sibling's resize push it wide again, so the strip
+      // would not survive the next layout pass.
+      group.api.setConstraints({
+        minimumWidth: STRIP_PX,
+        maximumWidth: STRIP_PX,
+      });
+      group.api.setSize({ width: STRIP_PX });
+    },
+    expandPanel: (panelId: string) => {
+      const prior = preCollapse.get(panelId);
+      const panel = api.getPanel(panelId);
+
+      if (prior === undefined || panel === undefined) {
+        return;
+      }
+
+      const group = panel.group;
+
+      // Constraints first again — while max is still pinned at STRIP_PX,
+      // `setSize` to anything wider would be clamped straight back.
+      group.api.setConstraints({
+        minimumWidth: prior.minimumWidth,
+        maximumWidth: prior.maximumWidth,
+      });
+      group.api.setSize({ width: prior.width });
+      preCollapse.delete(panelId);
     },
     groupCount: () => {
       return api.groups.length;
