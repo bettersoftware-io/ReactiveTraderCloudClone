@@ -62,7 +62,7 @@
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.23.0",
-    "react-native-svg": "15.15.4",
+    "react-native-svg": "15.15.5",
     "react-native-worklets": "0.10.0",
     "rxjs": "^7.8"
   },
