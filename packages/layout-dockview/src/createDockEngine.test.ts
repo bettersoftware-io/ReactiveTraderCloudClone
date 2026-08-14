@@ -357,11 +357,13 @@ function flush(): Promise<void> {
 
 /** Captures every persisted layout so a test can read the size dockview
  * actually recorded, rather than the DOM — jsdom never lays anything out. */
-function trackLayout(): {
+interface LayoutTracker {
   options: Pick<DockEngineOptions, "onLayoutChange" | "debounceMs">;
   saves: number;
   sizeOf(panelId: string): number | null;
-} {
+}
+
+function trackLayout(): LayoutTracker {
   let blob = "";
   const tracker = {
     options: {

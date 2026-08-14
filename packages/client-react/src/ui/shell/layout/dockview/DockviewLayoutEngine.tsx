@@ -101,10 +101,7 @@ export function DockviewLayoutEngine({
   // `tab` is a dep because switching tabs rebuilds the engine — the new one has
   // nothing collapsed, so the previously-applied list must reset with it or the
   // diff would skip re-collapsing panels the fresh engine has never seen.
-  const appliedCollapse = useRef<{
-    tab: WorkspaceTab;
-    ids: readonly PanelId[];
-  }>({ tab, ids: [] });
+  const appliedCollapse = useRef<AppliedCollapse>({ tab, ids: [] });
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -181,4 +178,12 @@ export interface DockviewLayoutEngineProps {
 interface MountedPanel {
   readonly panelId: PanelId;
   readonly element: HTMLElement;
+}
+
+/** The collapse set last pushed into the engine, tagged with the tab it was
+ * pushed for — a tab switch rebuilds the engine, so the tag is what stops the
+ * diff from treating the fresh engine's empty state as already-applied. */
+interface AppliedCollapse {
+  tab: WorkspaceTab;
+  ids: readonly PanelId[];
 }
