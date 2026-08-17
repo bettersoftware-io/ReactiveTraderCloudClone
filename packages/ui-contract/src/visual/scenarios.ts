@@ -11,6 +11,13 @@ export interface Scenario {
   readonly themeSkin?: ThemeSkin;
   /** Theme-mode override (see themeSkin). */
   readonly themeMode?: ThemeModePreference;
+  /** Assert this scenario's golden with ZERO pixel tolerance (both playwright
+   *  tiers) instead of the config-level maxDiffPixelRatio budget. Reserve for
+   *  scenarios whose pixels are engine-deterministic — e.g. the canvas
+   *  substrate composite, where both frameworks run the identical
+   *  motion-core draw engine, so any diff at all is a real divergence.
+   *  Matrix expansion spreads the base entry, so all 10 combos inherit it. */
+  readonly strict?: true;
 }
 
 const baseScenarios: Record<string, Scenario> = {
@@ -458,6 +465,7 @@ const baseScenarios: Record<string, Scenario> = {
   "equities/chart-canvas": {
     componentKey: "EquitiesChartCanvas",
     fixtureKey: "equities-loaded",
+    strict: true,
   },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },

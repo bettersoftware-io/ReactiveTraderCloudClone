@@ -80,19 +80,6 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onKeyDown={props.plotProps?.onKeyDown}
       >
-        <Index each={props.vm.labels}>
-          {(l: Accessor<ChartVm["labels"][number]>): JSX.Element => {
-            return (
-              <div
-                class={styles.label}
-                style={l().style}
-                data-testid="chart-price-label"
-              >
-                {l().txt}
-              </div>
-            );
-          }}
-        </Index>
         <Show
           when={props.substrate === "canvas" && props.canvasPlot}
           fallback={
@@ -147,6 +134,25 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
             );
           }}
         </Show>
+        {/* AFTER the plot substrate (canvas or DOM fallback), never before:
+            these absolutely-positioned, z-index-free layers paint in DOM
+            order, and react's twin paints labels OVER the plot content. With
+            the order flipped, a bright canvas line crossing a glyph paints
+            over its antialiasing fringe — a one-pixel divergence the strict
+            chart-canvas golden caught (2026-08-17). */}
+        <Index each={props.vm.labels}>
+          {(l: Accessor<ChartVm["labels"][number]>): JSX.Element => {
+            return (
+              <div
+                class={styles.label}
+                style={l().style}
+                data-testid="chart-price-label"
+              >
+                {l().txt}
+              </div>
+            );
+          }}
+        </Index>
         <CrosshairOverlay
           vm={props.cross}
           showHorizontal={props.showHorizontal ?? true}
