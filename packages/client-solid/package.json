@@ -45,7 +45,7 @@
     "@rx-state/core": "^0.1.4",
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.9.1",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.2.0",
     "@vitest/browser-playwright": "4.1.10",
     "@vitest/coverage-istanbul": "^4.1.10",
     "@vitest/ui": "^4.1.10",
