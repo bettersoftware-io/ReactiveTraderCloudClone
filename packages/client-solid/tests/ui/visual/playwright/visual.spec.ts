@@ -53,15 +53,23 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     }
 
     const shot = goldenPathArray(name, scenario);
+    // Strict scenarios (Scenario.strict) pin at ZERO tolerance, overriding the
+    // config-level maxDiffPixelRatio budget: their pixels are
+    // engine-deterministic, so any diff at all is a real divergence.
+    const strictOpts = scenario.strict
+      ? { maxDiffPixels: 0, maxDiffPixelRatio: 0 }
+      : {};
 
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {
         animations: "disabled",
         fullPage: true,
+        ...strictOpts,
       });
     } else {
       await expect(page.getByTestId("scenario-root")).toHaveScreenshot(shot, {
         animations: "disabled",
+        ...strictOpts,
       });
     }
   });
