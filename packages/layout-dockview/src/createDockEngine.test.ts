@@ -278,9 +278,9 @@ describe("collapse / expand", () => {
     const engine = createDockEngine({ ...base(), ...seen.options });
 
     engine.collapsePanel("fx-analytics");
-    await flush();
 
     // 0.25 of the 1200px fallback width before, the strip after.
+    await waitForSize(seen, "fx-analytics", STRIP);
     expect(seen.sizeOf("fx-analytics")).toBe(STRIP);
     engine.dispose();
   });
@@ -290,14 +290,13 @@ describe("collapse / expand", () => {
     const engine = createDockEngine({ ...base(), ...seen.options });
 
     engine.collapsePanel("fx-analytics");
-    await flush();
-    expect(seen.sizeOf("fx-analytics")).toBe(STRIP);
+    await waitForSize(seen, "fx-analytics", STRIP);
 
     engine.expandPanel("fx-analytics");
-    await flush();
 
     // Not merely "wider than the strip" — the SAME width it had before, which
     // is what separates restoring from letting the splitview redistribute.
+    await waitForSize(seen, "fx-analytics", ANALYTICS_PX);
     expect(seen.sizeOf("fx-analytics")).toBe(ANALYTICS_PX);
     engine.dispose();
   });
@@ -307,14 +306,13 @@ describe("collapse / expand", () => {
     const engine = createDockEngine({ ...base(), ...seen.options });
 
     engine.collapsePanel("fx-analytics");
-    await flush();
+    await waitForSize(seen, "fx-analytics", STRIP);
     // Without the `preCollapse.has` guard this second call would record the
     // STRIP width as "pre-collapse", and expand would restore it to a strip.
     engine.collapsePanel("fx-analytics");
-    await flush();
     engine.expandPanel("fx-analytics");
-    await flush();
 
+    await waitForSize(seen, "fx-analytics", ANALYTICS_PX);
     expect(seen.sizeOf("fx-analytics")).toBe(ANALYTICS_PX);
     engine.dispose();
   });
@@ -324,7 +322,14 @@ describe("collapse / expand", () => {
     const engine = createDockEngine({ ...base(), ...seen.options });
 
     engine.expandPanel("fx-analytics");
-    await flush();
+
+    // The ONLY fixed wait in this block, and correct here: this asserts an
+    // ABSENCE, so there is no condition to poll for — it must simply outlast
+    // the save path it claims never runs. Sized well above the engine's
+    // debounce (0ms here) plus dockview's microtask-deferred notification.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
 
     // No layout mutation at all — an unguarded expand would have called
     // setConstraints/setSize and produced a save.
@@ -349,10 +354,34 @@ const STRIP = 38;
  * 1200px fallback width (jsdom never gives the container a real size). */
 const ANALYTICS_PX = 300;
 
-function flush(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 5);
-  });
+/** Polls the persisted layout until `panelId`'s group reports `expected`px.
+ *
+ * This replaced a fixed `setTimeout(5)`, which reddened `main` once (run
+ * 31806741355: `expected null to be 38` — the blob was still empty). Two
+ * asynchronies stack before a size is readable: the engine's own save debounce
+ * AND dockview's `onDidLayoutChange`, which is microtask-deferred via its
+ * AsapEvent. 5ms cleared both on an idle laptop and lost on a loaded CI runner
+ * — a fixed sleep racing an async signal, the same flake shape already
+ * catalogued for the e2e tier. Poll the condition instead; the timeout message
+ * carries the last value seen so a real regression still reads clearly. */
+async function waitForSize(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (tracker.sizeOf(panelId) === expected) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId} never reached ${expected}px (last seen: ${tracker.sizeOf(panelId)}, saves: ${tracker.saves})`,
+  );
 }
 
 /** Captures every persisted layout so a test can read the size dockview
