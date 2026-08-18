@@ -31,10 +31,87 @@
   },
 
   // Keep the cooldown meaningful and the PR volume low.
+  //
+  // NOTE what `prConcurrentLimit` actually is: a target INVENTORY LEVEL, not a
+  // cap on outstanding work. Renovate refills to this number the moment a slot
+  // frees, so merging a PR is precisely the event that admits the next one —
+  // the open count reads 5 forever no matter how many you clear, which reads
+  // as whack-a-mole. Measured 2026-08-18: 5 open, 15 rate-limited, 6 inside
+  // the cooldown, 58 updates available across 103 declared deps. The real
+  // remaining work is on the Dependency Dashboard (issue #4), never on the PR
+  // list.
   prConcurrentLimit: 5,
   prHourlyLimit: 2,
 
+  // Batch the drip into ONE predictable weekly wave. Without a schedule,
+  // updates arrive continuously and every merge immediately spawns a
+  // replacement (see the note above), so there is no moment when the queue is
+  // visibly empty and no natural point to stop. A weekly window makes dep
+  // maintenance a bounded Monday task instead of a permanent background tax.
+  // `minimumReleaseAge` still applies inside the window.
+  schedule: ["before 06:00 on monday"],
+
   packageRules: [
+    {
+      // React Native core moves as ONE unit. `react-native` and the official
+      // `@react-native/*` satellites share a single version line, and the
+      // ecosystem peers on that exact minor — jest-expo@57 requires
+      // `@react-native/jest-preset: ^0.86.2` against react-native 0.86.
+      //
+      // Renovate models no such coupling, so ungrouped it proposes members
+      // independently and produces PRs that CANNOT pass. #577 bumped
+      // `@react-native/jest-preset` to ^0.87.0 while react-native stayed on
+      // 0.86 (RN 0.87 was declined in #546: no Expo SDK carries it yet), and
+      // it failed `Tests (unit)` on every run — and would have recurred on
+      // every future release. Grouping makes that PR unrepresentable rather
+      // than recurringly red.
+      //
+      // Standing policy from #67 and #546: let the Expo SDK drive
+      // react-native, never bump it independently. Revisit when SDK 58 ships.
+      groupName: "react-native core",
+      matchPackageNames: ["react-native", "@react-native/**"],
+    },
+    {
+      // The React Native COMMUNITY packages — independently versioned, so
+      // deliberately NOT in the react-native-core group above, but they move
+      // together in practice (all consumed only by @rtc/client-react-native)
+      // and each one alone is a whole PR + CI cycle for a single native lib.
+      groupName: "react-native community",
+      matchPackageNames: [
+        "react-native-*",
+        "@react-native-*/**",
+        "@shopify/react-native-skia",
+        // Negation, not `excludePackageNames` — that key is deprecated as of
+        // Renovate 44 and only survives via auto-migration. `react-native`
+        // itself belongs to the react-native-core group above.
+        "!react-native",
+      ],
+    },
+    {
+      // Ambient type packages: no runtime surface, and a typecheck gate that
+      // catches a bad one immediately. Batching them turns a long tail of
+      // one-line PRs into a single reviewable diff.
+      groupName: "type definitions",
+      matchPackageNames: ["@types/**"],
+    },
+    {
+      // Lint / format / dead-code tooling. Same argument as the types group:
+      // dev-only, gated, and individually trivial — but collectively a large
+      // share of the PR volume.
+      groupName: "lint and code quality",
+      matchPackageNames: [
+        "eslint",
+        "eslint-*",
+        "@eslint/**",
+        "typescript-eslint",
+        "@biomejs/**",
+        "stylelint",
+        "stylelint-*",
+        "knip",
+        "dependency-cruiser",
+        "syncpack",
+      ],
+    },
     {
       // Hands off EVERYTHING in pnpm-workspace.yaml. Its only deps are the
       // hand-crafted `overrides` — security/compatibility pins (ws@7→7.5.10,
