@@ -51,6 +51,24 @@
   // `minimumReleaseAge` still applies inside the window.
   schedule: ["before 06:00 on monday"],
 
+  // ...but do NOT let that window gate automerge too.
+  //
+  // `schedule` constrains when Renovate ACTS, and Renovate is the thing that
+  // performs the merge here: this repo has `allow_auto_merge: false`, so
+  // `platformAutomerge` cannot arm GitHub's native auto-merge and hand the job
+  // off to the platform. Renovate must do it during one of its own runs.
+  //
+  // So the weekly window silently applied to automerge as well. Measured
+  // 2026-08-24: #584 and #585 were created 02:18 UTC (inside the window),
+  // went green ~02:35, and were still sitting open at 06:10 with auto-merge
+  // NOT armed — both plain devDependency patches the rules above say should
+  // merge themselves. The next run able to merge them was a week away.
+  //
+  // Splitting the two schedules keeps what the weekly window was for (one
+  // batched arrival instead of a continuous drip) without stalling changes
+  // that are already green and already approved by policy.
+  automergeSchedule: ["at any time"],
+
   packageRules: [
     {
       // React Native core moves as ONE unit. `react-native` and the official
