@@ -1,8 +1,9 @@
 // packages/client-react-native/src/ui/ambient/AmbientBackground.test.tsx
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
+import * as Reanimated from "react-native-reanimated";
 
-import type { AmbientStyle } from "@rtc/domain";
+import type { AmbientStyle, PowerSaverLevel } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
@@ -31,10 +32,34 @@ test("draws the rays blobs group when ambientStyle is rays and ambient is enable
   expect(screen.queryByTestId("ambient-aurora-curtains")).toBeNull();
 });
 
+// The drift loop is the one piece of ambient motion Freeze did not reach
+// before: `useAmbientEnabled` reads only the preference and OS reduced-motion.
+// Asserted on `withRepeat` itself — the loop is a UI-thread worklet the render
+// tree cannot show, and the mock's shared values would resolve instantly
+// either way.
+test("does not start the drift loop under power-saver Freeze, but still paints the canvas", async () => {
+  const withRepeat = jest.spyOn(Reanimated, "withRepeat");
+  await renderAmbient({ animatedBackground: true, powerSaverLevel: "freeze" });
+  expect(await screen.findByTestId("ambient-background")).toBeTruthy();
+  expect(withRepeat).not.toHaveBeenCalled();
+});
+
+test("starts the drift loop when power-saver is off", async () => {
+  const withRepeat = jest.spyOn(Reanimated, "withRepeat");
+  await renderAmbient({ animatedBackground: true, powerSaverLevel: "off" });
+  expect(withRepeat).toHaveBeenCalledTimes(1);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 interface RenderAmbientOptions {
   readonly animatedBackground: boolean;
   /** Defaults to "rays" — irrelevant to the first two (enable-gate) tests. */
   readonly ambientStyle?: AmbientStyle;
+  /** Defaults to "off", production's default. */
+  readonly powerSaverLevel?: PowerSaverLevel;
 }
 
 function renderAmbient(options: RenderAmbientOptions): Promise<unknown> {
@@ -48,15 +73,26 @@ function renderAmbient(options: RenderAmbientOptions): Promise<unknown> {
 }
 
 // Minimal in-test PreferencesPort-shaped stub: only the ViewModel seams
-// AmbientBackground actually reads (useAnimatedBackground, useAmbientStyle),
+// AmbientBackground actually reads (useAnimatedBackground, useAmbientStyle,
+// and usePowerSaver through useShellMotionEnabled),
 // mirroring AppearanceScreen.test.tsx's fakeViewModel pattern. `enabled`
 // mirrors AsyncStoragePreferencesAdapter's `animatedBg` field (mobile
 // default: false).
 function fakeViewModel({
   animatedBackground,
   ambientStyle = "rays",
+  powerSaverLevel = "off",
 }: RenderAmbientOptions): ViewModel {
   return {
+    usePowerSaver: () => {
+      return {
+        level: powerSaverLevel,
+        isCalm: powerSaverLevel !== "off",
+        isFreeze: powerSaverLevel === "freeze",
+        setLevel: () => {},
+        cycle: () => {},
+      };
+    },
     useAnimatedBackground: () => {
       return {
         enabled: animatedBackground,

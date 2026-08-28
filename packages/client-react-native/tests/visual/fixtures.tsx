@@ -1,9 +1,13 @@
 import { Canvas } from "@shopify/react-native-skia";
 import type { ReactNode } from "react";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import {
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   ADAPTIVE_BANK_NAME,
@@ -24,6 +28,8 @@ import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import type { BootSceneComponent } from "#/ui/shell/boot/bootScene";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import { ActiveModuleContext } from "#/ui/shell/hud/ActiveModuleContext";
+import { MODULE_ROUTES, type ModuleRoute } from "#/ui/shell/hud/moduleRoutes";
 import { RadialCommandDock } from "#/ui/shell/hud/RadialCommandDock";
 import { ShellHeader } from "#/ui/shell/hud/ShellHeader";
 import {
@@ -32,7 +38,9 @@ import {
 } from "#/ui/shell/hud/ShellTelemetryContext";
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
+import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -77,35 +85,113 @@ export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
 }
 
 /**
- * Drops screen CONTENT below the status bar, the way `ShellHeader` does in the
- * app.
+ * The persistent HUD frame around a module's content — exactly what
+ * `app/(app)/_layout.tsx`'s `Chrome` draws around its `<Slot/>`: ambient
+ * layer, header, connection banner, the body, status strip and the collapsed
+ * radial dock. Minus the two overlays (a closed `AppearanceOverlay` and an
+ * unlocked `LockScreen` both paint nothing; `shell/appearance` mounts the
+ * sheet itself) and minus `Chrome`'s `BottomSheetModalProvider` (only
+ * `shell/appearance` presents a sheet, and it wraps its own so the registry
+ * test can still see the provider in the element tree).
  *
- * WRAP ANY SCENARIO THAT MOUNTS A SCREEN'S CONTENT. Every scenario renders
- * under `VisualScenarioHost` alone — there is no `ShellHeader` above it — so a
- * module mounted bare starts at y=0 and its first row lands under the clock
- * and the dynamic island. Three goldens were captured that way and nobody
- * noticed, because a diff against an equally-wrong baseline is green:
- * `blotter/seeded` lost its filter chips and fills summary, and
- * `shell/connection-banner` lost the "Live" pill behind the clock.
+ * WRAP EVERY SCENARIO THAT MOUNTS A MODULE. Until 2026-08-28 those mounted
+ * content-only under a `ScreenContentFixture` that faked the header's inset,
+ * so every module golden was a screen the app never draws: no wordmark, no
+ * status strip, no dock, no HUD grid, no sub-nav. Judged against the mobile-v1
+ * prototype shots (`docs/design/mobile/v1/reference-shots/DRIFT.md`, whose
+ * panels DO carry all of that) the "drift" was mostly this harness, not the
+ * app — so a fidelity pass driven by that comparison would have chased the
+ * wrong deltas. The frame makes the app column like-for-like.
  *
  * DO NOT wrap a deliberately full-bleed surface: `boot/*` (the app's
- * `BootCanvas` really is edge-to-edge behind the chrome), `lock/hold`
- * (`LockScreen` centres its content over the whole screen) and
- * `shell/appearance` (a modal overlay). Insetting those would make the golden
- * assert a frame the app never draws — the same defect, mirrored.
+ * `BootCanvas` really is edge-to-edge behind the chrome) and `lock/hold`
+ * (`LockScreen` centres its content over the whole screen). Framing those
+ * would make the golden assert a frame the app never draws — the same
+ * defect, mirrored.
+ *
+ * THREE THINGS ARE PINNED, and none is optional:
+ *
+ * - **The module label**, via `ActiveModuleContext`. `StatusStrip` and the
+ *   dock's FAB glyph resolve the active module from the expo-router pathname,
+ *   which under `/__visual/<id>` is always RATES. A typo in `module` throws
+ *   rather than silently falling back to the pathname — a frame that names
+ *   the wrong module is the kind of golden that passes forever.
+ * - **FPS**, via `ShellTelemetryContext`. `useShellTelemetry` runs a live
+ *   rolling-window frame meter, so the strip's `NNFPS` cell reports whatever
+ *   the device measured over the last second and the golden would re-pin
+ *   itself on every capture. This provider is the production seam built for
+ *   exactly that.
+ * - **Motion**, via the scenario's `powerSaverLevel="freeze"`. The header's
+ *   connection dot runs a 1200 ms opacity pulse, the dock's satellites
+ *   spring-stagger on open, and — since the same change that introduced this
+ *   fixture — the ambient layer's drift loop gates on it too. That last one
+ *   is what lets a framed scenario pass `forceReduceMotion={false}` (ambient
+ *   ON, as the prototype shots have it) and still reproduce pixel-for-pixel:
+ *   the canvas paints its grid plus one static frame at `progress = 0`.
+ *
+ * The dock is captured COLLAPSED, which is its resting state: `open` is
+ * internal `useState` with no prop seam, and adding one so a screenshot could
+ * open it would put an affordance in production for the test's benefit. The
+ * expanded satellite fan is therefore NOT covered by any framed golden — that
+ * needs the Maestro tier, which can tap.
+ *
+ * `simulator` defaults to `false` so the env badge reads `LIVE`, matching the
+ * prototype's; `shell/chrome` passes `true` to keep its own golden honest
+ * about what this harness is (a static fake, not a live gateway).
  */
-export function ScreenContentFixture({
+export function ShellFrameFixture({
+  module,
+  simulator = false,
   children,
-}: ScreenContentProps): ReactNode {
-  const insets = useSafeAreaInsets();
-
-  // `flex: 1` is load-bearing, not tidiness. Without it this view takes its
-  // children's intrinsic height, and a module that fills its parent
-  // (`BlotterModule`'s list) collapses to nothing — the first capture with
-  // this wrapper came back an empty screen.
+}: ShellFrameProps): ReactNode {
   return (
-    <View style={[styles.fill, { paddingTop: insets.top }]}>{children}</View>
+    <ShellTelemetryContext.Provider value={FROZEN_TELEMETRY}>
+      <ActiveModuleContext.Provider value={moduleRouteFor(module)}>
+        <View style={styles.fill}>
+          <AmbientBackground />
+          <ShellHeader
+            simulator={simulator}
+            onToggleSimulator={NOOP_TOGGLE_SIMULATOR}
+            onOpenAppearance={NOOP_OPEN_APPEARANCE}
+          />
+          <ConnectionBanner />
+          <View style={styles.body}>{children}</View>
+          <StatusStrip />
+          <RadialCommandDock />
+        </View>
+      </ActiveModuleContext.Provider>
+    </ShellTelemetryContext.Provider>
   );
+}
+
+function moduleRouteFor(key: string): ModuleRoute {
+  const route = MODULE_ROUTES.find((m) => {
+    return m.key === key;
+  });
+
+  if (route === undefined) {
+    throw new Error(`ShellFrameFixture: no module route with key "${key}"`);
+  }
+
+  return route;
+}
+
+/**
+ * The root a routed module screen supplies for itself, for the sub-views a
+ * scenario mounts directly: `CreditScreen` and `EquitiesScreen` wrap their
+ * segmented nav + active sub-view in a `flex: 1` view painted `bgPrimary`,
+ * which is opaque — so in the app the ambient grid does NOT show through
+ * those two modules (it does through Rates and Blotter, which paint no
+ * background). A framed golden must inherit that, or it would show a grid
+ * the app hides. Mirrored rather than mounting the screens themselves, whose
+ * active view is internal `useState` with no prop seam.
+ */
+export function ModuleScreenFixture({
+  children,
+}: ModuleScreenProps): ReactNode {
+  const styles = useThemedStyles(makeModuleScreenStyles);
+
+  return <View style={styles.screen}>{children}</View>;
 }
 
 /**
@@ -125,14 +211,15 @@ export function ScreenContentFixture({
  */
 export function AnalyticsDashboardFixture(): ReactNode {
   return (
-    // Mirrors `AnalyticsScreen`'s ScrollView `contentContainerStyle`. The one
-    // thing this fixture restates rather than shares; the cards themselves are
-    // the real component.
-    <ScreenContentFixture>
+    // Mirrors `AnalyticsScreen`'s ScrollView: its `bgPrimary` panel (via
+    // `ModuleScreenFixture`) and its `contentContainerStyle`. The one thing
+    // this fixture restates rather than shares; the cards themselves are the
+    // real component.
+    <ModuleScreenFixture>
       <View style={styles.content}>
         <AnalyticsDashboard data={PINNED_BOOK} />
       </View>
-    </ScreenContentFixture>
+    </ModuleScreenFixture>
   );
 }
 
@@ -163,7 +250,7 @@ export function AnalyticsDashboardFixture(): ReactNode {
  */
 export function CreditRfqTilesFixture(): ReactNode {
   return (
-    <ScreenContentFixture>
+    <>
       <RfqFilterTabs />
       <RfqCard
         rfq={PINNED_LIVE_RFQ}
@@ -183,7 +270,7 @@ export function CreditRfqTilesFixture(): ReactNode {
         onAccept={NOOP_ACCEPT}
         onDismiss={NOOP_DISMISS}
       />
-    </ScreenContentFixture>
+    </>
   );
 }
 
@@ -198,70 +285,25 @@ export function CreditRfqTilesFixture(): ReactNode {
  */
 export function CreditSellSideFixture(): ReactNode {
   return (
-    <ScreenContentFixture>
-      <SellSideTicket
-        rfq={PINNED_SELL_SIDE_RFQ}
-        quote={PINNED_SELL_SIDE_QUOTE}
-        instrument={PINNED_INSTRUMENTS[0]}
-        pinnedRemainingMs={PINNED_REMAINING_MS}
-      />
-    </ScreenContentFixture>
+    <SellSideTicket
+      rfq={PINNED_SELL_SIDE_RFQ}
+      quote={PINNED_SELL_SIDE_QUOTE}
+      instrument={PINNED_INSTRUMENTS[0]}
+      pinnedRemainingMs={PINNED_REMAINING_MS}
+    />
   );
 }
 
 /**
- * The persistent HUD chrome — header, connection banner, status strip and the
- * radial dock — with an empty body where the routed module would be.
- *
- * Mirrors `app/(app)/_layout.tsx`'s `Chrome`, minus its `<Slot/>` and the two
- * overlays (a closed `AppearanceOverlay` and an unlocked `LockScreen` both
- * paint nothing, and `shell/appearance` already covers the sheet open). This
- * is the inverse of `ScreenContentFixture`: every other scenario mounts a
- * module's CONTENT and fakes the header's inset because no chrome exists above
- * it, so the header, strip and dock had no pixel coverage at all despite being
- * on screen for the entire session (T6).
- *
- * TWO THINGS MUST BE PINNED, and neither is optional:
- *
- * - **FPS**, via `ShellTelemetryContext`. `useShellTelemetry` runs a live
- *   rolling-window frame meter, so the strip's `NNFPS` cell reports whatever
- *   the device measured over the last second and the golden would re-pin
- *   itself on every capture. This provider is the production seam built for
- *   exactly that and, until now, referenced only from its own unit test.
- * - **Motion**, via the scenario's `powerSaverLevel="freeze"`. The header's
- *   connection dot runs a 1200 ms opacity pulse and the dock's satellites
- *   spring-stagger on open; both gate on `useShellMotionEnabled`. The host's
- *   `forceReduceMotion` would NOT cover them — it seeds `animatedBackground`,
- *   which gates the ambient layer alone. Same distinction `analytics/
- *   dashboard` documents, and the trap `boot/static` was caught by (T33).
- *
- * The dock is captured COLLAPSED, which is its resting state: `open` is
- * internal `useState` with no prop seam, and adding one so a screenshot could
- * open it would put an affordance in production for the test's benefit. The
- * expanded satellite fan is therefore NOT covered by this golden — that needs
- * the Maestro tier, which can tap.
- *
- * `simulator` is `true` because it is — this harness composes
- * `createSimulatorPorts`, so the env badge reads its real state rather than
- * claiming a live gateway the scenario never had.
+ * The persistent HUD chrome with an EMPTY body — `ShellFrameFixture` around
+ * nothing. Kept as its own scenario (`shell/chrome`) even though every module
+ * golden is now framed: this is the one that pins the frame in isolation, so a
+ * chrome regression shows up as ONE red golden with nothing else in the diff,
+ * rather than as the same few rows of pixels moving in ten. `simulator` is
+ * `true` here and only here — see `ShellFrameFixture`.
  */
 export function ShellChromeFixture(): ReactNode {
-  return (
-    <ShellTelemetryContext.Provider value={FROZEN_TELEMETRY}>
-      <View style={styles.fill}>
-        <AmbientBackground />
-        <ShellHeader
-          simulator
-          onToggleSimulator={NOOP_TOGGLE_SIMULATOR}
-          onOpenAppearance={NOOP_OPEN_APPEARANCE}
-        />
-        <ConnectionBanner />
-        <View style={styles.body} />
-        <StatusStrip />
-        <RadialCommandDock />
-      </View>
-    </ShellTelemetryContext.Provider>
-  );
+  return <ShellFrameFixture module="rates" simulator />;
 }
 
 function NOOP_TOGGLE_SIMULATOR(): void {}
@@ -404,8 +446,26 @@ interface BootSceneFixtureProps {
   readonly Scene: BootSceneComponent;
 }
 
-interface ScreenContentProps {
+interface ShellFrameProps {
+  /** A `MODULE_ROUTES` key — `rates` | `blotter` | `analytics` | `credit` |
+   * `equities`. Unknown keys throw at render. */
+  readonly module: string;
+  readonly simulator?: boolean;
+  readonly children?: ReactNode;
+}
+
+interface ModuleScreenProps {
   readonly children: ReactNode;
+}
+
+interface ModuleScreenStyles {
+  screen: ViewStyle;
+}
+
+function makeModuleScreenStyles(t: RnTheme): ModuleScreenStyles {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: t.bgPrimary },
+  });
 }
 
 /** A representative mid-boot instant — 60% of `BOOT_DURATION_MS` (4200ms) —
@@ -442,7 +502,9 @@ const styles = StyleSheet.create({
   // Mirrors `Chrome`'s own `body`. `minHeight: 0` is copied deliberately, not
   // incidentally: without it a flex child refuses to shrink below its content,
   // which is how the chrome would end up pushed off-screen by a body that has
-  // none.
+  // none. `flex: 1` is load-bearing the other way too: a module that fills
+  // its parent (`BlotterModule`'s list) collapses to nothing without it — the
+  // first content-only capture ever taken came back an empty screen.
   body: { flex: 1, minHeight: 0 },
   content: { flex: 1, padding: 16, gap: 20 },
   centred: { flex: 1, alignItems: "center", justifyContent: "center" },

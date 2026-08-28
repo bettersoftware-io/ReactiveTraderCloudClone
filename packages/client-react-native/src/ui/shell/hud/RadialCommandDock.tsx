@@ -1,6 +1,6 @@
 // packages/client-react-native/src/ui/shell/hud/RadialCommandDock.tsx
 import { BlurView } from "expo-blur";
-import { usePathname, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import type { JSX } from "react";
 import { useEffect, useId, useState } from "react";
 import {
@@ -25,8 +25,9 @@ import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 import { DOCK_FAB_SIZE } from "./dockMetrics";
-import { MODULE_ROUTES, resolveActiveModule } from "./moduleRoutes";
+import { MODULE_ROUTES } from "./moduleRoutes";
 import { radialDockLayout } from "./radialDockLayout";
+import { useActiveModule } from "./useActiveModule";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
 
 /** Router-backed radial command dock (prototype .dc.html:465-484). A hex FAB
@@ -39,9 +40,8 @@ export function RadialCommandDock(): JSX.Element {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
   const sats = radialDockLayout(MODULE_ROUTES.length);
-  const active = resolveActiveModule(pathname);
+  const active = useActiveModule();
 
   return (
     <View pointerEvents="box-none" style={styles.root}>
@@ -63,7 +63,7 @@ export function RadialCommandDock(): JSX.Element {
                 key={mod.key}
                 module={mod}
                 layout={sats[i]}
-                active={mod.path === pathname}
+                active={mod.key === active.key}
                 insetBottom={insets.bottom}
                 onSelect={() => {
                   router.navigate(mod.path);

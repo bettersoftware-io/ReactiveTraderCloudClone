@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { ConnectionStatus } from "@rtc/domain";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
-import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { CreditNav } from "#/ui/credit/CreditNav";
 import { BlottersView } from "#/ui/equities/blotters/BlottersView";
+import { EquitiesNav } from "#/ui/equities/EquitiesNav";
 import { MarketsView } from "#/ui/equities/markets/MarketsView";
 import { TradeView } from "#/ui/equities/trade/TradeView";
 import { RatesModule } from "#/ui/rates/RatesModule";
@@ -27,8 +28,9 @@ import {
   CreditRfqTilesFixture,
   CreditSellSideFixture,
   LockHoldFixture,
-  ScreenContentFixture,
+  ModuleScreenFixture,
   ShellChromeFixture,
+  ShellFrameFixture,
 } from "./fixtures";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
@@ -87,11 +89,12 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * - `shell/appearance` — the rebuilt Appearance sheet (Phase 2 Task 7),
  *   pinned open via `AppearanceOverlay`'s own `open`/`onClose` props (not the
  *   host). It reads only theme/motion/power-saver preference presenters, all
- *   seeded synchronously by `VisualScenarioHost`'s `PreferencesSimulator` —
- *   no live-ticking source. The overlay is an opaque full-screen sheet (no
- *   ambient layer beneath it here), and `forceReduceMotion` seeds
- *   `animatedBackground: false` so the Ambient toggle deterministically reads
- *   OFF — both keep the shot stable.
+ *   seeded synchronously by the fake ViewModel — no live-ticking source.
+ *   Since 2026-08-28 the sheet opens over a FRAMED Rates grid
+ *   (`ShellFrameFixture`), the way the prototype shows it and the way a user
+ *   reaches it from the app's index route; `forceReduceMotion={false}` puts
+ *   the ambient layer on beneath it (so the Ambient toggle reads ON, as the
+ *   prototype's does) and `freeze` holds that layer at its resting frame.
  *   `AppearanceOverlay` mounts a `BottomSheetModal`, whose internals call
  *   `useBottomSheetModalInternal()` unconditionally and throw
  *   `'BottomSheetModalInternalContext' cannot be null!'` with no
@@ -104,15 +107,19 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   added to `VisualScenarioHost`, which no other scenario needs.
  *
  * - `shell/chrome` — the persistent HUD frame itself (header, connection
- *   banner, status strip, collapsed radial dock) via `ShellChromeFixture`,
- *   which mirrors `app/(app)/_layout.tsx`'s `Chrome` with an empty body. The
- *   one scenario that is NOT a module's content: every other one is wrapped in
- *   `ScreenContentFixture` precisely because no chrome sits above it, which
- *   left the frame the user stares at all session with zero pixel coverage
- *   (T6). Carries `powerSaverLevel="freeze"` for the header's pulsing
- *   connection dot, and the fixture pins the status strip's live FPS meter
- *   through `ShellTelemetryContext` — see its docstring for why neither half
- *   alone is sufficient.
+ *   banner, status strip, collapsed radial dock) via `ShellChromeFixture`:
+ *   `ShellFrameFixture` around an EMPTY body. Originally the one scenario
+ *   that was not a module's content — until 2026-08-28 every other one was
+ *   content-only under a `ScreenContentFixture`, which left the frame the
+ *   user stares at all session with zero pixel coverage (T6). Every module
+ *   scenario is now FRAMED too (see `ShellFrameFixture`'s docstring for why:
+ *   the prototype comparison in `reference-shots/DRIFT.md` was mostly
+ *   measuring the missing chrome), and this one stays as the isolated
+ *   witness — a chrome regression is one red golden here, not the same rows
+ *   of pixels moving in ten. Carries `powerSaverLevel="freeze"` for the
+ *   header's pulsing connection dot, and the fixture pins the status strip's
+ *   live FPS meter through `ShellTelemetryContext` — see its docstring for
+ *   why neither half alone is sufficient.
  *
  * NOTHING IS EXPLICITLY AVOIDED ANY MORE. The two surfaces that were are worth
  * keeping on the record, because each was freed by an opposite move.
@@ -179,9 +186,11 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *
  * - `equities/markets` / `equities/trade` / `equities/blotter` — Phase 5b
  *   Task 10, the Equities module's first three scenarios. Each mounts one
- *   sub-view content-only (`MarketsView`/`TradeView`/`BlottersView`, the same
- *   pieces `EquitiesScreen` switches between), inside `ScreenContentFixture`
- *   like `blotter/seeded` — none of the three is full-bleed. All three seed
+ *   sub-view (`MarketsView`/`TradeView`/`BlottersView`, the same pieces
+ *   `EquitiesScreen` switches between) under the screen's segmented
+ *   `EquitiesNav` pinned to that view, inside `ModuleScreenFixture` (the
+ *   screen's own `bgPrimary` root) inside `ShellFrameFixture` — none of the
+ *   three is full-bleed. All three seed
  *   `powerSaverLevel="freeze"`: this module has the widest Reanimated surface
  *   of any phase so far — `MoversBoard`'s rank-glide
  *   `LinearTransition`/`FadeIn`/`FadeOut`, `InstrumentHeader`'s tick-flash,
@@ -232,10 +241,15 @@ export const SCENARIOS: readonly Scenario[] = [
         // delivered trades over time, so the rows had usually finished
         // animating before the capture; a static fixture mounts all six rows at
         // once and they animate together, right where the shot lands.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <ScreenContentFixture>
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="blotter">
             <BlotterModule />
-          </ScreenContentFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -249,21 +263,23 @@ export const SCENARIOS: readonly Scenario[] = [
         <VisualScenarioHost
           skin="classic"
           mode="light"
+          powerSaverLevel="freeze"
           // The fake defaults `useConnectionStatus` to CONNECTED — matching
           // what the old live composition produced for every scenario — so
           // this is the one scenario that opts out: it exists to capture the
           // banner's full surface INCLUDING its Reconnect affordance, which
           // `ConnectionBanner` only renders when the status is neither
-          // CONNECTED nor CONNECTING.
+          // CONNECTED nor CONNECTING. The banner is part of the frame (it sits
+          // between the header and the body in `Chrome`), so the frame with
+          // an empty body IS the scenario; `freeze` stills the header's
+          // connection dot, which pulses while disconnected.
           viewModelOverrides={{
             useConnectionStatus: () => {
               return ConnectionStatus.DISCONNECTED;
             },
           }}
         >
-          <ScreenContentFixture>
-            <ConnectionBanner />
-          </ScreenContentFixture>
+          <ShellFrameFixture module="rates" />
         </VisualScenarioHost>
       );
     },
@@ -274,13 +290,24 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
           {/* BottomSheetModalProvider, scoped to THIS scenario only — see the
               file-level comment above. `app/(app)/_layout.tsx` supplies one
               for the real app, but this harness route sits outside that
-              layout, and VisualScenarioHost deliberately provides none for
-              the other scenarios, which don't need a portal host. */}
+              layout, and neither VisualScenarioHost nor ShellFrameFixture
+              provides one for the other scenarios, which present no sheet.
+              The sheet opens over the framed Rates grid, which is where the
+              prototype shows it (and where a user opens it from: `/` is the
+              app's index route). */}
           <BottomSheetModalProvider>
+            <ShellFrameFixture module="rates">
+              <RatesModule />
+            </ShellFrameFixture>
             <AppearanceOverlay open onClose={(): void => {}} />
           </BottomSheetModalProvider>
         </VisualScenarioHost>
@@ -407,10 +434,15 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <ScreenContentFixture>
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="rates">
             <RatesModule />
-          </ScreenContentFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -450,8 +482,15 @@ export const SCENARIOS: readonly Scenario[] = [
         // being captured part-way through their entry tweens.
         // `forceReduceMotion` (on by default) does NOT cover them — it seeds
         // `animatedBackground`, which gates the ambient layer alone.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <AnalyticsDashboardFixture />
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="analytics">
+            <AnalyticsDashboardFixture />
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -467,8 +506,18 @@ export const SCENARIOS: readonly Scenario[] = [
         // ring's 1s glide and the best-quote ACCEPT halo at rest.
         // `forceReduceMotion` seeds `animatedBackground`, which gates the
         // ambient layer alone and touches neither.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <CreditRfqTilesFixture />
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="credit">
+            <ModuleScreenFixture>
+              <CreditNav view="tiles" onChange={(): void => {}} />
+              <CreditRfqTilesFixture />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -479,8 +528,18 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <CreditSellSideFixture />
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="credit">
+            <ModuleScreenFixture>
+              <CreditNav view="sell-side" onChange={(): void => {}} />
+              <CreditSellSideFixture />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -494,13 +553,21 @@ export const SCENARIOS: readonly Scenario[] = [
         // freeze is load-bearing here, exactly as for `credit/rfq-tiles`: it
         // is the only gate that holds MoversBoard's rank-glide
         // LinearTransition/FadeIn/FadeOut at rest.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <ScreenContentFixture>
-            <MarketsView
-              selectedSymbol={PINNED_EQUITY_SYMBOL}
-              onSelect={(): void => {}}
-            />
-          </ScreenContentFixture>
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="equities">
+            <ModuleScreenFixture>
+              <EquitiesNav view="markets" onChange={(): void => {}} />
+              <MarketsView
+                selectedSymbol={PINNED_EQUITY_SYMBOL}
+                onSelect={(): void => {}}
+              />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -513,13 +580,21 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         // freeze holds InstrumentHeader's tick-flash and OrderCeremony's
         // FadeIn at rest, mirroring `equities/markets` above.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <ScreenContentFixture>
-            <TradeView
-              selectedSymbol={PINNED_EQUITY_SYMBOL}
-              onSelect={(): void => {}}
-            />
-          </ScreenContentFixture>
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="equities">
+            <ModuleScreenFixture>
+              <EquitiesNav view="trade" onChange={(): void => {}} />
+              <TradeView
+                selectedSymbol={PINNED_EQUITY_SYMBOL}
+                onSelect={(): void => {}}
+              />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
@@ -534,10 +609,18 @@ export const SCENARIOS: readonly Scenario[] = [
         // (BlottersView mounts with no orders/positions seeded — see the
         // header comment above), kept for the same "pin it, don't rely on an
         // empty seed staying empty" reasoning as the other two.
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
-          <ScreenContentFixture>
-            <BlottersView />
-          </ScreenContentFixture>
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="equities">
+            <ModuleScreenFixture>
+              <EquitiesNav view="blotters" onChange={(): void => {}} />
+              <BlottersView />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
         </VisualScenarioHost>
       );
     },
