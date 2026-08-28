@@ -1,10 +1,17 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
 import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
+import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
-import { TitleOnlyTab } from "#/TitleOnlyTab";
+import { HookTabRenderer } from "#/HookTabRenderer";
 
 const RTC_TAB_COMPONENT = "rtc-tab";
+
+/** Gap between groups, in px — the in-house engine's 7px drag-handle track
+ * (`InhouseLayoutEngine.module.css` `.handle`), so two panels sit exactly as
+ * far apart under dockview as they do in-house. Dockview applies it as a
+ * margin on every grid child and centres its sash in the resulting gutter. */
+export const GROUP_GAP_PX = 7;
 
 // dockview's own built-in themes (theme.ts: themeDark, themeAbyss, …) apply
 // their `className` via the `theme` OPTION, not via a class a consumer puts
@@ -25,12 +32,28 @@ const RTC_TAB_COMPONENT = "rtc-tab";
 const RTC_DOCKVIEW_THEME: DockviewTheme = {
   name: "rtc",
   className: "dockview-theme-rtc",
+  gap: GROUP_GAP_PX,
 };
 
+/** Every hook has the same `(panelId, element) => dispose` shape: dockview
+ * owns the element, the client fills it with framework-native nodes and
+ * tears them down through the returned disposer. Only `mount` (the panel
+ * body) is mandatory; `mountTab` and `mountActions` are what let the
+ * client's OWN panel header take over dockview's tab bar — see
+ * `HookTabRenderer` / `HookActionsRenderer`. */
 export interface DockPanelHooks {
   title(panelId: string): string;
   /** Mount framework-native content into the element Dockview owns; returns the disposer. */
   mount(panelId: string, element: HTMLElement): () => void;
+  /** Mount the panel's header slot (its head tabs, or its title) into the
+   * panel's TAB element — dockview's drag surface. Absent → the tab shows the
+   * `title()` text. */
+  mountTab?(panelId: string, element: HTMLElement): () => void;
+  /** Mount the panel's header controls (collapse / maximize) into the
+   * right-hand actions slot of whichever group the panel is currently the
+   * ACTIVE panel of. Remounted on every active-panel change, so `panelId` is
+   * always the one the controls should act on. Absent → no actions slot. */
+  mountActions?(panelId: string, element: HTMLElement): () => void;
 }
 
 export interface DockEngineOptions {
@@ -46,18 +69,30 @@ export interface DockEngineOptions {
   debounceMs?: number;
 }
 
-/** Width a collapsed group is clamped to, matching the in-house engine's
- * vertical `.collapsedStrip` (38px outer, 1px borders inside) so the two
- * engines strip a panel to the same bar. The in-house engine also has a 32px
- * horizontal variant; dockview collapse clamps WIDTH only, which is the
- * vertical case, so the one constant covers it. */
-const STRIP_PX = 38;
+/** The bar a collapsed group is clamped to, matching the in-house engine's
+ * strips so the two engines strip a panel to the same bar: a group whose
+ * siblings run side by side (a horizontal split) shrinks to a 38px-wide
+ * full-height column — the in-house `.collapsedStrip`, 38px outer with 1px
+ * borders inside — and one whose siblings stack (a vertical split) shrinks
+ * to a 32px-tall full-width bar, the in-house `.panel[data-strip]`. */
+const STRIP_WIDTH_PX = 38;
+const STRIP_HEIGHT_PX = 32;
+
+/** Which way a collapsed panel's strip reads: `"vertical"` for the 38px
+ * column (its label runs bottom-to-top), `"horizontal"` for the 32px bar —
+ * the in-house engine's `data-strip-orientation`, decided here from the
+ * axis the panel's group reclaims along. */
+export type DockStripOrientation = "vertical" | "horizontal";
 
 export interface DockEngine {
   maximizePanel(panelId: string): void;
   exitMaximize(): void;
-  /** Strip this panel to a {@link STRIP_PX} bar. Idempotent. */
-  collapsePanel(panelId: string): void;
+  /** Strip this panel to a bar along the axis its group's siblings run on
+   * (see {@link STRIP_WIDTH_PX}), returning which way the strip reads so the
+   * client can render the matching restore bar. Idempotent: a second call
+   * for an already-stripped panel returns its existing orientation. `null`
+   * for an unknown panel. */
+  collapsePanel(panelId: string): DockStripOrientation | null;
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
@@ -70,9 +105,10 @@ export interface DockEngine {
  * is not a documented constant, so reading the real values back beats hardcoding
  * a floor that a dockview upgrade could silently change. */
 interface PreCollapseGeometry {
-  width: number;
-  minimumWidth: number;
-  maximumWidth: number;
+  orientation: DockStripOrientation;
+  size: number;
+  minimum: number;
+  maximum: number;
 }
 
 export function createDockEngine(opts: DockEngineOptions): DockEngine {
@@ -80,7 +116,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     createComponent: () => {
       return new HookContentRenderer(opts.panels);
     },
-    // Panel close/reopen is out of v1 scope — see TitleOnlyTab's own doc
+    // Panel close/reopen is out of v1 scope — see HookTabRenderer's own doc
     // comment for why this replaces the default tab renderer entirely
     // instead of hiding the close button with CSS. `defaultTabComponent`
     // must ALSO be set: without a `tabComponent` id on the panel (which
@@ -89,8 +125,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // `createTabComponent` at all.
     defaultTabComponent: RTC_TAB_COMPONENT,
     createTabComponent: () => {
-      return new TitleOnlyTab();
+      return new HookTabRenderer(opts.panels);
     },
+    // The group's right-hand actions slot hosts the active panel's own
+    // collapse / maximize controls — the in-house header's right half.
+    createRightHeaderActionComponent: actionsFactory(opts.panels),
+    // A lone tab stretches across the whole bar (padding 0), so a panel's
+    // head slot — FX's Live Rates ▸ Watchlist tabs with the CHARTS chip
+    // pushed to the far right — lays out exactly as the in-house 38px
+    // header does. Groups holding several tabs fall back to content width.
+    singleTabMode: "fullwidth",
     // See RTC_DOCKVIEW_THEME's own doc comment: this is what actually routes
     // the HUD theme's --dv-* variables past dockview's internal defaults.
     theme: RTC_DOCKVIEW_THEME,
@@ -150,11 +194,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         api.exitMaximizedGroup();
       }
     },
-    collapsePanel: (panelId: string) => {
+    collapsePanel: (panelId: string): DockStripOrientation | null => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined || preCollapse.has(panelId)) {
-        return;
+      if (panel === undefined) {
+        return null;
+      }
+
+      const already = preCollapse.get(panelId);
+
+      if (already !== undefined) {
+        return already.orientation;
       }
 
       // In-house `collapsed` names a PANEL; dockview sizes a GROUP, and a group
@@ -169,21 +219,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       // Re-read: the move above reassigned `panel.group`.
       const group = panel.group;
+      const orientation = stripOrientationOf(group);
+      const axis = axisOf(group, orientation);
 
       preCollapse.set(panelId, {
-        width: group.api.width,
-        minimumWidth: group.minimumWidth,
-        maximumWidth: group.maximumWidth,
+        orientation,
+        size: axis.size(),
+        minimum: axis.minimum(),
+        maximum: axis.maximum(),
       });
 
       // Constraints BEFORE size: a bare `setSize` leaves the group draggable
       // back open and lets a sibling's resize push it wide again, so the strip
       // would not survive the next layout pass.
-      group.api.setConstraints({
-        minimumWidth: STRIP_PX,
-        maximumWidth: STRIP_PX,
-      });
-      group.api.setSize({ width: STRIP_PX });
+      clampRendered(
+        axis,
+        orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX,
+      );
+      return orientation;
     },
     expandPanel: (panelId: string) => {
       const prior = preCollapse.get(panelId);
@@ -193,15 +246,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return;
       }
 
-      const group = panel.group;
+      const axis = axisOf(panel.group, prior.orientation);
 
-      // Constraints first again — while max is still pinned at STRIP_PX,
+      // Constraints first again — while max is still pinned at the strip,
       // `setSize` to anything wider would be clamped straight back.
-      group.api.setConstraints({
-        minimumWidth: prior.minimumWidth,
-        maximumWidth: prior.maximumWidth,
-      });
-      group.api.setSize({ width: prior.width });
+      axis.constrain(prior.minimum, prior.maximum);
+      setRendered(axis, prior.size);
       preCollapse.delete(panelId);
     },
     groupCount: () => {
@@ -228,6 +278,140 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   };
 }
 
+/** dockview's public `DockviewGroupPanel` narrowed to what the collapse /
+ * expand code touches, so the helpers below stay honest about it. */
+interface SizableGroup {
+  readonly element: HTMLElement;
+  readonly minimumWidth: number;
+  readonly maximumWidth: number;
+  readonly minimumHeight: number;
+  readonly maximumHeight: number;
+  readonly api: {
+    readonly width: number;
+    readonly height: number;
+    setSize(event: { width?: number; height?: number }): void;
+    setConstraints(constraints: {
+      minimumWidth?: number;
+      maximumWidth?: number;
+      minimumHeight?: number;
+      maximumHeight?: number;
+    }): void;
+  };
+}
+
+/** One sizing axis of a group — width or height — behind a uniform surface,
+ * so the strip clamp and its restore are written once for both. */
+interface GroupAxis {
+  size(): number;
+  minimum(): number;
+  maximum(): number;
+  constrain(minimum: number, maximum: number): void;
+  set(size: number): void;
+}
+
+/**
+ * The strip a group collapses to depends on the axis its siblings run
+ * along, which is the orientation of the split view holding it: dockview
+ * stamps `dv-horizontal` / `dv-vertical` on that container (its own class
+ * names, stable across 7.x). Side-by-side siblings reclaim WIDTH, so the
+ * group becomes a narrow full-height column and its strip reads vertically;
+ * stacked siblings reclaim HEIGHT, so it becomes a short full-width bar. A
+ * lone root group (no split view) has nothing to reclaim along and gets the
+ * vertical treatment, as the in-house engine's root leaf does.
+ */
+function stripOrientationOf(group: SizableGroup): DockStripOrientation {
+  const splitView = group.element.closest(".dv-split-view-container");
+
+  return splitView?.classList.contains("dv-vertical") === true
+    ? "horizontal"
+    : "vertical";
+}
+
+function axisOf(
+  group: SizableGroup,
+  orientation: DockStripOrientation,
+): GroupAxis {
+  if (orientation === "vertical") {
+    return {
+      size: (): number => {
+        return group.api.width;
+      },
+      minimum: (): number => {
+        return group.minimumWidth;
+      },
+      maximum: (): number => {
+        return group.maximumWidth;
+      },
+      constrain: (minimum: number, maximum: number): void => {
+        group.api.setConstraints({
+          minimumWidth: minimum,
+          maximumWidth: maximum,
+        });
+      },
+      set: (size: number): void => {
+        group.api.setSize({ width: size });
+      },
+    };
+  }
+
+  return {
+    size: (): number => {
+      return group.api.height;
+    },
+    minimum: (): number => {
+      return group.minimumHeight;
+    },
+    maximum: (): number => {
+      return group.maximumHeight;
+    },
+    constrain: (minimum: number, maximum: number): void => {
+      group.api.setConstraints({
+        minimumHeight: minimum,
+        maximumHeight: maximum,
+      });
+    },
+    set: (size: number): void => {
+      group.api.setSize({ height: size });
+    },
+  };
+}
+
+/**
+ * Sizes a group so that it RENDERS at `size` along `axis`, not merely models
+ * it. With a theme `gap`, dockview keeps a split's model sizes summing to the
+ * full extent but shaves `gap × (n − 1) / n` off every child when laying it
+ * out — so `setSize({ width: 38 })` lands on screen (and in `group.api.width`)
+ * at 38 minus that share. The share depends on the sibling count of a branch
+ * the public API does not expose, so rather than recompute it this measures
+ * it: apply the size once, read back what rendered, and re-apply with the
+ * difference folded in. Idempotent when there is no gap (the difference is
+ * zero and the second pass is skipped).
+ */
+function setRendered(axis: GroupAxis, size: number): void {
+  axis.set(size);
+  const shortfall = size - axis.size();
+
+  if (shortfall !== 0) {
+    axis.set(size + shortfall);
+  }
+}
+
+/** Pins a group to render at exactly `size` along `axis`: constraints and
+ * size together, with the same gap-share correction as {@link setRendered}
+ * applied to both (a max constraint at the bare target would cap the
+ * corrected size straight back to the shortfall). */
+function clampRendered(axis: GroupAxis, size: number): void {
+  axis.constrain(size, size);
+  axis.set(size);
+  const shortfall = size - axis.size();
+
+  if (shortfall !== 0) {
+    const corrected = size + shortfall;
+    axis.constrain(corrected, corrected);
+    axis.set(corrected);
+  }
+}
+
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
  * a stale or corrupt blob must never brick the workspace. */
 function loadBlobOrSeed(
@@ -245,7 +429,27 @@ function loadBlobOrSeed(
     }
   }
 
-  api.fromJSON(toSerializedDockview(opts.seed, width, height));
+  api.fromJSON(
+    toSerializedDockview(opts.seed, width, height, { gap: GROUP_GAP_PX }),
+  );
+}
+
+/** `createRightHeaderActionComponent` only when the client supplied a
+ * `mountActions` hook — dockview renders no actions slot at all otherwise,
+ * rather than an empty one. Read once, here, so the renderer never has to
+ * re-check optionality per group. */
+function actionsFactory(
+  hooks: DockPanelHooks,
+): (() => HookActionsRenderer) | undefined {
+  const mountActions = hooks.mountActions;
+
+  if (mountActions === undefined) {
+    return undefined;
+  }
+
+  return (): HookActionsRenderer => {
+    return new HookActionsRenderer(mountActions);
+  };
 }
 
 function applyTitles(api: DockviewApi, hooks: DockPanelHooks): void {

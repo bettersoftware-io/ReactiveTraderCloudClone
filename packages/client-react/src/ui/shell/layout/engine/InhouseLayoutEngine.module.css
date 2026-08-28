@@ -292,68 +292,10 @@
   flex-shrink: 0;
 }
 
-/* Icon-less default title — harmonizes with the FX panels' registered heads
- * (PanelHeadTabs.module.css's `.headTab[data-active="true"]`, itself ported
- * from PROTO's tabStyleObj): every panel without its own head slot (Credit,
- * Equities, Admin, Credit Blotter — until their own restructures) now reads
- * as the same single accent tab instead of a plain label. There is only ever
- * one "tab" here, so it always renders active; the declarations are
- * duplicated rather than shared via CSS Modules `composes` (no precedent for
- * that feature elsewhere in this codebase). */
-.panelTitle {
-  /* Stretches to the head's full 38px (PROTO `.label`): zero vertical padding
-   * + inline-flex centering keep the text mid-head while the accent
-   * border-bottom lands on the head's bottom edge. */
-  align-self: stretch;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 14px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 15px; /* x86 font-metric determinism for visual golden stability */
-  letter-spacing: 0.06em;
-  color: var(--accent-primary);
-  background: var(--panel);
-  border-bottom: 2px solid var(--accent-primary);
-  cursor: default;
-}
-
-.panelHeadContent {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-  /* Fills the 38px head vertically so registered head tabs (which themselves
-   * stretch — see PanelHeadTabs.module.css `.headTabs`/`.headTab`) can plant
-   * their accent underline on the head's bottom border, exactly like the
-   * default `.panelTitle` above. */
-  align-self: stretch;
-}
-
-.panelControls {
-  display: flex;
-  gap: 4px;
-}
-
-/* Ported from client-prototype's Panel.module.css `.maxBtn` (dc.html's
- * `mxBtn`): a flat dim glyph, not a bordered chip — shared by the collapse
- * ("—") and maximize (⛶/⧉) controls, which is why the hover accent below
- * applies to both. */
-.panelControl {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-  padding: 0 6px;
-}
-
-.panelControl:hover {
-  color: var(--accent-primary);
-}
+/* The head's contents — the title / head-slot half (`.panelTitle`,
+ * `.panelHeadContent`) and the controls half (`.panelControls`,
+ * `.panelControl`) — live in PanelHead.module.css, shared with the dockview
+ * engine so both engines render one and the same header. */
 
 .panelBody {
   flex: 1;
@@ -361,37 +303,5 @@
   overflow: auto;
 }
 
-/* PROTO's stripBar (dc.html `stripBar`): the entire strip is one clickable
- * restore control — no separate header/body while stripped. */
-.stripBar {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: none;
-  padding: 0;
-  background: var(--panel-head);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.stripBar[data-orientation="vertical"] {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-
-.stripGlyph {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.stripLabel {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
+/* The strip bar itself (`.stripBar`, `.stripGlyph`, `.stripLabel`) is in
+ * PanelHead.module.css, shared with the dockview engine. */
