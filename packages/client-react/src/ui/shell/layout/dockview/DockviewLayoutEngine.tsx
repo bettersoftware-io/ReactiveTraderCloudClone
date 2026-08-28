@@ -56,6 +56,16 @@ export function DockviewLayoutEngine({
   // from the axis its group's siblings run along (see createDockEngine's
   // collapsePanel), so the bridge cannot second-guess it.
   const [strips, setStrips] = useState<StripMap>({});
+  // Read through a ref by the engine's title hook: `specs` (like `registry`)
+  // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
+  // the engine effect below would tear dockview down and rebuild it from
+  // the blob on every layout-state change — which is precisely a collapse,
+  // whose pre-collapse geometry lives only in the engine that applied it
+  // (the rebuilt one would "restore" the 32px strip to dockview's 100px
+  // default minimum instead). The engine lives for the tab; only the store
+  // (an app singleton) could legitimately swap it.
+  const specsRef = useRef(specs);
+  specsRef.current = specs;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -87,7 +97,7 @@ export function DockviewLayoutEngine({
       blob: store.load(tab),
       panels: {
         title: (id: string): string => {
-          return specs[id as PanelId]?.title ?? id;
+          return specsRef.current[id as PanelId]?.title ?? id;
         },
         mount: mountInto("body"),
         mountTab: mountInto("tab"),
@@ -106,7 +116,7 @@ export function DockviewLayoutEngine({
       setMounted([]);
       engine.dispose();
     };
-  }, [tab, store, specs]);
+  }, [tab, store]);
 
   useEffect(() => {
     const engine = engineRef.current;

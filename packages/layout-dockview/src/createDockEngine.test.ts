@@ -404,7 +404,7 @@ describe("collapse / expand", () => {
   it("restores the exact pre-collapse size on expand", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = await renderedWidth(engine, seen, "fx-analytics");
+    const before = await renderedSize(engine, seen, "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -421,7 +421,7 @@ describe("collapse / expand", () => {
   it("is idempotent — a second collapse cannot overwrite the remembered size", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = await renderedWidth(engine, seen, "fx-analytics");
+    const before = await renderedSize(engine, seen, "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -446,6 +446,20 @@ describe("collapse / expand", () => {
 
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
     expect(seen.sizeOf("fx-blotter")).toBe(STRIP_HEIGHT);
+    engine.dispose();
+  });
+
+  it("restores a height-stripped panel to its exact pre-collapse height", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    const before = await renderedSize(engine, seen, "fx-blotter");
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    engine.expandPanel("fx-blotter");
+
+    await waitForSize(seen, "fx-blotter", before);
+    expect(seen.sizeOf("fx-blotter")).toBe(before);
     engine.dispose();
   });
 
@@ -512,7 +526,7 @@ function within(target: number, tolerance: number): unknown {
  * has not fired it yet). With the theme gap in force this is a little under
  * the nominal fraction (0.25 × 1200 minus the gap share), which is exactly
  * why the collapse tests capture it rather than hardcode 300. */
-async function renderedWidth(
+async function renderedSize(
   engine: ReturnType<typeof createDockEngine>,
   tracker: LayoutTracker,
   panelId: string,
@@ -523,7 +537,7 @@ async function renderedWidth(
   for (let attempt = 0; attempt < 200; attempt += 1) {
     const size = tracker.sizeOf(panelId);
 
-    if (size !== null && size !== STRIP) {
+    if (size !== null && size !== STRIP && size !== STRIP_HEIGHT) {
       return size;
     }
 
