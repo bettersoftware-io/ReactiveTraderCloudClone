@@ -6,11 +6,10 @@ import { TESTIDS } from "../contracts/testids";
 
 const HANDLE = `hr[data-testid^="${TESTIDS.layout.handlePrefix}"]`;
 // dockview-core's own draggable tab wrapper (see dockview-core's Tab
-// component — `_element.className = 'dv-tab'`), NOT our TitleOnlyTab's
-// content classes (`dv-default-tab`/`dv-default-tab-content`, which merely
-// render the label text inside it). The drag gesture must target THIS
-// element: it is the one dockview attaches its HTML5 `draggable` + drop-zone
-// listeners to.
+// component — `_element.className = 'dv-tab'`), NOT the app's header nodes
+// portalled inside it (the `dock-tab-<id>` mount, holding the panel's head
+// tabs or title). The drag gesture must target THIS element: it is the one
+// dockview attaches its `draggable` + drop-zone listeners to.
 const DOCK_TAB = ".dv-tab";
 
 export class PlaywrightLayout implements LayoutPO {
@@ -84,10 +83,13 @@ export class PlaywrightLayout implements LayoutPO {
     );
   }
 
-  async dragDockTabOnto(tabTitle: string, targetTestId: string): Promise<void> {
+  async dragDockTabOnto(panelId: string, targetTestId: string): Promise<void> {
+    // Located by the panel's OWN mount inside the tab rather than by text:
+    // the tab shows the panel's head slot (for fx-blotter, its "FX Blotter"
+    // / "Activity" sub-tabs), so no single exact label identifies it.
     const tab = this.engineRoot()
       .locator(DOCK_TAB)
-      .filter({ has: this.page.getByText(tabTitle, { exact: true }) });
+      .filter({ has: this.page.getByTestId(TESTIDS.layout.dockTab(panelId)) });
 
     // dockview's drop-zone detection reads the pointer's position relative
     // to the whole GROUP body, not the specific dropped-on element: a point
@@ -112,7 +114,7 @@ export class PlaywrightLayout implements LayoutPO {
 
     if (srcBox === null || dstBox === null) {
       throw new Error(
-        `dragDockTabOnto: missing bounding box for tab ${JSON.stringify(tabTitle)} or drop target ${JSON.stringify(targetTestId)}`,
+        `dragDockTabOnto: missing bounding box for tab ${JSON.stringify(panelId)} or drop target ${JSON.stringify(targetTestId)}`,
       );
     }
 

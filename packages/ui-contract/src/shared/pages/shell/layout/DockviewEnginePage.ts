@@ -1,4 +1,4 @@
-import { waitFor, within } from "@testing-library/dom";
+import { fireEvent, waitFor, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
 export interface DockviewEngineProps {
@@ -17,6 +17,12 @@ export interface DockviewEngineProps {
   /** Mirrors the LayoutMachine's `state.collapsed`, threaded into the bridge's
    * `collapsed` prop the same way. */
   collapsed?: readonly string[];
+  /** The host owns the collapse set (seeded from `collapsed`) and renders a
+   * toggle for fx-analytics — see `toggleAnalyticsCollapsed`. */
+  interactive?: boolean;
+  /** `"no-maximize"`: fx-blotter `maximizable: false`, fx-positions absent
+   * from the specs entirely. */
+  specsVariant?: "no-maximize";
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike
@@ -57,20 +63,75 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     return raw === "" ? [] : raw.split(" ");
   }
 
-  /** Visible dockview tab titles, in DOM order. `.dv-default-tab-content` is
-   * dockview-core 7.0.4's own stable tab-label class (verified against the
-   * real rendered DOM — see the Task 4 report for the scratch dump this was
-   * confirmed against); it is the ONLY element carrying just the label text,
-   * so no de-duplication is needed against a broader selector like the
-   * `.dv-tab` wrapper (which also contains the close-action SVG). */
+  /** The text of each dockview tab, in DOM order. `.rtc-dock-tab` is the
+   * mount point @rtc/layout-dockview's HookTabRenderer hands the bridge
+   * inside dockview's own `.dv-tab` wrapper; the bridge portals the panel's
+   * head slot (or its title tab) into it, so this reads whatever the panel
+   * header shows — the same nodes the in-house engine renders. */
   tabTitles(): readonly string[] {
-    return [...this.root.querySelectorAll(".dv-default-tab-content")]
+    return [...this.root.querySelectorAll(".rtc-dock-tab")]
       .map((el) => {
         return el.textContent?.trim() ?? "";
       })
       .filter((t) => {
         return t.length > 0;
       });
+  }
+
+  /** True when the element carrying `testid` sits INSIDE dockview's own
+   * `.dv-tab` wrapper — its drag surface — which is what makes the app's
+   * header the thing the user drags. */
+  insideDockTab(testid: string): boolean {
+    return within(this.root).queryByTestId(testid)?.closest(".dv-tab") !== null;
+  }
+
+  /** The LayoutMachine intents the bridge dispatched, in call order, as the
+   * host records them: `maximize:<id>`, `restore`, `collapse:<id>`,
+   * `expand:<id>`. */
+  intents(): readonly string[] {
+    const raw = this.hostEl().getAttribute("data-intents") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
+  }
+
+  /** Flips fx-analytics in/out of the host-owned collapse set (needs
+   * `interactive`) — a real prop change into the bridge, not a remount. */
+  toggleAnalyticsCollapsed(): void {
+    fireEvent.click(
+      within(this.root).getByTestId("host-toggle-analytics-collapsed"),
+    );
+  }
+
+  clickCollapse(panelId: string): void {
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-collapse`));
+  }
+
+  clickMaximize(panelId: string): void {
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-maximize`));
+  }
+
+  /** The stripped panel's restore bar, keyed by the same collapse testid
+   * the in-house engine uses for it, or null when the panel is not a strip
+   * (its header control carries the testid then, without `data-orientation`). */
+  stripOrientation(panelId: string): string | null {
+    return (
+      within(this.root)
+        .queryByTestId(`panel-${panelId}-collapse`)
+        ?.getAttribute("data-orientation") ?? null
+    );
+  }
+
+  /** The `data-dock-strip` marker on `panelId`'s tab mount — the hook
+   * @rtc/layout-dockview's stylesheet keys on to hide the whole group
+   * header while the panel is a strip (a CSS `:has()` rule jsdom does not
+   * evaluate, so the marker is the witness here; the pixel tier sees the
+   * hidden bar). */
+  stripMarked(panelId: string): boolean {
+    return (
+      within(this.root)
+        .queryByTestId(`dock-tab-${panelId}`)
+        ?.getAttribute("data-dock-strip") === "true"
+    );
   }
 
   bodyVisible(testid: string): boolean {

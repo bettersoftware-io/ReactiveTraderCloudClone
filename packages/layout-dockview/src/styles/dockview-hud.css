@@ -1,34 +1,227 @@
-/* Dockview chrome mapped onto the app's token cascade. The base stylesheet
- * ships with the `dockview` package (byte-identical to dockview-core's own —
- * `dockview` is a thin re-export, see the package README); consumers import
- * this ONE file. Token names read from
+/* Dockview chrome restyled as the in-house engine's panel chrome, on the
+ * app's token cascade. The base stylesheet ships with the `dockview` package
+ * (byte-identical to dockview-core's own — `dockview` is a thin re-export,
+ * see the package README); consumers import this ONE file.
+ *
+ * Every pixel value below is a deliberate copy of a rule in
  * packages/client-react/src/ui/shell/layout/engine/InhouseLayoutEngine.module.css
- * and packages/client-react/src/ui/shell/theme/tokens.ts (identical across
- * both clients); the fallback hexes are the classic-dark cell of that token
- * store, keeping the chrome legible before theming. */
+ * (identical across both clients), named in the comment beside it — the two
+ * engines must read as the same design, so a change to one of those in-house
+ * rules is a change here too. Token names read from that file and from
+ * packages/client-react/src/ui/shell/theme/tokens.ts; the fallback hexes are
+ * the classic-dark cell of that token store, keeping the chrome legible
+ * before theming. */
 @import "dockview/dist/styles/dockview.css";
 
 .dockview-theme-rtc {
   --dv-group-view-background-color: var(--panel, #1e293b);
   --dv-tabs-and-actions-container-background-color: var(--panel-head, #1f2937);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--panel, #1e293b);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--panel-head, #1f2937);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel, #1e293b);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(
-    --panel-head,
-    #1f2937
-  );
+  --dv-activegroup-visiblepanel-tab-background-color: transparent;
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
   --dv-activegroup-visiblepanel-tab-color: var(--text-primary, #f1f5f9);
   --dv-activegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
   --dv-inactivegroup-visiblepanel-tab-color: var(--text-muted, #64748b);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
-  --dv-separator-border: var(--border-primary, #334155);
+  /* Group separation is the theme `gap` (createDockEngine's GROUP_GAP_PX)
+   * plus each group's own 1px card border below — no extra divider lines. */
+  --dv-separator-border: transparent;
+  --dv-tab-divider-color: transparent;
   --dv-paneview-active-outline-color: var(--accent-primary, #3b82f6);
-  --dv-active-sash-color: var(--accent-primary, #3b82f6);
+  --dv-active-sash-color: transparent;
   --dv-drag-over-background-color: color-mix(
     in srgb,
     var(--accent-primary, #3b82f6) 15%,
     transparent
   );
-  --dv-tabs-and-actions-container-height: 28px;
+  /* `.panelHeader` min-height: the in-house head is an exact 38px strip. */
+  --dv-tabs-and-actions-container-height: 38px;
+  --dv-tabs-and-actions-container-font-size: inherit;
+}
+
+/* `.panel`: the panel card — 1px border, 6px radius, panel background and
+ * shadow. dockview's own `overflow: hidden` on the group clips the tab bar
+ * to the rounded corners. */
+.dockview-theme-rtc .dv-groupview {
+  border: 1px solid var(--border-primary, #334155);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow, none);
+}
+
+/* `.panelHeader`: 38px, head background, 1px bottom rule, 8px side padding.
+ * Children STRETCH to the bar (as `.panelHeadContent` does in-house) so a
+ * head slot's 2px accent underline lands on the bar's bottom rule; the
+ * controls slot re-centres its own contents (`.rtc-dock-actions` below). */
+.dockview-theme-rtc .dv-tabs-and-actions-container {
+  align-items: stretch;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border, #334155);
+}
+
+/* dockview's scroll wrapper around the tab strip is a plain block; make it
+ * (and the strip inside) span the bar so the stretch reaches the tab. */
+.dockview-theme-rtc .dv-tabs-and-actions-container .dv-scrollable {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.dockview-theme-rtc .dv-tabs-container {
+  align-items: stretch;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* dockview's tab wrapper — its drag surface — carries no chrome of its own:
+ * the app's head slot (portalled into `.rtc-dock-tab` below) IS the tab. */
+.dockview-theme-rtc .dv-tab {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.dockview-theme-rtc .dv-tab.dv-active-tab,
+.dockview-theme-rtc .dv-tab.dv-inactive-tab {
+  background: transparent;
+}
+
+/* The mount point HookTabRenderer hands the client: stretches to the 38px
+ * head so a head slot's accent underline lands on the head's bottom rule,
+ * exactly as `.panelHeadContent` does in-house. */
+.rtc-dock-tab {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* The `mountTab`-less fallback: dockview's plain title label, in the
+ * in-house `.panelTitle` face. */
+.rtc-dock-tab-title {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.06em;
+  color: var(--accent-primary, #3b82f6);
+  border-bottom: 2px solid var(--accent-primary, #3b82f6);
+}
+
+/* The mount point HookActionsRenderer hands the client for the active
+ * panel's collapse / maximize controls (`.panelControls`). */
+.rtc-dock-actions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* The content mount point (HookContentRenderer): a column that fills the
+ * group body so the client's own `.panelBody` scroll container gets a
+ * definite height to scroll within, as it does inside `.panel` in-house. */
+.rtc-dock-panel-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* `.handle`: the 7px gutter's resize sash, drawn as the in-house 2×30px
+ * centred grip bar (`.handle::after`) — the track itself stays transparent.
+ * Dockview centres its sash on the group boundary; widening it to the full
+ * gutter makes the whole gap grabbable, as the in-house handle track is. */
+.dockview-theme-rtc .dv-split-view-container > .dv-sash-container > .dv-sash {
+  background: transparent;
+}
+
+.dockview-theme-rtc
+  .dv-split-view-container.dv-horizontal
+  > .dv-sash-container
+  > .dv-sash {
+  width: 7px;
+  transform: translateX(-1.5px);
+}
+
+.dockview-theme-rtc
+  .dv-split-view-container.dv-vertical
+  > .dv-sash-container
+  > .dv-sash {
+  height: 7px;
+  transform: translateY(-1.5px);
+}
+
+.dockview-theme-rtc .dv-sash::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--border, #334155);
+}
+
+.dockview-theme-rtc
+  .dv-split-view-container.dv-horizontal
+  > .dv-sash-container
+  > .dv-sash::after {
+  width: 2px;
+  height: 30px;
+}
+
+.dockview-theme-rtc
+  .dv-split-view-container.dv-vertical
+  > .dv-sash-container
+  > .dv-sash::after {
+  width: 30px;
+  height: 2px;
+}
+
+.dockview-theme-rtc .dv-sash:hover::after,
+.dockview-theme-rtc .dv-sash.dv-active::after {
+  background: var(--border-strong, #475569);
+}
+
+/* A stripped panel is its restore bar and nothing else, exactly as
+ * in-house (`.panel[data-strip="true"]` renders only `.stripBar`): the
+ * client marks the stripped panel's tab mount `data-dock-strip="true"` and
+ * the whole group header goes, leaving the body slot — where the client
+ * renders the bar — to fill the 32/38px the engine clamped the group to.
+ * No drag surface while stripped, as in-house. */
+.dockview-theme-rtc
+  .dv-groupview:has(.rtc-dock-tab [data-dock-strip="true"])
+  > .dv-tabs-and-actions-container {
+  display: none;
+}
+
+/* A framework's portal may wrap what it mounts in a bare <div> of its own
+ * (SolidJS's <Portal> does; React's createPortal does not). Such a wrapper
+ * — recognisable as the only class-less element a mount point ever holds —
+ * is made transparent to the flex sizing above, so the client's nodes lay
+ * out identically whichever framework portalled them. */
+.rtc-dock-tab > div:not([class]),
+.rtc-dock-actions > div:not([class]),
+.rtc-dock-panel-content > div:not([class]) {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.rtc-dock-tab > div:not([class]) {
+  align-items: stretch;
+}
+
+.rtc-dock-actions > div:not([class]) {
+  align-items: center;
+}
+
+.rtc-dock-panel-content > div:not([class]) {
+  flex-direction: column;
 }

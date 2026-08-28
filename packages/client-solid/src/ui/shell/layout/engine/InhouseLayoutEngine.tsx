@@ -13,6 +13,9 @@ import {
 } from "@rtc/client-core";
 
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
+import { PanelHeadControls } from "./PanelHeadControls";
+import { PanelHeadSlot } from "./PanelHeadSlot";
+import { PanelStrip } from "./PanelStrip";
 import type { PanelRegistry } from "./panelRegistry";
 
 import styles from "./InhouseLayoutEngine.module.css";
@@ -702,62 +705,26 @@ function PanelLeaf(props: PanelLeafProps): JSX.Element {
               data-testid={`panel-${props.panelId}-header`}
               class={styles.panelHeader}
             >
-              <Show
-                when={props.headRegistry?.[props.panelId] !== undefined}
-                fallback={
-                  <span
-                    data-testid={`panel-${props.panelId}-title`}
-                    class={styles.panelTitle}
-                  >
-                    {title()}
-                  </span>
-                }
-              >
-                <div class={styles.panelHeadContent}>
-                  {props.headRegistry?.[props.panelId]?.()}
-                </div>
-              </Show>
-              <div class={styles.panelControls}>
-                <button
-                  type="button"
-                  data-testid={`panel-${props.panelId}-collapse`}
-                  class={styles.panelControl}
-                  aria-label={`Collapse ${title()}`}
-                  title={`Collapse ${title()}`}
-                  onClick={() => {
-                    props.onCollapse(props.panelId);
-                  }}
-                >
-                  —
-                </button>
-                {/* maximizable: false hides only this control — the panel
-                    still strips when a sibling maximizes (spec'd on
-                    PanelSpec). */}
-                <Show when={spec()?.maximizable !== false}>
-                  <button
-                    type="button"
-                    data-testid={`panel-${props.panelId}-maximize`}
-                    class={styles.panelControl}
-                    aria-label={
-                      maximizedHere()
-                        ? `Restore ${title()}`
-                        : `Maximize ${title()}`
-                    }
-                    title={
-                      maximizedHere()
-                        ? `Restore ${title()}`
-                        : `Maximize ${title()}`
-                    }
-                    onClick={() => {
-                      maximizedHere()
-                        ? props.onRestore()
-                        : props.onMaximize(props.panelId);
-                    }}
-                  >
-                    {maximizedHere() ? "⧉" : "⛶"}
-                  </button>
-                </Show>
-              </div>
+              <PanelHeadSlot
+                panelId={props.panelId}
+                title={title()}
+                headContent={props.headRegistry?.[props.panelId]}
+              />
+              <PanelHeadControls
+                panelId={props.panelId}
+                title={title()}
+                maximizable={spec()?.maximizable !== false}
+                maximizedHere={maximizedHere()}
+                onCollapse={() => {
+                  props.onCollapse(props.panelId);
+                }}
+                onMaximize={() => {
+                  props.onMaximize(props.panelId);
+                }}
+                onRestore={() => {
+                  props.onRestore();
+                }}
+              />
             </header>
             {/* data-flip-stage: the scroll container owning the panel's
                 visible height — a future FLIP grid's enter sweep anchors to
@@ -770,21 +737,14 @@ function PanelLeaf(props: PanelLeafProps): JSX.Element {
           </>
         }
       >
-        <button
-          type="button"
-          data-testid={`panel-${props.panelId}-collapse`}
-          class={styles.stripBar}
-          data-orientation={stripOrientation()}
-          aria-label={`Restore ${title()}`}
-          onClick={() => {
+        <PanelStrip
+          panelId={props.panelId}
+          title={title()}
+          orientation={stripOrientation()}
+          onRestore={() => {
             collapsed() ? props.onExpand(props.panelId) : props.onRestore();
           }}
-        >
-          <span aria-hidden="true" class={styles.stripGlyph}>
-            ⛶
-          </span>
-          <span class={styles.stripLabel}>{title()}</span>
-        </button>
+        />
       </Show>
     </section>
   );

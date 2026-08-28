@@ -19,6 +19,9 @@ import {
 } from "@rtc/client-core";
 
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
+import { PanelHeadControls } from "./PanelHeadControls";
+import { PanelHeadSlot } from "./PanelHeadSlot";
+import { PanelStrip } from "./PanelStrip";
 import type { PanelRegistry } from "./panelRegistry";
 
 import styles from "./InhouseLayoutEngine.module.css";
@@ -582,71 +585,38 @@ function PanelLeaf({
       data-maximized={maximizedHere ? "true" : "false"}
     >
       {strip ? (
-        <button
-          type="button"
-          data-testid={`panel-${panelId}-collapse`}
-          className={styles.stripBar}
-          data-orientation={stripOrientation}
-          aria-label={`Restore ${title}`}
-          onClick={() => {
+        <PanelStrip
+          panelId={panelId}
+          title={title}
+          orientation={stripOrientation}
+          onRestore={() => {
             collapsed ? onExpand(panelId) : onRestore();
           }}
-        >
-          <span aria-hidden="true" className={styles.stripGlyph}>
-            ⛶
-          </span>
-          <span className={styles.stripLabel}>{title}</span>
-        </button>
+        />
       ) : (
         <>
           <header
             data-testid={`panel-${panelId}-header`}
             className={styles.panelHeader}
           >
-            {headContent ? (
-              <div className={styles.panelHeadContent}>{headContent()}</div>
-            ) : (
-              <span
-                data-testid={`panel-${panelId}-title`}
-                className={styles.panelTitle}
-              >
-                {title}
-              </span>
-            )}
-            <div className={styles.panelControls}>
-              <button
-                type="button"
-                data-testid={`panel-${panelId}-collapse`}
-                className={styles.panelControl}
-                aria-label={`Collapse ${title}`}
-                title={`Collapse ${title}`}
-                onClick={() => {
-                  onCollapse(panelId);
-                }}
-              >
-                —
-              </button>
-              {/* maximizable: false hides only this control — the panel still
-               * strips when a sibling maximizes (spec'd on PanelSpec). */}
-              {spec?.maximizable !== false ? (
-                <button
-                  type="button"
-                  data-testid={`panel-${panelId}-maximize`}
-                  className={styles.panelControl}
-                  aria-label={
-                    maximizedHere ? `Restore ${title}` : `Maximize ${title}`
-                  }
-                  title={
-                    maximizedHere ? `Restore ${title}` : `Maximize ${title}`
-                  }
-                  onClick={() => {
-                    maximizedHere ? onRestore() : onMaximize(panelId);
-                  }}
-                >
-                  {maximizedHere ? "⧉" : "⛶"}
-                </button>
-              ) : null}
-            </div>
+            <PanelHeadSlot
+              panelId={panelId}
+              title={title}
+              headContent={headContent}
+            />
+            <PanelHeadControls
+              panelId={panelId}
+              title={title}
+              maximizable={spec?.maximizable !== false}
+              maximizedHere={maximizedHere}
+              onCollapse={() => {
+                onCollapse(panelId);
+              }}
+              onMaximize={() => {
+                onMaximize(panelId);
+              }}
+              onRestore={onRestore}
+            />
           </header>
           {/* data-flip-stage: the scroll container owning the panel's visible
               height — useFlipGrid's enter sweep anchors to its corner. */}

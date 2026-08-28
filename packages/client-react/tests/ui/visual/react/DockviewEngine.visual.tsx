@@ -52,6 +52,9 @@ const visualDockPanelRegistry: PanelRegistry = {
   },
 };
 
+/** The header controls need intent slots; a golden never clicks them. */
+function noop(): void {}
+
 export function DockviewEngineVisual(): ReactElement {
   // Build-once-ref (mirrors DockviewEngineHost.tsx's identical idiom): a
   // fresh, never-persisted-to store per mount, so `store.load("fx")` reads
@@ -71,6 +74,10 @@ export function DockviewEngineVisual(): ReactElement {
         store={storeRef.current}
         maximized={null}
         collapsed={[]}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
       />
     </div>
   );

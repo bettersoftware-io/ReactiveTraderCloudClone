@@ -141,6 +141,114 @@ describe("toSerializedDockview", () => {
   });
 });
 
+describe("toSerializedDockview × pixel pins", () => {
+  // The FX default tree: a 360px design-width rail (initialPx) beside a
+  // fraction-sized main column, exactly as createDefaultLayoutPort seeds it.
+  const RAIL = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.73, 0.27],
+    initialPx: [undefined, 360],
+    children: [
+      { kind: "panel", panelId: "main" },
+      { kind: "panel", panelId: "rail" },
+    ],
+  } as const;
+
+  it("gives an initialPx child exactly its pixels and the rest to the fraction-sized siblings", () => {
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 1000, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
+    expect(rail.size).toBe(360);
+    expect(main.size).toBe(640); // 1000 − 360, not 0.73 × 1000
+  });
+
+  it("lets fixedPx win over initialPx on the same child", () => {
+    const both = { ...RAIL, fixedPx: [undefined, 300] } as const;
+    const [main, rail] = (
+      toSerializedDockview(both, 1000, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
+    expect(rail.size).toBe(300);
+    expect(main.size).toBe(700);
+  });
+
+  it("renormalises the fractions among the free siblings only", () => {
+    // Two free children at 0.5 / 0.25 (0.75 together) beside a 200px pin:
+    // the 800px remainder splits 2:1, not 0.5 / 0.25 of 800.
+    const three = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.25, 0.25],
+      fixedPx: [undefined, undefined, 200],
+      children: [
+        { kind: "panel", panelId: "a" },
+        { kind: "panel", panelId: "b" },
+        { kind: "panel", panelId: "c" },
+      ],
+    } as const;
+
+    const sizes = (
+      (toSerializedDockview(three, 1000, 800).grid.root as SerializedNode)
+        .data as SerializedNode[]
+    ).map((n) => {
+      return n.size;
+    });
+    expect(sizes).toEqual([533, 267, 200]);
+  });
+
+  it("drops the pins and falls back to fractions when they cannot fit", () => {
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 300, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
+    expect(rail.size).toBe(81); // 300 − round(0.73 × 300)
+    expect(main.size).toBe(219);
+  });
+
+  it("keeps a pin on a child that survives same-direction flattening", () => {
+    const nested = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.5],
+      children: [
+        {
+          kind: "split",
+          dir: "row",
+          sizes: [0.5, 0.5],
+          initialPx: [100, undefined],
+          children: [
+            { kind: "panel", panelId: "a" },
+            { kind: "panel", panelId: "b" },
+          ],
+        },
+        { kind: "panel", panelId: "c" },
+      ],
+    } as const;
+
+    const sizes = (
+      (toSerializedDockview(nested, 1000, 800).grid.root as SerializedNode)
+        .data as SerializedNode[]
+    ).map((n) => {
+      return n.size;
+    });
+    // a keeps its 100px; b (0.25) and c (0.5) share the remaining 900 at 1:2.
+    expect(sizes).toEqual([100, 300, 600]);
+  });
+
+  it("compensates the theme gap so the pinned pixels are what RENDERS", () => {
+    // dockview shaves gap × (n − 1) / n off each of n children at layout
+    // time; the model sizes must carry that share so the 360px rail is 360
+    // on screen. Two children, gap 7: each model size = rendered + 3.5, and
+    // the rendered extents share 1000 − 7.
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 1000, 800, { gap: 7 }).grid
+        .root as SerializedNode
+    ).data as SerializedNode[];
+    expect(rail.size).toBe(363.5);
+    expect(main.size).toBe(636.5); // (993 − 360) + 3.5
+    expect((rail.size ?? 0) + (main.size ?? 0)).toBe(1000);
+  });
+});
+
 describe("toSerializedDockview × dockview-core round trip", () => {
   it("honours the seed's proportions through a real fromJSON/toJSON cycle", () => {
     // Regression pin for a bug found in the live browser (drag-docking and
@@ -178,6 +286,43 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     const [top, bottom] = left.data as SerializedNode[];
     expect(top.size).toBe(480);
     expect(bottom.size).toBe(320);
+
+    api.dispose();
+  });
+
+  it("renders a gap-compensated pinned rail at its design width", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const api = createDockview(container, {
+      createComponent: () => {
+        return {
+          element: document.createElement("div"),
+          init: () => {},
+        };
+      },
+      theme: { name: "t", className: "t", gap: 7 },
+    });
+
+    const rail = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.73, 0.27],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "main" },
+        { kind: "panel", panelId: "rail" },
+      ],
+    } as const;
+
+    api.layout(1000, 800);
+    api.fromJSON(toSerializedDockview(rail, 1000, 800, { gap: 7 }));
+
+    // dockview reports the RENDERED width (gap share already removed) —
+    // the design 360, give or take dockview's half-pixel flooring.
+    const railWidth = api.getGroup("group-2")?.api.width ?? 0;
+    const mainWidth = api.getGroup("group-1")?.api.width ?? 0;
+    expect(Math.abs(railWidth - 360)).toBeLessThanOrEqual(1);
+    expect(Math.abs(mainWidth - 633)).toBeLessThanOrEqual(1);
 
     api.dispose();
   });

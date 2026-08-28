@@ -372,8 +372,9 @@ as a two-branch conditional, would be guessing at the shape a third engine
   conversion, `api.layout()` called before `restore()` so proportions hold,
   opaque-blob restore with a seed fallback, debounced serialisation, a
   dispose-time final flush, a maximize bridge mirrored from Jarvis/the
-  layout state machine, and a close-button-free `TitleOnlyTab` — no close
-  affordance in v1 scope) plus a `dockview-hud.css` HUD token mapping.
+  layout state machine, and a close-button-free tab renderer — no close
+  affordance in v1 scope) plus `dockview-hud.css`, which restyles Dockview's
+  chrome as the in-house panel chrome (see the chrome-parity bullet below).
 - **Collapse/expand, added 2026-08-14.** Of the five intents, `maximize`,
   `restore`, `collapse` and `expand` are now bridged, and `resize` needed no
   bridge at all: it is the in-house sash-drag callback, whereas under Dockview
@@ -392,6 +393,39 @@ as a two-branch conditional, would be guessing at the shape a third engine
   bridge is where an engine's missing capability gets emulated, which is
   precisely the knowledge a premature `LayoutPort` would have had to encode
   before it was known.
+- **Chrome parity, added 2026-08-28 (PR #587).** The first cut only mapped colour
+  tokens onto Dockview, so switching engines changed the *design*: no 10px
+  inset or 7px gutters, flat groups instead of bordered cards, Dockview's own
+  28px tab bar stacked as a second header above the app's head strip, no
+  collapse/maximize controls, the 360px design rail rendered as a 27%
+  fraction, and a panel body with no scroll container. The fix makes
+  Dockview's tab bar *be* the in-house header rather than imitate it:
+  `createDockEngine` grew two optional hooks beside `mount` — `mountTab`
+  (the panel's tab element, Dockview's drag surface) and `mountActions`
+  (the group's right-hand actions slot, remounted for whichever panel is
+  active) — and each client bridge portals the **same** `PanelHead` pieces
+  its in-house engine renders (`PanelHeadSlot`, `PanelHeadControls`,
+  `PanelStrip`, extracted from `InhouseLayoutEngine` into one shared
+  component + stylesheet per client) into them. The theme carries
+  `gap: 7` (the in-house handle track), the bridge root the 10px inset,
+  `dockview-hud.css` the card border/radius/shadow, the 38px head and the
+  2×30px sash grip; the seed converter honours `initialPx`/`fixedPx`
+  (gap-compensated, since Dockview shaves `gap × (n − 1) / n` off every
+  child at render time — and, because it also *serialises* those shaved
+  sizes, the persisted blob is compensated the same way so a save/load
+  cycle restores exactly instead of drifting a pixel or two per reload); collapse clamps along the axis the group's
+  siblings run on (a 38px column beside side-by-side siblings, a 32px bar
+  under stacked ones) and reports the orientation so the bridge renders the
+  matching in-house restore strip with the group header hidden. One React
+  bridge bug surfaced with it: `WorkspaceEngine` rebuilds `specs`/
+  `registry` every render, and the engine effect listed `specs` as a dep —
+  so every layout-state change rebuilt Dockview from the blob, losing the
+  pre-collapse geometry (a strip "restored" to Dockview's 100px default
+  minimum). The engine now lives for the tab. **Deliberate residuals:**
+  maximize stays Dockview-native (the group fills the whole dock; in-house
+  scopes a rail panel's maximize to its column and strips the siblings),
+  and Jarvis-docked panels remain an in-house-engine feature (the Dockview
+  seed is the static default tree).
 - **What did NOT land**: the `LayoutPort` interface itself. The engine
   branch lives inside the pre-existing `WorkspaceEngine` (in-house vs.
   Dockview), not behind a new port boundary each engine implements
@@ -402,11 +436,14 @@ as a two-branch conditional, would be guessing at the shape a third engine
   has and Dockview does not) are not enough evidence to fix an interface
   shape, and guessing now risks the exact "leaky facade" this ADR warns
   against.
-- **Verification**: a shared `DockviewEngine.contract.spec.ts` (4 cases,
-  run against both clients), 15 package-level unit tests in
-  `@rtc/layout-dockview`, a Playwright e2e journey (switch engine → drag-
-  dock → reload persists → revert), and a `shell/layout-dockview` visual
-  scenario (10-combo matrix) alongside re-pinned preferences-modal goldens.
+- **Verification**: a shared `DockviewEngine.contract.spec.ts` (10 cases,
+  run against both clients — head slot and title inside the tab, controls
+  dispatching the machine intents, the strip and its orientation), 38
+  package-level unit tests in `@rtc/layout-dockview` (hooks, pixel pins,
+  gap compensation, axis-aware collapse), a Playwright e2e journey (switch
+  engine → drag-dock by the panel's own header → reload persists → revert),
+  and a `shell/layout-dockview` visual scenario (10-combo matrix) alongside
+  re-pinned preferences-modal goldens.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).

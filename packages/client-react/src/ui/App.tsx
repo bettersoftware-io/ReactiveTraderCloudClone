@@ -113,6 +113,10 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               store={dockLayoutStore}
               maximized={state.maximized}
               collapsed={state.collapsed}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
             />
           </Suspense>
         ) : (

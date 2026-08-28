@@ -256,6 +256,10 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               store={dockLayoutStore}
               maximized={state().maximized}
               collapsed={state().collapsed}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
             />
           </Suspense>
         </Show>

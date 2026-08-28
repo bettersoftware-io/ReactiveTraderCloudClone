@@ -1,13 +1,17 @@
 /* Mirrors InhouseLayoutEngine.module.css's .engine: fills the workspace
- * region, no padding here — dockview draws its own group chrome (tabs,
- * borders) right up to the edge, unlike the in-house engine's inset splits. */
+ * region with the same 10px dock inset (prototype-measured page padding),
+ * so dockview's outermost groups sit exactly where the in-house engine's
+ * outermost panels do. Group-to-group separation is the 7px theme gap
+ * (createDockEngine's GROUP_GAP_PX) — the in-house handle track. */
 .engine {
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  padding: 10px;
 }
 
-/* The dockview-core mount point — must be a positioned, sized block for
+/* The dockview mount point — must be a positioned, sized block for
  * dockview's own absolutely-positioned grid children to fill (dockview reads
  * this element's box on init/resize). */
 .container {
@@ -17,13 +21,20 @@
   position: relative;
 }
 
-.panelBody {
+/* Portalled into dockview's tab (`.rtc-dock-tab`): stretches the head slot
+ * to the 38px bar exactly as `.panelHeadContent` stretches inside the
+ * in-house `.panelHeader`. */
+.tabSlot {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
 }
 
-.headStrip {
-  flex: 0 0 auto;
+/* Portalled into dockview's content slot (`.rtc-dock-panel-content`, a
+ * flex column): the in-house `.panelBody` scroll container, verbatim. */
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
