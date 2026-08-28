@@ -1,4 +1,3 @@
-import { usePathname } from "expo-router";
 import type { JSX } from "react";
 import {
   StyleSheet,
@@ -16,21 +15,21 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 import { DOCK_FAB_CLEARANCE } from "./dockMetrics";
-import { resolveActiveModule } from "./moduleRoutes";
+import { useActiveModule } from "./useActiveModule";
 import { useShellTelemetry } from "./useShellTelemetry";
 
 /** HUD status strip (prototype .dc.html:447-464): a telemetry line
  * (connection · latency · fps · clock · build) above a MODULE / SESSION line.
- * The active MODULE is derived from the current expo-router pathname — the
- * dock and deep links both drive it. */
+ * The active MODULE comes from `useActiveModule` — the current expo-router
+ * pathname in the app (the dock and deep links both drive it), or the module
+ * a visual scenario pins through `ActiveModuleContext`. */
 export function StatusStrip(): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
-  const pathname = usePathname();
   const { useConnectionStatus } = useViewModel();
   const status = useConnectionStatus();
   const { fps, latencyMs, clock, build } = useShellTelemetry();
-  const active = resolveActiveModule(pathname);
+  const active = useActiveModule();
 
   return (
     <View

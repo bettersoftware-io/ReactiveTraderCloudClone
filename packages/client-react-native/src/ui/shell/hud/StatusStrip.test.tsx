@@ -3,7 +3,9 @@ import { render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { StyleSheet, type ViewStyle } from "react-native";
 
+import { ActiveModuleContext } from "./ActiveModuleContext";
 import { DOCK_FAB_SIZE } from "./dockMetrics";
+import { MODULE_ROUTES } from "./moduleRoutes";
 
 const mockPathname = jest.fn<() => string>();
 // Imported after the mocks are registered.
@@ -19,6 +21,22 @@ test("shows RATES on the index route", async () => {
   mockPathname.mockReturnValue("/");
   await render(<StatusStrip />);
   expect(screen.getByTestId("hud-module-label")).toHaveTextContent("RATES");
+});
+
+// The visual harness mounts every scenario under `/__visual/<id>`, which the
+// pathname resolver can only read as RATES; a framed `credit/*` golden must be
+// able to say CREDIT without a route change.
+test("a module pinned through ActiveModuleContext overrides the pathname", async () => {
+  mockPathname.mockReturnValue("/");
+  const credit = MODULE_ROUTES.find((m) => {
+    return m.key === "credit";
+  });
+  await render(
+    <ActiveModuleContext.Provider value={credit ?? null}>
+      <StatusStrip />
+    </ActiveModuleContext.Provider>,
+  );
+  expect(screen.getByTestId("hud-module-label")).toHaveTextContent("CREDIT");
 });
 
 // P8: the dock's FAB is painted over this strip by construction, so the

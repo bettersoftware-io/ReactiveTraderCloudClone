@@ -24,6 +24,7 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
+import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 
@@ -44,6 +45,14 @@ import { useTheme } from "#/ui/theme/useTheme";
  * the whole component returns `null` when off, so no worklet or canvas
  * mounts at all — calm-until-real-event per the perf doctrine.
  *
+ * The DRIFT is additionally gated by `useShellMotionEnabled()`: under
+ * power-saver Freeze the canvas still paints (grid + one static frame of the
+ * layer group at `progress = 0`) but the loop never starts — Freeze is the
+ * tier that kills every motion, and this was the one worklet it did not
+ * reach. It is also what lets the visual harness capture the ambient layer
+ * at all: with the preference on and Freeze seeded, the frame is the same on
+ * every capture.
+ *
  * Drift is exactly ONE Reanimated shared value (`progress`, looping 0..1..0
  * via `withRepeat`+`withTiming` on the UI thread), read by every layer
  * (blob `cx`/`cy`, curtain `transform`) through `useDerivedValue` — position
@@ -55,6 +64,7 @@ import { useTheme } from "#/ui/theme/useTheme";
  */
 export function AmbientBackground(): JSX.Element | null {
   const enabled = useAmbientEnabled();
+  const drifting = useShellMotionEnabled();
   const t = useTheme();
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
@@ -62,10 +72,12 @@ export function AmbientBackground(): JSX.Element | null {
   const { style } = useAmbientStyle();
 
   useEffect(() => {
-    if (!enabled) {
-      // Stop the drift loop (toggle off / reduced-motion) — returning null
-      // below unmounts the Canvas but would leave a withRepeat(-1) worklet
-      // running forever on the UI thread. Cancel and rest at a static frame.
+    if (!enabled || !drifting) {
+      // Stop the drift loop (toggle off / reduced-motion / Freeze) — the
+      // first two return null below, which unmounts the Canvas but would
+      // leave a withRepeat(-1) worklet running forever on the UI thread;
+      // Freeze keeps the Canvas and shows this resting frame. Cancel and
+      // rest at a static frame either way.
       cancelAnimation(progress);
       progress.value = 0;
       return;
@@ -80,7 +92,7 @@ export function AmbientBackground(): JSX.Element | null {
     return () => {
       cancelAnimation(progress);
     };
-  }, [enabled, progress]);
+  }, [enabled, drifting, progress]);
 
   if (!enabled) {
     return null;
