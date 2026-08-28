@@ -393,7 +393,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   bridge is where an engine's missing capability gets emulated, which is
   precisely the knowledge a premature `LayoutPort` would have had to encode
   before it was known.
-- **Chrome parity, added 2026-08-28.** The first cut only mapped colour
+- **Chrome parity, added 2026-08-28 (PR #587).** The first cut only mapped colour
   tokens onto Dockview, so switching engines changed the *design*: no 10px
   inset or 7px gutters, flat groups instead of bordered cards, Dockview's own
   28px tab bar stacked as a second header above the app's head strip, no
