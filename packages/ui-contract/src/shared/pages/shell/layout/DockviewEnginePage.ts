@@ -17,6 +17,12 @@ export interface DockviewEngineProps {
   /** Mirrors the LayoutMachine's `state.collapsed`, threaded into the bridge's
    * `collapsed` prop the same way. */
   collapsed?: readonly string[];
+  /** The host owns the collapse set (seeded from `collapsed`) and renders a
+   * toggle for fx-analytics — see `toggleAnalyticsCollapsed`. */
+  interactive?: boolean;
+  /** `"no-maximize"`: fx-blotter `maximizable: false`, fx-positions absent
+   * from the specs entirely. */
+  specsVariant?: "no-maximize";
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike
@@ -86,6 +92,14 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     const raw = this.hostEl().getAttribute("data-intents") ?? "";
 
     return raw === "" ? [] : raw.split(" ");
+  }
+
+  /** Flips fx-analytics in/out of the host-owned collapse set (needs
+   * `interactive`) — a real prop change into the bridge, not a remount. */
+  toggleAnalyticsCollapsed(): void {
+    fireEvent.click(
+      within(this.root).getByTestId("host-toggle-analytics-collapsed"),
+    );
   }
 
   clickCollapse(panelId: string): void {

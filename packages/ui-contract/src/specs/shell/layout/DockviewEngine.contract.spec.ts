@@ -93,6 +93,42 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.bodyVisible("fx-rates-body")).toBe(true);
   });
 
+  it("expanding a collapsed panel brings its header and body back, and collapsing again strips it", () => {
+    const page = mount(DockviewEngine, {
+      props: { interactive: true, collapsed: ["fx-analytics"] },
+    });
+    expect(page.stripOrientation("fx-analytics")).toBe("horizontal");
+    expect(page.bodyVisible("fx-analytics-body")).toBe(false);
+
+    page.toggleAnalyticsCollapsed();
+    expect(page.stripOrientation("fx-analytics")).toBeNull();
+    expect(page.stripMarked("fx-analytics")).toBe(false);
+    expect(page.bodyVisible("fx-analytics-body")).toBe(true);
+    expect(page.bodyVisible("panel-fx-analytics-maximize")).toBe(true);
+
+    page.toggleAnalyticsCollapsed();
+    expect(page.stripOrientation("fx-analytics")).toBe("horizontal");
+    expect(page.bodyVisible("fx-analytics-body")).toBe(false);
+  });
+
+  it("ignores a collapse-set id the engine has no group for", () => {
+    const page = mount(DockviewEngine, { props: { collapsed: ["nope"] } });
+    expect(page.collapsedIds()).toEqual(["nope"]);
+    expect(page.groupsAttr()).toBe("4");
+    expect(page.stripMarked("fx-rates")).toBe(false);
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+  });
+
+  it("withholds the maximize control for maximizable:false and falls back to the id as title", () => {
+    const page = mount(DockviewEngine, {
+      props: { specsVariant: "no-maximize" },
+    });
+    expect(page.bodyVisible("panel-fx-blotter-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-blotter-maximize")).toBe(false);
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+    expect(page.tabTitles()).toContain("fx-positions");
+  });
+
   it("carries an empty collapse set when nothing is collapsed", () => {
     const page = mount(DockviewEngine, { props: {} });
     expect(page.collapsedIds()).toEqual([]);

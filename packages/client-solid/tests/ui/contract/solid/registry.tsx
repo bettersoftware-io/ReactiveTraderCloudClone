@@ -866,6 +866,8 @@ export const registry = new Map<AnyToken, ElementFor>([
           withHeads={(p().withHeads as boolean | undefined) ?? false}
           maximized={(p().maximized as string | null | undefined) ?? null}
           collapsed={(p().collapsed as readonly string[] | undefined) ?? []}
+          interactive={(p().interactive as boolean | undefined) ?? false}
+          specsVariant={p().specsVariant as "no-maximize" | undefined}
         />
       );
     },
