@@ -1,5 +1,6 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
+import { compensateGap } from "#/dockBlob";
 import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -163,7 +164,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   function serializeLayout(): void {
-    opts.onLayoutChange(JSON.stringify(api.toJSON()));
+    // See compensateGap: dockview serialises gap-shaved rendered sizes,
+    // which would restore a little differently on every load.
+    opts.onLayoutChange(
+      JSON.stringify(compensateGap(api.toJSON(), GROUP_GAP_PX)),
+    );
   }
 
   const changeSub = api.onDidLayoutChange(() => {

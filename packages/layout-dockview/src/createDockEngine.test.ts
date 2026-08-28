@@ -622,13 +622,27 @@ function trackLayout(): LayoutTracker {
   return tracker;
 }
 
+/** The RENDERED size of `panelId`'s group, read back out of the persisted
+ * blob. The blob carries MODEL sizes (createDockEngine serialises through
+ * compensateGap so a save/load cycle is exact), and dockview renders each
+ * of a branch's `n` children at `model − gap × (n − 1) / n` — so this
+ * subtracts that share at the leaf's own branch, mirroring the layout. */
 // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
 function findLeafSize(node: any, panelId: string): number | null {
   if (node.type === "leaf") {
-    return node.data?.views?.includes(panelId) ? node.size : null;
+    return null;
   }
 
-  for (const child of node.data ?? []) {
+  const children: unknown[] = node.data ?? [];
+  const share =
+    (GROUP_GAP_PX * Math.max(0, children.length - 1)) / children.length;
+
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  for (const child of children as any[]) {
+    if (child.type === "leaf" && child.data?.views?.includes(panelId)) {
+      return child.size - share;
+    }
+
     const hit = findLeafSize(child, panelId);
 
     if (hit !== null) {

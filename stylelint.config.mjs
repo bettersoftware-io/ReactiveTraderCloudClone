@@ -67,19 +67,22 @@ export default {
   overrides: [
     {
       // dockview-hud.css is never processed as a CSS Module — it ships raw
-      // (like the rest of @rtc/layout-dockview's styles export) and its
-      // `.dockview-theme-rtc` selector is applied as a literal className,
-      // matching dockview-core's own theme-class convention
-      // (`dockview-theme-abyss`, `-light`, …: kebab-case `dockview-theme-<name>`).
-      // The JS-identifier camelCase rule above is a CSS Modules concern and
+      // (like the rest of @rtc/layout-dockview's styles export) and every
+      // class it names is a literal: dockview's own theme convention
+      // (`dockview-theme-abyss`, `-light`, …: kebab-case `dockview-theme-<name>`),
+      // dockview's own chrome classes it restyles (`dv-groupview`, `dv-tab`,
+      // `dv-sash`, …: kebab-case `dv-<name>`), and the mount points this
+      // package's renderers hand the clients (`rtc-dock-tab`, `rtc-dock-actions`,
+      // `rtc-dock-panel-content`: kebab-case `rtc-dock-<name>`). The
+      // JS-identifier camelCase rule above is a CSS Modules concern and
       // doesn't apply to this file.
       files: ["packages/layout-dockview/src/styles/dockview-hud.css"],
       rules: {
         "selector-class-pattern": [
-          "^dockview-theme-[a-z0-9-]+$",
+          "^(dockview-theme|dv|rtc-dock)-[a-z0-9-]+$",
           {
             message:
-              "dockview-hud.css class names follow dockview-core's own theme-class convention (kebab-case dockview-theme-<name>), not the CSS Modules camelCase rule.",
+              "dockview-hud.css class names are literals in three kebab-case families — dockview's theme classes (dockview-theme-<name>), dockview's own chrome classes (dv-<name>), and this package's mount points (rtc-dock-<name>) — not the CSS Modules camelCase rule.",
           },
         ],
       },

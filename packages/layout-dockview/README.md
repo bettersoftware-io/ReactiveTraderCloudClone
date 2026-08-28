@@ -26,9 +26,13 @@ client's restore bar is the panel's entire chrome, as in-house.
 Gap arithmetic to know: Dockview keeps a split's model sizes summing to the
 full extent and shaves `gap × (n − 1) / n` off each of its `n` children when
 laying out. `toSerializedDockview(…, { gap })` compensates so pinned pixels
-and fractions describe what renders, and the collapse/expand sizing reads
-the rendered size back and re-applies the shortfall rather than guessing a
-sibling count the public API does not expose.
+and fractions describe what renders, the collapse/expand sizing reads the
+rendered size back and re-applies the shortfall rather than guessing a
+sibling count the public API does not expose, and `compensateGap` adds each
+child's share back into `toJSON()` output before it is persisted — Dockview
+serialises the *rendered* sizes, so an uncompensated blob restores a little
+differently on every load (a 360px rail measured 360 → 358 → 349 across
+three reloads; React's StrictMode double-mount is one such cycle).
 
 Zero other `@rtc/*` dependencies. Unlike `@rtc/motion-core` (pure, no-DOM
 math) this package legitimately touches the DOM: `createDockEngine` mounts

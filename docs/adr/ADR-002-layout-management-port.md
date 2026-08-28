@@ -411,7 +411,9 @@ as a two-branch conditional, would be guessing at the shape a third engine
   `dockview-hud.css` the card border/radius/shadow, the 38px head and the
   2×30px sash grip; the seed converter honours `initialPx`/`fixedPx`
   (gap-compensated, since Dockview shaves `gap × (n − 1) / n` off every
-  child at render time); collapse clamps along the axis the group's
+  child at render time — and, because it also *serialises* those shaved
+  sizes, the persisted blob is compensated the same way so a save/load
+  cycle restores exactly instead of drifting a pixel or two per reload); collapse clamps along the axis the group's
   siblings run on (a 38px column beside side-by-side siblings, a 32px bar
   under stacked ones) and reports the orientation so the bridge renders the
   matching in-house restore strip with the group header hidden. One React
@@ -436,7 +438,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   against.
 - **Verification**: a shared `DockviewEngine.contract.spec.ts` (10 cases,
   run against both clients — head slot and title inside the tab, controls
-  dispatching the machine intents, the strip and its orientation), 34
+  dispatching the machine intents, the strip and its orientation), 38
   package-level unit tests in `@rtc/layout-dockview` (hooks, pixel pins,
   gap compensation, axis-aware collapse), a Playwright e2e journey (switch
   engine → drag-dock by the panel's own header → reload persists → revert),

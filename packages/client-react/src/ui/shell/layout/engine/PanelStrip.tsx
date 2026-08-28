@@ -31,7 +31,7 @@ export function PanelStrip({
   );
 }
 
-export type StripOrientation = "vertical" | "horizontal";
+type StripOrientation = "vertical" | "horizontal";
 
 export interface PanelStripProps {
   panelId: PanelId;
