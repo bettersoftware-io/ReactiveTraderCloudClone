@@ -52,6 +52,9 @@ const visualDockPanelRegistry: PanelRegistry = {
   },
 };
 
+/** The header controls need intent slots; a golden never clicks them. */
+function noop(): void {}
+
 export function DockviewEngineVisual(): JSX.Element {
   const store = new InMemoryDockLayoutStore();
 
@@ -63,6 +66,10 @@ export function DockviewEngineVisual(): JSX.Element {
         store={store}
         maximized={null}
         collapsed={[]}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
       />
     </div>
   );

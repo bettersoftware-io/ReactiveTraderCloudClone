@@ -18,11 +18,9 @@ import {
 import "@rtc/layout-dockview/styles/dockview-hud.css";
 
 import { PanelErrorBoundary } from "../engine/PanelErrorBoundary";
-import {
-  PanelHeadControls,
-  PanelHeadSlot,
-  PanelStrip,
-} from "../engine/PanelHead";
+import { PanelHeadControls } from "../engine/PanelHeadControls";
+import { PanelHeadSlot } from "../engine/PanelHeadSlot";
+import { PanelStrip } from "../engine/PanelStrip";
 import type { PanelRegistry } from "../engine/panelRegistry";
 
 import styles from "./DockviewLayoutEngine.module.css";
@@ -65,7 +63,13 @@ export function DockviewLayoutEngine({
   // default minimum instead). The engine lives for the tab; only the store
   // (an app singleton) could legitimately swap it.
   const specsRef = useRef(specs);
-  specsRef.current = specs;
+
+  // Synced in an effect (not during render — React Compiler forbids touching
+  // refs there); declared BEFORE the engine effect so it runs first and the
+  // engine's title hook always sees the current specs.
+  useEffect(() => {
+    specsRef.current = specs;
+  });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -74,7 +78,9 @@ export function DockviewLayoutEngine({
       return;
     }
 
-    const mountInto = (slot: MountedSlot["slot"]) => {
+    function mountInto(
+      slot: MountedSlot["slot"],
+    ): (id: string, element: HTMLElement) => () => void {
       return (id: string, element: HTMLElement): (() => void) => {
         const panelId = id as PanelId;
         setMounted((prev) => {
@@ -89,7 +95,7 @@ export function DockviewLayoutEngine({
           });
         };
       };
-    };
+    }
 
     const engine = createDockEngine({
       container,

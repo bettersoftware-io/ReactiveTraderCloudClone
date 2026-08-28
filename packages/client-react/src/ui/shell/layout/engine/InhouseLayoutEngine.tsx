@@ -19,7 +19,9 @@ import {
 } from "@rtc/client-core";
 
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
-import { PanelHeadControls, PanelHeadSlot, PanelStrip } from "./PanelHead";
+import { PanelHeadControls } from "./PanelHeadControls";
+import { PanelHeadSlot } from "./PanelHeadSlot";
+import { PanelStrip } from "./PanelStrip";
 import type { PanelRegistry } from "./panelRegistry";
 
 import styles from "./InhouseLayoutEngine.module.css";
