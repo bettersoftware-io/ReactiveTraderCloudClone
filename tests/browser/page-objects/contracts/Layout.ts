@@ -32,10 +32,10 @@ export interface LayoutPO {
    * dockview's `onLayoutChange` (and this component's `groups` state
    * update) land asynchronously after the drag gesture completes. */
   waitDockGroupCount(count: number, timeoutMs: number): Promise<void>;
-  /** Drags the dockview tab titled `tabTitle` onto the centre of the panel
-   * whose content carries `targetTestId`, docking them into one group.
-   * Scoped to the layout-engine root so panel body text can't collide with
-   * the tab's own label. Dockview-engine only — no `.dv-tab` element exists
-   * under the in-house engine. */
-  dragDockTabOnto(tabTitle: string, targetTestId: string): Promise<void>;
+  /** Drags the dockview tab of panel `panelId` (the in-house header the
+   * bridge portals into dockview's draggable `.dv-tab`, testid
+   * `TESTIDS.layout.dockTab`) onto the centre of the panel whose content
+   * carries `targetTestId`, docking them into one group. Dockview-engine
+   * only — no `.dv-tab` element exists under the in-house engine. */
+  dragDockTabOnto(panelId: string, targetTestId: string): Promise<void>;
 }

@@ -28,6 +28,17 @@ export function DockviewEngineHost({
 }: DockviewEngineHostProps): ReactElement {
   const [saveCount, setSaveCount] = useState(0);
   const [lastBlob, setLastBlob] = useState<string | null>(null);
+  // Every LayoutMachine intent the bridge dispatches, in call order, as
+  // `maximize:<id>` / `restore` / `collapse:<id>` / `expand:<id>` — mirrored
+  // onto `data-intents` so the page object can assert the header controls
+  // reach the machine without a real LayoutMachine in the loop.
+  const [intents, setIntents] = useState<readonly string[]>([]);
+
+  function recordIntent(intent: string): void {
+    setIntents((prev) => {
+      return [...prev, intent];
+    });
+  }
 
   // Lazy-init-via-ref: builds the wrapped store exactly once, on this
   // instance's first render, reading `seedBlob` at that point only — mirrors
@@ -69,6 +80,7 @@ export function DockviewEngineHost({
       data-testid="dockview-engine-host"
       data-saved={saveCount}
       data-saved-blob={lastBlob ?? ""}
+      data-intents={intents.join(" ")}
     >
       <DockviewLayoutEngine
         tab="fx"
@@ -77,6 +89,18 @@ export function DockviewEngineHost({
         store={storeRef.current}
         maximized={(maximized as PanelId | null | undefined) ?? null}
         collapsed={(collapsed as readonly PanelId[] | undefined) ?? []}
+        onMaximize={(id: PanelId) => {
+          recordIntent(`maximize:${id}`);
+        }}
+        onRestore={() => {
+          recordIntent("restore");
+        }}
+        onCollapse={(id: PanelId) => {
+          recordIntent(`collapse:${id}`);
+        }}
+        onExpand={(id: PanelId) => {
+          recordIntent(`expand:${id}`);
+        }}
       />
     </div>
   );

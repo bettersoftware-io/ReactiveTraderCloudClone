@@ -225,6 +225,12 @@ export const TESTIDS = {
      * mounted at once). Carries `data-engine` ("inhouse"|"dockview") and,
      * dockview only, `data-groups` (the live dockview group count). */
     engineRoot: "layout-engine",
+    /** A panel's head slot as mounted INSIDE dockview's own draggable tab
+     * (`.dv-tab`) by DockviewLayoutEngine.tsx — the handle to grab for a
+     * drag-dock. Dockview engine only. */
+    dockTab: (panelId: string) => {
+      return `dock-tab-${panelId}`;
+    },
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,

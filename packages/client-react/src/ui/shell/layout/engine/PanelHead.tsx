@@ -20,10 +20,7 @@ export function PanelHeadSlot({
   }
 
   return (
-    <span
-      data-testid={`panel-${panelId}-title`}
-      className={styles.panelTitle}
-    >
+    <span data-testid={`panel-${panelId}-title`} className={styles.panelTitle}>
       {title}
     </span>
   );

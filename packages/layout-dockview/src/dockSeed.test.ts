@@ -156,14 +156,18 @@ describe("toSerializedDockview × pixel pins", () => {
   } as const;
 
   it("gives an initialPx child exactly its pixels and the rest to the fraction-sized siblings", () => {
-    const [main, rail] = (toSerializedDockview(RAIL, 1000, 800).grid.root as SerializedNode).data as SerializedNode[];
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 1000, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
     expect(rail.size).toBe(360);
     expect(main.size).toBe(640); // 1000 − 360, not 0.73 × 1000
   });
 
   it("lets fixedPx win over initialPx on the same child", () => {
     const both = { ...RAIL, fixedPx: [undefined, 300] } as const;
-    const [main, rail] = (toSerializedDockview(both, 1000, 800).grid.root as SerializedNode).data as SerializedNode[];
+    const [main, rail] = (
+      toSerializedDockview(both, 1000, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
     expect(rail.size).toBe(300);
     expect(main.size).toBe(700);
   });
@@ -182,14 +186,20 @@ describe("toSerializedDockview × pixel pins", () => {
         { kind: "panel", panelId: "c" },
       ],
     } as const;
-    const sizes = ((toSerializedDockview(three, 1000, 800).grid.root as SerializedNode).data as SerializedNode[]).map((n) => {
+
+    const sizes = (
+      (toSerializedDockview(three, 1000, 800).grid.root as SerializedNode)
+        .data as SerializedNode[]
+    ).map((n) => {
       return n.size;
     });
     expect(sizes).toEqual([533, 267, 200]);
   });
 
   it("drops the pins and falls back to fractions when they cannot fit", () => {
-    const [main, rail] = (toSerializedDockview(RAIL, 300, 800).grid.root as SerializedNode).data as SerializedNode[];
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 300, 800).grid.root as SerializedNode
+    ).data as SerializedNode[];
     expect(rail.size).toBe(81); // 300 − round(0.73 × 300)
     expect(main.size).toBe(219);
   });
@@ -213,7 +223,11 @@ describe("toSerializedDockview × pixel pins", () => {
         { kind: "panel", panelId: "c" },
       ],
     } as const;
-    const sizes = ((toSerializedDockview(nested, 1000, 800).grid.root as SerializedNode).data as SerializedNode[]).map((n) => {
+
+    const sizes = (
+      (toSerializedDockview(nested, 1000, 800).grid.root as SerializedNode)
+        .data as SerializedNode[]
+    ).map((n) => {
       return n.size;
     });
     // a keeps its 100px; b (0.25) and c (0.5) share the remaining 900 at 1:2.
@@ -225,7 +239,10 @@ describe("toSerializedDockview × pixel pins", () => {
     // time; the model sizes must carry that share so the 360px rail is 360
     // on screen. Two children, gap 7: each model size = rendered + 3.5, and
     // the rendered extents share 1000 − 7.
-    const [main, rail] = (toSerializedDockview(RAIL, 1000, 800, { gap: 7 }).grid.root as SerializedNode).data as SerializedNode[];
+    const [main, rail] = (
+      toSerializedDockview(RAIL, 1000, 800, { gap: 7 }).grid
+        .root as SerializedNode
+    ).data as SerializedNode[];
     expect(rail.size).toBe(363.5);
     expect(main.size).toBe(636.5); // (993 − 360) + 3.5
     expect((rail.size ?? 0) + (main.size ?? 0)).toBe(1000);
@@ -285,6 +302,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
       },
       theme: { name: "t", className: "t", gap: 7 },
     });
+
     const rail = {
       kind: "split",
       dir: "row",

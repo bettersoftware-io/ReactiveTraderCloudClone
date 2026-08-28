@@ -286,17 +286,26 @@ interface SizableGroup {
   readonly maximumWidth: number;
   readonly minimumHeight: number;
   readonly maximumHeight: number;
-  readonly api: {
-    readonly width: number;
-    readonly height: number;
-    setSize(event: { width?: number; height?: number }): void;
-    setConstraints(constraints: {
-      minimumWidth?: number;
-      maximumWidth?: number;
-      minimumHeight?: number;
-      maximumHeight?: number;
-    }): void;
-  };
+  readonly api: SizableGroupApi;
+}
+
+interface SizableGroupApi {
+  readonly width: number;
+  readonly height: number;
+  setSize(event: GroupSizeEvent): void;
+  setConstraints(constraints: GroupConstraints): void;
+}
+
+interface GroupSizeEvent {
+  width?: number;
+  height?: number;
+}
+
+interface GroupConstraints {
+  minimumWidth?: number;
+  maximumWidth?: number;
+  minimumHeight?: number;
+  maximumHeight?: number;
 }
 
 /** One sizing axis of a group — width or height — behind a uniform surface,

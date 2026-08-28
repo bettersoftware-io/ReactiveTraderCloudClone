@@ -14,11 +14,12 @@ const MIN_FRACTION_DELTA = 0.02;
 // poll rather than an instant read.
 const ENGINE_SWITCH_TIMEOUT_MS = 3_000;
 
-// PANEL_SPECS' fx-blotter panel title
+// PANEL_SPECS' fx-blotter panel id
 // (packages/client-core/src/layout/defaultLayoutPort.ts) — the dockview
-// tab's own visible label (dockview-core's Tab renders our TitleOnlyTab,
-// which sets its content to exactly this string).
-const BLOTTER_TAB_TITLE = "Blotter";
+// tab is located by the panel's own head-slot mount inside it
+// (`TESTIDS.layout.dockTab`), not by a label: the tab shows the panel's
+// header, which for the blotter is its "FX Blotter" / "Activity" sub-tabs.
+const BLOTTER_PANEL_ID = "fx-blotter";
 
 // The FX rates panel's own content carries no testid of its own; its
 // CurrencyFilter row (LiveRatesPanel.tsx) is always mounted (no view-mode
@@ -96,7 +97,7 @@ export async function openPreferencesAndSelectLayoutEngine(
  */
 export async function dragBlotterTabOntoRates(ctx: TestContext): Promise<void> {
   await ctx.po.layout.dragDockTabOnto(
-    BLOTTER_TAB_TITLE,
+    BLOTTER_PANEL_ID,
     RATES_PANEL_DROP_TARGET,
   );
 }

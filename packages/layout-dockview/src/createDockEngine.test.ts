@@ -142,13 +142,19 @@ describe("createDockEngine", () => {
     const opts = base();
     const mounted: string[] = [];
     const disposed: string[] = [];
-    opts.panels.mountTab = (panelId, element): (() => void) => {
+
+    opts.panels.mountTab = (
+      panelId: string,
+      element: HTMLElement,
+    ): (() => void) => {
       mounted.push(panelId);
       element.append(`HEAD:${panelId}`);
+
       return (): void => {
         disposed.push(panelId);
       };
     };
+
     const engine = createDockEngine(opts);
 
     // One tab per panel, each holding the client's own nodes — and NO
@@ -179,14 +185,20 @@ describe("createDockEngine", () => {
   it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", () => {
     const opts = base();
     const log: string[] = [];
-    opts.panels.mountActions = (panelId, element): (() => void) => {
+
+    opts.panels.mountActions = (
+      panelId: string,
+      element: HTMLElement,
+    ): (() => void) => {
       log.push(`mount:${panelId}`);
       element.append(`CTRL:${panelId}`);
+
       return (): void => {
         log.push(`dispose:${panelId}`);
         element.textContent = "";
       };
     };
+
     // A persisted layout with rates and analytics TABBED into one group
     // (the outcome of a drag-dock) beside the blotter — two tabs, one
     // actions slot, so the slot has an active panel to follow.
@@ -512,7 +524,9 @@ const STRIP_HEIGHT = 32;
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {
-      return typeof actual === "number" && Math.abs(actual - target) <= tolerance;
+      return (
+        typeof actual === "number" && Math.abs(actual - target) <= tolerance
+      );
     },
     toString: (): string => {
       return `within(${target} ± ${tolerance})`;
@@ -629,9 +643,9 @@ function findLeafSize(node: any, panelId: string): number | null {
  * docked as a second tab into the rates group: [rates+analytics] over
  * blotter, in one column. */
 function twoTabGroupLayout(): unknown {
-  const panel = (id: string): Record<string, string> => {
+  function panel(id: string): Record<string, string> {
     return { id, contentComponent: "rtc-panel", title: id };
-  };
+  }
 
   return {
     grid: {
@@ -650,7 +664,11 @@ function twoTabGroupLayout(): unknown {
           {
             type: "leaf",
             size: 320,
-            data: { id: "g-bottom", views: ["fx-blotter"], activeView: "fx-blotter" },
+            data: {
+              id: "g-bottom",
+              views: ["fx-blotter"],
+              activeView: "fx-blotter",
+            },
           },
         ],
       },

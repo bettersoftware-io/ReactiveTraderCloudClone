@@ -52,6 +52,12 @@ type SeedSplit = Extract<DockSeedNode, SplitDiscriminant>;
 // already covers every nested node.
 type GridNode = SerializedDockview["grid"]["root"];
 
+/** A split child with its final integer pixel size along the split axis. */
+interface AllocatedEntry {
+  readonly node: DockSeedNode;
+  readonly size: number;
+}
+
 /** One child of a (flattened) split: its node, its fraction of the split's
  * extent, and — when the seed pins it — its exact pixel extent instead. */
 interface SplitEntry {
@@ -156,18 +162,21 @@ function convertSplit(
 function allocateExtent(
   entries: readonly SplitEntry[],
   extent: number,
-): Array<{ node: DockSeedNode; size: number }> {
+): AllocatedEntry[] {
   const pinnedTotal = entries.reduce((sum, entry) => {
     return sum + (entry.px ?? 0);
   }, 0);
   const pinsFit = pinnedTotal <= extent;
-  const isFree = (entry: SplitEntry): boolean => {
+
+  function isFree(entry: SplitEntry): boolean {
     return !pinsFit || entry.px === undefined;
-  };
+  }
+
   const freeExtent = pinsFit ? extent - pinnedTotal : extent;
   const freeFractionTotal = entries.reduce((sum, entry) => {
     return isFree(entry) ? sum + entry.fraction : sum;
   }, 0);
+
   const lastFreeIndex = entries.reduce((last, entry, index) => {
     return isFree(entry) ? index : last;
   }, -1);
@@ -218,10 +227,7 @@ function remainingPinned(
  * same-direction split's own pin (rather than its children's) has no
  * per-child meaning once spliced and is dropped.
  */
-function flattenSplit(
-  node: SeedSplit,
-  parentFraction: number,
-): SplitEntry[] {
+function flattenSplit(node: SeedSplit, parentFraction: number): SplitEntry[] {
   const entries: SplitEntry[] = [];
   node.children.forEach((child, index) => {
     const fraction = (node.sizes[index] ?? 0) * parentFraction;
