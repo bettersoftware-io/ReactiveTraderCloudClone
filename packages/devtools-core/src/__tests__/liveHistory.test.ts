@@ -4,6 +4,7 @@ import type { InspectorState } from "../InspectorStore";
 import { InspectorStore } from "../InspectorStore";
 import { LiveHistory } from "../LiveHistory";
 import type { AppToInspector } from "../protocol";
+import { PROTOCOL_VERSION } from "../protocol";
 
 describe("LiveHistory", () => {
   it("stateAt(seq) equals a naive filtered fold, independent of checkpoints", () => {
@@ -106,6 +107,17 @@ describe("LiveHistory", () => {
     // retained window — firstTs must track the earliest event still
     // retained, not the first one ever seen.
     expect(history.firstTs).toBe(1000 + history.oldestSeq + 1);
+  });
+
+  it("trims zero-event frames past maxFrames even when totalEvents never grows", () => {
+    const history = new LiveHistory({ maxFrames: 5, checkpointInterval: 3 });
+
+    for (let i = 0; i < 20; i += 1) {
+      history.record({ kind: "welcome", v: PROTOCOL_VERSION, appId: "a" });
+    }
+
+    expect(history.eventCount).toBe(0);
+    expect(history.toRecording("a", 0).frames.length).toBeLessThanOrEqual(6); // seed + ≤5 retained
   });
 });
 
