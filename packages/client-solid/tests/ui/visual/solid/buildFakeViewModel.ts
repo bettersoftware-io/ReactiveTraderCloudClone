@@ -98,11 +98,10 @@ function at<T>(value: T): () => T {
   };
 }
 
-// No visual fixture exercises the dockview engine yet (useLayoutEngine below
-// is pinned to "inhouse"), so this store is never actually read/written by a
-// golden scenario — a single module-level instance is fine (no per-call
-// isolation needed, unlike the contract tier's per-World store). Mirrors the
-// react driver's buildFakeViewModel.ts dockStore exactly.
+// A single module-level store, shared by every scenario rendered in one
+// page: the playwright tier loads a fresh page per scenario, so nothing
+// leaks across goldens, and the Solid bridge reads it once at mount.
+// Mirrors the react driver's buildFakeViewModel.ts dockStore exactly.
 const dockStore = new InMemoryDockLayoutStore();
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
@@ -456,12 +455,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useChartSubstrate: () => {
       return { substrate: at(DEFAULT_CHART_SUBSTRATE), setSubstrate: noop };
     },
-    // No visual fixture exercises the dockview engine yet — a fixed
-    // "inhouse" default keeps every existing golden's layout unchanged.
-    // Mirrors the react driver's buildFakeViewModel.ts useLayoutEngine
-    // exactly.
+    // Seeded through the fixture (`app/*-dockview`); the "inhouse" default
+    // keeps every other golden's layout unchanged. Mirrors the react
+    // driver's buildFakeViewModel.ts useLayoutEngine exactly.
     useLayoutEngine: () => {
-      return { engine: at(DEFAULT_LAYOUT_ENGINE), setEngine: noop };
+      return {
+        engine: at(data.layoutEngine ?? DEFAULT_LAYOUT_ENGINE),
+        setEngine: noop,
+      };
     },
     useDockLayoutStore: () => {
       return dockStore;

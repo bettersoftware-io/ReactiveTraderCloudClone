@@ -102,7 +102,19 @@ export function toSerializedDockview(
     panels: {},
     gap: options?.gap ?? 0,
   };
-  const root = convertNode(seed, width, height, state);
+
+  // dockview's `fromJSON` rejects a grid whose root is a leaf ("root must be
+  // of type branch" — verified against 7.0.4, and it threw for real on the
+  // single-panel Admin tab), so a lone panel is wrapped in a one-child
+  // branch spanning the whole extent. One child means no gap share to
+  // compensate, whichever axis the root orientation picks.
+  const root =
+    seed.kind === "panel"
+      ? {
+          type: "branch" as const,
+          data: [{ ...convertLeaf(seed.panelId, state), size: width }],
+        }
+      : convertNode(seed, width, height, state);
 
   return {
     grid: { root, width, height, orientation },

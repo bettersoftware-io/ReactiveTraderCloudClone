@@ -87,13 +87,17 @@ describe("toSerializedDockview", () => {
     expect(s.panels["fx-rates"].contentComponent).toBe("rtc-panel");
   });
 
-  it("maps a single-panel tree to one leaf", () => {
+  it("maps a single-panel tree to a one-leaf BRANCH (a leaf root is rejected by dockview)", () => {
     const s = toSerializedDockview(
       { kind: "panel", panelId: "admin-dashboard" },
       640,
       480,
     );
-    expect(s.grid.root.type).toBe("leaf");
+    const root = s.grid.root as SerializedNode;
+    expect(root.type).toBe("branch");
+    const [leaf] = root.data as SerializedNode[];
+    expect(leaf.type).toBe("leaf");
+    expect(leaf.size).toBe(640);
     expect(Object.keys(s.panels)).toEqual(["admin-dashboard"]);
   });
 
@@ -287,6 +291,43 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     expect(top.size).toBe(480);
     expect(bottom.size).toBe(320);
 
+    api.dispose();
+  });
+
+  it("restores a single-panel seed (the Admin tab) instead of throwing", () => {
+    // Regression pin: the Admin tab's seed is one panel, and dockview's
+    // fromJSON throws "root must be of type branch" on a leaf root — the
+    // shipped engine crashed the whole Admin workspace until the converter
+    // wrapped the lone panel in a branch.
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const api = createDockview(container, {
+      createComponent: () => {
+        return {
+          element: document.createElement("div"),
+          init: () => {},
+        };
+      },
+      theme: { name: "t", className: "t", gap: 7 },
+    });
+
+    api.layout(640, 480);
+    expect(() => {
+      api.fromJSON(
+        toSerializedDockview(
+          { kind: "panel", panelId: "admin-dashboard" },
+          640,
+          480,
+          { gap: 7 },
+        ),
+      );
+    }).not.toThrow();
+    expect(
+      api.panels.map((p) => {
+        return p.id;
+      }),
+    ).toEqual(["admin-dashboard"]);
+    expect(api.groups).toHaveLength(1);
     api.dispose();
   });
 

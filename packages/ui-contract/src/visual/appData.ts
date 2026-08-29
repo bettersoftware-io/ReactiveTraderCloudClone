@@ -33,6 +33,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type LayoutEngine,
   type LogEvent,
   type LoginWaitVariant,
   type MetricSample,
@@ -100,6 +101,11 @@ export interface AppData {
   forceBootAnimation?: boolean;
   /** Power-saver master-override level (usePowerSaver); defaults to "off". */
   powerSaverLevel?: PowerSaverLevel;
+  /** Layout-engine preference (useLayoutEngine); defaults to
+   * DEFAULT_LAYOUT_ENGINE ("inhouse"). `"dockview"` mounts the real
+   * DockviewLayoutEngine bridge over the fixture's panels — see the
+   * `app/*-dockview` scenarios. */
+  layoutEngine?: LayoutEngine;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
