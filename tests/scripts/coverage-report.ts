@@ -51,6 +51,14 @@ export const TIERS = {
       path: "packages/server/reports/unit/coverage/coverage-final.json",
     },
     {
+      name: "devtools/core",
+      path: "packages/devtools-core/reports/unit/coverage/coverage-final.json",
+    },
+    {
+      name: "devtools/app",
+      path: "packages/devtools-app/reports/unit/coverage/coverage-final.json",
+    },
+    {
       name: "react/app",
       path: "packages/client-react/reports/app/coverage/coverage-final.json",
     },
@@ -78,6 +86,14 @@ export const TIERS = {
   results: [
     { tier: "domain", path: "packages/domain/reports/unit/test-results.json" },
     { tier: "server", path: "packages/server/reports/unit/test-results.json" },
+    {
+      tier: "devtools/core",
+      path: "packages/devtools-core/reports/unit/test-results.json",
+    },
+    {
+      tier: "devtools/app",
+      path: "packages/devtools-app/reports/unit/test-results.json",
+    },
     {
       tier: "react/app",
       path: "packages/client-react/reports/app/test-results.json",

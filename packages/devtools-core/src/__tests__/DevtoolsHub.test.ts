@@ -132,13 +132,18 @@ describe("DevtoolsHub", () => {
     expect(hub.live).toBe(false);
   });
 
-  it("reports the error through transport.inbound instead of throwing when goLive's bulk resubscribe hits a hostile stream", () => {
+  it("never lets goLive's bulk resubscribe throw out of attachTransport when a pre-registered stream is hostile", () => {
     const { hub, inbound$ } = harness();
 
     // Registered while dormant: goLive()'s own resubscribe loop (not
     // registerStream's guarded path) is what calls subscribe() here, and that
     // loop has no per-entry try/catch of its own — only the outer
-    // attachTransport handler does.
+    // attachTransport handler does. This proves the app-facing "doesn't
+    // crash" contract only; it does NOT prove the outer catch's own
+    // transport.inbound report is observable — the throw happens before
+    // goLive reaches its last line (arming the flush timer), so the report
+    // pushed by the catch is queued forever and never flushed. See the
+    // dev-intent test below for a trigger where that report IS observable.
     hub.registerStream("hostile", throwingObservable());
 
     expect(() => {
@@ -158,6 +163,54 @@ describe("DevtoolsHub", () => {
       inbound$.next({ kind: "bye" });
     }).not.toThrow();
     expect(hub.live).toBe(false);
+  });
+
+  it("reports the error through transport.inbound instead of throwing when a dev-injected intent handler throws", () => {
+    const sent: AppToInspector[] = [];
+    const inbound$ = new Subject<InspectorToApp>();
+    const hub = new DevtoolsHub({ appId: "test-app", dev: true });
+    hub.attachTransport({
+      send: (m: AppToInspector): void => {
+        sent.push(m);
+      },
+      inbound$,
+      dispose: (): void => {},
+    });
+
+    inbound$.next({ kind: "hello", v: 1 }); // live, flush timer armed
+
+    function throwingIntent(): void {
+      throw new Error("boom");
+    }
+
+    const machineId = hub.machineCreated(
+      "tileExecution",
+      ["EURUSD"],
+      new Subject<string>(),
+      { submit: throwingIntent },
+    );
+
+    // intent:invoke is dispatched from inside attachTransport's try block
+    // (msg.kind === "intent:invoke"), so a throwing handler is caught by the
+    // SAME outer catch as goLive's resubscribe — but here the hub is already
+    // live with an armed flush timer, so the report the catch pushes is
+    // actually flushed and reaches `sent`.
+    expect(() => {
+      inbound$.next({
+        kind: "intent:invoke",
+        machineId,
+        name: "submit",
+        args: [],
+      });
+    }).not.toThrow();
+
+    vi.advanceTimersByTime(40);
+    const batch = findLastBatch(sent);
+    const errorEvent = batchEvents(batch)?.find((ev) => {
+      return ev.kind === "devtools:error";
+    }) as DevtoolsErrorEvent | undefined;
+
+    expect(errorEvent).toMatchObject({ context: "transport.inbound" });
   });
 
   it("does not resubscribe an already-disposed machine when the hub goes live", () => {

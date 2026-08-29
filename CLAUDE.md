@@ -167,10 +167,12 @@ gh workflow run coverage-report.yml --ref main         # dispatch on the tree yo
 Report: <https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/>
 — **ten** tiers: `domain`, `server`, `devtools/core`, `devtools/app`, then `app` / `ui (contract)` /
 `ui (visual reach)` for each of `react` and `solid`. It is **report-only and
-gates nothing**; the enforced bars are the `ui:contract` ≥95% gates in `ci.yml`
-(one per web client). Its per-tier `index.html` only lists directories, so
-finding gaps means crawling into them — or run `pnpm coverage:gaps` for a
-ranked per-file list from a fresh local run.
+gates nothing**; the enforced bars are the four ≥95% coverage gates in
+`ci.yml` — the `ui:contract` gate for each web client, plus the
+`devtools-core` and `devtools-app` `test:coverage` gates. Its per-tier
+`index.html` only lists directories, so finding gaps means crawling into them
+— or run `pnpm coverage:gaps` for a ranked per-file list from a fresh local
+run.
 
 **The `ui (visual reach)` tiers are not the pixel tiers' coverage.** Each is a
 vitest-browser instrument that walks the **same shared scenario matrix** as its

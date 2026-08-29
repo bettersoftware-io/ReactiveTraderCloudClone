@@ -365,5 +365,6 @@ function describeConnection(
     return `recording · ${imported.appId}`;
   }
 
+  // welcome always carries an appId; the guard only narrows the type
   return state.connected && state.appId !== null ? state.appId : "disconnected";
 }
