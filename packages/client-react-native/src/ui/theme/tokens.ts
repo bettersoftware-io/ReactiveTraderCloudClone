@@ -61,7 +61,7 @@ export interface DepthTokens {
  */
 /** A bundled face's real heavier cuts, keyed by the CSS weight they stand in
  * for. Consumed via `weightedFont()`. */
-export interface FontWeightFamilies {
+interface FontWeightFamilies {
   readonly "600": string;
   readonly "700": string;
 }
