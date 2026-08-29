@@ -33,6 +33,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function RfqCard({
   rfq,
@@ -300,9 +301,8 @@ function makeStyles(t: RnTheme): RfqCardStyles {
     },
     instrumentName: {
       fontSize: 14,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     instrumentMeta: {
       fontSize: 12,

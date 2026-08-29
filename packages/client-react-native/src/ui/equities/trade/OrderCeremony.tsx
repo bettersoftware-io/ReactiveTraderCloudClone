@@ -16,6 +16,7 @@ import type { OrderTicketState } from "@rtc/client-core";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Maps the equity order ticket's `OrderTicketState.phase` (six-way union, the
  * ticket machine's own lifecycle — no UI-side timers) to a ceremonial flourish
@@ -282,9 +283,8 @@ function makeStyles(t: RnTheme): OrderCeremonyStyles {
     toastNegative: { borderColor: t.accentNegative },
     toastText: {
       fontSize: 13,
-      fontWeight: "700",
       letterSpacing: 2,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     toastTextPositive: { color: t.accentPositive },
     toastTextNegative: { color: t.accentNegative },

@@ -13,6 +13,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Horizontal symbol quick-switch strip, styled as the mobile-v1 chip row:
  * mono, radius 7, the selected chip on the `chip` fill with the accent for
@@ -79,8 +80,7 @@ function makeStyles(t: RnTheme): InstrumentTabsStyles {
 
   const baseLabel: TextStyle = {
     fontSize: 9.5,
-    fontWeight: "600",
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
   };
   return StyleSheet.create({
     strip: { flexGrow: 0 },

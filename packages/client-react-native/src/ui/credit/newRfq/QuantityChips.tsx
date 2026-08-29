@@ -15,6 +15,7 @@ import {
 } from "#/ui/credit/newRfq/rfqQuantities";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The New-RFQ size picker: four fixed notional chips (prototype
  * dc.html:277-281), replacing the free-text quantity field this ports from.
@@ -86,8 +87,7 @@ function makeStyles(t: RnTheme): QuantityChipsStyles {
 
   const chipLabel: TextStyle = {
     fontSize: 10,
-    fontWeight: "600",
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
     color: t.textMuted,
   };
 

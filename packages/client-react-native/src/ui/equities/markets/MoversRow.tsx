@@ -16,6 +16,7 @@ import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** One ranked row of the movers board: a zero-padded rank index, the symbol
  * over the company name, an inline close-price sparkline, the last price,
@@ -156,10 +157,9 @@ function makeStyles(t: RnTheme): MoversRowStyles {
     identity: { flex: 1, minWidth: 0 },
     symbol: {
       fontSize: 12,
-      fontWeight: "600",
       letterSpacing: 0.4,
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     name: {
       fontSize: 8,
@@ -174,9 +174,8 @@ function makeStyles(t: RnTheme): MoversRowStyles {
     priceCol: { alignItems: "flex-end", minHeight: 30 },
     price: {
       fontSize: 11.5,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
     },
     pillPositive: {
       ...pillBase,
