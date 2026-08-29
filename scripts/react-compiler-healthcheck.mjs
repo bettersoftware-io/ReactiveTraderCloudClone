@@ -75,7 +75,7 @@ const TRACKED = [
     // `changedMachines` is new — it never traded away a manual memo, so it is
     // out of this gate's scope per the header note), and `visibleStreams` is
     // now `streams`. Both re-verified as bare-temp memoized bindings.
-    file: "packages/devtools-app/src/timeline/ContextPane.tsx",
+    file: "packages/devtools-app/src/timeline/StateTab.tsx",
     fn: "StateTab",
     values: ["changedStreams", "streams"],
   },
