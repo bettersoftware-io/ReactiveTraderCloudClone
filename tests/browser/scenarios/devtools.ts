@@ -96,9 +96,10 @@ export async function expectTimelineClearedPast(
  *  mode), freezing the context pane on that event's Event/State/Diff. Driven
  *  by keyboard, not a row click: under a live stream the rows are a moving
  *  click target (see the Inspector PO contract), while the shortcut pins
- *  atomically. */
-export async function pinLatestTimelineRow(ctx: TestContext): Promise<void> {
-  await inspector(ctx).pinLatestTimelineRow(10_000);
+ *  atomically. Returns the pinned row's `data-seq` so the caller can assert
+ *  the context pane names that same seq. */
+export async function pinLatestTimelineRow(ctx: TestContext): Promise<number> {
+  return inspector(ctx).pinLatestTimelineRow(10_000);
 }
 
 /** Assert the pinned-moment bar is visible within 10s (a pin is active). */
@@ -109,6 +110,25 @@ export async function expectPinnedBar(ctx: TestContext): Promise<void> {
 /** Assert the pinned-moment bar is gone within 10s (back to following live). */
 export async function expectNoPinnedBar(ctx: TestContext): Promise<void> {
   await inspector(ctx).waitNoPinnedBar(10_000);
+}
+
+/** Assert the context pane's header names the pinned moment as `@ seq
+ *  ${seq}`, within `timeoutMs`. */
+export async function waitStateAtSeq(
+  ctx: TestContext,
+  seq: number,
+  timeoutMs: number,
+): Promise<void> {
+  await inspector(ctx).waitStateAtSeq(seq, timeoutMs);
+}
+
+/** Assert the context pane's pinned-seq badge is gone within `timeoutMs`
+ *  (back to following live). */
+export async function waitStateLive(
+  ctx: TestContext,
+  timeoutMs: number,
+): Promise<void> {
+  await inspector(ctx).waitStateLive(timeoutMs);
 }
 
 /** Press Escape on the inspector page — the shortcut that resumes from a

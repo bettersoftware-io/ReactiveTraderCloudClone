@@ -67,6 +67,24 @@ test("diff tab shows leaf changes vs the predecessor", () => {
   expect(screen.getByText("changed")).toBeTruthy();
 });
 
+test("a pinned moment is named in the context pane header and the badge leaves on resume", () => {
+  const harness = mount();
+
+  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 2));
+  });
+  expect(screen.getByTestId("state-at-seq").textContent).toBe(
+    `@ seq ${rowAt(harness.log, 2).seq}`,
+  );
+
+  act(() => {
+    harness.resume();
+  });
+  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+});
+
 test("resuming from a pinned Diff selection clears the stale tab highlight", () => {
   const harness = mount();
 
