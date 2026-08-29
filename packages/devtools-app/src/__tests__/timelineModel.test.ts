@@ -153,8 +153,16 @@ test("logAfterSeq drops everything at or before the watermark; 0 is a no-op", ()
   ];
 
   expect(logAfterSeq(log, 0)).toBe(log);
-  expect(logAfterSeq(log, 3).map((r) => r.seq)).toEqual([7]);
-  expect(logAfterSeq(log, 4).map((r) => r.seq)).toEqual([7]);
+  expect(
+    logAfterSeq(log, 3).map((r) => {
+      return r.seq;
+    }),
+  ).toEqual([7]);
+  expect(
+    logAfterSeq(log, 4).map((r) => {
+      return r.seq;
+    }),
+  ).toEqual([7]);
   expect(logAfterSeq(log, 7)).toEqual([]);
 });
 
@@ -175,7 +183,9 @@ test("filterLog: clearedBeforeSeq hides older rows; an EMPTY pill set matches no
 
   expect(
     filterLog(log, { ...EMPTY_TIMELINE_FILTER, clearedBeforeSeq: 1 }).map(
-      (r) => r.seq,
+      (r) => {
+        return r.seq;
+      },
     ),
   ).toEqual([2, 3]);
   expect(filterLog(log, { ...EMPTY_TIMELINE_FILTER, pills: [] })).toEqual([]);
