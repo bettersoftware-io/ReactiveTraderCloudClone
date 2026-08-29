@@ -1,6 +1,7 @@
 import {
   act,
   cleanup,
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -67,26 +68,36 @@ test("shows counts, the wire health detail, and dims disposed machines", () => {
 
 test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands", () => {
   const selected = mount();
-  const tree = screen.getByTestId("nav-tree");
 
   // No container tabIndex to focus (focus-WITHIN, not a focused div): focus
-  // the first row's label button, same as a real keyboard user tabbing in.
-  // Keydown still bubbles up to the tree's onKeyDown either way.
+  // the first row's label button, same as a real keyboard user tabbing in,
+  // then dispatch every keydown on the FOCUSED element (never the
+  // container) so the test proves the events actually bubble to
+  // NavTree's onKeyDown rather than assuming it.
   node("all").focus();
-  fireEvent.keyDown(tree, { key: "ArrowDown" }); // all → presenter:blotter
-  fireEvent.keyDown(tree, { key: "ArrowRight" }); // expand blotter
+
+  // First ArrowDown also proves the bubbled event reaches the handler's
+  // e.preventDefault() call, not just its side effect.
+  const arrowDown = createEvent.keyDown(document.activeElement as HTMLElement, {
+    key: "ArrowDown",
+  });
+
+  fireEvent(document.activeElement as HTMLElement, arrowDown); // all → presenter:blotter
+  expect(arrowDown.defaultPrevented).toBe(true);
+
+  pressKey("ArrowRight"); // expand blotter
   expect(node("stream:blotter.trades$")).toBeTruthy();
 
-  fireEvent.keyDown(tree, { key: "ArrowDown" }); // → stream:blotter.activity$
-  fireEvent.keyDown(tree, { key: "ArrowDown" }); // → stream:blotter.trades$
-  fireEvent.keyDown(tree, { key: "Enter" });
+  pressKey("ArrowDown"); // → stream:blotter.activity$
+  pressKey("ArrowDown"); // → stream:blotter.trades$
+  pressKey("Enter");
   expect(selected.at(-1)).toEqual({
     kind: "stream",
     streamId: "blotter.trades$",
   });
 
-  fireEvent.keyDown(tree, { key: "ArrowUp" }); // → stream:blotter.activity$
-  fireEvent.keyDown(tree, { key: "Enter" });
+  pressKey("ArrowUp"); // → stream:blotter.activity$
+  pressKey("Enter");
   expect(selected.at(-1)).toEqual({
     kind: "stream",
     streamId: "blotter.activity$",
@@ -116,6 +127,15 @@ function node(id: string): HTMLElement {
   }
 
   return match;
+}
+
+/** Dispatches a keydown on whatever currently has focus — the focused row
+ * button in these tests — so it must BUBBLE to NavTree's onKeyDown to have
+ * any effect. Dispatching on the container directly (as an earlier version
+ * of this test did) would keep passing even if a row button stopped
+ * propagation, silently breaking real keyboard navigation. */
+function pressKey(key: string): void {
+  fireEvent.keyDown(document.activeElement as HTMLElement, { key });
 }
 
 interface MountHandle extends Array<Scope> {
