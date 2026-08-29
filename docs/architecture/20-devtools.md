@@ -375,6 +375,17 @@ synthetic `bye` itself, flipping to "disconnected" without waiting on the
 app; the existing re-`hello` loop keeps announcing underneath, so the
 handshake re-runs and reconnects if the app comes back.
 
+**Chrome freezes backgrounded tabs — the app tab included.** Even behind a
+silent-audio keep-alive, freezing suspends the app-side hub's rAF flush and the
+`BroadcastChannel` post underneath it, so no frame reaches the panel. The
+same-origin panel reads this exactly like a disconnect: nothing resets the
+liveness timer above, the badge flips to "disconnected", and it stays stalled
+until the app tab is foregrounded again — keep the app visible (two windows
+side by side) when inspecting locally. The WS-relay
+([§20.9](#209-websocket-relay-transport-react-native)) and Chrome extension
+([§20.6.1](#2061-chrome-extension-transport)) transports don't share this
+failure mode: neither depends on the app tab's own timer budget to move a frame.
+
 #### 20.6.1 Chrome extension transport
 
 The same-origin `/devtools/` inspector is one transport; the Chrome extension

@@ -59,6 +59,13 @@ served from anywhere else (including this package's own standalone dev
 server on port 5280) has no hub to pair with and stays "disconnected" by
 design.
 
+**Keep the app tab foregrounded.** Chrome freezes backgrounded tabs
+(silent-audio keep-alives included), which pauses the app-side hub and leaves
+the panel reading "disconnected" until the app tab regains focus — a browser
+tab-lifecycle limit, not a devtools bug. Use the
+[Chrome extension](../devtools-extension/README.md) or the
+[WS relay](../devtools-relay/README.md) when the app tab can't stay visible.
+
 ## How to run
 
 ```bash
