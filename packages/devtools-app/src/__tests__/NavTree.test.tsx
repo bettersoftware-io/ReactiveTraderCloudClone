@@ -146,6 +146,23 @@ test("collapsing: a header label closes its own group, a caret closes an open no
   expect(scopeIds()).not.toContain("stream:blotter.trades$");
 });
 
+test("a scope-null disposed leaf (evicted machines) renders no caret and is not selectable", () => {
+  const selected = mount();
+
+  expect(scopeIds()).not.toContain("machines:evicted");
+
+  const evictedLabel = screen.getByText("Evicted (2)");
+
+  expect(
+    evictedLabel
+      .closest("[data-depth]")
+      ?.querySelector("[aria-label='Expand'], [aria-label='Collapse']"),
+  ).toBeNull();
+
+  fireEvent.click(evictedLabel);
+  expect(selected.length).toBe(0);
+});
+
 test("clicking a node label re-syncs the keyboard cursor, not just the selection", () => {
   const selected = mount();
 
@@ -297,6 +314,10 @@ function sampleTree(): NavNode[] {
               disposed: true,
             },
           ],
+        },
+        {
+          ...leaf(null, "Evicted (2)", 2, 0, "machines:evicted"),
+          disposed: true,
         },
       ],
     },

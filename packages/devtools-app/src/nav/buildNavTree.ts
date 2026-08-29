@@ -143,8 +143,11 @@ function presenterNodes(state: InspectorState, tally: LogTally): NavNode[] {
 function machineKindNodes(state: InspectorState, tally: LogTally): NavNode[] {
   const order: string[] = [];
   const byKind = new Map<string, NavNode[]>();
+  const knownIds = new Set<string>();
 
   for (const row of state.machines) {
+    knownIds.add(row.machineId);
+
     const t = tally.machines.get(row.machineId);
     const node: NavNode = {
       ...leaf(
@@ -166,7 +169,7 @@ function machineKindNodes(state: InspectorState, tally: LogTally): NavNode[] {
     }
   }
 
-  return order
+  const nodes = order
     .sort((a, b) => {
       return a.localeCompare(b);
     })
@@ -178,6 +181,40 @@ function machineKindNodes(state: InspectorState, tally: LogTally): NavNode[] {
         byKind.get(machineKind) ?? [],
       );
     });
+
+  let evictedMachineCount = 0;
+  let evictedRowCount = 0;
+
+  for (const [machineId, t] of tally.machines) {
+    if (!knownIds.has(machineId)) {
+      evictedMachineCount += 1;
+      evictedRowCount += t.count;
+    }
+  }
+
+  if (evictedMachineCount > 0) {
+    nodes.push(evictedLeaf(evictedMachineCount, evictedRowCount));
+  }
+
+  return nodes;
+}
+
+/** `InspectorStore.evictDisposedMachines` drops rows from `state.machines`
+ * past `MAX_DISPOSED_MACHINES` while the log keeps their rows, so a machine
+ * a log row still references can be absent from live state. Surfacing them
+ * as one unselectable leaf keeps `All` equal to the sum of Machines'
+ * children instead of silently under-counting. */
+function evictedLeaf(machineCount: number, rowCount: number): NavNode {
+  return {
+    id: "machines:evicted",
+    label: `Evicted (${machineCount})`,
+    scope: null,
+    count: rowCount,
+    lastSeq: 0,
+    disposed: true,
+    detail: "past the disposed-machine cap; rows stay in the log",
+    children: [],
+  };
 }
 
 function wireNode(visibleLog: readonly LogRow[], tally: LogTally): NavNode {

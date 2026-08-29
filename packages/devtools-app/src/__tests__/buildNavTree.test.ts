@@ -108,6 +108,65 @@ test("wireHealthLine counts a re-registered stream as a reconnect", () => {
   expect(wireHealthLine(log)).toBe("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 1");
 });
 
+test("wireHealthLine counts wire:out too, and the wire root sorts multiple msgTypes", () => {
+  const log: LogRow[] = [
+    wireIn(1, "PRICE", 1000),
+    wireOut(2, "EXECUTE", 1000),
+    devtoolsErrorRow(3, 1000),
+  ];
+
+  expect(wireHealthLine(log)).toBe("▼ 0.1 in/s · ▲ 0.1 out/s · reconnects: 0");
+
+  const wire = buildNavTree(stateWithMachines([]), log)[3];
+
+  expect(
+    wire?.children.map((n) => {
+      return n.id;
+    }),
+  ).toEqual(["msgType:EXECUTE", "msgType:PRICE"]);
+});
+
+test("a machine with null args gets no arg summary in its label", () => {
+  const state = stateWithMachines([
+    { ...machineRow("m1", "tileExecution"), args: null },
+  ]);
+  const machines = buildNavTree(state, [])[2];
+  const tile = machines?.children.find((n) => {
+    return n.id === "machineKind:tileExecution";
+  });
+
+  expect(tile?.children[0]?.label).toBe("m1");
+});
+
+test("machines the log still references but the store evicted surface as one Evicted leaf", () => {
+  const state = stateWithMachines([]); // no live rows
+  const log = [
+    machineEventRow({ machineId: "ghost-1", seq: 1 }),
+    machineEventRow({ machineId: "ghost-2", seq: 2 }),
+  ];
+  const machines = buildNavTree(state, log)[2];
+
+  expect(machines?.children.at(-1)).toMatchObject({
+    id: "machines:evicted",
+    label: "Evicted (2)",
+    scope: null,
+    count: 2,
+    disposed: true,
+  });
+});
+
+test("no Evicted leaf when every logged machine is still in state", () => {
+  const state = stateWithMachines([machineRow("m1", "tileExecution")]);
+  const log = [machineEventRow({ machineId: "m1", seq: 1 })];
+  const machines = buildNavTree(state, log)[2];
+
+  expect(
+    machines?.children.map((n) => {
+      return n.id;
+    }),
+  ).toEqual(["machineKind:tileExecution"]);
+});
+
 test("presenter and machine-kind roots order by localeCompare, not code-unit sort", () => {
   const state = stateWith({
     presenters: ["b", "a", "B"],
@@ -125,6 +184,45 @@ test("presenter and machine-kind roots order by localeCompare, not code-unit sor
   expect(presenters).toEqual(["a", "b", "B"]);
   expect(kinds).toEqual(["a", "b", "B"]);
 });
+
+interface MachineEventRowOverrides {
+  machineId: string;
+  seq: number;
+}
+
+function machineEventRow(overrides: MachineEventRowOverrides): LogRow {
+  const { machineId, seq } = overrides;
+  const ts = 1000 + seq;
+
+  return {
+    seq,
+    ts,
+    kind: "machine:state",
+    summary: `${machineId} {} ×1`,
+    event: {
+      kind: "machine:state",
+      seq,
+      ts,
+      machineId,
+      state: {},
+      coalesced: 1,
+    },
+  };
+}
+
+function stateWithMachines(
+  machines: readonly InspectorState["machines"][number][],
+): InspectorState {
+  return {
+    connected: true,
+    dev: false,
+    appId: "rtc-web",
+    protocolMismatch: null,
+    streams: [],
+    machines,
+    log: [],
+  };
+}
 
 interface StateOverrides {
   presenters?: readonly string[];
@@ -286,6 +384,16 @@ function wireIn(seq: number, msgType: string, ts: number): LogRow {
   };
 }
 
+function wireOut(seq: number, msgType: string, ts: number): LogRow {
+  return {
+    seq,
+    ts,
+    kind: "wire:out",
+    summary: `${msgType} null`,
+    event: { kind: "wire:out", seq, ts, msgType, payload: null },
+  };
+}
+
 function registered(seq: number, streamId: string, ts: number): LogRow {
   return {
     seq,
@@ -293,5 +401,24 @@ function registered(seq: number, streamId: string, ts: number): LogRow {
     kind: "stream:registered",
     summary: `${streamId} registered`,
     event: { kind: "stream:registered", seq, ts, streamId },
+  };
+}
+
+/** A row whose event kind `sourceOfEvent` maps to no stream/machine/msgType
+ * source (`timelineModel.ts`) — exercises the log tally's skip branch for
+ * housekeeping events that never bucket into a nav count. */
+function devtoolsErrorRow(seq: number, ts: number): LogRow {
+  return {
+    seq,
+    ts,
+    kind: "devtools:error",
+    summary: "boom",
+    event: {
+      kind: "devtools:error",
+      seq,
+      ts,
+      context: "test",
+      message: "boom",
+    },
   };
 }
