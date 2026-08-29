@@ -1,13 +1,11 @@
 import type { JSX } from "react";
 import { useState } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { CreditNav, type CreditView } from "#/ui/credit/CreditNav";
 import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
 import { RfqTilesPanel } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
-import type { RnTheme } from "#/ui/theme/tokens";
-import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The Credit tab: a segmented control over three sub-views (RFQ Tiles / New
  * RFQ / Sell Side), mirroring the web `CreditWorkspace`. New-RFQ success snaps
@@ -15,7 +13,6 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * `_layout`. */
 export function CreditScreen(): JSX.Element {
   const [view, setView] = useState<CreditView>("tiles");
-  const styles = useThemedStyles(makeStyles);
 
   function showTilesView(): void {
     setView("tiles");
@@ -31,12 +28,8 @@ export function CreditScreen(): JSX.Element {
   );
 }
 
-interface CreditScreenStyles {
-  screen: ViewStyle;
-}
-
-function makeStyles(t: RnTheme): CreditScreenStyles {
-  return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: t.bgPrimary },
-  });
-}
+const styles = StyleSheet.create({
+  // No background: the module body is transparent so the shell's ambient HUD
+  // grid shows through, as the mobile-v1 design has it on every screen.
+  screen: { flex: 1 },
+});

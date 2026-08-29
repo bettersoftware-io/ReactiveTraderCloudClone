@@ -180,7 +180,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   sub-view (`MarketsView`/`TradeView`/`BlottersView`, the same pieces
  *   `EquitiesScreen` switches between) under the screen's segmented
  *   `EquitiesNav` pinned to that view, inside `ModuleScreenFixture` (the
- *   screen's own `bgPrimary` root) inside `ShellFrameFixture` — none of the
+ *   screen's own transparent root) inside `ShellFrameFixture` — none of the
  *   three is full-bleed. All three seed
  *   `powerSaverLevel="freeze"`: this module has the widest Reanimated surface
  *   of any phase so far — `MoversBoard`'s rank-glide

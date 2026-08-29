@@ -376,7 +376,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       flexDirection: "row",
       borderRadius: 9,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderPrimary,
       overflow: "hidden",
     },
     type,

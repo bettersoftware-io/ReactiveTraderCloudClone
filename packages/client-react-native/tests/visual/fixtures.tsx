@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -32,8 +32,6 @@ import {
 } from "#/ui/shell/hud/ShellTelemetryContext";
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
-import type { RnTheme } from "#/ui/theme/tokens";
-import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -174,19 +172,17 @@ function moduleRouteFor(key: string): ModuleRoute {
 /**
  * The root a routed module screen supplies for itself, for the sub-views a
  * scenario mounts directly: `CreditScreen` and `EquitiesScreen` wrap their
- * segmented nav + active sub-view in a `flex: 1` view painted `bgPrimary`,
- * which is opaque — so in the app the ambient grid does NOT show through
- * those two modules (it does through Rates and Blotter, which paint no
- * background). A framed golden must inherit that, or it would show a grid
- * the app hides. Mirrored rather than mounting the screens themselves, whose
+ * segmented nav + active sub-view in a transparent `flex: 1` view, so the
+ * shell's ambient grid shows through them exactly as it does through Rates
+ * and Blotter (until 2026-08-29 that root was painted an opaque `bgPrimary`,
+ * and this fixture mirrored the opacity so the goldens would not show a grid
+ * the app hid). Mirrored rather than mounting the screens themselves, whose
  * active view is internal `useState` with no prop seam.
  */
 export function ModuleScreenFixture({
   children,
 }: ModuleScreenProps): ReactNode {
-  const styles = useThemedStyles(makeModuleScreenStyles);
-
-  return <View style={styles.screen}>{children}</View>;
+  return <View style={moduleScreenStyles.screen}>{children}</View>;
 }
 
 /**
@@ -449,15 +445,9 @@ interface ModuleScreenProps {
   readonly children: ReactNode;
 }
 
-interface ModuleScreenStyles {
-  screen: ViewStyle;
-}
-
-function makeModuleScreenStyles(t: RnTheme): ModuleScreenStyles {
-  return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: t.bgPrimary },
-  });
-}
+const moduleScreenStyles = StyleSheet.create({
+  screen: { flex: 1 },
+});
 
 /** A representative mid-boot instant — 60% of `BOOT_DURATION_MS` (4200ms) —
  * pinned as a fixed `elapsedSec` shared value (through `BootClockContext`)

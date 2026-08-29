@@ -8,9 +8,9 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** The shared raised-surface card: the web `.tile` chrome (5px radius, 1px
- * border-primary, tonal `bgTile`, `--tile-shadow` drop via depthStyle + the
- * inset top highlight) extracted from SpotTile. Content padding/layout is
+/** The shared raised-surface card: the mobile-v1 tile chrome (12px radius —
+ * the web `.tile` is 5px — 1px border-primary, tonal `bgTile`, `--tile-shadow`
+ * drop via depthStyle + the inset top highlight) extracted from SpotTile. Content padding/layout is
  * supplied by the caller via `style` and children; this owns chrome only. The
  * card deliberately does NOT clip overflow (that would clip the iOS shadow);
  * only the sheen sublayer clips. */
@@ -37,6 +37,9 @@ export function SurfaceCard({
 
 /** Height (px) of the tile head strip a `headGradient` covers. */
 const HEAD_HEIGHT = 45;
+
+/** The design's tile corner radius (`border-radius:12px` on every card). */
+const TILE_RADIUS = 12;
 
 interface TileSurfaceProps {
   tile: readonly [string, string];
@@ -100,11 +103,12 @@ interface SurfaceCardStyles {
 
 function makeStyles(t: RnTheme): SurfaceCardStyles {
   return StyleSheet.create({
-    // Matches web `.tile`: 5px radius, 1px border-primary, tonal bgTile,
-    // --tile-shadow drop (depthStyle, {} on flat) + inset top highlight (3d).
-    // No `overflow: hidden` here — that would clip the drop shadow.
+    // The mobile-v1 tile (dc.html:363, 382, 165-191, 222, 292): 12px radius,
+    // 1px border-primary, tonal bgTile, --tile-shadow drop (depthStyle, {} on
+    // flat) + inset top highlight (3d). No `overflow: hidden` here — that
+    // would clip the drop shadow.
     card: {
-      borderRadius: 5,
+      borderRadius: TILE_RADIUS,
       backgroundColor: t.bgTile,
       borderWidth: 1,
       borderColor: t.borderPrimary,
@@ -119,7 +123,7 @@ function makeStyles(t: RnTheme): SurfaceCardStyles {
       left: 0,
       right: 0,
       bottom: 0,
-      borderRadius: 5,
+      borderRadius: TILE_RADIUS,
       overflow: "hidden",
     },
   });

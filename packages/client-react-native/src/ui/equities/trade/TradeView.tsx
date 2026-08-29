@@ -77,13 +77,12 @@ interface TradeViewStyles {
 
 function makeStyles(t: RnTheme): TradeViewStyles {
   return StyleSheet.create({
-    scroll: { flex: 1, backgroundColor: t.bgPrimary },
+    scroll: { flex: 1 },
     content: { paddingTop: 9, paddingHorizontal: 12, paddingBottom: 8 },
     empty: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: t.bgPrimary,
       padding: 24,
     },
     emptyText: { fontSize: 13, color: t.textMuted, fontFamily: t.fontDisplay },

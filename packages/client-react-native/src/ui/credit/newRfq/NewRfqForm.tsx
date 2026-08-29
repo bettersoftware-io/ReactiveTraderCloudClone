@@ -173,7 +173,7 @@ interface NewRfqFormStyles {
 
 function makeStyles(t: RnTheme): NewRfqFormStyles {
   return StyleSheet.create({
-    form: { flex: 1, backgroundColor: t.bgPrimary },
+    form: { flex: 1 },
     broadcast: { gap: 10 },
     broadcastNote: {
       fontSize: 8.5,

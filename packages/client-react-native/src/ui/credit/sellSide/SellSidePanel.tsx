@@ -269,7 +269,7 @@ function makeStyles(t: RnTheme): SellSidePanelStyles {
   };
 
   return StyleSheet.create({
-    panel: { flex: 1, backgroundColor: t.bgPrimary },
+    panel: { flex: 1 },
     list: { paddingVertical: 12 },
     // dc.html:305 — `8.5px`, `letter-spacing: 2`, `--faint`, sitting just above
     // the settled rows.
