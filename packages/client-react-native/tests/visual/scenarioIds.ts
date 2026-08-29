@@ -50,7 +50,7 @@ export const SCENARIO_IDS = [
   // until 2026-08-01 — it prints a live wall-clock timestamp, so two captures
   // minutes apart differed and the golden could never reproduce itself (same
   // class as `credit/rfq-tiles-empty`, dropped above). It qualifies now that
-  // `BootSceneFixture` injects a pinned `now` via `BootSceneProps`, which the
+  // `BootSequenceFixture` pins `now` via `BootClockContext`, which the
   // scene prefers over its mount-time `new Date()`. The footer stamp is kept
   // rather than dropped, so the golden asserts the frame the app really draws.
   "boot/geo",

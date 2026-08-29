@@ -1,10 +1,27 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
+import type { ReactNode } from "react";
+import * as Reanimated from "react-native-reanimated";
+import { useSharedValue } from "react-native-reanimated";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
+import { BootClockContext } from "./BootClockContext";
+import type { BootSceneProps } from "./bootScene";
+
 const mockUseBootMotionEnabled = jest.fn<() => boolean>();
+const mockUseGyroDrift = jest.fn((_enabled: boolean) => {
+  return { value: { mx: 0, my: 0 } };
+});
+/** The props the stub scene was last drawn with — how a test sees what the
+ * canvas actually handed to the scene (the pinned clock, or the live one). */
+const mockSceneProps: SceneProbe = { current: null };
 const { BootCanvas } = require("./BootCanvas") as typeof import("./BootCanvas");
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  mockSceneProps.current = null;
+});
 
 // BootCanvas reads the theme (to thread into the scene, since Skia's Canvas is
 // a separate reconciler React Context can't cross) — so every render needs a
@@ -30,6 +47,65 @@ test("renders the canvas and scene for a covered variant when motion is enabled"
   expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
 });
 
+test("a BootClockContext pin drives the scene: pinned elapsedSec and now, frame clock never started, gyroscope never subscribed", async () => {
+  mockUseBootMotionEnabled.mockReturnValue(true);
+  const setActive = jest.fn();
+  jest
+    .spyOn(Reanimated, "useFrameCallback")
+    .mockReturnValue({ setActive, isActive: false, callbackId: -1 });
+  const now = new Date(2026, 6, 27, 9, 41, 7);
+  await mountPinned(2.52, now);
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+  expect(mockSceneProps.current?.elapsedSec.value).toBe(2.52);
+  expect(mockSceneProps.current?.now).toBe(now);
+  expect(setActive).toHaveBeenCalledWith(false);
+  expect(setActive).not.toHaveBeenCalledWith(true);
+  expect(mockUseGyroDrift).toHaveBeenLastCalledWith(false);
+});
+
+test("without a pin the live clock drives the scene: frame callback activated, gyroscope subscribed, no wall clock", async () => {
+  mockUseBootMotionEnabled.mockReturnValue(true);
+  const setActive = jest.fn();
+  jest
+    .spyOn(Reanimated, "useFrameCallback")
+    .mockReturnValue({ setActive, isActive: false, callbackId: -1 });
+  await renderWithTheme(<BootCanvas variant="core" />);
+  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+  expect(mockSceneProps.current?.elapsedSec.value).toBe(0);
+  expect(mockSceneProps.current?.now).toBeUndefined();
+  expect(setActive).toHaveBeenCalledWith(true);
+  expect(mockUseGyroDrift).toHaveBeenLastCalledWith(true);
+});
+
+/** Mounts the canvas under a pin whose shared value comes from a real hook
+ * call inside a component, the way `BootSequenceFixture` builds it. */
+async function mountPinned(elapsedSec: number, now: Date): Promise<void> {
+  function PinnedCanvas(): ReactNode {
+    const pinnedElapsed = useSharedValue(elapsedSec);
+
+    return (
+      <BootClockContext.Provider value={{ elapsedSec: pinnedElapsed, now }}>
+        <BootCanvas variant="core" />
+      </BootClockContext.Provider>
+    );
+  }
+
+  await renderWithTheme(<PinnedCanvas />);
+}
+
+/** Where the stub scene parks its last props for a test to read. */
+interface SceneProbe {
+  current: BootSceneProps | null;
+}
+
+jest.mock("#/ui/shell/boot/useGyroDrift", () => {
+  return {
+    useGyroDrift: (enabled: boolean) => {
+      return mockUseGyroDrift(enabled);
+    },
+  };
+});
+
 jest.mock("#/ui/shell/boot/useBootMotionEnabled", () => {
   return {
     useBootMotionEnabled: () => {
@@ -45,7 +121,8 @@ jest.mock("#/ui/shell/boot/bootScene", () => {
   const React = require("react");
   const { View } = require("react-native");
 
-  function StubScene(): unknown {
+  function StubScene(props: unknown): unknown {
+    mockSceneProps.current = props as typeof mockSceneProps.current;
     return React.createElement(View, { testID: "boot-scene-core" });
   }
 

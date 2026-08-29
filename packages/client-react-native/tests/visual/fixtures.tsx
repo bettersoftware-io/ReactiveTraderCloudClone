@@ -1,11 +1,5 @@
-import { Canvas } from "@shopify/react-native-skia";
 import type { ReactNode } from "react";
-import {
-  StyleSheet,
-  useWindowDimensions,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 
@@ -26,8 +20,8 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
-import type { BootSceneComponent } from "#/ui/shell/boot/bootScene";
-import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import { BootClockContext } from "#/ui/shell/boot/BootClockContext";
+import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { ActiveModuleContext } from "#/ui/shell/hud/ActiveModuleContext";
 import { MODULE_ROUTES, type ModuleRoute } from "#/ui/shell/hud/moduleRoutes";
 import { RadialCommandDock } from "#/ui/shell/hud/RadialCommandDock";
@@ -39,7 +33,6 @@ import {
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
 import type { RnTheme } from "#/ui/theme/tokens";
-import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /**
@@ -50,37 +43,37 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * (mirrors why `bootScene.ts` keeps the non-component `BOOT_SCENES` map out of
  * any scene's own file — see its header comment).
  *
- * Both fixtures below exist to pin a Phase 6a boot/lock surface to one
- * deterministic frame instead of mounting it live — see `scenarios.tsx`'s
- * header comment for the full "why a free-running clock can't be a stable
- * golden" rationale.
+ * `BootSequenceFixture` is the REAL `BootSequence` — canvas, emblem gate,
+ * wordmark, `SEQUENCE ·` tag, progress ramp and SKIP — held at one instant.
+ * Two pins make it a still frame: `BootClockContext` replaces `BootCanvas`'s
+ * live frame callback with `BOOT_SCENE_ELAPSED_SEC` (and hands every scene
+ * `PINNED_WALL_CLOCK`, which only `TopoScene` prints), and the scenario pins
+ * `useBootSequence` through `viewModelOverrides` so the variant and the
+ * progress percentage are literals rather than the live machine. Which scene
+ * draws — and whether the canvas draws at all or the emblem stands in
+ * (power-saver Freeze) — is decided by `BootSequence` itself, exactly as on
+ * device. Until 2026-08-29 the boot goldens mounted a bare `<Canvas>` with
+ * the scene leaf instead (`BootSceneFixture`, a test-only copy of
+ * `BootCanvas`'s render), so the chrome was never in frame and the prototype
+ * pairs under-reported the drift — the same defect Phase 0's
+ * `ShellFrameFixture` fixed for the module screens.
+ *
+ * `BootSequenceFixture` and `LockHoldFixture` below each pin a boot/lock
+ * surface to one deterministic frame instead of mounting it live — see
+ * `scenarios.tsx`'s header comment for the full "why a free-running clock
+ * can't be a stable golden" rationale.
  */
-export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
-  const { width, height } = useWindowDimensions();
-  // Read outside the <Canvas> below and pass in as a prop: Skia's canvas is a
-  // separate reconciler React Context can't cross (see BootSceneProps.theme).
-  const theme = useTheme();
+export function BootSequenceFixture(): ReactNode {
+  // The pinned scene clock. `useGyroDrift` is not pinned here because
+  // `BootCanvas` never subscribes it while a pin is present — the pointer
+  // stays centred for the whole capture, the second half of a deterministic
+  // frame alongside `elapsedSec`.
   const elapsedSec = useSharedValue(BOOT_SCENE_ELAPSED_SEC);
-  // `false`: never subscribes to the device gyroscope regardless (see
-  // `useGyroDrift`), so `drift` stays centred for the whole capture — the
-  // second half of a deterministic pin alongside `elapsedSec`.
-  const drift = useGyroDrift(false);
 
   return (
-    <Canvas
-      testID="boot-canvas"
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-    >
-      <Scene
-        elapsedSec={elapsedSec}
-        drift={drift}
-        width={width}
-        height={height}
-        theme={theme}
-        now={PINNED_WALL_CLOCK}
-      />
-    </Canvas>
+    <BootClockContext.Provider value={{ elapsedSec, now: PINNED_WALL_CLOCK }}>
+      <BootSequence onDone={(): void => {}} />
+    </BootClockContext.Provider>
   );
 }
 
@@ -103,8 +96,8 @@ export function BootSceneFixture({ Scene }: BootSceneFixtureProps): ReactNode {
  * app — so a fidelity pass driven by that comparison would have chased the
  * wrong deltas. The frame makes the app column like-for-like.
  *
- * DO NOT wrap a deliberately full-bleed surface: `boot/*` (the app's
- * `BootCanvas` really is edge-to-edge behind the chrome) and `lock/hold`
+ * DO NOT wrap a deliberately full-bleed surface: `boot/*` (`BootSequence`
+ * is its own full-screen overlay, canvas edge-to-edge) and `lock/hold`
  * (`LockScreen` centres its content over the whole screen). Framing those
  * would make the golden assert a frame the app never draws — the same
  * defect, mirrored.
@@ -203,7 +196,7 @@ export function ModuleScreenFixture({
  * positions drift every 10 seconds. Both were the stated reason Analytics was
  * excluded from this harness. `AnalyticsDashboard` takes its data as a prop
  * precisely so a fixture can supply a literal instead — the same
- * mount-the-leaf-not-the-machine move `BootSceneFixture` makes.
+ * mount-the-leaf-not-the-machine move `LockHoldFixture` makes.
  *
  * The scenario must ALSO seed power-saver `freeze` (see `scenarios.tsx`), or
  * the bars' and bubbles' entry tweens can be caught mid-flight. Pinned data
@@ -442,10 +435,6 @@ export function LockHoldFixture(): ReactNode {
   );
 }
 
-interface BootSceneFixtureProps {
-  readonly Scene: BootSceneComponent;
-}
-
 interface ShellFrameProps {
   /** A `MODULE_ROUTES` key — `rates` | `blotter` | `analytics` | `credit` |
    * `equities`. Unknown keys throw at render. */
@@ -469,8 +458,8 @@ function makeModuleScreenStyles(t: RnTheme): ModuleScreenStyles {
 }
 
 /** A representative mid-boot instant — 60% of `BOOT_DURATION_MS` (4200ms) —
- * pinned as a fixed `elapsedSec` shared value instead of `BootCanvas`'s live
- * `useFrameCallback`. `bootProgress`/`panelRevealFraction` clamp to 0..1
+ * pinned as a fixed `elapsedSec` shared value (through `BootClockContext`)
+ * instead of `BootCanvas`'s live `useFrameCallback`. `bootProgress`/`panelRevealFraction` clamp to 0..1
  * internally, so any value strictly between 0 and 4.2 is safe; this one
  * lands well past both scenes' initial reveal windows so the captured frame
  * shows settled geometry, not a blank first frame. */
