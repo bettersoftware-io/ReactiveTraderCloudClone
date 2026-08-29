@@ -126,7 +126,7 @@
 }
 
 .row[data-family="wire"] {
-  border-left-color: #3fb950;
+  border-left-color: var(--ok);
 }
 
 .row[data-family="devtools"] {
