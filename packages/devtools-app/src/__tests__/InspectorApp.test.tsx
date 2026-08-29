@@ -190,6 +190,46 @@ test("wire probe from All strands no radius on Escape — pin survives, scope st
   expect(screen.queryByTestId("pinned-bar")).toBeNull();
 });
 
+test("dismissing the radius chip returns to the pre-probe scope, same as Escape", () => {
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  act(() => {
+    store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
+    store.apply({ kind: "snapshot", streams: [], machines: [] });
+
+    for (const frame of emissionBatches()) {
+      store.apply(frame);
+    }
+  });
+
+  // Scope to the fx presenter, pin a row, then probe its wire — the chip's
+  // dismiss must pop back to this scope exactly like Escape's radius branch.
+  fireEvent.click(navNode("presenter:fx"));
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.click(
+    screen.getByText("wire ±100ms", {
+      selector: "[data-testid='pinned-bar'] button",
+    }),
+  );
+  expect(selectedNavScopeId()).toBe("all");
+  expect(
+    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
+  ).toBeTruthy();
+
+  fireEvent.click(screen.getByTitle("Clear radius filter"));
+  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
+  expect(selectedNavScopeId()).toBe("presenter:fx");
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
+
+  // Nothing left to pop: Escape resumes the pin without moving the scope.
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(selectedNavScopeId()).toBe("presenter:fx");
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+});
+
 test("shortcuts are ignored while the tree has focus, and the keydown listener is bound once", () => {
   const store = new InspectorStore({ coalesce: false });
   const addSpy = vi.spyOn(window, "addEventListener");
@@ -642,6 +682,15 @@ function navNode(id: string): HTMLElement {
   }
 
   return match;
+}
+
+/** The currently-selected nav-node's own scope key — the same `data-scope-id`
+ * `navNode` matches against, read back off whichever node carries
+ * `data-selected="true"` instead of naming one up front. */
+function selectedNavScopeId(): string | undefined {
+  return screen.getAllByTestId("nav-node").find((el) => {
+    return el.dataset.selected === "true";
+  })?.dataset.scopeId;
 }
 
 function sampleRecording(): Recording {
