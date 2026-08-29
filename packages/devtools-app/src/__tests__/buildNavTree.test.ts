@@ -108,68 +108,132 @@ test("wireHealthLine counts a re-registered stream as a reconnect", () => {
   expect(wireHealthLine(log)).toBe("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 1");
 });
 
-function stateWith(): InspectorState {
+test("presenter and machine-kind roots order by localeCompare, not code-unit sort", () => {
+  const state = stateWith({
+    presenters: ["b", "a", "B"],
+    machineKinds: ["b", "a", "B"],
+  });
+  const tree = buildNavTree(state, []);
+  const presenters = tree[1]?.children.map((n) => {
+    return n.label;
+  });
+  const kinds = tree[2]?.children.map((n) => {
+    return n.label;
+  });
+
+  expect(presenters).toEqual(["a", "b", "B"]);
+  expect(kinds).toEqual(["a", "b", "B"]);
+});
+
+interface StateOverrides {
+  presenters?: readonly string[];
+  machineKinds?: readonly string[];
+}
+
+function stateWith(overrides?: StateOverrides): InspectorState {
+  if (overrides === undefined) {
+    return {
+      connected: true,
+      dev: false,
+      appId: "rtc-web",
+      protocolMismatch: null,
+      streams: [
+        {
+          streamId: "blotter.activity$",
+          lastValue: null,
+          lastSeq: 0,
+          totalEmissions: 0,
+          ratePerSec: 0,
+        },
+        {
+          streamId: "blotter.trades$",
+          lastValue: 2,
+          lastSeq: 3,
+          totalEmissions: 2,
+          ratePerSec: 0,
+        },
+        {
+          streamId: 'priceHistory.history$[["EURCAD"]]',
+          lastValue: 1,
+          lastSeq: 2,
+          totalEmissions: 1,
+          ratePerSec: 0,
+        },
+      ],
+      machines: [
+        {
+          machineId: "m1",
+          machineKind: "tileExecution",
+          args: ["EURUSD"],
+          state: null,
+          disposed: false,
+          createdAt: 0,
+          intents: [],
+          transitions: 0,
+        },
+        {
+          machineId: "m2",
+          machineKind: "tileExecution",
+          args: ["USDJPY"],
+          state: null,
+          disposed: true,
+          createdAt: 0,
+          intents: [],
+          transitions: 0,
+        },
+        {
+          machineId: "m3",
+          machineKind: "incident",
+          args: [],
+          state: null,
+          disposed: false,
+          createdAt: 0,
+          intents: [],
+          transitions: 0,
+        },
+      ],
+      log: [],
+    };
+  }
+
   return {
     connected: true,
     dev: false,
     appId: "rtc-web",
     protocolMismatch: null,
-    streams: [
-      {
-        streamId: "blotter.activity$",
-        lastValue: null,
-        lastSeq: 0,
-        totalEmissions: 0,
-        ratePerSec: 0,
-      },
-      {
-        streamId: "blotter.trades$",
-        lastValue: 2,
-        lastSeq: 3,
-        totalEmissions: 2,
-        ratePerSec: 0,
-      },
-      {
-        streamId: 'priceHistory.history$[["EURCAD"]]',
-        lastValue: 1,
-        lastSeq: 2,
-        totalEmissions: 1,
-        ratePerSec: 0,
-      },
-    ],
-    machines: [
-      {
-        machineId: "m1",
-        machineKind: "tileExecution",
-        args: ["EURUSD"],
-        state: null,
-        disposed: false,
-        createdAt: 0,
-        intents: [],
-        transitions: 0,
-      },
-      {
-        machineId: "m2",
-        machineKind: "tileExecution",
-        args: ["USDJPY"],
-        state: null,
-        disposed: true,
-        createdAt: 0,
-        intents: [],
-        transitions: 0,
-      },
-      {
-        machineId: "m3",
-        machineKind: "incident",
-        args: [],
-        state: null,
-        disposed: false,
-        createdAt: 0,
-        intents: [],
-        transitions: 0,
-      },
-    ],
+    streams: (overrides.presenters ?? []).map((presenter) => {
+      return streamRow(`${presenter}.x$`);
+    }),
+    machines: (overrides.machineKinds ?? []).map((machineKind, index) => {
+      return machineRow(`m${index}`, machineKind);
+    }),
     log: [],
+  };
+}
+
+function streamRow(streamId: string): InspectorState["streams"][number] {
+  return {
+    streamId,
+    lastValue: null,
+    lastSeq: 0,
+    totalEmissions: 0,
+    ratePerSec: 0,
+  };
+}
+
+function machineRow(
+  machineId: string,
+  machineKind: string,
+): InspectorState["machines"][number] {
+  return {
+    machineId,
+    machineKind,
+    args: [],
+    state: null,
+    disposed: false,
+    createdAt: 0,
+    intents: [],
+    transitions: 0,
   };
 }
 

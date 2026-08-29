@@ -124,16 +124,20 @@ function presenterNodes(state: InspectorState, tally: LogTally): NavNode[] {
     }
   }
 
-  return order.sort().map((presenter) => {
-    const children = byPresenter.get(presenter) ?? [];
+  return order
+    .sort((a, b) => {
+      return a.localeCompare(b);
+    })
+    .map((presenter) => {
+      const children = byPresenter.get(presenter) ?? [];
 
-    return rollup(
-      scopeKey({ kind: "presenter", presenter }),
-      presenter,
-      { kind: "presenter", presenter },
-      children,
-    );
-  });
+      return rollup(
+        scopeKey({ kind: "presenter", presenter }),
+        presenter,
+        { kind: "presenter", presenter },
+        children,
+      );
+    });
 }
 
 function machineKindNodes(state: InspectorState, tally: LogTally): NavNode[] {
@@ -162,14 +166,18 @@ function machineKindNodes(state: InspectorState, tally: LogTally): NavNode[] {
     }
   }
 
-  return order.sort().map((machineKind) => {
-    return rollup(
-      scopeKey({ kind: "machineKind", machineKind }),
-      machineKind,
-      { kind: "machineKind", machineKind },
-      byKind.get(machineKind) ?? [],
-    );
-  });
+  return order
+    .sort((a, b) => {
+      return a.localeCompare(b);
+    })
+    .map((machineKind) => {
+      return rollup(
+        scopeKey({ kind: "machineKind", machineKind }),
+        machineKind,
+        { kind: "machineKind", machineKind },
+        byKind.get(machineKind) ?? [],
+      );
+    });
 }
 
 function wireNode(visibleLog: readonly LogRow[], tally: LogTally): NavNode {
