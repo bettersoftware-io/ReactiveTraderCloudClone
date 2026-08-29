@@ -76,7 +76,7 @@ export function ContextPane({
             onSelect={setTab}
           />
         ) : null}
-        {model.selection.mode === "pinned" ? (
+        {pinned && model.selection.mode === "pinned" ? (
           <span data-testid="state-at-seq" className={styles.atSeq}>
             {`@ seq ${model.selection.seq}`}
           </span>

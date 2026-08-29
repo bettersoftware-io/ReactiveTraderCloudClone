@@ -193,7 +193,11 @@ function PinnedBar({
   }
 
   return (
-    <div className={styles.pinnedBar} data-testid="pinned-bar">
+    <div
+      className={styles.pinnedBar}
+      data-testid="pinned-bar"
+      data-seq={pinnedSeq}
+    >
       <span
         className={styles.pinnedLabel}
       >{`⏸ ${pinnedLabel(model, pinnedSeq)}`}</span>

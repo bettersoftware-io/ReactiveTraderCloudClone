@@ -32,10 +32,16 @@ test("clicking a row pins it and shows the pinned bar; Resume returns to follow"
 
   // The row itself is a non-interactive container; the pin target is its
   // first child button, which now covers the whole row's text.
-  fireEvent.click(
-    (rows[0] as HTMLElement).querySelector("button") as HTMLElement,
-  );
+  const pinnedRow = rows[0] as HTMLElement;
+
+  fireEvent.click(pinnedRow.querySelector("button") as HTMLElement);
   expect(screen.getByTestId("pinned-bar").textContent).toContain("pinned at");
+  // The bar's own `data-seq` names the pinned row independently of its
+  // label text — this is what an e2e driver reads to know which row got
+  // pinned without trusting the badge under test.
+  expect(screen.getByTestId("pinned-bar").getAttribute("data-seq")).toBe(
+    pinnedRow.getAttribute("data-seq"),
+  );
 
   fireEvent.click(screen.getByText("Resume"));
   expect(screen.queryByTestId("pinned-bar")).toBeNull();

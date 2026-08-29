@@ -50,10 +50,13 @@ export interface InspectorPO {
    *  a first timeline row to exist before the key is pressed. ArrowUp is one
    *  of the keys the tree owns while a node button has focus; blur first so
    *  the global step shortcut sees it. Returns the pinned row's `data-seq`,
-   *  read from the context pane's own badge AFTER the pin lands (not
-   *  pre-read off the timeline's tail row, which can go stale under a live
-   *  stream between the read and the keypress) so the caller can assert the
-   *  context pane names that same seq. */
+   *  read from the timeline's own pinned bar AFTER the pin lands — not
+   *  pre-read off the timeline's tail row (which can go stale under a live
+   *  stream between the read and the keypress), and deliberately NOT the
+   *  context pane's `state-at-seq` badge (that would make the caller's
+   *  assertion against that same badge circular). The pinned bar is an
+   *  independent source naming the same seq, so the caller can assert the
+   *  context pane badge agrees with it. */
   pinLatestTimelineRow(timeoutMs: number): Promise<number>;
   /** Wait until the pinned-moment bar is visible (a pin is active). */
   waitPinnedBar(timeoutMs: number): Promise<void>;

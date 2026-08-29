@@ -149,26 +149,25 @@ export class PlaywrightInspector implements InspectorPO {
     });
     await this.page().keyboard.press("ArrowUp");
 
-    // Read the seq ArrowUp actually pinned from the context pane's own
-    // badge, AFTER the pin lands — not the timeline's tail row before it.
-    // Under a live ~15 Hz stream, several more rows can land between
-    // reading a "latest" row and the keypress actually landing, so a
-    // pre-read seq is frequently stale by the time the selection freezes
-    // (observed racing by double digits in practice). The badge is the
-    // selection's own projection of what got pinned, so reading it after
-    // the fact cannot race.
-    const badge = this.page().getByTestId(TESTIDS.devtools.stateAtSeq);
+    // Read the seq ArrowUp actually pinned from the TIMELINE's own pinned
+    // bar (`data-seq`, set from `pinnedSeq` in TimelinePane.tsx), AFTER the
+    // pin lands — not the timeline's tail row before it, and deliberately
+    // NOT the ContextPane's `state-at-seq` badge under test: reading that
+    // badge here and then asserting against it in `waitStateAtSeq` would
+    // make the e2e circular (it would prove only that the badge agrees with
+    // itself, never that it names the row that was actually pinned). The
+    // pinned bar is an independent source for the same seq.
+    //
+    // Reading post-pin (not pre-read off the timeline's tail row) still
+    // matters: under a live ~15 Hz stream, several more rows can land
+    // between reading a "latest" row and the keypress actually landing, so
+    // a pre-read seq is frequently stale by the time the selection freezes
+    // (observed racing by double digits in practice).
+    const pinnedBar = this.page().getByTestId(TESTIDS.devtools.pinnedBar);
 
-    await badge.waitFor({ state: "attached", timeout: timeoutMs });
+    await expect(pinnedBar).toBeVisible({ timeout: timeoutMs });
 
-    const text = await badge.textContent();
-    const match = /@ seq (\d+)/.exec(text ?? "");
-
-    if (match === null) {
-      throw new Error(`pinned badge text did not match "@ seq N": ${text}`);
-    }
-
-    return Number(match[1]);
+    return Number(await pinnedBar.getAttribute("data-seq"));
   }
 
   async waitPinnedBar(timeoutMs: number): Promise<void> {
