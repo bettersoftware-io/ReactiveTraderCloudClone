@@ -235,6 +235,31 @@ test("a reconstruction that throws renders the failure, not a blank pane", () =>
   ).toBeTruthy();
 });
 
+test("a reconstruction failure renders the reconstruction-failed card, not a blank pane", () => {
+  vi.spyOn(devtoolsCore.LiveHistory.prototype, "stateAt").mockImplementation(
+    () => {
+      throw new Error("history is corrupt");
+    },
+  );
+  const harness = mount();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 1));
+  });
+
+  expect(
+    screen.getByText(
+      "⚠ State reconstruction failed: Error: history is corrupt",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByTestId("context-tab-diff"));
+  expect(
+    screen.getByText(
+      "⚠ State reconstruction failed: Error: history is corrupt",
+    ),
+  ).toBeTruthy();
+});
+
 interface HarnessHandle {
   pin: (row: LogRow) => void;
   resume: () => void;

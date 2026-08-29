@@ -109,9 +109,8 @@ export function useRecording(
   }
 
   async function importRecording(file: File): Promise<void> {
-    const text = await file.text();
-
     try {
+      const text = await file.text();
       const rec = parseRecording(text);
       const importedHistory = LiveHistory.fromRecording(rec);
       const foldStore = new InspectorStore({ coalesce: false });
