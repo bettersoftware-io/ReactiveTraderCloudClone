@@ -11,11 +11,14 @@ import type {
 } from "@rtc/devtools-core";
 import { diffSerialized, serializeValue } from "@rtc/devtools-core";
 
+import type { Scope } from "#/nav/scope";
+import { parseStreamId } from "#/nav/scope";
 import { formatLogTime } from "#/panels/formatLogTime";
 import { StateTreePanel } from "#/panels/StateTreePanel";
 import { ValueView } from "#/panels/ValueView";
 import styles from "#/timeline/ContextPane.module.css";
 import { DiffView } from "#/timeline/DiffView";
+import { MachineTab } from "#/timeline/MachineTab";
 import { diffableValueOf, findPredecessorRow } from "#/timeline/timelineModel";
 import type { TimelineModel } from "#/timeline/useTimeline";
 
@@ -23,20 +26,26 @@ import type { TimelineModel } from "#/timeline/useTimeline";
  * glance away). Pinned: Redux's trio for the selected event — Event payload,
  * the whole reconstructed State at that seq (with ≠-live marks), and the Diff
  * vs the previous value of the same source. Reconstruction/diff failures
- * render an inline error card, never a blank pane. */
+ * render an inline error card, never a blank pane. State narrows to the
+ * current scope (spec §3.2); a fourth Machine tab appears whenever a context
+ * machine exists — the scoped machine, or the pinned row's. */
 export function ContextPane({
   model,
   log,
   presentState,
+  scope,
+  dev,
+  onInvokeIntent,
+  onPinIntent,
 }: ContextPaneProps): ReactElement {
   const [tab, setTab] = useState<ContextTab>("state");
   const pinned = model.selection.mode === "pinned";
   const row = model.selectedRow;
-  // Following forces the body to "state" regardless of the last-selected tab
-  // (Event/Diff have nothing to show without a pinned row) — the tab strip's
-  // highlight must track that same fallback, or Resuming from a pinned Diff/
-  // Event selection leaves the now-disabled button looking active.
-  const activeTab = pinned ? tab : "state";
+  const contextMachine = findContextMachine(presentState, scope, row);
+  const stateAvailable = scope.kind !== "wire" && scope.kind !== "msgType";
+  // Tabs that need a pinned row fall back to State while following; a
+  // Machine tab left selected after its machine went away falls back too.
+  const activeTab = resolveTab(tab, pinned, contextMachine !== null);
 
   return (
     <div className={styles.pane}>
@@ -50,7 +59,7 @@ export function ContextPane({
         <TabButton
           tabId="state"
           active={activeTab}
-          disabled={false}
+          disabled={!stateAvailable}
           onSelect={setTab}
         />
         <TabButton
@@ -59,27 +68,54 @@ export function ContextPane({
           disabled={!pinned}
           onSelect={setTab}
         />
+        {contextMachine !== null ? (
+          <TabButton
+            tabId="machine"
+            active={activeTab}
+            disabled={false}
+            onSelect={setTab}
+          />
+        ) : null}
       </nav>
       <div className={styles.body}>
-        <ContextBody
-          tab={activeTab}
-          model={model}
-          row={row}
-          log={log}
-          presentState={presentState}
-        />
+        {activeTab === "machine" && contextMachine !== null ? (
+          <MachineTab
+            machine={contextMachine}
+            dev={dev}
+            onInvokeIntent={onInvokeIntent}
+            onPinIntent={onPinIntent}
+          />
+        ) : (
+          <ContextBody
+            tab={activeTab}
+            model={model}
+            row={row}
+            log={log}
+            presentState={presentState}
+            scope={scope}
+            stateAvailable={stateAvailable}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-type ContextTab = "event" | "state" | "diff";
-
 export interface ContextPaneProps {
   model: TimelineModel;
   log: readonly LogRow[];
   presentState: InspectorState;
+  scope: Scope;
+  dev: boolean;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
 }
+
+type ContextTab = "event" | "state" | "diff" | "machine";
 
 interface TabButtonProps {
   tabId: ContextTab;
@@ -92,6 +128,7 @@ const TAB_LABELS: Record<ContextTab, string> = {
   event: "Event",
   state: "State",
   diff: "Diff",
+  machine: "Machine",
 };
 
 function TabButton({
@@ -123,6 +160,8 @@ interface ContextBodyProps {
   row: LogRow | null;
   log: readonly LogRow[];
   presentState: InspectorState;
+  scope: Scope;
+  stateAvailable: boolean;
 }
 
 function ContextBody({
@@ -131,6 +170,8 @@ function ContextBody({
   row,
   log,
   presentState,
+  scope,
+  stateAvailable,
 }: ContextBodyProps): ReactElement {
   if (model.agedOut) {
     return (
@@ -154,6 +195,10 @@ function ContextBody({
     return <DiffTab row={row} log={log} />;
   }
 
+  if (tab === "state" && !stateAvailable) {
+    return <div className={styles.noState}>wire messages carry no state</div>;
+  }
+
   const state =
     model.selection.mode === "pinned" && model.pinnedState !== null
       ? model.pinnedState
@@ -164,6 +209,7 @@ function ContextBody({
       state={state}
       presentState={presentState}
       marked={model.selection.mode === "pinned"}
+      scope={scope}
     />
   );
 }
@@ -255,76 +301,101 @@ interface StateTabProps {
   state: InspectorState;
   presentState: InspectorState;
   marked: boolean;
+  scope: Scope;
 }
 
 function StateTab({
   state,
   presentState,
   marked,
+  scope,
 }: StateTabProps): ReactElement {
   const [query, setQuery] = useState("");
+  const searchable = scope.kind === "all" || scope.kind === "presenter";
+  const showStreams =
+    scope.kind === "all" ||
+    scope.kind === "presenter" ||
+    scope.kind === "stream";
+
+  const showMachines =
+    scope.kind === "all" ||
+    scope.kind === "machineKind" ||
+    scope.kind === "machine";
 
   function changeStateQuery(e: ChangeEvent<HTMLInputElement>): void {
     setQuery(e.target.value);
   }
 
-  const changedIds = computeChangedIds(marked, state, presentState);
+  const changedStreams = marked
+    ? changedStreamIds(state.streams, presentState.streams)
+    : EMPTY_IDS;
 
-  const visibleStreams = computeVisibleStreams(state, query);
+  const changedMachines = marked
+    ? changedMachineIds(state.machines, presentState.machines)
+    : EMPTY_IDS;
+
+  const streams = filterStreams(
+    streamsInScope(state.streams, scope),
+    searchable ? query : "",
+  );
+  const machines = machinesInScope(state.machines, scope);
+  const focused = scope.kind === "machine" ? (machines[0] ?? null) : null;
 
   return (
     <div className={styles.stateTab}>
-      <input
-        type="text"
-        className={styles.search}
-        placeholder="Search state…"
-        value={query}
-        onChange={changeStateQuery}
-      />
-      <StateTreePanel streams={visibleStreams} changedIds={changedIds} />
-      <h3 className={styles.machinesTitle}>Machines</h3>
-      <div className={styles.machines}>
-        {state.machines.map((machine) => {
-          return <MachineLine key={machine.machineId} machine={machine} />;
-        })}
-      </div>
+      {searchable ? (
+        <input
+          type="text"
+          className={styles.search}
+          placeholder="Search state…"
+          value={query}
+          onChange={changeStateQuery}
+        />
+      ) : null}
+      {showStreams ? (
+        <StateTreePanel streams={streams} changedIds={changedStreams} />
+      ) : null}
+      {showMachines ? (
+        <>
+          <h3 className={styles.machinesTitle}>Machines</h3>
+          <div className={styles.machines}>
+            {machines.map((machine) => {
+              return (
+                <MachineLine
+                  key={machine.machineId}
+                  machine={machine}
+                  changed={changedMachines.has(machine.machineId)}
+                />
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+      {focused !== null ? <ValueView value={focused.state} /> : null}
     </div>
   );
 }
 
-function computeChangedIds(
-  marked: boolean,
-  state: InspectorState,
-  presentState: InspectorState,
-): ReadonlySet<string> {
-  if (!marked) {
-    return new Set();
-  }
-
-  return changedStreamIds(state.streams, presentState.streams);
-}
-
-function computeVisibleStreams(
-  state: InspectorState,
-  query: string,
-): readonly StreamRow[] {
-  return filterStreams(state.streams, query);
-}
-
 interface MachineLineProps {
   machine: MachineRow;
+  changed: boolean;
 }
 
-function MachineLine({ machine }: MachineLineProps): ReactElement {
+function MachineLine({ machine, changed }: MachineLineProps): ReactElement {
   const stateJson = JSON.stringify(machine.state) ?? "null";
   const compact =
     stateJson.length > 60 ? `${stateJson.slice(0, 60)}…` : stateJson;
 
   return (
-    <div className={styles.machineLine}>
+    <div data-testid="devtools-machine-row" className={styles.machineLine}>
       <span className={styles.machineId}>{machine.machineId}</span>
       <span className={styles.machineKind}>{machine.machineKind}</span>
       <span className={styles.machineState}>{compact}</span>
+      {changed ? (
+        <span className={styles.changedMark} title="differs from live">
+          ≠ live
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -335,6 +406,84 @@ interface ErrorCardProps {
 
 function ErrorCard({ message }: ErrorCardProps): ReactElement {
   return <div className={styles.errorCard}>{`⚠ ${message}`}</div>;
+}
+
+function resolveTab(
+  tab: ContextTab,
+  pinned: boolean,
+  hasMachine: boolean,
+): ContextTab {
+  if (tab === "machine") {
+    return hasMachine ? "machine" : "state";
+  }
+
+  return pinned ? tab : "state";
+}
+
+/** The machine the Machine tab describes: the scoped one, else the pinned
+ * row's. Always the LIVE row (intent history + injector are live concerns);
+ * the State tab is where the pinned reconstruction shows. */
+function findContextMachine(
+  state: InspectorState,
+  scope: Scope,
+  row: LogRow | null,
+): MachineRow | null {
+  const machineId =
+    scope.kind === "machine"
+      ? scope.machineId
+      : row !== null && "machineId" in row.event
+        ? row.event.machineId
+        : null;
+
+  if (machineId === null) {
+    return null;
+  }
+
+  return (
+    state.machines.find((machine) => {
+      return machine.machineId === machineId;
+    }) ?? null
+  );
+}
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
+function streamsInScope(
+  streams: readonly StreamRow[],
+  scope: Scope,
+): readonly StreamRow[] {
+  if (scope.kind === "presenter") {
+    return streams.filter((row) => {
+      return parseStreamId(row.streamId).presenter === scope.presenter;
+    });
+  }
+
+  if (scope.kind === "stream") {
+    return streams.filter((row) => {
+      return row.streamId === scope.streamId;
+    });
+  }
+
+  return streams;
+}
+
+function machinesInScope(
+  machines: readonly MachineRow[],
+  scope: Scope,
+): readonly MachineRow[] {
+  if (scope.kind === "machineKind") {
+    return machines.filter((row) => {
+      return row.machineKind === scope.machineKind;
+    });
+  }
+
+  if (scope.kind === "machine") {
+    return machines.filter((row) => {
+      return row.machineId === scope.machineId;
+    });
+  }
+
+  return machines;
 }
 
 function changedStreamIds(
@@ -356,6 +505,31 @@ function changedStreamIds(
       JSON.stringify(liveRow.lastValue) !== JSON.stringify(row.lastValue)
     ) {
       changed.add(row.streamId);
+    }
+  }
+
+  return changed;
+}
+
+function changedMachineIds(
+  pinned: readonly MachineRow[],
+  live: readonly MachineRow[],
+): ReadonlySet<string> {
+  const liveById = new Map(
+    live.map((row) => {
+      return [row.machineId, row] as const;
+    }),
+  );
+  const changed = new Set<string>();
+
+  for (const row of pinned) {
+    const liveRow = liveById.get(row.machineId);
+
+    if (
+      liveRow === undefined ||
+      JSON.stringify(liveRow.state) !== JSON.stringify(row.state)
+    ) {
+      changed.add(row.machineId);
     }
   }
 

@@ -175,6 +175,10 @@ export function InspectorApp({
               model={timeline}
               log={activeLog}
               presentState={presentState}
+              scope={ALL_SCOPE}
+              dev={presentState.dev}
+              onInvokeIntent={onInvokeIntent}
+              onPinIntent={pinTimelineAtIntent}
             />
           </div>
         ) : null}

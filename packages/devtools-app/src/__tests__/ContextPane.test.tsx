@@ -9,10 +9,15 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import type { AppToInspector, LogRow } from "@rtc/devtools-core";
+import type {
+  AppToInspector,
+  InspectorState,
+  LogRow,
+} from "@rtc/devtools-core";
 import * as devtoolsCore from "@rtc/devtools-core";
 import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
+import type { Scope } from "#/nav/scope";
 import { ALL_SCOPE } from "#/nav/scope";
 import { ContextPane } from "#/timeline/ContextPane";
 import styles from "#/timeline/ContextPane.module.css";
@@ -103,6 +108,69 @@ test("diff tab renders ErrorCard when the diff computation throws", () => {
   expect(screen.getByText("⚠ Diff failed: Error: boom")).toBeTruthy();
 });
 
+test("presenter scope narrows State to that presenter's streams and keeps the search box", () => {
+  mount({ kind: "presenter", presenter: "fx" }, true);
+
+  expect(screen.getByText("fx.price$")).toBeTruthy();
+  expect(screen.getByPlaceholderText("Search state…")).toBeTruthy();
+  expect(screen.queryByText("m1")).toBeNull();
+});
+
+test("stream scope shows the single stream row without a search box", () => {
+  mount({ kind: "stream", streamId: "fx.price$" }, true);
+
+  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
+  expect(screen.queryByPlaceholderText("Search state…")).toBeNull();
+});
+
+test("wire scope disables the State tab and explains why", () => {
+  mount({ kind: "wire" });
+
+  expect(
+    (screen.getByTestId("context-tab-state") as HTMLButtonElement).disabled,
+  ).toBe(true);
+  expect(screen.getByText("wire messages carry no state")).toBeTruthy();
+});
+
+test("machineKind scope lists only that kind's instances, marked ≠ live when pinned earlier", () => {
+  const harness = mount(
+    { kind: "machineKind", machineKind: "tileExecution" },
+    true,
+  );
+
+  expect(screen.getAllByTestId("devtools-machine-row").length).toBe(1);
+  expect(screen.queryByTestId("devtools-stream-row")).toBeNull();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 2)); // before the machine:state at seq 4
+  });
+  expect(screen.getByText("≠ live")).toBeTruthy();
+});
+
+test("machine scope shows the Machine tab with state and intents", () => {
+  mount({ kind: "machine", machineId: "m1" }, true);
+
+  fireEvent.click(screen.getByTestId("context-tab-machine"));
+  expect(screen.getByText("tileExecution")).toBeTruthy();
+  expect(screen.getByText("Intents (0)")).toBeTruthy();
+});
+
+test("pinning a machine row under All surfaces the Machine tab; a stream row hides it", () => {
+  const harness = mount(ALL_SCOPE, true);
+
+  expect(screen.queryByTestId("context-tab-machine")).toBeNull();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 4));
+  });
+  expect(screen.getByTestId("context-tab-machine")).toBeTruthy();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 1));
+  });
+  expect(screen.queryByTestId("context-tab-machine")).toBeNull();
+});
+
 interface HarnessHandle {
   pin: (row: LogRow) => void;
   resume: () => void;
@@ -112,7 +180,7 @@ interface HarnessHandle {
 interface SeedResult {
   history: LiveHistory;
   log: readonly LogRow[];
-  present: ReturnType<InspectorStore["getSnapshot"]>;
+  present: InspectorState;
 }
 
 function rowAt(log: readonly LogRow[], seq: number): LogRow {
@@ -132,7 +200,7 @@ function rowAt(log: readonly LogRow[], seq: number): LogRow {
 // top-level component declarations — doesn't apply. `pin` is exposed to the
 // calling test via a mutable handle object, assigned during render, since a
 // nested component can't itself be referenced from outside mount().
-function mount(): HarnessHandle {
+function mount(scope: Scope = ALL_SCOPE, withMachine = false): HarnessHandle {
   const handle: HarnessHandle = {
     pin: () => {},
     resume: () => {},
@@ -140,14 +208,24 @@ function mount(): HarnessHandle {
   };
 
   function Harness(): ReactElement {
-    const [{ history, log, present }] = useState(seed);
-    const model = useTimeline(log, history, ALL_SCOPE, present);
+    const [{ history, log, present }] = useState(() => {
+      return seed(withMachine);
+    });
+    const model = useTimeline(log, history, scope, present);
 
     handle.pin = model.pin;
     handle.resume = model.resume;
     handle.log = log;
 
-    return <ContextPane model={model} log={log} presentState={present} />;
+    return (
+      <ContextPane
+        model={model}
+        log={log}
+        presentState={present}
+        scope={scope}
+        dev={false}
+      />
+    );
   }
 
   render(<Harness />);
@@ -155,11 +233,26 @@ function mount(): HarnessHandle {
   return handle;
 }
 
-function seed(): SeedResult {
+function seed(withMachine: boolean): SeedResult {
   const history = new LiveHistory();
   const store = new InspectorStore({ coalesce: false });
   const frames: AppToInspector[] = [
-    { kind: "snapshot", streams: [], machines: [] },
+    {
+      kind: "snapshot",
+      streams: [],
+      machines: withMachine
+        ? [
+            {
+              machineId: "m1",
+              machineKind: "tileExecution",
+              args: ["EURUSD"],
+              state: { phase: "idle" },
+              disposed: false,
+              createdAt: 0,
+            },
+          ]
+        : [],
+    },
   ];
 
   for (let seq = 1; seq <= 3; seq += 1) {
@@ -172,6 +265,22 @@ function seed(): SeedResult {
           ts: 1000 + seq,
           streamId: "fx.price$",
           value: seq,
+          coalesced: 1,
+        },
+      ],
+    });
+  }
+
+  if (withMachine) {
+    frames.push({
+      kind: "batch",
+      events: [
+        {
+          kind: "machine:state",
+          seq: 4,
+          ts: 1004,
+          machineId: "m1",
+          state: { phase: "busy" },
           coalesced: 1,
         },
       ],
