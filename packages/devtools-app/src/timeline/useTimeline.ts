@@ -98,19 +98,22 @@ export function useTimeline(
 
   function addPill(pill: SourcePill): void {
     setFilter((prev) => {
-      const exists = prev.pills.some((p) => {
+      const pills = prev.pills ?? [];
+      const exists = pills.some((p) => {
         return pillKey(p) === pillKey(pill);
       });
 
-      return exists ? prev : { ...prev, pills: [...prev.pills, pill] };
+      return exists ? prev : { ...prev, pills: [...pills, pill] };
     });
   }
 
   function removePill(pill: SourcePill): void {
     setFilter((prev) => {
+      const pills = prev.pills ?? [];
+
       return {
         ...prev,
-        pills: prev.pills.filter((p) => {
+        pills: pills.filter((p) => {
           return pillKey(p) !== pillKey(pill);
         }),
       };

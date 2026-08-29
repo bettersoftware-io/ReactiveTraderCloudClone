@@ -31,9 +31,9 @@ export function FilterControls({
           return <FamilyCheckbox key={family} family={family} model={model} />;
         })}
       </div>
-      {model.filter.pills.length > 0 ? (
+      {(model.filter.pills ?? []).length > 0 ? (
         <div className={styles.pills}>
-          {model.filter.pills.map((pill) => {
+          {(model.filter.pills ?? []).map((pill) => {
             return <PillChip key={pillKey(pill)} pill={pill} model={model} />;
           })}
         </div>

@@ -27,9 +27,13 @@ interface RadiusFilter {
 
 export interface TimelineFilter {
   families: FamilyFilterState;
-  pills: readonly SourcePill[];
+  /** null = no source constraint; [] = matches nothing (a scope with no
+   * members). Compiled from the navigation scope, never user-edited. */
+  pills: readonly SourcePill[] | null;
   text: string;
   radius: RadiusFilter | null;
+  /** Clear (spec §5): rows with seq <= this are hidden everywhere. */
+  clearedBeforeSeq: number;
 }
 
 export const ALL_FAMILIES_ON: FamilyFilterState = {
@@ -41,9 +45,10 @@ export const ALL_FAMILIES_ON: FamilyFilterState = {
 
 export const EMPTY_TIMELINE_FILTER: TimelineFilter = {
   families: ALL_FAMILIES_ON,
-  pills: [],
+  pills: null,
   text: "",
   radius: null,
+  clearedBeforeSeq: 0,
 };
 
 /** The causality heuristic's half-window (spec §4): "everything within
@@ -91,18 +96,38 @@ export function pillKey(pill: SourcePill): string {
   return `${pill.type}:${pill.id}`;
 }
 
+/** Rows strictly after `seq` — the Clear watermark. Binary search on the
+ * seq-sorted log so the per-render cost is O(log n) + slice. */
+export function logAfterSeq(
+  log: readonly LogRow[],
+  seq: number,
+): readonly LogRow[] {
+  if (seq <= 0) {
+    return log;
+  }
+
+  const index = indexOfSeq(log, seq);
+  const start = log[index]?.seq === seq ? index + 1 : index;
+
+  return start === 0 ? log : log.slice(start);
+}
+
+export function hasSeq(log: readonly LogRow[], seq: number): boolean {
+  return log[indexOfSeq(log, seq)]?.seq === seq;
+}
+
 export function filterLog(
   log: readonly LogRow[],
   filter: TimelineFilter,
 ): readonly LogRow[] {
   const needle = filter.text.trim().toLowerCase();
 
-  return log.filter((row) => {
+  return logAfterSeq(log, filter.clearedBeforeSeq).filter((row) => {
     if (!filter.families[familyOf(row.kind)]) {
       return false;
     }
 
-    if (filter.pills.length > 0 && !rowMatchesPills(row, filter.pills)) {
+    if (filter.pills !== null && !rowMatchesPills(row, filter.pills)) {
       return false;
     }
 
