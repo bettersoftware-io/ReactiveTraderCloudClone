@@ -61,7 +61,7 @@ interface AnalyticsScreenStyles {
 
 function makeStyles(t: RnTheme): AnalyticsScreenStyles {
   return StyleSheet.create({
-    panel: { flex: 1, backgroundColor: t.bgPrimary },
+    panel: { flex: 1 },
     content: { padding: 16, gap: 20 },
     stale: { opacity: 0.5 },
     staleBadge: { alignSelf: "flex-start", fontSize: 11, color: t.accentAware },

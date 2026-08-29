@@ -156,7 +156,7 @@ interface RfqTilesPanelStyles {
 
 function makeStyles(t: RnTheme): RfqTilesPanelStyles {
   return StyleSheet.create({
-    panel: { flex: 1, backgroundColor: t.bgPrimary },
+    panel: { flex: 1 },
     grid: { paddingVertical: 4 },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontDisplay },
   });

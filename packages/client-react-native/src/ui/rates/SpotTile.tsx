@@ -136,7 +136,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
       backgroundColor: t.bgTile,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: t.borderSubtle,
+      borderColor: t.borderPrimary,
     },
     headerRow: {
       flexDirection: "row",

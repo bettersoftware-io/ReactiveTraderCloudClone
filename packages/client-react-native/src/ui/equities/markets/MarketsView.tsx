@@ -58,7 +58,7 @@ interface MarketsViewStyles {
 
 function makeStyles(t: RnTheme): MarketsViewStyles {
   return StyleSheet.create({
-    scroll: { flex: 1, backgroundColor: t.bgPrimary },
+    scroll: { flex: 1 },
     content: { gap: 16, paddingVertical: 12 },
     section: { gap: 6 },
     heading: {

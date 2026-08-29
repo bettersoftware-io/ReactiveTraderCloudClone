@@ -95,7 +95,7 @@ function makeStyles(t: RnTheme): InstrumentCardStyles {
     card: {
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderPrimary,
       backgroundColor: t.bgTile,
       paddingTop: 11,
       paddingHorizontal: 13,

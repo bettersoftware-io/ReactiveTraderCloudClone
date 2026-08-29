@@ -1,13 +1,11 @@
 import type { JSX } from "react";
 import { useState } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { BlottersView } from "#/ui/equities/blotters/BlottersView";
 import { EquitiesNav, type EquitiesView } from "#/ui/equities/EquitiesNav";
 import { MarketsView } from "#/ui/equities/markets/MarketsView";
 import { TradeView } from "#/ui/equities/trade/TradeView";
-import type { RnTheme } from "#/ui/theme/tokens";
-import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The Equities tab: a segmented control over Markets / Trade / Blotters. The
  * selected symbol is lifted here; selecting an instrument in Markets jumps to
@@ -15,7 +13,6 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 export function EquitiesScreen(): JSX.Element {
   const [view, setView] = useState<EquitiesView>("markets");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const styles = useThemedStyles(makeStyles);
 
   function selectFromMarkets(symbol: string): void {
     setSelectedSymbol(symbol);
@@ -42,12 +39,8 @@ export function EquitiesScreen(): JSX.Element {
   );
 }
 
-interface EquitiesScreenStyles {
-  screen: ViewStyle;
-}
-
-function makeStyles(t: RnTheme): EquitiesScreenStyles {
-  return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: t.bgPrimary },
-  });
-}
+const styles = StyleSheet.create({
+  // No background: the module body is transparent so the shell's ambient HUD
+  // grid shows through, as the mobile-v1 design has it on every screen.
+  screen: { flex: 1 },
+});

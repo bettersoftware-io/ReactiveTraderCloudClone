@@ -123,7 +123,7 @@ function makeStyles(t: RnTheme): MoversRowStyles {
     alignItems: "center",
     gap: SPACING.sm,
     borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: t.borderSubtle,
     backgroundColor: t.bgTile,
     paddingHorizontal: SPACING.md,
@@ -143,10 +143,10 @@ function makeStyles(t: RnTheme): MoversRowStyles {
 
   return StyleSheet.create({
     row: baseRow,
-    // The selected ring, matching `SectorHeatmap`'s `cellActive` (the rest
-    // of this module's selected-row indicator): a solid `accentPrimary`
-    // border replacing the hairline.
-    rowSelected: { ...baseRow, borderColor: t.accentPrimary, borderWidth: 1 },
+    // The selected ring — the design's `style-active="border-color:
+    // var(--border-strong)"` (dc.html:340): the same 1px rule, stepped up to
+    // `borderStrong` rather than the accent.
+    rowSelected: { ...baseRow, borderColor: t.borderStrong },
     rank: {
       width: 20,
       fontSize: 9,
