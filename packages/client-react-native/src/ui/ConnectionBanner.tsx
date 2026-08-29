@@ -17,16 +17,23 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Connection status banner with a Reconnect button — the sole recovery path
  * out of an idle/offline/disconnected socket (button-only, per the
- * `useReconnect` command's provenance comment on the ViewModel). */
-export function ConnectionBanner(): JSX.Element {
+ * `useReconnect` command's provenance comment on the ViewModel).
+ *
+ * Renders NOTHING while CONNECTED: the mobile-v1 design has no `● Live` row
+ * under the header — the header's own connection dot carries that state —
+ * so the banner exists only for the states a trader must notice (connecting,
+ * or any of the disconnected variants, where it also carries Reconnect). */
+export function ConnectionBanner(): JSX.Element | null {
   const { useConnectionStatus, useReconnect } = useViewModel();
   const status = useConnectionStatus();
   const reconnect = useReconnect();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const showReconnect =
-    status !== ConnectionStatus.CONNECTED &&
-    status !== ConnectionStatus.CONNECTING;
+  const showReconnect = status !== ConnectionStatus.CONNECTING;
+
+  if (status === ConnectionStatus.CONNECTED) {
+    return null;
+  }
 
   return (
     <View style={styles.banner}>
@@ -50,6 +57,8 @@ export function ConnectionBanner(): JSX.Element {
   );
 }
 
+/** Per-status copy. `CONNECTED` is listed for the Record's completeness only —
+ * the banner returns before it could be read. */
 const LABEL: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting…",
   [ConnectionStatus.CONNECTED]: "Live",

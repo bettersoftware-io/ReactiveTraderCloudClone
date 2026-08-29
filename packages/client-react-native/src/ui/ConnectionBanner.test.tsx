@@ -8,13 +8,24 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
-test("colours the status dot statusConnected when connected", async () => {
+test("renders nothing when connected — the header dot carries that state", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.CONNECTED)}>
       <ConnectionBanner />
     </ViewModelProvider>,
   );
-  expect(dotColor()).toBe(rnThemeTokens.holo.dark.statusConnected);
+  expect(screen.queryByTestId("connection-dot")).toBeNull();
+  expect(screen.queryByText("Live")).toBeNull();
+  expect(screen.queryByText("Reconnect")).toBeNull();
+});
+
+test("colours the status dot statusConnecting while connecting", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.CONNECTING)}>
+      <ConnectionBanner />
+    </ViewModelProvider>,
+  );
+  expect(dotColor()).toBe(rnThemeTokens.holo.dark.statusConnecting);
 });
 
 test("colours the status dot statusDisconnected when disconnected (not the connected green)", async () => {
@@ -25,16 +36,6 @@ test("colours the status dot statusDisconnected when disconnected (not the conne
   );
   expect(dotColor()).toBe(rnThemeTokens.holo.dark.statusDisconnected);
   expect(dotColor()).not.toBe(rnThemeTokens.holo.dark.statusConnected);
-});
-
-test("shows Live and hides Reconnect when connected", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.CONNECTED)}>
-      <ConnectionBanner />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByText("Live")).toBeTruthy();
-  expect(screen.queryByText("Reconnect")).toBeNull();
 });
 
 test("shows Connecting… and hides Reconnect while connecting", async () => {

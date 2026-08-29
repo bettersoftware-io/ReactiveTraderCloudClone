@@ -68,13 +68,14 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   the populated list is exactly as deterministic as an empty one would
  *   have been — renamed to match reality rather than forcing an artificial
  *   empty premise.
- * - `shell/connection-banner` — the connection-status pill. The fake's
+ * - `shell/connection-banner` — the connection-status banner. The fake's
  *   `useConnectionStatus` defaults to CONNECTED everywhere (matching what the
- *   old live composition produced for every scenario), so this is the one
- *   scenario that pins a `viewModelOverrides` DISCONNECTED instead — it
- *   exists to capture the banner's full surface INCLUDING its Reconnect
- *   affordance, which only renders when the status is neither CONNECTED nor
- *   CONNECTING.
+ *   old live composition produced for every scenario), under which
+ *   `ConnectionBanner` renders nothing at all (the header dot carries the
+ *   live state, per the design) — so this is the one scenario that pins a
+ *   `viewModelOverrides` DISCONNECTED instead: it exists to capture the
+ *   banner's full surface INCLUDING its Reconnect affordance, which only
+ *   renders when the status is not CONNECTING.
  * A third fixture, `credit/rfq-tiles-empty`, was TRIED and DROPPED: on-device
  * golden verification proved it non-deterministic. `CreditRfqSimulator` emits
  * NEW Live RFQs over time, so the default "No RFQs to display" view is only
@@ -255,14 +256,15 @@ export const SCENARIOS: readonly Scenario[] = [
           mode="light"
           powerSaverLevel="freeze"
           // The fake defaults `useConnectionStatus` to CONNECTED — matching
-          // what the old live composition produced for every scenario — so
-          // this is the one scenario that opts out: it exists to capture the
-          // banner's full surface INCLUDING its Reconnect affordance, which
-          // `ConnectionBanner` only renders when the status is neither
-          // CONNECTED nor CONNECTING. The banner is part of the frame (it sits
-          // between the header and the body in `Chrome`), so the frame with
-          // an empty body IS the scenario; `freeze` stills the header's
-          // connection dot, which pulses while disconnected.
+          // what the old live composition produced for every scenario — under
+          // which `ConnectionBanner` renders NOTHING (the header dot carries
+          // the live state, per the design), so this is the one scenario that
+          // opts out: it exists to capture the banner's full surface INCLUDING
+          // its Reconnect affordance, which only renders when the status is
+          // not CONNECTING. The banner is part of the frame (it sits between
+          // the header and the body in `Chrome` whenever it renders), so the
+          // frame with an empty body IS the scenario; `freeze` stills the
+          // header's connection dot, which pulses while disconnected.
           viewModelOverrides={{
             useConnectionStatus: () => {
               return ConnectionStatus.DISCONNECTED;

@@ -29,7 +29,7 @@ test("pins the requested skin×mode regardless of default preferences", async ()
 
 test("threads viewModelOverrides into the rendered child", async () => {
   // The fake's `useConnectionStatus` defaults to CONNECTED, under which
-  // ConnectionBanner never renders its "Reconnect" affordance — so overriding
+  // ConnectionBanner renders nothing at all — so overriding
   // to DISCONNECTED here (a value that DIFFERS from the default) is what
   // proves the override actually reached the child, rather than the child
   // merely reading its own always-true default.
