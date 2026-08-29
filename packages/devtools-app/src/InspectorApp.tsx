@@ -61,7 +61,11 @@ export function InspectorApp({
 
   useEffect((): (() => void) => {
     if (seededHistoryRef.current !== liveHistory) {
-      liveHistory.record(projectSnapshot(store.getSnapshot()));
+      // getSnapshot() is the coalesced view: it can lag applied state by up
+      // to FRAMES_PER_FLUSH frames, so events applied moments before mount
+      // may not be folded into it yet. clone() folds synchronously, so its
+      // snapshot is exact.
+      liveHistory.record(projectSnapshot(store.clone().getSnapshot()));
       seededHistoryRef.current = liveHistory;
     }
 
