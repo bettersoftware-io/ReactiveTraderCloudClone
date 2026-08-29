@@ -76,6 +76,11 @@ export function ContextPane({
             onSelect={setTab}
           />
         ) : null}
+        {pinned && model.selection.mode === "pinned" ? (
+          <span data-testid="state-at-seq" className={styles.atSeq}>
+            {`@ seq ${model.selection.seq}`}
+          </span>
+        ) : null}
       </nav>
       <div className={styles.body}>
         {activeTab === "machine" && contextMachine !== null ? (

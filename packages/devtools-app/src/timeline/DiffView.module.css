@@ -25,15 +25,15 @@
 }
 
 .added {
-  background: color-mix(in srgb, #3fb950 25%, transparent);
+  background: color-mix(in srgb, var(--ok) 25%, transparent);
 }
 
 .removed {
-  background: color-mix(in srgb, #f85149 25%, transparent);
+  background: color-mix(in srgb, var(--danger) 25%, transparent);
 }
 
 .changed {
-  background: color-mix(in srgb, #d29922 25%, transparent);
+  background: color-mix(in srgb, var(--warn) 25%, transparent);
 }
 
 .arrow {

@@ -314,6 +314,7 @@ export const TESTIDS = {
     navNode: "nav-node",
     clearLog: "clear-log",
     unclearLog: "unclear-log",
+    stateAtSeq: "state-at-seq",
   },
   /**
    * The full-screen boot splash (BootSequence), mounted by BootGate OUTSIDE

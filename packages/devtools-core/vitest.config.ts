@@ -13,6 +13,10 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
+      // Same bar as the two web clients' ui:contract gates (ci.yml). Branches
+      // at 85 for the same reason solid sits at 85: v8 counts every `?.` and
+      // `??` as a branch pair, inflating the denominator on defensive code.
+      thresholds: { statements: 95, lines: 95, functions: 95, branches: 85 },
     },
   },
 });

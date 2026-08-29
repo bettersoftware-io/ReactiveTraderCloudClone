@@ -94,10 +94,12 @@ test.describe("DevTools inspector (same-origin)", () => {
     // Timeline pin-and-inspect journey: pin the newest row (ArrowUp — the
     // deterministic way to grab a moment out of a live tail), confirm the
     // inspector freezes at that moment, and Esc resumes the live tail.
-    await devtools.pinLatestTimelineRow(ctx);
+    const pinnedSeq = await devtools.pinLatestTimelineRow(ctx);
     await devtools.expectPinnedBar(ctx);
+    await devtools.waitStateAtSeq(ctx, pinnedSeq, 5_000);
     await devtools.resumeViaEscape(ctx);
     await devtools.expectNoPinnedBar(ctx);
+    await devtools.waitStateLive(ctx, 5_000);
 
     // Clear (spec §5): everything before now is hidden; the list refills
     // with strictly newer rows and Unclear is offered.

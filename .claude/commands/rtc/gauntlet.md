@@ -78,6 +78,8 @@ pnpm check:lint-warnings-drift                              # re-runs ESLint; sl
 pnpm lint:eslint:types                                      # type-aware rules
 pnpm --filter @rtc/client-react test:ui:contract:coverage   # ≥95%
 pnpm --filter @rtc/client-solid test:ui:contract:coverage   # ≥95%, branches ≥85%
+pnpm --filter @rtc/devtools-core test:coverage               # ≥95%, branches ≥85%
+pnpm --filter @rtc/devtools-app test:coverage                # ≥95%, branches ≥85%
 pnpm build
 pnpm check:devtools-dist                                    # REQUIRES the build above
 ```

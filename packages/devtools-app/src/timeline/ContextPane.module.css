@@ -30,6 +30,13 @@
   color: var(--accent);
 }
 
+.atSeq {
+  margin-left: auto;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 .body {
   flex: 1;
   overflow-y: auto;

@@ -144,7 +144,7 @@ function PaneHeader({ model, searchInputRef }: PaneHeaderProps): ReactElement {
           title="Clear radius filter"
           onClick={model.clearRadius}
         >
-          {`±${model.filter.radius.windowMs}ms ✕`}
+          {`±${model.filter.radius.windowMs}ms @ ${formatLogTime(model.filter.radius.centerTs)} ✕`}
         </button>
       ) : null}
       <button
@@ -193,7 +193,11 @@ function PinnedBar({
   }
 
   return (
-    <div className={styles.pinnedBar} data-testid="pinned-bar">
+    <div
+      className={styles.pinnedBar}
+      data-testid="pinned-bar"
+      data-seq={pinnedSeq}
+    >
       <span
         className={styles.pinnedLabel}
       >{`⏸ ${pinnedLabel(model, pinnedSeq)}`}</span>

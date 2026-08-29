@@ -128,14 +128,14 @@ export class PlaywrightInspector implements InspectorPO {
       .toBeGreaterThan(watermark);
   }
 
-  async pinLatestTimelineRow(timeoutMs: number): Promise<void> {
+  async pinLatestTimelineRow(timeoutMs: number): Promise<number> {
     // ArrowUp from follow mode pins the tail row atomically in state — no
     // element to click, so nothing to race the ~15 Hz repaint/auto-scroll.
     // Guard: the shortcut is a no-op on an empty timeline, so first wait for
     // a row to exist (attachment only — no stability/viewport requirement).
     await this.page()
       .getByTestId(TESTIDS.devtools.timelineRow)
-      .first()
+      .last()
       .waitFor({ state: "attached", timeout: timeoutMs });
     // Blur whatever is currently focused first: ArrowUp is one of the keys
     // the tree owns while a node button has focus (InspectorApp.tsx's
@@ -148,6 +148,26 @@ export class PlaywrightInspector implements InspectorPO {
       (document.activeElement as HTMLElement | null)?.blur();
     });
     await this.page().keyboard.press("ArrowUp");
+
+    // Read the seq ArrowUp actually pinned from the TIMELINE's own pinned
+    // bar (`data-seq`, set from `pinnedSeq` in TimelinePane.tsx), AFTER the
+    // pin lands — not the timeline's tail row before it, and deliberately
+    // NOT the ContextPane's `state-at-seq` badge under test: reading that
+    // badge here and then asserting against it in `waitStateAtSeq` would
+    // make the e2e circular (it would prove only that the badge agrees with
+    // itself, never that it names the row that was actually pinned). The
+    // pinned bar is an independent source for the same seq.
+    //
+    // Reading post-pin (not pre-read off the timeline's tail row) still
+    // matters: under a live ~15 Hz stream, several more rows can land
+    // between reading a "latest" row and the keypress actually landing, so
+    // a pre-read seq is frequently stale by the time the selection freezes
+    // (observed racing by double digits in practice).
+    const pinnedBar = this.page().getByTestId(TESTIDS.devtools.pinnedBar);
+
+    await expect(pinnedBar).toBeVisible({ timeout: timeoutMs });
+
+    return Number(await pinnedBar.getAttribute("data-seq"));
   }
 
   async waitPinnedBar(timeoutMs: number): Promise<void> {
@@ -160,6 +180,18 @@ export class PlaywrightInspector implements InspectorPO {
     await expect(
       this.page().getByTestId(TESTIDS.devtools.pinnedBar),
     ).toBeHidden({ timeout: timeoutMs });
+  }
+
+  async waitStateAtSeq(seq: number, timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.devtools.stateAtSeq),
+    ).toHaveText(`@ seq ${seq}`, { timeout: timeoutMs });
+  }
+
+  async waitStateLive(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.devtools.stateAtSeq),
+    ).toHaveCount(0, { timeout: timeoutMs });
   }
 
   async resumeViaEscape(): Promise<void> {

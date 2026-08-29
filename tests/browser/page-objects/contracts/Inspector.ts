@@ -49,12 +49,25 @@ export interface InspectorPO {
    *  at the RTL tier (TimelinePane.test.tsx). `timeoutMs` bounds the wait for
    *  a first timeline row to exist before the key is pressed. ArrowUp is one
    *  of the keys the tree owns while a node button has focus; blur first so
-   *  the global step shortcut sees it. */
-  pinLatestTimelineRow(timeoutMs: number): Promise<void>;
+   *  the global step shortcut sees it. Returns the pinned row's `data-seq`,
+   *  read from the timeline's own pinned bar AFTER the pin lands — not
+   *  pre-read off the timeline's tail row (which can go stale under a live
+   *  stream between the read and the keypress), and deliberately NOT the
+   *  context pane's `state-at-seq` badge (that would make the caller's
+   *  assertion against that same badge circular). The pinned bar is an
+   *  independent source naming the same seq, so the caller can assert the
+   *  context pane badge agrees with it. */
+  pinLatestTimelineRow(timeoutMs: number): Promise<number>;
   /** Wait until the pinned-moment bar is visible (a pin is active). */
   waitPinnedBar(timeoutMs: number): Promise<void>;
   /** Wait until the pinned-moment bar is gone (back to following live). */
   waitNoPinnedBar(timeoutMs: number): Promise<void>;
+  /** Wait until the context pane's header names the pinned moment as
+   *  `@ seq ${seq}` (`TESTIDS.devtools.stateAtSeq`). */
+  waitStateAtSeq(seq: number, timeoutMs: number): Promise<void>;
+  /** Wait until the context pane's pinned-seq badge is gone (back to
+   *  following live — the badge only renders while pinned). */
+  waitStateLive(timeoutMs: number): Promise<void>;
   /** Press Escape on the inspector page, the keyboard shortcut that resumes
    *  from a pinned moment back to the live tail. */
   resumeViaEscape(): Promise<void>;

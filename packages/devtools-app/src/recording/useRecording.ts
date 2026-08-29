@@ -11,7 +11,7 @@ import {
 
 import { downloadRecording } from "#/recording/downloadRecording";
 
-interface ImportedRecording {
+export interface ImportedRecording {
   history: LiveHistory;
   /** Full fold incl. log — timeline rows + "present" for the import. */
   state: InspectorState;
@@ -109,9 +109,8 @@ export function useRecording(
   }
 
   async function importRecording(file: File): Promise<void> {
-    const text = await file.text();
-
     try {
+      const text = await file.text();
       const rec = parseRecording(text);
       const importedHistory = LiveHistory.fromRecording(rec);
       const foldStore = new InspectorStore({ coalesce: false });

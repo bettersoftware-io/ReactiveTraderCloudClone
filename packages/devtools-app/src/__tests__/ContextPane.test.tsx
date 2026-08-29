@@ -67,6 +67,24 @@ test("diff tab shows leaf changes vs the predecessor", () => {
   expect(screen.getByText("changed")).toBeTruthy();
 });
 
+test("a pinned moment is named in the context pane header and the badge leaves on resume", () => {
+  const harness = mount();
+
+  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 2));
+  });
+  expect(screen.getByTestId("state-at-seq").textContent).toBe(
+    `@ seq ${rowAt(harness.log, 2).seq}`,
+  );
+
+  act(() => {
+    harness.resume();
+  });
+  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+});
+
 test("resuming from a pinned Diff selection clears the stale tab highlight", () => {
   const harness = mount();
 
@@ -232,6 +250,31 @@ test("a reconstruction that throws renders the failure, not a blank pane", () =>
 
   expect(
     screen.getByText("⚠ State reconstruction failed: Error: torn history"),
+  ).toBeTruthy();
+});
+
+test("a reconstruction failure renders the reconstruction-failed card, not a blank pane", () => {
+  vi.spyOn(devtoolsCore.LiveHistory.prototype, "stateAt").mockImplementation(
+    () => {
+      throw new Error("history is corrupt");
+    },
+  );
+  const harness = mount();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 1));
+  });
+
+  expect(
+    screen.getByText(
+      "⚠ State reconstruction failed: Error: history is corrupt",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByTestId("context-tab-diff"));
+  expect(
+    screen.getByText(
+      "⚠ State reconstruction failed: Error: history is corrupt",
+    ),
   ).toBeTruthy();
 });
 

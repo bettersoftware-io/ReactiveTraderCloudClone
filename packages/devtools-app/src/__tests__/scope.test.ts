@@ -153,6 +153,16 @@ test("labels: streamLeafLabel and shortLabel per scope", () => {
   expect(shortLabel(id, { kind: "wire" })).toBe(id);
 });
 
+test("stream labels fall back per arg shape: nested array, string-less object, null, primitive, multi-arg join", () => {
+  expect(streamLeafLabel('fx.price[[["EURUSD","GBPUSD"]]]')).toContain(
+    "EURUSD, GBPUSD",
+  );
+  expect(streamLeafLabel('fx.price[[{"count":5}]]')).toContain('{"count":5}');
+  expect(streamLeafLabel("fx.price[[null]]")).toContain("null");
+  expect(streamLeafLabel("fx.price[[42]]")).toContain("42");
+  expect(streamLeafLabel('fx.price[["EURUSD",7]]')).toContain("EURUSD, 7");
+});
+
 function stateWith(): InspectorState {
   return {
     connected: true,

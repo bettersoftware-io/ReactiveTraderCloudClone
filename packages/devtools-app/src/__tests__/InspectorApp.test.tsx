@@ -18,6 +18,7 @@ import {
 } from "@rtc/devtools-core";
 
 import { InspectorApp } from "#/InspectorApp";
+import { formatLogTime } from "#/panels/formatLogTime";
 
 afterEach(cleanup);
 afterEach(() => {
@@ -108,10 +109,12 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
     }),
   );
   expect(navNode("all").dataset.selected).toBe("true");
-  expect(screen.getByText("±100ms ✕")).toBeTruthy();
+  expect(
+    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
+  ).toBeTruthy();
   fireEvent.keyDown(window, { key: "Escape" });
   expect(navNode("presenter:fx").dataset.selected).toBe("true");
-  expect(screen.queryByText("±100ms ✕")).toBeNull();
+  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
   expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
 
   fireEvent.keyDown(window, { key: "Escape" });
@@ -174,10 +177,12 @@ test("wire probe from All strands no radius on Escape — pin survives, scope st
     }),
   );
   expect(navNode("all").dataset.selected).toBe("true");
-  expect(screen.getByText("±100ms ✕")).toBeTruthy();
+  expect(
+    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
+  ).toBeTruthy();
 
   fireEvent.keyDown(window, { key: "Escape" });
-  expect(screen.queryByText("±100ms ✕")).toBeNull();
+  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
   expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
   expect(navNode("all").dataset.selected).toBe("true");
 
@@ -492,6 +497,37 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   expect(screen.getAllByTestId("timeline-row").length).toBe(3);
 });
 
+test("an imported recording names itself in the connection badge instead of 'disconnected'", async () => {
+  // jsdom lacks a real WAAPI; StateTreePanel's change-flash calls it.
+  Element.prototype.animate = vi.fn(() => {
+    return { cancel: () => {} };
+  }) as unknown as typeof Element.prototype.animate;
+
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  const file = new File([serializeRecording(sampleRecording())], "r.json", {
+    type: "application/json",
+  });
+
+  fireEvent.change(screen.getByTestId("import"), {
+    target: { files: [file] },
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("connection-badge").textContent).toBe(
+      "recording · imported-app",
+    );
+  });
+
+  fireEvent.click(screen.getByTestId("back-to-live"));
+  await waitFor(() => {
+    expect(screen.getByTestId("connection-badge").textContent).not.toBe(
+      "recording · imported-app",
+    );
+  });
+});
+
 test("liveHistory seeds pre-mount store state — a pinned row reconstructs a machine that only ever existed before mount", () => {
   const store = new InspectorStore({ coalesce: false });
 
@@ -638,6 +674,10 @@ function sampleRecording(): Recording {
     ],
   };
 }
+
+// The row the wire-probe journeys pin before probing: seq 1 of
+// emissionBatches() below, ts 1000 + 1.
+const PROBED_ROW_TS = 1001;
 
 function emissionBatches(): readonly AppToInspector[] {
   const frames: AppToInspector[] = [];

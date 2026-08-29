@@ -7,7 +7,7 @@ name: Coverage Report
 #      with collapsible per-file diff snippets). Readable on mobile web from the
 #      run's Summary page.
 #   2. The FULL istanbul HTML report (colored, click-through, file-by-file) for
-#      all eight tiers, published to GitHub Pages at a stable URL you can open
+#      all ten tiers, published to GitHub Pages at a stable URL you can open
 #      and browse immediately on any device — no download, no unzip. The repo is
 #      public, so the report (which shows source lines) leaks nothing new.
 #
@@ -124,6 +124,22 @@ jobs:
           --reporter=default --reporter=json
           --outputFile.json=reports/unit/test-results.json
 
+      - name: Coverage — devtools-core
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/devtools-core exec vitest run --coverage
+          --coverage.reporter=json --coverage.reporter=html
+          --reporter=default --reporter=json
+          --outputFile.json=reports/unit/test-results.json
+
+      - name: Coverage — devtools-app
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/devtools-app exec vitest run --coverage
+          --coverage.reporter=json --coverage.reporter=html
+          --reporter=default --reporter=json
+          --outputFile.json=reports/unit/test-results.json
+
       - name: Coverage — client app
         continue-on-error: true
         run: >
@@ -191,7 +207,7 @@ jobs:
       - name: Render report to job summary
         run: pnpm --filter @rtc/tests coverage:report
 
-      # Stitch the eight tiers' istanbul HTML into one Pages site with a landing
+      # Stitch the ten tiers' istanbul HTML into one Pages site with a landing
       # index. Tiers that fell over (continue-on-error) simply produce no html dir
       # and are listed as "not generated" rather than breaking the build.
       - name: Assemble Pages site
@@ -212,6 +228,8 @@ jobs:
           tiers=(
             "domain|domain|packages/domain/reports/unit/coverage"
             "server|server|packages/server/reports/unit/coverage"
+            "devtools/core|devtools-core|packages/devtools-core/reports/unit/coverage"
+            "devtools/app|devtools-app|packages/devtools-app/reports/unit/coverage"
             "react/app|client-app|packages/client-react/reports/app/coverage"
             "react/ui (contract)|ui-contract|packages/client-react/reports/ui/contract/coverage"
             "react/ui (visual reach)|ui-visual|packages/client-react/reports/ui/visual/coverage"
