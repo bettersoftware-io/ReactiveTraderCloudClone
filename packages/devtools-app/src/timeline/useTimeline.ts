@@ -80,6 +80,22 @@ export function useTimeline(
   const [userFilter, setUserFilter] = useState<UserFilter>(EMPTY_USER_FILTER);
   const [tailAttached, setTailAttached] = useState(true);
 
+  // Declaration ORDER here is load-bearing for React Compiler memoization,
+  // not cosmetic. The compiler merges a value's reactive scope with every
+  // plain (non-function-expression) expression that reads it, and the merged
+  // scope is keyed on the UNION of their dependencies. `pinnedRowHidden`
+  // reads `rows`, so whatever sits between them is dragged into `rows`'
+  // cache key — and `filterLog` is the one O(n) pass over a log that caps at
+  // 5000 rows. Hoisting the selection-derived values ABOVE the filter keeps
+  // `selection.mode`/`selection.row` out of that key (only the scalar
+  // `pinnedSeq` survives) and leaves `selectedRow`, `pinnedRowEvicted`,
+  // `pinnedBeforeClear`, `agedOut` and `reconstruction` in their own tight
+  // scopes instead of one fused block. Measured with
+  // `pnpm check:compiler`; re-measure before reordering.
+  const pinnedSeq = selection.mode === "pinned" ? selection.seq : null;
+  const selectedRow = selection.mode === "pinned" ? selection.row : null;
+  const pinnedRowEvicted = pinnedSeq !== null && !hasSeq(log, pinnedSeq);
+
   const filter: TimelineFilter = {
     ...EMPTY_TIMELINE_FILTER,
     ...compileScope(scope, presentState),
@@ -87,9 +103,6 @@ export function useTimeline(
   };
   const rows = filterLog(log, filter);
 
-  const pinnedSeq = selection.mode === "pinned" ? selection.seq : null;
-  const selectedRow = selection.mode === "pinned" ? selection.row : null;
-  const pinnedRowEvicted = pinnedSeq !== null && !hasSeq(log, pinnedSeq);
   const pinnedRowHidden = pinnedSeq !== null && !hasSeq(rows, pinnedSeq);
   const pinnedBeforeClear =
     pinnedSeq !== null && pinnedSeq <= userFilter.clearedBeforeSeq;
