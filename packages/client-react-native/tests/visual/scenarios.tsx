@@ -1,7 +1,8 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { ReactNode } from "react";
 
-import { ConnectionStatus } from "@rtc/domain";
+import { type BootVariant, ConnectionStatus } from "@rtc/domain";
+import type { ViewModel } from "@rtc/react-bindings";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { CreditNav } from "#/ui/credit/CreditNav";
@@ -11,20 +12,11 @@ import { MarketsView } from "#/ui/equities/markets/MarketsView";
 import { TradeView } from "#/ui/equities/trade/TradeView";
 import { RatesModule } from "#/ui/rates/RatesModule";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
-import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
-import { CoreScene } from "#/ui/shell/boot/scenes/CoreScene";
-import { DockingScene } from "#/ui/shell/boot/scenes/DockingScene";
-import { GeoScene } from "#/ui/shell/boot/scenes/GeoScene";
-import { HologramScene } from "#/ui/shell/boot/scenes/HologramScene";
-import { JarvisScene } from "#/ui/shell/boot/scenes/JarvisScene";
-import { LaserScene } from "#/ui/shell/boot/scenes/LaserScene";
-import { LayersScene } from "#/ui/shell/boot/scenes/LayersScene";
-import { TopoScene } from "#/ui/shell/boot/scenes/TopoScene";
 
 import type { Scenario } from "./driver";
 import {
   AnalyticsDashboardFixture,
-  BootSceneFixture,
+  BootSequenceFixture,
   CreditRfqTilesFixture,
   CreditSellSideFixture,
   LockHoldFixture,
@@ -48,19 +40,23 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * real `rxjs timer` regardless of motion settings — mounting either live
  * would race the capture exactly like the dropped `credit/rfq-tiles-empty`
  * fixture below, just with a canvas/percentage instead of a cascading list.
- * `boot/core` and `boot/laser` sidestep this by never mounting `BootCanvas`
- * or `BootSequence` at all: each renders its `CoreScene`/`LaserScene` leaf
- * directly inside a bare `<Canvas>` (`BootSceneFixture` in `./fixtures.tsx` —
- * split out of this file so Biome's `useComponentExportOnlyModules` doesn't
- * collide with `SCENARIOS`/`getScenario` below, which aren't components),
- * fed a `useSharedValue` pinned to one fixed `elapsedSec` instead of the live
- * frame callback, and a `useGyroDrift` built with `enabled=false` so the
- * pointer stays centred (it never subscribes to the device gyroscope either
- * way). `boot/static` avoids the same free-running progress ramp by not
- * mounting `BootSequence` either — see its own comment below. `lock/hold`
- * (`LockHoldFixture`, same file) uses the same pin-a-fixed-value idiom for
- * the ring's `progress` `SharedValue`, in place of a live `useHoldToUnlock`
- * gesture that only moves while actually held.
+ * Every `boot/*` scenario mounts the REAL `BootSequence` (`BootSequenceFixture`
+ * in `./fixtures.tsx` — split out of this file so Biome's
+ * `useComponentExportOnlyModules` doesn't collide with `SCENARIOS`/
+ * `getScenario` below, which aren't components) with both clocks pinned:
+ * `useBootSequence` is replaced through `viewModelOverrides` by a literal
+ * `{ variant, progress }` (`pinnedBootSequence` at the bottom of this file),
+ * and `BootClockContext` hands `BootCanvas` one fixed `elapsedSec` (+ the
+ * wall clock `topo` prints) so the frame callback is never started and the
+ * gyroscope never subscribed. Until 2026-08-29 they mounted a bare `<Canvas>`
+ * with the scene leaf instead, on the reasoning that `BootSequence` could
+ * not be pinned — true before the fake ViewModel existed, and false since;
+ * the cost was that the boot chrome (wordmark, `SEQUENCE ·` tag, progress,
+ * SKIP) was never in any golden, and the prototype pairs in
+ * `docs/design/mobile/v1/reference-shots/DRIFT.md` under-reported the drift.
+ * `lock/hold` (`LockHoldFixture`, same file) uses the same pin-a-fixed-value
+ * idiom for the ring's `progress` `SharedValue`, in place of a live
+ * `useHoldToUnlock` gesture that only moves while actually held.
  *
  * - `blotter/seeded` — the Blotter tab on sim ports. On-device capture
  *   (rehaul Phase 1 driver-tier verification) found this is NOT empty:
@@ -146,13 +142,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * its data as a prop and the simulator would only add noise.
  *
  * - `boot/core` / `boot/laser` — the two Phase 6a boot scenes, each pinned to
- *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSceneFixture`. **Their
- *   Phase 6a goldens are now stale by design**: Phase 6b-1 backfilled `core`
- *   to all 12 of the web's elements (7 deferred layers + the whole-frame holo
- *   flicker) and `laser` from border-trace-only to the full web draw, so both
- *   scenes paint materially more than the goldens on `main` show. Treat a
- *   diff against the pre-6b-1 goldens as an EXPECTED recapture, not a
- *   regression — Task 11 (on-device) is where they get re-pinned.
+ *   `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` via `BootSequenceFixture`.
  * - `boot/docking` — Phase 6b-1's third scene (the "escort craft lock-on" HUD,
  *   the last boot scene needing no `project3d` camera kernel), pinned to the
  *   SAME shared `BOOT_SCENE_ELAPSED_SEC` as `core`/`laser` above rather than a
@@ -161,12 +151,12 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   non-degenerate frame — so there was no need to add the second pinned
  *   constant the plan allows for (which would only be worth the churn if this
  *   scene read blank or degenerate at the shared instant).
- * - `boot/static` — the reduced-motion/Freeze fallback: `BootEmblem` alone,
- *   the only thing `BootSequence` paints once `BootCanvas` is gated off (no
- *   wordmark/progress chrome here — that lives inside the real
- *   `BootSequenceMachine`, whose live progress ramp is exactly the
- *   non-determinism this fixture exists to avoid). **Pinned with
- *   `powerSaverLevel="freeze"`, and that is load-bearing (T16/T33).**
+ * - `boot/static` — the reduced-motion/Freeze fallback: the same
+ *   `BootSequenceFixture` under Freeze, so `BootCanvas` gates itself off and
+ *   `BootSequence` paints `BootEmblem` in its place, under the same chrome.
+ *   (It was `BootEmblem` alone until 2026-08-29, for the obsolete reason
+ *   above.) **Pinned with `powerSaverLevel="freeze"`, and that is
+ *   load-bearing (T16/T33).**
  *   `BootEmblem` runs a 900 ms opacity pulse; it used to gate only on
  *   `AccessibilityInfo.isReduceMotionEnabled()`, an OS-level signal the
  *   harness has no authority over, so this was the one scenario capturing a
@@ -326,102 +316,14 @@ export const SCENARIOS: readonly Scenario[] = [
       );
     },
   },
-  {
-    id: "boot/core",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={CoreScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/laser",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={LaserScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/docking",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={DockingScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/hologram",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={HologramScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/layers",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={LayersScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/geo",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={GeoScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/jarvis",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={JarvisScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
-  {
-    id: "boot/topo",
-    skin: "holo3d",
-    mode: "dark",
-    build: (): ReactNode => {
-      return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
-          <BootSceneFixture Scene={TopoScene} />
-        </VisualScenarioHost>
-      );
-    },
-  },
+  bootScenario("core"),
+  bootScenario("laser"),
+  bootScenario("docking"),
+  bootScenario("hologram"),
+  bootScenario("layers"),
+  bootScenario("geo"),
+  bootScenario("jarvis"),
+  bootScenario("topo"),
   {
     // T6: the Rates grid — the app's busiest screen, and until the pricing pin
     // existed it had no scenario at all, because every cell moved twice over
@@ -453,8 +355,13 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo" mode="dark" powerSaverLevel="freeze">
-          <BootEmblem />
+        <VisualScenarioHost
+          skin="holo"
+          mode="dark"
+          powerSaverLevel="freeze"
+          viewModelOverrides={pinnedBootSequence("core")}
+        >
+          <BootSequenceFixture />
         </VisualScenarioHost>
       );
     },
@@ -641,3 +548,54 @@ export function getScenario(id: string): Scenario | undefined {
  * keeps `TradeView` out of its unselected "Select an instrument…" empty
  * state. */
 const PINNED_EQUITY_SYMBOL = "AAPL";
+
+/**
+ * One `boot/<variant>` scenario: the real `BootSequence` (`BootSequenceFixture`)
+ * with the machine pinned to that variant at `BOOT_PROGRESS_PCT`. Power-saver
+ * stays `off` and reduce-motion is the simulator's own (off), so
+ * `useBootMotionEnabled` is true and `BootCanvas` draws the scene — the
+ * pinned `BootClockContext` inside the fixture is what keeps it still.
+ * `boot/static` is the same fixture under Freeze, written out below because
+ * it differs in skin and power-saver.
+ */
+function bootScenario(variant: BootVariant): Scenario {
+  return {
+    id: `boot/${variant}`,
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          viewModelOverrides={pinnedBootSequence(variant)}
+        >
+          <BootSequenceFixture />
+        </VisualScenarioHost>
+      );
+    },
+  };
+}
+
+/** Pins `useBootSequence` to one variant at one progress, in place of the
+ * live `BootSequenceMachine` whose ramp ticks off a real `rxjs timer`. */
+function pinnedBootSequence(variant: BootVariant): Partial<ViewModel> {
+  const bootSequence: PinnedBootSequence = {
+    state: { variant, progress: BOOT_PROGRESS_PCT, done: false },
+    skip: (): void => {},
+  };
+
+  return {
+    useBootSequence: (): PinnedBootSequence => {
+      return bootSequence;
+    },
+  };
+}
+
+type PinnedBootSequence = ReturnType<ViewModel["useBootSequence"]>;
+
+/** The progress the chrome shows, chosen to AGREE with the scene instant:
+ * `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` (2.52 s) is 60% of
+ * `BOOT_DURATION_MS` (4200 ms), so the bar and the canvas read as one moment
+ * of the same boot rather than two unrelated pins. */
+const BOOT_PROGRESS_PCT = 60;

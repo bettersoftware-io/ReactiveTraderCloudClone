@@ -135,7 +135,8 @@ export function VisualScenarioHost({
  * cannot be inline in `VisualScenarioHost`'s own tree.
  *
  * WHY IT PAINTS A BACKGROUND AT ALL. Every fixture that mounts a LEAF rather
- * than a screen — `BootSceneFixture` (a bare `<Canvas>`), `LockHoldFixture`
+ * than a screen — `BootSceneFixture` (a bare `<Canvas>`, since replaced by
+ * the full-screen `BootSequenceFixture`), `LockHoldFixture`
  * (the ring alone), `AnalyticsDashboardFixture` (the cards alone) — leaves
  * behind whatever the harness root is, and RN's default is white. The real
  * app never shows that: `BootSequence` and `LockScreen` both paint

@@ -1,13 +1,14 @@
 // packages/client-react-native/src/ui/shell/boot/BootCanvas.tsx
 import { Canvas } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
 import type { FrameInfo } from "react-native-reanimated";
 import { useFrameCallback, useSharedValue } from "react-native-reanimated";
 
 import type { BootVariant } from "@rtc/domain";
 
+import { BootClockContext } from "#/ui/shell/boot/BootClockContext";
 import { BOOT_SCENES } from "#/ui/shell/boot/bootScene";
 import { useBootMotionEnabled } from "#/ui/shell/boot/useBootMotionEnabled";
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
@@ -29,12 +30,20 @@ import { useTheme } from "#/ui/theme/useTheme";
  * A missing scene (Tasks 6/7 haven't registered it, or the variant is one of
  * the six deferred to phase 6b) is an expected, silent no-op — never a
  * thrown error or a substituted variant.
+ *
+ * A `BootClockContext` pin (the visual harness; `null` in production) takes
+ * the frame callback's place: the scene reads the pinned `elapsedSec` and
+ * `now`, the callback is never activated, and the gyroscope is never
+ * subscribed — so a golden holds one deterministic frame of the real canvas.
  */
 export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
   const enabled = useBootMotionEnabled();
+  const pin = useContext(BootClockContext);
+  const live = enabled && pin === null;
   const { width, height } = useWindowDimensions();
-  const elapsedSec = useSharedValue(0);
-  const drift = useGyroDrift(enabled);
+  const liveElapsedSec = useSharedValue(0);
+  const elapsedSec = pin?.elapsedSec ?? liveElapsedSec;
+  const drift = useGyroDrift(live);
   // Read the theme HERE, outside the <Canvas> below: Skia's canvas is a
   // separate reconciler React Context can't cross, so scenes take theme as a
   // prop rather than calling useTheme() themselves. See BootSceneProps.theme.
@@ -72,7 +81,7 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
   if (advanceElapsed.current === null) {
     advanceElapsed.current = (frameInfo: FrameInfo): void => {
       "worklet";
-      elapsedSec.value = frameInfo.timeSinceFirstFrame / 1000;
+      liveElapsedSec.value = frameInfo.timeSinceFirstFrame / 1000;
     };
   }
 
@@ -85,12 +94,12 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
   // one also re-trips react-hooks/immutability (two shared-value writes gating
   // the same value across the effect).
   useEffect(() => {
-    frameCallback.setActive(enabled);
+    frameCallback.setActive(live);
 
     return () => {
       frameCallback.setActive(false);
     };
-  }, [enabled, frameCallback]);
+  }, [live, frameCallback]);
 
   if (!enabled) {
     return null;
@@ -114,6 +123,7 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
         width={width}
         height={height}
         theme={theme}
+        now={pin?.now}
       />
     </Canvas>
   );
