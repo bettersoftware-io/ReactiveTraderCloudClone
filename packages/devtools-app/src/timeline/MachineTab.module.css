@@ -1,0 +1,142 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dim);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metaLabel {
+  color: var(--dim);
+}
+
+.metaValue {
+  color: var(--fg);
+}
+
+.sectionTitle {
+  margin: 8px 0 0;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intents {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intent {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* The only interactive element in an intent row — a sibling of the
+ * `ValueView`-rendered args, never their wrapper (see `IntentPinButton`). */
+.intentPin {
+  flex: none;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.intentName {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.intentPin:hover .intentName,
+.intentPin:focus-visible .intentName {
+  text-decoration: underline;
+}
+
+.inject {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.injectButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.injectButton {
+  padding: 2px 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.injectLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.injectArgs {
+  min-height: 44px;
+  padding: 4px 6px;
+  color: var(--fg);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 11px;
+  resize: vertical;
+}
+
+.injectError {
+  margin: 0;
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.injectConfirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.injectConfirmText {
+  color: var(--fg);
+  font-size: 11px;
+}
