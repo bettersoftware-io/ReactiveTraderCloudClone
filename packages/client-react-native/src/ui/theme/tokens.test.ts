@@ -23,7 +23,6 @@ const COLOUR_KEYS: readonly (keyof RnTheme)[] = [
   "accent2",
   "borderPrimary",
   "borderSubtle",
-  "border",
   "borderStrong",
   "statusConnected",
   "statusConnecting",

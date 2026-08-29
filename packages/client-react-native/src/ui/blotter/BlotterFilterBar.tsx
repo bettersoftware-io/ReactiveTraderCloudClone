@@ -130,7 +130,11 @@ function makeStyles(t: RnTheme): BlotterFilterBarStyles {
       paddingBottom: 8,
       alignItems: "center",
     },
-    pill: { ...pill, backgroundColor: "transparent", borderColor: t.border },
+    pill: {
+      ...pill,
+      backgroundColor: "transparent",
+      borderColor: t.borderSubtle,
+    },
     pillActive: {
       ...pill,
       backgroundColor: t.accentPrimary,

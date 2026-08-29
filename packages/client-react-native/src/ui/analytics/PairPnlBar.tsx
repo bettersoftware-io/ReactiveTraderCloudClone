@@ -105,7 +105,7 @@ function makeStyles(t: RnTheme): PairPnlBarStyles {
       left: "50%",
       width: 1,
       height: 12,
-      backgroundColor: t.border,
+      backgroundColor: t.borderSubtle,
     },
     bar: {
       position: "absolute",

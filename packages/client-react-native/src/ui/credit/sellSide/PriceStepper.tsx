@@ -91,7 +91,7 @@ function makeStyles(t: RnTheme): PriceStepperStyles {
       height: 44,
       borderRadius: 9,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       alignItems: "center",
       justifyContent: "center",
     },

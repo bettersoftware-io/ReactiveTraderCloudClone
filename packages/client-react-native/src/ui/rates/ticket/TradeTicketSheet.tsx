@@ -161,7 +161,7 @@ interface TradeTicketSheetStyles {
 
 function makeStyles(t: RnTheme): TradeTicketSheetStyles {
   return StyleSheet.create({
-    handleIndicator: { backgroundColor: t.border },
+    handleIndicator: { backgroundColor: t.borderSubtle },
     body: { padding: 20, paddingBottom: 32, gap: 18 },
     header: { gap: 4 },
     pair: {

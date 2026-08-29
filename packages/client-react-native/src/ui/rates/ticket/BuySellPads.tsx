@@ -117,7 +117,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): BuySellPadsStyles {
       transform: [{ translateX: -20 }, { translateY: -10 }],
       backgroundColor: t.bgHeader,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       borderRadius: 10,
       paddingHorizontal: 8,
       paddingVertical: 2,
@@ -151,7 +151,7 @@ function makePadStyles(
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: t.border,
+    borderColor: t.borderSubtle,
     backgroundColor: t.chip,
   };
 

@@ -73,7 +73,7 @@ function makeStyles(t: RnTheme): RankByChipsStyles {
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.border,
+    borderColor: t.borderSubtle,
   };
 
   return StyleSheet.create({

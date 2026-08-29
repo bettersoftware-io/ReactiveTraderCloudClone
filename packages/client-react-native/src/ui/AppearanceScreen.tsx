@@ -439,7 +439,7 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     borderRadius: 8,
     backgroundColor: t.panel,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.border,
+    borderColor: t.borderSubtle,
   };
 
   return StyleSheet.create({
@@ -469,7 +469,7 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       backgroundColor: t.panel,
       borderRadius: 8,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       padding: 4,
       gap: 4,
     },
@@ -516,7 +516,7 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       borderRadius: 8,
       backgroundColor: t.panel,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
     },
     // The ring is the design's only selection cue (the old check mark is
     // gone), so the active card's border is the one visible difference.

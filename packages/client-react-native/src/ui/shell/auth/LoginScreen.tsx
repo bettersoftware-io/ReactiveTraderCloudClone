@@ -196,7 +196,7 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
     },
     input: {
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       borderRadius: 6,
       padding: 10,
       color: t.textPrimary,

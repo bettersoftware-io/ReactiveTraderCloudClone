@@ -275,7 +275,7 @@ function makeStyles(t: RnTheme): RadialDockStyles {
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       backgroundColor: t.panel,
     },
     satelliteGlyph: { color: t.textSecondary, fontSize: 19 },

@@ -46,7 +46,7 @@ function makeStyles(t: RnTheme): BlotterHeaderStyles {
       paddingHorizontal: 14,
       paddingVertical: 5,
       borderBottomWidth: 1,
-      borderBottomColor: t.border,
+      borderBottomColor: t.borderSubtle,
       backgroundColor: t.panelHead,
     },
     label: {

@@ -53,7 +53,9 @@ export function NotionalControl({
                 styles.chip,
                 {
                   backgroundColor: active ? theme.accentPrimary : theme.chip,
-                  borderColor: active ? theme.accentPrimary : theme.border,
+                  borderColor: active
+                    ? theme.accentPrimary
+                    : theme.borderSubtle,
                 },
               ]}
               onPress={() => {
@@ -128,7 +130,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
       height: 30,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       backgroundColor: t.chip,
       alignItems: "center",
       justifyContent: "center",

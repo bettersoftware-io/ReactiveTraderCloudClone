@@ -33,7 +33,7 @@ export function RateFilterBar({
               styles.pill,
               {
                 backgroundColor: active ? theme.accentPrimary : "transparent",
-                borderColor: active ? theme.accentPrimary : theme.border,
+                borderColor: active ? theme.accentPrimary : theme.borderSubtle,
               },
             ]}
           >
