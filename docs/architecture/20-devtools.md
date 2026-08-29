@@ -38,7 +38,7 @@ Two new packages, following the existing naming and layering conventions
 | Package | Contents | Runtime deps |
 |---|---|---|
 | `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
-| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, timeline-first ([§20.11](#2011-timeline-first-ux-v2)) | `@rtc/devtools-core`, `react`, `react-dom` |
+| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2012-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
 `devtools-core` never imports `@rtc/client-core` — it decorates by
 *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with a
@@ -552,6 +552,8 @@ of a lens switcher and the active lens — **Timeline** is the default and does
 the job the old State + Event log tabs did together; **Machines** and **Wire**
 are unchanged panels, now cross-linked *into* the timeline (a machine's intent
 row or a wire message's `msgType` pill jumps back to Timeline pre-filtered).
+(This rail-plus-lens shell is history, not current: superseded by the
+navigation tree in [§20.12](#2012-store-first-navigation-v3).)
 
 **Pin/follow selection model.** `useTimeline` tracks one
 `TimelineSelection`: `{ mode: "follow" }` (tracking the live tail, the
@@ -611,5 +613,69 @@ so it was removed outright rather than kept "just in case". Its fold-
 equivalence property (a reconstructed `stateAt(k)` is byte-identical to a live
 fold of the same events) is exactly what `LiveHistory` now guarantees, and
 that property's test lives on in `LiveHistory.test.ts`.
+
+### 20.12 Store-first navigation (v3)
+
+Full design: [`2026-08-29-devtools-store-first-navigation-design.md`](../superpowers/specs/2026-08-29-devtools-store-first-navigation-design.md).
+v2 fixed *indexing* (the pinned moment is the unit of navigation); v3 fixes
+*scope*. The rail is now a **navigation tree** with four roots — **All**,
+**Presenters → streams**, **Machines → kind → instance**, **Wire → msgType**
+— and the inspector has one selection, the `Scope`
+(`packages/devtools-app/src/nav/scope.ts`). Redux's mapping: a presenter is
+the store, its streams are the slices, the scoped actions list is that
+store's inputs, and Clear is Commit. The tree root itself carries no
+`tabIndex`: keyboard handling is focus-within — node buttons focus natively
+and keydown bubbles to the tree — rather than an ARIA-tree roving-tabindex
+pattern.
+
+**Scope compiles to the filter.** `useTimeline(log, history, scope, state)`
+calls `compileScope` every render and spreads the result into the
+`TimelineFilter` it already had — `families` and `pills` stopped being user
+state and became compiled output; free text, the ±100 ms radius and the
+Clear watermark remain user state. A presenter scope becomes one `stream`
+pill per member stream; a machine kind becomes one `machine` pill per
+instance. `pills: null` is unconstrained and `[]` matches nothing, so a
+presenter whose streams were evicted cannot silently widen to every stream.
+Stream identity is parsed from the id string by `parseStreamId`
+(`key.prop[JSON-args]`, the `instrumentPresenters` convention) — the one
+helper a future protocol with first-class identity would delete.
+
+**Context pane per scope.** State shows only the selected node's slices
+(the presenter's streams, the single stream, the kind's instances, the
+machine's state); it is disabled under wire scopes ("wire messages carry no
+state"). `≠ live` marks now cover machines. A fourth **Machine** tab
+(`timeline/MachineTab.tsx`) carries what the retired Machines lens's detail
+column had — state, transitions, intent history, the dev-only injector.
+
+**Clear = `clearedBeforeSeq`.** A watermark in the filter (`filterLog` slices
+the seq-sorted log by binary search); every scope's list and every tree
+badge reset, the store and `LiveHistory` are untouched, a moment pinned
+before the clear still reconstructs and says so, and **Unclear** restores the
+rows. A hard reset that drops buffers is deliberately absent.
+
+**Follow is scroll-anchored.** `TimelinePane` auto-scrolls only while the
+pane is at the bottom; scrolling up detaches, a "⤓ live" chip re-attaches,
+and the 500-row render window anchors to the first visible row while
+detached so rows stop remounting under the cursor. That is what made the
+whole row a safe click target — the moving-target race that flaked the e2e
+(PR #325) is gone at the source.
+
+**The pinned row is captured.** `TimelineSelection` carries the `LogRow`
+itself, so the Event and Diff tabs survive the row leaving the 5000-row log;
+the pinned bar says "(evicted from log)" when it has.
+
+**Deviation from v2's lens model.** The Machines and Wire lenses were
+retired into tree branches rather than kept beside the tree: two navigation
+models (a scope tree and lens tabs) would have reproduced the "four
+dashboards" problem the timeline spec diagnosed. The wire lens's health line
+(in/s, out/s, reconnects) lives on the Wire root; its never-shipped
+"last-message age" metric was dropped. The e2e's `presenter:blotter` scoping
+step executes a trade first, because in simulator mode `blotter.*` emits
+only on trades — the spec's "continuous" premise for that stream was wrong.
+The React Compiler healthcheck's `TRACKED` list was re-pointed for the new
+context-pane values (`changedIds`/`visibleStreams` → `changedStreams`/
+`streams`); `rows` was dropped from the list with an in-script justification,
+since the compiler fuses it with neighbouring memoization — extending the
+discriminator to see through that fusion is a parked follow-up.
 
 ---
