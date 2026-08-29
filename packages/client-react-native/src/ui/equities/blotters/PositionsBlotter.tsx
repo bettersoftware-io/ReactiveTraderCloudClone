@@ -11,6 +11,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 import {
   formatSignedCompact,
@@ -102,9 +103,8 @@ function makeStyles(t: RnTheme): PositionsBlotterStyles {
     symbol: {
       textAlign: "left",
       fontSize: 11,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     mono: { fontSize: 9.5, fontFamily: t.fontMono },
     avg: { color: t.textSecondary },

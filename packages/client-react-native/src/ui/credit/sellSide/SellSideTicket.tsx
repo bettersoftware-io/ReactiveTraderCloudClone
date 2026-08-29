@@ -23,6 +23,7 @@ import { PriceStepper } from "#/ui/credit/sellSide/PriceStepper";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** One incoming RFQ as the sell-side desk sees it: the client's ask, a
  * countdown bar, a price stepper and a submit (prototype dc.html:292-303).
@@ -260,9 +261,8 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
     barUrgent: { ...bar, backgroundColor: t.accentNegative },
     instrumentName: {
       fontSize: 13,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     clientLine: {
       fontSize: 9,
@@ -280,10 +280,9 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
     },
     submitLabel: {
       fontSize: 10.5,
-      fontWeight: "700",
       letterSpacing: 2.5,
       color: t.textOnAccent,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     passBtn: { marginTop: 8, alignItems: "center", paddingVertical: 8 },
     passLabel: {

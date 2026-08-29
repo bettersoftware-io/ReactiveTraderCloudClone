@@ -10,6 +10,7 @@ import {
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The mobile-v1 boxed segmented control — the sub-nav the design puts under
  * the header on the Credit and Equities screens: one 1px `--border` frame,
@@ -83,9 +84,8 @@ function makeStyles(t: RnTheme): SegmentedControlStyles {
 
   const label: TextStyle = {
     fontSize: 9,
-    fontWeight: "600",
     letterSpacing: 1.5,
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
   };
 
   return StyleSheet.create({

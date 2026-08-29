@@ -26,6 +26,7 @@ import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The trade ticket, presented as a `@gorhom/bottom-sheet` modal — the real
  * wiring behind the old RN-`Modal` prototype (`../../TradeTicket.tsx`,
@@ -166,9 +167,8 @@ function makeStyles(t: RnTheme): TradeTicketSheetStyles {
     header: { gap: 4 },
     pair: {
       fontSize: 18,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     subtitle: {
       fontSize: 11,

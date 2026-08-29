@@ -5,6 +5,7 @@ import { formatPnlHeadline } from "@rtc/domain";
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function PnlValue({ value }: PnlValueProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
@@ -28,7 +29,7 @@ interface PnlValueStyles {
 
 function makeStyles(t: RnTheme): PnlValueStyles {
   return StyleSheet.create({
-    value: { fontSize: 20, fontWeight: "600", fontFamily: t.fontMono },
+    value: { fontSize: 20, ...weightedFont(t, "mono", "600") },
     pos: { color: t.accentPositive },
     neg: { color: t.accentNegative },
   });

@@ -65,6 +65,15 @@ test("classic uses system fonts; the other skins bind a display + mono family", 
   expect(rnThemeTokens.classic.dark.fontMono).toBeUndefined();
   expect(rnThemeTokens.holo.dark.fontDisplay).toBe("ChakraPetch_500Medium");
   expect(rnThemeTokens.terminal.dark.fontMono).toBe("IBMPlexMono_400Regular");
+  expect(rnThemeTokens.classic.dark.fontMonoWeights).toBeUndefined();
+  expect(rnThemeTokens.holo.dark.fontMonoWeights).toEqual({
+    "600": "JetBrainsMono_600SemiBold",
+    "700": "JetBrainsMono_700Bold",
+  });
+  expect(rnThemeTokens.terminal.light.fontDisplayWeights).toEqual({
+    "600": "IBMPlexSans_600SemiBold",
+    "700": "IBMPlexSans_700Bold",
+  });
 });
 
 test("3d skins are distinct cells from their flat siblings with real depth", () => {

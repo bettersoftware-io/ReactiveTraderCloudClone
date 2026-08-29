@@ -2,9 +2,17 @@ import type { ThemeMode, ThemeSkin } from "@rtc/domain";
 
 import {
   FONT_CHAKRA_DISPLAY,
+  FONT_CHAKRA_DISPLAY_600,
+  FONT_CHAKRA_DISPLAY_700,
   FONT_IBM_MONO,
+  FONT_IBM_MONO_600,
+  FONT_IBM_MONO_700,
   FONT_IBM_SANS,
+  FONT_IBM_SANS_600,
+  FONT_IBM_SANS_700,
   FONT_JETBRAINS_MONO,
+  FONT_JETBRAINS_MONO_600,
+  FONT_JETBRAINS_MONO_700,
 } from "#/ui/theme/fontFamilies";
 
 /**
@@ -51,6 +59,33 @@ export interface DepthTokens {
  * fields hold a bundled family name (or `undefined` = RN system default, for
  * `classic`).
  */
+/** A bundled face's real heavier cuts, keyed by the CSS weight they stand in
+ * for. Consumed via `weightedFont()`. */
+interface FontWeightFamilies {
+  readonly "600": string;
+  readonly "700": string;
+}
+
+const CHAKRA_WEIGHTS: FontWeightFamilies = {
+  "600": FONT_CHAKRA_DISPLAY_600,
+  "700": FONT_CHAKRA_DISPLAY_700,
+};
+
+const JETBRAINS_WEIGHTS: FontWeightFamilies = {
+  "600": FONT_JETBRAINS_MONO_600,
+  "700": FONT_JETBRAINS_MONO_700,
+};
+
+const IBM_SANS_WEIGHTS: FontWeightFamilies = {
+  "600": FONT_IBM_SANS_600,
+  "700": FONT_IBM_SANS_700,
+};
+
+const IBM_MONO_WEIGHTS: FontWeightFamilies = {
+  "600": FONT_IBM_MONO_600,
+  "700": FONT_IBM_MONO_700,
+};
+
 export interface RnTheme {
   readonly bgPrimary: string;
   readonly bgSecondary: string;
@@ -86,8 +121,13 @@ export interface RnTheme {
 
   /** Display font family, or `undefined` for the platform default (classic). */
   readonly fontDisplay: string | undefined;
+  /** The display face's real 600 / 700 cuts, or `undefined` when the face is
+   * the platform default (whose weights are real already). */
+  readonly fontDisplayWeights: FontWeightFamilies | undefined;
   /** Mono font family, or `undefined` for the platform default (classic). */
   readonly fontMono: string | undefined;
+  /** The mono face's real 600 / 700 cuts — see `fontDisplayWeights`. */
+  readonly fontMonoWeights: FontWeightFamilies | undefined;
 
   /** HUD grid line colour (the ambient background's faint grid overlay). */
   readonly gridC: string;
@@ -142,7 +182,9 @@ const classicDark: RnTheme = {
   panelHead: "#1f2937",
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
+  fontDisplayWeights: undefined,
   fontMono: undefined,
+  fontMonoWeights: undefined,
   gridC: "rgba(148,163,184,0.05)",
   aurora: 0.15,
   glowC: null,
@@ -177,7 +219,9 @@ const classicLight: RnTheme = {
   panelHead: "#f1f5f9",
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
+  fontDisplayWeights: undefined,
   fontMono: undefined,
+  fontMonoWeights: undefined,
   gridC: "rgba(15,23,42,0.03)",
   aurora: 0.1,
   glowC: null,
@@ -212,7 +256,9 @@ const holoDark: RnTheme = {
   panelHead: "rgba(0,224,255,0.06)",
   chip: "rgba(0,224,255,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
+  fontDisplayWeights: CHAKRA_WEIGHTS,
   fontMono: FONT_JETBRAINS_MONO,
+  fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(0,224,255,0.05)",
   aurora: 0.6,
   glowC: "rgba(0,224,255,0.3)",
@@ -247,7 +293,9 @@ const holoLight: RnTheme = {
   panelHead: "rgba(0,180,204,0.08)",
   chip: "rgba(0,180,204,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
+  fontDisplayWeights: CHAKRA_WEIGHTS,
   fontMono: FONT_JETBRAINS_MONO,
+  fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(0,120,150,0.06)",
   aurora: 0.3,
   glowC: "rgba(0,180,204,0.25)",
@@ -327,7 +375,9 @@ const terminalDark: RnTheme = {
   panelHead: "#171b22",
   chip: "rgba(255,176,0,0.14)",
   fontDisplay: FONT_IBM_SANS,
+  fontDisplayWeights: IBM_SANS_WEIGHTS,
   fontMono: FONT_IBM_MONO,
+  fontMonoWeights: IBM_MONO_WEIGHTS,
   gridC: "rgba(255,255,255,0.022)",
   aurora: 0.22,
   glowC: null,
@@ -362,7 +412,9 @@ const terminalLight: RnTheme = {
   panelHead: "#f0f2f5",
   chip: "rgba(179,122,0,0.12)",
   fontDisplay: FONT_IBM_SANS,
+  fontDisplayWeights: IBM_SANS_WEIGHTS,
   fontMono: FONT_IBM_MONO,
+  fontMonoWeights: IBM_MONO_WEIGHTS,
   gridC: "rgba(18,21,28,0.03)",
   aurora: 0.1,
   glowC: null,
@@ -439,7 +491,9 @@ const neonDark: RnTheme = {
   panelHead: "rgba(255,43,214,0.08)",
   chip: "rgba(255,43,214,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
+  fontDisplayWeights: CHAKRA_WEIGHTS,
   fontMono: FONT_JETBRAINS_MONO,
+  fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(255,43,214,0.07)",
   aurora: 0.7,
   glowC: "rgba(255,43,214,0.4)",
@@ -474,7 +528,9 @@ const neonLight: RnTheme = {
   panelHead: "rgba(200,0,160,0.08)",
   chip: "rgba(200,0,160,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
+  fontDisplayWeights: CHAKRA_WEIGHTS,
   fontMono: FONT_JETBRAINS_MONO,
+  fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(150,0,120,0.05)",
   aurora: 0.35,
   glowC: "rgba(200,0,160,0.25)",

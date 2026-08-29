@@ -20,6 +20,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The sell-side desk: every RFQ Adaptive Bank has been asked to price, each
  * wearing the prototype's ticket chrome, with the desk's settled quotes below.
@@ -299,9 +300,8 @@ function makeStyles(t: RnTheme): SellSidePanelStyles {
     historyRight: { flexDirection: "row", alignItems: "center", gap: 9 },
     historyInstrument: {
       fontSize: 10.5,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     historyMeta: { fontSize: 8, color: t.textMuted, fontFamily: t.fontMono },
     historyPrice: {

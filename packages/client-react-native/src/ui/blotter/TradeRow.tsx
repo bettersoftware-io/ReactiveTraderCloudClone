@@ -14,6 +14,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 import { BLOTTER_COLUMN_FLEX } from "./blotterColumns";
 import { formatPair, formatRate } from "./blotterFilter";
@@ -173,10 +174,9 @@ function makeStyles(t: RnTheme): TradeRowStyles {
     pairCol: { flex: BLOTTER_COLUMN_FLEX.pair, minWidth: 0 },
     pair: {
       fontSize: 11.5,
-      fontWeight: "600",
       letterSpacing: 0.4,
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     directionBuy: { ...direction, color: t.accentPositive },
     directionSell: { ...direction, color: t.accentNegative },

@@ -11,6 +11,7 @@ import {
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The sell-side price control: two 44×44 pads either side of a large mono
  * readout (prototype dc.html:300-302), replacing the free-text price field.
@@ -100,9 +101,8 @@ function makeStyles(t: RnTheme): PriceStepperStyles {
       flex: 1,
       textAlign: "center",
       fontSize: 24,
-      fontWeight: "700",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
   });
 }

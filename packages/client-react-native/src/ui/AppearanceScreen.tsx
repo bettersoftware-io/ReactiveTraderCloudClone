@@ -30,6 +30,7 @@ import {
 import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The Appearance settings screen: an APPEARANCE header with a single 3-way
  * dark/light/system mode segment (replacing the old title-label + tap-to-cycle
@@ -448,9 +449,8 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     section: { gap: 8 },
     label: {
       fontSize: 12,
-      fontWeight: "600",
       color: t.textSecondary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     // Matches the design's own header ("appearance sheet" block, dev-handoff
     // standalone HTML): font-size 14px, font-weight 600, letter-spacing
@@ -459,10 +459,9 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     // THEME_DISPLAY_NAME above).
     headerTitle: {
       fontSize: 14,
-      fontWeight: "600",
       letterSpacing: 1.5,
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     segmented: {
       flexDirection: "row",
@@ -558,9 +557,8 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     skinSwatch: { width: 16, height: 16, borderRadius: 4 },
     skinLabel: {
       fontSize: 11,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
       textAlign: "center",
     },
     toggleRow: rowBase,

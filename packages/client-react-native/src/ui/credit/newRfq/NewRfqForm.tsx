@@ -18,6 +18,7 @@ import { QuantityChips } from "#/ui/credit/newRfq/QuantityChips";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
   const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
@@ -185,9 +186,8 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     content: { padding: 16, gap: 16 },
     formTitle: {
       fontSize: 16,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     field: { gap: 6 },
     // dc.html:269 styles DIRECTION identically to INSTRUMENT and QUANTITY.
@@ -245,10 +245,9 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     },
     submitLabel: {
       fontSize: 11,
-      fontWeight: "700",
       letterSpacing: 3,
       color: t.textOnAccent,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     confirmedCard: {
       margin: 16,
@@ -264,9 +263,8 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     },
     confirmedTitle: {
       fontSize: 16,
-      fontWeight: "600",
       color: t.accentPositive,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     confirmedDetail: {
       fontSize: 13,

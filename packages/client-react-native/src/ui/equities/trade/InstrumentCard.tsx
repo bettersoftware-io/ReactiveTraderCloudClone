@@ -18,6 +18,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The Trade screen's instrument tile, as the mobile-v1 design draws it: one
  * bordered card whose header row carries the symbol with `name · exchange`
@@ -115,10 +116,9 @@ function makeStyles(t: RnTheme): InstrumentCardStyles {
     },
     symbol: {
       fontSize: 15,
-      fontWeight: "700",
       letterSpacing: 0.5,
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "700"),
     },
     subtitle: {
       fontSize: 8.5,
@@ -133,8 +133,7 @@ function makeStyles(t: RnTheme): InstrumentCardStyles {
     },
     price: {
       fontSize: 19,
-      fontWeight: "700",
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     change: {
       fontSize: 9,

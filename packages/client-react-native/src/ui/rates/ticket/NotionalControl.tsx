@@ -10,6 +10,7 @@ import {
 
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function NotionalControl({
   notional,
@@ -114,10 +115,9 @@ function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
     container: { gap: 8 },
     label: {
       fontSize: 10,
-      fontWeight: "600",
       letterSpacing: 1,
       color: t.textMuted,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
     },
     stepperRow: {
       flexDirection: "row",
@@ -137,15 +137,13 @@ function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
     },
     stepperGlyph: {
       fontSize: 16,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
     },
     value: {
       fontSize: 22,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
       minWidth: 120,
       textAlign: "center",
     },
@@ -163,8 +161,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
     },
     chipLabel: {
       fontSize: 10,
-      fontWeight: "600",
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
     },
   });
 }

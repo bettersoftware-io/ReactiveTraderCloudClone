@@ -14,6 +14,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { RANK_DISPLAY_ORDER } from "#/ui/equities/markets/rankByLayout";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Markets screen's `RANK BY` control: a label plus three directly-selectable
  * chips over `EQ_WATCHLIST_SORTS`, bound to the shared `useEqWatchlistSort()`
@@ -96,9 +97,8 @@ function makeStyles(t: RnTheme): RankByChipsStyles {
     },
     chipLabel: {
       fontSize: 11,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
   });
 }

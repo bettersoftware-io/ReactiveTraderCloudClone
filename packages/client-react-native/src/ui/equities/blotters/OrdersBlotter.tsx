@@ -16,6 +16,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 import { useNewestOrderId } from "./useNewestOrderId";
 
@@ -212,9 +213,8 @@ function makeStyles(t: RnTheme): OrdersBlotterStyles {
     statusCell: { flex: 0.9, alignItems: "flex-end" },
     symbol: {
       fontSize: 11,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
     sideType: {
       fontSize: 7.5,

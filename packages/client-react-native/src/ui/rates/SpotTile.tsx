@@ -18,6 +18,7 @@ import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
   const { usePrice } = useViewModel();
@@ -145,9 +146,8 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
     },
     symbol: {
       fontSize: 13,
-      fontWeight: "600",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
       letterSpacing: 0.5,
     },
     arrow: { fontSize: 12, fontFamily: t.fontDisplay },
@@ -158,7 +158,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
     },
     priceRow: { flexDirection: "row", alignItems: "flex-end" },
     prefix: { fontSize: 14, color: t.textSecondary, fontFamily: t.fontMono },
-    pips: { fontSize: 25, fontWeight: "600", fontFamily: t.fontMono },
+    pips: { fontSize: 25, ...weightedFont(t, "mono", "600") },
     fractional: {
       fontSize: 12,
       color: t.textSecondary,

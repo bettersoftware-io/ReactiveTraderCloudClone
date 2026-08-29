@@ -14,6 +14,7 @@ import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
 import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** One dealer's line inside an RFQ card. The prototype draws these as flat rows
  * separated by a hairline rather than nested cards (dc.html:241-250), with the
@@ -115,9 +116,8 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
   // `padding: 7px 11px` and `radius 7` (dc.html:246).
   const price: TextStyle = {
     fontSize: 12,
-    fontWeight: "600",
     color: t.textSecondary,
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
   };
 
   const acceptBtn: ViewStyle = {
@@ -129,9 +129,8 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
 
   const acceptLabel: TextStyle = {
     fontSize: 8.5,
-    fontWeight: "700",
     letterSpacing: 1.5,
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "700"),
     color: t.textSecondary,
   };
 

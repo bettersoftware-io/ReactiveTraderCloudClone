@@ -15,6 +15,7 @@ import { Direction } from "@rtc/domain";
 import { splitPrice } from "#/ui/formatPrice";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 export function BuySellPads({
   pair,
@@ -172,18 +173,16 @@ function makePadStyles(
       glow === null ? { ...base, opacity: 0.85 } : { ...base, ...glow },
     label: {
       fontSize: 11,
-      fontWeight: "700",
       letterSpacing: 1,
       color: accent,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     priceRow: { flexDirection: "row", alignItems: "flex-end" },
     prefix: { fontSize: 12, color: t.textSecondary, fontFamily: t.fontMono },
     pips: {
       fontSize: 27,
-      fontWeight: "700",
       color: accent,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     fractional: {
       fontSize: 11,

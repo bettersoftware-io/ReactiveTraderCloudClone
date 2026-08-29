@@ -25,6 +25,7 @@ import { LockButton } from "#/ui/shell/lock/LockButton";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 import { HexReticleLogo } from "./HexReticleLogo";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
@@ -150,9 +151,8 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
     right: { flexDirection: "row", alignItems: "center", gap: 6 },
     wordmark: {
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "700"),
       fontSize: 11,
-      fontWeight: "700",
       letterSpacing: 2.2,
     },
     wordmarkAccent: { color: t.accentPrimary },
@@ -163,9 +163,8 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
       paddingVertical: 3,
     },
     envLabel: {
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "600"),
       fontSize: 9,
-      fontWeight: "600",
       letterSpacing: 1,
     },
     dot: { width: 7, height: 7, borderRadius: 4, marginHorizontal: 8 },

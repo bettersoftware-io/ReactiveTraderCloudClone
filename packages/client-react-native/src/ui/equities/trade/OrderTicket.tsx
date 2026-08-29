@@ -17,6 +17,7 @@ import { SurfaceCard } from "#/ui/SurfaceCard";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Equity order ticket in the mobile-v1 shape — `SELL` / `BUY` outlined
  * toggles with a boxed `MKT | LMT` pair, quantity preset chips, a `LIMIT PX`
@@ -318,15 +319,13 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
 
   const sideLabel: TextStyle = {
     fontSize: 10,
-    fontWeight: "700",
     letterSpacing: 2,
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "700"),
   };
   const type: ViewStyle = { paddingHorizontal: 11, justifyContent: "center" };
   const typeLabel: TextStyle = {
     fontSize: 9,
-    fontWeight: "600",
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
   };
 
   const chip: ViewStyle = {
@@ -340,8 +339,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
 
   const chipLabel: TextStyle = {
     fontSize: 10,
-    fontWeight: "600",
-    fontFamily: t.fontMono,
+    ...weightedFont(t, "mono", "600"),
   };
 
   const baseSubmit: ViewStyle = {
@@ -418,19 +416,17 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       flex: 1,
       textAlign: "center",
       fontSize: 16,
-      fontWeight: "700",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     error: { fontSize: 12, color: t.accentNegative, fontFamily: t.fontMono },
     submitBuy: { ...baseSubmit, backgroundColor: t.accentPositive },
     submitSell: { ...baseSubmit, backgroundColor: t.accentNegative },
     submitLabel: {
       fontSize: 10.5,
-      fontWeight: "700",
       letterSpacing: 2.5,
       color: t.textOnAccent,
-      fontFamily: t.fontMono,
+      ...weightedFont(t, "mono", "700"),
     },
     resetBtn: {
       alignSelf: "flex-start",
