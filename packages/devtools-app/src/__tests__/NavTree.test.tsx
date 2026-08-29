@@ -146,6 +146,26 @@ test("collapsing: a header label closes its own group, a caret closes an open no
   expect(scopeIds()).not.toContain("stream:blotter.trades$");
 });
 
+test("clicking a node label re-syncs the keyboard cursor, not just the selection", () => {
+  const selected = mount();
+
+  // Mouse-selecting blotter must move the keyboard cursor onto it too —
+  // otherwise it stays seeded on the initial scope ("all") and the next
+  // ArrowDown starts from the wrong place.
+  fireEvent.click(node("presenter:blotter"));
+  node("presenter:blotter").focus();
+
+  // blotter is collapsed by default, so the next selectable node after it
+  // is machineKind:tileExecution, not one of its own (hidden) streams.
+  pressKey("ArrowDown");
+  pressKey("Enter");
+
+  expect(selected.at(-1)).toEqual({
+    kind: "machineKind",
+    machineKind: "tileExecution",
+  });
+});
+
 function scopeIds(): string[] {
   return screen.getAllByTestId("nav-node").map((el) => {
     return el.dataset.scopeId ?? "";

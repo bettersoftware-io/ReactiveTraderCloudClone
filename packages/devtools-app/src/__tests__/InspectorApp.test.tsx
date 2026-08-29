@@ -147,6 +147,44 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
   expect(screen.getAllByTestId("timeline-row").length).toBe(5);
 });
 
+test("wire probe from All strands no radius on Escape — pin survives, scope stays All", () => {
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  act(() => {
+    store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
+    store.apply({ kind: "snapshot", streams: [], machines: [] });
+
+    for (const frame of emissionBatches()) {
+      store.apply(frame);
+    }
+  });
+
+  // Pin a row from the default (All) scope, then probe its wire — pushing
+  // ALL_SCOPE onto the already-current All scope is a no-op in
+  // useNavigation (no history recorded), so `popScope()` alone can't be
+  // trusted to signal "a radius is active".
+  const rows = screen.getAllByTestId("timeline-row");
+  const pinButton = (rows[0] as HTMLElement).querySelector("button");
+
+  fireEvent.click(pinButton as HTMLElement);
+  fireEvent.click(
+    screen.getByText("wire ±100ms", {
+      selector: "[data-testid='pinned-bar'] button",
+    }),
+  );
+  expect(navNode("all").dataset.selected).toBe("true");
+  expect(screen.getByText("±100ms ✕")).toBeTruthy();
+
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByText("±100ms ✕")).toBeNull();
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
+  expect(navNode("all").dataset.selected).toBe("true");
+
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+});
+
 test("shortcuts are ignored while the tree has focus, and the keydown listener is bound once", () => {
   const store = new InspectorStore({ coalesce: false });
   const addSpy = vi.spyOn(window, "addEventListener");
@@ -171,7 +209,9 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
 
   // Focus-WITHIN, not a focused container: the tree's own nodes are what
   // take focus, and their keydown bubbles to the window listener carrying a
-  // target inside `[data-nav-tree]` — which the router must ignore.
+  // target inside `[data-nav-tree]` — which the router must swallow ONLY
+  // for the keys the tree itself owns (Arrow*/Enter). ArrowUp is one of
+  // those, so it stays swallowed here.
   const allNode = navNode("all");
 
   allNode.focus();
@@ -180,6 +220,31 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
 
   fireEvent.keyDown(window, { key: "ArrowUp" });
   expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+
+  // Every OTHER global shortcut stays live even while a tree node has focus
+  // — the controller's amended focus model (§20.12): the tree owns only
+  // Arrow*/Enter, `/`, `c` and `Escape` are global regardless of focus.
+  allNode.focus();
+  fireEvent.keyDown(allNode, { key: "c" });
+  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
+  expect(screen.getByTestId("unclear-log")).toBeTruthy();
+  fireEvent.click(screen.getByTestId("unclear-log"));
+
+  // Re-pin so Escape has a pin to resume from. This dispatches on `window`
+  // (not a tree node) — ArrowUp IS one of the tree's own keys, so with the
+  // tree focused it stays correctly swallowed, same as above.
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+
+  allNode.focus();
+  fireEvent.keyDown(allNode, { key: "Escape" });
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+
+  allNode.focus();
+  fireEvent.keyDown(allNode, { key: "/" });
+  expect(document.activeElement).toBe(
+    screen.getByPlaceholderText("Search scope… ( / )"),
+  );
 });
 
 test("ArrowDown steps forward, / focuses the scoped search, and keys typed in an input stay the input's", () => {
@@ -373,6 +438,15 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   fireEvent.click(pinButton as HTMLElement);
   expect(screen.getByTestId("pinned-bar")).toBeTruthy();
 
+  // Clear (watermark = the live log's latest seq, 3) before importing: the
+  // datasource-swap effect resets pin/radius/scope but must ALSO reset the
+  // clearedBeforeSeq watermark, or the imported recording's own low seqs
+  // (a fresh per-hub counter, per LogRow.seq) are hidden by a watermark
+  // left over from an entirely different log.
+  fireEvent.click(navNode("all"));
+  fireEvent.keyDown(window, { key: "c" });
+  expect(screen.getByTestId("unclear-log")).toBeTruthy();
+
   const file = new File([serializeRecording(sampleRecording())], "r.json", {
     type: "application/json",
   });
@@ -393,6 +467,11 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
     expect(navNode("all").dataset.selected).toBe("true");
   });
+  // The stale watermark must be gone too: no dangling Unclear button, and
+  // the imported recording's row (seq 1, which the old watermark of 3 would
+  // have hidden) is listed rather than silently swallowed.
+  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  expect(screen.getAllByTestId("timeline-row").length).toBe(1);
 
   fireEvent.click(screen.getByTestId("back-to-live"));
   await waitFor(() => {
@@ -405,6 +484,12 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
     expect(navNode("all").dataset.selected).toBe("true");
   });
+  // The live log was never cleared FROM THE STORE — Clear only ever hid
+  // rows behind a watermark, which the swap back to live also resets (now
+  // 0) — so all 3 live rows are visible again, not the pre-Clear state
+  // stuck hidden.
+  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
 });
 
 test("liveHistory seeds pre-mount store state — a pinned row reconstructs a machine that only ever existed before mount", () => {
@@ -533,6 +618,22 @@ function sampleRecording(): Recording {
         kind: "snapshot",
         streams: [{ streamId: "z.a$", value: 7 }],
         machines: [],
+      },
+      // A low seq (its own fresh per-hub counter, per LogRow.seq) — a Clear
+      // watermark left over from the live session (seq 3, see
+      // emissionBatches()) would hide this row if it survived the swap.
+      {
+        kind: "batch",
+        events: [
+          {
+            kind: "stream:emission",
+            seq: 1,
+            ts: 5001,
+            streamId: "z.a$",
+            value: 8,
+            coalesced: 1,
+          },
+        ],
       },
     ],
   };

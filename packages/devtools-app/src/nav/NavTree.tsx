@@ -116,6 +116,7 @@ export function NavTree({
             atCursor={entry.node.id === cursorId}
             onSelect={onSelect}
             onToggle={toggleNodeExpansion}
+            onMoveCursorTo={setCursorId}
           />
         );
       })}
@@ -148,6 +149,7 @@ interface NavRowProps {
   atCursor: boolean;
   onSelect: (scope: Scope) => void;
   onToggle: (id: string) => void;
+  onMoveCursorTo: (id: string) => void;
 }
 
 function NavRow({
@@ -158,6 +160,7 @@ function NavRow({
   atCursor,
   onSelect,
   onToggle,
+  onMoveCursorTo,
 }: NavRowProps): ReactElement {
   const flashRef = useRef<HTMLSpanElement>(null);
   const hasChildren = node.children.length > 0;
@@ -182,6 +185,7 @@ function NavRow({
       onToggle(node.id);
     } else {
       onSelect(node.scope);
+      onMoveCursorTo(node.id);
     }
   }
 

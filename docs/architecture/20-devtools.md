@@ -628,6 +628,14 @@ store's inputs, and Clear is Commit. The tree root itself carries no
 and keydown bubbles to the tree — rather than an ARIA-tree roving-tabindex
 pattern.
 
+**Amended focus model (deviation from spec §3.1).** The spec's "the timeline
+shortcuts act when focus is anywhere else [than the tree]" left every
+global shortcut inert once a tree node kept focus after a click — the
+feature's primary gesture. The tree instead owns only the five keys it
+actually binds — `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Enter`
+(`InspectorApp.tsx`'s `TREE_KEYS`) — and every other shortcut (`/` search,
+`c` Clear, `Esc`) stays global regardless of where focus sits.
+
 **Scope compiles to the filter.** `useTimeline(log, history, scope, state)`
 calls `compileScope` every render and spreads the result into the
 `TimelineFilter` it already had — `families` and `pills` stopped being user

@@ -159,8 +159,14 @@ test("pinned bar flags a pin that is hidden by the current scope and offers show
   expect(handle.shownInAll).toBe(1);
 });
 
-test("detaching anchors the render window on the first row still on screen", () => {
-  mount();
+test("detaching re-centers the >500-row render window on the first row still on screen", () => {
+  // With only 3 rows the windowed and tail-500 slices are IDENTICAL (both
+  // are just "all 3 rows"), so a 3-row fixture can't distinguish real
+  // anchoring from `windowedRows` silently falling back to a plain tail
+  // slice. 1000 rows puts the anchor comfortably inside both the render
+  // cap (500) and the ±250-row half-window on either side, so the window
+  // this test asserts on isn't clamped against either edge.
+  mount(1000);
 
   const list = screen.getByTestId("timeline-rows");
 
@@ -172,8 +178,10 @@ test("detaching anchors the render window on the first row still on screen", () 
     value: 200,
     configurable: true,
   });
-  // Give the first row real height so the anchor scan finds it there rather
-  // than falling back to "the first child, whatever it is".
+  // Before any scroll, follow mode renders the tail-500 (seq 501..1000),
+  // so `list.children[0]` is seq 501. Give it real height so the anchor
+  // scan finds it there rather than falling back to "the first child,
+  // whatever it is".
   Object.defineProperty(list.children[0] as HTMLElement, "offsetHeight", {
     value: 40,
     configurable: true,
@@ -182,7 +190,17 @@ test("detaching anchors the render window on the first row still on screen", () 
   fireEvent.scroll(list);
 
   expect(screen.getByTestId("live-chip")).toBeTruthy();
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+
+  // Re-centered ±250 around the anchor (seq 501, at full-log index 500):
+  // seq 251..750 — proof the window moved OFF the tail (seq 1000 is no
+  // longer rendered) and re-anchored on the row that was still on screen,
+  // rather than staying pinned to a plain tail-500 slice.
+  const rows = screen.getAllByTestId("timeline-row");
+
+  expect(rows.length).toBe(500);
+  expect(rows[0]?.getAttribute("data-seq")).toBe("251");
+  expect(rows[rows.length - 1]?.getAttribute("data-seq")).toBe("750");
+  expect(list.querySelector('[data-seq="1000"]')).toBeNull();
 });
 
 interface Handle {
@@ -198,7 +216,11 @@ interface Seed {
   store: InspectorStore;
 }
 
-function mount(): Handle {
+/** `rowCount` seeds rows 1..rowCount directly into the store/history before
+ * the first render — not via `handle.append()`'s one-act()-per-row, which
+ * would make a many-hundred-row seed (needed to exercise the >500-row
+ * render window) slow to set up. */
+function mount(rowCount = 3): Handle {
   const handle: Handle = {
     setScope: () => {},
     append: () => {},
@@ -210,7 +232,9 @@ function mount(): Handle {
   };
 
   function Harness(): ReactElement {
-    const [{ history, store }] = useState(seed);
+    const [{ history, store }] = useState(() => {
+      return seed(rowCount);
+    });
     const [state, setState] = useState<InspectorState>(store.getSnapshot());
     const [scope, setScope] = useState<Scope>(ALL_SCOPE);
     const searchRef = useRef<HTMLInputElement | null>(null);
@@ -278,14 +302,14 @@ function mount(): Handle {
   return handle;
 }
 
-function seed(): Seed {
+function seed(rowCount: number): Seed {
   const history = new LiveHistory();
   const store = new InspectorStore({ coalesce: false });
   const frames: AppToInspector[] = [
     { kind: "snapshot", streams: [], machines: [] },
   ];
 
-  for (let seq = 1; seq <= 3; seq += 1) {
+  for (let seq = 1; seq <= rowCount; seq += 1) {
     frames.push({
       kind: "batch",
       events: [

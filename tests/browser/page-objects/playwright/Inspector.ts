@@ -137,12 +137,13 @@ export class PlaywrightInspector implements InspectorPO {
       .getByTestId(TESTIDS.devtools.timelineRow)
       .first()
       .waitFor({ state: "attached", timeout: timeoutMs });
-    // Blur whatever is currently focused first: InspectorApp's global
-    // shortcut dispatcher (InspectorApp.tsx) ignores ArrowUp entirely while
-    // focus sits inside the nav tree (`target.closest("[data-nav-tree]")`) —
-    // a nav-node click (selectNavNode) leaves the clicked <button> focused,
-    // which would otherwise route the key to the tree's own cursor-nav
-    // instead of the pin shortcut.
+    // Blur whatever is currently focused first: ArrowUp is one of the keys
+    // the tree owns while a node button has focus (InspectorApp.tsx's
+    // TREE_KEYS — Arrow*/Enter; every other shortcut, `/`/`c`/Escape, stays
+    // global regardless of focus) — a nav-node click (selectNavNode) leaves
+    // the clicked <button> focused, which would otherwise route the key to
+    // the tree's own cursor-nav instead of the pin shortcut. Blur first so
+    // the global step shortcut sees it.
     await this.page().evaluate(() => {
       (document.activeElement as HTMLElement | null)?.blur();
     });

@@ -47,7 +47,9 @@ export interface InspectorPO {
    *  race against detach/auto-scroll that flakes on slow CI runners — the
    *  shortcut pins atomically in state. The mouse pin-click path is covered
    *  at the RTL tier (TimelinePane.test.tsx). `timeoutMs` bounds the wait for
-   *  a first timeline row to exist before the key is pressed. */
+   *  a first timeline row to exist before the key is pressed. ArrowUp is one
+   *  of the keys the tree owns while a node button has focus; blur first so
+   *  the global step shortcut sees it. */
   pinLatestTimelineRow(timeoutMs: number): Promise<void>;
   /** Wait until the pinned-moment bar is visible (a pin is active). */
   waitPinnedBar(timeoutMs: number): Promise<void>;

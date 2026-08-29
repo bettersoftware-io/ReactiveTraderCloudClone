@@ -102,6 +102,7 @@ export function InspectorApp({
       previousHistoryRef.current = activeHistory;
       timeline.resume();
       timeline.clearRadius();
+      timeline.unclear();
       navigation.select(ALL_SCOPE);
     }
   }, [activeHistory, timeline, navigation]);
@@ -137,7 +138,16 @@ export function InspectorApp({
   }
 
   function escapeTimeline(): void {
-    if (navigation.popScope()) {
+    // Precedence 1 (spec §3.1) is signalled by an active radius, not by a
+    // scope change: `pushScope` records no history when the wire probe's
+    // target scope equals the current one (probing from All, the default),
+    // so gating on `popScope()`'s return left the radius stranded — the
+    // pinned bar disappeared while the list stayed radius-filtered with no
+    // way back short of the `±100ms ✕` chip. `popScope()` here is
+    // best-effort: it restores the previous scope when there is one, and is
+    // a harmless no-op when the probe started from All.
+    if (timeline.filter.radius !== null) {
+      navigation.popScope();
       timeline.clearRadius();
 
       return;
@@ -215,11 +225,26 @@ interface Shortcuts {
   focusSearch: () => void;
 }
 
+/** The keys `NavTree` handles itself while a node button has focus (see its
+ * own keydown handler): arrow-key cursor movement and Enter-to-select. Every
+ * other shortcut — `/`, `c`, `Escape` — stays global even with the tree
+ * focused, so this router must swallow only these five, never a blanket
+ * "target inside the tree". */
+const TREE_KEYS: ReadonlySet<string> = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Enter",
+]);
+
 /** One window `keydown` listener for the life of the app (not one per
  * render — the STATUS "re-binds per render" item). The latest handlers
  * live in a ref the listener reads at dispatch time. Routing by focus:
  * inside an input/textarea only Escape acts (blur); inside the tree
- * (`[data-nav-tree]`) nothing acts — the tree has its own keys (§3.1). */
+ * (`[data-nav-tree]`) only the tree's own keys (`TREE_KEYS`) are swallowed —
+ * `/`, `c` and `Escape` stay global even with a node focused (amended §3.1;
+ * see docs/architecture/20-devtools.md §20.12). */
 function useWindowShortcuts(shortcuts: Shortcuts): void {
   const shortcutsRef = useRef(shortcuts);
 
@@ -254,7 +279,11 @@ function useWindowShortcuts(shortcuts: Shortcuts): void {
         return;
       }
 
-      if (target !== null && target.closest("[data-nav-tree]") !== null) {
+      if (
+        target !== null &&
+        target.closest("[data-nav-tree]") !== null &&
+        TREE_KEYS.has(e.key)
+      ) {
         return;
       }
 
