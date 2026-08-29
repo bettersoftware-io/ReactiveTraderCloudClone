@@ -139,7 +139,7 @@ describe("RecordingToolbar", () => {
 
   it("stopping without a recorder in progress is a no-op", () => {
     const store = new InspectorStore();
-    const captured: { model: RecordingModel | null } = { model: null };
+    const captured: CapturedModel = { model: null };
     mount({
       store,
       captureModel: (model: RecordingModel) => {
@@ -154,6 +154,10 @@ describe("RecordingToolbar", () => {
     expect(captured.model?.recording).toBeNull();
   });
 });
+
+interface CapturedModel {
+  model: RecordingModel | null;
+}
 
 interface MountOptions {
   store: InspectorStore;

@@ -117,6 +117,7 @@ test("presenter and machine-kind roots order by localeCompare, not code-unit sor
   const presenters = tree[1]?.children.map((n) => {
     return n.label;
   });
+
   const kinds = tree[2]?.children.map((n) => {
     return n.label;
   });
