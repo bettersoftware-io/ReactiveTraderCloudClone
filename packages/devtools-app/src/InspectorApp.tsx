@@ -5,6 +5,7 @@ import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
 import { LiveHistory, projectSnapshot } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
+import { ALL_SCOPE } from "#/nav/scope";
 import { MachinesPanel } from "#/panels/MachinesPanel";
 import { WirePanel } from "#/panels/WirePanel";
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
@@ -71,7 +72,12 @@ export function InspectorApp({
   const activeHistory = recording.imported?.history ?? liveHistory;
   const presentState = recording.imported?.state ?? liveState;
 
-  const timeline = useTimeline(activeLog, activeHistory);
+  const timeline = useTimeline(
+    activeLog,
+    activeHistory,
+    ALL_SCOPE,
+    presentState,
+  );
 
   // Swapping the datasource (an import lands, or Back to live restores the
   // live seam) is a new timeline: drop any pin and radius filter left over
@@ -133,27 +139,23 @@ export function InspectorApp({
     };
   }, [timeline]);
 
-  function filterTimelineByMachine(machineId: string): void {
-    timeline.addPill({ type: "machine", id: machineId });
-    setLens("timeline");
-  }
-
   function pinTimelineAtIntent(
     machineId: string,
     name: string,
     ts: number,
   ): void {
     const seq = seqOfMachineIntent(activeLog, machineId, name, ts);
+    const row =
+      seq === null
+        ? undefined
+        : activeLog.find((r) => {
+            return r.seq === seq;
+          });
 
-    if (seq !== null) {
-      timeline.pin(seq);
+    if (row !== undefined) {
+      timeline.pin(row);
       setLens("timeline");
     }
-  }
-
-  function filterTimelineByMsgType(msgType: string): void {
-    timeline.addPill({ type: "msgType", id: msgType });
-    setLens("timeline");
   }
 
   return (
@@ -182,17 +184,13 @@ export function InspectorApp({
               machines={presentState.machines}
               dev={presentState.dev}
               onInvokeIntent={onInvokeIntent}
-              onFocusInTimeline={filterTimelineByMachine}
               onPinIntent={pinTimelineAtIntent}
             />
           </div>
         ) : null}
         {lens === "wire" ? (
           <div className={styles.panel}>
-            <WirePanel
-              log={activeLog}
-              onMsgTypePill={filterTimelineByMsgType}
-            />
+            <WirePanel log={activeLog} />
           </div>
         ) : null}
       </div>

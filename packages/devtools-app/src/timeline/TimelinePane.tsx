@@ -95,14 +95,8 @@ function TimelineRowView({
       ? `${styles.row} ${styles.rowDimmed}`
       : styles.row;
 
-  function addSourcePill(): void {
-    if (source !== null) {
-      model.addPill(source);
-    }
-  }
-
   function pinTimelineRow(): void {
-    model.pin(row.seq);
+    model.pin(row);
   }
 
   function narrowTimelineToRow(): void {
@@ -120,17 +114,10 @@ function TimelineRowView({
         <span className={styles.time}>{formatLogTime(row.ts)}</span>
         <span className={styles.kindChip}>{row.kind}</span>
         <span className={styles.summary}>{row.summary}</span>
+        {source !== null ? (
+          <span className={styles.source}>{source.id}</span>
+        ) : null}
       </button>
-      {source !== null ? (
-        <button
-          type="button"
-          title="Filter to this source"
-          className={styles.source}
-          onClick={addSourcePill}
-        >
-          {source.id}
-        </button>
-      ) : null}
       <button
         type="button"
         title="Show events within ±100 ms"

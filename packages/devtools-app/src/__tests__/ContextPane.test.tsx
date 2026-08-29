@@ -13,6 +13,7 @@ import type { AppToInspector, LogRow } from "@rtc/devtools-core";
 import * as devtoolsCore from "@rtc/devtools-core";
 import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
+import { ALL_SCOPE } from "#/nav/scope";
 import { ContextPane } from "#/timeline/ContextPane";
 import styles from "#/timeline/ContextPane.module.css";
 import { useTimeline } from "#/timeline/useTimeline";
@@ -42,7 +43,7 @@ test("pinned mode reconstructs State and marks values that differ from live", ()
   const harness = mount();
 
   act(() => {
-    harness.pin(1);
+    harness.pin(rowAt(harness.log, 1));
   });
 
   fireEvent.click(screen.getByTestId("context-tab-state"));
@@ -54,7 +55,7 @@ test("diff tab shows leaf changes vs the predecessor", () => {
   const harness = mount();
 
   act(() => {
-    harness.pin(2);
+    harness.pin(rowAt(harness.log, 2));
   });
 
   fireEvent.click(screen.getByTestId("context-tab-diff"));
@@ -65,7 +66,7 @@ test("resuming from a pinned Diff selection clears the stale tab highlight", () 
   const harness = mount();
 
   act(() => {
-    harness.pin(2);
+    harness.pin(rowAt(harness.log, 2));
   });
 
   fireEvent.click(screen.getByTestId("context-tab-diff"));
@@ -94,7 +95,7 @@ test("diff tab renders ErrorCard when the diff computation throws", () => {
   const harness = mount();
 
   act(() => {
-    harness.pin(2);
+    harness.pin(rowAt(harness.log, 2));
   });
 
   fireEvent.click(screen.getByTestId("context-tab-diff"));
@@ -103,14 +104,27 @@ test("diff tab renders ErrorCard when the diff computation throws", () => {
 });
 
 interface HarnessHandle {
-  pin: (seq: number) => void;
+  pin: (row: LogRow) => void;
   resume: () => void;
+  log: readonly LogRow[];
 }
 
 interface SeedResult {
   history: LiveHistory;
   log: readonly LogRow[];
   present: ReturnType<InspectorStore["getSnapshot"]>;
+}
+
+function rowAt(log: readonly LogRow[], seq: number): LogRow {
+  const row = log.find((r) => {
+    return r.seq === seq;
+  });
+
+  if (row === undefined) {
+    throw new Error(`no row with seq ${seq}`);
+  }
+
+  return row;
 }
 
 // Component is nested inside mount() (not a module-top-level declaration), so
@@ -122,14 +136,16 @@ function mount(): HarnessHandle {
   const handle: HarnessHandle = {
     pin: () => {},
     resume: () => {},
+    log: [],
   };
 
   function Harness(): ReactElement {
     const [{ history, log, present }] = useState(seed);
-    const model = useTimeline(log, history);
+    const model = useTimeline(log, history, ALL_SCOPE, present);
 
     handle.pin = model.pin;
     handle.resume = model.resume;
+    handle.log = log;
 
     return <ContextPane model={model} log={log} presentState={present} />;
   }

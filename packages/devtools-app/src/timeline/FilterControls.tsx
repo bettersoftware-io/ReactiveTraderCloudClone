@@ -1,13 +1,11 @@
 import type { ChangeEvent, ReactElement, RefObject } from "react";
 
 import styles from "#/timeline/FilterControls.module.css";
-import type { SourcePill, TimelineFamily } from "#/timeline/timelineModel";
-import { pillKey } from "#/timeline/timelineModel";
 import type { TimelineModel } from "#/timeline/useTimeline";
 
-/** Rail-mounted filter stack: family toggles, active source pills (click a
- * source anywhere to add one), free text, and the ±100ms radius pill. Pills
- * OR within a layer; layers AND together (timelineModel.filterLog). */
+/** Rail-mounted filter stack: free text and the ±100ms radius pill. The
+ * source constraint itself now comes from the navigation scope (spec §4.1),
+ * compiled into `model.filter` — this bar only edits the user-typed half. */
 export function FilterControls({
   model,
   textInputRef,
@@ -26,18 +24,6 @@ export function FilterControls({
         value={model.filter.text}
         onChange={changeTimelineFilter}
       />
-      <div className={styles.families}>
-        {FAMILIES.map((family) => {
-          return <FamilyCheckbox key={family} family={family} model={model} />;
-        })}
-      </div>
-      {(model.filter.pills ?? []).length > 0 ? (
-        <div className={styles.pills}>
-          {(model.filter.pills ?? []).map((pill) => {
-            return <PillChip key={pillKey(pill)} pill={pill} model={model} />;
-          })}
-        </div>
-      ) : null}
       {model.filter.radius !== null ? (
         <button
           type="button"
@@ -52,58 +38,7 @@ export function FilterControls({
   );
 }
 
-const FAMILIES: readonly TimelineFamily[] = [
-  "stream",
-  "machine",
-  "wire",
-  "devtools",
-];
-
 export interface FilterControlsProps {
   model: TimelineModel;
   textInputRef: RefObject<HTMLInputElement | null>;
-}
-
-interface FamilyCheckboxProps {
-  family: TimelineFamily;
-  model: TimelineModel;
-}
-
-function FamilyCheckbox({ family, model }: FamilyCheckboxProps): ReactElement {
-  function toggleFamilyFilter(): void {
-    model.toggleFamily(family);
-  }
-
-  return (
-    <label className={styles.family}>
-      <input
-        type="checkbox"
-        checked={model.filter.families[family]}
-        onChange={toggleFamilyFilter}
-      />
-      {family}
-    </label>
-  );
-}
-
-interface PillChipProps {
-  pill: SourcePill;
-  model: TimelineModel;
-}
-
-function PillChip({ pill, model }: PillChipProps): ReactElement {
-  function removeFilterPill(): void {
-    model.removePill(pill);
-  }
-
-  return (
-    <button
-      type="button"
-      className={styles.pill}
-      title="Remove filter"
-      onClick={removeFilterPill}
-    >
-      {`${pill.id} ✕`}
-    </button>
-  );
 }

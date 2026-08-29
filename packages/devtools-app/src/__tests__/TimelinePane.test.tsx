@@ -3,9 +3,14 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 import { afterEach, expect, test } from "vitest";
 
-import type { AppToInspector, LogRow } from "@rtc/devtools-core";
+import type {
+  AppToInspector,
+  InspectorState,
+  LogRow,
+} from "@rtc/devtools-core";
 import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
+import { ALL_SCOPE } from "#/nav/scope";
 import { TimelinePane } from "#/timeline/TimelinePane";
 import { useTimeline } from "#/timeline/useTimeline";
 
@@ -30,20 +35,10 @@ test("clicking a row pins it and shows the pinned bar; Resume returns to follow"
   expect(screen.queryByTestId("pinned-bar")).toBeNull();
 });
 
-test("clicking a row's source adds a pill without pinning", () => {
-  mount();
-
-  const sourceButtons = screen.getAllByTitle("Filter to this source");
-
-  fireEvent.click(sourceButtons[0] as HTMLElement);
-
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3); // same source on all rows
-});
-
 interface SeedResult {
   history: LiveHistory;
   log: readonly LogRow[];
+  present: InspectorState;
 }
 
 // Harness is nested inside mount() (not a module-top-level declaration), so
@@ -52,8 +47,8 @@ interface SeedResult {
 // export anything at all (lint/suspicious/noExportsInTest).
 function mount(): void {
   function Harness(): ReactElement {
-    const [{ history, log }] = useState(seed);
-    const model = useTimeline(log, history);
+    const [{ history, log, present }] = useState(seed);
+    const model = useTimeline(log, history, ALL_SCOPE, present);
 
     return <TimelinePane model={model} />;
   }
@@ -89,5 +84,7 @@ function seed(): SeedResult {
     store.apply(frame);
   }
 
-  return { history, log: store.getSnapshot().log };
+  const present = store.getSnapshot();
+
+  return { history, log: present.log, present };
 }
