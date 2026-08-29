@@ -11,7 +11,7 @@ import {
 
 import { downloadRecording } from "#/recording/downloadRecording";
 
-interface ImportedRecording {
+export interface ImportedRecording {
   history: LiveHistory;
   /** Full fold incl. log — timeline rows + "present" for the import. */
   state: InspectorState;

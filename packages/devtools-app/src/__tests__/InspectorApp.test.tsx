@@ -497,6 +497,37 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   expect(screen.getAllByTestId("timeline-row").length).toBe(3);
 });
 
+test("an imported recording names itself in the connection badge instead of 'disconnected'", async () => {
+  // jsdom lacks a real WAAPI; StateTreePanel's change-flash calls it.
+  Element.prototype.animate = vi.fn(() => {
+    return { cancel: () => {} };
+  }) as unknown as typeof Element.prototype.animate;
+
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  const file = new File([serializeRecording(sampleRecording())], "r.json", {
+    type: "application/json",
+  });
+
+  fireEvent.change(screen.getByTestId("import"), {
+    target: { files: [file] },
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("connection-badge").textContent).toBe(
+      "recording · imported-app",
+    );
+  });
+
+  fireEvent.click(screen.getByTestId("back-to-live"));
+  await waitFor(() => {
+    expect(screen.getByTestId("connection-badge").textContent).not.toBe(
+      "recording · imported-app",
+    );
+  });
+});
+
 test("liveHistory seeds pre-mount store state — a pinned row reconstructs a machine that only ever existed before mount", () => {
   const store = new InspectorStore({ coalesce: false });
 

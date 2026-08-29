@@ -17,6 +17,7 @@ import { ALL_SCOPE } from "#/nav/scope";
 import type { NavigationModel } from "#/nav/useNavigation";
 import { useNavigation } from "#/nav/useNavigation";
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
+import type { ImportedRecording } from "#/recording/useRecording";
 import { useRecording } from "#/recording/useRecording";
 import { ContextPane } from "#/timeline/ContextPane";
 import { TimelinePane } from "#/timeline/TimelinePane";
@@ -180,6 +181,7 @@ export function InspectorApp({
     <div className={styles.app}>
       <ConnectionRail
         state={presentState}
+        imported={recording.imported}
         nodes={navTree}
         navigation={navigation}
       />
@@ -313,12 +315,14 @@ function useWindowShortcuts(shortcuts: Shortcuts): void {
 
 interface ConnectionRailProps {
   state: InspectorState;
+  imported: ImportedRecording | null;
   nodes: readonly NavNode[];
   navigation: NavigationModel;
 }
 
 function ConnectionRail({
   state,
+  imported,
   nodes,
   navigation,
 }: ConnectionRailProps): ReactElement {
@@ -336,7 +340,7 @@ function ConnectionRail({
           aria-hidden="true"
         />
         <span data-testid="connection-badge" className={styles.appId}>
-          {state.connected ? state.appId : "disconnected"}
+          {describeConnection(state, imported)}
         </span>
       </div>
       {state.protocolMismatch !== null ? (
@@ -347,4 +351,19 @@ function ConnectionRail({
       <NavTree nodes={nodes} scope={navigation.scope} onSelect={selectScope} />
     </aside>
   );
+}
+
+/** The badge text: an imported recording names itself over the live
+ * connection state, since importing swaps the datasource wholesale (see the
+ * module doc comment) and "disconnected" would misdescribe a recording that
+ * was never live in this session. */
+function describeConnection(
+  state: InspectorState,
+  imported: ImportedRecording | null,
+): string {
+  if (imported !== null) {
+    return `recording · ${imported.appId}`;
+  }
+
+  return state.connected && state.appId !== null ? state.appId : "disconnected";
 }
