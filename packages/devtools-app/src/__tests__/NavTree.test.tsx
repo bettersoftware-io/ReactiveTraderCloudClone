@@ -183,6 +183,29 @@ test("clicking a node label re-syncs the keyboard cursor, not just the selection
   });
 });
 
+test("a scope change from outside the tree moves the keyboard cursor to the new selection", () => {
+  const selected = mountWithExternalScope();
+
+  // A button OUTSIDE the tree drives the scope change — the way a probe
+  // push/pop, Esc, or "show in All" does — never through a click inside
+  // NavTree itself.
+  fireEvent.click(screen.getByTestId("external-select-blotter"));
+  node("presenter:blotter").focus();
+
+  // blotter is collapsed by default, so the next selectable node after it
+  // is machineKind:tileExecution. A stale cursor (still seeded on "all")
+  // would instead land back on blotter itself — "all"'s own next
+  // selectable sibling — silently re-selecting it. Enter proves which
+  // node ArrowDown actually moved the cursor FROM.
+  pressKey("ArrowDown");
+  pressKey("Enter");
+
+  expect(selected.at(-1)).toEqual({
+    kind: "machineKind",
+    machineKind: "tileExecution",
+  });
+});
+
 function scopeIds(): string[] {
   return screen.getAllByTestId("nav-node").map((el) => {
     return el.dataset.scopeId ?? "";
@@ -250,6 +273,43 @@ function mount(): MountHandle {
     }
 
     return <NavTree nodes={nodes} scope={scope} onSelect={selectScope} />;
+  }
+
+  render(<Harness />);
+
+  return selected;
+}
+
+/** A harness whose `scope` is driven by its own `useState` and changed via
+ * a button rendered OUTSIDE the tree — a stand-in for a programmatic scope
+ * change (probe push/pop, Esc, "show in All", datasource swap) rather than
+ * a click inside NavTree itself. Returns every scope NavTree's `onSelect`
+ * was called with, in order. */
+function mountWithExternalScope(): Scope[] {
+  const selected: Scope[] = [];
+
+  function Harness(): ReactElement {
+    const [scope, setScope] = useState<Scope>(ALL_SCOPE);
+
+    function selectScope(next: Scope): void {
+      selected.push(next);
+      setScope(next);
+    }
+
+    function selectBlotterExternally(): void {
+      selectScope({ kind: "presenter", presenter: "blotter" });
+    }
+
+    return (
+      <>
+        <NavTree nodes={sampleTree()} scope={scope} onSelect={selectScope} />
+        <button
+          type="button"
+          data-testid="external-select-blotter"
+          onClick={selectBlotterExternally}
+        />
+      </>
+    );
   }
 
   render(<Harness />);
