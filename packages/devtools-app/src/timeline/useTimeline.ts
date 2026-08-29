@@ -15,7 +15,7 @@ import {
 /** "pinned" carries the row itself (spec §6.2): the log caps at 5000 rows and
  * evicts oldest-first, so re-finding the row by seq each render silently
  * loses the Event/Diff tabs minutes into a live session. */
-export type TimelineSelection =
+type TimelineSelection =
   | { mode: "follow" }
   | { mode: "pinned"; seq: number; row: LogRow };
 

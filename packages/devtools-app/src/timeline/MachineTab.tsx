@@ -8,7 +8,7 @@ import styles from "#/timeline/MachineTab.module.css";
 
 /** The Machine tab (spec §4.3): current state, transition count, intent
  * history newest-first, and — dev builds only — the confirm-gated intent
- * injector. Relocated verbatim from the retired Machines lens. */
+ * injector. Relocated verbatim from the retired Machines panel. */
 export function MachineTab({
   machine,
   dev,

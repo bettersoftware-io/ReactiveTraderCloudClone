@@ -171,6 +171,70 @@ test("pinning a machine row under All surfaces the Machine tab; a stream row hid
   expect(screen.queryByTestId("context-tab-machine")).toBeNull();
 });
 
+test("the State search matches a stream by id and by its latest value", () => {
+  mount();
+
+  const search = screen.getByPlaceholderText("Search state…");
+
+  fireEvent.change(search, { target: { value: "zzz" } });
+  expect(screen.queryAllByTestId("devtools-stream-row")).toEqual([]);
+
+  fireEvent.change(search, { target: { value: "price" } });
+  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
+
+  fireEvent.change(search, { target: { value: "3" } });
+  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
+});
+
+test("the first value a source ever emitted has no prior value to diff against", () => {
+  const harness = mount();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 1));
+  });
+
+  fireEvent.click(screen.getByTestId("context-tab-diff"));
+  expect(screen.getByText("No prior value to diff against.")).toBeTruthy();
+});
+
+test("a moment aged out of the rolling buffer explains itself instead of blanking", () => {
+  vi.spyOn(
+    devtoolsCore.LiveHistory.prototype,
+    "oldestSeq",
+    "get",
+  ).mockReturnValue(5);
+
+  const harness = mount();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 2));
+  });
+
+  expect(
+    screen.getByText(
+      "⚠ This moment left the rolling buffer — Resume to return to live.",
+    ),
+  ).toBeTruthy();
+});
+
+test("a reconstruction that throws renders the failure, not a blank pane", () => {
+  vi.spyOn(devtoolsCore.LiveHistory.prototype, "stateAt").mockImplementation(
+    () => {
+      throw new Error("torn history");
+    },
+  );
+
+  const harness = mount();
+
+  act(() => {
+    harness.pin(rowAt(harness.log, 2));
+  });
+
+  expect(
+    screen.getByText("⚠ State reconstruction failed: Error: torn history"),
+  ).toBeTruthy();
+});
+
 interface HarnessHandle {
   pin: (row: LogRow) => void;
   resume: () => void;

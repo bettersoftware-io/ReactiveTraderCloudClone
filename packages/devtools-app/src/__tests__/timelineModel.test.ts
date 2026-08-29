@@ -1,11 +1,16 @@
 import { expect, test } from "vitest";
 
-import type { DevtoolsEvent, LogRow } from "@rtc/devtools-core";
+import type {
+  DevtoolsEvent,
+  LogRow,
+  SerializedValue,
+} from "@rtc/devtools-core";
 
 import {
   ALL_FAMILIES_ON,
   diffableValueOf,
   EMPTY_TIMELINE_FILTER,
+  familyOf,
   filterLog,
   findPredecessorRow,
   hasSeq,
@@ -190,6 +195,56 @@ test("filterLog: clearedBeforeSeq hides older rows; an EMPTY pill set matches no
   ).toEqual([2, 3]);
   expect(filterLog(log, { ...EMPTY_TIMELINE_FILTER, pills: [] })).toEqual([]);
 });
+
+test("a devtools:error row is its own family, sources nothing, and matches no pill", () => {
+  const error = devtoolsError(9);
+
+  expect(familyOf(error.kind)).toBe("devtools");
+  expect(sourceOfEvent(error)).toBeNull();
+  expect(
+    filterLog([row(error)], {
+      ...EMPTY_TIMELINE_FILTER,
+      pills: [{ type: "stream", id: "fx.price$" }],
+    }),
+  ).toEqual([]);
+});
+
+test("findPredecessorRow: same machine, but nothing at all for an uncomparable kind", () => {
+  const log = [
+    row(machineState(1, "m1", "idle")),
+    row(emission(2, "fx.price$", 1)),
+    row(machineState(3, "m1", "busy")),
+    row(devtoolsError(4)),
+  ];
+
+  expect(findPredecessorRow(log, log[2] as LogRow)?.seq).toBe(1);
+  expect(findPredecessorRow(log, log[3] as LogRow)).toBeNull();
+});
+
+test("diffableValueOf reads the wire payload and nothing from a devtools row", () => {
+  expect(diffableValueOf(wireInWith(1, "PRICE", { bid: 1 }))).toEqual({
+    bid: 1,
+  });
+  expect(diffableValueOf(devtoolsError(2))).toBeNull();
+});
+
+function devtoolsError(seq: number): DevtoolsEvent {
+  return {
+    kind: "devtools:error",
+    seq,
+    ts: 1000 + seq,
+    context: "tap",
+    message: "boom",
+  };
+}
+
+function wireInWith(
+  seq: number,
+  msgType: string,
+  payload: SerializedValue,
+): DevtoolsEvent {
+  return { kind: "wire:in", seq, ts: 1000 + seq, msgType, payload };
+}
 
 function emission(seq: number, streamId: string, value: number): DevtoolsEvent {
   return {

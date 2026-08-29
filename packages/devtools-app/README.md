@@ -1,6 +1,6 @@
 # @rtc/devtools-app
 
-The RTC DevTools inspector -- a four-panel Vite + React 19 SPA that renders
+The RTC DevTools inspector -- a store-first Vite + React 19 SPA that renders
 the live state of the app's non-Redux state layer (presenter streams and
 per-mount RxJS machines), driven entirely by `@rtc/devtools-core`'s wire
 protocol.
@@ -14,19 +14,18 @@ protocol.
 
 ## Folder map
 
-`src/` is flat except `panels/`. Every file is production source except its `*.test.ts`/`*.test.tsx` sibling under `__tests__/`.
+`src/` is flat except `nav/`, `timeline/`, `recording/` and `panels/`. Every file is production source except its `*.test.ts`/`*.test.tsx` sibling under `__tests__/`.
 
 | Path | What lives here |
 |---|---|
 | `src/main.tsx` | Entry point -- mounts `InspectorApp` |
-| `src/InspectorApp.tsx` | The shell: connection-status rail (badge, counts, filters), recording toolbar, lens switcher (Timeline/Machines/Wire) |
+| `src/InspectorApp.tsx` | The shell: connection-status rail (badge + navigation tree), recording toolbar, and the scoped timeline/context split |
 | `src/inspectorSession.ts` | Constructs the transport (`BroadcastChannelDuplex`) + `InspectorClient` + `InspectorStore` from `devtools-core` and exposes them to React |
 | `src/useInspectorState.ts` | Hook subscribing to the live `InspectorState` snapshot |
-| `src/timeline/` | Timeline lens: `useTimeline` (selection/filter/pin state), `TimelinePane` (the row list), `ContextPane` (Event/State/Diff for the pinned moment), `FilterControls` |
+| `src/nav/` | The navigation tree: `scope.ts` (the single selection + how it compiles into a filter), `buildNavTree` (its data), `NavTree` (the rail rows), `useNavigation` (selection + the wire probe's one-deep history) |
+| `src/timeline/` | `useTimeline` (selection/filter/pin state), `TimelinePane` (the row list), `ContextPane` (Event/State/Diff/Machine for the pinned moment), `MachineTab` (machine detail + intent injector) |
 | `src/recording/` | `useRecording` (record/stop/export/import) + `RecordingToolbar`, incl. the imported-recording datasource switch |
 | `src/panels/StateTreePanel.tsx` | Collapsible presenter-stream tree, change-flash highlighting, per-node emission-rate badge |
-| `src/panels/MachinesPanel.tsx` | Live machine-instance table: id, kind, args, state, created-at, live/disposed |
-| `src/panels/WirePanel.tsx` | Raw `CLIENT_MSG`/`SERVER_MSG` traffic, direction + topic filters |
 | `src/panels/ValueView.tsx` | Shared pretty-printer for `SerializedValue` (handles the tagged Map/Set/truncated encodings) |
 
 ## Where to start reading
@@ -40,11 +39,12 @@ protocol.
 2. `src/InspectorApp.tsx` -- the shell: renders "disconnected" until a
    `welcome` arrives (same-origin is load-bearing here -- see
    [§20.6](../../docs/architecture/20-devtools.md#206-serving-topology)), then
-   the recording toolbar and the Timeline/Machines/Wire lens switcher.
-3. `src/panels/` -- each panel is driven purely by `InspectorState` plus
-   local React state for its own filters/selection; the inspector
-   deliberately does **not** use the machine architecture it inspects -- it
-   is a leaf tool and stays boring.
+   the recording toolbar and the scope-driven timeline/context split. One
+   selection -- the navigation tree's scope -- drives every pane.
+3. `src/nav/` and `src/timeline/` -- everything is driven purely by
+   `InspectorState` plus local React state for selection and filters; the
+   inspector deliberately does **not** use the machine architecture it
+   inspects -- it is a leaf tool and stays boring.
 
 ## How it's served
 
@@ -74,5 +74,5 @@ To exercise it against a real, live app: `pnpm dev` (client-react) and open
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
-- [§20 RTC DevTools](../../docs/architecture/20-devtools.md) -- the full narrative, including the four-panel design and the serving topology
+- [§20 RTC DevTools](../../docs/architecture/20-devtools.md) -- the full narrative, including the inspector's design and the serving topology
 - [Full design spec](../../docs/superpowers/specs/2026-07-11-custom-devtools-design.md)

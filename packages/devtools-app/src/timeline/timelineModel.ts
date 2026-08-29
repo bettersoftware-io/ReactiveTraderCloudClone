@@ -187,8 +187,8 @@ export function diffableValueOf(event: DevtoolsEvent): SerializedValue | null {
   return null;
 }
 
-/** Locate the log seq of a machine intent by identity (used by the Machines
- * lens to pin the timeline from an intent-history row). */
+/** Locate the log seq of a machine intent by identity (used by the Machine
+ * tab to pin the timeline from an intent-history row). */
 export function seqOfMachineIntent(
   log: readonly LogRow[],
   machineId: string,

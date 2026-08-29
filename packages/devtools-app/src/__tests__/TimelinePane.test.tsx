@@ -159,6 +159,32 @@ test("pinned bar flags a pin that is hidden by the current scope and offers show
   expect(handle.shownInAll).toBe(1);
 });
 
+test("detaching anchors the render window on the first row still on screen", () => {
+  mount();
+
+  const list = screen.getByTestId("timeline-rows");
+
+  Object.defineProperty(list, "scrollHeight", {
+    value: 1000,
+    configurable: true,
+  });
+  Object.defineProperty(list, "clientHeight", {
+    value: 200,
+    configurable: true,
+  });
+  // Give the first row real height so the anchor scan finds it there rather
+  // than falling back to "the first child, whatever it is".
+  Object.defineProperty(list.children[0] as HTMLElement, "offsetHeight", {
+    value: 40,
+    configurable: true,
+  });
+  list.scrollTop = 0;
+  fireEvent.scroll(list);
+
+  expect(screen.getByTestId("live-chip")).toBeTruthy();
+  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+});
+
 interface Handle {
   setScope: (scope: Scope) => void;
   append: () => void;

@@ -117,6 +117,47 @@ test("a node flashes when its lastSeq advances, not on unrelated re-renders", ()
   expect(animateSpy.mock.calls.length).toBe(after);
 });
 
+test("collapsing: a header label closes its own group, a caret closes an open node, and ArrowLeft does it from the keyboard", () => {
+  const selected = mount();
+
+  // A header row carries no scope, so clicking its LABEL toggles the group
+  // instead of selecting anything.
+  fireEvent.click(screen.getByText("Presenters"));
+  expect(scopeIds()).not.toContain("presenter:blotter");
+  expect(selected.length).toBe(0);
+
+  fireEvent.click(screen.getByText("Presenters"));
+  expect(scopeIds()).toContain("presenter:blotter");
+
+  // Caret open, caret closed — the delete half of the expansion toggle.
+  fireEvent.click(caretOf("presenter:blotter"));
+  expect(scopeIds()).toContain("stream:blotter.trades$");
+  fireEvent.click(caretOf("presenter:blotter"));
+  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+
+  node("all").focus();
+  pressKey("ArrowDown"); // cursor → presenter:blotter
+  pressKey("ArrowRight");
+  expect(scopeIds()).toContain("stream:blotter.trades$");
+  pressKey("ArrowLeft");
+  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+  // Already collapsed: a second ArrowLeft leaves the expansion set alone.
+  pressKey("ArrowLeft");
+  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+});
+
+function scopeIds(): string[] {
+  return screen.getAllByTestId("nav-node").map((el) => {
+    return el.dataset.scopeId ?? "";
+  });
+}
+
+function caretOf(id: string): HTMLElement {
+  return node(id).parentElement?.querySelector(
+    "[aria-label='Expand'], [aria-label='Collapse']",
+  ) as HTMLElement;
+}
+
 function node(id: string): HTMLElement {
   const match = screen.getAllByTestId("nav-node").find((el) => {
     return el.dataset.scopeId === id;

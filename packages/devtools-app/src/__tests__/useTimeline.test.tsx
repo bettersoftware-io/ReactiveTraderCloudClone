@@ -205,6 +205,71 @@ test("tail attachment: detach sticks; resume re-attaches", () => {
   expect(result.current.tailAttached).toBe(true);
 });
 
+test("an empty timeline has nothing to clear and nowhere to step", () => {
+  const { history, present } = seeded(3);
+  const { result } = renderHook(() => {
+    return useTimeline(EMPTY_LOG, history, ALL_SCOPE, present);
+  });
+
+  expect(result.current.rows).toEqual([]);
+
+  act(() => {
+    result.current.clear();
+    result.current.selectPrev();
+    result.current.selectNext();
+  });
+
+  expect(result.current.filter.clearedBeforeSeq).toBe(0);
+  expect(result.current.selection).toEqual({ mode: "follow" });
+});
+
+test("stepping while the pin sits outside the scope jumps to that scope's tail", () => {
+  const { history, log, present } = seeded(3, "blotter.trades$");
+  const { result, rerender } = renderHook(
+    ({ scope }: ScopeProps) => {
+      return useTimeline(log, history, scope, present);
+    },
+    { initialProps: { scope: ALL_SCOPE } },
+  );
+
+  act(() => {
+    result.current.pin(rowAt(log, 1));
+  });
+
+  rerender({ scope: { kind: "presenter", presenter: "blotter" } });
+  expect(result.current.pinnedRowHidden).toBe(true);
+
+  act(() => {
+    result.current.selectNext();
+  });
+
+  const tail = result.current.rows[result.current.rows.length - 1];
+
+  expect(result.current.selection.mode).toBe("pinned");
+  expect(result.current.selectedRow?.seq).toBe(tail?.seq);
+});
+
+test("a reconstruction that throws surfaces as reconstructError, not a crash", () => {
+  const { history, log, present } = seeded(3);
+
+  history.stateAt = (): never => {
+    throw new Error("history is corrupt");
+  };
+
+  const { result } = renderHook(() => {
+    return useTimeline(log, history, ALL_SCOPE, present);
+  });
+
+  act(() => {
+    result.current.pin(rowAt(log, 2));
+  });
+
+  expect(result.current.pinnedState).toBeNull();
+  expect(result.current.reconstructError).toContain("history is corrupt");
+});
+
+const EMPTY_LOG: readonly LogRow[] = [];
+
 interface RowsProps {
   rows: readonly LogRow[];
 }

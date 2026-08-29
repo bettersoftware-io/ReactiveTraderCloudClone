@@ -1,5 +1,5 @@
-/** Shared `HH:MM:SS.mmm` timestamp formatter for the log-derived panels
- * (`TimelinePane`, `WirePanel`) — both render `LogRow.ts` (epoch ms) the
+/** Shared `HH:MM:SS.mmm` timestamp formatter for the log-derived views
+ * (`TimelinePane`, `ContextPane`) — both render `LogRow.ts` (epoch ms) the
  * same way, so the formatting lives here once instead of twice. */
 export function formatLogTime(ts: number): string {
   const d = new Date(ts);
