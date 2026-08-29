@@ -1,4 +1,10 @@
-import { type ReactElement, useEffect, useRef, useState } from "react";
+import {
+  type ReactElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -65,13 +71,23 @@ export function DockviewLayoutEngine({
   const specsRef = useRef(specs);
 
   // Synced in an effect (not during render — React Compiler forbids touching
-  // refs there); declared BEFORE the engine effect so it runs first and the
-  // engine's title hook always sees the current specs.
-  useEffect(() => {
+  // refs there); a LAYOUT effect declared BEFORE the engine effect so it runs
+  // first and the engine's title hook always sees the current specs.
+  useLayoutEffect(() => {
     specsRef.current = specs;
   });
 
-  useEffect(() => {
+  // A layout effect, not a passive one: dockview is created — and the slot
+  // portals committed by the synchronous `setMounted` flush a layout effect
+  // gets — BEFORE the browser paints, so the workspace's first frame already
+  // shows the panels, exactly as the in-house engine's synchronous render
+  // and the Solid bridge's `onMount` do. Under a passive effect the first
+  // frame was an EMPTY workspace: Playwright's screenshot stabiliser accepts
+  // two identical consecutive frames, and in the classic skins (no ambient
+  // animation to keep frames changing) the x86 runner captured that blank
+  // frame as the `app/fx-dockview` golden — the React tier then "passed"
+  // against it while Solid's panels failed.
+  useLayoutEffect(() => {
     const container = containerRef.current;
 
     if (container === null) {

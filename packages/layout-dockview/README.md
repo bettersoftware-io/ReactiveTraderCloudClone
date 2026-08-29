@@ -23,6 +23,18 @@ rule it copies. A stripped (collapsed) panel marks its tab mount
 `data-dock-strip="true"`; the stylesheet hides that group's header so the
 client's restore bar is the panel's entire chrome, as in-house.
 
+Surface painting to know: the card and the head bar are painted through the
+`background` **shorthand**, never `background-color`, and `--panel` /
+`--panel-head` are never routed into a `--dv-*` variable. Dockview's base
+sheet applies its background variables with `background-color:`, and in the
+3D skins those tokens are `linear-gradient(…)` images — a gradient is not a
+`<color>`, so such a declaration is invalid at computed-value time and
+paints nothing (every panel body showed the page backdrop). The dock root is
+also kept transparent, as the in-house engine root is: Dockview's default
+paints it with the group colour, which tints the gutters and composites a
+translucent skin's card fill twice. `dockviewHud.test.ts` pins all of this
+at the stylesheet-text level, since jsdom cannot model the invalidity.
+
 Gap arithmetic to know: Dockview keeps a split's model sizes summing to the
 full extent and shaves `gap × (n − 1) / n` off each of its `n` children when
 laying out. `toSerializedDockview(…, { gap })` compensates so pinned pixels

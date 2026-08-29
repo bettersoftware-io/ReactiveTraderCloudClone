@@ -273,7 +273,12 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // Dockview-engine twins: the same full-page capture, tab click and
   // readiness text as each in-house sibling above — the head tabs those
   // texts come from are the SAME PanelHead nodes under either engine.
-  "app/fx-dockview": { fullPage: true },
+  // Dockview-engine twins of the four workspace captures. Each waits for text
+  // that lives in a panel BODY the bridge portals into dockview, so the
+  // capture cannot precede the engine's mount (the FX twin has no tab click
+  // to pace it, and a dock that has not mounted yet is a blank workspace —
+  // which the screenshot stabiliser once accepted as the golden on x86).
+  "app/fx-dockview": { fullPage: true, waitForText: "Net Exposure" },
   "app/credit-dockview": {
     fullPage: true,
     click: "tab-credit",

@@ -451,6 +451,51 @@ as a two-branch conditional, would be guessing at the shape a third engine
   crash shipped with the first cut: dockview's `fromJSON` rejects a leaf
   root, and the single-panel Admin tab seeds exactly that — the converter
   now wraps a lone panel in a one-child branch.
+- **Skin-proof card fill and a painted first frame, added 2026-08-29 (PR #594).**
+  Comparing those goldens against their in-house siblings showed the panel
+  *bodies* diverging in every skin, catastrophically in the four 3D ones
+  (holo3d / terminal3d, dark and light: ~35% of pixels in the light pair).
+  Two causes, both in how the card is painted. Dockview's base sheet applies
+  its `--dv-group-view-background-color` / `--dv-tabs-and-actions-container-
+  background-color` variables through `background-color:`, and the 3D skins'
+  `--panel` / `--panel-head` tokens are `linear-gradient(…)` *images* — not
+  `<color>`s — so the declaration was invalid at computed-value time and the
+  card painted nothing; `dockview-hud.css` now paints the card and head
+  itself through the `background` shorthand (which takes an image, as the
+  in-house `.panel` / `.panelHeader` do) and routes only plain-colour
+  surface tokens into the `--dv-*` variables. And Dockview paints its *root*
+  with the group colour too, where the in-house `.engine` is transparent —
+  tinting the gutters and compositing a translucent skin's card fill twice
+  under every body; the root is now transparent. A stylesheet-text unit test
+  pins both mechanics (jsdom cannot model invalid-at-computed-value custom
+  properties). The same comparison exposed a *capture* defect: the x86
+  `classic-dark` / `classic-light` `app/fx-dockview` goldens were a blank
+  workspace. The React bridge created Dockview in a passive `useEffect`, so
+  its first frame was an empty workspace; Playwright's screenshot stabiliser
+  accepts two identical consecutive frames, and the classic skins — the only
+  ones with no ambient animation keeping frames changing — handed the slower
+  x86 runner two blank frames before the engine mounted. React's tier then
+  passed against its own blank golden while Solid (whose `onMount` runs
+  before paint) failed, which is how it surfaced. The React bridge now
+  creates the engine in a `useLayoutEffect` — the synchronous state flush
+  commits the slot portals before paint, so the first frame shows the
+  panels as the in-house engine's synchronous render and the Solid bridge
+  already did — and `app/fx-dockview` waits for portalled body text before
+  capturing, as its three tab-switching siblings already did. What remains
+  between the two engines' goldens after this round is sub-pixel geometry,
+  not design: measured at 1920×1080 on the FX seed, every Dockview edge
+  lands on a half pixel (Live Rates ends at 709.5 vs 708.56 in-house, the
+  rail starts at 1550.5 vs 1550) because dockview rounds each restored view
+  size to an integer (`gridview.js` `fromJSON`, `splitview.js` `layout()`)
+  and then renders `size − gap × (n − 1) / n` — 3.5px for the 7px gap — and
+  Chrome snaps `.5` up. That is ≤1px per edge and 0.3–3.5% of pixels
+  (highest on the position-sensitive equities chart), and it cannot be
+  seeded away: the integer model is dockview's, not the seed's. The exact
+  route, if it is ever wanted, is a gap-0 model with the 7px gutter emulated
+  as a trailing inset on every non-last view — integer edges that snap like
+  the in-house engine's — which would replace the gap-compensation logic
+  above (seed share, serialise-time `compensateGap`, collapse shortfall)
+  rather than extend it.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
