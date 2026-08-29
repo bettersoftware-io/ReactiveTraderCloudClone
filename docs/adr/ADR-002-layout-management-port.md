@@ -451,7 +451,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   crash shipped with the first cut: dockview's `fromJSON` rejects a leaf
   root, and the single-panel Admin tab seeds exactly that — the converter
   now wraps a lone panel in a one-child branch.
-- **Skin-proof card fill and a painted first frame, added 2026-08-29 (PR #PRNUM).**
+- **Skin-proof card fill and a painted first frame, added 2026-08-29 (PR #594).**
   Comparing those goldens against their in-house siblings showed the panel
   *bodies* diverging in every skin, catastrophically in the four 3D ones
   (holo3d / terminal3d, dark and light: ~35% of pixels in the light pair).
