@@ -76,6 +76,15 @@ export interface DockEngineOptions {
  * full-height column — the in-house `.collapsedStrip`, 38px outer with 1px
  * borders inside — and one whose siblings stack (a vertical split) shrinks
  * to a 32px-tall full-width bar, the in-house `.panel[data-strip]`. */
+/** Set on the consumer's container for the life of an intent's glide; the
+ *  stylesheet's `[data-dock-glide]` rules transition dockview's inline
+ *  geometry while it is present. */
+export const DOCK_GLIDE_ATTRIBUTE = "data-dock-glide";
+/** The in-house glide is 0.34s (InhouseLayoutEngine.module.css `.cell` /
+ *  `.panel`, PROTO's panTrans); the attribute outlives it by a frame or two
+ *  so the tail of the transition is never cut off — dropping the transition
+ *  property mid-flight snaps to the end value. */
+export const GLIDE_ATTRIBUTE_MS = 400;
 const STRIP_WIDTH_PX = 38;
 const STRIP_HEIGHT_PX = 32;
 
@@ -190,13 +199,42 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // this map does).
   const preCollapse = new Map<string, PreCollapseGeometry>();
 
+  // The in-house engine glides a collapse / expand / maximize / restore over
+  // 0.34s (its `.cell` / `.panel` transitions) and NOTHING else — a sash drag
+  // or a window resize lands instantly. Dockview positions every group and
+  // sash through inline `left/top/width/height` styles, so the same glide is
+  // a CSS transition on those (dockview-hud.css, `[data-dock-glide]`) — but
+  // dockview rewrites them on drags and resizes too, which must not animate.
+  // Hence the gate is INVERTED from in-house's "disable while dragging": the
+  // attribute is on only around an intent, which are the four calls below,
+  // and off again once the transition has run its course.
+  let glideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function glide(mutate: () => void): void {
+    opts.container.setAttribute(DOCK_GLIDE_ATTRIBUTE, "");
+
+    if (glideTimer !== null) {
+      clearTimeout(glideTimer);
+    }
+
+    glideTimer = setTimeout(() => {
+      glideTimer = null;
+      opts.container.removeAttribute(DOCK_GLIDE_ATTRIBUTE);
+    }, GLIDE_ATTRIBUTE_MS);
+    mutate();
+  }
+
   return {
     maximizePanel: (panelId: string) => {
-      api.getPanel(panelId)?.api.maximize();
+      glide(() => {
+        api.getPanel(panelId)?.api.maximize();
+      });
     },
     exitMaximize: () => {
       if (api.hasMaximizedGroup()) {
-        api.exitMaximizedGroup();
+        glide(() => {
+          api.exitMaximizedGroup();
+        });
       }
     },
     collapsePanel: (panelId: string): DockStripOrientation | null => {
@@ -237,10 +275,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // Constraints BEFORE size: a bare `setSize` leaves the group draggable
       // back open and lets a sibling's resize push it wide again, so the strip
       // would not survive the next layout pass.
-      clampRendered(
-        axis,
-        orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX,
-      );
+      glide(() => {
+        clampRendered(
+          axis,
+          orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX,
+        );
+      });
       return orientation;
     },
     expandPanel: (panelId: string) => {
@@ -255,8 +295,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       // Constraints first again — while max is still pinned at the strip,
       // `setSize` to anything wider would be clamped straight back.
-      axis.constrain(prior.minimum, prior.maximum);
-      setRendered(axis, prior.size);
+      glide(() => {
+        axis.constrain(prior.minimum, prior.maximum);
+        setRendered(axis, prior.size);
+      });
       preCollapse.delete(panelId);
     },
     groupCount: () => {
@@ -264,6 +306,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     },
     dispose: () => {
       changeSub.dispose();
+
+      if (glideTimer !== null) {
+        clearTimeout(glideTimer);
+        glideTimer = null;
+        opts.container.removeAttribute(DOCK_GLIDE_ATTRIBUTE);
+      }
 
       // The last layout mutation must survive dispose. Dockview's model
       // updates synchronously (only its onDidLayoutChange notification is

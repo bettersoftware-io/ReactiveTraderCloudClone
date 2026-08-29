@@ -102,6 +102,13 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     );
   }
 
+  /** Whether the engine is mid-glide: the `data-dock-glide` attribute
+   * @rtc/layout-dockview sets on the bridge's container around an intent,
+   * which its stylesheet keys the in-house 0.34s geometry transition on. */
+  gliding(): boolean {
+    return this.root.querySelector("[data-dock-glide]") !== null;
+  }
+
   clickCollapse(panelId: string): void {
     fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-collapse`));
   }

@@ -23,6 +23,18 @@ rule it copies. A stripped (collapsed) panel marks its tab mount
 `data-dock-strip="true"`; the stylesheet hides that group's header so the
 client's restore bar is the panel's entire chrome, as in-house.
 
+Motion to know: the in-house engine glides a collapse / expand / maximize /
+restore over 0.34s and nothing else — a sash drag or a window resize lands
+instantly. Dockview positions every group and sash through inline
+`left/top/width/height` styles, so the same glide is one CSS transition on
+those in `dockview-hud.css`, gated on a `data-dock-glide` attribute
+`createDockEngine` sets on the container around each of the four intents
+and clears once the transition has run (`GLIDE_ATTRIBUTE_MS`). Drags and
+resizes rewrite the very same inline styles, which is why the gate is
+inverted from in-house's "not while dragging": on only around an intent.
+Maximize glides the maximized group's growth; dockview hides the siblings
+rather than shrinking them to strips (the dockview-native maximize residual).
+
 Surface painting to know: the card and the head bar are painted through the
 `background` **shorthand**, never `background-color`, and `--panel` /
 `--panel-head` are never routed into a `--dv-*` variable. Dockview's base

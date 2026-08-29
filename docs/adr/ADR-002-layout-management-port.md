@@ -496,6 +496,22 @@ as a two-branch conditional, would be guessing at the shape a third engine
   the in-house engine's — which would replace the gap-compensation logic
   above (seed share, serialise-time `compensateGap`, collapse shortfall)
   rather than extend it.
+- **Intent glide, added 2026-08-29 (PR #602).** The in-house engine animates
+  exactly one thing: a collapse / expand / maximize / restore glides over
+  0.34s (`.cell` / `.panel` transitions on flex-grow/basis and width/height),
+  never a sash drag or a window resize. Dockview lays every group and sash
+  out through inline `left/top/width/height` styles, so the same glide is a
+  CSS transition on those — with the gate inverted, because drags and
+  resizes rewrite the same inline styles: `createDockEngine` sets a
+  `data-dock-glide` attribute on its container around each of the four
+  intents and clears it once the transition has run, and
+  `dockview-hud.css` transitions `.dv-view` / `.dv-sash` geometry only under
+  that attribute (and only under `prefers-reduced-motion: no-preference`,
+  as in-house; the power-saver freeze catch-all zeroes it like every other
+  transition). Framework-neutral, so both clients get it from the one
+  package. Maximize glides the maximized group's growth only — dockview
+  hides the siblings rather than shrinking them to strips, the
+  dockview-native maximize residual above.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
