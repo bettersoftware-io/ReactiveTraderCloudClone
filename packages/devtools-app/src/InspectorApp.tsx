@@ -227,6 +227,16 @@ function useWindowShortcuts(shortcuts: Shortcuts): void {
 
   useEffect((): (() => void) => {
     function dispatchInspectorShortcut(e: KeyboardEvent): void {
+      // A held modifier means the keystroke belongs to the browser or the
+      // OS, never to us. `e.key` is plain `"c"` for BOTH `c` and ⌘C/Ctrl+C,
+      // and copying a value out of the panel is its core gesture — a text
+      // selection leaves focus on `<body>` or a row, not an input, so
+      // without this guard ⌘C would silently Clear the timeline. Same for
+      // ⌘↑ ("scroll to top"), which must not be preventDefault-ed.
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
+
       // Narrowed, not cast: a shortcut typed with nothing focused is
       // dispatched at `window` itself, which has neither `tagName` nor
       // `closest` — a cast makes that the app-wide crash path.

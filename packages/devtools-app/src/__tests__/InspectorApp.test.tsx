@@ -313,6 +313,41 @@ test("show in All widens the scope around a hidden pin; an intent-history click 
   expect(pinnedEventSeq()).toBe("1");
 });
 
+test("a held modifier hands the keystroke back to the browser — Cmd/Ctrl+C never clears", () => {
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  act(() => {
+    store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
+    store.apply({ kind: "snapshot", streams: [], machines: [] });
+
+    for (const frame of emissionBatches()) {
+      store.apply(frame);
+    }
+  });
+
+  // `e.key` is plain "c" for Cmd+C too, and a text selection leaves focus on
+  // <body> — so without the modifier guard, copying a value out of the panel
+  // would wipe the timeline.
+  fireEvent.keyDown(window, { key: "c", metaKey: true });
+  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+  expect(screen.queryByTestId("unclear-log")).toBeNull();
+
+  fireEvent.keyDown(window, { key: "c", ctrlKey: true });
+  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+  expect(screen.queryByTestId("unclear-log")).toBeNull();
+
+  // Cmd/Ctrl+ArrowUp is "scroll to top", not "step the selection".
+  fireEvent.keyDown(window, { key: "ArrowUp", ctrlKey: true });
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+
+  // Unmodified, the same keys still act.
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  fireEvent.keyDown(window, { key: "c" });
+  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
+});
+
 test("pinned selection resets when the datasource swaps (import lands, Back to live)", async () => {
   const store = new InspectorStore({ coalesce: false });
   render(<InspectorApp store={store} />);
@@ -325,6 +360,12 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
       store.apply(frame);
     }
   });
+
+  // Scope away from All first: the swap must reset the SCOPE too, not only
+  // the pin — an imported recording has none of the live app's stores, so a
+  // surviving `presenter:fx` would scope the timeline to nothing.
+  fireEvent.click(navNode("presenter:fx"));
+  expect(navNode("presenter:fx").dataset.selected).toBe("true");
 
   const rows = screen.getAllByTestId("timeline-row");
   const pinButton = (rows[0] as HTMLElement).querySelector("button");
@@ -350,6 +391,7 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // own wait rather than an assertion immediately following the banner's.
   await waitFor(() => {
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
+    expect(navNode("all").dataset.selected).toBe("true");
   });
 
   fireEvent.click(screen.getByTestId("back-to-live"));
@@ -361,6 +403,7 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // above, so wait rather than assert immediately.
   await waitFor(() => {
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
+    expect(navNode("all").dataset.selected).toBe("true");
   });
 });
 
