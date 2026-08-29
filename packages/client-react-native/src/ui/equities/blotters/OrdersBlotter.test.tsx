@@ -31,6 +31,70 @@ test("renders a row per order", async () => {
   expect(screen.getByTestId("orders-panel")).toBeTruthy();
   expect(screen.getByTestId("order-row-o1")).toBeTruthy();
   expect(screen.getByText("182.40")).toBeTruthy();
+  expect(screen.getByText("100")).toBeTruthy();
+  expect(screen.getByTestId("eq-order-side-o1")).toHaveTextContent("BUY MKT");
+});
+
+test("prints the limit price for a resting order, a dash for a bare market order", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(TWO_WORKING_ORDERS)}>
+      <OrdersBlotter />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByText("—")).toBeTruthy();
+  expect(screen.getByText("227.17")).toBeTruthy();
+  expect(screen.getByTestId("eq-order-side-o2")).toHaveTextContent("SELL LMT");
+});
+
+test("pill labels never wrap: PARTIAL, CANCELLED, REJECTED", async () => {
+  const orders: readonly EquityOrder[] = [
+    order("p", "TSLA", "partiallyFilled"),
+    order("c", "AMZN", "cancelled"),
+    order("r", "JPM", "rejected"),
+    order("n", "MSFT", "new"),
+  ];
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(orders)}>
+      <OrdersBlotter />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("eq-order-status-p")).toHaveTextContent("PARTIAL");
+  expect(screen.getByTestId("eq-order-status-c")).toHaveTextContent(
+    "CANCELLED",
+  );
+  expect(screen.getByTestId("eq-order-status-r")).toHaveTextContent("REJECTED");
+  expect(screen.getByTestId("eq-order-status-n")).toHaveTextContent("NEW");
+});
+
+test("pill colour: filled positive, open aware, terminal negative — border at 45%", async () => {
+  const t = rnThemeTokens.holo.dark;
+  const orders: readonly EquityOrder[] = [
+    order("f", "AAPL", "filled"),
+    order("w", "NVDA", "working"),
+    order("p", "TSLA", "partiallyFilled"),
+    order("x", "JPM", "rejected"),
+  ];
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(orders)}>
+      <OrdersBlotter />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("eq-order-status-f")).toHaveStyle({
+    color: t.accentPositive,
+    borderColor: `${t.accentPositive}73`,
+  });
+  expect(screen.getByTestId("eq-order-status-w")).toHaveStyle({
+    color: t.accentAware,
+  });
+  expect(screen.getByTestId("eq-order-status-p")).toHaveStyle({
+    color: t.accentAware,
+  });
+  expect(screen.getByTestId("eq-order-status-x")).toHaveStyle({
+    color: t.accentNegative,
+  });
+  expect(screen.getByTestId("eq-order-side-f")).toHaveStyle({
+    color: t.accentPositive,
+  });
 });
 
 test("shows an empty state with no orders", async () => {

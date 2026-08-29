@@ -8,23 +8,28 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
-import type { EquityOrder, OrderStatus } from "@rtc/domain";
+import type { EquityOrder, OrderStatus, OrderType } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useRowInsertFlash } from "#/ui/blotter/useRowInsertFlash";
-import { SurfaceCard } from "#/ui/SurfaceCard";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
-import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 import { useNewestOrderId } from "./useNewestOrderId";
 
-/** Read-only orders table. Ported from web `OrdersBlotter`. Each row's
- * status pill is coloured by `OrderStatus` (mirrors web OrdersTable's CSS
- * grouping: filled = positive, still-open = primary, cancelled/rejected =
- * negative). The row `useNewestOrderId` currently flags plays the shared
+/** The ORDERS list of the mobile-v1 blotter: one bordered card per order on
+ * the prototype's 1.1 / 0.8 / 0.9 / 0.9 grid — symbol over a `BUY LMT`
+ * side+type sub-label, quantity, price, and a boxed status pill. Until
+ * 2026-08-29 this was a six-column header table whose STATUS column wrapped
+ * mid-word (`PARTIALL/YFILLED`); the card row is what the design draws, and
+ * the pill labels are kept short enough never to wrap.
+ *
+ * Pill colour follows the prototype's rule rather than the web table's:
+ * filled reads positive, every still-open status (`new`/`working`/
+ * `partiallyFilled`) reads AWARE (amber), and the terminal negatives
+ * (`cancelled`/`rejected`) read negative. The newest card plays the shared
  * `useRowInsertFlash` insert animation — the same hook Phase 4b's `TradeRow`
  * uses — gated by `useShellMotionEnabled`. */
 export function OrdersBlotter(): JSX.Element {
@@ -44,57 +49,53 @@ export function OrdersBlotter(): JSX.Element {
   }
 
   return (
-    <SurfaceCard variant="panel" testID="orders-panel" style={styles.blotter}>
-      <View style={styles.header}>
-        <Text style={styles.hCell}>SYMBOL</Text>
-        <Text style={styles.hCell}>SIDE</Text>
-        <Text style={styles.hCell}>TYPE</Text>
-        <Text style={styles.hCell}>QTY</Text>
-        <Text style={styles.hCell}>PRICE</Text>
-        <Text style={styles.hCell}>STATUS</Text>
-      </View>
+    <View testID="orders-panel">
       {orders.map((order) => {
         return (
-          <OrderRow
+          <OrderCard
             key={order.id}
             order={order}
             isNewest={order.id === newestId}
-            baseColor={theme.bgTile}
+            baseColor={theme.bgPrimary}
             motionEnabled={motionEnabled}
             styles={styles}
+            theme={theme}
           />
         );
       })}
-    </SurfaceCard>
+    </View>
   );
 }
 
-interface OrderRowProps {
+interface OrderCardProps {
   order: EquityOrder;
   isNewest: boolean;
   baseColor: string;
   motionEnabled: boolean;
   styles: OrdersBlotterStyles;
+  theme: RnTheme;
 }
 
-/** One orders-table row, wrapped in `Animated.View` so it can play the
- * shared row-insert flash when it is the newest row. A separate component
- * (not inlined in the `.map()` above) so `useRowInsertFlash` — a hook — has
- * its own component instance per row, same shape as Phase 4b's `TradeRow`. */
-function OrderRow({
+/** One order card, wrapped in `Animated.View` so it can play the shared
+ * row-insert flash when it is the newest. A separate component (not inlined
+ * in the `.map()` above) so `useRowInsertFlash` — a hook — has its own
+ * component instance per card, same shape as Phase 4b's `TradeRow`. */
+function OrderCard({
   order,
   isNewest,
   baseColor,
   motionEnabled,
   styles,
-}: OrderRowProps): JSX.Element {
-  const pillStyle = statusPillStyle(styles, order.status);
+  theme,
+}: OrderCardProps): JSX.Element {
+  const statusColor = statusColorFor(theme, order.status);
   const { flashStyle } = useRowInsertFlash(
     isNewest,
-    pillStyle.color,
+    statusColor,
     baseColor,
     motionEnabled,
   );
+  const price = order.avgPrice ?? order.limitPrice;
 
   return (
     <Animated.View
@@ -104,108 +105,137 @@ function OrderRow({
       // the normal live path (see `RankByChips`'s `eq-rank-${sort}` for the
       // same fix). `isNewest` is observable via `accessibilityState` instead.
       accessibilityState={{ selected: isNewest }}
-      style={[styles.row, flashStyle]}
+      style={[styles.card, flashStyle]}
     >
-      <Text style={styles.cell}>{order.symbol}</Text>
-      <Text
-        style={[styles.cell, order.side === "buy" ? styles.buy : styles.sell]}
-      >
-        {order.side.toUpperCase()}
+      <View style={styles.symbolCell}>
+        <Text style={styles.symbol}>{order.symbol}</Text>
+        <Text
+          testID={`eq-order-side-${order.id}`}
+          style={[
+            styles.sideType,
+            order.side === "buy" ? styles.buy : styles.sell,
+          ]}
+        >
+          {order.side.toUpperCase()} {ORDER_TYPE_LABEL[order.type]}
+        </Text>
+      </View>
+      <Text style={[styles.qtyCell, styles.qty]}>
+        {order.qty.toLocaleString("en-US")}
       </Text>
-      <Text style={styles.cell}>{order.type}</Text>
-      <Text style={styles.cell}>
-        {order.filledQty}/{order.qty}
+      <Text style={[styles.priceCell, styles.price]}>
+        {price === undefined ? "—" : price.toFixed(2)}
       </Text>
-      <Text style={styles.cell}>
-        {order.avgPrice ? order.avgPrice.toFixed(2) : "—"}
-      </Text>
-      <Text
-        testID={`eq-order-status-${order.id}`}
-        style={[styles.cell, pillStyle]}
-      >
-        {order.status.toUpperCase()}
-      </Text>
+      <View style={styles.statusCell}>
+        <Text
+          testID={`eq-order-status-${order.id}`}
+          style={[
+            styles.pill,
+            { color: statusColor, borderColor: pillBorder(statusColor) },
+          ]}
+        >
+          {ORDER_STATUS_LABEL[order.status]}
+        </Text>
+      </View>
     </Animated.View>
   );
 }
 
-/** The pill colour bucket for a given status — mirrors web OrdersTable.module.css's
- * `data-status` grouping: `filled` reads positive, still-open statuses
- * (`new`/`working`/`partiallyFilled`) read primary, and terminal negative
- * outcomes (`cancelled`/`rejected`) read negative. */
-function statusPillStyle(
-  styles: OrdersBlotterStyles,
-  status: OrderStatus,
-): PillStyle {
+/** The pill's text colour for a status — the prototype's grouping: filled
+ * positive, still-open aware, terminal negatives negative. Also fed straight
+ * into `useRowInsertFlash`'s `flashColor`. */
+function statusColorFor(theme: RnTheme, status: OrderStatus): string {
   if (status === "filled") {
-    return styles.pillFilled;
+    return theme.accentPositive;
   }
 
   if (status === "cancelled" || status === "rejected") {
-    return styles.pillRejected;
+    return theme.accentNegative;
   }
 
-  return styles.pillPending;
+  return theme.accentAware;
 }
 
-/** A status pill's text colour, also fed straight into `useRowInsertFlash`'s
- * `flashColor` — kept a required plain `string` (not RN's optional
- * `ColorValue`) for that reuse, mirroring `TradeRow`'s `PillStyle`. */
-interface PillStyle extends TextStyle {
-  color: string;
+/** The prototype draws the pill border at 45% of its text colour
+ * (`color-mix(... 45%, transparent)`); every skin's accent tokens are
+ * six-digit hex, so the alpha byte can be appended directly. */
+function pillBorder(hexColor: string): string {
+  return `${hexColor}73`;
 }
+
+/** Short, non-wrapping pill labels. `PARTIAL` is deliberate: the full
+ * `PARTIALLYFILLED` is what wrapped mid-word in the table this replaced. */
+const ORDER_STATUS_LABEL: Readonly<Record<OrderStatus, string>> = {
+  new: "NEW",
+  working: "WORKING",
+  partiallyFilled: "PARTIAL",
+  filled: "FILLED",
+  cancelled: "CANCELLED",
+  rejected: "REJECTED",
+};
+
+const ORDER_TYPE_LABEL: Readonly<Record<OrderType, string>> = {
+  market: "MKT",
+  limit: "LMT",
+};
 
 interface OrdersBlotterStyles {
-  blotter: ViewStyle;
-  header: ViewStyle;
-  hCell: TextStyle;
-  row: ViewStyle;
-  cell: TextStyle;
+  card: ViewStyle;
+  symbolCell: ViewStyle;
+  qtyCell: TextStyle;
+  priceCell: TextStyle;
+  statusCell: ViewStyle;
+  symbol: TextStyle;
+  sideType: TextStyle;
   buy: TextStyle;
   sell: TextStyle;
-  pillFilled: PillStyle;
-  pillPending: PillStyle;
-  pillRejected: PillStyle;
+  qty: TextStyle;
+  price: TextStyle;
+  pill: TextStyle;
   empty: TextStyle;
 }
 
 function makeStyles(t: RnTheme): OrdersBlotterStyles {
-  const dividerBase: ViewStyle = {
-    flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: t.borderSubtle,
-  };
   return StyleSheet.create({
-    blotter: {},
-    header: {
-      ...dividerBase,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.xs,
-    },
-    hCell: {
-      flex: 1,
-      fontSize: 10,
-      color: t.textMuted,
-      fontFamily: t.fontMono,
-    },
-    row: {
-      ...dividerBase,
-      minHeight: 44,
+    card: {
+      flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.sm,
+      borderWidth: 1,
+      borderColor: t.borderSubtle,
+      borderRadius: 9,
+      paddingVertical: 7,
+      paddingHorizontal: 11,
+      marginBottom: 6,
     },
-    cell: {
-      flex: 1,
-      fontSize: 12,
-      color: t.textSecondary,
+    symbolCell: { flex: 1.1 },
+    qtyCell: { flex: 0.8, textAlign: "right" },
+    priceCell: { flex: 0.9, textAlign: "right" },
+    statusCell: { flex: 0.9, alignItems: "flex-end" },
+    symbol: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+    },
+    sideType: {
+      fontSize: 7.5,
+      letterSpacing: 0.8,
+      marginTop: 1,
       fontFamily: t.fontMono,
     },
     buy: { color: t.accentPositive },
     sell: { color: t.accentNegative },
-    pillFilled: { color: t.accentPositive },
-    pillPending: { color: t.accentPrimary },
-    pillRejected: { color: t.accentNegative },
+    qty: { fontSize: 10, color: t.textPrimary, fontFamily: t.fontMono },
+    price: { fontSize: 10, color: t.textSecondary, fontFamily: t.fontMono },
+    pill: {
+      fontSize: 8,
+      letterSpacing: 0.8,
+      fontFamily: t.fontMono,
+      borderWidth: 1,
+      borderRadius: 4,
+      paddingVertical: 2,
+      paddingHorizontal: 6,
+      overflow: "hidden",
+    },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontMono },
   });
 }
