@@ -124,12 +124,14 @@ to diff against. Test scaffolding that lives under `src/ui` (`*Harness.tsx`,
 
 **Before-golden first.** Before changing how a surface looks, make sure its
 *real composition* is already pinned on `main` — add the scenario (and a prop
-seam where the state is internal, e.g. `BlottersView initialTab`) in its own
-PR and pin it, then make the change in the next PR so that PR's own diff shows
-the golden before → after. `equities/blotter-positions` exists for exactly
-this. Measured 2026-08-29 against 21 scenarios: 82.6% of statements reached;
-unwitnessed were the Positions tab (`PositionsBlotter`, `DeskPnlGauge`,
-`PnlSparkline`), `LockScreen` (only its ring is pinned, via `lock/hold`), the
+seam where the state is internal) in its own PR and pin it, then make the
+change in the next PR so that PR's own diff shows the golden before → after.
+`equities/blotter-positions` was the first: pinned in PR #593 through a
+`BlottersView initialTab` seam, then retired in the fidelity PR that replaced
+the Orders/Positions toggle with the design's stacked sections — that PR's
+diff carries both befores. Measured 2026-08-29 against 21 scenarios: 82.6%
+of statements reached; unwitnessed were the Positions tab (closed as above),
+`LockScreen` (only its ring is pinned, via `lock/hold`), the
 credit panel wrappers (`RfqTilesPanel`, `SellSidePanel` — the fixtures mount
 their card/ticket leaves), the rates ticket sheet and the new-RFQ form (the
 two prototype-only scenarios), and the transient `OrderCeremony` /

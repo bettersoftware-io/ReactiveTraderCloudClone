@@ -1,31 +1,22 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { BlottersView } from "#/ui/equities/blotters/BlottersView";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
-test("defaults to Orders and switches to Positions", async () => {
+test("stacks ORDERS and POSITIONS on one view, each under its label", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={vm()}>
       <BlottersView />
     </ViewModelProvider>,
   );
+  expect(screen.getByTestId("blotters-view")).toBeTruthy();
+  expect(screen.getByText("ORDERS")).toBeTruthy();
+  expect(screen.getByText("POSITIONS")).toBeTruthy();
   expect(screen.getByTestId("orders-empty")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("blotter-toggle-positions"));
-  expect(screen.getByTestId("desk-pnl-gauge")).toBeTruthy();
   expect(screen.getByTestId("positions-empty")).toBeTruthy();
-});
-
-test("initialTab pins the Positions tab without a press", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm()}>
-      <BlottersView initialTab="positions" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("positions-empty")).toBeTruthy();
-  expect(screen.queryByTestId("orders-empty")).toBeNull();
 });
 
 function vm(): ViewModel {
@@ -39,7 +30,7 @@ function vm(): ViewModel {
   } as unknown as ViewModel;
 }
 
-// `vm()` only stubs `useEquityOrders`/`useEquityPositions`; the orders tab's
+// `vm()` only stubs `useEquityOrders`/`useEquityPositions`; the orders list's
 // row-insert-flash reads `usePowerSaver` off the same ViewModel context via
 // `useShellMotionEnabled`, so it's mocked directly here — mirrors
 // OrdersBlotter.test.tsx.

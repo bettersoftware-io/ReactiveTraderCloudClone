@@ -36,7 +36,7 @@ test("selecting a movers-board instrument jumps to Trade for that symbol", async
 test("Blotters view is reachable", async () => {
   await renderScreen();
   await fireEvent.press(screen.getByTestId("equities-tab-blotters"));
-  expect(screen.getByTestId("blotter-toggle-orders")).toBeTruthy();
+  expect(screen.getByTestId("blotters-view")).toBeTruthy();
 });
 
 function vm(): ViewModel {
