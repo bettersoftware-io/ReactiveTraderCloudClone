@@ -1,0 +1,252 @@
+import type { KeyboardEvent, ReactElement } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import type { NavNode } from "#/nav/buildNavTree";
+import styles from "#/nav/NavTree.module.css";
+import type { Scope } from "#/nav/scope";
+import { scopeKey } from "#/nav/scope";
+
+/** The rail navigator (spec §3.1): one tree, four roots, one selection.
+ * Expansion is local view state keyed by node id and independent of
+ * selection; the selection itself lives in `useNavigation` and arrives as
+ * `scope`. Keyboard (when the tree is focused): ↑/↓ move a cursor over the
+ * visible selectable nodes, Enter selects, ←/→ collapse/expand. */
+export function NavTree({
+  nodes,
+  scope,
+  onSelect,
+}: NavTreeProps): ReactElement {
+  const [expanded, setExpanded] =
+    useState<ReadonlySet<string>>(DEFAULT_EXPANDED);
+  const [cursorId, setCursorId] = useState<string>(scopeKey(scope));
+  const selectedId = scopeKey(scope);
+  const visible = flattenVisible(nodes, expanded);
+
+  function toggleNodeExpansion(id: string): void {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  }
+
+  function moveTreeCursor(e: KeyboardEvent<HTMLDivElement>): void {
+    const selectable = visible.filter((entry) => {
+      return entry.node.scope !== null;
+    });
+
+    const index = selectable.findIndex((entry) => {
+      return entry.node.id === cursorId;
+    });
+    const current = selectable[index]?.node ?? null;
+
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const delta = e.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = Math.max(
+        0,
+        Math.min(index + delta, selectable.length - 1),
+      );
+      const next = selectable[nextIndex];
+
+      if (next !== undefined) {
+        setCursorId(next.node.id);
+      }
+    } else if (
+      e.key === "Enter" &&
+      current !== null &&
+      current.scope !== null
+    ) {
+      e.preventDefault();
+      onSelect(current.scope);
+    } else if (
+      e.key === "ArrowRight" &&
+      current !== null &&
+      current.children.length > 0
+    ) {
+      e.preventDefault();
+      setExpanded((prev) => {
+        return prev.has(current.id) ? prev : new Set(prev).add(current.id);
+      });
+    } else if (e.key === "ArrowLeft" && current !== null) {
+      e.preventDefault();
+      setExpanded((prev) => {
+        if (!prev.has(current.id)) {
+          return prev;
+        }
+
+        const next = new Set(prev);
+
+        next.delete(current.id);
+
+        return next;
+      });
+    }
+  }
+
+  return (
+    <div
+      data-nav-tree=""
+      data-testid="nav-tree"
+      tabIndex={0}
+      role="tree"
+      aria-label="Navigation"
+      className={styles.tree}
+      onKeyDown={moveTreeCursor}
+    >
+      {visible.map((entry) => {
+        return (
+          <NavRow
+            key={entry.node.id}
+            node={entry.node}
+            depth={entry.depth}
+            expanded={expanded.has(entry.node.id)}
+            selected={entry.node.id === selectedId}
+            atCursor={entry.node.id === cursorId}
+            onSelect={onSelect}
+            onToggle={toggleNodeExpansion}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export interface NavTreeProps {
+  nodes: readonly NavNode[];
+  scope: Scope;
+  onSelect: (scope: Scope) => void;
+}
+
+const DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
+  "presenters",
+  "machines",
+  "wire",
+]);
+
+interface VisibleEntry {
+  node: NavNode;
+  depth: number;
+}
+
+interface NavRowProps {
+  node: NavNode;
+  depth: number;
+  expanded: boolean;
+  selected: boolean;
+  atCursor: boolean;
+  onSelect: (scope: Scope) => void;
+  onToggle: (id: string) => void;
+}
+
+function NavRow({
+  node,
+  depth,
+  expanded,
+  selected,
+  atCursor,
+  onSelect,
+  onToggle,
+}: NavRowProps): ReactElement {
+  const flashRef = useRef<HTMLSpanElement>(null);
+  const hasChildren = node.children.length > 0;
+
+  useEffect((): void => {
+    // Same compositor-safe opacity flash as StateTreePanel: WAAPI promotes
+    // the span only for the animation's lifetime (docs/performance.md).
+    if (node.lastSeq > 0) {
+      flashRef.current?.animate([{ opacity: 0.35 }, { opacity: 1 }], {
+        duration: 300,
+        easing: "ease-out",
+      });
+    }
+  }, [node.lastSeq]);
+
+  function toggleThisNode(): void {
+    onToggle(node.id);
+  }
+
+  function selectThisNode(): void {
+    if (node.scope === null) {
+      onToggle(node.id);
+    } else {
+      onSelect(node.scope);
+    }
+  }
+
+  const rowClassName = [
+    styles.row,
+    selected ? styles.rowSelected : "",
+    atCursor ? styles.rowCursor : "",
+    node.disposed ? styles.rowDisposed : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div
+      className={rowClassName}
+      data-depth={depth}
+      data-disposed={node.disposed ? "true" : "false"}
+    >
+      {hasChildren ? (
+        <button
+          type="button"
+          className={styles.caret}
+          aria-label={expanded ? "Collapse" : "Expand"}
+          onClick={toggleThisNode}
+        >
+          {expanded ? "▾" : "▸"}
+        </button>
+      ) : (
+        <span className={styles.caretSpacer} />
+      )}
+      <button
+        type="button"
+        className={node.scope === null ? styles.header : styles.label}
+        data-testid={node.scope === null ? undefined : "nav-node"}
+        data-scope-id={node.scope === null ? undefined : node.id}
+        data-selected={node.scope === null ? undefined : String(selected)}
+        title={node.scope === null ? undefined : node.id}
+        onClick={selectThisNode}
+      >
+        <span ref={flashRef} className={styles.labelText}>
+          {node.label}
+        </span>
+        {node.scope !== null ? (
+          <span className={styles.count}>{node.count}</span>
+        ) : null}
+      </button>
+      {node.detail !== null ? (
+        <span className={styles.detail}>{node.detail}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function flattenVisible(
+  nodes: readonly NavNode[],
+  expanded: ReadonlySet<string>,
+): VisibleEntry[] {
+  const out: VisibleEntry[] = [];
+
+  function walk(list: readonly NavNode[], depth: number): void {
+    for (const node of list) {
+      out.push({ node, depth });
+
+      if (node.children.length > 0 && expanded.has(node.id)) {
+        walk(node.children, depth + 1);
+      }
+    }
+  }
+
+  walk(nodes, 0);
+
+  return out;
+}

@@ -1,0 +1,97 @@
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  outline: none;
+}
+
+.tree:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.row[data-depth="1"] {
+  padding-left: 12px;
+}
+
+.row[data-depth="2"] {
+  padding-left: 24px;
+}
+
+.rowSelected {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.rowCursor {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.rowDisposed {
+  opacity: 0.45;
+}
+
+.caret,
+.caretSpacer {
+  flex: none;
+  width: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.label,
+.header {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.labelText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  flex: none;
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.detail {
+  flex-basis: 100%;
+  padding-left: 16px;
+  color: var(--dim);
+  font-size: 10px;
+  white-space: nowrap;
+}
