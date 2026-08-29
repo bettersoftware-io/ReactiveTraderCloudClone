@@ -1,7 +1,12 @@
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { DockEngineOptions } from "#/createDockEngine";
-import { createDockEngine, GROUP_GAP_PX } from "#/createDockEngine";
+import {
+  createDockEngine,
+  DOCK_GLIDE_ATTRIBUTE,
+  GLIDE_ATTRIBUTE_MS,
+  GROUP_GAP_PX,
+} from "#/createDockEngine";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with the same stub.
@@ -521,6 +526,100 @@ const STRIP_HEIGHT = 32;
 /** An asymmetric matcher for `target ± tolerance` — dockview floors the
  * half-pixel sizes the theme gap produces, so an exact integer would be
  * asserting the flooring rule rather than the layout. */
+describe("glide marker", () => {
+  // The stylesheet transitions dockview's inline geometry only while the
+  // container carries the marker; the engine owns its lifetime around the
+  // four intents so drags and resizes (which rewrite the same inline styles)
+  // never animate — the in-house engine's "not while dragging" rule, inverted.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is absent after mount — a fresh dock lays out instantly", () => {
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+    engine.dispose();
+  });
+
+  it("wraps every intent and clears itself once the transition has run", () => {
+    vi.useFakeTimers();
+    const opts = base();
+    const engine = createDockEngine(opts);
+    const intents: ReadonlyArray<() => void> = [
+      (): void => {
+        engine.collapsePanel("fx-analytics");
+      },
+      (): void => {
+        engine.expandPanel("fx-analytics");
+      },
+      (): void => {
+        engine.maximizePanel("fx-rates");
+      },
+      (): void => {
+        engine.exitMaximize();
+      },
+    ];
+
+    for (const intent of intents) {
+      intent();
+      expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(true);
+      vi.advanceTimersByTime(GLIDE_ATTRIBUTE_MS - 1);
+      expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+    }
+
+    engine.dispose();
+  });
+
+  it("outlives the in-house 0.34s glide so the transition's tail is never cut off", () => {
+    expect(GLIDE_ATTRIBUTE_MS).toBeGreaterThan(340);
+  });
+
+  it("does not mark a no-op exitMaximize (nothing is maximized, nothing moves)", () => {
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    engine.exitMaximize();
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+    engine.dispose();
+  });
+
+  it("restarts the clock on a second intent mid-glide instead of cutting the first short", () => {
+    vi.useFakeTimers();
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    engine.collapsePanel("fx-analytics");
+    vi.advanceTimersByTime(GLIDE_ATTRIBUTE_MS - 50);
+    engine.expandPanel("fx-analytics");
+    vi.advanceTimersByTime(50);
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(true);
+    vi.advanceTimersByTime(GLIDE_ATTRIBUTE_MS - 50);
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+    engine.dispose();
+  });
+
+  it("dispose mid-glide drops the marker and its timer", () => {
+    vi.useFakeTimers();
+    const opts = base();
+    const engine = createDockEngine(opts);
+
+    engine.collapsePanel("fx-analytics");
+    engine.dispose();
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+
+    // The clear-down timer went with it: a marker planted after dispose is
+    // not swept by a stale one (dockview keeps timers of its own, so the
+    // global timer count is not the witness here).
+    opts.container.setAttribute(DOCK_GLIDE_ATTRIBUTE, "");
+    vi.advanceTimersByTime(GLIDE_ATTRIBUTE_MS * 2);
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(true);
+  });
+});
+
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {

@@ -157,6 +157,27 @@
   overflow: hidden;
 }
 
+/* `.cell` / `.panel` glide (PROTO's panTrans, 0.34s on the same easing):
+ * dockview lays every group and sash out through inline `left/top/width/
+ * height` styles, so transitioning those is the whole animation. Gated on the
+ * attribute createDockEngine sets around an intent (collapse / expand /
+ * maximize / restore) so that a sash drag or a window resize — which rewrite
+ * the very same inline styles — still lands instantly, as in-house; and on
+ * `prefers-reduced-motion`, as the in-house rules are. Layout-bound
+ * properties, not compositor ones, deliberately: a one-shot 0.34s glide is
+ * what the in-house engine already spends (docs/performance.md). The
+ * power-saver freeze catch-all zeroes `transition-property` here too. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-dock-glide] .dv-view,
+  [data-dock-glide] .dv-sash {
+    transition:
+      left 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      top 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      height 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
 /* `.handle`: the 7px gutter's resize sash, drawn as the in-house 2×30px
  * centred grip bar (`.handle::after`) — the track itself stays transparent.
  * Dockview centres its sash on the group boundary; widening it to the full

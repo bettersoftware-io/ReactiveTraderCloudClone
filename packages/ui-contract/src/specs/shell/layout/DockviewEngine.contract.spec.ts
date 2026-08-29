@@ -111,6 +111,17 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.bodyVisible("fx-analytics-body")).toBe(false);
   });
 
+  it("glides an intent-driven collapse and nothing else — the in-house 0.34s panel transition, gated on the engine's glide marker", () => {
+    const page = mount(DockviewEngine, { props: { interactive: true } });
+    // A freshly mounted dock is not gliding: mounts, drags and resizes land
+    // instantly, as in-house.
+    expect(page.gliding()).toBe(false);
+
+    page.toggleAnalyticsCollapsed();
+    // The marker is on while the collapse's geometry change transitions.
+    expect(page.gliding()).toBe(true);
+  });
+
   it("ignores a collapse-set id the engine has no group for", () => {
     const page = mount(DockviewEngine, { props: { collapsed: ["nope"] } });
     expect(page.collapsedIds()).toEqual(["nope"]);
