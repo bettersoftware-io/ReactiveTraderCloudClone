@@ -512,10 +512,8 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        // freeze holds OrdersBlotter's newest-row flash at rest; moot today
-        // (BlottersView mounts with no orders/positions seeded — see the
-        // header comment above), kept for the same "pin it, don't rely on an
-        // empty seed staying empty" reasoning as the other two.
+        // freeze holds OrdersBlotter's newest-row flash at rest over the
+        // five orders the fake ViewModel seeds (`fake/equities.ts`).
         <VisualScenarioHost
           skin="holo3d"
           mode="dark"
@@ -526,6 +524,35 @@ export const SCENARIOS: readonly Scenario[] = [
             <ModuleScreenFixture>
               <EquitiesNav view="blotters" onChange={(): void => {}} />
               <BlottersView />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    // The Positions tab of the same view, pinned through `initialTab` — the
+    // toggle is internal state, so without the seam only the Orders tab was
+    // ever in a golden, and `PositionsBlotter`/`DeskPnlGauge`/`PnlSparkline`
+    // sat at 0% visual reach (`pnpm test:rn:visual:reach`). Added as the
+    // "before" golden for the prototype-fidelity pass on this screen, which
+    // collapses the toggle into two stacked sections; retire it with the
+    // toggle.
+    id: "equities/blotter-positions",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="equities">
+            <ModuleScreenFixture>
+              <EquitiesNav view="blotters" onChange={(): void => {}} />
+              <BlottersView initialTab="positions" />
             </ModuleScreenFixture>
           </ShellFrameFixture>
         </VisualScenarioHost>

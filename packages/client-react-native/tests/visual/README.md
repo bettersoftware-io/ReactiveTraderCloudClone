@@ -108,6 +108,33 @@ exists precisely so the golden proves a *partial* fill. The fixture now centres
 it the way `LockScreen` does. When a fixture mounts a leaf instead of a screen,
 restate the container's layout, not just its data.
 
+## Visual reach — which surfaces have a golden at all
+
+```bash
+pnpm --filter @rtc/client-react-native test:rn:visual:reach
+```
+
+Mounts every registered scenario under jest with istanbul watching `src/ui`
+(`reach/scenarioReach.test.tsx`, then `reach/report.ts`) — the counterpart of
+the web clients' `ui (visual reach)` coverage tiers. It gates nothing. The
+number that matters is not the total but the list of files at **0%**: each is
+an app surface no golden renders, so a visual change to it has no "before"
+to diff against. Test scaffolding that lives under `src/ui` (`*Harness.tsx`,
+`renderWithTheme.tsx`, `_probe/`) is excluded from both list and total.
+
+**Before-golden first.** Before changing how a surface looks, make sure its
+*real composition* is already pinned on `main` — add the scenario (and a prop
+seam where the state is internal, e.g. `BlottersView initialTab`) in its own
+PR and pin it, then make the change in the next PR so that PR's own diff shows
+the golden before → after. `equities/blotter-positions` exists for exactly
+this. Measured 2026-08-29 against 21 scenarios: 82.6% of statements reached;
+unwitnessed were the Positions tab (`PositionsBlotter`, `DeskPnlGauge`,
+`PnlSparkline`), `LockScreen` (only its ring is pinned, via `lock/hold`), the
+credit panel wrappers (`RfqTilesPanel`, `SellSidePanel` — the fixtures mount
+their card/ticket leaves), the rates ticket sheet and the new-RFQ form (the
+two prototype-only scenarios), and the transient `OrderCeremony` /
+`ExecutionCeremony` / fanned-dock states.
+
 ## Troubleshooting
 
 **Metro red box `[Worklets] Babel plugin exception: … reading 'length'`** while
