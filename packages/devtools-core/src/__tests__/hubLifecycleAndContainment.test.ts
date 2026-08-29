@@ -128,16 +128,19 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
 });
 
 describe("DevtoolsHub — disposed-machine retention", () => {
+  const MAX_DISPOSED_RETAINED = 500;
+
   it("evicts the oldest disposed machines past the retention cap", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, sent, inbound$ } = harness();
 
     inbound$.next({ kind: "hello", v: 1 });
 
-    // Create and dispose well past MAX_DISPOSED_RETAINED so the ring evicts.
-    // Without eviction a long session leaks one entry per machine ever made.
+    // Create and dispose one past MAX_DISPOSED_RETAINED so the eviction path
+    // actually runs. Without eviction a long session leaks one retained entry
+    // per machine ever made.
     const ids: string[] = [];
 
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < MAX_DISPOSED_RETAINED + 1; i++) {
       ids.push(hub.machineCreated(`m${i}`, [], new Subject<unknown>(), {}));
     }
 
@@ -146,6 +149,31 @@ describe("DevtoolsHub — disposed-machine retention", () => {
         hub.machineDisposed(id);
       }
     }).not.toThrow();
+
+    // Force a fresh snapshot to see which machines the hub still retains.
+    inbound$.next({ kind: "bye" });
+    inbound$.next({ kind: "hello", v: 1 });
+
+    const snap = sent[sent.length - 1];
+    const retainedIds =
+      snap?.kind === "snapshot"
+        ? snap.machines.map((m) => {
+            return m.machineId;
+          })
+        : [];
+
+    const oldestId = ids[0];
+    const secondOldestId = ids[1];
+
+    if (oldestId === undefined || secondOldestId === undefined) {
+      throw new Error("expected at least two machine ids");
+    }
+
+    // The very first disposed machine was evicted from the retention map...
+    expect(retainedIds).not.toContain(oldestId);
+    // ...but the cap keeps exactly MAX_DISPOSED_RETAINED of the rest.
+    expect(retainedIds).toContain(secondOldestId);
+    expect(retainedIds).toHaveLength(MAX_DISPOSED_RETAINED);
   });
 });
 

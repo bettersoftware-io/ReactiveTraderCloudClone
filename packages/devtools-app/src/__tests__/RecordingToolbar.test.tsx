@@ -26,18 +26,21 @@ import { useRecording } from "#/recording/useRecording";
 
 afterEach(cleanup);
 
+let createObjectURL: ReturnType<typeof vi.fn>;
+let revokeObjectURL: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   // jsdom does not implement object URLs; the export path may touch them.
-  vi.stubGlobal("URL", {
-    createObjectURL: () => {
-      return "blob:fake";
-    },
-    revokeObjectURL: () => {},
+  createObjectURL = vi.fn(() => {
+    return "blob:fake";
   });
+  revokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("RecordingToolbar", () => {
@@ -56,12 +59,23 @@ describe("RecordingToolbar", () => {
     const exportButton = screen.getByTestId("export") as HTMLButtonElement;
     expect(exportButton.disabled).toBe(false);
 
+    const anchor = document.createElement("a");
+    const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
+    vi.spyOn(document, "createElement").mockReturnValue(anchor);
+
     fireEvent.click(exportButton);
-    // No throw / no crash is the behavioral contract here — exportRecording
-    // downloads the bounded Record/Stop capture once one exists.
+
+    // The download actually happened: a Blob URL was created and handed to
+    // an anchor that got clicked and then revoked — not merely "didn't
+    // throw". No "welcome" was applied here, so the bounded capture's appId
+    // falls back to "unknown" (Recorder.toRecording's own default).
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(anchor.download).toMatch(/^recording-unknown-\d+\.json$/);
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledOnce();
   });
 
-  it("exportBuffer is always enabled once history has frames", () => {
+  it("exportBuffer is always enabled once history has frames, and downloads the live window", () => {
     const store = new InspectorStore();
     mount({ store });
 
@@ -71,10 +85,18 @@ describe("RecordingToolbar", () => {
     const button = screen.getByTestId("export-buffer") as HTMLButtonElement;
     expect(button.disabled).toBe(false);
 
+    const anchor = document.createElement("a");
+    const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
+    vi.spyOn(document, "createElement").mockReturnValue(anchor);
+
     fireEvent.click(button);
-    // No throw / no crash is the behavioral contract here — exportBuffer
-    // downloads the current LiveHistory window regardless of Record/Stop
-    // state.
+
+    // exportBuffer downloads the current LiveHistory window regardless of
+    // Record/Stop state — the same real download side effect as Export.
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(anchor.download).toMatch(/^recording-rtc-web-\d+\.json$/);
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledOnce();
   });
 
   it("import failure shows importError", async () => {

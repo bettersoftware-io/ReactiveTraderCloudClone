@@ -48,6 +48,45 @@ describe("createRelayInspectorSession", () => {
 
     session.dispose();
   });
+
+  it("forwards invokeIntent as an intent:invoke frame over the relay socket", () => {
+    const box = createSocketBox();
+    const session = createRelayInspectorSession(
+      "ws://localhost:8790",
+      (url) => {
+        box.socket = new FakeSocket(url);
+
+        return box.socket;
+      },
+    );
+
+    const live = box.socket;
+
+    if (live === null) {
+      throw new Error("socket was not created");
+    }
+
+    live.open(); // flush the buffered hello
+
+    session.invokeIntent("machine-1", "submit", [1, "two"]);
+
+    const invokeFrame = live.sent
+      .map((frame) => {
+        return JSON.parse(frame) as Record<string, unknown>;
+      })
+      .find((frame) => {
+        return frame.kind === "intent:invoke";
+      });
+
+    expect(invokeFrame).toEqual({
+      kind: "intent:invoke",
+      machineId: "machine-1",
+      name: "submit",
+      args: [1, "two"],
+    });
+
+    session.dispose();
+  });
 });
 
 interface SocketBox {

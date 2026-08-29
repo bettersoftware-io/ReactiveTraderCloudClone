@@ -90,3 +90,103 @@ test("shows the true pre-truncation size for an overflowed set, not the marker-i
   expect(screen.queryByText("Set(51)")).toBeNull();
   expect(screen.getByText("…+10")).toBeTruthy();
 });
+
+test("renders the undefined tag as the undefined keyword", () => {
+  const value: SerializedValue = { $t: "undefined" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("undefined")).toBeTruthy();
+});
+
+test("renders a non-finite num tag as its raw literal with no suffix", () => {
+  const value: SerializedValue = { $t: "num", v: "NaN" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("NaN")).toBeTruthy();
+});
+
+test("renders a bigint tag with the trailing n suffix", () => {
+  const value: SerializedValue = { $t: "bigint", v: "9007199254740993" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("9007199254740993n")).toBeTruthy();
+});
+
+test("renders a symbol tag with no suffix", () => {
+  const value: SerializedValue = { $t: "symbol", v: "Symbol(id)" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("Symbol(id)")).toBeTruthy();
+});
+
+test("renders a named fn tag as its function name", () => {
+  const value: SerializedValue = { $t: "fn", name: "handleTrade" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("ƒ handleTrade")).toBeTruthy();
+});
+
+test("renders an fn tag with no name as anonymous", () => {
+  const value: SerializedValue = { $t: "fn" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("ƒ (anonymous)")).toBeTruthy();
+});
+
+test("renders the circular tag as a titled marker glyph", () => {
+  const value: SerializedValue = { $t: "circular" };
+  render(<ValueView value={value} />);
+
+  const marker = screen.getByTitle("circular reference");
+  expect(marker.textContent?.trim()).toBe("↺");
+});
+
+test("renders the depth tag as a titled marker glyph", () => {
+  const value: SerializedValue = { $t: "depth" };
+  render(<ValueView value={value} />);
+
+  const marker = screen.getByTitle("max depth reached");
+  expect(marker.textContent?.trim()).toBe("…");
+});
+
+test("renders the error tag with its message", () => {
+  const value: SerializedValue = { $t: "error", message: "boom" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("⚠ boom")).toBeTruthy();
+});
+
+test("renders a truncated-string tag as the head plus a char count", () => {
+  const value: SerializedValue = {
+    $t: "truncated-string",
+    head: "hello",
+    count: 495,
+  };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText('"hello"…+495 chars')).toBeTruthy();
+});
+
+test("renders the object key-truncation marker when $truncatedKeys is present", () => {
+  const value: SerializedValue = {
+    a: 1,
+    $truncatedKeys: { $t: "truncated", count: 7 },
+  };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("…+7 keys")).toBeTruthy();
+});
+
+test("falls back to zero for a truncation marker missing its count field", () => {
+  const value: SerializedValue = { $t: "truncated" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("…+0")).toBeTruthy();
+});
+
+test("falls back to an empty entry list for a map tag missing its entries field", () => {
+  const value: SerializedValue = { $t: "map" };
+  render(<ValueView value={value} />);
+
+  expect(screen.getByText("Map(0)")).toBeTruthy();
+});
