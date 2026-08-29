@@ -183,7 +183,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   three is full-bleed. All three seed
  *   `powerSaverLevel="freeze"`: this module has the widest Reanimated surface
  *   of any phase so far — `MoversBoard`'s rank-glide
- *   `LinearTransition`/`FadeIn`/`FadeOut`, `InstrumentHeader`'s tick-flash,
+ *   `LinearTransition`/`FadeIn`/`FadeOut`, `InstrumentCard`'s tick-flash,
  *   `OrderCeremony`'s `FadeIn`, `OrdersBlotter`'s newest-row flash — every one
  *   gated by `useShellMotionEnabled`, which reads power-saver rather than
  *   `forceReduceMotion` (the `animatedBackground`-only gate; see
@@ -201,7 +201,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   equivalent pin, and its per-symbol quote stream ticks live on a real
  *   500 ms `interval` regardless of power-saver level (freeze only gates
  *   ANIMATION, not the underlying price data). `MoversRow`'s price/pct
- *   column and `InstrumentHeader`'s price text can therefore differ between
+ *   column and `InstrumentCard`'s price text can therefore differ between
  *   captures depending on how many ticks land before the driver's
  *   `postReadySettleMs` screenshot — a risk this task's own scope (no booted
  *   simulator) cannot settle. `blotter` is unaffected: `EquityPositionSimulator`
@@ -485,8 +485,11 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        // freeze holds InstrumentHeader's tick-flash and OrderCeremony's
-        // FadeIn at rest, mirroring `equities/markets` above.
+        // freeze holds InstrumentCard's tick-flash and OrderCeremony's
+        // FadeIn at rest, mirroring `equities/markets` above. Since the
+        // fidelity pass (2026-08-29) the frame is the design's stack: symbol
+        // chips, instrument card, ticket (pinned BUY · LMT · 500 by the fake
+        // ViewModel), POSITIONS.
         <VisualScenarioHost
           skin="holo3d"
           mode="dark"

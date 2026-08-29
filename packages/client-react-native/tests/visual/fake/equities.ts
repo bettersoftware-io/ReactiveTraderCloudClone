@@ -361,6 +361,10 @@ export const equitiesSlice: EquitiesSlice = {
   // Editing arm, form seeded from the caller's defaultSymbol — the only arm
   // any of the three scenarios exercise (OrderTicket always mounts with a
   // fresh per-symbol machine, never mid-submission).
+  // Pinned in the state the design's TRADE panel shows — BUY, LMT, the 500
+  // chip lit, the limit stepper seeded from the last price (no limitPrice
+  // set). Production starts at qty 0 / MKT; the golden holds the busier
+  // frame so every ticket row is in it.
   useOrderTicket: (defaultSymbol: string) => {
     return {
       state: {
@@ -368,8 +372,8 @@ export const equitiesSlice: EquitiesSlice = {
         form: {
           symbol: defaultSymbol,
           side: "buy" as const,
-          type: "market" as const,
-          qty: 0,
+          type: "limit" as const,
+          qty: 500,
         },
         error: null,
       },

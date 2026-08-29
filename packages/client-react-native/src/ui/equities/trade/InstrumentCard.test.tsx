@@ -4,25 +4,39 @@ import { screen } from "@testing-library/react-native";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
-import { InstrumentHeader } from "#/ui/equities/trade/InstrumentHeader";
+import { InstrumentCard } from "#/ui/equities/trade/InstrumentCard";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
-test("renders symbol, name, exchange, price and signed pct", async () => {
+test("renders symbol, name · exchange, price and signed pct in one card, with the chart inside", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={vm()}>
-      <InstrumentHeader symbol="NVDA" />
+      <InstrumentCard symbol="NVDA" candles={[]} />
     </ViewModelProvider>,
   );
+  expect(screen.getByTestId("instrument-card")).toBeTruthy();
   expect(screen.getByText("NVDA")).toBeTruthy();
   expect(screen.getByText("NVIDIA Corp · NASDAQ")).toBeTruthy();
   expect(screen.getByText("131.14")).toBeTruthy();
   expect(screen.getByText("-0.94%")).toBeTruthy();
+  expect(screen.getByTestId("eq-candle-empty")).toBeTruthy();
+});
+
+test("price and pct take the change colour", async () => {
+  const t = rnThemeTokens.holo.dark;
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm()}>
+      <InstrumentCard symbol="NVDA" candles={[]} />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByText("131.14")).toHaveStyle({ color: t.accentNegative });
+  expect(screen.getByText("-0.94%")).toHaveStyle({ color: t.accentNegative });
 });
 
 test("the separator is a real middle dot, not an escape sequence", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={vm()}>
-      <InstrumentHeader symbol="NVDA" />
+      <InstrumentCard symbol="NVDA" candles={[]} />
     </ViewModelProvider>,
   );
   expect(screen.queryByText(/\\u00B7/i)).toBeNull();

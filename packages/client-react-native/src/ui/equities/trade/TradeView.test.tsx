@@ -4,8 +4,8 @@ import { screen } from "@testing-library/react-native";
 import type { OrderTicketState } from "@rtc/client-core";
 import type {
   Candle,
-  DepthBook,
   EquityInstrument,
+  EquityPosition,
   EquityQuote,
 } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -28,16 +28,20 @@ test("prompts to pick an instrument when none is selected", async () => {
   expect(screen.getByTestId("trade-empty")).toBeTruthy();
 });
 
-test("renders tabs, chart, depth and ticket for the selected symbol", async () => {
+test("renders chips, instrument card, ticket and POSITIONS for the selected symbol", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fullVM()}>
       <TradeView selectedSymbol="AAPL" onSelect={(): void => {}} />
     </ViewModelProvider>,
   );
+  expect(screen.getByTestId("trade-view")).toBeTruthy();
   expect(screen.getByTestId("instrument-tab-AAPL")).toBeTruthy();
+  expect(screen.getByTestId("instrument-card")).toBeTruthy();
   expect(screen.getByTestId("eq-candle-empty")).toBeTruthy(); // fullVM's useCandles is []
-  expect(screen.getByTestId("depth-empty")).toBeTruthy(); // null book → empty
   expect(screen.getByTestId("order-ticket")).toBeTruthy();
+  expect(screen.getByText("POSITIONS")).toBeTruthy();
+  expect(screen.getByTestId("position-row-AAPL")).toBeTruthy();
+  expect(screen.queryByText("DEPTH")).toBeNull();
 });
 
 function fullVM(): ViewModel {
@@ -58,8 +62,16 @@ function fullVM(): ViewModel {
     useCandles: (): readonly Candle[] => {
       return [];
     },
-    useDepth: (): DepthBook | null => {
-      return null;
+    useEquityPositions: (): readonly EquityPosition[] => {
+      return [
+        {
+          symbol: "AAPL",
+          qty: 200,
+          avgPrice: 185.4,
+          markPrice: 191.9,
+          unrealisedPnl: 1300,
+        },
+      ];
     },
     useOrderTicket: () => {
       return {
@@ -75,9 +87,9 @@ function fullVM(): ViewModel {
   } as unknown as ViewModel;
 }
 
-// `fullVM()` doesn't stub `usePowerSaver`, which InstrumentHeader's
+// `fullVM()` doesn't stub `usePowerSaver`, which InstrumentCard's
 // useShellMotionEnabled would otherwise call — mirrors
-// InstrumentHeader.test.tsx / SpotTile.test.tsx.
+// InstrumentCard.test.tsx / SpotTile.test.tsx.
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
     useShellMotionEnabled: () => {
