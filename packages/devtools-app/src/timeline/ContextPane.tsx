@@ -327,11 +327,16 @@ function StateTab({
   }
 
   const changedStreams = marked
-    ? changedStreamIds(state.streams, presentState.streams)
+    ? changedIds(state.streams, presentState.streams, streamKey, streamValue)
     : EMPTY_IDS;
 
   const changedMachines = marked
-    ? changedMachineIds(state.machines, presentState.machines)
+    ? changedIds(
+        state.machines,
+        presentState.machines,
+        machineKey,
+        machineValue,
+      )
     : EMPTY_IDS;
 
   const streams = filterStreams(
@@ -486,54 +491,51 @@ function machinesInScope(
   return machines;
 }
 
-function changedStreamIds(
-  pinned: readonly StreamRow[],
-  live: readonly StreamRow[],
+/** Shared by the stream and machine ≠-live marks: a row counts as changed
+ * when it has no live counterpart, or its tracked value differs by
+ * JSON.stringify comparison from the live counterpart's. */
+function changedIds<T>(
+  pinned: readonly T[],
+  live: readonly T[],
+  keyOf: (row: T) => string,
+  trackedValueOf: (row: T) => unknown,
 ): ReadonlySet<string> {
-  const liveById = new Map(
+  const liveByKey = new Map(
     live.map((row) => {
-      return [row.streamId, row] as const;
+      return [keyOf(row), row] as const;
     }),
   );
   const changed = new Set<string>();
 
   for (const row of pinned) {
-    const liveRow = liveById.get(row.streamId);
+    const liveRow = liveByKey.get(keyOf(row));
 
     if (
       liveRow === undefined ||
-      JSON.stringify(liveRow.lastValue) !== JSON.stringify(row.lastValue)
+      JSON.stringify(trackedValueOf(liveRow)) !==
+        JSON.stringify(trackedValueOf(row))
     ) {
-      changed.add(row.streamId);
+      changed.add(keyOf(row));
     }
   }
 
   return changed;
 }
 
-function changedMachineIds(
-  pinned: readonly MachineRow[],
-  live: readonly MachineRow[],
-): ReadonlySet<string> {
-  const liveById = new Map(
-    live.map((row) => {
-      return [row.machineId, row] as const;
-    }),
-  );
-  const changed = new Set<string>();
+function streamKey(row: StreamRow): string {
+  return row.streamId;
+}
 
-  for (const row of pinned) {
-    const liveRow = liveById.get(row.machineId);
+function streamValue(row: StreamRow): unknown {
+  return row.lastValue;
+}
 
-    if (
-      liveRow === undefined ||
-      JSON.stringify(liveRow.state) !== JSON.stringify(row.state)
-    ) {
-      changed.add(row.machineId);
-    }
-  }
+function machineKey(row: MachineRow): string {
+  return row.machineId;
+}
 
-  return changed;
+function machineValue(row: MachineRow): unknown {
+  return row.state;
 }
 
 function filterStreams(
