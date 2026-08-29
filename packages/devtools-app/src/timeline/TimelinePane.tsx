@@ -144,7 +144,7 @@ function PaneHeader({ model, searchInputRef }: PaneHeaderProps): ReactElement {
           title="Clear radius filter"
           onClick={model.clearRadius}
         >
-          {`±${model.filter.radius.windowMs}ms ✕`}
+          {`±${model.filter.radius.windowMs}ms @ ${formatLogTime(model.filter.radius.centerTs)} ✕`}
         </button>
       ) : null}
       <button
