@@ -1,4 +1,5 @@
 import * as devtools from "../scenarios/devtools";
+import * as fxTrading from "../scenarios/fxTrading";
 import { test } from "./_context";
 
 // Same client-selection env var playwright.config.ts branches on. The two
@@ -22,7 +23,7 @@ const expectedAppId =
 // mechanics live entirely in the inspector page object + devtools scenario, so
 // this body stays driver-free (no raw `expect`, no direct page handle).
 test.describe("DevTools inspector (same-origin)", () => {
-  test("connects to the same-origin app and lists its streams and machines", async ({
+  test("connects to the same-origin app, scopes by store, clears, and lists machines", async ({
     ctx,
   }) => {
     // A longer budget than the 30s suite default: this test drives TWO pages
@@ -49,25 +50,64 @@ test.describe("DevTools inspector (same-origin)", () => {
     // completes (it renders "disconnected" until then).
     await devtools.expectInspectorBadge(ctx, expectedAppId, 10);
 
-    // Timeline lens (default), following live: the context pane's state tree
-    // shows a stream row for the blotter trades stream.
+    // Following live under All: the context pane's state tree shows a stream
+    // row for the blotter trades stream.
     await devtools.expectStreamRow(ctx, "blotter.trades$");
 
+    // DEVIATION from the task brief: the brief assumed "the simulator emits
+    // blotter.activity$ continuously", but the blotter presenter's streams
+    // (trades$/newTradeIds$/activity$ — packages/client-react/src/app/devtools/presenterManifest.ts)
+    // are all synchronously derived from BlotterPresenter.trades$, which is
+    // execution-triggered, not periodic: ExecutionSimulator.executeTrade only
+    // fires on demand and TradeStoreSimulator carries no timer (see
+    // packages/domain/src/simulators/{ExecutionSimulator,TradeStoreSimulator}.ts).
+    // DevtoolsHub also only turns a registered stream's activity into LOG rows
+    // once it is "live" (an inspector has connected) — a presenter singleton
+    // constructed at app boot, before the inspector opens, delivers its one
+    // pre-existing value into the WELCOME SNAPSHOT (which is what makes
+    // expectStreamRow above pass) rather than as a discrete stream:emission
+    // row. Net effect: without a live trade, presenter:blotter's scoped list
+    // stays at zero rows forever — widening the wait (the brief's suggested
+    // fix for a suspected flake) cannot help. Execute one real trade here so
+    // devtools observes a genuine post-connect emission; expectTradeConfirmationMatchesOneOf
+    // polls to a terminal status, which is deterministic and pair-agnostic
+    // (works whether the first tile happens to be a normal, rejected, or
+    // delayed pair).
+    await fxTrading.clickBuyOnFirstTile(ctx);
+    await fxTrading.expectTradeConfirmationWithin(ctx, 5);
+    await fxTrading.expectTradeConfirmationMatchesOneOf(
+      ctx,
+      "/You Bought/i, /You Sold/i, /rejected/i, /timed out/i, /Credit limit/i",
+      10_000,
+    );
+
+    // Store-first scoping (spec §3): pick the blotter presenter in the tree
+    // and only its rows are listed. Row summaries carry the stream id, so a
+    // text assertion is exact.
+    await devtools.selectNavNode(ctx, "presenter:blotter", 15);
+    await devtools.expectOnlyRowsContaining(ctx, "blotter.");
+
+    // Back to All for the pin journey (blotter traffic is sparse; the pin
+    // step wants a busy tail).
+    await devtools.selectNavNode(ctx, "all", 15);
+
     // Timeline pin-and-inspect journey: pin the newest row (ArrowUp — the
-    // deterministic way to grab a moment out of a live tail; clicking a
-    // specific row's pin button races the ~15 Hz repaint and is covered at
-    // the RTL tier instead), confirm the inspector freezes at that moment,
-    // and Esc resumes the live tail.
+    // deterministic way to grab a moment out of a live tail), confirm the
+    // inspector freezes at that moment, and Esc resumes the live tail.
     await devtools.pinLatestTimelineRow(ctx);
     await devtools.expectPinnedBar(ctx);
     await devtools.resumeViaEscape(ctx);
     await devtools.expectNoPinnedBar(ctx);
 
-    // Machines lens: at least one row of kind "tileExecution", born from the FX
-    // tiles mounted above. With the inspector's repaint now throttled, this
-    // click is no longer starved of actionability polling; 15s bounds a genuine
-    // hang well below the whole-test timeout.
-    await devtools.openMachinesLens(ctx, 15);
+    // Clear (spec §5): everything before now is hidden; the list refills
+    // with strictly newer rows and Unclear is offered.
+    const watermark = await devtools.clearTimeline(ctx);
+    await devtools.expectTimelineClearedPast(ctx, watermark);
+
+    // Machines branch: the tileExecution kind node exists once the FX tiles
+    // have birthed their machines; selecting it lists that kind's instances
+    // in the State tab.
+    await devtools.selectNavNode(ctx, "machineKind:tileExecution", 15);
     await devtools.expectMachineOfKind(ctx, "tileExecution");
 
     // Closing the app view fires `pagehide` on its window, which the app-side

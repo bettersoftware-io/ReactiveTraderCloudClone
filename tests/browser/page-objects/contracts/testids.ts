@@ -310,7 +310,9 @@ export const TESTIDS = {
     machineRow: "devtools-machine-row",
     timelineRow: "timeline-row",
     pinnedBar: "pinned-bar",
-    lensMachines: "lens-machines",
+    navNode: "nav-node",
+    clearLog: "clear-log",
+    unclearLog: "unclear-log",
   },
   /**
    * The full-screen boot splash (BootSequence), mounted by BootGate OUTSIDE

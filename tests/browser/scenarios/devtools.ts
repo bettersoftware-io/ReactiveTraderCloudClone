@@ -48,22 +48,48 @@ export async function expectStreamRow(
   await inspector(ctx).waitStreamRow(streamId, 10_000);
 }
 
-/** Switch the inspector to its Machines lens, allowing the click up to
- *  `seconds` (the inspector's main thread is busy rendering the live stream, so
- *  the click's actionability polling needs a generous, explicit budget). */
-export async function openMachinesLens(
-  ctx: TestContext,
-  seconds: number,
-): Promise<void> {
-  await inspector(ctx).openMachinesLens(seconds * 1_000);
-}
-
 /** Assert a machine row of the given `kind` is visible within 10s. */
 export async function expectMachineOfKind(
   ctx: TestContext,
   kind: string,
 ): Promise<void> {
   await inspector(ctx).waitMachineRowOfKind(kind, 10_000);
+}
+
+/** Select a navigation-tree node by its scope id (spec §3.2) — e.g.
+ *  `presenter:blotter` scopes the actions list and State to that presenter;
+ *  `machineKind:tileExecution` to that machine kind. `seconds` bounds both the
+ *  wait for the node to exist and the click. */
+export async function selectNavNode(
+  ctx: TestContext,
+  nodeId: string,
+  seconds: number,
+): Promise<void> {
+  await inspector(ctx).selectNavNode(nodeId, seconds * 1_000);
+}
+
+/** Assert the scoped actions list shows only rows whose text contains
+ *  `text` (row summaries carry the stream id), within 10s. */
+export async function expectOnlyRowsContaining(
+  ctx: TestContext,
+  text: string,
+): Promise<void> {
+  await inspector(ctx).waitTimelineRowsAllContain(text, 10_000);
+}
+
+/** Clear (Redux "Commit"): hide everything before now. Returns the watermark
+ *  seq so the caller can assert the refill is strictly newer. */
+export async function clearTimeline(ctx: TestContext): Promise<number> {
+  return inspector(ctx).clearTimeline(10_000);
+}
+
+/** Assert Unclear is offered and the list has refilled with rows strictly
+ *  newer than `watermark`, within 15s. */
+export async function expectTimelineClearedPast(
+  ctx: TestContext,
+  watermark: number,
+): Promise<void> {
+  await inspector(ctx).waitTimelineClearedPast(watermark, 15_000);
 }
 
 /** Pin the inspector at the NEWEST timeline row's moment (ArrowUp from follow
