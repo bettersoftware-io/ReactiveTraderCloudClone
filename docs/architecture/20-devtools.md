@@ -694,7 +694,37 @@ only on trades — the spec's "continuous" premise for that stream was wrong.
 The React Compiler healthcheck's `TRACKED` list was re-pointed for the new
 context-pane values (`changedIds`/`visibleStreams` → `changedStreams`/
 `streams`); `rows` was dropped from the list with an in-script justification,
-since the compiler fuses it with neighbouring memoization — extending the
-discriminator to see through that fusion is a parked follow-up.
+since the compiler fuses it with neighbouring memoization. A Phase 2
+follow-up taught the healthcheck to see through that fusion —
+`fusedBlockMemoized()` classifies the compiler's fused cache-block shape (a
+bare `let name;` written inside an if-branch and read back from the same
+numbered slot in the else-branch) — so `rows` is re-tracked.
+
+**Phase 2 follow-ups (2026-08-30).** `ContextPane` was split: the State
+tab's rendering (search, stream/machine filtering, the `≠ live` marks) moved
+to `timeline/StateTab.tsx`, and the pure scope→state helpers it calls
+(`streamsInScope`, `machinesInScope`, `changedIds`, …) moved to
+`timeline/scopeState.ts`; `ContextPane` itself keeps only the
+availability/reconstruction-error short-circuit and tab plumbing. The nav
+tree's Machines root gains an unselectable `Evicted (n)` leaf whenever the
+visible log still references machine ids that `InspectorStore`'s 500-instance
+disposed-machine cap has already dropped from live state, so **All** stays
+equal to Σ children instead of undercounting. The radius chip's `✕`
+(`±100ms @ … ✕`) now routes through the same `dismissRadius` function as
+Escape's radius branch, rather than calling `timeline.clearRadius` alone and
+stranding the scope on All. The tree's keyboard cursor is now derived at
+render time from the current selection instead of held in a `useState`
+updated only by tree-internal handlers, so a scope change made outside the
+tree (probe push/pop, Escape, "show in All", a datasource swap) snaps the
+cursor to the new selection instead of leaving it stale. `LiveHistory`
+gained a `maxFrames` cap (default 20 000, alongside the existing
+`maxEvents`) — welcome/snapshot/bye frames carry zero events, so a run of
+them never tripped the event-count trim even though the frame buffer kept
+growing; `fromRecording` sets both caps to `Infinity` so imported recordings
+still never trim. And the mount seed now records
+`store.clone().getSnapshot()` rather than `store.getSnapshot()`: the live
+snapshot is the coalesced view and can lag applied state by up to
+`FRAMES_PER_FLUSH` (4) frames, while a clone's fold is synchronous and
+therefore exact.
 
 ---
