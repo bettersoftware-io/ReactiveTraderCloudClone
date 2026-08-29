@@ -73,7 +73,6 @@ export interface RnTheme {
 
   readonly borderPrimary: string;
   readonly borderSubtle: string;
-  readonly border: string;
   readonly borderStrong: string;
 
   readonly statusConnected: string;
@@ -134,7 +133,6 @@ const classicDark: RnTheme = {
   accent2: "#60a5fa",
   borderPrimary: "#334155",
   borderSubtle: "#1e293b",
-  border: "#1e293b",
   borderStrong: "#475569",
   statusConnected: "#22c55e",
   statusConnecting: "#f59e0b",
@@ -170,7 +168,6 @@ const classicLight: RnTheme = {
   accent2: "#60a5fa",
   borderPrimary: "#e2e8f0",
   borderSubtle: "#f1f5f9",
-  border: "#f1f5f9",
   borderStrong: "#475569",
   statusConnected: "#16a34a",
   statusConnecting: "#d97706",
@@ -206,7 +203,6 @@ const holoDark: RnTheme = {
   accent2: "#19ffd0",
   borderPrimary: "rgba(0,224,255,0.26)",
   borderSubtle: "rgba(0,224,255,0.12)",
-  border: "rgba(0,224,255,0.12)",
   borderStrong: "rgba(0,224,255,0.6)",
   statusConnected: "#2bffb3",
   statusConnecting: "#ffb000",
@@ -242,7 +238,6 @@ const holoLight: RnTheme = {
   accent2: "#00cc9e",
   borderPrimary: "rgba(0,180,204,0.3)",
   borderSubtle: "rgba(0,180,204,0.15)",
-  border: "rgba(0,180,204,0.15)",
   borderStrong: "rgba(0,180,204,0.65)",
   statusConnected: "#00c985",
   statusConnecting: "#cc8800",
@@ -323,7 +318,6 @@ const terminalDark: RnTheme = {
   accent2: "#4a9eff",
   borderPrimary: "#262b34",
   borderSubtle: "#1a1e25",
-  border: "#1a1e25",
   borderStrong: "#3a4351",
   statusConnected: "#37d27e",
   statusConnecting: "#ffb000",
@@ -359,7 +353,6 @@ const terminalLight: RnTheme = {
   accent2: "#2e6db5",
   borderPrimary: "#c8cdd6",
   borderSubtle: "#e2e5ea",
-  border: "#e2e5ea",
   borderStrong: "#9098a8",
   statusConnected: "#1fa856",
   statusConnecting: "#b37a00",
@@ -437,7 +430,6 @@ const neonDark: RnTheme = {
   accent2: "#00f0ff",
   borderPrimary: "rgba(255,43,214,0.36)",
   borderSubtle: "rgba(255,43,214,0.18)",
-  border: "rgba(255,43,214,0.18)",
   borderStrong: "rgba(255,43,214,0.72)",
   statusConnected: "#00ffa3",
   statusConnecting: "#ffb000",
@@ -473,7 +465,6 @@ const neonLight: RnTheme = {
   accent2: "#00b8cc",
   borderPrimary: "rgba(200,0,160,0.3)",
   borderSubtle: "rgba(200,0,160,0.15)",
-  border: "rgba(200,0,160,0.15)",
   borderStrong: "rgba(200,0,160,0.65)",
   statusConnected: "#00c97e",
   statusConnecting: "#cc8800",

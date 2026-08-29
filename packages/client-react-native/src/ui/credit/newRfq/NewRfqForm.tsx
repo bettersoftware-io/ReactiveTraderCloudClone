@@ -209,7 +209,7 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       borderRadius: 6,
       backgroundColor: t.panel,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
     },
     directionBtnActive: {
       flex: 1,

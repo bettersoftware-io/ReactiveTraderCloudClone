@@ -407,7 +407,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       justifyContent: "center",
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
     },
     stepperGlyph: {
       fontSize: 14,
@@ -438,7 +438,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       paddingHorizontal: SPACING.md,
       borderRadius: 7,
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
     },
     resetLabel: {
       fontSize: 10,

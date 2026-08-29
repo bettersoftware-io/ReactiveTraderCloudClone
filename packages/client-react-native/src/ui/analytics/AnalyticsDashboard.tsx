@@ -158,7 +158,7 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
     },
     deltaChip: {
       borderWidth: 1,
-      borderColor: t.border,
+      borderColor: t.borderSubtle,
       borderRadius: 4,
       paddingHorizontal: 7,
       paddingVertical: 3,

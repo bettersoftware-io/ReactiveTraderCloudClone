@@ -97,7 +97,7 @@ interface AppearanceOverlayStyles {
 
 function makeStyles(t: RnTheme): AppearanceOverlayStyles {
   return StyleSheet.create({
-    handleIndicator: { backgroundColor: t.border },
+    handleIndicator: { backgroundColor: t.borderSubtle },
     background: { backgroundColor: t.bgPrimary },
     body: { flex: 1 },
   });

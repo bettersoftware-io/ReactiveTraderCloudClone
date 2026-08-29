@@ -135,7 +135,7 @@ function makeStyles(t: RnTheme): StatusStripStyles {
       height: 60,
       paddingHorizontal: 18,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.border,
+      borderTopColor: t.borderSubtle,
     },
     kicker: {
       color: t.textMuted,
