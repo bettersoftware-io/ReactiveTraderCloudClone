@@ -14,8 +14,20 @@
 @import "dockview/dist/styles/dockview.css";
 
 .dockview-theme-rtc {
-  --dv-group-view-background-color: var(--panel, #1e293b);
-  --dv-tabs-and-actions-container-background-color: var(--panel-head, #1f2937);
+  /* NOT `--panel` / `--panel-head`: dockview's base sheet consumes these two
+   * through `background-color:`, and in the 3D skins those tokens are
+   * `linear-gradient(...)` images — not <color>s — so the declaration is
+   * invalid at computed-value time and the surface goes TRANSPARENT (every
+   * panel body showed the page backdrop). The card and head are painted
+   * below through the `background` shorthand, which takes an image, exactly
+   * as the in-house `.panel` / `.panelHeader` do; these variables only feed
+   * the surfaces this sheet does not restyle (tab overflow dropdown, floating
+   * group chrome), so they get the skins' plain-colour surface tokens. */
+  --dv-group-view-background-color: var(--bg-tile, #1e293b);
+  --dv-tabs-and-actions-container-background-color: var(
+    --bg-secondary,
+    #1f2937
+  );
   --dv-activegroup-visiblepanel-tab-background-color: transparent;
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
   --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
@@ -40,12 +52,23 @@
   --dv-tabs-and-actions-container-font-size: inherit;
 }
 
+/* `.engine`: the dock root is transparent — the page backdrop shows through
+ * the 7px gutters. dockview paints its root with the group colour by
+ * default, which (a) tinted the gutters and (b) composited a translucent
+ * skin's card fill TWICE under every body (the holo skins' panels read
+ * darker than in-house). */
+.dockview-theme-rtc.dv-dockview {
+  background: transparent;
+}
+
 /* `.panel`: the panel card — 1px border, 6px radius, panel background and
- * shadow. dockview's own `overflow: hidden` on the group clips the tab bar
- * to the rounded corners. */
+ * shadow. `background` (shorthand), not `background-color`: `--panel` is a
+ * gradient image in the 3D skins. dockview's own `overflow: hidden` on the
+ * group clips the tab bar to the rounded corners. */
 .dockview-theme-rtc .dv-groupview {
   border: 1px solid var(--border-primary, #334155);
   border-radius: 6px;
+  background: var(--panel, #1e293b);
   box-shadow: var(--panel-shadow, none);
 }
 
@@ -56,6 +79,7 @@
 .dockview-theme-rtc .dv-tabs-and-actions-container {
   align-items: stretch;
   padding: 0 8px;
+  background: var(--panel-head, #1f2937);
   border-bottom: 1px solid var(--border, #334155);
 }
 
