@@ -91,11 +91,16 @@ export function NavTree({
   }
 
   return (
+    // No tabIndex here: the container itself is never focused. The
+    // label/caret <button>s are natively focusable, and their keydown
+    // events bubble up to this handler — "the tree has focus" means
+    // focus-WITHIN, not a focused container div. role="application" stays
+    // only to satisfy noStaticElementInteractions (a static div may not
+    // carry onKeyDown); it is not asserting a fully-formed ARIA tree.
     <div
       data-nav-tree=""
       data-testid="nav-tree"
-      tabIndex={0}
-      role="tree"
+      role="application"
       aria-label="Navigation"
       className={styles.tree}
       onKeyDown={moveTreeCursor}

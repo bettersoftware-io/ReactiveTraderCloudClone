@@ -69,7 +69,10 @@ test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands"
   const selected = mount();
   const tree = screen.getByTestId("nav-tree");
 
-  tree.focus();
+  // No container tabIndex to focus (focus-WITHIN, not a focused div): focus
+  // the first row's label button, same as a real keyboard user tabbing in.
+  // Keydown still bubbles up to the tree's onKeyDown either way.
+  node("all").focus();
   fireEvent.keyDown(tree, { key: "ArrowDown" }); // all → presenter:blotter
   fireEvent.keyDown(tree, { key: "ArrowRight" }); // expand blotter
   expect(node("stream:blotter.trades$")).toBeTruthy();
