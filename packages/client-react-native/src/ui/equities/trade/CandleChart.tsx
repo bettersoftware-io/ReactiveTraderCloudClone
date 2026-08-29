@@ -16,7 +16,6 @@ import {
   buildCandleScene,
   type CandleBar,
 } from "#/ui/equities/trade/candleScene";
-import { SurfaceCard } from "#/ui/SurfaceCard";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -41,6 +40,11 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * thread during the normal re-render is the right tool; the boot scenes'
  * `useDerivedValue` recorder is for clock-driven geometry.
  *
+ * Chrome-less since the mobile-v1 fidelity pass (2026-08-29): the chart sits
+ * INSIDE `InstrumentCard`'s tile, under the header row, at the design's
+ * 128px, over the design's faint horizontal rules every 32px (drawn as
+ * hairline `<Rect>`s on the same canvas — no second layer).
+ *
  * ONLY THE LAST BAR ANIMATES, AND EVEN THAT ISN'T A TWEEN. The prototype
  * grows the last candle's `top`/`height` — RN layout properties, banned by
  * the perf doctrine. Here bar geometry is a Skia draw parameter recomputed
@@ -62,42 +66,52 @@ export function CandleChart({ candles }: CandleChartProps): JSX.Element {
   });
 
   return (
-    <SurfaceCard variant="panel" style={styles.wrapper}>
-      <View style={styles.inner}>
-        {bars.length === 0 ? (
-          <Text testID="eq-candle-empty" style={styles.empty}>
-            NO DATA
-          </Text>
-        ) : (
-          // The measuring `onLayout` sits on this plain View, not the Canvas —
-          // Skia's `<Canvas onLayout>` is deprecated and silently a no-op on
-          // the new architecture (see `PnlChart`'s identical note).
-          <View
-            testID="eq-candle-chart"
-            style={styles.canvasHost}
-            onLayout={(event: LayoutChangeEvent): void => {
-              setWidth(event.nativeEvent.layout.width);
-            }}
-          >
-            <Canvas style={StyleSheet.absoluteFill}>
-              {keyedBars.map((entry) => {
-                return (
-                  <CandleBarShapes
-                    key={entry.time}
-                    bar={entry.bar}
-                    color={
-                      entry.bar.rising
-                        ? theme.accentPositive
-                        : theme.accentNegative
-                    }
-                  />
-                );
-              })}
-            </Canvas>
-          </View>
-        )}
-      </View>
-    </SurfaceCard>
+    <View style={styles.wrapper}>
+      {bars.length === 0 ? (
+        <Text testID="eq-candle-empty" style={styles.empty}>
+          NO DATA
+        </Text>
+      ) : (
+        // The measuring `onLayout` sits on this plain View, not the Canvas —
+        // Skia's `<Canvas onLayout>` is deprecated and silently a no-op on
+        // the new architecture (see `PnlChart`'s identical note).
+        <View
+          testID="eq-candle-chart"
+          style={styles.canvasHost}
+          onLayout={(event: LayoutChangeEvent): void => {
+            setWidth(event.nativeEvent.layout.width);
+          }}
+        >
+          <Canvas style={StyleSheet.absoluteFill}>
+            {GRID_ROWS.map((y) => {
+              return (
+                <Rect
+                  key={y}
+                  x={0}
+                  y={y}
+                  width={width}
+                  height={1}
+                  color={theme.borderSubtle}
+                />
+              );
+            })}
+            {keyedBars.map((entry) => {
+              return (
+                <CandleBarShapes
+                  key={entry.time}
+                  bar={entry.bar}
+                  color={
+                    entry.bar.rising
+                      ? theme.accentPositive
+                      : theme.accentNegative
+                  }
+                />
+              );
+            })}
+          </Canvas>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -105,7 +119,11 @@ export function CandleChart({ candles }: CandleChartProps): JSX.Element {
  * the first frame draws at natural size instead of blank. Plot height is
  * fixed — unlike width, nothing measures it. */
 const CANDLE_CHART_WIDTH = 300;
-const CANDLE_CHART_HEIGHT = 160;
+const CANDLE_CHART_HEIGHT = 128;
+
+/** The design's horizontal rules: `repeating-linear-gradient` every 32px,
+ * i.e. three interior lines across the 128px plot. */
+const GRID_ROWS: readonly number[] = [32, 64, 96];
 
 /** Horizontal space each candle's slot occupies. Fixed rather than derived
  * from the candle count (unlike the SVG version's `slotW`): a live series
@@ -150,23 +168,15 @@ interface CandleChartProps {
 
 interface CandleChartStyles {
   wrapper: ViewStyle;
-  inner: ViewStyle;
   canvasHost: ViewStyle;
   empty: TextStyle;
 }
 
 function makeStyles(t: RnTheme): CandleChartStyles {
   return StyleSheet.create({
-    // No `overflow: hidden` here — SurfaceCard's card view carries the iOS
-    // drop shadow, and `overflow: hidden` (clipsToBounds) clips a layer's own
-    // shadow. The corner-clip lives on `inner` instead.
     wrapper: {
       height: CANDLE_CHART_HEIGHT,
-    },
-    inner: {
-      flex: 1,
-      borderRadius: 5,
-      overflow: "hidden",
+      marginTop: 9,
       justifyContent: "center",
     },
     canvasHost: {

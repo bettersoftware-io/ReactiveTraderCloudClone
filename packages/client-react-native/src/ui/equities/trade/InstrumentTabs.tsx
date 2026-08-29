@@ -14,7 +14,10 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Horizontal symbol quick-switch strip. Ported from web `InstrumentTabs`. */
+/** Horizontal symbol quick-switch strip, styled as the mobile-v1 chip row:
+ * mono, radius 7, the selected chip on the `chip` fill with the accent for
+ * text and border, the rest transparent on the subtle border. Ported from
+ * web `InstrumentTabs`. */
 export function InstrumentTabs({
   selectedSymbol,
   onSelect,
@@ -67,26 +70,28 @@ interface InstrumentTabsStyles {
 
 function makeStyles(t: RnTheme): InstrumentTabsStyles {
   const baseTab: ViewStyle = {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderRadius: 4,
-    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 5,
+    borderRadius: 7,
+    borderWidth: 1,
     borderColor: t.borderSubtle,
   };
+
+  const baseLabel: TextStyle = {
+    fontSize: 9.5,
+    fontWeight: "600",
+    fontFamily: t.fontMono,
+  };
   return StyleSheet.create({
-    strip: { flexGrow: 0, backgroundColor: t.bgHeader },
-    content: { gap: 6, padding: SPACING.sm },
+    strip: { flexGrow: 0 },
+    content: { gap: 6, paddingBottom: 9 },
     tab: baseTab,
     tabActive: {
       ...baseTab,
       backgroundColor: t.chip,
       borderColor: t.accentPrimary,
     },
-    label: { fontSize: 12, color: t.textMuted, fontFamily: t.fontMono },
-    labelActive: {
-      fontSize: 12,
-      color: t.textPrimary,
-      fontFamily: t.fontMono,
-    },
+    label: { ...baseLabel, color: t.textSecondary },
+    labelActive: { ...baseLabel, color: t.accentPrimary },
   });
 }

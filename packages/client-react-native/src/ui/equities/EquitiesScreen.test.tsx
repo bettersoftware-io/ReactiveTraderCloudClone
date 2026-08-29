@@ -85,9 +85,9 @@ async function renderScreen(): Promise<void> {
 }
 
 // `vm()` doesn't stub `usePowerSaver`; `OrdersBlotter`'s row-insert flash and
-// `InstrumentHeader`'s tick flash both read it via `useShellMotionEnabled`.
+// `InstrumentCard`'s tick flash both read it via `useShellMotionEnabled`.
 // This file's tests assert screen-level navigation/reachability, not motion
-// behaviour, so — mirroring InstrumentHeader.test.tsx/SpotTile.test.tsx — the
+// behaviour, so — mirroring InstrumentCard.test.tsx/SpotTile.test.tsx — the
 // hook is stubbed directly rather than widening `vm()`. Pinned to `true`
 // (motion enabled) rather than toggled per test: the disabled/static-end-state
 // branch already has dedicated coverage in useShellMotionEnabled.test.tsx and

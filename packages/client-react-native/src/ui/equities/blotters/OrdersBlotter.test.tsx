@@ -253,7 +253,7 @@ function vm(): ViewModel {
 // `vm()`/`vmWith()` only stub `useEquityOrders`/`useEqBlotterView`; the row
 // insert flash's `useShellMotionEnabled` reads `usePowerSaver` off the same
 // ViewModel context, so it's mocked directly here rather than widening every
-// vm — mirrors InstrumentHeader.test.tsx/SpotTile.test.tsx, the other
+// vm — mirrors InstrumentCard.test.tsx/SpotTile.test.tsx, the other
 // useRowInsertFlash-adjacent consumers.
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {

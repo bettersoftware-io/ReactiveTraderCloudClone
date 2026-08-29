@@ -129,11 +129,11 @@ test("renders static rows with no glow overlay when motion is disabled", async (
 
 // `vm()` doesn't stub `usePowerSaver`; each row's `useRankMoveGlide` reads it
 // via `useShellMotionEnabled`. These tests assert ranking/empty-state, not
-// motion behaviour, so — mirroring InstrumentHeader.test.tsx/SpotTile.test.tsx
+// motion behaviour, so — mirroring InstrumentCard.test.tsx/SpotTile.test.tsx
 // — the hook is stubbed directly rather than widening the ViewModel stub. A
 // partial ViewModel through `ViewModelProvider` crashes with `TypeError:
 // usePowerSaver is not a function` otherwise (a known trap this phase — see
-// SpotTile.test.tsx/InstrumentHeader.test.tsx for the same fix).
+// SpotTile.test.tsx/InstrumentCard.test.tsx for the same fix).
 //
 // A toggleable `jest.fn` (not a hardcoded `true`, mirroring
 // `OrderCeremony.test.tsx`'s mock) — the previous constant-`true` mock could

@@ -103,7 +103,10 @@ test("useOrderTicket seeds the editing form's symbol from the given defaultSymbo
 
   expect(ticket.state.form.symbol).toBe("AAPL");
   expect(ticket.state.form.side).toBe("buy");
-  expect(ticket.state.form.type).toBe("market");
+  // LMT with the 500 chip lit: the state the design's TRADE panel shows, so
+  // the `equities/trade` golden holds every ticket row (see the fixture).
+  expect(ticket.state.form.type).toBe("limit");
+  expect(ticket.state.form.qty).toBe(500);
   expect(ticket.state.error).toBeNull();
 });
 
