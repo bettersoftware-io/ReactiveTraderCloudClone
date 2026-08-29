@@ -1,4 +1,4 @@
-import type { ReactElement, RefObject } from "react";
+import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
@@ -11,10 +11,8 @@ import { WirePanel } from "#/panels/WirePanel";
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
 import { useRecording } from "#/recording/useRecording";
 import { ContextPane } from "#/timeline/ContextPane";
-import { FilterControls } from "#/timeline/FilterControls";
 import { TimelinePane } from "#/timeline/TimelinePane";
 import { seqOfMachineIntent } from "#/timeline/timelineModel";
-import type { TimelineModel } from "#/timeline/useTimeline";
 import { useTimeline } from "#/timeline/useTimeline";
 import { useInspectorState } from "#/useInspectorState";
 
@@ -160,17 +158,19 @@ export function InspectorApp({
 
   return (
     <div className={styles.app}>
-      <ConnectionRail
-        state={presentState}
-        timeline={timeline}
-        textInputRef={filterInputRef}
-      />
+      <ConnectionRail state={presentState} />
       <div className={styles.main}>
         <RecordingToolbar model={recording} />
         <LensStrip active={lens} onSelect={setLens} />
         {lens === "timeline" ? (
           <div className={styles.split}>
-            <TimelinePane model={timeline} />
+            <TimelinePane
+              model={timeline}
+              scope={ALL_SCOPE}
+              searchInputRef={filterInputRef}
+              onProbeWire={timeline.setRadiusAround}
+              onShowInAll={noop}
+            />
             <ContextPane
               model={timeline}
               log={activeLog}
@@ -198,6 +198,8 @@ export function InspectorApp({
   );
 }
 
+function noop(): void {}
+
 type InspectorLens = "timeline" | "machines" | "wire";
 
 export interface InspectorAppProps {
@@ -211,15 +213,9 @@ export interface InspectorAppProps {
 
 interface ConnectionRailProps {
   state: InspectorState;
-  timeline: TimelineModel;
-  textInputRef: RefObject<HTMLInputElement | null>;
 }
 
-function ConnectionRail({
-  state,
-  timeline,
-  textInputRef,
-}: ConnectionRailProps): ReactElement {
+function ConnectionRail({ state }: ConnectionRailProps): ReactElement {
   const wireCount = state.log.filter((row) => {
     return row.kind === "wire:in" || row.kind === "wire:out";
   }).length;
@@ -248,7 +244,6 @@ function ConnectionRail({
         <RailCount label="Log" value={state.log.length} />
         <RailCount label="Wire" value={wireCount} />
       </dl>
-      <FilterControls model={timeline} textInputRef={textInputRef} />
     </aside>
   );
 }
