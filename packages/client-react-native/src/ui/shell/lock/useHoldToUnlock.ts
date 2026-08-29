@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts
-import { useEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { Gesture, type LongPressGesture } from "react-native-gesture-handler";
 import {
   Easing,
@@ -10,6 +10,7 @@ import {
 } from "react-native-reanimated";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
 
 /** Hold duration (ms) to complete the ring — wired to both the visual fill
  * and `LongPressGesture.minDuration`, so the sweep and the gesture's real
@@ -65,11 +66,19 @@ export const DECAY_MS = 260;
  *
  * No UI-side timers: timing is `react-native-gesture-handler`'s native
  * `minDuration` plus Reanimated's `withTiming`, not a JS-side interval.
+ *
+ * `progress` is the hook's own `SharedValue` unless a
+ * `LockHoldProgressContext` pin is present (the visual harness only — see
+ * that file), in which case the pinned value is what the ring reads AND what
+ * the gesture writes; the hook's own value is still created (hooks are
+ * unconditional) but simply unused.
  */
 export function useHoldToUnlock({
   onComplete,
 }: UseHoldToUnlockOptions): UseHoldToUnlockResult {
-  const progress = useSharedValue(0);
+  const ownProgress = useSharedValue(0);
+  const pinnedProgress = useContext(LockHoldProgressContext);
+  const progress = pinnedProgress ?? ownProgress;
   const motionEnabled = useShellMotionEnabled();
   const motionEnabledShared = useSharedValue(motionEnabled);
 
