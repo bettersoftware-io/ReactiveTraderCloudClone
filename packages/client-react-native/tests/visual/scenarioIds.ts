@@ -103,4 +103,8 @@ export const SCENARIO_IDS = [
   "equities/markets",
   "equities/trade",
   "equities/blotter",
+  // The Positions tab of the same view (`BlottersView initialTab`), the
+  // "before" golden for the prototype-fidelity pass — see its entry in
+  // `scenarios.tsx`.
+  "equities/blotter-positions",
 ] as const;

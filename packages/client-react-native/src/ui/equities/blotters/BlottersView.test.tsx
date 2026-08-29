@@ -18,6 +18,16 @@ test("defaults to Orders and switches to Positions", async () => {
   expect(screen.getByTestId("positions-empty")).toBeTruthy();
 });
 
+test("initialTab pins the Positions tab without a press", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm()}>
+      <BlottersView initialTab="positions" />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("positions-empty")).toBeTruthy();
+  expect(screen.queryByTestId("orders-empty")).toBeNull();
+});
+
 function vm(): ViewModel {
   return {
     useEquityOrders: () => {

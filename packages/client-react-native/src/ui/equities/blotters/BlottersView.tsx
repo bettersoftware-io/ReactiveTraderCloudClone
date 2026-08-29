@@ -15,9 +15,14 @@ import { PositionsBlotter } from "#/ui/equities/blotters/PositionsBlotter";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Blotters sub-view: an Orders/Positions toggle over the two blotters. */
-export function BlottersView(): JSX.Element {
-  const [tab, setTab] = useState<BlotterTab>("orders");
+/** Blotters sub-view: an Orders/Positions toggle over the two blotters.
+ * `initialTab` (default `orders`) is the seam the visual harness uses to pin
+ * the Positions tab in frame — the toggle is otherwise internal state no
+ * capture driver can pose without a tap. */
+export function BlottersView({
+  initialTab = "orders",
+}: BlottersViewProps): JSX.Element {
+  const [tab, setTab] = useState<BlotterTab>(initialTab);
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
@@ -53,6 +58,10 @@ export function BlottersView(): JSX.Element {
 }
 
 type BlotterTab = "orders" | "positions";
+
+interface BlottersViewProps {
+  readonly initialTab?: BlotterTab;
+}
 
 interface BlottersViewStyles {
   container: ViewStyle;
