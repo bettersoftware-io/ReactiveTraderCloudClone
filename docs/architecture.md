@@ -108,6 +108,7 @@ This document is split into one file per section under
     - [WebSocket Relay Transport (React Native)](architecture/20-devtools.md#209-websocket-relay-transport-react-native)
     - [Relationship to the Framework DevTools (React DevTools / Solid DevTools)](architecture/20-devtools.md#2010-relationship-to-the-framework-devtools-react-devtools--solid-devtools)
     - [Timeline-First UX (v2)](architecture/20-devtools.md#2011-timeline-first-ux-v2)
+    - [Store-First Navigation (v3)](architecture/20-devtools.md#2012-store-first-navigation-v3)
 21. [One Test Suite, Two Frameworks — Cross-Framework Testing](architecture/21-cross-framework-testing.md)
     - [The claim](architecture/21-cross-framework-testing.md#the-claim)
     - [The scoreboard](architecture/21-cross-framework-testing.md#the-scoreboard)

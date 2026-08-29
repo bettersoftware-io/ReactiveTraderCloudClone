@@ -1,189 +1,22 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type {
-  MachineIntentRow,
-  MachineRow,
-  SerializedValue,
-} from "@rtc/devtools-core";
+import type { MachineIntentRow, MachineRow } from "@rtc/devtools-core";
 
-import styles from "#/panels/MachinesPanel.module.css";
 import { ValueView } from "#/panels/ValueView";
+import styles from "#/timeline/MachineTab.module.css";
 
-/** The "Machines" tab: a table of every instrumented machine (id, kind,
- * compact args/state, created time, LIVE/DISPOSED badge) beside a detail
- * pane for the selected machine (full state via `ValueView`, transition
- * count, intent history newest-first). Selection lives in local component
- * state — it is view-only navigation, not application state. */
-export function MachinesPanel({
-  machines,
-  dev = false,
-  onInvokeIntent,
-  onFocusInTimeline,
-  onPinIntent,
-}: MachinesPanelProps): ReactElement {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected =
-    machines.find((machine) => {
-      return machine.machineId === selectedId;
-    }) ?? null;
-
-  return (
-    <div className={styles.panel}>
-      <MachineTable
-        machines={machines}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
-      <MachineDetail
-        machine={selected}
-        dev={dev}
-        onInvokeIntent={onInvokeIntent}
-        onFocusInTimeline={onFocusInTimeline}
-        onPinIntent={onPinIntent}
-      />
-    </div>
-  );
-}
-
-const COMPACT_MAX = 60;
-
-export interface MachinesPanelProps {
-  machines: readonly MachineRow[];
-  dev?: boolean;
-  onInvokeIntent?: (
-    machineId: string,
-    name: string,
-    args: readonly unknown[],
-  ) => void;
-  /** Cross-link into the timeline lens (Task 10), scoped to this machine. */
-  onFocusInTimeline?: (machineId: string) => void;
-  /** Cross-link that pins a specific intent occurrence on the timeline. */
-  onPinIntent?: (machineId: string, name: string, ts: number) => void;
-}
-
-interface MachineTableProps {
-  machines: readonly MachineRow[];
-  selectedId: string | null;
-  onSelect: (machineId: string) => void;
-}
-
-function MachineTable({
-  machines,
-  selectedId,
-  onSelect,
-}: MachineTableProps): ReactElement {
-  return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Kind</th>
-          <th>Args</th>
-          <th>State</th>
-          <th>Created</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {machines.map((machine) => {
-          return (
-            <MachineTableRow
-              key={machine.machineId}
-              machine={machine}
-              selected={machine.machineId === selectedId}
-              onSelect={onSelect}
-            />
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-interface MachineTableRowProps {
-  machine: MachineRow;
-  selected: boolean;
-  onSelect: (machineId: string) => void;
-}
-
-function MachineTableRow({
-  machine,
-  selected,
-  onSelect,
-}: MachineTableRowProps): ReactElement {
-  const rowClassName = machine.disposed
-    ? `${styles.row} ${styles.rowDisposed}`
-    : styles.row;
-
-  return (
-    <tr
-      data-testid="devtools-machine-row"
-      className={rowClassName}
-      data-selected={selected}
-      onClick={() => {
-        onSelect(machine.machineId);
-      }}
-    >
-      <td>{machine.machineId}</td>
-      <td>{machine.machineKind}</td>
-      <td>{compactValue(machine.args)}</td>
-      <td>{compactValue(machine.state)}</td>
-      <td>{formatCreatedAt(machine.createdAt)}</td>
-      <td>
-        <span
-          className={machine.disposed ? styles.badgeDisposed : styles.badgeLive}
-        >
-          {machine.disposed ? "DISPOSED" : "LIVE"}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-interface MachineDetailProps {
-  machine: MachineRow | null;
-  dev: boolean;
-  onInvokeIntent?: (
-    machineId: string,
-    name: string,
-    args: readonly unknown[],
-  ) => void;
-  onFocusInTimeline?: (machineId: string) => void;
-  onPinIntent?: (machineId: string, name: string, ts: number) => void;
-}
-
-function MachineDetail({
+/** The Machine tab (spec §4.3): current state, transition count, intent
+ * history newest-first, and — dev builds only — the confirm-gated intent
+ * injector. Relocated verbatim from the retired Machines panel. */
+export function MachineTab({
   machine,
   dev,
   onInvokeIntent,
-  onFocusInTimeline,
   onPinIntent,
-}: MachineDetailProps): ReactElement {
-  if (machine === null) {
-    return (
-      <div className={styles.detail}>
-        <p className={styles.empty}>Select a machine to inspect its state.</p>
-      </div>
-    );
-  }
-
+}: MachineTabProps): ReactElement {
   return (
     <div className={styles.detail}>
-      <div className={styles.detailHeader}>
-        <h3 className={styles.detailTitle}>{machine.machineId}</h3>
-        {onFocusInTimeline ? (
-          <button
-            type="button"
-            className={styles.timelineButton}
-            onClick={() => {
-              onFocusInTimeline(machine.machineId);
-            }}
-          >
-            ⏱ timeline
-          </button>
-        ) : null}
-      </div>
       <dl className={styles.meta}>
         <MetaRow label="Kind" value={machine.machineKind} />
         <MetaRow label="Transitions" value={String(machine.transitions)} />
@@ -211,6 +44,17 @@ function MachineDetail({
       ) : null}
     </div>
   );
+}
+
+export interface MachineTabProps {
+  machine: MachineRow;
+  dev: boolean;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
+  onPinIntent?: (machineId: string, name: string, ts: number) => void;
 }
 
 interface MetaRowProps {
@@ -276,13 +120,15 @@ function IntentPinButton({
   intent,
   onPinIntent,
 }: IntentPinButtonProps): ReactElement {
+  function pinIntentOnTimeline(): void {
+    onPinIntent?.(machineId, intent.name, intent.ts);
+  }
+
   return (
     <button
       type="button"
       className={styles.intentPin}
-      onClick={() => {
-        onPinIntent?.(machineId, intent.name, intent.ts);
-      }}
+      onClick={pinIntentOnTimeline}
     >
       <span data-testid="intent-name" className={styles.intentName}>
         {intent.name}
@@ -350,6 +196,10 @@ function IntentInjector({
     setError(null);
   }
 
+  function changeIntentArgs(event: ChangeEvent<HTMLTextAreaElement>): void {
+    setArgsText(event.target.value);
+  }
+
   return (
     <section data-testid="intent-injector" className={styles.inject}>
       <h4 className={styles.sectionTitle}>Inject intent (dev)</h4>
@@ -361,19 +211,7 @@ function IntentInjector({
       ) : (
         <div className={styles.injectButtons}>
           {names.map((name) => {
-            return (
-              <button
-                key={name}
-                type="button"
-                data-testid="intent-invoke-button"
-                className={styles.injectButton}
-                onClick={() => {
-                  arm(name);
-                }}
-              >
-                {name}
-              </button>
-            );
+            return <ArmButton key={name} name={name} onArm={arm} />;
           })}
         </div>
       )}
@@ -382,9 +220,7 @@ function IntentInjector({
         <textarea
           className={styles.injectArgs}
           value={argsText}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>): void => {
-            setArgsText(event.target.value);
-          }}
+          onChange={changeIntentArgs}
         />
       </label>
       {error !== null ? (
@@ -418,6 +254,28 @@ function IntentInjector({
   );
 }
 
+interface ArmButtonProps {
+  name: string;
+  onArm: (name: string) => void;
+}
+
+function ArmButton({ name, onArm }: ArmButtonProps): ReactElement {
+  function armIntent(): void {
+    onArm(name);
+  }
+
+  return (
+    <button
+      type="button"
+      data-testid="intent-invoke-button"
+      className={styles.injectButton}
+      onClick={armIntent}
+    >
+      {name}
+    </button>
+  );
+}
+
 function distinctIntentNames(
   intents: readonly MachineIntentRow[],
 ): readonly string[] {
@@ -428,20 +286,6 @@ function distinctIntentNames(
   }
 
   return [...seen];
-}
-
-function compactValue(value: SerializedValue | null): string {
-  if (value === null) {
-    return "";
-  }
-
-  const json = JSON.stringify(value);
-
-  return json.length > COMPACT_MAX ? `${json.slice(0, COMPACT_MAX)}…` : json;
-}
-
-function formatCreatedAt(ts: number): string {
-  return new Date(ts).toLocaleTimeString();
 }
 
 interface KeyedIntent {

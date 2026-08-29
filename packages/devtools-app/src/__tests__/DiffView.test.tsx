@@ -22,6 +22,18 @@ test("renders one row per entry with path, kind, and both values", () => {
   expect(screen.getByText("added")).toBeTruthy();
 });
 
+test("a removed leaf shows its before value, no arrow, and no after value", () => {
+  const entries: DiffEntry[] = [
+    { path: ["gone"], kind: "removed", before: 9, after: null },
+  ];
+
+  render(<DiffView entries={entries} noPrior={false} />);
+
+  expect(screen.getByText("removed")).toBeTruthy();
+  expect(screen.getByText("9")).toBeTruthy();
+  expect(screen.queryByText("→")).toBeNull();
+});
+
 test("renders the empty and no-prior states", () => {
   const { rerender } = render(<DiffView entries={[]} noPrior={false} />);
   expect(screen.getByText("No changes vs previous value.")).toBeTruthy();

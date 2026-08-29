@@ -302,7 +302,8 @@ export const TESTIDS = {
   /**
    * The same-origin DevTools inspector SPA (@rtc/devtools-app), served at
    * `/devtools/`. These ids live in the inspector's own components
-   * (InspectorApp / StateTreePanel / MachinesPanel), not in the app under test.
+   * (InspectorApp / NavTree / TimelinePane / StateTreePanel / ContextPane),
+   * not in the app under test.
    */
   devtools: {
     connectionBadge: "connection-badge",
@@ -310,7 +311,9 @@ export const TESTIDS = {
     machineRow: "devtools-machine-row",
     timelineRow: "timeline-row",
     pinnedBar: "pinned-bar",
-    lensMachines: "lens-machines",
+    navNode: "nav-node",
+    clearLog: "clear-log",
+    unclearLog: "unclear-log",
   },
   /**
    * The full-screen boot splash (BootSequence), mounted by BootGate OUTSIDE

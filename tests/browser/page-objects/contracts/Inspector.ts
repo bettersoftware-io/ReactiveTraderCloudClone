@@ -22,13 +22,23 @@ export interface InspectorPO {
    *  ContextPane's follow-mode state tree (the old State tab), one glance
    *  away regardless of which lens is active. */
   waitStreamRow(streamId: string, timeoutMs: number): Promise<void>;
-  /** Switch to the Machines lens. Takes an explicit click timeout because the
-   *  inspector is a live-stream view whose main thread is busy under load —
-   *  the click's actionability polling needs a bounded-but-generous budget
-   *  (see the devtools spec's timing note). */
-  openMachinesLens(timeoutMs: number): Promise<void>;
   /** Wait until a machine row whose text contains `kind` is visible. */
   waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void>;
+  /** Click the tree node whose `data-scope-id` is `nodeId` (e.g. "presenter:blotter",
+   *  "machineKind:tileExecution", "all"). Waits for the node to exist first — machine
+   *  nodes only appear once the app has birthed that machine. */
+  selectNavNode(nodeId: string, timeoutMs: number): Promise<void>;
+  /** Assert at least one timeline row is listed and EVERY listed row's text contains
+   *  `text` — the scoped list shows only the selected node's rows. */
+  waitTimelineRowsAllContain(text: string, timeoutMs: number): Promise<void>;
+  /** Click Clear. Returns the highest `data-seq` among the rows listed just before the
+   *  click — the watermark the caller asserts against. Under a live stream new rows
+   *  arrive within ~66 ms of the click, so "the list is empty" is not a stable
+   *  assertion; "every listed row is newer than the watermark" is. */
+  clearTimeline(timeoutMs: number): Promise<number>;
+  /** Assert the Unclear affordance is visible and that at least one row is listed whose
+   *  `data-seq` exceeds `watermark`, with none at or below it. */
+  waitTimelineClearedPast(watermark: number, timeoutMs: number): Promise<void>;
   /** Pin the inspector at the newest timeline row via the ArrowUp shortcut
    *  (from follow mode, one ArrowUp pins the tail row), freezing the
    *  inspector's selection at that moment. Keyboard on purpose: while
@@ -37,7 +47,9 @@ export interface InspectorPO {
    *  race against detach/auto-scroll that flakes on slow CI runners — the
    *  shortcut pins atomically in state. The mouse pin-click path is covered
    *  at the RTL tier (TimelinePane.test.tsx). `timeoutMs` bounds the wait for
-   *  a first timeline row to exist before the key is pressed. */
+   *  a first timeline row to exist before the key is pressed. ArrowUp is one
+   *  of the keys the tree owns while a node button has focus; blur first so
+   *  the global step shortcut sees it. */
   pinLatestTimelineRow(timeoutMs: number): Promise<void>;
   /** Wait until the pinned-moment bar is visible (a pin is active). */
   waitPinnedBar(timeoutMs: number): Promise<void>;

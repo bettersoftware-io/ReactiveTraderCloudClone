@@ -46,12 +46,6 @@ export class PlaywrightInspector implements InspectorPO {
     ).toBeVisible({ timeout: timeoutMs });
   }
 
-  async openMachinesLens(timeoutMs: number): Promise<void> {
-    await this.page()
-      .getByTestId(TESTIDS.devtools.lensMachines)
-      .click({ timeout: timeoutMs });
-  }
-
   async waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void> {
     await expect(
       this.page()
@@ -59,6 +53,79 @@ export class PlaywrightInspector implements InspectorPO {
         .filter({ hasText: kind })
         .first(),
     ).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async selectNavNode(nodeId: string, timeoutMs: number): Promise<void> {
+    const node = this.page()
+      .getByTestId(TESTIDS.devtools.navNode)
+      .and(this.page().locator(`[data-scope-id="${nodeId}"]`));
+
+    await node.waitFor({ state: "visible", timeout: timeoutMs });
+    // Tree rows never remount (keyed by stable node id) and their only
+    // animation is an opacity flash, so a plain click is stable here —
+    // unlike timeline rows under a live stream.
+    await node.click({ timeout: timeoutMs });
+  }
+
+  async waitTimelineRowsAllContain(
+    text: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    const rows = this.page().getByTestId(TESTIDS.devtools.timelineRow);
+
+    await expect(rows.first()).toBeAttached({ timeout: timeoutMs });
+    await expect(rows.filter({ hasNotText: text })).toHaveCount(0, {
+      timeout: timeoutMs,
+    });
+  }
+
+  async clearTimeline(timeoutMs: number): Promise<number> {
+    const rows = this.page().getByTestId(TESTIDS.devtools.timelineRow);
+
+    await expect(rows.first()).toBeAttached({ timeout: timeoutMs });
+
+    const seqs = await rows.evaluateAll((elements) => {
+      return elements.map((el) => {
+        return Number((el as HTMLElement).dataset.seq);
+      });
+    });
+    const watermark = Math.max(...seqs);
+
+    await this.page()
+      .getByTestId(TESTIDS.devtools.clearLog)
+      .click({ timeout: timeoutMs });
+
+    return watermark;
+  }
+
+  async waitTimelineClearedPast(
+    watermark: number,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.devtools.unclearLog),
+    ).toBeVisible({
+      timeout: timeoutMs,
+    });
+
+    const rows = this.page().getByTestId(TESTIDS.devtools.timelineRow);
+
+    await expect
+      .poll(
+        async () => {
+          const seqs = await rows.evaluateAll((elements) => {
+            return elements.map((el) => {
+              return Number((el as HTMLElement).dataset.seq);
+            });
+          });
+
+          // Until a post-clear row arrives, report the watermark itself so the
+          // poll keeps waiting; any row AT or BELOW it is a real failure.
+          return seqs.length === 0 ? watermark : Math.min(...seqs);
+        },
+        { timeout: timeoutMs },
+      )
+      .toBeGreaterThan(watermark);
   }
 
   async pinLatestTimelineRow(timeoutMs: number): Promise<void> {
@@ -70,6 +137,16 @@ export class PlaywrightInspector implements InspectorPO {
       .getByTestId(TESTIDS.devtools.timelineRow)
       .first()
       .waitFor({ state: "attached", timeout: timeoutMs });
+    // Blur whatever is currently focused first: ArrowUp is one of the keys
+    // the tree owns while a node button has focus (InspectorApp.tsx's
+    // TREE_KEYS — Arrow*/Enter; every other shortcut, `/`/`c`/Escape, stays
+    // global regardless of focus) — a nav-node click (selectNavNode) leaves
+    // the clicked <button> focused, which would otherwise route the key to
+    // the tree's own cursor-nav instead of the pin shortcut. Blur first so
+    // the global step shortcut sees it.
+    await this.page().evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
     await this.page().keyboard.press("ArrowUp");
   }
 

@@ -109,3 +109,15 @@
   padding: 12px;
   font-size: 12px;
 }
+
+.noState {
+  padding: 12px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.changedMark {
+  margin-left: 6px;
+  color: var(--warn);
+  font-size: 11px;
+}

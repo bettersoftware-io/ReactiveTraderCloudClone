@@ -60,14 +60,24 @@ const compilerPath = require.resolve("babel-plugin-react-compiler");
 // pointing at on its own.
 const TRACKED = [
   {
+    // `rows` and `selectedRow` were tracked here until the store-first
+    // navigation rework and are deliberately no longer per-value asserted;
+    // both were re-measured against the compiled output, see the note below
+    // the list. `reconstruction` is unchanged — still the one multi-statement
+    // derivation in this hook, still a standalone bare-temp binding.
     file: "packages/devtools-app/src/timeline/useTimeline.ts",
     fn: "useTimeline",
-    values: ["rows", "selectedRow", "reconstruction"],
+    values: ["reconstruction"],
   },
   {
+    // Renamed, not lost: the ≠-live change set split per family, so the old
+    // `changedIds` VALUE is now `changedStreams` (its sibling
+    // `changedMachines` is new — it never traded away a manual memo, so it is
+    // out of this gate's scope per the header note), and `visibleStreams` is
+    // now `streams`. Both re-verified as bare-temp memoized bindings.
     file: "packages/devtools-app/src/timeline/ContextPane.tsx",
     fn: "StateTab",
-    values: ["changedIds", "visibleStreams"],
+    values: ["changedStreams", "streams"],
   },
   {
     file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx",
@@ -116,6 +126,29 @@ const TRACKED = [
 
 // Deliberately NOT tracked, each for a different reason:
 //
+// - `useTimeline.ts`'s `selectedRow` no longer computes anything: it was
+//   `computeSelectedRow(log, selection)` (a log lookup) and is now
+//   `selection.mode === "pinned" ? selection.row : null` — a read of the row
+//   the selection already captured (spec §6.2, so an evicted row survives).
+//   There is no computation left to cache.
+// - `useTimeline.ts`'s `rows` IS still memoized, but no longer as a
+//   standalone bare-temp binding this gate's discriminator can classify: the
+//   compiler now FUSES it with `filter` and `pinnedRowHidden` into one shared
+//   memo block (`let rows; if ($[n] !== …) { … rows = filterLog(…) } else {
+//   rows = $[k] }`) — the same fused shape documented for `svgPath` and
+//   `bars`/`keyedBars` below/above. The fusion is structural: `pinnedRowHidden`
+//   (a `TimelineModel` field added with the scoped timeline) reads `rows`, and
+//   the compiler merges a scope with every plain expression that consumes it.
+//   Four restructurings were measured — reordering, late placement, inlining
+//   into the returned object, and extracting a helper call — and all four
+//   reproduce it; the only escape is to stop `filterLog` taking a
+//   `TimelineFilter`, which would degrade a tested pure-module API for a
+//   static-shape check. The declaration order in `useTimeline` is instead
+//   tuned (see its comment) so the fused block's key is
+//   `{log, pinnedSeq, presentState, scope, userFilter}` rather than also
+//   `selection.mode`/`selection.row`. Re-track it the moment this gate learns
+//   to classify the fused shape — the `else` branch's `rows = $[k];` is an
+//   equally strict witness of memoization.
 // - `useRecording.ts` bails on a compiler limitation (value blocks inside
 //   try/catch), but its callbacks were pure caching with no memo boundary —
 //   nothing was traded away, so there is nothing to protect.

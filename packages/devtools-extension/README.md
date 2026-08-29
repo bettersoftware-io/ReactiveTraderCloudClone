@@ -7,9 +7,10 @@ build — over a `chrome.runtime` transport.
 ## Architecture
 
 A third `Duplex` behind the inspector's transport seam. Nothing in the protocol,
-hub, `InspectorStore`/`InspectorClient`, or the timeline-first inspector (a
-unified event timeline with an Event/State/Diff context pane, plus the
-Machines and Wire lenses) changes:
+hub, `InspectorStore`/`InspectorClient`, or the store-first inspector changes:
+a navigation tree (All / Presenters→streams / Machines→kind→instance /
+Wire→msgType) drives one scoped selection, with scoped actions plus an
+Event/State/Diff/Machine context pane and Clear.
 
 - `ChromeRuntimeDuplex` — inspector-side transport over a reconnecting runtime port.
 - `contentBridge` — injected into the app tab; relays the same-origin

@@ -1,32 +1,36 @@
-import type { ReactElement, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
+import { useEffect, useRef } from "react";
 
-import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
+import type {
+  InspectorState,
+  InspectorStore,
+  LogRow,
+} from "@rtc/devtools-core";
 import { LiveHistory, projectSnapshot } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
-import { MachinesPanel } from "#/panels/MachinesPanel";
-import { WirePanel } from "#/panels/WirePanel";
+import type { NavNode } from "#/nav/buildNavTree";
+import { buildNavTree } from "#/nav/buildNavTree";
+import { NavTree } from "#/nav/NavTree";
+import type { Scope } from "#/nav/scope";
+import { ALL_SCOPE } from "#/nav/scope";
+import type { NavigationModel } from "#/nav/useNavigation";
+import { useNavigation } from "#/nav/useNavigation";
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
 import { useRecording } from "#/recording/useRecording";
 import { ContextPane } from "#/timeline/ContextPane";
-import { FilterControls } from "#/timeline/FilterControls";
 import { TimelinePane } from "#/timeline/TimelinePane";
-import { seqOfMachineIntent } from "#/timeline/timelineModel";
-import type { TimelineModel } from "#/timeline/useTimeline";
+import { logAfterSeq, seqOfMachineIntent } from "#/timeline/timelineModel";
 import { useTimeline } from "#/timeline/useTimeline";
 import { useInspectorState } from "#/useInspectorState";
 
-/** The devtools panel shell: connection rail (badge + counts + filters) beside
- * a main column of recording toolbar, lens switcher, and the active lens.
- * Timeline is the default lens — a single chronological feed across every
- * event family with a pinned-moment context pane (spec §3); Machines and
- * Wire are the same panels as before, now cross-linked back into the
- * timeline. Importing a recording (RecordingToolbar) swaps the datasource:
- * both the log the timeline renders and the history it reconstructs through
- * become the import's, and "present" becomes the import's own final fold so
- * ≠-live marks compare against the recording's end state, never the live
- * app. */
+/** The devtools panel shell (spec §3): a rail holding the connection badge
+ * and the navigation tree, beside a main column of recording toolbar and
+ * the scoped split — actions list | context pane. One selection (the
+ * scope) drives everything: the tree owns it, `useTimeline` compiles it
+ * into a filter, the context pane narrows State to it. Importing a
+ * recording swaps the datasource wholesale (log, history, present state)
+ * and resets the scope, pin and radius. */
 export function InspectorApp({
   store,
   onInvokeIntent,
@@ -71,19 +75,26 @@ export function InspectorApp({
   const activeHistory = recording.imported?.history ?? liveHistory;
   const presentState = recording.imported?.state ?? liveState;
 
-  const timeline = useTimeline(activeLog, activeHistory);
+  const navigation = useNavigation();
+  const timeline = useTimeline(
+    activeLog,
+    activeHistory,
+    navigation.scope,
+    presentState,
+  );
+  const visibleLog = logAfterSeq(activeLog, timeline.filter.clearedBeforeSeq);
+  const navTree = buildNavTree(presentState, visibleLog);
 
   // Swapping the datasource (an import lands, or Back to live restores the
-  // live seam) is a new timeline: drop any pin and radius filter left over
+  // live seam) is a new timeline: drop the pin, radius and scope left over
   // from the previous datasource rather than let them silently survive the
   // swap. The ref comparison — not just the dependency array — is what keeps
-  // this from firing on every render: `timeline` is a fresh object every
-  // render, so a dependency array naming it (or its still-stable resume/
-  // clearRadius members without a body reference) would either refire
-  // constantly or trip the exhaustive-deps lint. Comparing against the
-  // previous `activeHistory` inside the effect body makes the real
-  // condition explicit. Firing on first mount too is harmless: a fresh
-  // timeline already starts in "follow" with no radius.
+  // this from firing on every render: `timeline` and `navigation` are fresh
+  // objects every render, so a dependency array naming them would either
+  // refire constantly or trip the exhaustive-deps lint. Comparing against the
+  // previous `activeHistory` inside the effect body makes the real condition
+  // explicit. Firing on first mount too is harmless: a fresh timeline already
+  // starts in "follow" with no radius, on the All scope.
   const previousHistoryRef = useRef<LiveHistory | null>(null);
 
   useEffect((): void => {
@@ -91,51 +102,21 @@ export function InspectorApp({
       previousHistoryRef.current = activeHistory;
       timeline.resume();
       timeline.clearRadius();
+      timeline.unclear();
+      navigation.select(ALL_SCOPE);
     }
-  }, [activeHistory, timeline]);
+  }, [activeHistory, timeline, navigation]);
 
-  const [lens, setLens] = useState<InspectorLens>("timeline");
-  const filterInputRef = useRef<HTMLInputElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect((): (() => void) => {
-    function dispatchTimelineShortcut(e: KeyboardEvent): void {
-      const target = e.target as HTMLElement | null;
+  function probeWireAroundRow(row: LogRow): void {
+    navigation.pushScope(ALL_SCOPE);
+    timeline.pin(row);
+    timeline.setRadiusAround(row);
+  }
 
-      if (
-        target !== null &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA")
-      ) {
-        if (e.key === "Escape") {
-          target.blur();
-        }
-
-        return;
-      }
-
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        timeline.selectPrev();
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        timeline.selectNext();
-      } else if (e.key === "Escape") {
-        timeline.resume();
-      } else if (e.key === "/") {
-        e.preventDefault();
-        filterInputRef.current?.focus();
-      }
-    }
-
-    window.addEventListener("keydown", dispatchTimelineShortcut);
-
-    return (): void => {
-      window.removeEventListener("keydown", dispatchTimelineShortcut);
-    };
-  }, [timeline]);
-
-  function filterTimelineByMachine(machineId: string): void {
-    timeline.addPill({ type: "machine", id: machineId });
-    setLens("timeline");
+  function showPinnedInAll(): void {
+    navigation.select(ALL_SCOPE);
   }
 
   function pinTimelineAtIntent(
@@ -144,63 +125,88 @@ export function InspectorApp({
     ts: number,
   ): void {
     const seq = seqOfMachineIntent(activeLog, machineId, name, ts);
+    const row =
+      seq === null
+        ? undefined
+        : activeLog.find((r) => {
+            return r.seq === seq;
+          });
 
-    if (seq !== null) {
-      timeline.pin(seq);
-      setLens("timeline");
+    if (row !== undefined) {
+      timeline.pin(row);
     }
   }
 
-  function filterTimelineByMsgType(msgType: string): void {
-    timeline.addPill({ type: "msgType", id: msgType });
-    setLens("timeline");
+  function escapeTimeline(): void {
+    // Precedence 1 (spec §3.1) is signalled by an active radius, not by a
+    // scope change: `pushScope` records no history when the wire probe's
+    // target scope equals the current one (probing from All, the default),
+    // so gating on `popScope()`'s return left the radius stranded — the
+    // pinned bar disappeared while the list stayed radius-filtered with no
+    // way back short of the `±100ms ✕` chip. `popScope()` here is
+    // best-effort: it restores the previous scope when there is one, and is
+    // a harmless no-op when the probe started from All.
+    if (timeline.filter.radius !== null) {
+      navigation.popScope();
+      timeline.clearRadius();
+
+      return;
+    }
+
+    if (timeline.selection.mode === "pinned") {
+      timeline.resume();
+
+      return;
+    }
+
+    if (!timeline.tailAttached) {
+      timeline.setTailAttached(true);
+    }
   }
+
+  function focusScopeSearch(): void {
+    searchInputRef.current?.focus();
+  }
+
+  useWindowShortcuts({
+    stepPrev: timeline.selectPrev,
+    stepNext: timeline.selectNext,
+    escape: escapeTimeline,
+    clear: timeline.clear,
+    focusSearch: focusScopeSearch,
+  });
 
   return (
     <div className={styles.app}>
       <ConnectionRail
         state={presentState}
-        timeline={timeline}
-        textInputRef={filterInputRef}
+        nodes={navTree}
+        navigation={navigation}
       />
       <div className={styles.main}>
         <RecordingToolbar model={recording} />
-        <LensStrip active={lens} onSelect={setLens} />
-        {lens === "timeline" ? (
-          <div className={styles.split}>
-            <TimelinePane model={timeline} />
-            <ContextPane
-              model={timeline}
-              log={activeLog}
-              presentState={presentState}
-            />
-          </div>
-        ) : null}
-        {lens === "machines" ? (
-          <div className={styles.panel}>
-            <MachinesPanel
-              machines={presentState.machines}
-              dev={presentState.dev}
-              onInvokeIntent={onInvokeIntent}
-              onFocusInTimeline={filterTimelineByMachine}
-              onPinIntent={pinTimelineAtIntent}
-            />
-          </div>
-        ) : null}
-        {lens === "wire" ? (
-          <div className={styles.panel}>
-            <WirePanel
-              log={activeLog}
-              onMsgTypePill={filterTimelineByMsgType}
-            />
-          </div>
-        ) : null}
+        <div className={styles.split}>
+          <TimelinePane
+            model={timeline}
+            scope={navigation.scope}
+            searchInputRef={searchInputRef}
+            onProbeWire={probeWireAroundRow}
+            onShowInAll={showPinnedInAll}
+          />
+          <ContextPane
+            model={timeline}
+            log={activeLog}
+            presentState={presentState}
+            scope={navigation.scope}
+            dev={presentState.dev}
+            onInvokeIntent={onInvokeIntent}
+            onPinIntent={pinTimelineAtIntent}
+          />
+        </div>
       </div>
     </div>
   );
 }
-
-type InspectorLens = "timeline" | "machines" | "wire";
 
 export interface InspectorAppProps {
   store: InspectorStore;
@@ -211,20 +217,114 @@ export interface InspectorAppProps {
   ) => void;
 }
 
+interface Shortcuts {
+  stepPrev: () => void;
+  stepNext: () => void;
+  escape: () => void;
+  clear: () => void;
+  focusSearch: () => void;
+}
+
+/** The keys `NavTree` handles itself while a node button has focus (see its
+ * own keydown handler): arrow-key cursor movement and Enter-to-select. Every
+ * other shortcut — `/`, `c`, `Escape` — stays global even with the tree
+ * focused, so this router must swallow only these five, never a blanket
+ * "target inside the tree". */
+const TREE_KEYS: ReadonlySet<string> = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Enter",
+]);
+
+/** One window `keydown` listener for the life of the app (not one per
+ * render — the STATUS "re-binds per render" item). The latest handlers
+ * live in a ref the listener reads at dispatch time. Routing by focus:
+ * inside an input/textarea only Escape acts (blur); inside the tree
+ * (`[data-nav-tree]`) only the tree's own keys (`TREE_KEYS`) are swallowed —
+ * `/`, `c` and `Escape` stay global even with a node focused (amended §3.1;
+ * see docs/architecture/20-devtools.md §20.12). */
+function useWindowShortcuts(shortcuts: Shortcuts): void {
+  const shortcutsRef = useRef(shortcuts);
+
+  shortcutsRef.current = shortcuts;
+
+  useEffect((): (() => void) => {
+    function dispatchInspectorShortcut(e: KeyboardEvent): void {
+      // A held modifier means the keystroke belongs to the browser or the
+      // OS, never to us. `e.key` is plain `"c"` for BOTH `c` and ⌘C/Ctrl+C,
+      // and copying a value out of the panel is its core gesture — a text
+      // selection leaves focus on `<body>` or a row, not an input, so
+      // without this guard ⌘C would silently Clear the timeline. Same for
+      // ⌘↑ ("scroll to top"), which must not be preventDefault-ed.
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
+
+      // Narrowed, not cast: a shortcut typed with nothing focused is
+      // dispatched at `window` itself, which has neither `tagName` nor
+      // `closest` — a cast makes that the app-wide crash path.
+      const target = e.target instanceof Element ? e.target : null;
+      const current = shortcutsRef.current;
+
+      if (
+        target !== null &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA")
+      ) {
+        if (e.key === "Escape" && target instanceof HTMLElement) {
+          target.blur();
+        }
+
+        return;
+      }
+
+      if (
+        target !== null &&
+        target.closest("[data-nav-tree]") !== null &&
+        TREE_KEYS.has(e.key)
+      ) {
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        current.stepPrev();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        current.stepNext();
+      } else if (e.key === "Escape") {
+        current.escape();
+      } else if (e.key === "/") {
+        e.preventDefault();
+        current.focusSearch();
+      } else if (e.key === "c") {
+        current.clear();
+      }
+    }
+
+    window.addEventListener("keydown", dispatchInspectorShortcut);
+
+    return (): void => {
+      window.removeEventListener("keydown", dispatchInspectorShortcut);
+    };
+  }, []);
+}
+
 interface ConnectionRailProps {
   state: InspectorState;
-  timeline: TimelineModel;
-  textInputRef: RefObject<HTMLInputElement | null>;
+  nodes: readonly NavNode[];
+  navigation: NavigationModel;
 }
 
 function ConnectionRail({
   state,
-  timeline,
-  textInputRef,
+  nodes,
+  navigation,
 }: ConnectionRailProps): ReactElement {
-  const wireCount = state.log.filter((row) => {
-    return row.kind === "wire:in" || row.kind === "wire:out";
-  }).length;
+  function selectScope(scope: Scope): void {
+    navigation.select(scope);
+  }
 
   return (
     <aside className={styles.rail}>
@@ -244,90 +344,7 @@ function ConnectionRail({
           Protocol mismatch: app v{state.protocolMismatch}
         </p>
       ) : null}
-      <dl className={styles.counts}>
-        <RailCount label="Streams" value={state.streams.length} />
-        <RailCount label="Machines" value={state.machines.length} />
-        <RailCount label="Log" value={state.log.length} />
-        <RailCount label="Wire" value={wireCount} />
-      </dl>
-      <FilterControls model={timeline} textInputRef={textInputRef} />
+      <NavTree nodes={nodes} scope={navigation.scope} onSelect={selectScope} />
     </aside>
-  );
-}
-
-interface RailCountProps {
-  label: string;
-  value: number;
-}
-
-function RailCount({ label, value }: RailCountProps): ReactElement {
-  return (
-    <div className={styles.count}>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
-interface LensStripProps {
-  active: InspectorLens;
-  onSelect: (lens: InspectorLens) => void;
-}
-
-interface LensDescriptor {
-  id: InspectorLens;
-  label: string;
-}
-
-const LENSES: readonly LensDescriptor[] = [
-  { id: "timeline", label: "Timeline" },
-  { id: "machines", label: "Machines" },
-  { id: "wire", label: "Wire" },
-];
-
-function LensStrip({ active, onSelect }: LensStripProps): ReactElement {
-  return (
-    <nav className={styles.lensStrip}>
-      {LENSES.map((entry) => {
-        return (
-          <LensButton
-            key={entry.id}
-            id={entry.id}
-            label={entry.label}
-            active={active}
-            onSelect={onSelect}
-          />
-        );
-      })}
-    </nav>
-  );
-}
-
-interface LensButtonProps {
-  id: InspectorLens;
-  label: string;
-  active: InspectorLens;
-  onSelect: (lens: InspectorLens) => void;
-}
-
-function LensButton({
-  id,
-  label,
-  active,
-  onSelect,
-}: LensButtonProps): ReactElement {
-  function selectLens(): void {
-    onSelect(id);
-  }
-
-  return (
-    <button
-      type="button"
-      data-testid={`lens-${id}`}
-      className={id === active ? styles.tabActive : styles.tab}
-      onClick={selectLens}
-    >
-      {label}
-    </button>
   );
 }

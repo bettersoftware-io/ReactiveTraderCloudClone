@@ -1,12 +1,20 @@
 import { expect, test } from "vitest";
 
-import type { DevtoolsEvent, LogRow } from "@rtc/devtools-core";
+import type {
+  DevtoolsEvent,
+  LogRow,
+  SerializedValue,
+} from "@rtc/devtools-core";
 
 import {
   ALL_FAMILIES_ON,
   diffableValueOf,
+  EMPTY_TIMELINE_FILTER,
+  familyOf,
   filterLog,
   findPredecessorRow,
+  hasSeq,
+  logAfterSeq,
   pillKey,
   seqOfMachineIntent,
   sourceOfEvent,
@@ -38,9 +46,10 @@ test("filterLog composes families AND pills AND text AND radius", () => {
   expect(
     filterLog(log, {
       families: { ...ALL_FAMILIES_ON, wire: false },
-      pills: [],
+      pills: null,
       text: "",
       radius: null,
+      clearedBeforeSeq: 0,
     }).map((r) => {
       return r.seq;
     }),
@@ -52,6 +61,7 @@ test("filterLog composes families AND pills AND text AND radius", () => {
       pills: [{ type: "stream", id: "fx.price$" }],
       text: "",
       radius: null,
+      clearedBeforeSeq: 0,
     }).map((r) => {
       return r.seq;
     }),
@@ -60,9 +70,10 @@ test("filterLog composes families AND pills AND text AND radius", () => {
   expect(
     filterLog(log, {
       families: ALL_FAMILIES_ON,
-      pills: [],
+      pills: null,
       text: "trades",
       radius: null,
+      clearedBeforeSeq: 0,
     }).map((r) => {
       return r.seq;
     }),
@@ -72,9 +83,10 @@ test("filterLog composes families AND pills AND text AND radius", () => {
   expect(
     filterLog(log, {
       families: ALL_FAMILIES_ON,
-      pills: [],
+      pills: null,
       text: "",
       radius: { centerTs: 1001, windowMs: 1 },
+      clearedBeforeSeq: 0,
     }).map((r) => {
       return r.seq;
     }),
@@ -137,6 +149,102 @@ test("seqOfMachineIntent locates the log row for an intent", () => {
   expect(seqOfMachineIntent(log, "m1", "execute", 1007)).toBe(7);
   expect(seqOfMachineIntent(log, "m1", "cancel", 1007)).toBeNull();
 });
+
+test("logAfterSeq drops everything at or before the watermark; 0 is a no-op", () => {
+  const log = [
+    row(emission(1, "a.x$", 1)),
+    row(emission(3, "a.x$", 3)),
+    row(emission(7, "a.x$", 7)),
+  ];
+
+  expect(logAfterSeq(log, 0)).toBe(log);
+  expect(
+    logAfterSeq(log, 3).map((r) => {
+      return r.seq;
+    }),
+  ).toEqual([7]);
+  expect(
+    logAfterSeq(log, 4).map((r) => {
+      return r.seq;
+    }),
+  ).toEqual([7]);
+  expect(logAfterSeq(log, 7)).toEqual([]);
+});
+
+test("hasSeq finds present seqs and rejects absent ones", () => {
+  const log = [row(emission(1, "a.x$", 1)), row(emission(3, "a.x$", 3))];
+
+  expect(hasSeq(log, 3)).toBe(true);
+  expect(hasSeq(log, 2)).toBe(false);
+  expect(hasSeq([], 1)).toBe(false);
+});
+
+test("filterLog: clearedBeforeSeq hides older rows; an EMPTY pill set matches nothing", () => {
+  const log = [
+    row(emission(1, "a.x$", 1)),
+    row(emission(2, "a.x$", 2)),
+    row(wireIn(3, "PRICE")),
+  ];
+
+  expect(
+    filterLog(log, { ...EMPTY_TIMELINE_FILTER, clearedBeforeSeq: 1 }).map(
+      (r) => {
+        return r.seq;
+      },
+    ),
+  ).toEqual([2, 3]);
+  expect(filterLog(log, { ...EMPTY_TIMELINE_FILTER, pills: [] })).toEqual([]);
+});
+
+test("a devtools:error row is its own family, sources nothing, and matches no pill", () => {
+  const error = devtoolsError(9);
+
+  expect(familyOf(error.kind)).toBe("devtools");
+  expect(sourceOfEvent(error)).toBeNull();
+  expect(
+    filterLog([row(error)], {
+      ...EMPTY_TIMELINE_FILTER,
+      pills: [{ type: "stream", id: "fx.price$" }],
+    }),
+  ).toEqual([]);
+});
+
+test("findPredecessorRow: same machine, but nothing at all for an uncomparable kind", () => {
+  const log = [
+    row(machineState(1, "m1", "idle")),
+    row(emission(2, "fx.price$", 1)),
+    row(machineState(3, "m1", "busy")),
+    row(devtoolsError(4)),
+  ];
+
+  expect(findPredecessorRow(log, log[2] as LogRow)?.seq).toBe(1);
+  expect(findPredecessorRow(log, log[3] as LogRow)).toBeNull();
+});
+
+test("diffableValueOf reads the wire payload and nothing from a devtools row", () => {
+  expect(diffableValueOf(wireInWith(1, "PRICE", { bid: 1 }))).toEqual({
+    bid: 1,
+  });
+  expect(diffableValueOf(devtoolsError(2))).toBeNull();
+});
+
+function devtoolsError(seq: number): DevtoolsEvent {
+  return {
+    kind: "devtools:error",
+    seq,
+    ts: 1000 + seq,
+    context: "tap",
+    message: "boom",
+  };
+}
+
+function wireInWith(
+  seq: number,
+  msgType: string,
+  payload: SerializedValue,
+): DevtoolsEvent {
+  return { kind: "wire:in", seq, ts: 1000 + seq, msgType, payload };
+}
 
 function emission(seq: number, streamId: string, value: number): DevtoolsEvent {
   return {

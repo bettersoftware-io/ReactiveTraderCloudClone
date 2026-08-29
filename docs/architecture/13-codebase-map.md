@@ -229,7 +229,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The inspector SPA: a Vite + React 19 app, timeline-first ([§20.11](20-devtools.md#2011-timeline-first-ux-v2)) — a unified event timeline with pin-to-moment selection, an Event/State/Diff context pane, and Machines/Wire as cross-linked lenses — driven entirely by the wire protocol. |
+| **What it is** | The inspector SPA: a Vite + React 19 app, store-first ([§20.12](20-devtools.md#2012-store-first-navigation-v3)) — a navigation tree (All / Presenters→streams / Machines→kind→instance / Wire→msgType) scopes a shared actions list and an Event/State/Diff/Machine context pane — driven entirely by the wire protocol. |
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Depends on** | `@rtc/devtools-core`, `react`, `react-dom` (`packages/devtools-app/package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace as a source dependency -- `client-react` only takes a `devDependency` build-order/dist-path edge to it (§6), never imports its source |
@@ -416,11 +416,12 @@ src/
 `@rtc/devtools-app`:
 ```
 src/
-├── main.tsx, InspectorApp.tsx     entry point + shell (connection rail, lens switcher)
+├── main.tsx, InspectorApp.tsx     entry point + shell (connection rail, nav tree, main column)
 ├── inspectorSession.ts             wires an InspectorClient to React state
 ├── useInspectorState.ts             hook exposing the live InspectorState
-├── panels/                           StateTreePanel · MachinesPanel · WirePanel · ValueView
-├── timeline/                          TimelinePane · ContextPane · FilterControls · DiffView · timelineModel · useTimeline
+├── nav/                               scope.ts · buildNavTree.ts · NavTree.tsx · useNavigation.ts
+├── panels/                           StateTreePanel · ValueView
+├── timeline/                          TimelinePane · ContextPane · MachineTab · DiffView · timelineModel · useTimeline
 └── recording/                         RecordingToolbar · useRecording · downloadRecording
 ```
 
