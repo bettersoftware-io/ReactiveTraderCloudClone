@@ -1,10 +1,11 @@
 import type { KeyboardEvent, ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import type { NavNode } from "#/nav/buildNavTree";
 import styles from "#/nav/NavTree.module.css";
 import type { Scope } from "#/nav/scope";
 import { scopeKey } from "#/nav/scope";
+import { useFlashOnSeq } from "#/panels/flash";
 
 /** The rail navigator (spec §3.1): one tree, four roots, one selection.
  * Expansion is local view state keyed by node id and independent of
@@ -165,16 +166,8 @@ function NavRow({
   const flashRef = useRef<HTMLSpanElement>(null);
   const hasChildren = node.children.length > 0;
 
-  useEffect((): void => {
-    // Same compositor-safe opacity flash as StateTreePanel: WAAPI promotes
-    // the span only for the animation's lifetime (docs/performance.md).
-    if (node.lastSeq > 0) {
-      flashRef.current?.animate([{ opacity: 0.35 }, { opacity: 1 }], {
-        duration: 300,
-        easing: "ease-out",
-      });
-    }
-  }, [node.lastSeq]);
+  // opacity-only WAAPI flash, shared: panels/flash.ts
+  useFlashOnSeq(flashRef, node.lastSeq);
 
   function toggleThisNode(): void {
     onToggle(node.id);
