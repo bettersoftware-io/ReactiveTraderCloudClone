@@ -60,14 +60,17 @@ const compilerPath = require.resolve("babel-plugin-react-compiler");
 // pointing at on its own.
 const TRACKED = [
   {
-    // `rows` and `selectedRow` were tracked here until the store-first
-    // navigation rework and are deliberately no longer per-value asserted;
-    // both were re-measured against the compiled output, see the note below
-    // the list. `reconstruction` is unchanged — still the one multi-statement
-    // derivation in this hook, still a standalone bare-temp binding.
+    // `selectedRow` was tracked here until the store-first navigation rework
+    // and is deliberately no longer per-value asserted; re-measured against
+    // the compiled output, see the note below the list. `reconstruction` is
+    // unchanged — still the one multi-statement derivation in this hook,
+    // still a standalone bare-temp binding. `rows` is re-tracked: it fuses
+    // with `filter`/`pinnedRowHidden` into one shared memo block rather than
+    // compiling as its own bare-temp binding, and `fusedBlockMemoized` below
+    // classifies that shape via the else-branch slot readback.
     file: "packages/devtools-app/src/timeline/useTimeline.ts",
     fn: "useTimeline",
-    values: ["reconstruction"],
+    values: ["reconstruction", "rows"],
   },
   {
     // Renamed, not lost: the ≠-live change set split per family, so the old
@@ -131,24 +134,10 @@ const TRACKED = [
 //   `selection.mode === "pinned" ? selection.row : null` — a read of the row
 //   the selection already captured (spec §6.2, so an evicted row survives).
 //   There is no computation left to cache.
-// - `useTimeline.ts`'s `rows` IS still memoized, but no longer as a
-//   standalone bare-temp binding this gate's discriminator can classify: the
-//   compiler now FUSES it with `filter` and `pinnedRowHidden` into one shared
-//   memo block (`let rows; if ($[n] !== …) { … rows = filterLog(…) } else {
-//   rows = $[k] }`) — the same fused shape documented for `svgPath` and
-//   `bars`/`keyedBars` below/above. The fusion is structural: `pinnedRowHidden`
-//   (a `TimelineModel` field added with the scoped timeline) reads `rows`, and
-//   the compiler merges a scope with every plain expression that consumes it.
-//   Four restructurings were measured — reordering, late placement, inlining
-//   into the returned object, and extracting a helper call — and all four
-//   reproduce it; the only escape is to stop `filterLog` taking a
-//   `TimelineFilter`, which would degrade a tested pure-module API for a
-//   static-shape check. The declaration order in `useTimeline` is instead
-//   tuned (see its comment) so the fused block's key is
-//   `{log, pinnedSeq, presentState, scope, userFilter}` rather than also
-//   `selection.mode`/`selection.row`. Re-track it the moment this gate learns
-//   to classify the fused shape — the `else` branch's `rows = $[k];` is an
-//   equally strict witness of memoization.
+// - `useTimeline.ts`'s `filter` fuses into the same shared memo block as
+//   `rows` (see the TRACKED entry above) rather than compiling as its own
+//   bare-temp binding, so it stays untracked — the fused-block discriminator
+//   asserts the block via `rows`, its readback witness.
 // - `useRecording.ts` bails on a compiler limitation (value blocks inside
 //   try/catch), but its callbacks were pure caching with no memo boundary —
 //   nothing was traded away, so there is nothing to protect.
@@ -278,6 +267,11 @@ for (const { file, fn, values } of TRACKED) {
     );
 
     if (declMatch === null) {
+      if (fusedBlockMemoized(code, name)) {
+        console.log(`ok  ${file}  ${fn}  ${name}  (memoized, fused block)`);
+        continue;
+      }
+
       const isFnDecl = new RegExp(`function\\s+${name}\\s*\\(`).test(code);
 
       if (isFnDecl) {
@@ -310,6 +304,26 @@ for (const { file, fn, values } of TRACKED) {
       `${file}: ${fn} compiles (CompileSuccess) but these tracked values regressed:\n      ${valueFailures.join("\n      ")}`,
     );
   }
+}
+
+// Fused-block shape: `let name;` declared bare, assigned inside
+// `if ($[n] !== …) { … name = <expr>; … $[k] = name; … } else { … name = $[k]; … }`.
+// The compiler merged this value's reactive scope with a sibling that reads
+// it. Witness = the else-branch readback from the SAME slot it was written to.
+// `[\s\S]*?` (not `[^}]*?`): the if-block legitimately contains nested object
+// literals (`filter = { ...a, ...b }`), whose braces a negated class cannot cross.
+function fusedBlockMemoized(code, name) {
+  const bareDecl = new RegExp(`(?:const|let)\\s+${name};`);
+
+  if (!bareDecl.test(code)) {
+    return false;
+  }
+
+  const fused = new RegExp(
+    `if\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\b${name}\\s*=\\s*[^;\\n]+;[\\s\\S]*?\\$\\[(\\d+)\\]\\s*=\\s*${name};[\\s\\S]*?\\}\\s*else\\s*\\{[\\s\\S]*?\\b${name}\\s*=\\s*\\$\\[\\1\\];[\\s\\S]*?\\}`,
+  );
+
+  return fused.test(code);
 }
 
 if (failures.length > 0) {
