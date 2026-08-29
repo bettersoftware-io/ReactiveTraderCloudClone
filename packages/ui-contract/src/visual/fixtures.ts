@@ -2631,3 +2631,21 @@ fixtures["app-fx-docked-panel"] = makeAppData({
     },
   },
 });
+
+// Dockview-engine twins of the three App fixtures (`app/*-dockview` in
+// scenarios.ts): identical market data and preferences, only the layout
+// engine flipped, so each golden's diff against its in-house sibling is the
+// engine alone — the shared PanelHead chrome, dockview's own sashes/tab bar,
+// and the pixel-pinned rails — never the content.
+fixtures["app-fx-dockview"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutEngine: "dockview",
+});
+fixtures["credit-populated-dockview"] = makeAppData({
+  ...fixtures["credit-populated"],
+  layoutEngine: "dockview",
+});
+fixtures["equities-loaded-dockview"] = makeAppData({
+  ...fixtures["equities-loaded"],
+  layoutEngine: "dockview",
+});

@@ -270,6 +270,25 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-equities",
     waitForText: "☰ Watchlist",
   },
+  // Dockview-engine twins: the same full-page capture, tab click and
+  // readiness text as each in-house sibling above — the head tabs those
+  // texts come from are the SAME PanelHead nodes under either engine.
+  "app/fx-dockview": { fullPage: true },
+  "app/credit-dockview": {
+    fullPage: true,
+    click: "tab-credit",
+    waitForText: "▤ Credit Blotter",
+  },
+  "app/equities-dockview": {
+    fullPage: true,
+    click: "tab-equities",
+    waitForText: "☰ Watchlist",
+  },
+  "app/admin-dockview": {
+    fullPage: true,
+    click: "tab-admin",
+    waitForText: "Updates/sec",
+  },
 
   // --- Phase 2: HUD shell surfaces ---
   // Boot chrome under reduced motion (canvas loop skipped → deterministic).

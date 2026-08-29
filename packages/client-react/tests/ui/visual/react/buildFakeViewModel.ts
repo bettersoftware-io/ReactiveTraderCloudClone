@@ -85,10 +85,11 @@ import type { ViewModel } from "@rtc/react-bindings";
 
 function noop(): void {}
 
-// No visual fixture exercises the dockview engine yet (useLayoutEngine below
-// is pinned to "inhouse"), so this store is never actually read/written by a
-// golden scenario — a single module-level instance is fine (no per-call
-// isolation needed, unlike the contract tier's per-World store).
+// A single module-level store, shared by every scenario rendered in one
+// page: the playwright tier loads a fresh page per scenario, so nothing
+// leaks across goldens, and a per-call store would be WRONG — the bridge
+// rebuilds the dockview engine whenever its store identity changes (the
+// store is an effect dep), and buildFakeViewModel runs on every render.
 const dockStore = new InMemoryDockLayoutStore();
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
@@ -433,10 +434,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useChartSubstrate: () => {
       return { substrate: DEFAULT_CHART_SUBSTRATE, setSubstrate: noop };
     },
-    // No visual fixture exercises the dockview engine yet — a fixed
-    // "inhouse" default keeps every existing golden's layout unchanged.
+    // Seeded through the fixture (`app/*-dockview`); the "inhouse" default
+    // keeps every other golden's layout unchanged.
     useLayoutEngine: () => {
-      return { engine: DEFAULT_LAYOUT_ENGINE, setEngine: noop };
+      return {
+        engine: data.layoutEngine ?? DEFAULT_LAYOUT_ENGINE,
+        setEngine: noop,
+      };
     },
     useDockLayoutStore: () => {
       return dockStore;

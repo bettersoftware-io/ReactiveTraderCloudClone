@@ -469,6 +469,23 @@ const baseScenarios: Record<string, Scenario> = {
   },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
+  // The same four workspaces under the Dockview layout engine (the
+  // `LayoutEngine` preference seeded to "dockview" through the fixtures):
+  // the real DockviewLayoutEngine bridge over the same panel content as the
+  // in-house shots above, so the pair pins design parity between the two
+  // engines — same PanelHead chrome, same card, same gutters. The FX
+  // theme/ambient/power-saver variants are deliberately NOT duplicated: the
+  // engine does not touch what they vary.
+  "app/fx-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
+  "app/credit-dockview": {
+    componentKey: "App",
+    fixtureKey: "credit-populated-dockview",
+  },
+  "app/equities-dockview": {
+    componentKey: "App",
+    fixtureKey: "equities-loaded-dockview",
+  },
+  "app/admin-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
 
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
