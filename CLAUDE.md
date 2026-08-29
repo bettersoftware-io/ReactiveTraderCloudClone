@@ -71,7 +71,7 @@ so every worktree and session gets them):
 
 | Command | What it does |
 |---|---|
-| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 19 fast gates (~50s, no build). `full` adds typecheck, unit tests, both ≥95% coverage gates, type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` check (~8 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
+| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 19 fast gates (~50s, no build). `full` adds typecheck, unit tests, the four ≥95% coverage gates, type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` check (~8 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
 | `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it's ~59k). |
 | `/rtc:docs [keywords]` | Capture a session's findings into `docs/` — surveys the 298-file corpus, routes by finding type (STATUS.md goes via its own skill), proposes placement, then ships a PR through merge. |
 | `/rtc:backfill-test-coverage [filter]` | Rank **per-file** coverage gaps from a fresh local run (`pnpm coverage:gaps`), propose a shortlist, then backfill tests. Exists because the ≥95% gate asserts an *aggregate* and cannot surface one weak file — `client-solid` sat at 99.35% while a file was at 56%. |
@@ -165,7 +165,7 @@ gh workflow run coverage-report.yml --ref main         # dispatch on the tree yo
 ```
 
 Report: <https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/>
-— **eight** tiers: `domain`, `server`, then `app` / `ui (contract)` /
+— **ten** tiers: `domain`, `server`, `devtools/core`, `devtools/app`, then `app` / `ui (contract)` /
 `ui (visual reach)` for each of `react` and `solid`. It is **report-only and
 gates nothing**; the enforced bars are the `ui:contract` ≥95% gates in `ci.yml`
 (one per web client). Its per-tier `index.html` only lists directories, so

@@ -159,6 +159,12 @@ jobs:
       - name: UI contract coverage gate — solid (≥95%, branches ≥85%)
         run: pnpm --filter @rtc/client-solid test:ui:contract:coverage
 
+      # The devtools packages carry the same bar. Aggregate gates cannot see one
+      # weak file (STATUS.md, "Coverage-gap sweep") — the per-file report is the
+      # coverage-report.yml tiers below; this step is the floor.
+      - name: Devtools coverage gates (core + app, ≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/devtools-core test:coverage && pnpm --filter @rtc/devtools-app test:coverage
+
       - name: Build
         run: pnpm build
 
