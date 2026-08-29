@@ -26,7 +26,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 | id | surface | skin×mode | why it's stable |
 |----|---------|-----------|-----------------|
 | `blotter/seeded` | Blotter tab | holo3d · dark | `TradeStoreSimulator` pre-seeds 5 static trades at construction (not `Math.random`, not live) |
-| `shell/connection-banner` | connection pill | classic · light | host emits a single synchronous `gatewayConnected` → always "Live" |
+| `shell/connection-banner` | connection banner | classic · light | pinned DISCONNECTED via `viewModelOverrides` — the banner renders nothing while CONNECTED (the fake's default), so this is the only golden that shows it |
 | `shell/appearance` | Appearance sheet | holo3d · dark | pinned sheet; ambient frozen via `VisualScenarioHost`'s `forceReduceMotion` |
 
 `credit/rfq-tiles-empty` was tried and **dropped** — on-device verify proved it non-deterministic (`CreditRfqSimulator` emits new Live RFQs over time; diffs swung 0.7% ↔ 11.9%). Restore a Credit fixture only behind a frozen-clock harness variant.

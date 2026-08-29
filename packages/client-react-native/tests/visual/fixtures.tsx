@@ -80,7 +80,9 @@ export function BootSequenceFixture(): ReactNode {
 /**
  * The persistent HUD frame around a module's content — exactly what
  * `app/(app)/_layout.tsx`'s `Chrome` draws around its `<Slot/>`: ambient
- * layer, header, connection banner, the body, status strip and the collapsed
+ * layer, header, connection banner (which paints nothing while CONNECTED —
+ * the fake's default — so it is absent from every framed golden except
+ * `shell/connection-banner`), the body, status strip and the collapsed
  * radial dock. Minus the two overlays (a closed `AppearanceOverlay` and an
  * unlocked `LockScreen` both paint nothing; `shell/appearance` mounts the
  * sheet itself) and minus `Chrome`'s `BottomSheetModalProvider` (only

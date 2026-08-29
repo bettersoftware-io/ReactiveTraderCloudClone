@@ -63,9 +63,9 @@ export function buildShellSlice(options: ShellSliceOptions = {}): ShellSlice {
   // both rendered by shell/chrome, not just shell/connection-banner. A
   // DISCONNECTED default would repaint those two goldens' pixels for a
   // reason nobody chose. shell/connection-banner is the one scenario that
-  // DOES want the Reconnect affordance visible (ConnectionBanner renders it
-  // only when status is neither CONNECTED nor CONNECTING —
-  // src/ui/ConnectionBanner.tsx); it is expected to pin a disconnected value
+  // DOES want the banner visible with its Reconnect affordance
+  // (ConnectionBanner renders nothing while CONNECTED and no Reconnect while
+  // CONNECTING — src/ui/ConnectionBanner.tsx); it pins a disconnected value
   // through the `connectionStatus` option below rather than rely on this
   // default (Phase D wires that per-scenario override).
   const connectionStatus =
