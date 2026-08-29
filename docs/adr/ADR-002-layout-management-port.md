@@ -443,7 +443,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   gap compensation, axis-aware collapse), a Playwright e2e journey (switch
   engine → drag-dock by the panel's own header → reload persists → revert),
   and a `shell/layout-dockview` visual scenario (10-combo matrix) alongside
-  re-pinned preferences-modal goldens — plus, since 2026-08-29, whole-app
+  re-pinned preferences-modal goldens — plus, since 2026-08-29 (PR #590), whole-app
   goldens under Dockview for every workspace (`app/fx-dockview`,
   `app/credit-dockview`, `app/equities-dockview`, `app/admin-dockview`)
   beside their in-house siblings, which is what makes the chrome parity
