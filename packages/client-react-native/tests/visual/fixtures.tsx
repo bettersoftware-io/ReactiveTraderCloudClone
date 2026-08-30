@@ -33,6 +33,7 @@ import {
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { useAppFonts } from "#/ui/theme/fonts";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -68,6 +69,35 @@ export function BootSequenceFixture(): ReactNode {
   // stays centred for the whole capture, the second half of a deterministic
   // frame alongside `elapsedSec`.
   const elapsedSec = useSharedValue(BOOT_SCENE_ELAPSED_SEC);
+  // MOUNT-AFTER-THE-FONTS, and not a duplicate of the host's own
+  // `useAppFonts()` call.
+  //
+  // iOS resolves a `fontFamily` when a text node is CREATED; a family
+  // registered later (expo-font registers asynchronously) never reaches a node
+  // that already exists, and no re-render re-resolves it. The app is immune —
+  // `app/(app)/_layout.tsx` holds first paint until `useAppFonts()` is true, so
+  // every leaf, `BootGate` included, is created after registration. The harness
+  // is NOT: `VisualScenarioHost` reads the same hook but renders its children
+  // immediately, so anything created in the FIRST commit is stuck with the
+  // system face.
+  //
+  // Most fixtures dodge it by accident — their content arrives on a later
+  // commit (a ViewModel stream, `LockScreen`'s `state.locked` gate), by which
+  // time the fonts are registered. `BootSequence` does not: the scenario pins
+  // `useBootSequence` to a literal, so its whole chrome exists in commit one.
+  // Until 2026-08-30 every `boot/*` golden pinned the wordmark and both mono
+  // lines in SF — a golden of a screen the app never draws. Gating the mount
+  // here reproduces the app's own ordering.
+  //
+  // Scoped to this fixture ON PURPOSE. The same defect is visible in the
+  // framed goldens' `ShellHeader` wordmark (also first-commit, also SF today);
+  // fixing it for everyone belongs in `VisualScenarioHost` and re-pins every
+  // golden, which is a decision for the round that re-pins them.
+  const fontsLoaded = useAppFonts();
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <BootClockContext.Provider value={{ elapsedSec, now: PINNED_WALL_CLOCK }}>

@@ -8,7 +8,6 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -61,7 +60,6 @@ export function BootSequence({ onDone }: BootSequenceProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const motionEnabled = useBootMotionEnabled();
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const showEmblem = !motionEnabled || !hasBootScene(state.variant);
   const wordmarkBaseline = height * WORDMARK_BASELINE_FRACTION;
   const railTop = height * RAIL_TOP_FRACTION;
@@ -127,7 +125,7 @@ export function BootSequence({ onDone }: BootSequenceProps): JSX.Element {
       </Text>
       <Pressable
         testID="boot-skip"
-        style={[styles.skip, { bottom: SKIP_BOTTOM + insets.bottom }]}
+        style={styles.skip}
         onPress={() => {
           skip();
         }}
@@ -168,8 +166,10 @@ const RAIL_HEIGHT = 2;
 const RAIL_TRACK_OPACITY = 0.25;
 const LOG_OPACITY = 0.75;
 
-/** dc.html:620's `bottom:26px`, plus the device's bottom inset — the
- * prototype runs in a browser frame with no home indicator to clear. */
+/** dc.html:620's `right:16px; bottom:26px`, LITERAL — no safe-area addition.
+ * The design deliberately seats the pill over the home-indicator zone (the
+ * prototype shot shows exactly that); adding `insets.bottom` lifted it 34pt
+ * onto the log line. */
 const SKIP_BOTTOM = 26;
 const SKIP_RIGHT = 16;
 
@@ -249,6 +249,7 @@ function makeStyles(t: RnTheme): BootSequenceStyles {
     skip: {
       position: "absolute",
       right: SKIP_RIGHT,
+      bottom: SKIP_BOTTOM,
       borderWidth: 1,
       borderColor: t.borderPrimary,
       borderRadius: 6,

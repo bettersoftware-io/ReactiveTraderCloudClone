@@ -7,7 +7,9 @@ import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
+import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const mockUseBootMotionEnabled = jest.fn<() => boolean>();
 
@@ -63,9 +65,38 @@ test("SKIP renders as the design's bordered pill", async () => {
   expect(style.borderWidth).toBe(1);
   expect(style.borderRadius).toBe(6);
   expect(style.right).toBe(16);
-  // 26px from the design plus the mocked bottom inset (34) — the prototype
-  // has no home indicator to clear.
-  expect(style.bottom).toBe(60);
+  // dc.html:620's literal 26 — NOT 26 + the bottom safe-area inset. The design
+  // seats the pill over the home-indicator zone; adding the inset (34 on this
+  // device) lifted it onto the log line.
+  expect(style.bottom).toBe(26);
+});
+
+test("paints the chrome in the bundled faces, never the system font", async () => {
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockResolvedValue(true);
+  mockUseBootMotionEnabled.mockReturnValue(false);
+  const theme = rnThemeTokens.holo3d.dark;
+  await renderWithTheme(
+    <ViewModelProvider
+      viewModel={fakeViewModel(
+        { variant: "core", progress: 42, done: false },
+        noop,
+      )}
+    >
+      <BootSequence onDone={noop} />
+    </ViewModelProvider>,
+    theme,
+  );
+
+  // A golden captured before the families registered pinned all three of these
+  // in SF for weeks (fixed in `BootSequenceFixture`, which now mounts after
+  // `useAppFonts()`); these assertions pin the styles themselves so a future
+  // edit cannot drop a family or spread an undefined weighted face over one.
+  expect(flatFontFamily("boot-wordmark")).toBe(FONT_ORBITRON_WORDMARK);
+  expect(flatFontFamily("boot-variant")).toBe(theme.fontMono);
+  expect(flatFontFamily("boot-log")).toBe(theme.fontMono);
+  expect(theme.fontMono).toBeTruthy();
 });
 
 test("SKIP press dispatches the skip intent", async () => {
@@ -175,6 +206,15 @@ test("SKIP still dispatches while the Skia canvas is showing", async () => {
   await fireEvent.press(screen.getByTestId("boot-skip"));
   expect(skip).toHaveBeenCalledTimes(1);
 });
+
+/** The `fontFamily` a testID's element actually resolves to, after the whole
+ * style array is flattened — an override later in the array is exactly what
+ * this has to catch. */
+function flatFontFamily(testID: string): unknown {
+  const style = screen.getByTestId(testID).props.style;
+
+  return Object.assign({}, ...[style].flat(2)).fontFamily;
+}
 
 interface BootState {
   variant: "core" | "laser" | "docking";
