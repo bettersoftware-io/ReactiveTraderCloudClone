@@ -70,11 +70,29 @@ const HARNESS_FONT_PROBE = { probe: { size: 12 } } as const;
  * ThemeProvider override; no production touch was needed for the skin/mode
  * axis.
  *
- * Sets `testID="visual-ready"` on the root one frame after BOTH font paths
- * finish loading — the RN text families (`useAppFonts`) and the Skia
- * typefaces the boot scenes draw with — the same rendered-ready marker the
- * capture drivers (Tasks 1.x/2.x/3.x) wait on before taking the
- * screenshot. */
+ * Renders `children` ONLY once both font paths have loaded, and sets
+ * `testID="visual-ready"` on the root one frame after that — the RN text
+ * families (`useAppFonts`) and the Skia typefaces the boot scenes draw with —
+ * the same rendered-ready marker the capture drivers (Tasks 1.x/2.x/3.x) wait
+ * on before taking the screenshot.
+ *
+ * WHY `children` IS GATED AND NOT MERELY THE MARKER. iOS resolves a `<Text>`'s
+ * `fontFamily` when the node is CREATED, and no later re-render re-resolves
+ * it. So a scenario mounted before `useAppFonts()` reported loaded painted its
+ * text in the SYSTEM font FOREVER, however long the driver then waited — the
+ * marker's one-frame delay bought nothing, because the damage was done on the
+ * first commit. Fixtures whose text arrives on a later commit escaped by
+ * accident (`lock/hold` shows real Orbitron); first-commit ones did not (the
+ * boot chrome, and `ShellHeader`'s wordmark). The app was never exposed:
+ * `app/(app)/_layout.tsx` holds first paint on the same `useAppFonts()` and
+ * renders a bare `testID="fonts-loading"` view until it passes. This harness
+ * simply did not mirror that, so the goldens pinned system-font text as
+ * correct. Gating here makes the harness's first commit the app's first
+ * commit.
+ *
+ * The gate deliberately sits one commit AHEAD of the marker: children mount on
+ * the commit where fonts become ready, and `visual-ready` follows a frame
+ * later, so the marker can never appear before real-font text has painted. */
 export function VisualScenarioHost({
   skin,
   mode,
@@ -93,6 +111,7 @@ export function VisualScenarioHost({
   // host that only guards the scenarios someone remembered to list is the
   // same trap one level up.
   const skiaFontsLoaded = useBootSceneFonts(HARNESS_FONT_PROBE) !== null;
+  const fontsReady = fontsLoaded && skiaFontsLoaded;
   const [viewModel] = useState(() => {
     return buildFakeViewModel({
       skin,
@@ -105,7 +124,7 @@ export function VisualScenarioHost({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!fontsLoaded || !skiaFontsLoaded) {
+    if (!fontsReady) {
       return undefined;
     }
 
@@ -116,12 +135,14 @@ export function VisualScenarioHost({
     return () => {
       cancelAnimationFrame(handle);
     };
-  }, [fontsLoaded, skiaFontsLoaded]);
+  }, [fontsReady]);
 
   return (
     <ViewModelProvider viewModel={viewModel}>
       <ThemeProvider>
-        <ScenarioSurface ready={ready}>{children}</ScenarioSurface>
+        <ScenarioSurface ready={ready}>
+          {fontsReady ? children : null}
+        </ScenarioSurface>
       </ThemeProvider>
     </ViewModelProvider>
   );

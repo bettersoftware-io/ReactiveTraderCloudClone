@@ -50,21 +50,26 @@ export function ConnectionBanner(): JSX.Element | null {
             reconnect();
           }}
         >
-          <Text style={styles.reconnect}>Reconnect</Text>
+          <Text style={styles.reconnect}>RECONNECT ▸</Text>
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-/** Per-status copy. `CONNECTED` is listed for the Record's completeness only —
- * the banner returns before it could be read. */
+/** Per-status copy, uppercased: the mobile-v1 design has no frame for a
+ * disconnected socket, so the banner borrows the app's own status idiom — the
+ * HUD status strip's tracked mono caps (`WS·CONNECTED`, `MODULE`) — rather
+ * than inventing a sentence-case voice nothing else here speaks.
+ *
+ * `CONNECTED` is listed for the Record's completeness only — the banner
+ * returns before it could be read. */
 const LABEL: Record<ConnectionStatus, string> = {
-  [ConnectionStatus.CONNECTING]: "Connecting…",
-  [ConnectionStatus.CONNECTED]: "Live",
-  [ConnectionStatus.DISCONNECTED]: "Disconnected",
-  [ConnectionStatus.IDLE_DISCONNECTED]: "Disconnected (idle)",
-  [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
+  [ConnectionStatus.CONNECTING]: "CONNECTING…",
+  [ConnectionStatus.CONNECTED]: "LIVE",
+  [ConnectionStatus.DISCONNECTED]: "DISCONNECTED",
+  [ConnectionStatus.IDLE_DISCONNECTED]: "DISCONNECTED (IDLE)",
+  [ConnectionStatus.OFFLINE_DISCONNECTED]: "OFFLINE",
 };
 
 /** Maps each connection status to the theme token that colours the pill's
@@ -115,7 +120,19 @@ function makeStyles(t: RnTheme): ConnectionBannerStyles {
       height: 8,
       borderRadius: 4,
     },
-    label: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 12 },
-    reconnect: { color: t.accentPrimary, fontFamily: t.fontDisplay },
+    // Size and tracking are the status strip's `conn` cell verbatim, so the
+    // two read as one family of status text.
+    label: {
+      color: t.textPrimary,
+      fontFamily: t.fontMono,
+      fontSize: 8.5,
+      letterSpacing: 0.8,
+    },
+    reconnect: {
+      color: t.accentPrimary,
+      fontFamily: t.fontMono,
+      fontSize: 8.5,
+      letterSpacing: 0.8,
+    },
   });
 }

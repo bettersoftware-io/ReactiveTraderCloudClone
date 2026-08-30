@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reactive Trader — DevTools</title>
+    <script>
+      // React DevTools extension guard. The extension's backend serialises
+      // every component's props on every commit; the inspector deliberately
+      // carries a 5000-row log and whole InspectorState snapshots as props,
+      // so under live traffic the extension storms "RangeError: Invalid
+      // string length" and the tab goes unresponsive (live-acceptance,
+      // 2026-07-21). react-dom reads hook.isDisabled at module-evaluation
+      // time, so this must run before the module script below — a classic
+      // inline script is the one place the bundler and the import sorter
+      // cannot move. Opt back in (to debug the inspector's own React tree)
+      // with ?react-devtools. Asserted post-build by check:devtools-dist.
+      (function disableReactDevtoolsHook(hook, keep) {
+        if (hook !== undefined && !keep) {
+          hook.isDisabled = true;
+        }
+      })(
+        window.__REACT_DEVTOOLS_GLOBAL_HOOK__,
+        new URLSearchParams(window.location.search).has("react-devtools"),
+      );
+    </script>
   </head>
   <body>
     <div id="root"></div>
