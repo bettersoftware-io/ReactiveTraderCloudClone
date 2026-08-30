@@ -14,9 +14,9 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import type { OrderTicketState } from "@rtc/client-core";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Maps the equity order ticket's `OrderTicketState.phase` (six-way union, the
  * ticket machine's own lifecycle — no UI-side timers) to a ceremonial flourish
@@ -265,10 +265,8 @@ function makeStyles(t: RnTheme): OrderCeremonyStyles {
       backgroundColor: t.bgSecondary,
     },
     busyLabel: {
-      fontSize: 11,
-      letterSpacing: 1,
+      ...labelStyle(t, 11, 1),
       color: t.accentPrimary,
-      fontFamily: t.fontMono,
     },
     toast: {
       alignSelf: "flex-start",
@@ -281,11 +279,7 @@ function makeStyles(t: RnTheme): OrderCeremonyStyles {
     },
     toastPositive: { borderColor: t.accentPositive },
     toastNegative: { borderColor: t.accentNegative },
-    toastText: {
-      fontSize: 13,
-      letterSpacing: 2,
-      ...weightedFont(t, "mono", "700"),
-    },
+    toastText: labelStyle(t, 13, 2, "700"),
     toastTextPositive: { color: t.accentPositive },
     toastTextNegative: { color: t.accentNegative },
     toastDetail: {

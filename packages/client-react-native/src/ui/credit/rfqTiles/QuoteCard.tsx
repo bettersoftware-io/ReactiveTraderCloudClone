@@ -13,6 +13,7 @@ import type { Dealer, Quote } from "@rtc/domain";
 import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
 import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
 import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -158,9 +159,7 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
   };
 
   const acceptLabel: TextStyle = {
-    fontSize: 8.5,
-    letterSpacing: 1.5,
-    ...weightedFont(t, "mono", "700"),
+    ...labelStyle(t, 8.5, 1.5, "700"),
     color: t.accentPrimary,
   };
 
@@ -182,10 +181,8 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
     rowAccented: { backgroundColor: `${t.accentPrimary}12` },
     dealerName: {
       flex: 1,
-      fontSize: 9,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 9, 0.8),
       color: t.textSecondary,
-      fontFamily: t.fontMono,
     },
     // dc.html:243 — the marker rides inside the name at 7.5px in the accent.
     tag: { fontSize: 7.5, color: t.accentPrimary },

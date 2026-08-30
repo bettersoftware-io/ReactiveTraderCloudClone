@@ -11,6 +11,7 @@ import {
 
 import type { Instrument } from "@rtc/domain";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -100,10 +101,8 @@ function makeStyles(t: RnTheme): InstrumentChipGridStyles {
   return StyleSheet.create({
     field: { gap: 8 },
     label: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
     chip,

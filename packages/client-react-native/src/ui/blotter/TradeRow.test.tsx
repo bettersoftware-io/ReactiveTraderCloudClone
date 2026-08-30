@@ -1,8 +1,10 @@
 import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
+import { StyleSheet, type TextStyle } from "react-native";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
+import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
@@ -101,6 +103,26 @@ test("renders an opaque row background with motion disabled", async () => {
       }),
     ]),
   );
+});
+
+// The direction subline and the status pill share one mono-label base, now
+// built by `labelStyle`. Both are pinned so the extraction cannot shift the
+// row's smallest type by a hair.
+test("direction subline and status pill keep the 8pt / 0.8-tracked mono recipe", async () => {
+  await renderWithTheme(
+    <TradeRow trade={DONE_TRADE} isNew={false} time="09:15:22" />,
+  );
+
+  for (const text of [`${Direction.Buy.toUpperCase()} · #42`, "DONE"]) {
+    const style = StyleSheet.flatten(
+      screen.getByText(text).props.style as TextStyle,
+    );
+
+    expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO);
+    expect(style.fontSize).toBe(8);
+    expect(style.letterSpacing).toBe(0.8);
+    expect(style.fontWeight).toBeUndefined();
+  }
 });
 
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {

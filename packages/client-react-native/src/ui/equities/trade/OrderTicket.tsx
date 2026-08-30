@@ -14,6 +14,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { SurfaceCard } from "#/ui/SurfaceCard";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -317,11 +318,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     borderColor: t.borderSubtle,
   };
 
-  const sideLabel: TextStyle = {
-    fontSize: 10,
-    letterSpacing: 2,
-    ...weightedFont(t, "mono", "700"),
-  };
+  const sideLabel: TextStyle = labelStyle(t, 10, 2, "700");
   const type: ViewStyle = { paddingHorizontal: 11, justifyContent: "center" };
   const typeLabel: TextStyle = {
     fontSize: 9,
@@ -393,10 +390,8 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     limitRow: { flexDirection: "row", alignItems: "center", gap: 9 },
     limitLabel: {
       width: 54,
-      fontSize: 8,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 8, 1.5),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     stepper: {
       width: 38,
@@ -423,10 +418,8 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     submitBuy: { ...baseSubmit, backgroundColor: t.accentPositive },
     submitSell: { ...baseSubmit, backgroundColor: t.accentNegative },
     submitLabel: {
-      fontSize: 10.5,
-      letterSpacing: 2.5,
+      ...labelStyle(t, 10.5, 2.5, "700"),
       color: t.textOnAccent,
-      ...weightedFont(t, "mono", "700"),
     },
     resetBtn: {
       alignSelf: "flex-start",
@@ -437,10 +430,8 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       borderColor: t.borderSubtle,
     },
     resetLabel: {
-      fontSize: 10,
-      letterSpacing: 1,
+      ...labelStyle(t, 10, 1),
       color: t.textSecondary,
-      fontFamily: t.fontMono,
     },
   });
 }

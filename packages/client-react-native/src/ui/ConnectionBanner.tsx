@@ -11,6 +11,7 @@ import {
 import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -124,15 +125,11 @@ function makeStyles(t: RnTheme): ConnectionBannerStyles {
     // two read as one family of status text.
     label: {
       color: t.textPrimary,
-      fontFamily: t.fontMono,
-      fontSize: 8.5,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 8.5, 0.8),
     },
     reconnect: {
       color: t.accentPrimary,
-      fontFamily: t.fontMono,
-      fontSize: 8.5,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 8.5, 0.8),
     },
   });
 }

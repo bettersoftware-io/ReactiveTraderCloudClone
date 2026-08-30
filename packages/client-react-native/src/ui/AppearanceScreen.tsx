@@ -28,6 +28,7 @@ import {
 import { SheetSwitch } from "#/ui/shell/appearance/SheetSwitch";
 import { ThemeModePill } from "#/ui/shell/appearance/ThemeModePill";
 import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -451,7 +452,7 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     // Design: `font-family:var(--fm);font-size:8.5px;letter-spacing:1px`.
     // Colour is per-card (the previewed skin's own accent or dim), so it is
     // applied at the call site, not here.
-    skinLabel: { fontSize: 8.5, letterSpacing: 1, fontFamily: t.fontMono },
+    skinLabel: labelStyle(t, 8.5, 1),
     // Design: `border:1px solid var(--border-sub);border-radius:10px;
     // padding:10px 13px`, then `margin-bottom:9px`.
     ambientRow: {
@@ -488,10 +489,8 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     // Design: `font-family:var(--fm);font-size:10px;letter-spacing:2px;
     // color:var(--acc)`.
     replayLabel: {
-      fontSize: 10,
-      letterSpacing: 2,
+      ...labelStyle(t, 10, 2),
       color: t.accentPrimary,
-      fontFamily: t.fontMono,
     },
     // The app-only stack below the design's own rows.
     section: { marginTop: 18 },
@@ -500,10 +499,8 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     // `font-family:var(--fm);font-size:8.5px;letter-spacing:2px;
     // color:var(--faint)`.
     sectionHeading: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
       marginBottom: 8,
     },
     caption: {

@@ -25,6 +25,7 @@ import { sheetPresentation } from "#/ui/rates/ticket/sheetPresentation";
 import { TicketBackdrop } from "#/ui/rates/ticket/TicketBackdrop";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { SHELL_CLOCK } from "#/ui/shell/hud/useShellTelemetry";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -183,10 +184,8 @@ function makeStyles(t: RnTheme): TradeTicketSheetStyles {
       ...weightedFont(t, "display", "600"),
     },
     subtitle: {
-      fontSize: 9,
-      letterSpacing: 1.4,
+      ...labelStyle(t, 9, 1.4),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
   });
 }

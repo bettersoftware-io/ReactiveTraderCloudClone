@@ -13,6 +13,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { useRowInsertFlash } from "#/ui/blotter/useRowInsertFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -217,19 +218,15 @@ function makeStyles(t: RnTheme): OrdersBlotterStyles {
       ...weightedFont(t, "display", "600"),
     },
     sideType: {
-      fontSize: 7.5,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 7.5, 0.8),
       marginTop: 1,
-      fontFamily: t.fontMono,
     },
     buy: { color: t.accentPositive },
     sell: { color: t.accentNegative },
     qty: { fontSize: 10, color: t.textPrimary, fontFamily: t.fontMono },
     price: { fontSize: 10, color: t.textSecondary, fontFamily: t.fontMono },
     pill: {
-      fontSize: 8,
-      letterSpacing: 0.8,
-      fontFamily: t.fontMono,
+      ...labelStyle(t, 8, 0.8),
       borderWidth: 1,
       borderRadius: 4,
       paddingVertical: 2,

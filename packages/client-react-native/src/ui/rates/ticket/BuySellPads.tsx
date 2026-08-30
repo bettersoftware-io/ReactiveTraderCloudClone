@@ -13,6 +13,7 @@ import type { CurrencyPair, Price } from "@rtc/domain";
 import { Direction } from "@rtc/domain";
 
 import { splitPrice } from "#/ui/formatPrice";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -174,10 +175,8 @@ function makePadStyles(
     padPressed:
       glow === null ? { ...base, opacity: 0.85 } : { ...base, ...glow },
     label: {
-      fontSize: 11,
-      letterSpacing: 1,
+      ...labelStyle(t, 11, 1, "700"),
       color: accent,
-      ...weightedFont(t, "mono", "700"),
     },
     priceRow: { flexDirection: "row", alignItems: "flex-end" },
     prefix: { fontSize: 12, color: t.textSecondary, fontFamily: t.fontMono },

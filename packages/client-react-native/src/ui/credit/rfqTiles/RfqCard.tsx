@@ -31,6 +31,7 @@ import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCountdownRing } from "#/ui/credit/rfqTiles/RfqCountdownRing";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -247,15 +248,13 @@ function makeStampStyles(t: RnTheme): RfqStampStyles {
     // padding, radius 5. Sized to sit in the header opposite the countdown
     // ring, NOT as a banner across the card.
     stamp: {
-      fontSize: 8,
-      letterSpacing: 1,
+      ...labelStyle(t, 8, 1),
       color: t.textMuted,
       borderColor: t.borderSubtle,
       borderWidth: 1,
       borderRadius: 5,
       paddingHorizontal: 7,
       paddingVertical: 3,
-      fontFamily: t.fontMono,
     },
     // The traded colourway (dc.html:2171-2172): positive accent, and a border
     // of the same hue rather than the neutral rule an expired card keeps.

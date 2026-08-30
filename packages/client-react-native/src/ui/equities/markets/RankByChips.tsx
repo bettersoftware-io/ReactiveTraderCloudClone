@@ -12,9 +12,9 @@ import type { EqWatchlistSort } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { RANK_DISPLAY_ORDER } from "#/ui/equities/markets/rankByLayout";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Markets screen's `RANK BY` control: a label plus three directly-selectable
  * pills over `EQ_WATCHLIST_SORTS`, bound to the shared `useEqWatchlistSort()`
@@ -82,11 +82,7 @@ function makeStyles(t: RnTheme): RankByChipsStyles {
     borderWidth: 1,
   };
 
-  const chipLabelBase: TextStyle = {
-    fontSize: 9,
-    letterSpacing: 1,
-    ...weightedFont(t, "mono", "600"),
-  };
+  const chipLabelBase: TextStyle = labelStyle(t, 9, 1, "600");
 
   return StyleSheet.create({
     // `alignItems: "center"` + each chip's own `flexGrow: 0` / `flexShrink: 0`
@@ -95,10 +91,8 @@ function makeStyles(t: RnTheme): RankByChipsStyles {
     // the container's cross-axis height.
     row: { flexDirection: "row", alignItems: "center", gap: 7 },
     label: {
-      fontSize: 8,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 8, 1.5),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     chip: {
       ...chipBase,

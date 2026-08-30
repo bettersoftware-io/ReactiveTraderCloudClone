@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { StyleSheet, type TextStyle } from "react-native";
 
+import { FONT_JETBRAINS_MONO_600 } from "#/ui/theme/fontFamilies";
+
 // Imported after the mocks are registered.
 const { ShellHeader } = require("./ShellHeader") as ShellHeaderTestModule;
 
@@ -53,6 +55,28 @@ test("the wordmark box reserves Orbitron's real advance, so the trailing ER cann
   expect(style.minWidth).toBeGreaterThanOrEqual(ORBITRON_WORDMARK_ADVANCE);
   // ...and the row must never claw that width back by squeezing the wordmark.
   expect(style.flexShrink).toBe(0);
+});
+
+// The env badge is the weighted arm of the `labelStyle` family: holo bundles
+// a real JetBrains SemiBold cut, so the label must name that FAMILY and carry
+// no `fontWeight` — a faux bold would read heavier than the design.
+test("the env badge keeps the 9pt / 1-tracked mono label in the real 600 cut", async () => {
+  await render(
+    <ShellHeader
+      simulator={false}
+      onToggleSimulator={(): void => {}}
+      onOpenAppearance={(): void => {}}
+    />,
+  );
+
+  const style = StyleSheet.flatten(
+    screen.getByText("LIVE").props.style as TextStyle,
+  );
+
+  expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO_600);
+  expect(style.fontSize).toBe(9);
+  expect(style.letterSpacing).toBe(1);
+  expect(style.fontWeight).toBeUndefined();
 });
 
 interface ShellHeaderTestProps {

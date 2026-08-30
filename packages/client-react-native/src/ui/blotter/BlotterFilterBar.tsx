@@ -9,10 +9,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 import {
   BLOTTER_FILTERS,
@@ -87,19 +87,11 @@ interface BlotterFilterBarStyles {
 function makeStyles(t: RnTheme): BlotterFilterBarStyles {
   // Chip-label base: shared by the inactive/active label variants (TradeRow's
   // `direction`/`pill` local-base idiom — spread into each variant below).
-  const label: TextStyle = {
-    fontSize: 10,
-    letterSpacing: 1,
-    ...weightedFont(t, "mono", "600"),
-  };
+  const label: TextStyle = labelStyle(t, 10, 1, "600");
 
   // Fills-summary base: shared by the summary text and its buy/sell inline
   // spans (a slightly tighter letterSpacing than the chip labels).
-  const metric: TextStyle = {
-    fontSize: 10,
-    letterSpacing: 0.5,
-    ...weightedFont(t, "mono", "600"),
-  };
+  const metric: TextStyle = labelStyle(t, 10, 0.5, "600");
 
   // Chip-shape base: shared by the inactive/active pill layout.
   const pill: ViewStyle = {

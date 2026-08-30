@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { StyleSheet, Text, type TextStyle } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -34,10 +35,8 @@ interface SectionLabelStyles {
 function makeStyles(t: RnTheme): SectionLabelStyles {
   return StyleSheet.create({
     label: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
       marginHorizontal: 2,
       marginTop: 3,
       marginBottom: 7,
