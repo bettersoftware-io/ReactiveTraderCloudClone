@@ -8,6 +8,8 @@ import {
 } from "@testing-library/react-native";
 import type { JSX } from "react";
 
+import { DockOpenContext } from "./DockOpenContext";
+
 const mockNavigate = jest.fn();
 
 const { RadialCommandDock } =
@@ -16,6 +18,16 @@ const { RadialCommandDock } =
 test("is collapsed until the FAB is pressed", async () => {
   await render(<RadialCommandDock />);
   expect(screen.queryByTestId("hud-dock-sat-blotter")).toBeNull();
+});
+
+test("starts fanned out when DockOpenContext pins it open", async () => {
+  await render(
+    <DockOpenContext.Provider value={true}>
+      <RadialCommandDock />
+    </DockOpenContext.Provider>,
+  );
+  expect(screen.getByTestId("hud-dock-sat-rates")).toBeTruthy();
+  expect(screen.getByTestId("hud-dock-sat-equities")).toBeTruthy();
 });
 
 test("fans out 5 satellites when opened", async () => {

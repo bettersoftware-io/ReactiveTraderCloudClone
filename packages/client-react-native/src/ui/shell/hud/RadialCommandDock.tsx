@@ -2,7 +2,7 @@
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import type { JSX } from "react";
-import { useEffect, useId, useState } from "react";
+import { useContext, useEffect, useId, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -24,6 +24,7 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
+import { DockOpenContext } from "./DockOpenContext";
 import { DOCK_FAB_SIZE } from "./dockMetrics";
 import { MODULE_ROUTES } from "./moduleRoutes";
 import { radialDockLayout } from "./radialDockLayout";
@@ -34,11 +35,16 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
  * toggles a blurred scrim over which 5 module satellites fan out on the
  * `radialDockLayout` arc, each spring-staggered when motion is enabled and
  * instant under Freeze/reduced-motion. Selecting a satellite drives
- * `expo-router` (deep-link-compatible) and collapses the dock. */
+ * `expo-router` (deep-link-compatible) and collapses the dock.
+ *
+ * `open` starts collapsed unless a `DockOpenContext` pin says otherwise (the
+ * visual harness only — see that file); the pin seeds the INITIAL state, so
+ * the FAB and the scrim keep toggling it either way. */
 export function RadialCommandDock(): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
-  const [open, setOpen] = useState(false);
+  const pinnedOpen = useContext(DockOpenContext);
+  const [open, setOpen] = useState(pinnedOpen ?? false);
   const router = useRouter();
   const sats = radialDockLayout(MODULE_ROUTES.length);
   const active = useActiveModule();

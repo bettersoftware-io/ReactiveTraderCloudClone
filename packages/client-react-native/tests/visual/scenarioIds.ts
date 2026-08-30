@@ -22,6 +22,14 @@ export const SCENARIO_IDS = [
   // cell is a live meter) and `powerSaverLevel="freeze"` (the connection dot
   // pulses); either alone still re-pins on every capture.
   "shell/chrome",
+  // The same HUD frame with the radial command dock FANNED OPEN over a framed
+  // Rates grid — the arc the prototype's `shell/dock-open.png` shows. The
+  // dock's `open` flag is internal `useState` reached only by a tap, so this
+  // state had no golden until `DockOpenContext` (a harness-only pin on its
+  // INITIAL value). Needs `powerSaverLevel="freeze"` like `shell/chrome`, and
+  // for one extra reason: the satellites spring out on a staggered delay, so
+  // an unfrozen capture pins a mid-fan frame.
+  "shell/dock-open",
   // NB: `credit/rfq-tiles-empty` was dropped after on-device golden
   // verification — it is NON-deterministic. `CreditRfqSimulator` emits new
   // Live RFQs over time, so the default "No RFQs to display" view is only
