@@ -4,6 +4,7 @@ import type { DockEngineOptions } from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
+  type DockStripMap,
   GLIDE_ATTRIBUTE_MS,
   GROUP_GAP_PX,
 } from "#/createDockEngine";
@@ -457,9 +458,15 @@ describe("collapse / expand", () => {
     // HEIGHT, so the strip is the in-house short full-width bar — and the
     // bridge is told so, to render the matching horizontal restore bar.
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
 
-    expect(engine.collapsePanel("fx-blotter")).toBe("horizontal");
+    engine.collapsePanel("fx-blotter");
+    expect(strips.last).toEqual({ "fx-blotter": "horizontal" });
 
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
     expect(seen.sizeOf("fx-blotter")).toBe(STRIP_HEIGHT);
@@ -480,11 +487,21 @@ describe("collapse / expand", () => {
     engine.dispose();
   });
 
-  it("reports the vertical orientation for a side-by-side sibling, and again on a repeat call", () => {
-    const engine = createDockEngine(base());
-    expect(engine.collapsePanel("fx-analytics")).toBe("vertical");
-    expect(engine.collapsePanel("fx-analytics")).toBe("vertical");
-    expect(engine.collapsePanel("nope")).toBeNull();
+  it("reports the vertical orientation for a side-by-side sibling through onStripsChange — once, not again on a repeat call or an unknown id", () => {
+    const strips = recordStrips();
+    const engine = createDockEngine({ ...base(), ...strips.options });
+
+    engine.collapsePanel("fx-analytics");
+    expect(strips.last).toEqual({ "fx-analytics": "vertical" });
+    expect(strips.calls).toBe(1);
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("nope");
+    expect(strips.calls).toBe(1);
+
+    engine.expandPanel("fx-analytics");
+    expect(strips.last).toEqual({});
+    expect(strips.calls).toBe(2);
     engine.dispose();
   });
 
@@ -526,6 +543,74 @@ const STRIP_HEIGHT = 32;
 /** An asymmetric matcher for `target ± tolerance` — dockview floors the
  * half-pixel sizes the theme gap produces, so an exact integer would be
  * asserting the flooring rule rather than the layout. */
+describe("a fully-stripped column (the in-house stripDir rule)", () => {
+  // FX_LIKE's left column stacks fx-rates over fx-blotter beside the
+  // fx-analytics rail. One of the two collapsed reclaims DOWN the column (a
+  // horizontal bar); once both are strips the column has nothing left to
+  // reclaim along, so it reclaims SIDEWAYS in the row — both strips read
+  // vertical, the column hugs 38px, and the strips share its height.
+  it("flips both strips vertical when the last panel of the column collapses, and back when one expands", async () => {
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
+    const columnBefore = await renderedBranchSize(engine, seen, "fx-rates");
+    const ratesBefore = await renderedSize(engine, seen, "fx-rates");
+    const blotterBefore = await renderedSize(engine, seen, "fx-blotter");
+
+    engine.collapsePanel("fx-rates");
+    expect(strips.last).toEqual({ "fx-rates": "horizontal" });
+    await waitForSize(seen, "fx-rates", STRIP_HEIGHT);
+
+    engine.collapsePanel("fx-blotter");
+    expect(strips.last).toEqual({
+      "fx-rates": "vertical",
+      "fx-blotter": "vertical",
+    });
+    await waitForBranchSize(seen, "fx-rates", STRIP);
+    // The strips share the column's height rather than keeping one 32px bar
+    // beside a full-height one: the 800px fallback less the gap, halved.
+    expect(seen.sizeOf("fx-rates")).toEqual(within(396, 2));
+    expect(seen.sizeOf("fx-blotter")).toEqual(within(396, 2));
+
+    engine.expandPanel("fx-blotter");
+    expect(strips.last).toEqual({ "fx-rates": "horizontal" });
+    // The column gets its width back and the survivor its 32px bar; the
+    // expanded panel fills the rest of the column (800 − gap − bar), as
+    // in-house — its own pre-collapse height only means something once its
+    // sibling is back too.
+    await waitForBranchSize(seen, "fx-rates", columnBefore);
+    await waitForSize(seen, "fx-rates", STRIP_HEIGHT);
+    await waitForSize(seen, "fx-blotter", 800 - GROUP_GAP_PX - STRIP_HEIGHT);
+
+    engine.expandPanel("fx-rates");
+    expect(strips.last).toEqual({});
+    // ±1: the column's width restore and the two height restores each pass
+    // through dockview's integer model once more than a plain expand does.
+    await waitForSizeWithin(seen, "fx-rates", ratesBefore, 1);
+    await waitForSizeWithin(seen, "fx-blotter", blotterBefore, 1);
+    engine.dispose();
+  });
+
+  it("reads every strip against the row when the whole dock is stripped", () => {
+    const strips = recordStrips();
+    const engine = createDockEngine({ ...base(), ...strips.options });
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-rates");
+    engine.collapsePanel("fx-blotter");
+    expect(strips.last).toEqual({
+      "fx-analytics": "vertical",
+      "fx-rates": "vertical",
+      "fx-blotter": "vertical",
+    });
+    engine.dispose();
+  });
+});
+
 describe("glide marker", () => {
   // The stylesheet transitions dockview's inline geometry only while the
   // container carries the marker; the engine owns its lifetime around the
@@ -698,6 +783,98 @@ interface LayoutTracker {
   options: Pick<DockEngineOptions, "onLayoutChange" | "debounceMs">;
   saves: number;
   sizeOf(panelId: string): number | null;
+  /** The rendered size of the BRANCH holding `panelId`'s leaf, on its own
+   * parent's axis — a column's width inside a row. */
+  branchSizeOf(panelId: string): number | null;
+}
+
+interface StripsRecorder {
+  options: Pick<DockEngineOptions, "onStripsChange">;
+  last: DockStripMap;
+  calls: number;
+}
+
+function recordStrips(): StripsRecorder {
+  const recorder: StripsRecorder = {
+    options: {
+      onStripsChange: (next: DockStripMap): void => {
+        recorder.last = next;
+        recorder.calls += 1;
+      },
+    },
+    last: {},
+    calls: 0,
+  };
+
+  return recorder;
+}
+
+async function renderedBranchSize(
+  engine: ReturnType<typeof createDockEngine>,
+  tracker: LayoutTracker,
+  panelId: string,
+): Promise<number> {
+  engine.maximizePanel(panelId);
+  engine.exitMaximize();
+
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const size = tracker.branchSizeOf(panelId);
+
+    if (size !== null) {
+      return size;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(`${panelId}'s branch never reported a rendered size`);
+}
+
+async function waitForSizeWithin(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+  tolerance: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const size = tracker.sizeOf(panelId);
+
+    if (size !== null && Math.abs(size - expected) <= tolerance) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId} never came within ${tolerance}px of ${expected}px (last seen: ${tracker.sizeOf(panelId)})`,
+  );
+}
+
+async function waitForBranchSize(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const size = tracker.branchSizeOf(panelId);
+
+    if (size !== null && Math.abs(size - expected) <= 1) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
+  );
 }
 
 function trackLayout(): LayoutTracker {
@@ -716,9 +893,51 @@ function trackLayout(): LayoutTracker {
         ? null
         : findLeafSize(JSON.parse(blob).grid.root, panelId);
     },
+    branchSizeOf: (panelId: string): number | null => {
+      return blob === ""
+        ? null
+        : findBranchSize(JSON.parse(blob).grid.root, panelId);
+    },
   };
 
   return tracker;
+}
+
+/** The rendered size of the branch that directly holds `panelId`'s leaf, on
+ * the axis of ITS parent — de-compensated like findLeafSize, at the parent's
+ * child count. Null for a leaf sitting directly under the root. */
+// biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+function findBranchSize(root: any, panelId: string): number | null {
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  function holdsLeaf(node: any): boolean {
+    return node.type === "leaf" && (node.data?.views ?? []).includes(panelId);
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  function walk(parent: any): number | null {
+    if (parent.type !== "branch") {
+      return null;
+    }
+
+    const share =
+      (GROUP_GAP_PX * (parent.data.length - 1)) / parent.data.length;
+
+    for (const child of parent.data) {
+      if (child.type === "branch" && child.data.some(holdsLeaf)) {
+        return child.size - share;
+      }
+
+      const deeper = walk(child);
+
+      if (deeper !== null) {
+        return deeper;
+      }
+    }
+
+    return null;
+  }
+
+  return walk(root);
 }
 
 /** The RENDERED size of `panelId`'s group, read back out of the persisted

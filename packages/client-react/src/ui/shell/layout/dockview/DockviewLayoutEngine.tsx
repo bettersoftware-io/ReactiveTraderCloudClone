@@ -19,6 +19,7 @@ import {
 import {
   createDockEngine,
   type DockEngine,
+  type DockStripMap,
   type DockStripOrientation,
 } from "@rtc/layout-dockview";
 import "@rtc/layout-dockview/styles/dockview-hud.css";
@@ -57,8 +58,11 @@ export function DockviewLayoutEngine({
   const [mounted, setMounted] = useState<readonly MountedSlot[]>([]);
   const [groups, setGroups] = useState(0);
   // Which way each collapsed panel's strip reads — decided by the engine
-  // from the axis its group's siblings run along (see createDockEngine's
-  // collapsePanel), so the bridge cannot second-guess it.
+  // from the axis the panel's space reclaims along (createDockEngine's
+  // reclaim-split walk) and pushed whole through onStripsChange: one panel's
+  // collapse can flip its SIBLINGS (the last strip completing a rail column
+  // turns the whole column vertical), so the bridge never derives this from
+  // the intent it dispatched.
   const [strips, setStrips] = useState<StripMap>({});
   // Read through a ref by the engine's title hook: `specs` (like `registry`)
   // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
@@ -129,6 +133,9 @@ export function DockviewLayoutEngine({
         store.save(tab, blob);
         setGroups(engineRef.current?.groupCount() ?? 0);
       },
+      onStripsChange: (next: DockStripMap): void => {
+        setStrips(next as StripMap);
+      },
     });
     engineRef.current = engine;
     setGroups(engine.groupCount());
@@ -172,15 +179,10 @@ export function DockviewLayoutEngine({
 
     const previous =
       appliedCollapse.current.tab === tab ? appliedCollapse.current.ids : [];
-    const next: StripMap = {};
 
     for (const panelId of collapsed) {
       if (!previous.includes(panelId)) {
-        const orientation = engine.collapsePanel(panelId);
-
-        if (orientation !== null) {
-          next[panelId] = orientation;
-        }
+        engine.collapsePanel(panelId);
       }
     }
 
@@ -191,19 +193,6 @@ export function DockviewLayoutEngine({
     }
 
     appliedCollapse.current = { tab, ids: collapsed };
-    setStrips((prev) => {
-      const kept: StripMap = {};
-
-      for (const panelId of collapsed) {
-        const orientation = next[panelId] ?? prev[panelId];
-
-        if (orientation !== undefined) {
-          kept[panelId] = orientation;
-        }
-      }
-
-      return kept;
-    });
   }, [collapsed, tab]);
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —

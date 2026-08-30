@@ -512,6 +512,23 @@ as a two-branch conditional, would be guessing at the shape a third engine
   package. Maximize glides the maximized group's growth only — dockview
   hides the siblings rather than shrinking them to strips, the
   dockview-native maximize residual above.
+- **Fully-stripped column, added 2026-08-30 (PR #629).** Collapsing both
+  FX rail panels under Dockview left two 32px horizontal bars atop a
+  full-width empty column, where in-house flips them to 38px vertical strips
+  stacked down a 38px rail. In-house decides a strip's orientation from the
+  nearest enclosing split that is not itself fully stripped (`stripDir`);
+  the first Dockview cut read only the panel's own parent split. `createDockEngine`
+  now re-settles every strip after each collapse/expand with that same walk:
+  a split whose every group is a strip reclaims along its parent's axis, so
+  its strips are clamped on the orthogonal axis instead (pinning the column
+  to 38px), share the split's length equally, and the split's size on the
+  parent's axis is remembered and restored the moment one strip expands.
+  Because a collapse can re-orient its *siblings*, orientations reach the
+  bridges through a new `onStripsChange` callback (the whole map) rather than
+  `collapsePanel`'s return value — the bridges no longer derive strip state
+  from the intent they dispatched. Pinned by engine tests (the flip, the
+  38px column, the shared height, the width restore, whole-dock stripping)
+  and a contract case on both clients.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).

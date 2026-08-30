@@ -82,6 +82,21 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.intents()).toEqual(["expand:fx-analytics"]);
   });
 
+  it("flips a fully-collapsed rail column to vertical strips stacked down the rail, as in-house", () => {
+    // Analytics over Positions form the FX rail column. One collapsed alone
+    // is a horizontal bar (its space reclaims down the column); once BOTH
+    // are strips the column itself reclaims sideways, so both read vertical
+    // — the in-house `stripDir` rule — instead of two bars atop an empty
+    // full-width column.
+    const page = mount(DockviewEngine, {
+      props: { collapsed: ["fx-analytics", "fx-positions"] },
+    });
+    expect(page.stripOrientation("fx-analytics")).toBe("vertical");
+    expect(page.stripOrientation("fx-positions")).toBe("vertical");
+    expect(page.stripMarked("fx-analytics")).toBe(true);
+    expect(page.stripMarked("fx-positions")).toBe(true);
+  });
+
   it("threads the LayoutMachine's collapse set into the bridge", () => {
     const page = mount(DockviewEngine, {
       props: { collapsed: ["fx-analytics"] },
