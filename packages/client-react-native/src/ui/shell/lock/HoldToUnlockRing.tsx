@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   type TextStyle,
+  View,
   type ViewStyle,
 } from "react-native";
 import {
@@ -33,11 +34,17 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * and can't be driven by e2e/unit automation. Both paths converge on the
  * same submit one layer up (`LockScreen`) — this component only renders the
  * affordance and forwards intent. Carries the `lock-authenticate` testID so
- * existing press-based tests/e2e keep working unmodified. */
+ * existing press-based tests/e2e keep working unmodified.
+ *
+ * Geometry and dress are the mobile-v1 prototype's lock ring: a 112px ring
+ * (r 50, 3px stroke — `borderSubtle` track, accent sweep) with a 26px accent
+ * `⌖` crosshair centred inside it, and the caller's `label` (`HOLD TO
+ * UNLOCK` / `AUTHENTICATING…`) 22px beneath in 9px tracked mono. */
 export function HoldToUnlockRing({
   gesture,
   progress,
   onPress,
+  label,
 }: HoldToUnlockRingProps): JSX.Element {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -57,29 +64,34 @@ export function HoldToUnlockRing({
         onPress={onPress}
         style={styles.wrap}
       >
-        <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-          <Circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
-            fill="none"
-            stroke={t.borderSubtle}
-            strokeWidth={STROKE_WIDTH}
-          />
-          <AnimatedCircle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
-            fill="none"
-            stroke={t.accentPrimary}
-            strokeWidth={STROKE_WIDTH}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-            animatedProps={animatedCircleProps}
-          />
-        </Svg>
-        <Text style={styles.label}>AUTHENTICATE ▸</Text>
+        <View style={styles.ring}>
+          <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            <Circle
+              cx={SIZE / 2}
+              cy={SIZE / 2}
+              r={RADIUS}
+              fill="none"
+              stroke={t.borderSubtle}
+              strokeWidth={STROKE_WIDTH}
+            />
+            <AnimatedCircle
+              cx={SIZE / 2}
+              cy={SIZE / 2}
+              r={RADIUS}
+              fill="none"
+              stroke={t.accentPrimary}
+              strokeWidth={STROKE_WIDTH}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+              animatedProps={animatedCircleProps}
+            />
+          </Svg>
+          <Text style={styles.glyph}>⌖</Text>
+        </View>
+        <Text testID="lock-hold-label" style={styles.label}>
+          {label}
+        </Text>
       </Pressable>
     </GestureDetector>
   );
@@ -91,30 +103,39 @@ export interface HoldToUnlockRingProps {
   readonly gesture: LongPressGesture;
   readonly progress: SharedValue<number>;
   readonly onPress: () => void;
+  /** The line under the ring — `LockScreen` decides the wording. */
+  readonly label: string;
 }
 
-const SIZE = 64;
-const RADIUS = 26;
+const SIZE = 112;
+const RADIUS = 50;
 const STROKE_WIDTH = 3;
 
 interface HoldToUnlockRingStyles {
   wrap: ViewStyle;
+  ring: ViewStyle;
+  glyph: TextStyle;
   label: TextStyle;
 }
 
 function makeStyles(t: RnTheme): HoldToUnlockRingStyles {
   return StyleSheet.create({
-    wrap: {
+    wrap: { alignItems: "center", justifyContent: "center" },
+    ring: {
+      width: SIZE,
+      height: SIZE,
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
-      marginTop: 8,
     },
+    // System font on purpose, like `LockButton`'s `⌖`: the bundled faces
+    // have no glyph for U+2316.
+    glyph: { position: "absolute", fontSize: 26, color: t.accentPrimary },
     label: {
-      color: t.accentPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 14,
-      letterSpacing: 1,
+      marginTop: 22,
+      color: t.textSecondary,
+      fontFamily: t.fontMono,
+      fontSize: 9,
+      letterSpacing: 2.5,
     },
   });
 }

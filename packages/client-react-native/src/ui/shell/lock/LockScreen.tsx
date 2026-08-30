@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,16 +9,16 @@ import {
   Text,
   TextInput,
   type TextStyle,
-  View,
   type ViewStyle,
 } from "react-native";
-import Svg, { Circle, Polygon } from "react-native-svg";
+import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
-import { BiometricLine } from "#/ui/shell/lock/BiometricLine";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
+import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { useHoldToUnlock } from "#/ui/shell/lock/useHoldToUnlock";
+import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -33,7 +33,7 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * the ring keeps submitting instantly (accessibility + automation fallback).
  * Dumb component: all state arrives through the reused `useAuth` seam; the
  * typed password lives in local component state only and is never logged.
- * Only BiometricLine is decorative. Wrapped in `KeyboardAvoidingView` + a
+ * Wrapped in `KeyboardAvoidingView` + a
  * `ScrollView` with `keyboardShouldPersistTaps="handled"` so the soft
  * keyboard never strands the ring on a real device. Fires an
  * `expo-haptics` success notification exactly once when `state.locked`
@@ -76,6 +76,7 @@ export function LockScreen(): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
 
   const [password, setPassword] = useState("");
+  const glowId = useId().replace(/:/g, "");
   const wasLockedRef = useRef(state.locked);
 
   function submit(): void {
@@ -104,64 +105,62 @@ export function LockScreen(): JSX.Element | null {
       style={styles.overlay}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <Svg
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <Defs>
+          <RadialGradient
+            id={glowId}
+            gradientUnits="userSpaceOnUse"
+            cx={GLOW_CX}
+            cy={GLOW_CY}
+            rx={GLOW_RX}
+            ry={GLOW_RY}
+          >
+            <Stop
+              offset="0"
+              stopColor={theme.accentPrimary}
+              stopOpacity={GLOW_OPACITY}
+            />
+            <Stop offset="1" stopColor={theme.accentPrimary} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Ellipse
+          cx={GLOW_CX}
+          cy={GLOW_CY}
+          rx={GLOW_RX}
+          ry={GLOW_RY}
+          fill={`url(#${glowId})`}
+        />
+      </Svg>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Svg width={72} height={72} viewBox="0 0 48 48">
-          <Polygon
-            points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
-            fill="none"
-            stroke={theme.accentPrimary}
-            strokeWidth={1.3}
-          />
-          <Polygon
-            points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
-            fill="none"
-            stroke={theme.accent2}
-            strokeWidth={1}
-            opacity={0.6}
-          />
-          <Circle cx={24} cy={24} r={3.4} fill={theme.accentPrimary} />
-        </Svg>
+        <LockEmblem />
 
         <Text testID="lock-title" style={styles.title}>
           SESSION LOCKED
         </Text>
-        <Text style={styles.subtitle}>REACTIVE TRADER OS · {user.id}</Text>
-
-        <View style={styles.avatar}>
-          <Svg width={40} height={40} viewBox="0 0 28 28">
-            <Polygon
-              points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75"
-              fill={theme.chip}
-              stroke={theme.accentPrimary}
-              strokeWidth={1.3}
-            />
-          </Svg>
-          <Text style={styles.initials}>{user.initials}</Text>
-        </View>
-
-        <Text testID="lock-user-name" style={styles.name}>
-          {user.name}
+        <Text testID="lock-desk" style={styles.desk}>
+          {`${user.id} · ${user.desk}`.toUpperCase()}
         </Text>
-        <Text style={styles.role}>{user.role}</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            testID="lock-password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Enter password..."
-            placeholderTextColor={styles.placeholder.color}
-            style={styles.input}
-          />
-        </View>
+        <TextInput
+          testID="lock-password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="PASSWORD"
+          placeholderTextColor={styles.placeholder.color}
+          style={styles.input}
+        />
 
         {state.error !== null ? (
           <Text testID="lock-error" style={styles.error}>
@@ -173,9 +172,8 @@ export function LockScreen(): JSX.Element | null {
           gesture={gesture}
           progress={progress}
           onPress={submit}
+          label={state.unlocking ? "AUTHENTICATING…" : "HOLD TO UNLOCK"}
         />
-
-        <BiometricLine />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -186,17 +184,27 @@ interface LockScreenStyles {
   scroll: ViewStyle;
   scrollContent: ViewStyle;
   title: TextStyle;
-  subtitle: TextStyle;
-  avatar: ViewStyle;
-  initials: TextStyle;
-  name: TextStyle;
-  role: TextStyle;
-  field: ViewStyle;
-  label: TextStyle;
+  desk: TextStyle;
   input: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
 }
+
+/** The prototype's lock ring sits 40px under the desk line; the password
+ * field this client keeps takes that gap, with the ring `RING_GAP` below. */
+const RING_GAP = 22;
+
+/** The prototype's backdrop, `radial-gradient(500px 320px at 50% 30%,
+ * acc 9%, transparent)`, in percent of the screen: on its 390×844 frame
+ * that ellipse is ~64% wide and ~19% tall. `userSpaceOnUse` with the SAME
+ * numbers as the ellipse it fills is deliberate — react-native-svg resolves
+ * an objectBoundingBox `rx`/`ry` against the viewport, so the gradient
+ * would outsize the ellipse and leave a hard edge. */
+const GLOW_CX = 50;
+const GLOW_CY = 30;
+const GLOW_RX = 64;
+const GLOW_RY = 19;
+const GLOW_OPACITY = 0.09;
 
 function makeStyles(t: RnTheme): LockScreenStyles {
   return StyleSheet.create({
@@ -215,50 +223,51 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       flexGrow: 1,
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
     },
+    // `alignSelf: "stretch"` + centred text on both tracked lines: a
+    // self-sized iOS <Text> with `letterSpacing` measures without the last
+    // glyph's trailing advance and clips it ("SESSION LOCKE").
     title: {
+      marginTop: 18,
+      alignSelf: "stretch",
+      textAlign: "center",
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 20,
-      letterSpacing: 3,
+      fontFamily: FONT_ORBITRON_WORDMARK,
+      fontSize: 13,
+      letterSpacing: 4,
     },
-    subtitle: {
+    desk: {
+      marginTop: 8,
+      marginBottom: RING_GAP,
+      alignSelf: "stretch",
+      textAlign: "center",
       color: t.textMuted,
       fontFamily: t.fontMono,
-      fontSize: 11,
-      letterSpacing: 1,
-    },
-    avatar: { alignItems: "center", justifyContent: "center" },
-    initials: {
-      position: "absolute",
-      color: t.textPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 12,
-    },
-    name: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 16 },
-    role: { color: t.textMuted, fontFamily: t.fontMono, fontSize: 11 },
-    field: { width: "100%", maxWidth: 320, gap: 4, marginTop: 8 },
-    label: {
-      color: t.textSecondary,
-      fontFamily: t.fontDisplay,
-      fontSize: 12,
-      letterSpacing: 1,
+      fontSize: 9.5,
+      letterSpacing: 1.6,
     },
     input: {
+      width: 220,
+      marginBottom: RING_GAP,
       borderWidth: 1,
-      borderColor: t.borderSubtle,
-      borderRadius: 6,
-      padding: 10,
+      borderColor: t.borderPrimary,
+      borderRadius: 9,
+      paddingVertical: 9,
+      paddingHorizontal: 12,
+      textAlign: "center",
       color: t.textPrimary,
       fontFamily: t.fontMono,
+      fontSize: 11,
+      letterSpacing: 1.5,
     },
     placeholder: { color: t.textMuted },
     error: {
+      marginTop: -RING_GAP + 8,
+      marginBottom: RING_GAP,
       color: t.accentNegative,
       fontFamily: t.fontMono,
-      fontSize: 12,
-      marginTop: 4,
+      fontSize: 10,
+      letterSpacing: 1,
     },
   });
 }
