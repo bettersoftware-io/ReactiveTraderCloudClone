@@ -7,9 +7,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { formatPnlK, type PositionUpdates } from "@rtc/domain";
+import type { PositionUpdates } from "@rtc/domain";
 
 import { ExposureBubbles } from "#/ui/analytics/ExposureBubbles";
+import { formatSignedCompact } from "#/ui/analytics/formatAnalytics";
 import { PairPnlBars } from "#/ui/analytics/PairPnlBars";
 import { PnlChart } from "#/ui/analytics/PnlChart";
 import { PnlValue } from "#/ui/analytics/PnlValue";
@@ -51,8 +52,13 @@ export function AnalyticsDashboard({
           <Text style={styles.widgetTitle}>PROFIT &amp; LOSS · USD</Text>
           {delta === null ? null : (
             <View testID="analytics-pnl-delta" style={styles.deltaChip}>
-              <Text style={styles.deltaLabel}>
-                Δ {formatPnlK(delta.change)} / {delta.windowSecs}S
+              <Text
+                style={[
+                  styles.deltaLabel,
+                  latestPnl >= 0 ? styles.deltaPos : styles.deltaNeg,
+                ]}
+              >
+                Δ {formatSignedCompact(delta.change)} / {delta.windowSecs}S
               </Text>
             </View>
           )}
@@ -127,6 +133,8 @@ interface AnalyticsDashboardStyles {
   widgetTitle: TextStyle;
   deltaChip: ViewStyle;
   deltaLabel: TextStyle;
+  deltaPos: TextStyle;
+  deltaNeg: TextStyle;
 }
 
 function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
@@ -159,16 +167,23 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
     deltaChip: {
       borderWidth: 1,
       borderColor: t.borderSubtle,
-      borderRadius: 4,
+      backgroundColor: t.panelHead,
+      borderRadius: 5,
       paddingHorizontal: 7,
-      paddingVertical: 3,
+      paddingVertical: 2,
       marginBottom: SPACING.sm,
     },
     deltaLabel: {
       fontSize: 8.5,
       letterSpacing: 1,
-      color: t.textSecondary,
       fontFamily: t.fontMono,
     },
+    // dc.html:168 colours the chip with `pnlC` — the HEADLINE's sign, the same
+    // token the big number below it takes, not the delta's own. A rising book
+    // that dipped on the last step therefore keeps a green chip: the pill
+    // reads as an annotation ON the headline rather than a second, separately
+    // signed figure.
+    deltaPos: { color: t.accentPositive },
+    deltaNeg: { color: t.accentNegative },
   });
 }

@@ -6,6 +6,7 @@ import {
   DEALERS_CATALOG,
   type Dealer,
   Direction,
+  type HistoricPosition,
   type Instrument,
   type PositionUpdates,
   type Quote,
@@ -506,68 +507,118 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 16, gap: 20 },
 });
 
+/** The prototype's `_seedPnl` walks 48 points; this is a hand-picked
+ * deterministic stand-in for that random walk, oldest first. It dips three
+ * times so the line has real shape, crosses zero early, and its final step is
+ * exactly +4,200 — the change the delta chip reports. */
+const PINNED_PNL_STEPS: readonly number[] = [
+  -8_200, -6_100, -7_400, -4_800, -2_600, -3_900, -1_200, 900, 2_400, 1_100,
+  3_600, 5_200, 4_300, 6_800, 8_100, 7_000, 9_400, 11_200, 10_100, 12_600,
+  14_300, 13_100, 15_400, 17_200, 16_000, 18_300, 20_100, 19_000, 21_400,
+  23_200, 22_100, 24_600, 26_300, 25_100, 27_400, 29_200, 28_100, 26_900,
+  24_800, 22_600, 24_100, 26_400, 25_200, 27_800, 29_400, 28_300, 25_472,
+  29_672,
+];
+
+/** Spacing between history points. The delta chip's window label is derived
+ * from the gap between the LAST TWO points, so 12 s is what makes it read
+ * `/ 12S` — the prototype's own window (dc.html L977). */
+const PINNED_HISTORY_STEP_MS = 12_000;
+
+/** Fixed epoch for the history, so the golden is reproducible on any runner.
+ * Only the SPACING is rendered, never an absolute time. */
+const PINNED_HISTORY_START_MS: number = Date.parse("2026-07-27T09:00:00Z");
+
 /**
- * A hand-built book, chosen so every branch of the three cards is actually
- * painted rather than merely mounted:
+ * A hand-built book, sized and shaped to the MOBILE prototype's own analytics
+ * seed (`fxPos` / `fxExp` / `_seedPnl`, dc.html L712-723 and L916) so the
+ * golden reads in the design's figures rather than merely in its layout —
+ * while still painting every branch of the three cards:
  *
- * - **P&L chart** — the history crosses zero between the third and fourth
- *   point, so the dashed zero baseline is drawn and the area gradient has
- *   something on both sides of it. It closes positive, so the line takes the
+ * - **P&L headline** — closes at +29,672, so the grouped whole-dollar format
+ *   (`+$29,672`) is actually exercised; a round figure would pass just as well
+ *   with the grouping missing.
+ * - **Delta chip** — the last step is +4,200 over a 12-second gap, so the chip
+ *   reads `Δ +4.2K / 12S`, the design's own pill. The window is DERIVED from
+ *   the last two timestamps (see `latestDelta`), so the spacing is the thing
+ *   that pins the label, not a literal.
+ * - **P&L chart** — 48 points, the prototype's own history length. It crosses
+ *   zero between the 7th and 8th, so the dashed zero baseline is drawn with
+ *   area on both sides of it, and it closes positive, so the line takes the
  *   positive accent.
- * - **Pair bars** — two pairs up and two down, so both the left- and
- *   right-anchored bars appear.
- * - **Exposure bubbles** — the five currency nets (EUR +8.0M, JPY -6.4M,
- *   GBP -4.0M, AUD +3.0M, USD +0.55M) land on radii of 60, 50.3, 35.8, 29.8
- *   and 15 (verified against `aggregatePositionsByCurrency`, not estimated).
- *   That covers every label branch at once: EUR, JPY and GBP clear the 62px
- *   diameter and take the stepped-up currency label; AUD sits between the two
- *   thresholds, so it gets an amount but the smaller label; USD is under both
- *   and gets neither. A golden that lost the size-threshold logic could not
- *   pass.
+ * - **Pair bars** — the design's seven pairs at its own magnitudes, four up
+ *   and three down, so both the left- and right-anchored bars appear. Their
+ *   labels span the compact format's two live branches: `+420.0K` down to
+ *   `+74.0K`.
+ * - **Exposure bubbles** — the seven currency nets (EUR +24.8M, USD −18.2M,
+ *   JPY +9.4M, GBP −6.1M, AUD +3.2M, CAD −2.4M, NZD +0.9M) land on radii of
+ *   60, 47.6, 31, 24.8, 19.3, 17.8 and 15. Every one clears the 30px amount
+ *   floor, so all seven are labelled, and NZD is deliberately sub-million so
+ *   the `K` branch of the bubble format is painted beside six `M`s.
+ *
+ * The traded amounts are chosen to AGGREGATE to those seven nets (base amount
+ * to the base currency, counter amount to the terms currency), not to be
+ * consistent with any FX rate — the same licence the existing simulator books
+ * take. `NZD/CAD` stands in for the design's seventh pair, `USD/CAD`: the
+ * bubbles are derived from the pairs here rather than seeded separately as
+ * they are in the prototype, and that one substitution is what yields seven
+ * currencies from seven pairs.
  *
  * Literal, not generated: this file is the last place a `Math.random` should
  * appear, and the numbers being explainable is worth more than their being
  * realistic.
  */
 const PINNED_BOOK: PositionUpdates = {
-  history: [
-    { timestamp: "2026-07-27T09:00:00Z", usdPnl: -8_200 },
-    { timestamp: "2026-07-27T09:10:00Z", usdPnl: -5_400 },
-    { timestamp: "2026-07-27T09:20:00Z", usdPnl: -2_100 },
-    { timestamp: "2026-07-27T09:30:00Z", usdPnl: 900 },
-    { timestamp: "2026-07-27T09:40:00Z", usdPnl: 3_400 },
-    { timestamp: "2026-07-27T09:50:00Z", usdPnl: 2_200 },
-    { timestamp: "2026-07-27T10:00:00Z", usdPnl: 5_600 },
-    { timestamp: "2026-07-27T10:10:00Z", usdPnl: 8_900 },
-    { timestamp: "2026-07-27T10:20:00Z", usdPnl: 7_300 },
-    { timestamp: "2026-07-27T10:30:00Z", usdPnl: 10_400 },
-    { timestamp: "2026-07-27T10:40:00Z", usdPnl: 12_800 },
-    { timestamp: "2026-07-27T10:50:00Z", usdPnl: 9_700 },
-  ],
+  history: PINNED_PNL_STEPS.map((usdPnl, index): HistoricPosition => {
+    return {
+      timestamp: new Date(
+        PINNED_HISTORY_START_MS + index * PINNED_HISTORY_STEP_MS,
+      ).toISOString(),
+      usdPnl,
+    };
+  }),
   currentPositions: [
     {
       symbol: "EURUSD",
-      basePnl: 12_000,
-      baseTradedAmount: 8_000_000,
-      counterTradedAmount: -8_600_000,
-    },
-    {
-      symbol: "GBPUSD",
-      basePnl: -5_400,
-      baseTradedAmount: -4_000_000,
-      counterTradedAmount: 5_100_000,
-    },
-    {
-      symbol: "AUDUSD",
-      basePnl: 2_100,
-      baseTradedAmount: 3_000_000,
-      counterTradedAmount: -1_950_000,
+      basePnl: 420_000,
+      baseTradedAmount: 4_000_000,
+      counterTradedAmount: -4_200_000,
     },
     {
       symbol: "USDJPY",
-      basePnl: -8_900,
-      baseTradedAmount: 6_000_000,
-      counterTradedAmount: -6_400_000,
+      basePnl: -180_000,
+      baseTradedAmount: -15_200_000,
+      counterTradedAmount: 16_500_000,
+    },
+    {
+      symbol: "GBPUSD",
+      basePnl: 260_000,
+      baseTradedAmount: -4_300_000,
+      counterTradedAmount: 4_600_000,
+    },
+    {
+      symbol: "AUDUSD",
+      basePnl: -90_000,
+      baseTradedAmount: 3_200_000,
+      counterTradedAmount: -3_400_000,
+    },
+    {
+      symbol: "EURJPY",
+      basePnl: 152_000,
+      baseTradedAmount: 20_800_000,
+      counterTradedAmount: -9_100_000,
+    },
+    {
+      symbol: "GBPJPY",
+      basePnl: -310_000,
+      baseTradedAmount: -1_800_000,
+      counterTradedAmount: 2_000_000,
+    },
+    {
+      symbol: "NZDCAD",
+      basePnl: 74_000,
+      baseTradedAmount: 900_000,
+      counterTradedAmount: -2_400_000,
     },
   ],
 };

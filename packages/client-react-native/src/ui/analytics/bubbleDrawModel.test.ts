@@ -7,7 +7,6 @@ import {
   buildBubbleDrawModel,
   centerTextX,
   currencyFontSize,
-  formatMillions,
 } from "#/ui/analytics/bubbleDrawModel";
 
 /**
@@ -104,9 +103,32 @@ describe("buildBubbleDrawModel", () => {
     // 30px bubble fits its value, and the design's template labels every
     // bubble unconditionally — so EUR, exactly on the threshold, keeps its
     // amount where it used to be blanked.
-    expect(byCurrency.AUD.amount).toBe("+100.0M");
-    expect(byCurrency.GBP.amount).toBe("-20.0M");
-    expect(byCurrency.EUR.amount).toBe("+10.0M");
+    // The mobile design's bubble amounts are UNSIGNED on the positive side
+    // (the ring colour carries the direction) and two-decimal in M — the
+    // `fmtK(e.usd).replace('+','')` of dc.html L964, over the raw net rather
+    // than a pre-rounded millions figure.
+    expect(byCurrency.AUD.amount).toBe("100.00M");
+    expect(byCurrency.GBP.amount).toBe("-20.00M");
+    expect(byCurrency.EUR.amount).toBe("10.00M");
+  });
+
+  // A sub-million net keeps its K suffix rather than collapsing to "0.9M":
+  // the amount is formatted from the raw aggregate, not from
+  // `netExposureByCurrency`'s tenth-of-a-million rounding. Its bubble is the
+  // smallest in the book, so it sits exactly on the 30px amount floor and is
+  // still labelled.
+  it("prints a sub-million net in K, not a rounded M", () => {
+    const byCurrency = indexEntries([
+      {
+        symbol: "EURGBP",
+        basePnl: 0,
+        baseTradedAmount: 10_000_000,
+        counterTradedAmount: -900_000,
+      },
+    ]);
+
+    expect(byCurrency.GBP.amount).toBe("-900.0K");
+    expect(byCurrency.EUR.amount).toBe("10.00M");
   });
 
   // T37: the mobile design uses ONE currency size (9px/600, dc.html:196), so
@@ -144,22 +166,6 @@ describe("currencyFontSize", () => {
   it("sizes on the diameter, exclusive at the threshold", () => {
     expect(currencyFontSize(31)).toBe(9); // exactly 62px across
     expect(currencyFontSize(31.5)).toBe(9); // just over — same size today
-  });
-});
-
-describe("formatMillions", () => {
-  it("matches the web client's bubble format", () => {
-    expect(formatMillions(15.2)).toBe("+15.2M");
-    expect(formatMillions(-22.8)).toBe("-22.8M");
-    expect(formatMillions(4)).toBe("+4.0M");
-  });
-
-  // A short position small enough to round to zero keeps its negative COLOUR
-  // but loses its sign in the text, because `toFixed` drops the sign of -0.
-  // Pinned because it looks like a bug and is not: the web client does the
-  // same, and matching it is the point.
-  it("prints a rounds-to-zero short position without a sign", () => {
-    expect(formatMillions(-0)).toBe("0.0M");
   });
 });
 
