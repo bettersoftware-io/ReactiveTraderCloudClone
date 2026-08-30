@@ -10,17 +10,21 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Direction } from "@rtc/domain";
+import { Direction, RFQ_DEFAULT_EXPIRY_SECS } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { InstrumentChipGrid } from "#/ui/credit/newRfq/InstrumentChipGrid";
 import { QuantityChips } from "#/ui/credit/newRfq/QuantityChips";
+import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
-export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
+export function NewRfqForm({
+  onCreated,
+  initialSelection,
+}: NewRfqFormProps): JSX.Element {
   const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
   const dealers = useDealers();
@@ -28,9 +32,17 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
   const { submit } = submission;
   const styles = useThemedStyles(makeStyles);
 
-  const [instrumentId, setInstrumentId] = useState<number | null>(null);
-  const [direction, setDirection] = useState<Direction>(Direction.Buy);
-  const [quantity, setQuantity] = useState<number | null>(null);
+  const [instrumentId, setInstrumentId] = useState<number | null>(
+    initialSelection?.instrumentId ?? null,
+  );
+
+  const [direction, setDirection] = useState<Direction>(
+    initialSelection?.direction ?? Direction.Buy,
+  );
+
+  const [quantity, setQuantity] = useState<number | null>(
+    initialSelection?.quantity ?? null,
+  );
 
   const submitting = submission.state.status === "submitting";
   const instrument =
@@ -84,8 +96,13 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
       contentContainerStyle={styles.content}
       testID="new-rfq-form"
     >
-      <Text style={styles.formTitle}>New RFQ</Text>
-
+      {/* No screen heading: the design goes straight from the credit sub-nav
+          (which already reads NEW RFQ) to the INSTRUMENT label
+          (reference-shots/credit/new-rfq.png). The sans "New RFQ" title that
+          stood here was a leftover from the web port and printed the tab's
+          own name a second time, in the one face nothing else on the form
+          uses. `testID="new-rfq-form"` is on this ScrollView root, so
+          nothing that keys off the form moved. */}
       <InstrumentChipGrid
         instruments={instruments}
         selectedId={instrumentId}
@@ -97,21 +114,35 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
         <View style={styles.directionRow}>
           {DIRECTIONS.map((dir) => {
             const active = direction === dir;
+            // The design tints each side in ITS OWN colour, not one shared
+            // brand fill (dc.html:2194-2197) — BUY green, SELL red — so the
+            // active treatment is picked per direction, matching the equity
+            // ticket's side toggle.
+            const buy = dir === Direction.Buy;
+            const activeBtn = buy
+              ? styles.directionBtnBuy
+              : styles.directionBtnSell;
+
+            const activeLabel = buy
+              ? styles.directionLabelBuy
+              : styles.directionLabelSell;
+
             return (
               <Pressable
                 key={dir}
                 testID={`rfq-direction-${dir}`}
-                style={active ? styles.directionBtnActive : styles.directionBtn}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={active ? activeBtn : styles.directionBtn}
                 onPress={() => {
                   setDirection(dir);
                 }}
               >
-                <Text
-                  style={
-                    active ? styles.directionLabelActive : styles.directionLabel
-                  }
-                >
-                  {dir}
+                <Text style={active ? activeLabel : styles.directionLabel}>
+                  {/* The design prints `BUY` / `SELL`; `Direction` is Title
+                      Case on the wire, so the label is cased here rather
+                      than the enum being changed under the seam. */}
+                  {dir.toUpperCase()}
                 </Text>
               </Pressable>
             );
@@ -122,18 +153,29 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
       <QuantityChips selected={quantity} onSelect={setQuantity} />
 
       <View style={styles.broadcast}>
-        <Pressable
-          testID="rfq-submit"
-          disabled={!canSubmit}
-          style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
-          onPress={submitRfq}
-        >
-          <Text style={styles.submitLabel}>
-            {submitting ? "BROADCASTING…" : "⟟ BROADCAST RFQ"}
-          </Text>
-        </Pressable>
+        {/* Two views, not one: the glow is an iOS layer shadow and the
+            gradient needs `overflow: hidden` to be clipped to the 11px
+            radius — but `overflow: hidden` sets `masksToBounds`, which
+            clips the shadow away too. So the OUTER view casts the glow (it
+            carries an opaque `accentPrimary` fill purely so iOS has
+            something to cast from; the button covers it completely) and the
+            INNER Pressable does the clipping. */}
+        <View style={canSubmit ? styles.submitGlow : styles.submitShell}>
+          <Pressable
+            testID="rfq-submit"
+            disabled={!canSubmit}
+            style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
+            onPress={submitRfq}
+          >
+            {canSubmit ? <AcceptGradient /> : null}
+            <Text style={styles.submitLabel}>
+              {submitting ? "BROADCASTING…" : "⟟ BROADCAST RFQ"}
+            </Text>
+          </Pressable>
+        </View>
         <Text style={styles.broadcastNote}>
-          STREAMS TO {allDealerIds.length} DEALERS · {RFQ_WINDOW_SECS}S WINDOW
+          STREAMS TO {allDealerIds.length} DEALERS · {RFQ_DEFAULT_EXPIRY_SECS}S
+          WINDOW
         </Text>
       </View>
     </ScrollView>
@@ -142,28 +184,46 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
 
 interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;
+  /** Seeds the three `useState`s the operator would otherwise tap in. Used
+   * only as their INITIAL values — the form stays uncontrolled, so a later
+   * change here is ignored and every tap still wins. Exists for the visual
+   * harness, which has no way to drive taps before a screenshot: the golden
+   * has to mount already showing a chosen instrument, side and clip size.
+   * Same seam shape `BlottersView`'s retired `initialTab` used. */
+  initialSelection?: NewRfqSelection;
+}
+
+/** A pre-chosen New-RFQ ticket. Every field optional and independent: seeding
+ * only the direction is as valid as seeding all three, and an omitted field
+ * falls back to the form's own default (no instrument, `Buy`, no quantity). */
+export interface NewRfqSelection {
+  /** An `Instrument["id"]` from `useInstruments()`; anything else simply
+   * matches no chip and leaves the grid unselected. */
+  readonly instrumentId?: number;
+  readonly direction?: Direction;
+  /** A UI-SCALE value from `RFQ_QUANTITY_CHIPS`, not a notional — see
+   * `rfqQuantities.ts`. `5_000` is the "5M" chip. */
+  readonly quantity?: number;
 }
 
 const DIRECTIONS: readonly Direction[] = [Direction.Buy, Direction.Sell];
-
-/** The quote window the desk broadcasts on, shown in the footer note
- * (dc.html:285). The server owns the real expiry; this is the copy that tells
- * the operator what they are committing to. */
-const RFQ_WINDOW_SECS = 45;
 
 interface NewRfqFormStyles {
   form: ViewStyle;
   broadcast: ViewStyle;
   broadcastNote: TextStyle;
   content: ViewStyle;
-  formTitle: TextStyle;
   field: ViewStyle;
   fieldLabel: TextStyle;
   directionRow: ViewStyle;
   directionBtn: ViewStyle;
-  directionBtnActive: ViewStyle;
+  directionBtnBuy: ViewStyle;
+  directionBtnSell: ViewStyle;
   directionLabel: TextStyle;
-  directionLabelActive: TextStyle;
+  directionLabelBuy: TextStyle;
+  directionLabelSell: TextStyle;
+  submitShell: ViewStyle;
+  submitGlow: ViewStyle;
   submitBtn: ViewStyle;
   submitBtnDisabled: ViewStyle;
   submitLabel: TextStyle;
@@ -172,7 +232,69 @@ interface NewRfqFormStyles {
   confirmedDetail: TextStyle;
 }
 
+/** The prototype tints an active side toggle at 12% of its own colour
+ * (`color-mix(in oklab, <c> 12%, transparent)`, dc.html:2195/2197); every
+ * skin's `accentPositive`/`accentNegative` is six-digit hex, so the alpha
+ * byte is appended directly. Same helper the equity ticket's side toggle
+ * uses (`equities/trade/OrderTicket.tsx`) — deliberately duplicated rather
+ * than shared, since a repo-wide `withAlpha` does not exist yet and
+ * `PnlChart`'s local one parses channels for a different purpose. */
+function tint12(hexColor: string): string {
+  return `${hexColor}1F`;
+}
+
 function makeStyles(t: RnTheme): NewRfqFormStyles {
+  // dc.html:271-272 — `padding:11px 0; border-radius:9px; border:1px solid`,
+  // on a TRANSPARENT ground. Until the mobile-v1 fidelity pass this was a
+  // 6px-radius `panel` slab with a hairline border, which read as a filled
+  // segmented control rather than the design's two outlines.
+  const directionBtn: ViewStyle = {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 11,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: t.borderSubtle,
+    backgroundColor: "transparent",
+  };
+
+  // dc.html:271 — `font-size:10px; font-weight:700; letter-spacing:2px` in
+  // the mono face. This was `fontDisplay` at 14px, a size AND a family away
+  // from the INSTRUMENT/QUANTITY chips it sits between.
+  const directionLabel: TextStyle = {
+    fontSize: 10,
+    letterSpacing: 2,
+    ...weightedFont(t, "mono", "700"),
+  };
+
+  // dc.html:284 — `box-shadow: var(--glow)`, itself `0 0 16px glowC`
+  // (dc.html:2416). A CSS blur of 16 is an iOS `shadowRadius` of ~8, and
+  // `glowC` carries its own alpha so opacity stays 1 — the same reading
+  // `AppearanceScreen` and `BuySellPads` already make. `glowC` is NULL on
+  // classic and both terminal faces, which get no glow at all rather than a
+  // black drop shadow.
+  const glow: ViewStyle =
+    t.glowC === null
+      ? {}
+      : {
+          shadowColor: t.glowC,
+          shadowOpacity: 1,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 8,
+        };
+
+  const submitBtn: ViewStyle = {
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 11,
+    // Clips `AcceptGradient`'s absolutely-filled Svg to the radius — the
+    // same move `QuoteCard`'s best-quote ACCEPT makes.
+    overflow: "hidden",
+    // Fallback ground beneath the gradient, and the disabled arm's base.
+    backgroundColor: t.accentPrimary,
+  };
+
   return StyleSheet.create({
     form: { flex: 1 },
     broadcast: { gap: 10 },
@@ -184,11 +306,6 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       fontFamily: t.fontMono,
     },
     content: { padding: 16, gap: 16 },
-    formTitle: {
-      fontSize: 16,
-      color: t.textPrimary,
-      ...weightedFont(t, "display", "600"),
-    },
     field: { gap: 6 },
     // dc.html:269 styles DIRECTION identically to INSTRUMENT and QUANTITY.
     // Those two labels live inside the chip components and already match; this
@@ -202,44 +319,31 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       fontFamily: t.fontMono,
     },
     directionRow: { flexDirection: "row", gap: SPACING.sm },
-    directionBtn: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 10,
-      borderRadius: 6,
-      backgroundColor: t.panel,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.borderSubtle,
+    directionBtn,
+    directionBtnBuy: {
+      ...directionBtn,
+      borderColor: t.accentPositive,
+      backgroundColor: tint12(t.accentPositive),
     },
-    directionBtnActive: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 10,
-      borderRadius: 6,
-      backgroundColor: t.bgBrandPrimary,
-      borderWidth: 1,
-      borderColor: t.borderStrong,
+    directionBtnSell: {
+      ...directionBtn,
+      borderColor: t.accentNegative,
+      backgroundColor: tint12(t.accentNegative),
     },
-    directionLabel: {
-      fontSize: 14,
-      color: t.textMuted,
-      fontFamily: t.fontDisplay,
-    },
-    directionLabelActive: {
-      fontSize: 14,
-      color: t.textOnAccent,
-      fontFamily: t.fontDisplay,
-    },
-    submitBtn: {
-      alignItems: "center",
-      paddingVertical: 14,
+    directionLabel: { ...directionLabel, color: t.textMuted },
+    directionLabelBuy: { ...directionLabel, color: t.accentPositive },
+    directionLabelSell: { ...directionLabel, color: t.accentNegative },
+    // The disabled arm's shell casts nothing — a greyed-out button that
+    // still glowed would advertise an action that is not available.
+    submitShell: { borderRadius: 11 },
+    submitGlow: {
       borderRadius: 11,
       backgroundColor: t.accentPrimary,
+      ...glow,
     },
+    submitBtn,
     submitBtnDisabled: {
-      alignItems: "center",
-      paddingVertical: 14,
-      borderRadius: 11,
+      ...submitBtn,
       backgroundColor: t.bgSecondary,
       opacity: 0.5,
     },
