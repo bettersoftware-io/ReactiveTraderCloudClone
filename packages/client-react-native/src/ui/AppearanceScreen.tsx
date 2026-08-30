@@ -20,6 +20,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { type PillSegment, SegmentedPill } from "#/ui/SegmentedPill";
 import {
   cyclesToReach,
   SKIN_DISPLAY_ORDER,
@@ -224,69 +225,29 @@ export function AppearanceScreen({
       {ambientEnabled ? (
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>AMBIENT STYLE</Text>
-          <View testID="appearance-ambient-style" style={styles.segmented}>
-            {AMBIENT_STYLES.map((style) => {
-              const active = style === ambientStyle;
-
-              return (
-                <Pressable
-                  key={style}
-                  testID={`appearance-ambient-style-${style}`}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  style={active ? styles.segmentActive : styles.segment}
-                  onPress={() => {
-                    setStyle(style);
-                  }}
-                >
-                  <Text
-                    style={
-                      active ? styles.segmentLabelActive : styles.segmentLabel
-                    }
-                  >
-                    {AMBIENT_STYLE_LABEL[style]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedPill
+            segments={AMBIENT_STYLE_CELLS}
+            value={ambientStyle}
+            onChange={setStyle}
+            variant="sheetSegment"
+            frameTestID="appearance-ambient-style"
+          />
         </View>
       ) : null}
 
-      {/* Renders through the SAME `segmented`/`segment`/`segmentActive`
-          objects as the ambient picker above — one `StyleSheet.create` call,
-          shared by reference, not two copies. The derived invariant test in
-          AppearanceScreen.test.tsx proves those objects give every cell
+      {/* The SAME `SegmentedPill` variant as the ambient picker above, so one
+          style bundle dresses both. The derived invariant test in
+          AppearanceScreen.test.tsx proves that variant gives every cell
           `flex: 1` (equal division of the row, safe at any width, no
           wrap/clip threshold), which covers both segments at once. */}
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>POWER SAVER</Text>
-        <View style={styles.segmented}>
-          {POWER_SAVER_LEVELS.map((level) => {
-            const active = powerSaverLevel === level;
-
-            return (
-              <Pressable
-                key={level}
-                testID={`appearance-power-${level}`}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                style={active ? styles.segmentActive : styles.segment}
-                onPress={() => {
-                  setPowerSaverLevel(level);
-                }}
-              >
-                <Text
-                  style={
-                    active ? styles.segmentLabelActive : styles.segmentLabel
-                  }
-                >
-                  {POWER_SAVER_LABELS[level]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentedPill
+          segments={POWER_SAVER_CELLS}
+          value={powerSaverLevel}
+          onChange={setPowerSaverLevel}
+          variant="sheetSegment"
+        />
         <Text style={styles.caption}>
           {POWER_SAVER_CAPTIONS[powerSaverLevel]}
         </Text>
@@ -324,10 +285,28 @@ const POWER_SAVER_CAPTIONS: Record<PowerSaverLevel, string> = {
   freeze: "Stops all motion, including the boot splash and ambient layer.",
 };
 
+const POWER_SAVER_CELLS: readonly PillSegment<PowerSaverLevel>[] =
+  POWER_SAVER_LEVELS.map((level) => {
+    return {
+      key: level,
+      label: POWER_SAVER_LABELS[level],
+      testID: `appearance-power-${level}`,
+    };
+  });
+
 const AMBIENT_STYLE_LABEL: Record<AmbientStyle, string> = {
   aurora: "AURORA",
   rays: "RAYS",
 };
+
+const AMBIENT_STYLE_CELLS: readonly PillSegment<AmbientStyle>[] =
+  AMBIENT_STYLES.map((style) => {
+    return {
+      key: style,
+      label: AMBIENT_STYLE_LABEL[style],
+      testID: `appearance-ambient-style-${style}`,
+    };
+  });
 
 /** One swatch of a theme card's preview row. The design's widths are not
  * uniform — the accent takes 16, the two directional accents 8 each — so a
@@ -375,11 +354,6 @@ interface AppearanceScreenStyles {
   replayLabel: TextStyle;
   section: ViewStyle;
   sectionHeading: TextStyle;
-  segmented: ViewStyle;
-  segment: ViewStyle;
-  segmentActive: ViewStyle;
-  segmentLabel: TextStyle;
-  segmentLabelActive: TextStyle;
   caption: TextStyle;
 }
 
@@ -421,23 +395,6 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
     borderRadius: 10,
     borderWidth: 1,
     borderColor: t.borderPrimary,
-  };
-
-  // The design's tab frame (`credTabs`/`eqTabs`: `1px --border`, radius 9,
-  // clipped) with equal-width cells — the idiom `SegmentedControl` already
-  // ports for the Credit and Equities sub-navs. Not reused from there: that
-  // component bakes in the sub-nav's own `10px 12px 0` inset and derives its
-  // test ids as `${prefix}-tab-${key}`, neither of which this sheet can take.
-  const segment: ViewStyle = {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 9,
-  };
-
-  const segmentLabel: TextStyle = {
-    fontSize: 9,
-    letterSpacing: 1.5,
-    ...weightedFont(t, "mono", "600"),
   };
 
   return StyleSheet.create({
@@ -549,17 +506,6 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
       fontFamily: t.fontMono,
       marginBottom: 8,
     },
-    segmented: {
-      flexDirection: "row",
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      borderRadius: 9,
-      overflow: "hidden",
-    },
-    segment,
-    segmentActive: { ...segment, backgroundColor: t.accentPrimary },
-    segmentLabel: { ...segmentLabel, color: t.textSecondary },
-    segmentLabelActive: { ...segmentLabel, color: t.textOnAccent },
     caption: {
       fontSize: 8.5,
       color: t.textMuted,
