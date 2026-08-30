@@ -11,7 +11,7 @@ import Animated from "react-native-reanimated";
 import type { Candle } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
-import { formatChangePct } from "#/ui/equities/equityHeat";
+import { formatChangePct } from "#/ui/equities/formatChangePct";
 import { CandleChart } from "#/ui/equities/trade/CandleChart";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
