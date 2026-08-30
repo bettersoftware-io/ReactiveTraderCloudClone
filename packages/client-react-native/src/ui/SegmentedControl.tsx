@@ -1,57 +1,33 @@
 import type { JSX } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  type TextStyle,
-  View,
-  type ViewStyle,
-} from "react-native";
 
-import type { RnTheme } from "#/ui/theme/tokens";
-import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
+import { type PillSegment, SegmentedPill } from "#/ui/SegmentedPill";
 
-/** The mobile-v1 boxed segmented control — the sub-nav the design puts under
- * the header on the Credit and Equities screens: one 1px `--border` frame,
- * radius 9, inset `10px 12px 0`, with equal-width 9px-mono segments that
- * fill with the accent when active and sit transparent otherwise (the
- * prototype's `eqTabs` / `credTabs`). Uppercasing is the caller's — the
- * labels are copy, not a transform.
+/** The module sub-nav the design puts under the header on the Credit and
+ * Equities screens (`credTabs`/`eqTabs`) — `SegmentedPill`'s `subNav`
+ * geometry plus the id scheme those screens' contracts key on.
  *
- * `idPrefix` fixes the test surface: the frame is `${idPrefix}-nav`, each
- * segment `${idPrefix}-tab-${key}` — the ids the e2e/jest contracts key on. */
+ * That scheme is this component's whole reason to exist: `idPrefix` fixes the
+ * test surface as `${idPrefix}-nav` for the frame and `${idPrefix}-tab-${key}`
+ * for each segment, derived in ONE place rather than spelled out per cell in
+ * `EquitiesNav` and `CreditNav`. */
 export function SegmentedControl<K extends string>({
   segments,
   value,
   onChange,
   idPrefix,
 }: SegmentedControlProps<K>): JSX.Element {
-  const styles = useThemedStyles(makeStyles);
+  const cells: readonly PillSegment<K>[] = segments.map((segment) => {
+    return { ...segment, testID: `${idPrefix}-tab-${segment.key}` };
+  });
 
   return (
-    <View style={styles.frame} testID={`${idPrefix}-nav`}>
-      {segments.map((segment) => {
-        const active = segment.key === value;
-
-        return (
-          <Pressable
-            key={segment.key}
-            testID={`${idPrefix}-tab-${segment.key}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            style={active ? styles.segmentActive : styles.segment}
-            onPress={() => {
-              onChange(segment.key);
-            }}
-          >
-            <Text style={active ? styles.labelActive : styles.label}>
-              {segment.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <SegmentedPill
+      segments={cells}
+      value={value}
+      onChange={onChange}
+      variant="subNav"
+      frameTestID={`${idPrefix}-nav`}
+    />
   );
 }
 
@@ -65,42 +41,4 @@ interface SegmentedControlProps<K extends string> {
   readonly value: K;
   readonly onChange: (key: K) => void;
   readonly idPrefix: string;
-}
-
-interface SegmentedControlStyles {
-  frame: ViewStyle;
-  segment: ViewStyle;
-  segmentActive: ViewStyle;
-  label: TextStyle;
-  labelActive: TextStyle;
-}
-
-function makeStyles(t: RnTheme): SegmentedControlStyles {
-  const segment: ViewStyle = {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 9,
-  };
-
-  const label: TextStyle = {
-    fontSize: 9,
-    letterSpacing: 1.5,
-    ...weightedFont(t, "mono", "600"),
-  };
-
-  return StyleSheet.create({
-    frame: {
-      flexDirection: "row",
-      marginTop: 10,
-      marginHorizontal: 12,
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      borderRadius: 9,
-      overflow: "hidden",
-    },
-    segment,
-    segmentActive: { ...segment, backgroundColor: t.accentPrimary },
-    label: { ...label, color: t.textSecondary },
-    labelActive: { ...label, color: t.textOnAccent },
-  });
 }
