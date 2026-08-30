@@ -4,6 +4,7 @@ import { isValidElement, type ReactNode } from "react";
 
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 
+import { TradeTicketFixture } from "./fixtures";
 import { SCENARIO_IDS } from "./scenarioIds";
 import { getScenario, SCENARIOS } from "./scenarios";
 
@@ -53,6 +54,19 @@ test("shell/appearance nests AppearanceOverlay inside its own BottomSheetModalPr
   expect(tree).toBeDefined();
 
   const ancestors = collectAncestorTypes(tree, AppearanceOverlay);
+  expect(ancestors).toBeDefined();
+  expect(ancestors).toContain(BottomSheetModalProvider);
+});
+
+// `TradeTicketSheet` mounts a `BottomSheetModal` too, so `rates/ticket` is in
+// the same crash class as `shell/appearance` above — and the package-wide
+// `__mocks__/@gorhom/bottom-sheet.tsx` double hides it from every other
+// jest-tier check just the same. Asserted on the un-rendered element tree.
+test("rates/ticket nests TradeTicketFixture inside its own BottomSheetModalProvider", () => {
+  const tree = getScenario("rates/ticket")?.build();
+  expect(tree).toBeDefined();
+
+  const ancestors = collectAncestorTypes(tree, TradeTicketFixture);
   expect(ancestors).toBeDefined();
   expect(ancestors).toContain(BottomSheetModalProvider);
 });

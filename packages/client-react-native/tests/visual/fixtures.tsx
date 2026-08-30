@@ -13,6 +13,7 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { AnalyticsDashboard } from "#/ui/analytics/AnalyticsDashboard";
@@ -20,6 +21,8 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
+import { RatesModule } from "#/ui/rates/RatesModule";
+import { TradeTicketSheet } from "#/ui/rates/ticket/TradeTicketSheet";
 import { BootClockContext } from "#/ui/shell/boot/BootClockContext";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { ActiveModuleContext } from "#/ui/shell/hud/ActiveModuleContext";
@@ -449,6 +452,49 @@ export function LockHoldFixture(): ReactNode {
     </LockHoldProgressContext.Provider>
   );
 }
+
+/**
+ * The REAL `TradeTicketSheet`, presented over the Rates grid — the spot ticket
+ * the prototype shows at `docs/design/mobile/v1/reference-shots/rates/ticket.png`.
+ *
+ * Mounted the way the app mounts it, not a stand-in: `RatesModule` hosts the
+ * sheet behind a selected-pair `useState` with no prop seam (selecting a tile
+ * is the only way in), so this fixture renders the sheet ITSELF alongside a
+ * live `RatesModule`, pinned to the fake ViewModel's first currency pair. The
+ * grid behind is what the shot shows through the sheet's blurred background,
+ * so it is part of the frame rather than decoration.
+ *
+ * Deterministic without any pin of its own: the sheet's three seams all come
+ * from `fake/rates.ts` — `usePrice` returns that pair's frozen `Price`,
+ * `useNotional` a formatted view of `pair.defaultNotional`, and
+ * `useTileExecution` the resting `{ status: "ready" }` arm, under which
+ * `ExecutionCeremony` renders nothing. The scenario still seeds power-saver
+ * `freeze` (see `scenarios.tsx`): `ExecutionCeremony`'s motion and the shell
+ * chrome around it are gated by `useShellMotionEnabled`, which reads
+ * power-saver rather than `forceReduceMotion`.
+ *
+ * `TradeTicketSheet` presents itself through an imperative ref in a mount
+ * effect (gorhom's API, no `visible` prop), and a `BottomSheetModal` throws
+ * `'BottomSheetModalInternalContext' cannot be null!` with no
+ * `BottomSheetModalProvider` ancestor — the scenario supplies one of its own,
+ * exactly as `shell/appearance` does and for the same reason (this harness
+ * route is a sibling of `app/(app)`, whose `Chrome` provides it in the app).
+ */
+export function TradeTicketFixture(): ReactNode {
+  const { useCurrencyPairs } = useViewModel();
+  const pair = useCurrencyPairs()[0];
+
+  return (
+    <>
+      <ShellFrameFixture module="rates">
+        <RatesModule />
+      </ShellFrameFixture>
+      <TradeTicketSheet pair={pair} onClose={NOOP_CLOSE_TICKET} />
+    </>
+  );
+}
+
+function NOOP_CLOSE_TICKET(): void {}
 
 interface ShellFrameProps {
   /** A `MODULE_ROUTES` key — `rates` | `blotter` | `analytics` | `credit` |
