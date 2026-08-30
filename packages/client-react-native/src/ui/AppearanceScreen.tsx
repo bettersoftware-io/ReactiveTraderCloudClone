@@ -1,6 +1,5 @@
 // packages/client-react-native/src/ui/AppearanceScreen.tsx
-import { BlurView } from "expo-blur";
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import {
   Pressable,
   ScrollView,
@@ -16,8 +15,6 @@ import {
   type AmbientStyle,
   POWER_SAVER_LEVELS,
   type PowerSaverLevel,
-  THEME_MODE_PREFERENCES,
-  type ThemeMode,
   type ThemeModePreference,
   type ThemeSkin,
 } from "@rtc/domain";
@@ -27,19 +24,34 @@ import {
   cyclesToReach,
   SKIN_DISPLAY_ORDER,
 } from "#/ui/shell/appearance/appearanceLayout";
+import { SheetSwitch } from "#/ui/shell/appearance/SheetSwitch";
+import { ThemeModePill } from "#/ui/shell/appearance/ThemeModePill";
 import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
-/** The Appearance settings screen: an APPEARANCE header with a single 3-way
- * dark/light/system mode segment (replacing the old title-label + tap-to-cycle
- * row + 2-way segment — two controls for one setting collapsed to one), theme
- * cards (swatch + name) for the six skins, an ambient toggle, a three-level
- * power-saver control, a replay-boot action, and sign-out (moved here from the
- * HUD header by P7). All state and every write is behind the ViewModel; this
- * only renders view state and dispatches the exposed intents — no direct
- * storage, no domain writes. */
+/** The Appearance sheet's content, dressed as the mobile-v1 prototype's own
+ * appearance sheet (`Reactive Trader Mobile.dc.html`, appearance-sheet block).
+ *
+ * The design's four rows come first, in the design's order and contiguously,
+ * so the top of the sheet reads as the reference shot: the APPEARANCE title
+ * with the mode pill inline beside it, the 3x2 theme-card grid (each card
+ * previewing its OWN skin's background and accents), the ambient-background
+ * row with a real pill switch, and `▸ REPLAY BOOT SEQUENCE`.
+ *
+ * Four controls the design has no equivalent of then follow, below all of it,
+ * dressed in the same idiom rather than dropped: the mode pill's third `AUTO`
+ * cell (inline, since it belongs to that control), the Aurora/Rays ambient
+ * style picker, the Off/Calm/Freeze power-saver segment — the only way a
+ * phone user can reach Freeze at all — and Sign out. That is what makes the
+ * sheet taller than the design's ~55%; it is translucent and blurred
+ * (`AppearanceOverlay`), so the grid behind still reads through, as in the
+ * prototype shot.
+ *
+ * All state and every write stays behind the ViewModel; this renders view
+ * state and dispatches the exposed intents — no direct storage, no domain
+ * writes. */
 export function AppearanceScreen({
   onReplayBoot,
 }: AppearanceScreenProps = {}): JSX.Element {
@@ -56,15 +68,6 @@ export function AppearanceScreen({
   const { enabled: ambientEnabled, setEnabled: setAmbientEnabled } =
     useAnimatedBackground();
 
-  // P5: a THREE-state segmented control, mirroring the web's. This was a
-  // 2-state Off/On toggle that could only reach "calm", with Freeze "deferred
-  // to a later mobile-UI phase" — which is why the item was recorded as
-  // "Freeze renders the same as Calm on RN". That description pointed at the
-  // wrong layer: the gates honour Freeze throughout (54 files read
-  // `useShellMotionEnabled`/`useBootMotionEnabled`/`isFreeze`, and the visual
-  // harness seeds `freeze` directly — that is how `boot/static` is pinned).
-  // The plumbing was never missing; the CONTROL simply could not select the
-  // level, so no phone user could ever reach it.
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
   const { style: ambientStyle, setStyle } = useAmbientStyle();
@@ -88,248 +91,228 @@ export function AppearanceScreen({
     }
   }
 
+  function replayBoot(): void {
+    reboot();
+    // The splash renders BEHIND this sheet, so raising it without telling the
+    // host means the whole boot sequence plays, and finishes, unseen. That is
+    // what "Replay Boot never worked" actually looked like.
+    onReplayBoot?.();
+  }
+
   return (
     <ScrollView
       testID="appearance-panel"
       style={styles.panel}
       contentContainerStyle={styles.content}
     >
-      {/* One 3-way segment replaces the old title + tap-to-cycle row + 2-way
-          segment (two controls for one setting). The design's own header row
-          (dev-handoff standalone HTML, "appearance sheet" block) places a
-          2-way DARK/LIGHT segment inline beside the APPEARANCE title and
-          fits — but it has no SYSTEM option, so there is no real measurement
-          for a 3-way segment at that width. Rather than guess at the extra
-          cell's fit (the class of error that produced P8), the segment sits
-          on its own row beneath the title, which is safe by construction at
-          any width. */}
-      <View testID="appearance-mode-section" style={styles.section}>
+      {/* The design puts the title and the mode selector on ONE row. The
+          third AUTO cell is what made that a real measurement rather than a
+          copy: `ThemeModePill`'s cells are intrinsically sized and this
+          title carries `flexShrink: 1`, so the title — never the pill — is
+          what gives way on a narrow screen. Asserted from live styles in
+          AppearanceScreen.test.tsx. */}
+      <View testID="appearance-mode-section" style={styles.headerRow}>
         <Text style={styles.headerTitle}>APPEARANCE</Text>
-        <BlurCard mode={mode}>
-          <View style={styles.segmented}>
-            {THEME_MODE_PREFERENCES.map((target) => {
-              const active = modePreference === target;
+        <ThemeModePill value={modePreference} onSelect={jumpToMode} />
+      </View>
+
+      <View testID="appearance-skin-grid" style={styles.skinGrid}>
+        {SKIN_DISPLAY_ORDER.map((s) => {
+          const active = s === skin;
+          // The card previews the skin it OFFERS, not the one in force: the
+          // design fills each card with that skin's own `bg` and paints its
+          // name in that skin's own accent (active) or dim (inactive). Only
+          // the card's BORDER and glow come from the live theme.
+          const preview = rnThemeTokens[s][mode];
+
+          return (
+            <View
+              key={s}
+              testID={`appearance-skin-${s}-cell`}
+              style={styles.skinCardWrap}
+            >
+              <Pressable
+                testID={
+                  active
+                    ? `appearance-skin-${s}-active`
+                    : `appearance-skin-${s}`
+                }
+                style={[
+                  active ? styles.skinCardActive : styles.skinCard,
+                  { backgroundColor: preview.bgPrimary },
+                ]}
+                onPress={() => {
+                  setSkin(s);
+                }}
+              >
+                <View
+                  testID={`appearance-skin-${s}-swatch-row`}
+                  style={styles.skinSwatchRow}
+                >
+                  {/* Three sibling swatches deliberately share one testID
+                      (getAllByTestId) — the three semantic accents. The row
+                      itself carries its own testID too, purely so
+                      AppearanceScreen.test.tsx's derived swatch-overflow
+                      invariant test can read its real `gap` off a live
+                      rendered node instead of trusting the constant. */}
+                  {SWATCHES.map((swatch) => {
+                    return (
+                      <View
+                        key={swatch.accentKey}
+                        testID={`appearance-skin-${s}-swatch`}
+                        style={[
+                          styles.skinSwatch,
+                          {
+                            width: swatch.width,
+                            backgroundColor: preview[swatch.accentKey],
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+                <Text
+                  testID={`appearance-skin-${s}-label`}
+                  style={[
+                    styles.skinLabel,
+                    {
+                      color: active
+                        ? preview.accentPrimary
+                        : preview.textSecondary,
+                    },
+                  ]}
+                >
+                  {THEME_DISPLAY_NAME[s]}
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Inert row, pressable switch — the design's own division of labour.
+          The switch keeps the `appearance-ambient-toggle` id the row used to
+          carry, so the press still lands on the control that owns it. */}
+      <View style={styles.ambientRow}>
+        <View style={styles.ambientTextGroup}>
+          <Text style={styles.ambientLabel}>Ambient background</Text>
+          <Text style={styles.ambientSubtitle}>
+            Aurora + HUD grid · GPU shader layer
+          </Text>
+        </View>
+        <SheetSwitch
+          testID="appearance-ambient-toggle"
+          accessibilityLabel="Ambient background"
+          checked={ambientEnabled}
+          onToggle={setAmbientEnabled}
+        />
+      </View>
+
+      <Pressable
+        testID="appearance-replay-boot"
+        style={styles.outlineButton}
+        onPress={replayBoot}
+      >
+        <Text style={styles.replayLabel}>▸ REPLAY BOOT SEQUENCE</Text>
+      </Pressable>
+
+      {/* The only real branch on this screen. The style picker is meaningless
+          while ambient is off (there is nothing to preview), so it must be
+          genuinely ABSENT from the tree, not merely disabled — the paired
+          hidden/shown tests in AppearanceScreen.test.tsx assert both
+          directions against the same container id. */}
+      {ambientEnabled ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>AMBIENT STYLE</Text>
+          <View testID="appearance-ambient-style" style={styles.segmented}>
+            {AMBIENT_STYLES.map((style) => {
+              const active = style === ambientStyle;
+
               return (
                 <Pressable
-                  key={target}
-                  testID={`appearance-mode-${target}`}
+                  key={style}
+                  testID={`appearance-ambient-style-${style}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
                   style={active ? styles.segmentActive : styles.segment}
                   onPress={() => {
-                    jumpToMode(target);
+                    setStyle(style);
                   }}
                 >
-                  <Text style={styles.segmentLabel}>{MODE_LABEL[target]}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </BlurCard>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Skin</Text>
-        <View testID="appearance-skin-grid" style={styles.skinGrid}>
-          {SKIN_DISPLAY_ORDER.map((s) => {
-            const active = s === skin;
-            const swatch = rnThemeTokens[s][mode];
-            return (
-              <View
-                key={s}
-                testID={`appearance-skin-${s}-cell`}
-                style={styles.skinCardWrap}
-              >
-                <BlurCard mode={mode}>
-                  <Pressable
-                    testID={
-                      active
-                        ? `appearance-skin-${s}-active`
-                        : `appearance-skin-${s}`
+                  <Text
+                    style={
+                      active ? styles.segmentLabelActive : styles.segmentLabel
                     }
-                    style={active ? styles.skinCardActive : styles.skinCard}
-                    onPress={() => {
-                      setSkin(s);
-                    }}
                   >
-                    <View
-                      testID={`appearance-skin-${s}-swatch-row`}
-                      style={styles.skinSwatchRow}
-                    >
-                      {/* Three sibling swatches deliberately share one
-                          testID (getAllByTestId) — the three semantic
-                          accents (primary/positive/negative), not the old
-                          card's bgTile + accent2 pairing. The row itself
-                          carries its own testID too, purely so
-                          AppearanceScreen.test.tsx's derived swatch-overflow
-                          invariant test can read its real `gap` off a live
-                          rendered node instead of trusting the constant. */}
-                      {SWATCH_ACCENT_KEYS.map((accentKey) => {
-                        return (
-                          <View
-                            key={accentKey}
-                            testID={`appearance-skin-${s}-swatch`}
-                            style={[
-                              styles.skinSwatch,
-                              { backgroundColor: swatch[accentKey] },
-                            ]}
-                          />
-                        );
-                      })}
-                    </View>
-                    <Text
-                      testID={`appearance-skin-${s}-label`}
-                      style={styles.skinLabel}
-                    >
-                      {THEME_DISPLAY_NAME[s]}
-                    </Text>
-                  </Pressable>
-                </BlurCard>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Motion</Text>
-        <BlurCard mode={mode}>
-          <Pressable
-            testID="appearance-ambient-toggle"
-            style={ambientEnabled ? styles.toggleRowOn : styles.toggleRow}
-            onPress={() => {
-              setAmbientEnabled(!ambientEnabled);
-            }}
-          >
-            <View style={styles.toggleTextGroup}>
-              <Text style={styles.toggleLabel}>Ambient background</Text>
-              <Text style={styles.toggleSubtitle}>
-                Aurora + HUD grid · GPU shader layer
-              </Text>
-            </View>
-            <Text style={styles.toggleValue}>
-              {ambientEnabled ? "ON" : "OFF"}
-            </Text>
-          </Pressable>
-        </BlurCard>
-        {/* The only real branch on this screen. The style picker is
-            meaningless while ambient is off (there is nothing to preview),
-            so it must be genuinely ABSENT from the tree, not merely
-            disabled — the paired hidden/shown tests in
-            AppearanceScreen.test.tsx assert both directions against the
-            same container id. Confirmed as a genuine RED: rendering this
-            unconditionally first made the "HIDDEN" test fail for real
-            (found the live element instead of null) before this gate was
-            added back. */}
-        {ambientEnabled ? (
-          <BlurCard mode={mode}>
-            <View testID="appearance-ambient-style" style={styles.segmented}>
-              {AMBIENT_STYLES.map((style) => {
-                const active = style === ambientStyle;
-                return (
-                  <Pressable
-                    key={style}
-                    testID={`appearance-ambient-style-${style}`}
-                    style={active ? styles.segmentActive : styles.segment}
-                    onPress={() => {
-                      setStyle(style);
-                    }}
-                  >
-                    <Text style={styles.segmentLabel}>
-                      {AMBIENT_STYLE_LABEL[style]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </BlurCard>
-        ) : null}
-        {/* This segment renders through the SAME
-            `styles.segmented`/`segment`/`segmentActive` objects as the mode
-            segment above and the ambient style picker above that — one
-            `StyleSheet.create` call, shared by reference, not three copies.
-            The mode segment's own derived invariant test (below, in
-            AppearanceScreen.test.tsx) already proves those objects give
-            every cell `flex: 1` (equal division of the row, safe at any
-            width, no wrap/clip threshold); the ambient picker relied on that
-            same proof for its own 2-cell segment without adding a second
-            copy of the test, and this segment follows that precedent rather
-            than adding a third. */}
-        <Text style={styles.label}>Power saver</Text>
-        <BlurCard mode={mode}>
-          <View style={styles.segmented}>
-            {POWER_SAVER_LEVELS.map((level) => {
-              return (
-                <Pressable
-                  key={level}
-                  testID={`appearance-power-${level}`}
-                  style={
-                    powerSaverLevel === level
-                      ? styles.segmentActive
-                      : styles.segment
-                  }
-                  onPress={() => {
-                    setPowerSaverLevel(level);
-                  }}
-                >
-                  <Text style={styles.segmentLabel}>
-                    {POWER_SAVER_LABELS[level]}
+                    {AMBIENT_STYLE_LABEL[style]}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-        </BlurCard>
-        <Text style={styles.toggleCaption}>
+        </View>
+      ) : null}
+
+      {/* Renders through the SAME `segmented`/`segment`/`segmentActive`
+          objects as the ambient picker above — one `StyleSheet.create` call,
+          shared by reference, not two copies. The derived invariant test in
+          AppearanceScreen.test.tsx proves those objects give every cell
+          `flex: 1` (equal division of the row, safe at any width, no
+          wrap/clip threshold), which covers both segments at once. */}
+      <View style={styles.section}>
+        <Text style={styles.sectionHeading}>POWER SAVER</Text>
+        <View style={styles.segmented}>
+          {POWER_SAVER_LEVELS.map((level) => {
+            const active = powerSaverLevel === level;
+
+            return (
+              <Pressable
+                key={level}
+                testID={`appearance-power-${level}`}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={active ? styles.segmentActive : styles.segment}
+                onPress={() => {
+                  setPowerSaverLevel(level);
+                }}
+              >
+                <Text
+                  style={
+                    active ? styles.segmentLabelActive : styles.segmentLabel
+                  }
+                >
+                  {POWER_SAVER_LABELS[level]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.caption}>
           {POWER_SAVER_CAPTIONS[powerSaverLevel]}
         </Text>
       </View>
 
-      {/* `replayButton` spreads `rowBase` (the same base the ambient toggle
-          row above uses) with no fixed or percentage width and no
-          `numberOfLines` cap — the label is one `Text` node in a full-width,
-          height-auto row. A narrower device just grows the row and wraps the
-          text onto a second line; there is no width at which it discretely
-          clips or collapses, so — like the ambient toggle row's own text —
-          this needs no derived invariant test. */}
-      <View style={styles.section}>
-        <BlurCard mode={mode}>
-          <Pressable
-            testID="appearance-replay-boot"
-            style={styles.replayButton}
-            onPress={() => {
-              reboot();
-              // The splash renders BEHIND this sheet, which is an opaque
-              // full-screen overlay — raise it without telling the host and the
-              // whole boot sequence plays, and finishes, unseen. That is what
-              // "Replay Boot never worked" actually looked like.
-              onReplayBoot?.();
-            }}
-          >
-            <Text style={styles.replayButtonText}>▸ REPLAY BOOT SEQUENCE</Text>
-          </Pressable>
-        </BlurCard>
-      </View>
-
-      {/* Sign-out lives here rather than in the HUD header (P7): the
-          prototype's header carries exactly two glyph controls and no
-          sign-out, and the third text affordance is what pushed that row off
-          the edge of the screen. Last section deliberately — it is the only
-          destructive action on the sheet, so it sits below everything
-          reversible. */}
-      <View style={styles.section}>
-        <BlurCard mode={mode}>
-          <LogoutButton />
-        </BlurCard>
-      </View>
+      {/* Last deliberately — the only destructive action on the sheet, so it
+          sits below everything reversible. */}
+      <LogoutButton />
     </ScrollView>
   );
 }
 
-/** The prototype names the levels rather than showing a switch, because three
- * states cannot be an on/off affordance. */
+interface AppearanceScreenProps {
+  /** Slot: fired after the boot splash is re-raised, so a host that covers the
+   * screen (the Appearance overlay) can get out of its way. Optional — the
+   * screen is also mounted standalone, where there is nothing to dismiss. */
+  readonly onReplayBoot?: () => void;
+}
+
+/** The design names the levels rather than showing a switch, because three
+ * states cannot be an on/off affordance. Uppercase to sit in the design's
+ * tracked-mono segment idiom, alongside AURORA/RAYS. */
 const POWER_SAVER_LABELS: Record<PowerSaverLevel, string> = {
-  off: "Off",
-  calm: "Calm",
-  freeze: "Freeze",
+  off: "OFF",
+  calm: "CALM",
+  freeze: "FREEZE",
 };
 
 /** Each level earns its own caption: "reduces motion" and "stops all motion"
@@ -341,55 +324,24 @@ const POWER_SAVER_CAPTIONS: Record<PowerSaverLevel, string> = {
   freeze: "Stops all motion, including the boot splash and ambient layer.",
 };
 
-interface AppearanceScreenProps {
-  /** Slot: fired after the boot splash is re-raised, so a host that covers the
-   * screen (the Appearance overlay) can get out of its way. Optional — the
-   * screen is also mounted standalone, where there is nothing to dismiss. */
-  readonly onReplayBoot?: () => void;
-}
-
-interface BlurCardProps {
-  mode: ThemeMode;
-  children: ReactNode;
-}
-
-/** Frosted-glass wrapper: `panel` tokens are translucent (Task 1), so card
- * rows are painted over a real blur rather than a flat colour. The blur sits
- * behind `children` (RN z-orders by render order), clipped to the same
- * rounded rect the row content draws. */
-function BlurCard({ mode, children }: BlurCardProps): JSX.Element {
-  return (
-    <View style={cardStyles.blurWrap}>
-      <BlurView intensity={30} tint={mode} style={StyleSheet.absoluteFill} />
-      {children}
-    </View>
-  );
-}
-
-const cardStyles = StyleSheet.create({
-  blurWrap: { borderRadius: 8, overflow: "hidden" },
-});
-
-const MODE_LABEL: Record<ThemeModePreference, string> = {
-  dark: "Dark",
-  light: "Light",
-  system: "System",
-};
-
 const AMBIENT_STYLE_LABEL: Record<AmbientStyle, string> = {
-  aurora: "Aurora",
-  rays: "Rays",
+  aurora: "AURORA",
+  rays: "RAYS",
 };
 
-// The three semantic accents a skin card's swatch row renders, in display
-// order. Single source for the three near-identical swatch Views: a fourth
-// swatch or a reordering only needs updating here, not in three separate JSX
-// blocks.
-const SWATCH_ACCENT_KEYS: readonly (
-  | "accentPrimary"
-  | "accentPositive"
-  | "accentNegative"
-)[] = ["accentPrimary", "accentPositive", "accentNegative"];
+/** One swatch of a theme card's preview row. The design's widths are not
+ * uniform — the accent takes 16, the two directional accents 8 each — so a
+ * card reads as "this skin's colour, plus its up and its down". */
+interface SwatchSpec {
+  readonly accentKey: "accentPrimary" | "accentPositive" | "accentNegative";
+  readonly width: number;
+}
+
+const SWATCHES: readonly SwatchSpec[] = [
+  { accentKey: "accentPrimary", width: 16 },
+  { accentKey: "accentPositive", width: 8 },
+  { accentKey: "accentNegative", width: 8 },
+];
 
 // Display names ported from docs/design/mobile/v1/dev-handoff/theme-tokens.ts
 // (THEMES map's `name` field), matching the prototype's uppercase header
@@ -406,13 +358,8 @@ const THEME_DISPLAY_NAME: Record<ThemeSkin, string> = {
 interface AppearanceScreenStyles {
   panel: ViewStyle;
   content: ViewStyle;
-  section: ViewStyle;
-  label: TextStyle;
+  headerRow: ViewStyle;
   headerTitle: TextStyle;
-  segmented: ViewStyle;
-  segment: ViewStyle;
-  segmentActive: ViewStyle;
-  segmentLabel: TextStyle;
   skinGrid: ViewStyle;
   skinCardWrap: ViewStyle;
   skinCard: ViewStyle;
@@ -420,188 +367,204 @@ interface AppearanceScreenStyles {
   skinSwatchRow: ViewStyle;
   skinSwatch: ViewStyle;
   skinLabel: TextStyle;
-  toggleRow: ViewStyle;
-  toggleRowOn: ViewStyle;
-  toggleTextGroup: ViewStyle;
-  toggleLabel: TextStyle;
-  toggleSubtitle: TextStyle;
-  toggleValue: TextStyle;
-  toggleCaption: TextStyle;
-  replayButton: ViewStyle;
-  replayButtonText: TextStyle;
+  ambientRow: ViewStyle;
+  ambientTextGroup: ViewStyle;
+  ambientLabel: TextStyle;
+  ambientSubtitle: TextStyle;
+  outlineButton: ViewStyle;
+  replayLabel: TextStyle;
+  section: ViewStyle;
+  sectionHeading: TextStyle;
+  segmented: ViewStyle;
+  segment: ViewStyle;
+  segmentActive: ViewStyle;
+  segmentLabel: TextStyle;
+  segmentLabelActive: TextStyle;
+  caption: TextStyle;
 }
 
 function makeStyles(t: RnTheme): AppearanceScreenStyles {
-  const rowBase: ViewStyle = {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  // The design's active card carries `box-shadow: 0 0 14px glowC`, but only
+  // on the skins that HAVE a glow (`glowC` is null on classic and both
+  // terminal faces). A CSS blur radius of 14 is an iOS `shadowRadius` of ~7;
+  // `glowC` already carries its own alpha, so opacity stays at 1 rather than
+  // multiplying it down. Offset is pinned to zero — an omitted `shadowOffset`
+  // defaults to a downward drop, which would read as a card lifting off the
+  // sheet rather than glowing in place.
+  const glow: ViewStyle =
+    t.glowC === null
+      ? {}
+      : {
+          shadowColor: t.glowC,
+          shadowOpacity: 1,
+          shadowRadius: 7,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 6,
+        };
+
+  // Design: `border-radius:10px;border:1.5px solid;padding:8px 8px 7px;
+  // text-align:left`.
+  const skinCard: ViewStyle = {
+    alignItems: "flex-start",
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 7,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  };
+
+  // Design: the sheet's two full-width outline actions share one frame —
+  // `border:1px solid var(--border);border-radius:10px;padding:12px 0`.
+  const outlineButton: ViewStyle = {
     alignItems: "center",
-    padding: 14,
-    borderRadius: 8,
-    backgroundColor: t.panel,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.borderSubtle,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: t.borderPrimary,
+  };
+
+  // The design's tab frame (`credTabs`/`eqTabs`: `1px --border`, radius 9,
+  // clipped) with equal-width cells — the idiom `SegmentedControl` already
+  // ports for the Credit and Equities sub-navs. Not reused from there: that
+  // component bakes in the sub-nav's own `10px 12px 0` inset and derives its
+  // test ids as `${prefix}-tab-${key}`, neither of which this sheet can take.
+  const segment: ViewStyle = {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 9,
+  };
+
+  const segmentLabel: TextStyle = {
+    fontSize: 9,
+    letterSpacing: 1.5,
+    ...weightedFont(t, "mono", "600"),
   };
 
   return StyleSheet.create({
-    panel: { flex: 1, backgroundColor: t.bgPrimary },
-    content: { padding: 16, gap: 24 },
-    section: { gap: 8 },
-    label: {
-      fontSize: 12,
-      color: t.textSecondary,
-      ...weightedFont(t, "display", "600"),
+    // Transparent, not `bgPrimary`: the sheet behind this is a translucent
+    // panel over a real blur (`AppearanceOverlay`), and an opaque scroll
+    // surface here would paint straight over it.
+    panel: { flex: 1, backgroundColor: "transparent" },
+    // Design: the sheet's own `padding:10px 16px 24px`. Applied here rather
+    // than on the sheet body, so the padding scrolls with the content instead
+    // of clipping it.
+    content: { paddingTop: 10, paddingHorizontal: 16, paddingBottom: 24 },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      marginBottom: 13,
     },
-    // Matches the design's own header ("appearance sheet" block, dev-handoff
-    // standalone HTML): font-size 14px, font-weight 600, letter-spacing
-    // 1.5px. Title case rather than CSS text-transform, matching the file's
-    // existing convention of literal-uppercase display strings (see
-    // THEME_DISPLAY_NAME above).
+    // Design: `font-size:14px;font-weight:600;letter-spacing:1.5px`.
+    // `flexShrink: 1` makes the title the element that gives way when the row
+    // runs out of width, so the mode pill's third cell can never be pushed
+    // off the edge of a narrow screen.
     headerTitle: {
+      flexShrink: 1,
       fontSize: 14,
       letterSpacing: 1.5,
       color: t.textPrimary,
       ...weightedFont(t, "display", "600"),
     },
-    segmented: {
+    // The design's grid is exact thirds at `gap: 8`. `flexWrap` + a
+    // percentage width is the RN equivalent, but a FIXED gap against a
+    // PERCENTAGE width means the row's no-wrap margin shrinks as the device
+    // narrows — a silent 2x3 collapse with every order/count/colour/press
+    // test still green. At 31% / gap 8 the no-wrap floor is a 228.6pt
+    // container (260.6pt device with this file's 16pt content padding),
+    // clearing a 320pt device by ~59pt. Asserted from the live rendered
+    // styles by the derived invariant test in AppearanceScreen.test.tsx
+    // rather than trusted from these constants.
+    skinGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    skinCardWrap: { width: "31%" },
+    skinCard: { ...skinCard, borderColor: t.borderPrimary },
+    // Border + glow are the design's only selection cues on a card (there is
+    // no check mark), and the glow is present only on glow-capable skins.
+    skinCardActive: { ...skinCard, ...glow, borderColor: t.accentPrimary },
+    // A SECOND, independent threshold from `skinGrid`'s: the card's own INNER
+    // content width (card width minus `paddingHorizontal` and `borderWidth`
+    // on both sides) against the swatch row's INTRINSIC width (16 + 8 + 8
+    // plus two 3pt gaps = 38pt, all fixed). That overflow is silent too, so
+    // AppearanceScreen.test.tsx derives this floor from live styles as well.
+    skinSwatchRow: { flexDirection: "row", gap: 3, marginBottom: 7 },
+    // `width` is per-swatch (see SWATCHES) — the design's accent swatch is
+    // twice the width of the two directional ones.
+    skinSwatch: { height: 16, borderRadius: 4 },
+    // Design: `font-family:var(--fm);font-size:8.5px;letter-spacing:1px`.
+    // Colour is per-card (the previewed skin's own accent or dim), so it is
+    // applied at the call site, not here.
+    skinLabel: { fontSize: 8.5, letterSpacing: 1, fontFamily: t.fontMono },
+    // Design: `border:1px solid var(--border-sub);border-radius:10px;
+    // padding:10px 13px`, then `margin-bottom:9px`.
+    ambientRow: {
       flexDirection: "row",
-      backgroundColor: t.panel,
-      borderRadius: 8,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.borderSubtle,
-      padding: 4,
-      gap: 4,
-    },
-    segment: {
-      flex: 1,
       alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
       paddingVertical: 10,
-      borderRadius: 6,
-    },
-    segmentActive: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 10,
-      borderRadius: 6,
-      backgroundColor: t.chip,
+      paddingHorizontal: 13,
+      borderRadius: 10,
       borderWidth: 1,
-      borderColor: t.accentPrimary,
-    },
-    segmentLabel: {
-      fontSize: 14,
-      color: t.textPrimary,
-      fontFamily: t.fontDisplay,
-    },
-    // 3x2 grid (Task 4): three cards per row. `flexWrap` only keeps three per
-    // row while the row's content width comfortably clears
-    // 3 * cardWidthPct + 2 * gap — a FIXED gap against a PERCENTAGE width
-    // means that margin shrinks as the device narrows, so it has to be
-    // checked, not assumed. At 31% width / gap 10 the no-wrap floor was a
-    // 285.7pt container (317.7pt device with this file's 16px content
-    // padding) — a 320pt device cleared it by 0.16pt, inside normal Yoga
-    // sub-pixel rounding noise, and a `gap` raised from 10 to 12 alone would
-    // have pushed the floor past 375pt and silently collapsed this to a 2x3
-    // grid with every existing test (order/count/colour/press) still green
-    // (Task 4 review, fix round 1). 30% moves the floor to a 200pt container
-    // (232pt device) — see the derived invariant test in
-    // AppearanceScreen.test.tsx, which asserts this margin rather than
-    // trusting the constant.
-    skinGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-    skinCardWrap: { width: "30%" },
-    skinCard: {
-      alignItems: "center",
-      padding: 12,
-      gap: 8,
-      borderRadius: 8,
-      backgroundColor: t.panel,
-      borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.borderSubtle,
-    },
-    // The ring is the design's only selection cue (the old check mark is
-    // gone), so the active card's border is the one visible difference.
-    skinCardActive: {
-      alignItems: "center",
-      padding: 12,
-      gap: 8,
-      borderRadius: 8,
-      backgroundColor: t.panel,
-      borderWidth: 2,
-      borderColor: t.accentPrimary,
-    },
-    // A SECOND, independent no-wrap-style threshold from `skinGrid`'s above:
-    // this one is the card's own INNER content width (card width minus
-    // `skinCard`'s `padding: 12` on both sides) against the swatch row's
-    // INTRINSIC width (3 swatches + 2 gaps, both FIXED pixel amounts, unlike
-    // the card width which is a percentage of the device). `skinGrid`'s
-    // comment above only proves three cards fit per row; it says nothing
-    // about whether the three swatches then fit INSIDE one of those cards —
-    // that overflow is silent, too: `blurWrap` (BlurCard) sets `overflow:
-    // "hidden"`, so a swatch row wider than its card just gets clipped, with
-    // every order/count/colour/press test in this file still green (fix
-    // round 2 review). At 18pt swatches / 6pt gap (66pt needed) the floor
-    // was 332pt — ABOVE the 320pt floor `AppearanceScreen.test.tsx` already
-    // asserts elsewhere in this same card grid, so a 320pt device would have
-    // silently clipped the third swatch. 16pt / 4pt (56pt needed) moves the
-    // floor to ~298.7pt, clearing 320pt with real margin — see the derived
-    // invariant test in AppearanceScreen.test.tsx, which asserts this margin
-    // from the live rendered styles rather than trusting these constants.
-    //
-    // 320pt was re-checked against real device support, not re-assumed: RN
-    // 0.86's Podfile pins `min_ios_version_supported` to 15.1
-    // (node_modules/react-native/scripts/cocoapods/helpers.rb), and iPhone SE
-    // (1st generation) — 320x568pt, the narrowest iPhone Apple ever shipped —
-    // is a supported iOS 15 device. So a 320pt device is a real, running
-    // target for this app today, not a retired one; 320 stays the floor
-    // rather than being widened to 375.
-    skinSwatchRow: { flexDirection: "row", gap: 4 },
-    skinSwatch: { width: 16, height: 16, borderRadius: 4 },
-    skinLabel: {
-      fontSize: 11,
-      color: t.textPrimary,
-      ...weightedFont(t, "display", "600"),
-      textAlign: "center",
-    },
-    toggleRow: rowBase,
-    toggleRowOn: {
-      ...rowBase,
-      borderWidth: 1,
-      borderColor: t.accentPrimary,
-      backgroundColor: t.chip,
+      marginBottom: 9,
     },
     // `flexShrink: 1` (not the row's default 0) lets this column give up
-    // width to its sibling `toggleValue` rather than force the row wider
-    // than its container — the same "safe by construction" answer as the
-    // mode segment's `flex: 1` cells, just on the shrink axis: the subtitle
-    // wraps onto a second line instead of clipping or pushing ON/OFF off
-    // the edge. No derived invariant test needed for this one (unlike the
-    // skin grid's percentage-width/fixed-gap trap): wrapping text has no
-    // wrap-vs-no-wrap threshold to silently cross, it just wraps.
-    toggleTextGroup: { flexShrink: 1 },
-    toggleLabel: {
-      fontSize: 16,
+    // width to the switch rather than force the row wider than its container:
+    // the subtitle wraps onto a second line instead of pushing the switch off
+    // the edge. Wrapping text has no wrap-vs-no-wrap threshold to silently
+    // cross, so this one needs no derived invariant test.
+    ambientTextGroup: { flexShrink: 1 },
+    ambientLabel: {
+      fontSize: 11,
+      letterSpacing: 0.5,
       color: t.textPrimary,
-      fontFamily: t.fontDisplay,
+      ...weightedFont(t, "display", "600"),
     },
-    toggleSubtitle: {
-      fontSize: 12,
+    ambientSubtitle: {
+      fontSize: 9,
       color: t.textMuted,
-      fontFamily: t.fontDisplay,
+      fontFamily: t.fontMono,
       marginTop: 2,
     },
-    toggleValue: {
-      fontSize: 12,
-      fontWeight: "600",
+    outlineButton,
+    // Design: `font-family:var(--fm);font-size:10px;letter-spacing:2px;
+    // color:var(--acc)`.
+    replayLabel: {
+      fontSize: 10,
+      letterSpacing: 2,
       color: t.accentPrimary,
+      fontFamily: t.fontMono,
     },
-    toggleCaption: { fontSize: 12, color: t.textMuted },
-    replayButton: {
-      ...rowBase,
-      justifyContent: "center",
+    // The app-only stack below the design's own rows.
+    section: { marginTop: 18 },
+    // The design's section-heading idiom, taken from the rows it does spell
+    // out (INSTRUMENT / DIRECTION / YOUR QUOTES):
+    // `font-family:var(--fm);font-size:8.5px;letter-spacing:2px;
+    // color:var(--faint)`.
+    sectionHeading: {
+      fontSize: 8.5,
+      letterSpacing: 2,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
+      marginBottom: 8,
     },
-    replayButtonText: {
-      fontSize: 16,
-      color: t.accentPrimary,
-      fontFamily: t.fontDisplay,
+    segmented: {
+      flexDirection: "row",
+      borderWidth: 1,
+      borderColor: t.borderPrimary,
+      borderRadius: 9,
+      overflow: "hidden",
+    },
+    segment,
+    segmentActive: { ...segment, backgroundColor: t.accentPrimary },
+    segmentLabel: { ...segmentLabel, color: t.textSecondary },
+    segmentLabelActive: { ...segmentLabel, color: t.textOnAccent },
+    caption: {
+      fontSize: 8.5,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
+      marginTop: 6,
     },
   });
 }

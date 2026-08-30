@@ -1,24 +1,28 @@
 import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  type BottomSheetBackgroundProps,
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { BlurView } from "expo-blur";
 import type { ComponentRef, JSX } from "react";
 import { useEffect, useRef } from "react";
-import { StyleSheet, type ViewStyle } from "react-native";
+import { StyleSheet, View, type ViewStyle } from "react-native";
+
+import { useViewModel } from "@rtc/react-bindings";
 
 import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Appearance overlay, presented as a `@gorhom/bottom-sheet` modal — mobile-v1
- * parity with the design's grab-handle sheet, replacing the old full-screen
- * `View` with its own `CLOSE ✕` header. The handle, a backdrop tap and
- * pan-down-to-dismiss now carry the closing job the button used to; idiom
- * copied from `TradeTicketSheet` (`BottomSheetModal` + `backdropComponent` +
- * `handleIndicatorStyle`). `BottomSheetModalProvider` already wraps the app
- * body in `app/(app)/_layout.tsx` — no provider here.
+ * parity with the design's grab-handle sheet. The handle, a backdrop tap and
+ * pan-down-to-dismiss carry the closing job; idiom copied from
+ * `TradeTicketSheet` (`BottomSheetModal` + `backdropComponent` +
+ * `backgroundComponent` + `handleIndicatorStyle`). `BottomSheetModalProvider`
+ * already wraps the app body in `app/(app)/_layout.tsx` — no provider here.
  *
  * Renders nothing when closed (mirrors the old `if (!open) return null`
  * contract `tests/visual/scenarios.tsx` pins the sheet open through), and
@@ -55,8 +59,8 @@ export function AppearanceOverlay({
       enableDynamicSizing={false}
       onDismiss={onClose}
       backdropComponent={AppearanceBackdrop}
+      backgroundComponent={AppearanceBackground}
       handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
       <BottomSheetView testID="appearance-sheet" style={styles.body}>
         <AppearanceScreen onReplayBoot={onClose} />
@@ -70,10 +74,12 @@ interface AppearanceOverlayProps {
   onClose: () => void;
 }
 
-/** Near-full-height: `AppearanceScreen` is a long settings scroll, not a
- * compact ticket — `TradeTicketSheet`'s `enableDynamicSizing` fits content
- * height instead, which would fight the screen's own `ScrollView`. */
-const SNAP_POINTS = ["92%"];
+/** The design's sheet stops around 55% of the screen, but it carries four
+ * fewer controls than this app does (a third mode cell, the ambient-style
+ * picker, the three-level power saver, sign out). 80% is that height plus the
+ * kept stack; the sheet is translucent and blurred either way, so the grid
+ * behind still reads through as it does in the prototype shot. */
+const SNAP_POINTS = ["80%"];
 
 // Private: dimmed backdrop, dismissing the sheet on press — TradeTicketSheet's
 // idiom. Not exported — rtc/component-newspaper permits private subcomponents
@@ -89,16 +95,62 @@ function AppearanceBackdrop(props: BottomSheetBackdropProps): JSX.Element {
   );
 }
 
+// Private: the sheet's own chrome — the design's
+// `background:var(--panel);backdrop-filter:blur(16px);border-top:1px solid
+// var(--border-strong);border-radius:18px 18px 0 0`. `t.panel` is a
+// translucent token whose design contract IS "translucent panel + blur", and
+// RN has no `backdrop-filter`, so this layers an `expo-blur` `BlurView` under
+// a `t.panel`-tinted overlay, clipped to the top corner radius — the same
+// construction `TradeTicketSheet`'s own background uses. Tint follows the
+// resolved light/dark mode rather than being pinned dark, since this sheet is
+// where a user switches between them.
+function AppearanceBackground({
+  style,
+}: BottomSheetBackgroundProps): JSX.Element {
+  const { useThemePreference } = useViewModel();
+  const { mode } = useThemePreference();
+  const t = useTheme();
+
+  return (
+    <View
+      style={[
+        style,
+        backgroundStyles.chrome,
+        { borderTopColor: t.borderStrong },
+      ]}
+    >
+      <BlurView intensity={16} tint={mode} style={StyleSheet.absoluteFill} />
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: t.panel }]}
+      />
+    </View>
+  );
+}
+
+const backgroundStyles = StyleSheet.create({
+  chrome: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 1,
+    overflow: "hidden",
+  },
+});
+
 interface AppearanceOverlayStyles {
   handleIndicator: ViewStyle;
-  background: ViewStyle;
   body: ViewStyle;
 }
 
 function makeStyles(t: RnTheme): AppearanceOverlayStyles {
   return StyleSheet.create({
-    handleIndicator: { backgroundColor: t.borderSubtle },
-    background: { backgroundColor: t.bgPrimary },
+    // Design: `width:38px;height:4px;border-radius:2px;background:var(--border)`.
+    handleIndicator: {
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.borderPrimary,
+    },
     body: { flex: 1 },
   });
 }
