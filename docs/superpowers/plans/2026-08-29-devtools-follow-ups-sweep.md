@@ -787,6 +787,8 @@ it("trims zero-event frames past maxFrames even when totalEvents never grows", (
 - Test: `packages/devtools-app/src/__tests__/disableReactDevtoolsHook.test.ts`
 - Docs: `docs/architecture/20-devtools.md` §20.10 (after the paragraph noting React installs `__REACT_DEVTOOLS_GLOBAL_HOOK__` even in production), `packages/devtools-app/README.md` (after "How to run"), `packages/devtools-extension/README.md` (before "## Build & load"), `docs/STATUS.md` (delete the interference finding; the polish entry can now go entirely if nothing else remains).
 
+> **SUPERSEDED at execution (2026-08-30).** The import-order design below was ruled out: `biome.jsonc` sets `sortBareImports: true` and no import group sorts ahead of `react`, so a side-effect import cannot be kept first without a lint disable, which the repo bans. Shipped instead (PR #620): a classic inline `<script>` in `packages/devtools-app/index.html` before the module entry, unit-tested by extracting it, and asserted post-build by `check:devtools-dist`; the extension panel carries no guard (MV3 CSP forbids inline scripts; React DevTools does not attach to `chrome-extension://` pages). See `docs/architecture/20-devtools.md` §20.10.
+
 Why this shape: `react-dom@19.2.8` calls `injectInternals()` ONCE, at module-evaluation time, and bails on `hook.isDisabled` before `hook.inject()`. ES-module import order — not `createRoot` timing — decides; a side-effect module imported first runs before `react-dom/client` evaluates. Biome's import sorter treats side-effect imports as group separators and does not move them (verify with `pnpm exec biome ci .`).
 
 - [ ] **Step 1: Failing test:**

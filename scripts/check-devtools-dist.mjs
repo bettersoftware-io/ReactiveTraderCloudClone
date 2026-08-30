@@ -25,4 +25,12 @@ if (!html.includes("/devtools/")) {
   process.exit(1);
 }
 
+if (!html.includes("__REACT_DEVTOOLS_GLOBAL_HOOK__")) {
+  console.error(
+    "check-devtools-dist: the React DevTools guard script was dropped from " +
+      "the prod /devtools/ page — see docs/architecture/20-devtools.md §20.10",
+  );
+  process.exit(1);
+}
+
 console.log("check-devtools-dist: prod /devtools/ bundle OK");

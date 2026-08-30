@@ -525,6 +525,7 @@ deployed Solid app"):
   *default*: React installs a global hook (`__REACT_DEVTOOLS_GLOBAL_HOOK__`)
   even in a production build, so the extension can walk the (minified) tree with
   **no build-time wiring**.
+
 - **Official Solid DevTools does _not_ work against the deployed Solid client.**
   It requires the `solid-devtools` package plus its Vite plugin, and this repo
   wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin
@@ -533,6 +534,26 @@ deployed Solid app"):
   module** (`index_noop.js`) in a production build. So the production Solid
   bundle ships **no** solid-devtools runtime, and the extension has nothing to
   hook.
+
+**The RTC inspector page turns this default off for itself.** The extension's
+backend serialises every component's props on every commit; the inspector
+deliberately carries a 5,000-row event log and whole `InspectorState`
+snapshots as props, so under live traffic (~15 commits/s) it storms
+`RangeError: Invalid string length` and the tab goes unresponsive
+(live-acceptance, 2026-07-21). React reads `hook.isDisabled` at
+module-evaluation time, so the guard has to run before any module script —
+an ES-module import can't guarantee that (`biome.jsonc`'s `organizeImports`
+groups sort a same-package import after `react`/`react-dom` regardless of
+source position, and this repo bans lint-disable comments). Instead
+`packages/devtools-app/index.html` carries the guard as a **classic inline
+`<script>` in `<head>`, before the `type="module"` entry script** — classic
+scripts run synchronously in document order, ahead of any deferred module
+script, so no import order is involved at all. Opt back in with
+`?react-devtools` to debug the inspector's own React tree.
+`scripts/check-devtools-dist.mjs` asserts the built `/devtools/` page still
+contains the guard, post-build. The extension panel is its own
+`chrome-extension://` page that the content script never reaches, and MV3's
+CSP forbids inline scripts there anyway, so it carries no guard.
 
 **Why solid-devtools stays dev-only — the perf reason.** It instruments Solid's
 reactive graph (the owner tree, every signal/memo/effect) and reports
