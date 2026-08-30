@@ -10,7 +10,7 @@ import {
 
 import type { Candle } from "@rtc/domain";
 
-import { formatChangePct } from "#/ui/equities/equityHeat";
+import { formatChangePct } from "#/ui/equities/formatChangePct";
 import type { MoverRow } from "#/ui/equities/markets/moversVm";
 import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
 import { SPACING } from "#/ui/theme/spacing";
