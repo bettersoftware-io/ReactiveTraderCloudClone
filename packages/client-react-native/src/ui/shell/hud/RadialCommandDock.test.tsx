@@ -40,6 +40,15 @@ test("fans out 5 satellites when opened", async () => {
   expect(screen.getByTestId("hud-dock-sat-equities")).toBeTruthy();
 });
 
+test("keeps the longest satellite label on one line", async () => {
+  // `ANALYTICS` is wider than the 58px satellite column, so it wrapped to
+  // `ANALYTIC`/`S` until the label got a width of its own — the design's
+  // label overflows the column instead (dc.html:479).
+  await render(<RadialCommandDock />);
+  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
+  expect(screen.getByText("ANALYTICS").props.numberOfLines).toBe(1);
+});
+
 test("selecting a satellite navigates to its route and closes", async () => {
   await render(<RadialCommandDock />);
   await fireEvent.press(screen.getByTestId("hud-dock-fab"));

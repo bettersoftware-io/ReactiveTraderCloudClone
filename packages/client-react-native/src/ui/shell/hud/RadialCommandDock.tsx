@@ -32,7 +32,7 @@ import { useActiveModule } from "./useActiveModule";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
 
 /** Router-backed radial command dock (prototype .dc.html:465-484). A hex FAB
- * toggles a blurred scrim over which 5 module satellites fan out on the
+ * toggles a dimmed, blurred scrim over which 5 module satellites fan out on the
  * `radialDockLayout` arc, each spring-staggered when motion is enabled and
  * instant under Freeze/reduced-motion. Selecting a satellite drives
  * `expo-router` (deep-link-compatible) and collapses the dock.
@@ -62,6 +62,7 @@ export function RadialCommandDock(): JSX.Element {
             style={StyleSheet.absoluteFill}
           >
             <BlurView intensity={18} style={StyleSheet.absoluteFill} />
+            <View pointerEvents="none" style={styles.scrimTint} />
           </Pressable>
           {MODULE_ROUTES.map((mod, i) => {
             return (
@@ -169,7 +170,6 @@ function Satellite({
   onSelect,
 }: SatelliteProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
-  const t = useTheme();
   const enabled = useShellMotionEnabled();
   const progress = useSharedValue(enabled ? 0 : 1);
 
@@ -208,29 +208,27 @@ function Satellite({
         style={styles.satelliteHit}
       >
         <View
-          style={[
-            styles.satelliteIcon,
-            active
-              ? {
-                  borderColor: t.accentPrimary,
-                  backgroundColor: t.accentPrimary,
-                }
-              : null,
-          ]}
+          style={[styles.satelliteIcon, active ? styles.satelliteIconOn : null]}
         >
           <Text
             style={[
               styles.satelliteGlyph,
-              active ? { color: t.textOnAccent } : null,
+              active ? styles.satelliteGlyphOn : null,
             ]}
           >
             {module.glyph}
           </Text>
         </View>
+        {/* One line, always. The design's label is a flex child that
+            OVERFLOWS its 58px column rather than wrapping inside it
+            (dc.html:479), which is why `ANALYTICS` reads straight across
+            there and wrapped to `ANALYTIC`/`S` here until the label got a
+            width of its own. */}
         <Text
+          numberOfLines={1}
           style={[
             styles.satelliteLabel,
-            active ? { color: t.accentPrimary } : null,
+            active ? styles.satelliteLabelOn : null,
           ]}
         >
           {module.label}
@@ -242,21 +240,55 @@ function Satellite({
 
 interface RadialDockStyles {
   root: ViewStyle;
+  scrimTint: ViewStyle;
   fab: ViewStyle;
   satelliteAnchor: ViewStyle;
   satelliteHit: ViewStyle;
   satelliteIcon: ViewStyle;
+  satelliteIconOn: ViewStyle;
   satelliteGlyph: TextStyle;
+  satelliteGlyphOn: TextStyle;
   satelliteLabel: TextStyle;
+  satelliteLabelOn: TextStyle;
 }
 
 function makeStyles(t: RnTheme): RadialDockStyles {
+  // The design's satellite carries `box-shadow: 0 4px 14px rgba(0,0,0,0.35)`,
+  // swapped for `0 0 18px glowC` while ACTIVE on the skins that have a glow
+  // (dc.html:2438; `glowC` is null on classic and both terminal faces, where
+  // the design keeps the plain drop shadow — so does this). A CSS blur radius
+  // of 18 is an iOS `shadowRadius` of ~9, the same halving `AppearanceScreen`
+  // documents; `glowC` carries its own alpha, so the opacity stays 1 rather
+  // than multiplying it down, and the offset is pinned to zero so it reads as
+  // a halo rather than a lift.
+  const activeGlow: ViewStyle =
+    t.glowC === null
+      ? {}
+      : {
+          shadowColor: t.glowC,
+          shadowOpacity: 1,
+          shadowRadius: 9,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 6,
+        };
+
   return StyleSheet.create({
     root: {
       ...StyleSheet.absoluteFill,
       alignItems: "center",
       justifyContent: "flex-end",
     },
+    // The design's scrim is `background: var(--overlay)` painted OVER a
+    // `backdrop-filter: blur(7px)` (dc.html:472) — two layers, and the app
+    // shipped only the blur, which left the dimmed screen reading far lighter
+    // than the prototype's. Same order as `TradeTicketSheet`'s
+    // `TicketBackground`: blur first, tint on top. Measured against
+    // `reference-shots/shell/dock-open.png` over the grid band, the tint alone
+    // takes the mean from rgb(24, 53, 67) to rgb(5, 16, 23) against the
+    // design's rgb(4, 15, 21) — which is why the blur stays at 18 rather than
+    // going up: the gap was the missing tint, not the blur radius, and a
+    // stronger blur would overshoot. Static: one layer, no per-frame work.
+    scrimTint: { ...StyleSheet.absoluteFill, backgroundColor: t.bgOverlay },
     fab: {
       position: "absolute",
       bottom: 26,
@@ -281,15 +313,37 @@ function makeStyles(t: RnTheme): RadialDockStyles {
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: t.borderSubtle,
+      // `border` (dc.html:2438 `bc: active ? T.acc : T.border`), not the
+      // subtle one — the ring read half a shade too faint against the
+      // prototype.
+      borderColor: t.borderPrimary,
       backgroundColor: t.panel,
+      shadowColor: "#000",
+      shadowOpacity: 0.35,
+      shadowRadius: 7,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    satelliteIconOn: {
+      borderColor: t.accentPrimary,
+      backgroundColor: t.accentPrimary,
+      ...activeGlow,
     },
     satelliteGlyph: { color: t.textSecondary, fontSize: 19 },
+    satelliteGlyphOn: { color: t.textOnAccent },
     satelliteLabel: {
       color: t.textMuted,
       fontFamily: t.fontMono,
       fontSize: 8,
       letterSpacing: 1.4,
+      // Wider than the 58px satellite column and centred on it, so the longest
+      // label (`ANALYTICS`, ~60pt at this size and tracking) stays on one line
+      // — the design's label overflows its column rather than wrapping inside
+      // it, and RN `Text` wraps unless given room. 80 clears the longest label
+      // with margin, so `numberOfLines={1}` never has anything to ellipsize.
+      width: 80,
+      textAlign: "center",
     },
+    satelliteLabelOn: { color: t.accentPrimary },
   });
 }
