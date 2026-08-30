@@ -7,14 +7,19 @@ import {
   buildBubbleDrawModel,
   centerTextX,
   currencyFontSize,
+  scaleBubbleRadius,
 } from "#/ui/analytics/bubbleDrawModel";
 
 /**
- * A deliberately spread book. `aggregatePositionsByCurrency` scales radius
- * linearly from the smallest magnitude in the book to the largest, so the
- * three net exposures below (+10M EUR, -20M GBP, +100M AUD) land on radii of
- * exactly 15, 20 and 60 — one below the amount-label threshold, one exactly on
- * it, one above the large-label threshold. CAD nets to zero and is dropped.
+ * A deliberately spread book. `scaleBubbleRadius` sizes each bubble on its
+ * share of the LARGEST absolute exposure, so the three nets below (+10M EUR,
+ * -20M GBP, +100M AUD) are 10%, 20% and 100% of the book and land on diameters
+ * of 34.4, 38.8 and 74 — the last both the ramp's cap and the only one over
+ * the large-label threshold. CAD nets to zero and is dropped.
+ *
+ * The ratios are the point: the same three magnitudes under the domain's own
+ * `[min, max] -> [15, 60]` scale gave 30, 40 and 120px, a spread of 4x on a
+ * phone card. The design's ramp compresses that to ~2.2x.
  */
 const SPREAD_BOOK: readonly CurrencyPairPosition[] = [
   {
@@ -68,13 +73,14 @@ describe("buildBubbleDrawModel", () => {
     const { entries, height } = buildBubbleDrawModel(SPREAD_BOOK, WIDTH);
     const byCurrency = indexEntries(SPREAD_BOOK);
 
-    // AUD (r 60) fills the first slot; GBP (r 20) and EUR (r 15) follow on the
-    // same shelf, each advanced by the previous diameter plus the 8px gap.
-    expect(byCurrency.AUD).toMatchObject({ x: 60, y: 60, radius: 60 });
-    expect(byCurrency.GBP).toMatchObject({ x: 148, y: 20, radius: 20 });
-    expect(byCurrency.EUR).toMatchObject({ x: 191, y: 15, radius: 15 });
+    // AUD (r 37, the ramp's 74px cap) fills the first slot; GBP (r 19.4) and
+    // EUR (r 17.2) follow on the same shelf, each advanced by the previous
+    // diameter plus the 8px gap.
+    expect(byCurrency.AUD).toMatchObject({ x: 37, y: 37, radius: 37 });
+    expect(byCurrency.GBP).toMatchObject({ x: 101.4, y: 19.4, radius: 19.4 });
+    expect(byCurrency.EUR).toMatchObject({ x: 146, y: 17.2, radius: 17.2 });
     // Tallest bubble on the only shelf.
-    expect(height).toBe(120);
+    expect(height).toBe(74);
     expect(entries).toHaveLength(3);
 
     for (const entry of entries) {
@@ -84,25 +90,25 @@ describe("buildBubbleDrawModel", () => {
 
   it("repacks when the viewport narrows, rather than overflowing it", () => {
     const wide = buildBubbleDrawModel(SPREAD_BOOK, WIDTH);
-    const narrow = buildBubbleDrawModel(SPREAD_BOOK, 160);
+    const narrow = buildBubbleDrawModel(SPREAD_BOOK, 120);
 
-    // At 160 the shelf can no longer hold all three, so the cluster gets taller.
+    // At 120 the shelf can no longer hold all three, so the cluster gets taller.
     expect(narrow.height).toBeGreaterThan(wide.height);
 
     for (const entry of narrow.entries) {
-      expect(entry.x + entry.radius).toBeLessThanOrEqual(160);
+      expect(entry.x + entry.radius).toBeLessThanOrEqual(120);
     }
   });
 
-  it("labels only the bubbles wide enough to hold a second line", () => {
+  it("labels every bubble, the smallest included", () => {
     const byCurrency = indexEntries(SPREAD_BOOK);
 
     // T37: the floor is 30px, the MOBILE prototype's own smallest bubble
     // (`30 + (|usd| / maxExp) * 44`), not the 40 taken from the web
     // prototype's `40 + sqrt(|M|) * 11`. At the mobile amount size of 7.5px a
     // 30px bubble fits its value, and the design's template labels every
-    // bubble unconditionally — so EUR, exactly on the threshold, keeps its
-    // amount where it used to be blanked.
+    // bubble unconditionally. Now that the ramp is what sizes the bubbles, its
+    // floor IS that threshold, so no bubble can fall under it.
     // The mobile design's bubble amounts are UNSIGNED on the positive side
     // (the ring colour carries the direction) and two-decimal in M — the
     // `fmtK(e.usd).replace('+','')` of dc.html L964, over the raw net rather
@@ -114,9 +120,8 @@ describe("buildBubbleDrawModel", () => {
 
   // A sub-million net keeps its K suffix rather than collapsing to "0.9M":
   // the amount is formatted from the raw aggregate, not from
-  // `netExposureByCurrency`'s tenth-of-a-million rounding. Its bubble is the
-  // smallest in the book, so it sits exactly on the 30px amount floor and is
-  // still labelled.
+  // `netExposureByCurrency`'s tenth-of-a-million rounding. At 9% of the book
+  // its bubble sits just over the 30px floor (33.96px) and is still labelled.
   it("prints a sub-million net in K, not a rounded M", () => {
     const byCurrency = indexEntries([
       {
@@ -137,8 +142,8 @@ describe("buildBubbleDrawModel", () => {
   it("uses one currency size either side of the 62px diameter", () => {
     const byCurrency = indexEntries(SPREAD_BOOK);
 
-    expect(byCurrency.AUD.currencyFontSize).toBe(9); // 120px across
-    expect(byCurrency.GBP.currencyFontSize).toBe(9); // 40px across
+    expect(byCurrency.AUD.currencyFontSize).toBe(9); // 74px across
+    expect(byCurrency.GBP.currencyFontSize).toBe(9); // 38.8px across
   });
 
   it("drops the currency label below centre only when it stands alone", () => {
@@ -159,6 +164,28 @@ describe("buildBubbleDrawModel", () => {
       entries: [],
       height: 0,
     });
+  });
+});
+
+describe("scaleBubbleRadius", () => {
+  it("puts the book's largest exposure on the ramp's 74px cap", () => {
+    expect(scaleBubbleRadius(24_800_000, 24_800_000)).toBe(37);
+  });
+
+  it("puts a zero exposure on the ramp's 30px floor", () => {
+    expect(scaleBubbleRadius(0, 24_800_000)).toBe(15);
+  });
+
+  it("interpolates linearly on the share of the largest exposure", () => {
+    // Half the book's top exposure is HALF WAY UP THE RAMP (52px), not half
+    // the cap — the ramp starts at 30, it does not start at zero.
+    expect(scaleBubbleRadius(12_400_000, 24_800_000)).toBe(26);
+    expect(scaleBubbleRadius(6_200_000, 24_800_000)).toBe(20.5);
+  });
+
+  it("falls back to the floor when the book has no exposure at all", () => {
+    // Guards the divide: an empty book has no maximum to take a share of.
+    expect(scaleBubbleRadius(0, 0)).toBe(15);
   });
 });
 

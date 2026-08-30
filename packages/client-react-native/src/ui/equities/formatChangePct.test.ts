@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatChangePct } from "#/ui/equities/equityHeat";
+import { formatChangePct } from "#/ui/equities/formatChangePct";
 
 describe("formatChangePct", () => {
   it("signs a positive change with a leading +", () => {
