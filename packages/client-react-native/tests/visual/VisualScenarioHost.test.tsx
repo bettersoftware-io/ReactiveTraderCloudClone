@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
@@ -47,4 +47,52 @@ test("threads viewModelOverrides into the rendered child", async () => {
     </VisualScenarioHost>,
   );
   expect(await screen.findByText("RECONNECT ▸")).toBeTruthy();
+});
+
+// iOS resolves a <Text>'s fontFamily when the node is CREATED and never
+// re-resolves it, so a child mounted before the fonts load is captured in the
+// system font no matter how long the driver waits afterwards. The harness has
+// to withhold the child, exactly as `app/(app)/_layout.tsx` withholds first
+// paint — waiting is not a substitute.
+test("withholds children until the bundled fonts have loaded", async () => {
+  mockFontsLoaded = false;
+
+  try {
+    await render(
+      <VisualScenarioHost skin="classic" mode="dark">
+        <Text>too early</Text>
+      </VisualScenarioHost>,
+    );
+
+    expect(screen.queryByText("too early")).toBeNull();
+    // ...and the driver is told so, rather than being handed a ready marker
+    // over an empty surface.
+    expect(screen.queryByTestId("visual-ready")).toBeNull();
+    expect(await screen.findByTestId("visual-pending")).toBeTruthy();
+  } finally {
+    mockFontsLoaded = true;
+  }
+});
+
+test("paints children once the bundled fonts report loaded", async () => {
+  mockFontsLoaded = true;
+  await render(
+    <VisualScenarioHost skin="classic" mode="dark">
+      <Text>in the real face</Text>
+    </VisualScenarioHost>,
+  );
+  expect(await screen.findByText("in the real face")).toBeTruthy();
+  expect(await screen.findByTestId("visual-ready")).toBeTruthy();
+});
+
+/** Drives the gate under test. True by default so every OTHER case in this
+ * file sees the loaded-fonts path; the gated case flips it and restores it. */
+let mockFontsLoaded = true;
+
+jest.mock("#/ui/theme/fonts", () => {
+  return {
+    useAppFonts: (): boolean => {
+      return mockFontsLoaded;
+    },
+  };
 });
