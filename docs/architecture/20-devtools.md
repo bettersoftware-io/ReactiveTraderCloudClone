@@ -525,6 +525,20 @@ deployed Solid app"):
   *default*: React installs a global hook (`__REACT_DEVTOOLS_GLOBAL_HOOK__`)
   even in a production build, so the extension can walk the (minified) tree with
   **no build-time wiring**.
+
+**The RTC inspector page turns this default off for itself.** The extension's
+backend serialises every component's props on every commit; the inspector
+deliberately carries a 5,000-row event log and whole `InspectorState`
+snapshots as props, so under live traffic (~15 commits/s) it storms
+`RangeError: Invalid string length` and the tab goes unresponsive
+(live-acceptance, 2026-07-21). `disableReactDevtoolsHook.ts` sets
+`__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true` as `main.tsx`'s first
+import — react-dom's `injectInternals()` runs at module-evaluation time and
+bails once `isDisabled` is set, so import order (not `createRoot` timing)
+decides. Opt back in with `?react-devtools` to debug the inspector's own React
+tree. The extension panel — a separate `chrome-extension://` origin the
+content script does not reach — imports the same guard defensively.
+
 - **Official Solid DevTools does _not_ work against the deployed Solid client.**
   It requires the `solid-devtools` package plus its Vite plugin, and this repo
   wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin

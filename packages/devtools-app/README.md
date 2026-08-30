@@ -78,6 +78,10 @@ pnpm --filter @rtc/devtools-app test         # vitest run (RTL, synthetic event 
 To exercise it against a real, live app: `pnpm dev` (client-react) and open
 `http://localhost:5173/devtools/`.
 
+The inspector page disables the React DevTools extension for itself
+(`?react-devtools` re-enables it) — see
+[§20.10](../../docs/architecture/20-devtools.md#2010-relationship-to-the-framework-devtools-react-devtools--solid-devtools).
+
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
