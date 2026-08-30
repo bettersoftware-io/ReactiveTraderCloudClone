@@ -98,6 +98,17 @@ interface SceneProbe {
   current: BootSceneProps | null;
 }
 
+// `BootCanvas` reads the top safe-area inset to push each scene's telemetry
+// below the status bar / Dynamic Island, and this suite mounts it outside any
+// `SafeAreaProvider`.
+jest.mock("react-native-safe-area-context", () => {
+  return {
+    useSafeAreaInsets: (): unknown => {
+      return { top: 47, bottom: 34, left: 0, right: 0 };
+    },
+  };
+});
+
 jest.mock("#/ui/shell/boot/useGyroDrift", () => {
   return {
     useGyroDrift: (enabled: boolean) => {

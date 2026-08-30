@@ -103,6 +103,7 @@ export function TopoScene({
   drift,
   width,
   height,
+  topInset,
   theme,
   now: pinnedNow,
 }: BootSceneProps): JSX.Element {
@@ -206,6 +207,7 @@ export function TopoScene({
         drawTelemetry(
           canvas,
           width,
+          topInset,
           height,
           progress,
           yaw,
@@ -218,6 +220,7 @@ export function TopoScene({
         drawStatusBanner(
           canvas,
           camera.centerX,
+          topInset,
           progress,
           elapsed,
           flicker,
@@ -725,6 +728,7 @@ function drawMotes(
 function drawTelemetry(
   canvas: SkCanvas,
   width: number,
+  topInset: number,
   height: number,
   progress: number,
   yaw: number,
@@ -747,14 +751,14 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.title,
     TELEMETRY_INSET,
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.grid,
     TELEMETRY_INSET,
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
@@ -771,14 +775,14 @@ function drawTelemetry(
         hexToRgba(i > 2 ? accentAlt : accent, (0.3 + i * 0.18) * flicker),
       ),
     );
-    const y = LEGEND_FIRST_BASELINE + i * LEGEND_ROW_HEIGHT;
+    const y = topInset + LEGEND_FIRST_BASELINE + i * LEGEND_ROW_HEIGHT;
     canvas.drawLine(LEGEND_LINE_START, y, LEGEND_LINE_END, y, legendPaint);
   }
 
   canvas.drawText(
     telemetry.yaw,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.yaw),
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
@@ -786,7 +790,7 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.peaks,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.peaks),
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
@@ -806,6 +810,7 @@ function drawTelemetry(
 function drawStatusBanner(
   canvas: SkCanvas,
   centerX: number,
+  topInset: number,
   progress: number,
   elapsed: number,
   flicker: number,
@@ -835,7 +840,7 @@ function drawStatusBanner(
   canvas.drawText(
     text,
     centerX - font.getTextWidth(text) / 2,
-    BANNER_BASELINE,
+    topInset + BANNER_BASELINE,
     paint,
     font,
   );

@@ -31,6 +31,25 @@ export interface BootSceneProps {
   readonly width: number;
   readonly height: number;
   /**
+   * The device's TOP safe-area inset, in points — added to every baseline a
+   * scene draws in the top strip (corner telemetry, legends, the banner under
+   * them).
+   *
+   * The web variants these scenes were ported from draw into a browser
+   * viewport that starts below the chrome, so their `28`/`44` baselines are
+   * measured from a clear edge. On a phone that edge is under the status bar
+   * and, on a Dynamic Island device, under the island itself — the first
+   * telemetry line landed behind it. Threaded as a PROP rather than read in
+   * the scene because a scene renders inside Skia's `<Canvas>`, which React
+   * Context does not cross (same reason as `theme`).
+   *
+   * Scenes that draw nothing in the top strip (`laser`) ignore it. A capture
+   * harness may pass `0` for a device-independent frame; `BootCanvas` passes
+   * the real inset even under a `BootClockContext` pin, so a golden shot on a
+   * Dynamic Island device legitimately shows the telemetry lower.
+   */
+  readonly topInset: number;
+  /**
    * Resolved theme, passed as a PROP rather than read via `useTheme()` inside
    * the scene. Scenes render inside Skia's `<Canvas>`, which is a separate
    * reconciler that React Context does NOT cross — a `useTheme()` call in a
