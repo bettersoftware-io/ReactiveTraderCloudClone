@@ -5,12 +5,15 @@ import {
   type BootVariant,
   ConnectionStatus,
   DEFAULT_LOGIN_WAIT_VARIANT,
+  Direction,
   ROSTER,
 } from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
 import { CreditNav } from "#/ui/credit/CreditNav";
+import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
+import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
 import { BlottersView } from "#/ui/equities/blotters/BlottersView";
 import { EquitiesNav } from "#/ui/equities/EquitiesNav";
 import { MarketsView } from "#/ui/equities/markets/MarketsView";
@@ -180,6 +183,18 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   (below) hands `useAuth` a locked + unlocking session, with its ring held
  *   at a fixed mid-fill through `LockHoldProgressContext` (`fixtures.tsx`'s
  *   `LOCK_HOLD_PROGRESS`).
+ *
+ * - `credit/new-rfq` — the third Credit sub-nav view, mounted the way
+ *   `equities/trade` mounts its own (`CreditNav view="new-rfq"` + the REAL
+ *   `NewRfqForm` inside `ModuleScreenFixture` inside `ShellFrameFixture`), not
+ *   as a leaf over literals: the form reads everything it needs
+ *   (`useInstruments`/`useDealers`/`useRfqSubmission`) through the seam, and
+ *   the fake already answers all three with a stable editing state. What it
+ *   CANNOT do is tap — a golden of the pristine form would show no chip
+ *   chosen and a disabled broadcast button, i.e. none of the states the
+ *   design's shot is about — so the chosen ticket arrives as
+ *   `NewRfqForm`'s `initialSelection` prop instead. `freeze` is seeded for the
+ *   SHELL (the header's connection dot); the form itself animates nothing.
  *
  * - `equities/markets` / `equities/trade` / `equities/blotter` — Phase 5b
  *   Task 10, the Equities module's first three scenarios. Each mounts one
@@ -464,6 +479,50 @@ export const SCENARIOS: readonly Scenario[] = [
     },
   },
   {
+    id: "credit/new-rfq",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        // The REAL `NewRfqForm` over the fake's own instruments/dealers, in
+        // the shape `equities/trade` established. `initialSelection` stands
+        // in for the taps the driver cannot make: the design's shot is of a
+        // CHOSEN ticket (prototype `nrInst:0, nrDir:'BUY', nrQty:5000000`),
+        // and the pristine form shows neither an active chip nor an enabled
+        // broadcast button. `PINNED_NEW_RFQ_INSTRUMENT_ID` is the first of
+        // the fake's two instruments (`fake/credit.ts` — ACME, id 1); the
+        // prototype's AAPL is an equity, absent from that credit catalogue.
+        // The quantity is `RFQ_QUANTITY_CHIPS[2]`, the "5M" chip — UI-SCALE
+        // 5_000, NOT the notional 5_000_000 (see `rfqQuantities.ts`); the
+        // literal would match no chip and silently leave the row unselected.
+        //
+        // `freeze` is for the shell around it, exactly as in the two Credit
+        // scenarios above; the form itself runs no Reanimated surface and
+        // reads no clock, so unlike them it needs no `pinnedRemainingMs`.
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <ShellFrameFixture module="credit">
+            <ModuleScreenFixture>
+              <CreditNav view="new-rfq" onChange={(): void => {}} />
+              <NewRfqForm
+                onCreated={(): void => {}}
+                initialSelection={{
+                  instrumentId: PINNED_NEW_RFQ_INSTRUMENT_ID,
+                  direction: Direction.Buy,
+                  quantity: RFQ_QUANTITY_CHIPS[2],
+                }}
+              />
+            </ModuleScreenFixture>
+          </ShellFrameFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
     id: "equities/markets",
     skin: "holo3d",
     mode: "dark",
@@ -565,6 +624,14 @@ export function getScenario(id: string): Scenario | undefined {
  * keeps `TradeView` out of its unselected "Select an instrument…" empty
  * state. */
 const PINNED_EQUITY_SYMBOL = "AAPL";
+
+/** Instrument pinned for `credit/new-rfq`: the FIRST of the two the fake's
+ * credit slice serves (`tests/visual/fake/credit.ts` — "Acme 5.5% 2030",
+ * ticker ACME, id 1), so the golden's grid always has its first chip active.
+ * The prototype shot preselects AAPL, which is an EQUITY — there is no such
+ * bond in the credit instrument catalogue, and inventing one would put a
+ * symbol in the golden that the running app can never show. */
+const PINNED_NEW_RFQ_INSTRUMENT_ID = 1;
 
 /**
  * One `boot/<variant>` scenario: the real `BootSequence` (`BootSequenceFixture`)

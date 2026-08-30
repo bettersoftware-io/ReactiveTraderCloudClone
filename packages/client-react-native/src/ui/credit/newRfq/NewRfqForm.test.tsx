@@ -9,7 +9,10 @@ import {
 } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
-import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
+import {
+  NewRfqForm,
+  type NewRfqSelection,
+} from "#/ui/credit/newRfq/NewRfqForm";
 import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
@@ -92,6 +95,64 @@ test("sell direction rides through to the submitted rfq", async () => {
   expect(submit.mock.calls[0][0].direction).toBe(Direction.Sell);
 });
 
+// The visual harness cannot tap before it screenshots, so the golden's
+// pre-chosen ticket has to arrive as a prop. These two assertions pin both
+// halves of that seam: the seeded chips read selected, and the seeded values
+// are what actually submit (a seed that only painted the chips would be a
+// lie the golden could not see).
+test("initialSelection preselects the instrument, direction and quantity chips", async () => {
+  const submit = jest.fn<SubmitFn>();
+  await renderEditingForm(submit, {
+    instrumentId: 1,
+    direction: Direction.Sell,
+    quantity: RFQ_QUANTITY_CHIPS[2],
+  });
+
+  expect(
+    screen.getByTestId("instrument-chip-1").props.accessibilityState,
+  ).toMatchObject({ selected: true });
+  expect(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`).props
+      .accessibilityState,
+  ).toMatchObject({ selected: true });
+
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(submit.mock.calls[0][0]).toEqual({
+    instrumentId: 1,
+    dealerIds: [1, 2],
+    quantity: RFQ_QUANTITY_CHIPS[2],
+    direction: Direction.Sell,
+  });
+});
+
+// An omitted field must fall back to the form's own default rather than
+// blanking the other two — the fields are independent.
+test("an omitted initialSelection field keeps the form default", async () => {
+  const submit = jest.fn<SubmitFn>();
+  await renderEditingForm(submit, { instrumentId: 1 });
+
+  expect(
+    screen.getByTestId("instrument-chip-1").props.accessibilityState,
+  ).toMatchObject({ selected: true });
+  expect(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`).props
+      .accessibilityState,
+  ).toMatchObject({ selected: false });
+
+  // No quantity yet, so broadcast is still inert.
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  expect(submit).not.toHaveBeenCalled();
+
+  await fireEvent.press(
+    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
+  );
+  void fireEvent.press(screen.getByTestId("rfq-submit"));
+
+  expect(submit.mock.calls[0][0].direction).toBe(Direction.Buy);
+});
+
 test("renders the confirmed card in the confirmed state", async () => {
   const submit = jest.fn<SubmitFn>();
   await renderWithTheme(
@@ -106,10 +167,16 @@ test("renders the confirmed card in the confirmed state", async () => {
   });
 });
 
-function renderEditingForm(submit: SubmitFn): Promise<unknown> {
+function renderEditingForm(
+  submit: SubmitFn,
+  initialSelection?: NewRfqSelection,
+): Promise<unknown> {
   return renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(submit, { status: "editing" })}>
-      <NewRfqForm onCreated={(): void => {}} />
+      <NewRfqForm
+        onCreated={(): void => {}}
+        initialSelection={initialSelection}
+      />
     </ViewModelProvider>,
   );
 }

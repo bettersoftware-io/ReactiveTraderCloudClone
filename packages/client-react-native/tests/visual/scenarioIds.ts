@@ -79,6 +79,14 @@ export const SCENARIO_IDS = [
   // ACCEPT halo can be caught mid-flight.
   "credit/rfq-tiles",
   "credit/sell-side",
+  // Mobile-v1 fidelity item 11: the New-RFQ form, the third and last Credit
+  // sub-nav view. Deterministic without any clock pin — unlike its two
+  // siblings above it reads no countdown and mounts no simulator-fed list;
+  // its whole surface is the instrument/direction/quantity chips and the
+  // broadcast button, seeded by `NewRfqForm`'s `initialSelection` prop
+  // (the harness cannot tap before it shoots). `freeze` is still seeded for
+  // the SHELL around it, whose connection dot pulses.
+  "credit/new-rfq",
   // Phase 5b Task 10: the Equities module's first three scenarios — Markets
   // (movers board + sector heatmap), Trade (instrument header, candle chart,
   // depth ladder, order ticket) and Blotters (orders/positions). All three

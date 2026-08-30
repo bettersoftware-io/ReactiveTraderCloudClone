@@ -20,7 +20,10 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
-export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
+export function NewRfqForm({
+  onCreated,
+  initialSelection,
+}: NewRfqFormProps): JSX.Element {
   const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
   const dealers = useDealers();
@@ -28,9 +31,17 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
   const { submit } = submission;
   const styles = useThemedStyles(makeStyles);
 
-  const [instrumentId, setInstrumentId] = useState<number | null>(null);
-  const [direction, setDirection] = useState<Direction>(Direction.Buy);
-  const [quantity, setQuantity] = useState<number | null>(null);
+  const [instrumentId, setInstrumentId] = useState<number | null>(
+    initialSelection?.instrumentId ?? null,
+  );
+
+  const [direction, setDirection] = useState<Direction>(
+    initialSelection?.direction ?? Direction.Buy,
+  );
+
+  const [quantity, setQuantity] = useState<number | null>(
+    initialSelection?.quantity ?? null,
+  );
 
   const submitting = submission.state.status === "submitting";
   const instrument =
@@ -142,6 +153,26 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
 
 interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;
+  /** Seeds the three `useState`s the operator would otherwise tap in. Used
+   * only as their INITIAL values — the form stays uncontrolled, so a later
+   * change here is ignored and every tap still wins. Exists for the visual
+   * harness, which has no way to drive taps before a screenshot: the golden
+   * has to mount already showing a chosen instrument, side and clip size.
+   * Same seam shape `BlottersView`'s retired `initialTab` used. */
+  initialSelection?: NewRfqSelection;
+}
+
+/** A pre-chosen New-RFQ ticket. Every field optional and independent: seeding
+ * only the direction is as valid as seeding all three, and an omitted field
+ * falls back to the form's own default (no instrument, `Buy`, no quantity). */
+export interface NewRfqSelection {
+  /** An `Instrument["id"]` from `useInstruments()`; anything else simply
+   * matches no chip and leaves the grid unselected. */
+  readonly instrumentId?: number;
+  readonly direction?: Direction;
+  /** A UI-SCALE value from `RFQ_QUANTITY_CHIPS`, not a notional — see
+   * `rfqQuantities.ts`. `5_000` is the "5M" chip. */
+  readonly quantity?: number;
 }
 
 const DIRECTIONS: readonly Direction[] = [Direction.Buy, Direction.Sell];
