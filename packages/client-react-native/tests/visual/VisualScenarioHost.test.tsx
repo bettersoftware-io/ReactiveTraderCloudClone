@@ -46,5 +46,5 @@ test("threads viewModelOverrides into the rendered child", async () => {
       <ConnectionBanner />
     </VisualScenarioHost>,
   );
-  expect(await screen.findByText("Reconnect")).toBeTruthy();
+  expect(await screen.findByText("RECONNECT ▸")).toBeTruthy();
 });

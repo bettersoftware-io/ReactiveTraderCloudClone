@@ -15,8 +15,8 @@ test("renders nothing when connected — the header dot carries that state", asy
     </ViewModelProvider>,
   );
   expect(screen.queryByTestId("connection-dot")).toBeNull();
-  expect(screen.queryByText("Live")).toBeNull();
-  expect(screen.queryByText("Reconnect")).toBeNull();
+  expect(screen.queryByText("LIVE")).toBeNull();
+  expect(screen.queryByText("RECONNECT ▸")).toBeNull();
 });
 
 test("colours the status dot statusConnecting while connecting", async () => {
@@ -38,17 +38,17 @@ test("colours the status dot statusDisconnected when disconnected (not the conne
   expect(dotColor()).not.toBe(rnThemeTokens.holo.dark.statusConnected);
 });
 
-test("shows Connecting… and hides Reconnect while connecting", async () => {
+test("shows CONNECTING… and hides RECONNECT while connecting", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.CONNECTING)}>
       <ConnectionBanner />
     </ViewModelProvider>,
   );
-  expect(screen.getByText("Connecting…")).toBeTruthy();
-  expect(screen.queryByText("Reconnect")).toBeNull();
+  expect(screen.getByText("CONNECTING…")).toBeTruthy();
+  expect(screen.queryByText("RECONNECT ▸")).toBeNull();
 });
 
-test("shows Disconnected with a Reconnect button that calls reconnect", async () => {
+test("shows DISCONNECTED with a RECONNECT button that calls reconnect", async () => {
   const reconnect = jest.fn<() => void>();
   await renderWithTheme(
     <ViewModelProvider
@@ -57,8 +57,8 @@ test("shows Disconnected with a Reconnect button that calls reconnect", async ()
       <ConnectionBanner />
     </ViewModelProvider>,
   );
-  expect(screen.getByText("Disconnected")).toBeTruthy();
-  await fireEvent.press(screen.getByText("Reconnect"));
+  expect(screen.getByText("DISCONNECTED")).toBeTruthy();
+  await fireEvent.press(screen.getByText("RECONNECT ▸"));
   expect(reconnect).toHaveBeenCalledTimes(1);
 });
 

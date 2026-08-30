@@ -22,6 +22,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { LockButton } from "#/ui/shell/lock/LockButton";
+import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -149,9 +150,13 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
       height: 52,
     },
     right: { flexDirection: "row", alignItems: "center", gap: 6 },
+    // Orbitron, not the skin's display face: the design pins the wordmark to
+    // one family across every skin (`.dc.html:85`), the same face the lock
+    // screen's title carries. `weightedFont(t, "display", "700")` rendered it
+    // in Chakra Petch instead.
     wordmark: {
       color: t.textPrimary,
-      ...weightedFont(t, "display", "700"),
+      fontFamily: FONT_ORBITRON_WORDMARK,
       fontSize: 11,
       letterSpacing: 2.2,
     },

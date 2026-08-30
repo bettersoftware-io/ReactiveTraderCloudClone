@@ -13,6 +13,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 import { DOCK_FAB_CLEARANCE } from "./dockMetrics";
 import { useActiveModule } from "./useActiveModule";
@@ -143,10 +144,13 @@ function makeStyles(t: RnTheme): StatusStripStyles {
       fontSize: 8.5,
       letterSpacing: 2,
     },
+    // The design leaves this value's family to the body font, which is the
+    // display face (`.dc.html:462`) — every other cell here names a face, so a
+    // bare `fontWeight` left the MODULE value alone in the system font.
     module: {
       color: t.accentPrimary,
+      ...weightedFont(t, "display", "600"),
       fontSize: 13,
-      fontWeight: "600",
       letterSpacing: 1.6,
       marginTop: 1,
     },
