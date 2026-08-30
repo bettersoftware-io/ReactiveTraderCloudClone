@@ -23,6 +23,8 @@ import { useViewModel } from "@rtc/react-bindings";
 import { BuySellPads } from "#/ui/rates/ticket/BuySellPads";
 import { ExecutionCeremony } from "#/ui/rates/ticket/ExecutionCeremony";
 import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
+import { sheetPresentation } from "#/ui/rates/ticket/sheetPresentation";
+import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -40,7 +42,23 @@ import { weightedFont } from "#/ui/theme/weightedFont";
  * and returns to `ready`. We record that a terminal state was seen, then
  * dismiss the sheet when the machine returns to `ready` — no UI-side timer,
  * no magic number (ported from the old `TradeTicket`'s effect). Dismissing
- * fires the sheet's `onDismiss`, which calls `onClose`. */
+ * fires the sheet's `onDismiss`, which calls `onClose`.
+ *
+ * **The presentation itself is motion-gated**, like every other animation in
+ * the shell. `useShellMotionEnabled` is false under OS reduced-motion or
+ * power-saver Freeze, and then the sheet must APPEAR rather than slide: it
+ * mounts straight at its resting position and takes a zero-duration timing
+ * config for every later transition, and the backdrop paints at its final
+ * opacity with no fade. Which props say that is `sheetPresentation`'s
+ * business (see it for why each half is load-bearing); this component only
+ * asks it, with the live motion flag, and spreads the answer.
+ *
+ * That gate is a real accessibility behaviour, not a harness affordance — the
+ * same gap Phase 0 closed in `AmbientBackground`: a Freeze user who has asked
+ * for no motion was still getting the full spring slide-up plus a fading
+ * scrim, which is the largest single movement this screen makes. Its side benefit is
+ * that a `freeze`-seeded golden of the ticket is reproducible; without it the
+ * capture can land part-way through the present. */
 export function TradeTicketSheet({
   pair,
   onClose,
@@ -50,6 +68,7 @@ export function TradeTicketSheet({
   const notional = useNotional(pair.defaultNotional);
   const execution = useTileExecution(pair);
   const styles = useThemedStyles(makeStyles);
+  const presentation = sheetPresentation(useShellMotionEnabled());
 
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
   const lastDirRef = useRef<Direction | null>(null);
@@ -79,6 +98,7 @@ export function TradeTicketSheet({
     <BottomSheetModal
       ref={sheetRef}
       enableDynamicSizing
+      {...presentation}
       onDismiss={onClose}
       backdropComponent={TicketBackdrop}
       backgroundComponent={TicketBackground}
