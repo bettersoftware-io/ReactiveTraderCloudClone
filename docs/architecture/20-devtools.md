@@ -694,19 +694,25 @@ only on trades — the spec's "continuous" premise for that stream was wrong.
 The React Compiler healthcheck's `TRACKED` list was re-pointed for the new
 context-pane values (`changedIds`/`visibleStreams` → `changedStreams`/
 `streams`); `rows` was dropped from the list with an in-script justification,
-since the compiler fuses it with neighbouring memoization. A Phase 2
+since the compiler fuses it with neighbouring memoization. A 2026-08-30
 follow-up taught the healthcheck to see through that fusion —
 `fusedBlockMemoized()` classifies the compiler's fused cache-block shape (a
 bare `let name;` written inside an if-branch and read back from the same
 numbered slot in the else-branch) — so `rows` is re-tracked.
 
-**Phase 2 follow-ups (2026-08-30).** `ContextPane` was split: the State
+**Further follow-ups landed 2026-08-30.** `ContextPane` was split: the State
 tab's rendering (search, stream/machine filtering, the `≠ live` marks) moved
 to `timeline/StateTab.tsx`, and the pure scope→state helpers it calls
 (`streamsInScope`, `machinesInScope`, `changedIds`, …) moved to
-`timeline/scopeState.ts`; `ContextPane` itself keeps only the
-availability/reconstruction-error short-circuit and tab plumbing. The nav
-tree's Machines root gains an unselectable `Evicted (n)` leaf whenever the
+`timeline/scopeState.ts`. `ContextPane` itself (347 lines) still owns
+everything else: the tab row and its `state-at-seq` badge, `ContextBody`'s
+routing between tabs, the Event and Diff tabs (`diffAgainstPredecessor`
+computes and formats the pinned row's diff against its predecessor),
+`ErrorCard` (the reconstruction-error display), `resolveTab` (which tab is
+active), and `findContextMachine` (the machine lookup the Machine tab
+reads) — substantive feature logic, not just an availability short-circuit
+plus tab-switch plumbing. The nav tree's Machines root gains an
+unselectable `Evicted (n)` leaf whenever the
 visible log still references machine ids that `InspectorStore`'s 500-instance
 disposed-machine cap has already dropped from live state, so **All** stays
 equal to Σ children instead of undercounting. The radius chip's `✕`

@@ -168,12 +168,52 @@ test("clicking a node label re-syncs the keyboard cursor, not just the selection
 
   // Mouse-selecting blotter must move the keyboard cursor onto it too —
   // otherwise it stays seeded on the initial scope ("all") and the next
-  // ArrowDown starts from the wrong place.
+  // ArrowDown starts from the wrong place. NOTE: this particular case is
+  // satisfied by NavTree's render-time cursor derivation alone (`cursorId`
+  // snaps to `selectedId` whenever `cursor.forSelection` is stale) — it
+  // passes even without `selectThisNode`'s explicit `onMoveCursorTo` call,
+  // because a click that CHANGES the selection always changes `selectedId`
+  // too. It stays here as basic coverage of the derivation; the next test
+  // covers the one case that actually depends on `onMoveCursorTo`.
   fireEvent.click(node("presenter:blotter"));
   node("presenter:blotter").focus();
 
   // blotter is collapsed by default, so the next selectable node after it
   // is machineKind:tileExecution, not one of its own (hidden) streams.
+  pressKey("ArrowDown");
+  pressKey("Enter");
+
+  expect(selected.at(-1)).toEqual({
+    kind: "machineKind",
+    machineKind: "tileExecution",
+  });
+});
+
+test("clicking the already-selected node re-syncs a cursor the arrow keys had parked elsewhere", () => {
+  const selected = mount();
+
+  // Select blotter (X) — selectedId changes, so the render-time derivation
+  // alone already snaps the cursor onto it (see the previous test).
+  fireEvent.click(node("presenter:blotter"));
+  node("presenter:blotter").focus();
+
+  // Arrow the cursor away to Y (machineKind:tileExecution) WITHOUT
+  // changing the selection — blotter stays selected.
+  pressKey("ArrowDown");
+
+  // Re-click the already-selected node X. selectedId does NOT change this
+  // time, so the render-time derivation (`cursor.forSelection ===
+  // selectedId`) is already satisfied and cannot re-sync anything by
+  // itself — only the explicit `onMoveCursorTo(node.id)` call inside
+  // `selectThisNode` (NavTree.tsx) parks the cursor back on X.
+  fireEvent.click(node("presenter:blotter"));
+  node("presenter:blotter").focus();
+
+  // With the cursor back on X, the next ArrowDown steps to X's own next
+  // sibling in the selectable list — machineKind:tileExecution. Without
+  // `onMoveCursorTo`, the cursor would still be parked on Y
+  // (machineKind:tileExecution) and ArrowDown would instead step PAST it,
+  // landing on wire — proving the click did nothing.
   pressKey("ArrowDown");
   pressKey("Enter");
 

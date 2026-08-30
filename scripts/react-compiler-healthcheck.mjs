@@ -54,10 +54,13 @@ const compilerPath = require.resolve("babel-plugin-react-compiler");
 // The FUNCTIONS that gave up a manual memo and now depend on the compiler,
 // each with the specific VALUES to assert are actually memoized (not just
 // that the function compiles). `values: null` means "no individual value is
-// worth asserting on its own — assert only that the whole file memoized
-// *something*", kept for `useBootSceneFonts`/`useThemedStyles`, which each
-// build a module-level lookup table with no single named binding worth
-// pointing at on its own.
+// worth asserting on its own — assert only that the tracked FUNCTION's own
+// compiled output memoized *something*" (scoped to that function's
+// `CompileSuccess` event, not summed across every function the file happens
+// to contain — a sibling function's unrelated memoization must never mask a
+// regression in the one this entry tracks), kept for
+// `useBootSceneFonts`/`useThemedStyles`, which each build a module-level
+// lookup table with no single named binding worth pointing at on its own.
 const TRACKED = [
   {
     // `selectedRow` was tracked here until the store-first navigation rework
@@ -81,6 +84,31 @@ const TRACKED = [
     file: "packages/devtools-app/src/timeline/StateTab.tsx",
     fn: "StateTab",
     values: ["changedStreams", "streams"],
+  },
+  {
+    // The 2026-08-30 fix wave's B1: an eager `useState(...)` object literal
+    // for the keyboard cursor defeated the compiler across most of the
+    // component (measured `NavTree[5v]/_c(16)` at the pre-Task-15 base →
+    // `[2v]/_c(5)` with the eager literal — the surviving 2 values are
+    // `selectedId` and a JSX block keyed on `moveTreeCursor`, which the
+    // compiler re-creates every render, so that block's guard can never be
+    // satisfied; see `docs/architecture/20-devtools.md` §20.12 and A3 in
+    // `.superpowers/sdd/2026-08-29-devtools-follow-ups-sweep/final-review-phase2.md`).
+    // Switching to a lazy `useState(() => {...})` initializer restored
+    // `[6v]/_c(19)`. `visible` (the `flattenVisible(nodes, expanded)` result)
+    // and `moveTreeCursor` both compile as plain `const`s directly inside the
+    // one shared memo block that also produces the returned JSX (not their
+    // own bare-temp bindings, and not the `let name;` if/else-readback shape
+    // `fusedBlockMemoized` classifies either) — so per-value assertion cannot
+    // discriminate this shape. Whole-function mode with `minMemoValues: 6`
+    // is the discriminator that actually catches the regression: the broken
+    // eager shape still reports `memoValues: 2` (not 0), so the default
+    // ">=1" threshold used by the `CandleChart`/`useBootSceneFonts`/
+    // `useThemedStyles` entries below would silently pass it.
+    file: "packages/devtools-app/src/nav/NavTree.tsx",
+    fn: "NavTree",
+    values: null,
+    minMemoValues: 6,
   },
   {
     file: "packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx",
@@ -193,7 +221,7 @@ const TRACKED = [
 
 const failures = [];
 
-for (const { file, fn, values } of TRACKED) {
+for (const { file, fn, values, minMemoValues = 1 } of TRACKED) {
   const abs = path.join(repoRoot, file);
   const events = [];
 
@@ -239,18 +267,27 @@ for (const { file, fn, values } of TRACKED) {
   }
 
   if (values === null) {
-    // Whole-file assertion: the compiler memoized SOMETHING in this file.
-    const totalMemoValues = events
-      .filter((e) => e.kind === "CompileSuccess")
-      .reduce((n, e) => n + (e.memoValues ?? 0), 0);
+    // Whole-function assertion: the compiler memoized at least
+    // `minMemoValues` values in this function's own compiled output.
+    // Scoped to `win` (the `CompileSuccess` event already matched by
+    // `fnName === fn` above), not summed across every function the file
+    // happens to contain — a sibling function's unrelated memoization must
+    // never mask a regression in the tracked one. Default threshold is 1
+    // ("memoized SOMETHING"); an entry sets its own higher `minMemoValues`
+    // when a low-but-nonzero count is itself the regression signature (a
+    // function can keep memoizing an unrelated value or two while the
+    // specific block that mattered goes dead — see the `NavTree` entry,
+    // where the broken eager-`useState` shape still reports `memoValues: 2`,
+    // not 0).
+    const totalMemoValues = win.memoValues ?? 0;
 
-    if (totalMemoValues > 0) {
+    if (totalMemoValues >= minMemoValues) {
       console.log(
         `ok  ${file}  ${fn}  (whole-file: ${totalMemoValues} memo values)`,
       );
     } else {
       failures.push(
-        `${file}: ${fn} compiles (CompileSuccess) but memoized nothing in the whole file (memoValues=0) — the module-scope table this hook builds from is no longer being cached.`,
+        `${file}: ${fn} compiles (CompileSuccess) but memoized only ${totalMemoValues} value(s), below the tracked minimum of ${minMemoValues} — the memoization this entry protects has regressed.`,
       );
     }
 

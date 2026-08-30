@@ -140,9 +140,17 @@ test("a machine with null args gets no arg summary in its label", () => {
 
 test("machines the log still references but the store evicted surface as one Evicted leaf", () => {
   const state = stateWithMachines([]); // no live rows
+  // Two evicted machines, but an UNEQUAL number of logged rows each (3 + 2
+  // = 5 rows total) — a fixture where machine-count and row-count coincide
+  // (e.g. one row per machine) would still pass if the label and the count
+  // were accidentally computed off the same accumulator. `label` must
+  // report the MACHINE count (2); `count` must report the ROW count (5).
   const log = [
     machineEventRow({ machineId: "ghost-1", seq: 1 }),
-    machineEventRow({ machineId: "ghost-2", seq: 2 }),
+    machineEventRow({ machineId: "ghost-1", seq: 2 }),
+    machineEventRow({ machineId: "ghost-1", seq: 3 }),
+    machineEventRow({ machineId: "ghost-2", seq: 4 }),
+    machineEventRow({ machineId: "ghost-2", seq: 5 }),
   ];
   const machines = buildNavTree(state, log)[2];
 
@@ -150,7 +158,7 @@ test("machines the log still references but the store evicted surface as one Evi
     id: "machines:evicted",
     label: "Evicted (2)",
     scope: null,
-    count: 2,
+    count: 5,
     disposed: true,
   });
 });

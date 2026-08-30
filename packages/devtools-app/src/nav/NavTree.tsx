@@ -20,9 +20,8 @@ export function NavTree({
   const [expanded, setExpanded] =
     useState<ReadonlySet<string>>(DEFAULT_EXPANDED);
   const selectedId = scopeKey(scope);
-  const [cursor, setCursor] = useState<TreeCursor>({
-    id: selectedId,
-    forSelection: selectedId,
+  const [cursor, setCursor] = useState<TreeCursor>(() => {
+    return { id: selectedId, forSelection: selectedId };
   });
   // Derived at render time, never in an effect: a scope change made
   // OUTSIDE the tree (probe push/pop, Esc, "show in All", datasource
