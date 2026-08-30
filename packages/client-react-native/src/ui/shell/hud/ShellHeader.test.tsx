@@ -1,6 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
+import { StyleSheet, type TextStyle } from "react-native";
 
 // Imported after the mocks are registered.
 const { ShellHeader } = require("./ShellHeader") as ShellHeaderTestModule;
@@ -27,6 +28,31 @@ test("tapping the env badge toggles the simulator flag", async () => {
   );
   await fireEvent.press(screen.getByTestId("hud-env-badge"));
   expect(onToggle).toHaveBeenCalledWith(true);
+});
+
+// Orbitron's advance for "REACTIVE TRADER" at 11pt with 2.2 tracking, from
+// the font's own hmtx table: 155.56pt, or 157.76 if iOS kerns past the last
+// glyph too. The wordmark box must reserve at least that.
+const ORBITRON_WORDMARK_ADVANCE = 155.56;
+
+test("the wordmark box reserves Orbitron's real advance, so the trailing ER cannot be clipped off", async () => {
+  await render(
+    <ShellHeader
+      simulator
+      onToggleSimulator={(): void => {}}
+      onOpenAppearance={(): void => {}}
+    />,
+  );
+
+  const style = StyleSheet.flatten(
+    screen.getByTestId("hud-wordmark").props.style as TextStyle,
+  );
+
+  // iOS measures this Text in the system font, not in Orbitron, and sized it
+  // at 132.7pt — narrow enough to clip "REACTIVE TRADER" to "REACTIVE TRAD".
+  expect(style.minWidth).toBeGreaterThanOrEqual(ORBITRON_WORDMARK_ADVANCE);
+  // ...and the row must never claw that width back by squeezing the wordmark.
+  expect(style.flexShrink).toBe(0);
 });
 
 interface ShellHeaderTestProps {
