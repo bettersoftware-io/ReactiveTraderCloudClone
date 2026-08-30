@@ -107,10 +107,15 @@ function makeStyles(t: RnTheme): InstrumentChipGridStyles {
     },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
     chip,
+    // dc.html:2179 — `bg: on ? T.chip : 'transparent'`. `chip` is the skin's
+    // own accent-at-12% wash, so the selected chip reads as a tint OF the
+    // accent that rings it; `bgSecondary` (what this was until the
+    // mobile-v1 fidelity pass) is an opaque neutral surface, which on the
+    // 3D skins painted a grey block inside a cyan border.
     chipActive: {
       ...chip,
       borderColor: t.accentPrimary,
-      backgroundColor: t.bgSecondary,
+      backgroundColor: t.chip,
     },
     chipLabel,
     chipLabelActive: { ...chipLabel, color: t.accentPrimary },
