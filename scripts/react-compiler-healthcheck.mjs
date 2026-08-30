@@ -283,7 +283,7 @@ for (const { file, fn, values, minMemoValues = 1 } of TRACKED) {
 
     if (totalMemoValues >= minMemoValues) {
       console.log(
-        `ok  ${file}  ${fn}  (whole-file: ${totalMemoValues} memo values)`,
+        `ok  ${file}  ${fn}  (fn-scoped: ${totalMemoValues} memo values, min ${minMemoValues})`,
       );
     } else {
       failures.push(
