@@ -22,6 +22,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { LockButton } from "#/ui/shell/lock/LockButton";
+import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -83,7 +84,7 @@ export function ShellHeader({
     >
       <View style={styles.left}>
         <HexReticleLogo />
-        <Text style={styles.wordmark}>
+        <Text testID="hud-wordmark" style={styles.wordmark}>
           REACTIVE<Text style={styles.wordmarkAccent}> TRADER</Text>
         </Text>
         <Pressable
@@ -149,11 +150,33 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
       height: 52,
     },
     right: { flexDirection: "row", alignItems: "center", gap: 6 },
+    // Orbitron, not the skin's display face: the design pins the wordmark to
+    // one family across every skin (`.dc.html:85`), the same face the lock
+    // screen's title carries. `weightedFont(t, "display", "700")` rendered it
+    // in Chakra Petch instead.
+    //
+    // `minWidth` is load-bearing, not cosmetic. iOS self-sizes this <Text>
+    // from a measurement taken in the SYSTEM font rather than in the bundled
+    // family: the pre-Orbitron and post-Orbitron goldens laid the box out at
+    // the IDENTICAL 132.7pt (env badge's left edge at 192.67pt in both), which
+    // is SF Bold's width for this string — neither Chakra Petch's 130.3 nor
+    // Orbitron's 155.6. Chakra fitted inside that box by luck. Orbitron
+    // overruns it by ~23pt, and iOS clips the run to "REACTIVE TRAD". So the
+    // box must reserve the real advance: 155.6pt at 11pt/2.2 tracking, or
+    // 157.8 if iOS also kerns past the last glyph — hence 158. This is the
+    // same defect the lock screen's title hit ("SESSION LOCKE"), which is also
+    // Orbitron and is also fixed by taking its width from something other than
+    // the self-measure.
+    //
+    // The row has the room: at 158 the left cluster ends near 255pt against
+    // the right cluster's 275pt, so nothing has to give up size or tracking.
     wordmark: {
       color: t.textPrimary,
-      ...weightedFont(t, "display", "700"),
+      fontFamily: FONT_ORBITRON_WORDMARK,
       fontSize: 11,
       letterSpacing: 2.2,
+      minWidth: 158,
+      flexShrink: 0,
     },
     wordmarkAccent: { color: t.accentPrimary },
     envBadge: {
