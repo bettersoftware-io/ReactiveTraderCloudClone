@@ -7,7 +7,7 @@ import type {
   TicketSubmissionState,
 } from "@rtc/client-core";
 import {
-  ADAPTIVE_BANK_NAME,
+  DEALERS_CATALOG,
   type Dealer,
   Direction,
   type Instrument,
@@ -138,12 +138,18 @@ function noSubmitPrice(): void {}
 
 function noPass(): void {}
 
-const DEALERS: readonly Dealer[] = [
-  { id: 1, name: "Bank A" },
-  { id: 2, name: "Bank B" },
-  { id: 3, name: "Bank C" },
-  { id: 9, name: ADAPTIVE_BANK_NAME },
-];
+/** The real desks, same catalogue slice `fixtures.tsx`'s `PINNED_DEALERS`
+ * pins (ids 0-4: Adaptive Bank, Citi, JP Morgan, Goldman Sachs, Morgan
+ * Stanley) — replacing the `Bank A/B/C` + a stray id-9 `ADAPTIVE_BANK_NAME`
+ * entry this slice carried until 2026-08-30. `useDealers` is one of the nine
+ * hooks not read by either visual fixture today (see this file's header
+ * comment), but a future seam-reading fixture should see the same five
+ * desks the pinned one already renders — not a placeholder roster with its
+ * own, different "our desk" id. */
+const DEALERS: readonly Dealer[] = DEALERS_CATALOG.slice(0, 5);
+
+/** `DEALERS[0]`'s id — "Adaptive Bank", the sell-side's own desk. */
+const ADAPTIVE_BANK_ID = 0;
 
 const INSTRUMENTS: readonly Instrument[] = [
   {
@@ -230,6 +236,16 @@ const QUOTES_BY_RFQ_ID: Readonly<Record<number, readonly Quote[]>> = {
       id: 5002,
       rfqId: RFQ_OPEN.id,
       dealerId: 2,
+      state: { type: "pendingWithoutPrice" },
+    },
+    {
+      // Our own desk's quote on the live RFQ — pendingWithoutPrice, so a
+      // future seam-reading fixture (`SellSidePanel`) has a real live
+      // ticket to find via `adaptiveBankId`, not an "our desk" that never
+      // quotes anything.
+      id: 5007,
+      rfqId: RFQ_OPEN.id,
+      dealerId: ADAPTIVE_BANK_ID,
       state: { type: "pendingWithoutPrice" },
     },
   ],
