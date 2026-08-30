@@ -221,7 +221,11 @@ test("detaching re-centers the >500-row render window on the first row still on 
   expect(rows[0]?.getAttribute("data-seq")).toBe("251");
   expect(rows[rows.length - 1]?.getAttribute("data-seq")).toBe("750");
   expect(list.querySelector('[data-seq="1000"]')).toBeNull();
-});
+  // Mounting 1000 rows and rendering 500 of them twice in jsdom is the
+  // heaviest test in this package; it took 5.3 s on a loaded CI runner
+  // (run 33301362795) against vitest's 5 s default, so the budget is
+  // explicit — this is cost, not a wait.
+}, 20_000);
 
 interface Handle {
   setScope: (scope: Scope) => void;
