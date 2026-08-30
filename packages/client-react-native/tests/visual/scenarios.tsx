@@ -24,6 +24,7 @@ import {
   BootSequenceFixture,
   CreditRfqTilesFixture,
   CreditSellSideFixture,
+  DockOpenFixture,
   LockHoldFixture,
   ModuleScreenFixture,
   ShellChromeFixture,
@@ -122,6 +123,19 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   header's pulsing connection dot, and the fixture pins the status strip's
  *   live FPS meter through `ShellTelemetryContext` — see its docstring for
  *   why neither half alone is sufficient.
+ *
+ * - `shell/dock-open` — the same HUD frame with the radial command dock FANNED
+ *   OPEN over a framed Rates grid (`DockOpenFixture`), the arc the prototype
+ *   shot `reference-shots/shell/dock-open.png` shows. `shell/chrome` above
+ *   captures the dock in its resting collapsed state, which is every other
+ *   framed scenario's too; the expanded fan is a state only a TAP reaches, so
+ *   it had no golden at all until `DockOpenContext` — a harness-only context
+ *   pin on the dock's initial `open`, the same shape as `BootClockContext` —
+ *   gave it one. `powerSaverLevel="freeze"` is load-bearing here for a reason
+ *   specific to this scenario: each satellite springs out from the FAB centre
+ *   on a staggered `radialDockLayout` delay, gated by `useShellMotionEnabled`,
+ *   so without freeze the capture lands mid-fan and pins one arbitrary frame
+ *   of the stagger rather than the five resting positions.
  *
  * NOTHING IS EXPLICITLY AVOIDED ANY MORE. The two surfaces that were are worth
  * keeping on the record, because each was freed by an opposite move.
@@ -320,6 +334,27 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
           <ShellChromeFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    // The dock fanned open over the framed Rates grid — see the file-level
+    // comment above. `freeze` holds the satellites' staggered spring at rest;
+    // `forceReduceMotion={false}` puts the ambient layer on beneath the scrim,
+    // as `rates/grid` has it, so the blur has the real screen to blur.
+    id: "shell/dock-open",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          <DockOpenFixture />
         </VisualScenarioHost>
       );
     },
