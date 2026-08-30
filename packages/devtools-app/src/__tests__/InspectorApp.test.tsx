@@ -489,10 +489,28 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // datasource-swap effect resets pin/radius/scope but must ALSO reset the
   // clearedBeforeSeq watermark, or the imported recording's own low seqs
   // (a fresh per-hub counter, per LogRow.seq) are hidden by a watermark
-  // left over from an entirely different log.
-  fireEvent.click(navNode("all"));
+  // left over from an entirely different log. `clear()` itself resumes the
+  // pin, so the pin that has to survive until the swap is taken AFTER the
+  // watermark, on a row that lands past it (seq 4) — and the scope stays on
+  // presenter:fx. Otherwise "pin gone" and "scope reset" already hold before
+  // the import, the wait below resolves on the banner alone, and the
+  // watermark assertion races the passive reset effect (it lost that race
+  // on CI once).
   fireEvent.keyDown(window, { key: "c" });
   expect(screen.getByTestId("unclear-log")).toBeTruthy();
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+
+  act(() => {
+    store.apply(emissionBatch(4));
+  });
+
+  const postClearRows = screen.getAllByTestId("timeline-row");
+  expect(postClearRows.length).toBe(1);
+  fireEvent.click(
+    (postClearRows[0] as HTMLElement).querySelector("button") as HTMLElement,
+  );
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  expect(navNode("presenter:fx").dataset.selected).toBe("true");
 
   const file = new File([serializeRecording(sampleRecording())], "r.json", {
     type: "application/json",
@@ -508,16 +526,16 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // Importing swapped the datasource out from under the old pin — it must
   // not silently survive onto the imported timeline. The banner landing
   // only proves `imported` state committed; the reset effect that clears
-  // the pin runs as a passive effect on a later tick, so this needs its
-  // own wait rather than an assertion immediately following the banner's.
+  // the pin, the scope AND the watermark runs as a passive effect on a
+  // later tick, so all three are waited for together — none of them holds
+  // before the swap, so the wait cannot resolve early.
   await waitFor(() => {
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
     expect(navNode("all").dataset.selected).toBe("true");
+    expect(screen.queryByTestId("unclear-log")).toBeNull();
   });
-  // The stale watermark must be gone too: no dangling Unclear button, and
-  // the imported recording's row (seq 1, which the old watermark of 3 would
+  // The imported recording's row (seq 1, which the old watermark of 3 would
   // have hidden) is listed rather than silently swallowed.
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
   expect(screen.getAllByTestId("timeline-row").length).toBe(1);
 
   fireEvent.click(screen.getByTestId("back-to-live"));
@@ -533,10 +551,10 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   });
   // The live log was never cleared FROM THE STORE — Clear only ever hid
   // rows behind a watermark, which the swap back to live also resets (now
-  // 0) — so all 3 live rows are visible again, not the pre-Clear state
-  // stuck hidden.
+  // 0) — so all 4 live rows (3 pre-Clear + the seq-4 row pinned above) are
+  // visible again, not the pre-Clear state stuck hidden.
   expect(screen.queryByTestId("unclear-log")).toBeNull();
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+  expect(screen.getAllByTestId("timeline-row").length).toBe(4);
 });
 
 test("an imported recording names itself in the connection badge instead of 'disconnected'", async () => {
@@ -814,20 +832,24 @@ function emissionBatches(): readonly AppToInspector[] {
   const frames: AppToInspector[] = [];
 
   for (let seq = 1; seq <= 3; seq += 1) {
-    frames.push({
-      kind: "batch",
-      events: [
-        {
-          kind: "stream:emission",
-          seq,
-          ts: 1000 + seq,
-          streamId: "fx.price$",
-          value: seq,
-          coalesced: 1,
-        },
-      ],
-    });
+    frames.push(emissionBatch(seq));
   }
 
   return frames;
+}
+
+function emissionBatch(seq: number): AppToInspector {
+  return {
+    kind: "batch",
+    events: [
+      {
+        kind: "stream:emission",
+        seq,
+        ts: 1000 + seq,
+        streamId: "fx.price$",
+        value: seq,
+        coalesced: 1,
+      },
+    ],
+  };
 }
