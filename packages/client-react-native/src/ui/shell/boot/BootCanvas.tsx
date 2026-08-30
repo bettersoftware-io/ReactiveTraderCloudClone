@@ -5,6 +5,7 @@ import { useContext, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
 import type { FrameInfo } from "react-native-reanimated";
 import { useFrameCallback, useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { BootVariant } from "@rtc/domain";
 
@@ -41,6 +42,10 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
   const pin = useContext(BootClockContext);
   const live = enabled && pin === null;
   const { width, height } = useWindowDimensions();
+  // Read even under a `BootClockContext` pin: the pin freezes the scene's
+  // CLOCK, not the device it runs on, so a golden captured on a Dynamic
+  // Island phone correctly shows the top telemetry pushed below the island.
+  const insets = useSafeAreaInsets();
   const liveElapsedSec = useSharedValue(0);
   const elapsedSec = pin?.elapsedSec ?? liveElapsedSec;
   const drift = useGyroDrift(live);
@@ -122,6 +127,7 @@ export function BootCanvas({ variant }: BootCanvasProps): JSX.Element | null {
         drift={drift}
         width={width}
         height={height}
+        topInset={insets.top}
         theme={theme}
         now={pin?.now}
       />

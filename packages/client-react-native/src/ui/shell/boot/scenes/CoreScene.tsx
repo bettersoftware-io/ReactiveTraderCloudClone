@@ -188,6 +188,7 @@ export function CoreScene({
   drift,
   width,
   height,
+  topInset,
   theme,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
@@ -312,6 +313,7 @@ export function CoreScene({
         drawTelemetry(
           canvas,
           width,
+          topInset,
           elapsed,
           progress,
           params.yaw,
@@ -323,6 +325,7 @@ export function CoreScene({
         drawStatusBanner(
           canvas,
           centerX,
+          topInset,
           progress,
           elapsed,
           flicker,
@@ -344,6 +347,9 @@ export function CoreScene({
  * insets it is laid out with (`coreTelemetry.ts`). */
 const SPOTLIGHT_LABEL_FONT_SIZE = 10;
 const BANNER_FONT_SIZE = 12;
+/** Status-banner baseline, under the two corner telemetry lines (web
+ * `bootCore.ts`); shifted down by the top safe-area inset with them. */
+const BANNER_BASELINE = 72;
 
 /** The scene's three text sites, each matching its web `ctx.font` string in
  * `bootCore.ts`: the spotlight labels (`10px`), the corner telemetry
@@ -920,6 +926,7 @@ function drawCalibrationTicks(
 function drawTelemetry(
   canvas: SkCanvas,
   width: number,
+  topInset: number,
   elapsed: number,
   progress: number,
   yaw: number,
@@ -941,21 +948,21 @@ function drawTelemetry(
   canvas.drawText(
     lines.topLeftFirst,
     TELEMETRY_INSET,
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     lines.topLeftSecond,
     TELEMETRY_INSET,
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     lines.topRightFirst,
     width - TELEMETRY_INSET - font.getTextWidth(lines.topRightFirst),
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
@@ -963,7 +970,7 @@ function drawTelemetry(
   canvas.drawText(
     lines.topRightSecond,
     width - TELEMETRY_INSET - font.getTextWidth(lines.topRightSecond),
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
@@ -972,6 +979,7 @@ function drawTelemetry(
 function drawStatusBanner(
   canvas: SkCanvas,
   centerX: number,
+  topInset: number,
   progress: number,
   elapsedSec: number,
   flicker: number,
@@ -993,7 +1001,13 @@ function drawStatusBanner(
   const textPaint = Skia.Paint();
   textPaint.setAntiAlias(true);
   textPaint.setColor(Skia.Color(hexToRgba(color, 0.9 * blink * flicker)));
-  canvas.drawText(text, centerX - textWidth / 2, 72, textPaint, font);
+  canvas.drawText(
+    text,
+    centerX - textWidth / 2,
+    topInset + BANNER_BASELINE,
+    textPaint,
+    font,
+  );
 }
 
 function drawBackdropWash(

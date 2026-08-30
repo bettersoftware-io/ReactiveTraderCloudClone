@@ -26,6 +26,7 @@ import { TradeTicketSheet } from "#/ui/rates/ticket/TradeTicketSheet";
 import { BootClockContext } from "#/ui/shell/boot/BootClockContext";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { ActiveModuleContext } from "#/ui/shell/hud/ActiveModuleContext";
+import { DockOpenContext } from "#/ui/shell/hud/DockOpenContext";
 import { MODULE_ROUTES, type ModuleRoute } from "#/ui/shell/hud/moduleRoutes";
 import { RadialCommandDock } from "#/ui/shell/hud/RadialCommandDock";
 import { ShellHeader } from "#/ui/shell/hud/ShellHeader";
@@ -36,6 +37,7 @@ import {
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
 import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { useAppFonts } from "#/ui/theme/fonts";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -71,6 +73,35 @@ export function BootSequenceFixture(): ReactNode {
   // stays centred for the whole capture, the second half of a deterministic
   // frame alongside `elapsedSec`.
   const elapsedSec = useSharedValue(BOOT_SCENE_ELAPSED_SEC);
+  // MOUNT-AFTER-THE-FONTS, and not a duplicate of the host's own
+  // `useAppFonts()` call.
+  //
+  // iOS resolves a `fontFamily` when a text node is CREATED; a family
+  // registered later (expo-font registers asynchronously) never reaches a node
+  // that already exists, and no re-render re-resolves it. The app is immune —
+  // `app/(app)/_layout.tsx` holds first paint until `useAppFonts()` is true, so
+  // every leaf, `BootGate` included, is created after registration. The harness
+  // is NOT: `VisualScenarioHost` reads the same hook but renders its children
+  // immediately, so anything created in the FIRST commit is stuck with the
+  // system face.
+  //
+  // Most fixtures dodge it by accident — their content arrives on a later
+  // commit (a ViewModel stream, `LockScreen`'s `state.locked` gate), by which
+  // time the fonts are registered. `BootSequence` does not: the scenario pins
+  // `useBootSequence` to a literal, so its whole chrome exists in commit one.
+  // Until 2026-08-30 every `boot/*` golden pinned the wordmark and both mono
+  // lines in SF — a golden of a screen the app never draws. Gating the mount
+  // here reproduces the app's own ordering.
+  //
+  // Scoped to this fixture ON PURPOSE. The same defect is visible in the
+  // framed goldens' `ShellHeader` wordmark (also first-commit, also SF today);
+  // fixing it for everyone belongs in `VisualScenarioHost` and re-pins every
+  // golden, which is a decision for the round that re-pins them.
+  const fontsLoaded = useAppFonts();
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <BootClockContext.Provider value={{ elapsedSec, now: PINNED_WALL_CLOCK }}>
@@ -126,11 +157,14 @@ export function BootSequenceFixture(): ReactNode {
  *   ON, as the prototype shots have it) and still reproduce pixel-for-pixel:
  *   the canvas paints its grid plus one static frame at `progress = 0`.
  *
- * The dock is captured COLLAPSED, which is its resting state: `open` is
- * internal `useState` with no prop seam, and adding one so a screenshot could
- * open it would put an affordance in production for the test's benefit. The
- * expanded satellite fan is therefore NOT covered by any framed golden — that
- * needs the Maestro tier, which can tap.
+ * The dock is captured COLLAPSED, which is its resting state. Its `open` flag
+ * is internal `useState` with no PROP seam — adding one so a screenshot could
+ * open it would put an affordance in production for the test's benefit — so
+ * the expanded satellite fan went uncovered by any framed golden until
+ * `DockOpenContext` (a context pin, invisible to the app, the same shape as
+ * `BootClockContext`) gave it one: `DockOpenFixture` below, captured as
+ * `shell/dock-open`. Every other framed scenario still mounts the dock with no
+ * provider above it, so it still starts collapsed.
  *
  * `simulator` defaults to `false` so the env badge reads `LIVE`, matching the
  * prototype's; `shell/chrome` passes `true` to keep its own golden honest
@@ -299,6 +333,40 @@ export function CreditSellSideFixture(): ReactNode {
  */
 export function ShellChromeFixture(): ReactNode {
   return <ShellFrameFixture module="rates" simulator />;
+}
+
+/**
+ * The framed Rates screen with the radial command dock FANNED OPEN — the one
+ * HUD state no golden could hold until `DockOpenContext` existed.
+ *
+ * The dock's `open` flag is internal `useState` reached only by tapping the
+ * FAB, so `ShellFrameFixture` captures it collapsed in every other framed
+ * scenario (its docstring used to record the expanded fan as Maestro-only
+ * work). The pin seeds that state's INITIAL value, which is why the provider
+ * wraps the whole frame rather than the dock alone: `ShellFrameFixture` mounts
+ * `RadialCommandDock` itself, and only the dock reads the context, so nothing
+ * else in the frame is touched and every other scenario keeps mounting the
+ * dock with NO provider above it at all.
+ *
+ * The body is the same live-pinned `RatesModule` `rates/grid` mounts, because
+ * the prototype shot dims and blurs the Rates screen behind the arc — a blank
+ * body would leave the scrim with nothing to blur and the golden would not
+ * witness the scrim's tint at all.
+ *
+ * The scenario must ALSO seed `powerSaverLevel="freeze"`: each satellite
+ * springs from the FAB centre on a staggered delay (`radialDockLayout`'s
+ * `delayMs`), gated by `useShellMotionEnabled` — under anything but freeze the
+ * capture lands mid-fan and the golden pins one arbitrary frame of the
+ * stagger.
+ */
+export function DockOpenFixture(): ReactNode {
+  return (
+    <DockOpenContext.Provider value={true}>
+      <ShellFrameFixture module="rates">
+        <RatesModule />
+      </ShellFrameFixture>
+    </DockOpenContext.Provider>
+  );
 }
 
 function NOOP_TOGGLE_SIMULATOR(): void {}

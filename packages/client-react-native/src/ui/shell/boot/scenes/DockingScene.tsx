@@ -167,6 +167,7 @@ export function DockingScene({
   elapsedSec,
   width,
   height,
+  topInset,
   theme,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
@@ -291,6 +292,7 @@ export function DockingScene({
           canvas,
           width,
           height,
+          topInset,
           target,
           elapsed,
           progress,
@@ -1296,6 +1298,7 @@ function drawCornerLabels(
   canvas: SkCanvas,
   width: number,
   height: number,
+  topInset: number,
   target: DockingOffset,
   elapsedSec: number,
   progress: number,
@@ -1326,7 +1329,7 @@ function drawCornerLabels(
   drawLabelBlock(
     canvas,
     CORNER_INSET,
-    CORNER_TOP_Y,
+    topInset + CORNER_TOP_Y,
     labels.topLeft.lines,
     "left",
     resolveDockingColor(
@@ -1342,7 +1345,7 @@ function drawCornerLabels(
   drawLabelBlock(
     canvas,
     CORNER_INSET,
-    CORNER_REC_Y,
+    topInset + CORNER_REC_Y,
     labels.rec.lines,
     "left",
     resolveDockingColor(labels.rec.colorRole, accent, accentAlt, accent, sell),
@@ -1352,7 +1355,7 @@ function drawCornerLabels(
   drawLabelBlock(
     canvas,
     width - CORNER_INSET,
-    CORNER_TOP_Y,
+    topInset + CORNER_TOP_Y,
     labels.topRight.lines,
     "right",
     resolveDockingColor(
@@ -1368,7 +1371,7 @@ function drawCornerLabels(
   drawLabelBlock(
     canvas,
     width - CORNER_INSET,
-    CORNER_REC_Y,
+    topInset + CORNER_REC_Y,
     labels.topRightAlt.lines,
     "right",
     resolveDockingColor(

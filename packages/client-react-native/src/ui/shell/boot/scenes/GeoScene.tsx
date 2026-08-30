@@ -104,6 +104,7 @@ export function GeoScene({
   drift,
   width,
   height,
+  topInset,
   theme,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
@@ -206,6 +207,7 @@ export function GeoScene({
         drawTelemetry(
           canvas,
           width,
+          topInset,
           world.dots.length,
           camera.yaw,
           elapsed,
@@ -819,6 +821,7 @@ function drawCityBars(
 function drawTelemetry(
   canvas: SkCanvas,
   width: number,
+  topInset: number,
   dotCount: number,
   yaw: number,
   elapsed: number,
@@ -845,21 +848,21 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.title,
     TELEMETRY_INSET,
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.mesh,
     TELEMETRY_INSET,
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.yaw,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.yaw),
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
@@ -867,7 +870,7 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.routes,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.routes),
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );

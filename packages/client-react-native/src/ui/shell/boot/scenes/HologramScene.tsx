@@ -105,6 +105,7 @@ export function HologramScene({
   drift,
   width,
   height,
+  topInset,
   theme,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
@@ -184,6 +185,7 @@ export function HologramScene({
         drawTelemetry(
           canvas,
           width,
+          topInset,
           progress,
           camera.yaw,
           flicker,
@@ -861,6 +863,7 @@ function drawCallouts(
 function drawTelemetry(
   canvas: SkCanvas,
   width: number,
+  topInset: number,
   progress: number,
   yaw: number,
   flicker: number,
@@ -881,21 +884,21 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.title,
     TELEMETRY_INSET,
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.particles,
     TELEMETRY_INSET,
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.yaw,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.yaw),
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
@@ -903,7 +906,7 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.assembly,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.assembly),
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );

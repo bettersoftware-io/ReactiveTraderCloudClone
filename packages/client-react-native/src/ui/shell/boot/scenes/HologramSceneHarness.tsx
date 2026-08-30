@@ -30,6 +30,7 @@ export function HologramSceneHarness({
         drift={drift}
         width={390}
         height={844}
+        topInset={0}
         theme={rnThemeTokens.holo.dark}
       />
     </ThemeContext.Provider>
