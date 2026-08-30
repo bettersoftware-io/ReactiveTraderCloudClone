@@ -96,8 +96,13 @@ export function NewRfqForm({
       contentContainerStyle={styles.content}
       testID="new-rfq-form"
     >
-      <Text style={styles.formTitle}>New RFQ</Text>
-
+      {/* No screen heading: the design goes straight from the credit sub-nav
+          (which already reads NEW RFQ) to the INSTRUMENT label
+          (reference-shots/credit/new-rfq.png). The sans "New RFQ" title that
+          stood here was a leftover from the web port and printed the tab's
+          own name a second time, in the one face nothing else on the form
+          uses. `testID="new-rfq-form"` is on this ScrollView root, so
+          nothing that keys off the form moved. */}
       <InstrumentChipGrid
         instruments={instruments}
         selectedId={instrumentId}
@@ -208,7 +213,6 @@ interface NewRfqFormStyles {
   broadcast: ViewStyle;
   broadcastNote: TextStyle;
   content: ViewStyle;
-  formTitle: TextStyle;
   field: ViewStyle;
   fieldLabel: TextStyle;
   directionRow: ViewStyle;
@@ -302,11 +306,6 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       fontFamily: t.fontMono,
     },
     content: { padding: 16, gap: 16 },
-    formTitle: {
-      fontSize: 16,
-      color: t.textPrimary,
-      ...weightedFont(t, "display", "600"),
-    },
     field: { gap: 6 },
     // dc.html:269 styles DIRECTION identically to INSTRUMENT and QUANTITY.
     // Those two labels live inside the chip components and already match; this

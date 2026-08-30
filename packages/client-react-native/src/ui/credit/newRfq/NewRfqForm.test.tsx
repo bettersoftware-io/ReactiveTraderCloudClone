@@ -220,6 +220,19 @@ test("an omitted initialSelection field keeps the form default", async () => {
   expect(submit.mock.calls[0][0].direction).toBe(Direction.Buy);
 });
 
+// The design goes straight from the credit sub-nav to the INSTRUMENT label;
+// the sans "New RFQ" title that used to head the form printed the active
+// tab's own name a second time. This is the guard against it coming back
+// with the next port of a web panel.
+test("prints no screen heading above the instrument grid", async () => {
+  const submit = jest.fn<SubmitFn>();
+  await renderEditingForm(submit);
+
+  expect(screen.getByTestId("new-rfq-form")).toBeTruthy();
+  expect(screen.queryByText("New RFQ")).toBeNull();
+  expect(screen.getByText("INSTRUMENT")).toBeTruthy();
+});
+
 test("renders the confirmed card in the confirmed state", async () => {
   const submit = jest.fn<SubmitFn>();
   await renderWithTheme(
