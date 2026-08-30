@@ -1,7 +1,5 @@
 // packages/client-react-native/src/ui/rates/ticket/TradeTicketSheet.tsx
 import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
   type BottomSheetBackgroundProps,
   BottomSheetModal,
   BottomSheetView,
@@ -23,6 +21,10 @@ import { useViewModel } from "@rtc/react-bindings";
 import { BuySellPads } from "#/ui/rates/ticket/BuySellPads";
 import { ExecutionCeremony } from "#/ui/rates/ticket/ExecutionCeremony";
 import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
+import { sheetPresentation } from "#/ui/rates/ticket/sheetPresentation";
+import { TicketBackdrop } from "#/ui/rates/ticket/TicketBackdrop";
+import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { SHELL_CLOCK } from "#/ui/shell/hud/useShellTelemetry";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -40,7 +42,25 @@ import { weightedFont } from "#/ui/theme/weightedFont";
  * and returns to `ready`. We record that a terminal state was seen, then
  * dismiss the sheet when the machine returns to `ready` — no UI-side timer,
  * no magic number (ported from the old `TradeTicket`'s effect). Dismissing
- * fires the sheet's `onDismiss`, which calls `onClose`. */
+ * fires the sheet's `onDismiss`, which calls `onClose`.
+ *
+ * **The presentation itself is motion-gated**, like every other animation in
+ * the shell. `useShellMotionEnabled` is false under OS reduced-motion or
+ * power-saver Freeze, and then the sheet must APPEAR rather than slide: it
+ * mounts straight at its resting position and takes a zero-duration timing
+ * config for every later transition, and the backdrop paints at its final
+ * opacity with no fade. Which props say that is `sheetPresentation`'s
+ * business (see it for why each half is load-bearing); this component only
+ * asks it, with the live motion flag, and spreads the answer. The backdrop is
+ * the other half of the same gate and lives in `TicketBackdrop`, which paints
+ * a static scrim rather than an index-interpolated one when motion is off.
+ *
+ * That gate is a real accessibility behaviour, not a harness affordance — the
+ * same gap Phase 0 closed in `AmbientBackground`: a Freeze user who has asked
+ * for no motion was still getting the full spring slide-up plus a fading
+ * scrim, which is the largest single movement this screen makes. Its side benefit is
+ * that a `freeze`-seeded golden of the ticket is reproducible; without it the
+ * capture can land part-way through the present. */
 export function TradeTicketSheet({
   pair,
   onClose,
@@ -50,6 +70,7 @@ export function TradeTicketSheet({
   const notional = useNotional(pair.defaultNotional);
   const execution = useTileExecution(pair);
   const styles = useThemedStyles(makeStyles);
+  const presentation = sheetPresentation(useShellMotionEnabled());
 
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
   const lastDirRef = useRef<Direction | null>(null);
@@ -79,6 +100,7 @@ export function TradeTicketSheet({
     <BottomSheetModal
       ref={sheetRef}
       enableDynamicSizing
+      {...presentation}
       onDismiss={onClose}
       backdropComponent={TicketBackdrop}
       backgroundComponent={TicketBackground}
@@ -89,7 +111,7 @@ export function TradeTicketSheet({
           <Text style={styles.pair}>
             {pair.base}/{pair.terms}
           </Text>
-          <Text style={styles.subtitle}>SPOT · T+2</Text>
+          <Text style={styles.subtitle}>{`SPOT · T+2 · ${SHELL_CLOCK}`}</Text>
         </View>
         <NotionalControl notional={notional} base={pair.base} />
         {price === null ? null : (
@@ -107,19 +129,6 @@ export function TradeTicketSheet({
 export interface TradeTicketSheetProps {
   pair: CurrencyPair;
   onClose: () => void;
-}
-
-// Private: the dimmed backdrop, dismissing the sheet on press. Not exported —
-// rtc/component-newspaper permits private subcomponents below the lede.
-function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
-  return (
-    <BottomSheetBackdrop
-      {...props}
-      appearsOnIndex={0}
-      disappearsOnIndex={-1}
-      pressBehavior="close"
-    />
-  );
 }
 
 // Private: the sheet body's background — `t.panel` is a translucent token
@@ -164,15 +173,18 @@ function makeStyles(t: RnTheme): TradeTicketSheetStyles {
   return StyleSheet.create({
     handleIndicator: { backgroundColor: t.borderSubtle },
     body: { padding: 20, paddingBottom: 32, gap: 18 },
-    header: { gap: 4 },
+    // The design's header block: the pair at 16/600 with 1px tracking over a
+    // 9px mono stamp 2px below it (dc.html L491-494).
+    header: { gap: 2 },
     pair: {
-      fontSize: 18,
+      fontSize: 16,
+      letterSpacing: 1,
       color: t.textPrimary,
       ...weightedFont(t, "display", "600"),
     },
     subtitle: {
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 9,
+      letterSpacing: 1.4,
       color: t.textMuted,
       fontFamily: t.fontMono,
     },

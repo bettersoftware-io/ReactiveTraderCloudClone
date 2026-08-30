@@ -94,7 +94,7 @@ export function useShellTelemetry(): ShellTelemetry {
       fps: frozenTelemetry.fps,
       fpsTone: fpsTone(frozenTelemetry.fps),
       latencyMs: frozenTelemetry.latencyMs,
-      clock: SEED_CLOCK,
+      clock: SHELL_CLOCK,
       build: BUILD_TAG,
     };
   }
@@ -103,14 +103,23 @@ export function useShellTelemetry(): ShellTelemetry {
     fps,
     fpsTone: fpsTone(fps),
     latencyMs: SEED_LATENCY_MS,
-    clock: SEED_CLOCK,
+    clock: SHELL_CLOCK,
     build: BUILD_TAG,
   };
 }
 
 const SEED_FPS = 60;
 const SEED_LATENCY_MS = 12;
-const SEED_CLOCK = "09:47:03";
+
+/** The decorative wall clock the HUD prints. Exported because it is now on
+ * TWO surfaces — the status strip's clock cell and the trade ticket's
+ * `SPOT · T+2 · <clock>` subtitle — and the ticket must not call this hook to
+ * get it: the hook also owns the live `useFrameCallback` FPS meter, so a
+ * second caller would register a SECOND per-frame counter (and re-render its
+ * subtree once a second) purely to read a constant. Sharing the constant keeps
+ * one source of truth at zero cost. If the clock ever becomes live, this
+ * export goes away and both surfaces read the hook. */
+export const SHELL_CLOCK = "09:47:03";
 const BUILD_TAG = "V2.0-RN";
 const PUBLISH_MS = 1000;
 

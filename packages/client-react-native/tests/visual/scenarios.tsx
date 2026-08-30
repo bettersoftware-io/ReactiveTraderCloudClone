@@ -32,6 +32,7 @@ import {
   ModuleScreenFixture,
   ShellChromeFixture,
   ShellFrameFixture,
+  TradeTicketFixture,
 } from "./fixtures";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
@@ -197,6 +198,17 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   (below) hands `useAuth` a locked + unlocking session, with its ring held
  *   at a fixed mid-fill through `LockHoldProgressContext` (`fixtures.tsx`'s
  *   `LOCK_HOLD_PROGRESS`).
+ *
+ * - `rates/ticket` — the REAL `TradeTicketSheet` over that same framed Rates
+ *   grid (`TradeTicketFixture`), the pair-selected state `RatesModule` gates
+ *   behind an internal `useState` with no prop seam. Deterministic for the
+ *   same reason `rates/grid` is — every seam it reads (`usePrice`,
+ *   `useNotional`, `useTileExecution`) is a frozen literal in `fake/rates.ts`,
+ *   and the execution arm rests at `ready`, under which `ExecutionCeremony`
+ *   draws nothing. `freeze` is carried for the chrome and the ceremony's
+ *   Reanimated gates, exactly as `rates/grid` carries it for the tick-flash
+ *   pips. Wraps its own `BottomSheetModalProvider`, like `shell/appearance`
+ *   and for the same reason.
  *
  * - `credit/new-rfq` — the third Credit sub-nav view, mounted the way
  *   `equities/trade` mounts its own (`CreditNav view="new-rfq"` + the REAL
@@ -403,6 +415,35 @@ export const SCENARIOS: readonly Scenario[] = [
           <ShellFrameFixture module="rates">
             <RatesModule />
           </ShellFrameFixture>
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    // The spot trade ticket, presented over the grid above — the surface a
+    // user reaches by tapping a tile. Same determinism as `rates/grid` (the
+    // pinned pricing the host applies, plus `fake/rates.ts`'s frozen
+    // `usePrice`/`useNotional`/`useTileExecution`), so the sheet is captured
+    // at its resting arm with no ceremony overlay.
+    id: "rates/ticket",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
+          {/* BottomSheetModalProvider, scoped to THIS scenario — the same
+              move `shell/appearance` makes, for the same reason: this harness
+              route sits outside `app/(app)`, whose `Chrome` supplies the
+              portal host in the real app, and `TradeTicketSheet` mounts a
+              `BottomSheetModal` that throws without one. */}
+          <BottomSheetModalProvider>
+            <TradeTicketFixture />
+          </BottomSheetModalProvider>
         </VisualScenarioHost>
       );
     },

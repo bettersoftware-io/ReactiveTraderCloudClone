@@ -67,6 +67,10 @@ export const SCENARIO_IDS = [
   "boot/static",
   // Phase 6 T6: the Rates grid, unblocked by the host-wide pricing pin.
   "rates/grid",
+  // The spot trade ticket over that same grid — the REAL `TradeTicketSheet`,
+  // presented for the fake's first pair. Deterministic for the same reason
+  // `rates/grid` is; see `scenarios.tsx`.
+  "rates/ticket",
   // Phase 6a Task 9: the hold-to-unlock ring at a fixed mid-fill progress.
   "lock/hold",
   // Phase 5c Task 7: the three Analytics cards. Analytics was previously

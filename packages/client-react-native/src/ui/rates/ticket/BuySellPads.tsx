@@ -118,8 +118,10 @@ function makeStyles(t: ReturnType<typeof useTheme>): BuySellPadsStyles {
       transform: [{ translateX: -20 }, { translateY: -10 }],
       backgroundColor: t.bgHeader,
       borderWidth: 1,
-      borderColor: t.borderSubtle,
-      borderRadius: 10,
+      borderColor: t.borderPrimary,
+      // A true pill, as the design draws it (`border-radius:999px`) — at this
+      // height the old 10 read as a rounded rectangle between the two pads.
+      borderRadius: 999,
       paddingHorizontal: 8,
       paddingVertical: 2,
     },
