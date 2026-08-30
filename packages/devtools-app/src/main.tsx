@@ -1,6 +1,3 @@
-// biome-ignore assist/source/organizeImports: must stay the first import — see the module header
-import "#/disableReactDevtoolsHook";
-
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 

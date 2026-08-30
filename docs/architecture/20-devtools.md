@@ -531,13 +531,20 @@ backend serialises every component's props on every commit; the inspector
 deliberately carries a 5,000-row event log and whole `InspectorState`
 snapshots as props, so under live traffic (~15 commits/s) it storms
 `RangeError: Invalid string length` and the tab goes unresponsive
-(live-acceptance, 2026-07-21). `disableReactDevtoolsHook.ts` sets
-`__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true` as `main.tsx`'s first
-import — react-dom's `injectInternals()` runs at module-evaluation time and
-bails once `isDisabled` is set, so import order (not `createRoot` timing)
-decides. Opt back in with `?react-devtools` to debug the inspector's own React
-tree. The extension panel — a separate `chrome-extension://` origin the
-content script does not reach — imports the same guard defensively.
+(live-acceptance, 2026-07-21). React reads `hook.isDisabled` at
+module-evaluation time, so the guard has to run before any module script —
+an ES-module import can't guarantee that (`biome.jsonc`'s `organizeImports`
+groups sort a same-package import after `react`/`react-dom` regardless of
+source position, and this repo bans lint-disable comments). Instead
+`packages/devtools-app/index.html` carries the guard as a **classic inline
+`<script>` in `<head>`, before the `type="module"` entry script** — classic
+scripts run synchronously in document order, ahead of any deferred module
+script, so no import order is involved at all. Opt back in with
+`?react-devtools` to debug the inspector's own React tree.
+`scripts/check-devtools-dist.mjs` asserts the built `/devtools/` page still
+contains the guard, post-build. The extension panel is its own
+`chrome-extension://` page that the content script never reaches, and MV3's
+CSP forbids inline scripts there anyway, so it carries no guard.
 
 - **Official Solid DevTools does _not_ work against the deployed Solid client.**
   It requires the `solid-devtools` package plus its Vite plugin, and this repo
