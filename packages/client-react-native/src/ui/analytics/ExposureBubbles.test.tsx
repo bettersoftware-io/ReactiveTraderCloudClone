@@ -46,16 +46,18 @@ test("collapses to nothing when there are no positions", async () => {
 test("reserves the height the tallest shelf needs", async () => {
   await renderWithTheme(<ExposureBubbles positions={POSITIONS} />);
 
-  // JPY dominates this book, so it takes the maximum radius of 60.
+  // JPY dominates this book, so it takes the design ramp's 74px cap and the
+  // other two sit near its 30px floor — one shelf, as tall as JPY.
   expect(screen.getByTestId("exposure-bubbles").props.style).toEqual(
-    expect.objectContaining({ height: 120 }),
+    expect.objectContaining({ height: 74 }),
   );
 });
 
 test("survives a book whose currencies all carry the same magnitude", async () => {
-  // Equal magnitudes collapse the radius scale's lower bound to zero — the one
-  // branch in `aggregatePositionsByCurrency` that could otherwise divide by
-  // zero.
+  // Equal magnitudes collapse the domain radius scale's lower bound to zero —
+  // the one branch in `aggregatePositionsByCurrency` that could otherwise
+  // divide by zero. The draw model rescales on top of it, so this also covers
+  // a book where every bubble lands on `scaleBubbleRadius`'s 74px cap.
   await renderWithTheme(
     <ExposureBubbles
       positions={[

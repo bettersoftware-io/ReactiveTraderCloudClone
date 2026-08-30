@@ -1,6 +1,7 @@
 import {
   aggregatePositionsByCurrency,
   type CurrencyPairPosition,
+  type CurrencyPositionNode,
 } from "@rtc/domain";
 
 import {
@@ -27,6 +28,8 @@ export interface BubbleDrawEntry {
    * group, so every child below is positioned relative to this point. */
   readonly x: number;
   readonly y: number;
+  /** Half the mobile design's diameter ramp — see `scaleBubbleRadius`. NOT the
+   * radius `@rtc/domain` hands back, which is the web prototype's curve. */
   readonly radius: number;
   readonly sign: "pos" | "neg";
   readonly currencyFontSize: number;
@@ -56,6 +59,13 @@ export interface BubbleDrawModel {
  * it with a `viewBox`; Skia has no viewBox, and packing at the real width is
  * both simpler and a better use of the space than scaling would be.
  *
+ * THE RADIUS IS RESCALED BEFORE LAYOUT. `aggregatePositionsByCurrency` sizes
+ * every node by the WEB prototype's curve; the mobile design has its own, much
+ * flatter ramp, so each node's radius is replaced by `scaleBubbleRadius` here
+ * and only then packed. Rescaling on the way in rather than inside
+ * `computeBubbleLayout` keeps the packer reading a plain `radius`, and keeps
+ * the web clients — which share the domain aggregation — untouched.
+ *
  * The amount is formatted from the aggregation's RAW `tradedAmount`, not from
  * `netExposureByCurrency`, which pre-rounds to a tenth of a million. The
  * mobile design formats the raw figure (`fmtK(e.usd)`, dc.html L964), so a
@@ -67,7 +77,19 @@ export function buildBubbleDrawModel(
   positions: readonly CurrencyPairPosition[],
   viewportWidth: number,
 ): BubbleDrawModel {
-  const placed = computeBubbleLayout(aggregatePositionsByCurrency(positions), {
+  const nodes = aggregatePositionsByCurrency(positions);
+  const maxAbsExposure = nodes.reduce((max: number, node): number => {
+    return Math.max(max, Math.abs(node.tradedAmount));
+  }, 0);
+
+  const sized = nodes.map((node): CurrencyPositionNode => {
+    return {
+      ...node,
+      radius: scaleBubbleRadius(Math.abs(node.tradedAmount), maxAbsExposure),
+    };
+  });
+
+  const placed = computeBubbleLayout(sized, {
     width: viewportWidth,
   });
 
@@ -90,6 +112,38 @@ export function buildBubbleDrawModel(
   });
 
   return { entries, height: bubblesHeight(placed) };
+}
+
+/**
+ * The mobile design's bubble size: a LINEAR ramp on the currency's share of
+ * the book's largest absolute exposure, `30 + (|usd| / maxExp) * 44` px across
+ * (dc.html L960-966) — a 30px floor, a 74px cap, halved here because
+ * everything downstream draws from a centre and a radius.
+ *
+ * WHY NOT THE DOMAIN RADIUS. `aggregatePositionsByCurrency` scales
+ * `[minValue, maxValue] -> [15, 60]`, i.e. a 120px cap AND a floor that moves
+ * with the book. On a phone card that put the largest bubble across a third of
+ * the screen and pushed the cluster below the fold. The domain figure is the
+ * WEB prototype's rule and the web clients still use it; only this draw model
+ * substitutes the mobile one.
+ *
+ * The ramp is anchored on the MAXIMUM alone, so the smallest bubble is a true
+ * reading of its share rather than being stretched to a floor by the domain's
+ * moving `minValue`. `maxAbsExposure` is 0 only for an empty book (zero nets
+ * are filtered out upstream), and the guard keeps that case at the floor
+ * instead of dividing by zero.
+ *
+ * Unlike the design's `Math.round(...)` — a CSS-pixel convenience — the
+ * fractional diameter is kept: Skia draws circles at float precision, and
+ * rounding would only re-introduce a quantisation the packer would inherit.
+ */
+export function scaleBubbleRadius(
+  absExposure: number,
+  maxAbsExposure: number,
+): number {
+  const share = maxAbsExposure === 0 ? 0 : absExposure / maxAbsExposure;
+
+  return (MIN_BUBBLE_DIAMETER + share * BUBBLE_DIAMETER_RANGE) / 2;
 }
 
 /**
@@ -129,16 +183,29 @@ export const AMOUNT_FONT_SIZE = 7.5;
 const LARGE_LABEL_DIAMETER = 62;
 
 /**
+ * The mobile design's diameter ramp, `30 + (|usd| / maxExp) * 44` px
+ * (dc.html L960-966): a 30px floor at zero exposure, a 74px cap at the book's
+ * largest. See `scaleBubbleRadius`.
+ */
+const MIN_BUBBLE_DIAMETER = 30;
+const BUBBLE_DIAMETER_RANGE = 44;
+
+/**
  * Smallest bubble that gets an amount label.
  *
  * T37: this was 40, justified as "the prototype's own floor (its diameter is
  * `40 + sqrt(|M|) * 11`)" — but that formula is the **web** prototype's
- * (`client-prototype/src/fx/Positions/positionsData.ts:25`). The mobile design
- * sizes bubbles `30 + (|usd| / maxExp) * 44`: a LINEAR ramp with a **30px**
- * floor, and its template draws the amount on every bubble unconditionally
- * (dc.html:194-197). The suppression existed because the labels were carrying
- * the web's oversized 9px amount; at the mobile 7.5px a 30px bubble fits, so
- * the floor drops to match and the smallest bubble regains its value.
+ * (`client-prototype/src/fx/Positions/positionsData.ts:25`). The mobile
+ * design's template draws the amount on every bubble unconditionally
+ * (dc.html:194-197); the suppression existed only because the labels were
+ * carrying the web's oversized 9px amount, and at the mobile 7.5px a 30px
+ * bubble fits.
+ *
+ * Now that `scaleBubbleRadius` applies the design's ramp, its floor IS this
+ * threshold, so in practice every bubble is labelled and the branch never
+ * takes its `null` arm. It stays as the seam that keeps a smaller floor
+ * honest: drop `MIN_BUBBLE_DIAMETER` below this and the tiniest bubbles go
+ * back to carrying their currency alone rather than overprinting two lines.
  */
 const AMOUNT_MIN_DIAMETER = 30;
 
