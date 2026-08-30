@@ -1,7 +1,12 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import type { ReactNode } from "react";
 
-import { type BootVariant, ConnectionStatus } from "@rtc/domain";
+import {
+  type BootVariant,
+  ConnectionStatus,
+  DEFAULT_LOGIN_WAIT_VARIANT,
+  ROSTER,
+} from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 
 import { BlotterModule } from "#/ui/blotter/BlotterModule";
@@ -171,9 +176,10 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   through `useBootMotionEnabled`, which encodes "Freeze always wins", so
  *   seeding `freeze` here pins it to its resting frame like any other
  *   scenario.
- * - `lock/hold` — `HoldToUnlockRing` alone at a fixed mid-fill `progress`
- *   (`fixtures.tsx`'s `LOCK_HOLD_PROGRESS`), with a freshly-built,
- *   never-triggered `LongPressGesture` satisfying its `gesture` prop.
+ * - `lock/hold` — the REAL `LockScreen`, rendered because `pinnedLockedAuth`
+ *   (below) hands `useAuth` a locked + unlocking session, with its ring held
+ *   at a fixed mid-fill through `LockHoldProgressContext` (`fixtures.tsx`'s
+ *   `LOCK_HOLD_PROGRESS`).
  *
  * - `equities/markets` / `equities/trade` / `equities/blotter` — Phase 5b
  *   Task 10, the Equities module's first three scenarios. Each mounts one
@@ -374,7 +380,11 @@ export const SCENARIOS: readonly Scenario[] = [
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark">
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          viewModelOverrides={pinnedLockedAuth()}
+        >
           <LockHoldFixture />
         </VisualScenarioHost>
       );
@@ -600,6 +610,36 @@ function pinnedBootSequence(variant: BootVariant): Partial<ViewModel> {
 }
 
 type PinnedBootSequence = ReturnType<ViewModel["useBootSequence"]>;
+
+/** A locked, mid-unlock session for `lock/hold`: `locked` makes the REAL
+ * `LockScreen` render (it is `null` otherwise) and `unlocking` is the state a
+ * held ring is in — the prototype's lock shot is captured mid-hold. The
+ * operator is the roster's first demo account, so the identity block prints
+ * real values, not placeholders. */
+function pinnedLockedAuth(): Partial<ViewModel> {
+  const auth: PinnedAuth = {
+    state: {
+      status: "authenticated",
+      user: ROSTER[0].user,
+      locked: true,
+      unlocking: true,
+      error: null,
+      waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
+    },
+    login: (): void => {},
+    unlock: (): void => {},
+    lock: (): void => {},
+    logout: (): void => {},
+  };
+
+  return {
+    useAuth: (): PinnedAuth => {
+      return auth;
+    },
+  };
+}
+
+type PinnedAuth = ReturnType<ViewModel["useAuth"]>;
 
 /** The progress the chrome shows, chosen to AGREE with the scene instant:
  * `fixtures.tsx`'s `BOOT_SCENE_ELAPSED_SEC` (2.52 s) is 60% of

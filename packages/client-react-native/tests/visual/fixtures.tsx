@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 
 import {
@@ -31,7 +30,8 @@ import {
   ShellTelemetryContext,
 } from "#/ui/shell/hud/ShellTelemetryContext";
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
-import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
+import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
+import { LockScreen } from "#/ui/shell/lock/LockScreen";
 
 /**
  * Component-only module, split out of `scenarios.tsx` so Biome's
@@ -409,27 +409,24 @@ function NOOP_ACCEPT(): void {}
 
 function NOOP_DISMISS(): void {}
 
+/**
+ * The REAL `LockScreen` at a fixed mid-hold. Two pins make it static and
+ * locked at once: the scenario's `viewModelOverrides` (`scenarios.tsx`'s
+ * `pinnedLockedAuth`) hands `useAuth` a locked, unlocking session so the
+ * overlay renders at all — it is `null` unless `state.locked` — and
+ * `LockHoldProgressContext` seeds `useHoldToUnlock`'s ring fill at
+ * `LOCK_HOLD_PROGRESS`, which nothing drives during a capture. Until
+ * 2026-08-30 this fixture mounted `HoldToUnlockRing` alone (a locked session
+ * was thought to need a real auth round-trip — it needs only the seam), so
+ * the golden witnessed the ring and none of the overlay around it.
+ */
 export function LockHoldFixture(): ReactNode {
   const progress = useSharedValue(LOCK_HOLD_PROGRESS);
-  // Built fresh and never triggered: nothing drives a real touch during a
-  // static capture, so this only needs to satisfy `HoldToUnlockRing`'s
-  // `gesture` prop.
-  const gesture = Gesture.LongPress();
 
-  // Centred, mirroring `LockScreen`'s `scrollContent`. Without it the ring
-  // renders at the top of the screen and the dynamic island covers all but a
-  // sliver of the arc — which is what the previous golden pinned, defeating
-  // the whole point of `LOCK_HOLD_PROGRESS` being a PARTIAL fill. `LockScreen`
-  // itself cannot be mounted here: it renders null unless the session is
-  // locked, and locking it would need a real auth round-trip.
   return (
-    <View style={styles.centred}>
-      <HoldToUnlockRing
-        gesture={gesture}
-        progress={progress}
-        onPress={(): void => {}}
-      />
-    </View>
+    <LockHoldProgressContext.Provider value={progress}>
+      <LockScreen />
+    </LockHoldProgressContext.Provider>
   );
 }
 
@@ -488,7 +485,6 @@ const styles = StyleSheet.create({
   // first content-only capture ever taken came back an empty screen.
   body: { flex: 1, minHeight: 0 },
   content: { flex: 1, padding: 16, gap: 20 },
-  centred: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
 
 /**

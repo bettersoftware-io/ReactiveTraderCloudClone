@@ -1,8 +1,10 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import { renderHook } from "@testing-library/react-native";
+import type { JSX, PropsWithChildren } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import * as Reanimated from "react-native-reanimated";
 
+import { LockHoldProgressContext } from "#/ui/shell/lock/LockHoldProgressContext";
 import {
   DECAY_MS,
   HOLD_MS,
@@ -31,6 +33,30 @@ test("holding rises progress toward 1 via a timed fill", async () => {
     1,
     expect.objectContaining({ duration: HOLD_MS }),
   );
+});
+
+test("a LockHoldProgressContext pin is the progress the ring reads and the gesture writes", async () => {
+  const pinned = { value: 0.55 } as SharedValue<number>;
+  const { result } = await renderHook(
+    () => {
+      return useHoldToUnlock({ onComplete: jest.fn() });
+    },
+    {
+      wrapper: ({ children }: PropsWithChildren): JSX.Element => {
+        return (
+          <LockHoldProgressContext.Provider value={pinned}>
+            {children}
+          </LockHoldProgressContext.Provider>
+        );
+      },
+    },
+  );
+
+  expect(result.current.progress).toBe(pinned);
+
+  result.current.gesture.handlers.onBegin?.(fakeEvent());
+
+  expect(pinned.value).toBe(1);
 });
 
 test("releasing early decays progress back to 0 via a timed animation, not a snap", async () => {
