@@ -24,6 +24,7 @@ import type { TileExecutionState } from "@rtc/client-core";
 import { type Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 
 /** Maps the real `TileExecutionState` (the tile's execution machine — no
@@ -172,12 +173,7 @@ function BusyOverlay({ direction }: BusyOverlayProps): JSX.Element {
           spinStyle,
         ]}
       />
-      <Text
-        style={[
-          styles.executing,
-          { color: t.accentPrimary, fontFamily: t.fontMono },
-        ]}
-      >
+      <Text style={[labelStyle(t, 11, 2.5, "600"), { color: t.accentPrimary }]}>
         {direction === null
           ? "EXECUTING"
           : `EXECUTING ${direction.toUpperCase()}`}
@@ -243,7 +239,8 @@ function Stamp({ text, detail, positive }: StampProps): JSX.Element {
       <Animated.Text
         style={[
           styles.stamp,
-          { color, borderColor: color, fontFamily: t.fontMono },
+          labelStyle(t, 26, 5, "700"),
+          { color, borderColor: color },
           stampStyle,
         ]}
       >
@@ -273,7 +270,6 @@ function NOOP(): void {}
 interface ExecutionCeremonyStyles {
   overlay: ViewStyle;
   spinner: ViewStyle;
-  executing: TextStyle;
   scanTrack: ViewStyle;
   scanBar: ViewStyle;
   stamp: TextStyle;
@@ -293,11 +289,6 @@ const styles: ExecutionCeremonyStyles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 2,
   },
-  executing: {
-    fontSize: 11,
-    letterSpacing: 2.5,
-    fontWeight: "600",
-  },
   scanTrack: {
     width: SCAN_TRACK_W,
     height: 2,
@@ -310,9 +301,6 @@ const styles: ExecutionCeremonyStyles = StyleSheet.create({
     borderRadius: 1,
   },
   stamp: {
-    fontSize: 26,
-    fontWeight: "700",
-    letterSpacing: 5,
     borderWidth: 2,
     borderRadius: 8,
     paddingHorizontal: 20,
