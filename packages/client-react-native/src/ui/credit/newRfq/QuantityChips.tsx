@@ -101,10 +101,12 @@ function makeStyles(t: RnTheme): QuantityChipsStyles {
     },
     row: { flexDirection: "row", gap: 7 },
     chip,
+    // dc.html:2183 — `bg: on ? T.chip : 'transparent'`, the same accent wash
+    // `InstrumentChipGrid` uses; see its note on why `bgSecondary` was wrong.
     chipActive: {
       ...chip,
       borderColor: t.accentPrimary,
-      backgroundColor: t.bgSecondary,
+      backgroundColor: t.chip,
     },
     chipLabel,
     chipLabelActive: { ...chipLabel, color: t.accentPrimary },
