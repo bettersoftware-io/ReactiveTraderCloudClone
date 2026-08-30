@@ -178,9 +178,8 @@ test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; 
 // swatch row shipped at 18pt swatches / 6pt gap (66pt needed), whose real
 // floor was 332pt — ABOVE the 320pt floor the test above already asserts
 // elsewhere in this same grid, so a 320pt device would have silently
-// CLIPPED the third swatch (`BlurCard`'s `overflow: "hidden"` swallows the
-// overflow rather than pushing the row wider), with every order/count/
-// colour/press test in this file still green. 16pt / 4pt closes that gap;
+// CLIPPED the third swatch, with every order/count/colour/press test in this
+// file still green. The design's own 16/8/8 at gap 3 closes that gap;
 // this test derives the real floor from live rendered styles, the same way
 // the grid-wrap test above does, rather than trusting the constants.
 test("the skin card's inner content width keeps real margin over its swatch row's intrinsic width on a 320pt device", async () => {
@@ -202,29 +201,48 @@ test("the skin card's inner content width keeps real margin over its swatch row'
 
   // "neon" is never the stub's active skin (default is "holo"), so this is
   // always the plain `skinCard` style, not `skinCardActive` — both carry the
-  // same `padding: 12`, so either would do, but only one needs querying.
-  const card = screen.getByTestId("appearance-skin-neon");
-  const cardPadding = StyleSheet.flatten(card.props.style as ViewStyle)
-    .padding as number;
+  // same padding and border width, so either would do, but only one needs
+  // querying. The border counts: at `borderWidth: 1.5` it eats 3pt of the
+  // card's inner width on top of the padding.
+  const card = StyleSheet.flatten(
+    screen.getByTestId("appearance-skin-neon").props.style as ViewStyle,
+  );
+  const cardPadding = card.paddingHorizontal as number;
   expect(typeof cardPadding).toBe("number");
+  const cardBorder = card.borderWidth as number;
+  expect(typeof cardBorder).toBe("number");
 
   const swatchRow = screen.getByTestId("appearance-skin-neon-swatch-row");
   const swatchGap = StyleSheet.flatten(swatchRow.props.style as ViewStyle)
     .gap as number;
   expect(typeof swatchGap).toBe("number");
 
-  const swatches = screen.getAllByTestId("appearance-skin-neon-swatch");
-  const swatchWidth = StyleSheet.flatten(swatches[0]?.props.style as ViewStyle)
-    .width as number;
-  expect(typeof swatchWidth).toBe("number");
+  // The three swatches are NOT the same width (the design's accent swatch is
+  // 16 to the two directional ones' 8), so this sums the real rendered widths
+  // rather than multiplying the first one by three — that shortcut would
+  // over-report the row by 16pt and hide a real overflow behind a false
+  // margin.
+  const swatchWidths = screen
+    .getAllByTestId("appearance-skin-neon-swatch")
+    .map((node) => {
+      const width = StyleSheet.flatten(node.props.style as ViewStyle).width;
+      expect(typeof width).toBe("number");
+      return width as number;
+    });
 
-  const swatchRowWidth = 3 * swatchWidth + 2 * swatchGap;
+  const swatchRowWidth =
+    swatchWidths.reduce((sum, width) => {
+      return sum + width;
+    }, 0) +
+    (swatchWidths.length - 1) * swatchGap;
 
-  // Fit condition: cardWidthFraction * C - 2 * cardPadding >= swatchRowWidth,
+  // Fit condition:
+  // cardWidthFraction * C - 2 * (cardPadding + cardBorder) >= swatchRowWidth,
   // where C is the grid row's available content width (device width minus
   // this file's horizontal padding on both sides). Solving for the device
   // width floor:
-  const containerFloor = (swatchRowWidth + 2 * cardPadding) / cardWidthFraction;
+  const containerFloor =
+    (swatchRowWidth + 2 * (cardPadding + cardBorder)) / cardWidthFraction;
   const deviceWidthFloor = containerFloor + 2 * CONTENT_HORIZONTAL_PADDING;
 
   expect(deviceWidthFloor).toBeLessThan(MIN_SUPPORTED_DEVICE_WIDTH);
@@ -279,22 +297,21 @@ test("shows a three-level power-saver control wired to usePowerSaver", async () 
   expect(setLevel).toHaveBeenCalledWith("off");
 });
 
-// Task 6: the section carries no visible label on the control itself (the
-// section head is "Motion", shared with the ambient toggle above it) — the
-// web client's PreferencesModal.tsx labels the equivalent PrefSegment
-// "Power saver" (packages/client-react/src/ui/shell/prefs/PreferencesModal.tsx),
-// and this screen follows the same per-control labelling convention the
-// "Skin" and "Motion" section heads already establish. Without this, the
-// three-cell segment reads as unlabelled motion controls with no indication
-// of what they select.
-test("the power-saver control is labelled 'Power saver'", async () => {
+// The web client's PreferencesModal.tsx labels the equivalent PrefSegment
+// "Power saver" (packages/client-react/src/ui/shell/prefs/PreferencesModal.tsx).
+// Without a heading the three-cell segment reads as unlabelled motion controls
+// with no indication of what they select. Uppercase since the fidelity pass:
+// the design's own section heads are tracked mono caps (INSTRUMENT /
+// DIRECTION / YOUR QUOTES), and this is one of the app-only sections below
+// the design's own rows.
+test("the power-saver control is labelled 'POWER SAVER'", async () => {
   await renderScreen(
     fakeViewModel(
       () => {},
       () => {},
     ),
   );
-  expect(screen.getByText("Power saver")).toBeTruthy();
+  expect(screen.getByText("POWER SAVER")).toBeTruthy();
 });
 
 test("the power-saver caption tracks the selected level", async () => {
@@ -375,14 +392,15 @@ test("segmented control presses dark from light and drives cycle() the right num
 
 // P8 (StatusStrip.test.tsx) guarded a geometric invariant the same way after
 // a control silently drifted into an unsafe layout with every other test
-// still green. Guards two things a later edit could reintroduce without any
-// functional test noticing: (1) a fixed-width cell that could clip a label
-// at some device width, and (2) the segment sharing a row with the title
-// again — the very re-measurement question Step 4 exists to avoid guessing
-// about. `flex: 1` cells in a non-row-sharing container are safe by
-// construction at any width, which is why this asserts the construction
-// rather than one measured number.
-test("mode segment cells are flex:1 and the segment does not share a row with the title", async () => {
+// still green. The fidelity pass moved the mode pill ONTO the title's row
+// (the design puts them there), which reopens exactly that question: three
+// intrinsically-sized cells plus a title now compete for one row's width, and
+// an overflow here is silent. The invariant that makes it safe is not a
+// measured width but WHICH element gives way — the title carries
+// `flexShrink: 1` and the pill does not, so the pill's third cell can never
+// be pushed off the edge. `ThemeModePill.test.tsx` owns the other half (the
+// cells are intrinsic, never `flex: 1`, which would shove the title out).
+test("the mode pill shares the title's row, and the title is what gives way", async () => {
   await renderScreen(
     fakeViewModel(
       () => {},
@@ -390,13 +408,65 @@ test("mode segment cells are flex:1 and the segment does not share a row with th
     ),
   );
 
-  for (const target of ["dark", "light", "system"]) {
-    const cell = screen.getByTestId(`appearance-mode-${target}`);
-    expect(flattenFlex(cell.props.style)).toBe(1);
-  }
+  const header = screen.getByTestId("appearance-mode-section");
+  expect(flattenFlexDirection(header.props.style)).toBe("row");
+  expect(screen.getByTestId("appearance-mode-pill")).toBeTruthy();
 
-  const section = screen.getByTestId("appearance-mode-section");
-  expect(flattenFlexDirection(section.props.style)).not.toBe("row");
+  const title = StyleSheet.flatten(
+    screen.getByText("APPEARANCE").props.style as ViewStyle,
+  );
+  expect(title.flexShrink).toBe(1);
+});
+
+// The two full-width segments below the design's own rows (ambient style and
+// power saver) share ONE StyleSheet entry by reference, so this covers both:
+// `flex: 1` cells divide the row equally and are safe by construction at any
+// width, with no wrap or clip threshold to cross silently.
+test("the sheet's full-width segment cells are flex:1", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} } },
+    ),
+  );
+
+  for (const testId of [
+    "appearance-power-off",
+    "appearance-power-calm",
+    "appearance-power-freeze",
+    "appearance-ambient-style-aurora",
+    "appearance-ambient-style-rays",
+  ]) {
+    expect(flattenFlex(screen.getByTestId(testId).props.style)).toBe(1);
+  }
+});
+
+// Each card previews the skin it OFFERS, not the one in force: the design
+// fills a card with that skin's own background and paints its name in that
+// skin's own accent/dim. Painting every card in the live theme's panel colour
+// (what this screen did before the fidelity pass) still passes every
+// order/count/press test in this file while making the grid a row of
+// identical grey boxes.
+test("each theme card previews its own skin's background, not the live theme's", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+
+  const neon = StyleSheet.flatten(
+    screen.getByTestId("appearance-skin-neon").props.style as ViewStyle,
+  );
+
+  const terminal = StyleSheet.flatten(
+    screen.getByTestId("appearance-skin-terminal").props.style as ViewStyle,
+  );
+
+  expect(neon.backgroundColor).toBe(rnThemeTokens.neon.dark.bgPrimary);
+  expect(terminal.backgroundColor).toBe(rnThemeTokens.terminal.dark.bgPrimary);
+  expect(neon.backgroundColor).not.toBe(terminal.backgroundColor);
 });
 
 // The picker is the only real branch on this screen: it must be entirely
