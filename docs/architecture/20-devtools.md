@@ -526,6 +526,15 @@ deployed Solid app"):
   even in a production build, so the extension can walk the (minified) tree with
   **no build-time wiring**.
 
+- **Official Solid DevTools does _not_ work against the deployed Solid client.**
+  It requires the `solid-devtools` package plus its Vite plugin, and this repo
+  wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin
+  (`solid-devtools/vite`) has an `apply()` gate that skips production, and
+  `client-solid/src/main.tsx`'s `import "solid-devtools"` resolves to a **no-op
+  module** (`index_noop.js`) in a production build. So the production Solid
+  bundle ships **no** solid-devtools runtime, and the extension has nothing to
+  hook.
+
 **The RTC inspector page turns this default off for itself.** The extension's
 backend serialises every component's props on every commit; the inspector
 deliberately carries a 5,000-row event log and whole `InspectorState`
@@ -545,15 +554,6 @@ script, so no import order is involved at all. Opt back in with
 contains the guard, post-build. The extension panel is its own
 `chrome-extension://` page that the content script never reaches, and MV3's
 CSP forbids inline scripts there anyway, so it carries no guard.
-
-- **Official Solid DevTools does _not_ work against the deployed Solid client.**
-  It requires the `solid-devtools` package plus its Vite plugin, and this repo
-  wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin
-  (`solid-devtools/vite`) has an `apply()` gate that skips production, and
-  `client-solid/src/main.tsx`'s `import "solid-devtools"` resolves to a **no-op
-  module** (`index_noop.js`) in a production build. So the production Solid
-  bundle ships **no** solid-devtools runtime, and the extension has nothing to
-  hook.
 
 **Why solid-devtools stays dev-only — the perf reason.** It instruments Solid's
 reactive graph (the owner tree, every signal/memo/effect) and reports

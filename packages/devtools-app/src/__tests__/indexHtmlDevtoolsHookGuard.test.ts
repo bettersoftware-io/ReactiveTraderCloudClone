@@ -17,7 +17,7 @@ const html = readFileSync(
 );
 
 test("the guard's inline classic script appears before the module script", () => {
-  const guardIndex = html.indexOf("<script>");
+  const guardIndex = html.indexOf(findGuardScript(html));
   const moduleIndex = html.indexOf('<script type="module"');
 
   expect(guardIndex).toBeGreaterThan(-1);
@@ -56,13 +56,22 @@ test("no hook installed is a no-op", () => {
 });
 
 function extractGuardScriptBody(source: string): string {
-  const match = source.match(/<script>([\s\S]*?)<\/script>/);
+  return findGuardScript(source).replace(/^<script>|<\/script>$/g, "");
+}
 
-  if (match === null) {
+/** The guard is identified by what it does (it names the hook), never by
+ * position — a second bare inline script above it must not be mistaken for it. */
+function findGuardScript(source: string): string {
+  const blocks = source.match(/<script>[\s\S]*?<\/script>/g) ?? [];
+  const guard = blocks.find((block) => {
+    return block.includes("__REACT_DEVTOOLS_GLOBAL_HOOK__");
+  });
+
+  if (guard === undefined) {
     throw new Error("guard <script> not found in index.html");
   }
 
-  return match[1];
+  return guard;
 }
 
 function runGuardScript(window: FakeHookWindow): void {
