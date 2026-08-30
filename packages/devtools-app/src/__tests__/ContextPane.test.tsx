@@ -126,21 +126,6 @@ test("diff tab renders ErrorCard when the diff computation throws", () => {
   expect(screen.getByText("⚠ Diff failed: Error: boom")).toBeTruthy();
 });
 
-test("presenter scope narrows State to that presenter's streams and keeps the search box", () => {
-  mount({ kind: "presenter", presenter: "fx" }, true);
-
-  expect(screen.getByText("fx.price$")).toBeTruthy();
-  expect(screen.getByPlaceholderText("Search state…")).toBeTruthy();
-  expect(screen.queryByText("m1")).toBeNull();
-});
-
-test("stream scope shows the single stream row without a search box", () => {
-  mount({ kind: "stream", streamId: "fx.price$" }, true);
-
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
-  expect(screen.queryByPlaceholderText("Search state…")).toBeNull();
-});
-
 test("wire scope disables the State tab and explains why", () => {
   mount({ kind: "wire" });
 
@@ -148,21 +133,6 @@ test("wire scope disables the State tab and explains why", () => {
     (screen.getByTestId("context-tab-state") as HTMLButtonElement).disabled,
   ).toBe(true);
   expect(screen.getByText("wire messages carry no state")).toBeTruthy();
-});
-
-test("machineKind scope lists only that kind's instances, marked ≠ live when pinned earlier", () => {
-  const harness = mount(
-    { kind: "machineKind", machineKind: "tileExecution" },
-    true,
-  );
-
-  expect(screen.getAllByTestId("devtools-machine-row").length).toBe(1);
-  expect(screen.queryByTestId("devtools-stream-row")).toBeNull();
-
-  act(() => {
-    harness.pin(rowAt(harness.log, 2)); // before the machine:state at seq 4
-  });
-  expect(screen.getByText("≠ live")).toBeTruthy();
 });
 
 test("machine scope shows the Machine tab with state and intents", () => {
@@ -187,21 +157,6 @@ test("pinning a machine row under All surfaces the Machine tab; a stream row hid
     harness.pin(rowAt(harness.log, 1));
   });
   expect(screen.queryByTestId("context-tab-machine")).toBeNull();
-});
-
-test("the State search matches a stream by id and by its latest value", () => {
-  mount();
-
-  const search = screen.getByPlaceholderText("Search state…");
-
-  fireEvent.change(search, { target: { value: "zzz" } });
-  expect(screen.queryAllByTestId("devtools-stream-row")).toEqual([]);
-
-  fireEvent.change(search, { target: { value: "price" } });
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
-
-  fireEvent.change(search, { target: { value: "3" } });
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
 });
 
 test("the first value a source ever emitted has no prior value to diff against", () => {

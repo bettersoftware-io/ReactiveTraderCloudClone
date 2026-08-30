@@ -94,6 +94,20 @@ test("wire ±100ms on a row calls onProbeWire with that row", () => {
   ).toEqual([2]);
 });
 
+test("the radius chip's dismiss (✕) calls onDismissRadius, not clearRadius directly", () => {
+  const onDismissRadius = vi.fn();
+  const handle = mount(3, onDismissRadius);
+
+  handle.probeRadius();
+  fireEvent.click(screen.getByTitle("Clear radius filter"));
+
+  expect(onDismissRadius).toHaveBeenCalledTimes(1);
+  // Clicking it alone must not have cleared the radius through some other
+  // path — only `onDismissRadius` (InspectorApp's `dismissRadius`, which
+  // also pops the probe scope) is wired to decide that.
+  expect(handle.model().filter.radius).not.toBeNull();
+});
+
 test("scrolling away from the bottom detaches the tail; ⤓ live re-attaches", () => {
   const handle = mount();
   const list = screen.getByTestId("timeline-rows");
@@ -212,6 +226,7 @@ test("detaching re-centers the >500-row render window on the first row still on 
 interface Handle {
   setScope: (scope: Scope) => void;
   append: () => void;
+  probeRadius: () => void;
   model: () => ReturnType<typeof useTimeline>;
   probed: LogRow[];
   shownInAll: number;
@@ -225,11 +240,14 @@ interface Seed {
 /** `rowCount` seeds rows 1..rowCount directly into the store/history before
  * the first render — not via `handle.append()`'s one-act()-per-row, which
  * would make a many-hundred-row seed (needed to exercise the >500-row
- * render window) slow to set up. */
-function mount(rowCount = 3): Handle {
+ * render window) slow to set up. `onDismissRadius` defaults to a no-op so
+ * every existing caller is unaffected; pass a spy to assert the chip wires
+ * to it. */
+function mount(rowCount = 3, onDismissRadius: () => void = () => {}): Handle {
   const handle: Handle = {
     setScope: () => {},
     append: () => {},
+    probeRadius: () => {},
     model: () => {
       throw new Error("not mounted");
     },
@@ -259,6 +277,12 @@ function mount(rowCount = 3): Handle {
 
     handle.model = (): ReturnType<typeof useTimeline> => {
       return model;
+    };
+
+    handle.probeRadius = (): void => {
+      act(() => {
+        model.setRadiusAround(state.log[0]);
+      });
     };
 
     handle.append = (): void => {
@@ -299,6 +323,7 @@ function mount(rowCount = 3): Handle {
         searchInputRef={searchRef}
         onProbeWire={probeWire}
         onShowInAll={showInAll}
+        onDismissRadius={onDismissRadius}
       />
     );
   }

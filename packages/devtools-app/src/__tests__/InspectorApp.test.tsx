@@ -13,6 +13,7 @@ import type { AppToInspector, Recording } from "@rtc/devtools-core";
 import {
   InspectorStore,
   PROTOCOL_VERSION,
+  parseRecording,
   RECORDING_VERSION,
   serializeRecording,
 } from "@rtc/devtools-core";
@@ -23,6 +24,7 @@ import { formatLogTime } from "#/panels/formatLogTime";
 afterEach(cleanup);
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 test("connection badge reads disconnected before any welcome arrives", () => {
@@ -187,6 +189,46 @@ test("wire probe from All strands no radius on Escape — pin survives, scope st
   expect(navNode("all").dataset.selected).toBe("true");
 
   fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+});
+
+test("dismissing the radius chip returns to the pre-probe scope, same as Escape", () => {
+  const store = new InspectorStore({ coalesce: false });
+  render(<InspectorApp store={store} />);
+
+  act(() => {
+    store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
+    store.apply({ kind: "snapshot", streams: [], machines: [] });
+
+    for (const frame of emissionBatches()) {
+      store.apply(frame);
+    }
+  });
+
+  // Scope to the fx presenter, pin a row, then probe its wire — the chip's
+  // dismiss must pop back to this scope exactly like Escape's radius branch.
+  fireEvent.click(navNode("presenter:fx"));
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.keyDown(window, { key: "ArrowUp" });
+  fireEvent.click(
+    screen.getByText("wire ±100ms", {
+      selector: "[data-testid='pinned-bar'] button",
+    }),
+  );
+  expect(selectedNavScopeId()).toBe("all");
+  expect(
+    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
+  ).toBeTruthy();
+
+  fireEvent.click(screen.getByTitle("Clear radius filter"));
+  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
+  expect(selectedNavScopeId()).toBe("presenter:fx");
+  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
+
+  // Nothing left to pop: Escape resumes the pin without moving the scope.
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(selectedNavScopeId()).toBe("presenter:fx");
   expect(screen.queryByTestId("pinned-bar")).toBeNull();
 });
 
@@ -624,6 +666,86 @@ test("re-renders inside React.StrictMode do not grow past its own double-invoke 
   expect(tapSpy).toHaveBeenCalledTimes(2);
 });
 
+test("liveHistory seeds from an exact store clone, not the coalesced live snapshot — a pre-mount stream survives the seed even though no rAF has flushed the store", async () => {
+  // A default store (coalescing on) only rebuilds getSnapshot() after
+  // FRAMES_PER_FLUSH real rAF callbacks — and jsdom really does provide
+  // requestAnimationFrame, so nothing here (not this test, not InspectorApp's
+  // mount) ever ticks one. So getSnapshot() stays at its initial empty state
+  // for the whole test, while the store's internal fold is already correct —
+  // exactly the seam the mount-time seed must read through exactly, not
+  // around.
+  const store = new InspectorStore();
+
+  store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
+  store.apply({
+    kind: "batch",
+    events: [
+      {
+        kind: "stream:emission",
+        seq: 1,
+        ts: 1000,
+        streamId: PRE_MOUNT_STREAM_ID,
+        value: 1.2345,
+        coalesced: 1,
+      },
+    ],
+  });
+
+  const capture = stubDownloadCapture();
+  render(<InspectorApp store={store} />);
+
+  fireEvent.click(screen.getByTestId("export-buffer"));
+
+  // toRecording() always prepends an empty base snapshot ahead of the real
+  // frames, so this looks for the frame carrying the stream rather than
+  // just the first "snapshot"-kind frame.
+  const recording = parseRecording(await capture.blob().text());
+  const seedFrame = recording.frames.find((frame) => {
+    return (
+      frame.kind === "snapshot" &&
+      frame.streams.some((s) => {
+        return s.streamId === PRE_MOUNT_STREAM_ID;
+      })
+    );
+  });
+
+  expect(seedFrame).toBeDefined();
+});
+
+const PRE_MOUNT_STREAM_ID = 'fx.price[["EURUSD"]]';
+
+interface DownloadCapture {
+  blob: () => Blob;
+}
+
+/** Stubs the object-URL globals `downloadRecording` reaches for (jsdom
+ * implements neither) and hands back an accessor for whatever Blob a
+ * download button handed to `createObjectURL` — lets a test read back what
+ * a toolbar export actually downloaded without the DOM's real URL/anchor
+ * machinery. */
+function stubDownloadCapture(): DownloadCapture {
+  let captured: Blob | null = null;
+
+  vi.stubGlobal("URL", {
+    createObjectURL: vi.fn((blob: Blob) => {
+      captured = blob;
+
+      return "blob:fake";
+    }),
+    revokeObjectURL: vi.fn(),
+  });
+
+  return {
+    blob: (): Blob => {
+      if (captured === null) {
+        throw new Error("no blob captured yet");
+      }
+
+      return captured;
+    },
+  };
+}
+
 /** The Event tab's `seq` row — the cheapest witness of WHICH row is pinned.
  * Assumes the Event tab is already showing. */
 function pinnedEventSeq(): string {
@@ -642,6 +764,15 @@ function navNode(id: string): HTMLElement {
   }
 
   return match;
+}
+
+/** The currently-selected nav-node's own scope key — the same `data-scope-id`
+ * `navNode` matches against, read back off whichever node carries
+ * `data-selected="true"` instead of naming one up front. */
+function selectedNavScopeId(): string | undefined {
+  return screen.getAllByTestId("nav-node").find((el) => {
+    return el.dataset.selected === "true";
+  })?.dataset.scopeId;
 }
 
 function sampleRecording(): Recording {

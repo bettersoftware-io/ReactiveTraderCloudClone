@@ -5,6 +5,7 @@ import type { AppToInspector } from "./protocol";
 import { RECORDING_VERSION, type Recording } from "./recording";
 
 const DEFAULT_MAX_EVENTS = 20_000;
+const DEFAULT_MAX_FRAMES = 20_000;
 const DEFAULT_CHECKPOINT_INTERVAL = 500;
 
 export interface LiveHistoryOptions {
@@ -12,6 +13,11 @@ export interface LiveHistoryOptions {
    * frames fold into the base and trim off past this. Infinity = never trim
    * (used for imported recordings). */
   maxEvents?: number;
+  /** Rolling window cap, counted in frames of every kind (welcome/snapshot/
+   * batch/bye). welcome/snapshot/bye frames carry zero events, so a run of
+   * them never trips `maxEvents` — this is the backstop that still trims
+   * them. Infinity = never trim (used for imported recordings). */
+  maxFrames?: number;
   /** Frames between checkpoint clones. */
   checkpointInterval?: number;
 }
@@ -49,6 +55,8 @@ export class LiveHistory {
 
   private readonly maxEvents: number;
 
+  private readonly maxFrames: number;
+
   private readonly checkpointInterval: number;
 
   private baseMaxSeq = 0;
@@ -65,6 +73,7 @@ export class LiveHistory {
 
   constructor(options?: LiveHistoryOptions) {
     this.maxEvents = options?.maxEvents ?? DEFAULT_MAX_EVENTS;
+    this.maxFrames = options?.maxFrames ?? DEFAULT_MAX_FRAMES;
     this.checkpointInterval = Math.max(
       1,
       options?.checkpointInterval ?? DEFAULT_CHECKPOINT_INTERVAL,
@@ -77,6 +86,7 @@ export class LiveHistory {
   ): LiveHistory {
     const history = new LiveHistory({
       maxEvents: Number.POSITIVE_INFINITY,
+      maxFrames: Number.POSITIVE_INFINITY,
       checkpointInterval: options?.checkpointInterval,
     });
 
@@ -210,7 +220,10 @@ export class LiveHistory {
   private trim(): void {
     let trimmedAny = false;
 
-    while (this.totalEvents > this.maxEvents && this.frames.length > 1) {
+    while (
+      this.frames.length > 1 &&
+      (this.totalEvents > this.maxEvents || this.frames.length > this.maxFrames)
+    ) {
       const oldest = this.frames.shift();
 
       if (oldest === undefined) {

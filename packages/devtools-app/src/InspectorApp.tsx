@@ -61,7 +61,11 @@ export function InspectorApp({
 
   useEffect((): (() => void) => {
     if (seededHistoryRef.current !== liveHistory) {
-      liveHistory.record(projectSnapshot(store.getSnapshot()));
+      // getSnapshot() is the coalesced view: it can lag applied state by up
+      // to FRAMES_PER_FLUSH frames, so events applied moments before mount
+      // may not be folded into it yet. clone() folds synchronously, so its
+      // snapshot is exact.
+      liveHistory.record(projectSnapshot(store.clone().getSnapshot()));
       seededHistoryRef.current = liveHistory;
     }
 
@@ -120,6 +124,17 @@ export function InspectorApp({
     navigation.select(ALL_SCOPE);
   }
 
+  // The chip's dismiss (`±100ms ✕`) and Escape's radius branch are the same
+  // operation — restoring the pre-probe scope, not just clearing the radius
+  // filter — so both route through this one function rather than the chip
+  // calling `timeline.clearRadius` alone and silently stranding the scope on
+  // All (see `escapeTimeline`'s radius-branch comment for why `popScope()`
+  // is paired with it).
+  function dismissRadius(): void {
+    navigation.popScope();
+    timeline.clearRadius();
+  }
+
   function pinTimelineAtIntent(
     machineId: string,
     name: string,
@@ -148,8 +163,7 @@ export function InspectorApp({
     // best-effort: it restores the previous scope when there is one, and is
     // a harmless no-op when the probe started from All.
     if (timeline.filter.radius !== null) {
-      navigation.popScope();
-      timeline.clearRadius();
+      dismissRadius();
 
       return;
     }
@@ -194,6 +208,7 @@ export function InspectorApp({
             searchInputRef={searchInputRef}
             onProbeWire={probeWireAroundRow}
             onShowInAll={showPinnedInAll}
+            onDismissRadius={dismissRadius}
           />
           <ContextPane
             model={timeline}

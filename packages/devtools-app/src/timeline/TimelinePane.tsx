@@ -23,6 +23,7 @@ export function TimelinePane({
   searchInputRef,
   onProbeWire,
   onShowInAll,
+  onDismissRadius,
 }: TimelinePaneProps): ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [anchorSeq, setAnchorSeq] = useState<number | null>(null);
@@ -63,7 +64,11 @@ export function TimelinePane({
 
   return (
     <div className={styles.pane}>
-      <PaneHeader model={model} searchInputRef={searchInputRef} />
+      <PaneHeader
+        model={model}
+        searchInputRef={searchInputRef}
+        onDismissRadius={onDismissRadius}
+      />
       {pinnedSeq !== null ? (
         <PinnedBar
           model={model}
@@ -115,14 +120,20 @@ export interface TimelinePaneProps {
   searchInputRef: RefObject<HTMLInputElement | null>;
   onProbeWire: (row: LogRow) => void;
   onShowInAll: () => void;
+  onDismissRadius: () => void;
 }
 
 interface PaneHeaderProps {
   model: TimelineModel;
   searchInputRef: RefObject<HTMLInputElement | null>;
+  onDismissRadius: () => void;
 }
 
-function PaneHeader({ model, searchInputRef }: PaneHeaderProps): ReactElement {
+function PaneHeader({
+  model,
+  searchInputRef,
+  onDismissRadius,
+}: PaneHeaderProps): ReactElement {
   function changeScopeSearch(e: ChangeEvent<HTMLInputElement>): void {
     model.setText(e.target.value);
   }
@@ -142,7 +153,7 @@ function PaneHeader({ model, searchInputRef }: PaneHeaderProps): ReactElement {
           type="button"
           className={styles.chip}
           title="Clear radius filter"
-          onClick={model.clearRadius}
+          onClick={onDismissRadius}
         >
           {`±${model.filter.radius.windowMs}ms @ ${formatLogTime(model.filter.radius.centerTs)} ✕`}
         </button>

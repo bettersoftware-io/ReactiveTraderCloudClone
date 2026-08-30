@@ -19,9 +19,20 @@ export function NavTree({
 }: NavTreeProps): ReactElement {
   const [expanded, setExpanded] =
     useState<ReadonlySet<string>>(DEFAULT_EXPANDED);
-  const [cursorId, setCursorId] = useState<string>(scopeKey(scope));
   const selectedId = scopeKey(scope);
+  const [cursor, setCursor] = useState<TreeCursor>(() => {
+    return { id: selectedId, forSelection: selectedId };
+  });
+  // Derived at render time, never in an effect: a scope change made
+  // OUTSIDE the tree (probe push/pop, Esc, "show in All", datasource
+  // swap) leaves the cursor stamped with the selection it was placed
+  // under, so it snaps to the new selection instead of going stale.
+  const cursorId = cursor.forSelection === selectedId ? cursor.id : selectedId;
   const visible = flattenVisible(nodes, expanded);
+
+  function moveCursorTo(id: string): void {
+    setCursor({ id, forSelection: selectedId });
+  }
 
   function toggleNodeExpansion(id: string): void {
     setExpanded((prev) => {
@@ -57,7 +68,7 @@ export function NavTree({
       const next = selectable[nextIndex];
 
       if (next !== undefined) {
-        setCursorId(next.node.id);
+        moveCursorTo(next.node.id);
       }
     } else if (
       e.key === "Enter" &&
@@ -117,7 +128,7 @@ export function NavTree({
             atCursor={entry.node.id === cursorId}
             onSelect={onSelect}
             onToggle={toggleNodeExpansion}
-            onMoveCursorTo={setCursorId}
+            onMoveCursorTo={moveCursorTo}
           />
         );
       })}
@@ -129,6 +140,14 @@ export interface NavTreeProps {
   nodes: readonly NavNode[];
   scope: Scope;
   onSelect: (scope: Scope) => void;
+}
+
+interface TreeCursor {
+  id: string;
+  /** The selection this cursor was placed under; a different selection
+   * means the cursor is stale and the derived `cursorId` snaps to the
+   * new selection instead. */
+  forSelection: string;
 }
 
 const DEFAULT_EXPANDED: ReadonlySet<string> = new Set([
