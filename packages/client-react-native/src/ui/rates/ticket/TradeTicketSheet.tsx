@@ -1,7 +1,5 @@
 // packages/client-react-native/src/ui/rates/ticket/TradeTicketSheet.tsx
 import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
   type BottomSheetBackgroundProps,
   BottomSheetModal,
   BottomSheetView,
@@ -24,6 +22,7 @@ import { BuySellPads } from "#/ui/rates/ticket/BuySellPads";
 import { ExecutionCeremony } from "#/ui/rates/ticket/ExecutionCeremony";
 import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
 import { sheetPresentation } from "#/ui/rates/ticket/sheetPresentation";
+import { TicketBackdrop } from "#/ui/rates/ticket/TicketBackdrop";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -51,7 +50,9 @@ import { weightedFont } from "#/ui/theme/weightedFont";
  * config for every later transition, and the backdrop paints at its final
  * opacity with no fade. Which props say that is `sheetPresentation`'s
  * business (see it for why each half is load-bearing); this component only
- * asks it, with the live motion flag, and spreads the answer.
+ * asks it, with the live motion flag, and spreads the answer. The backdrop is
+ * the other half of the same gate and lives in `TicketBackdrop`, which paints
+ * a static scrim rather than an index-interpolated one when motion is off.
  *
  * That gate is a real accessibility behaviour, not a harness affordance — the
  * same gap Phase 0 closed in `AmbientBackground`: a Freeze user who has asked
@@ -127,19 +128,6 @@ export function TradeTicketSheet({
 export interface TradeTicketSheetProps {
   pair: CurrencyPair;
   onClose: () => void;
-}
-
-// Private: the dimmed backdrop, dismissing the sheet on press. Not exported —
-// rtc/component-newspaper permits private subcomponents below the lede.
-function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
-  return (
-    <BottomSheetBackdrop
-      {...props}
-      appearsOnIndex={0}
-      disappearsOnIndex={-1}
-      pressBehavior="close"
-    />
-  );
 }
 
 // Private: the sheet body's background — `t.panel` is a translucent token
