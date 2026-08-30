@@ -14,9 +14,9 @@ import {
   RFQ_FILTER_LABELS,
   RFQ_FILTERS,
 } from "#/ui/credit/rfqTiles/rfqTileFilter";
-import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
+import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The LIVE/DONE/ALL chips above the RFQ tiles. Reads and writes the shared
  * `useCreditRfqFilterPreference` seam rather than local state, so the choice
@@ -60,31 +60,42 @@ interface RfqFilterTabsStyles {
 }
 
 function makeStyles(t: RnTheme): RfqFilterTabsStyles {
+  // dc.html:216 — a fully-rounded pill, `5px 11px`, ALWAYS a 1px border, and
+  // 9.5px/600 mono at letter-spacing 1. The border is the load-bearing part:
+  // the app's inactive chip was a filled `panel` rectangle, so the row read as
+  // three solid blocks rather than the design's outlines with one filled.
+  const tab: ViewStyle = {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: t.borderPrimary,
+    backgroundColor: "transparent",
+  };
+
+  const label: TextStyle = {
+    fontSize: 9.5,
+    letterSpacing: 1,
+    color: t.textSecondary,
+    ...weightedFont(t, "mono", "600"),
+  };
+
   return StyleSheet.create({
-    tabs: { flexDirection: "row", gap: 6, padding: SPACING.sm },
-    tab: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 6,
-      backgroundColor: t.panel,
+    // dc.html:215 — `gap: 7`, `padding: 9px 12px 1px`.
+    tabs: {
+      flexDirection: "row",
+      gap: 7,
+      paddingTop: 9,
+      paddingHorizontal: 12,
+      paddingBottom: 1,
     },
+    tab,
     tabActive: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 6,
-      backgroundColor: t.bgBrandPrimary,
+      ...tab,
+      borderColor: t.accentPrimary,
+      backgroundColor: t.accentPrimary,
     },
-    label: {
-      fontSize: 9,
-      letterSpacing: 1.4,
-      color: t.textMuted,
-      fontFamily: t.fontMono,
-    },
-    labelActive: {
-      fontSize: 9,
-      letterSpacing: 1.4,
-      color: t.textOnAccent,
-      fontFamily: t.fontMono,
-    },
+    label,
+    labelActive: { ...label, color: t.textOnAccent },
   });
 }
