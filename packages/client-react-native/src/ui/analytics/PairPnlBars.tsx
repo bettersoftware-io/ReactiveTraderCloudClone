@@ -7,8 +7,9 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { type CurrencyPairPosition, formatPnlK } from "@rtc/domain";
+import type { CurrencyPairPosition } from "@rtc/domain";
 
+import { formatSignedCompact } from "#/ui/analytics/formatAnalytics";
 import { PairPnlBar } from "#/ui/analytics/PairPnlBar";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -39,7 +40,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
               testID={`pair-pnl-label-${pos.symbol}`}
               style={positive ? styles.labelPos : styles.labelNeg}
             >
-              {formatPnlK(pos.basePnl)}
+              {formatSignedCompact(pos.basePnl)}
             </Text>
           </View>
         );
@@ -78,24 +79,27 @@ function makeStyles(t: RnTheme): PairPnlBarsStyles {
   return StyleSheet.create({
     container: { gap: 6 },
     row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    // dc.html:180,182 — the two fixed columns either side of the bar are 54px
+    // and 50px of 9px mono, not 64/56 of 12px. At 12px the labels crowd the
+    // bar into a stub; the design gives the bar the space instead.
     symbol: {
-      width: 64,
-      fontSize: 12,
+      width: 54,
+      fontSize: 9,
       color: t.textSecondary,
       fontFamily: t.fontMono,
     },
     labelPos: {
-      width: 56,
+      width: 50,
       textAlign: "right",
       color: t.accentPositive,
-      fontSize: 12,
+      fontSize: 9,
       fontFamily: t.fontMono,
     },
     labelNeg: {
-      width: 56,
+      width: 50,
       textAlign: "right",
       color: t.accentNegative,
-      fontSize: 12,
+      fontSize: 9,
       fontFamily: t.fontMono,
     },
   });

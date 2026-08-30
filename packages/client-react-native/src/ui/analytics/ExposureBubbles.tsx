@@ -86,7 +86,11 @@ export function ExposureBubbles({
               key={entry.currency}
               entry={entry}
               color={accent}
-              amountColor={theme.textMuted}
+              // dc.html:197 renders the bubble amount in `--dim`
+              // (`textSecondary`), a step brighter than the `--faint`
+              // (`textMuted`) the card titles use — it is a figure, not a
+              // caption, and at 7.5px the muted tone all but vanished.
+              amountColor={theme.textSecondary}
               currencyFont={
                 entry.currencyFontSize === SMALL_LABEL_SIZE
                   ? currencySmall

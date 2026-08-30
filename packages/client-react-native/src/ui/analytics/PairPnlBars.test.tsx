@@ -9,34 +9,35 @@ import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
 const THEME: RnTheme = rnThemeTokens.holo.dark;
 
-// The prototype's per-pair format (dc.html L1302) is whole-k with an EXPLICIT
-// sign on both directions — `formatPnlK`, which both web clients already use.
-// RN was on `formatWithScale`, which renders "12k" with no leading plus, so a
-// positive and a negative pair were signed inconsistently.
-test("renders one row per position with the prototype's signed whole-k label", async () => {
+// The MOBILE prototype's per-pair format (dc.html L950) is the compact `fmtK`
+// — one decimal and an uppercase K from a thousand up, always signed, with a
+// U+2212 on losses. RN rendered the shared `formatPnlK` ("+12k"), which is the
+// WEB design's whole-thousands shorthand and rounds a 12,400 pair to the same
+// text as a 12,000 one.
+test("renders one row per position with the prototype's compact signed label", async () => {
   await renderWithTheme(
     <PairPnlBars positions={[pos("EURUSD", 12000), pos("USDJPY", -3400)]} />,
   );
   expect(screen.getByTestId("pair-pnl-row-EURUSD")).toBeTruthy();
   expect(screen.getByTestId("pair-pnl-row-USDJPY")).toBeTruthy();
   expect(screen.getByText("EUR/USD")).toBeTruthy();
-  expect(screen.getByText("+12k")).toBeTruthy();
+  expect(screen.getByText("+12.0K")).toBeTruthy();
 });
 
 test("a positive pair carries an explicit plus, matching the negative's minus", async () => {
   await renderWithTheme(
     <PairPnlBars positions={[pos("EURUSD", 9000), pos("USDJPY", -4000)]} />,
   );
-  expect(screen.getByText("+9k")).toBeTruthy();
-  expect(screen.getByText("-4k")).toBeTruthy();
+  expect(screen.getByText("+9.0K")).toBeTruthy();
+  expect(screen.getByText("−4.0K")).toBeTruthy();
 });
 
-// `formatPnlK` rounds to whole thousands, so a sub-thousand pair reports as
-// "+1k" or "-1k" rather than its exact figure. That is the prototype's format,
-// not a rounding bug — pinned so it is not "corrected" later.
-test("sub-thousand pairs round to whole thousands, as the prototype does", async () => {
+// Below a thousand the compact form drops the suffix entirely and prints the
+// whole figure — the prototype's third `fmtK` branch. The old `formatPnlK`
+// rounded this same pair to "-1k", losing it.
+test("sub-thousand pairs print whole, with no suffix", async () => {
   await renderWithTheme(<PairPnlBars positions={[pos("EURAUD", -600)]} />);
-  expect(screen.getByText("-1k")).toBeTruthy();
+  expect(screen.getByText("−600")).toBeTruthy();
 });
 
 test("renders nothing but the container when there are no positions", async () => {
@@ -74,7 +75,7 @@ test("a zero-P&L pair keeps its row, symbol and label", async () => {
   await renderWithTheme(<PairPnlBars positions={[pos("EURGBP", 0)]} />);
   expect(screen.getByTestId("pair-pnl-row-EURGBP")).toBeTruthy();
   expect(screen.getByText("EUR/GBP")).toBeTruthy();
-  expect(screen.getByText("+0k")).toBeTruthy();
+  expect(screen.getByText("+0")).toBeTruthy();
 });
 
 test("survives every pair being zero, where the max-abs guard divides by 1", async () => {

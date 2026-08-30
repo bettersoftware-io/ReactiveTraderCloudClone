@@ -1,13 +1,13 @@
 import {
   aggregatePositionsByCurrency,
   type CurrencyPairPosition,
-  netExposureByCurrency,
 } from "@rtc/domain";
 
 import {
   bubblesHeight,
   computeBubbleLayout,
 } from "#/ui/analytics/bubbleLayout";
+import { formatUnsignedCompact } from "#/ui/analytics/formatAnalytics";
 
 /**
  * Everything the exposure bubbles draw, as plain numbers and strings.
@@ -33,8 +33,9 @@ export interface BubbleDrawEntry {
   /** Text baselines, relative to the bubble's centre. Skia's `<Text>` anchors
    * at the baseline, not the box, so these cannot be derived from a height. */
   readonly currencyBaseline: number;
-  /** `null` when the bubble is too small to hold a second line — see
-   * `AMOUNT_MIN_DIAMETER`. */
+  /** The net exposure in the mobile design's compact, unsigned form
+   * (`24.80M`, `900.0K`). `null` when the bubble is too small to hold a second
+   * line — see `AMOUNT_MIN_DIAMETER`. */
   readonly amount: string | null;
   readonly amountBaseline: number;
 }
@@ -54,6 +55,13 @@ export interface BubbleDrawModel {
  * `react-native-svg` version packed into a fixed 320-unit space and stretched
  * it with a `viewBox`; Skia has no viewBox, and packing at the real width is
  * both simpler and a better use of the space than scaling would be.
+ *
+ * The amount is formatted from the aggregation's RAW `tradedAmount`, not from
+ * `netExposureByCurrency`, which pre-rounds to a tenth of a million. The
+ * mobile design formats the raw figure (`fmtK(e.usd)`, dc.html L964), so a
+ * sub-million net reads `900.0K` rather than collapsing to `0.9M` — and the
+ * `undefined` branch that map lookup needed goes with it, since every placed
+ * bubble carries its own amount by construction.
  */
 export function buildBubbleDrawModel(
   positions: readonly CurrencyPairPosition[],
@@ -63,16 +71,8 @@ export function buildBubbleDrawModel(
     width: viewportWidth,
   });
 
-  const millions = new Map(
-    netExposureByCurrency(positions).map((exposure) => {
-      return [exposure.currency, exposure.amountMillions];
-    }),
-  );
-
   const entries = placed.map((bubble): BubbleDrawEntry => {
-    const amountMillions = millions.get(bubble.currency);
-    const showsAmount =
-      bubble.radius * 2 >= AMOUNT_MIN_DIAMETER && amountMillions !== undefined;
+    const showsAmount = bubble.radius * 2 >= AMOUNT_MIN_DIAMETER;
 
     return {
       currency: bubble.currency,
@@ -84,7 +84,7 @@ export function buildBubbleDrawModel(
       currencyBaseline: showsAmount
         ? STACKED_CURRENCY_BASELINE
         : currencyFontSize(bubble.radius) * SINGLE_LINE_BASELINE_RATIO,
-      amount: showsAmount ? formatMillions(amountMillions) : null,
+      amount: showsAmount ? formatUnsignedCompact(bubble.tradedAmount) : null,
       amountBaseline: STACKED_AMOUNT_BASELINE,
     };
   });
@@ -93,27 +93,16 @@ export function buildBubbleDrawModel(
 }
 
 /**
- * The prototype's label-size rule (dc.html L1299): bubbles wider than 62px
- * get the larger label. Ported verbatim, and the same rule the shipped web
- * client applies in `PositionsPanel.tsx`.
+ * The label-size rule the shipped web client applies in `PositionsPanel.tsx`:
+ * bubbles wider than 62px get the larger label. (An earlier comment here cited
+ * "dc.html L1299" as its source; that line is boot-canvas telemetry, and the
+ * MOBILE prototype has no size step at all — see the note on
+ * `CURRENCY_FONT_SIZE_SMALL` below.)
  */
 export function currencyFontSize(radius: number): number {
   return radius * 2 > LARGE_LABEL_DIAMETER
     ? CURRENCY_FONT_SIZE_LARGE
     : CURRENCY_FONT_SIZE_SMALL;
-}
-
-/**
- * Signed millions with one decimal and an `M` suffix — the same format the
- * web client's bubbles use, so the two clients read identically.
- *
- * Note `-0` formats as `0.0M` with no sign, because `toFixed` drops the sign
- * of negative zero. A tiny short position therefore reads `0.0M` while still
- * being coloured as a negative. That is the web's behaviour too; matching it
- * is deliberate.
- */
-export function formatMillions(amountMillions: number): string {
-  return `${amountMillions > 0 ? "+" : ""}${amountMillions.toFixed(1)}M`;
 }
 
 /** Left edge that centres a run of text of `textWidth` on `centerX`. Skia
