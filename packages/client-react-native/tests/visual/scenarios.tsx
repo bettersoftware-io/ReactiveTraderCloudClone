@@ -196,7 +196,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   `forceReduceMotion` (the `animatedBackground`-only gate; see
  *   `analytics/dashboard` and `shell/chrome` above). `markets`/`trade` pin
  *   `selectedSymbol="AAPL"` (the watchlist's first instrument) so the golden
- *   also covers the selected-row ring in `MoversRow`/`SectorHeatmap` and
+ *   also covers the selected-row ring in `MoversRow` and
  *   `TradeView` never falls into its unselected "Select an instrument…"
  *   empty state.
  *
@@ -561,7 +561,7 @@ export function getScenario(id: string): Scenario | undefined {
  * first instrument (`EquityMarketDataSimulator`'s `WATCHLIST`/`SEED_PRICES`,
  * domain-internal and not exported, so repeated here as a literal — same
  * move `fixtures.tsx`'s `PINNED_INSTRUMENTS` makes for Credit). Selecting one
- * also exercises the selected-row ring in `MoversRow`/`SectorHeatmap` and
+ * also exercises the selected-row ring in `MoversRow` and
  * keeps `TradeView` out of its unselected "Select an instrument…" empty
  * state. */
 const PINNED_EQUITY_SYMBOL = "AAPL";

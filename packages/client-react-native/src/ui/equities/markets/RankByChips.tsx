@@ -17,11 +17,11 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** Markets screen's `RANK BY` control: a label plus three directly-selectable
- * chips over `EQ_WATCHLIST_SORTS`, bound to the shared `useEqWatchlistSort()`
+ * pills over `EQ_WATCHLIST_SORTS`, bound to the shared `useEqWatchlistSort()`
  * preference via its real `setSort` intent. The **web** client renders the
  * equivalent control as a single tap-to-cycle chip (`EqWatchlistHead` calls
  * `cycle`); the mobile design instead shows all three sorts at once as
- * independently pressable chips, so this reads/writes the preference
+ * independently pressable pills, so this reads/writes the preference
  * directly rather than mirroring that cycling idiom. */
 export function RankByChips(): JSX.Element {
   const { useEqWatchlistSort } = useViewModel();
@@ -44,7 +44,9 @@ export function RankByChips(): JSX.Element {
               setSort(target);
             }}
           >
-            <Text style={styles.chipLabel}>{RANK_LABEL[target]}</Text>
+            <Text style={active ? styles.chipLabelActive : styles.chipLabel}>
+              {RANK_LABEL[target]}
+            </Text>
           </Pressable>
         );
       })}
@@ -64,17 +66,26 @@ interface RankByChipsStyles {
   chip: ViewStyle;
   chipActive: ViewStyle;
   chipLabel: TextStyle;
+  chipLabelActive: TextStyle;
 }
 
 function makeStyles(t: RnTheme): RankByChipsStyles {
+  // The design's pill (dc.html ~L335): `border-radius:999px`, `padding:5px
+  // 10px`, a 1px border — selected is a solid accent fill, unselected is
+  // transparent over the plain border.
   const chipBase: ViewStyle = {
     flexGrow: 0,
     flexShrink: 0,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.borderSubtle,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  };
+
+  const chipLabelBase: TextStyle = {
+    fontSize: 9,
+    letterSpacing: 1,
+    ...weightedFont(t, "mono", "600"),
   };
 
   return StyleSheet.create({
@@ -82,23 +93,24 @@ function makeStyles(t: RnTheme): RankByChipsStyles {
     // (below) is what keeps this a short horizontal strip rather than the
     // Phase 4a full-height-bar bug — a row of short chips stretching to fill
     // the container's cross-axis height.
-    row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    row: { flexDirection: "row", alignItems: "center", gap: 7 },
     label: {
-      fontSize: 11,
-      color: t.textSecondary,
+      fontSize: 8,
+      letterSpacing: 1.5,
+      color: t.textMuted,
       fontFamily: t.fontMono,
-      marginRight: 2,
     },
-    chip: { ...chipBase, backgroundColor: t.panel },
+    chip: {
+      ...chipBase,
+      backgroundColor: "transparent",
+      borderColor: t.borderPrimary,
+    },
     chipActive: {
       ...chipBase,
-      backgroundColor: t.chip,
+      backgroundColor: t.accentPrimary,
       borderColor: t.accentPrimary,
     },
-    chipLabel: {
-      fontSize: 11,
-      color: t.textPrimary,
-      ...weightedFont(t, "display", "600"),
-    },
+    chipLabel: { ...chipLabelBase, color: t.textSecondary },
+    chipLabelActive: { ...chipLabelBase, color: t.textOnAccent },
   });
 }

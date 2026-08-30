@@ -1,44 +1,28 @@
 import type { JSX } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  type TextStyle,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { MoversBoard } from "#/ui/equities/markets/MoversBoard";
 import { RankByChips } from "#/ui/equities/markets/RankByChips";
-import { SectorHeatmap } from "#/ui/equities/markets/SectorHeatmap";
-import type { RnTheme } from "#/ui/theme/tokens";
-import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Markets sub-view: the ranked movers board (RANK BY chips + `MoversBoard`,
- * superseding the plain `Watchlist`) over the sector heatmap. Selecting an
- * instrument in either flows up through `onSelect`. */
+/** Markets sub-view: the `RANK BY` chip row over the ranked movers board.
+ * The design (dc.html ~L332-345) runs straight from the module sub-nav into
+ * the chip row and then the board — no `MOVERS` heading, and no `SECTORS`
+ * heatmap block, which the prototype has no analogue for. Selecting an
+ * instrument flows up through `onSelect`. */
 export function MarketsView({
   selectedSymbol,
   onSelect,
 }: MarketsViewProps): JSX.Element {
-  const styles = useThemedStyles(makeStyles);
   return (
     <ScrollView
       testID="markets-view"
       style={styles.scroll}
       contentContainerStyle={styles.content}
     >
-      <View style={styles.section}>
-        <Text style={styles.heading}>MOVERS</Text>
-        <View style={styles.rankRow}>
-          <RankByChips />
-        </View>
-        <MoversBoard selectedSymbol={selectedSymbol} onSelect={onSelect} />
+      <View style={styles.rankRow}>
+        <RankByChips />
       </View>
-      <View style={styles.section}>
-        <Text style={styles.heading}>SECTORS</Text>
-        <SectorHeatmap selectedSymbol={selectedSymbol} onSelect={onSelect} />
-      </View>
+      <MoversBoard selectedSymbol={selectedSymbol} onSelect={onSelect} />
     </ScrollView>
   );
 }
@@ -51,22 +35,14 @@ interface MarketsViewProps {
 interface MarketsViewStyles {
   scroll: ViewStyle;
   content: ViewStyle;
-  section: ViewStyle;
-  heading: TextStyle;
   rankRow: ViewStyle;
 }
 
-function makeStyles(t: RnTheme): MarketsViewStyles {
-  return StyleSheet.create({
-    scroll: { flex: 1 },
-    content: { gap: 16, paddingVertical: 12 },
-    section: { gap: 6 },
-    heading: {
-      fontSize: 11,
-      color: t.textSecondary,
-      fontFamily: t.fontMono,
-      paddingHorizontal: 12,
-    },
-    rankRow: { paddingHorizontal: 12 },
-  });
-}
+// Nothing here reads a theme token any more (the `MOVERS`/`SECTORS` headings
+// were the only themed text), so this is a plain module-level sheet rather
+// than a `useThemedStyles(makeStyles)` factory.
+const styles: MarketsViewStyles = StyleSheet.create({
+  scroll: { flex: 1 },
+  content: { gap: 6, paddingVertical: 12 },
+  rankRow: { paddingHorizontal: 12 },
+});

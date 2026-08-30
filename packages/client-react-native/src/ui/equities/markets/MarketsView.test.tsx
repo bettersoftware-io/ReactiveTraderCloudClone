@@ -11,7 +11,7 @@ const INSTS: readonly EquityInstrument[] = [
   { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
 ];
 
-test("composes the movers board and sector heatmap", async () => {
+test("composes the RANK BY chips over the movers board", async () => {
   const vm = {
     useWatchlist: () => {
       return INSTS;
@@ -38,8 +38,13 @@ test("composes the movers board and sector heatmap", async () => {
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("markets-view")).toBeTruthy();
+  expect(screen.getByTestId("eq-rank-row")).toBeTruthy();
   expect(screen.getByTestId("eq-mover-AAPL")).toBeTruthy();
-  expect(screen.getByTestId("heatmap-cell-AAPL")).toBeTruthy();
+  // The design goes sub-nav -> RANK BY -> board: no `MOVERS`/`SECTORS`
+  // headings, and no sector heatmap (deleted with this view's own block).
+  expect(screen.queryByText("MOVERS")).toBeNull();
+  expect(screen.queryByText("SECTORS")).toBeNull();
+  expect(screen.queryByTestId("heatmap-cell-AAPL")).toBeNull();
 });
 
 // `vm` doesn't stub `usePowerSaver`; MoversBoard's rows read it via

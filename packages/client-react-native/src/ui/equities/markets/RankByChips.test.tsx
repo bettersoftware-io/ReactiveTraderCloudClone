@@ -72,6 +72,30 @@ test("chips never stretch — the Phase 4a full-height-bar bug", async () => {
   expect(chip.flexShrink).toBe(0);
 });
 
+test("draws the design's pills — accent-filled when selected", async () => {
+  const { StyleSheet } = require("react-native");
+
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm("sym")}>
+      <RankByChips />
+    </ViewModelProvider>,
+  );
+  const active = StyleSheet.flatten(
+    screen.getByTestId("eq-rank-sym").props.style,
+  );
+
+  const inactive = StyleSheet.flatten(
+    screen.getByTestId("eq-rank-chg").props.style,
+  );
+
+  // `border-radius:999px` in the design (dc.html ~L335), not a rectangle.
+  expect(active.borderRadius).toBe(999);
+  expect(inactive.borderRadius).toBe(999);
+  expect(active.backgroundColor).toBe(active.borderColor);
+  expect(inactive.backgroundColor).toBe("transparent");
+  expect(inactive.borderColor).not.toBe(active.borderColor);
+});
+
 function vm(sort = "chg"): ViewModel {
   return {
     useEqWatchlistSort: () => {
