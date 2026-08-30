@@ -12,6 +12,17 @@ import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
+/** The ticket's notional block, as the mobile-v1 prototype draws it
+ * (`docs/design/mobile/v1/dev-handoff/prototype/source/Reactive Trader
+ * Mobile.dc.html` L496-510): a bordered `panelHead` card holding three
+ * stacked rows — the `NOTIONAL · <base>` stamp with the ± steppers beside it
+ * on the RIGHT, the amount on its own line beneath at 22px mono, then the
+ * quick-size chips.
+ *
+ * The steppers sit in the header row rather than flanking the amount: the
+ * value is the thing being read, so it gets the full width and a consistent
+ * left edge with the chips below it, while the two 34x30 controls tuck into
+ * the space the stamp leaves. */
 export function NotionalControl({
   notional,
   base,
@@ -21,29 +32,33 @@ export function NotionalControl({
   const { numericValue, displayValue } = notional.state;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>NOTIONAL · {base}</Text>
-      <View style={styles.stepperRow}>
-        <Pressable
-          testID="notional-down"
-          style={styles.stepper}
-          onPress={() => {
-            notional.change(String(Math.max(NOTIONAL_FLOOR, numericValue / 2)));
-          }}
-        >
-          <Text style={styles.stepperGlyph}>−</Text>
-        </Pressable>
-        <Text style={styles.value}>{displayValue}</Text>
-        <Pressable
-          testID="notional-up"
-          style={styles.stepper}
-          onPress={() => {
-            notional.change(String(numericValue * 2));
-          }}
-        >
-          <Text style={styles.stepperGlyph}>+</Text>
-        </Pressable>
+    <View style={styles.card}>
+      <View style={styles.headRow}>
+        <Text style={styles.label}>NOTIONAL · {base}</Text>
+        <View style={styles.stepperGroup}>
+          <Pressable
+            testID="notional-down"
+            style={styles.stepper}
+            onPress={() => {
+              notional.change(
+                String(Math.max(NOTIONAL_FLOOR, numericValue / 2)),
+              );
+            }}
+          >
+            <Text style={styles.stepperGlyph}>−</Text>
+          </Pressable>
+          <Pressable
+            testID="notional-up"
+            style={styles.stepper}
+            onPress={() => {
+              notional.change(String(numericValue * 2));
+            }}
+          >
+            <Text style={styles.stepperGlyph}>+</Text>
+          </Pressable>
+        </View>
       </View>
+      <Text style={styles.value}>{displayValue}</Text>
       <View style={styles.chipRow}>
         {CHIPS.map((chipValue) => {
           const active = chipValue === numericValue;
@@ -53,7 +68,7 @@ export function NotionalControl({
               style={[
                 styles.chip,
                 {
-                  backgroundColor: active ? theme.accentPrimary : theme.chip,
+                  backgroundColor: active ? theme.chip : "transparent",
                   borderColor: active
                     ? theme.accentPrimary
                     : theme.borderSubtle,
@@ -66,7 +81,7 @@ export function NotionalControl({
               <Text
                 style={[
                   styles.chipLabel,
-                  { color: active ? theme.textOnAccent : theme.textSecondary },
+                  { color: active ? theme.accentPrimary : theme.textMuted },
                 ]}
               >
                 {chipValue / 1_000_000}M
@@ -99,9 +114,10 @@ const CHIPS = [1, 2, 5, 10, 20].map((m) => {
 });
 
 interface NotionalControlStyles {
-  container: ViewStyle;
+  card: ViewStyle;
+  headRow: ViewStyle;
   label: TextStyle;
-  stepperRow: ViewStyle;
+  stepperGroup: ViewStyle;
   stepper: ViewStyle;
   stepperGlyph: TextStyle;
   value: TextStyle;
@@ -112,44 +128,56 @@ interface NotionalControlStyles {
 
 function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
   return StyleSheet.create({
-    container: { gap: 8 },
-    label: {
-      fontSize: 10,
-      letterSpacing: 1,
-      color: t.textMuted,
-      ...weightedFont(t, "mono", "600"),
+    card: {
+      borderWidth: 1,
+      borderColor: t.borderSubtle,
+      borderRadius: 11,
+      backgroundColor: t.panelHead,
+      paddingVertical: 9,
+      paddingHorizontal: 12,
     },
-    stepperRow: {
+    headRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-      gap: 14,
+      justifyContent: "space-between",
     },
+    label: {
+      fontSize: 9,
+      letterSpacing: 1.6,
+      color: t.textMuted,
+      fontFamily: t.fontMono,
+    },
+    stepperGroup: {
+      flexDirection: "row",
+      gap: 6,
+    },
+    // Outlined on `borderPrimary` with an accent glyph and NO fill — the
+    // design's own treatment; the card behind them is the fill.
     stepper: {
       width: 34,
       height: 30,
-      borderRadius: 8,
+      borderRadius: 7,
       borderWidth: 1,
-      borderColor: t.borderSubtle,
-      backgroundColor: t.chip,
+      borderColor: t.borderPrimary,
       alignItems: "center",
       justifyContent: "center",
     },
     stepperGlyph: {
-      fontSize: 16,
-      color: t.textPrimary,
-      ...weightedFont(t, "mono", "600"),
+      fontSize: 13,
+      color: t.accentPrimary,
+      fontFamily: t.fontMono,
     },
+    // `margin: 2px 0 8px` in the design, and left-aligned: it shares the
+    // card's left edge with the stamp above and the chips below.
     value: {
       fontSize: 22,
       color: t.textPrimary,
       ...weightedFont(t, "mono", "600"),
-      minWidth: 120,
-      textAlign: "center",
+      marginTop: 2,
+      marginBottom: 8,
     },
     chipRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
       gap: 6,
     },
     chip: {

@@ -24,6 +24,7 @@ import { NotionalControl } from "#/ui/rates/ticket/NotionalControl";
 import { sheetPresentation } from "#/ui/rates/ticket/sheetPresentation";
 import { TicketBackdrop } from "#/ui/rates/ticket/TicketBackdrop";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { SHELL_CLOCK } from "#/ui/shell/hud/useShellTelemetry";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -110,7 +111,7 @@ export function TradeTicketSheet({
           <Text style={styles.pair}>
             {pair.base}/{pair.terms}
           </Text>
-          <Text style={styles.subtitle}>SPOT · T+2</Text>
+          <Text style={styles.subtitle}>{`SPOT · T+2 · ${SHELL_CLOCK}`}</Text>
         </View>
         <NotionalControl notional={notional} base={pair.base} />
         {price === null ? null : (
@@ -172,15 +173,18 @@ function makeStyles(t: RnTheme): TradeTicketSheetStyles {
   return StyleSheet.create({
     handleIndicator: { backgroundColor: t.borderSubtle },
     body: { padding: 20, paddingBottom: 32, gap: 18 },
-    header: { gap: 4 },
+    // The design's header block: the pair at 16/600 with 1px tracking over a
+    // 9px mono stamp 2px below it (dc.html L491-494).
+    header: { gap: 2 },
     pair: {
-      fontSize: 18,
+      fontSize: 16,
+      letterSpacing: 1,
       color: t.textPrimary,
       ...weightedFont(t, "display", "600"),
     },
     subtitle: {
-      fontSize: 11,
-      letterSpacing: 1,
+      fontSize: 9,
+      letterSpacing: 1.4,
       color: t.textMuted,
       fontFamily: t.fontMono,
     },

@@ -85,6 +85,18 @@ test("auto-close: dismissing on terminal -> ready fires onDismiss, which calls o
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+// The design's stamp beneath the pair (dc.html L494): `SPOT · T+2 · <clock>`.
+// The clock is `SHELL_CLOCK` — the HUD's own decorative seed, the same value
+// the status strip prints — not a wall-clock read, so the two surfaces cannot
+// disagree and the ticket's golden reproduces. Asserted as the literal the
+// user sees, so a change to that seed has to be a deliberate edit here too.
+test("stamps the settlement line with the shell's clock", async () => {
+  mockExecutionStatus = "ready";
+  await renderWithTheme(<TradeTicketSheet pair={pair} onClose={jest.fn()} />);
+
+  expect(screen.getByText("SPOT · T+2 · 09:47:03")).toBeTruthy();
+});
+
 // The reduced-motion / Freeze presentation is decided by `sheetPresentation`
 // (unit-tested beside this file) and spread onto the sheet. What THIS test
 // pins is the wiring in between — that the component asks with the LIVE motion
