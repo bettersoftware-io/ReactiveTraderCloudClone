@@ -1,8 +1,9 @@
 import { sparklinePoints } from "#/ui/equities/markets/moversVm";
 
 /** Sparkline geometry box — the movers row's close column between the name
- * block and the price block. */
-export const ROW_SPARK_WIDTH = 48;
+ * block and the price block, matching the design's `viewBox="0 0 64 20"`
+ * (dc.html ~L341). */
+export const ROW_SPARK_WIDTH = 64;
 export const ROW_SPARK_HEIGHT = 20;
 
 /** Closes -> an SVG path `d` string tracing the sparkline (a plain line

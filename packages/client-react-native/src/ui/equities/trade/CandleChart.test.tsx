@@ -19,8 +19,8 @@ test("shows an empty state instead of a blank canvas with no candles", async () 
 
 // Recovered from the deleted PriceChart.test.tsx (this component's SVG
 // predecessor), which asserted the same thing for the same reason: a live
-// convention still carried by OrderTicket.test.tsx/
-// SectorHeatmap.test.tsx. `CandleChart` is chrome-less since the fidelity
+// convention still carried by OrderTicket.test.tsx and
+// rfqTiles/QuoteCard.test.tsx. `CandleChart` is chrome-less since the fidelity
 // pass (it sits inside `InstrumentCard`'s tile) so it never mounts a
 // `SurfaceCard`, sheen or otherwise — this asserts that stays true. `SurfaceCard
 // variant="panel"` — a dense data panel should never get the hero-tile

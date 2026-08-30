@@ -100,7 +100,7 @@ const HIGHLIGHT_HOLD_RATIO = 0.3;
 const HIGHLIGHT_FADE_EASING = Easing.out(Easing.ease);
 // A flat theme colour at full opacity would blank out the row's own text;
 // capped well below 1 so the pulse tints rather than obscures — same
-// technique as Watchlist/SectorHeatmap's `heat` overlay.
+// technique as the retired Watchlist/SectorHeatmap `heat` overlay.
 const OVERLAY_PEAK_OPACITY = 0.35;
 
 // The single-row equivalent of motion-core's `computeRankDirections` rule

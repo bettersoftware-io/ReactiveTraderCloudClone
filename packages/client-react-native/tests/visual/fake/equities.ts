@@ -35,7 +35,7 @@ function round2(n: number): number {
  * `packages/domain/src/simulators/EquityMarketDataSimulator.ts` is
  * domain-internal (not exported). Six symbols, so this fake owns quote/
  * candle/depth fixtures for all six, not just the pinned AAPL — MoversBoard
- * and SectorHeatmap render one row/cell per watchlist entry. If the real
+ * renders one row per watchlist entry. If the real
  * roster ever changes, this list silently drifts out of sync; there is no
  * compile-time link back to the simulator. */
 const WATCHLIST: readonly EquityInstrument[] = [
@@ -59,9 +59,9 @@ const LAST_PRICE: Readonly<Record<string, number>> = {
 };
 
 /** Per-symbol change%, deliberately spanning both signs and a range of
- * magnitudes: `MoversBoard` ranks and colours by this, and
- * `SectorHeatmap`'s tint intensity comes from it too — an all-positive (or
- * all-uniform) roster would only ever exercise one visual branch of each. */
+ * magnitudes: `MoversBoard` ranks and colours by this, and `MoversRow`'s pct
+ * pill tints from it too — an all-positive (or all-uniform) roster would
+ * only ever exercise one visual branch of each. */
 const CHANGE_PCT: Readonly<Record<string, number>> = {
   AAPL: 1.35,
   MSFT: -0.62,
