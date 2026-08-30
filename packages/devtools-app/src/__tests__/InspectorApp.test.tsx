@@ -510,14 +510,17 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // only proves `imported` state committed; the reset effect that clears
   // the pin runs as a passive effect on a later tick, so this needs its
   // own wait rather than an assertion immediately following the banner's.
+  // The stale watermark must be gone too: no dangling Unclear button, and
+  // the imported recording's row (seq 1, which the old watermark of 3 would
+  // have hidden) is listed rather than silently swallowed. The watermark
+  // reset commits on its own tick after the pin/scope reset, so it sits
+  // INSIDE the wait — asserted synchronously after it, this read a
+  // still-mounted Unclear button on the CI coverage run (3× on 2026-08-30).
   await waitFor(() => {
     expect(screen.queryByTestId("pinned-bar")).toBeNull();
     expect(navNode("all").dataset.selected).toBe("true");
+    expect(screen.queryByTestId("unclear-log")).toBeNull();
   });
-  // The stale watermark must be gone too: no dangling Unclear button, and
-  // the imported recording's row (seq 1, which the old watermark of 3 would
-  // have hidden) is listed rather than silently swallowed.
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
   expect(screen.getAllByTestId("timeline-row").length).toBe(1);
 
   fireEvent.click(screen.getByTestId("back-to-live"));
@@ -527,15 +530,15 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // Back to live is itself a datasource swap — still following, not stuck
   // on whatever seq the import last had pinned. Same passive-effect gap as
   // above, so wait rather than assert immediately.
-  await waitFor(() => {
-    expect(screen.queryByTestId("pinned-bar")).toBeNull();
-    expect(navNode("all").dataset.selected).toBe("true");
-  });
   // The live log was never cleared FROM THE STORE — Clear only ever hid
   // rows behind a watermark, which the swap back to live also resets (now
   // 0) — so all 3 live rows are visible again, not the pre-Clear state
-  // stuck hidden.
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  // stuck hidden. Same later-tick watermark reset as above: inside the wait.
+  await waitFor(() => {
+    expect(screen.queryByTestId("pinned-bar")).toBeNull();
+    expect(navNode("all").dataset.selected).toBe("true");
+    expect(screen.queryByTestId("unclear-log")).toBeNull();
+  });
   expect(screen.getAllByTestId("timeline-row").length).toBe(3);
 });
 

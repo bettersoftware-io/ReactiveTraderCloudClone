@@ -179,6 +179,11 @@ test("pinned bar flags a pin that is hidden by the current scope and offers show
   expect(handle.shownInAll).toBe(1);
 });
 
+// Flaked on the shared GitHub runner at vitest's 5000 ms default (runs
+// 33282539448 / PR #608 and 33292172917 / PR #614, both 2026-08-30; suite
+// wall time 6.8-7.4s there, never reproduced locally). The 1000-row seed
+// below is load-bearing for what the test proves — don't shrink it to fit
+// the default budget; widen the budget instead.
 test("detaching re-centers the >500-row render window on the first row still on screen", () => {
   // With only 3 rows the windowed and tail-500 slices are IDENTICAL (both
   // are just "all 3 rows"), so a 3-row fixture can't distinguish real
@@ -221,7 +226,7 @@ test("detaching re-centers the >500-row render window on the first row still on 
   expect(rows[0]?.getAttribute("data-seq")).toBe("251");
   expect(rows[rows.length - 1]?.getAttribute("data-seq")).toBe("750");
   expect(list.querySelector('[data-seq="1000"]')).toBeNull();
-});
+}, 20_000);
 
 interface Handle {
   setScope: (scope: Scope) => void;
