@@ -27,11 +27,40 @@ const INSTRUMENT: Instrument = {
 };
 const DEALERS: readonly Dealer[] = [{ id: 7, name: "Bank A" }];
 
-test("shows instrument and direction/qty", async () => {
+// dc.html:233 — `BUY · 1.0M USD · #3045`: the side in caps and coloured, then
+// the abbreviated notional and the RFQ id, all separated by middots. The app
+// printed `Buy | Qty: 25` here until 2026-08-30.
+test("shows the instrument and the design's BUY · notional · #id subtitle", async () => {
   await renderCard(rfq(RfqState.Open), []);
   expect(screen.getByTestId("rfq-card-3")).toBeTruthy();
   expect(screen.getByText("Acme 5.5% 2030")).toBeTruthy();
-  expect(screen.getByText("Buy | Qty: 25")).toBeTruthy();
+  expect(screen.getByTestId("rfq-meta-3")).toHaveTextContent(
+    "BUY · 25 USD · #3",
+  );
+});
+
+test("upper-cases a Sell side too", async () => {
+  await renderCard({ ...rfq(RfqState.Open), direction: Direction.Sell }, []);
+  expect(screen.getByTestId("rfq-meta-3")).toHaveTextContent(
+    "SELL · 25 USD · #3",
+  );
+});
+
+// The prototype only ever seeds whole millions, so `toFixed(1)` alone is the
+// whole rule there; the app has to survive the smaller RFQs the domain can
+// produce without abbreviating them to `0.0M USD`.
+test("abbreviates the notional the way the design does", async () => {
+  await renderCard({ ...rfq(RfqState.Open), quantity: 5_000_000 }, []);
+  expect(screen.getByTestId("rfq-meta-3")).toHaveTextContent(
+    "BUY · 5.0M USD · #3",
+  );
+});
+
+test("falls back to thousands below a million rather than 0.0M", async () => {
+  await renderCard({ ...rfq(RfqState.Open), quantity: 250_000 }, []);
+  expect(screen.getByTestId("rfq-meta-3")).toHaveTextContent(
+    "BUY · 250K USD · #3",
+  );
 });
 
 // The prototype's header slot is exclusive: a live RFQ shows the countdown

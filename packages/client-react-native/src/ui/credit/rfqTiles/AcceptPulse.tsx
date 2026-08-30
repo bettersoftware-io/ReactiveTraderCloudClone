@@ -22,7 +22,11 @@ import { useTheme } from "#/ui/theme/useTheme";
  * and `docs/performance.md` forbids animating anything but transform/opacity
  * anyway — so the same read is produced by a sibling rectangle scaling out and
  * fading. Renders `null` entirely when motion is gated off: a static halo would
- * be a permanent coloured smear behind the button rather than a hint. */
+ * be a permanent coloured smear behind the button rather than a hint.
+ *
+ * Tinted with `accentPrimary`, not `accentPositive`: the design's `pulseC` is
+ * `color-mix(in oklab, acc 55%, transparent)` (dc.html:2153), the same accent
+ * the button it haloes is filled with. */
 export function AcceptPulse(): JSX.Element | null {
   const t = useTheme();
   const enabled = useShellMotionEnabled();
@@ -68,7 +72,7 @@ export function AcceptPulse(): JSX.Element | null {
     <Animated.View
       testID="accept-pulse"
       pointerEvents="none"
-      style={[styles.halo, { backgroundColor: t.accentPositive }, haloStyle]}
+      style={[styles.halo, { backgroundColor: t.accentPrimary }, haloStyle]}
     />
   );
 }

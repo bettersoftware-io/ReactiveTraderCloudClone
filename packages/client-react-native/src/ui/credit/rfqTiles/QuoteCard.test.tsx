@@ -10,11 +10,40 @@ import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
 const DEALER: Dealer = { id: 7, name: "Bank A" };
 
-test("shows dealer name and price for a priced quote", async () => {
+test("shows the dealer name upper-cased and an unprefixed price", async () => {
   await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
   expect(screen.getByTestId("quote-card-42")).toBeTruthy();
-  expect(screen.getByText("Bank A")).toBeTruthy();
-  expect(screen.getByText("$99.00")).toBeTruthy();
+  // The design prints desks in caps (dc.html:243).
+  expect(screen.getByText("BANK A")).toBeTruthy();
+  expect(screen.getByText("99.00")).toBeTruthy();
+});
+
+// These are bond prices per 100 of par, and the design prints them bare
+// (dc.html:2144). The `$` the first pass added was the deviation the Credit
+// fidelity comparison named.
+test("carries no currency prefix on the price", async () => {
+  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(screen.queryByText("$99.00")).toBeNull();
+});
+
+test("marks the best quote with the design's BEST tag", async () => {
+  await renderQuote({
+    state: { type: "pendingWithPrice", price: 99 },
+    isBest: true,
+  });
+  expect(screen.getByText("BANK A ◂ BEST")).toBeTruthy();
+});
+
+// `won` is the settled card's counterpart of `isBest`: the row that actually
+// traded keeps the accent treatment once the race is over (dc.html:2151).
+test("marks an accepted quote WON, not BEST", async () => {
+  await renderQuote({ state: { type: "accepted", price: 99 } });
+  expect(screen.getByText("BANK A ◂ WON")).toBeTruthy();
+});
+
+test("an ordinary quote carries no tag", async () => {
+  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(screen.queryByText(/◂/)).toBeNull();
 });
 
 test("Accept fires onAccept with the quote id for a priced pending quote", async () => {
@@ -52,6 +81,21 @@ test("the best quote haloes its ACCEPT button", async () => {
 test("a non-best quote gets no halo", async () => {
   await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
   expect(screen.queryByTestId("accept-pulse")).toBeNull();
+});
+
+// dc.html:2152-2153 — only the best ACCEPT carries the accent → accent2 ramp;
+// every other one is a flat `chip` tint.
+test("only the best ACCEPT is filled with the gradient", async () => {
+  await renderQuote({
+    state: { type: "pendingWithPrice", price: 99 },
+    isBest: true,
+  });
+  expect(screen.getByTestId("accept-gradient")).toBeTruthy();
+});
+
+test("a non-best ACCEPT has no gradient fill", async () => {
+  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(screen.queryByTestId("accept-gradient")).toBeNull();
 });
 
 test("renders no gradient tile surface even on a 3d skin (dense row, not a hero tile)", async () => {

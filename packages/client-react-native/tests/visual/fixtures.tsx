@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
 import {
-  ADAPTIVE_BANK_NAME,
+  DEALERS_CATALOG,
   type Dealer,
   Direction,
   type Instrument,
@@ -334,12 +334,14 @@ const PINNED_INSTRUMENTS: readonly Instrument[] = [
   },
 ];
 
-const PINNED_DEALERS: readonly Dealer[] = [
-  { id: 1, name: "Bank A" },
-  { id: 2, name: "Bank B" },
-  { id: 3, name: "Bank C" },
-  { id: 9, name: ADAPTIVE_BANK_NAME },
-];
+/** The REAL desks, straight off the domain's own catalogue (ids 0-4:
+ * Adaptive Bank, Citi, JP Morgan, Goldman Sachs, Morgan Stanley) rather than
+ * the `Bank A/B/C` placeholders this fixture carried until 2026-08-30 — the
+ * one deviation the first Credit fidelity comparison named first. Five of
+ * them, because the design streams every RFQ to five dealers
+ * (dc.html:2069/2105, `DEALERS.slice(0, 5)`); `QuoteCard` upper-cases them at
+ * render, as the design prints them. */
+const PINNED_DEALERS: readonly Dealer[] = DEALERS_CATALOG.slice(0, 5);
 
 const PINNED_LIVE_RFQ: Rfq = {
   id: 101,
@@ -361,27 +363,44 @@ const PINNED_TRADED_RFQ: Rfq = {
   creationTimestamp: 0,
 };
 
-/** A Buy, so the LOWEST price wins: 97.85 takes the tint and the halo. The
- * third dealer is unpriced, which is what puts an `AWAITING…` on screen. */
+/** One quote per pinned dealer — five, matching the design's five-dealer fan
+ * (dc.html:2069). A Buy, so the LOWEST price wins: 97.85 (Citi) takes the
+ * tint, the `◂ BEST` marker and the gradient ACCEPT. One dealer is left
+ * unpriced, which is what puts an `AWAITING…` on screen. */
 const PINNED_QUOTES: readonly Quote[] = [
   {
     id: 1001,
     rfqId: 101,
-    dealerId: 1,
+    dealerId: 0,
     state: { type: "pendingWithPrice", price: 98.4 },
   },
   {
     id: 1002,
     rfqId: 101,
-    dealerId: 2,
+    dealerId: 1,
     state: { type: "pendingWithPrice", price: 97.85 },
   },
-  { id: 1003, rfqId: 101, dealerId: 3, state: { type: "pendingWithoutPrice" } },
+  {
+    id: 1003,
+    rfqId: 101,
+    dealerId: 2,
+    state: { type: "pendingWithPrice", price: 98.15 },
+  },
+  { id: 1004, rfqId: 101, dealerId: 3, state: { type: "pendingWithoutPrice" } },
+  {
+    id: 1005,
+    rfqId: 101,
+    dealerId: 4,
+    state: { type: "pendingWithPrice", price: 98.72 },
+  },
 ];
 
+/** The settled card's one row — an `accepted` quote, which is what earns the
+ * `◂ WON` marker and the accent treatment on a card that has no best quote
+ * (dc.html:2145 keys both on `isBest || won`). */
 const PINNED_TRADED_QUOTES: readonly Quote[] = [
   {
-    id: 1004,
+    id: 1010,
     rfqId: 102,
     dealerId: 1,
     state: { type: "accepted", price: 101.35 },
