@@ -18,6 +18,7 @@ import Animated, {
 
 import {
   type Dealer,
+  Direction,
   type Instrument,
   type Quote,
   type Rfq,
@@ -76,8 +77,19 @@ export function RfqCard({
           <Text style={styles.instrumentName}>
             {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
           </Text>
-          <Text style={styles.instrumentMeta}>
-            {rfq.direction} | Qty: {rfq.quantity.toLocaleString()}
+          <Text
+            style={styles.instrumentMeta}
+            numberOfLines={1}
+            testID={`rfq-meta-${rfq.id}`}
+          >
+            <Text
+              style={
+                rfq.direction === Direction.Buy ? styles.dirBuy : styles.dirSell
+              }
+            >
+              {rfq.direction.toUpperCase()}
+            </Text>
+            {` · ${formatNotional(rfq.quantity)} · #${rfq.id}`}
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -235,7 +247,7 @@ function makeStampStyles(t: RnTheme): RfqStampStyles {
     // padding, radius 5. Sized to sit in the header opposite the countdown
     // ring, NOT as a banner across the card.
     stamp: {
-      fontSize: 9,
+      fontSize: 8,
       letterSpacing: 1,
       color: t.textMuted,
       borderColor: t.borderSubtle,
@@ -252,6 +264,26 @@ function makeStampStyles(t: RnTheme): RfqStampStyles {
       borderColor: t.accentPositive,
     },
   });
+}
+
+/** The subtitle's notional readout — the design abbreviates (dc.html:2166,
+ * `(q.qty / 1000000).toFixed(1) + 'M USD'`), where the app printed a raw
+ * `2,000,000`.
+ *
+ * The sub-million branches are OURS, not the prototype's: it only ever seeds
+ * whole millions, so `toFixed(1)` alone would render every smaller RFQ the
+ * domain can produce as `0.0M USD` — an abbreviation that has abbreviated the
+ * number away. Same rounding as the design above a million. */
+function formatNotional(quantity: number): string {
+  if (quantity >= 1_000_000) {
+    return `${(quantity / 1_000_000).toFixed(1)}M USD`;
+  }
+
+  if (quantity >= 1_000) {
+    return `${Math.round(quantity / 1_000)}K USD`;
+  }
+
+  return `${quantity} USD`;
 }
 
 function stateLabel(state: RfqState): string {
@@ -274,6 +306,8 @@ interface RfqCardStyles {
   headerRight: ViewStyle;
   instrumentName: TextStyle;
   instrumentMeta: TextStyle;
+  dirBuy: TextStyle;
+  dirSell: TextStyle;
   badge: TextStyle;
   dismissBtn: ViewStyle;
   dismissText: TextStyle;
@@ -299,16 +333,24 @@ function makeStyles(t: RnTheme): RfqCardStyles {
       alignItems: "center",
       gap: SPACING.sm,
     },
+    // dc.html:232 — 12px/600 with letter-spacing 0.4, not the 14px the first
+    // pass used: on a phone the card's own title is the thing that must not
+    // crowd the countdown ring beside it.
     instrumentName: {
-      fontSize: 14,
+      fontSize: 12,
+      letterSpacing: 0.4,
       color: t.textPrimary,
       ...weightedFont(t, "display", "600"),
     },
+    // dc.html:233 — `BUY · 1.0M USD · #3045`: mono 8.5px, the separators and
+    // the id in `--faint`, the side alone carrying colour.
     instrumentMeta: {
-      fontSize: 12,
+      fontSize: 8.5,
       color: t.textMuted,
       fontFamily: t.fontMono,
     },
+    dirBuy: { color: t.accentPositive, letterSpacing: 1 },
+    dirSell: { color: t.accentNegative, letterSpacing: 1 },
     badge: {
       fontSize: 11,
       color: t.textSecondary,

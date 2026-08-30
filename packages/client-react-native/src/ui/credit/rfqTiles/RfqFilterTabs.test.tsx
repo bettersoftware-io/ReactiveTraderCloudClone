@@ -34,6 +34,21 @@ test("the active tab follows the stored preference", async () => {
   expect(selectedState(screen.getByTestId("rfq-filter-live"))).toBe(false);
 });
 
+// dc.html:216 — every chip is an outlined pill; only the fill and the border
+// COLOUR change with selection. The app's inactive chip was a filled `panel`
+// rectangle with no border at all, so the row read as three solid blocks
+// rather than the design's three outlines with one filled.
+test("every chip is an outlined pill, selected or not", async () => {
+  await renderTabs("live", noop);
+
+  for (const f of ["live", "closed", "all"]) {
+    expect(screen.getByTestId(`rfq-filter-${f}`)).toHaveStyle({
+      borderWidth: 1,
+      borderRadius: 999,
+    });
+  }
+});
+
 function noop(): void {}
 
 function selectedState(

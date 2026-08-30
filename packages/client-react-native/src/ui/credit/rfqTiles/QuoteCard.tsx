@@ -10,6 +10,7 @@ import {
 
 import type { Dealer, Quote } from "@rtc/domain";
 
+import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
 import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
 import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -21,7 +22,14 @@ import { weightedFont } from "#/ui/theme/weightedFont";
  * winning row tinted and its ACCEPT button haloed — `isBest` is decided once
  * per RFQ by `findBestQuoteId`, not re-derived here, so both clients agree on
  * the winner. Unpriced dealers show a breathing `AWAITING…` instead of a
- * price, which is what makes a slow dealer visibly distinct from a passed one. */
+ * price, which is what makes a slow dealer visibly distinct from a passed one.
+ *
+ * Two rows carry the accent treatment, not one (dc.html:2145-2153 keys every
+ * one of `pxC`/`bg`/`btnBg` on `isBest || won`): the best LIVE quote, and the
+ * quote that actually traded on a settled card. They are mutually exclusive in
+ * practice — `RfqCard` only computes a best quote while the RFQ is Open — but
+ * the tag distinguishes them, `◂ BEST` while the race is on and `◂ WON` once
+ * it is over. */
 export function QuoteCard({
   quote,
   dealer,
@@ -30,6 +38,8 @@ export function QuoteCard({
 }: QuoteCardProps): JSX.Element {
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept != null;
   const awaiting = quote.state.type === "pendingWithoutPrice";
+  const won = quote.state.type === "accepted";
+  const accented = isBest || won;
   const styles = useThemedStyles(makeStyles);
 
   function acceptPendingQuote(): void {
@@ -40,16 +50,17 @@ export function QuoteCard({
 
   return (
     <View
-      style={[styles.row, isBest ? styles.rowBest : null]}
+      style={[styles.row, accented ? styles.rowAccented : null]}
       testID={`quote-card-${quote.id}`}
     >
       <Text style={styles.dealerName} numberOfLines={1}>
-        {dealer?.name ?? `Dealer ${quote.dealerId}`}
+        {(dealer?.name ?? `Dealer ${quote.dealerId}`).toUpperCase()}
+        <Text style={styles.tag}>{tagText(isBest, won)}</Text>
       </Text>
       {awaiting ? (
         <AwaitingLabel />
       ) : (
-        <Text style={isBest ? styles.priceBest : styles.priceText}>
+        <Text style={accented ? styles.priceAccented : styles.priceText}>
           {displayText(quote.state)}
         </Text>
       )}
@@ -61,6 +72,7 @@ export function QuoteCard({
             style={isBest ? styles.acceptBtnBest : styles.acceptBtn}
             onPress={acceptPendingQuote}
           >
+            {isBest ? <AcceptGradient /> : null}
             <Text style={isBest ? styles.acceptLabelBest : styles.acceptLabel}>
               ACCEPT
             </Text>
@@ -79,6 +91,22 @@ interface QuoteCardProps {
   onAccept?: (quoteId: number) => void | Promise<void>;
 }
 
+/** The marker the design prints after the dealer name (dc.html:2151 —
+ * `tag: isBest ? '◂ BEST' : won ? '◂ WON' : ''`). Leading space included: it
+ * renders as a nested span inside the name, so the gap is part of the text.
+ * The empty string is the normal case and draws nothing. */
+function tagText(isBest: boolean, won: boolean): string {
+  if (isBest) {
+    return " ◂ BEST";
+  }
+
+  if (won) {
+    return " ◂ WON";
+  }
+
+  return "";
+}
+
 function displayText(state: Quote["state"]): string {
   switch (state.type) {
     case "pendingWithoutPrice":
@@ -87,11 +115,12 @@ function displayText(state: Quote["state"]): string {
     case "pendingWithPrice":
     case "accepted":
     case "rejectedWithPrice":
-      // Fixed 2dp: raw interpolation put `$99.8` and `$99.47` in the same
-      // column on device, so the decimal points did not line up and the eye
-      // could not compare the two prices at a glance — which is the entire job
-      // of this column.
-      return `$${state.price.toFixed(2)}`;
+      // Fixed 2dp, and NO currency prefix: the design prints a bare `97.15`
+      // (dc.html:2144, `d.px.toFixed(2)`) — these are bond prices per 100 of
+      // par, not dollar amounts, and a `$` both misreads them and pushes the
+      // decimal points out of a shared column. Fixed 2dp is what keeps that
+      // column aligned, which is the entire job of it.
+      return state.price.toFixed(2);
     case "passed":
       return "Passed";
   }
@@ -99,10 +128,11 @@ function displayText(state: Quote["state"]): string {
 
 interface QuoteCardStyles {
   row: ViewStyle;
-  rowBest: ViewStyle;
+  rowAccented: ViewStyle;
   dealerName: TextStyle;
+  tag: TextStyle;
   priceText: TextStyle;
-  priceBest: TextStyle;
+  priceAccented: TextStyle;
   acceptWrap: ViewStyle;
   acceptBtn: ViewStyle;
   acceptBtnBest: ViewStyle;
@@ -116,7 +146,7 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
   // `padding: 7px 11px` and `radius 7` (dc.html:246).
   const price: TextStyle = {
     fontSize: 12,
-    color: t.textSecondary,
+    color: t.textPrimary,
     ...weightedFont(t, "mono", "600"),
   };
 
@@ -124,14 +154,14 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
     paddingHorizontal: 11,
     paddingVertical: 7,
     borderRadius: 7,
-    backgroundColor: t.bgSecondary,
+    backgroundColor: t.chip,
   };
 
   const acceptLabel: TextStyle = {
     fontSize: 8.5,
     letterSpacing: 1.5,
     ...weightedFont(t, "mono", "700"),
-    color: t.textSecondary,
+    color: t.accentPrimary,
   };
 
   return StyleSheet.create({
@@ -146,19 +176,30 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.borderSubtle,
     },
-    rowBest: { backgroundColor: t.bgSecondary },
+    // dc.html:2148 — `color-mix(in oklab, acc 7%, transparent)`. Every skin's
+    // `accentPrimary` is a 6-digit hex, so the 7% is expressed as the `12`
+    // alpha byte (18/255 ≈ 7.1%) rather than a second token.
+    rowAccented: { backgroundColor: `${t.accentPrimary}12` },
     dealerName: {
       flex: 1,
       fontSize: 9,
       letterSpacing: 0.8,
-      color: t.textMuted,
+      color: t.textSecondary,
       fontFamily: t.fontMono,
     },
+    // dc.html:243 — the marker rides inside the name at 7.5px in the accent.
+    tag: { fontSize: 7.5, color: t.accentPrimary },
     priceText: price,
-    priceBest: { ...price, color: t.accentPositive },
+    priceAccented: { ...price, color: t.accentPrimary },
     acceptWrap: { position: "relative" },
     acceptBtn,
-    acceptBtnBest: { ...acceptBtn, backgroundColor: t.accentPositive },
+    // `overflow: hidden` clips the gradient sublayer to the 7px radius; the
+    // flat accent underneath it is what shows if the SVG layer ever fails.
+    acceptBtnBest: {
+      ...acceptBtn,
+      backgroundColor: t.accentPrimary,
+      overflow: "hidden",
+    },
     acceptLabel,
     acceptLabelBest: { ...acceptLabel, color: t.textOnAccent },
   });
