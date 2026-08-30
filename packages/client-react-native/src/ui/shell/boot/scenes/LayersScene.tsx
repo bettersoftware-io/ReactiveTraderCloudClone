@@ -85,6 +85,7 @@ export function LayersScene({
   drift,
   width,
   height,
+  topInset,
   theme,
 }: BootSceneProps): JSX.Element {
   const accent = theme.accentPrimary;
@@ -137,6 +138,7 @@ export function LayersScene({
         drawTelemetry(
           canvas,
           width,
+          topInset,
           spread,
           yaw,
           pitch,
@@ -148,6 +150,7 @@ export function LayersScene({
         drawStatusBanner(
           canvas,
           width / 2,
+          topInset,
           progress,
           elapsed,
           flicker,
@@ -971,6 +974,7 @@ function drawPanels(
 function drawTelemetry(
   canvas: SkCanvas,
   width: number,
+  topInset: number,
   spread: number,
   yaw: number,
   pitch: number,
@@ -992,21 +996,21 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.title,
     TELEMETRY_INSET,
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.layers,
     TELEMETRY_INSET,
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
   canvas.drawText(
     telemetry.orientation,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.orientation),
-    TELEMETRY_FIRST_BASELINE,
+    topInset + TELEMETRY_FIRST_BASELINE,
     paint,
     font,
   );
@@ -1014,7 +1018,7 @@ function drawTelemetry(
   canvas.drawText(
     telemetry.track,
     width - TELEMETRY_INSET - font.getTextWidth(telemetry.track),
-    TELEMETRY_SECOND_BASELINE,
+    topInset + TELEMETRY_SECOND_BASELINE,
     paint,
     font,
   );
@@ -1024,6 +1028,7 @@ function drawTelemetry(
 function drawStatusBanner(
   canvas: SkCanvas,
   centerX: number,
+  topInset: number,
   progress: number,
   elapsed: number,
   flicker: number,
@@ -1055,7 +1060,7 @@ function drawStatusBanner(
   canvas.drawText(
     text,
     centerX - font.getTextWidth(text) / 2,
-    BANNER_BASELINE,
+    topInset + BANNER_BASELINE,
     paint,
     font,
   );
