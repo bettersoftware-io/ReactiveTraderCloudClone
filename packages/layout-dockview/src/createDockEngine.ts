@@ -66,6 +66,12 @@ export interface DockEngineOptions {
   // attached, so rtc/name-functions-by-effect exempts it — see
   // docs/handler-naming.md's slot-vs-handler doctrine.
   onLayoutChange: (blob: string) => void;
+  /** Fired whenever the set of strips OR any strip's orientation changes —
+   * after a collapse or expand, with the whole current map. A collapse can
+   * re-orient panels other than the one named (see {@link DockEngine.collapsePanel}),
+   * so this, not the intent's own result, is the client's source of truth
+   * for which restore bar to render. Not fired at construction (no strips). */
+  onStripsChange?: (strips: DockStripMap) => void;
   /** Debounce for onLayoutChange serialisation; default 250. Tests pass 0. */
   debounceMs?: number;
 }
@@ -94,15 +100,21 @@ const STRIP_HEIGHT_PX = 32;
  * axis the panel's group reclaims along. */
 export type DockStripOrientation = "vertical" | "horizontal";
 
+/** Every currently collapsed panel and which way its strip reads. */
+export type DockStripMap = Readonly<Record<string, DockStripOrientation>>;
+
 export interface DockEngine {
   maximizePanel(panelId: string): void;
   exitMaximize(): void;
-  /** Strip this panel to a bar along the axis its group's siblings run on
-   * (see {@link STRIP_WIDTH_PX}), returning which way the strip reads so the
-   * client can render the matching restore bar. Idempotent: a second call
-   * for an already-stripped panel returns its existing orientation. `null`
-   * for an unknown panel. */
-  collapsePanel(panelId: string): DockStripOrientation | null;
+  /** Strip this panel to a bar along the axis its space reclaims on (see
+   * {@link STRIP_WIDTH_PX}). That axis is the in-house engine's `stripDir`:
+   * the nearest enclosing split that is NOT itself fully stripped — so the
+   * last panel of a rail column to collapse flips the WHOLE column to 38px
+   * vertical strips stacked down the rail, exactly as in-house, instead of
+   * leaving two 32px bars atop a full-width empty column. Orientations
+   * therefore reach the client through `onStripsChange`, not a return
+   * value. Idempotent; a no-op for an unknown panel. */
+  collapsePanel(panelId: string): void;
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
@@ -114,11 +126,17 @@ export interface DockEngine {
  * than guesses. Constraints are captured too: dockview's default minimum width
  * is not a documented constant, so reading the real values back beats hardcoding
  * a floor that a dockview upgrade could silently change. */
-interface PreCollapseGeometry {
-  orientation: DockStripOrientation;
+/** What a collapsed panel's group looked like before, on BOTH axes: the
+ * natural axis (its own parent split's — restored on expand) and the
+ * orthogonal one (clamped instead while the whole parent split is stripped
+ * and the strip reads the other way). */
+interface StripRecord {
+  natural: DockStripOrientation;
   size: number;
   minimum: number;
   maximum: number;
+  orthogonalMinimum: number;
+  orthogonalMaximum: number;
 }
 
 export function createDockEngine(opts: DockEngineOptions): DockEngine {
@@ -194,10 +212,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // Dockview's dock has NO collapse primitive. `setCollapsed`/`isCollapsed`
   // exist in dockview-core but only for EDGE groups (shell-docked sidebars),
   // which these grid groups are not — so collapse is emulated by clamping the
-  // group's width, which is exactly how dockview's own edge groups do it
+  // group's size, which is exactly how dockview's own edge groups do it
   // (their `restoreExpandedSize` remembers the pre-collapse size the same way
   // this map does).
-  const preCollapse = new Map<string, PreCollapseGeometry>();
+  const records = new Map<string, StripRecord>();
+  // A split whose every group is a strip reclaims along its PARENT's axis
+  // (the in-house `stripDir`): its own size on that axis is remembered here
+  // while it is flipped, and restored the moment one of its strips expands.
+  const flippedSplits = new Map<Element, number>();
+  let lastStrips: DockStripMap = {};
 
   // The in-house engine glides a collapse / expand / maximize / restore over
   // 0.34s (its `.cell` / `.panel` transitions) and NOTHING else — a sash drag
@@ -224,6 +247,119 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     mutate();
   }
 
+  function groupOf(panelId: string): SizableGroup | undefined {
+    return api.getPanel(panelId)?.group;
+  }
+
+  /** Re-derives every strip's orientation and geometry from the current
+   * collapse set and pushes the orientations to the client when they moved.
+   * Runs whole, not incrementally: the panel that just collapsed or expanded
+   * can flip its SIBLINGS' orientation (the last strip completing a column,
+   * the first expand breaking it), so every strip is re-settled together. */
+  function settleStrips(): void {
+    const stripped = new Map<Element, string>();
+
+    for (const panelId of records.keys()) {
+      const group = groupOf(panelId);
+
+      if (group !== undefined) {
+        stripped.set(group.element, panelId);
+      }
+    }
+
+    function isStripped(element: Element): boolean {
+      return stripped.has(element);
+    }
+
+    const strips: Record<string, DockStripOrientation> = {};
+    const nowFlipped = new Set<Element>();
+
+    // Pass 1 — orientations, and the splits that are flipped right now.
+    for (const [element, panelId] of stripped) {
+      const reclaim = reclaimSplitOf(element, isStripped);
+      strips[panelId] = orientationAgainst(reclaim.split);
+
+      for (const flipped of reclaim.flipped) {
+        nowFlipped.add(flipped);
+      }
+    }
+
+    // Pass 2 — a split flipping NOW remembers its size on the parent's axis
+    // before the clamps below pin it to the strip.
+    for (const split of nowFlipped) {
+      if (!flippedSplits.has(split)) {
+        const witness = firstStrippedGroupIn(split, stripped, groupOf);
+
+        if (witness !== undefined) {
+          // The split's size on its PARENT's axis — a column's width — is
+          // the axis orthogonal to the one its own children run along.
+          flippedSplits.set(
+            split,
+            axisOf(witness, opposite(orientationAgainst(split))).size(),
+          );
+        }
+      }
+    }
+
+    // Pass 3 — every strip's geometry: clamp the reclaim axis to the bar,
+    // release the other. Constraints before sizes throughout (a bare setSize
+    // leaves the group draggable back open and lets a sibling's resize push
+    // it wide again).
+    for (const panelId of stripped.values()) {
+      const record = records.get(panelId);
+      const group = groupOf(panelId);
+      const orientation = strips[panelId];
+
+      if (
+        record === undefined ||
+        group === undefined ||
+        orientation === undefined
+      ) {
+        continue;
+      }
+
+      const naturalAxis = axisOf(group, record.natural);
+      const orthogonalAxis = axisOf(group, opposite(record.natural));
+
+      if (orientation === record.natural) {
+        orthogonalAxis.constrain(
+          record.orthogonalMinimum,
+          record.orthogonalMaximum,
+        );
+        clampRendered(naturalAxis, barSizeFor(orientation));
+      } else {
+        naturalAxis.constrain(record.minimum, record.maximum);
+        clampRendered(orthogonalAxis, barSizeFor(orientation));
+      }
+    }
+
+    // Pass 4 — a split that is no longer flipped gets its remembered size
+    // back, now that its strips' orthogonal clamps are released.
+    for (const [split, size] of flippedSplits) {
+      if (nowFlipped.has(split)) {
+        continue;
+      }
+
+      flippedSplits.delete(split);
+      const witness = firstGroupIn(split, api.groups);
+
+      if (witness !== undefined) {
+        setRendered(axisOf(witness, opposite(orientationAgainst(split))), size);
+      }
+    }
+
+    // Pass 5 — the strips of a flipped split share its length equally, as
+    // the in-house strip cells do (`.cell[data-strip-fill]`, flex 1 1 auto).
+    for (const split of nowFlipped) {
+      shareAlong(split, stripped, groupOf);
+    }
+
+    if (!sameStrips(lastStrips, strips)) {
+      lastStrips = strips;
+      opts.onStripsChange?.(strips);
+    }
+  }
+
   return {
     maximizePanel: (panelId: string) => {
       glide(() => {
@@ -237,17 +373,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         });
       }
     },
-    collapsePanel: (panelId: string): DockStripOrientation | null => {
+    collapsePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined) {
-        return null;
-      }
-
-      const already = preCollapse.get(panelId);
-
-      if (already !== undefined) {
-        return already.orientation;
+      if (panel === undefined || records.has(panelId)) {
+        return;
       }
 
       // In-house `collapsed` names a PANEL; dockview sizes a GROUP, and a group
@@ -262,44 +392,43 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       // Re-read: the move above reassigned `panel.group`.
       const group = panel.group;
-      const orientation = stripOrientationOf(group);
-      const axis = axisOf(group, orientation);
+      const natural = stripOrientationOf(group);
+      const naturalAxis = axisOf(group, natural);
+      const orthogonalAxis = axisOf(group, opposite(natural));
 
-      preCollapse.set(panelId, {
-        orientation,
-        size: axis.size(),
-        minimum: axis.minimum(),
-        maximum: axis.maximum(),
+      records.set(panelId, {
+        natural,
+        size: naturalAxis.size(),
+        minimum: naturalAxis.minimum(),
+        maximum: naturalAxis.maximum(),
+        orthogonalMinimum: orthogonalAxis.minimum(),
+        orthogonalMaximum: orthogonalAxis.maximum(),
       });
-
-      // Constraints BEFORE size: a bare `setSize` leaves the group draggable
-      // back open and lets a sibling's resize push it wide again, so the strip
-      // would not survive the next layout pass.
-      glide(() => {
-        clampRendered(
-          axis,
-          orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX,
-        );
-      });
-      return orientation;
+      glide(settleStrips);
     },
     expandPanel: (panelId: string) => {
-      const prior = preCollapse.get(panelId);
-      const panel = api.getPanel(panelId);
+      const record = records.get(panelId);
+      const group = groupOf(panelId);
 
-      if (prior === undefined || panel === undefined) {
+      if (record === undefined || group === undefined) {
         return;
       }
 
-      const axis = axisOf(panel.group, prior.orientation);
-
-      // Constraints first again — while max is still pinned at the strip,
-      // `setSize` to anything wider would be clamped straight back.
       glide(() => {
-        axis.constrain(prior.minimum, prior.maximum);
-        setRendered(axis, prior.size);
+        records.delete(panelId);
+        const naturalAxis = axisOf(group, record.natural);
+        // Constraints first — while max is still pinned at the strip,
+        // `setSize` to anything wider would be clamped straight back.
+        naturalAxis.constrain(record.minimum, record.maximum);
+        axisOf(group, opposite(record.natural)).constrain(
+          record.orthogonalMinimum,
+          record.orthogonalMaximum,
+        );
+        // Siblings first (a broken column restores its width), then this
+        // panel's own length on its natural axis.
+        settleStrips();
+        setRendered(naturalAxis, record.size);
       });
-      preCollapse.delete(panelId);
     },
     groupCount: () => {
       return api.groups.length;
@@ -382,11 +511,148 @@ interface GroupAxis {
  * vertical treatment, as the in-house engine's root leaf does.
  */
 function stripOrientationOf(group: SizableGroup): DockStripOrientation {
-  const splitView = group.element.closest(".dv-split-view-container");
+  const splitView = group.element.closest(SPLIT_SELECTOR);
 
-  return splitView?.classList.contains("dv-vertical") === true
-    ? "horizontal"
-    : "vertical";
+  return splitView === null ? "vertical" : orientationAgainst(splitView);
+}
+
+const SPLIT_SELECTOR = ".dv-split-view-container";
+const GROUP_SELECTOR = ".dv-groupview";
+
+/** Which way a strip reads when its space reclaims along `split`'s axis:
+ * siblings side by side (a horizontal split) → a 38px vertical column;
+ * siblings stacked (a vertical split) → a 32px horizontal bar. */
+function orientationAgainst(split: Element): DockStripOrientation {
+  return split.classList.contains("dv-vertical") ? "horizontal" : "vertical";
+}
+
+function opposite(orientation: DockStripOrientation): DockStripOrientation {
+  return orientation === "vertical" ? "horizontal" : "vertical";
+}
+
+function barSizeFor(orientation: DockStripOrientation): number {
+  return orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX;
+}
+
+/** The in-house `stripDir` walk: a group's space reclaims along the nearest
+ * enclosing split that is NOT fully stripped. Every split passed on the way
+ * up (each with all its groups stripped) is "flipped" — its strips read
+ * against the parent's axis and it hugs the bar on that axis. */
+interface ReclaimSplit {
+  /** The split whose axis the group's space reclaims along. */
+  split: Element;
+  /** Every fully-stripped split passed on the way up to it. */
+  flipped: readonly Element[];
+}
+
+function reclaimSplitOf(
+  groupElement: Element,
+  isStripped: (element: Element) => boolean,
+): ReclaimSplit {
+  const flipped: Element[] = [];
+  const own = groupElement.closest(SPLIT_SELECTOR);
+
+  if (own === null) {
+    throw new Error("dockview group outside any split view");
+  }
+
+  let split: Element = own;
+
+  while (allGroupsStripped(split, isStripped)) {
+    const parent: Element | null =
+      split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
+
+    if (parent === null) {
+      break;
+    }
+
+    flipped.push(split);
+    split = parent;
+  }
+
+  return { split, flipped };
+}
+
+function allGroupsStripped(
+  split: Element,
+  isStripped: (element: Element) => boolean,
+): boolean {
+  const groups = split.querySelectorAll(GROUP_SELECTOR);
+
+  return groups.length > 0 && [...groups].every(isStripped);
+}
+
+function firstStrippedGroupIn(
+  split: Element,
+  stripped: ReadonlyMap<Element, string>,
+  groupOf: (panelId: string) => SizableGroup | undefined,
+): SizableGroup | undefined {
+  for (const element of split.querySelectorAll(GROUP_SELECTOR)) {
+    const panelId = stripped.get(element);
+
+    if (panelId !== undefined) {
+      return groupOf(panelId);
+    }
+  }
+
+  return undefined;
+}
+
+function firstGroupIn(
+  split: Element,
+  groups: readonly SizableGroup[],
+): SizableGroup | undefined {
+  return groups.find((group) => {
+    return split.contains(group.element);
+  });
+}
+
+/** Gives a flipped split's strips an equal share of its length — measured as
+ * what they render at now (the gap between them is dockview's own, so the
+ * shares sum back to the split), settled one by one through setRendered. */
+function shareAlong(
+  split: Element,
+  stripped: ReadonlyMap<Element, string>,
+  groupOf: (panelId: string) => SizableGroup | undefined,
+): void {
+  // `orientationAgainst(split)` names the strip a child of THIS split makes
+  // — a horizontal bar in a column — and axisOf keys on that same name, so
+  // it is also the axis running down the split's length.
+  const along = orientationAgainst(split);
+  const members: SizableGroup[] = [];
+
+  for (const element of split.querySelectorAll(GROUP_SELECTOR)) {
+    const panelId = stripped.get(element);
+    const group = panelId === undefined ? undefined : groupOf(panelId);
+
+    if (group !== undefined) {
+      members.push(group);
+    }
+  }
+
+  if (members.length < 2) {
+    return;
+  }
+
+  const total = members.reduce((sum, group) => {
+    return sum + axisOf(group, along).size();
+  }, 0);
+  const share = Math.floor(total / members.length);
+
+  for (const group of members) {
+    setRendered(axisOf(group, along), share);
+  }
+}
+
+function sameStrips(a: DockStripMap, b: DockStripMap): boolean {
+  const keys = Object.keys(a);
+
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => {
+      return a[key] === b[key];
+    })
+  );
 }
 
 function axisOf(
