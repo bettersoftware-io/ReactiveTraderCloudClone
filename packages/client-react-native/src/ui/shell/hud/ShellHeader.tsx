@@ -23,10 +23,10 @@ import { useViewModel } from "@rtc/react-bindings";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 import { HexReticleLogo } from "./HexReticleLogo";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
@@ -185,11 +185,7 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
-    envLabel: {
-      ...weightedFont(t, "mono", "600"),
-      fontSize: 9,
-      letterSpacing: 1,
-    },
+    envLabel: labelStyle(t, 9, 1, "600"),
     dot: { width: 7, height: 7, borderRadius: 4, marginHorizontal: 8 },
   });
 }

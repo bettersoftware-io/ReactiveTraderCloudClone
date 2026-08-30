@@ -21,6 +21,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { PriceStepper } from "#/ui/credit/sellSide/PriceStepper";
 import { SurfaceCard } from "#/ui/SurfaceCard";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -242,10 +243,8 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
       marginBottom: 2,
     },
     incoming: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.accentAware,
-      fontFamily: t.fontMono,
     },
     seconds,
     secondsUrgent: { ...seconds, color: t.accentNegative },
@@ -279,24 +278,18 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
       backgroundColor: t.accentPrimary,
     },
     submitLabel: {
-      fontSize: 10.5,
-      letterSpacing: 2.5,
+      ...labelStyle(t, 10.5, 2.5, "700"),
       color: t.textOnAccent,
-      ...weightedFont(t, "mono", "700"),
     },
     passBtn: { marginTop: 8, alignItems: "center", paddingVertical: 8 },
     passLabel: {
-      fontSize: 9,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 9, 1.5),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     settled: {
       marginTop: 12,
-      fontSize: 10.5,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 10.5, 1.5),
       color: t.textSecondary,
-      fontFamily: t.fontMono,
     },
   });
 }

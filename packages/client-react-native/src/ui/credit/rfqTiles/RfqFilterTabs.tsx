@@ -14,9 +14,9 @@ import {
   RFQ_FILTER_LABELS,
   RFQ_FILTERS,
 } from "#/ui/credit/rfqTiles/rfqTileFilter";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The LIVE/DONE/ALL chips above the RFQ tiles. Reads and writes the shared
  * `useCreditRfqFilterPreference` seam rather than local state, so the choice
@@ -74,10 +74,8 @@ function makeStyles(t: RnTheme): RfqFilterTabsStyles {
   };
 
   const label: TextStyle = {
-    fontSize: 9.5,
-    letterSpacing: 1,
+    ...labelStyle(t, 9.5, 1, "600"),
     color: t.textSecondary,
-    ...weightedFont(t, "mono", "600"),
   };
 
   return StyleSheet.create({

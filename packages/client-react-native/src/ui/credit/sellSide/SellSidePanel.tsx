@@ -18,6 +18,7 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -258,15 +259,13 @@ function makeStyles(t: RnTheme): SellSidePanelStyles {
   // dc.html:306-312 — rows `radius 9`, `padding 8px 11px`, `margin-bottom 7`;
   // the status pill `8px`, `ls 1px`, `padding 2px 6px`, `radius 4`.
   const pill: TextStyle = {
-    fontSize: 8,
-    letterSpacing: 1,
+    ...labelStyle(t, 8, 1),
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
     color: t.textMuted,
     borderColor: t.borderSubtle,
-    fontFamily: t.fontMono,
   };
 
   return StyleSheet.create({
@@ -275,10 +274,8 @@ function makeStyles(t: RnTheme): SellSidePanelStyles {
     // dc.html:305 — `8.5px`, `letter-spacing: 2`, `--faint`, sitting just above
     // the settled rows.
     sectionLabel: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
       marginHorizontal: 14,
       marginTop: 2,
       marginBottom: 7,

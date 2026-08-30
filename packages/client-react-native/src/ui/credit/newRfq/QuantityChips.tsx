@@ -13,6 +13,7 @@ import {
   millionsLabel,
   RFQ_QUANTITY_CHIPS,
 } from "#/ui/credit/newRfq/rfqQuantities";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -94,10 +95,8 @@ function makeStyles(t: RnTheme): QuantityChipsStyles {
   return StyleSheet.create({
     field: { gap: 8 },
     label: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     row: { flexDirection: "row", gap: 7 },
     chip,

@@ -8,9 +8,9 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
-import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** The mobile-v1 segmented pill: a clipped `1px --border` frame holding a row
  * of cells, the active one filled with the accent and lettered `--onAcc`, each
@@ -132,9 +132,8 @@ function makeStyles(
   // control that deviates.
   const snugCell: ViewStyle = { paddingVertical: 8, paddingHorizontal: 11 };
 
-  const label: TextStyle = { fontSize: 9, letterSpacing: 1.5 };
-  const boldLabel: TextStyle = { ...label, ...weightedFont(t, "mono", "600") };
-  const plainLabel: TextStyle = { ...label, fontFamily: t.fontMono };
+  const boldLabel: TextStyle = labelStyle(t, 9, 1.5, "600");
+  const plainLabel: TextStyle = labelStyle(t, 9, 1.5);
 
   return {
     // Design: inset `10px 12px 0` under the screen header, radius 9.

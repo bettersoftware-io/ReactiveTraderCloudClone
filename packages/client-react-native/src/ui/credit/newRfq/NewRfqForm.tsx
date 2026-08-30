@@ -16,6 +16,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { InstrumentChipGrid } from "#/ui/credit/newRfq/InstrumentChipGrid";
 import { QuantityChips } from "#/ui/credit/newRfq/QuantityChips";
 import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -261,11 +262,7 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
   // dc.html:271 — `font-size:10px; font-weight:700; letter-spacing:2px` in
   // the mono face. This was `fontDisplay` at 14px, a size AND a family away
   // from the INSTRUMENT/QUANTITY chips it sits between.
-  const directionLabel: TextStyle = {
-    fontSize: 10,
-    letterSpacing: 2,
-    ...weightedFont(t, "mono", "700"),
-  };
+  const directionLabel: TextStyle = labelStyle(t, 10, 2, "700");
 
   // dc.html:284 — `box-shadow: var(--glow)`, itself `0 0 16px glowC`
   // (dc.html:2416). A CSS blur of 16 is an iOS `shadowRadius` of ~8, and
@@ -299,11 +296,9 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     form: { flex: 1 },
     broadcast: { gap: 10 },
     broadcastNote: {
-      fontSize: 8.5,
-      letterSpacing: 1,
+      ...labelStyle(t, 8.5, 1),
       textAlign: "center",
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     content: { padding: 16, gap: 16 },
     field: { gap: 6 },
@@ -313,10 +308,8 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     // uppercased, so on device it read a size and a family apart from its
     // siblings.
     fieldLabel: {
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     directionRow: { flexDirection: "row", gap: SPACING.sm },
     directionBtn,
@@ -348,10 +341,8 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       opacity: 0.5,
     },
     submitLabel: {
-      fontSize: 11,
-      letterSpacing: 3,
+      ...labelStyle(t, 11, 3, "700"),
       color: t.textOnAccent,
-      ...weightedFont(t, "mono", "700"),
     },
     confirmedCard: {
       margin: 16,

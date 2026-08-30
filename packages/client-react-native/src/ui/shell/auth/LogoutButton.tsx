@@ -9,6 +9,7 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -65,10 +66,8 @@ function makeStyles(t: RnTheme): LogoutButtonStyles {
     // avoid competing with a neighbouring header control. Type matches the
     // replay action beside it — the design's 10px tracked mono.
     label: {
-      fontSize: 10,
-      letterSpacing: 2,
+      ...labelStyle(t, 10, 2),
       color: t.accentNegative,
-      fontFamily: t.fontMono,
     },
   });
 }

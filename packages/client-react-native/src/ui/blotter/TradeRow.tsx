@@ -11,6 +11,7 @@ import Animated from "react-native-reanimated";
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -141,20 +142,16 @@ const STATUS_BORDER_ALPHA_HEX = "73";
 
 function makeStyles(t: RnTheme): TradeRowStyles {
   const direction: TextStyle = {
-    fontSize: 8,
-    letterSpacing: 0.8,
+    ...labelStyle(t, 8, 0.8),
     marginTop: 1,
-    fontFamily: t.fontMono,
   };
 
   const pill: TextStyle = {
-    fontSize: 8,
-    letterSpacing: 0.8,
+    ...labelStyle(t, 8, 0.8),
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    fontFamily: t.fontMono,
   };
 
   return StyleSheet.create({

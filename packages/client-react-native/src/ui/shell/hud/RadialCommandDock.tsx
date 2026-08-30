@@ -20,6 +20,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -333,9 +334,7 @@ function makeStyles(t: RnTheme): RadialDockStyles {
     satelliteGlyphOn: { color: t.textOnAccent },
     satelliteLabel: {
       color: t.textMuted,
-      fontFamily: t.fontMono,
-      fontSize: 8,
-      letterSpacing: 1.4,
+      ...labelStyle(t, 8, 1.4),
       // Wider than the 58px satellite column and centred on it, so the longest
       // label (`ANALYTICS`, ~60pt at this size and tracking) stays on one line
       // — the design's label overflows its column rather than wrapping inside

@@ -19,6 +19,7 @@ import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { useHoldToUnlock } from "#/ui/shell/lock/useHoldToUnlock";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -242,9 +243,7 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       alignSelf: "stretch",
       textAlign: "center",
       color: t.textMuted,
-      fontFamily: t.fontMono,
-      fontSize: 9.5,
-      letterSpacing: 1.6,
+      ...labelStyle(t, 9.5, 1.6),
     },
     input: {
       width: 220,
@@ -256,18 +255,14 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       paddingHorizontal: 12,
       textAlign: "center",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
-      fontSize: 11,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 11, 1.5),
     },
     placeholder: { color: t.textMuted },
     error: {
       marginTop: -RING_GAP + 8,
       marginBottom: RING_GAP,
       color: t.accentNegative,
-      fontFamily: t.fontMono,
-      fontSize: 10,
-      letterSpacing: 1,
+      ...labelStyle(t, 10, 1),
     },
   });
 }

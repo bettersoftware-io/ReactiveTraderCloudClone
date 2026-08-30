@@ -21,6 +21,7 @@ import {
 import { hasBootScene } from "#/ui/shell/boot/bootScene";
 import { useBootMotionEnabled } from "#/ui/shell/boot/useBootMotionEnabled";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -258,9 +259,7 @@ function makeStyles(t: RnTheme): BootSequenceStyles {
     },
     skipLabel: {
       color: t.textSecondary,
-      fontFamily: t.fontMono,
-      fontSize: 9,
-      letterSpacing: 2.5,
+      ...labelStyle(t, 9, 2.5),
     },
   });
 }

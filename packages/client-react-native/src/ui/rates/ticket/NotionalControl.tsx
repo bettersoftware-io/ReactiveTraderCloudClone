@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -142,10 +143,8 @@ function makeStyles(t: ReturnType<typeof useTheme>): NotionalControlStyles {
       justifyContent: "space-between",
     },
     label: {
-      fontSize: 9,
-      letterSpacing: 1.6,
+      ...labelStyle(t, 9, 1.6),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     stepperGroup: {
       flexDirection: "row",

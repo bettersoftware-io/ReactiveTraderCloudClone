@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -50,10 +51,8 @@ function makeStyles(t: RnTheme): BlotterHeaderStyles {
       backgroundColor: t.panelHead,
     },
     label: {
-      fontSize: 8,
-      letterSpacing: 1.5,
+      ...labelStyle(t, 8, 1.5),
       color: t.textMuted,
-      fontFamily: t.fontMono,
     },
     pair: { flex: BLOTTER_COLUMN_FLEX.pair, textAlign: "left" },
     notional: { flex: BLOTTER_COLUMN_FLEX.notional, textAlign: "right" },

@@ -15,6 +15,7 @@ import { PairPnlBars } from "#/ui/analytics/PairPnlBars";
 import { PnlChart } from "#/ui/analytics/PnlChart";
 import { PnlValue } from "#/ui/analytics/PnlValue";
 import { SurfaceCard } from "#/ui/SurfaceCard";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -151,11 +152,9 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
     // them nothing on the screen says what currency the book is denominated
     // in.
     widgetTitle: {
-      fontSize: 8.5,
+      ...labelStyle(t, 8.5, 2),
       color: t.textMuted,
-      fontFamily: t.fontMono,
       marginBottom: SPACING.sm,
-      letterSpacing: 2,
     },
     // dc.html:167 puts the delta in a bordered pill on the title's baseline,
     // right-aligned against the card edge.
@@ -173,11 +172,7 @@ function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
       paddingVertical: 2,
       marginBottom: SPACING.sm,
     },
-    deltaLabel: {
-      fontSize: 8.5,
-      letterSpacing: 1,
-      fontFamily: t.fontMono,
-    },
+    deltaLabel: labelStyle(t, 8.5, 1),
     // dc.html:168 colours the chip with `pnlC` — the HEADLINE's sign, the same
     // token the big number below it takes, not the delta's own. A rising book
     // that dipped on the last step therefore keeps a green chip: the pill

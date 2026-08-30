@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -119,15 +120,11 @@ function makeStyles(t: RnTheme): StatusStripStyles {
     fabClearance: { width: DOCK_FAB_CLEARANCE, flexShrink: 0 },
     conn: {
       color: t.accentPositive,
-      fontFamily: t.fontMono,
-      fontSize: 8.5,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 8.5, 0.8),
     },
     cell: {
       color: t.textMuted,
-      fontFamily: t.fontMono,
-      fontSize: 8.5,
-      letterSpacing: 0.8,
+      ...labelStyle(t, 8.5, 0.8),
     },
     moduleRow: {
       flexDirection: "row",
@@ -140,9 +137,7 @@ function makeStyles(t: RnTheme): StatusStripStyles {
     },
     kicker: {
       color: t.textMuted,
-      fontFamily: t.fontMono,
-      fontSize: 8.5,
-      letterSpacing: 2,
+      ...labelStyle(t, 8.5, 2),
     },
     // The design leaves this value's family to the body font, which is the
     // display face (`.dc.html:462`) — every other cell here names a face, so a

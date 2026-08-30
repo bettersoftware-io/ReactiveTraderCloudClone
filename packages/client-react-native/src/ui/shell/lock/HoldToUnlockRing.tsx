@@ -20,6 +20,7 @@ import Svg, { Circle } from "react-native-svg";
 
 import { ringCircumference, ringDashOffset } from "@rtc/motion-core";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -133,9 +134,7 @@ function makeStyles(t: RnTheme): HoldToUnlockRingStyles {
     label: {
       marginTop: 22,
       color: t.textSecondary,
-      fontFamily: t.fontMono,
-      fontSize: 9,
-      letterSpacing: 2.5,
+      ...labelStyle(t, 9, 2.5),
     },
   });
 }
