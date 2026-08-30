@@ -29,17 +29,29 @@ test("renders nothing when the session is unlocked", async () => {
   expect(screen.queryByTestId("lock-screen")).toBeNull();
 });
 
-test("shows the operator identity when locked", async () => {
+test("shows the operator's id · desk line, uppercased, when locked", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(true, noop)}>
       <LockScreen />
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("lock-title")).toBeTruthy();
-  expect(screen.getByTestId("lock-user-name").props.children).toBe(
-    "Anthony Stark",
+  expect(screen.getByTestId("lock-emblem")).toBeTruthy();
+  expect(screen.getByTestId("lock-desk").props.children).toBe(
+    "TRD-0042 · G10 SPOT · LONDON",
   );
-  expect(screen.getByText("Senior FX Trader")).toBeTruthy();
+});
+
+test("the ring's label reads HOLD TO UNLOCK at rest and AUTHENTICATING… while an unlock is in flight", async () => {
+  const { rerender } = await render(lockedTree(true, noop));
+  expect(screen.getByTestId("lock-hold-label").props.children).toBe(
+    "HOLD TO UNLOCK",
+  );
+
+  await rerender(lockedTree(true, noop, true));
+  expect(screen.getByTestId("lock-hold-label").props.children).toBe(
+    "AUTHENTICATING…",
+  );
 });
 
 test("AUTHENTICATE press calls unlock with the typed password", async () => {
@@ -138,10 +150,13 @@ test("a fresh submit after a wrong-password error calls unlock again", async () 
 function lockedTree(
   locked: boolean,
   unlock: (password: string) => void,
+  unlocking = false,
 ): JSX.Element {
   return (
     <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <ViewModelProvider viewModel={fakeViewModel(locked, unlock)}>
+      <ViewModelProvider
+        viewModel={fakeViewModel(locked, unlock, null, unlocking)}
+      >
         <LockScreen />
       </ViewModelProvider>
     </ThemeContext.Provider>
@@ -152,6 +167,7 @@ function fakeViewModel(
   locked: boolean,
   unlock: (password: string) => void,
   error: string | null = null,
+  unlocking = false,
 ): ViewModel {
   return {
     useAuth: () => {
@@ -159,6 +175,7 @@ function fakeViewModel(
         state: {
           status: "authenticated",
           locked,
+          unlocking,
           error,
           user: USER,
         },

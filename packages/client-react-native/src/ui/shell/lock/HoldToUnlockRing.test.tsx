@@ -14,9 +14,13 @@ test("renders the submit affordance under the lock-authenticate testID", async (
       gesture={Gesture.LongPress()}
       progress={stubProgress(0)}
       onPress={jest.fn()}
+      label="HOLD TO UNLOCK"
     />,
   );
   expect(screen.getByTestId("lock-authenticate")).toBeTruthy();
+  expect(screen.getByTestId("lock-hold-label").props.children).toBe(
+    "HOLD TO UNLOCK",
+  );
 });
 
 test("a plain tap on the ring calls onPress — the non-gesture fallback", async () => {
@@ -26,6 +30,7 @@ test("a plain tap on the ring calls onPress — the non-gesture fallback", async
       gesture={Gesture.LongPress()}
       progress={stubProgress(0)}
       onPress={onPress}
+      label="HOLD TO UNLOCK"
     />,
   );
   await fireEvent.press(screen.getByTestId("lock-authenticate"));
