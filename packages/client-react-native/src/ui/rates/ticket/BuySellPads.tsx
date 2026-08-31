@@ -33,6 +33,7 @@ export function BuySellPads({
         label="SELL"
         value={splitPrice(price.bid, pair.ratePrecision, pair.pipsPosition)}
         accent={theme.accentNegative}
+        align="start"
         theme={theme}
         onPress={() => {
           onExecute(Direction.Sell);
@@ -43,6 +44,7 @@ export function BuySellPads({
         label="BUY"
         value={splitPrice(price.ask, pair.ratePrecision, pair.pipsPosition)}
         accent={theme.accentPositive}
+        align="end"
         theme={theme}
         onPress={() => {
           onExecute(Direction.Buy);
@@ -68,10 +70,11 @@ function Pad({
   label,
   value,
   accent,
+  align,
   theme,
   onPress,
 }: PadProps): JSX.Element {
-  const styles = makePadStyles(theme, accent);
+  const styles = makePadStyles(theme, accent, align);
 
   return (
     <Pressable
@@ -96,6 +99,7 @@ interface PadProps {
   label: string;
   value: { prefix: string; pips: string; fractional: string };
   accent: string;
+  align: "start" | "end";
   theme: ReturnType<typeof useTheme>;
   onPress: () => void;
 }
@@ -110,7 +114,7 @@ function makeStyles(t: ReturnType<typeof useTheme>): BuySellPadsStyles {
   return StyleSheet.create({
     container: {
       flexDirection: "row",
-      gap: 8,
+      gap: 9,
     },
     spreadPill: {
       position: "absolute",
@@ -123,13 +127,13 @@ function makeStyles(t: ReturnType<typeof useTheme>): BuySellPadsStyles {
       // A true pill, as the design draws it (`border-radius:999px`) — at this
       // height the old 10 read as a rounded rectangle between the two pads.
       borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
     },
     spreadText: {
       fontSize: 9,
       fontFamily: t.fontMono,
-      color: t.textMuted,
+      color: t.textSecondary,
     },
   });
 }
@@ -144,28 +148,41 @@ interface PadStyles {
   fractional: TextStyle;
 }
 
+// The design's execute pads (dc.html:513/521): a 13px-radius button whose
+// border and fill are the side's own accent at 55% / 12% (`color-mix(in
+// oklab, var(--neg|--pos) 55%|12%, transparent)`), SELL left-aligned and BUY
+// right-aligned, label 9px / 2px tracking / 600, price row bottom-aligned
+// 5px below (prefix 13px on a 2px baseline pad, pips 27px/700/line-height 1,
+// fractional 12px). Every skin's accents are six-digit hex, so the alpha
+// byte is appended directly — same local-tint precedent as `NewRfqForm`'s
+// `tint12`; a repo-wide `withAlpha` still does not exist.
 function makePadStyles(
   t: ReturnType<typeof useTheme>,
   accent: string,
+  align: "start" | "end",
 ): PadStyles {
   const base: ViewStyle = {
     flex: 1,
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 14,
-    borderRadius: 12,
+    alignItems: align === "start" ? "flex-start" : "flex-end",
+    paddingTop: 11,
+    paddingHorizontal: 13,
+    paddingBottom: 12,
+    borderRadius: 13,
     borderWidth: 1,
-    borderColor: t.borderSubtle,
-    backgroundColor: t.chip,
+    borderColor: `${accent}8C`,
+    backgroundColor: `${accent}1F`,
   };
 
+  // dc.html:513 `style-active` — a press glows the pad in its own accent
+  // (`box-shadow:0 0 18px` at 55%), not the skin's ambient glow colour;
+  // `glowC === null` still gates the glow-less skins to a flat dim.
   const glow: ViewStyle | null =
     t.glowC === null
       ? null
       : {
-          shadowColor: t.glowC,
-          shadowOpacity: 0.9,
-          shadowRadius: 14,
+          shadowColor: accent,
+          shadowOpacity: 0.55,
+          shadowRadius: 18,
           shadowOffset: { width: 0, height: 0 },
           elevation: 8,
         };
@@ -175,18 +192,24 @@ function makePadStyles(
     padPressed:
       glow === null ? { ...base, opacity: 0.85 } : { ...base, ...glow },
     label: {
-      ...labelStyle(t, 11, 1, "700"),
+      ...labelStyle(t, 9, 2, "600"),
       color: accent,
     },
-    priceRow: { flexDirection: "row", alignItems: "flex-end" },
-    prefix: { fontSize: 12, color: t.textSecondary, fontFamily: t.fontMono },
+    priceRow: { flexDirection: "row", alignItems: "flex-end", marginTop: 5 },
+    prefix: {
+      fontSize: 13,
+      color: t.textSecondary,
+      fontFamily: t.fontMono,
+      paddingBottom: 2,
+    },
     pips: {
       fontSize: 27,
+      lineHeight: 27,
       color: accent,
       ...weightedFont(t, "mono", "700"),
     },
     fractional: {
-      fontSize: 11,
+      fontSize: 12,
       color: t.textSecondary,
       fontFamily: t.fontMono,
     },
