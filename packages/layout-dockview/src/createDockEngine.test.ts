@@ -4,6 +4,7 @@ import type { DockEngineOptions } from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
+  type DockMaximizeScope,
   type DockStripMap,
   GLIDE_ATTRIBUTE_MS,
   GROUP_GAP_PX,
@@ -39,6 +40,35 @@ const FX_LIKE = {
       ],
     },
     { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
+
+/** The real FX tab's shape: the main column (rates over blotter) beside a
+ * RAIL column (analytics over positions) — the tree the maximize scopes are
+ * about, where FX_LIKE's lone analytics leaf has no column to scope to. */
+const RAIL_LIKE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.6, 0.4],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+      ],
+    },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
   ],
 } as const;
 
@@ -115,15 +145,6 @@ describe("createDockEngine", () => {
     const second = createDockEngine({ ...base(), blob: saved });
     expect(second.groupCount()).toBe(3);
     second.dispose();
-  });
-
-  it("maximizePanel / exitMaximize drive dockview's maximized state", () => {
-    const engine = createDockEngine(base());
-    engine.maximizePanel("fx-blotter");
-    // dockview marks the maximized group in the DOM; assert via the api-level witness:
-    // createDockEngine exposes it indirectly — after exitMaximize the layout serialises again.
-    engine.exitMaximize();
-    engine.dispose();
   });
 
   it("applies the hook-supplied title to each panel's tab", () => {
@@ -422,7 +443,7 @@ describe("collapse / expand", () => {
   it("restores the exact pre-collapse size on expand", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = await renderedSize(engine, seen, "fx-analytics");
+    const before = baselineSize(base(), "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -439,7 +460,7 @@ describe("collapse / expand", () => {
   it("is idempotent — a second collapse cannot overwrite the remembered size", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = await renderedSize(engine, seen, "fx-analytics");
+    const before = baselineSize(base(), "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -476,7 +497,7 @@ describe("collapse / expand", () => {
   it("restores a height-stripped panel to its exact pre-collapse height", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = await renderedSize(engine, seen, "fx-blotter");
+    const before = baselineSize(base(), "fx-blotter");
 
     engine.collapsePanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
@@ -557,9 +578,9 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
       ...seen.options,
       ...strips.options,
     });
-    const columnBefore = await renderedBranchSize(engine, seen, "fx-rates");
-    const ratesBefore = await renderedSize(engine, seen, "fx-rates");
-    const blotterBefore = await renderedSize(engine, seen, "fx-blotter");
+    const columnBefore = baselineBranchSize(base(), "fx-rates");
+    const ratesBefore = baselineSize(base(), "fx-rates");
+    const blotterBefore = baselineSize(base(), "fx-blotter");
 
     engine.collapsePanel("fx-rates");
     expect(strips.last).toEqual({ "fx-rates": "horizontal" });
@@ -607,6 +628,190 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
       "fx-rates": "vertical",
       "fx-blotter": "vertical",
     });
+    engine.dispose();
+  });
+});
+
+describe("maximize (the in-house boundary policy)", () => {
+  // In-house, maximize strips every leaf under the maximize BOUNDARY except
+  // the maximized panel — the whole dock, or a "nearest-column" panel's own
+  // column. Dockview's native maximize hides siblings and has no scope, so
+  // the engine emulates the policy over its strip machinery instead; these
+  // pin that the result IS the in-house one: same strips, same orientations,
+  // the maximized panel filling what they free, and an exact restore.
+  const FILL = 800 - GROUP_GAP_PX - STRIP_HEIGHT;
+
+  it("root scope: strips every other panel, the rail flipping vertical, and restores each exactly", async () => {
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...railBase(),
+      ...seen.options,
+      ...strips.options,
+    });
+
+    const before = baselines(railBase(), [
+      "fx-rates",
+      "fx-blotter",
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+
+    engine.maximizePanel("fx-rates");
+    // Blotter reclaims down its column (rates still fills it); the rail has
+    // nothing left unstripped, so it reclaims sideways — the stripDir rule.
+    expect(strips.last).toEqual({
+      "fx-blotter": "horizontal",
+      "fx-analytics": "vertical",
+      "fx-positions": "vertical",
+    });
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    await waitForBranchSize(seen, "fx-analytics", STRIP);
+    // The maximized panel takes everything the strips freed in its column.
+    await waitForSize(seen, "fx-rates", FILL);
+    expect(engine.groupCount()).toBe(4);
+
+    engine.exitMaximize();
+    expect(strips.last).toEqual({});
+    await waitForBranchSize(seen, "fx-analytics", railBefore);
+
+    for (const [panelId, size] of before) {
+      await waitForSizeWithin(seen, panelId, size, 1);
+    }
+
+    engine.dispose();
+  });
+
+  it("nearest-column scope: strips only the rail sibling, leaving the main column untouched", async () => {
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...railBase(),
+      ...seen.options,
+      ...strips.options,
+    });
+    const before = baselines(railBase(), ["fx-rates", "fx-blotter"]);
+    const positionsBefore = baselineSize(railBase(), "fx-positions");
+    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+
+    engine.maximizePanel("fx-analytics");
+    expect(strips.last).toEqual({ "fx-positions": "horizontal" });
+    await waitForSize(seen, "fx-positions", STRIP_HEIGHT);
+    await waitForSize(seen, "fx-analytics", FILL);
+    // Outside the boundary nothing moved: the main column's panels and the
+    // rail's own width read exactly as before.
+    expect(seen.sizeOf("fx-rates")).toBe(before.get("fx-rates"));
+    expect(seen.sizeOf("fx-blotter")).toBe(before.get("fx-blotter"));
+    expect(seen.branchSizeOf("fx-analytics")).toBe(railBefore);
+
+    engine.exitMaximize();
+    expect(strips.last).toEqual({});
+    await waitForSize(seen, "fx-positions", positionsBefore);
+    engine.dispose();
+  });
+
+  it("falls back to the whole dock for a nearest-column panel with no column ancestor", () => {
+    // FX_LIKE's analytics is a lone leaf in the root row — maximizeBoundaryPath
+    // returns the root for it, and so does the engine.
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...strips.options,
+      panels: { ...base().panels, maximizeScope: railScope },
+    });
+
+    engine.maximizePanel("fx-analytics");
+    expect(strips.last).toEqual({
+      "fx-rates": "vertical",
+      "fx-blotter": "vertical",
+    });
+    engine.dispose();
+  });
+
+  it("leaves a strip the user collapsed beforehand in place after restore", async () => {
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...railBase(),
+      ...seen.options,
+      ...strips.options,
+    });
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    engine.maximizePanel("fx-rates");
+    engine.exitMaximize();
+
+    // The maximize did not own blotter's strip, so restore did not touch it.
+    expect(strips.last).toEqual({ "fx-blotter": "horizontal" });
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    expect(seen.sizeOf("fx-blotter")).toBe(STRIP_HEIGHT);
+    engine.dispose();
+  });
+
+  it("hands a maximize-forced strip to the user when it is collapsed meanwhile", () => {
+    const strips = recordStrips();
+    const engine = createDockEngine({ ...railBase(), ...strips.options });
+
+    engine.maximizePanel("fx-rates");
+    const callsAfterMaximize = strips.calls;
+    engine.collapsePanel("fx-blotter"); // already a strip: nothing moves…
+    expect(strips.calls).toBe(callsAfterMaximize);
+
+    engine.exitMaximize(); // …but it now outlives the maximize, as in-house
+    expect(strips.last).toEqual({ "fx-blotter": "horizontal" });
+    engine.dispose();
+  });
+
+  it("switches from one maximized panel to another, restoring the first's strips fully first", async () => {
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...railBase(),
+      ...seen.options,
+      ...strips.options,
+    });
+
+    const before = baselines(railBase(), [
+      "fx-rates",
+      "fx-blotter",
+      "fx-analytics",
+      "fx-positions",
+    ]);
+
+    engine.maximizePanel("fx-rates");
+    engine.maximizePanel("fx-blotter");
+    expect(strips.last).toEqual({
+      "fx-rates": "horizontal",
+      "fx-analytics": "vertical",
+      "fx-positions": "vertical",
+    });
+    await waitForSize(seen, "fx-blotter", FILL);
+
+    engine.exitMaximize();
+
+    // Had the switch re-recorded analytics/positions while they were bars,
+    // this restore would put them back AS bars.
+    for (const [panelId, size] of before) {
+      await waitForSizeWithin(seen, panelId, size, 1);
+    }
+
+    engine.dispose();
+  });
+
+  it("is idempotent and ignores an unknown panel", () => {
+    const strips = recordStrips();
+    const opts = { ...railBase(), ...strips.options };
+    const engine = createDockEngine(opts);
+
+    engine.maximizePanel("nope");
+    expect(strips.calls).toBe(0);
+    expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
+
+    engine.maximizePanel("fx-rates");
+    engine.maximizePanel("fx-rates");
+    expect(strips.calls).toBe(1);
     engine.dispose();
   });
 });
@@ -718,33 +923,64 @@ function within(target: number, tolerance: number): unknown {
   };
 }
 
-/** The width a panel's group currently RENDERS at, read from a fresh
- * serialisation forced through a no-op maximize/exit pair (the engine's
- * onDidLayoutChange is what feeds the tracker, and a freshly-built engine
- * has not fired it yet). With the theme gap in force this is a little under
- * the nominal fraction (0.25 × 1200 minus the gap share), which is exactly
- * why the collapse tests capture it rather than hardcode 300. */
-async function renderedSize(
-  engine: ReturnType<typeof createDockEngine>,
-  tracker: LayoutTracker,
-  panelId: string,
-): Promise<number> {
-  engine.maximizePanel(panelId);
-  engine.exitMaximize();
+/** The size a panel's group RENDERS at on a fresh engine built from `opts`,
+ * read from the serialisation a throwaway twin flushes on dispose. The
+ * engine under test has not fired onDidLayoutChange yet at that point, and
+ * no intent is a no-op it could be forced through (maximize/exit used to be,
+ * before maximize stripped siblings for real); jsdom sizes every container
+ * identically, so the twin lays out exactly as the live engine did. With the
+ * theme gap in force this is a little under the nominal fraction (0.25 × 1200
+ * minus the gap share) — why the collapse tests capture it rather than
+ * hardcode 300. */
+function baselineSize(opts: DockEngineOptions, panelId: string): number {
+  const size = baseline(opts).sizeOf(panelId);
 
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const size = tracker.sizeOf(panelId);
-
-    if (size !== null && size !== STRIP && size !== STRIP_HEIGHT) {
-      return size;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
+  if (size === null) {
+    throw new Error(`${panelId} has no rendered size on a fresh engine`);
   }
 
-  throw new Error(`${panelId} never reported a rendered width`);
+  return size;
+}
+
+function baselines(
+  opts: DockEngineOptions,
+  panelIds: readonly string[],
+): ReadonlyMap<string, number> {
+  const seen = baseline(opts);
+
+  return new Map(
+    panelIds.map((panelId) => {
+      const size = seen.sizeOf(panelId);
+
+      if (size === null) {
+        throw new Error(`${panelId} has no rendered size on a fresh engine`);
+      }
+
+      return [panelId, size];
+    }),
+  );
+}
+
+/** {@link baselineSize} for the BRANCH holding `panelId`'s leaf — a
+ * column's width inside the root row. */
+function baselineBranchSize(opts: DockEngineOptions, panelId: string): number {
+  const size = baseline(opts).branchSizeOf(panelId);
+
+  if (size === null) {
+    throw new Error(
+      `${panelId}'s branch has no rendered size on a fresh engine`,
+    );
+  }
+
+  return size;
+}
+
+function baseline(opts: DockEngineOptions): LayoutTracker {
+  const seen = trackLayout();
+  // dispose flushes one final serialisation synchronously — see the engine.
+  createDockEngine({ ...opts, ...seen.options }).dispose();
+
+  return seen;
 }
 
 /** Polls the persisted layout until `panelId`'s group reports `expected`px.
@@ -807,29 +1043,6 @@ function recordStrips(): StripsRecorder {
   };
 
   return recorder;
-}
-
-async function renderedBranchSize(
-  engine: ReturnType<typeof createDockEngine>,
-  tracker: LayoutTracker,
-  panelId: string,
-): Promise<number> {
-  engine.maximizePanel(panelId);
-  engine.exitMaximize();
-
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const size = tracker.branchSizeOf(panelId);
-
-    if (size !== null) {
-      return size;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
-  }
-
-  throw new Error(`${panelId}'s branch never reported a rendered size`);
 }
 
 async function waitForSizeWithin(
@@ -1031,6 +1244,24 @@ function tabOf(container: HTMLElement, title: string): HTMLElement {
   }
 
   return tab;
+}
+
+/** {@link base} over RAIL_LIKE, with the FX rail panels' real
+ * `maximizeScope: "nearest-column"` supplied through the hook. */
+function railBase(): DockEngineOptions {
+  const opts = base();
+
+  return {
+    ...opts,
+    seed: RAIL_LIKE,
+    panels: { ...opts.panels, maximizeScope: railScope },
+  };
+}
+
+function railScope(panelId: string): DockMaximizeScope {
+  return panelId === "fx-analytics" || panelId === "fx-positions"
+    ? "nearest-column"
+    : "root";
 }
 
 function base(): DockEngineOptions {
