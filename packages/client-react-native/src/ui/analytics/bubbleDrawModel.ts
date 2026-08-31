@@ -133,9 +133,11 @@ export function buildBubbleDrawModel(
  * are filtered out upstream), and the guard keeps that case at the floor
  * instead of dividing by zero.
  *
- * Unlike the design's `Math.round(...)` — a CSS-pixel convenience — the
- * fractional diameter is kept: Skia draws circles at float precision, and
- * rounding would only re-introduce a quantisation the packer would inherit.
+ * The DIAMETER is rounded to a whole pixel before halving, exactly as the
+ * design does (`Math.round(30 + share * 44)`, dc.html L966). Skia would draw
+ * a fractional radius happily, but the design's reference shots render the
+ * rounded ramp — an earlier revision kept the fraction as a "float precision"
+ * nicety, which made every bubble a sub-pixel different from the design's.
  */
 export function scaleBubbleRadius(
   absExposure: number,
@@ -143,7 +145,7 @@ export function scaleBubbleRadius(
 ): number {
   const share = maxAbsExposure === 0 ? 0 : absExposure / maxAbsExposure;
 
-  return (MIN_BUBBLE_DIAMETER + share * BUBBLE_DIAMETER_RANGE) / 2;
+  return Math.round(MIN_BUBBLE_DIAMETER + share * BUBBLE_DIAMETER_RANGE) / 2;
 }
 
 /**

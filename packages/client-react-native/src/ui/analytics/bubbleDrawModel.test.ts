@@ -13,9 +13,9 @@ import {
 /**
  * A deliberately spread book. `scaleBubbleRadius` sizes each bubble on its
  * share of the LARGEST absolute exposure, so the three nets below (+10M EUR,
- * -20M GBP, +100M AUD) are 10%, 20% and 100% of the book and land on diameters
- * of 34.4, 38.8 and 74 — the last both the ramp's cap and the only one over
- * the large-label threshold. CAD nets to zero and is dropped.
+ * -20M GBP, +100M AUD) are 10%, 20% and 100% of the book and land on rounded
+ * diameters of 34, 39 and 74 — the last both the ramp's cap and the only one
+ * over the large-label threshold. CAD nets to zero and is dropped.
  *
  * The ratios are the point: the same three magnitudes under the domain's own
  * `[min, max] -> [15, 60]` scale gave 30, 40 and 120px, a spread of 4x on a
@@ -73,12 +73,12 @@ describe("buildBubbleDrawModel", () => {
     const { entries, height } = buildBubbleDrawModel(SPREAD_BOOK, WIDTH);
     const byCurrency = indexEntries(SPREAD_BOOK);
 
-    // AUD (r 37, the ramp's 74px cap) fills the first slot; GBP (r 19.4) and
-    // EUR (r 17.2) follow on the same shelf, each advanced by the previous
-    // diameter plus the 8px gap.
+    // AUD (r 37, the ramp's 74px cap) fills the first slot; GBP (r 19.5, a
+    // 39px rounded diameter) and EUR (r 17, rounded down from 34.4) follow on
+    // the same shelf, each advanced by the previous diameter plus the 8px gap.
     expect(byCurrency.AUD).toMatchObject({ x: 37, y: 37, radius: 37 });
-    expect(byCurrency.GBP).toMatchObject({ x: 101.4, y: 19.4, radius: 19.4 });
-    expect(byCurrency.EUR).toMatchObject({ x: 146, y: 17.2, radius: 17.2 });
+    expect(byCurrency.GBP).toMatchObject({ x: 101.5, y: 19.5, radius: 19.5 });
+    expect(byCurrency.EUR).toMatchObject({ x: 146, y: 17, radius: 17 });
     // Tallest bubble on the only shelf.
     expect(height).toBe(74);
     expect(entries).toHaveLength(3);
@@ -181,6 +181,12 @@ describe("scaleBubbleRadius", () => {
     // the cap — the ramp starts at 30, it does not start at zero.
     expect(scaleBubbleRadius(12_400_000, 24_800_000)).toBe(26);
     expect(scaleBubbleRadius(6_200_000, 24_800_000)).toBe(20.5);
+  });
+
+  it("rounds the DIAMETER to a whole pixel before halving, as the design does", () => {
+    // share 1/3 puts the raw ramp at 44.666…px across; the design's
+    // `Math.round` makes that 45px (radius 22.5), not 22.333….
+    expect(scaleBubbleRadius(1, 3)).toBe(22.5);
   });
 
   it("falls back to the floor when the book has no exposure at all", () => {
