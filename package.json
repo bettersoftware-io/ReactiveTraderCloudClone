@@ -74,13 +74,13 @@
     "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.8",
+    "@biomejs/biome": "2.5.11",
     "@manypkg/cli": "^0.25.1",
     "dependency-cruiser": "^18.0.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-solid": "^0.15.0",
+    "eslint-plugin-solid": "^0.17.0",
     "github-slugger": "^2.0.0",
     "knip": "^6.17.1",
     "playwright": "^1.60.0",
