@@ -27,16 +27,12 @@ export function labelStyle(
     return { fontFamily: t.fontMono, fontSize: size, letterSpacing: tracking };
   }
 
-  // The weighted arm deliberately sets NO `fontFamily` of its own: every
-  // weighted label this replaced was `{ ...weightedFont(t, "mono", w), size,
-  // tracking }` — `weightedFont` supplies the family on skins with real
-  // weight cuts, and on `classic` (no cuts) returns only `fontWeight`, so
-  // those labels render in the platform sans at that weight. Adding
-  // `t.fontMono` here would put them in Menlo on classic (`ThemeProvider`
-  // substitutes the platform mono for `undefined`) — a pixel change, measured
-  // on `shell/connection-banner`'s env badge. Whether classic weighted
-  // labels SHOULD be mono is a fidelity question for `weightedFont`, not
-  // this helper.
+  // The weighted arm sets no `fontFamily` of its own — `weightedFont` owns
+  // the family on every path: the real 600/700 cut on skins with cuts, and
+  // on cut-less `classic` the provider-filled platform mono + `fontWeight`
+  // (its display face stays a bare `fontWeight`, being the platform sans
+  // already). The classic sans-vs-Menlo inconsistency this used to preserve
+  // was fixed in `weightedFont` itself.
   return {
     fontSize: size,
     letterSpacing: tracking,
