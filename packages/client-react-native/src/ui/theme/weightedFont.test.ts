@@ -17,12 +17,26 @@ describe("weightedFont", () => {
     ).toEqual({ fontFamily: FONT_IBM_SANS_700 });
   });
 
-  it("falls back to a plain fontWeight on the platform default face", () => {
-    expect(weightedFont(rnThemeTokens.classic.dark, "mono", "700")).toEqual({
-      fontWeight: "700",
-    });
+  it("falls back to a plain fontWeight on the platform default DISPLAY face", () => {
     expect(weightedFont(rnThemeTokens.classic.light, "display", "600")).toEqual(
       { fontWeight: "600" },
     );
+  });
+
+  it("keeps the platform mono family under a weighted classic mono label", () => {
+    // On device `ThemeProvider` has already filled classic's `fontMono` with
+    // the platform monospace (Menlo on iOS); dropping the family here sent
+    // weighted mono labels to the SANS while unweighted ones sat in Menlo.
+    const provided = { ...rnThemeTokens.classic.dark, fontMono: "Menlo" };
+    expect(weightedFont(provided, "mono", "700")).toEqual({
+      fontFamily: "Menlo",
+      fontWeight: "700",
+    });
+    // A raw token cell (vitest, no provider) passes its `undefined` through —
+    // RN reads that as the system default, same as before.
+    expect(weightedFont(rnThemeTokens.classic.dark, "mono", "700")).toEqual({
+      fontFamily: undefined,
+      fontWeight: "700",
+    });
   });
 });
