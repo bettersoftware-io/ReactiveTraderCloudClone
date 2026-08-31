@@ -27,8 +27,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
     props.currentFilter?.type === "set"
       ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
         new Set(props.currentFilter.values)
-      : // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-        new Set(allValues()),
+      : new Set(allValues()),
   );
 
   function toggleValue(val: string): void {
