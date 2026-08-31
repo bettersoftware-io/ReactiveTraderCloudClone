@@ -17,7 +17,6 @@ import Animated, {
   withDelay,
   withSpring,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -43,7 +42,6 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
  * the FAB and the scrim keep toggling it either way. */
 export function RadialCommandDock(): JSX.Element {
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const pinnedOpen = useContext(DockOpenContext);
   const [open, setOpen] = useState(pinnedOpen ?? false);
   const router = useRouter();
@@ -52,6 +50,21 @@ export function RadialCommandDock(): JSX.Element {
 
   return (
     <View pointerEvents="box-none" style={styles.root}>
+      {/* Painted BEFORE the overlay: with the dock open the design's scrim
+          covers the FAB too — `reference-shots/shell/dock-open.png` shows it
+          dimmed under the blur, and closing is the scrim's job. */}
+      <Pressable
+        testID="hud-dock-fab"
+        accessibilityLabel="Command dock"
+        onPress={() => {
+          setOpen((v) => {
+            return !v;
+          });
+        }}
+        style={styles.fab}
+      >
+        <FabHex glyph={open ? "✕" : active.glyph} />
+      </Pressable>
       {open ? (
         <>
           <Pressable
@@ -72,7 +85,6 @@ export function RadialCommandDock(): JSX.Element {
                 module={mod}
                 layout={sats[i]}
                 active={mod.key === active.key}
-                insetBottom={insets.bottom}
                 onSelect={() => {
                   router.navigate(mod.path);
                   setOpen(false);
@@ -82,18 +94,6 @@ export function RadialCommandDock(): JSX.Element {
           })}
         </>
       ) : null}
-      <Pressable
-        testID="hud-dock-fab"
-        accessibilityLabel="Command dock"
-        onPress={() => {
-          setOpen((v) => {
-            return !v;
-          });
-        }}
-        style={[styles.fab, { bottom: 26 + insets.bottom }]}
-      >
-        <FabHex glyph={open ? "✕" : active.glyph} />
-      </Pressable>
     </View>
   );
 }
@@ -157,7 +157,6 @@ interface SatelliteProps {
     readonly delayMs: number;
   };
   readonly active: boolean;
-  readonly insetBottom: number;
   readonly onSelect: () => void;
 }
 
@@ -167,7 +166,6 @@ function Satellite({
   module,
   layout,
   active,
-  insetBottom,
   onSelect,
 }: SatelliteProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
@@ -199,7 +197,7 @@ function Satellite({
 
   return (
     <Animated.View
-      style={[styles.satelliteAnchor, { bottom: 78 + insetBottom }, animStyle]}
+      style={[styles.satelliteAnchor, animStyle]}
       pointerEvents="box-none"
     >
       <Pressable
@@ -290,6 +288,14 @@ function makeStyles(t: RnTheme): RadialDockStyles {
     // going up: the gap was the missing tint, not the blur radius, and a
     // stronger blur would overshoot. Static: one layer, no per-frame work.
     scrimTint: { ...StyleSheet.absoluteFill, backgroundColor: t.bgOverlay },
+    // `bottom: 26` / `78` are the design's own numbers measured from the TRUE
+    // bottom (dc.html:465/476) — no safe-area inset added. The design's
+    // `safeBot` band below the strip is `StatusStrip`'s own
+    // `paddingBottom: insets.bottom` on the same head colour, so the hex
+    // straddles the strip/safe-band boundary exactly as the mock frames it;
+    // the home indicator drawing over the hex's lower edge is what the
+    // reference shots show. Same literal-true-bottom precedent as
+    // `BootSequence`'s SKIP pill.
     fab: {
       position: "absolute",
       bottom: 26,
