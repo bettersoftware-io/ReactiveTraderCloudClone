@@ -13,16 +13,21 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import Svg, { Circle, Polygon } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
+import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
+import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
-import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Full-screen sign-in form — the RN analogue of the web client's
- * `LoginScreen`, styled to match `LockScreen`'s hex-emblem overlay. Renders
+ * `LoginScreen`, and the pre-session sibling of `LockScreen`: the same hex
+ * emblem, the Orbitron wordmark over a tracked-mono line, the lock's bordered
+ * 220-wide input with an uppercase mono placeholder (labelled for assistive
+ * tech, not on screen — the mobile design carries no Title-case sans labels
+ * anywhere), the submit as the boot chrome's bordered mono pill. Renders
  * unconditionally while mounted; `AuthGate` is expected to mount it only for
  * the non-"authenticated" branch of the auth lifecycle. Dumb component: all
  * state arrives through the `useAuth` hook seam, the typed credentials live
@@ -39,7 +44,6 @@ export function LoginScreen({
 }: LoginScreenProps): JSX.Element {
   const { useAuth } = useViewModel();
   const { state, login } = useAuth();
-  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const [username, setUsername] = useState("");
@@ -58,55 +62,36 @@ export function LoginScreen({
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Svg width={72} height={72} viewBox="0 0 48 48">
-          <Polygon
-            points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
-            fill="none"
-            stroke={theme.accentPrimary}
-            strokeWidth={1.3}
-          />
-          <Polygon
-            points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
-            fill="none"
-            stroke={theme.accent2}
-            strokeWidth={1}
-            opacity={0.6}
-          />
-          <Circle cx={24} cy={24} r={3.4} fill={theme.accentPrimary} />
-        </Svg>
+        <LockEmblem />
 
         <Text testID="login-title" style={styles.title}>
-          REACTIVE TRADER OS · SIGN IN
+          REACTIVE TRADER
         </Text>
+        <Text style={styles.subtitle}>OS · SIGN IN</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            testID="login-username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Enter username..."
-            placeholderTextColor={styles.placeholder.color}
-            style={styles.input}
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            testID="login-password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Enter password..."
-            placeholderTextColor={styles.placeholder.color}
-            style={styles.input}
-          />
-        </View>
+        <TextInput
+          testID="login-username"
+          accessibilityLabel="Username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="USERNAME"
+          placeholderTextColor={styles.placeholder.color}
+          style={styles.input}
+        />
+        <TextInput
+          testID="login-password"
+          accessibilityLabel="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="PASSWORD"
+          placeholderTextColor={styles.placeholder.color}
+          style={styles.input}
+        />
 
         {state.error !== null ? (
           <Text testID="login-error" style={styles.error}>
@@ -120,11 +105,12 @@ export function LoginScreen({
           onPress={() => {
             login(username, password);
           }}
+          style={styles.submit}
         >
           <Text
             style={[
-              styles.submit,
-              authenticating ? styles.submitDisabled : null,
+              styles.submitLabel,
+              authenticating ? styles.submitLabelDisabled : null,
             ]}
           >
             AUTHENTICATE ▸
@@ -132,7 +118,7 @@ export function LoginScreen({
         </Pressable>
 
         <View style={styles.simRow}>
-          <Text style={styles.simLabel}>Simulator mode</Text>
+          <Text style={styles.simLabel}>SIMULATOR MODE</Text>
           <Switch
             testID="login-sim-toggle"
             value={simulator}
@@ -154,17 +140,21 @@ interface LoginScreenStyles {
   scroll: ViewStyle;
   scrollContent: ViewStyle;
   title: TextStyle;
-  field: ViewStyle;
-  label: TextStyle;
+  subtitle: TextStyle;
   input: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
-  submit: TextStyle;
-  submitDisabled: TextStyle;
+  submit: ViewStyle;
+  submitLabel: TextStyle;
+  submitLabelDisabled: TextStyle;
   simRow: ViewStyle;
   simLabel: TextStyle;
 }
 
+// Every value below is `LockScreen`'s (title / subtitle / input / error) or
+// `BootSequence`'s SKIP pill (submit) — one idiom for the two pre-session
+// overlays, so the sign-in screen reads as the lock's sibling rather than a
+// leftover of the pre-redesign form it used to be.
 function makeStyles(t: RnTheme): LoginScreenStyles {
   return StyleSheet.create({
     overlay: {
@@ -176,53 +166,70 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
       flexGrow: 1,
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
       padding: 24,
     },
+    // `alignSelf: "stretch"` + centred text on both tracked lines: a
+    // self-sized iOS <Text> with `letterSpacing` measures without the last
+    // glyph's trailing advance and clips it (see `LockScreen`).
     title: {
-      color: t.textPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 18,
-      letterSpacing: 3,
-      marginBottom: 8,
+      marginTop: 18,
+      alignSelf: "stretch",
       textAlign: "center",
+      color: t.textPrimary,
+      fontFamily: FONT_ORBITRON_WORDMARK,
+      fontSize: 13,
+      letterSpacing: 4,
     },
-    field: { width: "100%", maxWidth: 320, gap: 4 },
-    label: {
-      color: t.textSecondary,
-      fontFamily: t.fontDisplay,
-      fontSize: 12,
-      letterSpacing: 1,
+    subtitle: {
+      marginTop: 8,
+      marginBottom: 22,
+      alignSelf: "stretch",
+      textAlign: "center",
+      color: t.textMuted,
+      ...labelStyle(t, 9.5, 1.6),
     },
     input: {
+      width: 220,
+      marginBottom: 12,
       borderWidth: 1,
-      borderColor: t.borderSubtle,
-      borderRadius: 6,
-      padding: 10,
+      borderColor: t.borderPrimary,
+      borderRadius: 9,
+      paddingVertical: 9,
+      paddingHorizontal: 12,
+      textAlign: "center",
       color: t.textPrimary,
-      fontFamily: t.fontMono,
+      ...labelStyle(t, 11, 1.5),
     },
     placeholder: { color: t.textMuted },
     error: {
+      marginBottom: 12,
+      alignSelf: "stretch",
+      textAlign: "center",
       color: t.accentNegative,
-      fontFamily: t.fontMono,
-      fontSize: 12,
-      marginTop: 4,
+      ...labelStyle(t, 10, 1),
     },
     submit: {
-      color: t.accentPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 14,
-      letterSpacing: 1,
-      marginTop: 12,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: t.borderPrimary,
+      borderRadius: 6,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
     },
-    submitDisabled: { color: t.textMuted },
+    submitLabel: {
+      color: t.accentPrimary,
+      ...labelStyle(t, 10, 2, "600"),
+    },
+    submitLabelDisabled: { color: t.textMuted },
     simRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      marginTop: 20,
+      marginTop: 26,
     },
-    simLabel: { color: t.textMuted, fontFamily: t.fontDisplay, fontSize: 12 },
+    simLabel: {
+      color: t.textMuted,
+      ...labelStyle(t, 8.5, 2),
+    },
   });
 }

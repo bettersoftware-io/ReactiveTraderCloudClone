@@ -100,9 +100,22 @@ function fakeViewModel(
         },
       };
     },
+    usePowerSaver: fakePowerSaver,
   } as unknown as ViewModel;
 }
 
 function noop(): undefined {
   return undefined;
+}
+
+interface FakePowerSaverResult {
+  isCalm: boolean;
+  isFreeze: boolean;
+}
+
+// LoginScreen mounts LockEmblem, whose orbit gating reads
+// usePowerSaver().isFreeze via useShellMotionEnabled; the fake ViewModel
+// needs the same stub LockScreen.test carries.
+function fakePowerSaver(): FakePowerSaverResult {
+  return { isCalm: false, isFreeze: false };
 }

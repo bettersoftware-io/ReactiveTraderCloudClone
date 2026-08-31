@@ -30,6 +30,11 @@ export const SCENARIO_IDS = [
   // for one extra reason: the satellites spring out on a staggered delay, so
   // an unfrozen capture pins a mid-fan frame.
   "shell/dock-open",
+  // The REAL `LoginScreen` under the fake ViewModel's default `useAuth`
+  // (unauthenticated, no error) — the pre-session sibling of `lock/hold`, in
+  // the same emblem / wordmark / tracked-mono idiom. No prototype frame
+  // exists for it; the golden is the app's own witness.
+  "shell/login",
   // NB: `credit/rfq-tiles-empty` was dropped after on-device golden
   // verification — it is NON-deterministic. `CreditRfqSimulator` emits new
   // Live RFQs over time, so the default "No RFQs to display" view is only
