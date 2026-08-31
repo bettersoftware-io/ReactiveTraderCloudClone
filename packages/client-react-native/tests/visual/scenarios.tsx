@@ -29,6 +29,7 @@ import {
   CreditSellSideFixture,
   DockOpenFixture,
   LockHoldFixture,
+  LoginFixture,
   ModuleScreenFixture,
   ShellChromeFixture,
   ShellFrameFixture,
@@ -198,6 +199,12 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   (below) hands `useAuth` a locked + unlocking session, with its ring held
  *   at a fixed mid-fill through `LockHoldProgressContext` (`fixtures.tsx`'s
  *   `LOCK_HOLD_PROGRESS`).
+ *
+ * - `shell/login` — the REAL `LoginScreen` under the fake ViewModel's DEFAULT
+ *   `useAuth` (unauthenticated, no error): the pre-session sibling of
+ *   `lock/hold`, restyled 2026-08-31 to the same emblem / wordmark /
+ *   tracked-mono idiom. The emblem's orbit spins under `useShellMotionEnabled`
+ *   exactly as `lock/hold`'s does, so the two scenarios pin identically.
  *
  * - `rates/ticket` — the REAL `TradeTicketSheet` over that same framed Rates
  *   grid (`TradeTicketFixture`), the pair-selected state `RatesModule` gates
@@ -477,6 +484,18 @@ export const SCENARIOS: readonly Scenario[] = [
           viewModelOverrides={pinnedLockedAuth()}
         >
           <LockHoldFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "shell/login",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <LoginFixture />
         </VisualScenarioHost>
       );
     },

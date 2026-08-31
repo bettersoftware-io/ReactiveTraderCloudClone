@@ -23,6 +23,7 @@ import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import { RatesModule } from "#/ui/rates/RatesModule";
 import { TradeTicketSheet } from "#/ui/rates/ticket/TradeTicketSheet";
+import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
 import { BootClockContext } from "#/ui/shell/boot/BootClockContext";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { ActiveModuleContext } from "#/ui/shell/hud/ActiveModuleContext";
@@ -519,6 +520,18 @@ export function LockHoldFixture(): ReactNode {
       <LockScreen />
     </LockHoldProgressContext.Provider>
   );
+}
+
+function NOOP_TOGGLE(): void {}
+
+/**
+ * The REAL `LoginScreen` at rest: the fake ViewModel's default `useAuth`
+ * reports an unauthenticated session with no error, which is exactly the
+ * state `AuthGate` mounts it for — no pin needed. `simulator` is shown ON
+ * (the harness runs on sim ports) with the toggle inert.
+ */
+export function LoginFixture(): ReactNode {
+  return <LoginScreen simulator={true} onToggleSimulator={NOOP_TOGGLE} />;
 }
 
 /**
