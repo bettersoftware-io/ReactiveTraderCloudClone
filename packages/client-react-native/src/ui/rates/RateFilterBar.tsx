@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
+import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 
 import { RATE_FILTERS, type RateFilter } from "./ratesFilter";
@@ -39,11 +40,8 @@ export function RateFilterBar({
           >
             <Text
               style={[
-                styles.label,
-                {
-                  color: active ? theme.textOnAccent : theme.textSecondary,
-                  fontFamily: theme.fontMono,
-                },
+                labelStyle(theme, 10, 1, "600"),
+                { color: active ? theme.textOnAccent : theme.textSecondary },
               ]}
             >
               {filter}
@@ -79,5 +77,4 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  label: { fontSize: 10, fontWeight: "600", letterSpacing: 1 },
 });
