@@ -3,9 +3,9 @@
 Framework-neutral Dockview wrapper — the only package allowed to import
 `dockview`. Converts the app's seed-tree layout description into
 Dockview's `SerializedDockview` (pixel-pinned rails included), restores/
-serialises the opaque persisted layout blob, bridges maximize/exit-maximize
-and an emulated, axis-aware collapse through Dockview's API, and restyles
-Dockview's chrome as the app's own panel chrome.
+serialises the opaque persisted layout blob, emulates the in-house
+collapse and maximize (both as axis-aware strips) over Dockview's API, and
+restyles Dockview's chrome as the app's own panel chrome.
 
 ## The header is the client's, not Dockview's
 
@@ -43,8 +43,25 @@ those in `dockview-hud.css`, gated on a `data-dock-glide` attribute
 and clears once the transition has run (`GLIDE_ATTRIBUTE_MS`). Drags and
 resizes rewrite the very same inline styles, which is why the gate is
 inverted from in-house's "not while dragging": on only around an intent.
-Maximize glides the maximized group's growth; dockview hides the siblings
-rather than shrinking them to strips (the dockview-native maximize residual).
+Maximize is the same glide: the siblings shrink into their strips while the
+maximized panel grows into the space they free.
+
+Maximize to know: in-house maximize is a *policy over strips*, not a
+geometry primitive — every leaf under the maximize boundary except the
+maximized panel becomes a strip, the boundary being the whole dock or, for
+a `maximizeScope: "nearest-column"` panel (the FX and equities rail
+panels), its nearest enclosing column. Dockview's own `maximize()` is a
+different thing (it *hides* every other group and knows no scope), so
+`createDockEngine` does not use it: `maximizePanel` collapses exactly the
+panels the in-house policy would, through the same records the collapse
+path uses — so the `stripDir` flip applies (root-maximizing Live Rates turns
+the rail into two vertical bars) — and `exitMaximize` restores only the
+strips *that* maximize made, leaving a strip the user collapsed before or
+during it in place. The scope reaches the engine through the optional
+`maximizeScope(panelId)` hook, read from the same `PanelSpec` field the
+in-house engine reads. The client tells a maximize-forced strip from the
+user's by its own `collapsed` set: the former's restore bar dispatches
+`restore`, the latter's `expand`, as in-house.
 
 Surface painting to know: the card and the head bar are painted through the
 `background` **shorthand**, never `background-color`, and `--panel` /
