@@ -60,6 +60,49 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.intents()).toEqual(["collapse:fx-rates", "maximize:fx-rates"]);
   });
 
+  it("maximizes as in-house does: every other panel becomes a strip, the fully-stripped rail flipping vertical", () => {
+    // In-house maximize is a policy over strips (maximizeBoundaryPath +
+    // strippedPanelIds), not dockview's hide-the-siblings primitive: with
+    // Live Rates maximized to the root, Blotter strips down its column and
+    // the rail — both its panels stripped — flips sideways.
+    const page = mount(DockviewEngine, { props: { maximized: "fx-rates" } });
+    expect(page.stripMarked("fx-rates")).toBe(false);
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+    expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+    expect(page.stripOrientation("fx-analytics")).toBe("vertical");
+    expect(page.stripOrientation("fx-positions")).toBe("vertical");
+    expect(page.stripMarked("fx-blotter")).toBe(true);
+    expect(page.stripMarked("fx-analytics")).toBe(true);
+    expect(page.stripMarked("fx-positions")).toBe(true);
+    // Nothing is hidden or removed: every seed leaf still has its group.
+    expect(page.groupsAttr()).toBe("4");
+  });
+
+  it("scopes a nearest-column panel's maximize to its own rail, leaving the main column alone", () => {
+    // fx-analytics carries maximizeScope: "nearest-column" in PANEL_SPECS
+    // (the bridge hands the engine that field): only Positions, its column
+    // sibling, strips — Live Rates and Blotter keep their headers and bodies.
+    const page = mount(DockviewEngine, {
+      props: { maximized: "fx-analytics" },
+    });
+    expect(page.stripOrientation("fx-positions")).toBe("horizontal");
+    expect(page.stripMarked("fx-positions")).toBe(true);
+    expect(page.stripMarked("fx-rates")).toBe(false);
+    expect(page.stripMarked("fx-blotter")).toBe(false);
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+    expect(page.bodyVisible("fx-blotter-body")).toBe(true);
+  });
+
+  it("dispatches restore from a maximize-forced strip and expand from the user's own, as the in-house strip does", () => {
+    const page = mount(DockviewEngine, {
+      props: { maximized: "fx-rates", collapsed: ["fx-blotter"] },
+    });
+    // Both are strips now; only Blotter is in the collapse set.
+    page.clickCollapse("fx-analytics"); // the strip carries the collapse testid
+    page.clickCollapse("fx-blotter");
+    expect(page.intents()).toEqual(["restore", "expand:fx-blotter"]);
+  });
+
   it("offers restore (not maximize) on the maximized panel's control", () => {
     const page = mount(DockviewEngine, { props: { maximized: "fx-rates" } });
     page.clickMaximize("fx-rates");

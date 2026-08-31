@@ -22,6 +22,7 @@ import {
 import {
   createDockEngine,
   type DockEngine,
+  type DockMaximizeScope,
   type DockStripMap,
   type DockStripOrientation,
 } from "@rtc/layout-dockview";
@@ -106,6 +107,11 @@ export function DockviewLayoutEngine(
         // there; only a remount (a tab switch) creates a new one.
         title: (id: string): string => {
           return titleOf(id as PanelId);
+        },
+        // The in-house maximizeBoundaryPath reads the same spec field: rail
+        // panels fill their own column, everything else the whole dock.
+        maximizeScope: (id: string): DockMaximizeScope => {
+          return specs()[id as PanelId]?.maximizeScope ?? "root";
         },
         mount: mountInto("body"),
         mountTab: mountInto("tab"),
@@ -279,8 +285,16 @@ export function DockviewLayoutEngine(
                       panelId={p.panelId}
                       title={titleOf(p.panelId)}
                       orientation={orientation()}
+                      // A strip is either the user's (in `collapsed` →
+                      // expand it) or one the maximize forced (→ restore
+                      // the maximize), exactly the in-house PanelLeaf's
+                      // branch.
                       onRestore={() => {
-                        props.onExpand(p.panelId);
+                        if (props.collapsed.includes(p.panelId)) {
+                          props.onExpand(p.panelId);
+                        } else {
+                          props.onRestore();
+                        }
                       }}
                     />
                   );

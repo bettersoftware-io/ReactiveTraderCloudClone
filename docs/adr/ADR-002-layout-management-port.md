@@ -422,10 +422,10 @@ as a two-branch conditional, would be guessing at the shape a third engine
   so every layout-state change rebuilt Dockview from the blob, losing the
   pre-collapse geometry (a strip "restored" to Dockview's 100px default
   minimum). The engine now lives for the tab. **Deliberate residuals:**
-  maximize stays Dockview-native (the group fills the whole dock; in-house
-  scopes a rail panel's maximize to its column and strips the siblings),
-  and Jarvis-docked panels remain an in-house-engine feature (the Dockview
-  seed is the static default tree).
+  maximize stayed Dockview-native at this point (the group filled the whole
+  dock; in-house scopes a rail panel's maximize to its column and strips the
+  siblings) — closed by PR #648, below — and Jarvis-docked panels remain an
+  in-house-engine feature (the Dockview seed is the static default tree).
 - **What did NOT land**: the `LayoutPort` interface itself. The engine
   branch lives inside the pre-existing `WorkspaceEngine` (in-house vs.
   Dockview), not behind a new port boundary each engine implements
@@ -509,9 +509,10 @@ as a two-branch conditional, would be guessing at the shape a third engine
   that attribute (and only under `prefers-reduced-motion: no-preference`,
   as in-house; the power-saver freeze catch-all zeroes it like every other
   transition). Framework-neutral, so both clients get it from the one
-  package. Maximize glides the maximized group's growth only — dockview
-  hides the siblings rather than shrinking them to strips, the
-  dockview-native maximize residual above.
+  package. Maximize glided the maximized group's growth only at this point —
+  dockview hid the siblings rather than shrinking them to strips — until
+  PR #648 made maximize a strip policy too (below), at which point the same
+  transition covers the siblings shrinking.
 - **Fully-stripped column, added 2026-08-30 (PR #629).** Collapsing both
   FX rail panels under Dockview left two 32px horizontal bars atop a
   full-width empty column, where in-house flips them to 38px vertical strips
@@ -529,6 +530,38 @@ as a two-branch conditional, would be guessing at the shape a third engine
   from the intent they dispatched. Pinned by engine tests (the flip, the
   38px column, the shared height, the width restore, whole-dock stripping)
   and a contract case on both clients.
+- **Maximize as the in-house strip policy, added 2026-08-31 (PR #648).** The
+  one intent still routed to Dockview's own primitive was maximize:
+  `api.maximize()`, whose gridview `maximizeView` *hides* every other group
+  (`setChildVisible(false)`) and knows no scope. In-house maximize is not a
+  geometry primitive at all but a render-time policy — `maximizeBoundaryPath`
+  picks the boundary (the root, or the nearest enclosing column for a
+  `maximizeScope: "nearest-column"` panel) and `strippedPanelIds` turns every
+  leaf under it except the maximized panel into a strip. So the three
+  visible differences were: siblings vanished (a jump-cut even under the
+  glide — hiding is not a size change) instead of shrinking into clickable
+  bars; rail panels filled the whole dock instead of their column; and a
+  strip the user had collapsed beforehand came back hidden too.
+  `createDockEngine.maximizePanel` now applies exactly the in-house policy
+  over the collapse records PR #629 built: it strips every other panel
+  inside the boundary (found in the DOM as the nearest `dv-vertical` split —
+  dockview's column — or the whole dock), remembers which strips *it* made,
+  and `settleStrips` does the rest, so root-maximizing Live Rates flips the
+  fully-stripped rail to two vertical bars as in-house; `exitMaximize`
+  restores only those, leaving a user's strip in place (collapsing a
+  maximize-forced strip hands it to the user, so it outlives the restore, as
+  a panel in the in-house `collapsed` set does); switching the maximized
+  panel restores the first set fully before recording the second, so sizes
+  are never recorded as bars. The scope reaches the engine through an
+  optional `maximizeScope(panelId)` hook the bridges answer from the same
+  `PanelSpec` field. In the bridges a strip's restore bar now branches as the
+  in-house `PanelLeaf` does — in `collapsed` → `expand`, otherwise →
+  `restore` — since a maximize-forced strip must exit the maximize, not
+  expand one panel. Pinned by engine tests on a rail-shaped seed (root and
+  column scopes, the fill, an exact restore, a surviving user strip, the
+  hand-over, the switch) and contract cases on both clients. The glide from
+  PR #602 now covers the siblings' shrink too, because it is a real size
+  change.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).

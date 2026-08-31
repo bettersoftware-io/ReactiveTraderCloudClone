@@ -55,7 +55,16 @@ export interface DockPanelHooks {
    * ACTIVE panel of. Remounted on every active-panel change, so `panelId` is
    * always the one the controls should act on. Absent → no actions slot. */
   mountActions?(panelId: string, element: HTMLElement): () => void;
+  /** How far `panelId`'s maximize reaches — see {@link DockMaximizeScope}.
+   * Absent → `"root"`. */
+  maximizeScope?(panelId: string): DockMaximizeScope;
 }
+
+/** The in-house `PanelSpec.maximizeScope`: `"root"` (the default) strips
+ * every other panel in the dock; `"nearest-column"` strips only the panels
+ * of the maximized panel's nearest enclosing column split — the design's
+ * rail panels fill their own rail and leave the main column alone. */
+export type DockMaximizeScope = "root" | "nearest-column";
 
 export interface DockEngineOptions {
   container: HTMLElement;
@@ -104,7 +113,18 @@ export type DockStripOrientation = "vertical" | "horizontal";
 export type DockStripMap = Readonly<Record<string, DockStripOrientation>>;
 
 export interface DockEngine {
+  /** Fill the panel's maximize boundary with it — the whole dock, or its
+   * nearest enclosing column for a `"nearest-column"` panel — by stripping
+   * every OTHER panel inside that boundary, exactly the in-house engine's
+   * render-time policy (`maximizeBoundaryPath` + `strippedPanelIds`).
+   * Dockview's own `maximize()` is deliberately not used: it HIDES the
+   * other groups and knows no scope. One panel at a time, as the
+   * LayoutMachine holds one; a panel the user had already collapsed is
+   * left alone. Idempotent; a no-op for an unknown panel. */
   maximizePanel(panelId: string): void;
+  /** Restore every panel the current maximize stripped — and only those:
+   * a strip the user collapsed (before, or while maximized) stays. No-op
+   * when nothing is maximized. */
   exitMaximize(): void;
   /** Strip this panel to a bar along the axis its space reclaims on (see
    * {@link STRIP_WIDTH_PX}). That axis is the in-house engine's `stripDir`:
@@ -137,6 +157,13 @@ interface StripRecord {
   maximum: number;
   orthogonalMinimum: number;
   orthogonalMaximum: number;
+}
+
+/** The maximize in force: which panel, and which panels IT stripped (the
+ * user's own strips are not listed, so restore leaves them be). */
+interface MaximizeRecord {
+  panelId: string;
+  stripped: readonly string[];
 }
 
 export function createDockEngine(opts: DockEngineOptions): DockEngine {
@@ -221,6 +248,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // while it is flipped, and restored the moment one of its strips expands.
   const flippedSplits = new Map<Element, number>();
   let lastStrips: DockStripMap = {};
+  // In-house maximize is a POLICY over strips, not a geometry primitive:
+  // every leaf under the maximize boundary except the maximized panel is a
+  // strip. Dockview's `maximize()` is a different thing — gridview's
+  // `maximizeView` hides every other group (`setChildVisible(false)`) and
+  // has no notion of scope — so maximize is emulated as exactly that
+  // policy over the collapse machinery, and the siblings shrink into the
+  // same bars in-house renders, glide included. `stripped` is what THIS
+  // maximize collapsed, so restore puts back only those.
+  let maximized: MaximizeRecord | null = null;
 
   // The in-house engine glides a collapse / expand / maximize / restore over
   // 0.34s (its `.cell` / `.panel` transitions) and NOTHING else — a sash drag
@@ -249,6 +285,93 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   function groupOf(panelId: string): SizableGroup | undefined {
     return api.getPanel(panelId)?.group;
+  }
+
+  /** Remembers `panelId`'s group's pre-strip geometry so settleStrips can
+   * clamp it. False — and nothing recorded — for an unknown panel or one
+   * that already is a strip (a second record would remember the BAR as the
+   * size to restore). */
+  function recordStrip(panelId: string): boolean {
+    const panel = api.getPanel(panelId);
+
+    if (panel === undefined || records.has(panelId)) {
+      return false;
+    }
+
+    // In-house `collapsed` names a PANEL; dockview sizes a GROUP, and a group
+    // can hold several panels as tabs. Clamping a shared group would strip
+    // this panel's tab siblings too, so eject it into its own group first and
+    // keep collapse meaning exactly the panel it names. `moveTo` with a
+    // non-center position relative to the panel's CURRENT group is what
+    // creates that new group — there is no separate "eject" call.
+    if (panel.group.panels.length > 1) {
+      panel.api.moveTo({ group: panel.group, position: "right" });
+    }
+
+    // Re-read: the move above reassigned `panel.group`.
+    const group = panel.group;
+    const natural = stripOrientationOf(group);
+    const naturalAxis = axisOf(group, natural);
+    const orthogonalAxis = axisOf(group, opposite(natural));
+
+    records.set(panelId, {
+      natural,
+      size: naturalAxis.size(),
+      minimum: naturalAxis.minimum(),
+      maximum: naturalAxis.maximum(),
+      orthogonalMinimum: orthogonalAxis.minimum(),
+      orthogonalMaximum: orthogonalAxis.maximum(),
+    });
+
+    return true;
+  }
+
+  /** Forgets `panelId`'s strip and lifts both axes' clamps. Returns the
+   * step that puts its natural size back, to run AFTER the siblings have
+   * re-settled (a broken column must get its width back first, and while a
+   * max constraint still pins the bar a `setSize` would be clamped straight
+   * back). Null when this engine never stripped it. */
+  function releaseStrip(panelId: string): (() => void) | null {
+    const record = records.get(panelId);
+    const group = groupOf(panelId);
+
+    if (record === undefined || group === undefined) {
+      return null;
+    }
+
+    records.delete(panelId);
+    const naturalAxis = axisOf(group, record.natural);
+    naturalAxis.constrain(record.minimum, record.maximum);
+    axisOf(group, opposite(record.natural)).constrain(
+      record.orthogonalMinimum,
+      record.orthogonalMaximum,
+    );
+
+    return () => {
+      setRendered(naturalAxis, record.size);
+    };
+  }
+
+  /** Lifts the current maximize: releases every strip it made (not the
+   * user's) and returns their size-restore steps; nothing when none. */
+  function releaseMaximize(): readonly (() => void)[] {
+    if (maximized === null) {
+      return [];
+    }
+
+    const restores: (() => void)[] = [];
+
+    for (const panelId of maximized.stripped) {
+      const restore = releaseStrip(panelId);
+
+      if (restore !== null) {
+        restores.push(restore);
+      }
+    }
+
+    maximized = null;
+
+    return restores;
   }
 
   /** Re-derives every strip's orientation and geometry from the current
@@ -361,73 +484,97 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   return {
-    maximizePanel: (panelId: string) => {
-      glide(() => {
-        api.getPanel(panelId)?.api.maximize();
-      });
-    },
-    exitMaximize: () => {
-      if (api.hasMaximizedGroup()) {
-        glide(() => {
-          api.exitMaximizedGroup();
-        });
-      }
-    },
-    collapsePanel: (panelId: string): void => {
+    maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined || records.has(panelId)) {
-        return;
-      }
-
-      // In-house `collapsed` names a PANEL; dockview sizes a GROUP, and a group
-      // can hold several panels as tabs. Clamping a shared group would strip
-      // this panel's tab siblings too, so eject it into its own group first and
-      // keep collapse meaning exactly the panel it names. `moveTo` with a
-      // non-center position relative to the panel's CURRENT group is what
-      // creates that new group — there is no separate "eject" call.
-      if (panel.group.panels.length > 1) {
-        panel.api.moveTo({ group: panel.group, position: "right" });
-      }
-
-      // Re-read: the move above reassigned `panel.group`.
-      const group = panel.group;
-      const natural = stripOrientationOf(group);
-      const naturalAxis = axisOf(group, natural);
-      const orthogonalAxis = axisOf(group, opposite(natural));
-
-      records.set(panelId, {
-        natural,
-        size: naturalAxis.size(),
-        minimum: naturalAxis.minimum(),
-        maximum: naturalAxis.maximum(),
-        orthogonalMinimum: orthogonalAxis.minimum(),
-        orthogonalMaximum: orthogonalAxis.maximum(),
-      });
-      glide(settleStrips);
-    },
-    expandPanel: (panelId: string) => {
-      const record = records.get(panelId);
-      const group = groupOf(panelId);
-
-      if (record === undefined || group === undefined) {
+      if (panel === undefined || maximized?.panelId === panelId) {
         return;
       }
 
       glide(() => {
-        records.delete(panelId);
-        const naturalAxis = axisOf(group, record.natural);
-        // Constraints first — while max is still pinned at the strip,
-        // `setSize` to anything wider would be clamped straight back.
-        naturalAxis.constrain(record.minimum, record.maximum);
-        axisOf(group, opposite(record.natural)).constrain(
-          record.orthogonalMinimum,
-          record.orthogonalMaximum,
+        // Switching from another maximized panel: put ITS strips back fully
+        // first, so the sizes recorded below are real ones, not the bars.
+        const restores = releaseMaximize();
+
+        if (restores.length > 0) {
+          settleStrips();
+
+          for (const restore of restores) {
+            restore();
+          }
+        }
+
+        const boundary = maximizeBoundaryOf(
+          panel.group.element,
+          opts.panels.maximizeScope?.(panelId) ?? "root",
+          opts.container,
         );
-        // Siblings first (a broken column restores its width), then this
+        const stripped: string[] = [];
+
+        // Snapshots: ejecting a tab sibling into its own group mutates both
+        // lists mid-walk. The maximized panel's own group is skipped whole —
+        // its tab siblings stay tabs behind it, as they were.
+        for (const group of [...api.groups]) {
+          if (group === panel.group || !boundary.contains(group.element)) {
+            continue;
+          }
+
+          for (const sibling of [...group.panels]) {
+            if (recordStrip(sibling.id)) {
+              stripped.push(sibling.id);
+            }
+          }
+        }
+
+        maximized = { panelId, stripped };
+        settleStrips();
+      });
+    },
+    exitMaximize: (): void => {
+      if (maximized === null) {
+        return;
+      }
+
+      glide(() => {
+        const restores = releaseMaximize();
+        // Siblings first (a broken column restores its width), then each
         // panel's own length on its natural axis.
         settleStrips();
-        setRendered(naturalAxis, record.size);
+
+        for (const restore of restores) {
+          restore();
+        }
+      });
+    },
+    collapsePanel: (panelId: string): void => {
+      // Collapsing a panel the maximize already stripped changes nothing on
+      // screen, but hands the strip to the user: it now outlives the
+      // maximize, as a panel in the in-house `collapsed` set does.
+      if (maximized?.stripped.includes(panelId) === true) {
+        maximized = {
+          panelId: maximized.panelId,
+          stripped: maximized.stripped.filter((id) => {
+            return id !== panelId;
+          }),
+        };
+
+        return;
+      }
+
+      if (recordStrip(panelId)) {
+        glide(settleStrips);
+      }
+    },
+    expandPanel: (panelId: string): void => {
+      const restore = releaseStrip(panelId);
+
+      if (restore === null) {
+        return;
+      }
+
+      glide(() => {
+        settleStrips();
+        restore();
       });
     },
     groupCount: () => {
@@ -532,6 +679,33 @@ function opposite(orientation: DockStripOrientation): DockStripOrientation {
 
 function barSizeFor(orientation: DockStripOrientation): number {
   return orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX;
+}
+
+/** The element whose groups a maximize strips — the in-house
+ * `maximizeBoundaryPath`: the whole dock for `"root"`; for
+ * `"nearest-column"` the nearest enclosing COLUMN split (children stacked
+ * — the seed's `dir: "column"`, which dockview marks `dv-vertical`),
+ * falling back to the whole dock when the group has no column ancestor. */
+function maximizeBoundaryOf(
+  groupElement: Element,
+  scope: DockMaximizeScope,
+  dock: Element,
+): Element {
+  if (scope === "root") {
+    return dock;
+  }
+
+  let split: Element | null = groupElement.closest(SPLIT_SELECTOR);
+
+  while (split !== null) {
+    if (split.classList.contains("dv-vertical")) {
+      return split;
+    }
+
+    split = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
+  }
+
+  return dock;
 }
 
 /** The in-house `stripDir` walk: a group's space reclaims along the nearest
