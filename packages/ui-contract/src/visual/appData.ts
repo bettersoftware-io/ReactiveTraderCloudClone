@@ -11,6 +11,7 @@ import type {
   NotionalView,
   OrderTicketState,
   PanelData,
+  PanelId,
   PanelStatus,
   RfqState,
   RfqSubmissionState,
@@ -106,6 +107,14 @@ export interface AppData {
    * DockviewLayoutEngine bridge over the fixture's panels — see the
    * `app/*-dockview` scenarios. */
   layoutEngine?: LayoutEngine;
+  /** The layout machine's `maximized` panel, seeded into the fake
+   * `useLayout`'s otherwise-default arrangement; defaults to null. The visual
+   * host's layout intents are no-ops (a static snapshot per capture), so a
+   * maximized/collapsed workspace is a FIXTURE, not a click — the same way
+   * the component-level `layout/fx-*` scenarios seed a LayoutState. */
+  layoutMaximized?: PanelId | null;
+  /** The layout machine's `collapsed` set, seeded likewise; defaults to []. */
+  layoutCollapsed?: readonly PanelId[];
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */

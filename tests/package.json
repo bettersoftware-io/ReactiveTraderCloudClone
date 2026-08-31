@@ -33,7 +33,8 @@
     "test:presenter:vitest-fake-timers": "vitest run --config presenter/vitest-fake-timers/vitest.config.ts",
     "test:report": "vitest run scripts/lib",
     "typecheck": "tsc --noEmit",
-    "visual:jitter": "tsx scripts/visual-jitter.ts"
+    "visual:jitter": "tsx scripts/visual-jitter.ts",
+    "visual:engine-parity": "tsx scripts/visual-engine-parity.ts"
   },
   "dependencies": {
     "@rtc/client-core": "workspace:*",

@@ -487,6 +487,42 @@ const baseScenarios: Record<string, Scenario> = {
   },
   "app/admin-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
 
+  // Layout-STATE twins (PR #649): the four distinct shapes the layout policy
+  // produces — a root-scope maximize, a nearest-column (rail) maximize, a
+  // lone strip, and a fully-stripped column — each shot in the real FX
+  // workspace under BOTH engines, seeded through the fixture's
+  // layoutMaximized / layoutCollapsed (fixtures.ts). `X` and `X-dockview` differ only in the
+  // engine, so `pnpm visual:engine-parity` can diff every pair and put a
+  // number on how far the two engines' layouts sit apart per skin. The
+  // policy is tree-shape driven, not panel driven, so these four shapes
+  // cover every panel's maximize/collapse without a per-panel matrix.
+  "app/fx-maximized": { componentKey: "App", fixtureKey: "app-fx-maximized" },
+  "app/fx-maximized-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-maximized-dockview",
+  },
+  "app/fx-rail-maximized": {
+    componentKey: "App",
+    fixtureKey: "app-fx-rail-maximized",
+  },
+  "app/fx-rail-maximized-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-rail-maximized-dockview",
+  },
+  "app/fx-collapsed": { componentKey: "App", fixtureKey: "app-fx-collapsed" },
+  "app/fx-collapsed-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-collapsed-dockview",
+  },
+  "app/fx-rail-collapsed": {
+    componentKey: "App",
+    fixtureKey: "app-fx-rail-collapsed",
+  },
+  "app/fx-rail-collapsed-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-rail-collapsed-dockview",
+  },
+
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
   // Seeded render-state arm with no interaction (the state is only transiently

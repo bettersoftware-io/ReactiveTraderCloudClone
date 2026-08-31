@@ -2641,6 +2641,48 @@ fixtures["app-fx-dockview"] = makeAppData({
   ...fixtures["app-fx"],
   layoutEngine: "dockview",
 });
+// Layout-STATE twins (scenarios.ts `app/fx-*` / `app/fx-*-dockview`): the FX
+// workspace with a maximize or collapse already applied, seeded through the
+// fake useLayout (appData.ts `layoutMaximized` / `layoutCollapsed`) under
+// each engine. Both bridges receive the same `maximized`/`collapsed` props
+// the real App threads from the LayoutMachine, so the in-house engine
+// renders the strips synchronously and the Dockview bridge applies the
+// same intents to its engine on mount.
+fixtures["app-fx-maximized"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutMaximized: "fx-rates",
+});
+fixtures["app-fx-maximized-dockview"] = makeAppData({
+  ...fixtures["app-fx-maximized"],
+  layoutEngine: "dockview",
+});
+// fx-analytics is maximizeScope: "nearest-column" — the rail-scoped state.
+fixtures["app-fx-rail-maximized"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutMaximized: "fx-analytics",
+});
+fixtures["app-fx-rail-maximized-dockview"] = makeAppData({
+  ...fixtures["app-fx-rail-maximized"],
+  layoutEngine: "dockview",
+});
+fixtures["app-fx-collapsed"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutCollapsed: ["fx-analytics"],
+});
+fixtures["app-fx-collapsed-dockview"] = makeAppData({
+  ...fixtures["app-fx-collapsed"],
+  layoutEngine: "dockview",
+});
+// Both rail panels collapsed: the fully-stripped column flips to two vertical
+// strips (in-house stripDir; Dockview since PR #629).
+fixtures["app-fx-rail-collapsed"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutCollapsed: ["fx-analytics", "fx-positions"],
+});
+fixtures["app-fx-rail-collapsed-dockview"] = makeAppData({
+  ...fixtures["app-fx-rail-collapsed"],
+  layoutEngine: "dockview",
+});
 fixtures["credit-populated-dockview"] = makeAppData({
   ...fixtures["credit-populated"],
   layoutEngine: "dockview",
