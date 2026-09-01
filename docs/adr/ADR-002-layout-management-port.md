@@ -562,6 +562,48 @@ as a two-branch conditional, would be guessing at the shape a third engine
   hand-over, the switch) and contract cases on both clients. The glide from
   PR #602 now covers the siblings' shrink too, because it is a real size
   change.
+- **Layout-state goldens and the engine-parity report, added 2026-08-31
+  (PR #649).** The visual tier pinned each engine against its OWN golden, so
+  it could never say how alike the two are, and the only layout STATE
+  captured under Dockview was the resting one. The matrix now shoots the four
+  distinct shapes the layout policy produces — a root-scope maximize
+  (`app/fx-maximized`), a nearest-column maximize (`app/fx-rail-maximized`),
+  a lone strip (`app/fx-collapsed`) and a fully-stripped column
+  (`app/fx-rail-collapsed`) — in the real FX workspace under both engines
+  (`X` / `X-dockview`, identical fixture, only the `LayoutEngine` preference
+  flipped), seeded through two new `AppData` fields (`layoutMaximized` /
+  `layoutCollapsed`) that the fake `useLayout` layers onto the default
+  arrangement — the visual host's layout intents are deliberate no-ops, so a
+  click could never have produced these states. The policy is tree-shape
+  driven, not panel driven, so four shapes cover every panel's maximize and
+  collapse without a per-panel matrix (13 maximizable panels × 2 engines ×
+  10 skins would have been ~1,000 goldens for no extra information). The
+  comparison itself is `pnpm visual:engine-parity [--set <golden set>]`
+  (`tests/scripts/visual-engine-parity.ts`): it pairs every `X-dockview.png`
+  with its same-skin `X.png` and reports Playwright's own metric (pixelmatch
+  above the per-pixel threshold) as a scenario × skin table — the hand-run
+  diff that found the transparent 3D-skin card fill, made repeatable. First
+  reading (arm64 set): p50 0.002, p90 0.007, worst 0.016
+  (`holo3d-dark/app-equities`); the layout states sit in the same
+  0.000–0.010 band as the resting workspaces, i.e. maximize and collapse are
+  now as close as the default arrangement, with the ≤1px half-pixel residual
+  the whole of it. **A React bridge bug surfaced with the first goldens:**
+  under `StrictMode` (the real app and the visual host both use it) the
+  engine layout effect's cleanup disposes engine A — whose dispose flushes
+  its STRIPPED geometry into the store — and the re-run builds B from that
+  blob, where the strip's group sits at dockview's ~100px minimum with no
+  collapse recorded; the bridge's "already applied" collapse list still said
+  done, so B never collapsed and A's strips state rendered the restore bar
+  stretched across a 97px group. The bridge now resets that list and re-pushes
+  the machine's `maximized` / `collapsed` on every engine build
+  (`engineVersion`), pinned by a StrictMode unit test that reads B's saved
+  blob. **Residual, pending:** the persisted blob still carries strip
+  geometry — a reload with a collapsed panel restores its group at dockview's
+  minimum, so the collapse the machine re-applies records ~100px as the size
+  to restore, and the first expand after a reload lands there instead of the
+  panel's natural size. Fix: serialise the UN-stripped layout (substitute each
+  strip's recorded size, or snapshot before clamping), a change to
+  `serializeLayout`'s contract rather than to the bridges.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).

@@ -74,6 +74,22 @@ export function DockviewLayoutEngine({
   // default minimum instead). The engine lives for the tab; only the store
   // (an app singleton) could legitimately swap it.
   const specsRef = useRef(specs);
+  // The collapse set last pushed into the engine, so the collapsed effect
+  // below diffs rather than re-asserts (see it). RESET whenever the engine
+  // is rebuilt — a fresh engine has nothing collapsed, whatever this said.
+  const appliedCollapse = useRef<AppliedCollapse>({ tab, ids: [] });
+  // The engine as STATE (beside the ref the callbacks read), so the intent
+  // effects below depend on the instance and re-push the LayoutMachine's
+  // `maximized` / `collapsed` into every NEW engine. Matters under
+  // StrictMode's dev double-invocation: the layout effect's cleanup disposes
+  // engine A — flushing its STRIPPED geometry into the store — and the re-run
+  // builds B from that blob, where the strip's group sits at dockview's
+  // ~100px minimum with no collapse recorded. Keyed on `maximized` /
+  // `collapsed` alone, the effects did not re-run for B, the applied list
+  // still said "done", B never collapsed, and the restore bar (rendered from
+  // A's strips state) stretched across a 97px group — the shape the first
+  // `app/fx-collapsed-dockview` golden captured.
+  const [liveEngine, setLiveEngine] = useState<DockEngine | null>(null);
 
   // Synced in an effect (not during render — React Compiler forbids touching
   // refs there); a LAYOUT effect declared BEFORE the engine effect so it runs
@@ -144,28 +160,29 @@ export function DockviewLayoutEngine({
       },
     });
     engineRef.current = engine;
+    appliedCollapse.current = { tab, ids: [] };
     setGroups(engine.groupCount());
+    setLiveEngine(engine);
 
     return () => {
       engineRef.current = null;
+      setLiveEngine(null);
       setMounted([]);
       engine.dispose();
     };
   }, [tab, store]);
 
   useEffect(() => {
-    const engine = engineRef.current;
-
-    if (engine === null) {
+    if (liveEngine === null) {
       return;
     }
 
     if (maximized !== null) {
-      engine.maximizePanel(maximized);
+      liveEngine.maximizePanel(maximized);
     } else {
-      engine.exitMaximize();
+      liveEngine.exitMaximize();
     }
-  }, [maximized]);
+  }, [maximized, liveEngine]);
 
   // `collapsed` is a SET, not a single id like `maximized`, so this diffs
   // against the last applied list rather than re-asserting the whole thing:
@@ -173,11 +190,10 @@ export function DockviewLayoutEngine({
   // panel, so blanket-reapplying is safe but pointless work every render.
   // `tab` is a dep because switching tabs rebuilds the engine — the new one has
   // nothing collapsed, so the previously-applied list must reset with it or the
-  // diff would skip re-collapsing panels the fresh engine has never seen.
-  const appliedCollapse = useRef<AppliedCollapse>({ tab, ids: [] });
-
+  // diff would skip re-collapsing panels the fresh engine has never seen;
+  // `liveEngine` covers every OTHER rebuild the same way (see its comment).
   useEffect(() => {
-    const engine = engineRef.current;
+    const engine = liveEngine;
 
     if (engine === null) {
       return;
@@ -199,7 +215,7 @@ export function DockviewLayoutEngine({
     }
 
     appliedCollapse.current = { tab, ids: collapsed };
-  }, [collapsed, tab]);
+  }, [collapsed, tab, liveEngine]);
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real

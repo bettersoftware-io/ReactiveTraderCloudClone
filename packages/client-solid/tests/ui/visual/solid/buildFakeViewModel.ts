@@ -399,9 +399,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     // Layout: static snapshot for screenshots — returns the tab's default
     // arrangement with noop intents (no drag, no maximize during capture).
+    // A maximized / collapsed workspace is therefore a FIXTURE (appData.ts
+    // layoutMaximized / layoutCollapsed), layered onto that arrangement.
     useLayout: (tab: WorkspaceTab) => {
       return {
-        state: at(dockedLayoutStateFor(tab, dockedPanelIdsIn(data))),
+        state: at(seededLayoutStateFor(data, tab)),
         maximize: noop,
         restore: noop,
         collapse: noop,
@@ -738,6 +740,26 @@ function dockedLayoutStateFor(
 const dockedLayoutStates = new Map<string, LayoutState>();
 
 /** The fixture's docked desk-panel ids, in order. */
+/** The tab's arrangement with the fixture's seeded maximize / collapse
+ * applied — the same two fields the real App threads from the LayoutMachine
+ * into either engine. Unseeded fixtures get the memoized default untouched. */
+function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
+  const base = dockedLayoutStateFor(tab, dockedPanelIdsIn(data));
+
+  if (
+    data.layoutMaximized === undefined &&
+    data.layoutCollapsed === undefined
+  ) {
+    return base;
+  }
+
+  return {
+    ...base,
+    maximized: data.layoutMaximized ?? base.maximized,
+    collapsed: data.layoutCollapsed ?? base.collapsed,
+  };
+}
+
 function dockedPanelIdsIn(data: AppData): readonly string[] {
   return (data.jarvisPanels ?? [])
     .filter((panel) => {

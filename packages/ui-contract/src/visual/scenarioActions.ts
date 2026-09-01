@@ -116,6 +116,59 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // the tab).
   "shell/layout-dockview": { waitForText: "FX-RATES-BODY" },
 
+  // Layout-state twins: the maximize / collapse is SEEDED by the fixture
+  // (appData.ts layoutMaximized / layoutCollapsed — the host's layout intents
+  // are no-ops), so there is nothing to click. The capture still waits on the
+  // LAST strip the state produces — its restore bar's aria-label — because
+  // the two engines reach it differently: in-house renders strips in the
+  // same render as the state, but the Dockview bridge applies the intent in
+  // an effect and learns the strips back from the engine (onStripsChange), a
+  // render later. Without the wait the classic skins (no ambient animation)
+  // could hand the stabiliser two identical pre-strip frames on a slow runner.
+  "app/fx-maximized": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-blotter-collapse",
+    expectAriaLabel: "Restore Blotter",
+  },
+  "app/fx-maximized-dockview": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-blotter-collapse",
+    expectAriaLabel: "Restore Blotter",
+  },
+  // fx-analytics is maximizeScope: "nearest-column": only Positions strips.
+  "app/fx-rail-maximized": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-positions-collapse",
+    expectAriaLabel: "Restore Positions",
+  },
+  "app/fx-rail-maximized-dockview": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-positions-collapse",
+    expectAriaLabel: "Restore Positions",
+  },
+  "app/fx-collapsed": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-analytics-collapse",
+    expectAriaLabel: "Restore Analytics",
+  },
+  "app/fx-collapsed-dockview": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-analytics-collapse",
+    expectAriaLabel: "Restore Analytics",
+  },
+  // Both rail panels collapsed: the fully-stripped column flips to two
+  // vertical strips (in-house stripDir; Dockview since PR #629).
+  "app/fx-rail-collapsed": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-positions-collapse",
+    expectAriaLabel: "Restore Positions",
+  },
+  "app/fx-rail-collapsed-dockview": {
+    fullPage: true,
+    assertAriaLabelOf: "panel-fx-positions-collapse",
+    expectAriaLabel: "Restore Positions",
+  },
+
   // --- Phase V testid-gated interaction scenarios ---
   // Blotter: click a column header to sort (ascending arrow appears). No
   // waitForText: the click is synchronous and "Notional" is non-unique.

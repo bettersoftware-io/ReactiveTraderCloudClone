@@ -186,6 +186,17 @@ by adding scenarios; do not dismiss it. `EqDepthDock` at 0% is why
 and got the metric written off as worthless once already; the URL slug is still
 `ui-visual` so old report links keep resolving.
 
+**Engine parity is a number, not an eyeball.** Every layout state in the
+visual matrix is shot twice — `X` (in-house engine) and `X-dockview` — and
+`pnpm visual:engine-parity [--set react-local/darwin-arm64] [--budget n]`
+diffs each pair with Playwright's own metric into a scenario × skin table
+(`tests/scripts/visual-engine-parity.ts`; report-only, like `visual:jitter`).
+A whole ROW high means the layout state itself diverges; one COLUMN high is a
+skin-specific paint difference (the 3D-skin transparent card fill was one).
+Adding a layout state to the matrix means adding BOTH twins; they are seeded
+through `AppData.layoutMaximized` / `layoutCollapsed`, never a click — the
+visual host's layout intents are deliberate no-ops.
+
 **Don't compare the two clients' reach percentages directly** — each
 denominator is its own compiled `src/ui`, and Solid's compiler emits a
 different statement count for equivalent JSX. The comparable signal is *which
