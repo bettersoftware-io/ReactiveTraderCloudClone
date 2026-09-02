@@ -159,10 +159,15 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
       letterSpacing: 0.5,
     },
     arrow: { fontSize: 12, fontFamily: t.fontDisplay },
+    // dc.html:113 — `height:1px;background:var(--border-sub);margin:8px 0
+    // 7px`: the design's 1 CSS px is 1pt (3 device px), NOT RN's
+    // hairlineWidth (1 device px), which rendered a third as thick and
+    // nearly vanished under the tile gradient.
     divider: {
-      height: StyleSheet.hairlineWidth,
+      height: 1,
       backgroundColor: t.borderSubtle,
-      marginVertical: 8,
+      marginTop: 8,
+      marginBottom: 7,
     },
     priceRow: { flexDirection: "row", alignItems: "flex-end" },
     prefix: { fontSize: 14, color: t.textSecondary, fontFamily: t.fontMono },
