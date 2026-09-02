@@ -85,6 +85,12 @@ export function AppearanceScreen({
   // packages/client-core/src/presenters/__tests__/ThemePreferencePresenter.test.ts
   // ("cycle advances dark → light → system → dark from the live current
   // value"); `cyclesToReach` here only computes the step count.
+  function selectSkinFor(s: ThemeSkin): () => void {
+    return () => {
+      setSkin(s);
+    };
+  }
+
   function jumpToMode(target: ThemeModePreference): void {
     const steps = cyclesToReach(modePreference, target);
 
@@ -143,9 +149,7 @@ export function AppearanceScreen({
                   active ? styles.skinCardActive : styles.skinCard,
                   { backgroundColor: preview.bgPrimary },
                 ]}
-                onPress={() => {
-                  setSkin(s);
-                }}
+                onPress={selectSkinFor(s)}
               >
                 <View
                   testID={`appearance-skin-${s}-swatch-row`}

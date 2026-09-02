@@ -26,6 +26,14 @@ export function BuySellPads({
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
+  function executeSell(): void {
+    onExecute(Direction.Sell);
+  }
+
+  function executeBuy(): void {
+    onExecute(Direction.Buy);
+  }
+
   return (
     <View style={styles.container}>
       <Pad
@@ -35,9 +43,7 @@ export function BuySellPads({
         accent={theme.accentNegative}
         align="start"
         theme={theme}
-        onPress={() => {
-          onExecute(Direction.Sell);
-        }}
+        onPress={executeSell}
       />
       <Pad
         testID="buy-pad"
@@ -46,9 +52,7 @@ export function BuySellPads({
         accent={theme.accentPositive}
         align="end"
         theme={theme}
-        onPress={() => {
-          onExecute(Direction.Buy);
-        }}
+        onPress={executeBuy}
       />
       <View style={styles.spreadPill} pointerEvents="none">
         <Text style={styles.spreadText}>{price.spread}</Text>

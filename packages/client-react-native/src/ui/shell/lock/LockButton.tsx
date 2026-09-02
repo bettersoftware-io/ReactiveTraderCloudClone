@@ -33,9 +33,7 @@ export function LockButton(): JSX.Element {
       testID="lock-button"
       accessibilityLabel="Lock session"
       style={styles.button}
-      onPress={() => {
-        lock();
-      }}
+      onPress={lock}
     >
       <Text style={styles.glyph}>⌖</Text>
     </Pressable>

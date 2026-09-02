@@ -67,6 +67,10 @@ export function RfqCard({
   // history and must not keep a winner tinted (matches `rfqCardVm`).
   const bestQuoteId = live ? findBestQuoteId(rfq, quotes) : null;
 
+  function dismissRfq(): void {
+    onDismiss(rfq.id);
+  }
+
   return (
     <SurfaceCard
       variant="tile"
@@ -105,9 +109,7 @@ export function RfqCard({
             <Pressable
               testID={`rfq-dismiss-${rfq.id}`}
               style={styles.dismissBtn}
-              onPress={() => {
-                onDismiss(rfq.id);
-              }}
+              onPress={dismissRfq}
             >
               <Text style={styles.dismissText}>✕</Text>
             </Pressable>

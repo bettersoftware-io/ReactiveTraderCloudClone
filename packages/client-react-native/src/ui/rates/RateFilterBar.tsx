@@ -12,6 +12,12 @@ export function RateFilterBar({
 }: RateFilterBarProps): JSX.Element {
   const theme = useTheme();
 
+  function selectFilterFor(filter: RateFilter): () => void {
+    return () => {
+      onSelect(filter);
+    };
+  }
+
   return (
     <ScrollView
       horizontal
@@ -27,9 +33,7 @@ export function RateFilterBar({
             key={filter}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            onPress={() => {
-              onSelect(filter);
-            }}
+            onPress={selectFilterFor(filter)}
             style={[
               styles.pill,
               {

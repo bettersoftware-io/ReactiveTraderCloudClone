@@ -111,6 +111,10 @@ export function CandleChart({ candles }: CandleChartProps): JSX.Element {
     });
   }, [candles, width, motionEnabled, morph, progress]);
 
+  function measureWidth(event: LayoutChangeEvent): void {
+    setWidth(event.nativeEvent.layout.width);
+  }
+
   return (
     <View style={styles.wrapper}>
       {bars.length === 0 ? (
@@ -124,9 +128,7 @@ export function CandleChart({ candles }: CandleChartProps): JSX.Element {
         <View
           testID="eq-candle-chart"
           style={styles.canvasHost}
-          onLayout={(event: LayoutChangeEvent): void => {
-            setWidth(event.nativeEvent.layout.width);
-          }}
+          onLayout={measureWidth}
         >
           <Canvas style={StyleSheet.absoluteFill}>
             {GRID_ROWS.map((y) => {

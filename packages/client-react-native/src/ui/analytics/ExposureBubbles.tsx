@@ -61,6 +61,10 @@ export function ExposureBubbles({
 
   const { entries, height } = buildBubbleDrawModel(positions, width);
 
+  function measureWidth(event: LayoutChangeEvent): void {
+    setWidth(event.nativeEvent.layout.width);
+  }
+
   return (
     // The measuring `onLayout` sits on a plain View, NOT on the Canvas: Skia's
     // `<Canvas onLayout>` is deprecated and silently does nothing on the new
@@ -72,9 +76,7 @@ export function ExposureBubbles({
     <View
       testID="exposure-bubbles"
       style={[styles.container, { height }]}
-      onLayout={(event: LayoutChangeEvent): void => {
-        setWidth(event.nativeEvent.layout.width);
-      }}
+      onLayout={measureWidth}
     >
       <Canvas style={StyleSheet.absoluteFill}>
         {entries.map((entry) => {

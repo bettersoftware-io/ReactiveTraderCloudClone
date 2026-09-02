@@ -125,6 +125,14 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
 
+  function openAppearance(): void {
+    setAppearanceOpen(true);
+  }
+
+  function closeAppearance(): void {
+    setAppearanceOpen(false);
+  }
+
   return (
     <BottomSheetModalProvider>
       <View style={styles.fill}>
@@ -132,9 +140,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         <ShellHeader
           simulator={simulator}
           onToggleSimulator={onToggle}
-          onOpenAppearance={() => {
-            setAppearanceOpen(true);
-          }}
+          onOpenAppearance={openAppearance}
         />
         <ConnectionBanner />
         <View style={styles.body}>
@@ -142,12 +148,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         </View>
         <StatusStrip />
         <RadialCommandDock />
-        <AppearanceOverlay
-          open={appearanceOpen}
-          onClose={() => {
-            setAppearanceOpen(false);
-          }}
-        />
+        <AppearanceOverlay open={appearanceOpen} onClose={closeAppearance} />
         <LockScreen />
       </View>
     </BottomSheetModalProvider>

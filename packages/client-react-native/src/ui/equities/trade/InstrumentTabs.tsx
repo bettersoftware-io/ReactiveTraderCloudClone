@@ -27,6 +27,12 @@ export function InstrumentTabs({
   const instruments = useWatchlist();
   const styles = useThemedStyles(makeStyles);
 
+  function selectInstrumentTab(symbol: string): () => void {
+    return () => {
+      onSelect(symbol);
+    };
+  }
+
   return (
     <ScrollView
       horizontal
@@ -41,9 +47,7 @@ export function InstrumentTabs({
             key={inst.symbol}
             testID={`instrument-tab-${inst.symbol}`}
             style={active ? styles.tabActive : styles.tab}
-            onPress={() => {
-              onSelect(inst.symbol);
-            }}
+            onPress={selectInstrumentTab(inst.symbol)}
           >
             <Text style={active ? styles.labelActive : styles.label}>
               {inst.symbol}

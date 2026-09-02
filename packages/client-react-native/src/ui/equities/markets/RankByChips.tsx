@@ -28,6 +28,12 @@ export function RankByChips(): JSX.Element {
   const { sort, setSort } = useEqWatchlistSort();
   const styles = useThemedStyles(makeStyles);
 
+  function selectSortFor(target: EqWatchlistSort): () => void {
+    return () => {
+      setSort(target);
+    };
+  }
+
   return (
     <View testID="eq-rank-row" style={styles.row}>
       <Text style={styles.label}>RANK BY</Text>
@@ -40,9 +46,7 @@ export function RankByChips(): JSX.Element {
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             style={active ? styles.chipActive : styles.chip}
-            onPress={() => {
-              setSort(target);
-            }}
+            onPress={selectSortFor(target)}
           >
             <Text style={active ? styles.chipLabelActive : styles.chipLabel}>
               {RANK_LABEL[target]}

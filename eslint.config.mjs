@@ -447,6 +447,8 @@ export default tseslint.config(
       "packages/client-react/src/**/*.tsx",
       "packages/devtools-app/src/**/*.tsx",
       "packages/client-solid/src/**/*.tsx",
+      "packages/client-react-native/src/**/*.tsx",
+      "packages/client-react-native/app/**/*.tsx",
     ],
     ignores: ["**/__tests__/**", "**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },

@@ -30,6 +30,12 @@ export function InstrumentChipGrid({
 }: InstrumentChipGridProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
+  function selectInstrumentFor(instrumentId: number): () => void {
+    return () => {
+      onSelect(instrumentId);
+    };
+  }
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>INSTRUMENT</Text>
@@ -43,9 +49,7 @@ export function InstrumentChipGrid({
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={active ? styles.chipActive : styles.chip}
-              onPress={() => {
-                onSelect(instrument.id);
-              }}
+              onPress={selectInstrumentFor(instrument.id)}
             >
               <Text
                 numberOfLines={2}

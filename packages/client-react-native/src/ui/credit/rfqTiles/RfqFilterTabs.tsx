@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import type { CreditRfqFilter } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import {
@@ -26,6 +27,13 @@ export function RfqFilterTabs(): JSX.Element {
   const { useCreditRfqFilterPreference } = useViewModel();
   const { filter, setFilter } = useCreditRfqFilterPreference();
   const styles = useThemedStyles(makeStyles);
+
+  function selectFilterFor(f: CreditRfqFilter): () => void {
+    return () => {
+      setFilter(f);
+    };
+  }
+
   return (
     <View style={styles.tabs}>
       {RFQ_FILTERS.map((f) => {
@@ -37,9 +45,7 @@ export function RfqFilterTabs(): JSX.Element {
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             style={active ? styles.tabActive : styles.tab}
-            onPress={() => {
-              setFilter(f);
-            }}
+            onPress={selectFilterFor(f)}
           >
             <Text style={active ? styles.labelActive : styles.label}>
               {RFQ_FILTER_LABELS[f]}
