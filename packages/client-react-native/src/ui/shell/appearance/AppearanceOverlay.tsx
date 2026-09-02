@@ -3,12 +3,17 @@ import {
   type BottomSheetBackdropProps,
   type BottomSheetBackgroundProps,
   BottomSheetModal,
-  BottomSheetView,
+  BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
 import type { ComponentRef, JSX } from "react";
 import { useEffect, useRef } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -35,6 +40,7 @@ export function AppearanceOverlay({
 }: AppearanceOverlayProps): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
   const sheetRef = useRef<ComponentRef<typeof BottomSheetModal>>(null);
+  const { height: windowHeight } = useWindowDimensions();
 
   // `AppearanceOverlay` itself stays mounted for the app's lifetime (`open`
   // just toggles); the `if (!open) return null` branch below is what mounts
@@ -55,16 +61,16 @@ export function AppearanceOverlay({
   return (
     <BottomSheetModal
       ref={sheetRef}
-      snapPoints={SNAP_POINTS}
-      enableDynamicSizing={false}
+      enableDynamicSizing
+      maxDynamicContentSize={windowHeight * MAX_SHEET_FRACTION}
       onDismiss={onClose}
       backdropComponent={AppearanceBackdrop}
       backgroundComponent={AppearanceBackground}
       handleIndicatorStyle={styles.handleIndicator}
     >
-      <BottomSheetView testID="appearance-sheet" style={styles.body}>
+      <BottomSheetScrollView testID="appearance-sheet">
         <AppearanceScreen onReplayBoot={onClose} />
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheetModal>
   );
 }
@@ -74,12 +80,13 @@ interface AppearanceOverlayProps {
   onClose: () => void;
 }
 
-/** The design's sheet stops around 55% of the screen, but it carries four
- * fewer controls than this app does (a third mode cell, the ambient-style
- * picker, the three-level power saver, sign out). 80% is that height plus the
- * kept stack; the sheet is translucent and blurred either way, so the grid
- * behind still reads through as it does in the prototype shot. */
-const SNAP_POINTS = ["80%"];
+/** Tallest the content-sized sheet may grow before its body scrolls instead.
+ * The design's sheet is exactly content height (`kfSheetUp` over an
+ * auto-height panel); a fixed 80% snap stood in for that until 2026-09-02 and
+ * left a dead band under SIGN OUT whenever the content came up short —
+ * `enableDynamicSizing` (the trade ticket's mode) is the faithful port, this
+ * cap only guarding small screens. */
+const MAX_SHEET_FRACTION = 0.88;
 
 // Private: dimmed backdrop, dismissing the sheet on press — TradeTicketSheet's
 // idiom. Not exported — rtc/component-newspaper permits private subcomponents
@@ -139,7 +146,6 @@ const backgroundStyles = StyleSheet.create({
 
 interface AppearanceOverlayStyles {
   handleIndicator: ViewStyle;
-  body: ViewStyle;
 }
 
 function makeStyles(t: RnTheme): AppearanceOverlayStyles {
@@ -151,6 +157,5 @@ function makeStyles(t: RnTheme): AppearanceOverlayStyles {
       borderRadius: 2,
       backgroundColor: t.borderPrimary,
     },
-    body: { flex: 1 },
   });
 }

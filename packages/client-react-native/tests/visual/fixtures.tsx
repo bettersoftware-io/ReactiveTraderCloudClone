@@ -282,24 +282,30 @@ export function CreditRfqTilesFixture(): ReactNode {
   return (
     <>
       <RfqFilterTabs />
-      <RfqCard
-        rfq={PINNED_LIVE_RFQ}
-        quotes={PINNED_QUOTES}
-        instrument={PINNED_INSTRUMENTS[0]}
-        dealers={PINNED_DEALERS}
-        pinnedRemainingMs={PINNED_REMAINING_MS}
-        onAccept={NOOP_ACCEPT}
-        onDismiss={NOOP_DISMISS}
-      />
-      <RfqCard
-        rfq={PINNED_TRADED_RFQ}
-        quotes={PINNED_TRADED_QUOTES}
-        instrument={PINNED_INSTRUMENTS[1]}
-        dealers={PINNED_DEALERS}
-        pinnedRemainingMs={0}
-        onAccept={NOOP_ACCEPT}
-        onDismiss={NOOP_DISMISS}
-      />
+      {/* Restates RfqTilesPanel's own `grid` inset (paddingVertical: 8) —
+          without it the golden under-reports the chips→card gap the live
+          panel actually renders. Same restatement rule as the analytics
+          fixture's screen padding. */}
+      <View style={creditFixtureStyles.rfqList}>
+        <RfqCard
+          rfq={PINNED_LIVE_RFQ}
+          quotes={PINNED_QUOTES}
+          instrument={PINNED_INSTRUMENTS[0]}
+          dealers={PINNED_DEALERS}
+          pinnedRemainingMs={PINNED_REMAINING_MS}
+          onAccept={NOOP_ACCEPT}
+          onDismiss={NOOP_DISMISS}
+        />
+        <RfqCard
+          rfq={PINNED_TRADED_RFQ}
+          quotes={PINNED_TRADED_QUOTES}
+          instrument={PINNED_INSTRUMENTS[1]}
+          dealers={PINNED_DEALERS}
+          pinnedRemainingMs={0}
+          onAccept={NOOP_ACCEPT}
+          onDismiss={NOOP_DISMISS}
+        />
+      </View>
     </>
   );
 }
@@ -315,14 +321,24 @@ export function CreditRfqTilesFixture(): ReactNode {
  */
 export function CreditSellSideFixture(): ReactNode {
   return (
-    <SellSideTicket
-      rfq={PINNED_SELL_SIDE_RFQ}
-      quote={PINNED_SELL_SIDE_QUOTE}
-      instrument={PINNED_INSTRUMENTS[0]}
-      pinnedRemainingMs={PINNED_REMAINING_MS}
-    />
+    // Restates SellSidePanel's `list` inset (paddingVertical: 12) — the bare
+    // ticket used to sit ~4pt under the tabs in the golden while the live
+    // panel renders the design's ~12pt.
+    <View style={creditFixtureStyles.sellSideList}>
+      <SellSideTicket
+        rfq={PINNED_SELL_SIDE_RFQ}
+        quote={PINNED_SELL_SIDE_QUOTE}
+        instrument={PINNED_INSTRUMENTS[0]}
+        pinnedRemainingMs={PINNED_REMAINING_MS}
+      />
+    </View>
   );
 }
+
+const creditFixtureStyles = StyleSheet.create({
+  rfqList: { paddingVertical: 8 },
+  sellSideList: { paddingVertical: 12 },
+});
 
 /**
  * The persistent HUD chrome with an EMPTY body — `ShellFrameFixture` around

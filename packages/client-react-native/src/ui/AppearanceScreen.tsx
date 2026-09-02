@@ -2,7 +2,6 @@
 import type { JSX } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   type TextStyle,
@@ -102,11 +101,7 @@ export function AppearanceScreen({
   }
 
   return (
-    <ScrollView
-      testID="appearance-panel"
-      style={styles.panel}
-      contentContainerStyle={styles.content}
-    >
+    <View testID="appearance-panel" style={styles.panel}>
       {/* The design puts the title and the mode selector on ONE row. The
           third AUTO cell is what made that a real measurement rather than a
           copy: `ThemeModePill`'s cells are intrinsically sized and this
@@ -257,7 +252,7 @@ export function AppearanceScreen({
       {/* Last deliberately — the only destructive action on the sheet, so it
           sits below everything reversible. */}
       <LogoutButton />
-    </ScrollView>
+    </View>
   );
 }
 
@@ -337,7 +332,6 @@ const THEME_DISPLAY_NAME: Record<ThemeSkin, string> = {
 
 interface AppearanceScreenStyles {
   panel: ViewStyle;
-  content: ViewStyle;
   headerRow: ViewStyle;
   headerTitle: TextStyle;
   skinGrid: ViewStyle;
@@ -401,12 +395,17 @@ function makeStyles(t: RnTheme): AppearanceScreenStyles {
   return StyleSheet.create({
     // Transparent, not `bgPrimary`: the sheet behind this is a translucent
     // panel over a real blur (`AppearanceOverlay`), and an opaque scroll
-    // surface here would paint straight over it.
-    panel: { flex: 1, backgroundColor: "transparent" },
-    // Design: the sheet's own `padding:10px 16px 24px`. Applied here rather
-    // than on the sheet body, so the padding scrolls with the content instead
-    // of clipping it.
-    content: { paddingTop: 10, paddingHorizontal: 16, paddingBottom: 24 },
+    // surface here would paint straight over it. Content-sized (no flex) —
+    // the host `BottomSheetScrollView` owns scrolling AND measures this
+    // height for `enableDynamicSizing`, which is what kills the dead band a
+    // fixed 80% snap left under SIGN OUT. Design: the sheet's own
+    // `padding:10px 16px 24px`.
+    panel: {
+      backgroundColor: "transparent",
+      paddingTop: 10,
+      paddingHorizontal: 16,
+      paddingBottom: 24,
+    },
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
