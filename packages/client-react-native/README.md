@@ -343,6 +343,30 @@ Only `ports` differs from `client-react` (native adapters via
 `buildNativePorts` instead of browser ones) — `createApp`, `createViewModel`,
 and everything downstream is the same code running on a different platform.
 
+## Testing
+
+Two runners, split by extension — the mode is in the filename:
+
+| glob | runner | environment |
+|---|---|---|
+| `**/*.test.ts` | vitest (`pnpm --filter @rtc/client-react-native test:unit:coverage`) | node — pure logic, no RN imports |
+| `**/*.test.tsx` | jest-expo (`… test:native:coverage`) | RN runtime + RNTL |
+
+`pnpm test` runs both. Why jest exists here at all: vitest cannot parse
+react-native's Flow source (`import typeof`) — see
+[docs/architecture/09-test-strategy.md](../../docs/architecture/09-test-strategy.md)
+§9.9 for the full rationale and revisit conditions.
+
+Two traps:
+
+1. **A `.test.ts` file under jest reports "No tests found" and exits 0** — a
+   vacuous pass. If your test renders RN it must be `.test.tsx`; if it is
+   pure logic it must not import react-native.
+2. **The coverage numbers of the two halves are not comparable** and neither
+   is "the package's coverage" — different providers, each denominator is the
+   whole package while each runner sees half the tests. See
+   [README-COVERAGE.md](README-COVERAGE.md).
+
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
