@@ -10,7 +10,7 @@ protocol.
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Runtime deps** | `@rtc/devtools-core`, `react`, `react-dom` (`package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace as a source dependency -- `@rtc/client-react` takes only a `devDependency` build-order/dist-path edge to serve it at `/devtools/` (`docs/architecture/06-package-dependencies.md` §6) |
-| **Must never import** | `@rtc/client-core`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes a future Chrome-extension shell a thin wrapper around this same bundle (spec §9 / [§20.9](../../docs/architecture/20-devtools.md#209-future-extensions)). |
+| **Must never import** | `@rtc/client-core`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes a future Chrome-extension shell a thin wrapper around this same bundle (spec §9 / [§20.8](../../docs/architecture/20-devtools.md#208-future-extensions)). |
 
 ## Folder map
 
@@ -81,7 +81,7 @@ To exercise it against a real, live app: `pnpm dev` (client-react) and open
 The inspector page disables the React DevTools extension for itself via an
 inline classic `<script>` in `index.html` before the module entry script
 (`?react-devtools` re-enables it) — see
-[§20.11](../../docs/architecture/20-devtools.md#2011-relationship-to-the-framework-devtools-react-devtools--solid-devtools).
+[§20.10](../../docs/architecture/20-devtools.md#2010-relationship-to-the-framework-devtools-react-devtools--solid-devtools).
 
 ## See also
 
