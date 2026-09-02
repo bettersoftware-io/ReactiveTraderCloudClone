@@ -89,15 +89,22 @@ interface AppearanceOverlayProps {
 const MAX_SHEET_FRACTION = 0.88;
 
 // Private: dimmed backdrop, dismissing the sheet on press — TradeTicketSheet's
-// idiom. Not exported — rtc/component-newspaper permits private subcomponents
-// below the lede.
+// idiom. Painted in the theme's `bgOverlay` (the design's per-skin
+// `--overlay`, e.g. holo dark `rgba(0,6,10,0.78)`) rather than the library's
+// lighter black @ 0.5 default; the token carries its own alpha, so the fade
+// runs 0 → 1 over it. Not exported — rtc/component-newspaper permits private
+// subcomponents below the lede.
 function AppearanceBackdrop(props: BottomSheetBackdropProps): JSX.Element {
+  const t = useTheme();
+
   return (
     <BottomSheetBackdrop
       {...props}
       appearsOnIndex={0}
       disappearsOnIndex={-1}
       pressBehavior="close"
+      opacity={1}
+      style={[props.style, { backgroundColor: t.bgOverlay }]}
     />
   );
 }

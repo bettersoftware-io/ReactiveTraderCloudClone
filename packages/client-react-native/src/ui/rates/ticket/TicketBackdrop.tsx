@@ -5,9 +5,10 @@ import {
   useBottomSheet,
 } from "@gorhom/bottom-sheet";
 import type { JSX } from "react";
-import { Pressable, StyleSheet, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { useTheme } from "#/ui/theme/useTheme";
 
 /** The trade ticket's dimmed backdrop, in two arms — the second half of the
  * sheet's reduced-motion behaviour (`sheetPresentation` is the first).
@@ -18,10 +19,15 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
  * sheet and back out as it goes.
  *
  * **Motion off** (OS reduced-motion, or power-saver Freeze) — a STATIC layer
- * at the final opacity the interpolation would reach, painted the same black
- * at the same 0.5 the library's defaults produce, with the same tap-to-close
+ * at the final tint the interpolation would reach, with the same tap-to-close
  * behaviour and the same accessibility affordances. Nothing about it is tied
  * to `animatedIndex`, so it neither fades in nor out.
+ *
+ * Both arms paint the theme's `bgOverlay` — the design's per-skin `--overlay`
+ * (holo dark `rgba(0,6,10,0.78)`, dc.html:657) — not the library's default
+ * black @ 0.5, which read visibly lighter than the prototype's scrim. The
+ * token carries its own alpha, so the animated arm pins `opacity={1}` and
+ * lets the fade run 0 → 1 over it.
  *
  * Being tied to the index at all is the point: with motion off the sheet no
  * longer animates to its resting position, but `enableDynamicSizing`
@@ -36,6 +42,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 export function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
   const motionEnabled = useShellMotionEnabled();
   const { close } = useBottomSheet();
+  const t = useTheme();
 
   function dismissSheet(): void {
     close();
@@ -48,6 +55,8 @@ export function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
         appearsOnIndex={APPEARS_ON_INDEX}
         disappearsOnIndex={DISAPPEARS_ON_INDEX}
         pressBehavior="close"
+        opacity={1}
+        style={[props.style, { backgroundColor: t.bgOverlay }]}
       />
     );
   }
@@ -55,7 +64,11 @@ export function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
   return (
     <Pressable
       testID="ticket-backdrop-static"
-      style={[props.style, StyleSheet.absoluteFill, styles.scrim]}
+      style={[
+        props.style,
+        StyleSheet.absoluteFill,
+        { backgroundColor: t.bgOverlay },
+      ]}
       onPress={dismissSheet}
       accessible
       accessibilityRole="button"
@@ -70,17 +83,3 @@ export function TicketBackdrop(props: BottomSheetBackdropProps): JSX.Element {
 const APPEARS_ON_INDEX = 0;
 
 const DISAPPEARS_ON_INDEX = -1;
-
-interface TicketBackdropStyles {
-  scrim: ViewStyle;
-}
-
-/** The exact resting appearance of `BottomSheetBackdrop` under this sheet's
- * props: its own `styles.backdrop` is `backgroundColor: "black"`, and with no
- * `opacity` prop it interpolates up to the library's `DEFAULT_OPACITY` of 0.5.
- * Restated as literals rather than imported — they are the library's internal
- * constants, not exports. A theme token would be wrong here: the two arms must
- * paint the SAME scrim, and only one of them is ours. */
-const styles: TicketBackdropStyles = StyleSheet.create({
-  scrim: { backgroundColor: "black", opacity: 0.5 },
-});
