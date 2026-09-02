@@ -27,6 +27,22 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
       : "",
   );
 
+  function changeComparator(e: SelectChangeEvent): void {
+    setComparator(e.currentTarget.value as Comparator);
+  }
+
+  function changeValue(e: InputChangeEvent): void {
+    setValue(e.currentTarget.value);
+  }
+
+  function changeValueTo(e: InputChangeEvent): void {
+    setValueTo(e.currentTarget.value);
+  }
+
+  function resetDateFilter(): void {
+    props.onApply(null);
+  }
+
   function applyDateFilter(): void {
     if (!value()) {
       props.onApply(null);
@@ -47,9 +63,7 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
       <select
         data-testid="date-filter-comparator"
         value={comparator()}
-        onChange={(e: SelectChangeEvent): void => {
-          setComparator(e.currentTarget.value as Comparator);
-        }}
+        onChange={changeComparator}
         class={styles.select}
       >
         <For each={comparators}>
@@ -67,12 +81,8 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
         // DateFilterPage drives them with `fireEvent.change` for exactly
         // that reason) — `onInput` wired too for real-typing UX parity;
         // wiring both is idempotent (see TileNotional's identical comment).
-        onInput={(e: InputChangeEvent): void => {
-          setValue(e.currentTarget.value);
-        }}
-        onChange={(e: InputChangeEvent): void => {
-          setValue(e.currentTarget.value);
-        }}
+        onInput={changeValue}
+        onChange={changeValue}
         class={styles.input}
       />
       <Show when={comparator() === "inRange"}>
@@ -80,12 +90,8 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
           type="date"
           data-testid="date-filter-value-to"
           value={valueTo()}
-          onInput={(e: InputChangeEvent): void => {
-            setValueTo(e.currentTarget.value);
-          }}
-          onChange={(e: InputChangeEvent): void => {
-            setValueTo(e.currentTarget.value);
-          }}
+          onInput={changeValueTo}
+          onChange={changeValueTo}
           class={styles.input}
         />
       </Show>
@@ -98,13 +104,7 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
         >
           Apply
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            props.onApply(null);
-          }}
-          class={styles.resetBtn}
-        >
+        <button type="button" onClick={resetDateFilter} class={styles.resetBtn}>
           Reset
         </button>
       </div>

@@ -62,6 +62,16 @@ export function ThemePicker(): JSX.Element {
     setOpen(false);
   }
 
+  function selectSkinFor(next: ThemeSkin) {
+    return () => {
+      selectSkin(next);
+    };
+  }
+
+  function toggleThemePicker(): void {
+    setOpen(!open());
+  }
+
   return (
     <div class={styles.picker}>
       <ThemeToggle />
@@ -73,9 +83,7 @@ export function ThemePicker(): JSX.Element {
           aria-expanded={open()}
           aria-label="Theme skin"
           class={styles.trigger}
-          onClick={() => {
-            setOpen(!open());
-          }}
+          onClick={toggleThemePicker}
           style={
             // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
             {
@@ -108,9 +116,7 @@ export function ThemePicker(): JSX.Element {
                     data-skin={s}
                     data-active={active() ? "true" : "false"}
                     class={styles.skinRow}
-                    onClick={() => {
-                      selectSkin(s);
-                    }}
+                    onClick={selectSkinFor(s)}
                     style={
                       // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
                       {

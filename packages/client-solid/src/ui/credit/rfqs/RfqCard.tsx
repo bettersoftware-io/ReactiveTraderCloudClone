@@ -113,6 +113,20 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
     });
   });
 
+  function acceptQuote(quoteId: number) {
+    return () => {
+      props.onAccept(quoteId);
+    };
+  }
+
+  function cancelRfq(): void {
+    props.onCancel();
+  }
+
+  function removeRfqCard(): void {
+    props.onRemove();
+  }
+
   return (
     <div
       ref={cardEl}
@@ -147,14 +161,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
       <div class={styles.quotes}>
         <For each={props.vm.quotes}>
           {(q: QuoteVm) => {
-            return (
-              <QuoteRow
-                vm={q}
-                onAccept={() => {
-                  props.onAccept(q.quoteId);
-                }}
-              />
-            );
+            return <QuoteRow vm={q} onAccept={acceptQuote(q.quoteId)} />;
           }}
         </For>
       </div>
@@ -170,8 +177,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
               type="button"
               class={styles.cancelBtn}
               data-testid={`rfq-cancel-${props.vm.rfqId}`}
-              // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-              onClick={props.onCancel}
+              onClick={cancelRfq}
             >
               CANCEL
             </button>
@@ -192,8 +198,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
             type="button"
             class={styles.removeRow}
             data-testid={`rfq-remove-${props.vm.rfqId}`}
-            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-            onClick={props.onRemove}
+            onClick={removeRfqCard}
           >
             <span class={styles.binGlyph}>🗑</span>
             <span class={styles.removeText}>

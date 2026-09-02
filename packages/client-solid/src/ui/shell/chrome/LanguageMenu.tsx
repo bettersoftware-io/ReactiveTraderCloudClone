@@ -18,6 +18,17 @@ export function LanguageMenu(): JSX.Element {
   const [selected, setSelected] = createSignal<LanguageCode>("EN");
   const [open, setOpen] = createSignal(false);
 
+  function toggleLanguageMenu(): void {
+    setOpen(!open());
+  }
+
+  function selectLanguage(code: LanguageCode) {
+    return () => {
+      setSelected(code);
+      setOpen(false);
+    };
+  }
+
   return (
     <div class={styles.menuAnchor}>
       <button
@@ -26,9 +37,7 @@ export function LanguageMenu(): JSX.Element {
         aria-label="Language"
         aria-expanded={open()}
         class={styles.langTrigger}
-        onClick={() => {
-          setOpen(!open());
-        }}
+        onClick={toggleLanguageMenu}
       >
         <svg
           viewBox="0 0 24 24"
@@ -63,10 +72,7 @@ export function LanguageMenu(): JSX.Element {
                   data-testid={`language-option-${lang.code}`}
                   data-active={active() ? "true" : "false"}
                   class={styles.langOption}
-                  onClick={() => {
-                    setSelected(lang.code);
-                    setOpen(false);
-                  }}
+                  onClick={selectLanguage(lang.code)}
                 >
                   <span>{lang.label}</span>
                   <span class={styles.mark}>{active() ? "✓" : ""}</span>

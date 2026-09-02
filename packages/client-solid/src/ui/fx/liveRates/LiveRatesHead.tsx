@@ -2,6 +2,7 @@ import type { JSX } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
+import type { RatesTab } from "#/ui/fx/fxViewContext";
 import { useFxView } from "#/ui/fx/useFxView";
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
 
@@ -15,6 +16,16 @@ export function LiveRatesHead(): JSX.Element {
   const { useViewModePreference } = useViewModel();
   const { viewMode, setViewMode } = useViewModePreference();
 
+  function selectRatesTab(tab: RatesTab) {
+    return () => {
+      setRatesTab(tab);
+    };
+  }
+
+  function toggleChartsView(): void {
+    setViewMode(viewMode() === "chart" ? "price" : "chart");
+  }
+
   return (
     <div class={styles.headTabs}>
       <button
@@ -22,9 +33,7 @@ export function LiveRatesHead(): JSX.Element {
         data-testid="rates-tab-live"
         data-active={ratesTab() === "rates" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setRatesTab("rates");
-        }}
+        onClick={selectRatesTab("rates")}
       >
         ◧ Live Rates
       </button>
@@ -33,9 +42,7 @@ export function LiveRatesHead(): JSX.Element {
         data-testid="rates-tab-watchlist"
         data-active={ratesTab() === "watchlist" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setRatesTab("watchlist");
-        }}
+        onClick={selectRatesTab("watchlist")}
       >
         ☰ Watchlist
       </button>
@@ -45,9 +52,7 @@ export function LiveRatesHead(): JSX.Element {
         data-testid="charts-toggle"
         data-active={viewMode() === "chart" ? "true" : "false"}
         class={styles.headChip}
-        onClick={() => {
-          setViewMode(viewMode() === "chart" ? "price" : "chart");
-        }}
+        onClick={toggleChartsView}
       >
         CHARTS
       </button>

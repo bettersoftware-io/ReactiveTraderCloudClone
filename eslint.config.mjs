@@ -446,6 +446,7 @@ export default tseslint.config(
     files: [
       "packages/client-react/src/**/*.tsx",
       "packages/devtools-app/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
     ],
     ignores: ["**/__tests__/**", "**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },

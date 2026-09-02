@@ -10,6 +10,10 @@ import styles from "./PreferencesContent.module.css";
  * so the control is a dumb reflection of the `on` prop.
  */
 export function PrefToggle(props: PrefToggleProps): JSX.Element {
+  function toggleSwitch(): void {
+    props.onToggle();
+  }
+
   return (
     <div class={styles.row}>
       <div class={styles.rowText}>
@@ -26,9 +30,7 @@ export function PrefToggle(props: PrefToggleProps): JSX.Element {
         data-testid={props.testid}
         data-on={props.on ? "true" : "false"}
         class={styles.sw}
-        onClick={() => {
-          props.onToggle();
-        }}
+        onClick={toggleSwitch}
       />
     </div>
   );

@@ -9,6 +9,12 @@ import styles from "./TimeframePills.module.css";
  * TimeframePills' module-css shape, like IndicatorPills.
  */
 export function ComparePills(props: ComparePillsProps): JSX.Element {
+  function toggleCompareSymbol(sym: string) {
+    return () => {
+      props.onSelect(props.active === sym ? null : sym);
+    };
+  }
+
   return (
     <div class={styles.pills}>
       <span class={styles.vsLabel}>VS</span>
@@ -21,9 +27,7 @@ export function ComparePills(props: ComparePillsProps): JSX.Element {
               data-testid="chart-compare-pill"
               data-sym={sym}
               data-active={String(props.active === sym)}
-              onClick={() => {
-                props.onSelect(props.active === sym ? null : sym);
-              }}
+              onClick={toggleCompareSymbol(sym)}
             >
               {sym}
             </button>

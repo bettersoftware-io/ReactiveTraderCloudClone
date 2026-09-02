@@ -3,6 +3,7 @@ import { Show } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
+import type { BlotterTab } from "#/ui/fx/fxViewContext";
 import { useFxView } from "#/ui/fx/useFxView";
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
 
@@ -21,6 +22,12 @@ export function FxBlotterHead(): JSX.Element {
   const { useTrades } = useViewModel();
   const trades = useTrades();
 
+  function selectBlotterTab(tab: BlotterTab) {
+    return () => {
+      setBlotterTab(tab);
+    };
+  }
+
   return (
     <div class={styles.headTabs}>
       <button
@@ -28,9 +35,7 @@ export function FxBlotterHead(): JSX.Element {
         data-testid="blotter-tab-trades"
         data-active={blotterTab() === "trades" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setBlotterTab("trades");
-        }}
+        onClick={selectBlotterTab("trades")}
       >
         ▤ FX Blotter
       </button>
@@ -39,9 +44,7 @@ export function FxBlotterHead(): JSX.Element {
         data-testid="blotter-tab-activity"
         data-active={blotterTab() === "activity" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setBlotterTab("activity");
-        }}
+        onClick={selectBlotterTab("activity")}
       >
         ⚡ Activity
       </button>

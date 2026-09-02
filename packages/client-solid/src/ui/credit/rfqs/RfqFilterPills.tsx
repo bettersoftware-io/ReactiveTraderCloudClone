@@ -8,6 +8,12 @@ import styles from "./RfqFilterPills.module.css";
  * to render in the panel's head slot, writing through the same
  * useCreditRfqFilterPreference seam RfqsPanel reads. */
 export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
+  function filterRfqs(next: CreditRfqFilter) {
+    return () => {
+      props.onFilter(next);
+    };
+  }
+
   return (
     <div class={styles.filters}>
       <button
@@ -15,9 +21,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
         class={styles.pill}
         data-testid="rfq-filter-live"
         data-active={String(props.filter === "live")}
-        onClick={() => {
-          props.onFilter("live");
-        }}
+        onClick={filterRfqs("live")}
       >
         LIVE {props.liveCount}
       </button>
@@ -26,9 +30,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
         class={styles.pill}
         data-testid="rfq-filter-closed"
         data-active={String(props.filter === "closed")}
-        onClick={() => {
-          props.onFilter("closed");
-        }}
+        onClick={filterRfqs("closed")}
       >
         CLOSED
       </button>
@@ -37,9 +39,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
         class={styles.pill}
         data-testid="rfq-filter-all"
         data-active={String(props.filter === "all")}
-        onClick={() => {
-          props.onFilter("all");
-        }}
+        onClick={filterRfqs("all")}
       >
         ALL
       </button>

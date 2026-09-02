@@ -79,6 +79,10 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
     return t.nonce > 0 ? t.nonce : false;
   });
 
+  function selectSymbol(): void {
+    props.onSelect(props.symbol);
+  }
+
   return (
     <button
       type="button"
@@ -86,9 +90,7 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
       data-watch-sym={props.symbol}
       data-selected={props.selected ? "true" : "false"}
       class={styles.row}
-      onClick={() => {
-        props.onSelect(props.symbol);
-      }}
+      onClick={selectSymbol}
     >
       <span data-rank-glow="true" aria-hidden="true" class={styles.rankGlow} />
       <Show when={pulseKey()} keyed>

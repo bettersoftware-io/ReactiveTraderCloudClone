@@ -9,6 +9,10 @@ import styles from "./QuoteRow.module.css";
  * when it's the best live price, the dealer name (house dealer tinted), the
  * price text, and an ACCEPT button while the quote is still live and priced. */
 export function QuoteRow(props: QuoteRowProps): JSX.Element {
+  function acceptQuote(): void {
+    props.onAccept();
+  }
+
   return (
     <div
       class={styles.row}
@@ -43,8 +47,7 @@ export function QuoteRow(props: QuoteRowProps): JSX.Element {
             class={styles.acceptBtn}
             data-best={String(props.vm.best)}
             data-testid={`rfq-quote-accept-${props.vm.quoteId}`}
-            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-            onClick={props.onAccept}
+            onClick={acceptQuote}
           >
             ACCEPT
           </button>

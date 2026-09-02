@@ -21,6 +21,10 @@ export function TileConfirmation(props: TileConfirmationProps): JSX.Element {
       : undefined;
   });
 
+  function dismissConfirmation(): void {
+    props.onDismiss();
+  }
+
   return (
     <Switch>
       <Match when={props.state().status === "started"}>
@@ -57,8 +61,7 @@ export function TileConfirmation(props: TileConfirmationProps): JSX.Element {
           data-testid="trade-confirmation"
           data-status={statusKey(props.state())}
           data-anim={props.anim}
-          // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-          onClick={props.onDismiss}
+          onClick={dismissConfirmation}
           class={styles.overlay}
         >
           <ConfirmationContent state={props.state} />
@@ -125,6 +128,10 @@ function DoneBody(props: DoneBodyProps): JSX.Element {
     return props.trade.direction === Direction.Buy ? "You Bought" : "You Sold";
   });
 
+  function dismissConfirmation(): void {
+    props.onDismiss();
+  }
+
   return (
     <>
       <div class={styles.iconSuccess}>✓</div>
@@ -144,8 +151,7 @@ function DoneBody(props: DoneBodyProps): JSX.Element {
         type="button"
         class={styles.dismiss}
         data-action="dismiss"
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onClick={props.onDismiss}
+        onClick={dismissConfirmation}
       >
         DISMISS
       </button>

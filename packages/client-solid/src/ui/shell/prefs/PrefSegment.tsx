@@ -10,6 +10,12 @@ import styles from "./PreferencesContent.module.css";
  * reflection of the `value` prop.
  */
 export function PrefSegment(props: PrefSegmentProps): JSX.Element {
+  function selectOption(next: string) {
+    return () => {
+      props.onChange(next);
+    };
+  }
+
   return (
     <div class={styles.row}>
       <div class={styles.rowText}>
@@ -38,9 +44,7 @@ export function PrefSegment(props: PrefSegmentProps): JSX.Element {
                 data-testid={`${props.testid}-${option.value}`}
                 data-on={active() ? "true" : "false"}
                 class={styles.segButton}
-                onClick={() => {
-                  props.onChange(option.value);
-                }}
+                onClick={selectOption(option.value)}
               >
                 {option.label}
               </button>

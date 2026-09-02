@@ -31,6 +31,14 @@ export function JarvisConfirmCard(props: JarvisConfirmCardProps): JSX.Element {
     return props.confirmation.direction === Direction.Buy ? "buy" : "sell";
   }
 
+  function approveConfirmation(): void {
+    props.onApprove();
+  }
+
+  function rejectConfirmation(): void {
+    props.onReject();
+  }
+
   return (
     <div data-testid="jarvis-confirm-card" class={styles.card}>
       <svg
@@ -90,9 +98,7 @@ export function JarvisConfirmCard(props: JarvisConfirmCardProps): JSX.Element {
             type="button"
             data-testid="jarvis-confirm-approve"
             class={styles.approveButton}
-            onClick={() => {
-              props.onApprove();
-            }}
+            onClick={approveConfirmation}
           >
             APPROVE
           </button>
@@ -100,9 +106,7 @@ export function JarvisConfirmCard(props: JarvisConfirmCardProps): JSX.Element {
             type="button"
             data-testid="jarvis-confirm-reject"
             class={styles.rejectButton}
-            onClick={() => {
-              props.onReject();
-            }}
+            onClick={rejectConfirmation}
           >
             REJECT
           </button>

@@ -6,6 +6,10 @@ import { PriceMovementType } from "@rtc/domain";
 import styles from "./TileHeader.module.css";
 
 export function TileHeader(props: TileHeaderProps): JSX.Element {
+  function initiateRfq(): void {
+    props.onInitiateRfq?.();
+  }
+
   return (
     <div class={styles.header}>
       <div class={styles.symbolCode}>{props.symbol}</div>
@@ -23,8 +27,7 @@ export function TileHeader(props: TileHeaderProps): JSX.Element {
               title="Initiate RFQ"
               aria-label="Initiate RFQ"
               class={styles.rfqChip}
-              // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-              onClick={props.onInitiateRfq}
+              onClick={initiateRfq}
             >
               ⚡ RFQ
             </button>

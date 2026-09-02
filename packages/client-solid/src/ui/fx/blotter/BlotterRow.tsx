@@ -19,6 +19,14 @@ export function BlotterRow<TRow extends { status: string }>(
   const highlight = useRowHighlight(props.isNew);
   const [hovered, setHovered] = createSignal(false);
 
+  function hoverRow(): void {
+    setHovered(true);
+  }
+
+  function unhoverRow(): void {
+    setHovered(false);
+  }
+
   return (
     <tr
       data-state={
@@ -27,12 +35,8 @@ export function BlotterRow<TRow extends { status: string }>(
       data-status={props.trade.status.toLowerCase()}
       data-highlight={highlight() ? "true" : undefined}
       data-hovered={hovered() ? "true" : undefined}
-      onMouseEnter={() => {
-        setHovered(true);
-      }}
-      onMouseLeave={() => {
-        setHovered(false);
-      }}
+      onMouseEnter={hoverRow}
+      onMouseLeave={unhoverRow}
       class={styles.row}
     >
       <For each={props.columns}>

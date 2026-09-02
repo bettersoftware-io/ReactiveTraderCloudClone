@@ -24,6 +24,10 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
     },
   });
 
+  function closeModal(): void {
+    props.onClose();
+  }
+
   return (
     <Show when={props.open}>
       <div data-testid={props.rootTestid} class={styles.overlay}>
@@ -45,9 +49,7 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
               data-nodrag=""
               aria-label={props.closeAriaLabel}
               class={styles.closeButton}
-              onClick={() => {
-                props.onClose();
-              }}
+              onClick={closeModal}
             >
               ✕
             </button>
@@ -61,9 +63,7 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
               type="button"
               data-testid={props.doneTestid}
               class={styles.doneButton}
-              onClick={() => {
-                props.onClose();
-              }}
+              onClick={closeModal}
             >
               DONE
             </button>

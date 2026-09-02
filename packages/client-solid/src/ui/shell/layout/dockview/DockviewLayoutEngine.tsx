@@ -68,6 +68,28 @@ export function DockviewLayoutEngine(
     return specs()[panelId]?.title ?? panelId;
   }
 
+  function collapsePanel(panelId: PanelId) {
+    return () => {
+      props.onCollapse(panelId);
+    };
+  }
+
+  function maximizePanel(panelId: PanelId) {
+    return () => {
+      props.onMaximize(panelId);
+    };
+  }
+
+  function expandOrRestorePanel(panelId: PanelId) {
+    return () => {
+      if (props.collapsed.includes(panelId)) {
+        props.onExpand(panelId);
+      } else {
+        props.onRestore();
+      }
+    };
+  }
+
   function mountInto(
     slot: MountedSlot["slot"],
   ): (id: string, element: HTMLElement) => () => void {
@@ -239,15 +261,9 @@ export function DockviewLayoutEngine(
                     title={titleOf(p.panelId)}
                     maximizable={specs()[p.panelId]?.maximizable !== false}
                     maximizedHere={props.maximized === p.panelId}
-                    onCollapse={() => {
-                      props.onCollapse(p.panelId);
-                    }}
-                    onMaximize={() => {
-                      props.onMaximize(p.panelId);
-                    }}
-                    onRestore={() => {
-                      props.onRestore();
-                    }}
+                    onCollapse={collapsePanel(p.panelId)}
+                    onMaximize={maximizePanel(p.panelId)}
+                    onRestore={props.onRestore}
                   />
                 </Show>
               </Portal>
@@ -289,13 +305,7 @@ export function DockviewLayoutEngine(
                       // expand it) or one the maximize forced (→ restore
                       // the maximize), exactly the in-house PanelLeaf's
                       // branch.
-                      onRestore={() => {
-                        if (props.collapsed.includes(p.panelId)) {
-                          props.onExpand(p.panelId);
-                        } else {
-                          props.onRestore();
-                        }
-                      }}
+                      onRestore={expandOrRestorePanel(p.panelId)}
                     />
                   );
                 }}

@@ -9,6 +9,16 @@ import styles from "./InstrumentSelect.module.css";
 // dropdown of bonds — rows show the ticker headline over a "cusip · name"
 // subtext line.
 export function InstrumentSelect(props: InstrumentSelectProps): JSX.Element {
+  function toggleInstrumentList(): void {
+    props.onToggle();
+  }
+
+  function selectInstrument(instrument: Instrument) {
+    return () => {
+      props.onSelect(instrument);
+    };
+  }
+
   return (
     <div class={styles.wrap}>
       <button
@@ -17,8 +27,7 @@ export function InstrumentSelect(props: InstrumentSelectProps): JSX.Element {
         data-testid="new-rfq-instrument-toggle"
         data-selected={String(props.selected != null)}
         data-open={String(props.open)}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onClick={props.onToggle}
+        onClick={toggleInstrumentList}
       >
         <span>
           {props.selected ? props.selected.ticker : "Select instrument"}
@@ -33,9 +42,7 @@ export function InstrumentSelect(props: InstrumentSelectProps): JSX.Element {
               return (
                 <InstrumentRow
                   instrument={instrument}
-                  onSelect={() => {
-                    props.onSelect(instrument);
-                  }}
+                  onSelect={selectInstrument(instrument)}
                 />
               );
             }}
@@ -60,13 +67,16 @@ interface InstrumentRowProps {
 }
 
 function InstrumentRow(props: InstrumentRowProps): JSX.Element {
+  function selectRow(): void {
+    props.onSelect();
+  }
+
   return (
     <button
       type="button"
       class={styles.row}
       data-testid={`new-rfq-instrument-option-${props.instrument.id}`}
-      // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-      onClick={props.onSelect}
+      onClick={selectRow}
     >
       <div class={styles.ticker}>{props.instrument.ticker}</div>
       <div class={styles.meta}>

@@ -16,6 +16,19 @@ export function InstrumentTabs(): JSX.Element {
   const { useEqWorkspace } = useViewModel();
   const { state, select, closeTab } = useEqWorkspace();
 
+  function selectInstrumentTab(symbol: string) {
+    return () => {
+      select(symbol);
+    };
+  }
+
+  function closeInstrumentTab(symbol: string) {
+    return (event: MouseEvent) => {
+      event.stopPropagation();
+      closeTab(symbol);
+    };
+  }
+
   return (
     <nav class={styles.tabs} aria-label="Instrument tabs">
       <For each={state().openTabs}>
@@ -34,18 +47,13 @@ export function InstrumentTabs(): JSX.Element {
               data-active={active() ? "true" : "false"}
               data-testid={`instrument-tab-${symbol}`}
               class={styles.tab}
-              onClick={() => {
-                select(symbol);
-              }}
+              onClick={selectInstrumentTab(symbol)}
             >
               {symbol}
               <span
                 class={styles.close}
                 aria-hidden="true"
-                onClick={(event: MouseEvent) => {
-                  event.stopPropagation();
-                  closeTab(symbol);
-                }}
+                onClick={closeInstrumentTab(symbol)}
               >
                 ✕
               </span>

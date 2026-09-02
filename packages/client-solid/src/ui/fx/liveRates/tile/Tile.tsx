@@ -176,9 +176,10 @@ export function Tile(props: TileProps): JSX.Element {
                 pipsPosition={props.pair.pipsPosition}
                 anim={tickAnim()}
                 spread={currentPrice().spread}
-                onExecute={(dir: Direction): void => {
-                  executeTrade(dir);
-                }}
+                // TilePrice calls onExecute with exactly one argument (dir),
+                // so executeTrade's optional priceVal/notionalVal stay at
+                // their defaults (current price / current notional) here.
+                onExecute={executeTrade}
                 disabled={priceBoxDisabled()}
               />
             );

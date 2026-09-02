@@ -12,6 +12,10 @@ import styles from "./PanelHead.module.css";
  * while the group header is hidden); styled by PanelHead.module.css
  * alongside PanelHeadSlot and PanelHeadControls. */
 export function PanelStrip(props: PanelStripProps): JSX.Element {
+  function restorePanel(): void {
+    props.onRestore();
+  }
+
   return (
     <button
       type="button"
@@ -19,9 +23,7 @@ export function PanelStrip(props: PanelStripProps): JSX.Element {
       class={styles.stripBar}
       data-orientation={props.orientation}
       aria-label={`Restore ${props.title}`}
-      onClick={() => {
-        props.onRestore();
-      }}
+      onClick={restorePanel}
     >
       <span aria-hidden="true" class={styles.stripGlyph}>
         ⛶
