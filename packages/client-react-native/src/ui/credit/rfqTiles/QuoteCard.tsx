@@ -10,7 +10,7 @@ import {
 
 import type { Dealer, Quote } from "@rtc/domain";
 
-import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
+import { CtaGradient } from "#/ui/CtaGradient";
 import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
 import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -73,7 +73,7 @@ export function QuoteCard({
             style={isBest ? styles.acceptBtnBest : styles.acceptBtn}
             onPress={acceptPendingQuote}
           >
-            {isBest ? <AcceptGradient /> : null}
+            {isBest ? <CtaGradient /> : null}
             <Text style={isBest ? styles.acceptLabelBest : styles.acceptLabel}>
               ACCEPT
             </Text>
