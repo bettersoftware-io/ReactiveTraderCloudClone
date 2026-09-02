@@ -240,7 +240,7 @@ interface TicketProps {
  * nothing itself while editing. */
 function Ticket({ state, styles, children }: TicketProps): JSX.Element {
   return (
-    <SurfaceCard variant="panel" testID="order-ticket" style={styles.ticket}>
+    <SurfaceCard variant="tile" testID="order-ticket" style={styles.ticket}>
       <OrderCeremony state={state} />
       {children}
     </SurfaceCard>

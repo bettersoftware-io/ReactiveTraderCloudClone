@@ -16,6 +16,8 @@ import { useViewModel } from "@rtc/react-bindings";
 import { splitPrice } from "#/ui/formatPrice";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { TileSheen } from "#/ui/TileSheen";
+import { depthStyle } from "#/ui/theme/depthStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -81,6 +83,7 @@ export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
         onOpenTicket(pair);
       }}
     >
+      <TileSheen />
       {body}
     </Pressable>
   );
@@ -130,6 +133,9 @@ interface SpotTileStyles {
 
 function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
   return StyleSheet.create({
+    // The design's price tile is a full `--tile-bg` / `--tile-shadow` surface
+    // (dc.html:108) — on 3d skins TileSheen paints the gradient and depthStyle
+    // the drop shadow + inset top highlight; flat skins keep the tonal bgTile.
     tile: {
       paddingHorizontal: 14,
       paddingTop: 13,
@@ -138,6 +144,8 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
       borderRadius: 12,
       borderWidth: 1,
       borderColor: t.borderPrimary,
+      ...depthStyle(t.depth),
+      borderTopColor: t.depth.topHighlight ?? t.borderPrimary,
     },
     headerRow: {
       flexDirection: "row",

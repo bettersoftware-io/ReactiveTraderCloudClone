@@ -4,6 +4,7 @@ import { fireEvent, screen } from "@testing-library/react-native";
 import { PriceMovementType } from "@rtc/domain";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const mockUsePrice = jest.fn();
 const mockMotion = jest.fn<() => boolean>(() => {
@@ -48,6 +49,24 @@ test("shows a loading state before the first price", async () => {
   mockUsePrice.mockReturnValue(null);
   await renderWithTheme(<SpotTile pair={pair} onOpenTicket={jest.fn()} />);
   expect(screen.getByText(/Loading/i)).toBeTruthy();
+});
+
+// dc.html:108 — the design's price tile is a full `--tile-bg` /
+// `--tile-shadow` surface, so 3d skins paint the vertical tile gradient.
+test("renders the gradient tile surface on 3d skins", async () => {
+  mockUsePrice.mockReturnValue(null);
+  await renderWithTheme(
+    <SpotTile pair={pair} onOpenTicket={jest.fn()} />,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderWithTheme defaults to holo.dark (flat, `tileGradient: null`).
+  mockUsePrice.mockReturnValue(null);
+  await renderWithTheme(<SpotTile pair={pair} onOpenTicket={jest.fn()} />);
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 jest.mock("@rtc/react-bindings", () => {

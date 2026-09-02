@@ -5,6 +5,7 @@ import type { Candle } from "@rtc/domain";
 
 import { MoversRow } from "#/ui/equities/markets/MoversRow";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const ROW = {
   symbol: "TSLA",
@@ -79,4 +80,34 @@ test("pressing the row selects its symbol", async () => {
   );
   await fireEvent.press(screen.getByTestId("eq-mover-TSLA"));
   expect(onSelect).toHaveBeenCalledWith("TSLA");
+});
+
+// dc.html:340 — the design's mover row is a `--tile-bg` / `--tile-shadow`
+// surface like the rates tiles, so 3d skins paint the tile gradient on it.
+test("renders the gradient tile surface on 3d skins", async () => {
+  await renderWithTheme(
+    <MoversRow
+      row={ROW}
+      rank={1}
+      selected={false}
+      onSelect={(): void => {}}
+      candles={NO_CANDLES}
+    />,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderWithTheme defaults to holo.dark (flat, `tileGradient: null`).
+  await renderWithTheme(
+    <MoversRow
+      row={ROW}
+      rank={1}
+      selected={false}
+      onSelect={(): void => {}}
+      candles={NO_CANDLES}
+    />,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
