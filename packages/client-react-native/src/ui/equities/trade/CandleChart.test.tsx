@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { screen } from "@testing-library/react-native";
 
 import type { Candle } from "@rtc/domain";
@@ -38,3 +38,14 @@ function candles(n: number): readonly Candle[] {
     return { time: i, open: 10, high: 12, low: 9, close: 11, volume: 1000 };
   });
 }
+
+// CandleChart reads useShellMotionEnabled for the body morph; that hook reads
+// `usePowerSaver` off the ViewModel context, so it's mocked directly here —
+// the SpotTile.test.tsx pattern, same reason.
+jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: () => {
+      return true;
+    },
+  };
+});

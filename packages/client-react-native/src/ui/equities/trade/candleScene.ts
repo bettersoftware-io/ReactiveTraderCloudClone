@@ -27,6 +27,48 @@ export interface CandleBar {
  * per-render rescale, without resizing already-drawn bars. A doji's body
  * (open === close) clamps to `MIN_BODY_HEIGHT` so it stays visible. Numeric
  * only — no Skia or React import — so it stays vitest-testable and reusable. */
+/** One slot's body rectangle, the pair of numbers the 0.5s body morph
+ * interpolates (the design transitions only `top`/`height` — dc.html:378;
+ * wicks, x and colour snap). */
+export interface BodyGeometry {
+  readonly top: number;
+  readonly height: number;
+}
+
+/** A scene's body geometries re-indexed by SLOT, newest bar = slot 0. The
+ * morph pairs by screen position, not by candle identity: the design's
+ * transition lives on a fixed slot div whose values change (dc.html:377), so
+ * a tick that shifts the series left morphs every slot to its neighbour's
+ * geometry, and a symbol switch morphs the whole chart shape-to-shape. */
+export function bodyGeometriesBySlot(
+  bars: readonly CandleBar[],
+): readonly BodyGeometry[] {
+  return bars.map((_, i) => {
+    const bar = bars[bars.length - 1 - i];
+
+    return { top: bar.bodyTop, height: bar.bodyHeight };
+  });
+}
+
+/** Where a running morph currently stands, slot by slot — used to retarget a
+ * new morph from the geometry actually on screen (CSS-transition semantics)
+ * rather than teleporting back to the previous target. A slot `from` lacks
+ * (the series grew) starts at its target, i.e. it snaps. */
+export function lerpBodyGeometries(
+  from: readonly BodyGeometry[],
+  to: readonly BodyGeometry[],
+  progress: number,
+): readonly BodyGeometry[] {
+  return to.map((target, slot) => {
+    const start = from[slot] ?? target;
+
+    return {
+      top: start.top + (target.top - start.top) * progress,
+      height: start.height + (target.height - start.height) * progress,
+    };
+  });
+}
+
 export function buildCandleScene(
   candles: readonly Candle[],
   width: number,
