@@ -38,7 +38,7 @@ See [`docs/architecture/20-devtools.md`](../../docs/architecture/20-devtools.md)
 The RTC panel is its own `chrome-extension://` page; React DevTools does not
 attach there, and MV3's CSP forbids the inline `<script>` the same-origin
 `/devtools/` page uses to guard itself, so the panel carries no guard — see
-[§20.10](../../docs/architecture/20-devtools.md#2010-relationship-to-the-framework-devtools-react-devtools--solid-devtools).
+[§20.11](../../docs/architecture/20-devtools.md#2011-relationship-to-the-framework-devtools-react-devtools--solid-devtools).
 
 ## Build & load
 

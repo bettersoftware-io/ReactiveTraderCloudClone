@@ -27,7 +27,7 @@ a bespoke framework integration. The devtools is also a live demonstration of
 the port/adapter discipline it documents: the same instrumentation core
 (`@rtc/devtools-core`) drives a standalone inspector, a Chrome-extension shell
 ([§20.6.1](#2061-chrome-extension-transport)), and a React Native relay
-([§20.9](#209-websocket-relay-transport-react-native)) by swapping only a
+([§20.9](#2010-websocket-relay-transport-react-native)) by swapping only a
 transport adapter each time.
 
 ### 20.2 Architecture
@@ -38,7 +38,7 @@ Two new packages, following the existing naming and layering conventions
 | Package | Contents | Runtime deps |
 |---|---|---|
 | `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
-| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2012-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
+| `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2013-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
 `devtools-core` never imports `@rtc/client-core` — it decorates by
 *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with a
@@ -382,7 +382,7 @@ same-origin panel reads this exactly like a disconnect: nothing resets the
 liveness timer above, the badge flips to "disconnected", and it stays stalled
 until the app tab is foregrounded again — keep the app visible (two windows
 side by side) when inspecting locally. The WS-relay
-([§20.9](#209-websocket-relay-transport-react-native)) and Chrome extension
+([§20.9](#2010-websocket-relay-transport-react-native)) and Chrome extension
 ([§20.6.1](#2061-chrome-extension-transport)) transports don't share this
 failure mode: neither depends on the app tab's own timer budget to move a frame.
 
@@ -475,18 +475,41 @@ individual rows, reworking the change-flash so it doesn't remount a
 `will-change` span per emission) is a smaller, optional follow-up on top of
 this.
 
-### 20.8 Future extensions
+### 20.8 State-layer doctrine: useSyncExternalStore IS the devtools bridge
+
+devtools-app deliberately does **not** use `@rtc/react-bindings`. The reason
+is structural, not stylistic: `devtools-core` is an rxjs-only leaf that may
+not import `client-core`, so `createViewModel`/`bind()` are unavailable to
+the packages built on it. The sanctioned pattern is therefore:
+
+- **Live data** flows rxjs → `InspectorStore` (copy-on-write,
+  `getSnapshot()`/`subscribe()`) → React via `useInspectorState.ts` — a
+  17-line `useSyncExternalStore` wrapper. That file is the ONLY seam between
+  the store and React.
+- **View state** (selection, filters, nav, recording toggles) is plain
+  `useState` in the owning hook (`useTimeline`, `useNavigation`,
+  `useRecording`) — it is inspector chrome, not application state, and does
+  not belong in the store.
+- **Time travel** (`LiveHistory`) is a build-once ref in `InspectorApp.tsx`
+  — one of the three sanctioned `react-hooks/refs` exemptions in
+  `eslint.config.mjs`.
+
+Grep gates 38–40 hold the tier to the same dumb-UI bars as the clients (no
+timers, no storage, no self-made transport). A reactive `bind()`-style layer
+over `InspectorStore` was considered and deferred — see `docs/IDEAS.md`.
+
+### 20.9 Future extensions
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
 
 1. ~~**Intent injection**~~ — **shipped** (machine-level, web **and** React Native): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is gated on the hub's runtime `dev` flag, which every composition root resolves `false` in a production build (web `import.meta.env?.DEV`, RN `__DEV__`) — and **confirm-gated** in the panel's Machines tab. The gate is a runtime flag rather than a bundler-static `import.meta.env.DEV` literal because one shared `devtools-core` source line cannot be dead-code-eliminated by both Vite and Metro at once; the "a non-dev hub ignores `intent:invoke`" invariant is pinned by a `DevtoolsHub` unit test (a `dev:false` hub drops the frame) rather than by grepping the built bundle. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
-2. ~~**Record & replay**~~ — **shipped** (panel-side), **superseded by recording v2** ([§20.11](#2011-timeline-first-ux-v2)): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. The original design's `ReplayController` re-folded captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) at periodic checkpoints for frame-indexed lookup; v2 replaces that with the always-on `LiveHistory` buffer (same checkpoint mechanics, generalized to the live app too) and retires `ReplayController` itself — see [§20.11](#2011-timeline-first-ux-v2) for why. Full *app* replay (recorded port inputs into a fresh composition root) is still a separately scoped, larger step needing seeded time/timers.
+2. ~~**Record & replay**~~ — **shipped** (panel-side), **superseded by recording v2** ([§20.11](#2012-timeline-first-ux-v2)): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. The original design's `ReplayController` re-folded captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) at periodic checkpoints for frame-indexed lookup; v2 replaces that with the always-on `LiveHistory` buffer (same checkpoint mechanics, generalized to the live app too) and retires `ReplayController` itself — see [§20.11](#2012-timeline-first-ux-v2) for why. Full *app* replay (recorded port inputs into a fresh composition root) is still a separately scoped, larger step needing seeded time/timers.
 3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
-4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#209-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).
-5. ~~**Time-scrubbing UI**~~ — **shipped, then replaced**: the original Live|Replay toggle + frame scrubber (item 2, `ReplayController.stateAt(frameIndex)`/`tsAt(frameIndex)`) is gone. Timeline-first UX ([§20.11](#2011-timeline-first-ux-v2)) replaced frame-indexed scrubbing with **pinning a moment on the always-on timeline** — click any row to freeze the context pane at that event's reconstructed state, Esc/Resume to snap back to live. Same underlying mechanic (checkpointed fold reconstruction), reframed as a first-class, always-available gesture instead of a mode you switch into after stopping a recording.
+4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#2010-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).
+5. ~~**Time-scrubbing UI**~~ — **shipped, then replaced**: the original Live|Replay toggle + frame scrubber (item 2, `ReplayController.stateAt(frameIndex)`/`tsAt(frameIndex)`) is gone. Timeline-first UX ([§20.11](#2012-timeline-first-ux-v2)) replaced frame-indexed scrubbing with **pinning a moment on the always-on timeline** — click any row to freeze the context pane at that event's reconstructed state, Esc/Resume to snap back to live. Same underlying mechanic (checkpointed fold reconstruction), reframed as a first-class, always-available gesture instead of a mode you switch into after stopping a recording.
 6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
-### 20.9 WebSocket relay transport (React Native)
+### 20.10 WebSocket relay transport (React Native)
 
 React Native has no same-origin `BroadcastChannel`, so RN inspection uses a
 third transport adapter, `WsRelayDuplex` (in `@rtc/devtools-core`), plus a
@@ -505,7 +528,7 @@ traffic stays entirely off the app's data socket and the production
 — dormant-and-disconnected by construction, exactly like the web app ships
 dormant.
 
-### 20.10 Relationship to the framework DevTools (React DevTools / Solid DevTools)
+### 20.11 Relationship to the framework DevTools (React DevTools / Solid DevTools)
 
 The RTC inspector is **not** a replacement for the browser's framework
 DevTools — they inspect different layers, and both are useful:
@@ -575,7 +598,7 @@ opt-in "inspectable" build rather than the default production bundle. Not
 planned: for deployed-build inspection the dormant RTC inspector is the
 intended path.
 
-### 20.11 Timeline-first UX (v2)
+### 20.12 Timeline-first UX (v2)
 
 Full design: [`2026-07-20-devtools-timeline-ux-design.md`](../superpowers/specs/2026-07-20-devtools-timeline-ux-design.md).
 The four-tab shell (State / Machines / Event log / Wire) is gone. `InspectorApp`
@@ -585,7 +608,7 @@ the job the old State + Event log tabs did together; **Machines** and **Wire**
 are unchanged panels, now cross-linked *into* the timeline (a machine's intent
 row or a wire message's `msgType` pill jumps back to Timeline pre-filtered).
 (This rail-plus-lens shell is history, not current: superseded by the
-navigation tree in [§20.12](#2012-store-first-navigation-v3).)
+navigation tree in [§20.12](#2013-store-first-navigation-v3).)
 
 **Pin/follow selection model.** `useTimeline` tracks one
 `TimelineSelection`: `{ mode: "follow" }` (tracking the live tail, the
@@ -631,7 +654,7 @@ inside an imported recording works identically to pinning live (`≠-live`
 compares against the *import's* final state, never the real live app).
 
 **`ReplayController` retired — spec deviation.** The original design (§9 item
-5, [§20.8](#208-future-extensions) item 5) shipped a frame-indexed
+5, [§20.8](#209-future-extensions) item 5) shipped a frame-indexed
 `ReplayController` (`stateAt(frameIndex)`/`tsAt(frameIndex)`) behind a
 Live|Replay mode toggle and a scrubber. Once the timeline could pin *any*
 moment of the live session directly — not just a moment inside a stopped
@@ -646,7 +669,7 @@ equivalence property (a reconstructed `stateAt(k)` is byte-identical to a live
 fold of the same events) is exactly what `LiveHistory` now guarantees, and
 that property's test lives on in `LiveHistory.test.ts`.
 
-### 20.12 Store-first navigation (v3)
+### 20.13 Store-first navigation (v3)
 
 Full design: [`2026-08-29-devtools-store-first-navigation-design.md`](../superpowers/specs/2026-08-29-devtools-store-first-navigation-design.md).
 v2 fixed *indexing* (the pinned moment is the unit of navigation); v3 fixes

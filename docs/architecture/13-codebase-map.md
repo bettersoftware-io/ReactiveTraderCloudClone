@@ -229,11 +229,11 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The inspector SPA: a Vite + React 19 app, store-first ([§20.12](20-devtools.md#2012-store-first-navigation-v3)) — a navigation tree (All / Presenters→streams / Machines→kind→instance / Wire→msgType) scopes a shared actions list and an Event/State/Diff/Machine context pane — driven entirely by the wire protocol. |
+| **What it is** | The inspector SPA: a Vite + React 19 app, store-first ([§20.13](20-devtools.md#2013-store-first-navigation-v3)) — a navigation tree (All / Presenters→streams / Machines→kind→instance / Wire→msgType) scopes a shared actions list and an Event/State/Diff/Machine context pane — driven entirely by the wire protocol. |
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Depends on** | `@rtc/devtools-core`, `react`, `react-dom` (`packages/devtools-app/package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace as a source dependency -- `client-react` only takes a `devDependency` build-order/dist-path edge to it (§6), never imports its source |
-| **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what makes a future Chrome-extension shell a thin wrapper around the same bundle ([§20.8](20-devtools.md#208-future-extensions)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
+| **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what makes a future Chrome-extension shell a thin wrapper around the same bundle ([§20.9](20-devtools.md#209-future-extensions)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
 | **README** | [`packages/devtools-app/README.md`](../../packages/devtools-app/README.md) |
 
 #### `@rtc/agent-tools`

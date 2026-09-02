@@ -113,3 +113,12 @@ a reason to revisit:
 **Revisit only if** the repo moves to an organization. The catch-up rate is no
 longer a trigger — it cannot unblock an unavailable feature. If ownership does
 change, the measurement in the spec is the right next step, not this note.
+
+### Devtools `bind()` layer
+
+A thin reactive-bindings layer over `InspectorStore` (the devtools analogue of
+`react-bindings`), replacing the `useSyncExternalStore` seam and folding
+`useTimeline`/`useNavigation` `useState` view state into store-backed selectors.
+Considered 2026-09-01, deferred: real work for an 11-component UI already holding
+≥95% coverage. Revisit if the inspector grows enough view state to make
+prop-drilling or render-scope bugs recur.
