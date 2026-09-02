@@ -100,10 +100,9 @@ export function RfqsPanel(): JSX.Element {
   });
 
   const matchingIds = createMemo((): number[] => {
-    const currentDismissed = dismissed();
     return rfqs()
       .filter((r) => {
-        return matchesFilter(r.state, filter()) && !currentDismissed.has(r.id);
+        return matchesFilter(r.state, filter()) && !dismissed().has(r.id);
       })
       .map((r) => {
         return r.id;
@@ -118,9 +117,12 @@ export function RfqsPanel(): JSX.Element {
   // plain mutable bindings rather than signals: nothing outside the
   // bookkeeping effect below ever reads them, so exposing them reactively
   // would only invite the effect to re-trigger on its own writes.
+  // eslint-disable-next-line solid/reactivity -- one-time seed: prevAll needs a baseline before the createEffect below starts tracking allIdsKey()/allIds(); seeding with the CURRENT id set (rather than empty) avoids treating every RFQ already open at mount as a fresh arrival — the effect's own tracked reads pick up every subsequent change
   let prevAll: IdSnapshot = { key: allIdsKey(), ids: new Set(allIds()) };
   let prevMatching: IdSnapshot = {
+    // eslint-disable-next-line solid/reactivity -- one-time seed: prevMatching needs the same CURRENT-state baseline as prevAll above, for the same reason (no false "just entered the filter" on mount)
     key: matchingKey(),
+    // eslint-disable-next-line solid/reactivity -- see justification above
     ids: new Set(matchingIds()),
   };
   let prevFilter = filter();
@@ -148,8 +150,8 @@ export function RfqsPanel(): JSX.Element {
 
     const reduced = prefersReducedMotion();
     const currentAllIds = allIds();
+    // eslint-disable-next-line solid/reactivity -- matchingIds() is tracked above (this createEffect reruns on matchingKey changes); hoisting the Set here (rather than rebuilding `new Set(matchingIds())` inside the `dropped` filter callback below) keeps that membership check O(1) per element instead of O(n) — the read is still synchronous within this same effect pass, never deferred
     const currentMatchingIdSet = new Set(matchingIds());
-    const currentDismissed = dismissed();
 
     // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that dropped
     // out of the MATCHING set without a filter change (a state transition,
@@ -166,7 +168,7 @@ export function RfqsPanel(): JSX.Element {
         return (
           !currentMatchingIdSet.has(id) &&
           allIdSet.has(id) &&
-          !currentDismissed.has(id) &&
+          !dismissed().has(id) &&
           !exitingNow.has(id)
         );
       });
@@ -189,7 +191,7 @@ export function RfqsPanel(): JSX.Element {
     const renderedIdsNow = rfqs()
       .filter((r) => {
         return (
-          !currentDismissed.has(r.id) &&
+          !dismissed().has(r.id) &&
           (matchesFilter(r.state, currentFilter) || exitingNow.has(r.id))
         );
       })
@@ -252,14 +254,12 @@ export function RfqsPanel(): JSX.Element {
   // effect above just made in this same pass.
   const rendered = createMemo((): Rfq[] => {
     const currentFilter = filter();
-    const currentDismissed = dismissed();
-    const currentExiting = exiting();
 
     return rfqs()
       .filter((r) => {
         return (
-          !currentDismissed.has(r.id) &&
-          (matchesFilter(r.state, currentFilter) || currentExiting.has(r.id))
+          !dismissed().has(r.id) &&
+          (matchesFilter(r.state, currentFilter) || exiting().has(r.id))
         );
       })
       .sort((a, b) => {

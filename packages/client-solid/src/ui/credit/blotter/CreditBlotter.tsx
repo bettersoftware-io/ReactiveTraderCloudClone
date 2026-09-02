@@ -71,7 +71,9 @@ export function CreditBlotter(): JSX.Element {
   });
 
   let prevTradeIds: TradeIdSnapshot = {
+    // eslint-disable-next-line solid/reactivity -- one-time seed: prevTradeIds needs a baseline before the createEffect below starts tracking tradeIdsKey()/tradeIds(); seeding with the CURRENT id set (rather than empty) avoids flashing every pre-existing trade as "just booked" on mount — the effect's own tracked reads pick up every subsequent change
     key: tradeIdsKey(),
+    // eslint-disable-next-line solid/reactivity -- see justification above
     ids: new Set(tradeIds()),
   };
 
@@ -143,11 +145,10 @@ export function CreditBlotter(): JSX.Element {
   // handler was last registered here — bound to the current filtered/sorted
   // rows.
   createEffect(() => {
-    const rows = processedTrades();
     setExportCsvHandler(() => {
       // PROTO useCreditRfqs.ts downloadCsv("credit-trades.csv", …).
       exportToCsv(
-        rows,
+        processedTrades(),
         CREDIT_COLUMNS,
         formatCreditCell,
         "credit-trades.csv",

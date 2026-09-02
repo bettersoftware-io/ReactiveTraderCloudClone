@@ -76,9 +76,8 @@ export function FxBlotter(): JSX.Element {
   // which invokes whatever handler was last registered here — bound to the
   // current filtered/sorted rows.
   createEffect(() => {
-    const rows = processedTrades();
     setExportCsvHandler(() => {
-      exportFxToCsv(rows);
+      exportFxToCsv(processedTrades());
     });
   });
 

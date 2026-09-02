@@ -10,6 +10,7 @@ import {
   isAtLiveEdge,
   navigatorVm,
   paneReadout,
+  type PaneReadoutRow,
   paneScene,
   volumeVm,
 } from "@rtc/motion-core";
@@ -161,6 +162,17 @@ export function EquitiesChartPanesBoth(): JSX.Element {
   );
 }
 
+/** Non-reactive helper: `crossVm` is passed in as an already-read argument
+ * (never captured to a local from inside the `.map()` callback that calls
+ * this), so the reactive `cross()` read stays live at the call site. */
+function readoutForCross(
+  kind: EqPaneKind,
+  closes: readonly number[],
+  crossVm: ReturnType<typeof crosshairVm>,
+): readonly PaneReadoutRow[] | null {
+  return crossVm ? paneReadout(kind, closes, crossVm.idx) : null;
+}
+
 interface ForcedPaneChartProps {
   readonly candles: readonly Candle[];
   readonly closes: readonly number[];
@@ -206,13 +218,11 @@ function ForcedPaneChart(props: ForcedPaneChartProps): JSX.Element {
   });
 
   const paneVms = createMemo((): readonly PaneVm[] => {
-    const crossVm = cross();
-
     return props.panes.map((kind) => {
       return {
         kind,
         scene: paneScene(kind, props.closes, viewport()),
-        readout: crossVm ? paneReadout(kind, props.closes, crossVm.idx) : null,
+        readout: readoutForCross(kind, props.closes, cross()),
       };
     });
   });

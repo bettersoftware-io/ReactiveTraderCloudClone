@@ -54,14 +54,12 @@ export function WatchlistPanel(): JSX.Element {
   }
 
   const rowInputs = createMemo((): readonly WatchlistRowInput[] => {
-    const q = quotes();
     return instruments().map((inst) => {
-      const snapshot = q[inst.symbol];
       return {
         symbol: inst.symbol,
         name: inst.name,
-        last: snapshot?.last ?? null,
-        changePct: snapshot?.changePct ?? null,
+        last: quotes()[inst.symbol]?.last ?? null,
+        changePct: quotes()[inst.symbol]?.changePct ?? null,
       };
     });
   });
