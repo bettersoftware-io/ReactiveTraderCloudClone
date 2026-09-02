@@ -28,8 +28,8 @@ nearest enclosing split that is *not* itself fully stripped — the in-house
 engine's `stripDir` walk. One panel of the FX rail column collapsed is a
 32px horizontal bar (its space reclaims down the column); once *both* are
 strips the column has nothing left to reclaim along, so it reclaims sideways
-in the row and both strips flip to 38px vertical bars sharing the rail's
-height, with the column pinned to 38px and its width remembered for the
+in the row and both strips flip to 32px vertical bars sharing the rail's
+height, with the column pinned to 32px and its width remembered for the
 first expand. Because one collapse can re-orient its siblings, orientations
 reach the client through the `onStripsChange` callback (the whole current
 map, whenever it changes), not through `collapsePanel`'s result.
