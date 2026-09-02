@@ -75,6 +75,23 @@ pnpm dev:solid:fs        # full stack: starts the WS server + this client togeth
 | `test:ui:visual:playwright:solid[:ui]` | The CI-asserted tier — plain Playwright over a Vite host, reusing `client-react`'s `visual.spec.ts` verbatim |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
 
+## solid/reactivity and this port
+
+`eslint-plugin-solid`'s `reactivity` rule fires on reads of reactive values
+outside tracked scope. This port's remaining directives fall into exactly one
+sanctioned shape:
+
+- **Instance-constant setup reads** — a component whose parent keys its
+  mount on the value (`<For>`/keyed `<Show>`), so the value cannot change
+  without a remount. Each disable names its remount key; a disable without a
+  named key is a review defect.
+
+Two shapes that USED to be suppressed here are now structural and need no
+directive: props-callback event handlers are named wrappers
+(`rtc/name-jsx-handlers`), and reactive reads feeding rendered output are
+accessors/memos. Unsuppressed warnings are ledgered in
+[`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
+
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
