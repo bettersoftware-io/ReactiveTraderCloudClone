@@ -87,10 +87,10 @@ export interface DockEngineOptions {
 
 /** The bar a collapsed group is clamped to, matching the in-house engine's
  * strips so the two engines strip a panel to the same bar: a group whose
- * siblings run side by side (a horizontal split) shrinks to a 38px-wide
- * full-height column — the in-house `.collapsedStrip`, 38px outer with 1px
- * borders inside — and one whose siblings stack (a vertical split) shrinks
- * to a 32px-tall full-width bar, the in-house `.panel[data-strip]`. */
+ * siblings run side by side (a horizontal split) shrinks to a 32px-wide
+ * full-height column — the in-house vertical `.panel[data-strip]`, 32px
+ * outer with 1px borders inside — and one whose siblings stack (a vertical
+ * split) shrinks to a 32px-tall full-width bar. One bar size both ways. */
 /** Set on the consumer's container for the life of an intent's glide; the
  *  stylesheet's `[data-dock-glide]` rules transition dockview's inline
  *  geometry while it is present. */
@@ -100,10 +100,10 @@ export const DOCK_GLIDE_ATTRIBUTE = "data-dock-glide";
  *  so the tail of the transition is never cut off — dropping the transition
  *  property mid-flight snaps to the end value. */
 export const GLIDE_ATTRIBUTE_MS = 400;
-const STRIP_WIDTH_PX = 38;
+const STRIP_WIDTH_PX = 32;
 const STRIP_HEIGHT_PX = 32;
 
-/** Which way a collapsed panel's strip reads: `"vertical"` for the 38px
+/** Which way a collapsed panel's strip reads: `"vertical"` for the 32px
  * column (its label runs bottom-to-top), `"horizontal"` for the 32px bar —
  * the in-house engine's `data-strip-orientation`, decided here from the
  * axis the panel's group reclaims along. */
@@ -129,7 +129,7 @@ export interface DockEngine {
   /** Strip this panel to a bar along the axis its space reclaims on (see
    * {@link STRIP_WIDTH_PX}). That axis is the in-house engine's `stripDir`:
    * the nearest enclosing split that is NOT itself fully stripped — so the
-   * last panel of a rail column to collapse flips the WHOLE column to 38px
+   * last panel of a rail column to collapse flips the WHOLE column to 32px
    * vertical strips stacked down the rail, exactly as in-house, instead of
    * leaving two 32px bars atop a full-width empty column. Orientations
    * therefore reach the client through `onStripsChange`, not a return
@@ -667,7 +667,7 @@ const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
- * siblings side by side (a horizontal split) → a 38px vertical column;
+ * siblings side by side (a horizontal split) → a 32px vertical column;
  * siblings stacked (a vertical split) → a 32px horizontal bar. */
 function orientationAgainst(split: Element): DockStripOrientation {
   return split.classList.contains("dv-vertical") ? "horizontal" : "vertical";
@@ -882,8 +882,8 @@ function axisOf(
  * Sizes a group so that it RENDERS at `size` along `axis`, not merely models
  * it. With a theme `gap`, dockview keeps a split's model sizes summing to the
  * full extent but shaves `gap × (n − 1) / n` off every child when laying it
- * out — so `setSize({ width: 38 })` lands on screen (and in `group.api.width`)
- * at 38 minus that share. The share depends on the sibling count of a branch
+ * out — so `setSize({ width: 32 })` lands on screen (and in `group.api.width`)
+ * at 32 minus that share. The share depends on the sibling count of a branch
  * the public API does not expose, so rather than recompute it this measures
  * it: apply the size once, read back what rendered, and re-apply with the
  * difference folded in. Idempotent when there is no gap (the difference is
