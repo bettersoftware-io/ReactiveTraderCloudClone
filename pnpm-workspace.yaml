@@ -204,6 +204,20 @@ overrides:
   # choice. 11.1.1 published 2026-04-29 — well outside the minimumReleaseAge
   # cooldown.
   "uuid@<11.1.1": ^11.1.1
+  # Force the transitive decode-uri-component (query-string@7.1.3 < expo-router
+  # < expo, 39 prod-reachable paths in @rtc/client-react-native) up from the
+  # vulnerable 0.2.2 to the PATCHED 0.5.0. Fixes the MODERATE DoS advisory
+  # GHSA-vcc3-ghjq-m6fr (exponential-time decoding of malformed
+  # percent-encoded input), which reds CI gate 25 (`pnpm audit --prod`).
+  # 0.5.0 is ESM-only while query-string@7 consumes it as CJS. Metro
+  # transpiles node_modules ESM for the RN bundle (expo-router is the only
+  # consumer), but jest's own CJS runtime does NOT — it needs the package in
+  # client-react-native/jest.config.js's transformIgnorePatterns allowlist
+  # (added alongside this override; without it 3 suites die on
+  # `SyntaxError: Unexpected token 'export'`). SCOPED to the vulnerable range so
+  # a consumer already on >=0.5.0 keeps its choice. 0.5.0 published
+  # 2026-06-29 — well outside the minimumReleaseAge cooldown.
+  "decode-uri-component@<0.5.0": ^0.5.0
   # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
   # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
   # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router
