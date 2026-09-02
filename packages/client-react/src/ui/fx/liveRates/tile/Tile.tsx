@@ -124,6 +124,9 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
             pipsPosition={pair.pipsPosition}
             anim={tickAnim}
             spread={price.spread}
+            // TilePrice calls onExecute with exactly one argument (dir),
+            // so executeTrade's optional priceVal/notionalVal stay at
+            // their defaults (current price / current notional) here.
             onExecute={executeTrade}
             disabled={priceBoxDisabled}
           />

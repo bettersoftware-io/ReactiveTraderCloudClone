@@ -41,7 +41,7 @@ export function SetFilter<TRow>({
     });
   }
 
-  function toggleValueOption(val: string) {
+  function toggleValueFor(val: string) {
     return () => {
       toggleValue(val);
     };
@@ -64,7 +64,7 @@ export function SetFilter<TRow>({
               type="checkbox"
               data-testid={`set-filter-option-${val}`}
               checked={selected.has(val)}
-              onChange={toggleValueOption(val)}
+              onChange={toggleValueFor(val)}
             />
             {val}
           </label>

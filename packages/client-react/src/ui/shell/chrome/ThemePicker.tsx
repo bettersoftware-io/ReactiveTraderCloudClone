@@ -62,7 +62,7 @@ export function ThemePicker(): ReactElement {
     setOpen(false);
   }
 
-  function pickSkin(next: ThemeSkin) {
+  function selectSkinFor(next: ThemeSkin) {
     return () => {
       selectSkin(next);
     };
@@ -118,7 +118,7 @@ export function ThemePicker(): ReactElement {
                   data-skin={s}
                   data-active={active ? "true" : "false"}
                   className={styles.skinRow}
-                  onClick={pickSkin(s)}
+                  onClick={selectSkinFor(s)}
                   style={
                     // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
                     {

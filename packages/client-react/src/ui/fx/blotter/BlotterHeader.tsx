@@ -26,7 +26,7 @@ export function BlotterHeader<TRow>({
     };
   }
 
-  function toggleFilterFor(column: keyof TRow) {
+  function toggleFilterPanelFor(column: keyof TRow) {
     return (e: MouseEvent<HTMLButtonElement>): void => {
       e.stopPropagation();
       setOpenFilter(openFilter === column ? null : column);
@@ -64,7 +64,7 @@ export function BlotterHeader<TRow>({
             <button
               type="button"
               data-testid={`blotter-filter-toggle-${String(col.key)}`}
-              onClick={toggleFilterFor(col.key)}
+              onClick={toggleFilterPanelFor(col.key)}
               className={styles.filterToggle}
             >
               {"▽"}

@@ -372,7 +372,7 @@ function SplitNode({
     handle.addEventListener("pointerup", up);
   }
 
-  function startHandleDrag(index: number) {
+  function startResizeDragFor(index: number) {
     return (e: ReactPointerEvent<HTMLHRElement>) => {
       startResizeDrag(index, e);
     };
@@ -529,7 +529,7 @@ function SplitNode({
                 }
                 className={styles.handle}
                 tabIndex={0}
-                onPointerDown={startHandleDrag(i)}
+                onPointerDown={startResizeDragFor(i)}
               />
             ) : null}
           </Fragment>
