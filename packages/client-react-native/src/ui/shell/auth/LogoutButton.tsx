@@ -33,9 +33,7 @@ export function LogoutButton(): JSX.Element {
       testID="logout-button"
       accessibilityLabel="Sign out"
       style={styles.row}
-      onPress={() => {
-        logout();
-      }}
+      onPress={logout}
     >
       <Text style={styles.label}>SIGN OUT</Text>
     </Pressable>

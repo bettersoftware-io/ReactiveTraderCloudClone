@@ -26,7 +26,7 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 import { DockOpenContext } from "./DockOpenContext";
 import { DOCK_FAB_SIZE } from "./dockMetrics";
-import { MODULE_ROUTES } from "./moduleRoutes";
+import { MODULE_ROUTES, type ModuleRoute } from "./moduleRoutes";
 import { radialDockLayout } from "./radialDockLayout";
 import { useActiveModule } from "./useActiveModule";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
@@ -48,6 +48,23 @@ export function RadialCommandDock(): JSX.Element {
   const sats = radialDockLayout(MODULE_ROUTES.length);
   const active = useActiveModule();
 
+  function toggleDock(): void {
+    setOpen((v) => {
+      return !v;
+    });
+  }
+
+  function closeDock(): void {
+    setOpen(false);
+  }
+
+  function selectModuleFor(mod: ModuleRoute): () => void {
+    return () => {
+      router.navigate(mod.path);
+      setOpen(false);
+    };
+  }
+
   return (
     <View pointerEvents="box-none" style={styles.root}>
       {/* Painted BEFORE the overlay: with the dock open the design's scrim
@@ -56,11 +73,7 @@ export function RadialCommandDock(): JSX.Element {
       <Pressable
         testID="hud-dock-fab"
         accessibilityLabel="Command dock"
-        onPress={() => {
-          setOpen((v) => {
-            return !v;
-          });
-        }}
+        onPress={toggleDock}
         style={styles.fab}
       >
         <FabHex glyph={open ? "✕" : active.glyph} />
@@ -70,9 +83,7 @@ export function RadialCommandDock(): JSX.Element {
           <Pressable
             testID="hud-dock-scrim"
             accessibilityLabel="Close command dock"
-            onPress={() => {
-              setOpen(false);
-            }}
+            onPress={closeDock}
             style={StyleSheet.absoluteFill}
           >
             <BlurView intensity={18} style={StyleSheet.absoluteFill} />
@@ -85,10 +96,7 @@ export function RadialCommandDock(): JSX.Element {
                 module={mod}
                 layout={sats[i]}
                 active={mod.key === active.key}
-                onSelect={() => {
-                  router.navigate(mod.path);
-                  setOpen(false);
-                }}
+                onSelect={selectModuleFor(mod)}
               />
             );
           })}

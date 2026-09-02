@@ -32,6 +32,34 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
   const { reboot } = useBootGate();
   const [open, setOpen] = createSignal(false);
 
+  function toggleAccountMenu(): void {
+    setOpen(!open());
+  }
+
+  function closeAccountMenu(): void {
+    setOpen(false);
+  }
+
+  function openPreferences(): void {
+    setOpen(false);
+    props.onOpenPrefs();
+  }
+
+  function rebootHud(): void {
+    setOpen(false);
+    reboot();
+  }
+
+  function lockSession(): void {
+    setOpen(false);
+    lock();
+  }
+
+  function signOut(): void {
+    setOpen(false);
+    logout();
+  }
+
   return (
     <Show when={state().user}>
       {(user: Accessor<SessionUser>) => {
@@ -43,9 +71,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
               aria-label="Account"
               aria-expanded={open()}
               class={styles.accountTrigger}
-              onClick={() => {
-                setOpen(!open());
-              }}
+              onClick={toggleAccountMenu}
             >
               <span class={styles.avatarWrap}>
                 <HexAvatarSvg class={styles.avatarHex} />
@@ -61,9 +87,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                 data-testid="menu-backdrop"
                 aria-label="Close menu"
                 class={styles.menuBackdrop}
-                onClick={() => {
-                  setOpen(false);
-                }}
+                onClick={closeAccountMenu}
               />
               <div
                 data-testid="account-panel"
@@ -114,10 +138,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                   data-testid="account-prefs"
                   class={styles.actionRow}
                   role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    props.onOpenPrefs();
-                  }}
+                  onClick={openPreferences}
                 >
                   ⚙ Preferences
                 </button>
@@ -129,10 +150,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                   data-testid="account-reboot"
                   class={styles.actionRow}
                   role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    reboot();
-                  }}
+                  onClick={rebootHud}
                 >
                   ⟳ Reboot HUD
                 </button>
@@ -145,10 +163,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                   data-testid="account-lock"
                   class={styles.actionRow}
                   role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    lock();
-                  }}
+                  onClick={lockSession}
                 >
                   ⏻ Lock Session
                 </button>
@@ -159,10 +174,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                   data-testid="account-logout"
                   class={styles.signOut}
                   role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    logout();
-                  }}
+                  onClick={signOut}
                 >
                   ⏻ Sign Out
                 </button>

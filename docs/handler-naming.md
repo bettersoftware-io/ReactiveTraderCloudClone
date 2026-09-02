@@ -48,6 +48,9 @@ trigger at all, which is the exact coupling the rule exists to remove.
 Extract and name it instead: `onChange={changeNotional}` over the inline
 form.
 
+Since 2026-09, rtc/name-jsx-handlers enforces the extraction itself — an
+inline arrow in an on-slot is a lint error in migrated packages.
+
 ## A name is part of the contract
 
 When a diff — or a merge — widens a function's condition, guard, or set of

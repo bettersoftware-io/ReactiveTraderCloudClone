@@ -12,6 +12,18 @@ export function AdminPanel(): ReactElement {
     return <div className={styles.loading}>Loading throughput...</div>;
   }
 
+  function changeThroughput(e: ChangeEvent<HTMLInputElement>): void {
+    setValue(Number(e.target.value));
+  }
+
+  function changeThroughputIfValid(e: ChangeEvent<HTMLInputElement>): void {
+    const n = Number(e.target.value);
+
+    if (Number.isFinite(n) && n >= 0 && n <= 1000) {
+      setValue(n);
+    }
+  }
+
   return (
     <div className={styles.panel}>
       <h2 className={styles.heading}>Throughput Control</h2>
@@ -23,9 +35,7 @@ export function AdminPanel(): ReactElement {
           max={1000}
           step={10}
           value={value}
-          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-            setValue(Number(e.target.value));
-          }}
+          onChange={changeThroughput}
           className={styles.slider}
         />
 
@@ -36,13 +46,7 @@ export function AdminPanel(): ReactElement {
             max={1000}
             step={10}
             value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-              const n = Number(e.target.value);
-
-              if (Number.isFinite(n) && n >= 0 && n <= 1000) {
-                setValue(n);
-              }
-            }}
+            onChange={changeThroughputIfValid}
             className={styles.numberInput}
           />
           <span className={styles.unit}>Updates/sec</span>

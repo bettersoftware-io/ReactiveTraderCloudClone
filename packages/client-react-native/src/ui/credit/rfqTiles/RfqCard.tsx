@@ -67,6 +67,10 @@ export function RfqCard({
   // history and must not keep a winner tinted (matches `rfqCardVm`).
   const bestQuoteId = live ? findBestQuoteId(rfq, quotes) : null;
 
+  function dismissRfq(): void {
+    onDismiss(rfq.id);
+  }
+
   return (
     <SurfaceCard
       variant="tile"
@@ -105,9 +109,7 @@ export function RfqCard({
             <Pressable
               testID={`rfq-dismiss-${rfq.id}`}
               style={styles.dismissBtn}
-              onPress={() => {
-                onDismiss(rfq.id);
-              }}
+              onPress={dismissRfq}
             >
               <Text style={styles.dismissText}>✕</Text>
             </Pressable>
@@ -318,7 +320,9 @@ function makeStyles(t: RnTheme): RfqCardStyles {
     card: {
       gap: SPACING.sm,
       padding: SPACING.md,
-      marginHorizontal: SPACING.sm,
+      // dc.html:220 — cards sit inside the list's 12px side inset, flush
+      // with the filter chips above (which also indent 12).
+      marginHorizontal: SPACING.md,
       marginVertical: SPACING.xs,
     },
     header: {

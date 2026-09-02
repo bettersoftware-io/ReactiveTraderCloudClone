@@ -15,6 +15,12 @@ export function DealerChecklist(props: DealerChecklistProps): ReactElement {
       return selectedIds.includes(dealer.id);
     });
 
+  function toggleDealer(id: number) {
+    return () => {
+      onToggleDealer(id);
+    };
+  }
+
   return (
     <div className={styles.list}>
       <button
@@ -39,9 +45,7 @@ export function DealerChecklist(props: DealerChecklistProps): ReactElement {
             data-testid={`new-rfq-dealer-${dealer.id}`}
             data-checked={String(checked)}
             data-house={String(dealer.name === ADAPTIVE_BANK_NAME)}
-            onClick={() => {
-              onToggleDealer(dealer.id);
-            }}
+            onClick={toggleDealer(dealer.id)}
           >
             <CheckBox checked={checked} />
             <span className={styles.name}>{dealer.name}</span>

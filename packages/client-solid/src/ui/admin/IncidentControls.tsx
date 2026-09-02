@@ -14,6 +14,16 @@ export function IncidentControls(): JSX.Element {
   const { useIncident } = useViewModel();
   const { state, inject, clear } = useIncident();
 
+  function injectIncident(kind: IncidentCfg["kind"]) {
+    return () => {
+      inject(kind);
+    };
+  }
+
+  function clearIncidents(): void {
+    clear();
+  }
+
   return (
     <div data-testid="admin-incident-controls" class={styles.controls}>
       <span class={styles.label}>INCIDENTS</span>
@@ -28,9 +38,7 @@ export function IncidentControls(): JSX.Element {
                   state().active.includes(incident.kind) ? "true" : "false"
                 }
                 class={styles.inject}
-                onClick={() => {
-                  inject(incident.kind);
-                }}
+                onClick={injectIncident(incident.kind)}
               >
                 {incident.label}
               </button>
@@ -42,9 +50,7 @@ export function IncidentControls(): JSX.Element {
           data-testid="incident-clear"
           data-active={state().active.length === 0 ? "false" : "true"}
           class={styles.clear}
-          onClick={() => {
-            clear();
-          }}
+          onClick={clearIncidents}
         >
           Clear
         </button>

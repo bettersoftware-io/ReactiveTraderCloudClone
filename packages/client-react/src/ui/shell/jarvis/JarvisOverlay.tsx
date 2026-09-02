@@ -157,6 +157,22 @@ export function JarvisOverlay(): ReactElement | null {
     }
   }
 
+  function submitCommand(text: string) {
+    return () => {
+      submit(text);
+    };
+  }
+
+  function changeDraft(event: ChangeEvent<HTMLInputElement>): void {
+    setInputValue(event.target.value);
+  }
+
+  function selectSkin(skin: JarvisSkin) {
+    return () => {
+      setSkin(skin);
+    };
+  }
+
   return (
     <div data-testid="jarvis-overlay" className={styles.overlay}>
       {/* The stage MUST stay the overlay's first element child — the shared
@@ -418,9 +434,7 @@ export function JarvisOverlay(): ReactElement | null {
                           data-testid="jarvis-guide-row"
                           className={styles.guideRow}
                           disabled={speaking}
-                          onClick={() => {
-                            submit(item.command);
-                          }}
+                          onClick={submitCommand(item.command)}
                         >
                           {item.command}
                           {item.liveOnly ? (
@@ -466,9 +480,7 @@ export function JarvisOverlay(): ReactElement | null {
                 data-testid="jarvis-suggestion"
                 className={styles.suggestion}
                 disabled={speaking}
-                onClick={() => {
-                  submit(text);
-                }}
+                onClick={submitCommand(text)}
               >
                 {text}
               </button>
@@ -487,9 +499,7 @@ export function JarvisOverlay(): ReactElement | null {
             placeholder="Ask J.A.R.V.I.S — markets · trades · execution…"
             value={inputValue}
             disabled={speaking}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => {
-              setInputValue(event.target.value);
-            }}
+            onChange={changeDraft}
             onKeyDown={sendDraftOnEnter}
           />
           <button
@@ -549,9 +559,7 @@ export function JarvisOverlay(): ReactElement | null {
                   data-skin={skin}
                   data-active={active ? "true" : "false"}
                   className={styles.skinButton}
-                  onClick={() => {
-                    setSkin(skin);
-                  }}
+                  onClick={selectSkin(skin)}
                 >
                   {SKIN_MARK[skin]}
                 </button>

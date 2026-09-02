@@ -51,6 +51,10 @@ export function LoginScreen({
 
   const authenticating = state.status === "authenticating";
 
+  function submitLogin(): void {
+    login(username, password);
+  }
+
   return (
     <KeyboardAvoidingView
       testID="login-screen"
@@ -102,9 +106,7 @@ export function LoginScreen({
         <Pressable
           testID="login-submit"
           disabled={authenticating}
-          onPress={() => {
-            login(username, password);
-          }}
+          onPress={submitLogin}
           style={styles.submit}
         >
           <Text

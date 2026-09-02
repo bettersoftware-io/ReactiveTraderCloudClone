@@ -27,6 +27,15 @@ export function LockScreen(): JSX.Element {
   const { state, unlock } = useAuth();
   const [password, setPassword] = createSignal("");
 
+  function submitUnlock(event: SubmitEvent): void {
+    event.preventDefault();
+    unlock(password());
+  }
+
+  function changePassword(event: InputChangeEvent): void {
+    setPassword(event.currentTarget.value);
+  }
+
   return (
     <Show when={state().locked && state().user}>
       {(user: Accessor<SessionUser>) => {
@@ -82,13 +91,7 @@ export function LockScreen(): JSX.Element {
                   the AUTHENTICATE button; the channel line stays below the button. */}
               <BiometricDots />
 
-              <form
-                class={styles.form}
-                onSubmit={(event: SubmitEvent) => {
-                  event.preventDefault();
-                  unlock(password());
-                }}
-              >
+              <form class={styles.form} onSubmit={submitUnlock}>
                 <div
                   class={
                     state().unlocking
@@ -104,9 +107,7 @@ export function LockScreen(): JSX.Element {
                       type="password"
                       autocomplete="current-password"
                       value={password()}
-                      onInput={(event: InputChangeEvent) => {
-                        setPassword(event.currentTarget.value);
-                      }}
+                      onInput={changePassword}
                     />
                   </label>
                 </div>

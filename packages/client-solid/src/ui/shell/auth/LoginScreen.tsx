@@ -29,6 +29,19 @@ export function LoginScreen(): JSX.Element {
     return state().status === "authenticating";
   });
 
+  function submitLogin(event: SubmitEvent): void {
+    event.preventDefault();
+    login(username(), password());
+  }
+
+  function changeUsername(event: InputChangeEvent): void {
+    setUsername(event.currentTarget.value);
+  }
+
+  function changePassword(event: InputChangeEvent): void {
+    setPassword(event.currentTarget.value);
+  }
+
   return (
     <div data-testid="login-screen" class={styles.overlay}>
       <div class={styles.grid} aria-hidden="true" />
@@ -51,13 +64,7 @@ export function LoginScreen(): JSX.Element {
           REACTIVE TRADER OS · SIGN IN
         </div>
 
-        <form
-          class={styles.form}
-          onSubmit={(event: SubmitEvent) => {
-            event.preventDefault();
-            login(username(), password());
-          }}
-        >
+        <form class={styles.form} onSubmit={submitLogin}>
           <div
             class={
               authenticating()
@@ -73,9 +80,7 @@ export function LoginScreen(): JSX.Element {
                 type="text"
                 autocomplete="username"
                 value={username()}
-                onInput={(event: InputChangeEvent) => {
-                  setUsername(event.currentTarget.value);
-                }}
+                onInput={changeUsername}
               />
             </label>
 
@@ -87,9 +92,7 @@ export function LoginScreen(): JSX.Element {
                 type="password"
                 autocomplete="current-password"
                 value={password()}
-                onInput={(event: InputChangeEvent) => {
-                  setPassword(event.currentTarget.value);
-                }}
+                onInput={changePassword}
               />
             </label>
           </div>

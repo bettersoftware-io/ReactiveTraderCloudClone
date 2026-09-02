@@ -133,6 +133,12 @@ export function RfqCard(props: RfqCardProps): ReactElement {
     };
   }, [anim, onAnimationEnd]);
 
+  function acceptQuote(quoteId: number) {
+    return () => {
+      onAccept(quoteId);
+    };
+  }
+
   return (
     <div
       ref={cardRef}
@@ -171,9 +177,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
             <QuoteRow
               key={q.quoteId}
               vm={q}
-              onAccept={() => {
-                onAccept(q.quoteId);
-              }}
+              onAccept={acceptQuote(q.quoteId)}
             />
           );
         })}

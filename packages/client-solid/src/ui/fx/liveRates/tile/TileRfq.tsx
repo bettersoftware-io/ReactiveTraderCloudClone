@@ -38,6 +38,22 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
     props.onExecute(direction, syntheticPrice, props.notional);
   }
 
+  function acceptSellQuote(): void {
+    executeAcceptedQuote(Direction.Sell);
+  }
+
+  function acceptBuyQuote(): void {
+    executeAcceptedQuote(Direction.Buy);
+  }
+
+  function cancelRfq(): void {
+    props.rfqState.cancel();
+  }
+
+  function rejectQuote(): void {
+    props.rfqState.reject();
+  }
+
   // No init branch: the RFQ-initiation affordance is the compact ⚡ RFQ chip
   // in the tile header's pair row (TileHeader), not an extra bottom row.
   return (
@@ -45,12 +61,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
       <Match when={props.rfqState.state().status === "requested"}>
         <div class={styles.requestedWrapper}>
           <div class={styles.awaitingText}>Awaiting Price...</div>
-          <button
-            type="button"
-            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-            onClick={props.rfqState.cancel}
-            class={styles.cancelButton}
-          >
+          <button type="button" onClick={cancelRfq} class={styles.cancelButton}>
             Cancel RFQ
           </button>
         </div>
@@ -65,9 +76,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
           <div class={styles.quoteRow}>
             <button
               type="button"
-              onClick={() => {
-                return executeAcceptedQuote(Direction.Sell);
-              }}
+              onClick={acceptSellQuote}
               class={styles.sellQuoteButton}
             >
               Sell{" "}
@@ -78,9 +87,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
             </button>
             <button
               type="button"
-              onClick={() => {
-                return executeAcceptedQuote(Direction.Buy);
-              }}
+              onClick={acceptBuyQuote}
               class={styles.buyQuoteButton}
             >
               Buy{" "}
@@ -96,8 +103,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
           />
           <button
             type="button"
-            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-            onClick={props.rfqState.reject}
+            onClick={rejectQuote}
             class={styles.rejectButton}
           >
             Reject

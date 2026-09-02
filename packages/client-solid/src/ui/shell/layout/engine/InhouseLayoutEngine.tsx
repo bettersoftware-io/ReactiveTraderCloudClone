@@ -376,6 +376,12 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
     handle.addEventListener("pointerup", up);
   }
 
+  function startResizeDragFor(index: number) {
+    return (e: PointerEvent): void => {
+      startResizeDrag(index, e);
+    };
+  }
+
   // A pinned last child of a column split renders in a fixed bottom slot.
   // A function (not a top-level const) purely for consistency with every
   // other derived value in this file, even though its inputs — a split's
@@ -603,9 +609,7 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
                   }
                   class={styles.handle}
                   tabIndex={0}
-                  onPointerDown={(e: PointerEvent) => {
-                    startResizeDrag(i, e);
-                  }}
+                  onPointerDown={startResizeDragFor(i)}
                 />
               </Show>
             </>
@@ -687,6 +691,18 @@ function PanelLeaf(props: PanelLeafProps): JSX.Element {
       : "horizontal";
   }
 
+  function expandOrRestorePanel(): void {
+    collapsed() ? props.onExpand(props.panelId) : props.onRestore();
+  }
+
+  function collapsePanel(): void {
+    props.onCollapse(props.panelId);
+  }
+
+  function maximizePanel(): void {
+    props.onMaximize(props.panelId);
+  }
+
   return (
     <section
       data-testid={`panel-${props.panelId}`}
@@ -715,15 +731,9 @@ function PanelLeaf(props: PanelLeafProps): JSX.Element {
                 title={title()}
                 maximizable={spec()?.maximizable !== false}
                 maximizedHere={maximizedHere()}
-                onCollapse={() => {
-                  props.onCollapse(props.panelId);
-                }}
-                onMaximize={() => {
-                  props.onMaximize(props.panelId);
-                }}
-                onRestore={() => {
-                  props.onRestore();
-                }}
+                onCollapse={collapsePanel}
+                onMaximize={maximizePanel}
+                onRestore={props.onRestore}
               />
             </header>
             {/* data-flip-stage: the scroll container owning the panel's
@@ -741,9 +751,7 @@ function PanelLeaf(props: PanelLeafProps): JSX.Element {
           panelId={props.panelId}
           title={title()}
           orientation={stripOrientation()}
-          onRestore={() => {
-            collapsed() ? props.onExpand(props.panelId) : props.onRestore();
-          }}
+          onRestore={expandOrRestorePanel}
         />
       </Show>
     </section>

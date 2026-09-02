@@ -77,6 +77,10 @@ export function ShellHeader({
   const envColor = simulator ? t.accentAware : t.accentPositive;
   const connColor = connected ? t.statusConnected : t.statusDisconnected;
 
+  function toggleSimulator(): void {
+    onToggleSimulator(!simulator);
+  }
+
   return (
     <View
       testID="hud-header"
@@ -91,9 +95,7 @@ export function ShellHeader({
           testID="hud-env-badge"
           accessibilityLabel="Toggle simulator"
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-          onPress={() => {
-            onToggleSimulator(!simulator);
-          }}
+          onPress={toggleSimulator}
           style={[styles.envBadge, { borderColor: envColor }]}
         >
           <Text style={[styles.envLabel, { color: envColor }]}>

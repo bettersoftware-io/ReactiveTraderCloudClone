@@ -37,6 +37,34 @@ export function AccountMenu({
     return null;
   }
 
+  function toggleAccountMenu(): void {
+    setOpen(!open);
+  }
+
+  function closeAccountMenu(): void {
+    setOpen(false);
+  }
+
+  function openPreferences(): void {
+    setOpen(false);
+    onOpenPrefs();
+  }
+
+  function rebootHud(): void {
+    setOpen(false);
+    reboot();
+  }
+
+  function lockSession(): void {
+    setOpen(false);
+    lock();
+  }
+
+  function signOut(): void {
+    setOpen(false);
+    logout();
+  }
+
   return (
     <div className={styles.menuAnchor}>
       <button
@@ -45,9 +73,7 @@ export function AccountMenu({
         aria-label="Account"
         aria-expanded={open}
         className={styles.accountTrigger}
-        onClick={() => {
-          setOpen(!open);
-        }}
+        onClick={toggleAccountMenu}
       >
         <span className={styles.avatarWrap}>
           <HexAvatarSvg className={styles.avatarHex} />
@@ -64,9 +90,7 @@ export function AccountMenu({
             data-testid="menu-backdrop"
             aria-label="Close menu"
             className={styles.menuBackdrop}
-            onClick={() => {
-              setOpen(false);
-            }}
+            onClick={closeAccountMenu}
           />
           <div
             data-testid="account-panel"
@@ -117,10 +141,7 @@ export function AccountMenu({
               data-testid="account-prefs"
               className={styles.actionRow}
               role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onOpenPrefs();
-              }}
+              onClick={openPreferences}
             >
               ⚙ Preferences
             </button>
@@ -132,10 +153,7 @@ export function AccountMenu({
               data-testid="account-reboot"
               className={styles.actionRow}
               role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                reboot();
-              }}
+              onClick={rebootHud}
             >
               ⟳ Reboot HUD
             </button>
@@ -147,10 +165,7 @@ export function AccountMenu({
               data-testid="account-lock"
               className={styles.actionRow}
               role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                lock();
-              }}
+              onClick={lockSession}
             >
               ⏻ Lock Session
             </button>
@@ -162,10 +177,7 @@ export function AccountMenu({
               data-testid="account-logout"
               className={styles.signOut}
               role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                logout();
-              }}
+              onClick={signOut}
             >
               ⏻ Sign Out
             </button>

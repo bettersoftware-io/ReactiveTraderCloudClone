@@ -22,18 +22,22 @@ export function BlotterRow<TRow extends { status: string }>({
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;
 
+  function hoverRow(): void {
+    setHovered(true);
+  }
+
+  function unhoverRow(): void {
+    setHovered(false);
+  }
+
   return (
     <tr
       data-state={isRejected ? "rejected" : "live"}
       data-status={trade.status.toLowerCase()}
       data-highlight={highlight ? "true" : undefined}
       data-hovered={hovered ? "true" : undefined}
-      onMouseEnter={() => {
-        return setHovered(true);
-      }}
-      onMouseLeave={() => {
-        return setHovered(false);
-      }}
+      onMouseEnter={hoverRow}
+      onMouseLeave={unhoverRow}
       className={styles.row}
     >
       {columns.map((col) => {

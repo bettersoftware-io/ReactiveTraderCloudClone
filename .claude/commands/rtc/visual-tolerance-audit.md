@@ -58,6 +58,7 @@ Judge any future change to it against that.
    |---|---|---|
    | `client-react/.../playwright.config.ts` | **yes** (`visual.yml`) | the tier that WRITES the goldens |
    | `client-solid/.../playwright.config.ts` | **yes** (`visual.yml`) | assert-only; judges solid's renders against **react's** goldens |
+   | `ui-contract/src/visual/scenarios.ts` per-scenario overrides | **yes** (both web tiers) | `strict: true` = zero tolerance; `maxDiffPixels: N` RAISES the absolute cap for one scenario — each use must state its measured basis in a comment (grep both fields) |
    | `client-react-native/tests/visual/shared/diff.ts` | **no** — runs in no workflow | `DEFAULT_RATIO = 0.06`, per-pixel `threshold: 0.1`; local-only |
 
    **Both web tiers read the same golden set, so the LOOSEST of the two is the

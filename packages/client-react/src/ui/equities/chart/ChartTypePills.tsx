@@ -10,6 +10,12 @@ export function ChartTypePills({
   kind,
   onSet,
 }: ChartTypePillsProps): ReactElement {
+  function selectChartType(next: EqChartType) {
+    return () => {
+      onSet(next);
+    };
+  }
+
   return (
     <div className={styles.pills}>
       {CHART_TYPES.map((id) => {
@@ -21,9 +27,7 @@ export function ChartTypePills({
             data-testid="chart-type-pill"
             data-kind={id.id}
             data-active={String(id.id === kind)}
-            onClick={() => {
-              onSet(id.id);
-            }}
+            onClick={selectChartType(id.id)}
           >
             {id.label}
           </button>

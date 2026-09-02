@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { buildCandleScene } from "./candleScene";
+import {
+  bodyGeometriesBySlot,
+  buildCandleScene,
+  lerpBodyGeometries,
+} from "./candleScene";
 
 const CANDLES = [
   { time: 1, open: 10, high: 12, low: 9, close: 11, volume: 0 },
@@ -56,5 +60,50 @@ describe("buildCandleScene", () => {
     const bars = buildCandleScene(CANDLES, 100, 50, 6);
 
     expect(bars.at(-1)?.x).toBe(97); // width(100) - barWidth/2(3)
+  });
+});
+
+describe("bodyGeometriesBySlot", () => {
+  test("re-indexes bodies so the newest bar is slot 0", () => {
+    const bars = buildCandleScene(CANDLES, 100, 50, 6);
+    const slots = bodyGeometriesBySlot(bars);
+
+    expect(slots).toHaveLength(2);
+    expect(slots[0]).toEqual({
+      top: bars[1].bodyTop,
+      height: bars[1].bodyHeight,
+    });
+    expect(slots[1]).toEqual({
+      top: bars[0].bodyTop,
+      height: bars[0].bodyHeight,
+    });
+  });
+});
+
+describe("lerpBodyGeometries", () => {
+  test("interpolates each slot between from and to", () => {
+    const mid = lerpBodyGeometries(
+      [{ top: 0, height: 10 }],
+      [{ top: 20, height: 30 }],
+      0.5,
+    );
+
+    expect(mid).toEqual([{ top: 10, height: 20 }]);
+  });
+
+  test("a slot the from side lacks starts at its target (snaps)", () => {
+    const mid = lerpBodyGeometries([], [{ top: 20, height: 30 }], 0.25);
+
+    expect(mid).toEqual([{ top: 20, height: 30 }]);
+  });
+
+  test("progress 1 lands exactly on the targets", () => {
+    const done = lerpBodyGeometries(
+      [{ top: 5, height: 5 }],
+      [{ top: 20, height: 30 }],
+      1,
+    );
+
+    expect(done).toEqual([{ top: 20, height: 30 }]);
   });
 });

@@ -30,6 +30,12 @@ export function QuantityChips({
 }: QuantityChipsProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
+  function selectQuantityFor(quantity: number): () => void {
+    return () => {
+      onSelect(quantity);
+    };
+  }
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>QUANTITY · USD</Text>
@@ -43,9 +49,7 @@ export function QuantityChips({
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={active ? styles.chipActive : styles.chip}
-              onPress={() => {
-                onSelect(quantity);
-              }}
+              onPress={selectQuantityFor(quantity)}
             >
               <Text style={active ? styles.chipLabelActive : styles.chipLabel}>
                 {millionsLabel(quantity)}

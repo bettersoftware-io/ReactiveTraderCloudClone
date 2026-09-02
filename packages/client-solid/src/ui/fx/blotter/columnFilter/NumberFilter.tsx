@@ -34,6 +34,22 @@ export function NumberFilter<TRow>(
       : "",
   );
 
+  function changeComparator(e: SelectChangeEvent): void {
+    setComparator(e.currentTarget.value as Comparator);
+  }
+
+  function changeValue(e: InputChangeEvent): void {
+    setValue(e.currentTarget.value);
+  }
+
+  function changeValueTo(e: InputChangeEvent): void {
+    setValueTo(e.currentTarget.value);
+  }
+
+  function resetNumberFilter(): void {
+    props.onApply(null);
+  }
+
   function applyNumberFilter(): void {
     const num = Number.parseFloat(value());
 
@@ -58,9 +74,7 @@ export function NumberFilter<TRow>(
       <select
         data-testid="number-filter-comparator"
         value={comparator()}
-        onChange={(e: SelectChangeEvent): void => {
-          setComparator(e.currentTarget.value as Comparator);
-        }}
+        onChange={changeComparator}
         class={styles.select}
       >
         <For each={comparators}>
@@ -78,12 +92,8 @@ export function NumberFilter<TRow>(
         // both wired here so real typing (`input`) and a programmatic
         // `change` dispatch both narrow live (wiring both is idempotent,
         // see TileNotional's identical comment).
-        onInput={(e: InputChangeEvent): void => {
-          setValue(e.currentTarget.value);
-        }}
-        onChange={(e: InputChangeEvent): void => {
-          setValue(e.currentTarget.value);
-        }}
+        onInput={changeValue}
+        onChange={changeValue}
         placeholder="Value"
         class={styles.input}
       />
@@ -92,12 +102,8 @@ export function NumberFilter<TRow>(
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo()}
-          onInput={(e: InputChangeEvent): void => {
-            setValueTo(e.currentTarget.value);
-          }}
-          onChange={(e: InputChangeEvent): void => {
-            setValueTo(e.currentTarget.value);
-          }}
+          onInput={changeValueTo}
+          onChange={changeValueTo}
           placeholder="To"
           class={styles.input}
         />
@@ -113,9 +119,7 @@ export function NumberFilter<TRow>(
         </button>
         <button
           type="button"
-          onClick={() => {
-            props.onApply(null);
-          }}
+          onClick={resetNumberFilter}
           class={styles.resetBtn}
         >
           Reset

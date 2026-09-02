@@ -37,6 +37,22 @@ export function NavigatorStrip(
       .join(" ");
   });
 
+  function startNavigatorDrag(e: PointerEvent): void {
+    props.brushProps?.onPointerDown(e);
+  }
+
+  function dragNavigator(e: PointerEvent): void {
+    props.brushProps?.onPointerMove(e);
+  }
+
+  function endNavigatorDrag(e: PointerEvent): void {
+    props.brushProps?.onPointerUp(e);
+  }
+
+  function cancelNavigatorDrag(e: PointerEvent): void {
+    props.brushProps?.onPointerCancel(e);
+  }
+
   return (
     <Show when={props.nav.linePoints.length > 0}>
       <div
@@ -44,14 +60,10 @@ export function NavigatorStrip(
         data-testid="chart-navigator"
         role="group"
         aria-label="Chart navigator"
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerDown={props.brushProps?.onPointerDown}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerMove={props.brushProps?.onPointerMove}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerUp={props.brushProps?.onPointerUp}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerCancel={props.brushProps?.onPointerCancel}
+        onPointerDown={startNavigatorDrag}
+        onPointerMove={dragNavigator}
+        onPointerUp={endNavigatorDrag}
+        onPointerCancel={cancelNavigatorDrag}
       >
         <svg
           class={styles.mini}

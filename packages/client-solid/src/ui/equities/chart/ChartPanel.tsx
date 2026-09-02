@@ -168,6 +168,22 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     }
   }
 
+  function commitDrawing(d: EqDrawing): void {
+    addDrawing(props.symbol, d);
+  }
+
+  function updateDrawingOnSelectedSymbol(d: EqDrawing): void {
+    updateDrawing(props.symbol, d);
+  }
+
+  function deleteSelectedDrawing(): void {
+    deleteSelected(props.symbol);
+  }
+
+  function shiftAnchorsForSelectedSymbol(by: number): void {
+    shiftAnchors(props.symbol, by);
+  }
+
   return (
     <div class={styles.body}>
       <div class={styles.chartArea}>
@@ -204,19 +220,11 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           drawTool={drawState().tool}
           drawings={drawState().drawings[props.symbol] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState().selectedId}
-          onCommitDrawing={(d: EqDrawing) => {
-            addDrawing(props.symbol, d);
-          }}
-          onUpdateDrawing={(d: EqDrawing) => {
-            updateDrawing(props.symbol, d);
-          }}
+          onCommitDrawing={commitDrawing}
+          onUpdateDrawing={updateDrawingOnSelectedSymbol}
           onSelectDrawing={selectDrawing}
-          onDeleteSelected={() => {
-            deleteSelected(props.symbol);
-          }}
-          onShiftAnchors={(by: number) => {
-            shiftAnchors(props.symbol, by);
-          }}
+          onDeleteSelected={deleteSelectedDrawing}
+          onShiftAnchors={shiftAnchorsForSelectedSymbol}
           substrate={substrate()}
         />
       </div>

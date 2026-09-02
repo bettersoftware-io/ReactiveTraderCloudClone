@@ -8,13 +8,16 @@ import styles from "./BackToLiveButton.module.css";
  * (`!atLiveEdge`, checked by the caller).
  */
 export function BackToLiveButton(props: BackToLiveButtonProps): JSX.Element {
+  function jumpToLive(): void {
+    props.onClick();
+  }
+
   return (
     <button
       type="button"
       class={styles.button}
       data-testid="chart-back-to-live"
-      // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-      onClick={props.onClick}
+      onClick={jumpToLive}
     >
       BACK TO LIVE
     </button>

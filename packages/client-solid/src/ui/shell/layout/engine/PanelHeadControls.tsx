@@ -17,6 +17,14 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
       : `Maximize ${props.title}`;
   }
 
+  function collapsePanel(): void {
+    props.onCollapse();
+  }
+
+  function maximizeOrRestorePanel(): void {
+    props.maximizedHere ? props.onRestore() : props.onMaximize();
+  }
+
   return (
     <div class={styles.panelControls}>
       <button
@@ -25,9 +33,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
         class={styles.panelControl}
         aria-label={`Collapse ${props.title}`}
         title={`Collapse ${props.title}`}
-        onClick={() => {
-          props.onCollapse();
-        }}
+        onClick={collapsePanel}
       >
         —
       </button>
@@ -38,9 +44,7 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           class={styles.panelControl}
           aria-label={maximizeLabel()}
           title={maximizeLabel()}
-          onClick={() => {
-            props.maximizedHere ? props.onRestore() : props.onMaximize();
-          }}
+          onClick={maximizeOrRestorePanel}
         >
           {props.maximizedHere ? "⧉" : "⛶"}
         </button>

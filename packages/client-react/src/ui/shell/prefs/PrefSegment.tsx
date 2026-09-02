@@ -17,6 +17,12 @@ export function PrefSegment({
   testid,
   disabled,
 }: PrefSegmentProps): ReactElement {
+  function selectOption(next: string) {
+    return () => {
+      onChange(next);
+    };
+  }
+
   return (
     <div className={styles.row}>
       <div className={styles.rowText}>
@@ -39,9 +45,7 @@ export function PrefSegment({
               data-testid={`${testid}-${option.value}`}
               data-on={active ? "true" : "false"}
               className={styles.segButton}
-              onClick={() => {
-                onChange(option.value);
-              }}
+              onClick={selectOption(option.value)}
             >
               {option.label}
             </button>

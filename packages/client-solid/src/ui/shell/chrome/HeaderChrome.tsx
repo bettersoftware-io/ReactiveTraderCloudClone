@@ -33,6 +33,14 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   // plain createSignal is correct here, no port involved.
   const [prefsOpen, setPrefsOpen] = createSignal(false);
 
+  function openPrefsModal(): void {
+    setPrefsOpen(true);
+  }
+
+  function closePrefsModal(): void {
+    setPrefsOpen(false);
+  }
+
   // Driven-pulse cue (Task 10/11): flashes the nav rail for one CSS
   // animation cycle when Jarvis's drive-the-app interpreter applies a
   // command — see useJarvisDrivenPulse's own doc (freeze-gated, no timer).
@@ -98,18 +106,9 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
         <NotificationsMenu />
         <LanguageMenu />
         <span class={styles.divider} />
-        <AccountMenu
-          onOpenPrefs={() => {
-            setPrefsOpen(true);
-          }}
-        />
+        <AccountMenu onOpenPrefs={openPrefsModal} />
       </div>
-      <PreferencesModal
-        open={prefsOpen()}
-        onClose={() => {
-          setPrefsOpen(false);
-        }}
-      />
+      <PreferencesModal open={prefsOpen()} onClose={closePrefsModal} />
     </header>
   );
 }

@@ -19,6 +19,18 @@ export function IndicatorPills({
   onToggleYScale,
   comparing = false,
 }: IndicatorPillsProps): ReactElement {
+  function toggleIndicator(id: EqIndicatorId) {
+    return () => {
+      onToggle(id);
+    };
+  }
+
+  function togglePane(id: EqPaneId) {
+    return () => {
+      onTogglePane(id);
+    };
+  }
+
   return (
     <div className={styles.pills}>
       {INDICATORS.map((id) => {
@@ -30,9 +42,7 @@ export function IndicatorPills({
             data-testid="chart-indicator-pill"
             data-ind={id.id}
             data-active={String(active.includes(id.id))}
-            onClick={() => {
-              onToggle(id.id);
-            }}
+            onClick={toggleIndicator(id.id)}
           >
             {id.label}
           </button>
@@ -48,9 +58,7 @@ export function IndicatorPills({
             data-testid="chart-pane-pill"
             data-pane={p.id}
             data-active={String(activePanes.includes(p.id))}
-            onClick={() => {
-              onTogglePane(p.id);
-            }}
+            onClick={togglePane(p.id)}
           >
             {p.label}
           </button>
@@ -64,9 +72,7 @@ export function IndicatorPills({
         data-active={String(!comparing && yScale === "log")}
         disabled={comparing}
         title={comparing ? "comparison uses percent scale" : undefined}
-        onClick={() => {
-          onToggleYScale();
-        }}
+        onClick={onToggleYScale}
       >
         {comparing ? "PCT" : "LOG"}
       </button>

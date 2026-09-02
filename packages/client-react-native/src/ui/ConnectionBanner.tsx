@@ -46,11 +46,7 @@ export function ConnectionBanner(): JSX.Element | null {
         <Text style={styles.label}>{LABEL[status]}</Text>
       </View>
       {showReconnect ? (
-        <Pressable
-          onPress={() => {
-            reconnect();
-          }}
-        >
+        <Pressable onPress={reconnect}>
           <Text style={styles.reconnect}>RECONNECT ▸</Text>
         </Pressable>
       ) : null}

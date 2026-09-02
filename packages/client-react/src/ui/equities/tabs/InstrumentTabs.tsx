@@ -16,6 +16,19 @@ export function InstrumentTabs(): ReactElement {
   const { useEqWorkspace } = useViewModel();
   const { state, select, closeTab } = useEqWorkspace();
 
+  function selectInstrumentTab(symbol: string) {
+    return () => {
+      select(symbol);
+    };
+  }
+
+  function closeInstrumentTab(symbol: string) {
+    return (event: MouseEvent) => {
+      event.stopPropagation();
+      closeTab(symbol);
+    };
+  }
+
   return (
     <nav className={styles.tabs} aria-label="Instrument tabs">
       {state.openTabs.map((symbol) => {
@@ -27,18 +40,13 @@ export function InstrumentTabs(): ReactElement {
             data-active={active ? "true" : "false"}
             data-testid={`instrument-tab-${symbol}`}
             className={styles.tab}
-            onClick={() => {
-              select(symbol);
-            }}
+            onClick={selectInstrumentTab(symbol)}
           >
             {symbol}
             <span
               className={styles.close}
               aria-hidden="true"
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation();
-                closeTab(symbol);
-              }}
+              onClick={closeInstrumentTab(symbol)}
             >
               ✕
             </span>

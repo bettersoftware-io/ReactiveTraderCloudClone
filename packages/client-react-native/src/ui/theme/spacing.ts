@@ -11,3 +11,9 @@ export interface SpacingScale {
 }
 
 export const SPACING: SpacingScale = { xs: 4, sm: 8, md: 12, lg: 14, xl: 20 };
+
+/** The design's tile corner radius (`border-radius:12px` on every card).
+ * Geometry like SPACING, so it lives here — and deliberately NOT in
+ * `TileSheen.tsx`, whose module may export only components
+ * (biome lint/style/useComponentExportOnlyModules). */
+export const TILE_RADIUS = 12;

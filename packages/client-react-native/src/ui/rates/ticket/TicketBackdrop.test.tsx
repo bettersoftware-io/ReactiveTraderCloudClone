@@ -36,7 +36,7 @@ test("paints a static scrim, not the index-interpolated one, when shell motion i
   expect(mockLibraryBackdropProps).toEqual([]);
   expect(
     screen.getByTestId("ticket-backdrop-static").props.style,
-  ).toContainEqual({ backgroundColor: "black", opacity: 0.5 });
+  ).toContainEqual({ backgroundColor: "rgba(0,6,10,0.78)" });
 });
 
 // Tap-to-dismiss is what `BottomSheetBackdrop`'s `pressBehavior="close"` gave
@@ -52,9 +52,10 @@ test("the static scrim still closes the sheet on press", async () => {
 });
 
 // The other arm, so this is proven to BE a gate: with motion on the library
-// component renders, still fading in and out with the sheet, and still fed the
-// sheet's own `animatedIndex`.
-test("defers to the library backdrop, unchanged, when shell motion is on", async () => {
+// component renders, still fading in and out with the sheet, still fed the
+// sheet's own `animatedIndex` — and tinted with the theme's `bgOverlay`
+// (opacity pinned to 1: the token's rgba carries the design's alpha).
+test("defers to the library backdrop, themed to bgOverlay, when shell motion is on", async () => {
   mockMotionEnabled = true;
   mockLibraryBackdropProps.length = 0;
   await renderWithTheme(<TicketBackdrop {...backdropProps} />);
@@ -66,6 +67,10 @@ test("defers to the library backdrop, unchanged, when shell motion is on", async
     appearsOnIndex: 0,
     disappearsOnIndex: -1,
     pressBehavior: "close",
+    opacity: 1,
+  });
+  expect(mockLibraryBackdropProps[0].style).toContainEqual({
+    backgroundColor: "rgba(0,6,10,0.78)",
   });
 });
 

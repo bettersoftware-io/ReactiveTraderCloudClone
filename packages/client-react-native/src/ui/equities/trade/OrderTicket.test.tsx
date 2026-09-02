@@ -162,7 +162,12 @@ test("the submit CTA carries the side-colour ramp gradient", async () => {
   expect(screen.getByTestId("cta-gradient")).toBeTruthy();
 });
 
-test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
+// dc.html:385 — the design's order-ticket panel is a `--tile-bg` /
+// `--tile-shadow` surface exactly like the instrument tile above it, so 3d
+// skins paint the tile gradient. (This asserted the opposite until
+// 2026-09-02, reading the panel as "dense, not a hero tile" — the prototype
+// disagrees.)
+test("renders the gradient tile surface on 3d skins", async () => {
   const submit = jest.fn();
   await renderWithTheme(
     <ViewModelProvider viewModel={vmWith(editing, { submit })}>
@@ -170,7 +175,7 @@ test("renders no gradient tile surface even on a 3d skin (dense panel, not a her
     </ViewModelProvider>,
     rnThemeTokens.holo3d.dark,
   );
-  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
 });
 
 function vmWith(

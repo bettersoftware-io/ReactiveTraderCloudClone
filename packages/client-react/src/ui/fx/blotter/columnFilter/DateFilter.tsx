@@ -39,14 +39,28 @@ export function DateFilter<TRow>({
     });
   }
 
+  function changeComparator(e: ChangeEvent<HTMLSelectElement>): void {
+    setComparator(e.target.value as Comparator);
+  }
+
+  function changeValue(e: ChangeEvent<HTMLInputElement>): void {
+    setValue(e.target.value);
+  }
+
+  function changeValueTo(e: ChangeEvent<HTMLInputElement>): void {
+    setValueTo(e.target.value);
+  }
+
+  function resetDateFilter(): void {
+    onApply(null);
+  }
+
   return (
     <div className={styles.container}>
       <select
         data-testid="date-filter-comparator"
         value={comparator}
-        onChange={(e: ChangeEvent<HTMLSelectElement>): void => {
-          setComparator(e.target.value as Comparator);
-        }}
+        onChange={changeComparator}
         className={styles.select}
       >
         {comparators.map((c) => {
@@ -61,9 +75,7 @@ export function DateFilter<TRow>({
         type="date"
         data-testid="date-filter-value"
         value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-          setValue(e.target.value);
-        }}
+        onChange={changeValue}
         className={styles.input}
       />
       {comparator === "inRange" && (
@@ -71,9 +83,7 @@ export function DateFilter<TRow>({
           type="date"
           data-testid="date-filter-value-to"
           value={valueTo}
-          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-            setValueTo(e.target.value);
-          }}
+          onChange={changeValueTo}
           className={styles.input}
         />
       )}
@@ -88,9 +98,7 @@ export function DateFilter<TRow>({
         </button>
         <button
           type="button"
-          onClick={() => {
-            return onApply(null);
-          }}
+          onClick={resetDateFilter}
           className={styles.resetBtn}
         >
           Reset

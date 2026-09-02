@@ -99,6 +99,10 @@ function HeatCell(props: CellProps): JSX.Element {
     return Math.min(1, Math.abs(quote()?.changePct ?? 0) / 10);
   });
 
+  function selectSymbol(): void {
+    props.onSelect(props.symbol);
+  }
+
   return (
     <button
       type="button"
@@ -108,9 +112,7 @@ function HeatCell(props: CellProps): JSX.Element {
       class={styles.cell}
       // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
       style={{ "--heat": heat() }}
-      onClick={() => {
-        props.onSelect(props.symbol);
-      }}
+      onClick={selectSymbol}
     >
       {props.symbol}
     </button>
