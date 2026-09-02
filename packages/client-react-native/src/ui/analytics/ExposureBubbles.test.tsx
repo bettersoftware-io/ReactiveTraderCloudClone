@@ -37,8 +37,10 @@ test("mounts a canvas for a book with positions", async () => {
 test("collapses to nothing when there are no positions", async () => {
   await renderWithTheme(<ExposureBubbles positions={[]} />);
 
-  // Nothing to draw, so the card must not reserve a gap.
-  expect(screen.getByTestId("exposure-bubbles").props.style).toEqual(
+  // Nothing to draw, so the card must not reserve a gap. `style` is the
+  // array-form dynamic member (static width + computed height), so the
+  // computed piece is asserted as one element rather than the whole prop.
+  expect(screen.getByTestId("exposure-bubbles").props.style).toContainEqual(
     expect.objectContaining({ height: 0 }),
   );
 });
@@ -47,8 +49,9 @@ test("reserves the height the tallest shelf needs", async () => {
   await renderWithTheme(<ExposureBubbles positions={POSITIONS} />);
 
   // JPY dominates this book, so it takes the design ramp's 74px cap and the
-  // other two sit near its 30px floor — one shelf, as tall as JPY.
-  expect(screen.getByTestId("exposure-bubbles").props.style).toEqual(
+  // other two sit near its 30px floor — one shelf, as tall as JPY. `style` is
+  // the array-form dynamic member; the computed height is one element.
+  expect(screen.getByTestId("exposure-bubbles").props.style).toContainEqual(
     expect.objectContaining({ height: 74 }),
   );
 });

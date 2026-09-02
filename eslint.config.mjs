@@ -82,6 +82,20 @@ const inlineStyleProp = {
     "Inline style={{…}} is banned — move static styling to a co-located *.module.css. Only runtime-computed values (CSS custom properties) are exempt; if genuinely needed, add: // eslint-disable-next-line no-restricted-syntax -- <reason>.",
 };
 
+// The same ban for React Native, with the native prescription: there is no
+// CSS on native, so static styling belongs in a co-located StyleSheet.create
+// block (see docs/rn-styling.md). Runtime-computed values use the array-form
+// dynamic member — style={[styles.x, { height }]} — which this selector
+// deliberately does NOT match (direct-child ObjectExpression only): the array
+// form is RN's sanctioned runtime channel, the analogue of the web ban's
+// CSS-custom-property exemption.
+const rnInlineStyleProp = {
+  selector:
+    "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression, JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression",
+  message:
+    "Inline style={{…}} is banned — move static styling to this file's StyleSheet.create block; pass runtime-computed values as the array-form dynamic member: style={[styles.x, { height }]}. See docs/rn-styling.md.",
+};
+
 // Both custom rules ship under the `rtc` plugin namespace. A single shared
 // plugin object lets two config blocks reference it (newspaper-order stays
 // test-file-scoped; class-filename-match applies to all ts/tsx) without
@@ -159,9 +173,22 @@ export default tseslint.config(
       "packages/client-prototype/src/**/*.tsx",
       "packages/client-solid/src/**/*.tsx",
       "packages/devtools-app/src/**/*.tsx",
+      "packages/devtools-extension/src/**/*.tsx",
     ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
+    },
+  },
+  {
+    // Inline style={{…}} ban, RN edition — same selector, native message.
+    // Re-lists `restrictedSyntax` via the spread because flat config REPLACES
+    // (does not merge) a rule's options across matching blocks.
+    files: [
+      "packages/client-react-native/src/**/*.tsx",
+      "packages/client-react-native/app/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, rnInlineStyleProp],
     },
   },
   {

@@ -70,7 +70,7 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
     // during an ordinary React render, so measure on the JS thread.
     <View
       testID="pnl-chart"
-      style={{ width: "100%", height: CHART_HEIGHT }}
+      style={styles.container}
       onLayout={(event: LayoutChangeEvent): void => {
         setWidth(event.nativeEvent.layout.width);
       }}
@@ -111,6 +111,13 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
     </View>
   );
 }
+
+// The measuring container's size is fixed at compile time (CHART_HEIGHT is a
+// module-level constant, not runtime-computed), so it belongs entirely in
+// StyleSheet.create rather than the array-form dynamic member.
+const styles = StyleSheet.create({
+  container: { width: "100%", height: CHART_HEIGHT },
+});
 
 /** The web's area gradient runs from 32% of the line colour to transparent. */
 const AREA_TOP_ALPHA = 0.32;

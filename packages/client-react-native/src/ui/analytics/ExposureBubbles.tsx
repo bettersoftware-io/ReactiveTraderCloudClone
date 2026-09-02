@@ -71,7 +71,7 @@ export function ExposureBubbles({
     // JS-thread measurement is the right tool.
     <View
       testID="exposure-bubbles"
-      style={{ width: "100%", height }}
+      style={[styles.container, { height }]}
       onLayout={(event: LayoutChangeEvent): void => {
         setWidth(event.nativeEvent.layout.width);
       }}
@@ -105,6 +105,12 @@ export function ExposureBubbles({
     </View>
   );
 }
+
+// `width` is static; `height` is runtime-computed by `buildBubbleDrawModel`
+// and passed as the array-form dynamic member instead.
+const styles = StyleSheet.create({
+  container: { width: "100%" },
+});
 
 /** Width assumed for the first frame, before `onLayout` reports the real one.
  * The old fixed design-space width, which is a reasonable card. */
