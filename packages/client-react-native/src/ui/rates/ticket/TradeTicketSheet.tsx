@@ -144,7 +144,9 @@ function TicketBackground({ style }: BottomSheetBackgroundProps): JSX.Element {
   const t = useTheme();
 
   return (
-    <View style={[style, backgroundStyles.clip]}>
+    <View
+      style={[style, backgroundStyles.clip, { borderTopColor: t.borderStrong }]}
+    >
       <BlurView intensity={16} tint="dark" style={StyleSheet.absoluteFill} />
       <View
         pointerEvents="none"
@@ -155,9 +157,15 @@ function TicketBackground({ style }: BottomSheetBackgroundProps): JSX.Element {
 }
 
 const backgroundStyles = StyleSheet.create({
+  // The design's sheet chrome carries `border-top:1px solid
+  // var(--border-strong)` over the 18px corner radius (dc.html:488) — the
+  // hairline that makes the sheet edge read against the dimmed screen. The
+  // colour is themed, so it rides in as an override where this is applied;
+  // `AppearanceOverlay`'s chrome is the same construction.
   clip: {
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
+    borderTopWidth: 1,
     overflow: "hidden",
   },
 });
@@ -172,7 +180,15 @@ interface TradeTicketSheetStyles {
 
 function makeStyles(t: RnTheme): TradeTicketSheetStyles {
   return StyleSheet.create({
-    handleIndicator: { backgroundColor: t.borderSubtle },
+    // Design: `width:38px;height:4px;border-radius:2px;background:var(--border)`
+    // — the same explicit handle the appearance sheet draws; gorhom's default
+    // pill is wider and brighter.
+    handleIndicator: {
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.borderPrimary,
+    },
     body: { padding: 20, paddingBottom: 32, gap: 18 },
     // The design's header block: the pair at 16/600 with 1px tracking over a
     // 9px mono stamp 2px below it (dc.html L491-494).

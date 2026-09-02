@@ -78,6 +78,15 @@ export function BottomSheetView(props: ViewSheetProps): React.JSX.Element {
   return <View testID={props.testID}>{props.children}</View>;
 }
 
+/** Same forwarding contract as `BottomSheetView` — the real
+ * `BottomSheetScrollView` spreads its props onto a ScrollView; the scroll
+ * behaviour itself is the library's job, not something these tests assert. */
+export function BottomSheetScrollView(
+  props: ViewSheetProps,
+): React.JSX.Element {
+  return <View testID={props.testID}>{props.children}</View>;
+}
+
 export function BottomSheetBackdrop(): null {
   return null;
 }
