@@ -157,6 +157,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `react-native`, `react-native-svg`, `@react-native-async-storage/async-storage`, `rxjs`, `expo` + six `expo-*` modules (router · constants · dev-client · font · linking · status-bar), `@expo-google-fonts/*`, + 2 more RN runtime packages (`react-native-screens`, `react-native-safe-area-context`) -- 22 in total (`packages/client-react-native/package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace -- it is a leaf app, and unlike `client-react` it is *not* a `tests` dependency (`tests/package.json` lists `@rtc/client-react` but not `@rtc/client-react-native`) |
 | **Non-obvious** | `rxjs` is a listed runtime dep and appears in `src/app/adapters` (e.g. `AppearanceColorSchemeAdapter` returns `Observable<boolean>`) but never in `src/ui` -- the same dumb-UI discipline as web, now machine-gated here too by gates 30–33, the RN counterpart of gates 26–29 on `client-react/src/ui`. Its own suite runs vitest + jest-expo; it isn't exercised by the root `tests` e2e/presenter/fullstack suites, and RN e2e (Maestro) is a deferred workstream. |
+| **Styling doctrine** | No CSS on native; StyleSheet.create + useThemedStyles; array-form runtime channel: see [rn-styling.md](../rn-styling.md) |
 | **README** | [`packages/client-react-native/README.md`](../../packages/client-react-native/README.md) |
 
 #### `@rtc/client-solid`

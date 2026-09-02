@@ -114,6 +114,22 @@ a reason to revisit:
 longer a trigger — it cannot unblock an unavailable feature. If ownership does
 change, the measurement in the spec is the right next step, not this note.
 
+
+### RN sibling `X.styles.ts` split
+
+Move each component's `StyleSheet.create` block to a sibling `X.styles.ts`,
+mirroring the web clients' `.module.css` co-location. Cosmetic symmetry; 69
+files. Deliberately deferred 2026-09-01 (chose lint-gaps-only) — see
+[`rn-styling.md`](rn-styling.md).
+
+### RN styling library evaluation
+
+Only worth revisiting if a real limitation of `StyleSheet.create` +
+`useThemedStyles` appears (e.g. web+native single-source styling) — then
+consider react-native-unistyles / react-strict-dom. Deferred 2026-09-01 — see
+[`rn-styling.md`](rn-styling.md).
+
+
 ### Devtools `bind()` layer
 
 A thin reactive-bindings layer over `InspectorStore` (the devtools analogue of
@@ -122,3 +138,4 @@ A thin reactive-bindings layer over `InspectorStore` (the devtools analogue of
 Considered 2026-09-01, deferred: real work for an 11-component UI already holding
 ≥95% coverage. Revisit if the inspector grows enough view state to make
 prop-drilling or render-scope bugs recur.
+
