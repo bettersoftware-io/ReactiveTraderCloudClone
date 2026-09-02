@@ -88,6 +88,12 @@
 .stripBar[data-orientation="vertical"] {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
+  /* The rotate above spins the painted background too, so the 3D skins'
+   * head gradient (180deg, strong at top) would read bottom→top along the
+   * bar. A collapsed panel reads as its header turned 90° counter-clockwise
+   * — gradient left→right on screen — which is the sideways token, authored
+   * pre-rotation (270deg local ≡ 90deg on screen; see tokens.ts). */
+  background: var(--panel-head-sideways);
 }
 
 .stripGlyph {

@@ -12,6 +12,7 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
   "--border-strong",
   "--panel",
   "--panel-head",
+  "--panel-head-sideways",
   "--glow",
   "--grid",
   "--chip",

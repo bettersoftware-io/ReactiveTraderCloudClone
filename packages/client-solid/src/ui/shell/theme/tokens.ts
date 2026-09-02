@@ -76,6 +76,16 @@ export interface ThemeTokens {
   "--panel": string;
   /** Panel header strip fill. */
   "--panel-head": string;
+  /** `--panel-head` as a VERTICAL collapse strip paints it — the header
+   * turned 90° counter-clockwise, so a gradient runs left→right on screen
+   * (the header's strong top edge lands on the strip's left). The strip bar
+   * element is rotated 180° (`PanelHead.module.css`
+   * `.stripBar[data-orientation="vertical"]`), so gradient values here are
+   * authored at 270deg LOCAL to render as 90deg on screen. Solid-colour
+   * skins repeat their `--panel-head` value verbatim (no direction to turn)
+   * — the key is required in every cell because applyTokens never unsets a
+   * property on a skin switch. */
+  "--panel-head-sideways": string;
   /** box-shadow used on active/glowing elements — "none" for solid skins. */
   "--glow": string;
   /** Faint HUD grid line colour. */
@@ -151,6 +161,7 @@ const darkTokens: ThemeTokens = {
 
   "--panel": "var(--bg-tile)",
   "--panel-head": "var(--bg-secondary)",
+  "--panel-head-sideways": "var(--bg-secondary)",
   "--glow": "none",
   "--grid": "rgba(148,163,184,0.06)",
   "--chip": "rgba(59,130,246,0.12)",
@@ -206,6 +217,7 @@ const lightTokens: ThemeTokens = {
 
   "--panel": "var(--bg-tile)",
   "--panel-head": "var(--bg-secondary)",
+  "--panel-head-sideways": "var(--bg-secondary)",
   "--glow": "none",
   "--grid": "rgba(148,163,184,0.06)",
   "--chip": "rgba(59,130,246,0.12)",
@@ -264,6 +276,7 @@ const holoDark: ThemeTokens = {
 
   "--panel": "rgba(6,26,38,0.5)",
   "--panel-head": "rgba(0,224,255,0.06)",
+  "--panel-head-sideways": "rgba(0,224,255,0.06)",
   "--glow": "0 0 16px rgba(0,224,255,0.3)",
   "--grid": "rgba(0,224,255,0.05)",
   "--chip": "rgba(0,224,255,0.12)",
@@ -324,6 +337,7 @@ const holoLight: ThemeTokens = {
 
   "--panel": "rgba(255,255,255,0.82)",
   "--panel-head": "#edf8fa",
+  "--panel-head-sideways": "#edf8fa",
   "--glow": "0 0 14px rgba(0,150,179,0.2)",
   "--grid": "rgba(0,150,179,0.06)",
   "--chip": "rgba(0,150,179,0.12)",
@@ -388,6 +402,8 @@ const holo3dDark: ThemeTokens = {
     "linear-gradient(157deg, rgba(13,44,60,0.66) 0%, rgba(6,22,33,0.52) 54%, rgba(3,14,22,0.5) 100%)",
   "--panel-head":
     "linear-gradient(180deg, rgba(0,224,255,0.13) 0%, rgba(0,224,255,0.02) 100%)",
+  "--panel-head-sideways":
+    "linear-gradient(270deg, rgba(0,224,255,0.13) 0%, rgba(0,224,255,0.02) 100%)",
   "--glow": "0 0 16px rgba(0,224,255,0.32)",
   "--grid": "rgba(0,224,255,0.05)",
   "--chip":
@@ -453,6 +469,7 @@ const holo3dLight: ThemeTokens = {
   "--panel":
     "linear-gradient(157deg, rgba(255,255,255,0.98) 0%, rgba(231,243,248,0.94) 100%)",
   "--panel-head": "linear-gradient(180deg, #e0f2f6 0%, #fafdfd 100%)",
+  "--panel-head-sideways": "linear-gradient(270deg, #e0f2f6 0%, #fafdfd 100%)",
   "--glow": "0 0 14px rgba(0,150,179,0.22)",
   "--grid": "rgba(0,150,179,0.06)",
   "--chip":
@@ -512,6 +529,7 @@ const terminalDark: ThemeTokens = {
 
   "--panel": "#13161c",
   "--panel-head": "#171b22",
+  "--panel-head-sideways": "#171b22",
   "--glow": "none",
   "--grid": "rgba(255,255,255,0.022)",
   "--chip": "rgba(255,176,0,0.14)",
@@ -567,6 +585,7 @@ const terminalLight: ThemeTokens = {
 
   "--panel": "#ffffff",
   "--panel-head": "#eef1f4",
+  "--panel-head-sideways": "#eef1f4",
   "--glow": "none",
   "--grid": "rgba(0,0,0,0.03)",
   "--chip": "rgba(182,119,0,0.13)",
@@ -627,6 +646,7 @@ const terminal3dDark: ThemeTokens = {
 
   "--panel": "linear-gradient(160deg, #181c24 0%, #11141a 100%)",
   "--panel-head": "linear-gradient(180deg, #1c212a 0%, #14181e 100%)",
+  "--panel-head-sideways": "linear-gradient(270deg, #1c212a 0%, #14181e 100%)",
   "--glow": "none",
   "--grid": "rgba(255,255,255,0.02)",
   "--chip":
@@ -687,6 +707,7 @@ const terminal3dLight: ThemeTokens = {
 
   "--panel": "linear-gradient(160deg, #ffffff 0%, #eef0f3 100%)",
   "--panel-head": "linear-gradient(180deg, #f2f4f6 0%, #e8ebef 100%)",
+  "--panel-head-sideways": "linear-gradient(270deg, #f2f4f6 0%, #e8ebef 100%)",
   "--glow": "none",
   "--grid": "rgba(0,0,0,0.03)",
   "--chip":
@@ -746,6 +767,7 @@ const neonDark: ThemeTokens = {
 
   "--panel": "rgba(28,6,46,0.52)",
   "--panel-head": "rgba(255,43,214,0.08)",
+  "--panel-head-sideways": "rgba(255,43,214,0.08)",
   "--glow": "0 0 18px rgba(255,43,214,0.4)",
   "--grid": "rgba(255,43,214,0.07)",
   "--chip": "rgba(255,43,214,0.14)",
@@ -804,6 +826,7 @@ const neonLight: ThemeTokens = {
 
   "--panel": "rgba(255,255,255,0.82)",
   "--panel-head": "#fbedf8",
+  "--panel-head-sideways": "#fbedf8",
   "--glow": "0 0 14px rgba(200,0,160,0.2)",
   "--grid": "rgba(200,0,160,0.06)",
   "--chip": "rgba(200,0,160,0.12)",
