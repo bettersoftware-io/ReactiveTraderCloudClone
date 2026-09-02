@@ -47,16 +47,18 @@ import styles from "./CandleChart.module.css";
  * `createChartGestures`' own gesture-driven state can never reach
  * deterministically without synthetic pointer events) can mount this exact
  * DOM tree with literal injected state instead of duplicating it.
- * `plotProps`/`plotRef` are optional — omitting both yields a static,
- * gesture-free mount (no wheel/drag/keyboard wiring), which is exactly what
- * those forced-state wrappers need.
+ * `plotProps`/`plotRef` are optional — the root's pointer/dblclick/keydown
+ * listeners are always attached (this component forwards to them
+ * unconditionally), but omitting both leaves every forwarded call a no-op,
+ * which yields the same static, gesture-free mount those forced-state
+ * wrappers need.
  */
 export function ChartPlot(props: ChartPlotProps): JSX.Element {
   function startPlotDrag(e: PointerEvent): void {
     props.plotProps?.onPointerDown(e);
   }
 
-  function dragPlot(e: PointerEvent): void {
+  function dragOrTrackPlotCursor(e: PointerEvent): void {
     props.plotProps?.onPointerMove(e);
   }
 
@@ -94,7 +96,7 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         aria-label="Price chart"
         ref={props.plotRef}
         onPointerDown={startPlotDrag}
-        onPointerMove={dragPlot}
+        onPointerMove={dragOrTrackPlotCursor}
         onPointerUp={endPlotDrag}
         onPointerCancel={cancelPlotDrag}
         onPointerLeave={clearPlotCursor}

@@ -39,11 +39,11 @@ import styles from "./IndicatorPane.module.css";
  * (module css) so they never shadow it.
  */
 export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
-  function movePointer(e: PointerEvent): void {
+  function trackPaneCursor(e: PointerEvent): void {
     props.hoverProps.onPointerMove(e);
   }
 
-  function leavePointer(): void {
+  function clearPaneCursor(): void {
     props.hoverProps.onPointerLeave();
   }
 
@@ -51,8 +51,8 @@ export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
     <div
       class={styles.pane}
       data-testid={`chart-pane-${props.kind}`}
-      onPointerMove={movePointer}
-      onPointerLeave={leavePointer}
+      onPointerMove={trackPaneCursor}
+      onPointerLeave={clearPaneCursor}
     >
       <span class={styles.label}>{paneLabel(props.kind)}</span>
       <Show

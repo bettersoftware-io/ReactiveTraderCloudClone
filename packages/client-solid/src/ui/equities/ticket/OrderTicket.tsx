@@ -170,6 +170,13 @@ function TicketBody(props: TicketBodyProps): JSX.Element {
               <div class={styles.status}>
                 WORKING — {order().filledQty}/{order().qty} filled
               </div>
+              {/* Unwrapped native binding, deliberately — the only one left
+                  in this package: `props.ticket` is the machine instantiated
+                  once in `OrderTicket` above (see the file's SOLID PORT NOTE)
+                  and never remounted for the component's lifetime, so
+                  `.reset` is a stable function reference a once-bound native
+                  listener can never go stale on. The three sibling `.reset`
+                  bindings below share this reasoning. */}
               <button
                 type="button"
                 class={styles.resetBtn}
