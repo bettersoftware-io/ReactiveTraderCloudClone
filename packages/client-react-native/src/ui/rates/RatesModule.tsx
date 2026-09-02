@@ -27,6 +27,10 @@ export function RatesModule(): JSX.Element {
   const shown = filterPairs(pairs, filter);
   const [selectedPair, setSelectedPair] = useState<CurrencyPair | null>(null);
 
+  function closeTicket(): void {
+    setSelectedPair(null);
+  }
+
   return (
     <>
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -34,12 +38,7 @@ export function RatesModule(): JSX.Element {
         <SpotTileGrid pairs={shown} onOpenTicket={setSelectedPair} />
       </ScrollView>
       {selectedPair !== null ? (
-        <TradeTicketSheet
-          pair={selectedPair}
-          onClose={() => {
-            setSelectedPair(null);
-          }}
-        />
+        <TradeTicketSheet pair={selectedPair} onClose={closeTicket} />
       ) : null}
     </>
   );

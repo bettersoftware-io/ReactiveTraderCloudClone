@@ -60,6 +60,10 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
     baseline: zeroY === null ? null : zeroBaseline(zeroY),
   };
 
+  function recordWidth(event: LayoutChangeEvent): void {
+    setWidth(event.nativeEvent.layout.width);
+  }
+
   return (
     // The measuring `onLayout` sits on a plain View, NOT on the Canvas: Skia's
     // `<Canvas onLayout>` is deprecated and silently does nothing on the new
@@ -68,13 +72,7 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
     // the deprecation. Skia's replacements (`onSize`, `useCanvasSize`) return a
     // SharedValue, which is right for UI-thread consumers; this width is read
     // during an ordinary React render, so measure on the JS thread.
-    <View
-      testID="pnl-chart"
-      style={styles.container}
-      onLayout={(event: LayoutChangeEvent): void => {
-        setWidth(event.nativeEvent.layout.width);
-      }}
-    >
+    <View testID="pnl-chart" style={styles.container} onLayout={recordWidth}>
       <Canvas style={StyleSheet.absoluteFill}>
         <Group transform={[{ scaleX: width / CHART_WIDTH }]}>
           {paths.baseline === null ? null : (

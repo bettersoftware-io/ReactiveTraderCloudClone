@@ -42,13 +42,15 @@ export function MoversRow({
 }: MoversRowProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
+  function selectSymbol(): void {
+    onSelect(row.symbol);
+  }
+
   return (
     <Pressable
       testID={`eq-mover-${row.symbol}`}
       style={selected ? styles.rowSelected : styles.row}
-      onPress={() => {
-        onSelect(row.symbol);
-      }}
+      onPress={selectSymbol}
     >
       <Text testID={`eq-mover-${row.symbol}-rank`} style={styles.rank}>
         {String(rank).padStart(2, "0")}

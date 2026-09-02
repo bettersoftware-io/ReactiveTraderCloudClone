@@ -28,6 +28,10 @@ export function SheetSwitch({
 }: SheetSwitchProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
+  function toggleChecked(): void {
+    onToggle(!checked);
+  }
+
   return (
     <Pressable
       testID={testID}
@@ -35,9 +39,7 @@ export function SheetSwitch({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked }}
       style={checked ? styles.trackOn : styles.track}
-      onPress={() => {
-        onToggle(!checked);
-      }}
+      onPress={toggleChecked}
     >
       <View
         testID={`${testID}-knob`}

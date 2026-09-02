@@ -124,13 +124,7 @@ export function BootSequence({ onDone }: BootSequenceProps): JSX.Element {
       >
         {bootLogLine(state.progress)}
       </Text>
-      <Pressable
-        testID="boot-skip"
-        style={styles.skip}
-        onPress={() => {
-          skip();
-        }}
-      >
+      <Pressable testID="boot-skip" style={styles.skip} onPress={skip}>
         <Text style={styles.skipLabel}>SKIP ▸</Text>
       </Pressable>
     </View>

@@ -76,6 +76,12 @@ export function AppearanceScreen({
   const { reboot } = useBootGate();
   const styles = useThemedStyles(makeStyles);
 
+  function selectSkinFor(s: ThemeSkin): () => void {
+    return () => {
+      setSkin(s);
+    };
+  }
+
   // The ViewModel exposes no direct mode setter — UseThemePreferenceResult is
   // { mode, modePreference, cycle } only (createViewModel.ts) — so "jump to a
   // mode" (dark/light/system) is expressed as N zero-arg cycle() calls.
@@ -143,9 +149,7 @@ export function AppearanceScreen({
                   active ? styles.skinCardActive : styles.skinCard,
                   { backgroundColor: preview.bgPrimary },
                 ]}
-                onPress={() => {
-                  setSkin(s);
-                }}
+                onPress={selectSkinFor(s)}
               >
                 <View
                   testID={`appearance-skin-${s}-swatch-row`}

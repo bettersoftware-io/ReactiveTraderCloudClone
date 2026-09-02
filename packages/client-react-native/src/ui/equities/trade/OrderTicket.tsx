@@ -74,24 +74,50 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const buy = form.side === "buy";
   const limit = form.limitPrice ?? quote?.last ?? 0;
 
+  function selectSellSide(): void {
+    ticket.setSide("sell");
+  }
+
+  function selectBuySide(): void {
+    ticket.setSide("buy");
+  }
+
+  function selectMarketType(): void {
+    ticket.setType("market");
+  }
+
+  function selectLimitType(): void {
+    ticket.setType("limit");
+  }
+
+  function selectQtyFor(qty: number): () => void {
+    return () => {
+      ticket.setQty(qty);
+    };
+  }
+
+  function decrementLimitPrice(): void {
+    ticket.setLimitPrice(stepPrice(limit, -1));
+  }
+
+  function incrementLimitPrice(): void {
+    ticket.setLimitPrice(stepPrice(limit, 1));
+  }
+
   return (
     <Ticket state={state} styles={styles}>
       <View style={styles.sideRow}>
         <Pressable
           testID="order-ticket-side-sell"
           style={!buy ? styles.sellActive : styles.sideToggle}
-          onPress={() => {
-            ticket.setSide("sell");
-          }}
+          onPress={selectSellSide}
         >
           <Text style={!buy ? styles.sellLabelOn : styles.sideLabel}>SELL</Text>
         </Pressable>
         <Pressable
           testID="order-ticket-side-buy"
           style={buy ? styles.buyActive : styles.sideToggle}
-          onPress={() => {
-            ticket.setSide("buy");
-          }}
+          onPress={selectBuySide}
         >
           <Text style={buy ? styles.buyLabelOn : styles.sideLabel}>BUY</Text>
         </Pressable>
@@ -99,9 +125,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           <Pressable
             testID="order-ticket-type-market"
             style={!isLimit ? styles.typeActive : styles.type}
-            onPress={() => {
-              ticket.setType("market");
-            }}
+            onPress={selectMarketType}
           >
             <Text style={!isLimit ? styles.typeLabelOn : styles.typeLabel}>
               MKT
@@ -110,9 +134,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           <Pressable
             testID="order-ticket-type-limit"
             style={isLimit ? styles.typeActive : styles.type}
-            onPress={() => {
-              ticket.setType("limit");
-            }}
+            onPress={selectLimitType}
           >
             <Text style={isLimit ? styles.typeLabelOn : styles.typeLabel}>
               LMT
@@ -131,9 +153,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
               testID={`order-ticket-qty-${qty}`}
               accessibilityState={{ selected: on }}
               style={on ? styles.chipActive : styles.chip}
-              onPress={() => {
-                ticket.setQty(qty);
-              }}
+              onPress={selectQtyFor(qty)}
             >
               <Text style={on ? styles.chipLabelOn : styles.chipLabel}>
                 {formatQty(qty)}
@@ -149,9 +169,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           <Pressable
             testID="order-ticket-limit-down"
             style={styles.stepper}
-            onPress={() => {
-              ticket.setLimitPrice(stepPrice(limit, -1));
-            }}
+            onPress={decrementLimitPrice}
           >
             <Text style={styles.stepperGlyph}>−</Text>
           </Pressable>
@@ -161,9 +179,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           <Pressable
             testID="order-ticket-limit-up"
             style={styles.stepper}
-            onPress={() => {
-              ticket.setLimitPrice(stepPrice(limit, 1));
-            }}
+            onPress={incrementLimitPrice}
           >
             <Text style={styles.stepperGlyph}>+</Text>
           </Pressable>

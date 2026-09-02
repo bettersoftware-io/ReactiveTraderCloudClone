@@ -80,6 +80,12 @@ export function NewRfqForm({
     );
   }
 
+  function selectDirectionFor(dir: Direction): () => void {
+    return () => {
+      setDirection(dir);
+    };
+  }
+
   if (submission.state.status === "confirmed") {
     return (
       <View style={styles.confirmedCard} testID="rfq-confirmed">
@@ -135,9 +141,7 @@ export function NewRfqForm({
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 style={active ? activeBtn : styles.directionBtn}
-                onPress={() => {
-                  setDirection(dir);
-                }}
+                onPress={selectDirectionFor(dir)}
               >
                 <Text style={active ? activeLabel : styles.directionLabel}>
                   {/* The design prints `BUY` / `SELL`; `Direction` is Title

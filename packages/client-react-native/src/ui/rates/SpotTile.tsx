@@ -32,6 +32,10 @@ export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   const label = `${pair.base}/${pair.terms}`;
 
+  function openTicket(): void {
+    onOpenTicket(pair);
+  }
+
   let body: JSX.Element;
 
   if (price === null) {
@@ -77,9 +81,7 @@ export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
     <Pressable
       testID={`spot-tile-${pair.symbol}`}
       style={styles.tile}
-      onPress={() => {
-        onOpenTicket(pair);
-      }}
+      onPress={openTicket}
     >
       {body}
     </Pressable>

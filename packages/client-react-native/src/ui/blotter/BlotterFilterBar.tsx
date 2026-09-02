@@ -29,6 +29,12 @@ export function BlotterFilterBar({
 }: BlotterFilterBarProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
 
+  function selectFilterFor(filter: BlotterFilter): () => void {
+    return () => {
+      onSelect(filter);
+    };
+  }
+
   return (
     <View style={styles.row} testID="blotter-filter-bar">
       <ScrollView
@@ -45,9 +51,7 @@ export function BlotterFilterBar({
               key={filter}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              onPress={() => {
-                onSelect(filter);
-              }}
+              onPress={selectFilterFor(filter)}
               style={active ? styles.pillActive : styles.pill}
             >
               <Text style={active ? styles.labelActive : styles.label}>

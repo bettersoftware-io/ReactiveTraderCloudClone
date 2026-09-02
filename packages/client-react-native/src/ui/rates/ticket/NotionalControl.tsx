@@ -32,6 +32,20 @@ export function NotionalControl({
   const styles = useThemedStyles(makeStyles);
   const { numericValue, displayValue } = notional.state;
 
+  function halveNotional(): void {
+    notional.change(String(Math.max(NOTIONAL_FLOOR, numericValue / 2)));
+  }
+
+  function doubleNotional(): void {
+    notional.change(String(numericValue * 2));
+  }
+
+  function selectNotionalFor(chipValue: number): () => void {
+    return () => {
+      notional.change(String(chipValue));
+    };
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.headRow}>
@@ -40,20 +54,14 @@ export function NotionalControl({
           <Pressable
             testID="notional-down"
             style={styles.stepper}
-            onPress={() => {
-              notional.change(
-                String(Math.max(NOTIONAL_FLOOR, numericValue / 2)),
-              );
-            }}
+            onPress={halveNotional}
           >
             <Text style={styles.stepperGlyph}>−</Text>
           </Pressable>
           <Pressable
             testID="notional-up"
             style={styles.stepper}
-            onPress={() => {
-              notional.change(String(numericValue * 2));
-            }}
+            onPress={doubleNotional}
           >
             <Text style={styles.stepperGlyph}>+</Text>
           </Pressable>
@@ -75,9 +83,7 @@ export function NotionalControl({
                     : theme.borderSubtle,
                 },
               ]}
-              onPress={() => {
-                notional.change(String(chipValue));
-              }}
+              onPress={selectNotionalFor(chipValue)}
             >
               <Text
                 style={[
