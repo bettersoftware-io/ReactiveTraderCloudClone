@@ -910,6 +910,174 @@ describe("glide marker", () => {
   });
 });
 
+describe("design-width pins (the in-house initialPx semantics)", () => {
+  const RAIL_PIN = {
+    panelIds: ["fx-analytics", "fx-positions"],
+    px: 360,
+    axis: "width",
+  };
+
+  it("opens the rail at its design width and persists the pin in the blob", () => {
+    const seen = trackLayout();
+    createDockEngine({ ...railPinnedBase(), ...seen.options }).dispose();
+
+    expect(seen.branchSizeOf("fx-analytics")).toEqual(within(360, 1));
+    expect(seen.pins()).toEqual([RAIL_PIN]);
+  });
+
+  it("pins a lone panel child too, not just a rail split", () => {
+    const seen = trackLayout();
+    createDockEngine({
+      ...base(),
+      ...seen.options,
+      seed: { ...FX_LIKE, initialPx: [undefined, 360] },
+    }).dispose();
+
+    expect(seen.sizeOf("fx-analytics")).toEqual(within(360, 1));
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("restores the design width after the whole rail strips and expands", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", STRIP);
+    engine.expandPanel("fx-analytics");
+    engine.expandPanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", 360);
+    engine.dispose();
+    expect(seen.pins()).toEqual([RAIL_PIN]);
+  });
+
+  it("releases the pin on a sash drag in the declaring split", () => {
+    const opts = railPinnedBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    dragSash(opts.container, ".dv-horizontal");
+    engine.dispose();
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("keeps the pin on a grab that never moves", () => {
+    const opts = railPinnedBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    grabSash(opts.container, ".dv-horizontal");
+    window.dispatchEvent(new Event("pointerup"));
+    engine.dispose();
+    expect(seen.pins()).toEqual([RAIL_PIN]);
+  });
+
+  it("leaves the rail pin alone when the drag is in a nested split", () => {
+    const opts = railPinnedBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    dragSash(opts.container, ".dv-vertical");
+    engine.dispose();
+    expect(seen.pins()).toEqual([RAIL_PIN]);
+  });
+
+  it("re-applies a still-pinned blob's pin on the next load", () => {
+    const opts = railPinnedBase();
+    const seen = trackLayout();
+    createDockEngine({ ...opts, ...seen.options }).dispose();
+
+    const reloaded = trackLayout();
+    createDockEngine({
+      ...railPinnedBase(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    }).dispose();
+
+    expect(reloaded.pins()).toEqual([RAIL_PIN]);
+    expect(reloaded.branchSizeOf("fx-analytics")).toEqual(within(360, 1));
+  });
+
+  it("keeps a released pin released across reloads", () => {
+    const opts = railPinnedBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    dragSash(opts.container, ".dv-horizontal");
+    engine.dispose();
+
+    const reloaded = trackLayout();
+    createDockEngine({
+      ...railPinnedBase(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    }).dispose();
+
+    expect(reloaded.pins()).toEqual([]);
+  });
+
+  it("treats a legacy blob without the sidecar as unpinned", () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    first.dispose();
+    const legacy: Record<string, unknown> = JSON.parse(seen.blob());
+    delete legacy.rtcDesignPins;
+
+    const reloaded = trackLayout();
+    createDockEngine({
+      ...railPinnedBase(),
+      ...reloaded.options,
+      blob: JSON.stringify(legacy),
+    }).dispose();
+
+    expect(reloaded.pins()).toEqual([]);
+  });
+
+  it("drops a pin whose panels no longer fill their groups exactly", () => {
+    // A blob whose analytics tab was drag-docked beside rates: the pin's
+    // clamp would hold the rates group too, so it must dissolve instead.
+    const seen = trackLayout();
+    createDockEngine({
+      ...base(),
+      ...seen.options,
+      blob: JSON.stringify({
+        ...(twoTabGroupLayout() as Record<string, unknown>),
+        rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
+      }),
+    }).dispose();
+
+    expect(seen.pins()).toEqual([]);
+  });
+
+  /** Grabs the first sash of the first split matching `splitSelector` —
+   * dockview's real pointer-drag entry — without moving it. */
+  function grabSash(container: HTMLElement, splitSelector: string): void {
+    const sash = container.querySelector(
+      `${splitSelector} > .dv-sash-container > .dv-sash`,
+    );
+
+    if (sash === null) {
+      throw new Error(`no sash under ${splitSelector}`);
+    }
+
+    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+  }
+
+  function dragSash(container: HTMLElement, splitSelector: string): void {
+    grabSash(container, splitSelector);
+    window.dispatchEvent(new Event("pointermove"));
+    window.dispatchEvent(new Event("pointerup"));
+  }
+
+  function railPinnedBase(): DockEngineOptions {
+    return {
+      ...railBase(),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    };
+  }
+});
+
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {
@@ -1022,6 +1190,10 @@ interface LayoutTracker {
   /** The rendered size of the BRANCH holding `panelId`'s leaf, on its own
    * parent's axis — a column's width inside a row. */
   branchSizeOf(panelId: string): number | null;
+  /** The `rtcDesignPins` sidecar of the last save. */
+  pins(): readonly unknown[];
+  /** The last save, verbatim — what a reload would hand the next engine. */
+  blob(): string;
 }
 
 interface StripsRecorder {
@@ -1110,6 +1282,12 @@ function trackLayout(): LayoutTracker {
       return blob === ""
         ? null
         : findBranchSize(JSON.parse(blob).grid.root, panelId);
+    },
+    pins: (): readonly unknown[] => {
+      return blob === "" ? [] : (JSON.parse(blob).rtcDesignPins ?? []);
+    },
+    blob: (): string => {
+      return blob;
     },
   };
 

@@ -86,6 +86,19 @@ serialises the *rendered* sizes, so an uncompensated blob restores a little
 differently on every load (a 360px rail measured 360 → 358 → 349 across
 three reloads; React's StrictMode double-mount is one such cycle).
 
+Design widths to know: the in-house engine renders an `initialPx`/`fixedPx`
+cell at `flex: 0 0 <px>` — it HOLDS its design width (FX rail 360, credit
+330, equities 290) through every viewport resize while the fraction siblings
+absorb the delta, until the first drag of its own split's handle converts
+the split to plain fractions for good. Dockview instead rescales every child
+proportionally, so the seed's exact pixel allocation would drift on the
+first window resize. `convertSeed` therefore also reports each pinned child
+as a `DockDesignPin`, and the engine holds it the way strips are held —
+min=max constraints on the pinned child's groups, honoured live by
+dockview's resize distribution — releasing it on the first pointer move of a
+sash drag inside the declaring split, and persisting live pins as an
+`rtcDesignPins` sidecar inside the blob so pin state survives reloads.
+
 Zero other `@rtc/*` dependencies. Unlike `@rtc/motion-core` (pure, no-DOM
 math) this package legitimately touches the DOM: `createDockEngine` mounts
 Dockview into a container element. Its only architectural constraint is that

@@ -1,7 +1,7 @@
 import { createDockview } from "dockview";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { toSerializedDockview } from "#/dockSeed";
+import { convertSeed, toSerializedDockview } from "#/dockSeed";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with the same stub. Needed
@@ -250,6 +250,141 @@ describe("toSerializedDockview × pixel pins", () => {
     expect(rail.size).toBe(363.5);
     expect(main.size).toBe(636.5); // (993 − 360) + 3.5
     expect((rail.size ?? 0) + (main.size ?? 0)).toBe(1000);
+  });
+});
+
+describe("convertSeed × design pins", () => {
+  it("reports a panel child's pin with the split's dividing axis", () => {
+    const RAIL = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.73, 0.27],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "main" },
+        { kind: "panel", panelId: "rail" },
+      ],
+    } as const;
+
+    expect(convertSeed(RAIL, 1000, 800).pins).toEqual([
+      { panelIds: ["rail"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("reports every panel of a pinned nested split", () => {
+    const RAIL_SPLIT = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "main" },
+        {
+          kind: "split",
+          dir: "column",
+          sizes: [0.5, 0.5],
+          children: [
+            { kind: "panel", panelId: "analytics" },
+            { kind: "panel", panelId: "positions" },
+          ],
+        },
+      ],
+    } as const;
+
+    expect(convertSeed(RAIL_SPLIT, 1000, 800).pins).toEqual([
+      { panelIds: ["analytics", "positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("maps a column's pin to the height axis", () => {
+    const STACK = {
+      kind: "split",
+      dir: "column",
+      sizes: [0.6, 0.4],
+      fixedPx: [undefined, 200],
+      children: [
+        { kind: "panel", panelId: "top" },
+        { kind: "panel", panelId: "dock" },
+      ],
+    } as const;
+
+    expect(convertSeed(STACK, 1000, 800).pins).toEqual([
+      { panelIds: ["dock"], px: 200, axis: "height" },
+    ]);
+  });
+
+  it("reports no pins for a split whose pins do not fit", () => {
+    const RAIL = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.73, 0.27],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "main" },
+        { kind: "panel", panelId: "rail" },
+      ],
+    } as const;
+
+    expect(convertSeed(RAIL, 300, 800).pins).toEqual([]);
+  });
+
+  it("drops a nested-split pin whose subtree splits along the declaring axis", () => {
+    // The rail's own children would SHARE the 360px side by side — a
+    // per-group min=max clamp cannot express that, so no pin is reported
+    // (the seed still opens at 360; it just will not be held afterwards).
+    const SIDE_BY_SIDE_RAIL = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "main" },
+        {
+          kind: "split",
+          dir: "column",
+          sizes: [0.5, 0.5],
+          children: [
+            { kind: "panel", panelId: "a" },
+            {
+              kind: "split",
+              dir: "row",
+              sizes: [0.5, 0.5],
+              children: [
+                { kind: "panel", panelId: "b" },
+                { kind: "panel", panelId: "c" },
+              ],
+            },
+          ],
+        },
+      ],
+    } as const;
+
+    expect(convertSeed(SIDE_BY_SIDE_RAIL, 1000, 800).pins).toEqual([]);
+  });
+
+  it("keeps a flattened same-direction child's pin", () => {
+    const NESTED = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.5],
+      children: [
+        {
+          kind: "split",
+          dir: "row",
+          sizes: [0.5, 0.5],
+          initialPx: [100, undefined],
+          children: [
+            { kind: "panel", panelId: "a" },
+            { kind: "panel", panelId: "b" },
+          ],
+        },
+        { kind: "panel", panelId: "c" },
+      ],
+    } as const;
+
+    expect(convertSeed(NESTED, 1000, 800).pins).toEqual([
+      { panelIds: ["a"], px: 100, axis: "width" },
+    ]);
   });
 });
 

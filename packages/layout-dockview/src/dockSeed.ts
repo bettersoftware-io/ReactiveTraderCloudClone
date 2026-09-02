@@ -33,10 +33,36 @@ export interface SeedConversionOptions {
   readonly gap?: number;
 }
 
+/** A design-width pin the engine must HOLD after mounting: the in-house
+ * engine renders a `fixedPx`/`initialPx` cell at `flex: 0 0 <px>` — the cell
+ * keeps its design extent through every viewport resize while the fraction
+ * siblings absorb the delta — whereas dockview rescales every child
+ * proportionally, so the seed's exact pixel allocation drifts on the first
+ * window resize. The engine turns each pin into min=max constraints on the
+ * pinned child's groups (all of them, for a rail split: a branch's constraint
+ * on its orthogonal axis is the meet of its children's) and releases them on
+ * the first sash drag in the declaring split, mirroring in-house's "the first
+ * drag converts the split to plain fractions". */
+export interface DockDesignPin {
+  /** Every panel under the pinned child — one id for a panel child, all of a
+   * rail split's panels for a nested-split child. */
+  readonly panelIds: readonly string[];
+  /** The design extent, in rendered pixels (what the user sees). */
+  readonly px: number;
+  /** The dimension the declaring split divides: a row divides width. */
+  readonly axis: "width" | "height";
+}
+
+export interface SeedConversion {
+  readonly serialized: SerializedDockview;
+  readonly pins: readonly DockDesignPin[];
+}
+
 interface ConversionState {
   groupCounter: number;
   panels: Record<string, GroupviewPanelState>;
   gap: number;
+  pins: DockDesignPin[];
 }
 
 interface SplitDiscriminant {
@@ -92,6 +118,22 @@ export function toSerializedDockview(
   height: number,
   options?: SeedConversionOptions,
 ): SerializedDockview {
+  return convertSeed(seed, width, height, options).serialized;
+}
+
+/** {@link toSerializedDockview} plus the {@link DockDesignPin}s the layout
+ * opened with — the engine applies these as live constraints after
+ * `fromJSON`. A split whose pins did not fit its extent contributes none
+ * (its children fell back to fractions), and a nested-split pin whose
+ * subtree contains a split of the SAME direction as the declarer is dropped
+ * too: its leaf groups would SHARE the pinned extent along that axis, which
+ * a per-group constraint cannot express. */
+export function convertSeed(
+  seed: DockSeedNode,
+  width: number,
+  height: number,
+  options?: SeedConversionOptions,
+): SeedConversion {
   const orientation =
     seed.kind === "split" && seed.dir === "column"
       ? Orientation.VERTICAL
@@ -101,6 +143,7 @@ export function toSerializedDockview(
     groupCounter: 0,
     panels: {},
     gap: options?.gap ?? 0,
+    pins: [],
   };
 
   // dockview's `fromJSON` rejects a grid whose root is a leaf ("root must be
@@ -117,8 +160,11 @@ export function toSerializedDockview(
       : convertNode(seed, width, height, state);
 
   return {
-    grid: { root, width, height, orientation },
-    panels: state.panels,
+    serialized: {
+      grid: { root, width, height, orientation },
+      panels: state.panels,
+    },
+    pins: state.pins,
   };
 }
 
@@ -150,6 +196,7 @@ function convertSplit(
   const gapTotal = state.gap * Math.max(0, entries.length - 1);
   const gapShare = entries.length > 0 ? gapTotal / entries.length : 0;
   const rendered = allocateExtent(entries, extent - gapTotal);
+  collectDesignPins(node.dir, entries, extent - gapTotal, state.pins);
 
   const children: GridNode[] = [];
   rendered.forEach(({ node: child, size }) => {
@@ -175,16 +222,13 @@ function allocateExtent(
   entries: readonly SplitEntry[],
   extent: number,
 ): AllocatedEntry[] {
-  const pinnedTotal = entries.reduce((sum, entry) => {
-    return sum + (entry.px ?? 0);
-  }, 0);
-  const pinsFit = pinnedTotal <= extent;
+  const pinsFit = pinsFitIn(entries, extent);
 
   function isFree(entry: SplitEntry): boolean {
     return !pinsFit || entry.px === undefined;
   }
 
-  const freeExtent = pinsFit ? extent - pinnedTotal : extent;
+  const freeExtent = pinsFit ? extent - pinnedTotalOf(entries) : extent;
   const freeFractionTotal = entries.reduce((sum, entry) => {
     return isFree(entry) ? sum + entry.fraction : sum;
   }, 0);
@@ -211,6 +255,68 @@ function allocateExtent(
     consumed += size;
     return { node: entry.node, size };
   });
+}
+
+/** The shared fit rule: pins apply only when their pixels all fit the
+ * split's (gap-reduced) extent — {@link allocateExtent} falls back to plain
+ * fractions otherwise, and pin collection must agree with that fallback. */
+function pinsFitIn(entries: readonly SplitEntry[], extent: number): boolean {
+  return pinnedTotalOf(entries) <= extent;
+}
+
+function pinnedTotalOf(entries: readonly SplitEntry[]): number {
+  return entries.reduce((sum, entry) => {
+    return sum + (entry.px ?? 0);
+  }, 0);
+}
+
+/** Records the {@link DockDesignPin}s this split declares, skipping the whole
+ * split when its pins did not fit (the allocation fell back to fractions) and
+ * skipping a nested-split entry whose subtree contains a split running along
+ * the DECLARING axis — its leaf groups would share the pinned extent, which a
+ * per-group min=max constraint cannot express. */
+function collectDesignPins(
+  dir: "row" | "column",
+  entries: readonly SplitEntry[],
+  extent: number,
+  pins: DockDesignPin[],
+): void {
+  if (!pinsFitIn(entries, extent)) {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (entry.px === undefined || containsDir(entry.node, dir)) {
+      continue;
+    }
+
+    pins.push({
+      panelIds: panelIdsUnder(entry.node),
+      px: entry.px,
+      axis: dir === "row" ? "width" : "height",
+    });
+  }
+}
+
+function containsDir(node: DockSeedNode, dir: "row" | "column"): boolean {
+  if (node.kind === "panel") {
+    return false;
+  }
+
+  return (
+    node.dir === dir ||
+    node.children.some((child) => {
+      return containsDir(child, dir);
+    })
+  );
+}
+
+function panelIdsUnder(node: DockSeedNode): string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(panelIdsUnder);
 }
 
 /** Pixels still owed to pinned entries AFTER `index` — what the last free
