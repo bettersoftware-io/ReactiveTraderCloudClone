@@ -41,7 +41,7 @@ export function SegmentedPill<K extends string>({
 }: SegmentedPillProps<K>): JSX.Element {
   const styles = useThemedStyles(makeStyles)[variant];
 
-  function selectSegment(key: K): () => void {
+  function selectSegmentFor(key: K): () => void {
     return () => {
       onChange(key);
     };
@@ -66,7 +66,7 @@ export function SegmentedPill<K extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             style={active ? styles.cellActive : styles.cell}
-            onPress={selectSegment(segment.key)}
+            onPress={selectSegmentFor(segment.key)}
           >
             <Text style={active ? styles.labelActive : styles.label}>
               {text}

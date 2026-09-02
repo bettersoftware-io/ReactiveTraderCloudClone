@@ -61,7 +61,7 @@ export function ExposureBubbles({
 
   const { entries, height } = buildBubbleDrawModel(positions, width);
 
-  function measureWidth(event: LayoutChangeEvent): void {
+  function recordWidth(event: LayoutChangeEvent): void {
     setWidth(event.nativeEvent.layout.width);
   }
 
@@ -76,7 +76,7 @@ export function ExposureBubbles({
     <View
       testID="exposure-bubbles"
       style={[styles.container, { height }]}
-      onLayout={measureWidth}
+      onLayout={recordWidth}
     >
       <Canvas style={StyleSheet.absoluteFill}>
         {entries.map((entry) => {

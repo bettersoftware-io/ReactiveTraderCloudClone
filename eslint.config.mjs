@@ -439,10 +439,10 @@ export default tseslint.config(
   },
   {
     // Inline JSX callbacks are banned — a handler is extracted and named for
-    // its effect (docs/handler-naming.md). Globs are added per package AS its
-    // backlog is migrated (client-solid and client-react-native land in their
-    // own migration PRs); tests are out of scope (throwaway wiring is fine
-    // there), and client-prototype is out of scope like everywhere else.
+    // its effect (docs/handler-naming.md). Covers all four UI-bearing
+    // packages (client-react, devtools-app, client-solid, client-react-native);
+    // tests are out of scope (throwaway wiring is fine there), and
+    // client-prototype is out of scope like everywhere else.
     files: [
       "packages/client-react/src/**/*.tsx",
       "packages/devtools-app/src/**/*.tsx",
