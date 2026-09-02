@@ -475,6 +475,29 @@ individual rows, reworking the change-flash so it doesn't remount a
 `will-change` span per emission) is a smaller, optional follow-up on top of
 this.
 
+### State-layer doctrine: useSyncExternalStore IS the devtools bridge
+
+devtools-app deliberately does **not** use `@rtc/react-bindings`. The reason
+is structural, not stylistic: `devtools-core` is an rxjs-only leaf that may
+not import `client-core`, so `createViewModel`/`bind()` are unavailable to
+the packages built on it. The sanctioned pattern is therefore:
+
+- **Live data** flows rxjs → `InspectorStore` (copy-on-write,
+  `getSnapshot()`/`subscribe()`) → React via `useInspectorState.ts` — a
+  17-line `useSyncExternalStore` wrapper. That file is the ONLY seam between
+  the store and React.
+- **View state** (selection, filters, nav, recording toggles) is plain
+  `useState` in the owning hook (`useTimeline`, `useNavigation`,
+  `useRecording`) — it is inspector chrome, not application state, and does
+  not belong in the store.
+- **Time travel** (`LiveHistory`) is a build-once ref in `InspectorApp.tsx`
+  — one of the three sanctioned `react-hooks/refs` exemptions in
+  `eslint.config.mjs`.
+
+Grep gates 38–40 hold the tier to the same dumb-UI bars as the clients (no
+timers, no storage, no self-made transport). A reactive `bind()`-style layer
+over `InspectorStore` was considered and deferred — see `docs/IDEAS.md`.
+
 ### 20.8 Future extensions
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:

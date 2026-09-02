@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (33 active gates, numbered up to 37, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (36 active gates, numbered up to 40, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -41,5 +41,8 @@
 | 35 | No `local storage` in `client-solid/src/ui` (persistence belongs behind `PreferencesPort`) |
 | 36 | No `fetch(` / `import.meta.env` in `client-solid/src/ui` (transport & config belong in the app layer) |
 | 37 | No `setTimeout` / `setInterval` in `client-solid/src/ui` (time belongs in machines/presenters; custom check) |
+| 38 | No `setTimeout` / `setInterval` in `devtools-app/src` (flash/timing runs through rAF or the store) |
+| 39 | No `localStorage` in `devtools-app/src` (the inspector holds no persistence; state lives in InspectorStore) |
+| 40 | No `fetch(` / `new WebSocket` in `devtools-app/src` (transport is the injected Duplex) |
 
-Gates 26–29 (web), 30–33 (RN), and 34–37 (Solid) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
+Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.

@@ -104,6 +104,7 @@ This document is split into one file per section under
     - [Serialization & Error Isolation](architecture/20-devtools.md#205-serialization--error-isolation)
     - [Serving Topology](architecture/20-devtools.md#206-serving-topology)
     - [Perf](architecture/20-devtools.md#207-perf)
+    - [State-layer Doctrine](architecture/20-devtools.md#state-layer-doctrine-usesyncexternalstore-is-the-devtools-bridge)
     - [Future Extensions](architecture/20-devtools.md#208-future-extensions)
     - [WebSocket Relay Transport (React Native)](architecture/20-devtools.md#209-websocket-relay-transport-react-native)
     - [Relationship to the Framework DevTools (React DevTools / Solid DevTools)](architecture/20-devtools.md#2010-relationship-to-the-framework-devtools-react-devtools--solid-devtools)
