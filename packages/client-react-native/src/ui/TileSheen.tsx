@@ -3,6 +3,7 @@ import { useId } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
+import { TILE_RADIUS } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -44,9 +45,6 @@ export interface TileSheenProps {
   /** Clip-radius override (e.g. `{ borderRadius: 10 }` for a 10px host). */
   readonly style?: ViewStyle;
 }
-
-/** The design's tile corner radius (`border-radius:12px` on every card). */
-export const TILE_RADIUS = 12;
 
 /** Height (px) of the tile head strip a `headGradient` covers. */
 const HEAD_HEIGHT = 45;

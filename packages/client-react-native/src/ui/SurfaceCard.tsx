@@ -1,8 +1,9 @@
 import type { JSX, ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 
-import { TILE_RADIUS, TileSheen } from "#/ui/TileSheen";
+import { TileSheen } from "#/ui/TileSheen";
 import { depthStyle } from "#/ui/theme/depthStyle";
+import { TILE_RADIUS } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
