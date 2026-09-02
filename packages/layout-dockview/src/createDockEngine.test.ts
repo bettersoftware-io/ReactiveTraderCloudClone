@@ -558,7 +558,7 @@ describe("collapse / expand", () => {
   });
 });
 
-const STRIP = 38;
+const STRIP = 32;
 const STRIP_HEIGHT = 32;
 
 /** An asymmetric matcher for `target ± tolerance` — dockview floors the

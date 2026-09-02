@@ -384,7 +384,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   for **edge** groups (shell-docked sidebars), not the grid groups the
   workspace uses. So the engine emulates it exactly as dockview's own edge
   groups do: remember the group's pre-collapse width **and** constraints,
-  clamp both to the 38px strip (constraints first, or a sibling resize
+  clamp both to the 32px strip (constraints first, or a sibling resize
   re-widens it), and restore the remembered values on expand. The
   panel-vs-group mismatch is resolved rather than papered over — in-house
   `collapsed` names a *panel*, Dockview sizes a *group*, and a group can hold
@@ -414,7 +414,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   child at render time — and, because it also *serialises* those shaved
   sizes, the persisted blob is compensated the same way so a save/load
   cycle restores exactly instead of drifting a pixel or two per reload); collapse clamps along the axis the group's
-  siblings run on (a 38px column beside side-by-side siblings, a 32px bar
+  siblings run on (a 32px column beside side-by-side siblings, a 32px bar
   under stacked ones) and reports the orientation so the bridge renders the
   matching in-house restore strip with the group header hidden. One React
   bridge bug surfaced with it: `WorkspaceEngine` rebuilds `specs`/
@@ -515,20 +515,20 @@ as a two-branch conditional, would be guessing at the shape a third engine
   transition covers the siblings shrinking.
 - **Fully-stripped column, added 2026-08-30 (PR #629).** Collapsing both
   FX rail panels under Dockview left two 32px horizontal bars atop a
-  full-width empty column, where in-house flips them to 38px vertical strips
-  stacked down a 38px rail. In-house decides a strip's orientation from the
+  full-width empty column, where in-house flips them to 32px vertical strips
+  stacked down a 32px rail. In-house decides a strip's orientation from the
   nearest enclosing split that is not itself fully stripped (`stripDir`);
   the first Dockview cut read only the panel's own parent split. `createDockEngine`
   now re-settles every strip after each collapse/expand with that same walk:
   a split whose every group is a strip reclaims along its parent's axis, so
   its strips are clamped on the orthogonal axis instead (pinning the column
-  to 38px), share the split's length equally, and the split's size on the
+  to 32px), share the split's length equally, and the split's size on the
   parent's axis is remembered and restored the moment one strip expands.
   Because a collapse can re-orient its *siblings*, orientations reach the
   bridges through a new `onStripsChange` callback (the whole map) rather than
   `collapsePanel`'s return value — the bridges no longer derive strip state
   from the intent they dispatched. Pinned by engine tests (the flip, the
-  38px column, the shared height, the width restore, whole-dock stripping)
+  32px column, the shared height, the width restore, whole-dock stripping)
   and a contract case on both clients.
 - **Maximize as the in-house strip policy, added 2026-08-31 (PR #648).** The
   one intent still routed to Dockview's own primitive was maximize:
@@ -640,6 +640,25 @@ as a two-branch conditional, would be guessing at the shape a third engine
   off (and in jsdom: 100/700 both ways), so it is the strip machinery's
   restore-order interaction, not the pins — the single-panel and
   maximize round-trips restore exactly.
+- **Strip-bar visual round, 2026-09-02 (design direction, both engines).**
+  Two refinements to the collapse strips themselves, in the shared
+  `PanelHead.module.css` / engine geometry both engines render. (1) **The
+  vertical strip paints its head gradient sideways.** In the two 3D skins
+  the bar painted `--panel-head` inside its 180°-rotated element, so the
+  head gradient (180deg, strong at top) read bottom→top along the bar — in
+  the v5 design artifact too, which shares the construction. A collapsed
+  panel reads as its header turned 90° counter-clockwise: the gradient now
+  runs left→right (strong edge on the strip's left) via a new required
+  `--panel-head-sideways` token in every skin×mode cell — required, not
+  optional, because `applyTokens` never unsets a property on a skin switch;
+  solid-colour skins repeat their `--panel-head` verbatim, and the four 3D
+  gradient cells author the turned gradient at 270deg LOCAL (the bar is
+  rotated 180°, so that renders as 90deg on screen). (2) **The vertical
+  strip narrowed 38px → 32px** so both strip forms share one bar size (the
+  horizontal strip's 32px height); the prototype's 38px rail matched the
+  header height instead, and the two forms disagreed. Changed together:
+  the in-house `width`/strip-cell basis, the dockview engine's
+  `STRIP_WIDTH_PX` clamp, and the layout-state goldens re-pinned.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
