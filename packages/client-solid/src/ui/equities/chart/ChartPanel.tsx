@@ -81,11 +81,11 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     shiftAnchors,
     updateDrawing,
   } = useEqDrawings();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
   const quote = useEquityQuote(props.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
   const candles = useCandles(props.symbol, props.timeframe);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
   const backfill = useCandleBackfill(props.symbol, props.timeframe);
   // Alias so biome's (React-centric) useHookAtTopLevel heuristic no longer
   // matches on the name `useCandles`: solid-bindings' `use*` functions are

@@ -98,7 +98,13 @@ interface SellSideRfqRowProps {
 
 function SellSideRfqRow(props: SellSideRfqRowProps): JSX.Element {
   const { useQuotesForRfq } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.rfq.id is fixed for this SellSideRfqRow's whole lifetime: the
+  // outer <For each={rfqIds()}> above is keyed by id itself (never the Rfq
+  // object — this file's own doc comment above), and the
+  // <Show when={rfq()} keyed> wrapping this component looks up that SAME id
+  // on every re-invocation; id is a `readonly` domain field, immutable for
+  // the RFQ's whole life (mirrors RfqsPanel's RfqCardCell of the same shape).
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const quotes = useQuotesForRfq(props.rfq.id);
   const abQuote = createMemo((): Quote | undefined => {
     return quotes().find((q) => {

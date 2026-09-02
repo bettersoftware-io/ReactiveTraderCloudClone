@@ -10,7 +10,13 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.rfq.id is fixed for this TradeTicket's whole lifetime: its one
+  // caller, SellSidePanel's SellSideRfqRow, wraps it in
+  // <Show when={abQuote()} keyed> — remounting TradeTicket whenever the
+  // Adaptive Bank quote object changes (a fresh price) — but id is a
+  // `readonly` domain field on Rfq (packages/domain/src/credit/rfq.ts),
+  // immutable across every one of those remounts.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const anim = useAnimationIntents(`rfq:${props.rfq.id}`);
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;

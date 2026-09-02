@@ -19,9 +19,15 @@ export function RfqCountdown(props: RfqCountdownProps): JSX.Element {
   // per tick (per-tick geometry writes kept a main-thread animation alive
   // every frame; see RfqCountdown.module.css .fill).
   const drainTiming: JSX.CSSProperties = {
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // Not a remount-guarded read (TileRfq's <Match when={status ===
+    // "received" && quote}> mounts this component once when the RFQ enters
+    // "received" and keeps it mounted for the rest of the countdown, ticking
+    // remainingMs down without remounting): captured once on purpose, per
+    // the doc comment above — a live read here would re-trigger the CSS
+    // keyframe every tick, which is exactly what this shape avoids.
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     "--rfq-duration": `${props.totalMs}ms`,
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     "--rfq-delay": `${Math.min(0, props.remainingMs - props.totalMs)}ms`,
   };
 

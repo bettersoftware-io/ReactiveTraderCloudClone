@@ -54,10 +54,17 @@ import styles from "./RfqCard.module.css";
  * so no double-invocation risk there) keeps this component correct in both
  * a real browser and this test environment. */
 export function RfqCard(props: RfqCardProps): JSX.Element {
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.expirySecs and props.creationTimestamp are `readonly` fields on
+  // the domain Rfq (packages/domain/src/credit/rfq.ts) set once at RFQ
+  // creation and never mutated across a state transition (Open→Closed/
+  // Expired) — only `state` changes, producing a fresh Rfq reference per
+  // RfqsPanel's own SOLID PORT NOTE. So these two are genuinely invariant
+  // for this card's whole lifetime, independent of whichever remount
+  // cadence RfqsPanel's id-keyed <For>/keyed <Show> gives RfqCardCell.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const totalMs = props.expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const remainingMs = useRfqCountdown(props.creationTimestamp, totalMs);
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);

@@ -88,7 +88,13 @@ interface CellProps {
 
 function HeatCell(props: CellProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.symbol is fixed for this HeatCell's whole lifetime: SectorHeatmap's
+  // inner <For each={insts}> keys by the EquityInstrument object's own
+  // identity (useWatchlist's watchlistState is static per-symbol metadata,
+  // the same pattern useCurrencyPairs uses for Tile.tsx), so a cell only
+  // remounts if its instrument drops out of the watchlist/sector grouping —
+  // never on a quote tick.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const quote = useEquityQuote(props.symbol);
 
   const direction = createMemo((): "up" | "down" => {

@@ -6,23 +6,30 @@ import type { ColumnFilter, Comparator } from "@rtc/client-core";
 import styles from "./DateFilter.module.css";
 
 export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
+  // props.currentFilter is read once, by design, to SEED this popover's
+  // local editing state — the same reasoning as NumberFilter.tsx's identical
+  // block: BlotterHeader mounts this component only inside
+  // <Show when={openFilter() === col.key}> (a boolean, non-keyed Show around
+  // <FilterPanel>), fully remounting DateFilter fresh on every open with
+  // whatever currentFilter is live at that moment; currentFilter can never
+  // change out from under an already-open instance without that remount.
   const [comparator, setComparator] = createSignal<Comparator>(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     props.currentFilter?.type === "date"
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
         props.currentFilter.comparator
       : "eq",
   );
 
   const [value, setValue] = createSignal(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     props.currentFilter?.type === "date" ? props.currentFilter.value : "",
   );
 
   const [valueTo, setValueTo] = createSignal(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     props.currentFilter?.type === "date" && props.currentFilter.valueTo
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
         props.currentFilter.valueTo
       : "",
   );

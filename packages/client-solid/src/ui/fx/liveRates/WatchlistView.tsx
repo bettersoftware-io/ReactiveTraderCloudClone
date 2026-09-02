@@ -68,9 +68,15 @@ const NO_VALUE = "—";
 
 function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.pair is fixed for this row's whole lifetime, the same reasoning as
+  // Tile.tsx's identical hook block: this WatchlistView's own <For
+  // each={props.pairs}> is fed LiveRatesPanel's filteredPairs() — a stable
+  // per-symbol CurrencyPair reference (currencyPairsState is static
+  // metadata) — so <For>'s default identity-keying only remounts a row when
+  // its pair drops out of/back into the filtered set, never on a price tick.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const price = usePrice(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const history = usePriceHistory(props.pair.symbol);
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);

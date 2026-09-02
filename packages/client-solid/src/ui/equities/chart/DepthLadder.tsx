@@ -7,7 +7,12 @@ import styles from "./DepthLadder.module.css";
 
 export function DepthLadder(props: DepthLadderProps): JSX.Element {
   const { useDepth } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.symbol is fixed for this DepthLadder's whole lifetime: its one
+  // real caller, EqDepthDock, wraps it in a keyed <Show when={state().sel}
+  // keyed> that fully remounts DepthLadder whenever the workspace selection
+  // changes (see EqDepthDock.tsx's doc comment, and ChartPanel.tsx's for the
+  // same keyed-remount pattern in full).
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const book = useDepth(props.symbol);
 
   return (
