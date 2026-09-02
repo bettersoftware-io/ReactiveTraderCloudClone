@@ -6,6 +6,7 @@ import tseslint from "typescript-eslint";
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
+import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
@@ -108,6 +109,7 @@ const rtcPlugin = {
     "component-newspaper": componentNewspaper,
     "no-render-functions": noRenderFunctions,
     "name-functions-by-effect": nameFunctionsByEffect,
+    "name-jsx-handlers": nameJsxHandlers,
   },
 };
 
@@ -434,6 +436,20 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },
+  },
+  {
+    // Inline JSX callbacks are banned — a handler is extracted and named for
+    // its effect (docs/handler-naming.md). Globs are added per package AS its
+    // backlog is migrated (client-solid and client-react-native land in their
+    // own migration PRs); tests are out of scope (throwaway wiring is fine
+    // there), and client-prototype is out of scope like everywhere else.
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
+    ],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-jsx-handlers": "error" },
   },
   {
     // eslint-plugin-solid's recommended rules — Solid's JSX has different

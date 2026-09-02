@@ -18,6 +18,17 @@ export function LanguageMenu(): ReactElement {
   const [selected, setSelected] = useState<LanguageCode>("EN");
   const [open, setOpen] = useState(false);
 
+  function toggleLanguageMenu(): void {
+    setOpen(!open);
+  }
+
+  function selectLanguage(code: LanguageCode) {
+    return () => {
+      setSelected(code);
+      setOpen(false);
+    };
+  }
+
   return (
     <div className={styles.menuAnchor}>
       <button
@@ -26,9 +37,7 @@ export function LanguageMenu(): ReactElement {
         aria-label="Language"
         aria-expanded={open}
         className={styles.langTrigger}
-        onClick={() => {
-          setOpen(!open);
-        }}
+        onClick={toggleLanguageMenu}
       >
         <svg
           viewBox="0 0 24 24"
@@ -64,10 +73,7 @@ export function LanguageMenu(): ReactElement {
                 data-testid={`language-option-${lang.code}`}
                 data-active={active ? "true" : "false"}
                 className={styles.langOption}
-                onClick={() => {
-                  setSelected(lang.code);
-                  setOpen(false);
-                }}
+                onClick={selectLanguage(lang.code)}
               >
                 <span>{lang.label}</span>
                 <span className={styles.mark}>{active ? "✓" : ""}</span>

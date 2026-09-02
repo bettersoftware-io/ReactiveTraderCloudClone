@@ -10,6 +10,12 @@ import styles from "./InstrumentSelect.module.css";
 export function InstrumentSelect(props: InstrumentSelectProps): ReactElement {
   const { instruments, selected, open, onToggle, onSelect } = props;
 
+  function selectInstrument(instrument: Instrument) {
+    return () => {
+      onSelect(instrument);
+    };
+  }
+
   return (
     <div className={styles.wrap}>
       <button
@@ -31,9 +37,7 @@ export function InstrumentSelect(props: InstrumentSelectProps): ReactElement {
               <InstrumentRow
                 key={instrument.id}
                 instrument={instrument}
-                onSelect={() => {
-                  onSelect(instrument);
-                }}
+                onSelect={selectInstrument(instrument)}
               />
             );
           })}

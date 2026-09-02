@@ -10,6 +10,12 @@ export function TimeframePills({
   tf,
   onSet,
 }: TimeframePillsProps): ReactElement {
+  function selectTimeframe(id: CandleTimeframe) {
+    return () => {
+      onSet(id);
+    };
+  }
+
   return (
     <div className={styles.pills}>
       {TIMEFRAMES.map((id) => {
@@ -20,9 +26,7 @@ export function TimeframePills({
             className={styles.pill}
             data-tf={id}
             data-active={String(id === tf)}
-            onClick={() => {
-              onSet(id);
-            }}
+            onClick={selectTimeframe(id)}
           >
             {id}
           </button>

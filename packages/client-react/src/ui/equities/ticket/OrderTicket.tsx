@@ -176,6 +176,43 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
     ticket.setQty(Math.max(0, form.qty + delta));
   }
 
+  function selectBuySide(): void {
+    ticket.setSide("buy");
+  }
+
+  function selectSellSide(): void {
+    ticket.setSide("sell");
+  }
+
+  function selectMarketType(): void {
+    ticket.setType("market");
+  }
+
+  function selectLimitType(): void {
+    ticket.setType("limit");
+  }
+
+  function decrementQty(): void {
+    stepQty(-QTY_STEP);
+  }
+
+  function incrementQty(): void {
+    stepQty(QTY_STEP);
+  }
+
+  function changeQty(e: ChangeEvent<HTMLInputElement>): void {
+    const n = Number(e.target.value);
+
+    if (Number.isFinite(n)) {
+      ticket.setQty(n);
+    }
+  }
+
+  function changeLimitPrice(e: ChangeEvent<HTMLInputElement>): void {
+    const n = e.target.value === "" ? undefined : Number(e.target.value);
+    ticket.setLimitPrice(Number.isFinite(n) ? n : undefined);
+  }
+
   return (
     <div
       data-testid="order-ticket"
@@ -190,9 +227,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           data-side="buy"
           data-active={form.side === "buy" ? "true" : "false"}
           className={styles.side}
-          onClick={() => {
-            ticket.setSide("buy");
-          }}
+          onClick={selectBuySide}
         >
           BUY
         </button>
@@ -201,9 +236,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           data-side="sell"
           data-active={form.side === "sell" ? "true" : "false"}
           className={styles.side}
-          onClick={() => {
-            ticket.setSide("sell");
-          }}
+          onClick={selectSellSide}
         >
           SELL
         </button>
@@ -217,9 +250,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           data-kind="type"
           data-active={form.type === "market" ? "true" : "false"}
           className={styles.type}
-          onClick={() => {
-            ticket.setType("market");
-          }}
+          onClick={selectMarketType}
         >
           MARKET
         </button>
@@ -228,9 +259,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           data-kind="type"
           data-active={form.type === "limit" ? "true" : "false"}
           className={styles.type}
-          onClick={() => {
-            ticket.setType("limit");
-          }}
+          onClick={selectLimitType}
         >
           LIMIT
         </button>
@@ -243,9 +272,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           type="button"
           data-testid="order-ticket-qty-dec"
           className={styles.step}
-          onClick={() => {
-            stepQty(-QTY_STEP);
-          }}
+          onClick={decrementQty}
         >
           −
         </button>
@@ -256,21 +283,13 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           className={styles.qtyInput}
           value={form.qty === 0 ? "" : form.qty}
           placeholder="0"
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            const n = Number(e.target.value);
-
-            if (Number.isFinite(n)) {
-              ticket.setQty(n);
-            }
-          }}
+          onChange={changeQty}
         />
         <button
           type="button"
           data-testid="order-ticket-qty-inc"
           className={styles.step}
-          onClick={() => {
-            stepQty(QTY_STEP);
-          }}
+          onClick={incrementQty}
         >
           +
         </button>
@@ -287,11 +306,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
             className={styles.input}
             value={form.limitPrice ?? ""}
             placeholder={live.toFixed(2)}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              const n =
-                e.target.value === "" ? undefined : Number(e.target.value);
-              ticket.setLimitPrice(Number.isFinite(n) ? n : undefined);
-            }}
+            onChange={changeLimitPrice}
           />
         </>
       )}

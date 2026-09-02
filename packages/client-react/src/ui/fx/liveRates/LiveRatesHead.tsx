@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import type { RatesTab } from "#/ui/fx/fxViewContext";
 import { useFxView } from "#/ui/fx/useFxView";
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
 
@@ -16,6 +17,16 @@ export function LiveRatesHead(): ReactElement {
   const { viewMode, setViewMode } = useViewModePreference();
   const charts = viewMode === "chart";
 
+  function selectRatesTab(tab: RatesTab) {
+    return () => {
+      setRatesTab(tab);
+    };
+  }
+
+  function toggleChartsView(): void {
+    setViewMode(charts ? "price" : "chart");
+  }
+
   return (
     <div className={styles.headTabs}>
       <button
@@ -23,9 +34,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="rates-tab-live"
         data-active={ratesTab === "rates" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setRatesTab("rates");
-        }}
+        onClick={selectRatesTab("rates")}
       >
         ◧ Live Rates
       </button>
@@ -34,9 +43,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="rates-tab-watchlist"
         data-active={ratesTab === "watchlist" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setRatesTab("watchlist");
-        }}
+        onClick={selectRatesTab("watchlist")}
       >
         ☰ Watchlist
       </button>
@@ -46,9 +53,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="charts-toggle"
         data-active={charts ? "true" : "false"}
         className={styles.headChip}
-        onClick={() => {
-          setViewMode(charts ? "price" : "chart");
-        }}
+        onClick={toggleChartsView}
       >
         CHARTS
       </button>

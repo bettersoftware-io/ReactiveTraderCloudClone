@@ -91,6 +91,22 @@ export function ChartPanel(): ReactElement {
     }
   }
 
+  function commitDrawing(d: EqDrawing): void {
+    addDrawing(sel, d);
+  }
+
+  function updateDrawingOnSelectedSymbol(d: EqDrawing): void {
+    updateDrawing(sel, d);
+  }
+
+  function deleteSelectedDrawing(): void {
+    deleteSelected(sel);
+  }
+
+  function shiftAnchorsForSelectedSymbol(by: number): void {
+    shiftAnchors(sel, by);
+  }
+
   return (
     <div className={styles.body}>
       <div className={styles.chartArea}>
@@ -128,19 +144,11 @@ export function ChartPanel(): ReactElement {
           drawTool={drawState.tool}
           drawings={drawState.drawings[sel] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState.selectedId}
-          onCommitDrawing={(d: EqDrawing) => {
-            addDrawing(sel, d);
-          }}
-          onUpdateDrawing={(d: EqDrawing) => {
-            updateDrawing(sel, d);
-          }}
+          onCommitDrawing={commitDrawing}
+          onUpdateDrawing={updateDrawingOnSelectedSymbol}
           onSelectDrawing={selectDrawing}
-          onDeleteSelected={() => {
-            deleteSelected(sel);
-          }}
-          onShiftAnchors={(by: number) => {
-            shiftAnchors(sel, by);
-          }}
+          onDeleteSelected={deleteSelectedDrawing}
+          onShiftAnchors={shiftAnchorsForSelectedSymbol}
         />
       </div>
     </div>

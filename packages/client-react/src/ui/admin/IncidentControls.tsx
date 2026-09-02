@@ -13,6 +13,16 @@ export function IncidentControls(): ReactElement {
   const { useIncident } = useViewModel();
   const { state, inject, clear } = useIncident();
 
+  function injectIncident(kind: (typeof INCIDENTS)[number]["kind"]) {
+    return () => {
+      inject(kind);
+    };
+  }
+
+  function clearIncidents(): void {
+    clear();
+  }
+
   return (
     <div data-testid="admin-incident-controls" className={styles.controls}>
       <span className={styles.label}>INCIDENTS</span>
@@ -26,9 +36,7 @@ export function IncidentControls(): ReactElement {
               data-testid={`incident-${incident.kind}`}
               data-active={active ? "true" : "false"}
               className={styles.inject}
-              onClick={() => {
-                inject(incident.kind);
-              }}
+              onClick={injectIncident(incident.kind)}
             >
               {incident.label}
             </button>
@@ -39,9 +47,7 @@ export function IncidentControls(): ReactElement {
           data-testid="incident-clear"
           data-active={state.active.length === 0 ? "false" : "true"}
           className={styles.clear}
-          onClick={() => {
-            clear();
-          }}
+          onClick={clearIncidents}
         >
           Clear
         </button>

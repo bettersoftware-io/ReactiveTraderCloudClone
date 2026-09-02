@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import type { EqBlotterView } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
@@ -21,6 +22,12 @@ export function EqBlotterHead(): ReactElement {
       ? `${orders.length} orders`
       : `${positions.length} positions`;
 
+  function selectBlotterView(next: EqBlotterView) {
+    return () => {
+      setView(next);
+    };
+  }
+
   return (
     <div className={styles.headTabs}>
       <button
@@ -28,9 +35,7 @@ export function EqBlotterHead(): ReactElement {
         data-testid="blotter-tab-orders"
         data-active={view === "orders" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setView("orders");
-        }}
+        onClick={selectBlotterView("orders")}
       >
         ▤ Orders
       </button>
@@ -39,9 +44,7 @@ export function EqBlotterHead(): ReactElement {
         data-testid="blotter-tab-positions"
         data-active={view === "positions" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setView("positions");
-        }}
+        onClick={selectBlotterView("positions")}
       >
         ◴ Positions
       </button>

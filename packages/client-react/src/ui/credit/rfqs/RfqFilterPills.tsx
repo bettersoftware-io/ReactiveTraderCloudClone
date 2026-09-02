@@ -10,6 +10,12 @@ import styles from "./RfqFilterPills.module.css";
 export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
   const { filter, liveCount, onFilter } = props;
 
+  function filterRfqs(next: CreditRfqFilter) {
+    return () => {
+      onFilter(next);
+    };
+  }
+
   return (
     <div className={styles.filters}>
       <button
@@ -17,9 +23,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
         className={styles.pill}
         data-testid="rfq-filter-live"
         data-active={String(filter === "live")}
-        onClick={() => {
-          onFilter("live");
-        }}
+        onClick={filterRfqs("live")}
       >
         LIVE {liveCount}
       </button>
@@ -28,9 +32,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
         className={styles.pill}
         data-testid="rfq-filter-closed"
         data-active={String(filter === "closed")}
-        onClick={() => {
-          onFilter("closed");
-        }}
+        onClick={filterRfqs("closed")}
       >
         CLOSED
       </button>
@@ -39,9 +41,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
         className={styles.pill}
         data-testid="rfq-filter-all"
         data-active={String(filter === "all")}
-        onClick={() => {
-          onFilter("all");
-        }}
+        onClick={filterRfqs("all")}
       >
         ALL
       </button>

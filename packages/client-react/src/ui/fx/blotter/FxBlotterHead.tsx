@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import type { BlotterTab } from "#/ui/fx/fxViewContext";
 import { useFxView } from "#/ui/fx/useFxView";
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
 
@@ -20,6 +21,12 @@ export function FxBlotterHead(): ReactElement {
   const { useTrades } = useViewModel();
   const trades = useTrades();
 
+  function selectBlotterTab(tab: BlotterTab) {
+    return () => {
+      setBlotterTab(tab);
+    };
+  }
+
   return (
     <div className={styles.headTabs}>
       <button
@@ -27,9 +34,7 @@ export function FxBlotterHead(): ReactElement {
         data-testid="blotter-tab-trades"
         data-active={blotterTab === "trades" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setBlotterTab("trades");
-        }}
+        onClick={selectBlotterTab("trades")}
       >
         ▤ FX Blotter
       </button>
@@ -38,9 +43,7 @@ export function FxBlotterHead(): ReactElement {
         data-testid="blotter-tab-activity"
         data-active={blotterTab === "activity" ? "true" : "false"}
         className={styles.headTab}
-        onClick={() => {
-          setBlotterTab("activity");
-        }}
+        onClick={selectBlotterTab("activity")}
       >
         ⚡ Activity
       </button>
