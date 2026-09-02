@@ -631,7 +631,9 @@ const styles = StyleSheet.create({
   // its parent (`BlotterModule`'s list) collapses to nothing without it — the
   // first content-only capture ever taken came back an empty screen.
   body: { flex: 1, minHeight: 0 },
-  content: { flex: 1, padding: 16, gap: 20 },
+  // AnalyticsScreen's contentContainerStyle, restated: vertical inset only
+  // (the cards own the 12px side inset + 10px stack gap since 2026-09-02).
+  content: { flex: 1, paddingTop: 12, paddingBottom: 8 },
 });
 
 /** The prototype's `_seedPnl` walks 48 points; this is a hand-picked

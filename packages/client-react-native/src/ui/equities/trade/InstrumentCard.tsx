@@ -14,6 +14,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { formatChangePct } from "#/ui/equities/formatChangePct";
 import { CandleChart } from "#/ui/equities/trade/CandleChart";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
+import { SurfaceCard } from "#/ui/SurfaceCard";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -49,7 +50,7 @@ export function InstrumentCard({
   const priceColor = up ? theme.accentPositive : theme.accentNegative;
 
   return (
-    <View testID="instrument-card" style={styles.card}>
+    <SurfaceCard variant="tile" testID="instrument-card" style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.identity}>
           <Text style={styles.symbol}>{symbol}</Text>
@@ -71,7 +72,7 @@ export function InstrumentCard({
         </View>
       </View>
       <CandleChart candles={candles} />
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -93,11 +94,10 @@ interface InstrumentCardStyles {
 
 function makeStyles(t: RnTheme): InstrumentCardStyles {
   return StyleSheet.create({
+    // Chrome (radius/border/bgTile + 3d gradient sheen and shadow) comes from
+    // SurfaceCard, as the design's instrument tile is a `--tile-bg` surface
+    // (dc.html:363); this style owns only content padding + stack margin.
     card: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      backgroundColor: t.bgTile,
       paddingTop: 11,
       paddingHorizontal: 13,
       paddingBottom: 9,
