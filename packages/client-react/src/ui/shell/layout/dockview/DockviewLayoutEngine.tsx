@@ -217,6 +217,28 @@ export function DockviewLayoutEngine({
     appliedCollapse.current = { tab, ids: collapsed };
   }, [collapsed, tab, liveEngine]);
 
+  function collapsePanel(panelId: PanelId) {
+    return () => {
+      onCollapse(panelId);
+    };
+  }
+
+  function maximizePanel(panelId: PanelId) {
+    return () => {
+      onMaximize(panelId);
+    };
+  }
+
+  function expandOrRestorePanel(panelId: PanelId) {
+    return () => {
+      if (collapsed.includes(panelId)) {
+        onExpand(panelId);
+      } else {
+        onRestore();
+      }
+    };
+  }
+
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
   // `PanelStrip` in the body slot, just as in-house.
@@ -260,12 +282,8 @@ export function DockviewLayoutEngine({
                 title={title}
                 maximizable={specs[panelId]?.maximizable !== false}
                 maximizedHere={maximized === panelId}
-                onCollapse={() => {
-                  onCollapse(panelId);
-                }}
-                onMaximize={() => {
-                  onMaximize(panelId);
-                }}
+                onCollapse={collapsePanel(panelId)}
+                onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
               />
             ) : null
@@ -277,13 +295,7 @@ export function DockviewLayoutEngine({
               panelId={panelId}
               title={title}
               orientation={strip}
-              onRestore={() => {
-                if (collapsed.includes(panelId)) {
-                  onExpand(panelId);
-                } else {
-                  onRestore();
-                }
-              }}
+              onRestore={expandOrRestorePanel(panelId)}
             />
           ) : (
             // data-flip-stage: the scroll container owning the panel's

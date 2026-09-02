@@ -14,6 +14,12 @@ export function DrawToolPills({
   tool,
   onSet,
 }: DrawToolPillsProps): ReactElement {
+  function toggleDrawTool(id: Exclude<EqDrawTool, "cursor">, active: boolean) {
+    return () => {
+      onSet(active ? "cursor" : id);
+    };
+  }
+
   return (
     <div className={styles.pills}>
       {DRAW_TOOLS.map((t) => {
@@ -26,9 +32,7 @@ export function DrawToolPills({
             data-testid="chart-draw-pill"
             data-tool={t.id}
             data-active={String(active)}
-            onClick={() => {
-              onSet(active ? "cursor" : t.id);
-            }}
+            onClick={toggleDrawTool(t.id, active)}
           >
             {t.label}
           </button>

@@ -44,6 +44,14 @@ export function TileRfq({
     onExecute(direction, syntheticPrice, notional);
   }
 
+  function acceptSellQuote(): void {
+    executeAcceptedQuote(Direction.Sell);
+  }
+
+  function acceptBuyQuote(): void {
+    executeAcceptedQuote(Direction.Buy);
+  }
+
   // No init branch: the RFQ-initiation affordance is the compact ⚡ RFQ chip
   // in the tile header's pair row (TileHeader), not an extra bottom row.
   if (state.status === "requested") {
@@ -67,18 +75,14 @@ export function TileRfq({
         <div className={styles.quoteRow}>
           <button
             type="button"
-            onClick={() => {
-              return executeAcceptedQuote(Direction.Sell);
-            }}
+            onClick={acceptSellQuote}
             className={styles.sellQuoteButton}
           >
             Sell {formatPrice(state.quote.bid, pair.ratePrecision)}
           </button>
           <button
             type="button"
-            onClick={() => {
-              return executeAcceptedQuote(Direction.Buy);
-            }}
+            onClick={acceptBuyQuote}
             className={styles.buyQuoteButton}
           >
             Buy {formatPrice(state.quote.ask, pair.ratePrecision)}

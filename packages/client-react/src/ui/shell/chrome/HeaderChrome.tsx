@@ -41,6 +41,14 @@ export function HeaderChrome({
   const { pulsing: navPulsing, clearPulse: clearNavPulse } =
     useJarvisDrivenPulse();
 
+  function openPrefsModal(): void {
+    setPrefsOpen(true);
+  }
+
+  function closePrefsModal(): void {
+    setPrefsOpen(false);
+  }
+
   return (
     <header data-testid="header" className={styles.header}>
       <div className={styles.brand}>
@@ -95,18 +103,9 @@ export function HeaderChrome({
         <NotificationsMenu />
         <LanguageMenu />
         <span className={styles.divider} />
-        <AccountMenu
-          onOpenPrefs={() => {
-            setPrefsOpen(true);
-          }}
-        />
+        <AccountMenu onOpenPrefs={openPrefsModal} />
       </div>
-      <PreferencesModal
-        open={prefsOpen}
-        onClose={() => {
-          setPrefsOpen(false);
-        }}
-      />
+      <PreferencesModal open={prefsOpen} onClose={closePrefsModal} />
     </header>
   );
 }

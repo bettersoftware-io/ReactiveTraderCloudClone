@@ -62,6 +62,18 @@ export function ThemePicker(): ReactElement {
     setOpen(false);
   }
 
+  function pickSkin(next: ThemeSkin) {
+    return () => {
+      selectSkin(next);
+    };
+  }
+
+  function toggleThemePicker(): void {
+    setOpen((prev) => {
+      return !prev;
+    });
+  }
+
   const activeTokens = themeTokens[skin][mode];
 
   return (
@@ -75,11 +87,7 @@ export function ThemePicker(): ReactElement {
           aria-expanded={open}
           aria-label="Theme skin"
           className={styles.trigger}
-          onClick={() => {
-            setOpen((prev) => {
-              return !prev;
-            });
-          }}
+          onClick={toggleThemePicker}
           style={
             // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
             {
@@ -110,9 +118,7 @@ export function ThemePicker(): ReactElement {
                   data-skin={s}
                   data-active={active ? "true" : "false"}
                   className={styles.skinRow}
-                  onClick={() => {
-                    selectSkin(s);
-                  }}
+                  onClick={pickSkin(s)}
                   style={
                     // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
                     {

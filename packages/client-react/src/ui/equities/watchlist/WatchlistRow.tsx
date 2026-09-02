@@ -59,6 +59,10 @@ export function WatchlistRow({
       ? `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`
       : "—";
 
+  function selectSymbol(): void {
+    onSelect(symbol);
+  }
+
   return (
     <button
       type="button"
@@ -66,9 +70,7 @@ export function WatchlistRow({
       data-watch-sym={symbol}
       data-selected={selected ? "true" : "false"}
       className={styles.row}
-      onClick={() => {
-        onSelect(symbol);
-      }}
+      onClick={selectSymbol}
     >
       <span
         data-rank-glow="true"

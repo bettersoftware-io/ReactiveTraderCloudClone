@@ -6,14 +6,16 @@ export function QuickFilter({
   value,
   onChange,
 }: QuickFilterProps): ReactElement {
+  function changeQuickFilter(e: ChangeEvent<HTMLInputElement>): void {
+    onChange(e.target.value);
+  }
+
   return (
     <input
       data-testid="quick-filter"
       type="text"
       value={value}
-      onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-        onChange(e.target.value);
-      }}
+      onChange={changeQuickFilter}
       placeholder="Quick filter..."
       className={styles.input}
     />

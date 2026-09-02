@@ -7,6 +7,15 @@ import styles from "./HeaderChrome.module.css";
 export function NotificationsMenu(): ReactElement {
   const [open, setOpen] = useState(false);
 
+  function toggleNotificationsMenu(): void {
+    setOpen(!open);
+  }
+
+  // Decorative like the prototype: just closes the dropdown.
+  function closeNotificationsMenu(): void {
+    setOpen(false);
+  }
+
   return (
     <div className={styles.menuAnchor}>
       <button
@@ -15,9 +24,7 @@ export function NotificationsMenu(): ReactElement {
         aria-label="Notifications"
         aria-expanded={open}
         className={styles.iconButton}
-        onClick={() => {
-          setOpen(!open);
-        }}
+        onClick={toggleNotificationsMenu}
       >
         <svg
           viewBox="0 0 24 24"
@@ -63,10 +70,7 @@ export function NotificationsMenu(): ReactElement {
             type="button"
             data-testid="notifications-mark-read"
             className={styles.markRead}
-            onClick={() => {
-              // Decorative like the prototype: just closes the dropdown.
-              setOpen(false);
-            }}
+            onClick={closeNotificationsMenu}
           >
             MARK ALL READ
           </button>

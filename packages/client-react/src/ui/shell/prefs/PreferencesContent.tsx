@@ -157,6 +157,42 @@ export function PreferencesContent(): ReactElement {
     });
   }
 
+  function changePowerSaver(value: string): void {
+    setPowerSaverLevel(value as PowerSaverLevel);
+  }
+
+  function changeAmbientStyle(value: string): void {
+    setAmbientStyle(value as AmbientStyle);
+  }
+
+  function changeChartSubstrate(value: string): void {
+    setChartSubstrate(value as ChartSubstrate);
+  }
+
+  function changeLayoutEngine(value: string): void {
+    setLayoutEngine(value as LayoutEngine);
+  }
+
+  function changeLoginWaitStyle(value: string): void {
+    setLoginWaitStyle(value as LoginWaitStyle);
+  }
+
+  function changeLoginWaitDelay(value: string): void {
+    setLoginWaitDelay(value as LoginWaitDelay);
+  }
+
+  function changeJarvisBrain(value: string): void {
+    setJarvisBrain(value as JarvisBrain);
+  }
+
+  function changeJarvisEffort(value: string): void {
+    setJarvisEffort(value as JarvisEffort);
+  }
+
+  function changeJarvisNarrator(value: string): void {
+    setJarvisNarrator(value as JarvisNarratorPreference);
+  }
+
   return (
     <div className={styles.grid}>
       <div data-testid="prefs-column" className={styles.column}>
@@ -177,9 +213,7 @@ export function PreferencesContent(): ReactElement {
           label="Power saver"
           options={POWER_SAVER_OPTIONS}
           value={powerSaverLevel}
-          onChange={(value: string) => {
-            setPowerSaverLevel(value as PowerSaverLevel);
-          }}
+          onChange={changePowerSaver}
           testid="pref-segment-powerSaver"
         />
         <PrefToggle
@@ -194,9 +228,7 @@ export function PreferencesContent(): ReactElement {
           description="Northern-lights curtains or the original accent rays."
           options={AMBIENT_STYLE_OPTIONS}
           value={ambientStyle}
-          onChange={(value: string) => {
-            setAmbientStyle(value as AmbientStyle);
-          }}
+          onChange={changeAmbientStyle}
           testid="pref-segment-ambientStyle"
         />
         <PrefSegment
@@ -204,9 +236,7 @@ export function PreferencesContent(): ReactElement {
           description="Retained DOM/SVG geometry, or immediate-mode canvas (fewer live DOM nodes)."
           options={CHART_SUBSTRATE_OPTIONS}
           value={chartSubstrate}
-          onChange={(value: string) => {
-            setChartSubstrate(value as ChartSubstrate);
-          }}
+          onChange={changeChartSubstrate}
           testid="pref-segment-chartSubstrate"
         />
         <PrefSegment
@@ -214,9 +244,7 @@ export function PreferencesContent(): ReactElement {
           description="In-house split engine, or Dockview docking — drag tabs to re-arrange; layout persists per workspace tab."
           options={LAYOUT_ENGINE_OPTIONS}
           value={layoutEngine}
-          onChange={(value: string) => {
-            setLayoutEngine(value as LayoutEngine);
-          }}
+          onChange={changeLayoutEngine}
           testid="pref-segment-layoutEngine"
         />
         <ToggleGroup
@@ -235,9 +263,7 @@ export function PreferencesContent(): ReactElement {
           label="Login wait style"
           options={LOGIN_WAIT_STYLE_OPTIONS}
           value={loginWaitStyle}
-          onChange={(value: string) => {
-            setLoginWaitStyle(value as LoginWaitStyle);
-          }}
+          onChange={changeLoginWaitStyle}
           testid="pref-segment-loginWaitStyle"
         />
         <PrefSegment
@@ -245,9 +271,7 @@ export function PreferencesContent(): ReactElement {
           description="Holds sign-in back so the wait animation is visible."
           options={LOGIN_WAIT_DELAY_OPTIONS}
           value={loginWaitDelay}
-          onChange={(value: string) => {
-            setLoginWaitDelay(value as LoginWaitDelay);
-          }}
+          onChange={changeLoginWaitDelay}
           testid="pref-segment-loginWaitDelay"
         />
       </div>
@@ -297,9 +321,7 @@ export function PreferencesContent(): ReactElement {
           description="Which AI powers the desk assistant."
           options={jarvisBrainOptions}
           value={jarvisBrain}
-          onChange={(value: string) => {
-            setJarvisBrain(value as JarvisBrain);
-          }}
+          onChange={changeJarvisBrain}
           testid="pref-segment-jarvisBrain"
         />
         {gate !== null ? (
@@ -315,9 +337,7 @@ export function PreferencesContent(): ReactElement {
           description="Thinking-effort budget for a live brain. No effect on scripted."
           options={JARVIS_EFFORT_OPTIONS}
           value={jarvisEffort}
-          onChange={(value: string) => {
-            setJarvisEffort(value as JarvisEffort);
-          }}
+          onChange={changeJarvisEffort}
           testid="pref-segment-jarvisEffort"
           disabled={jarvisBrain === "scripted"}
         />
@@ -326,9 +346,7 @@ export function PreferencesContent(): ReactElement {
           description="Let J.A.R.V.I.S speak up unprompted about notable market moves."
           options={JARVIS_NARRATOR_OPTIONS}
           value={jarvisNarrator}
-          onChange={(value: string) => {
-            setJarvisNarrator(value as JarvisNarratorPreference);
-          }}
+          onChange={changeJarvisNarrator}
           testid="pref-segment-jarvisNarrator"
         />
       </div>
@@ -343,6 +361,12 @@ function ToggleGroup({
   values,
   onToggle,
 }: ToggleGroupProps): ReactElement {
+  function toggleDef(key: string) {
+    return () => {
+      onToggle(key);
+    };
+  }
+
   return (
     <>
       {defs.map((def) => {
@@ -352,9 +376,7 @@ function ToggleGroup({
             label={def.label}
             description={def.description}
             on={values[def.key]}
-            onToggle={() => {
-              onToggle(def.key);
-            }}
+            onToggle={toggleDef(def.key)}
             testid={`pref-toggle-${def.key}`}
           />
         );
@@ -369,6 +391,12 @@ function SegmentGroup({
   values,
   onSelect,
 }: SegmentGroupProps): ReactElement {
+  function selectDefOption(key: string) {
+    return (value: string) => {
+      onSelect(key, value);
+    };
+  }
+
   return (
     <>
       {defs.map((def) => {
@@ -378,9 +406,7 @@ function SegmentGroup({
             label={def.label}
             options={def.options}
             value={values[def.key]}
-            onChange={(value: string) => {
-              onSelect(def.key, value);
-            }}
+            onChange={selectDefOption(def.key)}
             testid={`pref-segment-${def.key}`}
           />
         );

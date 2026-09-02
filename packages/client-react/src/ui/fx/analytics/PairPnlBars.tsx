@@ -19,6 +19,16 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
     1,
   );
 
+  function hoverSymbol(symbol: string) {
+    return () => {
+      setHoveredSymbol(symbol);
+    };
+  }
+
+  function unhoverSymbol(): void {
+    setHoveredSymbol(null);
+  }
+
   return (
     <div className={styles.container}>
       {positions.map((pos) => {
@@ -49,12 +59,8 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
               data-sign={sign}
               data-testid={`priceLabel-${pos.symbol}`}
               className={styles.pnlLabel}
-              onMouseEnter={() => {
-                return setHoveredSymbol(pos.symbol);
-              }}
-              onMouseLeave={() => {
-                return setHoveredSymbol(null);
-              }}
+              onMouseEnter={hoverSymbol(pos.symbol)}
+              onMouseLeave={unhoverSymbol}
             >
               {label}
             </button>

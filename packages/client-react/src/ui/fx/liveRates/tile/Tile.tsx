@@ -124,9 +124,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
             pipsPosition={pair.pipsPosition}
             anim={tickAnim}
             spread={price.spread}
-            onExecute={(dir: Direction): void => {
-              executeTrade(dir);
-            }}
+            onExecute={executeTrade}
             disabled={priceBoxDisabled}
           />
         ) : (

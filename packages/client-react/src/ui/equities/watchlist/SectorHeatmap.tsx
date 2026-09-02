@@ -88,6 +88,10 @@ function HeatCell({ symbol, active, onSelect }: CellProps): ReactElement {
   const direction = changePct >= 0 ? "up" : "down";
   const heat = Math.min(1, Math.abs(changePct) / 10);
 
+  function selectSymbol(): void {
+    onSelect(symbol);
+  }
+
   return (
     <button
       type="button"
@@ -97,9 +101,7 @@ function HeatCell({ symbol, active, onSelect }: CellProps): ReactElement {
       className={styles.cell}
       // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
       style={{ "--heat": heat } as CSSProperties}
-      onClick={() => {
-        onSelect(symbol);
-      }}
+      onClick={selectSymbol}
     >
       {symbol}
     </button>

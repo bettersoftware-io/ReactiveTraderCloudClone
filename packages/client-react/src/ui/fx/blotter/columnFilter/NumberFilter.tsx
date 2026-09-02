@@ -42,14 +42,28 @@ export function NumberFilter<TRow>({
     });
   }
 
+  function changeComparator(e: ChangeEvent<HTMLSelectElement>): void {
+    setComparator(e.target.value as Comparator);
+  }
+
+  function changeValue(e: ChangeEvent<HTMLInputElement>): void {
+    setValue(e.target.value);
+  }
+
+  function changeValueTo(e: ChangeEvent<HTMLInputElement>): void {
+    setValueTo(e.target.value);
+  }
+
+  function resetNumberFilter(): void {
+    onApply(null);
+  }
+
   return (
     <div className={styles.container}>
       <select
         data-testid="number-filter-comparator"
         value={comparator}
-        onChange={(e: ChangeEvent<HTMLSelectElement>): void => {
-          setComparator(e.target.value as Comparator);
-        }}
+        onChange={changeComparator}
         className={styles.select}
       >
         {comparators.map((c) => {
@@ -64,9 +78,7 @@ export function NumberFilter<TRow>({
         type="number"
         data-testid="number-filter-value"
         value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-          setValue(e.target.value);
-        }}
+        onChange={changeValue}
         placeholder="Value"
         className={styles.input}
       />
@@ -75,9 +87,7 @@ export function NumberFilter<TRow>({
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo}
-          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-            setValueTo(e.target.value);
-          }}
+          onChange={changeValueTo}
           placeholder="To"
           className={styles.input}
         />
@@ -93,9 +103,7 @@ export function NumberFilter<TRow>({
         </button>
         <button
           type="button"
-          onClick={() => {
-            return onApply(null);
-          }}
+          onClick={resetNumberFilter}
           className={styles.resetBtn}
         >
           Reset

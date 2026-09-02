@@ -38,6 +38,10 @@ export function TradeTicket({
     pass(quote.id);
   }
 
+  function changePriceDraft(e: ChangeEvent<HTMLInputElement>): void {
+    setPrice(e.target.value);
+  }
+
   return (
     <div
       className={styles.ticket}
@@ -72,9 +76,7 @@ export function TradeTicket({
             type="number"
             data-testid="trade-ticket-price"
             value={price}
-            onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-              setPrice(e.target.value);
-            }}
+            onChange={changePriceDraft}
             placeholder="Price"
             className={styles.priceInput}
           />

@@ -41,6 +41,12 @@ export function SetFilter<TRow>({
     });
   }
 
+  function toggleValueOption(val: string) {
+    return () => {
+      toggleValue(val);
+    };
+  }
+
   function applySelectedValues(): void {
     if (selected.size === allValues.length) {
       onApply(null); // all selected = no filter
@@ -58,9 +64,7 @@ export function SetFilter<TRow>({
               type="checkbox"
               data-testid={`set-filter-option-${val}`}
               checked={selected.has(val)}
-              onChange={() => {
-                return toggleValue(val);
-              }}
+              onChange={toggleValueOption(val)}
             />
             {val}
           </label>

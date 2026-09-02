@@ -13,6 +13,12 @@ export function ComparePills({
   active,
   onSelect,
 }: ComparePillsProps): ReactElement {
+  function toggleCompareSymbol(sym: string) {
+    return () => {
+      onSelect(active === sym ? null : sym);
+    };
+  }
+
   return (
     <div className={styles.pills}>
       <span className={styles.vsLabel}>VS</span>
@@ -25,9 +31,7 @@ export function ComparePills({
             data-testid="chart-compare-pill"
             data-sym={sym}
             data-active={String(active === sym)}
-            onClick={() => {
-              onSelect(active === sym ? null : sym);
-            }}
+            onClick={toggleCompareSymbol(sym)}
           >
             {sym}
           </button>

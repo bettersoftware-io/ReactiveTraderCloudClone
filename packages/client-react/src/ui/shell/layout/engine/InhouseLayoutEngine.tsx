@@ -372,6 +372,12 @@ function SplitNode({
     handle.addEventListener("pointerup", up);
   }
 
+  function startHandleDrag(index: number) {
+    return (e: ReactPointerEvent<HTMLHRElement>) => {
+      startResizeDrag(index, e);
+    };
+  }
+
   // A pinned last child of a column split renders in a fixed bottom slot.
   const lastIsPinned =
     node.dir === "column" &&
@@ -523,9 +529,7 @@ function SplitNode({
                 }
                 className={styles.handle}
                 tabIndex={0}
-                onPointerDown={(e: ReactPointerEvent<HTMLHRElement>) => {
-                  startResizeDrag(i, e);
-                }}
+                onPointerDown={startHandleDrag(i)}
               />
             ) : null}
           </Fragment>
@@ -574,6 +578,18 @@ function PanelLeaf({
   const stripOrientation =
     (stripDir ?? parentDir) === "row" ? "vertical" : "horizontal";
 
+  function expandOrRestorePanel(): void {
+    collapsed ? onExpand(panelId) : onRestore();
+  }
+
+  function collapsePanel(): void {
+    onCollapse(panelId);
+  }
+
+  function maximizePanel(): void {
+    onMaximize(panelId);
+  }
+
   return (
     <section
       data-testid={`panel-${panelId}`}
@@ -589,9 +605,7 @@ function PanelLeaf({
           panelId={panelId}
           title={title}
           orientation={stripOrientation}
-          onRestore={() => {
-            collapsed ? onExpand(panelId) : onRestore();
-          }}
+          onRestore={expandOrRestorePanel}
         />
       ) : (
         <>
@@ -609,12 +623,8 @@ function PanelLeaf({
               title={title}
               maximizable={spec?.maximizable !== false}
               maximizedHere={maximizedHere}
-              onCollapse={() => {
-                onCollapse(panelId);
-              }}
-              onMaximize={() => {
-                onMaximize(panelId);
-              }}
+              onCollapse={collapsePanel}
+              onMaximize={maximizePanel}
               onRestore={onRestore}
             />
           </header>

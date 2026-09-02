@@ -8,6 +8,12 @@ export function CurrencyFilter({
   selected,
   onChange,
 }: CurrencyFilterProps): ReactElement {
+  function selectCategory(cat: CurrencyCategory) {
+    return () => {
+      onChange(cat);
+    };
+  }
+
   return (
     <div data-testid="currency-filter" className={styles.filterBar}>
       <span className={styles.label}>FILTER</span>
@@ -18,9 +24,7 @@ export function CurrencyFilter({
             type="button"
             data-testid={`filter-${cat}`}
             data-active={selected === cat ? "true" : "false"}
-            onClick={() => {
-              return onChange(cat);
-            }}
+            onClick={selectCategory(cat)}
             className={styles.chip}
           >
             {cat}

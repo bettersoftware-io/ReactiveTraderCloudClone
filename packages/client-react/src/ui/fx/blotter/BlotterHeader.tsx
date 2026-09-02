@@ -20,6 +20,29 @@ export function BlotterHeader<TRow>({
 }: BlotterHeaderProps<TRow>): ReactElement {
   const [openFilter, setOpenFilter] = useState<keyof TRow | null>(null);
 
+  function sortByColumn(column: keyof TRow) {
+    return () => {
+      onSort(column);
+    };
+  }
+
+  function toggleFilterFor(column: keyof TRow) {
+    return (e: MouseEvent<HTMLButtonElement>): void => {
+      e.stopPropagation();
+      setOpenFilter(openFilter === column ? null : column);
+    };
+  }
+
+  function applyFilterFor(column: keyof TRow) {
+    return (f: ColumnFilter<TRow> | null): void => {
+      onFilter(column, f);
+    };
+  }
+
+  function closeFilter(): void {
+    setOpenFilter(null);
+  }
+
   return (
     <tr>
       {columns.map((col) => {
@@ -29,9 +52,7 @@ export function BlotterHeader<TRow>({
             data-testid={`blotter-sort-${String(col.key)}`}
             className={styles.headerCell}
             aria-sort={ariaSortFor(col.key, sort)}
-            onClick={() => {
-              return onSort(col.key);
-            }}
+            onClick={sortByColumn(col.key)}
           >
             <span>
               {col.label}
@@ -43,10 +64,7 @@ export function BlotterHeader<TRow>({
             <button
               type="button"
               data-testid={`blotter-filter-toggle-${String(col.key)}`}
-              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === col.key ? null : col.key);
-              }}
+              onClick={toggleFilterFor(col.key)}
               className={styles.filterToggle}
             >
               {"▽"}
@@ -56,12 +74,8 @@ export function BlotterHeader<TRow>({
                 col={col}
                 rows={rows}
                 currentFilter={filters.get(col.key)}
-                onApply={(f: ColumnFilter<TRow> | null): void => {
-                  onFilter(col.key, f);
-                }}
-                onClose={() => {
-                  return setOpenFilter(null);
-                }}
+                onApply={applyFilterFor(col.key)}
+                onClose={closeFilter}
               />
             )}
           </th>
