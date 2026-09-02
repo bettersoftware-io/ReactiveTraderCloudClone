@@ -604,6 +604,42 @@ as a two-branch conditional, would be guessing at the shape a third engine
   panel's natural size. Fix: serialise the UN-stripped layout (substitute each
   strip's recorded size, or snapshot before clamping), a change to
   `serializeLayout`'s contract rather than to the bridges.
+- **Design-width pins made LIVE, added 2026-09-02.** The seed conversion had
+  honoured `initialPx`/`fixedPx` only as a one-shot pixel allocation at
+  mount, so a Dockview rail *opened* at its design width (FX 360, credit
+  330, equities 290) but then rescaled proportionally on every viewport
+  resize — measured drifting 279→487px across 1000→1720px viewports — where
+  the in-house engine renders the same cell at `flex: 0 0 <px>` and holds it
+  through every resize while the fraction siblings absorb the delta.
+  `convertSeed` now also reports each pinned child as a `DockDesignPin`
+  (`panelIds` + `px` + the declaring split's axis), and the engine holds it
+  the way the strip machinery holds a bar: min=max constraints on the pinned
+  child's groups (all of a rail split's groups — a branch's constraint on
+  its orthogonal axis is the meet of its children's, the same propagation
+  the stripDir flip already uses), which dockview's splitview honours live
+  in every resize distribution. Verified in-browser: all three rails hold
+  their exact design width across 1000/1280/1720px viewports, matching
+  in-house to the pixel. The pin is released on the first pointer MOVE of a
+  sash drag inside the declaring split — the in-house "first drag converts
+  the split to plain fractions for good" — after which BOTH engines resize
+  the former rail proportionally, so the behaviours converge post-drag; a
+  grab that never moves keeps the pin, a drag in a nested split releases
+  nothing, and a pinned panel that is currently a strip has its strip
+  record patched instead so expand cannot resurrect the released clamp.
+  Live pins persist as an `rtcDesignPins` sidecar inside the blob (dockview's
+  `fromJSON` ignores unknown keys), so a still-pinned rail stays pinned
+  across reloads and a released one stays released; a legacy blob without
+  the sidecar gets no pins (that layout may be user-shaped already), and a
+  pin whose panels no longer fill their groups exactly (a tab dragged in or
+  out) dissolves with its constraints released rather than clamping a
+  stranger. **Residual, pending — sequential expand of a fully-stripped
+  column overshoots:** collapse both rail panels, then expand them one at a
+  time, and the SECOND expand lands the first panel at dockview's ~100px
+  minimum with the second at the remainder (~590px) instead of both
+  restoring their recorded sizes; measured byte-identical with pins on and
+  off (and in jsdom: 100/700 both ways), so it is the strip machinery's
+  restore-order interaction, not the pins — the single-panel and
+  maximize round-trips restore exactly.
 - **See also:** the implementation spec and plan —
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).

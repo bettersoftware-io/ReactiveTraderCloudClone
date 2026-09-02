@@ -1,7 +1,7 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
 import { compensateGap } from "#/dockBlob";
-import { type DockSeedNode, toSerializedDockview } from "#/dockSeed";
+import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
@@ -211,7 +211,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // the container's real size is known, so a stale fallback self-corrects.
   api.layout(width, height);
 
-  loadBlobOrSeed(api, opts, width, height);
+  const loadedPins = loadBlobOrSeed(api, opts, width, height);
   applyTitles(api, opts.panels);
 
   const debounceMs = opts.debounceMs ?? 250;
@@ -220,8 +220,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function serializeLayout(): void {
     // See compensateGap: dockview serialises gap-shaved rendered sizes,
     // which would restore a little differently on every load.
+    // `rtcDesignPins` rides along inside the blob (dockview's fromJSON
+    // ignores unknown top-level keys) so a still-pinned rail stays pinned
+    // across reloads, and a released one stays released — the in-house
+    // engine's "first drag converts the split for good", persisted.
     opts.onLayoutChange(
-      JSON.stringify(compensateGap(api.toJSON(), GROUP_GAP_PX)),
+      JSON.stringify({
+        ...compensateGap(api.toJSON(), GROUP_GAP_PX),
+        rtcDesignPins: intactDesignPins(),
+      }),
     );
   }
 
@@ -483,6 +490,191 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  // ——— Design-width pins (the in-house `fixedPx`/`initialPx` semantics) ———
+  // In-house renders a design-width cell at `flex: 0 0 <px>`: it HOLDS its
+  // pixels through every viewport resize while the fraction siblings absorb
+  // the delta, until the first drag of its own split's handle converts the
+  // split to plain fractions for good. Dockview instead rescales every child
+  // proportionally on a container resize, so the seed's exact allocation
+  // drifts on the first window resize. Each pin is held the way the strip
+  // machinery holds a bar — min=max constraints, which dockview's splitview
+  // honours live on every resize distribution — and released on the first
+  // pointer MOVE of a sash drag inside the declaring split (a grab that
+  // never moves keeps the pin, as in-house does).
+  let designPins: DesignPinRecord[] = [];
+  let pendingSashSplit: Element | null = null;
+
+  function applyDesignPins(pins: readonly DockDesignPin[]): void {
+    for (const pin of pins) {
+      if (!panelsExactlyFill(pin.panelIds, groupOf)) {
+        continue;
+      }
+
+      const orientation = pinOrientationOf(pin);
+      const first = groupOf(pin.panelIds[0] ?? "");
+
+      if (first === undefined) {
+        continue;
+      }
+
+      const ownerSplit = declaringSplitOf(first.element, pin.axis);
+
+      if (ownerSplit === null) {
+        continue;
+      }
+
+      const members: PinMember[] = [];
+      const clamped = new Set<Element>();
+
+      for (const panelId of pin.panelIds) {
+        const group = groupOf(panelId);
+
+        if (group === undefined) {
+          continue;
+        }
+
+        const axis = axisOf(group, orientation);
+        members.push({
+          panelId,
+          previousMinimum: axis.minimum(),
+          previousMaximum: axis.maximum(),
+        });
+
+        // A rail split's panels share one extent on the pin axis — clamp
+        // each GROUP once (the branch's constraint is the meet of its
+        // children's), not once per panel.
+        if (!clamped.has(group.element)) {
+          clamped.add(group.element);
+          clampRendered(axis, pin.px);
+        }
+      }
+
+      designPins.push({ pin, members, ownerSplit });
+    }
+  }
+
+  /** Lifts every design pin whose declaring split owns `sashSplit`'s sash —
+   * the user is taking over that split, exactly as an in-house drag converts
+   * its split to fractions. A pinned panel that is currently a STRIP has its
+   * strip record patched instead (the pin lives on in the record's captured
+   * constraints, which settleStrips and expand would otherwise re-assert). */
+  function unpinSplit(sashSplit: Element): void {
+    const kept: DesignPinRecord[] = [];
+    let patchedStrips = false;
+
+    for (const record of designPins) {
+      if (record.ownerSplit !== sashSplit) {
+        kept.push(record);
+        continue;
+      }
+
+      const orientation = pinOrientationOf(record.pin);
+      const released = new Set<Element>();
+
+      for (const member of record.members) {
+        const strip = records.get(member.panelId);
+
+        if (strip !== undefined) {
+          if (orientation === strip.natural) {
+            strip.minimum = member.previousMinimum;
+            strip.maximum = member.previousMaximum;
+          } else {
+            strip.orthogonalMinimum = member.previousMinimum;
+            strip.orthogonalMaximum = member.previousMaximum;
+          }
+
+          patchedStrips = true;
+          continue;
+        }
+
+        const group = groupOf(member.panelId);
+
+        if (group === undefined || released.has(group.element)) {
+          continue;
+        }
+
+        released.add(group.element);
+        axisOf(group, orientation).constrain(
+          member.previousMinimum,
+          member.previousMaximum,
+        );
+      }
+    }
+
+    designPins = kept;
+
+    if (patchedStrips) {
+      settleStrips();
+    }
+  }
+
+  /** The pins worth persisting: drops (and releases) any whose groups no
+   * longer hold exactly the pinned panels — a tab dragged into or out of a
+   * pinned group dissolves the pin rather than clamping a stranger. */
+  function intactDesignPins(): readonly DockDesignPin[] {
+    const kept: DesignPinRecord[] = [];
+
+    for (const record of designPins) {
+      if (panelsExactlyFill(record.pin.panelIds, groupOf)) {
+        kept.push(record);
+        continue;
+      }
+
+      const orientation = pinOrientationOf(record.pin);
+
+      for (const member of record.members) {
+        const group = groupOf(member.panelId);
+
+        if (group !== undefined && !records.has(member.panelId)) {
+          axisOf(group, orientation).constrain(
+            member.previousMinimum,
+            member.previousMaximum,
+          );
+        }
+      }
+    }
+
+    designPins = kept;
+
+    return designPins.map((record) => {
+      return record.pin;
+    });
+  }
+
+  function armSashUnpin(event: Event): void {
+    const target = event.target;
+
+    if (designPins.length === 0 || !(target instanceof Element)) {
+      return;
+    }
+
+    const sash = target.closest(".dv-sash");
+    pendingSashSplit = sash?.closest(SPLIT_SELECTOR) ?? null;
+
+    if (pendingSashSplit !== null) {
+      window.addEventListener("pointermove", unpinOnDragMove, true);
+      window.addEventListener("pointerup", disarmSashUnpin, true);
+    }
+  }
+
+  function unpinOnDragMove(): void {
+    const split = pendingSashSplit;
+    disarmSashUnpin();
+
+    if (split !== null) {
+      unpinSplit(split);
+    }
+  }
+
+  function disarmSashUnpin(): void {
+    pendingSashSplit = null;
+    window.removeEventListener("pointermove", unpinOnDragMove, true);
+    window.removeEventListener("pointerup", disarmSashUnpin, true);
+  }
+
+  applyDesignPins(loadedPins);
+  opts.container.addEventListener("pointerdown", armSashUnpin, true);
+
   return {
     maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
@@ -582,6 +774,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     },
     dispose: () => {
       changeSub.dispose();
+      opts.container.removeEventListener("pointerdown", armSashUnpin, true);
+      disarmSashUnpin();
 
       if (glideTimer !== null) {
         clearTimeout(glideTimer);
@@ -615,7 +809,86 @@ interface SizableGroup {
   readonly maximumWidth: number;
   readonly minimumHeight: number;
   readonly maximumHeight: number;
+  readonly panels: readonly SizablePanel[];
   readonly api: SizableGroupApi;
+}
+
+interface SizablePanel {
+  readonly id: string;
+}
+
+/** One member of a design pin: the panel, and the constraints its group had
+ * before the pin clamped it — what a release puts back. */
+interface PinMember {
+  readonly panelId: string;
+  readonly previousMinimum: number;
+  readonly previousMaximum: number;
+}
+
+/** A live design pin: the persisted description, its members' pre-pin
+ * constraints, and the split whose sash releases it. */
+interface DesignPinRecord {
+  readonly pin: DockDesignPin;
+  readonly members: readonly PinMember[];
+  readonly ownerSplit: Element;
+}
+
+/** The axisOf key for a pin's dimension: axisOf names axes by STRIP
+ * orientation, where a "vertical" strip is a narrow column — the WIDTH axis. */
+function pinOrientationOf(pin: DockDesignPin): DockStripOrientation {
+  return pin.axis === "width" ? "vertical" : "horizontal";
+}
+
+/** True when the pinned panels' groups hold exactly those panels — no group
+ * missing, no stranger tab that a pin's clamp would wrongly hold too. */
+function panelsExactlyFill(
+  panelIds: readonly string[],
+  groupOf: (panelId: string) => SizableGroup | undefined,
+): boolean {
+  const groups = new Set<SizableGroup>();
+
+  for (const panelId of panelIds) {
+    const group = groupOf(panelId);
+
+    if (group === undefined) {
+      return false;
+    }
+
+    groups.add(group);
+  }
+
+  const held = new Set<string>();
+
+  for (const group of groups) {
+    for (const panel of group.panels) {
+      held.add(panel.id);
+    }
+  }
+
+  return (
+    held.size === panelIds.length &&
+    panelIds.every((panelId) => {
+      return held.has(panelId);
+    })
+  );
+}
+
+/** The split that DECLARED a pin on `axis`, walking up from the pinned
+ * child's DOM: a row divides width (`dv-horizontal`), a column height. For a
+ * panel child that is the nearest enclosing split of the right orientation;
+ * for a rail-split child the walk steps over the rail's own container. */
+function declaringSplitOf(
+  element: Element,
+  axis: DockDesignPin["axis"],
+): Element | null {
+  const wanted = axis === "width" ? "dv-horizontal" : "dv-vertical";
+  let split: Element | null = element.closest(SPLIT_SELECTOR);
+
+  while (split !== null && !split.classList.contains(wanted)) {
+    split = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
+  }
+
+  return split;
 }
 
 interface SizableGroupApi {
@@ -915,25 +1188,92 @@ function clampRendered(axis: GroupAxis, size: number): void {
 }
 
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
- * a stale or corrupt blob must never brick the workspace. */
+ * a stale or corrupt blob must never brick the workspace. Returns the design
+ * pins to apply: the blob's own surviving `rtcDesignPins` (a legacy blob
+ * without the field gets none — that layout may be user-shaped already), or
+ * the freshly converted seed's. */
 function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
   width: number,
   height: number,
-): void {
+): readonly DockDesignPin[] {
   if (opts.blob !== null) {
     try {
-      api.fromJSON(JSON.parse(opts.blob));
-      return;
+      const parsed: unknown = JSON.parse(opts.blob);
+      // dockview's fromJSON reads only the fields it knows, so the pin
+      // sidecar rides through untouched.
+      api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+
+      return designPinsIn(parsed);
     } catch {
       // fall through to the seed
     }
   }
 
-  api.fromJSON(
-    toSerializedDockview(opts.seed, width, height, { gap: GROUP_GAP_PX }),
-  );
+  const { serialized, pins } = convertSeed(opts.seed, width, height, {
+    gap: GROUP_GAP_PX,
+  });
+  api.fromJSON(serialized);
+
+  return pins;
+}
+
+/** A blob that MAY carry the pin sidecar — what a save wrote, unverified. */
+interface PinSidecarCarrier {
+  readonly rtcDesignPins?: unknown;
+}
+
+/** One unverified sidecar entry, field by field. */
+interface UnverifiedPin {
+  readonly panelIds?: unknown;
+  readonly px?: unknown;
+  readonly axis?: unknown;
+}
+
+/** The `rtcDesignPins` sidecar of a parsed blob, dropping anything malformed
+ * — the blob crosses localStorage, so its shape is unverified input. */
+function designPinsIn(parsed: unknown): readonly DockDesignPin[] {
+  if (typeof parsed !== "object" || parsed === null) {
+    return [];
+  }
+
+  const raw = (parsed as PinSidecarCarrier).rtcDesignPins;
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const pins: DockDesignPin[] = [];
+
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) {
+      continue;
+    }
+
+    const { panelIds, px, axis } = entry as UnverifiedPin;
+    const ids = Array.isArray(panelIds)
+      ? panelIds.filter((id): id is string => {
+          return typeof id === "string";
+        })
+      : [];
+
+    if (
+      ids.length === 0 ||
+      !Array.isArray(panelIds) ||
+      ids.length !== panelIds.length ||
+      typeof px !== "number" ||
+      !Number.isFinite(px) ||
+      px <= 0 ||
+      (axis !== "width" && axis !== "height")
+    ) {
+      continue;
+    }
+
+    pins.push({ panelIds: ids, px, axis });
+  }
+
+  return pins;
 }
 
 /** `createRightHeaderActionComponent` only when the client supplied a
