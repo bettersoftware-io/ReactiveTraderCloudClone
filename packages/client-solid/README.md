@@ -78,18 +78,28 @@ pnpm dev:solid:fs        # full stack: starts the WS server + this client togeth
 ## solid/reactivity and this port
 
 `eslint-plugin-solid`'s `reactivity` rule fires on reads of reactive values
-outside tracked scope. This port's remaining directives fall into exactly one
-sanctioned shape:
+outside tracked scope. This port's remaining directives fall into exactly
+three sanctioned shapes:
 
-- **Instance-constant setup reads** — a component whose parent keys its
-  mount on the value (`<For>`/keyed `<Show>`), so the value cannot change
-  without a remount. Each disable names its remount key; a disable without a
-  named key is a review defect.
+- **Instance-constant setup reads** — safe because a component whose parent
+  keys its mount on the value (`<For>`/keyed `<Show>`) cannot see it change
+  without remounting; the justification names the remount key.
+- **Previous-emission seed reads** — a plain `let` baseline read once at
+  setup for a paired `createEffect`; safe because that effect re-derives its
+  own "previous" state from its own tracked reads on every run after the
+  first, never re-reading the seed source; the justification names that
+  tracked re-derivation.
+- **Same-tick tracked-scope hoists** — a read that IS tracked (Solid tracks
+  by dynamic execution scope, not lexical position) but is hoisted to a
+  local for reuse inside the same pass rather than re-evaluated in a nested
+  callback; safe because the read stays synchronous within that scope; the
+  justification names the enclosing tracked scope.
 
 Two shapes that USED to be suppressed here are now structural and need no
 directive: props-callback event handlers are named wrappers
 (`rtc/name-jsx-handlers`), and reactive reads feeding rendered output are
-accessors/memos. Unsuppressed warnings are ledgered in
+accessors/memos. A disable whose justification doesn't name its safety
+mechanism is a review defect. Unsuppressed warnings are ledgered in
 [`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
 
 ## See also
