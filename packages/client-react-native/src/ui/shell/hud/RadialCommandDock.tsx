@@ -194,7 +194,10 @@ function Satellite({
     // second, which read as lag before the user could pick a module.
     progress.value = withDelay(
       layout.delayMs,
-      withSpring(1, { duration: SAT_IN_MS, dampingRatio: SAT_IN_DAMPING_RATIO }),
+      withSpring(1, {
+        duration: SAT_IN_MS,
+        dampingRatio: SAT_IN_DAMPING_RATIO,
+      }),
     );
   }, [enabled, layout.delayMs, progress]);
 
