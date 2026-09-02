@@ -404,6 +404,24 @@ const GATES: Gate[] = [
       return checkNoUiTimers("../packages/client-solid/src/ui/");
     },
   },
+  {
+    name: "38. No setTimeout/setInterval in devtools-app src (flash/timing runs through rAF or the store)",
+    pattern: "setTimeout|setInterval",
+    paths: ["../packages/devtools-app/src/"],
+    excludes: ["/node_modules/", "/__tests__/", ".test.", ".spec."],
+  },
+  {
+    name: "39. No localStorage in devtools-app src (the inspector holds no persistence; state lives in InspectorStore)",
+    pattern: "localStorage",
+    paths: ["../packages/devtools-app/src/"],
+    excludes: ["/node_modules/", "/__tests__/", ".test.", ".spec."],
+  },
+  {
+    name: "40. No fetch/WebSocket construction in devtools-app src (transport is the injected Duplex)",
+    pattern: "fetch\\(|new WebSocket",
+    paths: ["../packages/devtools-app/src/"],
+    excludes: ["/node_modules/", "/__tests__/", ".test.", ".spec."],
+  },
 ];
 
 let failed = 0;
