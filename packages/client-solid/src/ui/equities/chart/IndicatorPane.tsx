@@ -39,14 +39,20 @@ import styles from "./IndicatorPane.module.css";
  * (module css) so they never shadow it.
  */
 export function IndicatorPane(props: IndicatorPaneProps): JSX.Element {
+  function movePointer(e: PointerEvent): void {
+    props.hoverProps.onPointerMove(e);
+  }
+
+  function leavePointer(): void {
+    props.hoverProps.onPointerLeave();
+  }
+
   return (
     <div
       class={styles.pane}
       data-testid={`chart-pane-${props.kind}`}
-      // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-      onPointerMove={props.hoverProps.onPointerMove}
-      // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-      onPointerLeave={props.hoverProps.onPointerLeave}
+      onPointerMove={movePointer}
+      onPointerLeave={leavePointer}
     >
       <span class={styles.label}>{paneLabel(props.kind)}</span>
       <Show

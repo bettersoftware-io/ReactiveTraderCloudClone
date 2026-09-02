@@ -7,15 +7,17 @@ import styles from "./HeaderChrome.module.css";
  * with `data-testid="tab-{tab}"` and `data-active`, and reports clicks through
  * `onSelect` — the Cypress/Playwright workspace contract for all four tabs. */
 export function NavTab(props: NavTabProps): JSX.Element {
+  function selectTab(): void {
+    props.onSelect(props.tab);
+  }
+
   return (
     <button
       type="button"
       data-testid={`tab-${props.tab}`}
       data-active={props.active ? "true" : "false"}
       class={styles.navButton}
-      onClick={() => {
-        props.onSelect(props.tab);
-      }}
+      onClick={selectTab}
     >
       {TAB_LABEL[props.tab]}
     </button>

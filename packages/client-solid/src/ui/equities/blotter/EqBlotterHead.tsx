@@ -1,5 +1,6 @@
 import { createMemo, type JSX } from "solid-js";
 
+import type { EqBlotterView } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
@@ -22,6 +23,12 @@ export function EqBlotterHead(): JSX.Element {
       : `${positions().length} positions`;
   });
 
+  function selectBlotterView(next: EqBlotterView) {
+    return () => {
+      setView(next);
+    };
+  }
+
   return (
     <div class={styles.headTabs}>
       <button
@@ -29,9 +36,7 @@ export function EqBlotterHead(): JSX.Element {
         data-testid="blotter-tab-orders"
         data-active={view() === "orders" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setView("orders");
-        }}
+        onClick={selectBlotterView("orders")}
       >
         ▤ Orders
       </button>
@@ -40,9 +45,7 @@ export function EqBlotterHead(): JSX.Element {
         data-testid="blotter-tab-positions"
         data-active={view() === "positions" ? "true" : "false"}
         class={styles.headTab}
-        onClick={() => {
-          setView("positions");
-        }}
+        onClick={selectBlotterView("positions")}
       >
         ◴ Positions
       </button>

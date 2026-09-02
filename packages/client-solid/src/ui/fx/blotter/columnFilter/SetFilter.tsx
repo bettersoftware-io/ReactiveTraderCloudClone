@@ -44,6 +44,12 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
     });
   }
 
+  function toggleValueFor(val: string) {
+    return () => {
+      toggleValue(val);
+    };
+  }
+
   function applySelectedValues(): void {
     if (selected().size === allValues().length) {
       props.onApply(null); // all selected = no filter
@@ -62,9 +68,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
                 type="checkbox"
                 data-testid={`set-filter-option-${val}`}
                 checked={selected().has(val)}
-                onChange={() => {
-                  toggleValue(val);
-                }}
+                onChange={toggleValueFor(val)}
               />
               {val}
             </label>

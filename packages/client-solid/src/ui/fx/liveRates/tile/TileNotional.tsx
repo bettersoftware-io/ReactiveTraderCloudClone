@@ -48,6 +48,10 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
     inputRef.select();
   }
 
+  function resetNotional(): void {
+    props.notional.reset();
+  }
+
   const hasError = createMemo((): boolean => {
     return !!props.notional.state().error;
   });
@@ -70,9 +74,7 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
         <Show when={!props.notional.state().isDefault}>
           <button
             type="button"
-            onClick={() => {
-              props.notional.reset();
-            }}
+            onClick={resetNotional}
             title="Reset to default"
             class={styles.resetButton}
           >

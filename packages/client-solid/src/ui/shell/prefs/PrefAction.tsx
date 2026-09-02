@@ -11,6 +11,10 @@ import styles from "./PreferencesContent.module.css";
  * use: "Reset workspace layout" (DATA & PRIVACY).
  */
 export function PrefAction(props: PrefActionProps): JSX.Element {
+  function pressAction(): void {
+    props.onPress();
+  }
+
   return (
     <div class={styles.row}>
       <div class={styles.rowText}>
@@ -23,9 +27,7 @@ export function PrefAction(props: PrefActionProps): JSX.Element {
         type="button"
         data-testid={props.testid}
         class={styles.actionButton}
-        onClick={() => {
-          props.onPress();
-        }}
+        onClick={pressAction}
       >
         {props.buttonLabel}
       </button>

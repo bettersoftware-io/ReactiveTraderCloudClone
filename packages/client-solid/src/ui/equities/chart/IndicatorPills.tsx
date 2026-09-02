@@ -11,6 +11,22 @@ import styles from "./TimeframePills.module.css";
  * (overlays / panes / axis scale) share one pill row, each split from the
  * next by a `.divider`. */
 export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
+  function toggleIndicator(id: EqIndicatorId) {
+    return () => {
+      props.onToggle(id);
+    };
+  }
+
+  function togglePane(id: EqPaneId) {
+    return () => {
+      props.onTogglePane(id);
+    };
+  }
+
+  function toggleYScale(): void {
+    props.onToggleYScale();
+  }
+
   return (
     <div class={styles.pills}>
       <For each={INDICATORS}>
@@ -22,9 +38,7 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
               data-testid="chart-indicator-pill"
               data-ind={opt.id}
               data-active={String(props.active.includes(opt.id))}
-              onClick={() => {
-                props.onToggle(opt.id);
-              }}
+              onClick={toggleIndicator(opt.id)}
             >
               {opt.label}
             </button>
@@ -41,9 +55,7 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
               data-testid="chart-pane-pill"
               data-pane={p.id}
               data-active={String(props.activePanes.includes(p.id))}
-              onClick={() => {
-                props.onTogglePane(p.id);
-              }}
+              onClick={togglePane(p.id)}
             >
               {p.label}
             </button>
@@ -58,9 +70,7 @@ export function IndicatorPills(props: IndicatorPillsProps): JSX.Element {
         data-active={String(!props.comparing && props.yScale === "log")}
         disabled={props.comparing ?? false}
         title={props.comparing ? "comparison uses percent scale" : undefined}
-        onClick={() => {
-          props.onToggleYScale();
-        }}
+        onClick={toggleYScale}
       >
         {props.comparing ? "PCT" : "LOG"}
       </button>

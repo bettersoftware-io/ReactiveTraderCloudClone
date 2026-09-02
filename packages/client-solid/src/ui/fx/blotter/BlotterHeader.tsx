@@ -15,6 +15,31 @@ export function BlotterHeader<TRow>(
 ): JSX.Element {
   const [openFilter, setOpenFilter] = createSignal<keyof TRow | null>(null);
 
+  function sortByColumn(column: keyof TRow) {
+    return () => {
+      props.onSort(column);
+    };
+  }
+
+  function toggleFilterPanelFor(column: keyof TRow) {
+    return (e: FilterToggleClickEvent): void => {
+      e.stopPropagation();
+      setOpenFilter(() => {
+        return openFilter() === column ? null : column;
+      });
+    };
+  }
+
+  function applyFilterFor(column: keyof TRow) {
+    return (f: ColumnFilter<TRow> | null): void => {
+      props.onFilter(column, f);
+    };
+  }
+
+  function closeFilter(): void {
+    setOpenFilter(null);
+  }
+
   return (
     <tr>
       <For each={props.columns}>
@@ -24,9 +49,7 @@ export function BlotterHeader<TRow>(
               data-testid={`blotter-sort-${String(col.key)}`}
               class={styles.headerCell}
               aria-sort={ariaSortFor(col.key, props.sort)}
-              onClick={() => {
-                props.onSort(col.key);
-              }}
+              onClick={sortByColumn(col.key)}
             >
               <span>
                 {col.label}
@@ -38,12 +61,7 @@ export function BlotterHeader<TRow>(
               <button
                 type="button"
                 data-testid={`blotter-filter-toggle-${String(col.key)}`}
-                onClick={(e: FilterToggleClickEvent): void => {
-                  e.stopPropagation();
-                  setOpenFilter(() => {
-                    return openFilter() === col.key ? null : col.key;
-                  });
-                }}
+                onClick={toggleFilterPanelFor(col.key)}
                 class={styles.filterToggle}
               >
                 {"▽"}
@@ -53,12 +71,8 @@ export function BlotterHeader<TRow>(
                   col={col}
                   rows={props.rows}
                   currentFilter={props.filters.get(col.key)}
-                  onApply={(f: ColumnFilter<TRow> | null): void => {
-                    props.onFilter(col.key, f);
-                  }}
-                  onClose={() => {
-                    setOpenFilter(null);
-                  }}
+                  onApply={applyFilterFor(col.key)}
+                  onClose={closeFilter}
                 />
               </Show>
             </th>

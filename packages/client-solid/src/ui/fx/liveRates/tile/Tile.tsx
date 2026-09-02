@@ -176,9 +176,7 @@ export function Tile(props: TileProps): JSX.Element {
                 pipsPosition={props.pair.pipsPosition}
                 anim={tickAnim()}
                 spread={currentPrice().spread}
-                onExecute={(dir: Direction): void => {
-                  executeTrade(dir);
-                }}
+                onExecute={executeTrade}
                 disabled={priceBoxDisabled()}
               />
             );

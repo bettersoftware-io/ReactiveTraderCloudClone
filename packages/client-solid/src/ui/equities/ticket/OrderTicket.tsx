@@ -319,7 +319,31 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     props.setQty(Math.max(0, f.qty + delta));
   }
 
-  function setOrderQty(e: InputChangeEvent): void {
+  function selectBuySide(): void {
+    props.setSide("buy");
+  }
+
+  function selectSellSide(): void {
+    props.setSide("sell");
+  }
+
+  function selectMarketType(): void {
+    props.setType("market");
+  }
+
+  function selectLimitType(): void {
+    props.setType("limit");
+  }
+
+  function decrementQty(): void {
+    stepQty(-QTY_STEP);
+  }
+
+  function incrementQty(): void {
+    stepQty(QTY_STEP);
+  }
+
+  function changeQty(e: InputChangeEvent): void {
     const n = Number(e.currentTarget.value);
 
     if (Number.isFinite(n)) {
@@ -327,10 +351,14 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     }
   }
 
-  function setOrderLimitPrice(e: InputChangeEvent): void {
+  function changeLimitPrice(e: InputChangeEvent): void {
     const raw = e.currentTarget.value;
     const n = raw === "" ? undefined : Number(raw);
     props.setLimitPrice(Number.isFinite(n) ? n : undefined);
+  }
+
+  function submitOrder(): void {
+    props.submit();
   }
 
   return (
@@ -347,9 +375,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           data-side="buy"
           data-active={form()?.side === "buy" ? "true" : "false"}
           class={styles.side}
-          onClick={() => {
-            props.setSide("buy");
-          }}
+          onClick={selectBuySide}
         >
           BUY
         </button>
@@ -358,9 +384,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           data-side="sell"
           data-active={form()?.side === "sell" ? "true" : "false"}
           class={styles.side}
-          onClick={() => {
-            props.setSide("sell");
-          }}
+          onClick={selectSellSide}
         >
           SELL
         </button>
@@ -374,9 +398,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           data-kind="type"
           data-active={form()?.type === "market" ? "true" : "false"}
           class={styles.type}
-          onClick={() => {
-            props.setType("market");
-          }}
+          onClick={selectMarketType}
         >
           MARKET
         </button>
@@ -385,9 +407,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           data-kind="type"
           data-active={form()?.type === "limit" ? "true" : "false"}
           class={styles.type}
-          onClick={() => {
-            props.setType("limit");
-          }}
+          onClick={selectLimitType}
         >
           LIMIT
         </button>
@@ -400,9 +420,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           type="button"
           data-testid="order-ticket-qty-dec"
           class={styles.step}
-          onClick={() => {
-            stepQty(-QTY_STEP);
-          }}
+          onClick={decrementQty}
         >
           −
         </button>
@@ -413,16 +431,14 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           class={styles.qtyInput}
           value={form()?.qty === 0 ? "" : (form()?.qty ?? "")}
           placeholder="0"
-          onInput={setOrderQty}
-          onChange={setOrderQty}
+          onInput={changeQty}
+          onChange={changeQty}
         />
         <button
           type="button"
           data-testid="order-ticket-qty-inc"
           class={styles.step}
-          onClick={() => {
-            stepQty(QTY_STEP);
-          }}
+          onClick={incrementQty}
         >
           +
         </button>
@@ -438,8 +454,8 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
           class={styles.input}
           value={form()?.limitPrice ?? ""}
           placeholder={live().toFixed(2)}
-          onInput={setOrderLimitPrice}
-          onChange={setOrderLimitPrice}
+          onInput={changeLimitPrice}
+          onChange={changeLimitPrice}
         />
       </Show>
 
@@ -465,8 +481,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
         data-testid="order-ticket-submit"
         data-side={form()?.side}
         class={styles.submit}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onClick={props.submit}
+        onClick={submitOrder}
       >
         {form()?.side === "buy" ? "BUY" : "SELL"} {props.symbol}
       </button>

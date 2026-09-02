@@ -159,6 +159,18 @@ export function JarvisOverlay(): JSX.Element {
     }
   }
 
+  function submitCommand(text: string) {
+    return () => {
+      submit(text);
+    };
+  }
+
+  function selectSkin(skin: JarvisSkin) {
+    return () => {
+      setSkin(skin);
+    };
+  }
+
   function status(): string {
     if (state().pendingConfirmation !== null) {
       return "◇ AWAITING AUTHORISATION";
@@ -448,9 +460,7 @@ export function JarvisOverlay(): JSX.Element {
                                 data-testid="jarvis-guide-row"
                                 class={styles.guideRow}
                                 disabled={speaking()}
-                                onClick={() => {
-                                  submit(item.command);
-                                }}
+                                onClick={submitCommand(item.command)}
                               >
                                 {item.command}
                                 <Show when={item.liveOnly}>
@@ -502,9 +512,7 @@ export function JarvisOverlay(): JSX.Element {
                     data-testid="jarvis-suggestion"
                     class={styles.suggestion}
                     disabled={speaking()}
-                    onClick={() => {
-                      submit(text);
-                    }}
+                    onClick={submitCommand(text)}
                   >
                     {text}
                   </button>
@@ -589,9 +597,7 @@ export function JarvisOverlay(): JSX.Element {
                       data-skin={skin}
                       data-active={active() ? "true" : "false"}
                       class={styles.skinButton}
-                      onClick={() => {
-                        setSkin(skin);
-                      }}
+                      onClick={selectSkin(skin)}
                     >
                       {SKIN_MARK[skin]}
                     </button>

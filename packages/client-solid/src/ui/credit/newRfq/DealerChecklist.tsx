@@ -18,6 +18,16 @@ export function DealerChecklist(props: DealerChecklistProps): JSX.Element {
     );
   });
 
+  function toggleAllDealers(): void {
+    props.onToggleAll();
+  }
+
+  function toggleDealer(id: number) {
+    return () => {
+      props.onToggleDealer(id);
+    };
+  }
+
   return (
     <div class={styles.list}>
       <button
@@ -25,8 +35,7 @@ export function DealerChecklist(props: DealerChecklistProps): JSX.Element {
         class={styles.row}
         data-testid="new-rfq-dealer-all"
         data-checked={String(allSelected())}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onClick={props.onToggleAll}
+        onClick={toggleAllDealers}
       >
         <CheckBox checked={allSelected()} />
         <span class={styles.name}>All Dealers</span>
@@ -45,9 +54,7 @@ export function DealerChecklist(props: DealerChecklistProps): JSX.Element {
               data-testid={`new-rfq-dealer-${dealer.id}`}
               data-checked={String(checked())}
               data-house={String(dealer.name === ADAPTIVE_BANK_NAME)}
-              onClick={() => {
-                props.onToggleDealer(dealer.id);
-              }}
+              onClick={toggleDealer(dealer.id)}
             >
               <CheckBox checked={checked()} />
               <span class={styles.name}>{dealer.name}</span>

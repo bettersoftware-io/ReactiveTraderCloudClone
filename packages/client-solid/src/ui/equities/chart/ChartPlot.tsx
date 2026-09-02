@@ -52,6 +52,34 @@ import styles from "./CandleChart.module.css";
  * those forced-state wrappers need.
  */
 export function ChartPlot(props: ChartPlotProps): JSX.Element {
+  function startPlotDrag(e: PointerEvent): void {
+    props.plotProps?.onPointerDown(e);
+  }
+
+  function dragPlot(e: PointerEvent): void {
+    props.plotProps?.onPointerMove(e);
+  }
+
+  function endPlotDrag(e: PointerEvent): void {
+    props.plotProps?.onPointerUp(e);
+  }
+
+  function cancelPlotDrag(e: PointerEvent): void {
+    props.plotProps?.onPointerCancel(e);
+  }
+
+  function clearPlotCursor(): void {
+    props.plotProps?.onPointerLeave();
+  }
+
+  function resetPlotToLive(): void {
+    props.plotProps?.onDblClick();
+  }
+
+  function panOrZoomPlot(e: KeyboardEvent): void {
+    props.plotProps?.onKeyDown(e);
+  }
+
   return (
     <div
       class={styles.wrap}
@@ -65,20 +93,13 @@ export function ChartPlot(props: ChartPlotProps): JSX.Element {
         role="application"
         aria-label="Price chart"
         ref={props.plotRef}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerDown={props.plotProps?.onPointerDown}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerMove={props.plotProps?.onPointerMove}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerUp={props.plotProps?.onPointerUp}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerCancel={props.plotProps?.onPointerCancel}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onPointerLeave={props.plotProps?.onPointerLeave}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onDblClick={props.plotProps?.onDblClick}
-        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
-        onKeyDown={props.plotProps?.onKeyDown}
+        onPointerDown={startPlotDrag}
+        onPointerMove={dragPlot}
+        onPointerUp={endPlotDrag}
+        onPointerCancel={cancelPlotDrag}
+        onPointerLeave={clearPlotCursor}
+        onDblClick={resetPlotToLive}
+        onKeyDown={panOrZoomPlot}
       >
         <Show
           when={props.substrate === "canvas" && props.canvasPlot}
