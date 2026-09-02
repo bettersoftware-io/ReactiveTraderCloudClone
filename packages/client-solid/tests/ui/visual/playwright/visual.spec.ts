@@ -55,10 +55,14 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     const shot = goldenPathArray(name, scenario);
     // Strict scenarios (Scenario.strict) pin at ZERO tolerance, overriding the
     // config-level maxDiffPixelRatio budget: their pixels are
-    // engine-deterministic, so any diff at all is a real divergence.
+    // engine-deterministic, so any diff at all is a real divergence. A
+    // scenario-level maxDiffPixels instead RAISES the absolute cap for a
+    // measured, mechanism-understood divergence (see Scenario's doc).
     const strictOpts = scenario.strict
       ? { maxDiffPixels: 0, maxDiffPixelRatio: 0 }
-      : {};
+      : scenario.maxDiffPixels !== undefined
+        ? { maxDiffPixels: scenario.maxDiffPixels }
+        : {};
 
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {
