@@ -104,6 +104,14 @@ export function RadialCommandDock(): JSX.Element {
 const FAB: number = DOCK_FAB_SIZE;
 const HEX_POINTS = "29,0 54,14.5 54,43.5 29,58 4,43.5 4,14.5";
 
+/** Perceptual settle time of one satellite's fly-out — the design's `kfSatIn`
+ * duration (0.42s, dc.html:476). */
+const SAT_IN_MS = 420;
+
+/** Underdamped enough to keep `kfSatIn`'s slight overshoot
+ * (`cubic-bezier(0.34,1.45,0.45,1)` peaks ~8% past rest) without the wobble. */
+const SAT_IN_DAMPING_RATIO = 0.7;
+
 interface FabHexProps {
   readonly glyph: string;
 }
@@ -178,9 +186,15 @@ function Satellite({
       return;
     }
 
+    // The design's fly-out settles fast: `kfSatIn 0.42s
+    // cubic-bezier(0.34,1.45,0.45,1)` (dc.html:42,476) — a ~420 ms glide with
+    // a slight overshoot, so with the 45 ms stagger the whole dock is
+    // tappable ~600 ms after opening. The physical spring this used until
+    // 2026-09-02 ({ damping: 12, stiffness: 140 }) wobbled for well over a
+    // second, which read as lag before the user could pick a module.
     progress.value = withDelay(
       layout.delayMs,
-      withSpring(1, { damping: 12, stiffness: 140 }),
+      withSpring(1, { duration: SAT_IN_MS, dampingRatio: SAT_IN_DAMPING_RATIO }),
     );
   }, [enabled, layout.delayMs, progress]);
 

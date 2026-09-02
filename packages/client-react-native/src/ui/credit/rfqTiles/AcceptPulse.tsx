@@ -77,9 +77,11 @@ export function AcceptPulse(): JSX.Element | null {
   );
 }
 
-/** `kfPulse` reaches its 9 px ring at 55% of a ~1.4 s cycle (dc.html:38); at an
- * 11 px-padded button that ring is roughly a 45% outward growth. */
-const PULSE_MS = 1400;
+/** `kfPulse` runs a 1.8 s cycle (dc.html:2151 `kfPulse 1.8s ease-in-out
+ * infinite`) and reaches its 9 px ring at 55% of it (dc.html:38); at an
+ * 11 px-padded button that ring is roughly a 45% outward growth. This ran a
+ * 1.4 s cycle until 2026-09-02 — the doc comment simply misread the design. */
+const PULSE_MS = 1800;
 const PULSE_MAX_SCALE = 1.45;
 const PULSE_PEAK_OPACITY = 0.55;
 
