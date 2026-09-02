@@ -34,25 +34,43 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 // row forces the question "does this package run the compiler?", and that
 // answer decides the other two.
 const POLICY = {
-  "client-react": { compiler: true, memoBan: true, reactHooks: true },
-  "client-react-native": { compiler: true, memoBan: true, reactHooks: true },
-  "devtools-app": { compiler: true, memoBan: true, reactHooks: true },
+  "client-react": {
+    compiler: true,
+    memoBan: true,
+    reactHooks: true,
+    inlineStyleBan: true,
+  },
+  "client-react-native": {
+    compiler: true,
+    memoBan: true,
+    reactHooks: true,
+    inlineStyleBan: true,
+  },
+  "devtools-app": {
+    compiler: true,
+    memoBan: true,
+    reactHooks: true,
+    inlineStyleBan: true,
+  },
   "devtools-extension": {
     compiler: true,
     memoBan: true,
     reactHooks: false,
+    inlineStyleBan: true,
     why: "Compiles @rtc/devtools-app's SOURCE (it exports ./src/index.ts), so it needs the compiler for the same reason devtools-app does. The react-hooks diagnostics run on devtools-app's own copy of that source; duplicating them here would double-report the same findings.",
   },
   "react-bindings": {
     compiler: false,
     memoBan: true,
     reactHooks: false,
-    why: "tsc-built, so the compiler cannot run over it. Banned anyway: the bridge stays memo-free by design — a memo here signals logic belonging in client-core or motion-core (ADR-005). react-hooks is off because its deliberate build-once-ref seam trips `refs`.",
+    inlineStyleBan: false,
+    why: "tsc-built, so the compiler cannot run over it. Banned anyway: the bridge stays memo-free by design — a memo here signals logic belonging in client-core or motion-core (ADR-005). react-hooks is off because its deliberate build-once-ref seam trips `refs`. inlineStyleBan is off because the bridge renders no styled markup — a single context Provider.",
   },
   "client-prototype": {
     compiler: false,
     memoBan: false,
     reactHooks: false,
+    inlineStyleBan: true,
     why: "Abandoned port of the design prototype, kept for reference only. Deliberately not churned — see eslint.config.mjs.",
   },
 };
@@ -70,7 +88,10 @@ function discoverReactPackages() {
       const file = firstReactFile(root);
 
       if (file !== null) {
-        found.set(pkg, file);
+        found.set(pkg, {
+          sample: file,
+          tsxSample: firstReactFile(root, /\.tsx$/),
+        });
         break;
       }
     }
@@ -79,7 +100,7 @@ function discoverReactPackages() {
   return found;
 }
 
-function firstReactFile(dir) {
+function firstReactFile(dir, ext = /\.tsx?$/) {
   let entries;
 
   try {
@@ -96,7 +117,7 @@ function firstReactFile(dir) {
         continue;
       }
 
-      const nested = firstReactFile(full);
+      const nested = firstReactFile(full, ext);
 
       if (nested !== null) {
         return nested;
@@ -105,7 +126,7 @@ function firstReactFile(dir) {
       continue;
     }
 
-    if (!/\.tsx?$/.test(entry) || /\.(test|spec)\./.test(entry)) {
+    if (!ext.test(entry) || /\.(test|spec)\./.test(entry)) {
       continue;
     }
 
@@ -146,6 +167,26 @@ function severityOf(config, rule) {
   return (Array.isArray(entry) ? entry[0] : entry) === 2 ? "error" : "off";
 }
 
+/** True when the resolved config carries the inline-style selector at error
+ * severity — options-based, because `no-restricted-syntax` is also used for
+ * the repo-wide type bans, so severity alone cannot distinguish the two. */
+function inlineStyleBanned(config) {
+  const entry = config.rules?.["no-restricted-syntax"];
+
+  if (!Array.isArray(entry) || entry[0] !== 2) {
+    return false;
+  }
+
+  return entry
+    .slice(1)
+    .some(
+      (opt) =>
+        typeof opt === "object" &&
+        opt !== null &&
+        String(opt.selector ?? "").includes("JSXAttribute[name.name='style']"),
+    );
+}
+
 const discovered = discoverReactPackages();
 
 // 1. Every discovered React package must be declared, and vice versa.
@@ -154,9 +195,10 @@ for (const pkg of discovered.keys()) {
     failures.push(
       `packages/${pkg} imports React but has no entry in POLICY.\n` +
         `      Add one to ${relative(repoRoot, fileURLToPath(import.meta.url))}, deciding three things:\n` +
-        `        compiler   — does this package run the React Compiler? (wire it in its vite/app config)\n` +
-        `        memoBan    — should useMemo/useCallback/memo be banned? (eslint.config.mjs)\n` +
-        `        reactHooks — should the Rules-of-React diagnostics run? (eslint.config.mjs)\n` +
+        `        compiler       — does this package run the React Compiler? (wire it in its vite/app config)\n` +
+        `        memoBan        — should useMemo/useCallback/memo be banned? (eslint.config.mjs)\n` +
+        `        reactHooks     — should the Rules-of-React diagnostics run? (eslint.config.mjs)\n` +
+        `        inlineStyleBan — is inline style={{…}} banned in this package's JSX? (eslint.config.mjs)\n` +
         `      If any is false, say why in a 'why' field.`,
     );
   }
@@ -173,7 +215,7 @@ for (const pkg of Object.keys(POLICY)) {
 // 2. Declared intent must match what the repo actually does.
 const eslint = new ESLint({ cwd: repoRoot });
 
-for (const [pkg, sample] of discovered) {
+for (const [pkg, { sample, tsxSample }] of discovered) {
   const policy = POLICY[pkg];
 
   if (policy === undefined) {
@@ -183,13 +225,19 @@ for (const [pkg, sample] of discovered) {
   const rel = relative(repoRoot, sample);
   const config = await eslint.calculateConfigForFile(rel);
 
+  const tsxConfig =
+    tsxSample === null
+      ? null
+      : await eslint.calculateConfigForFile(relative(repoRoot, tsxSample));
+
   const actual = {
     compiler: compilerEnabled(pkg),
     memoBan: severityOf(config, "no-restricted-imports") === "error",
     reactHooks: severityOf(config, "react-hooks/rules-of-hooks") === "error",
+    inlineStyleBan: tsxConfig !== null && inlineStyleBanned(tsxConfig),
   };
 
-  for (const key of ["compiler", "memoBan", "reactHooks"]) {
+  for (const key of ["compiler", "memoBan", "reactHooks", "inlineStyleBan"]) {
     if (actual[key] !== policy[key]) {
       failures.push(
         `packages/${pkg}: POLICY declares ${key}=${policy[key]} but the repo has ${key}=${actual[key]}.\n` +
