@@ -113,3 +113,17 @@ a reason to revisit:
 **Revisit only if** the repo moves to an organization. The catch-up rate is no
 longer a trigger — it cannot unblock an unavailable feature. If ownership does
 change, the measurement in the spec is the right next step, not this note.
+
+### RN sibling `X.styles.ts` split
+
+Move each component's `StyleSheet.create` block to a sibling `X.styles.ts`,
+mirroring the web clients' `.module.css` co-location. Cosmetic symmetry; 69
+files. Deliberately deferred 2026-09-01 (chose lint-gaps-only) — see
+[`rn-styling.md`](rn-styling.md).
+
+### RN styling library evaluation
+
+Only worth revisiting if a real limitation of `StyleSheet.create` +
+`useThemedStyles` appears (e.g. web+native single-source styling) — then
+consider react-native-unistyles / react-strict-dom. Deferred 2026-09-01 — see
+[`rn-styling.md`](rn-styling.md).
