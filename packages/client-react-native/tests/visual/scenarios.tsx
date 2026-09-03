@@ -711,14 +711,14 @@ export function getScenario(id: string): Scenario | undefined {
   });
 }
 
-/** Symbol pinned for `equities/markets`/`equities/trade`: the watchlist's
- * first instrument (`EquityMarketDataSimulator`'s `WATCHLIST`/`SEED_PRICES`,
- * domain-internal and not exported, so repeated here as a literal — same
- * move `fixtures.tsx`'s `PINNED_INSTRUMENTS` makes for Credit). Selecting one
- * also exercises the selected-row ring in `MoversRow` and
- * keeps `TradeView` out of its unselected "Select an instrument…" empty
- * state. */
-const PINNED_EQUITY_SYMBOL = "AAPL";
+/** Symbol pinned for `equities/markets`/`equities/trade`: the design
+ * prototype's own selection (`eqSym: 'NVDA'` in its seed state), a watchlist
+ * member (`EquityMarketDataSimulator`'s `WATCHLIST`, domain-internal and not
+ * exported, so repeated here as a literal — same move `fixtures.tsx`'s
+ * `PINNED_INSTRUMENTS` makes for Credit). Selecting one also exercises the
+ * selected-row ring in `MoversRow` and keeps `TradeView` out of its
+ * unselected "Select an instrument…" empty state. */
+const PINNED_EQUITY_SYMBOL = "NVDA";
 
 /** Instrument pinned for `credit/new-rfq`: the FIRST of the two the fake's
  * credit slice serves (`tests/visual/fake/credit.ts` — "Acme 5.5% 2030",
