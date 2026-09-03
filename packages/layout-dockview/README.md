@@ -99,6 +99,15 @@ dockview's resize distribution — releasing it on the first pointer move of a
 sash drag inside the declaring split, and persisting live pins as an
 `rtcDesignPins` sidecar inside the blob so pin state survives reloads.
 
+Strip restore sizes survive reloads the same way: the grid serialises as
+rendered — bars included — so a reload restores a collapsed group at
+Dockview's ~100px default minimum and a bare re-collapse would remember
+*that* as the size to restore. While strips exist the save adds an
+`rtcStripGeometry` sidecar (each strip's pre-collapse size, plus each
+flipped split's pre-flip width keyed by its stripped panel ids), which the
+post-reload collapse replay consumes; constraints are re-derived live, a
+malformed sidecar is dropped, and a strip-free blob keeps its legacy shape.
+
 Zero other `@rtc/*` dependencies. Unlike `@rtc/motion-core` (pure, no-DOM
 math) this package legitimately touches the DOM: `createDockEngine` mounts
 Dockview into a container element. Its only architectural constraint is that
