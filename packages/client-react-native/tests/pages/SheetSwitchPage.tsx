@@ -10,8 +10,8 @@ export interface SheetSwitchPage {
   mount(checked: boolean, onToggle: (next: boolean) => void): Promise<void>;
   unmountAll(): void;
   press(): Promise<void>;
-  accessibilityRole(): unknown;
-  accessibilityLabel(): unknown;
+  accessibilityRole(): string | undefined;
+  accessibilityLabel(): string | undefined;
   accessibilityChecked(): boolean | undefined;
   trackStyle(): ViewStyle;
   knobStyle(): ViewStyle;
@@ -39,11 +39,15 @@ export function sheetSwitchPage(): SheetSwitchPage {
     async press(): Promise<void> {
       await fireEvent.press(screen.getByTestId("switch"));
     },
-    accessibilityRole(): unknown {
-      return screen.getByTestId("switch").props.accessibilityRole;
+    accessibilityRole(): string | undefined {
+      return screen.getByTestId("switch").props.accessibilityRole as
+        | string
+        | undefined;
     },
-    accessibilityLabel(): unknown {
-      return screen.getByTestId("switch").props.accessibilityLabel;
+    accessibilityLabel(): string | undefined {
+      return screen.getByTestId("switch").props.accessibilityLabel as
+        | string
+        | undefined;
     },
     accessibilityChecked(): boolean | undefined {
       return (

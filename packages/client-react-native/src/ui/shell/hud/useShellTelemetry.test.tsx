@@ -1,18 +1,22 @@
 // packages/client-react-native/src/ui/shell/hud/useShellTelemetry.test.tsx
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { useShellTelemetryPage } from "#tests/pages/UseShellTelemetryPage";
+import { shellTelemetryPage } from "#tests/pages/UseShellTelemetryPage";
+
+const page = shellTelemetryPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("returns the frozen telemetry when a provider supplies it", async () => {
-  const page = useShellTelemetryPage();
   await page.mount({ fps: 60, latencyMs: 12 });
-  expect(page.hasProbeText()).toBe(true);
+  expect(page.probeText()).toBe("60|12|09:47:03|V2.0-RN");
 });
 
 test("falls back to decorative seeds with no provider", async () => {
-  const page = useShellTelemetryPage();
   await page.mount(null);
-  expect(page.hasProbeText()).toBe(true);
+  expect(page.probeText()).toBe("60|12|09:47:03|V2.0-RN");
 });
 
 // `useShellTelemetry` imports `useFrameCallback` + `runOnJS` + `useSharedValue`

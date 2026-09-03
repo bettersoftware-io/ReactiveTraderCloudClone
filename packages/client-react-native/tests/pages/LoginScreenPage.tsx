@@ -14,6 +14,9 @@ interface LoginScreenMountOptions {
   onToggleSimulator?: (v: boolean) => void;
 }
 
+/** What a single-child RN `<Text>` node's `props.children` actually holds. */
+type TextChildren = string | number;
+
 function noop(): undefined {
   return undefined;
 }
@@ -57,7 +60,7 @@ export interface LoginScreenPage {
   ): Promise<void>;
   unmountAll(): void;
   exists(testId: string): boolean;
-  errorText(): unknown;
+  errorText(): TextChildren;
   typeUsername(value: string): Promise<void>;
   typePassword(value: string): Promise<void>;
   pressSubmit(): Promise<void>;
@@ -88,8 +91,8 @@ export function loginScreenPage(): LoginScreenPage {
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
-    errorText(): unknown {
-      return screen.getByTestId("login-error").props.children;
+    errorText(): TextChildren {
+      return screen.getByTestId("login-error").props.children as TextChildren;
     },
     async typeUsername(value: string): Promise<void> {
       await fireEvent.changeText(screen.getByTestId("login-username"), value);

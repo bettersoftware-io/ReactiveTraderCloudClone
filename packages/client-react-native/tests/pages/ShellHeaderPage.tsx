@@ -9,7 +9,7 @@ import type { TextStyle } from "react-native";
 import { StyleSheet } from "react-native";
 
 import { ShellHeader } from "#/ui/shell/hud/ShellHeader";
-import { textContentOf } from "#tests/pages/support/textContent";
+import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
 
 export interface ShellHeaderPage {
   mount(
@@ -43,7 +43,10 @@ export function shellHeaderPage(): ShellHeaderPage {
       cleanup();
     },
     hasTextContent(testId: string, text: string): boolean {
-      return textContentOf(screen.getByTestId(testId)).includes(text);
+      return (
+        normalizeText(textContentOf(screen.getByTestId(testId))) ===
+        normalizeText(text)
+      );
     },
     async pressEnvBadge(): Promise<void> {
       await fireEvent.press(screen.getByTestId("hud-env-badge"));

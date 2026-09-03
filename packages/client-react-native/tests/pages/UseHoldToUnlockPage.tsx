@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/UseHoldToUnlockPage.tsx
-import { renderHook } from "@testing-library/react-native";
+import { cleanup, renderHook } from "@testing-library/react-native";
 import type { JSX, PropsWithChildren } from "react";
 import type { SharedValue } from "react-native-reanimated";
 
@@ -23,11 +23,12 @@ export interface UseHoldToUnlockPage {
     pinned?: SharedValue<number>,
   ): Promise<void>;
   rerender(options: UseHoldToUnlockOptions): Promise<void>;
+  unmountAll(): void;
   readonly state: UseHoldToUnlockResult;
 }
 
 /** The framework surface for `useHoldToUnlock.test.tsx`. */
-export function useHoldToUnlockPage(): UseHoldToUnlockPage {
+export function holdToUnlockPage(): UseHoldToUnlockPage {
   let result: HookResultBox<UseHoldToUnlockResult> | null = null;
   let rerenderFn: ((props: UseHoldToUnlockOptions) => Promise<void>) | null =
     null;
@@ -67,6 +68,9 @@ export function useHoldToUnlockPage(): UseHoldToUnlockPage {
       }
 
       await rerenderFn(options);
+    },
+    unmountAll(): void {
+      cleanup();
     },
     get state(): UseHoldToUnlockResult {
       if (!result) {

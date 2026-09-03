@@ -90,6 +90,9 @@ function lockedTree(
   );
 }
 
+/** What a single-child RN `<Text>` node's `props.children` actually holds. */
+type TextChildren = string | number;
+
 export interface LockScreenPage {
   mount(
     locked: boolean,
@@ -114,7 +117,7 @@ export interface LockScreenPage {
   ): Promise<void>;
   unmountAll(): void;
   exists(testId: string): boolean;
-  textOf(testId: string): unknown;
+  textOf(testId: string): TextChildren;
   typePassword(value: string): Promise<void>;
   pressAuthenticate(): Promise<void>;
 }
@@ -165,8 +168,8 @@ export function lockScreenPage(): LockScreenPage {
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
-    textOf(testId: string): unknown {
-      return screen.getByTestId(testId).props.children;
+    textOf(testId: string): TextChildren {
+      return screen.getByTestId(testId).props.children as TextChildren;
     },
     async typePassword(value: string): Promise<void> {
       await fireEvent.changeText(screen.getByTestId("lock-password"), value);

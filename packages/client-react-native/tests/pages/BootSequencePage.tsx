@@ -28,20 +28,22 @@ function fakeViewModel(state: BootState, skip: () => void): ViewModel {
   } as unknown as ViewModel;
 }
 
+/** What a single-child RN `<Text>` node's `props.children` actually holds —
+ * never coerced through `String(...)`, so a spec comparing against a
+ * literal fails the way the original `expect(...props.children).toBe(str)`
+ * would if the shape ever stopped being a plain string/number. */
+type TextChildren = string | number;
+
 export interface BootSequencePage {
   mount(state: BootState, skip?: () => void, theme?: RnTheme): Promise<void>;
   unmountAll(): void;
   exists(testId: string): boolean;
   awaitExists(testId: string): Promise<boolean>;
-  textOf(testId: string): string;
+  textOf(testId: string): TextChildren;
   hasText(text: string): boolean;
   press(testId: string): Promise<void>;
   /** The flattened style of a testID's element. */
   styleOf(testId: string): TextStyle;
-  /** The flattened style of the FIRST element matching a rendered text's
-   * host node — for the label-level style assertion on the env badge's
-   * "LIVE" text, which carries no testID of its own. */
-  styleOfText(text: string): TextStyle;
 }
 
 /** The framework surface for `BootSequence.test.tsx`. */
@@ -69,8 +71,8 @@ export function bootSequencePage(): BootSequencePage {
       await screen.findByTestId(testId);
       return true;
     },
-    textOf(testId: string): string {
-      return String(screen.getByTestId(testId).props.children);
+    textOf(testId: string): TextChildren {
+      return screen.getByTestId(testId).props.children as TextChildren;
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;
@@ -81,11 +83,6 @@ export function bootSequencePage(): BootSequencePage {
     styleOf(testId: string): TextStyle {
       return StyleSheet.flatten(
         screen.getByTestId(testId).props.style as TextStyle,
-      );
-    },
-    styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
       );
     },
   };

@@ -1,21 +1,25 @@
-import { beforeEach, expect, jest, test } from "@jest/globals";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import type { SharedValue } from "react-native-reanimated";
 import * as Reanimated from "react-native-reanimated";
 
 import { DECAY_MS, HOLD_MS } from "#/ui/shell/lock/useHoldToUnlock";
-import { useHoldToUnlockPage } from "#tests/pages/UseHoldToUnlockPage";
+import { holdToUnlockPage } from "#tests/pages/UseHoldToUnlockPage";
 
 const mockMotionEnabled = jest.fn<() => boolean>();
+const page = holdToUnlockPage();
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockMotionEnabled.mockReturnValue(true);
 });
 
+afterEach(() => {
+  page.unmountAll();
+});
+
 test("holding rises progress toward 1 via a timed fill", async () => {
   const withTimingSpy = jest.spyOn(Reanimated, "withTiming");
   const onComplete = jest.fn();
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete });
 
   expect(page.state.progress.value).toBe(0);
@@ -31,7 +35,6 @@ test("holding rises progress toward 1 via a timed fill", async () => {
 
 test("a LockHoldProgressContext pin is the progress the ring reads and the gesture writes", async () => {
   const pinned = { value: 0.55 } as SharedValue<number>;
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete: jest.fn() }, pinned);
 
   expect(page.state.progress).toBe(pinned);
@@ -44,7 +47,6 @@ test("a LockHoldProgressContext pin is the progress the ring reads and the gestu
 test("releasing early decays progress back to 0 via a timed animation, not a snap", async () => {
   const withTimingSpy = jest.spyOn(Reanimated, "withTiming");
   const onComplete = jest.fn();
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete });
 
   page.state.gesture.handlers.onBegin?.(fakeEvent());
@@ -62,7 +64,6 @@ test("releasing early decays progress back to 0 via a timed animation, not a sna
 
 test("onComplete fires exactly once on activation, not per frame", async () => {
   const onComplete = jest.fn();
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete });
 
   page.state.gesture.handlers.onBegin?.(fakeEvent());
@@ -78,7 +79,6 @@ test("onComplete fires exactly once on activation, not per frame", async () => {
 test("completion invokes the latest onComplete closure across re-renders (re-arms)", async () => {
   const first = jest.fn();
   const second = jest.fn();
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete: first });
 
   await page.rerender({ onComplete: second });
@@ -92,7 +92,6 @@ test("with motion disabled, the discrete fill jump lands on hold-activation (onS
   mockMotionEnabled.mockReturnValue(false);
   const withTimingSpy = jest.spyOn(Reanimated, "withTiming");
   const onComplete = jest.fn();
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete });
 
   page.state.gesture.handlers.onBegin?.(fakeEvent());
@@ -127,7 +126,6 @@ test("motionEnabled is threaded into a live SharedValue that reflects a later pr
   // missing/no-op effect, which this WOULD catch).
   mockMotionEnabled.mockReturnValue(true);
   const useSharedValueSpy = jest.spyOn(Reanimated, "useSharedValue");
-  const page = useHoldToUnlockPage();
   await page.mount({ onComplete: jest.fn() });
 
   expect(latestMotionEnabledSharedValue(useSharedValueSpy)).toBe(true);

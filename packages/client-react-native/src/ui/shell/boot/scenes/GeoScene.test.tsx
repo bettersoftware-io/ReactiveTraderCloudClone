@@ -1,6 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { geoScenePage } from "#tests/pages/GeoScenePage";
+
+const page = geoScenePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be
 // asserted. What IS real: the mocked `useDerivedValue` runs the
@@ -10,13 +16,11 @@ import { geoScenePage } from "#tests/pages/GeoScenePage";
 // unmocked in `geoGeometry.test.ts` and `geoCoastlines.test.ts`.
 
 test("mounts with the boot-scene-geo testID and returns a picture", async () => {
-  const page = geoScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
   expect(await page.hasPicture()).toBe(true);
 });
 
 test("survives elapsedSec sweeping across every threshold", async () => {
-  const page = geoScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
 
   // 0 .. past BOOT_DURATION_MS (4200ms), crossing the coastline trace (0-0.3),
@@ -26,11 +30,10 @@ test("survives elapsedSec sweeping across every threshold", async () => {
     await page.rerender({ elapsedSec: t, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 test("survives the full gyro drift range, including past the clamp", async () => {
-  const page = geoScenePage();
   await page.mount({ elapsedSec: 2.5, mx: 0, my: 0 });
 
   for (const [mx, my] of [
@@ -42,7 +45,7 @@ test("survives the full gyro drift range, including past the clamp", async () =>
     await page.rerender({ elapsedSec: 2.5, mx, my });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // The trade window is where the most branches run at once: arcs in flight,
@@ -50,26 +53,24 @@ test("survives the full gyro drift range, including past the clamp", async () =>
 // it frame by frame is the only way to reach the landing-ripple branch, which
 // occupies just the last tenth of each flight.
 test("survives the whole trade window, including arc landings", async () => {
-  const page = geoScenePage();
   await page.mount({ elapsedSec: 2.1, mx: 0, my: 0 });
 
   for (let step = 0; step <= 30; step++) {
     await page.rerender({ elapsedSec: 2.1 + step * 0.11, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // The radar sweep is the one per-frame point-in-polygon caller, and it crosses
 // sea as well as land — the sweep must handle starting and ending mid-landmass
 // without emitting a stray segment.
 test("survives the radar sweep crossing the map edge to edge", async () => {
-  const page = geoScenePage();
   await page.mount({ elapsedSec: 1, mx: 0, my: 0 });
 
   for (let step = 0; step <= 16; step++) {
     await page.rerender({ elapsedSec: 1 + step * 0.19, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });

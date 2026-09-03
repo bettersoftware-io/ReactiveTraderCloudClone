@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/UseGyroDriftPage.ts
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { cleanup, renderHook, waitFor } from "@testing-library/react-native";
 import type { SharedValue } from "react-native-reanimated";
 
 import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
@@ -15,13 +15,17 @@ interface HookResultBox<T> {
 
 export interface UseGyroDriftPage {
   mount(enabled: boolean): Promise<void>;
+  /** Unmounts THIS hook instance — a real per-test assertion target (the
+   * "removes the listener on unmount" spec drives this directly), distinct
+   * from `unmountAll`'s cross-wave "tear the whole tree down" convention. */
   unmount(): Promise<void>;
+  unmountAll(): void;
   waitFor<T>(assertion: () => T): Promise<T>;
   readonly value: SharedValue<GyroDrift>;
 }
 
 /** The framework surface for `useGyroDrift.test.tsx`. */
-export function useGyroDriftPage(): UseGyroDriftPage {
+export function gyroDriftPage(): UseGyroDriftPage {
   let result: HookResultBox<SharedValue<GyroDrift>> | null = null;
   let unmountFn: (() => Promise<void>) | null = null;
 
@@ -45,6 +49,9 @@ export function useGyroDriftPage(): UseGyroDriftPage {
       }
 
       await unmountFn();
+    },
+    unmountAll(): void {
+      cleanup();
     },
     waitFor<T>(assertion: () => T): Promise<T> {
       return waitFor(assertion);

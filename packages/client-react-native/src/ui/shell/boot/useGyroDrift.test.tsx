@@ -1,18 +1,22 @@
-import { beforeEach, expect, jest, test } from "@jest/globals";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { Gyroscope } from "expo-sensors";
 
-import { useGyroDriftPage } from "#tests/pages/UseGyroDriftPage";
+import { gyroDriftPage } from "#tests/pages/UseGyroDriftPage";
 
 const mockedAddListener = jest.mocked(Gyroscope.addListener);
 const mockedIsAvailableAsync = jest.mocked(Gyroscope.isAvailableAsync);
+const page = gyroDriftPage();
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockedIsAvailableAsync.mockResolvedValue(false);
 });
 
+afterEach(() => {
+  page.unmountAll();
+});
+
 test("does not subscribe while disabled", async () => {
-  const page = useGyroDriftPage();
   await page.mount(false);
 
   expect(mockedIsAvailableAsync).not.toHaveBeenCalled();
@@ -22,7 +26,6 @@ test("does not subscribe while disabled", async () => {
 test("subscribes once enabled and the gyroscope is available", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  const page = useGyroDriftPage();
   await page.mount(true);
 
   await page.waitFor(() => {
@@ -37,7 +40,6 @@ test("removes the listener on unmount", async () => {
     remove,
   } as ReturnType<typeof Gyroscope.addListener>);
 
-  const page = useGyroDriftPage();
   await page.mount(true);
   await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
@@ -55,7 +57,6 @@ test("removes the listener on unmount", async () => {
 test("an emitted sample moves the shared value off centre", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  const page = useGyroDriftPage();
   await page.mount(true);
   await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
@@ -72,7 +73,6 @@ test("an emitted sample moves the shared value off centre", async () => {
 test("stays within -1..1 under a long run of large samples", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  const page = useGyroDriftPage();
   await page.mount(true);
   await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
@@ -93,7 +93,6 @@ test("stays within -1..1 under a long run of large samples", async () => {
 test("an unavailable gyroscope leaves the value centred and never throws", async () => {
   mockedIsAvailableAsync.mockResolvedValue(false);
 
-  const page = useGyroDriftPage();
   await page.mount(true);
 
   await page.waitFor(() => {

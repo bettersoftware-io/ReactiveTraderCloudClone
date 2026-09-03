@@ -1,6 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { jarvisScenePage } from "#tests/pages/JarvisScenePage";
+
+const page = jarvisScenePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be
 // asserted. What IS real: the mocked `useDerivedValue` runs the
@@ -10,13 +16,11 @@ import { jarvisScenePage } from "#tests/pages/JarvisScenePage";
 // unmocked in `jarvisGeometry.test.ts`.
 
 test("mounts with the boot-scene-jarvis testID and returns a picture", async () => {
-  const page = jarvisScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
   expect(await page.hasPicture()).toBe(true);
 });
 
 test("survives elapsedSec sweeping across every threshold", async () => {
-  const page = jarvisScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
 
   // 0 .. past BOOT_DURATION_MS (4200ms), crossing the sphere grow (0-0.16),
@@ -27,11 +31,10 @@ test("survives elapsedSec sweeping across every threshold", async () => {
     await page.rerender({ elapsedSec: t, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 test("survives the full gyro drift range, including past the clamp", async () => {
-  const page = jarvisScenePage();
   await page.mount({ elapsedSec: 2.5, mx: 0, my: 0 });
 
   for (const [mx, my] of [
@@ -43,32 +46,30 @@ test("survives the full gyro drift range, including past the clamp", async () =>
     await page.rerender({ elapsedSec: 2.5, mx, my });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // Each of the five fragment kinds draws entirely different art, and one
 // fragment lunges at a time on a 1.6s cycle. Walking a full cycle late in the
 // boot is the only way to reach every kind AND the lunge branch.
 test("survives a full lunge cycle with every fragment kind revealed", async () => {
-  const page = jarvisScenePage();
   await page.mount({ elapsedSec: 3.2, mx: 0, my: 0 });
 
   for (let step = 0; step <= 20; step++) {
     await page.rerender({ elapsedSec: 3.2 + step * 0.09, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // The six ring layers each draw different machinery and enter on their own
 // schedule, so a single frame reaches only the ones already revealed.
 test("survives the whole ring sweep-in window", async () => {
-  const page = jarvisScenePage();
   await page.mount({ elapsedSec: 0.1, mx: 0, my: 0 });
 
   for (let step = 0; step <= 16; step++) {
     await page.rerender({ elapsedSec: 0.1 + step * 0.12, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });

@@ -1,6 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { hologramScenePage } from "#tests/pages/HologramScenePage";
+
+const page = hologramScenePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as
 // CoreScene.test.tsx), so pixels can never be asserted here. What IS real: the
@@ -15,13 +21,11 @@ import { hologramScenePage } from "#tests/pages/HologramScenePage";
 // resolves corrupts the renderer's tree ("overlapping act() calls").
 
 test("mounts with the boot-scene-hologram testID and returns a picture", async () => {
-  const page = hologramScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
   expect(await page.hasPicture()).toBe(true);
 });
 
 test("survives elapsedSec sweeping across every status threshold", async () => {
-  const page = hologramScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
 
   // 0 .. past BOOT_DURATION_MS (4200ms), crossing the ground-grid start
@@ -31,13 +35,12 @@ test("survives elapsedSec sweeping across every status threshold", async () => {
     await page.rerender({ elapsedSec: t, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // The gyro seam reaches the camera, so a drift sweep exercises a genuinely
 // different projection each frame rather than re-running one code path.
 test("survives the full gyro drift range, including past the clamp", async () => {
-  const page = hologramScenePage();
   await page.mount({ elapsedSec: 2, mx: 0, my: 0 });
 
   for (const [mx, my] of [
@@ -49,7 +52,7 @@ test("survives the full gyro drift range, including past the clamp", async () =>
     await page.rerender({ elapsedSec: 2, mx, my });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // The columns' painter's-algorithm sort runs over all 81 entries every frame.
@@ -57,8 +60,7 @@ test("survives the full gyro drift range, including past the clamp", async () =>
 test("survives a mid-assembly frame, when both particles and columns draw", async () => {
   // progress ~0.28 puts most columns between scatter and settled, so the
   // particle branch AND the risen-column branch both execute.
-  const page = hologramScenePage();
   await page.mount({ elapsedSec: 1.2, mx: 0.5, my: -0.5 });
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });

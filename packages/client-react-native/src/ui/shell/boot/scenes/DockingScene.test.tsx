@@ -1,6 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { dockingScenePage } from "#tests/pages/DockingScenePage";
+
+const page = dockingScenePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as
 // CoreScene.test.tsx/LaserScene.test.tsx), so pixels can never be asserted
@@ -22,13 +28,11 @@ import { dockingScenePage } from "#tests/pages/DockingScenePage";
 // ("overlapping act() calls").
 
 test("mounts with the boot-scene-docking testID and returns a picture", async () => {
-  const page = dockingScenePage();
   await page.mount({ elapsedSec: 0 });
   expect(await page.hasPicture()).toBe(true);
 });
 
 test("survives elapsedSec sweeping across every status threshold without throwing", async () => {
-  const page = dockingScenePage();
   await page.mount({ elapsedSec: 0 });
 
   // 0 .. well past BOOT_DURATION_MS (4200ms == 4.2s), crossing every
@@ -40,5 +44,5 @@ test("survives elapsedSec sweeping across every status threshold without throwin
     await page.rerender({ elapsedSec: t });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });

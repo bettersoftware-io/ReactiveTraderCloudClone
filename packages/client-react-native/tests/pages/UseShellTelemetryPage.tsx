@@ -1,10 +1,11 @@
 // packages/client-react-native/tests/pages/UseShellTelemetryPage.tsx
-import { render, screen } from "@testing-library/react-native";
+import { cleanup, render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { Text } from "react-native";
 
 import { ShellTelemetryContext } from "#/ui/shell/hud/ShellTelemetryContext";
 import { useShellTelemetry } from "#/ui/shell/hud/useShellTelemetry";
+import { textContentOf } from "#tests/pages/support/textContent";
 
 interface FrozenTelemetryFixture {
   readonly fps: number;
@@ -13,14 +14,16 @@ interface FrozenTelemetryFixture {
 
 export interface UseShellTelemetryPage {
   mount(frozen: FrozenTelemetryFixture | null): Promise<void>;
-  hasProbeText(): boolean;
+  unmountAll(): void;
+  /** The probe's rendered `fps|latencyMs|clock|build` string — `null` only
+   * if the probe never rendered at all. The spec owns the expected literal,
+   * so a frozen-provider mount and the decorative-seed fallback settling on
+   * the SAME string stays a visible, assertable fact in the spec. */
+  probeText(): string | null;
 }
 
-/** The framework surface for `useShellTelemetry.test.tsx`. Both fixtures
- * this spec exercises settle on the SAME probe string, so the page exposes
- * `hasProbeText()` as a fixed-string existence check rather than a generic
- * text getter. */
-export function useShellTelemetryPage(): UseShellTelemetryPage {
+/** The framework surface for `useShellTelemetry.test.tsx`. */
+export function shellTelemetryPage(): UseShellTelemetryPage {
   return {
     async mount(frozen: FrozenTelemetryFixture | null): Promise<void> {
       // Probe lives nested inside `mount` (not at module scope) so this
@@ -28,7 +31,9 @@ export function useShellTelemetryPage(): UseShellTelemetryPage {
       // `useComponentExportOnlyModules`.
       function Probe(): JSX.Element {
         const t = useShellTelemetry();
-        return <Text>{`${t.fps}|${t.latencyMs}|${t.clock}|${t.build}`}</Text>;
+        return (
+          <Text testID="probe">{`${t.fps}|${t.latencyMs}|${t.clock}|${t.build}`}</Text>
+        );
       }
 
       if (frozen === null) {
@@ -42,8 +47,12 @@ export function useShellTelemetryPage(): UseShellTelemetryPage {
         </ShellTelemetryContext.Provider>,
       );
     },
-    hasProbeText(): boolean {
-      return screen.queryByText("60|12|09:47:03|V2.0-RN") != null;
+    unmountAll(): void {
+      cleanup();
+    },
+    probeText(): string | null {
+      const probe = screen.queryByTestId("probe");
+      return probe === null ? null : textContentOf(probe);
     },
   };
 }

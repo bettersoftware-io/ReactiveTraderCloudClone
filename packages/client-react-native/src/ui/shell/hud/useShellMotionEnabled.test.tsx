@@ -1,32 +1,34 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { useShellMotionEnabledPage } from "#tests/pages/UseShellMotionEnabledPage";
+import { shellMotionEnabledPage } from "#tests/pages/UseShellMotionEnabledPage";
 
 const mockReducedMotion = jest.fn<() => boolean>();
 const mockPowerSaver = jest.fn<() => MockPowerSaverResult>();
+const page = shellMotionEnabledPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("motion runs when reduced-motion is off and not freezing", async () => {
   mockReducedMotion.mockReturnValue(false);
   mockPowerSaver.mockReturnValue({ isCalm: false, isFreeze: false });
-  const page = useShellMotionEnabledPage();
   await page.mount();
-  expect(page.isOn()).toBe(true);
+  expect(page.hasText("on")).toBe(true);
 });
 
 test("reduced motion stills the shell", async () => {
   mockReducedMotion.mockReturnValue(true);
   mockPowerSaver.mockReturnValue({ isCalm: false, isFreeze: false });
-  const page = useShellMotionEnabledPage();
   await page.mount();
-  expect(page.isOn()).toBe(false);
+  expect(page.hasText("off")).toBe(true);
 });
 
 test("power-saver Freeze stills the shell", async () => {
   mockReducedMotion.mockReturnValue(false);
   mockPowerSaver.mockReturnValue({ isCalm: true, isFreeze: true });
-  const page = useShellMotionEnabledPage();
   await page.mount();
-  expect(page.isOn()).toBe(false);
+  expect(page.hasText("off")).toBe(true);
 });
 
 interface MockPowerSaverResult {

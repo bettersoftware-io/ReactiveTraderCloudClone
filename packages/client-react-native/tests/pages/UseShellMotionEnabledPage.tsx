@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/UseShellMotionEnabledPage.tsx
-import { render, screen } from "@testing-library/react-native";
+import { cleanup, render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { Text } from "react-native";
 
@@ -7,11 +7,12 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 
 export interface UseShellMotionEnabledPage {
   mount(): Promise<void>;
-  isOn(): boolean;
+  unmountAll(): void;
+  hasText(text: "on" | "off"): boolean;
 }
 
 /** The framework surface for `useShellMotionEnabled.test.tsx`. */
-export function useShellMotionEnabledPage(): UseShellMotionEnabledPage {
+export function shellMotionEnabledPage(): UseShellMotionEnabledPage {
   return {
     async mount(): Promise<void> {
       // Probe lives nested inside `mount` (not at module scope) so this
@@ -23,8 +24,11 @@ export function useShellMotionEnabledPage(): UseShellMotionEnabledPage {
 
       await render(<Probe />);
     },
-    isOn(): boolean {
-      return screen.queryByText("on") != null;
+    unmountAll(): void {
+      cleanup();
+    },
+    hasText(text: "on" | "off"): boolean {
+      return screen.queryByText(text) != null;
     },
   };
 }

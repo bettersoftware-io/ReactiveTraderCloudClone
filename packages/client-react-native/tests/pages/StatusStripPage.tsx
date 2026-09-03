@@ -5,7 +5,7 @@ import type { ViewStyle } from "react-native";
 import { StyleSheet } from "react-native";
 
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
-import { textContentOf } from "#tests/pages/support/textContent";
+import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
 
 export interface StatusStripPage {
   mount(wrapper?: (children: ReactElement) => ReactElement): Promise<void>;
@@ -32,7 +32,10 @@ export function statusStripPage(): StatusStripPage {
       cleanup();
     },
     hasTextContent(testId: string, text: string): boolean {
-      return textContentOf(screen.getByTestId(testId)).includes(text);
+      return (
+        normalizeText(textContentOf(screen.getByTestId(testId))) ===
+        normalizeText(text)
+      );
     },
     // P8: the dock's FAB is painted over this strip by construction, so the
     // telemetry row must keep its centre clear or the cell under the hex is

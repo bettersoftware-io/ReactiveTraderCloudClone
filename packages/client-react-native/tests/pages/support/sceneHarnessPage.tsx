@@ -9,6 +9,7 @@
 // `coreScenePage()`) still owns its own component-specific factory — this
 // module is never imported by a spec directly, only by those factories.
 import {
+  cleanup,
   type RenderResult,
   render,
   screen,
@@ -28,11 +29,16 @@ interface SceneNodeProps {
 export interface SceneHarnessPage<P> {
   mount(props: P): Promise<void>;
   rerender(props: P): Promise<void>;
+  unmountAll(): void;
   /** Resolves once `testId` (default: the harness's own scene testID)
    * appears; throws (with Testing Library's own diagnostic) if it never
    * does — the same failure mode `await screen.findByTestId(...)` always had
-   * inline in the spec. */
-  exists(testId?: string): Promise<boolean>;
+   * inline in the spec. Named `awaitExists` (not `exists`) to match
+   * `BootSequencePage`/`BootCanvasPage`'s split: `exists` elsewhere in this
+   * batch is a real synchronous boolean (`queryByTestId(...) != null`) that
+   * can genuinely be `false`; this one can only ever throw or return `true`,
+   * so it keeps the throwing/awaiting shape out of the `exists` name. */
+  awaitExists(testId?: string): Promise<boolean>;
   hasPicture(testId?: string): Promise<boolean>;
   startOf(testId: string): Promise<number>;
   endValueOf(testId: string): Promise<number>;
@@ -61,7 +67,10 @@ export function createSceneHarnessPage<P>(
 
       await result.rerender(harnessElement(Harness, props));
     },
-    async exists(testId: string = sceneTestId): Promise<boolean> {
+    unmountAll(): void {
+      cleanup();
+    },
+    async awaitExists(testId: string = sceneTestId): Promise<boolean> {
       await screen.findByTestId(testId);
       return true;
     },

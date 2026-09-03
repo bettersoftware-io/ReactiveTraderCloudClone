@@ -1,6 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { topoScenePage } from "#tests/pages/TopoScenePage";
+
+const page = topoScenePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be
 // asserted. What IS real: the mocked `useDerivedValue` runs the
@@ -11,13 +17,11 @@ import { topoScenePage } from "#tests/pages/TopoScenePage";
 // `topoGeometry.test.ts`.
 
 test("mounts with the boot-scene-topo testID and returns a picture", async () => {
-  const page = topoScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
   expect(await page.hasPicture()).toBe(true);
 });
 
 test("survives elapsedSec sweeping across every threshold", async () => {
-  const page = topoScenePage();
   await page.mount({ elapsedSec: 0, mx: 0, my: 0 });
 
   // 0 .. past BOOT_DURATION_MS (4200ms), crossing the terrain rise (0-0.4),
@@ -27,11 +31,10 @@ test("survives elapsedSec sweeping across every threshold", async () => {
     await page.rerender({ elapsedSec: t, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 test("survives the full gyro drift range, including past the clamp", async () => {
-  const page = topoScenePage();
   await page.mount({ elapsedSec: 2.5, mx: 0, my: 0 });
 
   for (const [mx, my] of [
@@ -43,19 +46,18 @@ test("survives the full gyro drift range, including past the clamp", async () =>
     await page.rerender({ elapsedSec: 2.5, mx, my });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
 
 // Prices retick every 0.3s and each tick flashes for 0.22s, so walking the
 // late boot frame by frame is the only way to reach both the flash-on and
 // flash-decayed branches of every beacon.
 test("survives a run of price ticks with all six beacons up", async () => {
-  const page = topoScenePage();
   await page.mount({ elapsedSec: 3.1, mx: 0, my: 0 });
 
   for (let step = 0; step <= 24; step++) {
     await page.rerender({ elapsedSec: 3.1 + step * 0.07, mx: 0, my: 0 });
   }
 
-  expect(await page.exists()).toBe(true);
+  expect(await page.awaitExists()).toBe(true);
 });
