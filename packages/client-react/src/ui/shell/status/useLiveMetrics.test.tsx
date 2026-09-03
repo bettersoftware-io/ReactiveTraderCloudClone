@@ -1,9 +1,10 @@
-import { act, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelContext } from "@rtc/react-bindings";
+
+import { act, renderHook } from "#tests/ui/pages/UseLiveMetricsPage";
 
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 import { useLiveMetrics } from "./useLiveMetrics";

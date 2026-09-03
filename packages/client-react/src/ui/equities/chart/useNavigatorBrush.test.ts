@@ -1,8 +1,13 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
+
+import {
+  act,
+  cleanup,
+  renderHook,
+} from "#tests/ui/pages/UseNavigatorBrushPage";
 
 import { useNavigatorBrush } from "./useNavigatorBrush";
 

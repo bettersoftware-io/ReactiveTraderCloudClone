@@ -1,7 +1,6 @@
-import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useFxView } from "./useFxView";
+import { renderFxViewHook } from "#tests/ui/pages/UseFxViewPage";
 
 describe("useFxView", () => {
   it("throws when rendered outside a FxViewProvider", () => {
@@ -11,9 +10,7 @@ describe("useFxView", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => {
-      renderHook(() => {
-        return useFxView();
-      });
+      renderFxViewHook();
     }).toThrow("useFxView must be used within a FxViewProvider");
 
     spy.mockRestore();

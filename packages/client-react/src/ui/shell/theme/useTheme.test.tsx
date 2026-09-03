@@ -1,13 +1,11 @@
-import { render, renderHook } from "@testing-library/react";
-import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import {
+  mountThemeProvider,
+  renderThemeHook,
+} from "#tests/ui/pages/UseThemePage";
 
-import { ThemeProvider } from "./ThemeProvider";
 import { themeTokens } from "./tokens";
-import { useTheme } from "./useTheme";
 
 describe("useTheme", () => {
   it("throws when rendered outside a ThemeProvider", () => {
@@ -15,48 +13,15 @@ describe("useTheme", () => {
     // first render. Silence React's expected error-boundary console output.
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => {
-      renderHook(() => {
-        return useTheme();
-      });
+      renderThemeHook();
     }).toThrow("useTheme must be used within ThemeProvider");
     spy.mockRestore();
   });
 });
 
 describe("ThemeProvider", () => {
-  function mountWith(skin: "classic" | "holo" | "terminal" | "neon"): void {
-    const hooks = {
-      useThemePreference: () => {
-        return {
-          mode: "dark",
-          modePreference: "dark",
-          cycle: vi.fn(),
-        };
-      },
-      useThemeSkinPreference: () => {
-        return { skin, setSkin: vi.fn() };
-      },
-    } as unknown as ViewModel;
-
-    function Wrapper({ children }: WrapperProps): ReactElement {
-      return (
-        <ViewModelContext.Provider value={hooks}>
-          {children}
-        </ViewModelContext.Provider>
-      );
-    }
-
-    render(
-      <Wrapper>
-        <ThemeProvider>
-          <div />
-        </ThemeProvider>
-      </Wrapper>,
-    );
-  }
-
   it("writes dataset.skin/dataset.mode and paints the skin×mode tokens on :root", () => {
-    mountWith("holo");
+    mountThemeProvider("holo");
 
     const root = document.documentElement;
     expect(root.dataset.skin).toBe("holo");
@@ -66,7 +31,3 @@ describe("ThemeProvider", () => {
     ).toBe(themeTokens.holo.dark["--accent-primary"]);
   });
 });
-
-interface WrapperProps {
-  children: ReactNode;
-}

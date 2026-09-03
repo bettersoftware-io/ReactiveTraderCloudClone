@@ -17,83 +17,40 @@
  * file fires `webkitAnimationEnd`, not the unprefixed
  * `fireEvent.animationEnd`, which would be silently ignored here.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
 
-import { useJarvisDrivenPulse } from "./useJarvisDrivenPulse";
+import { jarvisDrivenPulsePage } from "#tests/ui/pages/JarvisDrivenPulsePage";
+
+const page = jarvisDrivenPulsePage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("useJarvisDrivenPulse — descendant animationend guard", () => {
   it("a descendant's bubbling animationend does NOT clear the pulse; the wrapper's OWN animationend does", () => {
-    // Declared inside the test (mirrors useLiveMetrics.test.tsx's
-    // Wrapper-inside-it() idiom) rather than at module top level: a
-    // top-level JSX-returning function here would trip biome's
-    // useComponentExportOnlyModules (wants it exported) AND
-    // noExportsInTest (forbids exporting from a test file) at once.
-    function Harness(): ReactElement {
-      const { pulsing, clearPulse } = useJarvisDrivenPulse();
-
-      return (
-        <div
-          data-testid="wrapper"
-          data-jarvis-driven={pulsing ? "true" : "false"}
-          onAnimationEnd={clearPulse}
-        >
-          <div data-testid="descendant" />
-        </div>
-      );
-    }
-
-    const { rerender } = render(
-      <ViewModelContext.Provider value={fakeViewModel(false)}>
-        <Harness />
-      </ViewModelContext.Provider>,
-    );
+    const handle = page.mount(fakeViewModel(false));
 
     // A new applied outcome arrives — pulsing turns true.
-    rerender(
-      <ViewModelContext.Provider value={fakeViewModel(true)}>
-        <Harness />
-      </ViewModelContext.Provider>,
-    );
+    handle.rerenderWith(fakeViewModel(true));
 
-    const wrapper = screen.getByTestId("wrapper");
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("true");
+    expect(page.wrapperIsDriven()).toBe(true);
 
     // A descendant's own animationend (e.g. a tile's tick-flash) bubbles
     // through the wrapper — must be IGNORED, not clear the pulse.
-    webkitAnimationEnd(screen.getByTestId("descendant"));
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("true");
+    page.fireDescendantAnimationEnd();
+    expect(page.wrapperIsDriven()).toBe(true);
 
     // The wrapper's OWN animationend (target === currentTarget) DOES clear it.
-    webkitAnimationEnd(wrapper);
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("false");
+    page.fireWrapperAnimationEnd();
+    expect(page.wrapperIsDriven()).toBe(false);
   });
 });
 
 describe("useJarvisDrivenPulse — reduced-motion gate", () => {
   it("does NOT set pulsing while prefers-reduced-motion: reduce — the CSS never plays the animation, so animationend would never fire to clear a latched true", () => {
-    function Harness(): ReactElement {
-      const { pulsing, clearPulse } = useJarvisDrivenPulse();
-
-      return (
-        <div
-          data-testid="wrapper"
-          data-jarvis-driven={pulsing ? "true" : "false"}
-          onAnimationEnd={clearPulse}
-        >
-          <div data-testid="descendant" />
-        </div>
-      );
-    }
-
     // jsdom has no matchMedia at all (the hook optional-chains it), so stub
     // one on the window rather than spying — same idiom as
     // BootSequence.test.tsx's reduced-motion tests.
@@ -103,21 +60,11 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      const { rerender } = render(
-        <ViewModelContext.Provider value={fakeViewModel(false)}>
-          <Harness />
-        </ViewModelContext.Provider>,
-      );
+      const handle = page.mount(fakeViewModel(false));
 
-      rerender(
-        <ViewModelContext.Provider value={fakeViewModel(true)}>
-          <Harness />
-        </ViewModelContext.Provider>,
-      );
+      handle.rerenderWith(fakeViewModel(true));
 
-      expect(
-        screen.getByTestId("wrapper").getAttribute("data-jarvis-driven"),
-      ).toBe("false");
+      expect(page.wrapperIsDriven()).toBe(false);
     } finally {
       window.matchMedia = original;
     }
@@ -142,11 +89,4 @@ function fakeViewModel(appliedBatch: boolean, isFreeze = false): ViewModel {
       return { isFreeze };
     },
   } as unknown as ViewModel;
-}
-
-function webkitAnimationEnd(el: Element): void {
-  fireEvent(
-    el,
-    new Event("webkitAnimationEnd", { bubbles: true, cancelable: false }),
-  );
 }

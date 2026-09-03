@@ -1,5 +1,6 @@
-import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderHook } from "#tests/ui/pages/UseTickFlashPage";
 
 import { type TickFlash, useTickFlash } from "./useTickFlash";
 

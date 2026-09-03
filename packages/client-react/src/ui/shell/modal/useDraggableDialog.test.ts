@@ -6,9 +6,10 @@
  * open/close reset — so the dialog rect and viewport are stubbed to fixed,
  * deterministic sizes.
  */
-import { act, renderHook } from "@testing-library/react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { act, renderHook } from "#tests/ui/pages/UseDraggableDialogPage";
 
 import { useDraggableDialog } from "./useDraggableDialog";
 

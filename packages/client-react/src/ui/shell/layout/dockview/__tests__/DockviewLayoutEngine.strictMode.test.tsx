@@ -1,10 +1,14 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
+import {
+  cleanup,
+  render,
+  waitFor,
+} from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
 
 import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 

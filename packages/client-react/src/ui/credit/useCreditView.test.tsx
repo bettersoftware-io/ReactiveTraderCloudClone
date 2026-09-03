@@ -1,7 +1,6 @@
-import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useCreditView } from "./useCreditView";
+import { renderCreditViewHook } from "#tests/ui/pages/UseCreditViewPage";
 
 describe("useCreditView", () => {
   it("throws when rendered outside a CreditViewProvider", () => {
@@ -10,9 +9,7 @@ describe("useCreditView", () => {
     // output (mirrors useTheme.test.tsx).
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => {
-      renderHook(() => {
-        return useCreditView();
-      });
+      renderCreditViewHook();
     }).toThrow("useCreditView must be used within a CreditViewProvider");
     spy.mockRestore();
   });

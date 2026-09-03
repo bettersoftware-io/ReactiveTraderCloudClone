@@ -1,4 +1,3 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
 import {
   createElement,
   type ReactElement,
@@ -8,6 +7,13 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DrawingGrip } from "@rtc/motion-core";
+
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+} from "#tests/ui/pages/UseChartGesturesPage";
 
 import {
   type ChartGestures,

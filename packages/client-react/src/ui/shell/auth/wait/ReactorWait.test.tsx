@@ -1,39 +1,35 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
-import { ReactorWait } from "./ReactorWait";
+import { reactorWaitPage } from "#tests/ui/pages/ReactorWaitPage";
+
+const page = reactorWaitPage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 test("renders the status line legibly at base state", () => {
-  render(<ReactorWait />);
+  page.mount();
 
-  const root = screen.getByTestId("auth-wait-reactor");
-  expect(root).not.toBeNull();
-  expect(root.textContent).toContain("AWAITING AUTH GRANT");
+  expect(page.exists("auth-wait-reactor")).toBe(true);
+  expect(page.text("auth-wait-reactor")).toContain("AWAITING AUTH GRANT");
 });
 
 test("exposes the wait as a live region for assistive tech", () => {
-  render(<ReactorWait />);
+  page.mount();
 
-  const status = screen.getByRole("status");
-  expect(status.textContent).toContain("AWAITING AUTH GRANT");
+  expect(page.statusText()).toContain("AWAITING AUTH GRANT");
 });
 
 test("renders the indeterminate bar below the status content, decorative to assistive tech", () => {
-  render(<ReactorWait />);
+  page.mount();
 
-  const root = screen.getByTestId("auth-wait-reactor");
-  const track = root.querySelector('[aria-hidden="true"]');
-  expect(track).not.toBeNull();
-  expect(track?.querySelector("div")).not.toBeNull();
+  expect(page.hasIndeterminateBar()).toBe(true);
+  expect(page.indeterminateBarHasChild()).toBe(true);
 });
 
 test("no longer owns the reactor rings — those wrap the emblem via ReactorRings", () => {
-  render(<ReactorWait />);
+  page.mount();
 
-  const root = screen.getByTestId("auth-wait-reactor");
-  expect(root.querySelectorAll("svg").length).toBe(0);
+  expect(page.svgCount("auth-wait-reactor")).toBe(0);
 });

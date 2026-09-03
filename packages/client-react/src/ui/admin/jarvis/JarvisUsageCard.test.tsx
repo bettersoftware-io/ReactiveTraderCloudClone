@@ -6,30 +6,27 @@
  * populated, per-section empty lists, the windowEndMs=0 sentinel) to be
  * worth pinning directly rather than leaving to a future contract spec.
  */
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { JarvisUsageSnapshot } from "@rtc/client-core";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
 
-import { JarvisUsageCard } from "./JarvisUsageCard";
+import { jarvisUsageCardPage } from "#tests/ui/pages/JarvisUsageCardPage";
+
+const page = jarvisUsageCardPage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("JarvisUsageCard", () => {
   it("shows NO USAGE DATA when useJarvisUsage() is null", () => {
-    renderCard(null);
+    page.mount(null);
 
-    expect(screen.getByTestId("admin-jarvis-usage-card").textContent).toContain(
-      "NO USAGE DATA",
-    );
+    expect(page.text("admin-jarvis-usage-card")).toContain("NO USAGE DATA");
   });
 
   it("renders per-brain rows for both windows, plus the reset time and caveat", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 1_000,
       windowEndMs: 1_735_689_000_000, // 2025-01-01T00:10:00.000Z-ish, fixed for a deterministic clock() read
       currentWindow: [
@@ -65,43 +62,43 @@ describe("JarvisUsageCard", () => {
       ],
     });
 
-    const card = screen.getByTestId("admin-jarvis-usage-card");
-    expect(card.textContent).toContain("Haiku 4.5");
-    expect(card.textContent).toContain("Opus 5");
-    expect(card.textContent).toContain("$0.12");
-    expect(card.textContent).toContain("$1.20");
-    expect(card.textContent).toContain("$4.50");
-    expect(card.textContent).toContain("Window resets");
-    expect(card.textContent).not.toContain("Window resets —");
-    expect(card.textContent).toContain("resets on server restart");
+    const cardText = page.text("admin-jarvis-usage-card");
+    expect(cardText).toContain("Haiku 4.5");
+    expect(cardText).toContain("Opus 5");
+    expect(cardText).toContain("$0.12");
+    expect(cardText).toContain("$1.20");
+    expect(cardText).toContain("$4.50");
+    expect(cardText).toContain("Window resets");
+    expect(cardText).not.toContain("Window resets —");
+    expect(cardText).toContain("resets on server restart");
   });
 
   it("prints — instead of a bogus epoch clock when windowEndMs is the 0 sentinel", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
       sinceBoot: [],
     });
 
-    const card = screen.getByTestId("admin-jarvis-usage-card");
-    expect(card.textContent).toContain("Window resets —");
-    expect(card.textContent).toContain("No turns yet");
+    const cardText = page.text("admin-jarvis-usage-card");
+    expect(cardText).toContain("Window resets —");
+    expect(cardText).toContain("No turns yet");
   });
 
   it("renders no budget line on a pre-round server (budgetUsd absent)", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
       sinceBoot: [],
     });
 
-    expect(screen.queryByTestId("admin-jarvis-budget-line")).toBeNull();
+    expect(page.exists("admin-jarvis-budget-line")).toBe(false);
   });
 
   it("renders BUDGET OFF when budgetUsd is null (gating disabled)", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
@@ -109,14 +106,12 @@ describe("JarvisUsageCard", () => {
       budgetUsd: null,
     } as JarvisUsageSnapshot);
 
-    expect(screen.getByTestId("admin-jarvis-budget-line").textContent).toBe(
-      "BUDGET OFF",
-    );
-    expect(screen.queryByTestId("admin-jarvis-gate-badge")).toBeNull();
+    expect(page.text("admin-jarvis-budget-line")).toBe("BUDGET OFF");
+    expect(page.exists("admin-jarvis-gate-badge")).toBe(false);
   });
 
   it("renders the spend/budget/soft-gate line and a SOFT GATE badge", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
@@ -127,18 +122,15 @@ describe("JarvisUsageCard", () => {
       gateLevel: "soft",
     } as JarvisUsageSnapshot);
 
-    const line = screen.getByTestId("admin-jarvis-budget-line");
-    expect(line.textContent).toContain(
+    expect(page.text("admin-jarvis-budget-line")).toContain(
       "$8.50 of $10.00 this window — soft gate at $8.00",
     );
-
-    const badge = screen.getByTestId("admin-jarvis-gate-badge");
-    expect(badge.textContent).toBe("SOFT GATE");
-    expect(badge.getAttribute("data-gate")).toBe("soft");
+    expect(page.text("admin-jarvis-gate-badge")).toBe("SOFT GATE");
+    expect(page.attribute("admin-jarvis-gate-badge", "data-gate")).toBe("soft");
   });
 
   it("renders a HARD GATE badge and defaults spent/soft-budget when absent", () => {
-    renderCard({
+    page.mount({
       windowStartMs: 0,
       windowEndMs: 0,
       currentWindow: [],
@@ -147,29 +139,10 @@ describe("JarvisUsageCard", () => {
       gateLevel: "hard",
     } as JarvisUsageSnapshot);
 
-    const line = screen.getByTestId("admin-jarvis-budget-line");
-    expect(line.textContent).toContain(
+    expect(page.text("admin-jarvis-budget-line")).toContain(
       "$0.00 of $10.00 this window — soft gate at $0.00",
     );
-
-    const badge = screen.getByTestId("admin-jarvis-gate-badge");
-    expect(badge.textContent).toBe("HARD GATE");
-    expect(badge.getAttribute("data-gate")).toBe("hard");
+    expect(page.text("admin-jarvis-gate-badge")).toBe("HARD GATE");
+    expect(page.attribute("admin-jarvis-gate-badge", "data-gate")).toBe("hard");
   });
 });
-
-function renderCard(
-  usage: JarvisUsageSnapshot | null,
-): ReturnType<typeof render> {
-  const hooks = {
-    useJarvisUsage: () => {
-      return usage;
-    },
-  } as unknown as ViewModel;
-
-  return render(
-    <ViewModelContext.Provider value={hooks}>
-      <JarvisUsageCard />
-    </ViewModelContext.Provider>,
-  );
-}
