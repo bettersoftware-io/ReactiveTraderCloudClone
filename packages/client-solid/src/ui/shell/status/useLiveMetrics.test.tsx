@@ -1,4 +1,3 @@
-import { renderHook } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
 import { createComponent, createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,8 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ViewModel } from "@rtc/solid-bindings";
 import { ViewModelContext } from "@rtc/solid-bindings";
 
+import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
+
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
-import { useLiveMetrics } from "./useLiveMetrics";
+
+const page = liveMetricsPage();
 
 describe("useLiveMetrics (solid)", () => {
   let rafCb: FrameRequestCallback | null;
@@ -34,20 +36,18 @@ describe("useLiveMetrics (solid)", () => {
   }
 
   it("returns the frozen value and starts no loop under a provider", () => {
-    const { result } = renderHook(useLiveMetrics, {
-      wrapper: (props: WrapperProps): JSX.Element => {
-        return createComponent(ViewModelContext.Provider, {
-          value: viewModelWith(false),
-          get children(): JSX.Element {
-            return createComponent(LiveMetricsContext.Provider, {
-              value: FROZEN_LIVE_METRICS,
-              get children(): JSX.Element {
-                return props.children;
-              },
-            });
-          },
-        });
-      },
+    const result = page.mount((props: WrapperProps): JSX.Element => {
+      return createComponent(ViewModelContext.Provider, {
+        value: viewModelWith(false),
+        get children(): JSX.Element {
+          return createComponent(LiveMetricsContext.Provider, {
+            value: FROZEN_LIVE_METRICS,
+            get children(): JSX.Element {
+              return props.children;
+            },
+          });
+        },
+      });
     });
 
     expect(result()).toEqual(FROZEN_LIVE_METRICS);
@@ -55,9 +55,7 @@ describe("useLiveMetrics (solid)", () => {
   });
 
   it("publishes fps + tone over the ~1s window", () => {
-    const { result } = renderHook(useLiveMetrics, {
-      wrapper: withPowerSaver(false),
-    });
+    const result = page.mount(withPowerSaver(false));
 
     expect(result().fps).toBeNull();
 
@@ -76,9 +74,7 @@ describe("useLiveMetrics (solid)", () => {
   // The motion probe recognises the loop by its `rtcDiagnosticRafLoop` marker
   // (tests/browser/motionProbe.ts), so that marker is pinned here too.
   it("keeps sampling under power-saver freeze and marks its loop diagnostic", () => {
-    renderHook(useLiveMetrics, {
-      wrapper: withPowerSaver(true),
-    });
+    page.mount(withPowerSaver(true));
 
     expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
     expect(

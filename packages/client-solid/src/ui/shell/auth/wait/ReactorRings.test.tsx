@@ -1,77 +1,42 @@
-import { render, screen } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import { ReactorRings } from "./ReactorRings";
+import { reactorRingsPage } from "#tests/ui/pages/ReactorRingsPage";
+
+const page = reactorRingsPage();
 
 describe("ReactorRings", () => {
   it("renders its child", () => {
-    render(() => {
-      return (
-        <ReactorRings>
-          <span data-testid="emblem-marker">emblem</span>
-        </ReactorRings>
-      );
-    });
+    page.mount();
 
-    expect(screen.getByTestId("emblem-marker")).not.toBeNull();
+    expect(page.exists("emblem-marker")).toBe(true);
   });
 
   it("renders exactly two counter-rotating arc rings, hidden from assistive tech", () => {
-    const { container } = render(() => {
-      return (
-        <ReactorRings>
-          <span data-testid="emblem-marker">emblem</span>
-        </ReactorRings>
-      );
-    });
+    page.mount();
 
-    const rings = container.querySelectorAll("svg[aria-hidden='true']");
-    expect(rings.length).toBe(2);
+    expect(page.ringCount()).toBe(2);
   });
 
   it("wraps the child in a shared ancestor rather than standing alone beside it", () => {
-    const { container } = render(() => {
-      return (
-        <ReactorRings>
-          <span data-testid="emblem-marker">emblem</span>
-        </ReactorRings>
-      );
-    });
-
-    const marker = screen.getByTestId("emblem-marker");
-    const rings = container.querySelectorAll("svg[aria-hidden='true']");
+    page.mount();
 
     // The rings and the emblem must share a common parent element (the
     // ReactorRings root) — proving the arcs are laid out AROUND the emblem
     // rather than rendered as a disconnected, standalone cluster elsewhere in
     // the tree.
-    const root = container.firstElementChild;
-    expect(root).not.toBeNull();
-    expect(root?.contains(marker)).toBe(true);
-
-    for (const ring of rings) {
-      expect(root?.contains(ring)).toBe(true);
-    }
+    expect(page.hasRoot()).toBe(true);
+    expect(page.rootContainsMarker()).toBe(true);
+    expect(page.rootContainsEveryRing()).toBe(true);
 
     // The emblem itself must not be nested inside either ring's wrapper — it
     // sits as a sibling slot, so the rings visually surround it instead of
     // containing/clipping it.
-    for (const ring of rings) {
-      expect(ring.contains(marker)).toBe(false);
-    }
+    expect(page.noRingContainsOrWrapsMarker()).toBe(true);
   });
 
   it("does not carry the auth-wait-reactor testid — that stays on ReactorWait", () => {
-    const { container } = render(() => {
-      return (
-        <ReactorRings>
-          <span data-testid="emblem-marker">emblem</span>
-        </ReactorRings>
-      );
-    });
+    page.mount();
 
-    expect(container.querySelector('[data-testid="auth-wait-reactor"]')).toBe(
-      null,
-    );
+    expect(page.hasReactorWaitTestId()).toBe(false);
   });
 });

@@ -1,14 +1,11 @@
-import { renderHook } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import { useFxView } from "./useFxView";
+import { renderFxViewHook } from "#tests/ui/pages/UseFxViewPage";
 
 describe("useFxView", () => {
   it("throws when rendered outside a FxViewProvider", () => {
     expect(() => {
-      renderHook(() => {
-        return useFxView();
-      });
+      renderFxViewHook();
     }).toThrow("useFxView must be used within a FxViewProvider");
   });
 });

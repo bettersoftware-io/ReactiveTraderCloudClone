@@ -416,10 +416,20 @@ export default tseslint.config(
     // client-react is migrated (Wave B, react half, of the
     // page-object-isolation plan): every co-located spec under
     // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
-    // tests/ui/pages/, so this package is held to error while client-solid
-    // (Wave B's solid half, a separate PR) still burns down through the warn
-    // block above.
+    // tests/ui/pages/, so this package is held to error.
     files: ["packages/client-react/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-solid is migrated (Wave B, solid half, of the
+    // page-object-isolation plan): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/ui/pages/ (ported from client-react's pages where the specs are
+    // ports of each other; App.test.tsx's page is solid-only), so this
+    // package is held to error too; the warn block above now covers only
+    // `client-react-native` (Wave C) — it is not empty.
+    files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
@@ -519,6 +529,33 @@ export default tseslint.config(
       "packages/solid-bindings/**/*.{ts,tsx}",
     ],
     ...solid.configs["flat/recommended"],
+  },
+  {
+    // `solid/reactivity`'s MemberExpression heuristic only recognises a
+    // reactive-tracking call by its callee's property NAME matching
+    // `/^(?:use|create)[A-Z]/` (eslint-plugin-solid dist/index.js) — so
+    // `page.mount(seriesLen, …)` / `page.mountLive(layoutState, …)` read as
+    // an untracked accessor pass-through even though `mount`/`mountLive`
+    // wrap the argument in a `render`/`renderHook` tracked scope one level
+    // down inside the page module. `customReactiveFunctions` is the rule's
+    // own escape hatch for exactly this shape: it extends the property-name
+    // match to anything starting with `mount`, so every co-located spec's
+    // page-object calls are recognised without a per-call-site disable
+    // comment. Scoped to spec files ONLY (not `packages/client-solid/src`
+    // production code, which the block above already covers with the
+    // recommended default) — flat config's per-file rule resolution takes
+    // the LAST matching config's options for a given rule, so this narrower,
+    // later block overrides `solid/reactivity`'s options for `*.test.tsx`
+    // files without touching the recommended block's options anywhere else.
+    // No production `.mount(...)` call site exists under
+    // `packages/client-solid/src` outside tests (verified:
+    // `grep -rn "\.mount(" packages/client-solid/src` excluding
+    // `*.test.{ts,tsx}` returns nothing), so this cannot loosen the rule for
+    // real components.
+    files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
+    rules: {
+      "solid/reactivity": ["warn", { customReactiveFunctions: ["/^mount/"] }],
+    },
   },
   prettier,
 );

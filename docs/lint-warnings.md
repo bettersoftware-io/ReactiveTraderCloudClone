@@ -11,9 +11,9 @@
 > on unrelated edits); locate each warning by its file plus the identifier
 > named in the message.
 >
-> **Total: 1066 warnings** across 1 rule, 119 files.
+> **Total: 888 warnings** across 1 rule, 101 files.
 
-## `rtc/no-framework-calls-in-specs` (1066)
+## `rtc/no-framework-calls-in-specs` (888)
 
 ### packages/client-react-native/src/app/AppRoot.test.tsx
 
@@ -552,95 +552,4 @@
 
 - (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
 - Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/App.test.tsx
-
-- Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×31) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/credit/useCreditView.test.ts
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/equities/chart/createChartGestures.test.ts
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/equities/chart/createNavigatorBrush.test.ts
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/fx/useFxView.test.ts
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/auth/wait/HandshakeConsole.test.tsx
-
-- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/auth/wait/ReactorRings.test.tsx
-
-- Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- (×2) Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
-- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/auth/wait/ReactorWait.test.tsx
-
-- (×2) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
-- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/background/AmbientBackground.test.tsx
-
-- (×6) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/boot/BootSequence.test.tsx
-
-- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/jarvis/JarvisOverlay.driveRow.test.tsx
-
-- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/jarvis/useJarvisDrivenPulse.test.tsx
-
-- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/layout/engine/__tests__/InhouseLayoutEngine.smoke.test.tsx
-
-- (×5) Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
-- (×16) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×61) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/layout/engine/__tests__/PanelErrorBoundary.test.tsx
-
-- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/modal/useDraggableDialog.test.ts
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/motion/useFlipGrid.test.ts
-
-- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/status/useLiveMetrics.test.tsx
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/client-solid/src/ui/shell/theme/useTheme.test.tsx
-
-- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
 

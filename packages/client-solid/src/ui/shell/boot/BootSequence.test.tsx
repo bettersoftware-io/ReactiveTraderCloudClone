@@ -6,14 +6,17 @@
  * jsdom's getContext("2d") returns null.
  */
 
-import { render, screen } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/solid-bindings";
 import { ViewModelContext } from "@rtc/solid-bindings";
 
+import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
+
 import { BootSequence } from "./BootSequence";
+
+const page = bootSequencePage();
 
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
@@ -38,7 +41,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
   it("starts the rAF loop when the canvas context is available", () => {
     const onDone = vi.fn();
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider value={makeHooks()}>
           <BootSequence onDone={onDone} />
@@ -50,7 +53,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
   it("cancels the rAF loop on unmount (cleanup path)", () => {
     const onDone = vi.fn();
-    const { unmount } = render(() => {
+    const { unmount } = page.mount(() => {
       return (
         <ViewModelContext.Provider value={makeHooks()}>
           <BootSequence onDone={onDone} />
@@ -64,7 +67,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   it("draws from the token store without any painted custom properties", () => {
     const onDone = vi.fn();
     expect(() => {
-      render(() => {
+      page.mount(() => {
         return (
           <ViewModelContext.Provider value={makeHooks()}>
             <BootSequence onDone={onDone} />
@@ -77,7 +80,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
   it("runs the laser and docking draws through the same factory loop", () => {
     for (const variant of ["laser", "docking"] as const) {
-      const { unmount } = render(() => {
+      const { unmount } = page.mount(() => {
         return (
           <ViewModelContext.Provider
             value={makeHooks({
@@ -102,7 +105,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   });
 
   it("tracks the cursor into the shared pointer while booting", () => {
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider value={makeHooks()}>
           <BootSequence onDone={vi.fn()} />
@@ -122,7 +125,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = (() => {
       return { matches: true };
     }) as unknown as typeof window.matchMedia;
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider value={makeHooks()}>
           <BootSequence onDone={vi.fn()} />
@@ -143,7 +146,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      renderBootSequence({ forceBootAnimation: true });
+      mountBootSequence({ forceBootAnimation: true });
       expect(rafSpy).toHaveBeenCalled();
     } finally {
       window.matchMedia = original;
@@ -157,7 +160,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      renderBootSequence({ forceBootAnimation: false });
+      mountBootSequence({ forceBootAnimation: false });
       expect(rafSpy).not.toHaveBeenCalled();
     } finally {
       window.matchMedia = original;
@@ -169,7 +172,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   // should never run the boot animation, even on first paint. Freeze wins
   // even over forceBootAnimation (which overrides only prefers-reduced-motion).
   it("skips the canvas loop entirely under power-saver freeze", () => {
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider
           value={makeHooks({
@@ -204,7 +207,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     const onDone = vi.fn();
     expect(() => {
-      render(() => {
+      page.mount(() => {
         return (
           <ViewModelContext.Provider value={makeHooks()}>
             <BootSequence onDone={onDone} />
@@ -235,7 +238,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
       done: false,
     });
 
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider
           value={makeHooks({
@@ -268,7 +271,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
     const onDone = vi.fn();
     const [progress, setProgress] = createSignal(0);
 
-    render(() => {
+    page.mount(() => {
       return (
         <ViewModelContext.Provider
           value={makeHooks({
@@ -292,29 +295,28 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
     });
 
     // progress 0 -> 0 lines visible
-    expect(screen.queryByText(/BOOT> initializing kernel/)).toBe(null);
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(false);
 
     // progress 50 -> lines 0-3 visible (thresholds 9, 20, 32, 43, 55, 66, 77)
     setProgress(50);
-    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
-    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
-    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
-    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
-    expect(screen.queryByText(/NET > equities market data/)).toBe(null);
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
+    expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
+    expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
+    expect(page.hasText(/NET > credit rfq gateway/)).toBe(true);
+    expect(page.hasText(/NET > equities market data/)).toBe(false);
 
     // progress 100 -> all 7 lines, final line has data-online="true"
     setProgress(100);
-    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
-    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
-    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
-    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
-    expect(screen.queryByText(/NET > equities market data/)).not.toBe(null);
-    expect(screen.queryByText(/SYS > calibrating HUD shaders/)).not.toBe(null);
-    expect(screen.queryByText(/SYS > all systems nominal/)).not.toBe(null);
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
+    expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
+    expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
+    expect(page.hasText(/NET > credit rfq gateway/)).toBe(true);
+    expect(page.hasText(/NET > equities market data/)).toBe(true);
+    expect(page.hasText(/SYS > calibrating HUD shaders/)).toBe(true);
+    expect(page.hasText(/SYS > all systems nominal/)).toBe(true);
 
     // Verify the final line is marked as online
-    const finalLine = screen.getByText(/SYS > all systems nominal/);
-    expect(finalLine.getAttribute("data-online")).toBe("true");
+    expect(page.onlineAttrOfText(/SYS > all systems nominal/)).toBe("true");
   });
 });
 
@@ -435,17 +437,17 @@ function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
   } as unknown as ViewModel;
 }
 
-interface RenderBootSequenceOpts {
+interface MountBootSequenceOpts {
   forceBootAnimation: boolean;
 }
 
-/** Renders `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
+/** Mounts `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
  * the given flag — the seam Task 4 wires into the effective reduced-motion
  * decision. */
-function renderBootSequence({
+function mountBootSequence({
   forceBootAnimation,
-}: RenderBootSequenceOpts): void {
-  render(() => {
+}: MountBootSequenceOpts): void {
+  page.mount(() => {
     return (
       <ViewModelContext.Provider
         value={makeHooks({

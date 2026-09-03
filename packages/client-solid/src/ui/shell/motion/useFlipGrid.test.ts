@@ -1,17 +1,16 @@
-import { renderHook } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { useFlipGrid } from "./useFlipGrid";
+import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
+
+const page = flipGridPage();
 
 describe("useFlipGrid", () => {
   it("re-measures origins on window resize so the next FLIP starts fresh", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(() => {
-        return [dep()];
-      });
+    const result = page.mount(() => {
+      return [dep()];
     });
     result.register("EURUSD")(tile.el);
 
@@ -44,10 +43,8 @@ describe("useFlipGrid", () => {
   it("skips the resize re-measure while a glide is in flight", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(() => {
-        return [dep()];
-      });
+    const result = page.mount(() => {
+      return [dep()];
     });
     result.register("EURUSD")(tile.el);
     setDep("EUR");
@@ -78,14 +75,12 @@ describe("useFlipGrid", () => {
     const first = makeTile();
     stage.el.appendChild(first.el);
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(
-        () => {
-          return [dep()];
-        },
-        { enter: true },
-      );
-    });
+    const result = page.mount(
+      () => {
+        return [dep()];
+      },
+      { enter: true },
+    );
     result.register("EURUSD")(first.el);
     setDep("EUR");
 
@@ -117,14 +112,12 @@ describe("useFlipGrid", () => {
     leaving.animate.mockReturnValue({ finished: Promise.resolve() });
 
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(
-        () => {
-          return [dep()];
-        },
-        { enter: true, exit: true },
-      );
-    });
+    const result = page.mount(
+      () => {
+        return [dep()];
+      },
+      { enter: true, exit: true },
+    );
     result.register("EURUSD")(first.el);
     result.register("GBPUSD")(leaving.el);
     setDep("EUR");
@@ -154,10 +147,8 @@ describe("useFlipGrid", () => {
   });
 
   it("tolerates unregistering a key that never had an element", () => {
-    const { result } = renderHook(() => {
-      return useFlipGrid(() => {
-        return ["All"];
-      });
+    const result = page.mount(() => {
+      return ["All"];
     });
 
     expect(() => {
@@ -172,10 +163,8 @@ describe("useFlipGrid", () => {
 
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(() => {
-        return [dep()];
-      });
+    const result = page.mount(() => {
+      return [dep()];
     });
     result.register("EURUSD")(tile.el);
     setDep("EUR");
@@ -195,18 +184,16 @@ describe("useFlipGrid", () => {
   it("does not call animate when freeze is true, even though deps change", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(
-        () => {
-          return [dep()];
+    const result = page.mount(
+      () => {
+        return [dep()];
+      },
+      {
+        freeze: () => {
+          return true;
         },
-        {
-          freeze: () => {
-            return true;
-          },
-        },
-      );
-    });
+      },
+    );
     result.register("EURUSD")(tile.el);
     setDep("EUR");
 
@@ -219,10 +206,8 @@ describe("useFlipGrid", () => {
   it("does not play enter animations when the option is off", () => {
     const first = makeTile();
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(() => {
-        return [dep()];
-      });
+    const result = page.mount(() => {
+      return [dep()];
     });
     result.register("EURUSD")(first.el);
     setDep("EUR");
@@ -259,14 +244,12 @@ describe("useFlipGrid", () => {
     });
 
     const [dep, setDep] = createSignal("All");
-    const { result } = renderHook(() => {
-      return useFlipGrid(
-        () => {
-          return [dep()];
-        },
-        { exit: true },
-      );
-    });
+    const result = page.mount(
+      () => {
+        return [dep()];
+      },
+      { exit: true },
+    );
     result.register("EURUSD")(survivor.el);
     result.register("GBPUSD")(leaving.el);
     setDep("EUR");
@@ -288,7 +271,7 @@ describe("useFlipGrid", () => {
     // test id so e2e tile counts don't see it during its 340ms fade.
     expect(leaving.el.getAttribute("aria-hidden")).toBe("true");
     expect(leaving.el.hasAttribute("data-testid")).toBe(false);
-    expect(leaving.el.querySelectorAll("[data-testid]").length).toBe(0);
+    expect(page.testIdDescendantCount(leaving.el)).toBe(0);
     expect(leaving.animate).toHaveBeenCalledWith(
       [
         { opacity: 1, transform: "translate(0, 0) scale(1)" },
