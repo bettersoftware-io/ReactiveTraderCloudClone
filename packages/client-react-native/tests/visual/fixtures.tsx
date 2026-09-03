@@ -7,6 +7,7 @@ import {
   type Dealer,
   Direction,
   type HistoricPosition,
+  INSTRUMENTS_CATALOG,
   type Instrument,
   type PositionUpdates,
   type Quote,
@@ -400,31 +401,22 @@ const FROZEN_TELEMETRY: FrozenTelemetry = { fps: 60, latencyMs: 12 };
  * the ring's normal accent rather than its alarm state. */
 const PINNED_REMAINING_MS = 42_000;
 
+/** The REAL bonds, straight off the domain's own catalogue — replacing the
+ * invented `Acme`/`Vertex` placeholders this fixture carried until the
+ * bucket-1 data pass. The design's RFQ book is all ticker-named bonds
+ * (`AAPL 3.85% 2043` style); the catalogue keeps the web-v5 design's exact
+ * name format (`AAPL 2.4 08/30`, real CUSIPs). `[0]` is the AAPL bond (live
+ * card + sell-side, ref 98.4 — same as Acme's, so the price stepper is
+ * unmoved); `[1]` is the TSLA bond (id 4, ref 100.6), standing in for the
+ * design's accepted-card META bond, which has no catalogue counterpart —
+ * nearest by reference price to its 101.24. */
 const PINNED_INSTRUMENTS: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "Acme 5.5% 2030",
-    cusip: "000000AA1",
-    ticker: "ACME",
-    maturity: "2030",
-    interestRate: 5.5,
-    benchmark: "T 4.0 2030",
-    refPrice: 98.4,
-  },
-  {
-    id: 2,
-    name: "Vertex 4.25% 2028",
-    cusip: "000000BB2",
-    ticker: "VRTX",
-    maturity: "2028",
-    interestRate: 4.25,
-    benchmark: "T 3.5 2028",
-    refPrice: 101.2,
-  },
+  INSTRUMENTS_CATALOG[0] as Instrument,
+  INSTRUMENTS_CATALOG[4] as Instrument,
 ];
 
 /** The REAL desks, straight off the domain's own catalogue (ids 0-4:
- * Adaptive Bank, Citi, JP Morgan, Goldman Sachs, Morgan Stanley) rather than
+ * Adaptive Bank, Citi, J.P. Morgan, Goldman Sachs, Morgan Stanley) rather than
  * the `Bank A/B/C` placeholders this fixture carried until 2026-08-30 — the
  * one deviation the first Credit fidelity comparison named first. Five of
  * them, because the design streams every RFQ to five dealers
@@ -432,9 +424,10 @@ const PINNED_INSTRUMENTS: readonly Instrument[] = [
  * render, as the design prints them. */
 const PINNED_DEALERS: readonly Dealer[] = DEALERS_CATALOG.slice(0, 5);
 
+/** The design's live RFQ (its `3044`): BUY 5M of the AAPL bond. */
 const PINNED_LIVE_RFQ: Rfq = {
   id: 101,
-  instrumentId: 1,
+  instrumentId: 0,
   quantity: 5_000_000,
   direction: Direction.Buy,
   state: RfqState.Open,
@@ -442,11 +435,14 @@ const PINNED_LIVE_RFQ: Rfq = {
   creationTimestamp: 0,
 };
 
+/** The design's accepted RFQ (its `3042`): BUY 10M, settled with
+ * J.P. Morgan — instrument remapped to the TSLA bond (see
+ * `PINNED_INSTRUMENTS`). */
 const PINNED_TRADED_RFQ: Rfq = {
   id: 102,
-  instrumentId: 2,
-  quantity: 1_000_000,
-  direction: Direction.Sell,
+  instrumentId: 4,
+  quantity: 10_000_000,
+  direction: Direction.Buy,
   state: RfqState.Closed,
   expirySecs: 120,
   creationTimestamp: 0,
@@ -486,19 +482,20 @@ const PINNED_QUOTES: readonly Quote[] = [
 
 /** The settled card's one row — an `accepted` quote, which is what earns the
  * `◂ WON` marker and the accent treatment on a card that has no best quote
- * (dc.html:2145 keys both on `isBest || won`). */
+ * (dc.html:2145 keys both on `isBest || won`). Dealer 2 is J.P. Morgan, the
+ * design's own `acceptedDealer` on this card. */
 const PINNED_TRADED_QUOTES: readonly Quote[] = [
   {
     id: 1010,
     rfqId: 102,
-    dealerId: 1,
+    dealerId: 2,
     state: { type: "accepted", price: 101.35 },
   },
 ];
 
 const PINNED_SELL_SIDE_RFQ: Rfq = {
   id: 201,
-  instrumentId: 1,
+  instrumentId: 0,
   quantity: 2_000_000,
   direction: Direction.Sell,
   state: RfqState.Open,

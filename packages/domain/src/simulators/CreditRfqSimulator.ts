@@ -78,7 +78,7 @@ export class CreditRfqSimulator implements WorkflowPort {
       },
     ];
 
-    // dealer ids: 0 Adaptive Bank, 1 Citi, 2 JP Morgan, 3 Goldman Sachs
+    // dealer ids: 0 Adaptive Bank, 1 Citi, 2 J.P. Morgan, 3 Goldman Sachs
     const seedQuotes: readonly Quote[] = [
       {
         id: 1,
