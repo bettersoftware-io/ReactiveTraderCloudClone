@@ -1,5 +1,6 @@
 // packages/client-react-native/tests/pages/NewRfqFormPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
+import type { AccessibilityState } from "react-native";
 
 import type { CreateRfqInput, Dealer, Instrument } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -9,7 +10,7 @@ import {
   type NewRfqSelection,
 } from "#/ui/credit/newRfq/NewRfqForm";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { containsText } from "#tests/pages/support/textContent";
 
 const INSTRUMENTS: readonly Instrument[] = [
   {
@@ -24,11 +25,6 @@ const INSTRUMENTS: readonly Instrument[] = [
   },
 ];
 
-const DEALERS: readonly Dealer[] = [
-  { id: 1, name: "Bank A" },
-  { id: 2, name: "Bank B" },
-];
-
 export type NewRfqSubmitFn = (
   input: CreateRfqInput,
   onRedirect: (id: number) => void,
@@ -39,13 +35,14 @@ type SubmissionState = ReturnType<ViewModel["useRfqSubmission"]>["state"];
 function fakeViewModel(
   submit: NewRfqSubmitFn,
   state: SubmissionState,
+  dealers: readonly Dealer[],
 ): ViewModel {
   return {
     useInstruments: () => {
       return INSTRUMENTS;
     },
     useDealers: () => {
-      return DEALERS;
+      return dealers;
     },
     useRfqSubmission: () => {
       return { state, submit };
@@ -54,16 +51,25 @@ function fakeViewModel(
 }
 
 export interface NewRfqFormPage {
+  // `dealers` is required (no default): several specs assert
+  // `dealerIds`/"STREAMS TO N DEALERS" derived directly from this roster, so
+  // the caller states it every time rather than relying on a page-internal
+  // fixture the assertion's origin would then hide.
   mountEditing(
     submit: NewRfqSubmitFn,
+    dealers: readonly Dealer[],
     initialSelection?: NewRfqSelection,
   ): Promise<void>;
-  mountConfirmed(submit: NewRfqSubmitFn, rfqId: number): Promise<void>;
+  mountConfirmed(
+    submit: NewRfqSubmitFn,
+    dealers: readonly Dealer[],
+    rfqId: number,
+  ): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasText(text: string): boolean;
   press(testId: string): Promise<void>;
-  accessibilityStateOf(testId: string): unknown;
+  accessibilityStateOf(testId: string): AccessibilityState | undefined;
   containsTextContent(testId: string, substring: string): boolean;
 }
 
@@ -72,11 +78,12 @@ export function newRfqFormPage(): NewRfqFormPage {
   return {
     async mountEditing(
       submit: NewRfqSubmitFn,
+      dealers: readonly Dealer[],
       initialSelection?: NewRfqSelection,
     ): Promise<void> {
       await renderWithTheme(
         <ViewModelProvider
-          viewModel={fakeViewModel(submit, { status: "editing" })}
+          viewModel={fakeViewModel(submit, { status: "editing" }, dealers)}
         >
           <NewRfqForm
             onCreated={(): void => {}}
@@ -85,10 +92,18 @@ export function newRfqFormPage(): NewRfqFormPage {
         </ViewModelProvider>,
       );
     },
-    async mountConfirmed(submit: NewRfqSubmitFn, rfqId: number): Promise<void> {
+    async mountConfirmed(
+      submit: NewRfqSubmitFn,
+      dealers: readonly Dealer[],
+      rfqId: number,
+    ): Promise<void> {
       await renderWithTheme(
         <ViewModelProvider
-          viewModel={fakeViewModel(submit, { status: "confirmed", rfqId })}
+          viewModel={fakeViewModel(
+            submit,
+            { status: "confirmed", rfqId },
+            dealers,
+          )}
         >
           <NewRfqForm onCreated={(): void => {}} />
         </ViewModelProvider>,
@@ -106,15 +121,15 @@ export function newRfqFormPage(): NewRfqFormPage {
     async press(testId: string): Promise<void> {
       await fireEvent.press(screen.getByTestId(testId));
     },
-    accessibilityStateOf(testId: string): unknown {
-      return screen.getByTestId(testId).props.accessibilityState;
+    accessibilityStateOf(testId: string): AccessibilityState | undefined {
+      return screen.getByTestId(testId).props.accessibilityState as
+        | AccessibilityState
+        | undefined;
     },
     // Mirrors RNTL's `toHaveTextContent(text, { exact: false })`: a
     // case-insensitive substring match on the normalized text.
     containsTextContent(testId: string, substring: string): boolean {
-      return normalizeText(textContentOf(screen.getByTestId(testId)))
-        .toLowerCase()
-        .includes(normalizeText(substring).toLowerCase());
+      return containsText(screen.getByTestId(testId), substring);
     },
   };
 }

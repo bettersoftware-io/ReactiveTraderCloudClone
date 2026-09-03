@@ -32,14 +32,21 @@ test("re-sorting by symbol renumbers without losing a row's rank-move state", as
   // NUMBER increases (a "fell" move), which renumbers correctly under either
   // keying scheme and so proves nothing about remounting on its own.
   await page.rerenderSortedBySym();
-  await page.rerenderSortedBySym();
   expect(page.rankOf("AAPL")).toBe("01");
 
   // The actual non-remount proof: TSLA's row only correctly classifies its
   // own rank 1 → 2 move as "fell" (tinting `accentNegative`) if the SAME
   // component instance — and so its internal `useRankMoveGlide` `prevRank`
   // ref — survived the re-sort. `key={row.symbol}` (MoversBoard.tsx) is what
-  // keeps it the same instance.
+  // keeps it the same instance; an index key would swap TSLA and AAPL's
+  // PROPS onto the position-1/position-2 slots instead of moving TSLA's own
+  // slot, so TSLA's component would never see a rank change at all (its
+  // slot's rank prop would flip from someone else's remount, not its own),
+  // and this assertion goes red — confirmed by temporarily reverting the key
+  // to `index` and re-running this file (see the fix report for that RED
+  // capture; not re-broken here on purpose, since committing broken code
+  // even transiently is not warranted for a one-line manual check already
+  // captured in the report).
   expect(page.glowBackgroundOf("TSLA")).toBe(ACCENT_NEGATIVE);
 });
 

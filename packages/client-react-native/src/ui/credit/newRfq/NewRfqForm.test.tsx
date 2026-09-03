@@ -1,12 +1,17 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { Direction, RFQ_DEFAULT_EXPIRY_SECS } from "@rtc/domain";
+import { type Dealer, Direction, RFQ_DEFAULT_EXPIRY_SECS } from "@rtc/domain";
 
 import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
 import {
   type NewRfqSubmitFn,
   newRfqFormPage,
 } from "#tests/pages/NewRfqFormPage";
+
+const DEALERS: readonly Dealer[] = [
+  { id: 1, name: "Bank A" },
+  { id: 2, name: "Bank B" },
+];
 
 const page = newRfqFormPage();
 
@@ -16,7 +21,7 @@ afterEach(() => {
 
 test("broadcast is inert until an instrument and a quantity chip are chosen", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   // No instrument / no quantity yet.
   await page.press("rfq-submit");
@@ -33,7 +38,9 @@ test("broadcast is inert until an instrument and a quantity chip are chosen", as
   const [input] = submit.mock.calls[0];
   expect(input).toEqual({
     instrumentId: 1,
-    dealerIds: [1, 2],
+    dealerIds: DEALERS.map((d) => {
+      return d.id;
+    }),
     // UI-SCALE, not notional: `CreateRfqUseCase` multiplies by
     // CREDIT_QUANTITY_MULTIPLIER on the way to the port. Asserting the literal
     // notional here is what let a 1000x error reach a device.
@@ -47,20 +54,27 @@ test("broadcast is inert until an instrument and a quantity chip are chosen", as
 // slipping through, which the seam would reject.
 test("broadcasts to every dealer with no picker in the form", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   await page.press("instrument-chip-1");
   await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
   await page.press("rfq-submit");
 
-  expect(submit.mock.calls[0][0].dealerIds).toEqual([1, 2]);
-  // Both numbers are DERIVED, not copy: the count from `useDealers()` and the
-  // window from the use case's own default (the form omits `expirySecs`, so
+  expect(submit.mock.calls[0][0].dealerIds).toEqual(
+    DEALERS.map((d) => {
+      return d.id;
+    }),
+  );
+  // Both numbers are DERIVED, not copy: the count from `DEALERS` (the roster
+  // this spec seeded `useDealers()` with above) and the window from the use
+  // case's own default (the form omits `expirySecs`, so
   // `RFQ_DEFAULT_EXPIRY_SECS` is literally the lifetime these RFQs get). The
   // footnote read a hardcoded "45S" until the mobile-v1 fidelity pass, which
   // is the prototype's number and not this app's.
   expect(
-    page.hasText(`STREAMS TO 2 DEALERS · ${RFQ_DEFAULT_EXPIRY_SECS}S WINDOW`),
+    page.hasText(
+      `STREAMS TO ${DEALERS.length} DEALERS · ${RFQ_DEFAULT_EXPIRY_SECS}S WINDOW`,
+    ),
   ).toBe(true);
 });
 
@@ -70,7 +84,7 @@ test("broadcasts to every dealer with no picker in the form", async () => {
 // (and the visual golden's chip state) actually reads.
 test("the chosen direction is the only one flagged selected", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   expect(
     page.accessibilityStateOf(`rfq-direction-${Direction.Buy}`),
@@ -98,7 +112,7 @@ test("the chosen direction is the only one flagged selected", async () => {
 // catches the enum leaking through verbatim again.
 test("direction buttons print the design's uppercase labels", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   expect(page.hasText("BUY")).toBe(true);
   expect(page.hasText("SELL")).toBe(true);
@@ -109,7 +123,7 @@ test("direction buttons print the design's uppercase labels", async () => {
 // would advertise an action that cannot be taken.
 test("the broadcast gradient appears only once the ticket is submittable", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   expect(page.exists("cta-gradient")).toBe(false);
 
@@ -121,7 +135,7 @@ test("the broadcast gradient appears only once the ticket is submittable", async
 
 test("sell direction rides through to the submitted rfq", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   await page.press("instrument-chip-1");
   await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
@@ -138,7 +152,7 @@ test("sell direction rides through to the submitted rfq", async () => {
 // lie the golden could not see).
 test("initialSelection preselects the instrument, direction and quantity chips", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit, {
+  await page.mountEditing(submit, DEALERS, {
     instrumentId: 1,
     direction: Direction.Sell,
     quantity: RFQ_QUANTITY_CHIPS[2],
@@ -156,7 +170,9 @@ test("initialSelection preselects the instrument, direction and quantity chips",
   expect(submit).toHaveBeenCalledTimes(1);
   expect(submit.mock.calls[0][0]).toEqual({
     instrumentId: 1,
-    dealerIds: [1, 2],
+    dealerIds: DEALERS.map((d) => {
+      return d.id;
+    }),
     quantity: RFQ_QUANTITY_CHIPS[2],
     direction: Direction.Sell,
   });
@@ -166,7 +182,7 @@ test("initialSelection preselects the instrument, direction and quantity chips",
 // blanking the other two — the fields are independent.
 test("an omitted initialSelection field keeps the form default", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit, { instrumentId: 1 });
+  await page.mountEditing(submit, DEALERS, { instrumentId: 1 });
 
   expect(page.accessibilityStateOf("instrument-chip-1")).toMatchObject({
     selected: true,
@@ -191,7 +207,7 @@ test("an omitted initialSelection field keeps the form default", async () => {
 // with the next port of a web panel.
 test("prints no screen heading above the instrument grid", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountEditing(submit);
+  await page.mountEditing(submit, DEALERS);
 
   expect(page.exists("new-rfq-form")).toBe(true);
   expect(page.hasText("New RFQ")).toBe(false);
@@ -200,6 +216,6 @@ test("prints no screen heading above the instrument grid", async () => {
 
 test("renders the confirmed card in the confirmed state", async () => {
   const submit = jest.fn<NewRfqSubmitFn>();
-  await page.mountConfirmed(submit, 77);
+  await page.mountConfirmed(submit, DEALERS, 77);
   expect(page.containsTextContent("rfq-confirmed", "RFQ ID: 77")).toBe(true);
 });

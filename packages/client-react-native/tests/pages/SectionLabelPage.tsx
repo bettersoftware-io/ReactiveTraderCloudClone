@@ -7,20 +7,22 @@ import { SectionLabel } from "#/ui/equities/SectionLabel";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface SectionLabelPage {
-  mountPair(a: string, b: string): Promise<void>;
+  // Renders `plain` bare and `spaced` under the `spaced` prop, side by side —
+  // names the prop under test rather than the shape of the render call.
+  mountPlainAndSpaced(plain: string, spaced: string): Promise<void>;
   mountOne(text: string): Promise<void>;
   unmountAll(): Promise<void>;
-  styleOf(text: string): TextStyle;
+  styleOfText(text: string): TextStyle;
 }
 
 /** The framework surface for `SectionLabel.test.tsx`. */
 export function sectionLabelPage(): SectionLabelPage {
   return {
-    async mountPair(a: string, b: string): Promise<void> {
+    async mountPlainAndSpaced(plain: string, spaced: string): Promise<void> {
       await renderWithTheme(
         <>
-          <SectionLabel>{a}</SectionLabel>
-          <SectionLabel spaced>{b}</SectionLabel>
+          <SectionLabel>{plain}</SectionLabel>
+          <SectionLabel spaced>{spaced}</SectionLabel>
         </>,
       );
     },
@@ -30,7 +32,7 @@ export function sectionLabelPage(): SectionLabelPage {
     async unmountAll(): Promise<void> {
       await cleanup();
     },
-    styleOf(text: string): TextStyle {
+    styleOfText(text: string): TextStyle {
       return StyleSheet.flatten(
         screen.getByText(text).props.style as TextStyle,
       );

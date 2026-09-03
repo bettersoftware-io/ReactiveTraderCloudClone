@@ -7,7 +7,10 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 import { OrderTicket } from "#/ui/equities/trade/OrderTicket";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import {
+  containsText,
+  matchesTextExactly,
+} from "#tests/pages/support/textContent";
 
 interface OrderTicketIntents {
   setSide?: () => void;
@@ -21,6 +24,7 @@ interface OrderTicketIntents {
 function vmWith(
   state: OrderTicketState,
   intents: OrderTicketIntents,
+  lastPrice: number,
 ): ViewModel {
   return {
     useEquityQuote: () => {
@@ -28,7 +32,7 @@ function vmWith(
         symbol: "AAPL",
         bid: 0,
         ask: 0,
-        last: 189.5,
+        last: lastPrice,
         changePct: 0.42,
         timestamp: 0,
       };
@@ -48,9 +52,14 @@ function vmWith(
 }
 
 export interface OrderTicketPage {
+  // `lastPrice` seeds `useEquityQuote().last` — pass it explicitly whenever a
+  // test asserts a value DERIVED from it (the limit stepper's seed and its
+  // ±0.10 steps); tests that don't touch that derivation can rely on the
+  // default.
   mount(
     state: OrderTicketState,
     intents?: OrderTicketIntents,
+    lastPrice?: number,
     theme?: RnTheme,
   ): Promise<void>;
   unmountAll(): Promise<void>;
@@ -69,10 +78,11 @@ export function orderTicketPage(): OrderTicketPage {
     async mount(
       state: OrderTicketState,
       intents: OrderTicketIntents = {},
+      lastPrice = 189.5,
       theme?: RnTheme,
     ): Promise<void> {
       await renderWithTheme(
-        <ViewModelProvider viewModel={vmWith(state, intents)}>
+        <ViewModelProvider viewModel={vmWith(state, intents, lastPrice)}>
           <OrderTicket symbol="AAPL" />
         </ViewModelProvider>,
         theme,
@@ -85,18 +95,13 @@ export function orderTicketPage(): OrderTicketPage {
       return screen.queryByTestId(testId) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     // Mirrors RNTL's `toHaveTextContent(text, { exact: false })`: a
     // case-insensitive substring match on the normalized text, not an exact
     // one.
     containsTextContent(testId: string, substring: string): boolean {
-      return normalizeText(textContentOf(screen.getByTestId(testId)))
-        .toLowerCase()
-        .includes(normalizeText(substring).toLowerCase());
+      return containsText(screen.getByTestId(testId), substring);
     },
     async press(testId: string): Promise<void> {
       await fireEvent.press(screen.getByTestId(testId));

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
 import { EquitiesNav, type EquitiesView } from "#/ui/equities/EquitiesNav";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 export interface EquitiesNavPage {
   mount(
@@ -32,10 +32,7 @@ export function equitiesNavPage(): EquitiesNavPage {
       return screen.queryByTestId(testId) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     async pressTab(view: EquitiesView): Promise<void> {
       await fireEvent.press(screen.getByTestId(`equities-tab-${view}`));

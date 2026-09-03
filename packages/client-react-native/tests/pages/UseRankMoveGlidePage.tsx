@@ -26,8 +26,8 @@ export interface UseRankMoveGlidePage {
   // re-evaluate on) are needed to read it back.
   advance(rank: number, enabled: boolean): Promise<void>;
   unmountAll(): Promise<void>;
-  overlayBackground(): unknown;
-  overlayOpacity(): unknown;
+  overlayBackground(): ViewStyle["backgroundColor"];
+  overlayOpacity(): ViewStyle["opacity"];
 }
 
 /** The framework surface for `useRankMoveGlide.test.tsx`. */
@@ -85,10 +85,10 @@ export function rankMoveGlidePage(): UseRankMoveGlidePage {
     async unmountAll(): Promise<void> {
       await cleanup();
     },
-    overlayBackground(): unknown {
+    overlayBackground(): ViewStyle["backgroundColor"] {
       return overlayStyle().backgroundColor;
     },
-    overlayOpacity(): unknown {
+    overlayOpacity(): ViewStyle["opacity"] {
       return overlayStyle().opacity;
     },
   };

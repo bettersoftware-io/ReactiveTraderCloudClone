@@ -12,7 +12,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 export const ADAPTIVE_BANK_ID = 9;
 
@@ -110,10 +110,7 @@ export function sellSidePanelPage(): SellSidePanelPage {
       await fireEvent.press(screen.getByTestId(testId));
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
   };
 }

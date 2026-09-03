@@ -7,7 +7,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 const INSTRUMENT: Instrument = {
   id: 1,
@@ -77,10 +77,7 @@ export function rfqCardPage(): RfqCardPage {
       return screen.queryByText(text) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
   };
 }

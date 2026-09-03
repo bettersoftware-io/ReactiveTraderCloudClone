@@ -7,6 +7,11 @@ import { MoversRow } from "#/ui/equities/markets/MoversRow";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
 
+// RowSparkline now takes `candles` as a plain prop (Task 3 lifted the
+// `useCandles` read up to MoversBoard's MoversBoardRow, so this leaf and
+// RowSparkline stay compiler-memoizable) — an empty series is enough: these
+// tests assert the row's own text/press behaviour, not the sparkline (that's
+// RowSparkline.test.tsx's job).
 const NO_CANDLES: readonly Candle[] = [];
 
 interface MoversRowFixture {

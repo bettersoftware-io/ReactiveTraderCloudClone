@@ -8,7 +8,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { PositionsBlotter } from "#/ui/equities/blotters/PositionsBlotter";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 function vmWith(positions: readonly EquityPosition[]): ViewModel {
   return {
@@ -48,10 +48,7 @@ export function positionsBlotterPage(): PositionsBlotterPage {
       return screen.queryByText(text) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     styleOfText(text: string): TextStyle {
       return StyleSheet.flatten(

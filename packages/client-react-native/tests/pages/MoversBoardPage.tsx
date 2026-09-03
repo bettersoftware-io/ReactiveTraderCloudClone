@@ -21,6 +21,8 @@ interface QuoteFixture {
   changePct: number;
 }
 
+type TextChildren = string | number;
+
 const QUOTES: Record<string, QuoteFixture> = {
   AAPL: { last: 227.17, changePct: -1.06 },
   TSLA: { last: 248.67, changePct: 1.13 },
@@ -69,12 +71,15 @@ function boardTree(sort: "chg" | "sym"): ReactElement {
 export interface MoversBoardPage {
   mount(sort?: "chg" | "sym"): Promise<void>;
   mountEmpty(): Promise<void>;
+  // Re-sorts to "sym" and settles the resulting rank-glide tint. Internally
+  // renders TWICE — see the method body for why one call from the spec isn't
+  // enough.
   rerenderSortedBySym(): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
-  ranksInOrder(): unknown[];
-  rankOf(symbol: string): unknown;
-  glowBackgroundOf(symbol: string): unknown;
+  ranksInOrder(): readonly TextChildren[];
+  rankOf(symbol: string): TextChildren;
+  glowBackgroundOf(symbol: string): ViewStyle["backgroundColor"];
   glowCount(): number;
 }
 
@@ -104,19 +109,28 @@ export function moversBoardPage(): MoversBoardPage {
     },
     // `rerender` (unlike `render`/`renderWithTheme`) swaps the tree at the
     // SAME root verbatim — it does NOT re-apply `renderWithTheme`'s own
-    // `ThemeContext.Provider` wrapping. Reanimated's jest mock evaluates
-    // `useAnimatedStyle` synchronously as part of render, but
-    // `useRankMoveGlide`'s shared-value writes happen in a `useEffect` —
-    // that effect's write is invisible in the SAME render that triggered it,
-    // so a second identical-tree render is needed to read it back. Each call
-    // builds a fresh element (not a reused reference) — React bails out of
-    // re-invoking a function component when the new props object is
-    // referentially identical to the previous one.
+    // `ThemeContext.Provider` wrapping, so it's reapplied explicitly below.
+    // Reanimated's jest mock evaluates `useAnimatedStyle` synchronously as
+    // part of render, but `useRankMoveGlide`'s shared-value writes happen in
+    // a `useEffect` — that effect's write is invisible in the SAME render
+    // that triggered it, so a second identical-tree render is needed to read
+    // it back (see `UseRankMoveGlidePage.advance` for the same trap, spelled
+    // out in full). Two SEPARATE element literals per call — not one reused
+    // reference — because React bails out of re-invoking a function
+    // component when the new props object is referentially identical to the
+    // previous one. Both renders happen HERE (not as two spec-level calls)
+    // so the "why twice" stays a framework-timing detail the page owns,
+    // rather than an unexplained duplicate call site.
     async rerenderSortedBySym(): Promise<void> {
       if (!rerender) {
         throw new Error("mount() must be called before rerenderSortedBySym()");
       }
 
+      await rerender(
+        <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+          {boardTree("sym")}
+        </ThemeContext.Provider>,
+      );
       await rerender(
         <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
           {boardTree("sym")}
@@ -129,15 +143,16 @@ export function moversBoardPage(): MoversBoardPage {
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
-    ranksInOrder(): unknown[] {
+    ranksInOrder(): readonly TextChildren[] {
       return screen.getAllByTestId(/-rank$/).map((n) => {
-        return n.props.children;
+        return n.props.children as TextChildren;
       });
     },
-    rankOf(symbol: string): unknown {
-      return screen.getByTestId(`eq-mover-${symbol}-rank`).props.children;
+    rankOf(symbol: string): TextChildren {
+      return screen.getByTestId(`eq-mover-${symbol}-rank`).props
+        .children as TextChildren;
     },
-    glowBackgroundOf(symbol: string): unknown {
+    glowBackgroundOf(symbol: string): ViewStyle["backgroundColor"] {
       // `style={[styles.rankGlow, overlayStyle]}` (MoversBoard.tsx) is an
       // ARRAY, not a flat object — `backgroundColor` lives on the second
       // element.

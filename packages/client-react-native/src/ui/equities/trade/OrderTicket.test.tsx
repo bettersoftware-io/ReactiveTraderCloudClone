@@ -45,7 +45,10 @@ test("LMT shows the limit stepper seeded from the last price, stepping by a dime
     form: { symbol: "AAPL", side: "sell", type: "limit", qty: 1000 },
     error: null,
   };
-  await page.mount(limitEditing, { setLimitPrice });
+  // `lastPrice` is the seed; every asserted number below is derived from it
+  // (the readout, and each step ± the stepper's 0.10 increment).
+  const lastPrice = 189.5;
+  await page.mount(limitEditing, { setLimitPrice }, lastPrice);
   expect(page.hasTextContent("order-ticket-limit", "189.50")).toBe(true);
   await page.press("order-ticket-limit-up");
   expect(setLimitPrice).toHaveBeenCalledWith(189.6);
@@ -137,7 +140,7 @@ test("the submit CTA carries the side-colour ramp gradient", async () => {
 // disagrees.)
 test("renders the gradient tile surface on 3d skins", async () => {
   const submit = jest.fn();
-  await page.mount(editing, { submit }, rnThemeTokens.holo3d.dark);
+  await page.mount(editing, { submit }, undefined, rnThemeTokens.holo3d.dark);
   expect(page.exists("surface-sheen")).toBe(true);
 });
 

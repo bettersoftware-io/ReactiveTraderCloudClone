@@ -34,3 +34,26 @@ export function textContentOf(
 export function normalizeText(text: string): string {
   return text.trim().replace(/\s+/g, " ");
 }
+
+/** Exact-match comparison — mirrors RNTL's `toHaveTextContent(text)`
+ * (`exact: true`, the default): normalize both sides, then compare for
+ * equality. The single home for this comparison, so a page's
+ * `hasTextContent` is a one-line call rather than a copy of the walk +
+ * normalize + compare sequence. */
+export function matchesTextExactly(
+  instance: TextInstanceLike | string | null | undefined,
+  text: string,
+): boolean {
+  return normalizeText(textContentOf(instance)) === normalizeText(text);
+}
+
+/** Substring comparison — mirrors RNTL's `toHaveTextContent(text, { exact:
+ * false })`: normalize both sides, then a case-insensitive `includes`. */
+export function containsText(
+  instance: TextInstanceLike | string | null | undefined,
+  text: string,
+): boolean {
+  return normalizeText(textContentOf(instance))
+    .toLowerCase()
+    .includes(normalizeText(text).toLowerCase());
+}

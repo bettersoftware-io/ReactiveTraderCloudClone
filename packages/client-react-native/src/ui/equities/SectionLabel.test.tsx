@@ -10,9 +10,9 @@ afterEach(() => {
 });
 
 test("renders the caption; `spaced` adds the follow-on top margin", async () => {
-  await page.mountPair("ORDERS", "POSITIONS");
-  expect(page.styleOf("ORDERS").marginTop).toBe(3);
-  expect(page.styleOf("POSITIONS").marginTop).toBe(12);
+  await page.mountPlainAndSpaced("ORDERS", "POSITIONS");
+  expect(page.styleOfText("ORDERS").marginTop).toBe(3);
+  expect(page.styleOfText("POSITIONS").marginTop).toBe(12);
 });
 
 // See BlotterHeader.test.tsx: the same pin, on the widest-tracked member of
@@ -20,7 +20,7 @@ test("renders the caption; `spaced` adds the follow-on top margin", async () => 
 test("keeps the 8.5pt / 2-tracked mono label recipe", async () => {
   await page.mountOne("ORDERS");
 
-  const style = page.styleOf("ORDERS");
+  const style = page.styleOfText("ORDERS");
 
   expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO);
   expect(style.fontSize).toBe(8.5);

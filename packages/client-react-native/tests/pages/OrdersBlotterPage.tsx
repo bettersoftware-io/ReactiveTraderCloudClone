@@ -11,7 +11,7 @@ import { OrdersBlotter } from "#/ui/equities/blotters/OrdersBlotter";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 function vmWith(orders: readonly EquityOrder[]): ViewModel {
   return {
@@ -74,10 +74,7 @@ export function ordersBlotterPage(): OrdersBlotterPage {
       return screen.queryByText(text) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     styleOf(testId: string): TextStyle {
       return StyleSheet.flatten(

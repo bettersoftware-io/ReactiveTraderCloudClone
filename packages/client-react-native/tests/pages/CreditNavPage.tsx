@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
 import { CreditNav, type CreditView } from "#/ui/credit/CreditNav";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 export interface CreditNavPage {
   mount(view: CreditView, onChange: (view: CreditView) => void): Promise<void>;
@@ -29,10 +29,7 @@ export function creditNavPage(): CreditNavPage {
       return screen.queryByTestId(testId) != null;
     },
     hasTextContent(testId: string, text: string): boolean {
-      return (
-        normalizeText(textContentOf(screen.getByTestId(testId))) ===
-        normalizeText(text)
-      );
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     async pressTab(view: CreditView): Promise<void> {
       await fireEvent.press(screen.getByTestId(`credit-tab-${view}`));
