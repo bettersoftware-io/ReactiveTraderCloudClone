@@ -273,15 +273,16 @@ describe("createDockEngine", () => {
     engine.dispose();
   });
 
-  it("separates groups by the in-house 7px gutter through the theme gap", () => {
+  it("carries NO dockview theme gap — the 7px gutter is the leaf views' CSS inset", () => {
     const opts = base();
     const engine = createDockEngine(opts);
-    // dockview flags a split view that carries a margin; the rendered view
-    // widths below (the proportions test) are what the gap subtracts from.
+    // dockview flags a split view that carries a margin; the gap-0 model
+    // must never produce one (the shave it triggers is what made every
+    // model size fractional — see GROUP_GAP_PX). The inset itself is CSS
+    // (dockview-hud.css), which jsdom does not lay out — the pixel witness
+    // for the gutter is the visual tier.
     expect(GROUP_GAP_PX).toBe(7);
-    expect(
-      opts.container.querySelector(".dv-splitview-has-margin"),
-    ).not.toBeNull();
+    expect(opts.container.querySelector(".dv-splitview-has-margin")).toBeNull();
     engine.dispose();
   });
 
@@ -379,15 +380,17 @@ describe("createDockEngine", () => {
       });
 
     // jsdom containers always measure 0×0, so createDockEngine's fallback
-    // extent (1200×800) applies. The theme gap (GROUP_GAP_PX) comes out of
-    // the RENDERED extent first — the seed describes what the user sees —
-    // so the split is 0.73 / 0.27 of 1200 − 7 = 1193: 871 and 322. dockview
-    // floors half-pixel sizes on the way through, hence the ±1 tolerance.
+    // extent (1200×800) applies. The seed's fractions divide CARD space
+    // (what the user sees: 1200 minus one gap per child), and each view's
+    // MODEL — the inline width dockview writes — is its card plus one gap,
+    // so the split is 0.73 / 0.27 of 1186, plus 7 each: 873 and 327,
+    // integers exactly (no shave, no flooring — the gap-0 model's point).
     // Also assert against the even-50/50 collapse this test regresses on.
-    const rendered = 1200 - GROUP_GAP_PX;
-    const main = Math.round(0.73 * rendered);
-    expect(viewWidths).toContainEqual(within(main, 1));
-    expect(viewWidths).toContainEqual(within(rendered - main, 1));
+    const cardSpace = 1200 - 2 * GROUP_GAP_PX;
+    const main = Math.round(0.73 * cardSpace) + GROUP_GAP_PX;
+    const side = cardSpace - Math.round(0.73 * cardSpace) + GROUP_GAP_PX;
+    expect(viewWidths).toContain(main);
+    expect(viewWidths).toContain(side);
     expect(viewWidths).not.toContain(600);
 
     engine.dispose();
@@ -428,7 +431,7 @@ describe("createDockEngine", () => {
 });
 
 describe("collapse / expand", () => {
-  it("strips a collapsed panel's group to the 38px bar", async () => {
+  it("strips a collapsed panel's group to the 32px bar", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
 
@@ -561,9 +564,6 @@ describe("collapse / expand", () => {
 const STRIP = 32;
 const STRIP_HEIGHT = 32;
 
-/** An asymmetric matcher for `target ± tolerance` — dockview floors the
- * half-pixel sizes the theme gap produces, so an exact integer would be
- * asserting the flooring rule rather than the layout. */
 describe("a fully-stripped column (the in-house stripDir rule)", () => {
   // FX_LIKE's left column stacks fx-rates over fx-blotter beside the
   // fx-analytics rail. One of the two collapsed reclaims DOWN the column (a
@@ -593,19 +593,24 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
     });
     await waitForBranchSize(seen, "fx-rates", STRIP);
     // The strips share the column's height rather than keeping one 32px bar
-    // beside a full-height one: the 800px fallback less the gap, halved.
-    expect(seen.sizeOf("fx-rates")).toEqual(within(396, 2));
-    expect(seen.sizeOf("fx-blotter")).toEqual(within(396, 2));
+    // beside a full-height one: the 800px fallback halved in model terms
+    // (400 each), read back as cards (− one gap): 393.
+    expect(seen.sizeOf("fx-rates")).toEqual(within(393, 1));
+    expect(seen.sizeOf("fx-blotter")).toEqual(within(393, 1));
 
     engine.expandPanel("fx-blotter");
     expect(strips.last).toEqual({ "fx-rates": "horizontal" });
     // The column gets its width back and the survivor its 32px bar; the
-    // expanded panel fills the rest of the column (800 − gap − bar), as
-    // in-house — its own pre-collapse height only means something once its
-    // sibling is back too.
+    // expanded panel fills the rest of the column (800 minus both cards'
+    // gaps minus the bar), as in-house — its own pre-collapse height only
+    // means something once its sibling is back too.
     await waitForBranchSize(seen, "fx-rates", columnBefore);
     await waitForSize(seen, "fx-rates", STRIP_HEIGHT);
-    await waitForSize(seen, "fx-blotter", 800 - GROUP_GAP_PX - STRIP_HEIGHT);
+    await waitForSize(
+      seen,
+      "fx-blotter",
+      800 - 2 * GROUP_GAP_PX - STRIP_HEIGHT,
+    );
 
     engine.expandPanel("fx-rates");
     expect(strips.last).toEqual({});
@@ -676,17 +681,18 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
       "st-low",
     ]);
 
-    // A 3-child branch's gap share is 7 × 2⁄3 — the bars read at repeating
-    // decimals, so every wait here tolerates the float, not just the last.
+    // Under the gap-0 model even a 3-child branch's sizes are exact
+    // integers (the gap-7 era's 7 × 2⁄3 share made them repeating
+    // decimals), so the bars read at exactly the strip size.
     engine.collapsePanel("st-top");
-    await waitForSizeWithin(seen, "st-top", STRIP_HEIGHT, 1);
+    await waitForSize(seen, "st-top", STRIP_HEIGHT);
     engine.collapsePanel("st-mid");
-    await waitForSizeWithin(seen, "st-mid", STRIP_HEIGHT, 1);
+    await waitForSize(seen, "st-mid", STRIP_HEIGHT);
     engine.collapsePanel("st-low");
     await waitForBranchSize(seen, "st-top", STRIP);
 
     engine.expandPanel("st-top");
-    await waitForSizeWithin(seen, "st-mid", STRIP_HEIGHT, 1);
+    await waitForSize(seen, "st-mid", STRIP_HEIGHT);
     engine.expandPanel("st-mid");
     engine.expandPanel("st-low");
 
@@ -720,7 +726,7 @@ describe("maximize (the in-house boundary policy)", () => {
   // the engine emulates the policy over its strip machinery instead; these
   // pin that the result IS the in-house one: same strips, same orientations,
   // the maximized panel filling what they free, and an exact restore.
-  const FILL = 800 - GROUP_GAP_PX - STRIP_HEIGHT;
+  const FILL = 800 - 2 * GROUP_GAP_PX - STRIP_HEIGHT;
 
   it("root scope: strips every other panel, the rail flipping vertical, and restores each exactly", async () => {
     const seen = trackLayout();
@@ -1002,7 +1008,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     const seen = trackLayout();
     createDockEngine({ ...railPinnedBase(), ...seen.options }).dispose();
 
-    expect(seen.branchSizeOf("fx-analytics")).toEqual(within(360, 1));
+    expect(seen.branchSizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([RAIL_PIN]);
   });
 
@@ -1014,7 +1020,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
       seed: { ...FX_LIKE, initialPx: [undefined, 360] },
     }).dispose();
 
-    expect(seen.sizeOf("fx-analytics")).toEqual(within(360, 1));
+    expect(seen.sizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([
       { panelIds: ["fx-analytics"], px: 360, axis: "width" },
     ]);
@@ -1104,7 +1110,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     }).dispose();
 
     expect(reloaded.pins()).toEqual([RAIL_PIN]);
-    expect(reloaded.branchSizeOf("fx-analytics")).toEqual(within(360, 1));
+    expect(reloaded.branchSizeOf("fx-analytics")).toBe(360);
   });
 
   it("keeps a released pin released across reloads", () => {
@@ -1227,8 +1233,12 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     await waitForSize(seen, "fx-analytics", STRIP);
     engine.dispose();
 
+    // The sidecar persists MODEL sizes (the engine's working units in the
+    // gap-0 model); the visible card it restores is one gap less.
     const sidecar = JSON.parse(seen.blob()).rtcStripGeometry;
-    expect(sidecar.records["fx-analytics"].size).toEqual(within(before, 1));
+    expect(sidecar.records["fx-analytics"].size).toEqual(
+      within(before + GROUP_GAP_PX, 1),
+    );
   });
 
   it("restores a fully-stripped column across a reload — its width and both heights", async () => {
@@ -1355,6 +1365,160 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   });
 });
 
+describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
+  it("stamps every save with the current blob version", () => {
+    const seen = trackLayout();
+    createDockEngine({ ...base(), ...seen.options }).dispose();
+
+    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
+  });
+
+  it("persists only integer model sizes through a full intent cycle", async () => {
+    // The refactor's core invariant: with no theme gap there is no
+    // per-sibling share, so nothing ever introduces a fraction — the
+    // half-pixel card edges (and the client-asymmetric glyph phase they
+    // caused) are structurally gone, not tolerated.
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...railBase(), ...seen.options });
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    engine.maximizePanel("fx-rates");
+    engine.exitMaximize();
+    engine.expandPanel("fx-blotter");
+    engine.dispose();
+
+    // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+    function sizesUnder(node: any): number[] {
+      if (node.type !== "branch") {
+        return [];
+      }
+
+      // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+      return (node.data as any[]).flatMap((child) => {
+        return [child.size, ...sizesUnder(child)];
+      });
+    }
+
+    const sizes = sizesUnder(JSON.parse(seen.blob()).grid.root);
+    expect(sizes.length).toBeGreaterThan(0);
+
+    for (const size of sizes) {
+      expect(Number.isInteger(size)).toBe(true);
+    }
+  });
+
+  it("migrates a legacy gap-7 blob's grid and re-clamps its pin at the design width", () => {
+    // A gap-7-era save: every branch child at card + gap × (n − 1) / n
+    // (all branches here have 2 children → +3.5), grid dims from the old
+    // 10px-padded container — 7px smaller than today's per axis, so the
+    // migrated sums land exactly on the jsdom fallback extent (1200×800).
+    const legacy = {
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "branch",
+              size: 829.5,
+              data: [
+                legacyLeaf("fx-rates", 522.5),
+                legacyLeaf("fx-blotter", 270.5),
+              ],
+            },
+            legacyLeaf("fx-analytics", 363.5),
+          ],
+        },
+        width: 1193,
+        height: 793,
+        orientation: "HORIZONTAL",
+      },
+      panels: {
+        "fx-rates": legacyPanel("fx-rates"),
+        "fx-blotter": legacyPanel("fx-blotter"),
+        "fx-analytics": legacyPanel("fx-analytics"),
+      },
+      rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
+    };
+
+    const seen = trackLayout();
+    createDockEngine({
+      ...base(),
+      ...seen.options,
+      blob: JSON.stringify(legacy),
+    }).dispose();
+
+    // The pin's PUBLIC card px survives migration untouched and the clamp
+    // adds the gap — the rail reads its design width exactly, and the
+    // re-saved blob is stamped current.
+    expect(seen.sizeOf("fx-analytics")).toBe(360);
+    expect(seen.pins()).toEqual(legacy.rtcDesignPins);
+    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
+  });
+
+  it("migrates a legacy strip sidecar's card sizes so expand restores the card", async () => {
+    // The legacy grid holds fx-analytics AT its bar (old bar model:
+    // 32 + 3.5), and the sidecar remembers the pre-collapse size in the old
+    // rendered/card units (300). Migration lifts it to model units (+gap);
+    // the replayed collapse consumes it and expand must land the CARD.
+    const legacy = {
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "branch",
+              size: 1157.5,
+              data: [
+                legacyLeaf("fx-rates", 522.5),
+                legacyLeaf("fx-blotter", 270.5),
+              ],
+            },
+            legacyLeaf("fx-analytics", 35.5),
+          ],
+        },
+        width: 1193,
+        height: 793,
+        orientation: "HORIZONTAL",
+      },
+      panels: {
+        "fx-rates": legacyPanel("fx-rates"),
+        "fx-blotter": legacyPanel("fx-blotter"),
+        "fx-analytics": legacyPanel("fx-analytics"),
+      },
+      rtcStripGeometry: {
+        records: { "fx-analytics": { size: 300 } },
+        flips: [],
+      },
+    };
+
+    const reloaded = trackLayout();
+    const engine = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: JSON.stringify(legacy),
+    });
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+
+    engine.expandPanel("fx-analytics");
+    await waitForSizeWithin(reloaded, "fx-analytics", 300, 1);
+    engine.dispose();
+  });
+
+  function legacyLeaf(id: string, size: number): Record<string, unknown> {
+    return {
+      type: "leaf",
+      size,
+      data: { id: `g-${id}`, views: [id], activeView: id },
+    };
+  }
+
+  function legacyPanel(id: string): Record<string, string> {
+    return { id, contentComponent: "rtc-panel", title: id };
+  }
+});
+
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {
@@ -1373,9 +1537,9 @@ function within(target: number, tolerance: number): unknown {
  * engine under test has not fired onDidLayoutChange yet at that point, and
  * no intent is a no-op it could be forced through (maximize/exit used to be,
  * before maximize stripped siblings for real); jsdom sizes every container
- * identically, so the twin lays out exactly as the live engine did. With the
- * theme gap in force this is a little under the nominal fraction (0.25 × 1200
- * minus the gap share) — why the collapse tests capture it rather than
+ * identically, so the twin lays out exactly as the live engine did. Sizes
+ * read back as CARDS (the model minus one gap), a little under the nominal
+ * fraction — why the collapse tests capture the baseline rather than
  * hardcode 300. */
 function baselineSize(opts: DockEngineOptions, panelId: string): number {
   const size = baseline(opts).sizeOf(panelId);
@@ -1571,9 +1735,9 @@ function trackLayout(): LayoutTracker {
   return tracker;
 }
 
-/** The rendered size of the branch that directly holds `panelId`'s leaf, on
- * the axis of ITS parent — de-compensated like findLeafSize, at the parent's
- * child count. Null for a leaf sitting directly under the root. */
+/** The visible (card) size of the branch that directly holds `panelId`'s
+ * leaf, on the axis of ITS parent — the model minus one gap, like
+ * findLeafSize. Null for a leaf sitting directly under the root. */
 // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
 function findBranchSize(root: any, panelId: string): number | null {
   // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
@@ -1587,12 +1751,9 @@ function findBranchSize(root: any, panelId: string): number | null {
       return null;
     }
 
-    const share =
-      (GROUP_GAP_PX * (parent.data.length - 1)) / parent.data.length;
-
     for (const child of parent.data) {
       if (child.type === "branch" && child.data.some(holdsLeaf)) {
-        return child.size - share;
+        return child.size - GROUP_GAP_PX;
       }
 
       const deeper = walk(child);
@@ -1608,11 +1769,11 @@ function findBranchSize(root: any, panelId: string): number | null {
   return walk(root);
 }
 
-/** The RENDERED size of `panelId`'s group, read back out of the persisted
- * blob. The blob carries MODEL sizes (createDockEngine serialises through
- * compensateGap so a save/load cycle is exact), and dockview renders each
- * of a branch's `n` children at `model − gap × (n − 1) / n` — so this
- * subtracts that share at the leaf's own branch, mirroring the layout. */
+/** The visible (card) size of `panelId`'s group, read back out of the
+ * persisted blob. The blob carries MODEL sizes (with no theme gap, dockview
+ * serialises exactly what it renders), and the gap-0 model is card + one
+ * gap — a leaf view's CSS inset — so this subtracts the constant, whatever
+ * the sibling count. */
 // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
 function findLeafSize(node: any, panelId: string): number | null {
   if (node.type === "leaf") {
@@ -1620,13 +1781,11 @@ function findLeafSize(node: any, panelId: string): number | null {
   }
 
   const children: unknown[] = node.data ?? [];
-  const share =
-    (GROUP_GAP_PX * Math.max(0, children.length - 1)) / children.length;
 
   // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
   for (const child of children as any[]) {
     if (child.type === "leaf" && child.data?.views?.includes(panelId)) {
-      return child.size - share;
+      return child.size - GROUP_GAP_PX;
     }
 
     const hit = findLeafSize(child, panelId);

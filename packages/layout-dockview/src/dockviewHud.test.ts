@@ -55,6 +55,21 @@ describe("dockview-hud.css — skin-proof surface painting", () => {
     expect(body).toMatch(/^\s*background:\s*transparent;/m);
   });
 
+  it("insets every LEAF view by half the gutter — the gap-0 model's other half", () => {
+    // createDockEngine's theme deliberately carries no dockview `gap` (its
+    // render-time shave made every model size fractional); the 7px gutter
+    // exists only through this rule, so losing it would fuse the cards
+    // edge-to-edge while every jsdom size assertion stayed green. The
+    // `> .dv-groupview` scoping keeps branch views (nested splits) uninset,
+    // or the gutter would compound with tree depth.
+    const body = declarationsOf(
+      ".dockview-theme-rtc .dv-view:has(> .dv-groupview)",
+    );
+
+    expect(body).toMatch(/^\s*padding:\s*3\.5px;/m);
+    expect(body).toMatch(/^\s*box-sizing:\s*border-box;/m);
+  });
+
   it("never routes an image-valued token into a `--dv-*` variable", () => {
     const themeBlock = declarationsOf(".dockview-theme-rtc");
     const dvAssignments = themeBlock.match(/--dv-[a-z-]+:\s*[^;]+;/g) ?? [];

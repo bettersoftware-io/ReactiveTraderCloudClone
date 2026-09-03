@@ -75,16 +75,22 @@ paints it with the group colour, which tints the gutters and composites a
 translucent skin's card fill twice. `dockviewHud.test.ts` pins all of this
 at the stylesheet-text level, since jsdom cannot model the invalidity.
 
-Gap arithmetic to know: Dockview keeps a split's model sizes summing to the
-full extent and shaves `gap × (n − 1) / n` off each of its `n` children when
-laying out. `toSerializedDockview(…, { gap })` compensates so pinned pixels
-and fractions describe what renders, the collapse/expand sizing reads the
-rendered size back and re-applies the shortfall rather than guessing a
-sibling count the public API does not expose, and `compensateGap` adds each
-child's share back into `toJSON()` output before it is persisted — Dockview
-serialises the *rendered* sizes, so an uncompensated blob restores a little
-differently on every load (a 360px rail measured 360 → 358 → 349 across
-three reloads; React's StrictMode double-mount is one such cycle).
+Gap arithmetic to know — the gap-0 model (`rtcBlobVersion: 2`): the theme
+carries NO dockview `gap`. Dockview's own gap shaves `gap × (n − 1) / n`
+off each of a branch's `n` children at layout time and serialises those
+shaved sizes, which made every wanted size fractional and sibling-count
+dependent (a 360px rail modelled as 363.5), demanded a whole compensation
+layer, and put every card edge on a half pixel. Instead every LEAF view is
+inset half a gutter per side in `dockview-hud.css` (branch views stay
+uninset so the gutter never compounds with depth) and the client bridges'
+root padding is 6.5px — so cards still sit 7px apart inside the 10px page
+inset, while a view's MODEL size is always its visible card + 7, a
+constant. Model equals render: `toSerializedDockview(…, { gap })` allocates
+in card space and lifts each child by one gap, the engine sets and reads
+the same integers everywhere, and `toJSON()` round-trips byte-stable with
+no compensation. A legacy gap-7 blob (no version stamp) is lifted on load
+by `migrateDockBlob` — each branch child `+gap/n`, strip-sidecar sizes
+`+gap`, pins untouched (they persist the public card px in both eras).
 
 Design widths to know: the in-house engine renders an `initialPx`/`fixedPx`
 cell at `flex: 0 0 <px>` — it HOLDS its design width (FX rail 360, credit
