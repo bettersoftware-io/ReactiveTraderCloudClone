@@ -9,8 +9,8 @@ import {
   type EqPaneKind,
   isAtLiveEdge,
   navigatorVm,
-  paneReadout,
   type PaneReadoutRow,
+  paneReadout,
   paneScene,
   volumeVm,
 } from "@rtc/motion-core";
