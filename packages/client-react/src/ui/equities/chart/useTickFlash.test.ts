@@ -1,88 +1,61 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { renderHook } from "#tests/ui/pages/UseTickFlashPage";
+import { tickFlashPage } from "#tests/ui/pages/UseTickFlashPage";
 
-import { type TickFlash, useTickFlash } from "./useTickFlash";
+const page = tickFlashPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 describe("useTickFlash", () => {
   it("returns idle on the first render (no previous value to compare against)", () => {
-    const { result } = renderHook(() => {
-      return useTickFlash(100);
-    });
+    const handle = page.mount(100);
 
-    expect(result.current).toEqual({ flashOn: false, dir: "up" });
+    expect(handle.state).toEqual({ flashOn: false, dir: "up" });
   });
 
   it("flashes up when the value increases", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useTickFlash(props.value);
-      },
-      { initialProps: { value: 100 } },
-    );
+    const handle = page.mount(100);
 
-    rerender({ value: 101 });
+    handle.rerender(101);
 
-    expect(result.current).toEqual({ flashOn: true, dir: "up" });
+    expect(handle.state).toEqual({ flashOn: true, dir: "up" });
   });
 
   it("flashes down when the value decreases", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useTickFlash(props.value);
-      },
-      { initialProps: { value: 100 } },
-    );
+    const handle = page.mount(100);
 
-    rerender({ value: 99 });
+    handle.rerender(99);
 
-    expect(result.current).toEqual({ flashOn: true, dir: "down" });
+    expect(handle.state).toEqual({ flashOn: true, dir: "down" });
   });
 
   it("returns idle on a null -> number transition (no prior value to compare against)", () => {
-    const { result, rerender } = renderHook<TickFlash, HookProps>(
-      (props) => {
-        return useTickFlash(props.value);
-      },
-      { initialProps: { value: null } },
-    );
+    const handle = page.mount(null);
 
-    rerender({ value: 100 });
+    handle.rerender(100);
 
-    expect(result.current).toEqual({ flashOn: false, dir: "up" });
+    expect(handle.state).toEqual({ flashOn: false, dir: "up" });
   });
 
   it("returns idle on a number -> null transition", () => {
-    const { result, rerender } = renderHook<TickFlash, HookProps>(
-      (props) => {
-        return useTickFlash(props.value);
-      },
-      { initialProps: { value: 100 } },
-    );
+    const handle = page.mount(100);
 
-    rerender({ value: null });
+    handle.rerender(null);
 
-    expect(result.current).toEqual({ flashOn: false, dir: "up" });
+    expect(handle.state).toEqual({ flashOn: false, dir: "up" });
   });
 
   it("keeps the previous flash object across a render where the value is unchanged", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useTickFlash(props.value);
-      },
-      { initialProps: { value: 100 } },
-    );
+    const handle = page.mount(100);
 
-    rerender({ value: 101 });
+    handle.rerender(101);
 
-    const flashed = result.current;
+    const flashed = handle.state;
 
-    rerender({ value: 101 });
+    handle.rerender(101);
 
-    expect(result.current).toBe(flashed);
+    expect(handle.state).toBe(flashed);
   });
 });
-
-interface HookProps {
-  value: number | null;
-}

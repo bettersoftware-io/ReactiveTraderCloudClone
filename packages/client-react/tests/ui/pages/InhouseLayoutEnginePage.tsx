@@ -30,6 +30,15 @@ interface BoundingRectStub {
   restore(): void;
 }
 
+interface CellFlags {
+  /** The nearest cell ancestor's `data-initial-cell` flag — a pixel-pinned
+   * rail width that stays draggable. */
+  isInitial: boolean;
+  /** The nearest cell ancestor's `data-fixed-cell` flag — a pixel-pinned
+   * width with NO resize handle. */
+  isFixed: boolean;
+}
+
 export interface InhouseLayoutEnginePage {
   mount(
     state: LayoutState,
@@ -39,7 +48,6 @@ export interface InhouseLayoutEnginePage {
   unmountAll(): void;
   exists(testId: string): boolean;
   text(testId: string): string;
-  attribute(testId: string, name: string): string | null;
   click(testId: string): void;
   pointerDown(testId: string, init: PointerInit): void;
   pointerMove(
@@ -47,13 +55,25 @@ export interface InhouseLayoutEnginePage {
     init: Pick<PointerInit, "clientX" | "clientY">,
   ): void;
   pointerUp(testId: string, init: PointerInit): void;
-  /** `screen.getByTestId(testId).closest(selector)`'s `name` attribute, or
-   * null if either the element or the ancestor is missing. */
-  closestAttribute(
-    testId: string,
-    selector: string,
-    name: string,
-  ): string | null;
+  /** Whether the panel/cell at `testId` renders as a collapsed strip
+   * (`data-strip`). */
+  stripFlag(testId: string): boolean;
+  /** The strip's reclaim axis (`data-strip-orientation`) — the strip is
+   * always in one state or the other once rendered, never absent. */
+  stripOrientation(testId: string): "vertical" | "horizontal";
+  /** Whether the cell at `testId` fills the space a fully-stripped sibling
+   * column/row freed (`data-strip-fill`). */
+  stripFill(testId: string): boolean;
+  /** Whether the cell at `testId` is itself a design-value pixel-pinned rail
+   * (`data-initial-cell`). */
+  initialCellFlag(testId: string): boolean;
+  /** Whether the cell at `testId` is a stripped panel's own cell
+   * (`data-strip-cell`). */
+  stripCellFlag(testId: string): boolean;
+  /** The `isInitial`/`isFixed` flags of the nearest cell ancestor of the
+   * PANEL at `panelTestId` (panels don't carry these flags themselves —
+   * only their wrapping cell does). */
+  initialCellOf(panelTestId: string): CellFlags;
   /** The text of the `panel-error` fallback nested inside the given panel's
    * scoped subtree (via `within`), proving the error boundary is SCOPED to
    * that panel rather than a full-page fallback. */
@@ -70,10 +90,22 @@ export interface InhouseLayoutEnginePage {
 
 function noop(): void {}
 
-/** The framework surface for `InhouseLayoutEngine.smoke.test.tsx`. */
+/** The framework surface for `InhouseLayoutEngine.smoke.test.tsx`. No raw
+ * CSS selector or DOM attribute name crosses back into the spec: every
+ * `data-*` name this component renders is behind one of the named flag
+ * methods below (the pages-may-take-a-testid-but-never-a-selector rule —
+ * Wave A finding 9 / this wave's review finding 3). */
 export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
   function node(testId: string): HTMLElement {
     return screen.getByTestId(testId);
+  }
+
+  function attribute(testId: string, name: string): string | null {
+    return node(testId).getAttribute(name);
+  }
+
+  function flag(testId: string, name: string): boolean {
+    return attribute(testId, name) === "true";
   }
 
   return {
@@ -103,9 +135,6 @@ export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
     text(testId: string): string {
       return node(testId).textContent ?? "";
     },
-    attribute(testId: string, name: string): string | null {
-      return node(testId).getAttribute(name);
-    },
     click(testId: string): void {
       node(testId).click();
     },
@@ -121,12 +150,30 @@ export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
     pointerUp(testId: string, init: PointerInit): void {
       fireEvent.pointerUp(node(testId), init);
     },
-    closestAttribute(
-      testId: string,
-      selector: string,
-      name: string,
-    ): string | null {
-      return node(testId).closest(selector)?.getAttribute(name) ?? null;
+    stripFlag(testId: string): boolean {
+      return flag(testId, "data-strip");
+    },
+    stripOrientation(testId: string): "vertical" | "horizontal" {
+      return attribute(testId, "data-strip-orientation") === "vertical"
+        ? "vertical"
+        : "horizontal";
+    },
+    stripFill(testId: string): boolean {
+      return flag(testId, "data-strip-fill");
+    },
+    initialCellFlag(testId: string): boolean {
+      return flag(testId, "data-initial-cell");
+    },
+    stripCellFlag(testId: string): boolean {
+      return flag(testId, "data-strip-cell");
+    },
+    initialCellOf(panelTestId: string): CellFlags {
+      const cell = node(panelTestId).closest("[data-fixed-cell]");
+
+      return {
+        isInitial: cell?.getAttribute("data-initial-cell") === "true",
+        isFixed: cell?.getAttribute("data-fixed-cell") === "true",
+      };
     },
     errorTextWithin(panelTestId: string): string {
       return (

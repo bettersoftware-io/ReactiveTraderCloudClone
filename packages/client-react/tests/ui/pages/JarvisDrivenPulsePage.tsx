@@ -13,7 +13,11 @@ interface JarvisDrivenPulseHandle {
 export interface JarvisDrivenPulsePage {
   mount(viewModel: ViewModel): JarvisDrivenPulseHandle;
   unmountAll(): void;
-  wrapperIsDriven(): boolean;
+  /** The wrapper's raw `data-jarvis-driven` attribute — kept as the exact
+   * `"true" | "false" | null` fact (not collapsed to a boolean) so a missing
+   * attribute stays distinguishable from an explicit `"false"`, matching the
+   * original `.toBe("false")` assertion's strength. */
+  wrapperDrivenAttr(): string | null;
   fireDescendantAnimationEnd(): void;
   fireWrapperAnimationEnd(): void;
 }
@@ -71,11 +75,8 @@ export function jarvisDrivenPulsePage(): JarvisDrivenPulsePage {
     unmountAll(): void {
       cleanup();
     },
-    wrapperIsDriven(): boolean {
-      return (
-        screen.getByTestId("wrapper").getAttribute("data-jarvis-driven") ===
-        "true"
-      );
+    wrapperDrivenAttr(): string | null {
+      return screen.getByTestId("wrapper").getAttribute("data-jarvis-driven");
     },
     fireDescendantAnimationEnd(): void {
       webkitAnimationEnd(screen.getByTestId("descendant"));

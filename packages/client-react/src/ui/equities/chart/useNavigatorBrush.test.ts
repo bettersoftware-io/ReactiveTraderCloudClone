@@ -3,35 +3,29 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
-import {
-  act,
-  cleanup,
-  renderHook,
-} from "#tests/ui/pages/UseNavigatorBrushPage";
-
-import { useNavigatorBrush } from "./useNavigatorBrush";
+import { navigatorBrushPage } from "#tests/ui/pages/UseNavigatorBrushPage";
 
 const SERIES_LEN = 300;
 const VIEWPORT: ChartViewport = { start: 240, end: 300 };
 const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
 
+const page = navigatorBrushPage();
+
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("useNavigatorBrush", () => {
   it("dragging the window body pans the viewport WITH the pointer", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("window", 450));
     });
-    act(() => {
+    handle.commit(() => {
       // dx −50px of 500 → −0.1 × 300 = −30 candles, window follows the pointer left
-      result.current.stripProps.onPointerMove(moveEvent(400));
+      handle.state.stripProps.onPointerMove(moveEvent(400));
     });
 
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
@@ -39,15 +33,13 @@ describe("useNavigatorBrush", () => {
 
   it("dragging the right handle resizes only the end edge", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("handle-right", 500));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("handle-right", 500));
     });
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(450));
     });
 
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 240, end: 270 });
@@ -55,15 +47,13 @@ describe("useNavigatorBrush", () => {
 
   it("dragging the left handle resizes only the start edge", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("handle-left", 400));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("handle-left", 400));
     });
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(350));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(350));
     });
 
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 300 });
@@ -71,37 +61,33 @@ describe("useNavigatorBrush", () => {
 
   it("a track pointerdown recentres the window immediately, then keeps dragging it", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
+    handle.commit(() => {
       // 250 / 500 → idx 150 → centred {120, 180}
-      result.current.stripProps.onPointerDown(brushEvent("track", 250));
+      handle.state.stripProps.onPointerDown(brushEvent("track", 250));
     });
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 120, end: 180 });
 
-    act(() => {
+    handle.commit(() => {
       // +50px → +30 candles from the RECENTRED origin
-      result.current.stripProps.onPointerMove(moveEvent(300));
+      handle.state.stripProps.onPointerMove(moveEvent(300));
     });
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 150, end: 210 });
   });
 
   it("moves recompute from the fixed drag origin, not cumulatively", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("window", 450));
     });
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(400));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(400));
     });
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(425));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(425));
     });
 
     // −25px total from origin → −15 candles, NOT −30 −15.
@@ -110,12 +96,10 @@ describe("useNavigatorBrush", () => {
 
   it("pointer moves without a prior pointerdown are ignored", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(400));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(400));
     });
 
     expect(applyViewport).not.toHaveBeenCalled();
@@ -123,20 +107,18 @@ describe("useNavigatorBrush", () => {
 
   it("pointerup ends the drag; pointercancel does the same (no phantom drag)", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("window", 450));
     });
-    act(() => {
-      result.current.stripProps.onPointerCancel(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerCancel(brushEvent("window", 450));
     });
     applyViewport.mockClear();
 
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(100));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(100));
     });
 
     expect(applyViewport).not.toHaveBeenCalled();
@@ -144,13 +126,11 @@ describe("useNavigatorBrush", () => {
 
   it("captures the pointer on pointerdown", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
     const event = brushEvent("window", 450);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(event);
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(event);
     });
 
     expect(event.currentTarget.setPointerCapture).toHaveBeenCalledWith(1);
@@ -160,28 +140,18 @@ describe("useNavigatorBrush", () => {
     const GREW_BY = 300;
     const NEW_SERIES_LEN = SERIES_LEN + GREW_BY;
     const applyViewport = vi.fn();
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useNavigatorBrush(
-          VIEWPORT,
-          applyViewport,
-          props.seriesLen,
-          props.firstCandleTime,
-        );
-      },
-      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
-    );
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN, 1_000_000);
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("window", 450));
     });
 
     // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
     // length grew by 300.
-    rerender({ seriesLen: NEW_SERIES_LEN, firstCandleTime: 700_000 });
+    handle.rerender(NEW_SERIES_LEN, 700_000);
 
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(400));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(400));
     });
 
     // The shifted origin (VIEWPORT translated by +GREW_BY) fed through the
@@ -198,45 +168,35 @@ describe("useNavigatorBrush", () => {
 
   it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return useNavigatorBrush(VIEWPORT, applyViewport, SERIES_LEN);
-    });
+    const handle = page.mount(VIEWPORT, applyViewport, SERIES_LEN);
 
     // No prior pointerdown at all: originRef.current is null — the up must
     // be a complete no-op, not just "didn't crash".
-    act(() => {
-      result.current.stripProps.onPointerUp(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerUp(brushEvent("window", 450));
     });
     expect(applyViewport).not.toHaveBeenCalled();
 
-    act(() => {
-      result.current.stripProps.onPointerDown(brushEvent("window", 450));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerDown(brushEvent("window", 450));
     });
     applyViewport.mockClear();
 
     // A pointerup for a DIFFERENT pointerId than the active drag must not
     // end it — the still-active drag (pointerId 1) keeps responding to moves.
-    act(() => {
-      result.current.stripProps.onPointerUp({
+    handle.commit(() => {
+      handle.state.stripProps.onPointerUp({
         ...brushEvent("window", 450),
         pointerId: 2,
       });
     });
-    act(() => {
-      result.current.stripProps.onPointerMove(moveEvent(400));
+    handle.commit(() => {
+      handle.state.stripProps.onPointerMove(moveEvent(400));
     });
 
     expect(applyViewport).toHaveBeenLastCalledWith({ start: 210, end: 270 });
   });
 });
-
-/** The C1 prepend-shift regression's rerender props: a growing seriesLen
- * (real number) alongside an optional firstCandleTime, same shape as
- * useChartGestures.test.ts's own HookProps. */
-interface HookProps {
-  seriesLen: number;
-  firstCandleTime?: number;
-}
 
 /** What the pointerdown landed on: the window body, a handle, or the bare
  * track — expressed through the `closest()` answers the hook's hit-test

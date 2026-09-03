@@ -51,7 +51,7 @@ describe("InhouseLayoutEngine", () => {
 
   it("collapses a panel to a strip and hides its body", () => {
     page.mount({ ...state, collapsed: ["fx-analytics"] }, registry);
-    expect(page.attribute("panel-fx-analytics", "data-strip")).toBe("true");
+    expect(page.stripFlag("panel-fx-analytics")).toBe(true);
     expect(page.exists("analytics-body")).toBe(false);
   });
 
@@ -106,9 +106,7 @@ describe("InhouseLayoutEngine", () => {
       },
     };
     page.mount(fixedState, fixedRegistry);
-    expect(
-      page.closestAttribute("panel-b", "[data-fixed-cell]", "data-fixed-cell"),
-    ).toBe("true");
+    expect(page.initialCellOf("panel-b").isFixed).toBe(true);
     // root pathKey is "" (root path = []), so the suppressed handle would be handle--0
     expect(page.exists("handle--0")).toBe(false);
   });
@@ -140,20 +138,9 @@ describe("InhouseLayoutEngine", () => {
 
     it("renders a px-fixed cell that KEEPS its resize handle (unlike fixedPx)", () => {
       page.mount(initialPxState, abRegistry);
-      expect(
-        page.closestAttribute(
-          "panel-b",
-          "[data-initial-cell]",
-          "data-initial-cell",
-        ),
-      ).toBe("true");
-      expect(
-        page.closestAttribute(
-          "panel-b",
-          "[data-initial-cell]",
-          "data-fixed-cell",
-        ),
-      ).toBe("false");
+      const cell = page.initialCellOf("panel-b");
+      expect(cell.isInitial).toBe(true);
+      expect(cell.isFixed).toBe(false);
       // root pathKey is "" — the handle fixedPx would have suppressed
       expect(page.exists("handle--0")).toBe(true);
     });
@@ -251,13 +238,7 @@ describe("InhouseLayoutEngine", () => {
 
     it("drops the px-fixed treatment while a panel is maximized, so the maximized panel can fill the dock", () => {
       page.mount({ ...initialPxState, maximized: "b" }, abRegistry);
-      expect(
-        page.closestAttribute(
-          "panel-b",
-          "[data-initial-cell]",
-          "data-initial-cell",
-        ),
-      ).toBe("false");
+      expect(page.initialCellOf("panel-b").isInitial).toBe(false);
     });
   });
 
@@ -336,16 +317,12 @@ describe("InhouseLayoutEngine", () => {
         creditShapedRegistry,
       );
       // rail is a direct child of the root row → narrow full-height strip.
-      expect(page.attribute("panel-rail", "data-strip")).toBe("true");
-      expect(page.attribute("panel-rail", "data-strip-orientation")).toBe(
-        "vertical",
-      );
+      expect(page.stripFlag("panel-rail")).toBe(true);
+      expect(page.stripOrientation("panel-rail")).toBe("vertical");
       // c shares its column with the maximized b → short full-width strip.
-      expect(page.attribute("panel-c", "data-strip")).toBe("true");
-      expect(page.attribute("panel-c", "data-strip-orientation")).toBe(
-        "horizontal",
-      );
-      expect(page.attribute("cell-1-1", "data-strip-fill")).toBe("false");
+      expect(page.stripFlag("panel-c")).toBe(true);
+      expect(page.stripOrientation("panel-c")).toBe("horizontal");
+      expect(page.stripFill("cell-1-1")).toBe(false);
     });
 
     it("inherits the row axis through a fully-stripped column: maximizing the rail turns both column panels into vertical, rail-filling strips", () => {
@@ -355,17 +332,15 @@ describe("InhouseLayoutEngine", () => {
       );
 
       for (const id of ["b", "c"]) {
-        expect(page.attribute(`panel-${id}`, "data-strip")).toBe("true");
-        expect(page.attribute(`panel-${id}`, "data-strip-orientation")).toBe(
-          "vertical",
-        );
+        expect(page.stripFlag(`panel-${id}`)).toBe(true);
+        expect(page.stripOrientation(`panel-${id}`)).toBe("vertical");
       }
 
       // Their cells share the freed rail's height instead of hugging.
-      expect(page.attribute("cell-1-0", "data-strip-fill")).toBe("true");
-      expect(page.attribute("cell-1-1", "data-strip-fill")).toBe("true");
+      expect(page.stripFill("cell-1-0")).toBe(true);
+      expect(page.stripFill("cell-1-1")).toBe(true);
       // The fully-stripped column's own cell hugs along the row (no fill).
-      expect(page.attribute("cell--1", "data-strip-fill")).toBe("false");
+      expect(page.stripFill("cell--1")).toBe(false);
     });
   });
 
@@ -402,7 +377,7 @@ describe("InhouseLayoutEngine", () => {
 
     it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
       page.mount({ ...creditState, maximized: "credit-rfqs" }, creditRegistry);
-      expect(page.attribute("panel-credit-new-rfq", "data-strip")).toBe("true");
+      expect(page.stripFlag("panel-credit-new-rfq")).toBe(true);
       expect(page.exists("new-rfq-body")).toBe(false);
     });
   });
@@ -426,20 +401,18 @@ describe("InhouseLayoutEngine", () => {
 
     it("maximizing eq-ticket strips only its column sibling — a horizontal bar inside the rail — leaving the main column untouched", () => {
       page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      expect(page.attribute("panel-eq-watchlist", "data-strip")).toBe("true");
-      expect(
-        page.attribute("panel-eq-watchlist", "data-strip-orientation"),
-      ).toBe("horizontal");
+      expect(page.stripFlag("panel-eq-watchlist")).toBe(true);
+      expect(page.stripOrientation("panel-eq-watchlist")).toBe("horizontal");
       // outside the boundary: chart and blotter render their bodies.
       expect(page.exists("chart-body")).toBe(true);
       expect(page.exists("eq-blotter-body")).toBe(true);
-      expect(page.attribute("panel-eq-chart", "data-strip")).toBe("false");
+      expect(page.stripFlag("panel-eq-chart")).toBe(false);
     });
 
     it("keeps the rail's 290px initialPx design width and the main handle; only the rail-internal handle disappears", () => {
       page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      expect(page.attribute("cell--1", "data-initial-cell")).toBe("true");
-      expect(page.attribute("cell--1", "data-strip-cell")).toBe("false");
+      expect(page.initialCellFlag("cell--1")).toBe(true);
+      expect(page.stripCellFlag("cell--1")).toBe(false);
       expect(page.exists("handle--0")).toBe(true);
       expect(page.exists("handle-0-0")).toBe(true);
       expect(page.exists("handle-1-0")).toBe(false);
@@ -447,23 +420,21 @@ describe("InhouseLayoutEngine", () => {
 
     it("maximizing eq-watchlist mirrors it: eq-ticket strips horizontally; the main column and rail width stay put", () => {
       page.mount({ ...eqState, maximized: "eq-watchlist" }, eqRegistry);
-      expect(page.attribute("panel-eq-ticket", "data-strip")).toBe("true");
-      expect(page.attribute("panel-eq-ticket", "data-strip-orientation")).toBe(
-        "horizontal",
-      );
-      expect(page.attribute("panel-eq-chart", "data-strip")).toBe("false");
-      expect(page.attribute("cell--1", "data-initial-cell")).toBe("true");
+      expect(page.stripFlag("panel-eq-ticket")).toBe(true);
+      expect(page.stripOrientation("panel-eq-ticket")).toBe("horizontal");
+      expect(page.stripFlag("panel-eq-chart")).toBe(false);
+      expect(page.initialCellFlag("cell--1")).toBe(true);
     });
 
     it("root-scope maximize is unchanged: eq-chart still strips the whole dock, dropping the rail's design width", () => {
       page.mount({ ...eqState, maximized: "eq-chart" }, eqRegistry);
 
       for (const id of ["eq-blotter", "eq-ticket", "eq-watchlist"]) {
-        expect(page.attribute(`panel-${id}`, "data-strip")).toBe("true");
+        expect(page.stripFlag(`panel-${id}`)).toBe(true);
       }
 
-      expect(page.attribute("cell--1", "data-initial-cell")).toBe("false");
-      expect(page.attribute("cell--1", "data-strip-cell")).toBe("true");
+      expect(page.initialCellFlag("cell--1")).toBe(false);
+      expect(page.stripCellFlag("cell--1")).toBe(true);
     });
   });
 

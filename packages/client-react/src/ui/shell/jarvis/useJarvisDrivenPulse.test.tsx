@@ -36,16 +36,16 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
     // A new applied outcome arrives — pulsing turns true.
     handle.rerenderWith(fakeViewModel(true));
 
-    expect(page.wrapperIsDriven()).toBe(true);
+    expect(page.wrapperDrivenAttr()).toBe("true");
 
     // A descendant's own animationend (e.g. a tile's tick-flash) bubbles
     // through the wrapper — must be IGNORED, not clear the pulse.
     page.fireDescendantAnimationEnd();
-    expect(page.wrapperIsDriven()).toBe(true);
+    expect(page.wrapperDrivenAttr()).toBe("true");
 
     // The wrapper's OWN animationend (target === currentTarget) DOES clear it.
     page.fireWrapperAnimationEnd();
-    expect(page.wrapperIsDriven()).toBe(false);
+    expect(page.wrapperDrivenAttr()).toBe("false");
   });
 });
 
@@ -64,7 +64,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
 
       handle.rerenderWith(fakeViewModel(true));
 
-      expect(page.wrapperIsDriven()).toBe(false);
+      expect(page.wrapperDrivenAttr()).toBe("false");
     } finally {
       window.matchMedia = original;
     }

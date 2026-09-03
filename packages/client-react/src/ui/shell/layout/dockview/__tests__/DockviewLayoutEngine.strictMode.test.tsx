@@ -4,11 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
-import {
-  cleanup,
-  render,
-  waitFor,
-} from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
+import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
 
 import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 
@@ -26,7 +22,11 @@ beforeAll(() => {
   }
 });
 
-afterEach(cleanup);
+const page = dockviewLayoutEngineStrictModePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 const registry: PanelRegistry = {
   "fx-rates": () => {
@@ -72,7 +72,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       },
     };
 
-    render(
+    page.mount(
       <StrictMode>
         <DockviewLayoutEngine
           tab="fx"
@@ -90,7 +90,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
 
     // A's dispose-time flush is save #1 (synchronous); B's debounced save of
     // its own collapse is what we wait for.
-    await waitFor(
+    await page.waitFor(
       () => {
         expect(saved.length).toBeGreaterThanOrEqual(2);
       },

@@ -21,25 +21,35 @@ export interface ReactorRingsPage {
 
 /** The framework surface for `ReactorRings.test.tsx`. */
 export function reactorRingsPage(): ReactorRingsPage {
+  // The render container itself (RTL appends a wrapper `<div>` to
+  // document.body) — `container.firstElementChild` is ReactorRings' OWN root
+  // `<div className={styles.root}>`, one level below the container. Reading
+  // straight off `document.body` instead would resolve to the container
+  // itself, silently weakening every containment assertion below to "a
+  // render happened" rather than "these elements share ReactorRings' root".
+  let container: HTMLElement | null = null;
+
   function marker(): HTMLElement {
     return screen.getByTestId(MARKER_TEST_ID);
   }
 
   function root(): Element | null {
-    return document.body.firstElementChild;
+    return container?.firstElementChild ?? null;
   }
 
   function rings(): NodeListOf<Element> {
-    return document.body.querySelectorAll(RING_SELECTOR);
+    return (container ?? document.body).querySelectorAll(RING_SELECTOR);
   }
 
   return {
     mount(): void {
-      render(
+      const result = render(
         <ReactorRings>
           <span data-testid={MARKER_TEST_ID}>emblem</span>
         </ReactorRings>,
       );
+
+      container = result.container;
     },
     unmountAll(): void {
       cleanup();
@@ -57,10 +67,10 @@ export function reactorRingsPage(): ReactorRingsPage {
       return root()?.contains(marker()) ?? false;
     },
     rootContainsEveryRing(): boolean {
-      const container = root();
+      const rootEl = root();
 
       return Array.from(rings()).every((ring) => {
-        return container?.contains(ring) ?? false;
+        return rootEl?.contains(ring) ?? false;
       });
     },
     noRingContainsOrWrapsMarker(): boolean {
