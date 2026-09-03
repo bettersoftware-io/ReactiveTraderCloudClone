@@ -149,6 +149,19 @@ test("rejected phase surfaces the reason", async () => {
   );
 });
 
+// dc.html:2371 — the CTA is `linear-gradient(180deg, sideC, color-mix(in
+// oklab, sideC 72%, black))` in every skin; CtaGradient paints the ramp over
+// the flat side-colour fallback.
+test("the submit CTA carries the side-colour ramp gradient", async () => {
+  const submit = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(editing, { submit })}>
+      <OrderTicket symbol="AAPL" />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
+});
+
 // dc.html:385 — the design's order-ticket panel is a `--tile-bg` /
 // `--tile-shadow` surface exactly like the instrument tile above it, so 3d
 // skins paint the tile gradient. (This asserted the opposite until
