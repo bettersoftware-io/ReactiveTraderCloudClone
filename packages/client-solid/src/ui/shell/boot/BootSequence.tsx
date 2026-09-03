@@ -27,7 +27,15 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     useThemePreference,
     useThemeSkinPreference,
   } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.onDone is fixed for this component's whole lifetime: its one
+  // caller, BootGate, wraps it in <Show when={visible()}> — a non-keyed
+  // boolean Show that fully remounts BootSequence on every visible()
+  // false→true flip (see BootGate.tsx's own doc comment: "Each re-raise
+  // remounts BootSequence, so its per-mount machine replays fresh") — and
+  // BootGate's own setup body runs once, so `dismissOnJumpCut` (the
+  // function passed as onDone) is the same stable reference across every
+  // one of those remounts anyway.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const { state, skip } = useBootSequence(props.onDone);
   const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();

@@ -44,6 +44,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   // `status` is tracked (not the whole `submission.state()`) per the
   // reactivity amendment; `previousStatus` is a plain closure binding, not a
   // signal, since nothing else needs to read it.
+  // eslint-disable-next-line solid/reactivity -- one-time seed: previousStatus needs a baseline before the createEffect below starts tracking status(); the effect's own tracked read (currentStatus) picks up every subsequent transition, and previousStatus is reassigned from that tracked read at the end of every run
   let previousStatus = status();
   createEffect(() => {
     const currentStatus = status();

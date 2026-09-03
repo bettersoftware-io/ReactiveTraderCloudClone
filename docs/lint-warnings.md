@@ -11,39 +11,7 @@
 > on unrelated edits); locate each warning by its file plus the identifier
 > named in the message.
 >
-> **Total: 16 warnings** across 1 rule, 6 files.
+> **Total: 0 warnings** across 0 rules, 0 files.
 
-## `solid/reactivity` (16)
-
-### packages/client-solid/src/ui/credit/blotter/CreditBlotter.tsx
-
-- 'rows' captures the value of the reactive variable 'processedTrades' at setup, but a returned function reads the capture later — it will never update. Call 'processedTrades' inside the returned function instead, or prefix 'rows' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-- The reactive variable 'tradeIds' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-- The reactive variable 'tradeIdsKey' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-
-### packages/client-solid/src/ui/credit/newRfq/NewRfqPanel.tsx
-
-- The reactive variable 'status' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-
-### packages/client-solid/src/ui/credit/rfqs/RfqsPanel.tsx
-
-- (×3) 'currentDismissed' captures the value of the reactive variable 'dismissed' at setup, but a returned function reads the capture later — it will never update. Call 'dismissed' inside the returned function instead, or prefix 'currentDismissed' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-- 'currentExiting' captures the value of the reactive variable 'exiting' at setup, but a returned function reads the capture later — it will never update. Call 'exiting' inside the returned function instead, or prefix 'currentExiting' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-- 'currentMatchingIdSet' captures the value of the reactive variable 'matchingIds' at setup, but a returned function reads the capture later — it will never update. Call 'matchingIds' inside the returned function instead, or prefix 'currentMatchingIdSet' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-- The reactive variable 'allIds' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-- The reactive variable 'allIdsKey' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-- The reactive variable 'matchingIds' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-- The reactive variable 'matchingKey' should be used within JSX, a tracked scope (like createEffect), or inside an event handler function, or else changes will be ignored.
-
-### packages/client-solid/src/ui/equities/watchlist/WatchlistPanel.tsx
-
-- 'q' captures the value of the reactive variable 'quotes' at setup, but a returned function reads the capture later — it will never update. Call 'quotes' inside the returned function instead, or prefix 'q' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-
-### packages/client-solid/src/ui/fx/blotter/FxBlotter.tsx
-
-- 'rows' captures the value of the reactive variable 'processedTrades' at setup, but a returned function reads the capture later — it will never update. Call 'processedTrades' inside the returned function instead, or prefix 'rows' with 'initial'/'default'/'static' if a one-time snapshot is intended.
-
-### packages/client-solid/tests/ui/visual/solid/EquitiesChartPanes.visual.tsx
-
-- 'crossVm' captures the value of the reactive variable 'cross' at setup, but a returned function reads the capture later — it will never update. Call 'cross' inside the returned function instead, or prefix 'crossVm' with 'initial'/'default'/'static' if a one-time snapshot is intended.
+_No outstanding lint warnings. 🎉_
 

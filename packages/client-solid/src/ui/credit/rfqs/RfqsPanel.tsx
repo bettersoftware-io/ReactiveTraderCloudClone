@@ -100,10 +100,12 @@ export function RfqsPanel(): JSX.Element {
   });
 
   const matchingIds = createMemo((): number[] => {
-    const currentDismissed = dismissed();
     return rfqs()
       .filter((r) => {
-        return matchesFilter(r.state, filter()) && !currentDismissed.has(r.id);
+        // dismissed() is tracked only when reached: `&&` short-circuits it
+        // away for an rfq that already fails matchesFilter() — deliberate,
+        // since that rfq's inclusion can't depend on dismissed() either way.
+        return matchesFilter(r.state, filter()) && !dismissed().has(r.id);
       })
       .map((r) => {
         return r.id;
@@ -118,9 +120,12 @@ export function RfqsPanel(): JSX.Element {
   // plain mutable bindings rather than signals: nothing outside the
   // bookkeeping effect below ever reads them, so exposing them reactively
   // would only invite the effect to re-trigger on its own writes.
+  // eslint-disable-next-line solid/reactivity -- one-time seed: prevAll needs a baseline before the createEffect below starts tracking allIdsKey()/allIds(); seeding with the CURRENT id set (rather than empty) avoids treating every RFQ already open at mount as a fresh arrival — the effect's own tracked reads pick up every subsequent change
   let prevAll: IdSnapshot = { key: allIdsKey(), ids: new Set(allIds()) };
   let prevMatching: IdSnapshot = {
+    // eslint-disable-next-line solid/reactivity -- one-time seed: prevMatching needs the same CURRENT-state baseline as prevAll above, for the same reason (no false "just entered the filter" on mount)
     key: matchingKey(),
+    // eslint-disable-next-line solid/reactivity -- see justification above
     ids: new Set(matchingIds()),
   };
   let prevFilter = filter();
@@ -148,8 +153,8 @@ export function RfqsPanel(): JSX.Element {
 
     const reduced = prefersReducedMotion();
     const currentAllIds = allIds();
+    // eslint-disable-next-line solid/reactivity -- matchingIds() is tracked above (this createEffect reruns on matchingKey changes); hoisting the Set here (rather than rebuilding `new Set(matchingIds())` inside the `dropped` filter callback below) keeps that membership check O(1) per element instead of O(n) — the read is still synchronous within this same effect pass, never deferred
     const currentMatchingIdSet = new Set(matchingIds());
-    const currentDismissed = dismissed();
 
     // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that dropped
     // out of the MATCHING set without a filter change (a state transition,
@@ -162,11 +167,17 @@ export function RfqsPanel(): JSX.Element {
 
     if (!reduced && matchingChanged && !filterChanged) {
       const allIdSet = new Set(currentAllIds);
+      // dismissed() here (and in renderedIdsNow's filter below) is tracked
+      // only for ids where evaluation reaches it — deliberate: this whole
+      // effect already reruns whenever matchingKey/allIdsKey/filter change,
+      // and dismissed() itself feeds matchingKey via the matchingIds memo
+      // above, so a dismissed() change that matters here has already been
+      // picked up by that transitive dependency by the time this runs.
       const dropped = [...prevMatching.ids].filter((id) => {
         return (
           !currentMatchingIdSet.has(id) &&
           allIdSet.has(id) &&
-          !currentDismissed.has(id) &&
+          !dismissed().has(id) &&
           !exitingNow.has(id)
         );
       });
@@ -189,7 +200,7 @@ export function RfqsPanel(): JSX.Element {
     const renderedIdsNow = rfqs()
       .filter((r) => {
         return (
-          !currentDismissed.has(r.id) &&
+          !dismissed().has(r.id) &&
           (matchesFilter(r.state, currentFilter) || exitingNow.has(r.id))
         );
       })
@@ -252,14 +263,17 @@ export function RfqsPanel(): JSX.Element {
   // effect above just made in this same pass.
   const rendered = createMemo((): Rfq[] => {
     const currentFilter = filter();
-    const currentDismissed = dismissed();
-    const currentExiting = exiting();
 
     return rfqs()
       .filter((r) => {
+        // Both signal reads are tracked only when reached: `&&` skips
+        // exiting() once dismissed() is true, and `||` skips exiting() once
+        // matchesFilter() is true — deliberate, since a dismissed rfq is
+        // never rendered regardless of exiting(), and a filter-matching one
+        // is always rendered regardless of it either.
         return (
-          !currentDismissed.has(r.id) &&
-          (matchesFilter(r.state, currentFilter) || currentExiting.has(r.id))
+          !dismissed().has(r.id) &&
+          (matchesFilter(r.state, currentFilter) || exiting().has(r.id))
         );
       })
       .sort((a, b) => {
@@ -439,7 +453,13 @@ interface RfqCardCellProps {
 
 function RfqCardCell(props: RfqCardCellProps): JSX.Element {
   const { useQuotesForRfq, useAcceptQuote, useCancelRfq } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.rfq.id never changes across a RfqCardCell instance: the outer
+  // <For each={renderedIds()}> above (this file's SOLID PORT NOTE) is keyed
+  // by the id itself, never the Rfq object, and even the inner
+  // <Show when={rfq()} keyed> that re-invokes this component on every fresh
+  // Rfq reference (a state transition) is looking up that SAME id each time
+  // — id is a `readonly` domain field, immutable for the RFQ's whole life.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const quotes = useQuotesForRfq(props.rfq.id);
   const acceptQuote = useAcceptQuote();
   const cancelRfq = useCancelRfq();

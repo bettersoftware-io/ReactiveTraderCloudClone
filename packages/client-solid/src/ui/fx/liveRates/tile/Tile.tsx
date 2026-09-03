@@ -34,19 +34,27 @@ export function Tile(props: TileProps): JSX.Element {
     useRfqTile,
     useAnimationIntents,
   } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // props.pair is fixed for this Tile's whole lifetime: LiveRatesPanel's
+  // <For each={filteredPairs()}> keys by the CurrencyPair object's own
+  // identity (currencyPairsState is static per-symbol metadata — see
+  // solid-bindings' useCurrencyPairs — so filter()'s array reorders/adds/
+  // removes items by that same stable reference), so a Tile only remounts
+  // if its pair drops out of the filtered set and a different one takes its
+  // slot — never on a price tick. Every hook call below seeds a per-pair
+  // subscription/machine from that fixed pair, correctly read once.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const price = usePrice(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const stale = useStaleFlag(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const history = usePriceHistory(props.pair.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const notional = useNotional(props.pair.defaultNotional);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const tileExecution = useTileExecution(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const rfqState = useRfqTile(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
   const animIntent = useAnimationIntents(`tile:${props.pair.symbol}`);
 
   // Every derived flag below reads one or more machine-state accessors — each

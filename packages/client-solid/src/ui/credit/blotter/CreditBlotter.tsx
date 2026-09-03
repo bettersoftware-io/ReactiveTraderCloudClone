@@ -71,7 +71,9 @@ export function CreditBlotter(): JSX.Element {
   });
 
   let prevTradeIds: TradeIdSnapshot = {
+    // eslint-disable-next-line solid/reactivity -- one-time seed: prevTradeIds needs a baseline before the createEffect below starts tracking tradeIdsKey()/tradeIds(); seeding with the CURRENT id set (rather than empty) avoids flashing every pre-existing trade as "just booked" on mount — the effect's own tracked reads pick up every subsequent change
     key: tradeIdsKey(),
+    // eslint-disable-next-line solid/reactivity -- see justification above
     ids: new Set(tradeIds()),
   };
 
@@ -140,14 +142,18 @@ export function CreditBlotter(): JSX.Element {
 
   // The CSV chip lives in CreditBlotterHead now (mirrors FxBlotter's
   // handoff); it calls exportCsv() from context, which invokes whatever
-  // handler was last registered here — bound to the current filtered/sorted
-  // rows.
+  // handler was last registered here. This createEffect has ZERO tracked
+  // dependencies on purpose: processedTrades() is read only inside the
+  // registered closure below, never in the effect body itself, so the
+  // effect runs exactly once, at mount — an onMount in effect clothing. The
+  // registered closure reads processedTrades() live at click time instead,
+  // so the exported rows are always current without the effect ever
+  // re-registering the handler.
   createEffect(() => {
-    const rows = processedTrades();
     setExportCsvHandler(() => {
       // PROTO useCreditRfqs.ts downloadCsv("credit-trades.csv", …).
       exportToCsv(
-        rows,
+        processedTrades(),
         CREDIT_COLUMNS,
         formatCreditCell,
         "credit-trades.csv",

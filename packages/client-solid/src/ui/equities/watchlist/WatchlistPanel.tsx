@@ -54,14 +54,18 @@ export function WatchlistPanel(): JSX.Element {
   }
 
   const rowInputs = createMemo((): readonly WatchlistRowInput[] => {
-    const q = quotes();
     return instruments().map((inst) => {
-      const snapshot = q[inst.symbol];
+      // Two `quotes()[inst.symbol]` reads, not one via a local: an
+      // intermediate `snapshot` local here still trips solid/reactivity
+      // (the linter treats any capture used inside this return's object
+      // literal as escaping tracked scope, even within the same callback),
+      // and `quotes()` is a cheap same-tick signal read — the duplicate
+      // lookup costs nothing worth hoisting for.
       return {
         symbol: inst.symbol,
         name: inst.name,
-        last: snapshot?.last ?? null,
-        changePct: snapshot?.changePct ?? null,
+        last: quotes()[inst.symbol]?.last ?? null,
+        changePct: quotes()[inst.symbol]?.changePct ?? null,
       };
     });
   });

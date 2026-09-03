@@ -22,10 +22,18 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
     return [...valSet].sort();
   });
 
+  // props.currentFilter is read once, by design, to SEED this popover's
+  // local editing state — the same reasoning as NumberFilter.tsx's/
+  // DateFilter.tsx's identical initializer: BlotterHeader mounts this
+  // component only inside <Show when={openFilter() === col.key}> (a
+  // boolean, non-keyed Show around <FilterPanel>), fully remounting
+  // SetFilter fresh on every open with whatever currentFilter is live at
+  // that moment; currentFilter can never change out from under an
+  // already-open instance without that remount.
   const [selected, setSelected] = createSignal<Set<string>>(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
     props.currentFilter?.type === "set"
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
         new Set(props.currentFilter.values)
       : new Set(allValues()),
   );
