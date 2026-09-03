@@ -85,7 +85,7 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
   expect(app.timelineRowCount()).toBe(5);
 
   // Scope to the fx presenter: only its emissions remain, State narrows.
-  app.clickElement(app.navNode("presenter:fx"));
+  app.clickNavNode("presenter:fx");
   expect(app.timelineRowCount()).toBe(3);
   expect(app.exists("devtools-machine-row")).toBe(false);
 
@@ -98,11 +98,11 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
   expect(app.hasText("≠ live")).toBe(true);
 
   // Wire probe: scope jumps to All with a ±100ms radius; Esc restores fx.
-  app.clickTextMatching("wire ±100ms", "[data-testid='pinned-bar'] button");
-  expect(app.navNode("all").dataset.selected).toBe("true");
+  app.clickWireProbeButton();
+  expect(app.navNodeIsSelected("all")).toBe(true);
   expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
   app.pressKeyGlobal("Escape");
-  expect(app.navNode("presenter:fx").dataset.selected).toBe("true");
+  expect(app.navNodeIsSelected("presenter:fx")).toBe(true);
   expect(app.hasTextMatching(/^±100ms @ /)).toBe(false);
   expect(app.exists("pinned-bar")).toBe(true); // still pinned
 
@@ -111,24 +111,24 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
 
   // Machines branch: the kind node scopes to machine rows; the Machine tab
   // appears for an instance.
-  app.clickElement(app.navNode("machineKind:tileExecution"));
+  app.clickNavNode("machineKind:tileExecution");
   expect(app.timelineRowCount()).toBe(1);
   expect(app.text("devtools-machine-row")).toContain("tileExecution");
-  app.clickElement(app.expandCaretOf("machineKind:tileExecution"));
-  app.clickElement(app.navNode("machine:m1"));
+  app.clickExpandCaretOf("machineKind:tileExecution");
+  app.clickNavNode("machine:m1");
   app.click("context-tab-machine");
   expect(app.hasText("Intents (0)")).toBe(true);
 
   // Wire branch: State is unavailable.
-  app.clickElement(app.navNode("msgType:PRICE"));
+  app.clickNavNode("msgType:PRICE");
   expect(app.hasText("wire messages carry no state")).toBe(true);
 
   // Clear (keyboard) empties every scope and zeroes the All badge; Unclear
   // restores.
-  app.clickElement(app.navNode("all"));
+  app.clickNavNode("all");
   app.pressKeyGlobal("c");
   expect(app.timelineRowCount()).toBe(0);
-  expect(app.navNode("all").textContent).toContain("0");
+  expect(app.navNodeText("all")).toContain("0");
   app.click("unclear-log");
   expect(app.timelineRowCount()).toBe(5);
 });
@@ -150,15 +150,15 @@ test("wire probe from All strands no radius on Escape — pin survives, scope st
   // ALL_SCOPE onto the already-current All scope is a no-op in
   // useNavigation (no history recorded), so `popScope()` alone can't be
   // trusted to signal "a radius is active".
-  app.clickElement(app.pinButtonOfRow(0));
-  app.clickTextMatching("wire ±100ms", "[data-testid='pinned-bar'] button");
-  expect(app.navNode("all").dataset.selected).toBe("true");
+  app.clickPinButtonOfRow(0);
+  app.clickWireProbeButton();
+  expect(app.navNodeIsSelected("all")).toBe(true);
   expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
 
   app.pressKeyGlobal("Escape");
   expect(app.hasTextMatching(/^±100ms @ /)).toBe(false);
   expect(app.exists("pinned-bar")).toBe(true); // still pinned
-  expect(app.navNode("all").dataset.selected).toBe("true");
+  expect(app.navNodeIsSelected("all")).toBe(true);
 
   app.pressKeyGlobal("Escape");
   expect(app.exists("pinned-bar")).toBe(false);
@@ -179,11 +179,11 @@ test("dismissing the radius chip returns to the pre-probe scope, same as Escape"
 
   // Scope to the fx presenter, pin a row, then probe its wire — the chip's
   // dismiss must pop back to this scope exactly like Escape's radius branch.
-  app.clickElement(app.navNode("presenter:fx"));
+  app.clickNavNode("presenter:fx");
   app.pressKeyGlobal("ArrowUp");
   app.pressKeyGlobal("ArrowUp");
   app.pressKeyGlobal("ArrowUp");
-  app.clickTextMatching("wire ±100ms", "[data-testid='pinned-bar'] button");
+  app.clickWireProbeButton();
   expect(app.selectedNavScopeId()).toBe("all");
   expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
 
@@ -225,10 +225,8 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
   // target inside `[data-nav-tree]` — which the router must swallow ONLY
   // for the keys the tree itself owns (Arrow*/Enter). ArrowUp is one of
   // those, so it stays swallowed here.
-  const allNode = app.navNode("all");
-
-  app.focus(allNode);
-  app.pressKeyOn(allNode, "ArrowUp");
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "ArrowUp");
   expect(app.exists("pinned-bar")).toBe(false);
 
   app.pressKeyGlobal("ArrowUp");
@@ -237,8 +235,8 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
   // Every OTHER global shortcut stays live even while a tree node has focus
   // — the controller's amended focus model (§20.12): the tree owns only
   // Arrow*/Enter, `/`, `c` and `Escape` are global regardless of focus.
-  app.focus(allNode);
-  app.pressKeyOn(allNode, "c");
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "c");
   expect(app.timelineRowCount()).toBe(0);
   expect(app.exists("unclear-log")).toBe(true);
   app.click("unclear-log");
@@ -249,15 +247,13 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
   app.pressKeyGlobal("ArrowUp");
   expect(app.exists("pinned-bar")).toBe(true);
 
-  app.focus(allNode);
-  app.pressKeyOn(allNode, "Escape");
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "Escape");
   expect(app.exists("pinned-bar")).toBe(false);
 
-  app.focus(allNode);
-  app.pressKeyOn(allNode, "/");
-  expect(document.activeElement).toBe(
-    app.placeholderElement("Search scope… ( / )"),
-  );
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "/");
+  expect(app.searchHasFocus()).toBe(true);
 });
 
 test("ArrowDown steps forward, / focuses the scoped search, and keys typed in an input stay the input's", () => {
@@ -280,18 +276,15 @@ test("ArrowDown steps forward, / focuses the scoped search, and keys typed in an
   expect(app.pinnedEventSeq()).toBe("3");
 
   app.pressKeyGlobal("/");
-
-  const search = app.placeholderElement("Search scope… ( / )");
-
-  expect(document.activeElement).toBe(search);
+  expect(app.searchHasFocus()).toBe(true);
 
   // Typing inside the search box is the box's business, not the timeline's.
-  app.pressKeyOn(search, "ArrowUp");
+  app.pressKeyOnSearch("ArrowUp");
   expect(app.pinnedEventSeq()).toBe("3");
 
   // …except Escape, which blurs it without also resuming the timeline.
-  app.pressKeyOn(search, "Escape");
-  expect(document.activeElement).not.toBe(search);
+  app.pressKeyOnSearch("Escape");
+  expect(app.searchHasFocus()).toBe(false);
   expect(app.exists("pinned-bar")).toBe(true);
 });
 
@@ -372,13 +365,13 @@ test("show in All widens the scope around a hidden pin; an intent-history click 
 
   // Pin the fx row under All, then scope to the machines branch: the pin
   // survives but is out of view, so the bar offers the way back.
-  app.clickElement(app.pinButtonOfRow(1));
-  app.clickElement(app.navNode("machineKind:tileExecution"));
+  app.clickPinButtonOfRow(1);
+  app.clickNavNode("machineKind:tileExecution");
   app.click("show-in-all");
-  expect(app.navNode("all").dataset.selected).toBe("true");
+  expect(app.navNodeIsSelected("all")).toBe(true);
 
-  app.clickElement(app.expandCaretOf("machineKind:tileExecution"));
-  app.clickElement(app.navNode("machine:m1"));
+  app.clickExpandCaretOf("machineKind:tileExecution");
+  app.clickNavNode("machine:m1");
   app.click("context-tab-machine");
   app.click("intent-name");
   app.click("context-tab-event");
@@ -436,10 +429,10 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // Scope away from All first: the swap must reset the SCOPE too, not only
   // the pin — an imported recording has none of the live app's stores, so a
   // surviving `presenter:fx` would scope the timeline to nothing.
-  app.clickElement(app.navNode("presenter:fx"));
-  expect(app.navNode("presenter:fx").dataset.selected).toBe("true");
+  app.clickNavNode("presenter:fx");
+  expect(app.navNodeIsSelected("presenter:fx")).toBe(true);
 
-  app.clickElement(app.pinButtonOfRow(0));
+  app.clickPinButtonOfRow(0);
   expect(app.exists("pinned-bar")).toBe(true);
 
   // Clear (watermark = the live log's latest seq, 3) before importing: the
@@ -447,7 +440,7 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // clearedBeforeSeq watermark, or the imported recording's own low seqs
   // (a fresh per-hub counter, per LogRow.seq) are hidden by a watermark
   // left over from an entirely different log.
-  app.clickElement(app.navNode("all"));
+  app.clickNavNode("all");
   app.pressKeyGlobal("c");
   expect(app.exists("unclear-log")).toBe(true);
 
@@ -473,7 +466,7 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // still-mounted Unclear button on the CI coverage run (3× on 2026-08-30).
   await app.waitFor(() => {
     expect(app.exists("pinned-bar")).toBe(false);
-    expect(app.navNode("all").dataset.selected).toBe("true");
+    expect(app.navNodeIsSelected("all")).toBe(true);
     expect(app.exists("unclear-log")).toBe(false);
   });
   expect(app.timelineRowCount()).toBe(1);
@@ -491,7 +484,7 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // stuck hidden. Same later-tick watermark reset as above: inside the wait.
   await app.waitFor(() => {
     expect(app.exists("pinned-bar")).toBe(false);
-    expect(app.navNode("all").dataset.selected).toBe("true");
+    expect(app.navNodeIsSelected("all")).toBe(true);
     expect(app.exists("unclear-log")).toBe(false);
   });
   expect(app.timelineRowCount()).toBe(3);
@@ -564,7 +557,7 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
 
   expect(app.timelineRowCount()).toBe(1);
 
-  app.clickElement(app.pinButtonOfRow(0));
+  app.clickPinButtonOfRow(0);
   app.click("context-tab-state");
 
   expect(app.hasText("m-pre")).toBe(true);

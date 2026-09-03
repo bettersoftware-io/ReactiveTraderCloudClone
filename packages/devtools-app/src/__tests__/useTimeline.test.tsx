@@ -168,9 +168,11 @@ test("an empty timeline has nothing to clear and nowhere to step", () => {
 
   expect(tl.state.rows).toEqual([]);
 
-  tl.clear();
-  tl.selectPrev();
-  tl.selectNext();
+  tl.commit((model) => {
+    model.clear();
+    model.selectPrev();
+    model.selectNext();
+  });
 
   expect(tl.state.filter.clearedBeforeSeq).toBe(0);
   expect(tl.state.selection).toEqual({ mode: "follow" });

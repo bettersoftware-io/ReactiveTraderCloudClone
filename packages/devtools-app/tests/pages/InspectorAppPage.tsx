@@ -35,6 +35,11 @@ function mountElement(
   };
 }
 
+// The scoped-search box's placeholder is the one stable handle the spec
+// needs for it; centralized here so the two search-focused methods below
+// (and only they) know it.
+const SEARCH_PLACEHOLDER = "Search scope… ( / )";
+
 export interface InspectorAppPage {
   mount(store: InspectorStore): InspectorAppHandle;
   mountInStrictMode(store: InspectorStore): InspectorAppHandle;
@@ -46,30 +51,32 @@ export interface InspectorAppPage {
   hasText(text: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
   timelineRowCount(): number;
-  pinButtonOfRow(index: number): HTMLElement;
-  navNode(id: string): HTMLElement;
+  navNodeIsSelected(id: string): boolean;
+  navNodeText(id: string): string;
   selectedNavScopeId(): string | undefined;
-  expandCaretOf(id: string): HTMLElement;
   pinnedEventSeq(): string;
-  placeholderElement(text: string): HTMLElement;
+  searchHasFocus(): boolean;
   timelineRowsList(): HTMLElement;
   click(testId: string): void;
-  clickElement(element: HTMLElement): void;
-  clickText(text: string): void;
-  clickTextMatching(text: string, selector: string): void;
+  clickNavNode(id: string): void;
+  clickExpandCaretOf(id: string): void;
+  clickPinButtonOfRow(index: number): void;
+  clickWireProbeButton(): void;
   clickTitle(title: string): void;
-  focus(element: HTMLElement): void;
+  focusNavNode(id: string): void;
   pressKeyGlobal(key: string, modifiers?: KeyModifiers): void;
-  pressKeyOn(element: HTMLElement, key: string): void;
+  pressKeyOnNavNode(id: string, key: string): void;
+  pressKeyOnSearch(key: string): void;
   changeFile(testId: string, file: File): void;
   scroll(testId: string): void;
 }
 
 /** The framework surface for `InspectorApp.test.tsx` — the app's full
  * integration journey (keyboard shortcuts, mouse clicks, imports, scroll).
- * Kept close to the RTL/DOM primitives the journey actually drives (the
- * page's job here is to be the ONLY file naming them), with the tree's own
- * `nav-node` / `nav-node`-scoped lookups promoted to named queries. */
+ * Every method is named for the domain action it performs (a nav-tree node,
+ * the scoped search box, a timeline row's pin button, the wire-probe button
+ * inside the pinned bar) — no raw `HTMLElement`, CSS selector, or DOM query
+ * crosses back into the spec. */
 export function inspectorAppPage(): InspectorAppPage {
   function navNode(id: string): HTMLElement {
     const match = screen.getAllByTestId("nav-node").find((el) => {
@@ -81,6 +88,10 @@ export function inspectorAppPage(): InspectorAppPage {
     }
 
     return match;
+  }
+
+  function searchInput(): HTMLElement {
+    return screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
   }
 
   return {
@@ -132,27 +143,22 @@ export function inspectorAppPage(): InspectorAppPage {
     timelineRowCount(): number {
       return screen.queryAllByTestId("timeline-row").length;
     },
-    pinButtonOfRow(index: number): HTMLElement {
-      const row = screen.getAllByTestId("timeline-row")[index] as HTMLElement;
-
-      return row.querySelector("button") as HTMLElement;
+    navNodeIsSelected(id: string): boolean {
+      return navNode(id).dataset.selected === "true";
     },
-    navNode,
+    navNodeText(id: string): string {
+      return navNode(id).textContent ?? "";
+    },
     selectedNavScopeId(): string | undefined {
       return screen.getAllByTestId("nav-node").find((el) => {
         return el.dataset.selected === "true";
       })?.dataset.scopeId;
     },
-    expandCaretOf(id: string): HTMLElement {
-      return navNode(id).parentElement?.querySelector(
-        "[aria-label='Expand']",
-      ) as HTMLElement;
-    },
     pinnedEventSeq(): string {
       return screen.getByText("seq").nextElementSibling?.textContent ?? "";
     },
-    placeholderElement(text: string): HTMLElement {
-      return screen.getByPlaceholderText(text);
+    searchHasFocus(): boolean {
+      return document.activeElement === searchInput();
     },
     timelineRowsList(): HTMLElement {
       return screen.getByTestId("timeline-rows");
@@ -162,26 +168,46 @@ export function inspectorAppPage(): InspectorAppPage {
     click(testId: string): void {
       fireEvent.click(screen.getByTestId(testId));
     },
-    clickElement(element: HTMLElement): void {
-      fireEvent.click(element);
+    clickNavNode(id: string): void {
+      fireEvent.click(navNode(id));
     },
-    clickText(text: string): void {
-      fireEvent.click(screen.getByText(text));
+    clickExpandCaretOf(id: string): void {
+      const caret = navNode(id).parentElement?.querySelector(
+        "[aria-label='Expand']",
+      ) as HTMLElement;
+
+      fireEvent.click(caret);
     },
-    clickTextMatching(text: string, selector: string): void {
-      fireEvent.click(screen.getByText(text, { selector }));
+    clickPinButtonOfRow(index: number): void {
+      const row = screen.getAllByTestId("timeline-row")[index] as HTMLElement;
+      const button = row.querySelector("button") as HTMLElement;
+
+      fireEvent.click(button);
+    },
+    /** The "wire ±100ms" button rendered inside the pinned bar — the one
+     * spot the journey clicks a button scoped by an ancestor, not by its
+     * own testid. */
+    clickWireProbeButton(): void {
+      fireEvent.click(
+        screen.getByText("wire ±100ms", {
+          selector: "[data-testid='pinned-bar'] button",
+        }),
+      );
     },
     clickTitle(title: string): void {
       fireEvent.click(screen.getByTitle(title));
     },
-    focus(element: HTMLElement): void {
-      element.focus();
+    focusNavNode(id: string): void {
+      navNode(id).focus();
     },
     pressKeyGlobal(key: string, modifiers?: KeyModifiers): void {
       fireEvent.keyDown(window, { key, ...modifiers });
     },
-    pressKeyOn(element: HTMLElement, key: string): void {
-      fireEvent.keyDown(element, { key });
+    pressKeyOnNavNode(id: string, key: string): void {
+      fireEvent.keyDown(navNode(id), { key });
+    },
+    pressKeyOnSearch(key: string): void {
+      fireEvent.keyDown(searchInput(), { key });
     },
     changeFile(testId: string, file: File): void {
       fireEvent.change(screen.getByTestId(testId), {

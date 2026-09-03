@@ -15,14 +15,12 @@ test("clicking a row pins it and shows the pinned bar; Resume returns to follow"
 
   // The row itself is a non-interactive container; the pin target is its
   // first child button, which now covers the whole row's text.
-  const pinnedRowSeq = pane.rowSeq(0);
-
   pane.clickPinButtonOfRow(0);
   expect(pane.text("pinned-bar")).toContain("pinned at");
   // The bar's own `data-seq` names the pinned row independently of its
   // label text — this is what an e2e driver reads to know which row got
   // pinned without trusting the badge under test.
-  expect(pane.attr("pinned-bar", "data-seq")).toBe(pinnedRowSeq);
+  expect(pane.attr("pinned-bar", "data-seq")).toBe(pane.rowSeq(0));
 
   pane.clickText("Resume");
   expect(pane.exists("pinned-bar")).toBe(false);

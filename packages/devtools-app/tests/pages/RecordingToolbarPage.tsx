@@ -29,8 +29,7 @@ export interface RecordingToolbarPage {
   changeFiles(testId: string, files: File[]): void;
   exists(testId: string): boolean;
   text(testId: string): string;
-  waitUntilVisible(testId: string): Promise<void>;
-  waitUntilTextContains(testId: string, substring: string): Promise<void>;
+  waitFor(assertion: () => void): Promise<void>;
 }
 
 /** The framework surface for `RecordingToolbar.test.tsx`. */
@@ -82,26 +81,8 @@ export function recordingToolbarPage(): RecordingToolbarPage {
     text(testId: string): string {
       return screen.getByTestId(testId).textContent ?? "";
     },
-    async waitUntilVisible(testId: string): Promise<void> {
-      await waitFor(() => {
-        if (screen.queryByTestId(testId) == null) {
-          throw new Error(`${testId} not visible yet`);
-        }
-      });
-    },
-    async waitUntilTextContains(
-      testId: string,
-      substring: string,
-    ): Promise<void> {
-      await waitFor(() => {
-        const text = screen.getByTestId(testId).textContent ?? "";
-
-        if (!text.includes(substring)) {
-          throw new Error(
-            `expected ${testId} to contain "${substring}", got "${text}"`,
-          );
-        }
-      });
+    waitFor(assertion: () => void): Promise<void> {
+      return waitFor(assertion);
     },
   };
 }

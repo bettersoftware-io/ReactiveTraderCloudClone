@@ -29,6 +29,11 @@ export interface TimelineHookHandle {
   selectPrev(): void;
   selectNext(): void;
   setTailAttached(attached: boolean): void;
+  /** Flushes several actions against the SAME committed hook closure inside
+   * one `act()` — for a scenario that specifically exercises a batch of
+   * calls made together (as opposed to each action's own single-act()
+   * method above, which is a fresh post-flush closure per call). */
+  commit(effects: (model: TimelineModel) => void): void;
 }
 
 /** The framework surface for `useTimeline.test.tsx`. Mounts always drive the
@@ -96,6 +101,11 @@ export function mountTimeline(args: MountArgs): TimelineHookHandle {
     setTailAttached(attached: boolean): void {
       actOn(() => {
         result.current.setTailAttached(attached);
+      });
+    },
+    commit(effects: (model: TimelineModel) => void): void {
+      actOn(() => {
+        effects(result.current);
       });
     },
   };

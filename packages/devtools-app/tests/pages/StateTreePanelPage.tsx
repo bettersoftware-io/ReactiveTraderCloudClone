@@ -34,6 +34,7 @@ export function stateTreePanelPage(): StateTreePanelPage {
     },
     unmountAll(): void {
       cleanup();
+      lastRerender = null;
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;

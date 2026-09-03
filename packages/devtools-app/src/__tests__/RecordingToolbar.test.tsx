@@ -97,7 +97,9 @@ describe("RecordingToolbar", () => {
     });
     toolbar.changeFiles("import", [file]);
 
-    await toolbar.waitUntilVisible("import-error");
+    await toolbar.waitFor(() => {
+      expect(toolbar.exists("import-error")).toBe(true);
+    });
     expect(toolbar.exists("recording-banner")).toBe(false);
   });
 
@@ -112,7 +114,9 @@ describe("RecordingToolbar", () => {
 
     toolbar.changeFiles("import", [file]);
 
-    await toolbar.waitUntilTextContains("import-error", "read failed");
+    await toolbar.waitFor(() => {
+      expect(toolbar.text("import-error")).toContain("read failed");
+    });
   });
 
   it("imported state shows the banner and Back to live clears it", async () => {
@@ -125,7 +129,9 @@ describe("RecordingToolbar", () => {
     });
     toolbar.changeFiles("import", [file]);
 
-    await toolbar.waitUntilTextContains("recording-banner", "imported-app");
+    await toolbar.waitFor(() => {
+      expect(toolbar.text("recording-banner")).toContain("imported-app");
+    });
     expect(toolbar.exists("import-error")).toBe(false);
 
     toolbar.click("back-to-live");
