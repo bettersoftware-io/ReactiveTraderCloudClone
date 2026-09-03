@@ -7,11 +7,12 @@
  * reset — against a fixed, deterministic dialog rect and viewport so every
  * clamped offset below is an exact computed value, not a loose bound.
  */
-import { renderHook } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useDraggableDialog } from "./useDraggableDialog";
+import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
+
+const page = draggableDialogPage();
 
 const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
 const VIEWPORT = { width: 1000, height: 800 };
@@ -25,9 +26,7 @@ afterEach(() => {
 
 describe("useDraggableDialog", () => {
   it("starts centered with a zero offset", () => {
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open: alwaysOpen });
-    });
+    const result = page.mount({ open: alwaysOpen });
 
     expect(result.offset()).toEqual({ x: 0, y: 0 });
   });
@@ -35,9 +34,7 @@ describe("useDraggableDialog", () => {
   it("updates the offset on a pointer drag, clamped to the viewport", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open: alwaysOpen });
-    });
+    const result = page.mount({ open: alwaysOpen });
     result.dialogRef(stubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(
@@ -54,9 +51,7 @@ describe("useDraggableDialog", () => {
   it("clamps the offset to the exact travel range at the viewport edge", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open: alwaysOpen });
-    });
+    const result = page.mount({ open: alwaysOpen });
     result.dialogRef(stubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));
@@ -74,9 +69,7 @@ describe("useDraggableDialog", () => {
   it("ignores a pointerdown whose direct target carries data-nodrag", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open: alwaysOpen });
-    });
+    const result = page.mount({ open: alwaysOpen });
     result.dialogRef(stubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
@@ -97,9 +90,7 @@ describe("useDraggableDialog", () => {
   it("ignores a pointerdown originating on a descendant of a data-nodrag element", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open: alwaysOpen });
-    });
+    const result = page.mount({ open: alwaysOpen });
     result.dialogRef(stubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
@@ -123,9 +114,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const [open, setOpen] = createSignal(true);
-    const { result } = renderHook(() => {
-      return useDraggableDialog({ open });
-    });
+    const result = page.mount({ open });
     result.dialogRef(stubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));

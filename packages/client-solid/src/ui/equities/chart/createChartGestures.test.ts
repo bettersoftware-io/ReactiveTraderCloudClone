@@ -1,24 +1,21 @@
-import { render, renderHook } from "@solidjs/testing-library";
 import { batch, createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import type { EqDrawTool } from "@rtc/client-core";
 import type { DrawingGrip } from "@rtc/motion-core";
 
-import {
-  type ChartGestures,
-  createChartGestures,
-  type DrawGestureSlots,
-} from "./createChartGestures";
+import { chartGesturesPage } from "#tests/ui/pages/CreateChartGesturesPage";
+
+import type { DrawGestureSlots } from "./createChartGestures";
 
 const SERIES_LEN = 200;
 const DEFAULT_VISIBLE = 50;
 
+const page = chartGesturesPage();
+
 describe("createChartGestures", () => {
   it("starts with the newest defaultVisible candles in view", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     expect(result.viewport()).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
@@ -29,9 +26,7 @@ describe("createChartGestures", () => {
   });
 
   it("ArrowLeft pans the viewport left by 10% of its span", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
 
     result.plotProps.onKeyDown(keyEvent("ArrowLeft"));
@@ -45,9 +40,7 @@ describe("createChartGestures", () => {
   });
 
   it("ArrowRight pans the viewport right, clamped back to the live edge", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("ArrowRight"));
 
@@ -59,9 +52,7 @@ describe("createChartGestures", () => {
   });
 
   it("'+' zooms in: the span shrinks, still respecting the min-span clamp", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
     const beforeSpan = before.end - before.start;
 
@@ -74,9 +65,7 @@ describe("createChartGestures", () => {
   });
 
   it("'-' zooms out: the span grows", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
     const beforeSpan = before.end - before.start;
 
@@ -88,9 +77,7 @@ describe("createChartGestures", () => {
   });
 
   it("repeated zoom-in never shrinks the span below MIN_VIEWPORT_SPAN", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     for (let i = 0; i < 30; i++) {
       result.plotProps.onKeyDown(keyEvent("+"));
@@ -101,9 +88,7 @@ describe("createChartGestures", () => {
   });
 
   it("Home jumps the viewport to the start of the series, same span", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
     const span = before.end - before.start;
 
@@ -114,9 +99,7 @@ describe("createChartGestures", () => {
   });
 
   it("End (and resetToLive) restores the default live-edge viewport after panning away", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("ArrowLeft"));
     expect(result.atLiveEdge()).toBe(false);
@@ -131,9 +114,7 @@ describe("createChartGestures", () => {
   });
 
   it("resetToLive() is also directly callable (double-click wires to it)", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
     expect(result.atLiveEdge()).toBe(false);
@@ -144,9 +125,7 @@ describe("createChartGestures", () => {
   });
 
   it("an unhandled key is a no-op and does not preventDefault", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
     const event = keyEvent("a");
 
@@ -158,9 +137,8 @@ describe("createChartGestures", () => {
 
   it("series growth while at the live edge slides the window forward", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
-    const { result } = renderHook(() => {
-      return createChartGestures(seriesLen, fixedDefaultVisible);
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible);
 
     setSeriesLen(SERIES_LEN + 5);
 
@@ -173,9 +151,8 @@ describe("createChartGestures", () => {
 
   it("series growth while panned away holds the viewport still", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
-    const { result } = renderHook(() => {
-      return createChartGestures(seriesLen, fixedDefaultVisible);
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
     const panned = result.viewport();
@@ -197,9 +174,8 @@ describe("createChartGestures", () => {
     // since jsdom/testing-library component tests always mount with the
     // real series already in hand).
     const [seriesLen, setSeriesLen] = createSignal(0);
-    const { result } = renderHook(() => {
-      return createChartGestures(seriesLen, fixedDefaultVisible);
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible);
 
     setSeriesLen(SERIES_LEN);
 
@@ -219,13 +195,8 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        seriesLen,
-        fixedDefaultVisible,
-        firstCandleTime,
-      );
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
     const panned = result.viewport();
@@ -251,13 +222,8 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        seriesLen,
-        fixedDefaultVisible,
-        firstCandleTime,
-      );
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     batch(() => {
       setSeriesLen(SERIES_LEN + 300);
@@ -274,13 +240,8 @@ describe("createChartGestures", () => {
   it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
     const [firstCandleTime] = createSignal<number | undefined>(1_000_000);
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        seriesLen,
-        fixedDefaultVisible,
-        firstCandleTime,
-      );
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     setSeriesLen(SERIES_LEN + 5);
 
@@ -302,13 +263,8 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        seriesLen,
-        fixedDefaultVisible,
-        firstCandleTime,
-      );
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 50, clientY: 50 }));
 
@@ -335,9 +291,7 @@ describe("createChartGestures", () => {
   });
 
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const before = result.viewport();
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 50, clientY: 50 }));
@@ -354,9 +308,7 @@ describe("createChartGestures", () => {
   });
 
   it("pointerdown captures the pointer via setPointerCapture", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 7,
@@ -383,9 +335,7 @@ describe("createChartGestures", () => {
     // in a real browser (jsdom's synthetic events don't model capture
     // retargeting, so no jsdom test ever saw it break — only a real-browser
     // e2e run did).
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 9,
@@ -410,9 +360,7 @@ describe("createChartGestures", () => {
   });
 
   it("onPointerCancel clears an in-flight drag and releases capture (same as onPointerUp)", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
     const releasePointerCapture = vi.fn();
     const hasPointerCapture = vi.fn().mockReturnValue(true);
     const currentTarget = {
@@ -451,9 +399,7 @@ describe("createChartGestures", () => {
   });
 
   it("pointer move while NOT dragging sets the crosshair cursor fraction instead", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onPointerMove(pointerEvent({ clientX: 250, clientY: 25 }));
 
@@ -465,9 +411,7 @@ describe("createChartGestures", () => {
   });
 
   it("onPointerLeave clears the crosshair cursor", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onPointerMove(pointerEvent({ clientX: 250, clientY: 25 }));
     expect(result.cursor()).not.toBeNull();
@@ -478,9 +422,7 @@ describe("createChartGestures", () => {
   });
 
   it("onDblClick resets the viewport to the live edge", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
     expect(result.atLiveEdge()).toBe(false);
@@ -495,37 +437,25 @@ describe("createChartGestures", () => {
     // DOM node before onMount's wheel listener registers — the wheel
     // listener is a native addEventListener, not Solid's passive `on:wheel`,
     // so it only exists once mount has run against a populated ref.
-    const box: GesturesBox = { gestures: null };
-    const { getByTestId } = render(() => {
-      return ChartGesturesHarness((g) => {
-        box.gestures = g;
-      });
-    });
-    const el = getByTestId("plot");
-    stubPlotRect(el);
+    const harness = page.mountHarness(fixedSeriesLen, fixedDefaultVisible);
+    const before = harness.state.viewport();
+    const beforeSpan = before.end - before.start;
 
-    const before = box.gestures?.viewport();
-    expect(before).toBeDefined();
-
-    const event = wheelEvent({ deltaY: -100, clientX: 250 });
-    el.dispatchEvent(event);
-
-    const after = box.gestures?.viewport();
-    const afterSpan = after ? after.end - after.start : 0;
-    const beforeSpan = before ? before.end - before.start : 0;
-    expect(afterSpan).toBeLessThan(beforeSpan);
     // Guards the passive:false seam — a plain on:wheel binding would
     // register passively and preventDefault() there would be a silent no-op.
-    expect(event.defaultPrevented).toBe(true);
+    const defaultPrevented = harness.dispatchWheel(-100, 250);
+
+    const after = harness.state.viewport();
+    const afterSpan = after.end - after.start;
+    expect(afterSpan).toBeLessThan(beforeSpan);
+    expect(defaultPrevented).toBe(true);
   });
 
   it("applyViewport sets the viewport (clamped), the navigator brush's write path", () => {
     const frames = captureAnimationFrames();
 
     try {
-      const { result } = renderHook(() => {
-        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-      });
+      const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
       result.applyViewport({ start: 100, end: 150 });
       expect(result.viewport()).toEqual({ start: 100, end: 150 });
@@ -545,9 +475,7 @@ describe("createChartGestures", () => {
     const frames = captureAnimationFrames();
 
     try {
-      const { result } = renderHook(() => {
-        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-      });
+      const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
       result.plotProps.onPointerDown(
         pointerEvent({ clientX: 50, clientY: 50 }),
@@ -585,9 +513,7 @@ describe("createChartGestures", () => {
     const frames = captureAnimationFrames();
 
     try {
-      const { result } = renderHook(() => {
-        return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-      });
+      const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
       result.plotProps.onPointerDown(
         pointerEvent({ clientX: 50, clientY: 50 }),
@@ -616,21 +542,14 @@ describe("createChartGestures", () => {
   });
 
   it("wheel-down (deltaY > 0) zooms out", () => {
-    const box: GesturesBox = { gestures: null };
-    const { getByTestId } = render(() => {
-      return ChartGesturesHarness((g) => {
-        box.gestures = g;
-      });
-    });
-    const el = getByTestId("plot");
-    stubPlotRect(el);
-    const before = box.gestures?.viewport();
+    const harness = page.mountHarness(fixedSeriesLen, fixedDefaultVisible);
+    const before = harness.state.viewport();
 
-    el.dispatchEvent(wheelEvent({ deltaY: 100, clientX: 250 }));
+    harness.dispatchWheel(100, 250);
 
-    const after = box.gestures?.viewport();
-    const afterSpan = after ? after.end - after.start : 0;
-    const beforeSpan = before ? before.end - before.start : 0;
+    const after = harness.state.viewport();
+    const afterSpan = after.end - after.start;
+    const beforeSpan = before.end - before.start;
     expect(afterSpan).toBeGreaterThan(beforeSpan);
   });
 });
@@ -640,14 +559,12 @@ describe("createChartGestures — draw gesture fork", () => {
     const onCommitLevel = vi.fn();
     const setPointerCapture = vi.fn();
     const draw = drawSlots({ tool: "hline", onCommitLevel });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(
       pointerEvent({ clientX: 250, clientY: 25 }, { setPointerCapture }),
@@ -661,14 +578,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("trendline: pointer-down opens a draft with both anchors at the down point, and captures the pointer", () => {
     const setPointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline" });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(
       pointerEvent({ clientX: 100, clientY: 25 }, { setPointerCapture }),
@@ -681,14 +596,12 @@ describe("createChartGestures — draw gesture fork", () => {
 
   it("trendline: every move updates the draft's b anchor while the crosshair keeps tracking", () => {
     const draw = drawSlots({ tool: "trendline" });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     result.plotProps.onPointerMove(pointerEvent({ clientX: 200, clientY: 40 }));
@@ -710,14 +623,12 @@ describe("createChartGestures — draw gesture fork", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     result.plotProps.onPointerMove(pointerEvent({ clientX: 200, clientY: 25 }));
@@ -738,14 +649,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("trendline: pointer-up within CLICK_MAX_PX discards the draft without committing", () => {
     const onCommitLine = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     // ~2.24px excursion — within the 4px click threshold: a stray click,
@@ -760,14 +669,12 @@ describe("createChartGestures — draw gesture fork", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     result.plotProps.onPointerMove(pointerEvent({ clientX: 300, clientY: 25 }));
@@ -783,14 +690,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("Escape cancels an open trendline draft", () => {
     const onCommitLine = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     expect(result.draft()).not.toBeNull();
@@ -809,14 +714,12 @@ describe("createChartGestures — draw gesture fork", () => {
 
   it("Escape with no open draft is a no-op and does not preventDefault", () => {
     const draw = drawSlots({ tool: "cursor" });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const escapeKey = keyEvent("Escape");
 
     result.plotProps.onKeyDown(escapeKey);
@@ -827,14 +730,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("cursor: pointer-up within CLICK_MAX_PX of its pointer-down calls onPlotClick with the up point's fraction", () => {
     const onPlotClick = vi.fn();
     const draw = drawSlots({ tool: "cursor", onPlotClick });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 100, clientY: 25 }));
     result.plotProps.onPointerUp(pointerEvent({ clientX: 102, clientY: 26 }));
@@ -845,14 +746,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("cursor: a real drag beyond CLICK_MAX_PX pans as usual and does not call onPlotClick", () => {
     const onPlotClick = vi.fn();
     const draw = drawSlots({ tool: "cursor", onPlotClick });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const before = result.viewport();
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 50, clientY: 50 }));
@@ -866,14 +765,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("Delete calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", onDeleteKey });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const del = keyEvent("Delete");
 
     result.plotProps.onKeyDown(del);
@@ -885,14 +782,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("Backspace also calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", onDeleteKey });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onKeyDown(keyEvent("Backspace"));
 
@@ -902,14 +797,12 @@ describe("createChartGestures — draw gesture fork", () => {
   it("Delete is a no-op while a non-cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "trendline", onDeleteKey });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const del = keyEvent("Delete");
 
     result.plotProps.onKeyDown(del);
@@ -919,9 +812,7 @@ describe("createChartGestures — draw gesture fork", () => {
   });
 
   it("with no draw slots passed at all, the primitive behaves exactly as the drawing-free signature (no draft, no crash)", () => {
-    const { result } = renderHook(() => {
-      return createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-    });
+    const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
 
     expect(result.draft()).toBeNull();
 
@@ -942,14 +833,12 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const before = result.viewport();
 
     // (250, 25) of the 500x50 stub rect -> plot fraction (0.5, 0.5).
@@ -989,14 +878,12 @@ describe("editDrag (drag-edit fork)", () => {
       onPlotClick,
     });
 
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 250, clientY: 25 }));
     // 1px excursion — well within CLICK_MAX_PX (4px).
@@ -1019,14 +906,12 @@ describe("editDrag (drag-edit fork)", () => {
       onPlotClick,
     });
 
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 250, clientY: 25 }));
     result.plotProps.onPointerMove(pointerEvent({ clientX: 350, clientY: 15 }));
@@ -1049,14 +934,12 @@ describe("editDrag (drag-edit fork)", () => {
     const onCommitEdit = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 250, clientY: 25 }));
     result.plotProps.onPointerMove(pointerEvent({ clientX: 350, clientY: 15 }));
@@ -1077,14 +960,12 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(null);
     const onCommitEdit = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const before = result.viewport();
 
     // (250, 25) -> 0.5 xFrac.
@@ -1105,14 +986,12 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onDeleteKey });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 250, clientY: 25 }));
     expect(result.editDrag()).not.toBeNull();
@@ -1127,14 +1006,12 @@ describe("editDrag (drag-edit fork)", () => {
   it("hitGrip is only consulted when tool === 'cursor' (trendline tool pointer-down never calls it)", () => {
     const hitGrip = vi.fn();
     const draw = drawSlots({ tool: "trendline", hitGrip });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 250, clientY: 25 }));
 
@@ -1156,14 +1033,12 @@ describe("editDrag (drag-edit fork)", () => {
     const grip: DrawingGrip = { id: "d1", part: "b" };
     const hitGrip = vi.fn().mockReturnValue(grip);
     const draw = drawSlots({ tool: "cursor", hitGrip });
-    const { result } = renderHook(() => {
-      return createChartGestures(
-        fixedSeriesLen,
-        fixedDefaultVisible,
-        undefined,
-        draw,
-      );
-    });
+    const result = page.mount(
+      fixedSeriesLen,
+      fixedDefaultVisible,
+      undefined,
+      draw,
+    );
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 9,
@@ -1224,52 +1099,6 @@ function fixedSeriesLen(): number {
 
 function fixedDefaultVisible(): number {
   return DEFAULT_VISIBLE;
-}
-
-/** Stubs a 500×50 rect at the origin for the plot div, standing in for the
- * real layout jsdom never computes (getBoundingClientRect() is all-zeros by
- * default there). */
-function stubPlotRect(el: HTMLElement): void {
-  el.getBoundingClientRect = (): DOMRect => {
-    return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
-  };
-}
-
-interface WheelEventInit {
-  deltaY: number;
-  clientX: number;
-}
-
-type FakeWheelEvent = Event & WheelEventInit;
-
-function wheelEvent(init: WheelEventInit): FakeWheelEvent {
-  return Object.assign(new Event("wheel", { cancelable: true }), {
-    deltaY: init.deltaY,
-    clientX: init.clientX,
-  });
-}
-
-interface GesturesBox {
-  gestures: ChartGestures | null;
-}
-
-/** Minimal harness: builds the plot div for real (ref + gesture props) and
- * reports the live ChartGestures snapshot back out, so the wheel-effect
- * tests (which need a real DOM node under plotRef) can drive and assert
- * against it without a full CandleChart mount. A plain function returning a
- * DOM node — no JSX needed — is a valid Solid "component" for `render()`. */
-function ChartGesturesHarness(
-  onReady: (g: ChartGestures) => void,
-): HTMLElement {
-  const g = createChartGestures(fixedSeriesLen, fixedDefaultVisible);
-  onReady(g);
-
-  const el = document.createElement("div");
-  el.setAttribute("data-testid", "plot");
-  el.tabIndex = 0;
-  g.plotRef(el);
-
-  return el;
 }
 
 type FakeKeyboardEvent = KeyboardEvent & {

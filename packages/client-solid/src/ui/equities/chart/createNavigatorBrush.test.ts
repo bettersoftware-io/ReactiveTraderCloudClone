@@ -1,21 +1,20 @@
-import { renderHook } from "@solidjs/testing-library";
 import { batch, createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
-import { createNavigatorBrush } from "./createNavigatorBrush";
+import { navigatorBrushPage } from "#tests/ui/pages/CreateNavigatorBrushPage";
 
 const SERIES_LEN = 300;
 const VIEWPORT: ChartViewport = { start: 240, end: 300 };
 const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
 
+const page = navigatorBrushPage();
+
 describe("createNavigatorBrush", () => {
   it("dragging the window body pans the viewport WITH the pointer", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerDown(brushEvent("window", 450));
     // dx −50px of 500 → −0.1 × 300 = −30 candles, window follows the pointer left
@@ -26,9 +25,7 @@ describe("createNavigatorBrush", () => {
 
   it("dragging the right handle resizes only the end edge", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerDown(brushEvent("handle-right", 500));
     result.stripProps.onPointerMove(moveEvent(450));
@@ -38,9 +35,7 @@ describe("createNavigatorBrush", () => {
 
   it("dragging the left handle resizes only the start edge", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerDown(brushEvent("handle-left", 400));
     result.stripProps.onPointerMove(moveEvent(350));
@@ -50,9 +45,7 @@ describe("createNavigatorBrush", () => {
 
   it("a track pointerdown recentres the window immediately, then keeps dragging it", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     // 250 / 500 → idx 150 → centred {120, 180}
     result.stripProps.onPointerDown(brushEvent("track", 250));
@@ -65,9 +58,7 @@ describe("createNavigatorBrush", () => {
 
   it("moves recompute from the fixed drag origin, not cumulatively", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerDown(brushEvent("window", 450));
     result.stripProps.onPointerMove(moveEvent(400));
@@ -79,9 +70,7 @@ describe("createNavigatorBrush", () => {
 
   it("pointer moves without a prior pointerdown are ignored", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerMove(moveEvent(400));
 
@@ -90,9 +79,7 @@ describe("createNavigatorBrush", () => {
 
   it("pointerup ends the drag; pointercancel does the same (no phantom drag)", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     result.stripProps.onPointerDown(brushEvent("window", 450));
     result.stripProps.onPointerCancel(brushEvent("window", 450));
@@ -105,9 +92,7 @@ describe("createNavigatorBrush", () => {
 
   it("captures the pointer on pointerdown", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 1,
@@ -138,14 +123,13 @@ describe("createNavigatorBrush", () => {
       number | undefined
     >(1_000_000);
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(
-        fixedViewport,
-        applyViewport,
-        seriesLen,
-        firstCandleTime,
-      );
-    });
+    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
+    const result = page.mount(
+      fixedViewport,
+      applyViewport,
+      seriesLen,
+      firstCandleTime,
+    );
 
     result.stripProps.onPointerDown(brushEvent("window", 450));
 
@@ -174,9 +158,7 @@ describe("createNavigatorBrush", () => {
 
   it("endBrush ignores a pointerup with no active drag, or one for a different pointerId than the active drag", () => {
     const applyViewport = vi.fn();
-    const { result } = renderHook(() => {
-      return createNavigatorBrush(fixedViewport, applyViewport, fixedSeriesLen);
-    });
+    const result = page.mount(fixedViewport, applyViewport, fixedSeriesLen);
 
     // No prior pointerdown at all: brushOrigin is null — the up must be a
     // complete no-op, not just "didn't crash".

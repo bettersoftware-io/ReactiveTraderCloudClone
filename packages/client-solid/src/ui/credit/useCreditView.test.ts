@@ -1,14 +1,11 @@
-import { renderHook } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import { useCreditView } from "./useCreditView";
+import { renderCreditViewHook } from "#tests/ui/pages/UseCreditViewPage";
 
 describe("useCreditView", () => {
   it("throws when rendered outside a CreditViewProvider", () => {
     expect(() => {
-      renderHook(() => {
-        return useCreditView();
-      });
+      renderCreditViewHook();
     }).toThrow("useCreditView must be used within a CreditViewProvider");
   });
 });

@@ -416,10 +416,19 @@ export default tseslint.config(
     // client-react is migrated (Wave B, react half, of the
     // page-object-isolation plan): every co-located spec under
     // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
-    // tests/ui/pages/, so this package is held to error while client-solid
-    // (Wave B's solid half, a separate PR) still burns down through the warn
-    // block above.
+    // tests/ui/pages/, so this package is held to error.
     files: ["packages/client-react/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-solid is migrated (Wave B, solid half, of the
+    // page-object-isolation plan): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/ui/pages/ (ported from client-react's pages where the specs are
+    // ports of each other; App.test.tsx's page is solid-only), so this
+    // package is held to error too — the warn block above is now empty.
+    files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },

@@ -13,7 +13,6 @@
  * documented jsdom quirk uses for the react side), not the unprefixed
  * `animationend`, to match what the hook actually subscribes to.
  */
-import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it } from "vitest";
@@ -22,10 +21,14 @@ import type { DriveOutcome, JarvisDriverState } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
 import { ViewModelContext } from "@rtc/solid-bindings";
 
+import { jarvisDrivenPulsePage } from "#tests/ui/pages/UseJarvisDrivenPulsePage";
+
 import { useJarvisDrivenPulse } from "./useJarvisDrivenPulse";
 
+const page = jarvisDrivenPulsePage();
+
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("useJarvisDrivenPulse — descendant animationend guard", () => {
@@ -66,7 +69,7 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
       );
     }
 
-    render(() => {
+    page.mount(() => {
       return <TestApp />;
     });
 
@@ -75,17 +78,16 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
       { command: { kind: "switchTab", tab: "equities" }, status: "applied" },
     ]);
 
-    const wrapper = screen.getByTestId("wrapper");
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("true");
+    expect(page.wrapperDrivenAttr("wrapper")).toBe("true");
 
     // A descendant's own animationend (e.g. a tile's tick-flash) bubbles
     // through the wrapper — must be IGNORED, not clear the pulse.
-    webkitAnimationEnd(screen.getByTestId("descendant"));
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("true");
+    page.fireAnimationEnd("descendant");
+    expect(page.wrapperDrivenAttr("wrapper")).toBe("true");
 
     // The wrapper's OWN animationend (target === currentTarget) DOES clear it.
-    webkitAnimationEnd(wrapper);
-    expect(wrapper.getAttribute("data-jarvis-driven")).toBe("false");
+    page.fireAnimationEnd("wrapper");
+    expect(page.wrapperDrivenAttr("wrapper")).toBe("false");
   });
 });
 
@@ -126,7 +128,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      render(() => {
+      page.mount(() => {
         return <TestApp />;
       });
 
@@ -137,9 +139,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
         },
       ]);
 
-      expect(
-        screen.getByTestId("wrapper").getAttribute("data-jarvis-driven"),
-      ).toBe("false");
+      expect(page.wrapperDrivenAttr("wrapper")).toBe("false");
     } finally {
       window.matchMedia = original;
     }
@@ -164,11 +164,4 @@ function fakeViewModel(
       };
     },
   } as unknown as ViewModel;
-}
-
-function webkitAnimationEnd(el: Element): void {
-  fireEvent(
-    el,
-    new Event("webkitAnimationEnd", { bubbles: true, cancelable: false }),
-  );
 }
