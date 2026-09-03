@@ -173,6 +173,17 @@ separate runners.
 
 The `UiContractDriver` seam that lets the same specs run against `client-solid`'s Solid render target instead of React's is [§21 Mechanism 1 — the contract swap-trio](21-cross-framework-testing.md#mechanism-1--the-contract-swap-trio).
 
+### Page objects in the co-located tier
+
+The isolation rule stated for the contract and e2e tiers ("specs do not
+import React, RxJS, or Playwright internals") applies to the co-located
+`src/**` unit tier too, enforced by `rtc/no-framework-calls-in-specs`:
+specs call semantic methods on page modules under the package's
+`tests/**/pages/`; those modules are the only test files importing
+`@testing-library/*`. Rollout state and per-package backlog:
+[`docs/lint-warnings.md`](../lint-warnings.md). Design:
+[page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):

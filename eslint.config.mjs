@@ -8,6 +8,7 @@ import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
+import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -110,6 +111,7 @@ const rtcPlugin = {
     "no-render-functions": noRenderFunctions,
     "name-functions-by-effect": nameFunctionsByEffect,
     "name-jsx-handlers": nameJsxHandlers,
+    "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
   },
 };
 
@@ -368,6 +370,38 @@ export default tseslint.config(
     files: ["**/*.{spec,test}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
+  },
+  {
+    // Specs speak page objects; framework surface lives in the chokepoints
+    // ignored below. WARN while the backlog burns down through the
+    // lint-warnings ledger; each migrated package is flipped to error by a
+    // dedicated block (see the per-package blocks that follow this one).
+    // client-prototype is out of scope (abandoned reference port), and the
+    // bindings packages' renderHook specs stay out until a harness exists
+    // for them.
+    files: [
+      "packages/client-react/src/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react/tests/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-solid/src/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-solid/tests/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react-native/tests/**/*.{test,spec}.{ts,tsx}",
+      "packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}",
+    ],
+    ignores: [
+      "**/tests/**/pages/**",
+      "**/page-objects/**",
+      "**/harness/**",
+      "**/*.page.{ts,tsx}",
+      "**/tests/ui/contract/react/**",
+      "**/tests/ui/contract/solid/**",
+      "**/tests/ui/visual/**", // the visual specs ARE the driver layer (spec §Decisions 5)
+      "**/setup/**",
+      "**/*fixtures*",
+      "**/*.testHelpers.*",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "warn" },
   },
   {
     // JSX belongs in components: `render*`-named functions must not return JSX

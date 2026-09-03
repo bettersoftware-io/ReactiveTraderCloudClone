@@ -11,7 +11,829 @@
 > on unrelated edits); locate each warning by its file plus the identifier
 > named in the message.
 >
-> **Total: 0 warnings** across 0 rules, 0 files.
+> **Total: 1651 warnings** across 1 rule, 156 files.
 
-_No outstanding lint warnings. 🎉_
+## `rtc/no-framework-calls-in-specs` (1651)
+
+### packages/client-react-native/src/app/AppRoot.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/harnessProbe.test.tsx
+
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/_probe/MotionProbe.test.tsx
+
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/ambient/AmbientBackground.test.tsx
+
+- (×7) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/AnalyticsScreen.test.tsx
+
+- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/ExposureBubble.test.tsx
+
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/ExposureBubbles.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/PairPnlBar.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/PairPnlBars.test.tsx
+
+- (×17) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/PnlChart.test.tsx
+
+- (×7) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/analytics/PnlValue.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/AppearanceScreen.test.tsx
+
+- (×14) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×37) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/blotter/BlotterFilterBar.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/blotter/BlotterHeader.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/blotter/BlotterModule.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×13) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/blotter/TradeRow.test.tsx
+
+- (×12) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/blotter/useRowInsertFlash.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/ConnectionBanner.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/CreditNav.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/CreditScreen.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/newRfq/InstrumentChipGrid.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/newRfq/NewRfqForm.test.tsx
+
+- (×19) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×36) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/newRfq/QuantityChips.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/AcceptPulse.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/AwaitingLabel.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/QuoteCard.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×16) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/RfqCard.test.tsx
+
+- (×20) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/RfqCountdownRing.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/RfqFilterTabs.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/rfqTiles/RfqTilesPanel.test.tsx
+
+- (×4) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×13) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/sellSide/PriceStepper.test.tsx
+
+- (×4) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/credit/sellSide/SellSidePanel.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×19) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/blotters/BlottersView.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/blotters/OrdersBlotter.test.tsx
+
+- (×23) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/blotters/PositionsBlotter.test.tsx
+
+- (×13) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/EquitiesNav.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/EquitiesScreen.test.tsx
+
+- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/MarketsView.test.tsx
+
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/MoversBoard.test.tsx
+
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/MoversRow.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×12) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/RankByChips.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×10) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/RowSparkline.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/markets/useRankMoveGlide.test.tsx
+
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/SectionLabel.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/CandleChart.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/InstrumentCard.test.tsx
+
+- (×12) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/InstrumentTabs.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/OrderCeremony.test.tsx
+
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/OrderTicket.test.tsx
+
+- (×5) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×19) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/equities/trade/TradeView.test.tsx
+
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/RateFilterBar.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/RatesModule.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/SpotTile.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/ticket/BuySellPads.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/ticket/ExecutionCeremony.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/ticket/NotionalControl.test.tsx
+
+- (×4) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/ticket/TicketBackdrop.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/ticket/TradeTicketSheet.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/rates/useTickFlash.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/SegmentedControl.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/SegmentedPill.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×7) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/appearance/AppearanceButton.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/appearance/AppearanceOverlay.bottomSheetModalProviderRequirement.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/appearance/AppearanceOverlay.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/appearance/SheetSwitch.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/appearance/ThemeModePill.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×11) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/auth/AuthGate.test.tsx
+
+- (×6) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/auth/LoginScreen.test.tsx
+
+- (×4) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×7) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/auth/LogoutButton.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/BootCanvas.test.tsx
+
+- (×8) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/BootEmblem.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/BootGate.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/BootSequence.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×23) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/bootSceneFonts.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/CoreScene.test.tsx
+
+- (×7) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/DockingScene.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/GeoScene.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/HologramScene.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/JarvisScene.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.test.tsx
+
+- (×17) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/LayersScene.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/scenes/TopoScene.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/boot/useGyroDrift.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/HexReticleLogo.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/RadialCommandDock.test.tsx
+
+- (×5) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×16) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/ShellHeader.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/StatusStrip.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/useActiveModule.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/useShellMotionEnabled.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/hud/useShellTelemetry.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/lock/HoldToUnlockRing.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/lock/LockButton.test.tsx
+
+- Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/lock/LockEmblem.test.tsx
+
+- Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/lock/LockScreen.test.tsx
+
+- (×5) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×13) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/SurfaceCard.test.tsx
+
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/theme/fonts.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/src/ui/theme/ThemeProvider.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/tests/visual/fake/equities.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/tests/visual/reach/scenarioReach.test.tsx
+
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react-native/tests/visual/VisualScenarioHost.test.tsx
+
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react-native — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/admin/jarvis/JarvisUsageCard.test.tsx
+
+- (×10) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/credit/useCreditView.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/equities/chart/useChartGestures.test.ts
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/equities/chart/useNavigatorBrush.test.ts
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/equities/chart/useTickFlash.test.ts
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/fx/useFxView.test.ts
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/auth/wait/HandshakeConsole.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/auth/wait/ReactorRings.test.tsx
+
+- Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
+- Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×2) Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/auth/wait/ReactorWait.test.tsx
+
+- (×2) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/background/AmbientBackground.test.tsx
+
+- (×6) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/boot/BootSequence.test.tsx
+
+- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/jarvis/JarvisOverlay.driveRow.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/jarvis/useJarvisDrivenPulse.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/layout/dockview/__tests__/DockviewLayoutEngine.strictMode.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/layout/engine/__tests__/InhouseLayoutEngine.smoke.test.tsx
+
+- (×3) Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
+- (×13) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×44) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/layout/engine/__tests__/PanelErrorBoundary.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/modal/ModalShell.test.tsx
+
+- (×2) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/modal/useDraggableDialog.test.ts
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/motion/useFlipGrid.test.ts
+
+- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/prefs/PreferencesModal.test.tsx
+
+- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×18) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/status/JarvisStatusChip.test.tsx
+
+- (×5) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/status/useLiveMetrics.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-react/src/ui/shell/theme/useTheme.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/App.test.tsx
+
+- Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×31) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/credit/useCreditView.test.ts
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/equities/chart/createChartGestures.test.ts
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/equities/chart/createNavigatorBrush.test.ts
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/fx/useFxView.test.ts
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/auth/wait/HandshakeConsole.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/auth/wait/ReactorRings.test.tsx
+
+- Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×2) Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/auth/wait/ReactorWait.test.tsx
+
+- (×2) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- (×4) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/background/AmbientBackground.test.tsx
+
+- (×6) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/boot/BootSequence.test.tsx
+
+- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/jarvis/JarvisOverlay.driveRow.test.tsx
+
+- (×2) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/jarvis/useJarvisDrivenPulse.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/layout/engine/__tests__/InhouseLayoutEngine.smoke.test.tsx
+
+- (×5) Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
+- (×16) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×61) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/layout/engine/__tests__/PanelErrorBoundary.test.tsx
+
+- (×3) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/modal/useDraggableDialog.test.ts
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/motion/useFlipGrid.test.ts
+
+- Raw DOM traversal (querySelectorAll) belongs inside a page object, behind a semantically named method.
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/status/useLiveMetrics.test.tsx
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/client-solid/src/ui/shell/theme/useTheme.test.tsx
+
+- Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/ContextPane.test.tsx
+
+- (×7) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×30) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/DiffView.test.tsx
+
+- (×11) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/flash.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/InspectorApp.test.tsx
+
+- (×6) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×67) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×83) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/MachineTab.test.tsx
+
+- (×11) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×21) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/NavTree.test.tsx
+
+- (×2) Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
+- (×2) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×14) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×10) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/RecordingToolbar.test.tsx
+
+- (×8) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×15) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/StateTab.test.tsx
+
+- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/StateTreePanel.test.tsx
+
+- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/TimelinePane.test.tsx
+
+- (×3) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
+- (×14) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
+- (×31) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/useNavigation.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/useTimeline.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/__tests__/ValueView.test.tsx
+
+- (×33) Specs must not call screen.* — express this as a page-object method (what, not how).
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
+
+### packages/devtools-app/src/panels/__tests__/flash.test.tsx
+
+- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
 
