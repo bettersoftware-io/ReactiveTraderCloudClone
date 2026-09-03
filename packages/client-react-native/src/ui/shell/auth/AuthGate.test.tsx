@@ -1,94 +1,30 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { authGatePage } from "#tests/pages/AuthGatePage";
 
-import { AuthGate } from "#/ui/shell/auth/AuthGate";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = authGatePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("unauthenticated: renders LoginScreen, not the children", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("unauthenticated")}>
-      <AuthGate simulator={false} onToggleSimulator={noop}>
-        <Text testID="child-marker">child</Text>
-      </AuthGate>
-    </ViewModelProvider>,
-  );
+  await page.mount("unauthenticated");
 
-  expect(screen.getByTestId("login-screen")).toBeTruthy();
-  expect(screen.queryByTestId("child-marker")).toBeNull();
+  expect(page.exists("login-screen")).toBe(true);
+  expect(page.exists("child-marker")).toBe(false);
 });
 
 test("authenticating: renders LoginScreen, not the children", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("authenticating")}>
-      <AuthGate simulator={false} onToggleSimulator={noop}>
-        <Text testID="child-marker">child</Text>
-      </AuthGate>
-    </ViewModelProvider>,
-  );
+  await page.mount("authenticating");
 
-  expect(screen.getByTestId("login-screen")).toBeTruthy();
-  expect(screen.queryByTestId("child-marker")).toBeNull();
+  expect(page.exists("login-screen")).toBe(true);
+  expect(page.exists("child-marker")).toBe(false);
 });
 
 test("authenticated: renders the children, not LoginScreen", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("authenticated")}>
-      <AuthGate simulator={false} onToggleSimulator={noop}>
-        <Text testID="child-marker">child</Text>
-      </AuthGate>
-    </ViewModelProvider>,
-  );
+  await page.mount("authenticated");
 
-  expect(screen.getByTestId("child-marker")).toBeTruthy();
-  expect(screen.queryByTestId("login-screen")).toBeNull();
+  expect(page.exists("child-marker")).toBe(true);
+  expect(page.exists("login-screen")).toBe(false);
 });
-
-function noop(): undefined {
-  return undefined;
-}
-
-function fakeViewModel(
-  status: "unauthenticated" | "authenticating" | "authenticated",
-): ViewModel {
-  return {
-    useAuth: () => {
-      return {
-        state: {
-          status,
-          locked: false,
-          error: null,
-          user: null,
-        },
-        login: () => {
-          return undefined;
-        },
-        unlock: () => {
-          return undefined;
-        },
-        lock: () => {
-          return undefined;
-        },
-        logout: () => {
-          return undefined;
-        },
-      };
-    },
-    usePowerSaver: fakePowerSaver,
-  } as unknown as ViewModel;
-}
-
-interface FakePowerSaverResult {
-  isCalm: boolean;
-  isFreeze: boolean;
-}
-
-// LoginScreen mounts LockEmblem, whose orbit gating reads
-// usePowerSaver().isFreeze via useShellMotionEnabled; the fake ViewModel
-// needs the same stub LockScreen.test carries.
-function fakePowerSaver(): FakePowerSaverResult {
-  return { isCalm: false, isFreeze: false };
-}

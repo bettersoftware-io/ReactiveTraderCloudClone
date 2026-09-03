@@ -1,16 +1,8 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { JSX } from "react";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type LockUser, lockScreenPage } from "#tests/pages/LockScreenPage";
 
-import { LockScreen } from "#/ui/shell/lock/LockScreen";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { ThemeContext } from "#/ui/theme/ThemeContext";
-import { rnThemeTokens } from "#/ui/theme/tokens";
-
-const USER = {
+const USER: LockUser = {
   name: "Anthony Stark",
   initials: "AS",
   role: "Senior FX Trader",
@@ -20,76 +12,49 @@ const USER = {
   clearance: "LEVEL 4 · FULL",
 };
 
+const page = lockScreenPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("renders nothing when the session is unlocked", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(false, noop)}>
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.queryByTestId("lock-screen")).toBeNull();
+  await page.mount(false, noop, USER);
+  expect(page.exists("lock-screen")).toBe(false);
 });
 
 test("shows the operator's id · desk line, uppercased, when locked", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(true, noop)}>
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("lock-title")).toBeTruthy();
-  expect(screen.getByTestId("lock-emblem")).toBeTruthy();
-  expect(screen.getByTestId("lock-desk").props.children).toBe(
-    "TRD-0042 · G10 SPOT · LONDON",
-  );
+  await page.mount(true, noop, USER);
+  expect(page.exists("lock-title")).toBe(true);
+  expect(page.exists("lock-emblem")).toBe(true);
+  expect(page.textOf("lock-desk")).toBe("TRD-0042 · G10 SPOT · LONDON");
 });
 
 test("the ring's label reads HOLD TO UNLOCK at rest and AUTHENTICATING… while an unlock is in flight", async () => {
-  const { rerender } = await render(lockedTree(true, noop));
-  expect(screen.getByTestId("lock-hold-label").props.children).toBe(
-    "HOLD TO UNLOCK",
-  );
+  await page.mountLocked(true, noop, USER);
+  expect(page.textOf("lock-hold-label")).toBe("HOLD TO UNLOCK");
 
-  await rerender(lockedTree(true, noop, true));
-  expect(screen.getByTestId("lock-hold-label").props.children).toBe(
-    "AUTHENTICATING…",
-  );
+  await page.rerenderLocked(true, noop, USER, true);
+  expect(page.textOf("lock-hold-label")).toBe("AUTHENTICATING…");
 });
 
 test("AUTHENTICATE press calls unlock with the typed password", async () => {
   const unlock = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(true, unlock)}>
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  await fireEvent.changeText(
-    screen.getByTestId("lock-password"),
-    "correct-horse-battery-staple",
-  );
-  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  await page.mount(true, unlock, USER);
+  await page.typePassword("correct-horse-battery-staple");
+  await page.pressAuthenticate();
   expect(unlock).toHaveBeenCalledTimes(1);
   expect(unlock).toHaveBeenCalledWith("correct-horse-battery-staple");
 });
 
 test("renders the auth error when unlock fails", async () => {
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(true, noop, "Invalid credentials")}
-    >
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("lock-error").props.children).toBe(
-    "Invalid credentials",
-  );
+  await page.mount(true, noop, USER, "Invalid credentials");
+  expect(page.textOf("lock-error")).toBe("Invalid credentials");
 });
 
 test("renders nothing when locked but no user is present", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModelNoUser()}>
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.queryByTestId("lock-screen")).toBeNull();
+  await page.mount(true, noop, null);
+  expect(page.exists("lock-screen")).toBe(false);
 });
 
 test("fires the success haptic exactly once on unlock, and re-arms for a later lock", async () => {
@@ -97,17 +62,10 @@ test("fires the success haptic exactly once on unlock, and re-arms for a later l
   Haptics.notificationAsync.mockClear();
 
   const unlock = jest.fn();
-  // Renders with `lockedTree`'s own single `ThemeContext.Provider` from the
-  // start (not `renderWithTheme`, which would add a second, outer one) —
-  // `rerender` swaps in a whole new tree rather than reapplying the initial
-  // wrapper, so every render in this test must share one identical shape or
-  // React sees a type mismatch at the wrapper position and remounts
-  // `LockScreen` (silently resetting `wasLockedRef` — the once-guard this
-  // test exists to check).
-  const { rerender } = await render(lockedTree(true, unlock));
+  await page.mountLocked(true, unlock, USER);
   expect(Haptics.notificationAsync).not.toHaveBeenCalled();
 
-  await rerender(lockedTree(false, unlock));
+  await page.rerenderLocked(false, unlock, USER);
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   expect(Haptics.notificationAsync).toHaveBeenCalledWith(
     Haptics.NotificationFeedbackType.Success,
@@ -115,12 +73,12 @@ test("fires the success haptic exactly once on unlock, and re-arms for a later l
 
   // Re-render while still unlocked (a fresh but logically identical state) —
   // must NOT re-fire the once-guard.
-  await rerender(lockedTree(false, unlock));
+  await page.rerenderLocked(false, unlock, USER);
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
 
   // Lock again, then unlock again — the guard must re-arm for the next cycle.
-  await rerender(lockedTree(true, unlock));
-  await rerender(lockedTree(false, unlock));
+  await page.rerenderLocked(true, unlock, USER);
+  await page.rerenderLocked(false, unlock, USER);
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(2);
 });
 
@@ -129,112 +87,13 @@ test("a fresh submit after a wrong-password error calls unlock again", async () 
   // (Whether hold + tap double-fire for one interaction is deferred to the
   // on-device task — see LockScreen's header comment.)
   const unlock = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(true, unlock, "Invalid credentials")}
-    >
-      <LockScreen />
-    </ViewModelProvider>,
-  );
-  await fireEvent.changeText(screen.getByTestId("lock-password"), "again");
-  await fireEvent.press(screen.getByTestId("lock-authenticate"));
-  await fireEvent.press(screen.getByTestId("lock-authenticate"));
+  await page.mount(true, unlock, USER, "Invalid credentials");
+  await page.typePassword("again");
+  await page.pressAuthenticate();
+  await page.pressAuthenticate();
   expect(unlock).toHaveBeenCalledTimes(2);
   expect(unlock).toHaveBeenNthCalledWith(2, "again");
 });
-
-// `rerender` replaces the whole tree (it does not reapply `renderWithTheme`'s
-// initial wrapper), so every rerender in the haptic test above needs the
-// same `ThemeContext.Provider` + `ViewModelProvider` nesting spelled out
-// explicitly — matches `ExecutionCeremony.test.tsx`'s rerender pattern.
-function lockedTree(
-  locked: boolean,
-  unlock: (password: string) => void,
-  unlocking = false,
-): JSX.Element {
-  return (
-    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <ViewModelProvider
-        viewModel={fakeViewModel(locked, unlock, null, unlocking)}
-      >
-        <LockScreen />
-      </ViewModelProvider>
-    </ThemeContext.Provider>
-  );
-}
-
-function fakeViewModel(
-  locked: boolean,
-  unlock: (password: string) => void,
-  error: string | null = null,
-  unlocking = false,
-): ViewModel {
-  return {
-    useAuth: () => {
-      return {
-        state: {
-          status: "authenticated",
-          locked,
-          unlocking,
-          error,
-          user: USER,
-        },
-        login: () => {
-          return undefined;
-        },
-        unlock,
-        lock: () => {
-          return undefined;
-        },
-        logout: () => {
-          return undefined;
-        },
-      };
-    },
-    usePowerSaver: fakePowerSaver,
-  } as unknown as ViewModel;
-}
-
-function fakeViewModelNoUser(): ViewModel {
-  return {
-    useAuth: () => {
-      return {
-        state: {
-          status: "unauthenticated",
-          locked: true,
-          error: null,
-          user: null,
-        },
-        login: () => {
-          return undefined;
-        },
-        unlock: () => {
-          return undefined;
-        },
-        lock: () => {
-          return undefined;
-        },
-        logout: () => {
-          return undefined;
-        },
-      };
-    },
-    usePowerSaver: fakePowerSaver,
-  } as unknown as ViewModel;
-}
-
-interface FakePowerSaverResult {
-  isCalm: boolean;
-  isFreeze: boolean;
-}
-
-// useHoldToUnlock's motion gating reads usePowerSaver().isFreeze via
-// useShellMotionEnabled; every fake ViewModel above needs a stub so the hook
-// doesn't throw. Motion-disabled behaviour itself is covered directly in
-// useHoldToUnlock.test.tsx (mocking the sibling module), not here.
-function fakePowerSaver(): FakePowerSaverResult {
-  return { isCalm: false, isFreeze: false };
-}
 
 function noop(): undefined {
   return undefined;

@@ -27,6 +27,10 @@ module.exports = {
   coverageReporters: ["text-summary", "html", "lcov"],
   moduleNameMapper: {
     "^#/(.*)$": "<rootDir>/src/$1",
+    // Page-object modules for the co-located specs (page-object-isolation
+    // plan, Wave C) live under tests/pages/, not src/ — mirrors the "#/"
+    // mapping above, matching client-react's own "#tests/" precedent.
+    "^#tests/(.*)$": "<rootDir>/tests/$1",
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",

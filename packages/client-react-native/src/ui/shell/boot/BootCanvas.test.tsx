@@ -1,10 +1,9 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import * as Reanimated from "react-native-reanimated";
 import { useSharedValue } from "react-native-reanimated";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { bootCanvasPage } from "#tests/pages/BootCanvasPage";
 
 import { BootClockContext } from "./BootClockContext";
 import type { BootSceneProps } from "./bootScene";
@@ -18,33 +17,36 @@ const mockUseGyroDrift = jest.fn((_enabled: boolean) => {
 const mockSceneProps: SceneProbe = { current: null };
 const { BootCanvas } = require("./BootCanvas") as typeof import("./BootCanvas");
 
-afterEach(() => {
+const page = bootCanvasPage();
+
+afterEach(async () => {
+  await page.unmountAll();
   jest.restoreAllMocks();
   mockSceneProps.current = null;
 });
 
 // BootCanvas reads the theme (to thread into the scene, since Skia's Canvas is
 // a separate reconciler React Context can't cross) — so every render needs a
-// ThemeProvider, via renderWithTheme.
+// ThemeProvider, via `bootCanvasPage`'s `renderWithTheme`.
 test("renders nothing when boot motion is disabled, even for a covered variant", async () => {
   mockUseBootMotionEnabled.mockReturnValue(false);
-  await renderWithTheme(<BootCanvas variant="core" />);
-  expect(screen.queryByTestId("boot-canvas")).toBeNull();
-  expect(screen.queryByTestId("boot-scene-core")).toBeNull();
+  await page.mount(<BootCanvas variant="core" />);
+  expect(page.exists("boot-canvas")).toBe(false);
+  expect(page.exists("boot-scene-core")).toBe(false);
 });
 
 test("renders nothing for an unported variant, even when motion is enabled", async () => {
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await renderWithTheme(<BootCanvas variant="topo" />);
-  expect(screen.queryByTestId("boot-canvas")).toBeNull();
-  expect(screen.queryByTestId("boot-scene-core")).toBeNull();
+  await page.mount(<BootCanvas variant="topo" />);
+  expect(page.exists("boot-canvas")).toBe(false);
+  expect(page.exists("boot-scene-core")).toBe(false);
 });
 
 test("renders the canvas and scene for a covered variant when motion is enabled", async () => {
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await renderWithTheme(<BootCanvas variant="core" />);
-  expect(await screen.findByTestId("boot-canvas")).toBeTruthy();
-  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+  await page.mount(<BootCanvas variant="core" />);
+  expect(await page.awaitExists("boot-canvas")).toBe(true);
+  expect(await page.awaitExists("boot-scene-core")).toBe(true);
 });
 
 test("a BootClockContext pin drives the scene: pinned elapsedSec and now, frame clock never started, gyroscope never subscribed", async () => {
@@ -55,7 +57,7 @@ test("a BootClockContext pin drives the scene: pinned elapsedSec and now, frame 
     .mockReturnValue({ setActive, isActive: false, callbackId: -1 });
   const now = new Date(2026, 6, 27, 9, 41, 7);
   await mountPinned(2.52, now);
-  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+  expect(await page.awaitExists("boot-scene-core")).toBe(true);
   expect(mockSceneProps.current?.elapsedSec.value).toBe(2.52);
   expect(mockSceneProps.current?.now).toBe(now);
   expect(setActive).toHaveBeenCalledWith(false);
@@ -69,8 +71,8 @@ test("without a pin the live clock drives the scene: frame callback activated, g
   jest
     .spyOn(Reanimated, "useFrameCallback")
     .mockReturnValue({ setActive, isActive: false, callbackId: -1 });
-  await renderWithTheme(<BootCanvas variant="core" />);
-  expect(await screen.findByTestId("boot-scene-core")).toBeTruthy();
+  await page.mount(<BootCanvas variant="core" />);
+  expect(await page.awaitExists("boot-scene-core")).toBe(true);
   expect(mockSceneProps.current?.elapsedSec.value).toBe(0);
   expect(mockSceneProps.current?.now).toBeUndefined();
   expect(setActive).toHaveBeenCalledWith(true);
@@ -90,7 +92,7 @@ async function mountPinned(elapsedSec: number, now: Date): Promise<void> {
     );
   }
 
-  await renderWithTheme(<PinnedCanvas />);
+  await page.mount(<PinnedCanvas />);
 }
 
 /** Where the stub scene parks its last props for a test to read. */

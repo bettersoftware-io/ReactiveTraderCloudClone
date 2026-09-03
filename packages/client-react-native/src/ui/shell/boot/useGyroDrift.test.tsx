@@ -1,21 +1,23 @@
-import { beforeEach, expect, jest, test } from "@jest/globals";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 import { Gyroscope } from "expo-sensors";
 
-import { useGyroDrift } from "#/ui/shell/boot/useGyroDrift";
+import { gyroDriftPage } from "#tests/pages/UseGyroDriftPage";
 
 const mockedAddListener = jest.mocked(Gyroscope.addListener);
 const mockedIsAvailableAsync = jest.mocked(Gyroscope.isAvailableAsync);
+const page = gyroDriftPage();
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockedIsAvailableAsync.mockResolvedValue(false);
 });
 
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("does not subscribe while disabled", async () => {
-  await renderHook(() => {
-    return useGyroDrift(false);
-  });
+  await page.mount(false);
 
   expect(mockedIsAvailableAsync).not.toHaveBeenCalled();
   expect(mockedAddListener).not.toHaveBeenCalled();
@@ -24,11 +26,9 @@ test("does not subscribe while disabled", async () => {
 test("subscribes once enabled and the gyroscope is available", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  await renderHook(() => {
-    return useGyroDrift(true);
-  });
+  await page.mount(true);
 
-  await waitFor(() => {
+  await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
   });
 });
@@ -40,18 +40,16 @@ test("removes the listener on unmount", async () => {
     remove,
   } as ReturnType<typeof Gyroscope.addListener>);
 
-  const { unmount } = await renderHook(() => {
-    return useGyroDrift(true);
-  });
-  await waitFor(() => {
+  await page.mount(true);
+  await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
   });
 
-  await unmount();
+  await page.unmount();
 
   // Effect cleanup on unmount is not guaranteed synchronous under RNTL/React
   // 19 (see useMachine's queueMicrotask dispose note) — await it too.
-  await waitFor(() => {
+  await page.waitFor(() => {
     expect(remove).toHaveBeenCalledTimes(1);
   });
 });
@@ -59,28 +57,24 @@ test("removes the listener on unmount", async () => {
 test("an emitted sample moves the shared value off centre", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  const { result } = await renderHook(() => {
-    return useGyroDrift(true);
-  });
-  await waitFor(() => {
+  await page.mount(true);
+  await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
   });
 
-  expect(result.current.value).toEqual({ mx: 0, my: 0 });
+  expect(page.value.value).toEqual({ mx: 0, my: 0 });
 
   const listener = mockedAddListener.mock.calls[0]?.[0];
   listener?.({ x: 1, y: 1, z: 0, timestamp: 0 });
 
-  expect(result.current.value).not.toEqual({ mx: 0, my: 0 });
+  expect(page.value.value).not.toEqual({ mx: 0, my: 0 });
 });
 
 test("stays within -1..1 under a long run of large samples", async () => {
   mockedIsAvailableAsync.mockResolvedValue(true);
 
-  const { result } = await renderHook(() => {
-    return useGyroDrift(true);
-  });
-  await waitFor(() => {
+  await page.mount(true);
+  await page.waitFor(() => {
     expect(mockedAddListener).toHaveBeenCalledTimes(1);
   });
 
@@ -90,23 +84,21 @@ test("stays within -1..1 under a long run of large samples", async () => {
     listener?.({ x: 1000, y: -1000, z: 0, timestamp: i });
   }
 
-  expect(result.current.value.mx).toBeGreaterThanOrEqual(-1);
-  expect(result.current.value.mx).toBeLessThanOrEqual(1);
-  expect(result.current.value.my).toBeGreaterThanOrEqual(-1);
-  expect(result.current.value.my).toBeLessThanOrEqual(1);
+  expect(page.value.value.mx).toBeGreaterThanOrEqual(-1);
+  expect(page.value.value.mx).toBeLessThanOrEqual(1);
+  expect(page.value.value.my).toBeGreaterThanOrEqual(-1);
+  expect(page.value.value.my).toBeLessThanOrEqual(1);
 });
 
 test("an unavailable gyroscope leaves the value centred and never throws", async () => {
   mockedIsAvailableAsync.mockResolvedValue(false);
 
-  const { result } = await renderHook(() => {
-    return useGyroDrift(true);
-  });
+  await page.mount(true);
 
-  await waitFor(() => {
+  await page.waitFor(() => {
     expect(mockedIsAvailableAsync).toHaveBeenCalled();
   });
 
   expect(mockedAddListener).not.toHaveBeenCalled();
-  expect(result.current.value).toEqual({ mx: 0, my: 0 });
+  expect(page.value.value).toEqual({ mx: 0, my: 0 });
 });

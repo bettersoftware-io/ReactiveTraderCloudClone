@@ -1,19 +1,16 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { bootEmblemPage } from "#tests/pages/BootEmblemPage";
 
-import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = bootEmblemPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the emblem svg", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(false)}>
-      <BootEmblem />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-emblem")).toBeTruthy();
+  await page.mount(false);
+  expect(page.exists("boot-emblem")).toBe(true);
 });
 
 // T16: the pulse used to read `AccessibilityInfo.isReduceMotionEnabled()`
@@ -27,23 +24,6 @@ test("renders the emblem svg", async () => {
 // `BootGate` in T34). A device — or the pinned golden — is the only witness for
 // whether it visibly stops.
 test("still renders under freeze, with the motion gate reporting disabled", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(true)}>
-      <BootEmblem />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-emblem")).toBeTruthy();
+  await page.mount(true);
+  expect(page.exists("boot-emblem")).toBe(true);
 });
-
-/** The two seams `useBootMotionEnabled` reads. `isFreeze` is the one that
- * matters here; `forceBootAnimation` stays off so Freeze is decisive. */
-function fakeViewModel(isFreeze: boolean): ViewModel {
-  return {
-    usePowerSaver: () => {
-      return { isFreeze };
-    },
-    useForceBootAnimation: () => {
-      return { enabled: false };
-    },
-  } as unknown as ViewModel;
-}

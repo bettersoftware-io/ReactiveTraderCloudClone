@@ -9,6 +9,13 @@ export default defineConfig({
   resolve: {
     alias: {
       "#/": `${path.resolve(__dirname, "src")}/`,
+      // Page-object modules for the co-located specs (page-object-isolation
+      // plan, Wave C) live under tests/pages/, not src/ — mirrors the "#/"
+      // alias above and the parallel jest/tsconfig entries. No `.test.ts`
+      // spec imports one yet, but the alias must exist before the first one
+      // does (a missing entry here fails silently under vitest's resolver,
+      // not loudly).
+      "#tests/": `${path.resolve(__dirname, "tests")}/`,
     },
   },
   test: {
