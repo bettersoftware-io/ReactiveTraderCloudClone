@@ -15,6 +15,16 @@
 //   re-exporting a mount helper is the sanctioned path.
 // - Playwright's `page` — the Playwright tiers are governed by grep gates
 //   9–11 instead (this rule runs on the vitest/jest co-located tiers).
+// - `within(...).getByRole(...)` chains — only the named globals are matched,
+//   so a `within` call slips through the visitor; the import ban still
+//   catches the file (within must be imported from a banned package), which
+//   is why per-call coverage isn't needed.
+//
+// Known trade-off: BANNED_DOM_QUERY matches by method NAME regardless of
+// receiver, so a non-DOM object with a `.closest()`/`.querySelector()` method
+// would false-positive. Measured against the full baseline backlog
+// (156 files): every real hit is a genuine DOM query — revisit only if a
+// false positive actually appears.
 
 const BANNED_IMPORT = [
   /^@testing-library\//,
