@@ -282,7 +282,7 @@ const AURORA_WASH_DRIFT_PX = 48;
  * blob's nominal radii. Drawing the unit gradient at r=√2 reproduces that
  * reach; without it the wash measured ~3× too faint at the sampled
  * mid-falloff points of the reference shots. */
-const WASH_GRADIENT_REACH = Math.SQRT2;
+const WASH_GRADIENT_REACH: number = Math.SQRT2;
 
 /** One accent wash: a unit circle carrying the design's
  * `radial-gradient(ellipse at center, colour 0%, transparent 62%)`
@@ -307,7 +307,12 @@ function AuroraWashBlob({
 
   return (
     <Group transform={transform}>
-      <Circle cx={0} cy={0} r={WASH_GRADIENT_REACH} opacity={wash.opacity * aurora}>
+      <Circle
+        cx={0}
+        cy={0}
+        r={WASH_GRADIENT_REACH}
+        opacity={wash.opacity * aurora}
+      >
         <RadialGradient
           c={vec(0, 0)}
           r={WASH_GRADIENT_REACH}
