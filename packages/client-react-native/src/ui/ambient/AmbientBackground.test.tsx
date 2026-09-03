@@ -20,16 +20,16 @@ test("renders the canvas when the animated-background preference is on", async (
   expect(await screen.findByTestId("ambient-background")).toBeTruthy();
 });
 
-test("draws the aurora curtain group when ambientStyle is aurora and ambient is enabled", async () => {
+test("draws the aurora wash group when ambientStyle is aurora and ambient is enabled", async () => {
   await renderAmbient({ animatedBackground: true, ambientStyle: "aurora" });
-  expect(await screen.findByTestId("ambient-aurora-curtains")).toBeTruthy();
+  expect(await screen.findByTestId("ambient-aurora-wash")).toBeTruthy();
   expect(screen.queryByTestId("ambient-rays-blobs")).toBeNull();
 });
 
 test("draws the rays blobs group when ambientStyle is rays and ambient is enabled", async () => {
   await renderAmbient({ animatedBackground: true, ambientStyle: "rays" });
   expect(await screen.findByTestId("ambient-rays-blobs")).toBeTruthy();
-  expect(screen.queryByTestId("ambient-aurora-curtains")).toBeNull();
+  expect(screen.queryByTestId("ambient-aurora-wash")).toBeNull();
 });
 
 // The drift loop is the one piece of ambient motion Freeze did not reach

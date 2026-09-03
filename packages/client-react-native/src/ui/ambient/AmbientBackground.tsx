@@ -5,8 +5,7 @@ import {
   Circle,
   Group,
   Line,
-  LinearGradient,
-  Rect,
+  RadialGradient,
   vec,
 } from "@shopify/react-native-skia";
 import type { JSX, ReactNode } from "react";
@@ -35,11 +34,15 @@ import { useTheme } from "#/ui/theme/useTheme";
  * preference (`useAmbientStyle()`):
  *   - `"rays"` (`testID="ambient-rays-blobs"`) — the original layer: 3 soft
  *     blurred blobs in the active theme's accent colours.
- *   - `"aurora"` (`testID="ambient-aurora-curtains"`) — northern-lights
- *     curtains: 3 blurred vertical gradient bands on a FIXED palette (not
- *     theme-tinted, matching the web `AmbientBackground.module.css` aurora
- *     stops), approximating the web version's `repeating-linear-gradient` +
- *     CSS mask "comb" — see `AuroraCurtainBand` for the exact deviation.
+ *   - `"aurora"` (`testID="ambient-aurora-wash"`, the default) — the mobile
+ *     design's own ambient (dc.html:57-58): two theme-accent radial washes,
+ *     `accentPrimary` across the top and `accent2` rising from the bottom,
+ *     each an elliptical `radial-gradient(... 0%, transparent 62%)` at the
+ *     design's 0.13/0.10 opacities × the skin's `aurora`. This was 3 fixed
+ *     green/purple curtain bands (a port of the WEB client's aurora) until
+ *     2026-09-02 — near-invisible on dark skins and off-palette next to the
+ *     prototype, which is what the fidelity round's item 8 reported. The web
+ *     client keeps its curtains; this layer answers to the mobile prototype.
  * Both groups are gated by `useAmbientEnabled()` (the animated-background
  * preference ANDed with OS reduced-motion, unchanged by this style branch);
  * the whole component returns `null` when off, so no worklet or canvas
@@ -119,12 +122,12 @@ export function AmbientBackground(): JSX.Element | null {
           })}
         </TestGroup>
       ) : (
-        <TestGroup testID="ambient-aurora-curtains">
-          {auroraCurtainSpecs(width, height).map((band) => {
+        <TestGroup testID="ambient-aurora-wash">
+          {auroraWashSpecs(width, height, t).map((wash) => {
             return (
-              <AuroraCurtainBand
-                key={band.id}
-                band={band}
+              <AuroraWashBlob
+                key={wash.id}
+                wash={wash}
                 progress={progress}
                 aurora={t.aurora}
               />
@@ -247,161 +250,115 @@ function raysBlobSpecs(
   ];
 }
 
-interface AuroraCurtainBandSpec {
+interface AuroraWashSpec {
   readonly id: string;
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-  /** Vertical gradient stops, top→bottom, alpha already fading toward 0 by
-   * the last stop — this is what stands in for the web version's separate
-   * CSS `mask-image` fade (see `AuroraCurtainBand`'s doc comment). */
-  readonly colors: string[];
-  readonly positions: number[];
-  readonly blur: number;
-  /** Base opacity (pre-`t.aurora` multiply), in the same 0.2–0.3 range as
-   * the web layer opacities. */
+  /** Ellipse centre + radii, in canvas px (already scaled from the design's
+   * percentage geometry — see `auroraWashSpecs`). */
+  readonly cx: number;
+  readonly cy: number;
+  readonly rx: number;
+  readonly ry: number;
+  readonly color: string;
+  /** The design's per-wash opacity (0.13 top / 0.10 bottom), pre-`t.aurora`. */
   readonly opacity: number;
-  /** Sway direction relative to the shared `progress` value, same idea as
-   * `RaysBlobSpec.sign` — a per-band phase off the ONE shared animation. */
+  /** Drift phase off the ONE shared progress value — `RaysBlobSpec.sign`. */
   readonly sign: 1 | -1;
 }
 
-interface AuroraCurtainBandProps {
-  band: AuroraCurtainBandSpec;
+interface AuroraWashBlobProps {
+  wash: AuroraWashSpec;
   progress: SharedValue<number>;
   aurora: number;
 }
 
-const AURORA_SWAY_PX = 22;
-const AURORA_SKEW = 0.05;
+/** The design's washes translate ±~12% of the viewport over their 26/31s
+ * cycles (`kfAuroraA`/`B`); one shared 18s clock and a per-wash sign stand in
+ * for the two independent CSS clocks, same trade as the rays blobs. */
+const AURORA_WASH_DRIFT_PX = 48;
 
-/**
- * One aurora curtain band: a blurred vertical `<LinearGradient>`-filled
- * `<Rect>`.
- *
- * FALLBACK APPROXIMATION, not a faithful port: the web aurora curtains
- * (`client-react`'s `AmbientBackground.module.css`) use a
- * `repeating-linear-gradient` "comb" texture (many alternating colour/
- * transparent stops at fixed pixel offsets) clipped by a separate
- * `mask-image` linear gradient for the top→bottom fade, plus an arched
- * (bottom-rounded) silhouette. Skia's shader/mask primitives have no direct
- * analogue for a *repeating* gradient comb, and reproducing the CSS mask
- * exactly means an extra `<Mask>`/nested-`<Group>` layer per band. Rather
- * than risk an unverifiable faithful attempt (no simulator access in this
- * task), each band here is ONE smooth `<LinearGradient>` whose colour stops
- * already carry the fixed aurora palette (green/teal/sky or purple/magenta)
- * AND fade to fully transparent by the final stop — baking the "comb" down
- * to a soft multi-colour wash and the "mask" down directly into the
- * gradient's own alpha ramp. Layered with the other two bands (offset
- * position + opposite sway phase) this still reads as a distinct aurora
- * curtain; it just lacks the web version's fine internal banding. See
- * `AmbientBackground`'s top doc comment and the task-12 report for the
- * explicit call-out of this deviation.
- */
-function AuroraCurtainBand({
-  band,
+/** CSS `radial-gradient(ellipse at center, …)` sizes its 100% against the
+ * FARTHEST CORNER by default — √2× the half-size for a centre-anchored
+ * ellipse — so the design's `transparent 62%` stop reaches well past the
+ * blob's nominal radii. Drawing the unit gradient at r=√2 reproduces that
+ * reach; without it the wash measured ~3× too faint at the sampled
+ * mid-falloff points of the reference shots. */
+const WASH_GRADIENT_REACH: number = Math.SQRT2;
+
+/** One accent wash: a unit circle carrying the design's
+ * `radial-gradient(ellipse at center, colour 0%, transparent 62%)`
+ * (dc.html:57-58), scaled into its ellipse by the group transform so the
+ * gradient stays elliptical. The gradient's own alpha ramp does the
+ * softening — no `<Blur>` pass, so the layer stays one cheap draw. Drift is
+ * translate-only off the shared progress clock. */
+function AuroraWashBlob({
+  wash,
   progress,
   aurora,
-}: AuroraCurtainBandProps): JSX.Element {
+}: AuroraWashBlobProps): JSX.Element {
   const transform = useDerivedValue(() => {
-    const drift = band.sign * (progress.value - 0.5);
+    const drift = wash.sign * (progress.value - 0.5);
     return [
-      { translateX: drift * AURORA_SWAY_PX },
-      { skewX: drift * AURORA_SKEW },
+      { translateX: wash.cx + drift * AURORA_WASH_DRIFT_PX },
+      { translateY: wash.cy - drift * AURORA_WASH_DRIFT_PX * 0.5 },
+      { scaleX: wash.rx },
+      { scaleY: wash.ry },
     ];
   });
 
   return (
-    <Rect
-      x={band.x}
-      y={band.y}
-      width={band.width}
-      height={band.height}
-      opacity={band.opacity * aurora}
-      transform={transform}
-      origin={vec(band.x + band.width / 2, band.y)}
-    >
-      <LinearGradient
-        start={vec(band.x, band.y)}
-        end={vec(band.x, band.y + band.height)}
-        colors={band.colors}
-        positions={band.positions}
-      />
-      <Blur blur={band.blur} />
-    </Rect>
+    <Group transform={transform}>
+      <Circle
+        cx={0}
+        cy={0}
+        r={WASH_GRADIENT_REACH}
+        opacity={wash.opacity * aurora}
+      >
+        <RadialGradient
+          c={vec(0, 0)}
+          r={WASH_GRADIENT_REACH}
+          colors={[wash.color, `${wash.color}00`]}
+          positions={[0, 0.62]}
+        />
+      </Circle>
+    </Group>
   );
 }
 
-/**
- * Three curtain bands, each spanning wider than the viewport (so sway never
- * reveals a hard edge) and stacked toward the top of the canvas like the web
- * version's curtains. Fixed aurora palette (not theme-tinted, matching
- * `client-react`'s `AmbientBackground.module.css`): band 1 is green→teal→sky
- * (`#3dffab` / `#2dd4bf` / `#38bdf8`), band 2 is purple→magenta
- * (`#a855f7` / `#d946ef`), band 3 is a white→green highlight comb
- * stand-in — the same three colour families the web curtains cycle through.
- */
-function auroraCurtainSpecs(
+/** The design's two washes (dc.html:57-58), percentage geometry resolved to
+ * canvas px: `accentPrimary` as a 130%×60% ellipse whose centre sits 12% down
+ * (`left:-15%;top:-18%`), `accent2` as a 120%×55% ellipse centred 5.5% below
+ * the bottom edge (`left:-10%;bottom:-22%`). Both accent tokens are 6-digit
+ * hex on every skin, so the transparent stop is `colour + "00"`. */
+function auroraWashSpecs(
   width: number,
   height: number,
-): AuroraCurtainBandSpec[] {
+  t: RnTheme,
+): AuroraWashSpec[] {
   return [
     {
-      id: "aurora-curtain-1",
-      x: -width * 0.15,
-      y: -height * 0.05,
-      width: width * 1.3,
-      height: height * 0.5,
-      colors: [
-        "rgba(61,255,171,0.55)",
-        "rgba(45,212,191,0.32)",
-        "rgba(56,189,248,0.14)",
-        "rgba(56,189,248,0)",
-      ],
-      positions: [0, 0.35, 0.7, 1],
-      blur: 14,
-      opacity: 0.3,
+      id: "aurora-wash-top",
+      cx: width * 0.5,
+      cy: height * 0.12,
+      rx: width * 0.65,
+      ry: height * 0.3,
+      color: t.accentPrimary,
+      opacity: 0.13,
       sign: 1,
     },
     {
-      id: "aurora-curtain-2",
-      x: -width * 0.1,
-      y: -height * 0.02,
-      width: width * 1.2,
-      height: height * 0.42,
-      colors: [
-        "rgba(168,85,247,0.5)",
-        "rgba(217,70,239,0.28)",
-        "rgba(217,70,239,0.1)",
-        "rgba(217,70,239,0)",
-      ],
-      positions: [0, 0.4, 0.72, 1],
-      blur: 18,
-      opacity: 0.24,
+      id: "aurora-wash-bottom",
+      cx: width * 0.5,
+      cy: height * 0.945,
+      rx: width * 0.6,
+      ry: height * 0.275,
+      color: t.accent2,
+      opacity: 0.1,
       sign: -1,
-    },
-    {
-      id: "aurora-curtain-3",
-      x: width * 0.08,
-      y: height * 0.02,
-      width: width * 0.9,
-      height: height * 0.3,
-      colors: [
-        "rgba(255,255,255,0.28)",
-        "rgba(61,255,171,0.34)",
-        "rgba(61,255,171,0.1)",
-        "rgba(61,255,171,0)",
-      ],
-      positions: [0, 0.3, 0.65, 1],
-      blur: 10,
-      opacity: 0.22,
-      sign: 1,
     },
   ];
 }
 
-/** Evenly spaced HUD grid lines (vertical + horizontal) at `GRID_CELL_PX`
+/** Evenly spaced HUD grid/** Evenly spaced HUD grid lines (vertical + horizontal) at `GRID_CELL_PX`
  * spacing, in the theme's low-alpha `gridC` colour. */
 function gridLines(
   width: number,
