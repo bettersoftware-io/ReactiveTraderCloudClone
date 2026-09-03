@@ -17,7 +17,7 @@ interface ViewModelProviderProps {
  * value once instead of tracking it. */
 export function ViewModelProvider(props: ViewModelProviderProps): JSX.Element {
   return (
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+    // eslint-disable-next-line solid/reactivity -- Solid's Context.Provider reads its `value` prop exactly once, at creation (a documented Solid quirk, the one JSX position that is NOT reactive despite `props.viewModel` being a tracked getter, per the doc comment above); safe here because every call site (AppRoot, the contract-test render() helper, VisualScenario) constructs a fresh ViewModel and mounts a fresh ViewModelProvider around it — none re-renders an already-mounted Provider with a changed `viewModel` prop
     <ViewModelContext.Provider value={props.viewModel}>
       {props.children}
     </ViewModelContext.Provider>

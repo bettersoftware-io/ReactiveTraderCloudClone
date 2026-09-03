@@ -102,6 +102,9 @@ export function RfqsPanel(): JSX.Element {
   const matchingIds = createMemo((): number[] => {
     return rfqs()
       .filter((r) => {
+        // dismissed() is tracked only when reached: `&&` short-circuits it
+        // away for an rfq that already fails matchesFilter() — deliberate,
+        // since that rfq's inclusion can't depend on dismissed() either way.
         return matchesFilter(r.state, filter()) && !dismissed().has(r.id);
       })
       .map((r) => {
@@ -164,6 +167,12 @@ export function RfqsPanel(): JSX.Element {
 
     if (!reduced && matchingChanged && !filterChanged) {
       const allIdSet = new Set(currentAllIds);
+      // dismissed() here (and in renderedIdsNow's filter below) is tracked
+      // only for ids where evaluation reaches it — deliberate: this whole
+      // effect already reruns whenever matchingKey/allIdsKey/filter change,
+      // and dismissed() itself feeds matchingKey via the matchingIds memo
+      // above, so a dismissed() change that matters here has already been
+      // picked up by that transitive dependency by the time this runs.
       const dropped = [...prevMatching.ids].filter((id) => {
         return (
           !currentMatchingIdSet.has(id) &&
@@ -257,6 +266,11 @@ export function RfqsPanel(): JSX.Element {
 
     return rfqs()
       .filter((r) => {
+        // Both signal reads are tracked only when reached: `&&` skips
+        // exiting() once dismissed() is true, and `||` skips exiting() once
+        // matchesFilter() is true — deliberate, since a dismissed rfq is
+        // never rendered regardless of exiting(), and a filter-matching one
+        // is always rendered regardless of it either.
         return (
           !dismissed().has(r.id) &&
           (matchesFilter(r.state, currentFilter) || exiting().has(r.id))

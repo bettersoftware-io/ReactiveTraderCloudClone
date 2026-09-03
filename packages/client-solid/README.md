@@ -78,28 +78,45 @@ pnpm dev:solid:fs        # full stack: starts the WS server + this client togeth
 ## solid/reactivity and this port
 
 `eslint-plugin-solid`'s `reactivity` rule fires on reads of reactive values
-outside tracked scope. This port's remaining directives fall into exactly
-three sanctioned shapes:
+outside tracked scope. This port carries directives in both `src/` and
+`tests/`.
 
-- **Instance-constant setup reads** — safe because a component whose parent
-  keys its mount on the value (`<For>`/keyed `<Show>`) cannot see it change
-  without remounting; the justification names the remount key.
-- **Previous-emission seed reads** — a plain `let` baseline read once at
-  setup for a paired `createEffect`; safe because that effect re-derives its
-  own "previous" state from its own tracked reads on every run after the
-  first, never re-reading the seed source; the justification names that
-  tracked re-derivation.
-- **Same-tick tracked-scope hoists** — a read that IS tracked (Solid tracks
-  by dynamic execution scope, not lexical position) but is hoisted to a
-  local for reuse inside the same pass rather than re-evaluated in a nested
-  callback; safe because the read stays synchronous within that scope; the
-  justification names the enclosing tracked scope.
+**The rule:** every `solid/reactivity` disable must carry a justification
+naming its verified safety mechanism — inline, or `-- setup-scope read is
+correct (see doc comment above)` pointing at a real doc comment that names
+it (sanctioned for multi-disable clusters, e.g. `Tile`, `NumberFilter`, where
+repeating the same paragraph per line would be worse). A disable whose
+mechanism can't be located is a review defect.
 
-Two shapes that USED to be suppressed here are now structural and need no
-directive: props-callback event handlers are named wrappers
-(`rtc/name-jsx-handlers`), and reactive reads feeding rendered output are
-accessors/memos. A disable whose justification doesn't name its safety
-mechanism is a review defect. Unsuppressed warnings are ledgered in
+**Common mechanisms** actually in use (illustrative, not an exhaustive list —
+a new site may need a new one, as long as it's verified and named):
+
+- **Remount-keyed instance-constant reads** — a parent keys the mount on the
+  value (`<For>`/keyed `<Show>`), or remounts fresh every time the component
+  becomes visible (a boolean, non-keyed `<Show>`, e.g. `NumberFilter`), so
+  the value can't change under an already-mounted instance.
+- **One-time seeds re-derived by their paired tracked effect** — a plain
+  `let` baseline read once at setup so a `createEffect` has something to
+  diff its first run against; the effect re-derives its own "previous" state
+  from its own tracked reads on every run after that, never re-reading the
+  seed source.
+- **Hoists inside an already-tracked scope** — a read that IS tracked (Solid
+  tracks by dynamic execution scope, not lexical position) but is hoisted to
+  a local for reuse within the same synchronous pass instead of
+  re-evaluated in a nested callback.
+- **Deliberate snapshots where a live read would be a bug** — e.g.
+  `RfqCountdown`'s CSS custom properties: a live read would re-trigger the
+  CSS keyframe every tick, defeating the one-shot fill animation that's the
+  point.
+- **Immutable `readonly` domain fields** — a field the domain model never
+  mutates after creation (e.g. `Rfq.creationTimestamp`), safe independent of
+  whatever remount cadence its parent happens to use.
+
+Two shapes that USED to need a directive here no longer do: props-callback
+event handlers were previously suppressed and are now named wrappers
+(`rtc/name-jsx-handlers`), structural rather than disabled; reactive reads
+feeding rendered output were previously unsuppressed *ledgered* warnings, now
+converted to accessors/memos. Unsuppressed warnings are ledgered in
 [`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
 
 ## See also

@@ -17,7 +17,7 @@ import {
 } from "./pinnedFixtureLayoutPort";
 
 export function LayoutEngineHost(props: LayoutEngineHostProps): JSX.Element {
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+  // eslint-disable-next-line solid/reactivity -- props.pinnedFixture picks the LayoutPort fed into useMachine's factory below, which itself runs exactly once (Solid setup runs once, per useMachine's own doc comment); this test host is mounted fresh per contract test, never toggled on an existing instance
   const port: LayoutPort = props.pinnedFixture
     ? pinnedFixtureLayoutPort
     : createDefaultLayoutPort("fx");

@@ -73,8 +73,13 @@ export function FxBlotter(): JSX.Element {
   });
 
   // The CSV chip lives in FxBlotterHead; it calls exportCsv() from context,
-  // which invokes whatever handler was last registered here — bound to the
-  // current filtered/sorted rows.
+  // which invokes whatever handler was last registered here. This
+  // createEffect has ZERO tracked dependencies on purpose: processedTrades()
+  // is read only inside the registered closure below, never in the effect
+  // body itself, so the effect runs exactly once, at mount — an onMount in
+  // effect clothing. The registered closure reads processedTrades() live at
+  // click time instead, so the exported rows are always current without the
+  // effect ever re-registering the handler.
   createEffect(() => {
     setExportCsvHandler(() => {
       exportFxToCsv(processedTrades());
