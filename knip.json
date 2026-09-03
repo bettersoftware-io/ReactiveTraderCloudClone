@@ -28,7 +28,7 @@
     },
     "packages/devtools-app": {
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
-      "project": "src/**/*.{ts,tsx}"
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
     },
     "packages/devtools-relay": {
       "entry": ["src/index.ts", "src/bin.ts"],
