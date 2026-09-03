@@ -1,12 +1,15 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { InspectorState, MachineRow, StreamRow } from "@rtc/devtools-core";
 
 import { ALL_SCOPE } from "#/nav/scope";
-import { StateTab } from "#/timeline/StateTab";
+import { stateTabPage } from "#tests/pages/StateTabPage";
 
-afterEach(cleanup);
+const stateTab = stateTabPage();
+
+afterEach(() => {
+  stateTab.unmountAll();
+});
 
 // StateTreePanel's rows change-flash via WAAPI (panels/flash.ts); jsdom has
 // no real Element.animate, so stub it the same way ContextPane.test.tsx does.
@@ -21,18 +24,16 @@ test("presenter scope narrows State to that presenter's streams and keeps the se
     streams: [stream("fx.price$", 3), stream("blotter.trades$", 5)],
   });
 
-  render(
-    <StateTab
-      state={live}
-      presentState={live}
-      marked={false}
-      scope={{ kind: "presenter", presenter: "fx" }}
-    />,
-  );
+  stateTab.mountStateTab({
+    state: live,
+    presentState: live,
+    marked: false,
+    scope: { kind: "presenter", presenter: "fx" },
+  });
 
-  expect(screen.getByText("fx.price$")).toBeTruthy();
-  expect(screen.queryByText("blotter.trades$")).toBeNull();
-  expect(screen.getByPlaceholderText("Search state…")).toBeTruthy();
+  expect(stateTab.hasText("fx.price$")).toBe(true);
+  expect(stateTab.hasText("blotter.trades$")).toBe(false);
+  expect(stateTab.hasPlaceholder("Search state…")).toBe(true);
 });
 
 test("stream scope shows the single stream row without a search box", () => {
@@ -40,17 +41,15 @@ test("stream scope shows the single stream row without a search box", () => {
     streams: [stream("fx.price$", 3), stream("fx.spread$", 1)],
   });
 
-  render(
-    <StateTab
-      state={live}
-      presentState={live}
-      marked={false}
-      scope={{ kind: "stream", streamId: "fx.price$" }}
-    />,
-  );
+  stateTab.mountStateTab({
+    state: live,
+    presentState: live,
+    marked: false,
+    scope: { kind: "stream", streamId: "fx.price$" },
+  });
 
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
-  expect(screen.queryByPlaceholderText("Search state…")).toBeNull();
+  expect(stateTab.testIdCount("devtools-stream-row")).toBe(1);
+  expect(stateTab.hasPlaceholder("Search state…")).toBe(false);
 });
 
 test("machineKind scope lists only that kind's instances, marked ≠ live when the pinned state differs", () => {
@@ -68,18 +67,16 @@ test("machineKind scope lists only that kind's instances, marked ≠ live when t
     ],
   });
 
-  render(
-    <StateTab
-      state={pinned}
-      presentState={live}
-      marked={true}
-      scope={{ kind: "machineKind", machineKind: "tileExecution" }}
-    />,
-  );
+  stateTab.mountStateTab({
+    state: pinned,
+    presentState: live,
+    marked: true,
+    scope: { kind: "machineKind", machineKind: "tileExecution" },
+  });
 
-  expect(screen.getAllByTestId("devtools-machine-row").length).toBe(1);
-  expect(screen.queryByTestId("devtools-stream-row")).toBeNull();
-  expect(screen.getByText("≠ live")).toBeTruthy();
+  expect(stateTab.testIdCount("devtools-machine-row")).toBe(1);
+  expect(stateTab.testIdCount("devtools-stream-row")).toBe(0);
+  expect(stateTab.hasText("≠ live")).toBe(true);
 });
 
 test("machine scope renders the single machine's state via ValueView", () => {
@@ -90,17 +87,15 @@ test("machine scope renders the single machine's state via ValueView", () => {
     ],
   });
 
-  render(
-    <StateTab
-      state={live}
-      presentState={live}
-      marked={false}
-      scope={{ kind: "machine", machineId: "m2" }}
-    />,
-  );
+  stateTab.mountStateTab({
+    state: live,
+    presentState: live,
+    marked: false,
+    scope: { kind: "machine", machineId: "m2" },
+  });
 
-  expect(screen.getByText("Object(1)")).toBeTruthy();
-  expect(screen.getByText('"focused-machine-value"')).toBeTruthy();
+  expect(stateTab.hasText("Object(1)")).toBe(true);
+  expect(stateTab.hasText('"focused-machine-value"')).toBe(true);
 });
 
 test("the search matches a stream by id and by its serialized value", () => {
@@ -112,25 +107,21 @@ test("the search matches a stream by id and by its serialized value", () => {
     ],
   });
 
-  render(
-    <StateTab
-      state={live}
-      presentState={live}
-      marked={false}
-      scope={ALL_SCOPE}
-    />,
-  );
+  stateTab.mountStateTab({
+    state: live,
+    presentState: live,
+    marked: false,
+    scope: ALL_SCOPE,
+  });
 
-  const search = screen.getByPlaceholderText("Search state…");
+  stateTab.changeSearch("Search state…", "zzz");
+  expect(stateTab.testIdCount("devtools-stream-row")).toBe(0);
 
-  fireEvent.change(search, { target: { value: "zzz" } });
-  expect(screen.queryAllByTestId("devtools-stream-row")).toEqual([]);
+  stateTab.changeSearch("Search state…", "price");
+  expect(stateTab.testIdCount("devtools-stream-row")).toBe(1);
 
-  fireEvent.change(search, { target: { value: "price" } });
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
-
-  fireEvent.change(search, { target: { value: "eurusd" } });
-  expect(screen.getAllByTestId("devtools-stream-row").length).toBe(1);
+  stateTab.changeSearch("Search state…", "eurusd");
+  expect(stateTab.testIdCount("devtools-stream-row")).toBe(1);
 });
 
 interface InspectorStateFixture {

@@ -1,11 +1,14 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { StreamRow } from "@rtc/devtools-core";
 
-import { StateTreePanel } from "#/panels/StateTreePanel";
+import { stateTreePanelPage } from "#tests/pages/StateTreePanelPage";
 
-afterEach(cleanup);
+const panel = stateTreePanelPage();
+
+afterEach(() => {
+  panel.unmountAll();
+});
 
 beforeEach(() => {
   // jsdom lacks a real WAAPI; the change-flash effect calls element.animate().
@@ -20,25 +23,25 @@ test("groups streams from different presenters under separate sections", () => {
     streamRow({ streamId: 'priceStream.price$[["EURUSD"]]' }),
   ];
 
-  render(<StateTreePanel streams={streams} />);
+  panel.mountStateTreePanel({ streams });
 
-  expect(screen.getByText("blotter")).toBeTruthy();
-  expect(screen.getByText("priceStream")).toBeTruthy();
-  expect(screen.getByText("blotter.trades$")).toBeTruthy();
-  expect(screen.getByText('priceStream.price$[["EURUSD"]]')).toBeTruthy();
+  expect(panel.hasText("blotter")).toBe(true);
+  expect(panel.hasText("priceStream")).toBe(true);
+  expect(panel.hasText("blotter.trades$")).toBe(true);
+  expect(panel.hasText('priceStream.price$[["EURUSD"]]')).toBe(true);
 });
 
 test("re-renders the changed value when the underlying row updates", () => {
   const initial: StreamRow[] = [streamRow({ lastValue: 1, lastSeq: 1 })];
-  const { rerender } = render(<StateTreePanel streams={initial} />);
+  panel.mountStateTreePanel({ streams: initial });
 
-  expect(screen.getByText("1")).toBeTruthy();
+  expect(panel.hasText("1")).toBe(true);
 
   const updated: StreamRow[] = [streamRow({ lastValue: 2, lastSeq: 2 })];
-  rerender(<StateTreePanel streams={updated} />);
+  panel.rerenderWith({ streams: updated });
 
-  expect(screen.getByText("2")).toBeTruthy();
-  expect(screen.queryByText("1")).toBeNull();
+  expect(panel.hasText("2")).toBe(true);
+  expect(panel.hasText("1")).toBe(false);
 });
 
 test("shows a rate badge only when ratePerSec exceeds 0.5", () => {
@@ -47,10 +50,10 @@ test("shows a rate badge only when ratePerSec exceeds 0.5", () => {
     streamRow({ streamId: "b.y$", ratePerSec: 2.7 }),
   ];
 
-  render(<StateTreePanel streams={streams} />);
+  panel.mountStateTreePanel({ streams });
 
-  expect(screen.getByText("2.7/s")).toBeTruthy();
-  expect(screen.queryByText("0.1/s")).toBeNull();
+  expect(panel.hasText("2.7/s")).toBe(true);
+  expect(panel.hasText("0.1/s")).toBe(false);
 });
 
 function streamRow(overrides: Partial<StreamRow>): StreamRow {

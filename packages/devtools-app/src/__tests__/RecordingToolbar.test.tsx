@@ -1,30 +1,23 @@
 // @vitest-environment jsdom
 
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import type { ReactElement } from "react";
-import { useEffect, useMemo } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Recording } from "@rtc/devtools-core";
 import {
   InspectorStore,
-  LiveHistory,
   PROTOCOL_VERSION,
   RECORDING_VERSION,
   serializeRecording,
 } from "@rtc/devtools-core";
 
-import { RecordingToolbar } from "#/recording/RecordingToolbar";
 import type { RecordingModel } from "#/recording/useRecording";
-import { useRecording } from "#/recording/useRecording";
+import { recordingToolbarPage } from "#tests/pages/RecordingToolbarPage";
 
-afterEach(cleanup);
+const toolbar = recordingToolbarPage();
+
+afterEach(() => {
+  toolbar.unmountAll();
+});
 
 let createObjectURL: ReturnType<typeof vi.fn>;
 let revokeObjectURL: ReturnType<typeof vi.fn>;
@@ -46,24 +39,21 @@ afterEach(() => {
 describe("RecordingToolbar", () => {
   it("record -> stop enables Export capture", () => {
     const store = new InspectorStore();
-    mount({ store });
+    toolbar.mountRecordingToolbar({ store });
 
-    expect((screen.getByTestId("export") as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    expect(toolbar.isDisabled("export")).toBe(true);
 
-    fireEvent.click(screen.getByTestId("record-toggle")); // start
+    toolbar.click("record-toggle"); // start
     emitOne(store);
-    fireEvent.click(screen.getByTestId("record-toggle")); // stop
+    toolbar.click("record-toggle"); // stop
 
-    const exportButton = screen.getByTestId("export") as HTMLButtonElement;
-    expect(exportButton.disabled).toBe(false);
+    expect(toolbar.isDisabled("export")).toBe(false);
 
     const anchor = document.createElement("a");
     const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
     vi.spyOn(document, "createElement").mockReturnValue(anchor);
 
-    fireEvent.click(exportButton);
+    toolbar.click("export");
 
     // The download actually happened: a Blob URL was created and handed to
     // an anchor that got clicked and then revoked — not merely "didn't
@@ -77,19 +67,18 @@ describe("RecordingToolbar", () => {
 
   it("exportBuffer is always enabled once history has frames, and downloads the live window", () => {
     const store = new InspectorStore();
-    mount({ store });
+    toolbar.mountRecordingToolbar({ store });
 
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     emitOne(store);
 
-    const button = screen.getByTestId("export-buffer") as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
+    expect(toolbar.isDisabled("export-buffer")).toBe(false);
 
     const anchor = document.createElement("a");
     const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
     vi.spyOn(document, "createElement").mockReturnValue(anchor);
 
-    fireEvent.click(button);
+    toolbar.click("export-buffer");
 
     // exportBuffer downloads the current LiveHistory window regardless of
     // Record/Stop state — the same real download side effect as Export.
@@ -101,68 +90,58 @@ describe("RecordingToolbar", () => {
 
   it("import failure shows importError", async () => {
     const store = new InspectorStore();
-    mount({ store });
+    toolbar.mountRecordingToolbar({ store });
 
     const file = new File(["not json"], "bad.json", {
       type: "application/json",
     });
-    fireEvent.change(screen.getByTestId("import"), {
-      target: { files: [file] },
-    });
+    toolbar.changeFiles("import", [file]);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("import-error")).toBeTruthy();
+    await toolbar.waitFor(() => {
+      expect(toolbar.exists("import-error")).toBe(true);
     });
-    expect(screen.queryByTestId("recording-banner")).toBeNull();
+    expect(toolbar.exists("recording-banner")).toBe(false);
   });
 
   it("a File.text() rejection surfaces as importError, not an unhandled rejection", async () => {
     const store = new InspectorStore();
-    mount({ store });
+    toolbar.mountRecordingToolbar({ store });
 
     const file = new File(["irrelevant"], "r.json", {
       type: "application/json",
     });
     vi.spyOn(file, "text").mockRejectedValue(new Error("read failed"));
 
-    fireEvent.change(screen.getByTestId("import"), {
-      target: { files: [file] },
-    });
+    toolbar.changeFiles("import", [file]);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("import-error").textContent).toContain(
-        "read failed",
-      );
+    await toolbar.waitFor(() => {
+      expect(toolbar.text("import-error")).toContain("read failed");
     });
   });
 
   it("imported state shows the banner and Back to live clears it", async () => {
     const store = new InspectorStore();
-    mount({ store });
+    toolbar.mountRecordingToolbar({ store });
 
     const rec = sampleRecording();
     const file = new File([serializeRecording(rec)], "r.json", {
       type: "application/json",
     });
-    fireEvent.change(screen.getByTestId("import"), {
-      target: { files: [file] },
-    });
+    toolbar.changeFiles("import", [file]);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("recording-banner").textContent).toContain(
-        "imported-app",
-      );
+    await toolbar.waitFor(() => {
+      expect(toolbar.text("recording-banner")).toContain("imported-app");
     });
-    expect(screen.queryByTestId("import-error")).toBeNull();
+    expect(toolbar.exists("import-error")).toBe(false);
 
-    fireEvent.click(screen.getByTestId("back-to-live"));
-    expect(screen.queryByTestId("recording-banner")).toBeNull();
+    toolbar.click("back-to-live");
+    expect(toolbar.exists("recording-banner")).toBe(false);
   });
 
   it("stopping without a recorder in progress is a no-op", () => {
     const store = new InspectorStore();
     const captured: CapturedModel = { model: null };
-    mount({
+    toolbar.mountRecordingToolbar({
       store,
       captureModel: (model: RecordingModel) => {
         captured.model = model;
@@ -179,41 +158,6 @@ describe("RecordingToolbar", () => {
 
 interface CapturedModel {
   model: RecordingModel | null;
-}
-
-interface MountOptions {
-  store: InspectorStore;
-  appId?: string | null;
-  captureModel?: (model: RecordingModel) => void;
-}
-
-// Harness is nested inside mount() (not a module-top-level declaration), so
-// Biome's fast-refresh export-only-modules check — which only guards
-// top-level component declarations — doesn't apply, and a test file may not
-// export anything at all (lint/suspicious/noExportsInTest).
-function mount({ store, appId = "rtc-web", captureModel }: MountOptions): void {
-  // Wires `useRecording` + `RecordingToolbar` together the way `InspectorApp`
-  // does: an always-on `LiveHistory` fed by a `store.tap()` tee, passed into
-  // the hook alongside the store and appId.
-  function Harness(): ReactElement {
-    const history = useMemo((): LiveHistory => {
-      return new LiveHistory();
-    }, []);
-
-    useEffect((): (() => void) => {
-      return store.tap((msg) => {
-        history.record(msg);
-      });
-    }, [history]);
-
-    const model = useRecording(store, history, appId);
-
-    captureModel?.(model);
-
-    return <RecordingToolbar model={model} />;
-  }
-
-  render(<Harness />);
 }
 
 function emitOne(store: InspectorStore): void {

@@ -1,12 +1,3 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { StrictMode } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { AppToInspector, Recording } from "@rtc/devtools-core";
@@ -18,10 +9,14 @@ import {
   serializeRecording,
 } from "@rtc/devtools-core";
 
-import { InspectorApp } from "#/InspectorApp";
 import { formatLogTime } from "#/panels/formatLogTime";
+import { inspectorAppPage } from "#tests/pages/InspectorAppPage";
 
-afterEach(cleanup);
+const app = inspectorAppPage();
+
+afterEach(() => {
+  app.unmountAll();
+});
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -29,11 +24,9 @@ afterEach(() => {
 
 test("connection badge reads disconnected before any welcome arrives", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  expect(screen.getByTestId("connection-badge").textContent).toBe(
-    "disconnected",
-  );
+  expect(app.text("connection-badge")).toBe("disconnected");
 });
 
 test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the full journey", () => {
@@ -43,9 +36,9 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
   }) as unknown as typeof Element.prototype.animate;
 
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({
       kind: "snapshot",
@@ -88,75 +81,63 @@ test("tree scoping, pin/Escape, Machine tab, Clear, and the wire probe — the f
     });
   });
 
-  expect(screen.getByTestId("connection-badge").textContent).toBe("rtc-web");
-  expect(screen.getAllByTestId("timeline-row").length).toBe(5);
+  expect(app.text("connection-badge")).toBe("rtc-web");
+  expect(app.timelineRowCount()).toBe(5);
 
   // Scope to the fx presenter: only its emissions remain, State narrows.
-  fireEvent.click(navNode("presenter:fx"));
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
-  expect(screen.queryByTestId("devtools-machine-row")).toBeNull();
+  app.clickNavNode("presenter:fx");
+  expect(app.timelineRowCount()).toBe(3);
+  expect(app.exists("devtools-machine-row")).toBe(false);
 
   // Pin via keyboard from follow mode; State@seq differs from live.
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
-  fireEvent.click(screen.getByTestId("context-tab-state"));
-  expect(screen.getByText("≠ live")).toBeTruthy();
+  app.pressKeyGlobal("ArrowUp");
+  app.pressKeyGlobal("ArrowUp");
+  app.pressKeyGlobal("ArrowUp");
+  expect(app.exists("pinned-bar")).toBe(true);
+  app.click("context-tab-state");
+  expect(app.hasText("≠ live")).toBe(true);
 
   // Wire probe: scope jumps to All with a ±100ms radius; Esc restores fx.
-  fireEvent.click(
-    screen.getByText("wire ±100ms", {
-      selector: "[data-testid='pinned-bar'] button",
-    }),
-  );
-  expect(navNode("all").dataset.selected).toBe("true");
-  expect(
-    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
-  ).toBeTruthy();
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(navNode("presenter:fx").dataset.selected).toBe("true");
-  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
+  app.clickWireProbeButton();
+  expect(app.navNodeIsSelected("all")).toBe(true);
+  expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
+  app.pressKeyGlobal("Escape");
+  expect(app.navNodeIsSelected("presenter:fx")).toBe(true);
+  expect(app.hasTextMatching(/^±100ms @ /)).toBe(false);
+  expect(app.exists("pinned-bar")).toBe(true); // still pinned
 
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  app.pressKeyGlobal("Escape");
+  expect(app.exists("pinned-bar")).toBe(false);
 
   // Machines branch: the kind node scopes to machine rows; the Machine tab
   // appears for an instance.
-  fireEvent.click(navNode("machineKind:tileExecution"));
-  expect(screen.getAllByTestId("timeline-row").length).toBe(1);
-  expect(screen.getByTestId("devtools-machine-row").textContent).toContain(
-    "tileExecution",
-  );
-  fireEvent.click(
-    navNode("machineKind:tileExecution").parentElement?.querySelector(
-      "[aria-label='Expand']",
-    ) as HTMLElement,
-  );
-  fireEvent.click(navNode("machine:m1"));
-  fireEvent.click(screen.getByTestId("context-tab-machine"));
-  expect(screen.getByText("Intents (0)")).toBeTruthy();
+  app.clickNavNode("machineKind:tileExecution");
+  expect(app.timelineRowCount()).toBe(1);
+  expect(app.text("devtools-machine-row")).toContain("tileExecution");
+  app.clickExpandCaretOf("machineKind:tileExecution");
+  app.clickNavNode("machine:m1");
+  app.click("context-tab-machine");
+  expect(app.hasText("Intents (0)")).toBe(true);
 
   // Wire branch: State is unavailable.
-  fireEvent.click(navNode("msgType:PRICE"));
-  expect(screen.getByText("wire messages carry no state")).toBeTruthy();
+  app.clickNavNode("msgType:PRICE");
+  expect(app.hasText("wire messages carry no state")).toBe(true);
 
   // Clear (keyboard) empties every scope and zeroes the All badge; Unclear
   // restores.
-  fireEvent.click(navNode("all"));
-  fireEvent.keyDown(window, { key: "c" });
-  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
-  expect(navNode("all").textContent).toContain("0");
-  fireEvent.click(screen.getByTestId("unclear-log"));
-  expect(screen.getAllByTestId("timeline-row").length).toBe(5);
+  app.clickNavNode("all");
+  app.pressKeyGlobal("c");
+  expect(app.timelineRowCount()).toBe(0);
+  expect(app.navNodeText("all")).toContain("0");
+  app.click("unclear-log");
+  expect(app.timelineRowCount()).toBe(5);
 });
 
 test("wire probe from All strands no radius on Escape — pin survives, scope stays All", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -169,34 +150,25 @@ test("wire probe from All strands no radius on Escape — pin survives, scope st
   // ALL_SCOPE onto the already-current All scope is a no-op in
   // useNavigation (no history recorded), so `popScope()` alone can't be
   // trusted to signal "a radius is active".
-  const rows = screen.getAllByTestId("timeline-row");
-  const pinButton = (rows[0] as HTMLElement).querySelector("button");
+  app.clickPinButtonOfRow(0);
+  app.clickWireProbeButton();
+  expect(app.navNodeIsSelected("all")).toBe(true);
+  expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
 
-  fireEvent.click(pinButton as HTMLElement);
-  fireEvent.click(
-    screen.getByText("wire ±100ms", {
-      selector: "[data-testid='pinned-bar'] button",
-    }),
-  );
-  expect(navNode("all").dataset.selected).toBe("true");
-  expect(
-    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
-  ).toBeTruthy();
+  app.pressKeyGlobal("Escape");
+  expect(app.hasTextMatching(/^±100ms @ /)).toBe(false);
+  expect(app.exists("pinned-bar")).toBe(true); // still pinned
+  expect(app.navNodeIsSelected("all")).toBe(true);
 
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
-  expect(navNode("all").dataset.selected).toBe("true");
-
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  app.pressKeyGlobal("Escape");
+  expect(app.exists("pinned-bar")).toBe(false);
 });
 
 test("dismissing the radius chip returns to the pre-probe scope, same as Escape", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -207,37 +179,31 @@ test("dismissing the radius chip returns to the pre-probe scope, same as Escape"
 
   // Scope to the fx presenter, pin a row, then probe its wire — the chip's
   // dismiss must pop back to this scope exactly like Escape's radius branch.
-  fireEvent.click(navNode("presenter:fx"));
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  fireEvent.click(
-    screen.getByText("wire ±100ms", {
-      selector: "[data-testid='pinned-bar'] button",
-    }),
-  );
-  expect(selectedNavScopeId()).toBe("all");
-  expect(
-    screen.getByText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`),
-  ).toBeTruthy();
+  app.clickNavNode("presenter:fx");
+  app.pressKeyGlobal("ArrowUp");
+  app.pressKeyGlobal("ArrowUp");
+  app.pressKeyGlobal("ArrowUp");
+  app.clickWireProbeButton();
+  expect(app.selectedNavScopeId()).toBe("all");
+  expect(app.hasText(`±100ms @ ${formatLogTime(PROBED_ROW_TS)} ✕`)).toBe(true);
 
-  fireEvent.click(screen.getByTitle("Clear radius filter"));
-  expect(screen.queryByText(/^±100ms @ /)).toBeNull();
-  expect(selectedNavScopeId()).toBe("presenter:fx");
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy(); // still pinned
+  app.clickTitle("Clear radius filter");
+  expect(app.hasTextMatching(/^±100ms @ /)).toBe(false);
+  expect(app.selectedNavScopeId()).toBe("presenter:fx");
+  expect(app.exists("pinned-bar")).toBe(true); // still pinned
 
   // Nothing left to pop: Escape resumes the pin without moving the scope.
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(selectedNavScopeId()).toBe("presenter:fx");
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  app.pressKeyGlobal("Escape");
+  expect(app.selectedNavScopeId()).toBe("presenter:fx");
+  expect(app.exists("pinned-bar")).toBe(false);
 });
 
 test("shortcuts are ignored while the tree has focus, and the keydown listener is bound once", () => {
   const store = new InspectorStore({ coalesce: false });
   const addSpy = vi.spyOn(window, "addEventListener");
-  const { rerender } = render(<InspectorApp store={store} />);
+  const handle = app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -246,8 +212,8 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
     }
   });
 
-  rerender(<InspectorApp store={store} />);
-  rerender(<InspectorApp store={store} />);
+  handle.rerenderSame();
+  handle.rerenderSame();
   expect(
     addSpy.mock.calls.filter(([type]) => {
       return type === "keydown";
@@ -259,46 +225,42 @@ test("shortcuts are ignored while the tree has focus, and the keydown listener i
   // target inside `[data-nav-tree]` — which the router must swallow ONLY
   // for the keys the tree itself owns (Arrow*/Enter). ArrowUp is one of
   // those, so it stays swallowed here.
-  const allNode = navNode("all");
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "ArrowUp");
+  expect(app.exists("pinned-bar")).toBe(false);
 
-  allNode.focus();
-  fireEvent.keyDown(allNode, { key: "ArrowUp" });
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
-
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  app.pressKeyGlobal("ArrowUp");
+  expect(app.exists("pinned-bar")).toBe(true);
 
   // Every OTHER global shortcut stays live even while a tree node has focus
   // — the controller's amended focus model (§20.12): the tree owns only
   // Arrow*/Enter, `/`, `c` and `Escape` are global regardless of focus.
-  allNode.focus();
-  fireEvent.keyDown(allNode, { key: "c" });
-  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
-  expect(screen.getByTestId("unclear-log")).toBeTruthy();
-  fireEvent.click(screen.getByTestId("unclear-log"));
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "c");
+  expect(app.timelineRowCount()).toBe(0);
+  expect(app.exists("unclear-log")).toBe(true);
+  app.click("unclear-log");
 
   // Re-pin so Escape has a pin to resume from. This dispatches on `window`
   // (not a tree node) — ArrowUp IS one of the tree's own keys, so with the
   // tree focused it stays correctly swallowed, same as above.
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  app.pressKeyGlobal("ArrowUp");
+  expect(app.exists("pinned-bar")).toBe(true);
 
-  allNode.focus();
-  fireEvent.keyDown(allNode, { key: "Escape" });
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "Escape");
+  expect(app.exists("pinned-bar")).toBe(false);
 
-  allNode.focus();
-  fireEvent.keyDown(allNode, { key: "/" });
-  expect(document.activeElement).toBe(
-    screen.getByPlaceholderText("Search scope… ( / )"),
-  );
+  app.focusNavNode("all");
+  app.pressKeyOnNavNode("all", "/");
+  expect(app.searchHasFocus()).toBe(true);
 });
 
 test("ArrowDown steps forward, / focuses the scoped search, and keys typed in an input stay the input's", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -307,33 +269,30 @@ test("ArrowDown steps forward, / focuses the scoped search, and keys typed in an
     }
   });
 
-  fireEvent.keyDown(window, { key: "ArrowUp" }); // follow → the tail, seq 3
-  fireEvent.keyDown(window, { key: "ArrowUp" }); // seq 2
-  fireEvent.keyDown(window, { key: "ArrowDown" }); // back to seq 3
-  fireEvent.click(screen.getByTestId("context-tab-event"));
-  expect(pinnedEventSeq()).toBe("3");
+  app.pressKeyGlobal("ArrowUp"); // follow → the tail, seq 3
+  app.pressKeyGlobal("ArrowUp"); // seq 2
+  app.pressKeyGlobal("ArrowDown"); // back to seq 3
+  app.click("context-tab-event");
+  expect(app.pinnedEventSeq()).toBe("3");
 
-  fireEvent.keyDown(window, { key: "/" });
-
-  const search = screen.getByPlaceholderText("Search scope… ( / )");
-
-  expect(document.activeElement).toBe(search);
+  app.pressKeyGlobal("/");
+  expect(app.searchHasFocus()).toBe(true);
 
   // Typing inside the search box is the box's business, not the timeline's.
-  fireEvent.keyDown(search, { key: "ArrowUp" });
-  expect(pinnedEventSeq()).toBe("3");
+  app.pressKeyOnSearch("ArrowUp");
+  expect(app.pinnedEventSeq()).toBe("3");
 
   // …except Escape, which blurs it without also resuming the timeline.
-  fireEvent.keyDown(search, { key: "Escape" });
-  expect(document.activeElement).not.toBe(search);
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  app.pressKeyOnSearch("Escape");
+  expect(app.searchHasFocus()).toBe(false);
+  expect(app.exists("pinned-bar")).toBe(true);
 });
 
 test("Escape re-attaches a detached tail once nothing is scoped or pinned", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -344,7 +303,7 @@ test("Escape re-attaches a detached tail once nothing is scoped or pinned", () =
 
   // jsdom lays nothing out, so every element reads 0 tall and every scroll
   // looks like "at the bottom" — the detached state has to be staged.
-  const rows = screen.getByTestId("timeline-rows");
+  const rows = app.timelineRowsList();
 
   Object.defineProperty(rows, "scrollHeight", {
     value: 1000,
@@ -354,18 +313,18 @@ test("Escape re-attaches a detached tail once nothing is scoped or pinned", () =
     value: 100,
     configurable: true,
   });
-  fireEvent.scroll(rows);
-  expect(screen.getByTestId("live-chip")).toBeTruthy();
+  app.scroll("timeline-rows");
+  expect(app.exists("live-chip")).toBe(true);
 
-  fireEvent.keyDown(window, { key: "Escape" });
-  expect(screen.queryByTestId("live-chip")).toBeNull();
+  app.pressKeyGlobal("Escape");
+  expect(app.exists("live-chip")).toBe(false);
 });
 
 test("show in All widens the scope around a hidden pin; an intent-history click pins its own row", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({
       kind: "snapshot",
@@ -406,30 +365,24 @@ test("show in All widens the scope around a hidden pin; an intent-history click 
 
   // Pin the fx row under All, then scope to the machines branch: the pin
   // survives but is out of view, so the bar offers the way back.
-  const emissionRow = screen.getAllByTestId("timeline-row")[1] as HTMLElement;
+  app.clickPinButtonOfRow(1);
+  app.clickNavNode("machineKind:tileExecution");
+  app.click("show-in-all");
+  expect(app.navNodeIsSelected("all")).toBe(true);
 
-  fireEvent.click(emissionRow.querySelector("button") as HTMLElement);
-  fireEvent.click(navNode("machineKind:tileExecution"));
-  fireEvent.click(screen.getByTestId("show-in-all"));
-  expect(navNode("all").dataset.selected).toBe("true");
-
-  fireEvent.click(
-    navNode("machineKind:tileExecution").parentElement?.querySelector(
-      "[aria-label='Expand']",
-    ) as HTMLElement,
-  );
-  fireEvent.click(navNode("machine:m1"));
-  fireEvent.click(screen.getByTestId("context-tab-machine"));
-  fireEvent.click(screen.getByTestId("intent-name"));
-  fireEvent.click(screen.getByTestId("context-tab-event"));
-  expect(pinnedEventSeq()).toBe("1");
+  app.clickExpandCaretOf("machineKind:tileExecution");
+  app.clickNavNode("machine:m1");
+  app.click("context-tab-machine");
+  app.click("intent-name");
+  app.click("context-tab-event");
+  expect(app.pinnedEventSeq()).toBe("1");
 });
 
 test("a held modifier hands the keystroke back to the browser — Cmd/Ctrl+C never clears", () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -441,30 +394,30 @@ test("a held modifier hands the keystroke back to the browser — Cmd/Ctrl+C nev
   // `e.key` is plain "c" for Cmd+C too, and a text selection leaves focus on
   // <body> — so without the modifier guard, copying a value out of the panel
   // would wipe the timeline.
-  fireEvent.keyDown(window, { key: "c", metaKey: true });
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  app.pressKeyGlobal("c", { metaKey: true });
+  expect(app.timelineRowCount()).toBe(3);
+  expect(app.exists("unclear-log")).toBe(false);
 
-  fireEvent.keyDown(window, { key: "c", ctrlKey: true });
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  app.pressKeyGlobal("c", { ctrlKey: true });
+  expect(app.timelineRowCount()).toBe(3);
+  expect(app.exists("unclear-log")).toBe(false);
 
   // Cmd/Ctrl+ArrowUp is "scroll to top", not "step the selection".
-  fireEvent.keyDown(window, { key: "ArrowUp", ctrlKey: true });
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  app.pressKeyGlobal("ArrowUp", { ctrlKey: true });
+  expect(app.exists("pinned-bar")).toBe(false);
 
   // Unmodified, the same keys still act.
-  fireEvent.keyDown(window, { key: "ArrowUp" });
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
-  fireEvent.keyDown(window, { key: "c" });
-  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
+  app.pressKeyGlobal("ArrowUp");
+  expect(app.exists("pinned-bar")).toBe(true);
+  app.pressKeyGlobal("c");
+  expect(app.timelineRowCount()).toBe(0);
 });
 
 test("pinned selection resets when the datasource swaps (import lands, Back to live)", async () => {
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  act(() => {
+  app.commit(() => {
     store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc-web" });
     store.apply({ kind: "snapshot", streams: [], machines: [] });
 
@@ -476,34 +429,29 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // Scope away from All first: the swap must reset the SCOPE too, not only
   // the pin — an imported recording has none of the live app's stores, so a
   // surviving `presenter:fx` would scope the timeline to nothing.
-  fireEvent.click(navNode("presenter:fx"));
-  expect(navNode("presenter:fx").dataset.selected).toBe("true");
+  app.clickNavNode("presenter:fx");
+  expect(app.navNodeIsSelected("presenter:fx")).toBe(true);
 
-  const rows = screen.getAllByTestId("timeline-row");
-  const pinButton = (rows[0] as HTMLElement).querySelector("button");
-
-  fireEvent.click(pinButton as HTMLElement);
-  expect(screen.getByTestId("pinned-bar")).toBeTruthy();
+  app.clickPinButtonOfRow(0);
+  expect(app.exists("pinned-bar")).toBe(true);
 
   // Clear (watermark = the live log's latest seq, 3) before importing: the
   // datasource-swap effect resets pin/radius/scope but must ALSO reset the
   // clearedBeforeSeq watermark, or the imported recording's own low seqs
   // (a fresh per-hub counter, per LogRow.seq) are hidden by a watermark
   // left over from an entirely different log.
-  fireEvent.click(navNode("all"));
-  fireEvent.keyDown(window, { key: "c" });
-  expect(screen.getByTestId("unclear-log")).toBeTruthy();
+  app.clickNavNode("all");
+  app.pressKeyGlobal("c");
+  expect(app.exists("unclear-log")).toBe(true);
 
   const file = new File([serializeRecording(sampleRecording())], "r.json", {
     type: "application/json",
   });
 
-  fireEvent.change(screen.getByTestId("import"), {
-    target: { files: [file] },
-  });
+  app.changeFile("import", file);
 
-  await waitFor(() => {
-    expect(screen.getByTestId("recording-banner")).toBeTruthy();
+  await app.waitFor(() => {
+    expect(app.exists("recording-banner")).toBe(true);
   });
   // Importing swapped the datasource out from under the old pin — it must
   // not silently survive onto the imported timeline. The banner landing
@@ -516,16 +464,16 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // reset commits on its own tick after the pin/scope reset, so it sits
   // INSIDE the wait — asserted synchronously after it, this read a
   // still-mounted Unclear button on the CI coverage run (3× on 2026-08-30).
-  await waitFor(() => {
-    expect(screen.queryByTestId("pinned-bar")).toBeNull();
-    expect(navNode("all").dataset.selected).toBe("true");
-    expect(screen.queryByTestId("unclear-log")).toBeNull();
+  await app.waitFor(() => {
+    expect(app.exists("pinned-bar")).toBe(false);
+    expect(app.navNodeIsSelected("all")).toBe(true);
+    expect(app.exists("unclear-log")).toBe(false);
   });
-  expect(screen.getAllByTestId("timeline-row").length).toBe(1);
+  expect(app.timelineRowCount()).toBe(1);
 
-  fireEvent.click(screen.getByTestId("back-to-live"));
-  await waitFor(() => {
-    expect(screen.queryByTestId("recording-banner")).toBeNull();
+  app.click("back-to-live");
+  await app.waitFor(() => {
+    expect(app.exists("recording-banner")).toBe(false);
   });
   // Back to live is itself a datasource swap — still following, not stuck
   // on whatever seq the import last had pinned. Same passive-effect gap as
@@ -534,12 +482,12 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   // rows behind a watermark, which the swap back to live also resets (now
   // 0) — so all 3 live rows are visible again, not the pre-Clear state
   // stuck hidden. Same later-tick watermark reset as above: inside the wait.
-  await waitFor(() => {
-    expect(screen.queryByTestId("pinned-bar")).toBeNull();
-    expect(navNode("all").dataset.selected).toBe("true");
-    expect(screen.queryByTestId("unclear-log")).toBeNull();
+  await app.waitFor(() => {
+    expect(app.exists("pinned-bar")).toBe(false);
+    expect(app.navNodeIsSelected("all")).toBe(true);
+    expect(app.exists("unclear-log")).toBe(false);
   });
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+  expect(app.timelineRowCount()).toBe(3);
 });
 
 test("an imported recording names itself in the connection badge instead of 'disconnected'", async () => {
@@ -549,27 +497,21 @@ test("an imported recording names itself in the connection badge instead of 'dis
   }) as unknown as typeof Element.prototype.animate;
 
   const store = new InspectorStore({ coalesce: false });
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
   const file = new File([serializeRecording(sampleRecording())], "r.json", {
     type: "application/json",
   });
 
-  fireEvent.change(screen.getByTestId("import"), {
-    target: { files: [file] },
+  app.changeFile("import", file);
+
+  await app.waitFor(() => {
+    expect(app.text("connection-badge")).toBe("recording · imported-app");
   });
 
-  await waitFor(() => {
-    expect(screen.getByTestId("connection-badge").textContent).toBe(
-      "recording · imported-app",
-    );
-  });
-
-  fireEvent.click(screen.getByTestId("back-to-live"));
-  await waitFor(() => {
-    expect(screen.getByTestId("connection-badge").textContent).not.toBe(
-      "recording · imported-app",
-    );
+  app.click("back-to-live");
+  await app.waitFor(() => {
+    expect(app.text("connection-badge")).not.toBe("recording · imported-app");
   });
 });
 
@@ -593,11 +535,11 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
     ],
   });
 
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
   // A log row generated only after mount — its reconstructed state must
   // still carry the pre-mount machine if the seed worked.
-  act(() => {
+  app.commit(() => {
     store.apply({
       kind: "batch",
       events: [
@@ -613,26 +555,22 @@ test("liveHistory seeds pre-mount store state — a pinned row reconstructs a ma
     });
   });
 
-  const rows = screen.getAllByTestId("timeline-row");
+  expect(app.timelineRowCount()).toBe(1);
 
-  expect(rows.length).toBe(1);
+  app.clickPinButtonOfRow(0);
+  app.click("context-tab-state");
 
-  const pinButton = (rows[0] as HTMLElement).querySelector("button");
-
-  fireEvent.click(pinButton as HTMLElement);
-  fireEvent.click(screen.getByTestId("context-tab-state"));
-
-  expect(screen.getByText("m-pre")).toBeTruthy();
+  expect(app.hasText("m-pre")).toBe(true);
 });
 
 test("re-renders do not re-tap the store — liveHistory keeps its identity across renders", () => {
   const store = new InspectorStore({ coalesce: false });
   const tapSpy = vi.spyOn(store, "tap");
 
-  const { rerender } = render(<InspectorApp store={store} />);
+  const handle = app.mount(store);
 
-  rerender(<InspectorApp store={store} />);
-  rerender(<InspectorApp store={store} />);
+  handle.rerenderSame();
+  handle.rerenderSame();
 
   expect(tapSpy).toHaveBeenCalledTimes(1);
 });
@@ -641,11 +579,7 @@ test("re-renders inside React.StrictMode do not grow past its own double-invoke 
   const store = new InspectorStore({ coalesce: false });
   const tapSpy = vi.spyOn(store, "tap");
 
-  const { rerender } = render(
-    <StrictMode>
-      <InspectorApp store={store} />
-    </StrictMode>,
-  );
+  const handle = app.mountInStrictMode(store);
 
   // StrictMode's dev-only mount check (mount effect, synthetic cleanup,
   // re-mount effect against the same committed closure) always tees this
@@ -655,16 +589,8 @@ test("re-renders inside React.StrictMode do not grow past its own double-invoke 
   // re-render can hand the effect's dependency array a fresh liveHistory,
   // so the regression this guards against is the count climbing past the
   // StrictMode baseline as rerender() is called again.
-  rerender(
-    <StrictMode>
-      <InspectorApp store={store} />
-    </StrictMode>,
-  );
-  rerender(
-    <StrictMode>
-      <InspectorApp store={store} />
-    </StrictMode>,
-  );
+  handle.rerenderSame();
+  handle.rerenderSame();
 
   expect(tapSpy).toHaveBeenCalledTimes(2);
 });
@@ -695,9 +621,9 @@ test("liveHistory seeds from an exact store clone, not the coalesced live snapsh
   });
 
   const capture = stubDownloadCapture();
-  render(<InspectorApp store={store} />);
+  app.mount(store);
 
-  fireEvent.click(screen.getByTestId("export-buffer"));
+  app.click("export-buffer");
 
   // toRecording() always prepends an empty base snapshot ahead of the real
   // frames, so this looks for the frame carrying the stream rather than
@@ -747,35 +673,6 @@ function stubDownloadCapture(): DownloadCapture {
       return captured;
     },
   };
-}
-
-/** The Event tab's `seq` row — the cheapest witness of WHICH row is pinned.
- * Assumes the Event tab is already showing. */
-function pinnedEventSeq(): string {
-  return screen.getByText("seq").nextElementSibling?.textContent ?? "";
-}
-
-/** The tree's selectable rows all share one testid; `data-scope-id` is the
- * scope key, so this is "click the node for this scope". */
-function navNode(id: string): HTMLElement {
-  const match = screen.getAllByTestId("nav-node").find((el) => {
-    return el.dataset.scopeId === id;
-  });
-
-  if (match === undefined) {
-    throw new Error(`no nav-node ${id}`);
-  }
-
-  return match;
-}
-
-/** The currently-selected nav-node's own scope key — the same `data-scope-id`
- * `navNode` matches against, read back off whichever node carries
- * `data-selected="true"` instead of naming one up front. */
-function selectedNavScopeId(): string | undefined {
-  return screen.getAllByTestId("nav-node").find((el) => {
-    return el.dataset.selected === "true";
-  })?.dataset.scopeId;
 }
 
 function sampleRecording(): Recording {

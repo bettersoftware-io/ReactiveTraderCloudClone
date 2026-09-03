@@ -1,11 +1,3 @@
-import {
-  act,
-  cleanup,
-  createEvent,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
 import type { ReactElement } from "react";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -14,8 +6,13 @@ import type { NavNode } from "#/nav/buildNavTree";
 import { NavTree } from "#/nav/NavTree";
 import type { Scope } from "#/nav/scope";
 import { ALL_SCOPE, scopeKey } from "#/nav/scope";
+import { navTreePage } from "#tests/pages/NavTreePage";
 
-afterEach(cleanup);
+const tree = navTreePage();
+
+afterEach(() => {
+  tree.unmountAll();
+});
 
 let animateSpy: ReturnType<typeof vi.fn>;
 
@@ -32,18 +29,18 @@ test("renders roots expanded, groups collapsed; clicking a label selects; caret 
 
   // Group headers expanded by default → presenter nodes visible; presenter
   // collapsed by default → its streams hidden.
-  expect(node("presenter:blotter")).toBeTruthy();
-  expect(screen.queryByText("trades$")).toBeNull();
+  expect(tree.node("presenter:blotter")).toBeTruthy();
+  expect(tree.hasLabel("trades$")).toBe(false);
 
-  fireEvent.click(node("presenter:blotter"));
+  tree.click("presenter:blotter");
   expect(selected.at(-1)).toEqual({ kind: "presenter", presenter: "blotter" });
-  expect(node("presenter:blotter").dataset.selected).toBe("true");
-  expect(node("all").dataset.selected).toBe("false");
+  expect(tree.node("presenter:blotter").dataset.selected).toBe("true");
+  expect(tree.node("all").dataset.selected).toBe("false");
 
-  fireEvent.click(screen.getAllByLabelText("Expand")[0] as HTMLElement);
-  expect(node("stream:blotter.trades$")).toBeTruthy();
+  tree.clickExpandAt(0);
+  expect(tree.node("stream:blotter.trades$")).toBeTruthy();
 
-  fireEvent.click(node("stream:blotter.trades$"));
+  tree.click("stream:blotter.trades$");
   expect(selected.at(-1)).toEqual({
     kind: "stream",
     streamId: "blotter.trades$",
@@ -53,17 +50,11 @@ test("renders roots expanded, groups collapsed; clicking a label selects; caret 
 test("shows counts, the wire health detail, and dims disposed machines", () => {
   mount();
 
-  expect(node("all").textContent).toContain("7");
-  expect(
-    screen.getByText("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 0"),
-  ).toBeTruthy();
+  expect(tree.node("all").textContent).toContain("7");
+  expect(tree.hasLabel("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 0")).toBe(true);
 
-  fireEvent.click(screen.getAllByLabelText("Expand")[1] as HTMLElement); // tileExecution
-  expect(
-    node("machine:m2")
-      .closest("[data-disposed]")
-      ?.getAttribute("data-disposed"),
-  ).toBe("true");
+  tree.clickExpandAt(1); // tileExecution
+  expect(tree.isDisposed("machine:m2")).toBe(true);
 });
 
 test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands", () => {
@@ -74,30 +65,25 @@ test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands"
   // then dispatch every keydown on the FOCUSED element (never the
   // container) so the test proves the events actually bubble to
   // NavTree's onKeyDown rather than assuming it.
-  node("all").focus();
+  tree.focus("all");
 
   // First ArrowDown also proves the bubbled event reaches the handler's
   // e.preventDefault() call, not just its side effect.
-  const arrowDown = createEvent.keyDown(document.activeElement as HTMLElement, {
-    key: "ArrowDown",
-  });
+  expect(tree.pressKeyOnFocusedIsPrevented("ArrowDown")).toBe(true); // all → presenter:blotter
 
-  fireEvent(document.activeElement as HTMLElement, arrowDown); // all → presenter:blotter
-  expect(arrowDown.defaultPrevented).toBe(true);
+  tree.pressKeyOnFocused("ArrowRight"); // expand blotter
+  expect(tree.node("stream:blotter.trades$")).toBeTruthy();
 
-  pressKey("ArrowRight"); // expand blotter
-  expect(node("stream:blotter.trades$")).toBeTruthy();
-
-  pressKey("ArrowDown"); // → stream:blotter.activity$
-  pressKey("ArrowDown"); // → stream:blotter.trades$
-  pressKey("Enter");
+  tree.pressKeyOnFocused("ArrowDown"); // → stream:blotter.activity$
+  tree.pressKeyOnFocused("ArrowDown"); // → stream:blotter.trades$
+  tree.pressKeyOnFocused("Enter");
   expect(selected.at(-1)).toEqual({
     kind: "stream",
     streamId: "blotter.trades$",
   });
 
-  pressKey("ArrowUp"); // → stream:blotter.activity$
-  pressKey("Enter");
+  tree.pressKeyOnFocused("ArrowUp"); // → stream:blotter.activity$
+  tree.pressKeyOnFocused("Enter");
   expect(selected.at(-1)).toEqual({
     kind: "stream",
     streamId: "blotter.activity$",
@@ -122,44 +108,37 @@ test("collapsing: a header label closes its own group, a caret closes an open no
 
   // A header row carries no scope, so clicking its LABEL toggles the group
   // instead of selecting anything.
-  fireEvent.click(screen.getByText("Presenters"));
-  expect(scopeIds()).not.toContain("presenter:blotter");
+  tree.clickLabel("Presenters");
+  expect(tree.scopeIds()).not.toContain("presenter:blotter");
   expect(selected.length).toBe(0);
 
-  fireEvent.click(screen.getByText("Presenters"));
-  expect(scopeIds()).toContain("presenter:blotter");
+  tree.clickLabel("Presenters");
+  expect(tree.scopeIds()).toContain("presenter:blotter");
 
   // Caret open, caret closed — the delete half of the expansion toggle.
-  fireEvent.click(caretOf("presenter:blotter"));
-  expect(scopeIds()).toContain("stream:blotter.trades$");
-  fireEvent.click(caretOf("presenter:blotter"));
-  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+  tree.clickCaretOf("presenter:blotter");
+  expect(tree.scopeIds()).toContain("stream:blotter.trades$");
+  tree.clickCaretOf("presenter:blotter");
+  expect(tree.scopeIds()).not.toContain("stream:blotter.trades$");
 
-  node("all").focus();
-  pressKey("ArrowDown"); // cursor → presenter:blotter
-  pressKey("ArrowRight");
-  expect(scopeIds()).toContain("stream:blotter.trades$");
-  pressKey("ArrowLeft");
-  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+  tree.focus("all");
+  tree.pressKeyOnFocused("ArrowDown"); // cursor → presenter:blotter
+  tree.pressKeyOnFocused("ArrowRight");
+  expect(tree.scopeIds()).toContain("stream:blotter.trades$");
+  tree.pressKeyOnFocused("ArrowLeft");
+  expect(tree.scopeIds()).not.toContain("stream:blotter.trades$");
   // Already collapsed: a second ArrowLeft leaves the expansion set alone.
-  pressKey("ArrowLeft");
-  expect(scopeIds()).not.toContain("stream:blotter.trades$");
+  tree.pressKeyOnFocused("ArrowLeft");
+  expect(tree.scopeIds()).not.toContain("stream:blotter.trades$");
 });
 
 test("a scope-null disposed leaf (evicted machines) renders no caret and is not selectable", () => {
   const selected = mount();
 
-  expect(scopeIds()).not.toContain("machines:evicted");
+  expect(tree.scopeIds()).not.toContain("machines:evicted");
+  expect(tree.labelIsExpandable("Evicted (2)")).toBe(false);
 
-  const evictedLabel = screen.getByText("Evicted (2)");
-
-  expect(
-    evictedLabel
-      .closest("[data-depth]")
-      ?.querySelector("[aria-label='Expand'], [aria-label='Collapse']"),
-  ).toBeNull();
-
-  fireEvent.click(evictedLabel);
+  tree.clickLabel("Evicted (2)");
   expect(selected.length).toBe(0);
 });
 
@@ -175,13 +154,13 @@ test("clicking a node label re-syncs the keyboard cursor, not just the selection
   // because a click that CHANGES the selection always changes `selectedId`
   // too. It stays here as basic coverage of the derivation; the next test
   // covers the one case that actually depends on `onMoveCursorTo`.
-  fireEvent.click(node("presenter:blotter"));
-  node("presenter:blotter").focus();
+  tree.click("presenter:blotter");
+  tree.focus("presenter:blotter");
 
   // blotter is collapsed by default, so the next selectable node after it
   // is machineKind:tileExecution, not one of its own (hidden) streams.
-  pressKey("ArrowDown");
-  pressKey("Enter");
+  tree.pressKeyOnFocused("ArrowDown");
+  tree.pressKeyOnFocused("Enter");
 
   expect(selected.at(-1)).toEqual({
     kind: "machineKind",
@@ -194,28 +173,28 @@ test("clicking the already-selected node re-syncs a cursor the arrow keys had pa
 
   // Select blotter (X) — selectedId changes, so the render-time derivation
   // alone already snaps the cursor onto it (see the previous test).
-  fireEvent.click(node("presenter:blotter"));
-  node("presenter:blotter").focus();
+  tree.click("presenter:blotter");
+  tree.focus("presenter:blotter");
 
   // Arrow the cursor away to Y (machineKind:tileExecution) WITHOUT
   // changing the selection — blotter stays selected.
-  pressKey("ArrowDown");
+  tree.pressKeyOnFocused("ArrowDown");
 
   // Re-click the already-selected node X. selectedId does NOT change this
   // time, so the render-time derivation (`cursor.forSelection ===
   // selectedId`) is already satisfied and cannot re-sync anything by
   // itself — only the explicit `onMoveCursorTo(node.id)` call inside
   // `selectThisNode` (NavTree.tsx) parks the cursor back on X.
-  fireEvent.click(node("presenter:blotter"));
-  node("presenter:blotter").focus();
+  tree.click("presenter:blotter");
+  tree.focus("presenter:blotter");
 
   // With the cursor back on X, the next ArrowDown steps to X's own next
   // sibling in the selectable list — machineKind:tileExecution. Without
   // `onMoveCursorTo`, the cursor would still be parked on Y
   // (machineKind:tileExecution) and ArrowDown would instead step PAST it,
   // landing on wire — proving the click did nothing.
-  pressKey("ArrowDown");
-  pressKey("Enter");
+  tree.pressKeyOnFocused("ArrowDown");
+  tree.pressKeyOnFocused("Enter");
 
   expect(selected.at(-1)).toEqual({
     kind: "machineKind",
@@ -229,55 +208,22 @@ test("a scope change from outside the tree moves the keyboard cursor to the new 
   // A button OUTSIDE the tree drives the scope change — the way a probe
   // push/pop, Esc, or "show in All" does — never through a click inside
   // NavTree itself.
-  fireEvent.click(screen.getByTestId("external-select-blotter"));
-  node("presenter:blotter").focus();
+  tree.clickExternalSelectBlotter();
+  tree.focus("presenter:blotter");
 
   // blotter is collapsed by default, so the next selectable node after it
   // is machineKind:tileExecution. A stale cursor (still seeded on "all")
   // would instead land back on blotter itself — "all"'s own next
   // selectable sibling — silently re-selecting it. Enter proves which
   // node ArrowDown actually moved the cursor FROM.
-  pressKey("ArrowDown");
-  pressKey("Enter");
+  tree.pressKeyOnFocused("ArrowDown");
+  tree.pressKeyOnFocused("Enter");
 
   expect(selected.at(-1)).toEqual({
     kind: "machineKind",
     machineKind: "tileExecution",
   });
 });
-
-function scopeIds(): string[] {
-  return screen.getAllByTestId("nav-node").map((el) => {
-    return el.dataset.scopeId ?? "";
-  });
-}
-
-function caretOf(id: string): HTMLElement {
-  return node(id).parentElement?.querySelector(
-    "[aria-label='Expand'], [aria-label='Collapse']",
-  ) as HTMLElement;
-}
-
-function node(id: string): HTMLElement {
-  const match = screen.getAllByTestId("nav-node").find((el) => {
-    return el.dataset.scopeId === id;
-  });
-
-  if (match === undefined) {
-    throw new Error(`no nav-node ${id}`);
-  }
-
-  return match;
-}
-
-/** Dispatches a keydown on whatever currently has focus — the focused row
- * button in these tests — so it must BUBBLE to NavTree's onKeyDown to have
- * any effect. Dispatching on the container directly (as an earlier version
- * of this test did) would keep passing even if a row button stopped
- * propagation, silently breaking real keyboard navigation. */
-function pressKey(key: string): void {
-  fireEvent.keyDown(document.activeElement as HTMLElement, { key });
-}
 
 interface MountHandle extends Array<Scope> {
   bump: (id: string, lastSeq: number) => void;
@@ -295,10 +241,10 @@ function mount(): MountHandle {
     selected.bump = (id: string, lastSeq: number): void => {
       // The caller invokes this from outside React's render cycle (a test
       // harness, not an event handler), so the update needs an explicit
-      // `act()` to flush synchronously — react-dom's createRoot otherwise
-      // defers both the re-render and the flash `useEffect` past the
-      // assertion that immediately follows.
-      act(() => {
+      // flush via the page's `commit` to happen synchronously —
+      // react-dom's createRoot otherwise defers both the re-render and the
+      // flash `useEffect` past the assertion that immediately follows.
+      tree.commit(() => {
         setNodes((prev) => {
           return prev.map((root) => {
             return withLastSeq(root, id, lastSeq);
@@ -315,7 +261,7 @@ function mount(): MountHandle {
     return <NavTree nodes={nodes} scope={scope} onSelect={selectScope} />;
   }
 
-  render(<Harness />);
+  tree.mount(<Harness />);
 
   return selected;
 }
@@ -352,7 +298,7 @@ function mountWithExternalScope(): Scope[] {
     );
   }
 
-  render(<Harness />);
+  tree.mount(<Harness />);
 
   return selected;
 }

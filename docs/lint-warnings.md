@@ -11,9 +11,9 @@
 > on unrelated edits); locate each warning by its file plus the identifier
 > named in the message.
 >
-> **Total: 1651 warnings** across 1 rule, 156 files.
+> **Total: 1243 warnings** across 1 rule, 142 files.
 
-## `rtc/no-framework-calls-in-specs` (1651)
+## `rtc/no-framework-calls-in-specs` (1243)
 
 ### packages/client-react-native/src/app/AppRoot.test.tsx
 
@@ -759,81 +759,4 @@
 ### packages/client-solid/src/ui/shell/theme/useTheme.test.tsx
 
 - Specs must not import @solidjs/testing-library — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/ContextPane.test.tsx
-
-- (×7) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×30) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/DiffView.test.tsx
-
-- (×11) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/flash.test.tsx
-
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/InspectorApp.test.tsx
-
-- (×6) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- (×67) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×83) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/MachineTab.test.tsx
-
-- (×11) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×21) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/NavTree.test.tsx
-
-- (×2) Raw DOM traversal (closest) belongs inside a page object, behind a semantically named method.
-- (×2) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- (×14) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×10) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/RecordingToolbar.test.tsx
-
-- (×8) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×15) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/StateTab.test.tsx
-
-- (×3) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×14) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/StateTreePanel.test.tsx
-
-- (×9) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/TimelinePane.test.tsx
-
-- (×3) Raw DOM traversal (querySelector) belongs inside a page object, behind a semantically named method.
-- (×14) Specs must not call fireEvent.* — express this as a page-object method (what, not how).
-- (×31) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/useNavigation.test.tsx
-
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/useTimeline.test.tsx
-
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/__tests__/ValueView.test.tsx
-
-- (×33) Specs must not call screen.* — express this as a page-object method (what, not how).
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
-
-### packages/devtools-app/src/panels/__tests__/flash.test.tsx
-
-- Specs must not import @testing-library/react — move the framework surface into a page module (tests/**/pages/<Thing>Page.ts) and call its semantic methods.
 
