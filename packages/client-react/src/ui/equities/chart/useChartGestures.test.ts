@@ -1,226 +1,189 @@
-import { act, cleanup, render, renderHook } from "@testing-library/react";
-import {
-  createElement,
-  type ReactElement,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
 } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DrawingGrip } from "@rtc/motion-core";
 
-import {
-  type ChartGestures,
-  type DrawGestureSlots,
-  useChartGestures,
-} from "./useChartGestures";
+import { chartGesturesPage } from "#tests/ui/pages/UseChartGesturesPage";
+
+import type { DrawGestureSlots } from "./useChartGestures";
 
 const SERIES_LEN = 200;
 const DEFAULT_VISIBLE = 50;
 
+const page = chartGesturesPage();
+
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("useChartGestures", () => {
   it("starts with the newest defaultVisible candles in view", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
       end: SERIES_LEN,
     });
-    expect(result.current.atLiveEdge).toBe(true);
-    expect(result.current.cursor).toBeNull();
+    expect(handle.state.atLiveEdge).toBe(true);
+    expect(handle.state.cursor).toBeNull();
   });
 
   it("ArrowLeft pans the viewport left by 10% of its span", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+    const before = handle.state.viewport;
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("ArrowLeft"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("ArrowLeft"));
     });
 
     const span = before.end - before.start;
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: before.start - span * 0.1,
       end: before.end - span * 0.1,
     });
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.atLiveEdge).toBe(false);
   });
 
   it("ArrowRight pans the viewport right, clamped back to the live edge", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("ArrowRight"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("ArrowRight"));
     });
 
     // Already at the live edge — panning further right stays clamped there.
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
       end: SERIES_LEN,
     });
   });
 
   it("'+' zooms in: the span shrinks, still respecting the min-span clamp", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+
+    const beforeSpan = handle.state.viewport.end - handle.state.viewport.start;
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("+"));
     });
 
-    const beforeSpan =
-      result.current.viewport.end - result.current.viewport.start;
-
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("+"));
-    });
-
-    const afterSpan =
-      result.current.viewport.end - result.current.viewport.start;
+    const afterSpan = handle.state.viewport.end - handle.state.viewport.start;
     expect(afterSpan).toBeLessThan(beforeSpan);
     expect(afterSpan).toBeGreaterThanOrEqual(5); // MIN_VIEWPORT_SPAN
   });
 
   it("'-' zooms out: the span grows", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+
+    const beforeSpan = handle.state.viewport.end - handle.state.viewport.start;
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("-"));
     });
 
-    const beforeSpan =
-      result.current.viewport.end - result.current.viewport.start;
-
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("-"));
-    });
-
-    const afterSpan =
-      result.current.viewport.end - result.current.viewport.start;
+    const afterSpan = handle.state.viewport.end - handle.state.viewport.start;
     expect(afterSpan).toBeGreaterThan(beforeSpan);
   });
 
   it("repeated zoom-in never shrinks the span below MIN_VIEWPORT_SPAN", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
     for (let i = 0; i < 30; i++) {
-      act(() => {
-        result.current.plotProps.onKeyDown(keyEvent("+"));
+      handle.commit(() => {
+        handle.state.plotProps.onKeyDown(keyEvent("+"));
       });
     }
 
-    const span = result.current.viewport.end - result.current.viewport.start;
+    const span = handle.state.viewport.end - handle.state.viewport.start;
     expect(span).toBeGreaterThanOrEqual(5);
   });
 
   it("Home jumps the viewport to the start of the series, same span", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
-    const span = result.current.viewport.end - result.current.viewport.start;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+    const span = handle.state.viewport.end - handle.state.viewport.start;
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Home"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Home"));
     });
 
-    expect(result.current.viewport).toEqual({ start: 0, end: span });
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.viewport).toEqual({ start: 0, end: span });
+    expect(handle.state.atLiveEdge).toBe(false);
   });
 
   it("End (and resetToLive) restores the default live-edge viewport after panning away", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("ArrowLeft"));
+    });
+    expect(handle.state.atLiveEdge).toBe(false);
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("End"));
     });
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("ArrowLeft"));
-    });
-    expect(result.current.atLiveEdge).toBe(false);
-
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("End"));
-    });
-
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
       end: SERIES_LEN,
     });
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("resetToLive() is also directly callable (double-click wires to it)", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Home"));
+    });
+    expect(handle.state.atLiveEdge).toBe(false);
+
+    handle.commit(() => {
+      handle.state.resetToLive();
     });
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Home"));
-    });
-    expect(result.current.atLiveEdge).toBe(false);
-
-    act(() => {
-      result.current.resetToLive();
-    });
-
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("an unhandled key is a no-op and does not preventDefault", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+    const before = handle.state.viewport;
     const event = keyEvent("a");
 
-    act(() => {
-      result.current.plotProps.onKeyDown(event);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(event);
     });
 
-    expect(result.current.viewport).toEqual(before);
+    expect(handle.state.viewport).toEqual(before);
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
   it("series growth while at the live edge slides the window forward", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(props.seriesLen, DEFAULT_VISIBLE);
-      },
-      { initialProps: { seriesLen: SERIES_LEN } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    rerender({ seriesLen: SERIES_LEN + 5 });
+    handle.rerender(SERIES_LEN + 5);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE + 5,
       end: SERIES_LEN + 5,
     });
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("series growth while panned away holds the viewport still", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(props.seriesLen, DEFAULT_VISIBLE);
-      },
-      { initialProps: { seriesLen: SERIES_LEN } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Home"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Home"));
     });
-    const panned = result.current.viewport;
+    const panned = handle.state.viewport;
 
-    rerender({ seriesLen: SERIES_LEN + 5 });
+    handle.rerender(SERIES_LEN + 5);
 
-    expect(result.current.viewport).toEqual(panned);
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.viewport).toEqual(panned);
+    expect(handle.state.atLiveEdge).toBe(false);
   });
 
   it("real candles landing after an initial empty series snap to the live-edge default, not a degenerate zero-width window", () => {
@@ -233,88 +196,56 @@ describe("useChartGestures", () => {
     // could never pan away (the real-browser bug an e2e smoke caught,
     // since jsdom component tests always mount with the real series
     // already in hand).
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(props.seriesLen, DEFAULT_VISIBLE);
-      },
-      { initialProps: { seriesLen: 0 } },
-    );
+    const handle = page.mount(0, DEFAULT_VISIBLE);
 
-    rerender({ seriesLen: SERIES_LEN });
+    handle.rerender(SERIES_LEN);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE,
       end: SERIES_LEN,
     });
-    expect(result.current.viewport.end - result.current.viewport.start).toBe(
+    expect(handle.state.viewport.end - handle.state.viewport.start).toBe(
       DEFAULT_VISIBLE,
     );
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("prepended candles shift a panned-away viewport so the same candles stay in view", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(
-          props.seriesLen,
-          DEFAULT_VISIBLE,
-          props.firstCandleTime,
-        );
-      },
-      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, 1_000_000);
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Home"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Home"));
     });
-    const panned = result.current.viewport;
+    const panned = handle.state.viewport;
 
     // 300 older candles arrive: first time got OLDER, length grew by 300.
-    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+    handle.rerender(SERIES_LEN + 300, 700_000);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: panned.start + 300,
       end: panned.end + 300,
     });
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.atLiveEdge).toBe(false);
   });
 
   it("prepended candles keep an at-live-edge viewport at the edge", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(
-          props.seriesLen,
-          DEFAULT_VISIBLE,
-          props.firstCandleTime,
-        );
-      },
-      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, 1_000_000);
 
-    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+    handle.rerender(SERIES_LEN + 300, 700_000);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN + 300 - DEFAULT_VISIBLE,
       end: SERIES_LEN + 300,
     });
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(
-          props.seriesLen,
-          DEFAULT_VISIBLE,
-          props.firstCandleTime,
-        );
-      },
-      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, 1_000_000);
 
-    rerender({ seriesLen: SERIES_LEN + 5, firstCandleTime: 1_000_000 });
+    handle.rerender(SERIES_LEN + 5, 1_000_000);
 
-    expect(result.current.viewport).toEqual({
+    expect(handle.state.viewport).toEqual({
       start: SERIES_LEN - DEFAULT_VISIBLE + 5,
       end: SERIES_LEN + 5,
     });
@@ -327,19 +258,10 @@ describe("useChartGestures", () => {
     // then recomputed an ABSOLUTE viewport from the STALE (unshifted) origin,
     // snapping the view back by `grewBy` candles and re-triggering the
     // near-edge fetch on every subsequent move of one continuous drag.
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useChartGestures(
-          props.seriesLen,
-          DEFAULT_VISIBLE,
-          props.firstCandleTime,
-        );
-      },
-      { initialProps: { seriesLen: SERIES_LEN, firstCandleTime: 1_000_000 } },
-    );
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, 1_000_000);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 50, clientY: 50 }),
       );
     });
@@ -347,12 +269,12 @@ describe("useChartGestures", () => {
     // A 300-candle backfill prepend lands mid-drag: first time got OLDER,
     // length grew by 300 — the same growth-direction fork as the render-time
     // series-growth tests above.
-    rerender({ seriesLen: SERIES_LEN + 300, firstCandleTime: 700_000 });
+    handle.rerender(SERIES_LEN + 300, 700_000);
 
-    act(() => {
+    handle.commit(() => {
       // Same drag delta as "pointer drag pans the viewport..." above (+50px
       // of 500px width) — dragging right pans backward (earlier).
-      result.current.plotProps.onPointerMove(
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
@@ -362,50 +284,46 @@ describe("useChartGestures", () => {
     const span = DEFAULT_VISIBLE;
     const expectedStart =
       SERIES_LEN + 300 - DEFAULT_VISIBLE - (50 / 500) * span;
-    expect(result.current.viewport.start).toBeCloseTo(expectedStart, 5);
+    expect(handle.state.viewport.start).toBeCloseTo(expectedStart, 5);
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
   });
 
   it("pointer drag pans the viewport by the dragged fraction of its width", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+    const before = handle.state.viewport;
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 50, clientY: 50 }),
       );
     });
-    act(() => {
+    handle.commit(() => {
       // Dragging right (dx = +50 of 500px width) pans the view backward
       // (earlier) — plenty of room from the live edge, so nothing clamps.
-      result.current.plotProps.onPointerMove(
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
 
     const span = before.end - before.start;
     const expectedStart = before.start - (50 / 500) * span;
-    expect(result.current.viewport.start).toBeCloseTo(expectedStart, 5);
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.viewport.start).toBeCloseTo(expectedStart, 5);
+    expect(handle.state.atLiveEdge).toBe(false);
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
   });
 
   it("pointerdown captures the pointer via setPointerCapture", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 7,
@@ -419,8 +337,8 @@ describe("useChartGestures", () => {
       } as unknown as HTMLDivElement,
     } as unknown as ReactPointerEvent<HTMLDivElement>;
 
-    act(() => {
-      result.current.plotProps.onPointerDown(event);
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(event);
     });
 
     expect(setPointerCapture).toHaveBeenCalledWith(7);
@@ -434,9 +352,7 @@ describe("useChartGestures", () => {
     // in a real browser (jsdom's synthetic events don't model capture
     // retargeting, so no jsdom test ever saw it break — only a real-browser
     // e2e run did).
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 9,
@@ -455,17 +371,15 @@ describe("useChartGestures", () => {
       } as unknown as HTMLDivElement,
     } as unknown as ReactPointerEvent<HTMLDivElement>;
 
-    act(() => {
-      result.current.plotProps.onPointerDown(event);
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(event);
     });
 
     expect(setPointerCapture).not.toHaveBeenCalled();
   });
 
   it("onPointerCancel clears an in-flight drag and releases capture (same as onPointerUp)", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
     const releasePointerCapture = vi.fn();
     const hasPointerCapture = vi.fn().mockReturnValue(true);
     const currentTarget = {
@@ -477,8 +391,8 @@ describe("useChartGestures", () => {
       },
     } as unknown as HTMLDivElement;
 
-    act(() => {
-      result.current.plotProps.onPointerDown({
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown({
         pointerId: 3,
         clientX: 10,
         clientY: 10,
@@ -486,8 +400,8 @@ describe("useChartGestures", () => {
       } as unknown as ReactPointerEvent<HTMLDivElement>);
     });
 
-    act(() => {
-      result.current.plotProps.onPointerCancel({
+    handle.commit(() => {
+      handle.state.plotProps.onPointerCancel({
         pointerId: 3,
         currentTarget,
       } as unknown as ReactPointerEvent<HTMLDivElement>);
@@ -498,13 +412,13 @@ describe("useChartGestures", () => {
     // The cancelled drag is gone — a subsequent move with the SAME pointerId
     // (stable for a mouse) must be treated as plain cursor tracking, not a
     // resumed phantom drag from the stale origin.
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
 
-    expect(result.current.cursor).toEqual({
+    expect(handle.state.cursor).toEqual({
       xFrac: 0.5,
       yFrac: 0.5,
       inPlot: true,
@@ -512,17 +426,15 @@ describe("useChartGestures", () => {
   });
 
   it("pointer move while NOT dragging sets the crosshair cursor fraction instead", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
 
-    expect(result.current.cursor).toEqual({
+    expect(handle.state.cursor).toEqual({
       xFrac: 0.5,
       yFrac: 0.5,
       inPlot: true,
@@ -530,118 +442,80 @@ describe("useChartGestures", () => {
   });
 
   it("onPointerLeave clears the crosshair cursor", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    expect(result.current.cursor).not.toBeNull();
+    expect(handle.state.cursor).not.toBeNull();
 
-    act(() => {
-      result.current.plotProps.onPointerLeave();
+    handle.commit(() => {
+      handle.state.plotProps.onPointerLeave();
     });
 
-    expect(result.current.cursor).toBeNull();
+    expect(handle.state.cursor).toBeNull();
   });
 
   it("onDoubleClick resets the viewport to the live edge", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
+
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Home"));
+    });
+    expect(handle.state.atLiveEdge).toBe(false);
+
+    handle.commit(() => {
+      handle.state.plotProps.onDoubleClick();
     });
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Home"));
-    });
-    expect(result.current.atLiveEdge).toBe(false);
-
-    act(() => {
-      result.current.plotProps.onDoubleClick();
-    });
-
-    expect(result.current.atLiveEdge).toBe(true);
+    expect(handle.state.atLiveEdge).toBe(true);
   });
 
   it("wheel zoom attaches a non-passive native listener that zooms toward the cursor and calls preventDefault", () => {
     // A real render (not just renderHook) so plotRef attaches to an actual
     // DOM node before the effect runs — the wheel listener is a native
     // addEventListener, not React's synthetic (passive) onWheel, so it only
-    // exists once the effect has fired against a populated ref. `box` (not a
-    // plain `let`) so TS doesn't over-narrow the captured value to `null`
-    // across the closure boundary.
-    const box: GesturesBox = { gestures: null };
-    const { getByTestId } = render(
-      createElement(ChartGesturesHarness, {
-        onReady: (g: ChartGestures) => {
-          box.gestures = g;
-        },
-      }),
-    );
-    const el = getByTestId("plot");
-    stubPlotRect(el);
+    // exists once the effect has fired against a populated ref.
+    const harness = page.mountHarness(SERIES_LEN, DEFAULT_VISIBLE);
+    const before = harness.state.viewport;
+    const beforeSpan = before.end - before.start;
 
-    const before = box.gestures?.viewport;
-    expect(before).toBeDefined();
-
-    const event = wheelEvent({ deltaY: -100, clientX: 250 });
-
-    act(() => {
-      el.dispatchEvent(event);
-    });
-
-    const afterSpan = box.gestures
-      ? box.gestures.viewport.end - box.gestures.viewport.start
-      : 0;
-    const beforeSpan = before ? before.end - before.start : 0;
-    expect(afterSpan).toBeLessThan(beforeSpan);
     // Guards the passive:false seam — a plain onWheel prop would register
     // passively and preventDefault() there would be a silent no-op.
-    expect(event.defaultPrevented).toBe(true);
+    const defaultPrevented = harness.dispatchWheel(-100, 250);
+
+    const afterSpan = harness.state.viewport.end - harness.state.viewport.start;
+    expect(afterSpan).toBeLessThan(beforeSpan);
+    expect(defaultPrevented).toBe(true);
   });
 
   it("wheel-down (deltaY > 0) zooms out", () => {
-    const box: GesturesBox = { gestures: null };
-    const { getByTestId } = render(
-      createElement(ChartGesturesHarness, {
-        onReady: (g: ChartGestures) => {
-          box.gestures = g;
-        },
-      }),
-    );
-    const el = getByTestId("plot");
-    stubPlotRect(el);
-    const before = box.gestures?.viewport;
+    const harness = page.mountHarness(SERIES_LEN, DEFAULT_VISIBLE);
+    const before = harness.state.viewport;
+    const beforeSpan = before.end - before.start;
 
-    act(() => {
-      el.dispatchEvent(wheelEvent({ deltaY: 100, clientX: 250 }));
-    });
+    harness.dispatchWheel(100, 250);
 
-    const afterSpan = box.gestures
-      ? box.gestures.viewport.end - box.gestures.viewport.start
-      : 0;
-    const beforeSpan = before ? before.end - before.start : 0;
+    const afterSpan = harness.state.viewport.end - harness.state.viewport.start;
     expect(afterSpan).toBeGreaterThan(beforeSpan);
   });
 
   it("applyViewport sets the viewport (clamped), the navigator brush's write path", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    act(() => {
-      result.current.applyViewport({ start: 100, end: 150 });
+    handle.commit(() => {
+      handle.state.applyViewport({ start: 100, end: 150 });
     });
-    expect(result.current.viewport).toEqual({ start: 100, end: 150 });
-    expect(result.current.atLiveEdge).toBe(false);
+    expect(handle.state.viewport).toEqual({ start: 100, end: 150 });
+    expect(handle.state.atLiveEdge).toBe(false);
 
     // Out-of-bounds input clamps rather than escaping the series.
-    act(() => {
-      result.current.applyViewport({ start: -10, end: 40 });
+    handle.commit(() => {
+      handle.state.applyViewport({ start: -10, end: 40 });
     });
-    expect(result.current.viewport).toEqual({ start: 0, end: 50 });
+    expect(handle.state.viewport).toEqual({ start: 0, end: 50 });
   });
 });
 
@@ -650,68 +524,62 @@ describe("useChartGestures — draw gesture fork", () => {
     const onCommitLevel = vi.fn();
     const setPointerCapture = vi.fn();
     const draw = drawSlots({ tool: "hline", onCommitLevel });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }, { setPointerCapture }),
       );
     });
 
     expect(onCommitLevel).toHaveBeenCalledWith({ xFrac: 0.5, yFrac: 0.5 });
     expect(setPointerCapture).not.toHaveBeenCalled();
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
   });
 
   it("trendline: pointer-down opens a draft with both anchors at the down point, and captures the pointer", () => {
     const setPointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline" });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }, { setPointerCapture }),
       );
     });
 
     const anchor = { xFrac: 0.2, yFrac: 0.5 };
-    expect(result.current.draft).toEqual({ a: anchor, b: anchor });
+    expect(handle.state.draft).toEqual({ a: anchor, b: anchor });
     expect(setPointerCapture).toHaveBeenCalledWith(1);
   });
 
   it("trendline: every move updates the draft's b anchor while the crosshair keeps tracking", () => {
     const draw = drawSlots({ tool: "trendline" });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 200, clientY: 40 }),
       );
     });
 
-    expect(result.current.draft).toEqual({
+    expect(handle.state.draft).toEqual({
       a: { xFrac: 0.2, yFrac: 0.5 },
       b: { xFrac: 0.4, yFrac: 0.8 },
     });
-    expect(result.current.cursor).toEqual({
+    expect(handle.state.cursor).toEqual({
       xFrac: 0.4,
       yFrac: 0.8,
       inPlot: true,
     });
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 200, clientY: 40 }),
       );
     });
@@ -721,24 +589,22 @@ describe("useChartGestures — draw gesture fork", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 200, clientY: 25 }),
       );
     });
-    act(() => {
+    handle.commit(() => {
       // 100px excursion from the (100, 25) down point — well beyond
       // CLICK_MAX_PX (4px).
-      result.current.plotProps.onPointerUp(
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 200, clientY: 25 }, { releasePointerCapture }),
       );
     });
@@ -748,88 +614,82 @@ describe("useChartGestures — draw gesture fork", () => {
       { xFrac: 0.4, yFrac: 0.5 },
     );
     expect(releasePointerCapture).toHaveBeenCalledWith(1);
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
   });
 
   it("trendline: pointer-up within CLICK_MAX_PX discards the draft without committing", () => {
     const onCommitLine = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
+    handle.commit(() => {
       // ~2.24px excursion — within the 4px click threshold: a stray click,
       // not a deliberate line.
-      result.current.plotProps.onPointerUp(
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 102, clientY: 26 }),
       );
     });
 
     expect(onCommitLine).not.toHaveBeenCalled();
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
   });
 
   it("pointercancel discards an open trendline draft without committing (same as a phantom-drag pan cancel)", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 300, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerCancel(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerCancel(
         pointerEvent({ clientX: 300, clientY: 25 }, { releasePointerCapture }),
       );
     });
 
     expect(onCommitLine).not.toHaveBeenCalled();
     expect(releasePointerCapture).toHaveBeenCalledWith(1);
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
   });
 
   it("Escape cancels an open trendline draft", () => {
     const onCommitLine = vi.fn();
     const draw = drawSlots({ tool: "trendline", onCommitLine });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    expect(result.current.draft).not.toBeNull();
+    expect(handle.state.draft).not.toBeNull();
 
     const escapeKey = keyEvent("Escape");
-    act(() => {
-      result.current.plotProps.onKeyDown(escapeKey);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(escapeKey);
     });
 
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
     expect(escapeKey.preventDefault).toHaveBeenCalled();
 
     // The eventual real pointerup for the now-cancelled gesture must not
     // resurrect or commit the discarded draft.
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 300, clientY: 25 }),
       );
     });
@@ -838,13 +698,11 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("Escape with no open draft is a no-op and does not preventDefault", () => {
     const draw = drawSlots({ tool: "cursor" });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const escapeKey = keyEvent("Escape");
 
-    act(() => {
-      result.current.plotProps.onKeyDown(escapeKey);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(escapeKey);
     });
 
     expect(escapeKey.preventDefault).not.toHaveBeenCalled();
@@ -853,17 +711,15 @@ describe("useChartGestures — draw gesture fork", () => {
   it("cursor: pointer-up within CLICK_MAX_PX of its pointer-down calls onPlotClick with the up point's fraction", () => {
     const onPlotClick = vi.fn();
     const draw = drawSlots({ tool: "cursor", onPlotClick });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 102, clientY: 26 }),
       );
     });
@@ -874,41 +730,37 @@ describe("useChartGestures — draw gesture fork", () => {
   it("cursor: a real drag beyond CLICK_MAX_PX pans as usual and does not call onPlotClick", () => {
     const onPlotClick = vi.fn();
     const draw = drawSlots({ tool: "cursor", onPlotClick });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    const before = handle.state.viewport;
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 50, clientY: 50 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 100, clientY: 50 }),
       );
     });
 
-    expect(result.current.viewport).not.toEqual(before);
+    expect(handle.state.viewport).not.toEqual(before);
     expect(onPlotClick).not.toHaveBeenCalled();
   });
 
   it("Delete calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", onDeleteKey });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const del = keyEvent("Delete");
 
-    act(() => {
-      result.current.plotProps.onKeyDown(del);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(del);
     });
 
     expect(onDeleteKey).toHaveBeenCalledOnce();
@@ -918,12 +770,10 @@ describe("useChartGestures — draw gesture fork", () => {
   it("Backspace also calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", onDeleteKey });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onKeyDown(keyEvent("Backspace"));
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(keyEvent("Backspace"));
     });
 
     expect(onDeleteKey).toHaveBeenCalledOnce();
@@ -932,13 +782,11 @@ describe("useChartGestures — draw gesture fork", () => {
   it("Delete is a no-op while a non-cursor tool is active", () => {
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "trendline", onDeleteKey });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const del = keyEvent("Delete");
 
-    act(() => {
-      result.current.plotProps.onKeyDown(del);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(del);
     });
 
     expect(onDeleteKey).not.toHaveBeenCalled();
@@ -946,24 +794,22 @@ describe("useChartGestures — draw gesture fork", () => {
   });
 
   it("with no draw slots passed at all, the hook behaves exactly as the drawing-free signature (no draft, no crash)", () => {
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE);
 
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 100, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 101, clientY: 25 }),
       );
     });
 
-    expect(result.current.draft).toBeNull();
+    expect(handle.state.draft).toBeNull();
   });
 });
 
@@ -977,33 +823,31 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    const before = handle.state.viewport;
 
-    act(() => {
+    handle.commit(() => {
       // (250, 25) of the 500x50 stub rect -> plot fraction (0.5, 0.5).
-      result.current.plotProps.onPointerDown(
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
 
-    expect(result.current.editDrag).not.toBeNull();
-    expect(result.current.editDrag?.from).toEqual({ xFrac: 0.5, yFrac: 0.5 });
+    expect(handle.state.editDrag).not.toBeNull();
+    expect(handle.state.editDrag?.from).toEqual({ xFrac: 0.5, yFrac: 0.5 });
 
-    act(() => {
+    handle.commit(() => {
       // (350, 15) -> (0.7, 0.3); a 100/10px excursion, well beyond
       // CLICK_MAX_PX.
-      result.current.plotProps.onPointerMove(
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
 
-    expect(result.current.editDrag?.to).toEqual({ xFrac: 0.7, yFrac: 0.3 });
+    expect(handle.state.editDrag?.to).toEqual({ xFrac: 0.7, yFrac: 0.3 });
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
@@ -1014,9 +858,9 @@ describe("editDrag (drag-edit fork)", () => {
       { xFrac: 0.5, yFrac: 0.5 },
       { xFrac: 0.7, yFrac: 0.3 },
     );
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.editDrag).toBeNull();
     // The pan path never ran — the viewport is exactly as it started.
-    expect(result.current.viewport).toEqual(before);
+    expect(handle.state.viewport).toEqual(before);
   });
 
   it("pointer-up within CLICK_MAX_PX discards the editDrag WITHOUT calling onPlotClick or onCommitEdit (the deselect trap)", () => {
@@ -1031,25 +875,23 @@ describe("editDrag (drag-edit fork)", () => {
       onPlotClick,
     });
 
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    act(() => {
+    handle.commit(() => {
       // 1px excursion — well within CLICK_MAX_PX (4px).
-      result.current.plotProps.onPointerUp(
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 251, clientY: 25 }),
       );
     });
 
     expect(onCommitEdit).not.toHaveBeenCalled();
     expect(onPlotClick).not.toHaveBeenCalled();
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.editDrag).toBeNull();
   });
 
   it("Escape mid-editDrag discards it; the eventual stale pointer-up no-ops", () => {
@@ -1064,31 +906,29 @@ describe("editDrag (drag-edit fork)", () => {
       onPlotClick,
     });
 
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
 
     const escapeKey = keyEvent("Escape");
-    act(() => {
-      result.current.plotProps.onKeyDown(escapeKey);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(escapeKey);
     });
 
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.editDrag).toBeNull();
     expect(escapeKey.preventDefault).toHaveBeenCalled();
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
@@ -1103,32 +943,30 @@ describe("editDrag (drag-edit fork)", () => {
     const onCommitEdit = vi.fn();
     const releasePointerCapture = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerMove(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerCancel(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerCancel(
         pointerEvent({ clientX: 350, clientY: 15 }, { releasePointerCapture }),
       );
     });
 
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.editDrag).toBeNull();
     expect(onCommitEdit).not.toHaveBeenCalled();
     expect(releasePointerCapture).toHaveBeenCalledWith(1);
 
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 350, clientY: 15 }),
       );
     });
@@ -1140,33 +978,31 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(null);
     const onCommitEdit = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
-    const before = result.current.viewport;
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
+    const before = handle.state.viewport;
 
-    act(() => {
+    handle.commit(() => {
       // (250, 25) -> 0.5 xFrac.
-      result.current.plotProps.onPointerDown(
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    act(() => {
+    handle.commit(() => {
       // Dragging right (dx = +100 of 500px width) pans the view backward
       // (earlier) — away from the live edge, so nothing clamps it back to
       // the same window (unlike dragging toward the edge, which would).
-      result.current.plotProps.onPointerMove(
+      handle.state.plotProps.onPointerMove(
         pointerEvent({ clientX: 350, clientY: 25 }),
       );
     });
-    act(() => {
-      result.current.plotProps.onPointerUp(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerUp(
         pointerEvent({ clientX: 350, clientY: 25 }),
       );
     });
 
-    expect(result.current.editDrag).toBeNull();
-    expect(result.current.viewport.start).not.toEqual(before.start);
+    expect(handle.state.editDrag).toBeNull();
+    expect(handle.state.viewport.start).not.toEqual(before.start);
     expect(onCommitEdit).not.toHaveBeenCalled();
   });
 
@@ -1175,20 +1011,18 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onDeleteKey = vi.fn();
     const draw = drawSlots({ tool: "cursor", hitGrip, onDeleteKey });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
-    expect(result.current.editDrag).not.toBeNull();
+    expect(handle.state.editDrag).not.toBeNull();
 
     const del = keyEvent("Delete");
-    act(() => {
-      result.current.plotProps.onKeyDown(del);
+    handle.commit(() => {
+      handle.state.plotProps.onKeyDown(del);
     });
 
     expect(onDeleteKey).not.toHaveBeenCalled();
@@ -1198,20 +1032,18 @@ describe("editDrag (drag-edit fork)", () => {
   it("hitGrip is only consulted when tool === 'cursor' (trendline tool pointer-down never calls it)", () => {
     const hitGrip = vi.fn();
     const draw = drawSlots({ tool: "trendline", hitGrip });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
-    act(() => {
-      result.current.plotProps.onPointerDown(
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(
         pointerEvent({ clientX: 250, clientY: 25 }),
       );
     });
 
     expect(hitGrip).not.toHaveBeenCalled();
     // The trendline draft opened instead.
-    expect(result.current.draft).not.toBeNull();
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.draft).not.toBeNull();
+    expect(handle.state.editDrag).toBeNull();
   });
 
   it("a pointer-down on a button descendant never consults hitGrip (button guard runs first)", () => {
@@ -1226,9 +1058,7 @@ describe("editDrag (drag-edit fork)", () => {
     const grip: DrawingGrip = { id: "d1", part: "b" };
     const hitGrip = vi.fn().mockReturnValue(grip);
     const draw = drawSlots({ tool: "cursor", hitGrip });
-    const { result } = renderHook(() => {
-      return useChartGestures(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
-    });
+    const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const setPointerCapture = vi.fn();
     const event = {
       pointerId: 9,
@@ -1247,12 +1077,12 @@ describe("editDrag (drag-edit fork)", () => {
       } as unknown as HTMLDivElement,
     } as unknown as ReactPointerEvent<HTMLDivElement>;
 
-    act(() => {
-      result.current.plotProps.onPointerDown(event);
+    handle.commit(() => {
+      handle.state.plotProps.onPointerDown(event);
     });
 
     expect(hitGrip).not.toHaveBeenCalled();
-    expect(result.current.editDrag).toBeNull();
+    expect(handle.state.editDrag).toBeNull();
     expect(setPointerCapture).not.toHaveBeenCalled();
   });
 });
@@ -1273,59 +1103,6 @@ function drawSlots(overrides: Partial<DrawGestureSlots>): DrawGestureSlots {
     onDeleteKey: vi.fn(),
     ...overrides,
   };
-}
-
-/** Stubs a 500×50 rect at the origin for the plot div, standing in for the
- * real layout jsdom never computes (getBoundingClientRect() is all-zeros by
- * default there). */
-function stubPlotRect(el: HTMLElement): void {
-  el.getBoundingClientRect = (): DOMRect => {
-    return { left: 0, top: 0, width: 500, height: 50 } as DOMRect;
-  };
-}
-
-interface WheelEventInit {
-  deltaY: number;
-  clientX: number;
-}
-
-type FakeWheelEvent = Event & WheelEventInit;
-
-function wheelEvent(init: WheelEventInit): FakeWheelEvent {
-  return Object.assign(new Event("wheel", { cancelable: true }), {
-    deltaY: init.deltaY,
-    clientX: init.clientX,
-  });
-}
-
-interface GesturesBox {
-  gestures: ChartGestures | null;
-}
-
-/** Minimal harness: renders the plot div for real (ref + gesture props) and
- * reports the live ChartGestures snapshot back out on every render, so the
- * wheel-effect tests (which need a real DOM node under plotRef) can drive
- * and assert against it without a full CandleChart mount. */
-interface ChartGesturesHarnessProps {
-  onReady: (g: ChartGestures) => void;
-}
-
-function ChartGesturesHarness({
-  onReady,
-}: ChartGesturesHarnessProps): ReactElement {
-  const g = useChartGestures(SERIES_LEN, DEFAULT_VISIBLE);
-  onReady(g);
-  return createElement("div", {
-    "data-testid": "plot",
-    ref: g.plotRef,
-    tabIndex: 0,
-    ...g.plotProps,
-  });
-}
-
-interface HookProps {
-  seriesLen: number;
-  firstCandleTime?: number;
 }
 
 function keyEvent(key: string): ReactKeyboardEvent<HTMLDivElement> {

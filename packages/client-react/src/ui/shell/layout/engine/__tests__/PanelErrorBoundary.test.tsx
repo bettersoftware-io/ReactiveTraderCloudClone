@@ -1,20 +1,21 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PanelErrorBoundary } from "../PanelErrorBoundary";
+import { panelErrorBoundaryPage } from "#tests/ui/pages/PanelErrorBoundaryPage";
+
 import { ThrowingPanel } from "./panelErrorFixtures";
 
-afterEach(cleanup);
+const page = panelErrorBoundaryPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 describe("PanelErrorBoundary", () => {
   it("renders children normally when nothing throws", () => {
-    render(
-      <PanelErrorBoundary title="Chart">
-        <div data-testid="ok-body">OK</div>
-      </PanelErrorBoundary>,
-    );
-    expect(screen.getByTestId("ok-body").textContent).toBe("OK");
-    expect(screen.queryByTestId("panel-error")).toBeNull();
+    page.mount("Chart", <div data-testid="ok-body">OK</div>);
+
+    expect(page.text("ok-body")).toBe("OK");
+    expect(page.exists("panel-error")).toBe(false);
   });
 
   it("catches a render-phase throw from a descendant and shows a scoped panel-error fallback with the panel's title", () => {
@@ -25,16 +26,11 @@ describe("PanelErrorBoundary", () => {
       .mockImplementation(() => {});
 
     try {
-      render(
-        <PanelErrorBoundary title="Chart">
-          <ThrowingPanel />
-        </PanelErrorBoundary>,
-      );
+      page.mount("Chart", <ThrowingPanel />);
     } finally {
       consoleError.mockRestore();
     }
 
-    const fallback = screen.getByTestId("panel-error");
-    expect(fallback.textContent).toContain("Chart");
+    expect(page.text("panel-error")).toContain("Chart");
   });
 });

@@ -5,76 +5,37 @@
  * covers the React-local render branch introduced for the Aurora ambient
  * style (v5): which `data-layer` group mounts for each `ambientStyle`.
  */
-import { cleanup, render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import { ambientBackgroundPage } from "#tests/ui/pages/AmbientBackgroundPage";
 
-import { AmbientBackground } from "./AmbientBackground";
+const page = ambientBackgroundPage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("AmbientBackground — ambient style branch", () => {
   it("renders the aurora curtains when ambientStyle is aurora", () => {
-    renderWithVm(<AmbientBackground />, { ambientStyle: "aurora" });
-    const root = screen.getByTestId("ambient-background");
-    expect(root.getAttribute("data-ambient-style")).toBe("aurora");
-    expect(root.querySelector('[data-layer="aurora-curtains"]')).not.toBeNull();
-    expect(root.querySelector('[data-layer="rays"]')).toBeNull();
+    page.mount({ ambientStyle: "aurora" });
+
+    expect(page.ambientStyleAttr()).toBe("aurora");
+    expect(page.hasLayer("aurora-curtains")).toBe(true);
+    expect(page.hasLayer("rays")).toBe(false);
   });
 
   it("renders the rays layers when ambientStyle is rays", () => {
-    renderWithVm(<AmbientBackground />, { ambientStyle: "rays" });
-    const root = screen.getByTestId("ambient-background");
-    expect(root.getAttribute("data-ambient-style")).toBe("rays");
-    expect(root.querySelector('[data-layer="rays"]')).not.toBeNull();
-    expect(root.querySelector('[data-layer="aurora-curtains"]')).toBeNull();
+    page.mount({ ambientStyle: "rays" });
+
+    expect(page.ambientStyleAttr()).toBe("rays");
+    expect(page.hasLayer("rays")).toBe(true);
+    expect(page.hasLayer("aurora-curtains")).toBe(false);
   });
 
   it("omits both branches' animated layers under power saver, regardless of style", () => {
-    renderWithVm(<AmbientBackground />, {
-      ambientStyle: "aurora",
-      powerSaver: true,
-    });
-    const root = screen.getByTestId("ambient-background");
-    expect(root.querySelector('[data-layer="aurora-curtains"]')).toBeNull();
-    expect(root.querySelector('[data-layer="rays"]')).toBeNull();
+    page.mount({ ambientStyle: "aurora", powerSaver: true });
+
+    expect(page.hasLayer("aurora-curtains")).toBe(false);
+    expect(page.hasLayer("rays")).toBe(false);
   });
 });
-
-interface RenderWithVmOptions {
-  ambientStyle?: "aurora" | "rays";
-  animatedBackground?: boolean;
-  powerSaver?: boolean;
-}
-
-function renderWithVm(
-  el: ReactElement,
-  options: RenderWithVmOptions = {},
-): ReturnType<typeof render> {
-  const {
-    ambientStyle = "aurora",
-    animatedBackground = true,
-    powerSaver = false,
-  } = options;
-
-  const hooks = {
-    useAnimatedBackground: () => {
-      return { enabled: animatedBackground };
-    },
-    usePowerSaver: () => {
-      return { isCalm: powerSaver };
-    },
-    useAmbientStyle: () => {
-      return { style: ambientStyle, setStyle: vi.fn() };
-    },
-  } as unknown as ViewModel;
-
-  return render(
-    <ViewModelContext.Provider value={hooks}>{el}</ViewModelContext.Provider>,
-  );
-}

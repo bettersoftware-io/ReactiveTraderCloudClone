@@ -413,6 +413,17 @@ export default tseslint.config(
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
   {
+    // client-react is migrated (Wave B, react half, of the
+    // page-object-isolation plan): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/ui/pages/, so this package is held to error while client-solid
+    // (Wave B's solid half, a separate PR) still burns down through the warn
+    // block above.
+    files: ["packages/client-react/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
     // JSX belongs in components: `render*`-named functions must not return JSX
     // (write a standalone component instead). Applies to every .tsx in the
     // repo; RTL-style helpers returning a render(...) CALL and anonymous

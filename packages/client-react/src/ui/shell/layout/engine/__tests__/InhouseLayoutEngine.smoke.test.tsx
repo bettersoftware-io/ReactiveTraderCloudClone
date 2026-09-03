@@ -1,19 +1,17 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createDefaultLayoutPort, type LayoutState } from "@rtc/client-core";
 
-import { InhouseLayoutEngine } from "../InhouseLayoutEngine";
+import { inhouseLayoutEnginePage } from "#tests/ui/pages/InhouseLayoutEnginePage";
+
 import type { PanelRegistry } from "../panelRegistry";
 import { ThrowingPanel } from "./panelErrorFixtures";
 
-afterEach(cleanup);
+const page = inhouseLayoutEnginePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 const state: LayoutState = {
   root: {
@@ -40,58 +38,35 @@ const registry: PanelRegistry = {
 
 describe("InhouseLayoutEngine", () => {
   it("renders each panel's registry body inside a split", () => {
-    renderEngine();
-    expect(screen.getByTestId("layout-engine")).toBeTruthy();
-    expect(screen.getByTestId("rates-body").textContent).toBe("RATES");
-    expect(screen.getByTestId("analytics-body").textContent).toBe("ANALYTICS");
+    page.mount(state, registry);
+    expect(page.exists("layout-engine")).toBe(true);
+    expect(page.text("rates-body")).toBe("RATES");
+    expect(page.text("analytics-body")).toBe("ANALYTICS");
   });
 
   it("renders one drag handle between two split children", () => {
-    renderEngine();
-    expect(screen.getByTestId("handle--0")).toBeTruthy();
+    page.mount(state, registry);
+    expect(page.exists("handle--0")).toBe(true);
   });
 
   it("collapses a panel to a strip and hides its body", () => {
-    renderEngine({ ...state, collapsed: ["fx-analytics"] });
-    expect(
-      screen.getByTestId("panel-fx-analytics").getAttribute("data-strip"),
-    ).toBe("true");
-    expect(screen.queryByTestId("analytics-body")).toBeNull();
+    page.mount({ ...state, collapsed: ["fx-analytics"] }, registry);
+    expect(page.stripFlag("panel-fx-analytics")).toBe(true);
+    expect(page.exists("analytics-body")).toBe(false);
   });
 
   it("calls onMaximize when a panel's maximize button is pressed", () => {
     const onMaximize = vi.fn();
-    render(
-      <InhouseLayoutEngine
-        state={state}
-        registry={registry}
-        onMaximize={onMaximize}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onResize={noop}
-      />,
-    );
-    screen.getByTestId("panel-fx-rates-maximize").click();
+    page.mount(state, registry, { onMaximize });
+    page.click("panel-fx-rates-maximize");
     expect(onMaximize).toHaveBeenCalledWith("fx-rates");
   });
 
   it("drives a row-split resize drag (pointerdown→move) and calls onResize with two new fractions", () => {
     const onResize = vi.fn();
-    render(
-      <InhouseLayoutEngine
-        state={state}
-        registry={registry}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onResize={onResize}
-      />,
-    );
-    const handle = screen.getByTestId("handle--0");
-    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 60, clientY: 0 });
-    fireEvent.pointerMove(handle, { clientX: 90, clientY: 0 });
+    page.mount(state, registry, { onResize });
+    page.pointerDown("handle--0", { pointerId: 1, clientX: 60, clientY: 0 });
+    page.pointerMove("handle--0", { clientX: 90, clientY: 0 });
     expect(onResize).toHaveBeenCalled();
     const [path, sizes] = onResize.mock.calls[0] as [number[], number[]];
     expect(path).toEqual([]);
@@ -100,9 +75,9 @@ describe("InhouseLayoutEngine", () => {
     expect(sizes[0] + sizes[1]).toBeCloseTo(1, 5);
 
     // pointerup removes the move/up listeners: a later move must NOT fire onResize
-    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 90, clientY: 0 });
+    page.pointerUp("handle--0", { pointerId: 1, clientX: 90, clientY: 0 });
     onResize.mockClear();
-    fireEvent.pointerMove(handle, { clientX: 120, clientY: 0 });
+    page.pointerMove("handle--0", { clientX: 120, clientY: 0 });
     expect(onResize).not.toHaveBeenCalled();
   });
 
@@ -130,23 +105,10 @@ describe("InhouseLayoutEngine", () => {
         return <div data-testid="b-body">B</div>;
       },
     };
-    render(
-      <InhouseLayoutEngine
-        state={fixedState}
-        registry={fixedRegistry}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onResize={noop}
-      />,
-    );
-    const fixedCell = screen
-      .getByTestId("panel-b")
-      .closest("[data-fixed-cell]");
-    expect(fixedCell?.getAttribute("data-fixed-cell")).toBe("true");
+    page.mount(fixedState, fixedRegistry);
+    expect(page.initialCellOf("panel-b").isFixed).toBe(true);
     // root pathKey is "" (root path = []), so the suppressed handle would be handle--0
-    expect(screen.queryByTestId("handle--0")).toBeNull();
+    expect(page.exists("handle--0")).toBe(false);
   });
 
   describe("initialPx (design-value default rail width, still draggable)", () => {
@@ -175,30 +137,19 @@ describe("InhouseLayoutEngine", () => {
     };
 
     it("renders a px-fixed cell that KEEPS its resize handle (unlike fixedPx)", () => {
-      renderEngine(initialPxState, abRegistry);
-      const cell = screen.getByTestId("panel-b").closest("[data-initial-cell]");
-      expect(cell?.getAttribute("data-initial-cell")).toBe("true");
-      expect(cell?.getAttribute("data-fixed-cell")).toBe("false");
+      page.mount(initialPxState, abRegistry);
+      const cell = page.initialCellOf("panel-b");
+      expect(cell.isInitial).toBe(true);
+      expect(cell.isFixed).toBe(false);
       // root pathKey is "" — the handle fixedPx would have suppressed
-      expect(screen.getByTestId("handle--0")).toBeTruthy();
+      expect(page.exists("handle--0")).toBe(true);
     });
 
     it("dragging the handle dispatches plain fractions via onResize (the machine then clears initialPx)", () => {
       const onResize = vi.fn();
-      render(
-        <InhouseLayoutEngine
-          state={initialPxState}
-          registry={abRegistry}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onResize={onResize}
-        />,
-      );
-      const handle = screen.getByTestId("handle--0");
-      fireEvent.pointerDown(handle, { pointerId: 3, clientX: 60, clientY: 0 });
-      fireEvent.pointerMove(handle, { clientX: 90, clientY: 0 });
+      page.mount(initialPxState, abRegistry, { onResize });
+      page.pointerDown("handle--0", { pointerId: 3, clientX: 60, clientY: 0 });
+      page.pointerMove("handle--0", { clientX: 90, clientY: 0 });
       expect(onResize).toHaveBeenCalled();
       const [path, sizes] = onResize.mock.calls[0] as [number[], number[]];
       expect(path).toEqual([]);
@@ -207,7 +158,7 @@ describe("InhouseLayoutEngine", () => {
       // NaN leaking from the px measurement (jsdom rects are zero-size, so
       // the handler falls back to node.sizes as the baseline).
       expect(sizes[0] + sizes[1]).toBeCloseTo(1, 5);
-      fireEvent.pointerUp(handle, { pointerId: 3, clientX: 90, clientY: 0 });
+      page.pointerUp("handle--0", { pointerId: 3, clientX: 90, clientY: 0 });
     });
 
     it("first drag converts the cells' MEASURED px to fractions and dispatches those, not the stored sizes", () => {
@@ -250,37 +201,20 @@ describe("InhouseLayoutEngine", () => {
       // jsdom's real rects are zero-size (which is exactly why every other
       // drag test falls back to node.sizes) — stub them so the split
       // container and its cells report the widths above.
-      const boundingRect = vi
-        .spyOn(Element.prototype, "getBoundingClientRect")
-        .mockImplementation(function stubbedRect(this: Element): DOMRect {
-          const width =
-            cellPx[this.getAttribute("data-testid") ?? ""] ?? containerPx;
-          return new DOMRect(0, 0, width, 600);
-        });
+      const stub = page.stubBoundingRectByTestId(cellPx, containerPx);
       const onResize = vi.fn();
 
       try {
-        render(
-          <InhouseLayoutEngine
-            state={measuredState}
-            registry={measuredRegistry}
-            onMaximize={noop}
-            onRestore={noop}
-            onCollapse={noop}
-            onExpand={noop}
-            onResize={onResize}
-          />,
-        );
-        const handle = screen.getByTestId("handle--1");
-        fireEvent.pointerDown(handle, {
+        page.mount(measuredState, measuredRegistry, { onResize });
+        page.pointerDown("handle--1", {
           pointerId: 4,
           clientX: 807,
           clientY: 0,
         });
-        fireEvent.pointerMove(handle, { clientX: 850, clientY: 0 });
-        fireEvent.pointerUp(handle, { pointerId: 4, clientX: 850, clientY: 0 });
+        page.pointerMove("handle--1", { clientX: 850, clientY: 0 });
+        page.pointerUp("handle--1", { pointerId: 4, clientX: 850, clientY: 0 });
       } finally {
-        boundingRect.mockRestore();
+        stub.restore();
       }
 
       expect(onResize).toHaveBeenCalled();
@@ -303,9 +237,8 @@ describe("InhouseLayoutEngine", () => {
     });
 
     it("drops the px-fixed treatment while a panel is maximized, so the maximized panel can fill the dock", () => {
-      renderEngine({ ...initialPxState, maximized: "b" }, abRegistry);
-      const cell = screen.getByTestId("panel-b").closest("[data-initial-cell]");
-      expect(cell?.getAttribute("data-initial-cell")).toBe("false");
+      page.mount({ ...initialPxState, maximized: "b" }, abRegistry);
+      expect(page.initialCellOf("panel-b").isInitial).toBe(false);
     });
   });
 
@@ -331,19 +264,16 @@ describe("InhouseLayoutEngine", () => {
     };
 
     try {
-      renderEngine(state, throwingRegistry);
+      page.mount(state, throwingRegistry);
     } finally {
       consoleError.mockRestore();
     }
 
     // The throwing panel shows a scoped error state...
-    const analyticsPanel = screen.getByTestId("panel-fx-analytics");
-    expect(
-      within(analyticsPanel).getByTestId("panel-error").textContent,
-    ).toContain("Analytics");
+    expect(page.errorTextWithin("panel-fx-analytics")).toContain("Analytics");
     // ...while its sibling panel, and the engine root itself, render fine.
-    expect(screen.getByTestId("layout-engine")).toBeTruthy();
-    expect(screen.getByTestId("rates-body").textContent).toBe("RATES");
+    expect(page.exists("layout-engine")).toBe(true);
+    expect(page.text("rates-body")).toBe("RATES");
   });
 
   describe("strip orientation follows the reclaim axis (credit-shaped tree: rail | column[b, c])", () => {
@@ -382,46 +312,35 @@ describe("InhouseLayoutEngine", () => {
     };
 
     it("keeps a direct row-split child vertical and a column sibling of the maximized panel horizontal", () => {
-      renderEngine(
+      page.mount(
         { ...creditShapedState, maximized: "b" },
         creditShapedRegistry,
       );
       // rail is a direct child of the root row → narrow full-height strip.
-      const rail = screen.getByTestId("panel-rail");
-      expect(rail.getAttribute("data-strip")).toBe("true");
-      expect(rail.getAttribute("data-strip-orientation")).toBe("vertical");
+      expect(page.stripFlag("panel-rail")).toBe(true);
+      expect(page.stripOrientation("panel-rail")).toBe("vertical");
       // c shares its column with the maximized b → short full-width strip.
-      const c = screen.getByTestId("panel-c");
-      expect(c.getAttribute("data-strip")).toBe("true");
-      expect(c.getAttribute("data-strip-orientation")).toBe("horizontal");
-      expect(
-        screen.getByTestId("cell-1-1").getAttribute("data-strip-fill"),
-      ).toBe("false");
+      expect(page.stripFlag("panel-c")).toBe(true);
+      expect(page.stripOrientation("panel-c")).toBe("horizontal");
+      expect(page.stripFill("cell-1-1")).toBe(false);
     });
 
     it("inherits the row axis through a fully-stripped column: maximizing the rail turns both column panels into vertical, rail-filling strips", () => {
-      renderEngine(
+      page.mount(
         { ...creditShapedState, maximized: "rail" },
         creditShapedRegistry,
       );
 
       for (const id of ["b", "c"]) {
-        const panel = screen.getByTestId(`panel-${id}`);
-        expect(panel.getAttribute("data-strip")).toBe("true");
-        expect(panel.getAttribute("data-strip-orientation")).toBe("vertical");
+        expect(page.stripFlag(`panel-${id}`)).toBe(true);
+        expect(page.stripOrientation(`panel-${id}`)).toBe("vertical");
       }
 
       // Their cells share the freed rail's height instead of hugging.
-      expect(
-        screen.getByTestId("cell-1-0").getAttribute("data-strip-fill"),
-      ).toBe("true");
-      expect(
-        screen.getByTestId("cell-1-1").getAttribute("data-strip-fill"),
-      ).toBe("true");
+      expect(page.stripFill("cell-1-0")).toBe(true);
+      expect(page.stripFill("cell-1-1")).toBe(true);
       // The fully-stripped column's own cell hugs along the row (no fill).
-      expect(
-        screen.getByTestId("cell--1").getAttribute("data-strip-fill"),
-      ).toBe("false");
+      expect(page.stripFill("cell--1")).toBe(false);
     });
   });
 
@@ -450,21 +369,16 @@ describe("InhouseLayoutEngine", () => {
     };
 
     it("renders no maximize control for the opted-out panel, keeping its collapse control and its sibling's maximize", () => {
-      renderEngine(creditState, creditRegistry);
-      expect(screen.queryByTestId("panel-credit-new-rfq-maximize")).toBeNull();
-      expect(screen.getByTestId("panel-credit-new-rfq-collapse")).toBeTruthy();
-      expect(screen.getByTestId("panel-credit-rfqs-maximize")).toBeTruthy();
+      page.mount(creditState, creditRegistry);
+      expect(page.exists("panel-credit-new-rfq-maximize")).toBe(false);
+      expect(page.exists("panel-credit-new-rfq-collapse")).toBe(true);
+      expect(page.exists("panel-credit-rfqs-maximize")).toBe(true);
     });
 
     it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
-      renderEngine(
-        { ...creditState, maximized: "credit-rfqs" },
-        creditRegistry,
-      );
-      expect(
-        screen.getByTestId("panel-credit-new-rfq").getAttribute("data-strip"),
-      ).toBe("true");
-      expect(screen.queryByTestId("new-rfq-body")).toBeNull();
+      page.mount({ ...creditState, maximized: "credit-rfqs" }, creditRegistry);
+      expect(page.stripFlag("panel-credit-new-rfq")).toBe(true);
+      expect(page.exists("new-rfq-body")).toBe(false);
     });
   });
 
@@ -486,55 +400,41 @@ describe("InhouseLayoutEngine", () => {
     };
 
     it("maximizing eq-ticket strips only its column sibling — a horizontal bar inside the rail — leaving the main column untouched", () => {
-      renderEngine({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      const watchlist = screen.getByTestId("panel-eq-watchlist");
-      expect(watchlist.getAttribute("data-strip")).toBe("true");
-      expect(watchlist.getAttribute("data-strip-orientation")).toBe(
-        "horizontal",
-      );
+      page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
+      expect(page.stripFlag("panel-eq-watchlist")).toBe(true);
+      expect(page.stripOrientation("panel-eq-watchlist")).toBe("horizontal");
       // outside the boundary: chart and blotter render their bodies.
-      expect(screen.getByTestId("chart-body")).toBeTruthy();
-      expect(screen.getByTestId("eq-blotter-body")).toBeTruthy();
-      expect(
-        screen.getByTestId("panel-eq-chart").getAttribute("data-strip"),
-      ).toBe("false");
+      expect(page.exists("chart-body")).toBe(true);
+      expect(page.exists("eq-blotter-body")).toBe(true);
+      expect(page.stripFlag("panel-eq-chart")).toBe(false);
     });
 
     it("keeps the rail's 290px initialPx design width and the main handle; only the rail-internal handle disappears", () => {
-      renderEngine({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      const railCell = screen.getByTestId("cell--1");
-      expect(railCell.getAttribute("data-initial-cell")).toBe("true");
-      expect(railCell.getAttribute("data-strip-cell")).toBe("false");
-      expect(screen.getByTestId("handle--0")).toBeTruthy();
-      expect(screen.getByTestId("handle-0-0")).toBeTruthy();
-      expect(screen.queryByTestId("handle-1-0")).toBeNull();
+      page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
+      expect(page.initialCellFlag("cell--1")).toBe(true);
+      expect(page.stripCellFlag("cell--1")).toBe(false);
+      expect(page.exists("handle--0")).toBe(true);
+      expect(page.exists("handle-0-0")).toBe(true);
+      expect(page.exists("handle-1-0")).toBe(false);
     });
 
     it("maximizing eq-watchlist mirrors it: eq-ticket strips horizontally; the main column and rail width stay put", () => {
-      renderEngine({ ...eqState, maximized: "eq-watchlist" }, eqRegistry);
-      const ticket = screen.getByTestId("panel-eq-ticket");
-      expect(ticket.getAttribute("data-strip")).toBe("true");
-      expect(ticket.getAttribute("data-strip-orientation")).toBe("horizontal");
-      expect(
-        screen.getByTestId("panel-eq-chart").getAttribute("data-strip"),
-      ).toBe("false");
-      expect(
-        screen.getByTestId("cell--1").getAttribute("data-initial-cell"),
-      ).toBe("true");
+      page.mount({ ...eqState, maximized: "eq-watchlist" }, eqRegistry);
+      expect(page.stripFlag("panel-eq-ticket")).toBe(true);
+      expect(page.stripOrientation("panel-eq-ticket")).toBe("horizontal");
+      expect(page.stripFlag("panel-eq-chart")).toBe(false);
+      expect(page.initialCellFlag("cell--1")).toBe(true);
     });
 
     it("root-scope maximize is unchanged: eq-chart still strips the whole dock, dropping the rail's design width", () => {
-      renderEngine({ ...eqState, maximized: "eq-chart" }, eqRegistry);
+      page.mount({ ...eqState, maximized: "eq-chart" }, eqRegistry);
 
       for (const id of ["eq-blotter", "eq-ticket", "eq-watchlist"]) {
-        expect(
-          screen.getByTestId(`panel-${id}`).getAttribute("data-strip"),
-        ).toBe("true");
+        expect(page.stripFlag(`panel-${id}`)).toBe(true);
       }
 
-      const railCell = screen.getByTestId("cell--1");
-      expect(railCell.getAttribute("data-initial-cell")).toBe("false");
-      expect(railCell.getAttribute("data-strip-cell")).toBe("true");
+      expect(page.initialCellFlag("cell--1")).toBe(false);
+      expect(page.stripCellFlag("cell--1")).toBe(true);
     });
   });
 
@@ -553,40 +453,10 @@ describe("InhouseLayoutEngine", () => {
       collapsed: [],
     };
     const onResize = vi.fn();
-    render(
-      <InhouseLayoutEngine
-        state={columnState}
-        registry={registry}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onResize={onResize}
-      />,
-    );
-    const handle = screen.getByTestId("handle--0");
-    fireEvent.pointerDown(handle, { pointerId: 2, clientX: 0, clientY: 40 });
-    fireEvent.pointerMove(handle, { clientX: 0, clientY: 70 });
+    page.mount(columnState, registry, { onResize });
+    page.pointerDown("handle--0", { pointerId: 2, clientX: 0, clientY: 40 });
+    page.pointerMove("handle--0", { clientX: 0, clientY: 70 });
     expect(onResize).toHaveBeenCalled();
-    fireEvent.pointerUp(handle, { pointerId: 2, clientX: 0, clientY: 70 });
+    page.pointerUp("handle--0", { pointerId: 2, clientX: 0, clientY: 70 });
   });
 });
-
-function noop(): void {}
-
-function renderEngine(
-  s: LayoutState = state,
-  r: PanelRegistry = registry,
-): void {
-  render(
-    <InhouseLayoutEngine
-      state={s}
-      registry={r}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onResize={noop}
-    />,
-  );
-}

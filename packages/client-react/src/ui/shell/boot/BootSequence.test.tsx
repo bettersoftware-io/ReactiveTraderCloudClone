@@ -5,14 +5,13 @@
  * This file covers the rAF loop branch (lines 42-63) that the contract spec
  * skips because jsdom's getContext("2d") returns null.
  */
-import { render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
 
-import { BootSequence } from "./BootSequence";
+import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
+
+const page = bootSequencePage();
 
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
@@ -36,45 +35,43 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
   it("starts the rAF loop when the canvas context is available", () => {
     const onDone = vi.fn();
-    render(wrap(<BootSequence onDone={onDone} />));
+    page.mount(onDone);
     expect(rafSpy).toHaveBeenCalled();
   });
 
   it("cancels the rAF loop on unmount (cleanup path)", () => {
     const onDone = vi.fn();
-    const { unmount } = render(wrap(<BootSequence onDone={onDone} />));
-    unmount();
+    const handle = page.mount(onDone);
+    handle.unmount();
     expect(cafSpy).toHaveBeenCalledWith(42);
   });
 
   it("draws from the token store without any painted custom properties", () => {
     const onDone = vi.fn();
     expect(() => {
-      render(wrap(<BootSequence onDone={onDone} />));
+      page.mount(onDone);
     }).not.toThrow();
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
 
   it("runs the laser and docking draws through the same factory loop", () => {
     for (const variant of ["laser", "docking"] as const) {
-      const { unmount } = render(
-        wrap(<BootSequence onDone={vi.fn()} />, {
-          useBootSequence: (_onDone: () => void) => {
-            return {
-              state: { variant, progress: 10, done: false },
-              skip: vi.fn(),
-            };
-          },
-        } as unknown as Partial<ViewModel>),
-      );
-      unmount();
+      const handle = page.mount(vi.fn(), {
+        useBootSequence: (_onDone: () => void) => {
+          return {
+            state: { variant, progress: 10, done: false },
+            skip: vi.fn(),
+          };
+        },
+      } as unknown as Partial<ViewModel>);
+      handle.unmount();
     }
 
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
 
   it("tracks the cursor into the shared pointer while booting", () => {
-    render(wrap(<BootSequence onDone={vi.fn()} />));
+    page.mount(vi.fn());
     // The listener normalizes clientX/Y to -1..1; it must not throw and the
     // canvas keeps drawing afterwards (the pointer feeds the v3 variants).
     window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5 }));
@@ -88,7 +85,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = (() => {
       return { matches: true };
     }) as unknown as typeof window.matchMedia;
-    render(wrap(<BootSequence onDone={vi.fn()} />));
+    page.mount(vi.fn());
     expect(rafSpy).not.toHaveBeenCalled();
     window.matchMedia = original;
   });
@@ -103,7 +100,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      renderBootSequence({ forceBootAnimation: true });
+      page.mountWithForceBootAnimation(true);
       expect(rafSpy).toHaveBeenCalled();
     } finally {
       window.matchMedia = original;
@@ -117,7 +114,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      renderBootSequence({ forceBootAnimation: false });
+      page.mountWithForceBootAnimation(false);
       expect(rafSpy).not.toHaveBeenCalled();
     } finally {
       window.matchMedia = original;
@@ -129,19 +126,17 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   // should never run the boot animation, even on first paint. Freeze wins
   // even over forceBootAnimation (which overrides only prefers-reduced-motion).
   it("skips the canvas loop entirely under power-saver freeze", () => {
-    render(
-      wrap(<BootSequence onDone={vi.fn()} />, {
-        usePowerSaver: () => {
-          return {
-            level: "freeze" as const,
-            isCalm: true,
-            isFreeze: true,
-            setLevel: vi.fn(),
-            cycle: vi.fn(),
-          };
-        },
-      } as unknown as Partial<ViewModel>),
-    );
+    page.mount(vi.fn(), {
+      usePowerSaver: () => {
+        return {
+          level: "freeze" as const,
+          isCalm: true,
+          isFreeze: true,
+          setLevel: vi.fn(),
+          cycle: vi.fn(),
+        };
+      },
+    } as unknown as Partial<ViewModel>);
     expect(rafSpy).not.toHaveBeenCalled();
   });
 
@@ -153,7 +148,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     const onDone = vi.fn();
     expect(() => {
-      render(wrap(<BootSequence onDone={onDone} />));
+      page.mount(onDone);
     }).not.toThrow();
 
     document.documentElement.style.removeProperty("--accent-primary");
@@ -168,59 +163,52 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 describe("BootSequence — boot log lines (visibility by progress)", () => {
   it("reveals boot log lines as progress advances and all when done", () => {
     const onDone = vi.fn();
-    const { rerender } = render(
-      wrap(<BootSequence onDone={onDone} />, {
-        useBootSequence: (_onDone: () => void) => {
-          return {
-            state: { variant: "core" as const, progress: 0, done: false },
-            skip: vi.fn(),
-          };
-        },
-      }),
-    );
+    const handle = page.mount(onDone, {
+      useBootSequence: (_onDone: () => void) => {
+        return {
+          state: { variant: "core" as const, progress: 0, done: false },
+          skip: vi.fn(),
+        };
+      },
+    });
 
     // progress 0 -> 0 lines visible
-    expect(screen.queryByText(/BOOT> initializing kernel/)).toBe(null);
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(false);
 
     // progress 50 -> lines 0-3 visible (thresholds 9, 20, 32, 43, 55, 66, 77)
-    rerender(
-      wrap(<BootSequence onDone={onDone} />, {
-        useBootSequence: (_onDone: () => void) => {
-          return {
-            state: { variant: "core" as const, progress: 50, done: false },
-            skip: vi.fn(),
-          };
-        },
-      }),
-    );
-    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
-    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
-    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
-    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
-    expect(screen.queryByText(/NET > equities market data/)).toBe(null);
+    handle.rerenderWithHooks({
+      useBootSequence: (_onDone: () => void) => {
+        return {
+          state: { variant: "core" as const, progress: 50, done: false },
+          skip: vi.fn(),
+        };
+      },
+    });
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
+    expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
+    expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
+    expect(page.hasText(/NET > credit rfq gateway/)).toBe(true);
+    expect(page.hasText(/NET > equities market data/)).toBe(false);
 
     // progress 100 -> all 7 lines, final line has data-online="true"
-    rerender(
-      wrap(<BootSequence onDone={onDone} />, {
-        useBootSequence: (_onDone: () => void) => {
-          return {
-            state: { variant: "core" as const, progress: 100, done: false },
-            skip: vi.fn(),
-          };
-        },
-      }),
-    );
-    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
-    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
-    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
-    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
-    expect(screen.queryByText(/NET > equities market data/)).not.toBe(null);
-    expect(screen.queryByText(/SYS > calibrating HUD shaders/)).not.toBe(null);
-    expect(screen.queryByText(/SYS > all systems nominal/)).not.toBe(null);
+    handle.rerenderWithHooks({
+      useBootSequence: (_onDone: () => void) => {
+        return {
+          state: { variant: "core" as const, progress: 100, done: false },
+          skip: vi.fn(),
+        };
+      },
+    });
+    expect(page.hasText(/BOOT> initializing kernel/)).toBe(true);
+    expect(page.hasText(/BOOT> mounting secure enclave/)).toBe(true);
+    expect(page.hasText(/NET > linking pricing engine/)).toBe(true);
+    expect(page.hasText(/NET > credit rfq gateway/)).toBe(true);
+    expect(page.hasText(/NET > equities market data/)).toBe(true);
+    expect(page.hasText(/SYS > calibrating HUD shaders/)).toBe(true);
+    expect(page.hasText(/SYS > all systems nominal/)).toBe(true);
 
     // Verify the final line is marked as online
-    const finalLine = screen.getByText(/SYS > all systems nominal/);
-    expect(finalLine.getAttribute("data-online")).toBe("true");
+    expect(page.onlineAttrOfText(/SYS > all systems nominal/)).toBe("true");
   });
 });
 
@@ -268,70 +256,4 @@ function makeCtxStub(): CanvasRenderingContext2D {
     strokeRect: vi.fn(),
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
-}
-
-function wrap(
-  el: ReactElement,
-  partialHooks: Partial<ViewModel> = {},
-): ReactElement {
-  const defaultHooks = {
-    useBootSequence: (_onDone: () => void) => {
-      return {
-        state: { variant: "core" as const, progress: 0, done: false },
-        skip: vi.fn(),
-      };
-    },
-    useForceBootAnimation: () => {
-      return { enabled: false, setEnabled: vi.fn(), toggle: vi.fn() };
-    },
-    usePowerSaver: () => {
-      return {
-        level: "off" as const,
-        isCalm: false,
-        isFreeze: false,
-        setLevel: vi.fn(),
-        cycle: vi.fn(),
-      };
-    },
-    useThemePreference: () => {
-      return {
-        mode: "dark" as const,
-        modePreference: "dark" as const,
-        cycle: vi.fn(),
-      };
-    },
-    useThemeSkinPreference: () => {
-      return { skin: "holo" as const, setSkin: vi.fn() };
-    },
-    ...partialHooks,
-  } as unknown as ViewModel;
-
-  return (
-    <ViewModelContext.Provider value={defaultHooks}>
-      {el}
-    </ViewModelContext.Provider>
-  );
-}
-
-interface RenderBootSequenceOpts {
-  forceBootAnimation: boolean;
-}
-
-/** Renders `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
- * the given flag — the seam Task 4 wires into the effective reduced-motion
- * decision. */
-function renderBootSequence({
-  forceBootAnimation,
-}: RenderBootSequenceOpts): void {
-  render(
-    wrap(<BootSequence onDone={vi.fn()} />, {
-      useForceBootAnimation: () => {
-        return {
-          enabled: forceBootAnimation,
-          setEnabled: vi.fn(),
-          toggle: vi.fn(),
-        };
-      },
-    } as unknown as Partial<ViewModel>),
-  );
 }

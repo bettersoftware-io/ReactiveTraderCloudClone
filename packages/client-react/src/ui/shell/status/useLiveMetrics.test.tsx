@@ -1,12 +1,14 @@
-import { act, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelContext } from "@rtc/react-bindings";
 
+import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
+
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
-import { useLiveMetrics } from "./useLiveMetrics";
+
+const page = liveMetricsPage();
 
 describe("useLiveMetrics", () => {
   let rafCb: FrameRequestCallback | null;
@@ -31,7 +33,7 @@ describe("useLiveMetrics", () => {
   function frame(ts: number): void {
     const cb = rafCb;
     rafCb = null;
-    act(() => {
+    page.commit(() => {
       cb?.(ts);
     });
   }
@@ -47,16 +49,9 @@ describe("useLiveMetrics", () => {
       );
     }
 
-    const { result } = renderHook(
-      () => {
-        return useLiveMetrics();
-      },
-      {
-        wrapper: Wrapper,
-      },
-    );
+    const handle = page.mount(Wrapper);
 
-    expect(result.current).toEqual(FROZEN_LIVE_METRICS);
+    expect(handle.state).toEqual(FROZEN_LIVE_METRICS);
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
@@ -65,12 +60,7 @@ describe("useLiveMetrics", () => {
   // The motion probe recognises the loop by its `rtcDiagnosticRafLoop` marker
   // (tests/browser/motionProbe.ts), so that marker is pinned here too.
   it("keeps sampling under power-saver freeze and marks its loop diagnostic", () => {
-    renderHook(
-      () => {
-        return useLiveMetrics();
-      },
-      { wrapper: withPowerSaver(true) },
-    );
+    page.mount(withPowerSaver(true));
 
     expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
     expect(
@@ -80,27 +70,22 @@ describe("useLiveMetrics", () => {
   });
 
   it("starts null, then publishes fps + tone counted over the ~1s window", () => {
-    const { result } = renderHook(
-      () => {
-        return useLiveMetrics();
-      },
-      { wrapper: withPowerSaver(false) },
-    );
+    const handle = page.mount(withPowerSaver(false));
 
-    expect(result.current.fps).toBeNull();
-    expect(result.current.fpsTone).toBe("dim");
+    expect(handle.state.fps).toBeNull();
+    expect(handle.state.fpsTone).toBe("dim");
 
     // 59 frames inside the window (elapsed < 1000ms) → no publish yet.
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
     }
 
-    expect(result.current.fps).toBeNull();
+    expect(handle.state.fps).toBeNull();
 
     // 60th frame lands the window at exactly 1000ms → publish 60fps.
     frame(1000);
-    expect(result.current.fps).toBe(60);
-    expect(result.current.fpsTone).toBe("positive");
+    expect(handle.state.fps).toBe(60);
+    expect(handle.state.fpsTone).toBe("positive");
   });
 
   it("reports formatted memory when performance.memory is present", () => {
@@ -108,12 +93,7 @@ describe("useLiveMetrics", () => {
       configurable: true,
       value: { usedJSHeapSize: 260 * 1024 * 1024 },
     });
-    const { result } = renderHook(
-      () => {
-        return useLiveMetrics();
-      },
-      { wrapper: withPowerSaver(false) },
-    );
+    const handle = page.mount(withPowerSaver(false));
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
@@ -121,16 +101,11 @@ describe("useLiveMetrics", () => {
 
     frame(1000);
 
-    expect(result.current.mem).toBe("260MB");
+    expect(handle.state.mem).toBe("260MB");
   });
 
   it("reports null memory when performance.memory is unavailable", () => {
-    const { result } = renderHook(
-      () => {
-        return useLiveMetrics();
-      },
-      { wrapper: withPowerSaver(false) },
-    );
+    const handle = page.mount(withPowerSaver(false));
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
@@ -138,7 +113,7 @@ describe("useLiveMetrics", () => {
 
     frame(1000);
 
-    expect(result.current.mem).toBeNull();
+    expect(handle.state.mem).toBeNull();
   });
 });
 

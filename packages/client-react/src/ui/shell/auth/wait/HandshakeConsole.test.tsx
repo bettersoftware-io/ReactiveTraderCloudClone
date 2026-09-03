@@ -1,25 +1,25 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
-import { HandshakeConsole } from "./HandshakeConsole";
+import { handshakeConsolePage } from "#tests/ui/pages/HandshakeConsolePage";
+
+const page = handshakeConsolePage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 test("renders all three handshake lines legibly at base state", () => {
-  render(<HandshakeConsole />);
+  page.mount();
 
-  const root = screen.getByTestId("auth-wait-handshake");
-  expect(root).not.toBeNull();
-  expect(root.textContent).toContain("SECURE CHANNEL OPEN");
-  expect(root.textContent).toContain("CREDENTIALS SEALED");
-  expect(root.textContent).toContain("AWAITING AUTH GRANT");
+  expect(page.exists("auth-wait-handshake")).toBe(true);
+  const text = page.text("auth-wait-handshake");
+  expect(text).toContain("SECURE CHANNEL OPEN");
+  expect(text).toContain("CREDENTIALS SEALED");
+  expect(text).toContain("AWAITING AUTH GRANT");
 });
 
 test("exposes the wait as a live region for assistive tech", () => {
-  render(<HandshakeConsole />);
+  page.mount();
 
-  const status = screen.getByRole("status");
-  expect(status.textContent).toContain("AWAITING AUTH GRANT");
+  expect(page.statusText()).toContain("AWAITING AUTH GRANT");
 });

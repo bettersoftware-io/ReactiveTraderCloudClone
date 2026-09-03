@@ -21,7 +21,28 @@
     }
   },
   "include": ["src"],
-  "exclude": ["src/**/*.golden.test.ts"],
+  // Co-located specs are excluded from this rootDir="src"-constrained
+  // program: an increasing share of them import their page objects from
+  // `#tests/ui/pages/**` (outside rootDir — TS6059), which this config's own
+  // rootDir can never satisfy for both `src` app code AND `tests` page
+  // modules at once (the golden-test entry below predates that and hit the
+  // identical clash). No `#tests/*` path mapping is declared here either —
+  // with every `*.test.{ts,tsx}` excluded, nothing left in this program's
+  // `include` needs it (do not add it back without re-including something
+  // that does). tsconfig.ui-visual.json's pass in the same `pnpm typecheck`
+  // chain re-type-checks all of `src` together with `tests` (incl. every
+  // page module) in ONE program — adequate, and the authoritative program
+  // for specs — but not a strict superset of this one (it narrows `types` to
+  // `["node"]` and carries different project `references`). One consequence
+  // worth knowing: a `*.test.{ts,tsx}` file under `src` no longer belongs to
+  // ITS OWN nearest tsconfig.json — an IDE or any nearest-tsconfig walker
+  // resolving from the file's own directory now has to know to fall back to
+  // tsconfig.ui-visual.json instead.
+  "exclude": [
+    "src/**/*.golden.test.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ],
   "references": [
     { "path": "../domain" },
     { "path": "../shared" },

@@ -1,21 +1,21 @@
-import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useFlipGrid } from "./useFlipGrid";
+import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
+
+const page = flipGridPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 describe("useFlipGrid", () => {
   it("re-measures origins on window resize so the next FLIP starts fresh", () => {
     const tile = makeTile();
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep]);
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(tile.el);
+    const handle = page.mount("All");
+    handle.state.register("EURUSD")(tile.el);
 
     // Settle the hook's stored origin at left=0 via a first deps change.
-    rerender({ dep: "EUR" });
+    handle.rerender("EUR");
 
     // The grid moves WITHOUT a deps change (the window resizes)...
     tile.rect.left = 100;
@@ -24,7 +24,7 @@ describe("useFlipGrid", () => {
     // ...then a real deps change moves it again. The FLIP must start from
     // the post-resize origin (100 → 150 = -50px), not the stale one (0).
     tile.rect.left = 150;
-    rerender({ dep: "USD" });
+    handle.rerender("USD");
 
     expect(tile.animate).toHaveBeenCalledWith(
       [{ transform: "translate(-50px, 0px)" }, { transform: "none" }],
@@ -42,14 +42,9 @@ describe("useFlipGrid", () => {
   // registered element still has a running animation.
   it("skips the resize re-measure while a glide is in flight", () => {
     const tile = makeTile();
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep]);
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(tile.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All");
+    handle.state.register("EURUSD")(tile.el);
+    handle.rerender("EUR");
 
     // A glide is still running when the resize refresh fires: the mid-glide
     // rect (left=100) must NOT be stored as the new origin.
@@ -61,7 +56,7 @@ describe("useFlipGrid", () => {
     // (0 → 150 = -150px), not from the mid-glide rect (100 → 150 = -50px).
     tile.running = [];
     tile.rect.left = 150;
-    rerender({ dep: "USD" });
+    handle.rerender("USD");
 
     expect(tile.animate).toHaveBeenCalledWith(
       [{ transform: "translate(-150px, 0px)" }, { transform: "none" }],
@@ -76,14 +71,9 @@ describe("useFlipGrid", () => {
     const stage = makeStage({ right: 900, bottom: 600 });
     const first = makeTile();
     stage.el.appendChild(first.el);
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep], { enter: true });
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(first.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All", { enter: true });
+    handle.state.register("EURUSD")(first.el);
+    handle.rerender("EUR");
 
     // A second tile appears at left=300 (right edge also 300 — zero-size
     // fake rects) with no stored origin: it must slide in from the stage's
@@ -91,8 +81,8 @@ describe("useFlipGrid", () => {
     const entering = makeTile();
     entering.rect.left = 300;
     stage.el.appendChild(entering.el);
-    result.current.register("GBPUSD")(entering.el);
-    rerender({ dep: "USD" });
+    handle.state.register("GBPUSD")(entering.el);
+    handle.rerender("USD");
 
     expect(entering.animate).toHaveBeenCalledWith(
       [
@@ -112,22 +102,17 @@ describe("useFlipGrid", () => {
 
     leaving.animate.mockReturnValue({ finished: Promise.resolve() });
 
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep], { enter: true, exit: true });
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(first.el);
-    result.current.register("GBPUSD")(leaving.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All", { enter: true, exit: true });
+    handle.state.register("EURUSD")(first.el);
+    handle.state.register("GBPUSD")(leaving.el);
+    handle.rerender("EUR");
 
     // GBPUSD leaves; a fresh EURJPY enters. Neither element is inside a
     // [data-flip-stage] container (detached nodes), so both use DRIFT_PX.
-    result.current.register("GBPUSD")(null);
+    handle.state.register("GBPUSD")(null);
     const entering = makeTile();
-    result.current.register("EURJPY")(entering.el);
-    rerender({ dep: "USD" });
+    handle.state.register("EURJPY")(entering.el);
+    handle.rerender("USD");
 
     expect(entering.animate).toHaveBeenCalledWith(
       [
@@ -147,12 +132,10 @@ describe("useFlipGrid", () => {
   });
 
   it("tolerates unregistering a key that never had an element", () => {
-    const { result } = renderHook(() => {
-      return useFlipGrid(["All"]);
-    });
+    const handle = page.mount("All");
 
     expect(() => {
-      result.current.register("EURUSD")(null);
+      handle.state.register("EURUSD")(null);
     }).not.toThrow();
   });
 
@@ -162,17 +145,12 @@ describe("useFlipGrid", () => {
     delete globalThis.ResizeObserver;
 
     const tile = makeTile();
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep]);
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(tile.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All");
+    handle.state.register("EURUSD")(tile.el);
+    handle.rerender("EUR");
 
     tile.rect.left = 80;
-    rerender({ dep: "USD" });
+    handle.rerender("USD");
     expect(tile.animate).toHaveBeenCalled();
 
     globalThis.ResizeObserver = original;
@@ -208,17 +186,12 @@ describe("useFlipGrid", () => {
       } as DOMRect;
     };
 
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep], { freeze: true });
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All", { freeze: true });
+    handle.state.register("EURUSD")(el);
+    handle.rerender("EUR");
 
     rect.left = 150;
-    rerender({ dep: "USD" });
+    handle.rerender("USD");
 
     expect(animateSpy).not.toHaveBeenCalled();
     // @ts-expect-error jsdom has no native `animate` — undo the stub install
@@ -227,18 +200,13 @@ describe("useFlipGrid", () => {
 
   it("does not play enter animations when the option is off", () => {
     const first = makeTile();
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep]);
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(first.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All");
+    handle.state.register("EURUSD")(first.el);
+    handle.rerender("EUR");
 
     const entering = makeTile();
-    result.current.register("GBPUSD")(entering.el);
-    rerender({ dep: "USD" });
+    handle.state.register("GBPUSD")(entering.el);
+    handle.rerender("USD");
 
     expect(entering.animate).not.toHaveBeenCalled();
   });
@@ -267,21 +235,16 @@ describe("useFlipGrid", () => {
       }),
     });
 
-    const { result, rerender } = renderHook(
-      (props: HookProps) => {
-        return useFlipGrid([props.dep], { exit: true });
-      },
-      { initialProps: { dep: "All" } },
-    );
-    result.current.register("EURUSD")(survivor.el);
-    result.current.register("GBPUSD")(leaving.el);
-    rerender({ dep: "EUR" });
+    const handle = page.mount("All", { exit: true });
+    handle.state.register("EURUSD")(survivor.el);
+    handle.state.register("GBPUSD")(leaving.el);
+    handle.rerender("EUR");
 
     // The filter drops GBPUSD: React unmounts it (ref cleanup) and the node
     // leaves the DOM before the next FLIP pass.
     leaving.el.remove();
-    result.current.register("GBPUSD")(null);
-    rerender({ dep: "USD" });
+    handle.state.register("GBPUSD")(null);
+    handle.rerender("USD");
 
     // Ghost: re-appended to body, pinned at its old rect, falling to the
     // stage's bottom border (600 - (100 + 0 height) = 500px) while fading.
@@ -294,7 +257,7 @@ describe("useFlipGrid", () => {
     // test id so e2e tile counts don't see it during its 340ms fade.
     expect(leaving.el.getAttribute("aria-hidden")).toBe("true");
     expect(leaving.el.hasAttribute("data-testid")).toBe(false);
-    expect(leaving.el.querySelectorAll("[data-testid]").length).toBe(0);
+    expect(page.testIdDescendantCount(leaving.el)).toBe(0);
     expect(leaving.animate).toHaveBeenCalledWith(
       [
         { opacity: 1, transform: "translate(0, 0) scale(1)" },
@@ -309,10 +272,6 @@ describe("useFlipGrid", () => {
     expect(leaving.el.parentElement).toBeNull();
   });
 });
-
-interface HookProps {
-  dep: string;
-}
 
 interface FakeTile {
   el: HTMLElement;

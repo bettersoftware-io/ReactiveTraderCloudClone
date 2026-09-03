@@ -11,37 +11,33 @@
  * path, but scoped to client-react (composition/machine wiring is this
  * task's territory; the cross-framework contract spec is Task 12's).
  */
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { JarvisEntry } from "@rtc/client-core";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import { jarvisOverlayDriveRowPage } from "#tests/ui/pages/JarvisOverlayDriveRowPage";
 
-import { JarvisOverlay } from "./JarvisOverlay";
+const page = jarvisOverlayDriveRowPage();
 
 afterEach(() => {
-  cleanup();
+  page.unmountAll();
 });
 
 describe("JarvisOverlay — drive rows", () => {
   it("renders a 'drive: <kind>' entry through the SAME generic row template as any other jarvis-role entry", () => {
-    renderOverlay([
+    page.mount([
       { id: 0, role: "jarvis", text: "Good morning, sir.", done: true },
       { id: 1, role: "jarvis", text: "drive: switchTab", done: true },
     ]);
 
-    const entries = screen.getAllByTestId("jarvis-entry");
-    expect(entries).toHaveLength(2);
-    expect(entries[1]?.textContent).toContain("drive: switchTab");
-    expect(entries[1]?.getAttribute("data-role")).toBe("jarvis");
-    expect(entries[1]?.getAttribute("data-done")).toBe("true");
+    expect(page.entryCount()).toBe(2);
+    expect(page.entryText(1)).toContain("drive: switchTab");
+    expect(page.entryRole(1)).toBe("jarvis");
+    expect(page.entryDone(1)).toBe("true");
     // Not narrator-styled — a driven row has no `origin`.
-    expect(entries[1]?.hasAttribute("data-origin")).toBe(false);
+    expect(page.entryHasOrigin(1)).toBe(false);
   });
 
   it("renders MULTIPLE drive rows in arrival order, alongside an ordinary reply", () => {
-    renderOverlay([
+    page.mount([
       { id: 0, role: "jarvis", text: "Good morning, sir.", done: true },
       { id: 1, role: "user", text: "set up the vol workspace", done: true },
       { id: 2, role: "jarvis", text: "Setting it up now.", done: true },
@@ -49,12 +45,7 @@ describe("JarvisOverlay — drive rows", () => {
       { id: 4, role: "jarvis", text: "drive: eqIndicator", done: true },
     ]);
 
-    const entries = screen.getAllByTestId("jarvis-entry");
-    expect(
-      entries.map((entry) => {
-        return entry.textContent;
-      }),
-    ).toEqual([
+    expect(page.entryTexts()).toEqual([
       "Good morning, sir.",
       "set up the vol workspace",
       "Setting it up now.",
@@ -63,44 +54,3 @@ describe("JarvisOverlay — drive rows", () => {
     ]);
   });
 });
-
-function renderOverlay(
-  entries: readonly JarvisEntry[],
-): ReturnType<typeof render> {
-  const hooks = {
-    useJarvis: () => {
-      return {
-        state: {
-          open: true,
-          skin: "singularity",
-          unread: 0,
-          unreadNarration: false,
-          phase: "idle",
-          entries,
-          pendingConfirmation: null,
-          available: true,
-          openCount: 0,
-        },
-        close: () => {},
-        toggle: () => {},
-        send: () => {},
-        approveConfirmation: () => {},
-        declineConfirmation: () => {},
-        setSkin: () => {},
-      };
-    },
-    useJarvisDemo: () => {
-      return {
-        state: { running: false, stepIndex: 0, stepCount: 7, label: null },
-        startDemo: () => {},
-        stopDemo: () => {},
-      };
-    },
-  } as unknown as ViewModel;
-
-  return render(
-    <ViewModelContext.Provider value={hooks}>
-      <JarvisOverlay />
-    </ViewModelContext.Provider>,
-  );
-}
