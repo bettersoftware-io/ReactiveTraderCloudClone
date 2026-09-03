@@ -1,6 +1,6 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
-import { compensateGap } from "#/dockBlob";
+import { DOCK_BLOB_VERSION, migrateDockBlob } from "#/dockBlob";
 import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -8,10 +8,16 @@ import { HookTabRenderer } from "#/HookTabRenderer";
 
 const RTC_TAB_COMPONENT = "rtc-tab";
 
-/** Gap between groups, in px — the in-house engine's 7px drag-handle track
+/** Gap between cards, in px — the in-house engine's 7px drag-handle track
  * (`InhouseLayoutEngine.module.css` `.handle`), so two panels sit exactly as
- * far apart under dockview as they do in-house. Dockview applies it as a
- * margin on every grid child and centres its sash in the resulting gutter. */
+ * far apart under dockview as they do in-house. NOT dockview's theme `gap`:
+ * that mechanism shaves `gap × (n − 1) / n` off every child at render time,
+ * which made each model size fractional and each card edge a half pixel.
+ * Instead the theme carries no gap and `dockview-hud.css` insets every LEAF
+ * view by half of this per side — so a view's model size is its visible
+ * card plus one whole gap, model equals render, and every size the engine
+ * sets, reads, or serialises is the same integer. Pins and the public seed
+ * still speak card px; the engine adds this constant at its edges. */
 export const GROUP_GAP_PX = 7;
 
 // dockview's own built-in themes (theme.ts: themeDark, themeAbyss, …) apply
@@ -30,10 +36,11 @@ export const GROUP_GAP_PX = 7;
 // `DockviewTheme` here (matching `dockview-hud.css`'s `.dockview-theme-rtc`
 // selector) is the same mechanism dockview's built-ins use, so the mapped
 // `--dv-*` vars finally win the cascade at the correct DOM level.
+// No `gap` here, deliberately — see GROUP_GAP_PX: the gutter is a CSS inset
+// on every leaf view, not dockview's shave-at-render margin.
 const RTC_DOCKVIEW_THEME: DockviewTheme = {
   name: "rtc",
   className: "dockview-theme-rtc",
-  gap: GROUP_GAP_PX,
 };
 
 /** Every hook has the same `(panelId, element) => dispose` shape: dockview
@@ -218,8 +225,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   function serializeLayout(): void {
-    // See compensateGap: dockview serialises gap-shaved rendered sizes,
-    // which would restore a little differently on every load.
+    // With no theme gap, dockview's toJSON IS the model — no compensation.
+    // `rtcBlobVersion` marks the blob as gap-0 era; a blob without it is
+    // migrated on load (migrateDockBlob).
     // `rtcDesignPins` rides along inside the blob (dockview's fromJSON
     // ignores unknown top-level keys) so a still-pinned rail stays pinned
     // across reloads, and a released one stays released — the in-house
@@ -236,7 +244,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const stripGeometry = stripGeometrySidecar();
     opts.onLayoutChange(
       JSON.stringify({
-        ...compensateGap(api.toJSON(), GROUP_GAP_PX),
+        ...api.toJSON(),
+        rtcBlobVersion: DOCK_BLOB_VERSION,
         rtcDesignPins: intactDesignPins(),
         ...(stripGeometry === undefined
           ? {}
@@ -490,11 +499,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         const owned = world.get(member.panels[0]?.id ?? "");
         const axis = axisOf(member, along);
 
-        // A member already at its size is left alone: re-setting it walks
-        // the gap-correction double-set once more and its integer rounding
-        // can nudge a sibling off by a pixel for nothing.
+        // A member already at its size is left alone: re-setting it makes
+        // dockview redistribute for nothing (and a migrated legacy world
+        // can sit a fraction of a pixel off an integer model).
         if (owned !== undefined && Math.abs(axis.size() - owned) > 0.5) {
-          setRendered(axis, owned);
+          axis.set(owned);
         }
       }
     }
@@ -537,7 +546,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     );
 
     return () => {
-      setRendered(naturalAxis, record.size);
+      naturalAxis.set(record.size);
     };
   }
 
@@ -646,10 +655,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           record.orthogonalMinimum,
           record.orthogonalMaximum,
         );
-        clampRendered(naturalAxis, barSizeFor(orientation));
+        clampTo(naturalAxis, barModelFor(orientation));
       } else {
         naturalAxis.constrain(record.minimum, record.maximum);
-        clampRendered(orthogonalAxis, barSizeFor(orientation));
+        clampTo(orthogonalAxis, barModelFor(orientation));
       }
     }
 
@@ -664,7 +673,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const witness = firstGroupIn(split, api.groups);
 
       if (witness !== undefined) {
-        setRendered(axisOf(witness, opposite(orientationAgainst(split))), size);
+        axisOf(witness, opposite(orientationAgainst(split))).set(size);
       }
     }
 
@@ -732,10 +741,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
         // A rail split's panels share one extent on the pin axis — clamp
         // each GROUP once (the branch's constraint is the meet of its
-        // children's), not once per panel.
+        // children's), not once per panel. Pins persist the PUBLIC design
+        // width — the card the user sees — so the model adds the gap.
         if (!clamped.has(group.element)) {
           clamped.add(group.element);
-          clampRendered(axis, pin.px);
+          clampTo(axis, pin.px + GROUP_GAP_PX);
         }
       }
 
@@ -1147,8 +1157,13 @@ function opposite(orientation: DockStripOrientation): DockStripOrientation {
   return orientation === "vertical" ? "horizontal" : "vertical";
 }
 
-function barSizeFor(orientation: DockStripOrientation): number {
-  return orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX;
+/** The MODEL size a strip's group is clamped to: the 32px visible bar plus
+ * the view's own gutter inset (model = card + gap, as everywhere). */
+function barModelFor(orientation: DockStripOrientation): number {
+  return (
+    (orientation === "vertical" ? STRIP_WIDTH_PX : STRIP_HEIGHT_PX) +
+    GROUP_GAP_PX
+  );
 }
 
 /** The element whose groups a maximize strips — the in-house
@@ -1276,9 +1291,9 @@ function firstGroupIn(
   });
 }
 
-/** Gives a flipped split's strips an equal share of its length — measured as
- * what they render at now (the gap between them is dockview's own, so the
- * shares sum back to the split), settled one by one through setRendered. */
+/** Gives a flipped split's strips an equal share of its length — measured
+ * as their model sizes now (which sum back to the split), settled one by
+ * one. */
 function shareAlong(
   split: Element,
   stripped: ReadonlyMap<Element, string>,
@@ -1309,7 +1324,7 @@ function shareAlong(
   const share = Math.floor(total / members.length);
 
   for (const group of members) {
-    setRendered(axisOf(group, along), share);
+    axisOf(group, along).set(share);
   }
 }
 
@@ -1373,45 +1388,15 @@ function axisOf(
   };
 }
 
-/**
- * Sizes a group so that it RENDERS at `size` along `axis`, not merely models
- * it. With a theme `gap`, dockview keeps a split's model sizes summing to the
- * full extent but shaves `gap × (n − 1) / n` off every child when laying it
- * out — so `setSize({ width: 32 })` lands on screen (and in `group.api.width`)
- * at 32 minus that share. The share depends on the sibling count of a branch
- * the public API does not expose, so rather than recompute it this measures
- * it: apply the size once, read back what rendered, and re-apply with the
- * difference folded in. Idempotent when there is no gap (the difference is
- * zero and the second pass is skipped).
- */
-function setRendered(axis: GroupAxis, size: number): void {
-  axis.set(size);
-  const shortfall = size - axis.size();
-
-  // Only a POSITIVE shortfall is the gap shave. A negative one means the
-  // splitview rendered the group BIGGER than asked because its siblings'
-  // constraints left no other feasible layout (an expand whose siblings are
-  // still clamped bars fills the split regardless of its recorded size) — a
-  // "correction" would push a bogus, possibly negative size into the model.
-  if (shortfall > 0) {
-    axis.set(size + shortfall);
-  }
-}
-
-/** Pins a group to render at exactly `size` along `axis`: constraints and
- * size together, with the same gap-share correction as {@link setRendered}
- * applied to both (a max constraint at the bare target would cap the
- * corrected size straight back to the shortfall). */
-function clampRendered(axis: GroupAxis, size: number): void {
+/** Pins a group at exactly `size` (a MODEL size) along `axis`: constraints
+ * and size together — a bare setSize would leave the group draggable back
+ * open, and a sibling's resize could push it wide again. With no theme gap
+ * the model is the render, so there is nothing to measure back or correct:
+ * the gap-7 era's set-and-measure double-pass (`setRendered` /
+ * `clampRendered`) is gone with the shave that made it necessary. */
+function clampTo(axis: GroupAxis, size: number): void {
   axis.constrain(size, size);
   axis.set(size);
-  const shortfall = size - axis.size();
-
-  if (shortfall !== 0) {
-    const corrected = size + shortfall;
-    axis.constrain(corrected, corrected);
-    axis.set(corrected);
-  }
 }
 
 /** What a load hands the engine beyond the grid dockview restored: the
@@ -1438,9 +1423,12 @@ function loadBlobOrSeed(
 ): RestoredLayout {
   if (opts.blob !== null) {
     try {
-      const parsed: unknown = JSON.parse(opts.blob);
-      // dockview's fromJSON reads only the fields it knows, so the pin and
-      // strip-geometry sidecars ride through untouched.
+      // A gap-7-era blob (no rtcBlobVersion) is lifted into the gap-0 model
+      // first — grid sizes and strip-sidecar sizes change units; see
+      // migrateDockBlob. dockview's fromJSON reads only the fields it
+      // knows, so the pin and strip-geometry sidecars ride through
+      // untouched.
+      const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
 
       return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };

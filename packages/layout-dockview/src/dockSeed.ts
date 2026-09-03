@@ -23,13 +23,14 @@ export type DockSeedNode =
   | { readonly kind: "panel"; readonly panelId: string };
 
 export interface SeedConversionOptions {
-  /** The dockview theme's `gap` (px between sibling groups), when one is in
-   * force. Dockview implements the gap by shaving `gap × (n − 1) / n` off
-   * each of a split's `n` children at RENDER time while keeping the model
-   * sizes summing to the full extent — so a seed that wants a 360px rail on
-   * screen must serialise the rail as 360 + that share. Passing the gap here
-   * applies exactly that compensation, so pinned pixels and fractions alike
-   * describe what the user SEES. Default 0: no compensation. */
+  /** The in-house gutter (px between sibling cards), when one is in force.
+   * The gap-0 model (see `DOCK_BLOB_VERSION`): dockview's theme carries no
+   * gap; every leaf view is inset by `gap / 2` per side in CSS, so a view's
+   * MODEL size is its visible card plus one whole gap — a constant lift per
+   * child, independent of the sibling count. The converter therefore
+   * allocates the seed's pixels and fractions in CARD space (what the user
+   * sees: `extent − gap × n`) and serialises each child at `card + gap`.
+   * Default 0: model and card coincide. */
   readonly gap?: number;
 }
 
@@ -149,8 +150,8 @@ export function convertSeed(
   // dockview's `fromJSON` rejects a grid whose root is a leaf ("root must be
   // of type branch" — verified against 7.0.4, and it threw for real on the
   // single-panel Admin tab), so a lone panel is wrapped in a one-child
-  // branch spanning the whole extent. One child means no gap share to
-  // compensate, whichever axis the root orientation picks.
+  // branch spanning the whole extent — which IS the lone view's model size
+  // (its card insets from it in CSS), whichever axis the root picks.
   const root =
     seed.kind === "panel"
       ? {
@@ -189,21 +190,25 @@ function convertSplit(
 ): GridNode {
   const extent = node.dir === "row" ? width : height;
   const entries = flattenSplit(node, 1);
-  // Rendered extents share what is left once the gaps are taken out; each
-  // model size then carries its equal share of those gaps back, which is
-  // precisely what dockview's splitview subtracts again at layout time
-  // (`marginReducedSize = margin × sashCount / n`).
-  const gapTotal = state.gap * Math.max(0, entries.length - 1);
-  const gapShare = entries.length > 0 ? gapTotal / entries.length : 0;
-  const rendered = allocateExtent(entries, extent - gapTotal);
-  collectDesignPins(node.dir, entries, extent - gapTotal, state.pins);
+  // Cards share what is left once every child's whole gap is taken out
+  // (each view carries a half-gap inset per side, so n children hold n gaps
+  // between and around them within this split's model extent); each model
+  // size is then its card plus that one gap back — a constant, not a
+  // per-sibling share, which is what keeps every model size an integer.
+  const cardExtent = extent - state.gap * entries.length;
+  const cards = allocateExtent(entries, cardExtent);
+  collectDesignPins(node.dir, entries, cardExtent, state.pins);
 
   const children: GridNode[] = [];
-  rendered.forEach(({ node: child, size }) => {
-    const childWidth = node.dir === "row" ? size : width;
-    const childHeight = node.dir === "row" ? height : size;
+  cards.forEach(({ node: child, size }) => {
+    const model = size + state.gap;
+    // Nested splits divide MODEL extents: a branch child's view is not
+    // inset (only leaf views are), so its inner leaves' cards inset from
+    // the full model box — the same identity one level down.
+    const childWidth = node.dir === "row" ? model : width;
+    const childHeight = node.dir === "row" ? height : model;
     const converted = convertNode(child, childWidth, childHeight, state);
-    children.push({ ...converted, size: size + gapShare });
+    children.push({ ...converted, size: model });
   });
 
   return { type: "branch", data: children };
@@ -258,7 +263,7 @@ function allocateExtent(
 }
 
 /** The shared fit rule: pins apply only when their pixels all fit the
- * split's (gap-reduced) extent — {@link allocateExtent} falls back to plain
+ * split's CARD extent — {@link allocateExtent} falls back to plain
  * fractions otherwise, and pin collection must agree with that fallback. */
 function pinsFitIn(entries: readonly SplitEntry[], extent: number): boolean {
   return pinnedTotalOf(entries) <= extent;

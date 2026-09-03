@@ -1,14 +1,16 @@
-/* Mirrors InhouseLayoutEngine.module.css's .engine: fills the workspace
- * region with the same 10px dock inset (prototype-measured page padding),
- * so dockview's outermost groups sit exactly where the in-house engine's
- * outermost panels do. Group-to-group separation is the 7px theme gap
- * (createDockEngine's GROUP_GAP_PX) — the in-house handle track. */
+/* Mirrors InhouseLayoutEngine.module.css's .engine — but at 6.5px, not the
+ * in-house 10px: every dockview LEAF view carries a 3.5px gutter inset per
+ * side (dockview-hud.css; half of createDockEngine's GROUP_GAP_PX), so the
+ * outermost card edges land at 6.5 + 3.5 = the same 10px page inset, and
+ * adjacent cards sit 3.5 + 3.5 = 7px apart — the in-house handle track.
+ * The inset lives on the views (not a dockview theme `gap`) so every model
+ * size stays an integer; see GROUP_GAP_PX's own doc comment. */
 .engine {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 10px;
+  padding: 6.5px;
 }
 
 /* The dockview mount point — must be a positioned, sized block for

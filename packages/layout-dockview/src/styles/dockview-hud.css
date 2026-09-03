@@ -36,8 +36,9 @@
   --dv-activegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
   --dv-inactivegroup-visiblepanel-tab-color: var(--text-muted, #64748b);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--text-muted, #64748b);
-  /* Group separation is the theme `gap` (createDockEngine's GROUP_GAP_PX)
-   * plus each group's own 1px card border below — no extra divider lines. */
+  /* Group separation is the leaf-view inset below (createDockEngine's
+   * GROUP_GAP_PX, half per side) plus each group's own 1px card border —
+   * no extra divider lines, and no dockview theme `gap`. */
   --dv-separator-border: transparent;
   --dv-tab-divider-color: transparent;
   --dv-paneview-active-outline-color: var(--accent-primary, #3b82f6);
@@ -59,6 +60,24 @@
  * darker than in-house). */
 .dockview-theme-rtc.dv-dockview {
   background: transparent;
+}
+
+/* The in-house 7px gutter, WITHOUT dockview's theme `gap`: every leaf view
+ * (the ones directly holding a group card — branch views hold nested
+ * splits and must stay uninset, or the inset would compound with depth) is
+ * padded by half a gutter per side, so a view's MODEL size is its visible
+ * card + 7 and adjacent cards sit 7px apart. This is what keeps model =
+ * render: dockview's own `gap` shaves `gap × (n − 1) / n` off every child
+ * at layout time, which made each model fractional and each card edge a
+ * half pixel (the ≤1px engine-parity residual, ADR-002). The bridges' root
+ * padding is 6.5px — 6.5 + 3.5 = the in-house 10px page inset, so the
+ * outer card edges land exactly where in-house puts them. dockview sizes
+ * `.dv-view` through inline width/height; `border-box` keeps the padding
+ * inside that box, and the group's own 100% height resolves against the
+ * content box, i.e. the card. */
+.dockview-theme-rtc .dv-view:has(> .dv-groupview) {
+  box-sizing: border-box;
+  padding: 3.5px;
 }
 
 /* `.panel`: the panel card — 1px border, 6px radius, panel background and

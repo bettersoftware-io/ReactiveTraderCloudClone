@@ -511,27 +511,14 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "App",
     fixtureKey: "app-fx-rail-maximized",
   },
-  // maxDiffPixels on the two horizontal-strip dockview twins: a MEASURED
-  // ~205px glyph-AA divergence in the stripped sibling's head title (solid's
-  // CI render vs the react golden — rows 124-131 only, no chrome edges; DOM,
-  // fonts and rects verified byte-identical across clients). Mechanism: the
-  // design-width pins' gap-corrected FRACTIONAL model sizes place the group
-  // at a different subpixel phase per client mount path (react rebuilds from
-  // the blob under StrictMode, solid single-mounts from the seed), so only
-  // the remounted title's glyph rasterisation differs — the half-pixel
-  // structural residual (ADR-002) expressing itself client-asymmetrically.
-  // 512 = 2.5× the measured worst; the 0.005 ratio budget still applies.
-  // Remove with the gap-0 gutter refactor recorded in ADR-002/STATUS.
   "app/fx-rail-maximized-dockview": {
     componentKey: "App",
     fixtureKey: "app-fx-rail-maximized-dockview",
-    maxDiffPixels: 512,
   },
   "app/fx-collapsed": { componentKey: "App", fixtureKey: "app-fx-collapsed" },
   "app/fx-collapsed-dockview": {
     componentKey: "App",
     fixtureKey: "app-fx-collapsed-dockview",
-    maxDiffPixels: 512,
   },
   "app/fx-rail-collapsed": {
     componentKey: "App",

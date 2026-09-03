@@ -238,17 +238,17 @@ describe("toSerializedDockview × pixel pins", () => {
     expect(sizes).toEqual([100, 300, 600]);
   });
 
-  it("compensates the theme gap so the pinned pixels are what RENDERS", () => {
-    // dockview shaves gap × (n − 1) / n off each of n children at layout
-    // time; the model sizes must carry that share so the 360px rail is 360
-    // on screen. Two children, gap 7: each model size = rendered + 3.5, and
-    // the rendered extents share 1000 − 7.
+  it("lifts every child by one whole gap so the pinned pixels are the visible card", () => {
+    // The gap-0 model: cards share the extent minus one gap per child
+    // (each leaf view is inset half a gap per side in CSS), and a child's
+    // MODEL size is its card + 7 — a constant, so integers stay integers.
+    // Two children, gap 7: cards share 986, models sum back to 1000.
     const [main, rail] = (
       toSerializedDockview(RAIL, 1000, 800, { gap: 7 }).grid
         .root as SerializedNode
     ).data as SerializedNode[];
-    expect(rail.size).toBe(363.5);
-    expect(main.size).toBe(636.5); // (993 − 360) + 3.5
+    expect(rail.size).toBe(367); // card 360 + one gap
+    expect(main.size).toBe(633); // card (986 − 360) + one gap
     expect((rail.size ?? 0) + (main.size ?? 0)).toBe(1000);
   });
 });
@@ -443,7 +443,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
           init: () => {},
         };
       },
-      theme: { name: "t", className: "t", gap: 7 },
+      theme: { name: "t", className: "t" },
     });
 
     api.layout(640, 480);
@@ -466,7 +466,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     api.dispose();
   });
 
-  it("renders a gap-compensated pinned rail at its design width", () => {
+  it("renders a pinned rail's view at card + gap, exactly, in a gap-0 dockview", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const api = createDockview(container, {
@@ -476,7 +476,7 @@ describe("toSerializedDockview × dockview-core round trip", () => {
           init: () => {},
         };
       },
-      theme: { name: "t", className: "t", gap: 7 },
+      theme: { name: "t", className: "t" },
     });
 
     const rail = {
@@ -493,12 +493,11 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     api.layout(1000, 800);
     api.fromJSON(toSerializedDockview(rail, 1000, 800, { gap: 7 }));
 
-    // dockview reports the RENDERED width (gap share already removed) —
-    // the design 360, give or take dockview's half-pixel flooring.
-    const railWidth = api.getGroup("group-2")?.api.width ?? 0;
-    const mainWidth = api.getGroup("group-1")?.api.width ?? 0;
-    expect(Math.abs(railWidth - 360)).toBeLessThanOrEqual(1);
-    expect(Math.abs(mainWidth - 633)).toBeLessThanOrEqual(1);
+    // With no theme gap the model IS what dockview reports — no shave, no
+    // flooring: the 360px design card is exactly the 367px view (its CSS
+    // inset renders the card), the main card 626 the 633px one.
+    expect(api.getGroup("group-2")?.api.width).toBe(367);
+    expect(api.getGroup("group-1")?.api.width).toBe(633);
 
     api.dispose();
   });

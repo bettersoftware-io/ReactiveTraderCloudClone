@@ -406,14 +406,17 @@ as a two-branch conditional, would be guessing at the shape a third engine
   active) — and each client bridge portals the **same** `PanelHead` pieces
   its in-house engine renders (`PanelHeadSlot`, `PanelHeadControls`,
   `PanelStrip`, extracted from `InhouseLayoutEngine` into one shared
-  component + stylesheet per client) into them. The theme carries
+  component + stylesheet per client) into them. The theme carried
   `gap: 7` (the in-house handle track), the bridge root the 10px inset,
   `dockview-hud.css` the card border/radius/shadow, the 38px head and the
-  2×30px sash grip; the seed converter honours `initialPx`/`fixedPx`
+  2×30px sash grip; the seed converter honoured `initialPx`/`fixedPx`
   (gap-compensated, since Dockview shaves `gap × (n − 1) / n` off every
   child at render time — and, because it also *serialises* those shaved
-  sizes, the persisted blob is compensated the same way so a save/load
-  cycle restores exactly instead of drifting a pixel or two per reload); collapse clamps along the axis the group's
+  sizes, the persisted blob was compensated the same way so a save/load
+  cycle restores exactly instead of drifting a pixel or two per reload).
+  **The whole gap/compensation arrangement in this bullet was replaced by
+  the gap-0 model on 2026-09-03 — see that bullet below**; the visual
+  outcome (7px gutters, 10px page inset) is unchanged. Collapse clamps along the axis the group's
   siblings run on (a 32px column beside side-by-side siblings, a 32px bar
   under stacked ones) and reports the orientation so the bridge renders the
   matching in-house restore strip with the group header hidden. One React
@@ -440,7 +443,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   run against both clients — head slot and title inside the tab, controls
   dispatching the machine intents, the strip and its orientation), 38
   package-level unit tests in `@rtc/layout-dockview` (hooks, pixel pins,
-  gap compensation, axis-aware collapse), a Playwright e2e journey (switch
+  blob migration, axis-aware collapse), a Playwright e2e journey (switch
   engine → drag-dock by the panel's own header → reload persists → revert),
   and a `shell/layout-dockview` visual scenario (10-combo matrix) alongside
   re-pinned preferences-modal goldens — plus, since 2026-08-29 (PR #590), whole-app
@@ -488,14 +491,14 @@ as a two-branch conditional, would be guessing at the shape a third engine
   rail starts at 1550.5 vs 1550) because dockview rounds each restored view
   size to an integer (`gridview.js` `fromJSON`, `splitview.js` `layout()`)
   and then renders `size − gap × (n − 1) / n` — 3.5px for the 7px gap — and
-  Chrome snaps `.5` up. That is ≤1px per edge and 0.3–3.5% of pixels
-  (highest on the position-sensitive equities chart), and it cannot be
-  seeded away: the integer model is dockview's, not the seed's. The exact
-  route, if it is ever wanted, is a gap-0 model with the 7px gutter emulated
-  as a trailing inset on every non-last view — integer edges that snap like
-  the in-house engine's — which would replace the gap-compensation logic
-  above (seed share, serialise-time `compensateGap`, collapse shortfall)
-  rather than extend it.
+  Chrome snaps `.5` up. That was ≤1px per edge and 0.3–3.5% of pixels
+  (highest on the position-sensitive equities chart), and it could not be
+  seeded away: the integer model was dockview's, not the seed's.
+  **Retired 2026-09-03 by the gap-0 model** (its own bullet below): with no
+  theme gap the model is the render, every size is an integer, and the
+  gap-compensation logic this paragraph describes (seed share,
+  serialise-time `compensateGap`, collapse shortfall correction) is gone
+  rather than extended.
 - **Intent glide, added 2026-08-29 (PR #602).** The in-house engine animates
   exactly one thing: a collapse / expand / maximize / restore glides over
   0.34s (`.cell` / `.panel` transitions on flex-grow/basis and width/height),
@@ -587,7 +590,8 @@ as a two-branch conditional, would be guessing at the shape a third engine
   (`holo3d-dark/app-equities`); the layout states sit in the same
   0.000–0.010 band as the resting workspaces, i.e. maximize and collapse are
   now as close as the default arrangement, with the ≤1px half-pixel residual
-  the whole of it. **A React bridge bug surfaced with the first goldens:**
+  the whole of it (that residual class was retired 2026-09-03 — the gap-0
+  model bullet below). **A React bridge bug surfaced with the first goldens:**
   under `StrictMode` (the real app and the visual host both use it) the
   engine layout effect's cleanup disposes engine A — whose dispose flushes
   its STRIPPED geometry into the store — and the re-run builds B from that
@@ -683,7 +687,37 @@ as a two-branch conditional, would be guessing at the shape a third engine
   header height instead, and the two forms disagreed. Changed together:
   the in-house `width`/strip-cell basis, the dockview engine's
   `STRIP_WIDTH_PX` clamp, and the layout-state goldens re-pinned.
-- **See also:** the implementation spec and plan —
+- **The gap-0 model, 2026-09-03 — the half-pixel class retired.** Dockview's
+  theme `gap` implements the gutter by shaving `gap × (n − 1) / n` off every
+  child of an `n`-child branch at layout time while model sizes still sum to
+  the extent. Every size the engine wanted on screen therefore carried a
+  fractional, sibling-count-dependent compensation (a 360px rail modelled as
+  363.5), which produced three distinct costs: the set-and-measure
+  correction dance (`setRendered`/`clampRendered` double-passes, the seed's
+  gap-share arithmetic, serialise-time `compensateGap`), the ≤1px
+  half-pixel edge class in every engine-parity reading, and — its last
+  expression — a client-asymmetric ~205px glyph-AA divergence (fractional
+  models put a group's text at a different subpixel phase per mount path:
+  React StrictMode rebuilds from the blob, Solid mounts once from the seed)
+  that PR #667 had to cover with a scoped `maxDiffPixels: 512` budget on
+  two scenarios. The refactor: the theme carries **no gap**; every LEAF
+  view (`.dv-view:has(> .dv-groupview)`, `dockview-hud.css`) is inset
+  3.5px per side and the bridges' root padding drops 10px → 6.5px, so
+  outer card edges still land at the 10px page inset and adjacent cards
+  still sit 7px apart, while a view's MODEL size is always its visible
+  card + 7 — a constant, so `cards + 7n = extent` holds at every nesting
+  level and every model stays an integer through seed conversion, pins
+  (persisted as the public card px, clamped at +7), strips (bar model 39),
+  restores, and `toJSON` round-trips (dockview serialises exactly what it
+  renders when the margin is 0 — verified in `dockBlob.test.ts`, three
+  cycles byte-stable with no compensation). Blobs are version-stamped
+  (`rtcBlobVersion: 2`); a legacy gap-7 blob is migrated on load
+  (`migrateDockBlob`: each branch child `+gap/n`, strip-sidecar sizes
+  `+gap`, pins untouched), and its per-branch sums then land exactly on the
+  new, 7px-larger container. The #667 budget entries are removed (the
+  `Scenario.maxDiffPixels` mechanism stays); every `*-dockview` golden
+  re-pins with cards moving up to ±3.5px onto the in-house integers —
+  engine parity's edge class should collapse to genuine paint differences.
   [superpowers/specs/2026-08-11-dockview-layout-engine-design.md](../superpowers/specs/2026-08-11-dockview-layout-engine-design.md)
   and [superpowers/plans/2026-08-11-dockview-layout-engine.md](../superpowers/plans/2026-08-11-dockview-layout-engine.md).
 
