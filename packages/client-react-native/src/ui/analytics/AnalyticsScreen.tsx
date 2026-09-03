@@ -62,9 +62,18 @@ interface AnalyticsScreenStyles {
 function makeStyles(t: RnTheme): AnalyticsScreenStyles {
   return StyleSheet.create({
     panel: { flex: 1 },
-    content: { padding: 16, gap: 20 },
+    // The screen contributes only vertical inset (dc.html:165 `padding:12px
+    // 12px 8px`): the cards own the 12px side inset + 10px stack gap
+    // themselves (AnalyticsDashboard `widget`), so padding here would double
+    // both — it did, at 16+12 sides / 20+12 gaps, until 2026-09-02.
+    content: { paddingTop: 12, paddingBottom: 8 },
     stale: { opacity: 0.5 },
-    staleBadge: { alignSelf: "flex-start", fontSize: 11, color: t.accentAware },
+    staleBadge: {
+      alignSelf: "flex-start",
+      fontSize: 11,
+      color: t.accentAware,
+      marginHorizontal: 12,
+    },
     loading: { padding: 16, color: t.textMuted },
   });
 }

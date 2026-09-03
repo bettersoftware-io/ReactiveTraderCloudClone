@@ -13,6 +13,8 @@ import type { Candle } from "@rtc/domain";
 import { formatChangePct } from "#/ui/equities/formatChangePct";
 import type { MoverRow } from "#/ui/equities/markets/moversVm";
 import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
+import { TileSheen } from "#/ui/TileSheen";
+import { depthStyle } from "#/ui/theme/depthStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -52,6 +54,7 @@ export function MoversRow({
       style={selected ? styles.rowSelected : styles.row}
       onPress={selectSymbol}
     >
+      <TileSheen style={styles.sheen} />
       <Text testID={`eq-mover-${row.symbol}-rank`} style={styles.rank}>
         {String(rank).padStart(2, "0")}
       </Text>
@@ -104,6 +107,7 @@ function pctPillStyle(styles: MoversRowStyles, changePct: number): PillStyle {
 interface MoversRowStyles {
   row: ViewStyle;
   rowSelected: ViewStyle;
+  sheen: ViewStyle;
   rank: TextStyle;
   identity: ViewStyle;
   symbol: TextStyle;
@@ -121,6 +125,9 @@ interface MoversRowStyles {
 const PCT_PILL_ALPHA_HEX = "21";
 
 function makeStyles(t: RnTheme): MoversRowStyles {
+  // The design's mover row is a `--tile-bg` / `--tile-shadow` surface like the
+  // rates tiles (dc.html:340) — TileSheen paints the 3d-skin gradient (clipped
+  // to this row's 10px radius via `sheen`), depthStyle the shadow + highlight.
   const baseRow: ViewStyle = {
     flexDirection: "row",
     alignItems: "center",
@@ -132,6 +139,8 @@ function makeStyles(t: RnTheme): MoversRowStyles {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     marginBottom: SPACING.xs,
+    ...depthStyle(t.depth),
+    borderTopColor: t.depth.topHighlight ?? t.borderSubtle,
   };
 
   const pillBase: TextStyle = {
@@ -146,6 +155,7 @@ function makeStyles(t: RnTheme): MoversRowStyles {
 
   return StyleSheet.create({
     row: baseRow,
+    sheen: { borderRadius: 10 },
     // The selected ring — the design's `style-active="border-color:
     // var(--border-strong)"` (dc.html:340): the same 1px rule, stepped up to
     // `borderStrong` rather than the accent.

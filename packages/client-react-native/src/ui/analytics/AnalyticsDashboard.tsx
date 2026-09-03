@@ -45,7 +45,7 @@ export function AnalyticsDashboard({
   return (
     <>
       <SurfaceCard
-        variant="panel"
+        variant="tile"
         testID="analytics-widget-pnl"
         style={styles.widget}
       >
@@ -69,7 +69,7 @@ export function AnalyticsDashboard({
       </SurfaceCard>
 
       <SurfaceCard
-        variant="panel"
+        variant="tile"
         testID="analytics-widget-pairs"
         style={styles.widget}
       >
@@ -78,7 +78,7 @@ export function AnalyticsDashboard({
       </SurfaceCard>
 
       <SurfaceCard
-        variant="panel"
+        variant="tile"
         testID="analytics-widget-exposure"
         style={styles.widget}
       >
@@ -140,9 +140,13 @@ interface AnalyticsDashboardStyles {
 
 function makeStyles(t: RnTheme): AnalyticsDashboardStyles {
   return StyleSheet.create({
+    // The design stacks the three cards 10px apart inside the screen's 12px
+    // inset (dc.html:165 `padding:12px 12px 8px`, cards `margin-bottom:10px`)
+    // — the screen owns no horizontal padding, so the 12px here is the whole
+    // side inset, not an addition to one.
     widget: {
       marginHorizontal: SPACING.md,
-      marginBottom: SPACING.md,
+      marginBottom: 10,
       padding: SPACING.md,
     },
     // T38: the prototype's card titles are mono 8.5px on 2px tracking,

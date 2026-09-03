@@ -43,6 +43,28 @@ test("the separator is a real middle dot, not an escape sequence", async () => {
   expect(screen.getByText(/·/)).toBeTruthy();
 });
 
+// dc.html:363 — the instrument tile is a `--tile-bg` / `--tile-shadow`
+// surface (SurfaceCard's tile variant), so 3d skins paint the tile gradient.
+test("renders the gradient tile surface on 3d skins", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm()}>
+      <InstrumentCard symbol="NVDA" candles={[]} />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderWithTheme defaults to holo.dark (flat, `tileGradient: null`).
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vm()}>
+      <InstrumentCard symbol="NVDA" candles={[]} />
+    </ViewModelProvider>,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+});
+
 function vm(): ViewModel {
   return {
     useWatchlist: () => {

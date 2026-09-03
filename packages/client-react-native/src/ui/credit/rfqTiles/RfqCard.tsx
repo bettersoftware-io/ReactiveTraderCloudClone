@@ -320,7 +320,9 @@ function makeStyles(t: RnTheme): RfqCardStyles {
     card: {
       gap: SPACING.sm,
       padding: SPACING.md,
-      marginHorizontal: SPACING.sm,
+      // dc.html:220 — cards sit inside the list's 12px side inset, flush
+      // with the filter chips above (which also indent 12).
+      marginHorizontal: SPACING.md,
       marginVertical: SPACING.xs,
     },
     header: {

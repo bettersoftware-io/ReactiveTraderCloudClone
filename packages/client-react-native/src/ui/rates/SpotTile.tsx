@@ -16,6 +16,8 @@ import { useViewModel } from "@rtc/react-bindings";
 import { splitPrice } from "#/ui/formatPrice";
 import { useTickFlash } from "#/ui/rates/useTickFlash";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import { TileSheen } from "#/ui/TileSheen";
+import { depthStyle } from "#/ui/theme/depthStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
@@ -83,6 +85,7 @@ export function SpotTile({ pair, onOpenTicket }: SpotTileProps): JSX.Element {
       style={styles.tile}
       onPress={openTicket}
     >
+      <TileSheen />
       {body}
     </Pressable>
   );
@@ -132,6 +135,9 @@ interface SpotTileStyles {
 
 function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
   return StyleSheet.create({
+    // The design's price tile is a full `--tile-bg` / `--tile-shadow` surface
+    // (dc.html:108) — on 3d skins TileSheen paints the gradient and depthStyle
+    // the drop shadow + inset top highlight; flat skins keep the tonal bgTile.
     tile: {
       paddingHorizontal: 14,
       paddingTop: 13,
@@ -140,6 +146,8 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
       borderRadius: 12,
       borderWidth: 1,
       borderColor: t.borderPrimary,
+      ...depthStyle(t.depth),
+      borderTopColor: t.depth.topHighlight ?? t.borderPrimary,
     },
     headerRow: {
       flexDirection: "row",
@@ -153,10 +161,15 @@ function makeStyles(t: ReturnType<typeof useTheme>): SpotTileStyles {
       letterSpacing: 0.5,
     },
     arrow: { fontSize: 12, fontFamily: t.fontDisplay },
+    // dc.html:113 — `height:1px;background:var(--border-sub);margin:8px 0
+    // 7px`: the design's 1 CSS px is 1pt (3 device px), NOT RN's
+    // hairlineWidth (1 device px), which rendered a third as thick and
+    // nearly vanished under the tile gradient.
     divider: {
-      height: StyleSheet.hairlineWidth,
+      height: 1,
       backgroundColor: t.borderSubtle,
-      marginVertical: 8,
+      marginTop: 8,
+      marginBottom: 7,
     },
     priceRow: { flexDirection: "row", alignItems: "flex-end" },
     prefix: { fontSize: 14, color: t.textSecondary, fontFamily: t.fontMono },
