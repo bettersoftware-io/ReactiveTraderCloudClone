@@ -165,7 +165,9 @@ function makeStyles(t: RnTheme): TradeRowStyles {
       // `data-tr`), the same token as the screen root — NOT `--tile-bg`
       // (`bgTile`), which is the spot-tile surface `SpotTile.tsx` uses.
       backgroundColor: t.bgPrimary,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+      // dc.html:145 — `border-bottom:1px solid var(--border-sub)`: the
+      // design's 1 CSS px is 1pt, not RN's hairline.
+      borderBottomWidth: 1,
       borderBottomColor: t.borderSubtle,
     },
     pairCol: { flex: BLOTTER_COLUMN_FLEX.pair, minWidth: 0 },

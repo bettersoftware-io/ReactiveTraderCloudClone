@@ -97,7 +97,8 @@ function makeStyles(t: RnTheme): StatusStripStyles {
       alignItems: "center",
       paddingTop: 4,
       paddingBottom: 3,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      // dc.html:448/:455 — both strip rules are `border-top:1px` at 1pt.
+      borderTopWidth: 1,
       borderTopColor: t.borderSubtle,
     },
     // Both halves flex equally so the clearance stays EXACTLY centred, which is
@@ -132,7 +133,8 @@ function makeStyles(t: RnTheme): StatusStripStyles {
       justifyContent: "space-between",
       height: 60,
       paddingHorizontal: 18,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      // dc.html:448/:455 — both strip rules are `border-top:1px` at 1pt.
+      borderTopWidth: 1,
       borderTopColor: t.borderSubtle,
     },
     kicker: {

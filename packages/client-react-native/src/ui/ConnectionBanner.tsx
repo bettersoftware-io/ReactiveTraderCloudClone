@@ -100,7 +100,10 @@ function makeStyles(t: RnTheme): ConnectionBannerStyles {
       paddingHorizontal: 16,
       paddingVertical: 8,
       backgroundColor: t.bgHeader,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+      // App-only chrome (the design has no banner) — struck at the same 1pt
+      // as the design-specified header/strip rules so the shell's separators
+      // read as one weight.
+      borderBottomWidth: 1,
       borderBottomColor: t.borderSubtle,
     },
     pill: {
