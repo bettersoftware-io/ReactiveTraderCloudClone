@@ -1,92 +1,54 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
-
-import { RankByChips } from "#/ui/equities/markets/RankByChips";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rankByChipsPage } from "#tests/pages/RankByChipsPage";
 
 const setSort = jest.fn();
 
+const page = rankByChipsPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("renders the design's three chips, in order", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm()}>
-      <RankByChips />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByText("% CHG")).toBeTruthy();
-  expect(screen.getByText("PRICE")).toBeTruthy();
-  expect(screen.getByText("A–Z")).toBeTruthy();
+  await page.mount("chg", setSort);
+  expect(page.hasText("% CHG")).toBe(true);
+  expect(page.hasText("PRICE")).toBe(true);
+  expect(page.hasText("A–Z")).toBe(true);
 });
 
 test("pressing a chip sets that sort directly", async () => {
   setSort.mockClear();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm()}>
-      <RankByChips />
-    </ViewModelProvider>,
-  );
-  await fireEvent.press(screen.getByTestId("eq-rank-price"));
+  await page.mount("chg", setSort);
+  await page.press("eq-rank-price");
   expect(setSort).toHaveBeenCalledWith("price");
 });
 
 test("marks the active chip from the preference", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm("sym")}>
-      <RankByChips />
-    </ViewModelProvider>,
-  );
+  await page.mount("sym", setSort);
   // The testID stays stable across active/inactive (`eq-rank-${target}`) —
   // an earlier ruling: a testID must not change identity with its state, or
   // `getByTestId` breaks exactly when the state occurs. The active state is
   // exposed via `accessibilityState.selected` instead.
-  const active = screen.getByTestId("eq-rank-sym").props.accessibilityState as
-    | { selected?: boolean }
-    | undefined;
-
-  const inactive = screen.getByTestId("eq-rank-chg").props.accessibilityState as
-    | { selected?: boolean }
-    | undefined;
-
-  expect(active?.selected).toBe(true);
-  expect(inactive?.selected).toBe(false);
+  expect(page.selected("eq-rank-sym")).toBe(true);
+  expect(page.selected("eq-rank-chg")).toBe(false);
 });
 
 test("chips never stretch — the Phase 4a full-height-bar bug", async () => {
-  const { StyleSheet } = require("react-native");
-
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm()}>
-      <RankByChips />
-    </ViewModelProvider>,
-  );
-  const row = StyleSheet.flatten(screen.getByTestId("eq-rank-row").props.style);
+  await page.mount("chg", setSort);
+  const row = page.rowStyle();
 
   expect(row.alignItems).toBe("center");
-  const chip = StyleSheet.flatten(
-    screen.getByTestId("eq-rank-price").props.style,
-  );
+  const chip = page.chipStyle("eq-rank-price");
 
   expect(chip.flexGrow).toBe(0);
   expect(chip.flexShrink).toBe(0);
 });
 
 test("draws the design's pills — accent-filled when selected", async () => {
-  const { StyleSheet } = require("react-native");
-
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vm("sym")}>
-      <RankByChips />
-    </ViewModelProvider>,
-  );
-  const active = StyleSheet.flatten(
-    screen.getByTestId("eq-rank-sym").props.style,
-  );
-
-  const inactive = StyleSheet.flatten(
-    screen.getByTestId("eq-rank-chg").props.style,
-  );
+  await page.mount("sym", setSort);
+  const active = page.chipStyle("eq-rank-sym");
+  const inactive = page.chipStyle("eq-rank-chg");
 
   // `border-radius:999px` in the design (dc.html ~L335), not a rectangle.
   expect(active.borderRadius).toBe(999);
@@ -95,17 +57,3 @@ test("draws the design's pills — accent-filled when selected", async () => {
   expect(inactive.backgroundColor).toBe("transparent");
   expect(inactive.borderColor).not.toBe(active.borderColor);
 });
-
-function vm(sort = "chg"): ViewModel {
-  return {
-    useEqWatchlistSort: () => {
-      return {
-        sort,
-        setSort,
-        cycle: () => {
-          return undefined;
-        },
-      };
-    },
-  } as unknown as ViewModel;
-}

@@ -1,33 +1,19 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import { awaitingLabelPage } from "#tests/pages/AwaitingLabelPage";
 
-import { AwaitingLabel } from "#/ui/credit/rfqTiles/AwaitingLabel";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = awaitingLabelPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the AWAITING copy", async () => {
-  await renderLabel(false);
-  expect(screen.getByText("AWAITING")).toBeTruthy();
+  await page.mount(false);
+  expect(page.hasText("AWAITING")).toBe(true);
 });
 
 test("keeps the ellipsis visible with motion gated off", async () => {
-  await renderLabel(true);
-  expect(screen.getByTestId("awaiting-ellipsis")).toBeTruthy();
+  await page.mount(true);
+  expect(page.exists("awaiting-ellipsis")).toBe(true);
 });
-
-function fakeViewModel(isFreeze: boolean): ViewModel {
-  return {
-    usePowerSaver: () => {
-      return { isFreeze };
-    },
-  } as unknown as ViewModel;
-}
-
-function renderLabel(isFreeze: boolean): Promise<unknown> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(isFreeze)}>
-      <AwaitingLabel />
-    </ViewModelProvider>,
-  );
-}

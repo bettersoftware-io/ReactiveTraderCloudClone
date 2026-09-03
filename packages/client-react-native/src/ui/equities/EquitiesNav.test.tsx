@@ -1,26 +1,24 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { EquitiesNav } from "#/ui/equities/EquitiesNav";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { equitiesNavPage } from "#tests/pages/EquitiesNavPage";
+
+const page = equitiesNavPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the three segments with the design's labels", async () => {
-  await renderWithTheme(
-    <EquitiesNav view="markets" onChange={(): void => {}} />,
-  );
-  expect(screen.getByTestId("equities-nav")).toBeTruthy();
-  expect(screen.getByTestId("equities-tab-markets")).toHaveTextContent(
-    "MARKETS",
-  );
-  expect(screen.getByTestId("equities-tab-trade")).toHaveTextContent("TRADE");
-  expect(screen.getByTestId("equities-tab-blotters")).toHaveTextContent(
-    "BLOTTER",
-  );
+  await page.mount("markets", (): void => {});
+  expect(page.exists("equities-nav")).toBe(true);
+  expect(page.hasTextContent("equities-tab-markets", "MARKETS")).toBe(true);
+  expect(page.hasTextContent("equities-tab-trade", "TRADE")).toBe(true);
+  expect(page.hasTextContent("equities-tab-blotters", "BLOTTER")).toBe(true);
 });
 
 test("reports a change", async () => {
   const onChange = jest.fn();
-  await renderWithTheme(<EquitiesNav view="markets" onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("equities-tab-trade"));
+  await page.mount("markets", onChange);
+  await page.pressTab("trade");
   expect(onChange).toHaveBeenCalledWith("trade");
 });

@@ -1,34 +1,20 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import { acceptPulsePage } from "#tests/pages/AcceptPulsePage";
 
-import { AcceptPulse } from "#/ui/credit/rfqTiles/AcceptPulse";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = acceptPulsePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the ripple when motion is enabled", async () => {
-  await renderPulse(false);
-  expect(screen.getByTestId("accept-pulse")).toBeTruthy();
+  await page.mount(false);
+  expect(page.exists("accept-pulse")).toBe(true);
 });
 
 test("renders nothing when motion is disabled", async () => {
-  const { toJSON } = await renderPulse(true);
-  expect(screen.queryByTestId("accept-pulse")).toBeNull();
-  expect(toJSON()).toBeNull();
+  await page.mount(true);
+  expect(page.exists("accept-pulse")).toBe(false);
+  expect(page.isEmpty()).toBe(true);
 });
-
-function fakeViewModel(isFreeze: boolean): ViewModel {
-  return {
-    usePowerSaver: () => {
-      return { isFreeze };
-    },
-  } as unknown as ViewModel;
-}
-
-function renderPulse(isFreeze: boolean): ReturnType<typeof renderWithTheme> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(isFreeze)}>
-      <AcceptPulse />
-    </ViewModelProvider>,
-  );
-}

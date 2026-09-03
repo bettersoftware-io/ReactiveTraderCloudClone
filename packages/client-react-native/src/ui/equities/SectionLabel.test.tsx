@@ -1,30 +1,26 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import { StyleSheet, type TextStyle } from "react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import { SectionLabel } from "#/ui/equities/SectionLabel";
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { sectionLabelPage } from "#tests/pages/SectionLabelPage";
+
+const page = sectionLabelPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the caption; `spaced` adds the follow-on top margin", async () => {
-  await renderWithTheme(
-    <>
-      <SectionLabel>ORDERS</SectionLabel>
-      <SectionLabel spaced>POSITIONS</SectionLabel>
-    </>,
-  );
-  expect(screen.getByText("ORDERS")).toHaveStyle({ marginTop: 3 });
-  expect(screen.getByText("POSITIONS")).toHaveStyle({ marginTop: 12 });
+  await page.mountPair("ORDERS", "POSITIONS");
+  expect(page.styleOf("ORDERS").marginTop).toBe(3);
+  expect(page.styleOf("POSITIONS").marginTop).toBe(12);
 });
 
 // See BlotterHeader.test.tsx: the same pin, on the widest-tracked member of
 // the `labelStyle` family.
 test("keeps the 8.5pt / 2-tracked mono label recipe", async () => {
-  await renderWithTheme(<SectionLabel>ORDERS</SectionLabel>);
+  await page.mountOne("ORDERS");
 
-  const style = StyleSheet.flatten(
-    screen.getByText("ORDERS").props.style as TextStyle,
-  );
+  const style = page.styleOf("ORDERS");
 
   expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO);
   expect(style.fontSize).toBe(8.5);

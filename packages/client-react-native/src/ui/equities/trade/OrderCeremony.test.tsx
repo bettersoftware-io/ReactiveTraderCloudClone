@@ -1,11 +1,8 @@
-import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import { StyleSheet, type ViewStyle } from "react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { EquityOrder } from "@rtc/domain";
 
-import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { orderCeremonyPage } from "#tests/pages/OrderCeremonyPage";
 
 const Haptics = require("expo-haptics") as MockedHaptics;
 
@@ -21,54 +18,56 @@ const ORDER: EquityOrder = {
   createdAt: 0,
 };
 
+const page = orderCeremonyPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("shows a fill toast on the filled phase", async () => {
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "filled", order: ORDER }} />,
-  );
-  expect(screen.getByTestId("eq-order-toast-filled")).toBeTruthy();
+  const ceremony = await page.mount({ phase: "filled", order: ORDER });
+  expect(ceremony.exists("eq-order-toast-filled")).toBe(true);
 });
 
 test("shows a reject toast carrying the reason", async () => {
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "rejected", reason: "NO LIQUIDITY" }} />,
-  );
-  expect(screen.getByTestId("eq-order-toast-rejected")).toBeTruthy();
-  expect(screen.getByText("NO LIQUIDITY")).toBeTruthy();
+  const ceremony = await page.mount({
+    phase: "rejected",
+    reason: "NO LIQUIDITY",
+  });
+  expect(ceremony.exists("eq-order-toast-rejected")).toBe(true);
+  expect(ceremony.hasText("NO LIQUIDITY")).toBe(true);
 });
 
 test("renders nothing while editing — the toast is terminal-only", async () => {
-  await renderWithTheme(
-    <OrderCeremony
-      state={{ phase: "editing", form: {} as never, error: null }}
-    />,
-  );
-  expect(screen.queryByTestId(/^eq-order-toast/)).toBeNull();
+  const ceremony = await page.mount({
+    phase: "editing",
+    form: {} as never,
+    error: null,
+  });
+  expect(ceremony.existsMatching(/^eq-order-toast/)).toBe(false);
 });
 
 test("shows a busy state while submitting", async () => {
-  await renderWithTheme(<OrderCeremony state={{ phase: "submitting" }} />);
-  expect(screen.getByTestId("eq-order-busy")).toBeTruthy();
+  const ceremony = await page.mount({ phase: "submitting" });
+  expect(ceremony.exists("eq-order-busy")).toBe(true);
 });
 
 test("shows a working pill on the working phase", async () => {
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "working", order: ORDER }} />,
-  );
-  expect(screen.getByTestId("eq-order-working")).toBeTruthy();
+  const ceremony = await page.mount({ phase: "working", order: ORDER });
+  expect(ceremony.exists("eq-order-working")).toBe(true);
 });
 
 test("shows a working pill on the partiallyFilled phase", async () => {
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "partiallyFilled", order: ORDER }} />,
-  );
-  expect(screen.getByTestId("eq-order-working")).toBeTruthy();
+  const ceremony = await page.mount({
+    phase: "partiallyFilled",
+    order: ORDER,
+  });
+  expect(ceremony.exists("eq-order-working")).toBe(true);
 });
 
 test("fires a Success haptic entering the filled phase", async () => {
   Haptics.notificationAsync.mockClear();
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "filled", order: ORDER }} />,
-  );
+  await page.mount({ phase: "filled", order: ORDER });
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   expect(Haptics.notificationAsync).toHaveBeenCalledWith(
     Haptics.NotificationFeedbackType.Success,
@@ -77,9 +76,7 @@ test("fires a Success haptic entering the filled phase", async () => {
 
 test("fires an Error haptic entering the rejected phase", async () => {
   Haptics.notificationAsync.mockClear();
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "rejected", reason: "NO LIQUIDITY" }} />,
-  );
+  await page.mount({ phase: "rejected", reason: "NO LIQUIDITY" });
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   expect(Haptics.notificationAsync).toHaveBeenCalledWith(
     Haptics.NotificationFeedbackType.Error,
@@ -90,11 +87,10 @@ test("keeps a fixed-height slot across submitting/working/partiallyFilled/filled
   // The regression this guards: OrderCeremony used to sit directly in-flow,
   // so its BusyPill (~one text line) vs Toast (~two text lines) variants
   // gave working/filled/etc. different natural heights — pushing whatever
-  // OrderTicket renders below it (the ResetButton) down by ~20px on a
-  // working -> filled transition, right as a user reached to tap "NEW
-  // ORDER". A fixed-height slot is the fix: assert the slot's height is
-  // identical across all five phases that carry one, not just the one pair
-  // from the report.
+  // OrderTicket renders below it (the ResetButton) down by ~20px, right as a
+  // user reached to tap "NEW ORDER". A fixed-height slot is the fix: assert
+  // the slot's height is identical across all five phases that carry one,
+  // not just the one pair from the report.
   //
   // `editing` is deliberately EXCLUDED from this set, not merely untested:
   // it renders no slot at all (see "reserves no height while editing"
@@ -105,29 +101,21 @@ test("keeps a fixed-height slot across submitting/working/partiallyFilled/filled
   // reintroduce the ~62px blank strip a first attempt at this fix shipped
   // (52px slot + the ticket's own `gap: 10`) on the ticket's default
   // resting state.
-  const submitting = await renderWithTheme(
-    <OrderCeremony state={{ phase: "submitting" }} />,
-  );
-
-  const working = await renderWithTheme(
-    <OrderCeremony state={{ phase: "working", order: ORDER }} />,
-  );
-
-  const partiallyFilled = await renderWithTheme(
-    <OrderCeremony state={{ phase: "partiallyFilled", order: ORDER }} />,
-  );
-
-  const filled = await renderWithTheme(
-    <OrderCeremony state={{ phase: "filled", order: ORDER }} />,
-  );
-
-  const rejected = await renderWithTheme(
-    <OrderCeremony state={{ phase: "rejected", reason: "NO LIQUIDITY" }} />,
-  );
+  const submitting = await page.mount({ phase: "submitting" });
+  const working = await page.mount({ phase: "working", order: ORDER });
+  const partiallyFilled = await page.mount({
+    phase: "partiallyFilled",
+    order: ORDER,
+  });
+  const filled = await page.mount({ phase: "filled", order: ORDER });
+  const rejected = await page.mount({
+    phase: "rejected",
+    reason: "NO LIQUIDITY",
+  });
 
   const heights = [submitting, working, partiallyFilled, filled, rejected].map(
-    (result) => {
-      return heightOf(result.getByTestId("eq-order-ceremony-slot"));
+    (ceremony) => {
+      return ceremony.slotHeight();
     },
   );
 
@@ -136,24 +124,22 @@ test("keeps a fixed-height slot across submitting/working/partiallyFilled/filled
 });
 
 test("reserves no height while editing — no ~62px blank strip on the ticket's default resting state", async () => {
-  const { queryByTestId, toJSON } = await renderWithTheme(
-    <OrderCeremony
-      state={{ phase: "editing", form: {} as never, error: null }}
-    />,
-  );
+  const ceremony = await page.mount({
+    phase: "editing",
+    form: {} as never,
+    error: null,
+  });
 
-  expect(queryByTestId("eq-order-ceremony-slot")).toBeNull();
-  expect(toJSON()).toBeNull();
+  expect(ceremony.exists("eq-order-ceremony-slot")).toBe(false);
+  expect(ceremony.isEmpty()).toBe(true);
 });
 
 test("mutes the haptic when motion is disabled, but still renders the toast", async () => {
   Haptics.notificationAsync.mockClear();
   mockMotionEnabled.mockReturnValueOnce(false);
-  await renderWithTheme(
-    <OrderCeremony state={{ phase: "filled", order: ORDER }} />,
-  );
+  const ceremony = await page.mount({ phase: "filled", order: ORDER });
   expect(Haptics.notificationAsync).not.toHaveBeenCalled();
-  expect(screen.getByTestId("eq-order-toast-filled")).toBeTruthy();
+  expect(ceremony.exists("eq-order-toast-filled")).toBe(true);
 });
 
 const mockMotionEnabled = jest.fn<() => boolean>(() => {
@@ -178,13 +164,4 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
 interface MockedHaptics {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string; Error: string };
-}
-
-interface StyledNode {
-  props: { style?: unknown };
-}
-
-function heightOf(node: StyledNode): number | undefined {
-  const flattened = StyleSheet.flatten(node.props.style as ViewStyle);
-  return typeof flattened.height === "number" ? flattened.height : undefined;
 }

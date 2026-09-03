@@ -1,56 +1,33 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import {
-  type CreateRfqInput,
-  type Dealer,
-  Direction,
-  type Instrument,
-  RFQ_DEFAULT_EXPIRY_SECS,
-} from "@rtc/domain";
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import { Direction, RFQ_DEFAULT_EXPIRY_SECS } from "@rtc/domain";
 
-import {
-  NewRfqForm,
-  type NewRfqSelection,
-} from "#/ui/credit/newRfq/NewRfqForm";
 import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import {
+  type NewRfqSubmitFn,
+  newRfqFormPage,
+} from "#tests/pages/NewRfqFormPage";
 
-const INSTRUMENTS: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "Acme 5.5% 2030",
-    cusip: "000000AA1",
-    ticker: "ACME",
-    maturity: "2030",
-    interestRate: 5.5,
-    benchmark: "T 4.0 2030",
-    refPrice: 98.4,
-  },
-];
+const page = newRfqFormPage();
 
-const DEALERS: readonly Dealer[] = [
-  { id: 1, name: "Bank A" },
-  { id: 2, name: "Bank B" },
-];
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("broadcast is inert until an instrument and a quantity chip are chosen", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
   // No instrument / no quantity yet.
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("rfq-submit");
   expect(submit).not.toHaveBeenCalled();
 
-  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("instrument-chip-1");
+  await page.press("rfq-submit");
   expect(submit).not.toHaveBeenCalled();
 
-  await fireEvent.press(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`),
-  );
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`);
+  await page.press("rfq-submit");
 
   expect(submit).toHaveBeenCalledTimes(1);
   const [input] = submit.mock.calls[0];
@@ -69,14 +46,12 @@ test("broadcast is inert until an instrument and a quantity chip are chosen", as
 // whole panel. This is the assertion that would catch an empty `dealerIds`
 // slipping through, which the seam would reject.
 test("broadcasts to every dealer with no picker in the form", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
-  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  await fireEvent.press(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
-  );
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("instrument-chip-1");
+  await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
+  await page.press("rfq-submit");
 
   expect(submit.mock.calls[0][0].dealerIds).toEqual([1, 2]);
   // Both numbers are DERIVED, not copy: the count from `useDealers()` and the
@@ -85,10 +60,8 @@ test("broadcasts to every dealer with no picker in the form", async () => {
   // footnote read a hardcoded "45S" until the mobile-v1 fidelity pass, which
   // is the prototype's number and not this app's.
   expect(
-    screen.getByText(
-      `STREAMS TO 2 DEALERS · ${RFQ_DEFAULT_EXPIRY_SECS}S WINDOW`,
-    ),
-  ).toBeTruthy();
+    page.hasText(`STREAMS TO 2 DEALERS · ${RFQ_DEFAULT_EXPIRY_SECS}S WINDOW`),
+  ).toBe(true);
 });
 
 // The design gives each side its OWN colour rather than one shared brand
@@ -96,27 +69,27 @@ test("broadcasts to every dealer with no picker in the form", async () => {
 // assert the selected flag both ways round, which is what a screen reader
 // (and the visual golden's chip state) actually reads.
 test("the chosen direction is the only one flagged selected", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
   expect(
-    screen.getByTestId(`rfq-direction-${Direction.Buy}`).props
-      .accessibilityState,
-  ).toMatchObject({ selected: true });
+    page.accessibilityStateOf(`rfq-direction-${Direction.Buy}`),
+  ).toMatchObject({
+    selected: true,
+  });
   expect(
-    screen.getByTestId(`rfq-direction-${Direction.Sell}`).props
-      .accessibilityState,
+    page.accessibilityStateOf(`rfq-direction-${Direction.Sell}`),
   ).toMatchObject({ selected: false });
 
-  await fireEvent.press(screen.getByTestId(`rfq-direction-${Direction.Sell}`));
+  await page.press(`rfq-direction-${Direction.Sell}`);
 
   expect(
-    screen.getByTestId(`rfq-direction-${Direction.Buy}`).props
-      .accessibilityState,
-  ).toMatchObject({ selected: false });
+    page.accessibilityStateOf(`rfq-direction-${Direction.Buy}`),
+  ).toMatchObject({
+    selected: false,
+  });
   expect(
-    screen.getByTestId(`rfq-direction-${Direction.Sell}`).props
-      .accessibilityState,
+    page.accessibilityStateOf(`rfq-direction-${Direction.Sell}`),
   ).toMatchObject({ selected: true });
 });
 
@@ -124,40 +97,36 @@ test("the chosen direction is the only one flagged selected", async () => {
 // uppercase. The label is cased in the view, so this is the assertion that
 // catches the enum leaking through verbatim again.
 test("direction buttons print the design's uppercase labels", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
-  expect(screen.getByText("BUY")).toBeTruthy();
-  expect(screen.getByText("SELL")).toBeTruthy();
+  expect(page.hasText("BUY")).toBe(true);
+  expect(page.hasText("SELL")).toBe(true);
 });
 
 // The accent→accent2 ramp is the button's FILL, not decoration, and it is
 // drawn only on the enabled arm — a glowing gradient under a dead button
 // would advertise an action that cannot be taken.
 test("the broadcast gradient appears only once the ticket is submittable", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
-  expect(screen.queryByTestId("cta-gradient")).toBeNull();
+  expect(page.exists("cta-gradient")).toBe(false);
 
-  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  await fireEvent.press(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
-  );
+  await page.press("instrument-chip-1");
+  await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
 
-  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
+  expect(page.exists("cta-gradient")).toBe(true);
 });
 
 test("sell direction rides through to the submitted rfq", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
-  await fireEvent.press(screen.getByTestId("instrument-chip-1"));
-  await fireEvent.press(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
-  );
-  await fireEvent.press(screen.getByTestId(`rfq-direction-${Direction.Sell}`));
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("instrument-chip-1");
+  await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
+  await page.press(`rfq-direction-${Direction.Sell}`);
+  await page.press("rfq-submit");
 
   expect(submit.mock.calls[0][0].direction).toBe(Direction.Sell);
 });
@@ -168,22 +137,21 @@ test("sell direction rides through to the submitted rfq", async () => {
 // are what actually submit (a seed that only painted the chips would be a
 // lie the golden could not see).
 test("initialSelection preselects the instrument, direction and quantity chips", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit, {
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit, {
     instrumentId: 1,
     direction: Direction.Sell,
     quantity: RFQ_QUANTITY_CHIPS[2],
   });
 
+  expect(page.accessibilityStateOf("instrument-chip-1")).toMatchObject({
+    selected: true,
+  });
   expect(
-    screen.getByTestId("instrument-chip-1").props.accessibilityState,
-  ).toMatchObject({ selected: true });
-  expect(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`).props
-      .accessibilityState,
+    page.accessibilityStateOf(`quantity-chip-${RFQ_QUANTITY_CHIPS[2]}`),
   ).toMatchObject({ selected: true });
 
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("rfq-submit");
 
   expect(submit).toHaveBeenCalledTimes(1);
   expect(submit.mock.calls[0][0]).toEqual({
@@ -197,25 +165,22 @@ test("initialSelection preselects the instrument, direction and quantity chips",
 // An omitted field must fall back to the form's own default rather than
 // blanking the other two — the fields are independent.
 test("an omitted initialSelection field keeps the form default", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit, { instrumentId: 1 });
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit, { instrumentId: 1 });
 
+  expect(page.accessibilityStateOf("instrument-chip-1")).toMatchObject({
+    selected: true,
+  });
   expect(
-    screen.getByTestId("instrument-chip-1").props.accessibilityState,
-  ).toMatchObject({ selected: true });
-  expect(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`).props
-      .accessibilityState,
+    page.accessibilityStateOf(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
   ).toMatchObject({ selected: false });
 
   // No quantity yet, so broadcast is still inert.
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press("rfq-submit");
   expect(submit).not.toHaveBeenCalled();
 
-  await fireEvent.press(
-    screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
-  );
-  void fireEvent.press(screen.getByTestId("rfq-submit"));
+  await page.press(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`);
+  await page.press("rfq-submit");
 
   expect(submit.mock.calls[0][0].direction).toBe(Direction.Buy);
 });
@@ -225,59 +190,16 @@ test("an omitted initialSelection field keeps the form default", async () => {
 // tab's own name a second time. This is the guard against it coming back
 // with the next port of a web panel.
 test("prints no screen heading above the instrument grid", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderEditingForm(submit);
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountEditing(submit);
 
-  expect(screen.getByTestId("new-rfq-form")).toBeTruthy();
-  expect(screen.queryByText("New RFQ")).toBeNull();
-  expect(screen.getByText("INSTRUMENT")).toBeTruthy();
+  expect(page.exists("new-rfq-form")).toBe(true);
+  expect(page.hasText("New RFQ")).toBe(false);
+  expect(page.hasText("INSTRUMENT")).toBe(true);
 });
 
 test("renders the confirmed card in the confirmed state", async () => {
-  const submit = jest.fn<SubmitFn>();
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(submit, { status: "confirmed", rfqId: 77 })}
-    >
-      <NewRfqForm onCreated={(): void => {}} />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("rfq-confirmed")).toHaveTextContent("RFQ ID: 77", {
-    exact: false,
-  });
+  const submit = jest.fn<NewRfqSubmitFn>();
+  await page.mountConfirmed(submit, 77);
+  expect(page.containsTextContent("rfq-confirmed", "RFQ ID: 77")).toBe(true);
 });
-
-function renderEditingForm(
-  submit: SubmitFn,
-  initialSelection?: NewRfqSelection,
-): Promise<unknown> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(submit, { status: "editing" })}>
-      <NewRfqForm
-        onCreated={(): void => {}}
-        initialSelection={initialSelection}
-      />
-    </ViewModelProvider>,
-  );
-}
-
-type SubmitFn = (
-  input: CreateRfqInput,
-  onRedirect: (id: number) => void,
-) => void;
-
-type SubmissionState = ReturnType<ViewModel["useRfqSubmission"]>["state"];
-
-function fakeViewModel(submit: SubmitFn, state: SubmissionState): ViewModel {
-  return {
-    useInstruments: () => {
-      return INSTRUMENTS;
-    },
-    useDealers: () => {
-      return DEALERS;
-    },
-    useRfqSubmission: () => {
-      return { state, submit };
-    },
-  } as unknown as ViewModel;
-}
