@@ -172,7 +172,9 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
       paddingBottom: 5,
       paddingHorizontal: 12,
       marginHorizontal: -12,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      // dc.html:242 — quote rows separate with `border-top:1px solid
+      // var(--border-sub)`: 1 CSS px = 1pt (3 device px), not RN's hairline.
+      borderTopWidth: 1,
       borderTopColor: t.borderSubtle,
     },
     // dc.html:2148 — `color-mix(in oklab, acc 7%, transparent)`. Every skin's

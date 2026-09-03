@@ -141,7 +141,8 @@ function makeStyles(t: RnTheme): ShellHeaderStyles {
       paddingHorizontal: 12,
       paddingBottom: 0,
       backgroundColor: t.bgHeader,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+      // dc.html:65 — `border-bottom:1px solid var(--border-sub)` at 1pt.
+      borderBottomWidth: 1,
       borderBottomColor: t.borderSubtle,
     },
     left: {
