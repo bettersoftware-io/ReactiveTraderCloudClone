@@ -1265,6 +1265,37 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     second.dispose();
   });
 
+  it("restores a reloaded column expanded in collapse order — the seeded world composes with the put-back", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const ratesBefore = baselineSize(base(), "fx-rates");
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+
+    first.collapsePanel("fx-rates");
+    first.collapsePanel("fx-blotter");
+    await waitForBranchSize(seen, "fx-rates", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+    second.collapsePanel("fx-rates");
+    second.collapsePanel("fx-blotter");
+    await waitForBranchSize(reloaded, "fx-rates", STRIP);
+
+    // Collapse-order expansion is the order the overshoot fix exists for: the
+    // last expand's world put-back must re-assert the SIDECAR-seeded sizes,
+    // not the restored grid's bar-polluted snapshot.
+    second.expandPanel("fx-rates");
+    second.expandPanel("fx-blotter");
+    await waitForSizeWithin(reloaded, "fx-rates", ratesBefore, 2);
+    await waitForSizeWithin(reloaded, "fx-blotter", blotterBefore, 2);
+    second.dispose();
+  });
+
   it("loads a legacy blob without the sidecar and still collapses/expands", async () => {
     const seen = trackLayout();
     const first = createDockEngine({ ...base(), ...seen.options });
