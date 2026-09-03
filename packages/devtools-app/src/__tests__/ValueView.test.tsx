@@ -1,23 +1,26 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
 import type { SerializedValue } from "@rtc/devtools-core";
 
-import { ValueView } from "#/panels/ValueView";
+import { valueViewPage } from "#tests/pages/ValueViewPage";
 
-afterEach(cleanup);
+const view = valueViewPage();
+
+afterEach(() => {
+  view.unmountAll();
+});
 
 test("renders a nested plain object as an expandable tree", () => {
   const value: SerializedValue = { a: { b: 1, c: 2 } };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Object(1)")).toBeTruthy();
-  expect(screen.getByText("Object(2)")).toBeTruthy();
-  expect(screen.getByText("a:")).toBeTruthy();
-  expect(screen.getByText("b:")).toBeTruthy();
-  expect(screen.getByText("c:")).toBeTruthy();
-  expect(screen.getByText("1")).toBeTruthy();
-  expect(screen.getByText("2")).toBeTruthy();
+  expect(view.hasText("Object(1)")).toBe(true);
+  expect(view.hasText("Object(2)")).toBe(true);
+  expect(view.hasText("a:")).toBe(true);
+  expect(view.hasText("b:")).toBe(true);
+  expect(view.hasText("c:")).toBe(true);
+  expect(view.hasText("1")).toBe(true);
+  expect(view.hasText("2")).toBe(true);
 });
 
 test("renders a map tag as an expandable Map(n) node with key -> value pairs", () => {
@@ -25,26 +28,24 @@ test("renders a map tag as an expandable Map(n) node with key -> value pairs", (
     $t: "map",
     entries: [["k", 1]],
   };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Map(1)")).toBeTruthy();
-  expect(screen.getByText('"k"')).toBeTruthy();
+  expect(view.hasText("Map(1)")).toBe(true);
+  expect(view.hasText('"k"')).toBe(true);
 });
 
 test("renders a truncation marker", () => {
   const value: SerializedValue = { $t: "truncated", count: 10 };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("…+10")).toBeTruthy();
+  expect(view.hasText("…+10")).toBe(true);
 });
 
 test("degrades gracefully on an unknown tag instead of crashing", () => {
   const value: SerializedValue = { $t: "mystery-future-tag", extra: 1 };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(
-    screen.getByText('{"$t":"mystery-future-tag","extra":1}'),
-  ).toBeTruthy();
+  expect(view.hasText('{"$t":"mystery-future-tag","extra":1}')).toBe(true);
 });
 
 test("shows the true pre-truncation size for an overflowed array, not the marker-inflated count", () => {
@@ -52,11 +53,11 @@ test("shows the true pre-truncation size for an overflowed array, not the marker
     return i;
   });
   const value: SerializedValue = [...entries, { $t: "truncated", count: 10 }];
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Array(60)")).toBeTruthy();
-  expect(screen.queryByText("Array(51)")).toBeNull();
-  expect(screen.getByText("…+10")).toBeTruthy();
+  expect(view.hasText("Array(60)")).toBe(true);
+  expect(view.hasText("Array(51)")).toBe(false);
+  expect(view.hasText("…+10")).toBe(true);
 });
 
 test("shows the true pre-truncation size for an overflowed map, not the marker-inflated count", () => {
@@ -68,11 +69,11 @@ test("shows the true pre-truncation size for an overflowed map, not the marker-i
     $t: "map",
     entries: [...pairs, { $t: "truncated", count: 10 }],
   };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Map(60)")).toBeTruthy();
-  expect(screen.queryByText("Map(51)")).toBeNull();
-  expect(screen.getByText("…+10")).toBeTruthy();
+  expect(view.hasText("Map(60)")).toBe(true);
+  expect(view.hasText("Map(51)")).toBe(false);
+  expect(view.hasText("…+10")).toBe(true);
 });
 
 test("shows the true pre-truncation size for an overflowed set, not the marker-inflated count", () => {
@@ -84,76 +85,74 @@ test("shows the true pre-truncation size for an overflowed set, not the marker-i
     $t: "set",
     values: [...values, { $t: "truncated", count: 10 }],
   };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Set(60)")).toBeTruthy();
-  expect(screen.queryByText("Set(51)")).toBeNull();
-  expect(screen.getByText("…+10")).toBeTruthy();
+  expect(view.hasText("Set(60)")).toBe(true);
+  expect(view.hasText("Set(51)")).toBe(false);
+  expect(view.hasText("…+10")).toBe(true);
 });
 
 test("renders the undefined tag as the undefined keyword", () => {
   const value: SerializedValue = { $t: "undefined" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("undefined")).toBeTruthy();
+  expect(view.hasText("undefined")).toBe(true);
 });
 
 test("renders a non-finite num tag as its raw literal with no suffix", () => {
   const value: SerializedValue = { $t: "num", v: "NaN" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("NaN")).toBeTruthy();
+  expect(view.hasText("NaN")).toBe(true);
 });
 
 test("renders a bigint tag with the trailing n suffix", () => {
   const value: SerializedValue = { $t: "bigint", v: "9007199254740993" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("9007199254740993n")).toBeTruthy();
+  expect(view.hasText("9007199254740993n")).toBe(true);
 });
 
 test("renders a symbol tag with no suffix", () => {
   const value: SerializedValue = { $t: "symbol", v: "Symbol(id)" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Symbol(id)")).toBeTruthy();
+  expect(view.hasText("Symbol(id)")).toBe(true);
 });
 
 test("renders a named fn tag as its function name", () => {
   const value: SerializedValue = { $t: "fn", name: "handleTrade" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("ƒ handleTrade")).toBeTruthy();
+  expect(view.hasText("ƒ handleTrade")).toBe(true);
 });
 
 test("renders an fn tag with no name as anonymous", () => {
   const value: SerializedValue = { $t: "fn" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("ƒ (anonymous)")).toBeTruthy();
+  expect(view.hasText("ƒ (anonymous)")).toBe(true);
 });
 
 test("renders the circular tag as a titled marker glyph", () => {
   const value: SerializedValue = { $t: "circular" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  const marker = screen.getByTitle("circular reference");
-  expect(marker.textContent?.trim()).toBe("↺");
+  expect(view.titledMarkerText("circular reference")).toBe("↺");
 });
 
 test("renders the depth tag as a titled marker glyph", () => {
   const value: SerializedValue = { $t: "depth" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  const marker = screen.getByTitle("max depth reached");
-  expect(marker.textContent?.trim()).toBe("…");
+  expect(view.titledMarkerText("max depth reached")).toBe("…");
 });
 
 test("renders the error tag with its message", () => {
   const value: SerializedValue = { $t: "error", message: "boom" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("⚠ boom")).toBeTruthy();
+  expect(view.hasText("⚠ boom")).toBe(true);
 });
 
 test("renders a truncated-string tag as the head plus a char count", () => {
@@ -162,9 +161,9 @@ test("renders a truncated-string tag as the head plus a char count", () => {
     head: "hello",
     count: 495,
   };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText('"hello"…+495 chars')).toBeTruthy();
+  expect(view.hasText('"hello"…+495 chars')).toBe(true);
 });
 
 test("renders the object key-truncation marker when $truncatedKeys is present", () => {
@@ -172,21 +171,21 @@ test("renders the object key-truncation marker when $truncatedKeys is present", 
     a: 1,
     $truncatedKeys: { $t: "truncated", count: 7 },
   };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("…+7 keys")).toBeTruthy();
+  expect(view.hasText("…+7 keys")).toBe(true);
 });
 
 test("falls back to zero for a truncation marker missing its count field", () => {
   const value: SerializedValue = { $t: "truncated" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("…+0")).toBeTruthy();
+  expect(view.hasText("…+0")).toBe(true);
 });
 
 test("falls back to an empty entry list for a map tag missing its entries field", () => {
   const value: SerializedValue = { $t: "map" };
-  render(<ValueView value={value} />);
+  view.mountValueView(value);
 
-  expect(screen.getByText("Map(0)")).toBeTruthy();
+  expect(view.hasText("Map(0)")).toBe(true);
 });

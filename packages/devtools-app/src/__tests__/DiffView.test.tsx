@@ -1,11 +1,14 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
 import type { DiffEntry } from "@rtc/devtools-core";
 
-import { DiffView } from "#/timeline/DiffView";
+import { diffViewPage } from "#tests/pages/DiffViewPage";
 
-afterEach(cleanup);
+const view = diffViewPage();
+
+afterEach(() => {
+  view.unmountAll();
+});
 
 test("renders one row per entry with path, kind, and both values", () => {
   const entries: DiffEntry[] = [
@@ -13,13 +16,13 @@ test("renders one row per entry with path, kind, and both values", () => {
     { path: ["fresh"], kind: "added", before: null, after: 3 },
   ];
 
-  render(<DiffView entries={entries} noPrior={false} />);
+  view.mountDiffView({ entries, noPrior: false });
 
-  expect(screen.getByText("fx.bid")).toBeTruthy();
-  expect(screen.getByText("changed")).toBeTruthy();
-  expect(screen.getByText("1.08")).toBeTruthy();
-  expect(screen.getByText("1.07")).toBeTruthy();
-  expect(screen.getByText("added")).toBeTruthy();
+  expect(view.hasText("fx.bid")).toBe(true);
+  expect(view.hasText("changed")).toBe(true);
+  expect(view.hasText("1.08")).toBe(true);
+  expect(view.hasText("1.07")).toBe(true);
+  expect(view.hasText("added")).toBe(true);
 });
 
 test("a removed leaf shows its before value, no arrow, and no after value", () => {
@@ -27,19 +30,19 @@ test("a removed leaf shows its before value, no arrow, and no after value", () =
     { path: ["gone"], kind: "removed", before: 9, after: null },
   ];
 
-  render(<DiffView entries={entries} noPrior={false} />);
+  view.mountDiffView({ entries, noPrior: false });
 
-  expect(screen.getByText("removed")).toBeTruthy();
-  expect(screen.getByText("9")).toBeTruthy();
-  expect(screen.queryByText("→")).toBeNull();
+  expect(view.hasText("removed")).toBe(true);
+  expect(view.hasText("9")).toBe(true);
+  expect(view.hasText("→")).toBe(false);
 });
 
 test("renders the empty and no-prior states", () => {
-  const { rerender } = render(<DiffView entries={[]} noPrior={false} />);
-  expect(screen.getByText("No changes vs previous value.")).toBeTruthy();
+  view.mountDiffView({ entries: [], noPrior: false });
+  expect(view.hasText("No changes vs previous value.")).toBe(true);
 
-  rerender(<DiffView entries={[]} noPrior={true} />);
-  expect(screen.getByText("No prior value to diff against.")).toBeTruthy();
+  view.rerenderWith({ entries: [], noPrior: true });
+  expect(view.hasText("No prior value to diff against.")).toBe(true);
 });
 
 test("handles path keys with injective collision avoidance", () => {
@@ -48,8 +51,7 @@ test("handles path keys with injective collision avoidance", () => {
     { path: ["a", "b"], kind: "changed", before: 3, after: 4 },
   ];
 
-  render(<DiffView entries={entries} noPrior={false} />);
+  view.mountDiffView({ entries, noPrior: false });
 
-  const labels = screen.getAllByText("a.b");
-  expect(labels).toHaveLength(2);
+  expect(view.textCount("a.b")).toBe(2);
 });

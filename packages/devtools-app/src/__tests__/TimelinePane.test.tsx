@@ -1,92 +1,69 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
-import type { ReactElement } from "react";
-import { useRef, useState } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import type {
-  AppToInspector,
-  InspectorState,
-  LogRow,
-} from "@rtc/devtools-core";
-import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
+import { timelinePanePage } from "#tests/pages/TimelinePanePage";
 
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE } from "#/nav/scope";
-import { TimelinePane } from "#/timeline/TimelinePane";
-import { useTimeline } from "#/timeline/useTimeline";
+const pane = timelinePanePage();
 
-afterEach(cleanup);
+afterEach(() => {
+  pane.unmountAll();
+});
 
 test("clicking a row pins it and shows the pinned bar; Resume returns to follow", () => {
-  mount();
+  pane.mount();
 
-  const rows = screen.getAllByTestId("timeline-row");
-
-  expect(rows.length).toBe(3);
+  expect(pane.rowCount()).toBe(3);
 
   // The row itself is a non-interactive container; the pin target is its
   // first child button, which now covers the whole row's text.
-  const pinnedRow = rows[0] as HTMLElement;
+  const pinnedRowSeq = pane.rowSeq(0);
 
-  fireEvent.click(pinnedRow.querySelector("button") as HTMLElement);
-  expect(screen.getByTestId("pinned-bar").textContent).toContain("pinned at");
+  pane.clickPinButtonOfRow(0);
+  expect(pane.text("pinned-bar")).toContain("pinned at");
   // The bar's own `data-seq` names the pinned row independently of its
   // label text — this is what an e2e driver reads to know which row got
   // pinned without trusting the badge under test.
-  expect(screen.getByTestId("pinned-bar").getAttribute("data-seq")).toBe(
-    pinnedRow.getAttribute("data-seq"),
-  );
+  expect(pane.attr("pinned-bar", "data-seq")).toBe(pinnedRowSeq);
 
-  fireEvent.click(screen.getByText("Resume"));
-  expect(screen.queryByTestId("pinned-bar")).toBeNull();
+  pane.clickText("Resume");
+  expect(pane.exists("pinned-bar")).toBe(false);
 });
 
 test("Clear empties the list and shows Unclear; Unclear brings the rows back", () => {
-  mount();
+  pane.mount();
 
-  fireEvent.click(screen.getByTestId("clear-log"));
-  expect(screen.queryAllByTestId("timeline-row")).toEqual([]);
+  pane.click("clear-log");
+  expect(pane.rowCount()).toBe(0);
 
-  fireEvent.click(screen.getByTestId("unclear-log"));
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
-  expect(screen.queryByTestId("unclear-log")).toBeNull();
+  pane.click("unclear-log");
+  expect(pane.rowCount()).toBe(3);
+  expect(pane.exists("unclear-log")).toBe(false);
 });
 
 test("search filters rows by summary text through the header input", () => {
-  mount();
+  pane.mount();
 
-  fireEvent.change(screen.getByPlaceholderText("Search scope… ( / )"), {
-    target: { value: "fx.price$ 3" },
-  });
-  expect(screen.getAllByTestId("timeline-row").length).toBe(1);
+  pane.changeSearch("Search scope… ( / )", "fx.price$ 3");
+  expect(pane.rowCount()).toBe(1);
 });
 
 test("source label is scope-relative and hidden under a single-stream scope", () => {
-  const handle = mount();
+  const handle = pane.mount();
 
-  expect(screen.getAllByText("fx.price$").length).toBe(3);
+  expect(pane.textCount("fx.price$")).toBe(3);
 
   handle.setScope({ kind: "presenter", presenter: "fx" });
-  expect(screen.getAllByText("price$").length).toBe(3);
-  expect(screen.queryByText("fx.price$")).toBeNull();
+  expect(pane.textCount("price$")).toBe(3);
+  expect(pane.hasText("fx.price$")).toBe(false);
 
   handle.setScope({ kind: "stream", streamId: "fx.price$" });
-  expect(screen.queryByText("price$")).toBeNull();
-  expect(screen.getAllByTestId("timeline-row").length).toBe(3);
+  expect(pane.hasText("price$")).toBe(false);
+  expect(pane.rowCount()).toBe(3);
 });
 
 test("wire ±100ms on a row calls onProbeWire with that row", () => {
-  const handle = mount();
+  const handle = pane.mount();
 
-  fireEvent.click(
-    screen.getAllByTitle("Show wire traffic within ±100 ms")[1] as HTMLElement,
-  );
+  pane.clickTitled("Show wire traffic within ±100 ms", 1);
   expect(
     handle.probed.map((r) => {
       return r.seq;
@@ -96,10 +73,10 @@ test("wire ±100ms on a row calls onProbeWire with that row", () => {
 
 test("the radius chip's dismiss (✕) calls onDismissRadius, not clearRadius directly", () => {
   const onDismissRadius = vi.fn();
-  const handle = mount(3, onDismissRadius);
+  const handle = pane.mount(3, onDismissRadius);
 
   handle.probeRadius();
-  fireEvent.click(screen.getByTitle("Clear radius filter"));
+  pane.clickTitled("Clear radius filter");
 
   expect(onDismissRadius).toHaveBeenCalledTimes(1);
   // Clicking it alone must not have cleared the radius through some other
@@ -109,8 +86,8 @@ test("the radius chip's dismiss (✕) calls onDismissRadius, not clearRadius dir
 });
 
 test("scrolling away from the bottom detaches the tail; ⤓ live re-attaches", () => {
-  const handle = mount();
-  const list = screen.getByTestId("timeline-rows");
+  const handle = pane.mount();
+  const list = pane.element("timeline-rows");
 
   // jsdom has no layout: fake the geometry the handler reads.
   Object.defineProperty(list, "scrollHeight", {
@@ -122,19 +99,19 @@ test("scrolling away from the bottom detaches the tail; ⤓ live re-attaches", (
     configurable: true,
   });
   list.scrollTop = 100;
-  fireEvent.scroll(list);
+  pane.scroll("timeline-rows");
 
   expect(handle.model().tailAttached).toBe(false);
-  expect(screen.getByTestId("live-chip")).toBeTruthy();
+  expect(pane.exists("live-chip")).toBe(true);
 
-  fireEvent.click(screen.getByTestId("live-chip"));
+  pane.click("live-chip");
   expect(handle.model().tailAttached).toBe(true);
-  expect(screen.queryByTestId("live-chip")).toBeNull();
+  expect(pane.exists("live-chip")).toBe(false);
 });
 
 test("auto-scroll runs only while attached", () => {
-  const handle = mount();
-  const list = screen.getByTestId("timeline-rows");
+  const handle = pane.mount();
+  const list = pane.element("timeline-rows");
   const scrollTopSetter = vi.fn();
 
   Object.defineProperty(list, "scrollHeight", {
@@ -153,29 +130,23 @@ test("auto-scroll runs only while attached", () => {
     configurable: true,
   });
 
-  fireEvent.scroll(list); // detaches (100 + 200 < 1000)
+  pane.scroll("timeline-rows"); // detaches (100 + 200 < 1000)
   scrollTopSetter.mockClear();
   handle.append(); // a new row arrives
   expect(scrollTopSetter).not.toHaveBeenCalled();
 
-  fireEvent.click(screen.getByTestId("live-chip"));
+  pane.click("live-chip");
   expect(scrollTopSetter).toHaveBeenCalledWith(1000);
 });
 
 test("pinned bar flags a pin that is hidden by the current scope and offers show in All", () => {
-  const handle = mount();
+  const handle = pane.mount();
 
-  fireEvent.click(
-    (screen.getAllByTestId("timeline-row")[0] as HTMLElement).querySelector(
-      "button",
-    ) as HTMLElement,
-  );
+  pane.clickPinButtonOfRow(0);
   handle.setScope({ kind: "wire" });
 
-  expect(screen.getByTestId("pinned-bar").textContent).toContain(
-    "not in this scope",
-  );
-  fireEvent.click(screen.getByTestId("show-in-all"));
+  expect(pane.text("pinned-bar")).toContain("not in this scope");
+  pane.click("show-in-all");
   expect(handle.shownInAll).toBe(1);
 });
 
@@ -191,9 +162,9 @@ test("detaching re-centers the >500-row render window on the first row still on 
   // slice. 1000 rows puts the anchor comfortably inside both the render
   // cap (500) and the ±250-row half-window on either side, so the window
   // this test asserts on isn't clamped against either edge.
-  mount(1000);
+  pane.mount(1000);
 
-  const list = screen.getByTestId("timeline-rows");
+  const list = pane.element("timeline-rows");
 
   Object.defineProperty(list, "scrollHeight", {
     value: 1000,
@@ -204,167 +175,24 @@ test("detaching re-centers the >500-row render window on the first row still on 
     configurable: true,
   });
   // Before any scroll, follow mode renders the tail-500 (seq 501..1000),
-  // so `list.children[0]` is seq 501. Give it real height so the anchor
-  // scan finds it there rather than falling back to "the first child,
-  // whatever it is".
-  Object.defineProperty(list.children[0] as HTMLElement, "offsetHeight", {
+  // so the list's first child is seq 501. Give it real height so the
+  // anchor scan finds it there rather than falling back to "the first
+  // child, whatever it is".
+  Object.defineProperty(pane.firstChildOf("timeline-rows"), "offsetHeight", {
     value: 40,
     configurable: true,
   });
   list.scrollTop = 0;
-  fireEvent.scroll(list);
+  pane.scroll("timeline-rows");
 
-  expect(screen.getByTestId("live-chip")).toBeTruthy();
+  expect(pane.exists("live-chip")).toBe(true);
 
   // Re-centered ±250 around the anchor (seq 501, at full-log index 500):
   // seq 251..750 — proof the window moved OFF the tail (seq 1000 is no
-  // longer rendered) and re-anchored on the row that was still on screen,
-  // rather than staying pinned to a plain tail-500 slice.
-  const rows = screen.getAllByTestId("timeline-row");
-
-  expect(rows.length).toBe(500);
-  expect(rows[0]?.getAttribute("data-seq")).toBe("251");
-  expect(rows[rows.length - 1]?.getAttribute("data-seq")).toBe("750");
-  expect(list.querySelector('[data-seq="1000"]')).toBeNull();
+  // longer rendered) and re-anchored on the row that was still on
+  // screen, rather than staying pinned to a plain tail-500 slice.
+  expect(pane.rowCount()).toBe(500);
+  expect(pane.rowSeq(0)).toBe("251");
+  expect(pane.rowSeq(pane.rowCount() - 1)).toBe("750");
+  expect(pane.hasSeqInList("timeline-rows", "1000")).toBe(false);
 }, 20_000);
-
-interface Handle {
-  setScope: (scope: Scope) => void;
-  append: () => void;
-  probeRadius: () => void;
-  model: () => ReturnType<typeof useTimeline>;
-  probed: LogRow[];
-  shownInAll: number;
-}
-
-interface Seed {
-  history: LiveHistory;
-  store: InspectorStore;
-}
-
-/** `rowCount` seeds rows 1..rowCount directly into the store/history before
- * the first render — not via `handle.append()`'s one-act()-per-row, which
- * would make a many-hundred-row seed (needed to exercise the >500-row
- * render window) slow to set up. `onDismissRadius` defaults to a no-op so
- * every existing caller is unaffected; pass a spy to assert the chip wires
- * to it. */
-function mount(rowCount = 3, onDismissRadius: () => void = () => {}): Handle {
-  const handle: Handle = {
-    setScope: () => {},
-    append: () => {},
-    probeRadius: () => {},
-    model: () => {
-      throw new Error("not mounted");
-    },
-    probed: [],
-    shownInAll: 0,
-  };
-
-  function Harness(): ReactElement {
-    const [{ history, store }] = useState(() => {
-      return seed(rowCount);
-    });
-    const [state, setState] = useState<InspectorState>(store.getSnapshot());
-    const [scope, setScope] = useState<Scope>(ALL_SCOPE);
-    const searchRef = useRef<HTMLInputElement | null>(null);
-    const model = useTimeline(state.log, history, scope, state);
-
-    // The caller invokes these from outside React's render cycle (a test
-    // harness, not an event handler), so each update needs an explicit
-    // `act()` to flush synchronously — react-dom's createRoot otherwise
-    // defers the re-render past the assertion that immediately follows
-    // (same pattern as NavTree.test.tsx's `bump`).
-    handle.setScope = (next: Scope): void => {
-      act(() => {
-        setScope(next);
-      });
-    };
-
-    handle.model = (): ReturnType<typeof useTimeline> => {
-      return model;
-    };
-
-    handle.probeRadius = (): void => {
-      act(() => {
-        model.setRadiusAround(state.log[0]);
-      });
-    };
-
-    handle.append = (): void => {
-      const seq = state.log.length + 1;
-      const frame: AppToInspector = {
-        kind: "batch",
-        events: [
-          {
-            kind: "stream:emission",
-            seq,
-            ts: 1000 + seq,
-            streamId: "fx.price$",
-            value: seq,
-            coalesced: 1,
-          },
-        ],
-      };
-
-      act(() => {
-        history.record(frame);
-        store.apply(frame);
-        setState(store.getSnapshot());
-      });
-    };
-
-    function probeWire(row: LogRow): void {
-      handle.probed.push(row);
-    }
-
-    function showInAll(): void {
-      handle.shownInAll += 1;
-    }
-
-    return (
-      <TimelinePane
-        model={model}
-        scope={scope}
-        searchInputRef={searchRef}
-        onProbeWire={probeWire}
-        onShowInAll={showInAll}
-        onDismissRadius={onDismissRadius}
-      />
-    );
-  }
-
-  render(<Harness />);
-
-  return handle;
-}
-
-function seed(rowCount: number): Seed {
-  const history = new LiveHistory();
-  const store = new InspectorStore({ coalesce: false });
-  const frames: AppToInspector[] = [
-    { kind: "snapshot", streams: [], machines: [] },
-  ];
-
-  for (let seq = 1; seq <= rowCount; seq += 1) {
-    frames.push({
-      kind: "batch",
-      events: [
-        {
-          kind: "stream:emission",
-          seq,
-          ts: 1000 + seq,
-          streamId: "fx.price$",
-          value: seq,
-          coalesced: 1,
-        },
-      ],
-    });
-  }
-
-  for (const frame of frames) {
-    history.record(frame);
-    store.apply(frame);
-  }
-
-  return { history, store };
-}

@@ -1,8 +1,6 @@
-import { act, renderHook } from "@testing-library/react";
-import type { RefObject } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { useFlashOnSeq } from "#/panels/flash";
+import { flashHookPage } from "#tests/pages/FlashHookPage";
 
 let animateSpy: ReturnType<typeof vi.fn>;
 
@@ -17,21 +15,11 @@ afterEach(() => {
 });
 
 test("flashes once per lastSeq advance past 0, never on unrelated re-renders", () => {
-  const flashRef: RefObject<HTMLSpanElement | null> = {
-    current: document.createElement("span"),
-  };
+  const flash = flashHookPage();
 
-  const { rerender } = renderHook(
-    ({ lastSeq }: HookProps) => {
-      useFlashOnSeq(flashRef, lastSeq);
-    },
-    { initialProps: { lastSeq: 0 } },
-  );
   expect(animateSpy).not.toHaveBeenCalled();
 
-  act(() => {
-    rerender({ lastSeq: 3 });
-  });
+  flash.advanceSeq(3);
   expect(animateSpy).toHaveBeenCalledTimes(1);
   expect(animateSpy.mock.calls[0]?.[0]).toEqual([
     { opacity: 0.35 },
@@ -44,17 +32,9 @@ test("flashes once per lastSeq advance past 0, never on unrelated re-renders", (
 
   // Re-render with the SAME lastSeq: proves the effect is memoized on the
   // dependency array (not refired on every render, unrelated or otherwise).
-  act(() => {
-    rerender({ lastSeq: 3 });
-  });
+  flash.advanceSeq(3);
   expect(animateSpy).toHaveBeenCalledTimes(1);
 
-  act(() => {
-    rerender({ lastSeq: 4 });
-  });
+  flash.advanceSeq(4);
   expect(animateSpy).toHaveBeenCalledTimes(2);
 });
-
-interface HookProps {
-  lastSeq: number;
-}

@@ -1,29 +1,17 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
-import type { ReactElement } from "react";
-import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import type {
-  AppToInspector,
-  InspectorState,
-  LogRow,
-} from "@rtc/devtools-core";
+import type { LogRow } from "@rtc/devtools-core";
 import * as devtoolsCore from "@rtc/devtools-core";
-import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
 import { ALL_SCOPE } from "#/nav/scope";
-import { ContextPane } from "#/timeline/ContextPane";
 import styles from "#/timeline/ContextPane.module.css";
-import { useTimeline } from "#/timeline/useTimeline";
+import { contextPanePage } from "#tests/pages/ContextPanePage";
 
-afterEach(cleanup);
+const pane = contextPanePage();
+
+afterEach(() => {
+  pane.unmountAll();
+});
 
 // Restore in afterEach (not only after the assertion below) so a failing
 // assertion can never leak the mock into a later test.
@@ -38,72 +26,57 @@ beforeEach(() => {
 });
 
 test("follow mode shows the live state tree", () => {
-  mount();
+  pane.mount();
 
-  expect(screen.getByText("fx.price$")).toBeTruthy();
-  expect(screen.getByText("3")).toBeTruthy(); // latest value
+  expect(pane.hasText("fx.price$")).toBe(true);
+  expect(pane.hasText("3")).toBe(true); // latest value
 });
 
 test("pinned mode reconstructs State and marks values that differ from live", () => {
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 1));
-  });
+  harness.pin(rowAt(harness.log, 1));
 
-  fireEvent.click(screen.getByTestId("context-tab-state"));
-  expect(screen.getByText("1")).toBeTruthy(); // historical value
-  expect(screen.getByText("≠ live")).toBeTruthy();
+  pane.click("context-tab-state");
+  expect(pane.hasText("1")).toBe(true); // historical value
+  expect(pane.hasText("≠ live")).toBe(true);
 });
 
 test("diff tab shows leaf changes vs the predecessor", () => {
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
+  harness.pin(rowAt(harness.log, 2));
 
-  fireEvent.click(screen.getByTestId("context-tab-diff"));
-  expect(screen.getByText("changed")).toBeTruthy();
+  pane.click("context-tab-diff");
+  expect(pane.hasText("changed")).toBe(true);
 });
 
 test("a pinned moment is named in the context pane header and the badge leaves on resume", () => {
-  const harness = mount();
+  const harness = pane.mount();
 
-  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+  expect(pane.exists("state-at-seq")).toBe(false);
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
-  expect(screen.getByTestId("state-at-seq").textContent).toBe(
+  harness.pin(rowAt(harness.log, 2));
+  expect(pane.textOf("state-at-seq")).toBe(
     `@ seq ${rowAt(harness.log, 2).seq}`,
   );
 
-  act(() => {
-    harness.resume();
-  });
-  expect(screen.queryByTestId("state-at-seq")).toBeNull();
+  harness.resume();
+  expect(pane.exists("state-at-seq")).toBe(false);
 });
 
 test("resuming from a pinned Diff selection clears the stale tab highlight", () => {
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
+  harness.pin(rowAt(harness.log, 2));
 
-  fireEvent.click(screen.getByTestId("context-tab-diff"));
+  pane.click("context-tab-diff");
 
-  act(() => {
-    harness.resume();
-  });
+  harness.resume();
 
-  const diffTab = screen.getByTestId("context-tab-diff");
-  const stateTab = screen.getByTestId("context-tab-state");
-
-  expect(diffTab.classList.contains(styles.tabActive)).toBe(false);
-  expect(diffTab.classList.contains(styles.tab)).toBe(true);
-  expect(stateTab.classList.contains(styles.tabActive)).toBe(true);
+  expect(pane.hasClass("context-tab-diff", styles.tabActive)).toBe(false);
+  expect(pane.hasClass("context-tab-diff", styles.tab)).toBe(true);
+  expect(pane.hasClass("context-tab-state", styles.tabActive)).toBe(true);
 });
 
 // This is a plumbing test, not a real-failure scenario: findPredecessorRow /
@@ -115,59 +88,49 @@ test("diff tab renders ErrorCard when the diff computation throws", () => {
     throw new Error("boom");
   });
 
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
+  harness.pin(rowAt(harness.log, 2));
 
-  fireEvent.click(screen.getByTestId("context-tab-diff"));
+  pane.click("context-tab-diff");
 
-  expect(screen.getByText("⚠ Diff failed: Error: boom")).toBeTruthy();
+  expect(pane.hasText("⚠ Diff failed: Error: boom")).toBe(true);
 });
 
 test("wire scope disables the State tab and explains why", () => {
-  mount({ kind: "wire" });
+  pane.mount({ kind: "wire" });
 
-  expect(
-    (screen.getByTestId("context-tab-state") as HTMLButtonElement).disabled,
-  ).toBe(true);
-  expect(screen.getByText("wire messages carry no state")).toBeTruthy();
+  expect(pane.isDisabled("context-tab-state")).toBe(true);
+  expect(pane.hasText("wire messages carry no state")).toBe(true);
 });
 
 test("machine scope shows the Machine tab with state and intents", () => {
-  mount({ kind: "machine", machineId: "m1" }, true);
+  pane.mount({ kind: "machine", machineId: "m1" }, true);
 
-  fireEvent.click(screen.getByTestId("context-tab-machine"));
-  expect(screen.getByText("tileExecution")).toBeTruthy();
-  expect(screen.getByText("Intents (0)")).toBeTruthy();
+  pane.click("context-tab-machine");
+  expect(pane.hasText("tileExecution")).toBe(true);
+  expect(pane.hasText("Intents (0)")).toBe(true);
 });
 
 test("pinning a machine row under All surfaces the Machine tab; a stream row hides it", () => {
-  const harness = mount(ALL_SCOPE, true);
+  const harness = pane.mount(ALL_SCOPE, true);
 
-  expect(screen.queryByTestId("context-tab-machine")).toBeNull();
+  expect(pane.exists("context-tab-machine")).toBe(false);
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 4));
-  });
-  expect(screen.getByTestId("context-tab-machine")).toBeTruthy();
+  harness.pin(rowAt(harness.log, 4));
+  expect(pane.exists("context-tab-machine")).toBe(true);
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 1));
-  });
-  expect(screen.queryByTestId("context-tab-machine")).toBeNull();
+  harness.pin(rowAt(harness.log, 1));
+  expect(pane.exists("context-tab-machine")).toBe(false);
 });
 
 test("the first value a source ever emitted has no prior value to diff against", () => {
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 1));
-  });
+  harness.pin(rowAt(harness.log, 1));
 
-  fireEvent.click(screen.getByTestId("context-tab-diff"));
-  expect(screen.getByText("No prior value to diff against.")).toBeTruthy();
+  pane.click("context-tab-diff");
+  expect(pane.hasText("No prior value to diff against.")).toBe(true);
 });
 
 test("a moment aged out of the rolling buffer explains itself instead of blanking", () => {
@@ -177,17 +140,15 @@ test("a moment aged out of the rolling buffer explains itself instead of blankin
     "get",
   ).mockReturnValue(5);
 
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
+  harness.pin(rowAt(harness.log, 2));
 
   expect(
-    screen.getByText(
+    pane.hasText(
       "⚠ This moment left the rolling buffer — Resume to return to live.",
     ),
-  ).toBeTruthy();
+  ).toBe(true);
 });
 
 test("a reconstruction that throws renders the failure, not a blank pane", () => {
@@ -197,15 +158,13 @@ test("a reconstruction that throws renders the failure, not a blank pane", () =>
     },
   );
 
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 2));
-  });
+  harness.pin(rowAt(harness.log, 2));
 
   expect(
-    screen.getByText("⚠ State reconstruction failed: Error: torn history"),
-  ).toBeTruthy();
+    pane.hasText("⚠ State reconstruction failed: Error: torn history"),
+  ).toBe(true);
 });
 
 test("a reconstruction failure renders the reconstruction-failed card, not a blank pane", () => {
@@ -214,36 +173,18 @@ test("a reconstruction failure renders the reconstruction-failed card, not a bla
       throw new Error("history is corrupt");
     },
   );
-  const harness = mount();
+  const harness = pane.mount();
 
-  act(() => {
-    harness.pin(rowAt(harness.log, 1));
-  });
+  harness.pin(rowAt(harness.log, 1));
 
   expect(
-    screen.getByText(
-      "⚠ State reconstruction failed: Error: history is corrupt",
-    ),
-  ).toBeTruthy();
-  fireEvent.click(screen.getByTestId("context-tab-diff"));
+    pane.hasText("⚠ State reconstruction failed: Error: history is corrupt"),
+  ).toBe(true);
+  pane.click("context-tab-diff");
   expect(
-    screen.getByText(
-      "⚠ State reconstruction failed: Error: history is corrupt",
-    ),
-  ).toBeTruthy();
+    pane.hasText("⚠ State reconstruction failed: Error: history is corrupt"),
+  ).toBe(true);
 });
-
-interface HarnessHandle {
-  pin: (row: LogRow) => void;
-  resume: () => void;
-  log: readonly LogRow[];
-}
-
-interface SeedResult {
-  history: LiveHistory;
-  log: readonly LogRow[];
-  present: InspectorState;
-}
 
 function rowAt(log: readonly LogRow[], seq: number): LogRow {
   const row = log.find((r) => {
@@ -255,106 +196,4 @@ function rowAt(log: readonly LogRow[], seq: number): LogRow {
   }
 
   return row;
-}
-
-// Component is nested inside mount() (not a module-top-level declaration), so
-// Biome's fast-refresh export-only-modules check — which only guards
-// top-level component declarations — doesn't apply. `pin` is exposed to the
-// calling test via a mutable handle object, assigned during render, since a
-// nested component can't itself be referenced from outside mount().
-function mount(scope: Scope = ALL_SCOPE, withMachine = false): HarnessHandle {
-  const handle: HarnessHandle = {
-    pin: () => {},
-    resume: () => {},
-    log: [],
-  };
-
-  function Harness(): ReactElement {
-    const [{ history, log, present }] = useState(() => {
-      return seed(withMachine);
-    });
-    const model = useTimeline(log, history, scope, present);
-
-    handle.pin = model.pin;
-    handle.resume = model.resume;
-    handle.log = log;
-
-    return (
-      <ContextPane
-        model={model}
-        log={log}
-        presentState={present}
-        scope={scope}
-        dev={false}
-      />
-    );
-  }
-
-  render(<Harness />);
-
-  return handle;
-}
-
-function seed(withMachine: boolean): SeedResult {
-  const history = new LiveHistory();
-  const store = new InspectorStore({ coalesce: false });
-  const frames: AppToInspector[] = [
-    {
-      kind: "snapshot",
-      streams: [],
-      machines: withMachine
-        ? [
-            {
-              machineId: "m1",
-              machineKind: "tileExecution",
-              args: ["EURUSD"],
-              state: { phase: "idle" },
-              disposed: false,
-              createdAt: 0,
-            },
-          ]
-        : [],
-    },
-  ];
-
-  for (let seq = 1; seq <= 3; seq += 1) {
-    frames.push({
-      kind: "batch",
-      events: [
-        {
-          kind: "stream:emission",
-          seq,
-          ts: 1000 + seq,
-          streamId: "fx.price$",
-          value: seq,
-          coalesced: 1,
-        },
-      ],
-    });
-  }
-
-  if (withMachine) {
-    frames.push({
-      kind: "batch",
-      events: [
-        {
-          kind: "machine:state",
-          seq: 4,
-          ts: 1004,
-          machineId: "m1",
-          state: { phase: "busy" },
-          coalesced: 1,
-        },
-      ],
-    });
-  }
-
-  for (const frame of frames) {
-    history.record(frame);
-    store.apply(frame);
-  }
-
-  const snapshot = store.getSnapshot();
-
-  return { history, log: snapshot.log, present: snapshot };
 }

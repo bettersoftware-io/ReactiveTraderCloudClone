@@ -1,60 +1,43 @@
-import { act, renderHook } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { ALL_SCOPE } from "#/nav/scope";
-import { useNavigation } from "#/nav/useNavigation";
+import { useNavigationPage } from "#tests/pages/UseNavigationPage";
 
 test("starts at All; select replaces the scope and forgets any previous one", () => {
-  const { result } = renderHook(useNavigation);
+  const nav = useNavigationPage();
 
-  expect(result.current.scope).toEqual(ALL_SCOPE);
-  expect(result.current.previousScope).toBeNull();
+  expect(nav.scope).toEqual(ALL_SCOPE);
+  expect(nav.previousScope).toBeNull();
 
-  act(() => {
-    result.current.select({ kind: "wire" });
-  });
-  expect(result.current.scope).toEqual({ kind: "wire" });
-  expect(result.current.previousScope).toBeNull();
+  nav.select({ kind: "wire" });
+  expect(nav.scope).toEqual({ kind: "wire" });
+  expect(nav.previousScope).toBeNull();
 });
 
 test("pushScope remembers one level; popScope restores it once", () => {
-  const { result } = renderHook(useNavigation);
+  const nav = useNavigationPage();
 
-  act(() => {
-    result.current.select({ kind: "presenter", presenter: "blotter" });
-  });
-  act(() => {
-    result.current.pushScope(ALL_SCOPE);
-  });
-  expect(result.current.scope).toEqual(ALL_SCOPE);
-  expect(result.current.previousScope).toEqual({
+  nav.select({ kind: "presenter", presenter: "blotter" });
+  nav.pushScope(ALL_SCOPE);
+  expect(nav.scope).toEqual(ALL_SCOPE);
+  expect(nav.previousScope).toEqual({
     kind: "presenter",
     presenter: "blotter",
   });
 
-  let popped = false;
-
-  act(() => {
-    popped = result.current.popScope();
-  });
-  expect(popped).toBe(true);
-  expect(result.current.scope).toEqual({
+  expect(nav.popScope()).toBe(true);
+  expect(nav.scope).toEqual({
     kind: "presenter",
     presenter: "blotter",
   });
-  expect(result.current.previousScope).toBeNull();
+  expect(nav.previousScope).toBeNull();
 
-  act(() => {
-    popped = result.current.popScope();
-  });
-  expect(popped).toBe(false);
+  expect(nav.popScope()).toBe(false);
 });
 
 test("pushScope onto the same scope records no history", () => {
-  const { result } = renderHook(useNavigation);
+  const nav = useNavigationPage();
 
-  act(() => {
-    result.current.pushScope(ALL_SCOPE);
-  });
-  expect(result.current.previousScope).toBeNull();
+  nav.pushScope(ALL_SCOPE);
+  expect(nav.previousScope).toBeNull();
 });

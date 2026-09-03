@@ -1,89 +1,78 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { MachineRow } from "@rtc/devtools-core";
 
-import { MachineTab } from "#/timeline/MachineTab";
+import { machineTabPage } from "#tests/pages/MachineTabPage";
 
-afterEach(cleanup);
+const tab = machineTabPage();
+
+afterEach(() => {
+  tab.unmountAll();
+});
 
 test("shows kind, transitions, status, state and intent history newest-first", () => {
-  render(
-    <MachineTab
-      machine={machineRow({
-        transitions: 4,
-        intents: [
-          { name: "submit", args: [], ts: 1 },
-          { name: "cancel", args: [], ts: 2 },
-        ],
-      })}
-      dev={false}
-    />,
-  );
-
-  expect(screen.getByText("OrderTicketMachine")).toBeTruthy();
-  expect(screen.getByText("4")).toBeTruthy();
-  expect(screen.getByText("LIVE")).toBeTruthy();
-  expect(
-    screen.getAllByTestId("intent-name").map((el) => {
-      return el.textContent;
+  tab.mountMachineTab({
+    machine: machineRow({
+      transitions: 4,
+      intents: [
+        { name: "submit", args: [], ts: 1 },
+        { name: "cancel", args: [], ts: 2 },
+      ],
     }),
-  ).toEqual(["cancel", "submit"]);
+    dev: false,
+  });
+
+  expect(tab.hasText("OrderTicketMachine")).toBe(true);
+  expect(tab.hasText("4")).toBe(true);
+  expect(tab.hasText("LIVE")).toBe(true);
+  expect(tab.testIdTexts("intent-name")).toEqual(["cancel", "submit"]);
 });
 
 test("clicking an intent name calls onPinIntent with machineId/name/ts", () => {
   const onPinIntent = vi.fn();
 
-  render(
-    <MachineTab
-      machine={machineRow({})}
-      dev={false}
-      onPinIntent={onPinIntent}
-    />,
-  );
-  fireEvent.click(screen.getByTestId("intent-name"));
+  tab.mountMachineTab({
+    machine: machineRow({}),
+    dev: false,
+    onPinIntent,
+  });
+  tab.click("intent-name");
 
   expect(onPinIntent).toHaveBeenCalledWith("m1", "submit", 1);
 });
 
 test("hides the intent injector when the app is not a dev build", () => {
-  render(<MachineTab machine={machineRow({})} dev={false} />);
+  tab.mountMachineTab({ machine: machineRow({}), dev: false });
 
-  expect(screen.queryByTestId("intent-injector")).toBeNull();
+  expect(tab.hasTestId("intent-injector")).toBe(false);
 });
 
 test("shows one invoke button per DISTINCT observed intent name when dev", () => {
-  render(
-    <MachineTab
-      machine={machineRow({
-        intents: [
-          { name: "submit", args: [], ts: 1 },
-          { name: "cancel", args: [], ts: 2 },
-          { name: "submit", args: [1], ts: 3 },
-        ],
-      })}
-      dev
-    />,
-  );
-
-  expect(
-    screen.getAllByTestId("intent-invoke-button").map((b) => {
-      return b.textContent;
+  tab.mountMachineTab({
+    machine: machineRow({
+      intents: [
+        { name: "submit", args: [], ts: 1 },
+        { name: "cancel", args: [], ts: 2 },
+        { name: "submit", args: [1], ts: 3 },
+      ],
     }),
-  ).toEqual(["submit", "cancel"]);
+    dev: true,
+  });
+
+  expect(tab.testIdTexts("intent-invoke-button")).toEqual(["submit", "cancel"]);
 });
 
 test("confirming an armed intent calls onInvokeIntent with the parsed JSON array args", () => {
   const onInvokeIntent = vi.fn();
 
-  render(
-    <MachineTab machine={machineRow({})} dev onInvokeIntent={onInvokeIntent} />,
-  );
-  fireEvent.click(screen.getByTestId("intent-invoke-button"));
-  fireEvent.change(screen.getByLabelText("Args (JSON array)"), {
-    target: { value: '["EURUSD", 1000000]' },
+  tab.mountMachineTab({
+    machine: machineRow({}),
+    dev: true,
+    onInvokeIntent,
   });
-  fireEvent.click(screen.getByTestId("intent-confirm-yes"));
+  tab.click("intent-invoke-button");
+  tab.changeLabeledInput("Args (JSON array)", '["EURUSD", 1000000]');
+  tab.click("intent-confirm-yes");
 
   expect(onInvokeIntent).toHaveBeenCalledWith("m1", "submit", [
     "EURUSD",
@@ -94,34 +83,32 @@ test("confirming an armed intent calls onInvokeIntent with the parsed JSON array
 test("rejects invalid JSON and non-array JSON without invoking", () => {
   const onInvokeIntent = vi.fn();
 
-  render(
-    <MachineTab machine={machineRow({})} dev onInvokeIntent={onInvokeIntent} />,
-  );
-
-  fireEvent.click(screen.getByTestId("intent-invoke-button"));
-  fireEvent.change(screen.getByLabelText("Args (JSON array)"), {
-    target: { value: "{ not valid" },
+  tab.mountMachineTab({
+    machine: machineRow({}),
+    dev: true,
+    onInvokeIntent,
   });
-  fireEvent.click(screen.getByTestId("intent-confirm-yes"));
-  expect(screen.getByTestId("intent-error")).toBeTruthy();
 
-  fireEvent.change(screen.getByLabelText("Args (JSON array)"), {
-    target: { value: "{}" },
-  });
-  fireEvent.click(screen.getByTestId("intent-confirm-yes"));
-  expect(screen.getByTestId("intent-error")).toBeTruthy();
+  tab.click("intent-invoke-button");
+  tab.changeLabeledInput("Args (JSON array)", "{ not valid");
+  tab.click("intent-confirm-yes");
+  expect(tab.hasTestId("intent-error")).toBe(true);
+
+  tab.changeLabeledInput("Args (JSON array)", "{}");
+  tab.click("intent-confirm-yes");
+  expect(tab.hasTestId("intent-error")).toBe(true);
 
   expect(onInvokeIntent).not.toHaveBeenCalled();
 });
 
 test("Cancel disarms a pending intent", () => {
-  render(<MachineTab machine={machineRow({})} dev />);
+  tab.mountMachineTab({ machine: machineRow({}), dev: true });
 
-  fireEvent.click(screen.getByTestId("intent-invoke-button"));
-  expect(screen.getByTestId("intent-confirm")).toBeTruthy();
+  tab.click("intent-invoke-button");
+  expect(tab.hasTestId("intent-confirm")).toBe(true);
 
-  fireEvent.click(screen.getByText("Cancel"));
-  expect(screen.queryByTestId("intent-confirm")).toBeNull();
+  tab.clickText("Cancel");
+  expect(tab.hasTestId("intent-confirm")).toBe(false);
 });
 
 function machineRow(overrides: Partial<MachineRow>): MachineRow {

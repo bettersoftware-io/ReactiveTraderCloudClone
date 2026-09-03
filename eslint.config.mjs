@@ -404,6 +404,15 @@ export default tseslint.config(
     rules: { "rtc/no-framework-calls-in-specs": "warn" },
   },
   {
+    // devtools-app is migrated (Wave A of the page-object-isolation plan):
+    // every spec under src/**/*.{test,spec}.{ts,tsx} speaks page objects
+    // under tests/pages/, so this package is held to error while the rest
+    // of the warn block above burns down.
+    files: ["packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
     // JSX belongs in components: `render*`-named functions must not return JSX
     // (write a standalone component instead). Applies to every .tsx in the
     // repo; RTL-style helpers returning a render(...) CALL and anonymous
