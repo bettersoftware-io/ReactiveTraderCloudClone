@@ -597,13 +597,24 @@ as a two-branch conditional, would be guessing at the shape a third engine
   stretched across a 97px group. The bridge now resets that list and re-pushes
   the machine's `maximized` / `collapsed` on every engine build
   (`engineVersion`), pinned by a StrictMode unit test that reads B's saved
-  blob. **Residual, pending:** the persisted blob still carries strip
-  geometry — a reload with a collapsed panel restores its group at dockview's
-  minimum, so the collapse the machine re-applies records ~100px as the size
-  to restore, and the first expand after a reload lands there instead of the
-  panel's natural size. Fix: serialise the UN-stripped layout (substitute each
-  strip's recorded size, or snapshot before clamping), a change to
-  `serializeLayout`'s contract rather than to the bridges.
+  blob. **Residual FIXED 2026-09-03 — the blob now carries an
+  `rtcStripGeometry` sidecar.** The persisted blob carries strip geometry (the
+  grid serialises as rendered, bars included), so a reload with a collapsed
+  panel restored its group at dockview's minimum, the collapse the machine
+  re-applies recorded ~100px as the size to restore, and the first expand
+  after a reload landed there instead of the panel's natural size. The
+  originally recorded route — serialise the UN-stripped layout — would have
+  required the inverse of `settleStrips` over the JSON tree (flipped columns
+  included) and changed what the blob means while strips are live; instead
+  the save now writes, only while strips exist, a sidecar of exactly what a
+  reload cannot re-measure: each strip's pre-collapse size and each flipped
+  split's pre-flip width (keyed by its stripped panel ids — the only identity
+  a split has that survives serialisation). The bridge's post-reload intent
+  replay consumes the seeds in `recordStrip` and the flip pass; constraints
+  are deliberately not persisted (re-derived live, so a stale saved clamp
+  can never resurrect), unconsumed seeds expire at the first save, a
+  malformed sidecar is dropped like a malformed pin sidecar, and a
+  strip-free blob keeps its exact legacy shape.
 - **Design-width pins made LIVE, added 2026-09-02.** The seed conversion had
   honoured `initialPx`/`fixedPx` only as a one-shot pixel allocation at
   mount, so a Dockview rail *opened* at its design width (FX 360, credit

@@ -1185,6 +1185,145 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   }
 });
 
+describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
+  // The blob serialises the layout AS RENDERED — a collapsed panel's group is
+  // in it at the bar size. Reloading such a blob restores the tiny group (at
+  // dockview's own ~100px default minimum), and when the bridge re-applies
+  // the machine's persisted "collapsed", a bare recordStrip would remember
+  // THAT clamped size as the one to restore: the first expand after a reload
+  // landed at ~100px instead of the true pre-collapse size. The sidecar
+  // carries each strip's pre-collapse size (and a flipped split's pre-flip
+  // width) across the reload, and recordStrip seeds from it.
+  it("restores the pre-collapse width when expanding after a reload", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const before = baselineSize(base(), "fx-analytics");
+
+    first.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+    // The bridge re-applies the machine's persisted "collapsed" on mount.
+    second.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+
+    second.expandPanel("fx-analytics");
+    await waitForSizeWithin(reloaded, "fx-analytics", before, 1);
+    second.dispose();
+  });
+
+  it("writes each strip's pre-collapse size into the sidecar", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    const before = baselineSize(base(), "fx-analytics");
+
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    engine.dispose();
+
+    const sidecar = JSON.parse(seen.blob()).rtcStripGeometry;
+    expect(sidecar.records["fx-analytics"].size).toEqual(within(before, 1));
+  });
+
+  it("restores a fully-stripped column across a reload — its width and both heights", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const columnBefore = baselineBranchSize(base(), "fx-rates");
+    const ratesBefore = baselineSize(base(), "fx-rates");
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+
+    first.collapsePanel("fx-rates");
+    first.collapsePanel("fx-blotter");
+    await waitForBranchSize(seen, "fx-rates", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+    second.collapsePanel("fx-rates");
+    second.collapsePanel("fx-blotter");
+    await waitForBranchSize(reloaded, "fx-rates", STRIP);
+
+    // Same expand order and expectations as the fresh-session stripDir test:
+    // the first expand puts the column's pre-flip width back (the sidecar's
+    // flip entry — a witness measured NOW would read the bar), the second
+    // restores both heights.
+    second.expandPanel("fx-blotter");
+    await waitForBranchSize(reloaded, "fx-rates", columnBefore);
+    second.expandPanel("fx-rates");
+    await waitForSizeWithin(reloaded, "fx-rates", ratesBefore, 2);
+    await waitForSizeWithin(reloaded, "fx-blotter", blotterBefore, 2);
+    second.dispose();
+  });
+
+  it("loads a legacy blob without the sidecar and still collapses/expands", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    first.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    first.dispose();
+    const legacy: Record<string, unknown> = JSON.parse(seen.blob());
+    delete legacy.rtcStripGeometry;
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: JSON.stringify(legacy),
+    });
+    expect(second.groupCount()).toBe(3);
+    second.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+    expect(() => {
+      second.expandPanel("fx-analytics");
+    }).not.toThrow();
+    second.dispose();
+  });
+
+  it("drops a malformed sidecar instead of trusting it", async () => {
+    const seen = trackLayout();
+    createDockEngine({ ...base(), ...seen.options }).dispose();
+    const tampered: Record<string, unknown> = JSON.parse(seen.blob());
+    tampered.rtcStripGeometry = {
+      records: { "fx-analytics": { size: "wide" } },
+      flips: "nope",
+    };
+
+    const reloaded = trackLayout();
+    const engine = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: JSON.stringify(tampered),
+    });
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+    engine.dispose();
+  });
+
+  it("keeps a strip-free blob free of the sidecar and stable across a reload", () => {
+    const seen = trackLayout();
+    createDockEngine({ ...base(), ...seen.options }).dispose();
+    expect(JSON.parse(seen.blob()).rtcStripGeometry).toBeUndefined();
+
+    const reloaded = trackLayout();
+    createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    }).dispose();
+    expect(reloaded.blob()).toBe(seen.blob());
+  });
+});
+
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {

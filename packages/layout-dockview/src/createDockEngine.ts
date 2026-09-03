@@ -211,7 +211,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // the container's real size is known, so a stale fallback self-corrects.
   api.layout(width, height);
 
-  const loadedPins = loadBlobOrSeed(api, opts, width, height);
+  const restored = loadBlobOrSeed(api, opts, width, height);
   applyTitles(api, opts.panels);
 
   const debounceMs = opts.debounceMs ?? 250;
@@ -224,12 +224,59 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // ignores unknown top-level keys) so a still-pinned rail stays pinned
     // across reloads, and a released one stays released — the in-house
     // engine's "first drag converts the split for good", persisted.
+    // `rtcStripGeometry` (present only while strips exist) rides the same
+    // way: the grid itself serialises AS RENDERED — bars included — so
+    // without it a reload's re-applied collapse would remember the restored
+    // bar (clamped up to dockview's ~100px default minimum) as the size to
+    // restore. The first save also expires any seeds the bridge's intent
+    // replay did not consume: past this point they describe strips the
+    // machine never re-applied, and a later collapse must measure live.
+    seededStripSizes.clear();
+    seededFlipSizes.clear();
+    const stripGeometry = stripGeometrySidecar();
     opts.onLayoutChange(
       JSON.stringify({
         ...compensateGap(api.toJSON(), GROUP_GAP_PX),
         rtcDesignPins: intactDesignPins(),
+        ...(stripGeometry === undefined
+          ? {}
+          : { rtcStripGeometry: stripGeometry }),
       }),
     );
+  }
+
+  /** The strip machinery's restore sizes, for the blob: what recordStrip
+   * and the flip pass need to remember across a reload but cannot
+   * re-measure there (the serialised grid holds the bars). Undefined while
+   * nothing is stripped, so a strip-free blob keeps its legacy shape. */
+  function stripGeometrySidecar(): StripGeometrySidecar | undefined {
+    if (records.size === 0) {
+      return undefined;
+    }
+
+    const recordSizes: Record<string, PersistedStripSize> = {};
+
+    for (const [panelId, record] of records) {
+      recordSizes[panelId] = { size: record.size };
+    }
+
+    const flips: PersistedFlip[] = [];
+
+    for (const [split, size] of flippedSplits) {
+      const panelIds = [...records.keys()]
+        .filter((panelId) => {
+          const group = groupOf(panelId);
+
+          return group !== undefined && split.contains(group.element);
+        })
+        .sort();
+
+      if (panelIds.length > 0) {
+        flips.push({ panelIds, size });
+      }
+    }
+
+    return { records: recordSizes, flips };
   }
 
   const changeSub = api.onDidLayoutChange(() => {
@@ -264,6 +311,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // (the in-house `stripDir`): its own size on that axis is remembered here
   // while it is flipped, and restored the moment one of its strips expands.
   const flippedSplits = new Map<Element, number>();
+  // Sizes the blob's sidecar carried across a reload, consumed by the
+  // bridge's intent replay (recordStrip and the flip pass) and expired at
+  // the first save — see serializeLayout.
+  const seededStripSizes = new Map(restored.stripSizes);
+  const seededFlipSizes = new Map(restored.flipSizes);
   let lastStrips: DockStripMap = {};
   // In-house maximize is a POLICY over strips, not a geometry primitive:
   // every leaf under the maximize boundary except the maximized panel is a
@@ -332,9 +384,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const orthogonalAxis = axisOf(group, opposite(natural));
     const world = worldAround(group, natural);
 
+    // A blob reload restores the grid at the BAR (clamped up to dockview's
+    // default minimum), so on the bridge's post-reload re-collapse the live
+    // measurement is not the size to restore — the sidecar's persisted size
+    // wins when one rode in for this panel.
+    const seededSize = seededStripSizes.get(panelId);
+    seededStripSizes.delete(panelId);
+
     records.set(panelId, {
       natural,
-      size: world?.get(panelId) ?? naturalAxis.size(),
+      size: seededSize ?? world?.get(panelId) ?? naturalAxis.size(),
       minimum: naturalAxis.minimum(),
       maximum: naturalAxis.maximum(),
       orthogonalMinimum: orthogonalAxis.minimum(),
@@ -372,7 +431,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const size = axisOf(member, natural).size();
 
       for (const heldPanel of member.panels) {
-        world.set(heldPanel.id, size);
+        // After a blob reload the grid renders the serialised bars, so a
+        // live measurement here is polluted (a restored bar's clamp, or a
+        // sibling inflated by absorbing it). The sidecar's persisted size is
+        // that panel's true pre-collapse allocation — prefer it, and leave
+        // the seed in place for recordStrip to consume.
+        world.set(heldPanel.id, seededStripSizes.get(heldPanel.id) ?? size);
       }
     }
 
@@ -539,11 +603,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         const witness = firstStrippedGroupIn(split, stripped, groupOf);
 
         if (witness !== undefined) {
+          // Same reload rule as recordStrip: a re-collapse after a blob
+          // restore would measure the bar the blob stored, so a sidecar-
+          // persisted pre-flip size wins over the live witness.
+          const key = flipKeyOf(split, stripped);
+          const seededSize = seededFlipSizes.get(key);
+          seededFlipSizes.delete(key);
+
           // The split's size on its PARENT's axis — a column's width — is
           // the axis orthogonal to the one its own children run along.
           flippedSplits.set(
             split,
-            axisOf(witness, opposite(orientationAgainst(split))).size(),
+            seededSize ??
+              axisOf(witness, opposite(orientationAgainst(split))).size(),
           );
         }
       }
@@ -790,7 +862,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     window.removeEventListener("pointerup", disarmSashUnpin, true);
   }
 
-  applyDesignPins(loadedPins);
+  applyDesignPins(restored.pins);
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
   return {
@@ -1154,6 +1226,31 @@ function allGroupsStripped(
   return groups.length > 0 && [...groups].every(isStripped);
 }
 
+/** The lookup key a flipped split's persisted pre-flip size is filed under:
+ * the sorted ids of the stripped panels inside it — the only identity a
+ * split has that survives serialisation (its Element does not). Must match
+ * {@link flipKeyFor} over the persisted entry's panelIds. */
+function flipKeyOf(
+  split: Element,
+  stripped: ReadonlyMap<Element, string>,
+): string {
+  const panelIds: string[] = [];
+
+  for (const element of split.querySelectorAll(GROUP_SELECTOR)) {
+    const panelId = stripped.get(element);
+
+    if (panelId !== undefined) {
+      panelIds.push(panelId);
+    }
+  }
+
+  return flipKeyFor(panelIds);
+}
+
+function flipKeyFor(panelIds: readonly string[]): string {
+  return JSON.stringify([...panelIds].sort());
+}
+
 function firstStrippedGroupIn(
   split: Element,
   stripped: ReadonlyMap<Element, string>,
@@ -1317,25 +1414,36 @@ function clampRendered(axis: GroupAxis, size: number): void {
   }
 }
 
+/** What a load hands the engine beyond the grid dockview restored: the
+ * design pins to apply, and the strip-geometry seeds a re-applied collapse
+ * consumes (empty on a seed load or a legacy blob). */
+interface RestoredLayout {
+  readonly pins: readonly DockDesignPin[];
+  /** Each persisted strip's pre-collapse size, by panel id. */
+  readonly stripSizes: ReadonlyMap<string, number>;
+  /** Each persisted flipped split's pre-flip size, by {@link flipKeyFor}. */
+  readonly flipSizes: ReadonlyMap<string, number>;
+}
+
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
  * a stale or corrupt blob must never brick the workspace. Returns the design
- * pins to apply: the blob's own surviving `rtcDesignPins` (a legacy blob
+ * pins to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
  * without the field gets none — that layout may be user-shaped already), or
- * the freshly converted seed's. */
+ * the freshly converted seed's — plus the blob's strip-geometry seeds. */
 function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
   width: number,
   height: number,
-): readonly DockDesignPin[] {
+): RestoredLayout {
   if (opts.blob !== null) {
     try {
       const parsed: unknown = JSON.parse(opts.blob);
-      // dockview's fromJSON reads only the fields it knows, so the pin
-      // sidecar rides through untouched.
+      // dockview's fromJSON reads only the fields it knows, so the pin and
+      // strip-geometry sidecars ride through untouched.
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
 
-      return designPinsIn(parsed);
+      return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
     } catch {
       // fall through to the seed
     }
@@ -1346,7 +1454,7 @@ function loadBlobOrSeed(
   });
   api.fromJSON(serialized);
 
-  return pins;
+  return { pins, stripSizes: new Map(), flipSizes: new Map() };
 }
 
 /** A blob that MAY carry the pin sidecar — what a save wrote, unverified. */
@@ -1404,6 +1512,111 @@ function designPinsIn(parsed: unknown): readonly DockDesignPin[] {
   }
 
   return pins;
+}
+
+/** One strip's persisted restore geometry: only its pre-collapse size on its
+ * natural axis. Constraints are deliberately NOT persisted — the reload
+ * re-derives them live (dockview defaults, or a freshly re-applied pin's
+ * clamp), so a stale saved constraint can never resurrect. */
+interface PersistedStripSize {
+  readonly size: number;
+}
+
+/** A flipped split's persisted pre-flip size, addressed by the panels
+ * stripped inside it — see {@link flipKeyOf}. */
+interface PersistedFlip {
+  readonly panelIds: readonly string[];
+  readonly size: number;
+}
+
+/** The `rtcStripGeometry` sidecar a save writes while strips exist. */
+interface StripGeometrySidecar {
+  readonly records: Readonly<Record<string, PersistedStripSize>>;
+  readonly flips: readonly PersistedFlip[];
+}
+
+/** A blob that MAY carry the strip-geometry sidecar, unverified. */
+interface StripSidecarCarrier {
+  readonly rtcStripGeometry?: unknown;
+}
+
+/** The sidecar's two collections, field by field, unverified. */
+interface UnverifiedStripGeometry {
+  readonly records?: unknown;
+  readonly flips?: unknown;
+}
+
+/** One unverified per-strip entry of the sidecar. */
+interface UnverifiedStripSize {
+  readonly size?: unknown;
+}
+
+/** One unverified flip entry of the sidecar. */
+interface UnverifiedFlip {
+  readonly panelIds?: unknown;
+  readonly size?: unknown;
+}
+
+/** The `rtcStripGeometry` sidecar of a parsed blob as seed maps, dropping
+ * anything malformed — like the pins, it crosses localStorage. */
+function stripGeometryIn(
+  parsed: unknown,
+): Pick<RestoredLayout, "stripSizes" | "flipSizes"> {
+  const stripSizes = new Map<string, number>();
+  const flipSizes = new Map<string, number>();
+  const seeds = { stripSizes, flipSizes };
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return seeds;
+  }
+
+  const raw = (parsed as StripSidecarCarrier).rtcStripGeometry;
+
+  if (typeof raw !== "object" || raw === null) {
+    return seeds;
+  }
+
+  const { records, flips } = raw as UnverifiedStripGeometry;
+
+  if (typeof records === "object" && records !== null) {
+    for (const [panelId, entry] of Object.entries(records)) {
+      const size = (entry as UnverifiedStripSize | null)?.size;
+
+      if (isUsableSize(size)) {
+        stripSizes.set(panelId, size);
+      }
+    }
+  }
+
+  if (Array.isArray(flips)) {
+    for (const entry of flips) {
+      if (typeof entry !== "object" || entry === null) {
+        continue;
+      }
+
+      const { panelIds, size } = entry as UnverifiedFlip;
+      const ids = Array.isArray(panelIds)
+        ? panelIds.filter((id): id is string => {
+            return typeof id === "string";
+          })
+        : [];
+
+      if (
+        Array.isArray(panelIds) &&
+        ids.length === panelIds.length &&
+        ids.length > 0 &&
+        isUsableSize(size)
+      ) {
+        flipSizes.set(flipKeyFor(ids), size);
+      }
+    }
+  }
+
+  return seeds;
+}
+
+function isUsableSize(size: unknown): size is number {
+  return typeof size === "number" && Number.isFinite(size) && size > 0;
 }
 
 /** `createRightHeaderActionComponent` only when the client supplied a
