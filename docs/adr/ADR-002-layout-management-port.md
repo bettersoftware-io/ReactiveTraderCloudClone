@@ -632,14 +632,27 @@ as a two-branch conditional, would be guessing at the shape a third engine
   the sidecar gets no pins (that layout may be user-shaped already), and a
   pin whose panels no longer fill their groups exactly (a tab dragged in or
   out) dissolves with its constraints released rather than clamping a
-  stranger. **Residual, pending — sequential expand of a fully-stripped
-  column overshoots:** collapse both rail panels, then expand them one at a
-  time, and the SECOND expand lands the first panel at dockview's ~100px
-  minimum with the second at the remainder (~590px) instead of both
-  restoring their recorded sizes; measured byte-identical with pins on and
-  off (and in jsdom: 100/700 both ways), so it is the strip machinery's
-  restore-order interaction, not the pins — the single-panel and
-  maximize round-trips restore exactly.
+  stranger. **Residual FIXED 2026-09-03 — sequential expand of a
+  fully-stripped column overshot:** collapse both rail panels, then expand
+  them one at a time, and the SECOND expand landed the first panel at
+  dockview's ~100px minimum with the second at the remainder (~590px);
+  byte-identical with pins on and off, so it was the strip machinery, not
+  the pins. Root cause was record-time contamination: `recordStrip`
+  remembered the group's CURRENT size, and a panel collapsing while a
+  same-split sibling was already a bar had absorbed that bar's space — the
+  inflated record, restored last, took the space back out of the
+  already-expanded sibling. The fix is the `preStripWorlds` ledger in
+  `createDockEngine`: the split's FIRST strip snapshots every direct
+  member's owned size (the one moment the true allocation is readable), a
+  later strip reads its own true size from that snapshot instead of
+  measuring, and when the split's last strip expands the whole world is
+  re-asserted front-to-second-to-last (dockview moves a resize delta to/from
+  the views AFTER the resized one first, so asserting forward parks every
+  delta on the still-unasserted suffix and conservation lands the last
+  member on its own size unasserted). Exact for two- AND three-sibling
+  columns in either expand order, pinned by three engine tests; also runs on
+  maximize exit and maximize switch, so a 3+-strip boundary restores exactly
+  too.
 - **Strip-bar visual round, 2026-09-02 (design direction, both engines).**
   Two refinements to the collapse strips themselves, in the shared
   `PanelHead.module.css` / engine geometry both engines render. (1) **The
