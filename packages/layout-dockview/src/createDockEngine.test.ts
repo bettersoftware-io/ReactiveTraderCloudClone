@@ -616,6 +616,87 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
     engine.dispose();
   });
 
+  it("restores both panels when they expand in the order they collapsed", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    const ratesBefore = baselineSize(base(), "fx-rates");
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+
+    engine.collapsePanel("fx-rates");
+    await waitForSize(seen, "fx-rates", STRIP_HEIGHT);
+    engine.collapsePanel("fx-blotter");
+    await waitForBranchSize(seen, "fx-rates", STRIP);
+
+    // Expand in COLLAPSE order — the mirror of the test above. fx-rates's
+    // record is genuine, but fx-blotter collapsed while fx-rates was already
+    // a bar, so its group had absorbed fx-rates's space. Remembering that
+    // inflated size and restoring it LAST used to take the space back out of
+    // fx-rates all over again, shoving it to dockview's ~100px default
+    // minimum instead of its pre-collapse height.
+    engine.expandPanel("fx-rates");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+
+    engine.expandPanel("fx-blotter");
+    await waitForSizeWithin(seen, "fx-rates", ratesBefore, 2);
+    await waitForSizeWithin(seen, "fx-blotter", blotterBefore, 2);
+    engine.dispose();
+  });
+
+  it("recovers all three panels of a stacked column expanded in collapse order", async () => {
+    // Three stacked siblings compound the borrowing: st-mid collapses while
+    // st-top's bar's space sits on it, st-low while both bars' does — and on
+    // the way back out, dockview moves each restore's delta to/from whichever
+    // neighbours its splitview favours, not the panel holding the surplus.
+    // Only the pre-strip world's put-back can land ALL THREE exactly; a
+    // per-panel restore alone provably cannot, whatever it remembers.
+    const stack = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      children: [
+        {
+          kind: "split",
+          dir: "column",
+          sizes: [0.4, 0.35, 0.25],
+          children: [
+            { kind: "panel", panelId: "st-top" },
+            { kind: "panel", panelId: "st-mid" },
+            { kind: "panel", panelId: "st-low" },
+          ],
+        },
+        { kind: "panel", panelId: "st-side" },
+      ],
+    } as const;
+    const opts = { ...base(), seed: stack };
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    const before = baselines({ ...base(), seed: stack }, [
+      "st-top",
+      "st-mid",
+      "st-low",
+    ]);
+
+    // A 3-child branch's gap share is 7 × 2⁄3 — the bars read at repeating
+    // decimals, so every wait here tolerates the float, not just the last.
+    engine.collapsePanel("st-top");
+    await waitForSizeWithin(seen, "st-top", STRIP_HEIGHT, 1);
+    engine.collapsePanel("st-mid");
+    await waitForSizeWithin(seen, "st-mid", STRIP_HEIGHT, 1);
+    engine.collapsePanel("st-low");
+    await waitForBranchSize(seen, "st-top", STRIP);
+
+    engine.expandPanel("st-top");
+    await waitForSizeWithin(seen, "st-mid", STRIP_HEIGHT, 1);
+    engine.expandPanel("st-mid");
+    engine.expandPanel("st-low");
+
+    for (const panelId of ["st-top", "st-mid", "st-low"]) {
+      await waitForSizeWithin(seen, panelId, before.get(panelId) ?? 0, 2);
+    }
+
+    engine.dispose();
+  });
+
   it("reads every strip against the row when the whole dock is stripped", () => {
     const strips = recordStrips();
     const engine = createDockEngine({ ...base(), ...strips.options });
@@ -953,6 +1034,32 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     expect(seen.pins()).toEqual([RAIL_PIN]);
   });
 
+  it("restores both rail panels' heights when they expand in collapse order", async () => {
+    // The width restore above passes even while the HEIGHTS land wrong — the
+    // second-expanded panel's record was captured after the first strip had
+    // handed it its space. The pin must neither mask nor break the fix: this
+    // is the user-visible FX-rail sequence, pin held throughout.
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const analyticsBefore = baselineSize(railPinnedBase(), "fx-analytics");
+    const positionsBefore = baselineSize(railPinnedBase(), "fx-positions");
+
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP_HEIGHT);
+    engine.collapsePanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", STRIP);
+
+    engine.expandPanel("fx-analytics");
+    await waitForSize(seen, "fx-positions", STRIP_HEIGHT);
+
+    engine.expandPanel("fx-positions");
+    await waitForSizeWithin(seen, "fx-analytics", analyticsBefore, 2);
+    await waitForSizeWithin(seen, "fx-positions", positionsBefore, 2);
+    await waitForBranchSize(seen, "fx-analytics", 360);
+    engine.dispose();
+    expect(seen.pins()).toEqual([RAIL_PIN]);
+  });
+
   it("releases the pin on a sash drag in the declaring split", () => {
     const opts = railPinnedBase();
     const seen = trackLayout();
@@ -1153,6 +1260,37 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     second.expandPanel("fx-blotter");
     await waitForBranchSize(reloaded, "fx-rates", columnBefore);
     second.expandPanel("fx-rates");
+    await waitForSizeWithin(reloaded, "fx-rates", ratesBefore, 2);
+    await waitForSizeWithin(reloaded, "fx-blotter", blotterBefore, 2);
+    second.dispose();
+  });
+
+  it("restores a reloaded column expanded in collapse order — the seeded world composes with the put-back", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const ratesBefore = baselineSize(base(), "fx-rates");
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+
+    first.collapsePanel("fx-rates");
+    first.collapsePanel("fx-blotter");
+    await waitForBranchSize(seen, "fx-rates", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+    second.collapsePanel("fx-rates");
+    second.collapsePanel("fx-blotter");
+    await waitForBranchSize(reloaded, "fx-rates", STRIP);
+
+    // Collapse-order expansion is the order the overshoot fix exists for: the
+    // last expand's world put-back must re-assert the SIDECAR-seeded sizes,
+    // not the restored grid's bar-polluted snapshot.
+    second.expandPanel("fx-rates");
+    second.expandPanel("fx-blotter");
     await waitForSizeWithin(reloaded, "fx-rates", ratesBefore, 2);
     await waitForSizeWithin(reloaded, "fx-blotter", blotterBefore, 2);
     second.dispose();

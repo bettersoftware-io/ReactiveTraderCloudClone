@@ -297,6 +297,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // (their `restoreExpandedSize` remembers the pre-collapse size the same way
   // this map does).
   const records = new Map<string, StripRecord>();
+  // Per split holding at least one strip: every direct member's size at the
+  // moment the split's FIRST strip was recorded — the world its strips'
+  // expands put back. A panel collapsing while a sibling is already a bar
+  // renders at an INFLATED size (it absorbed the bar's space), so only this
+  // first-strip snapshot knows what each panel truly owned; and sequential
+  // expands must re-assert the whole world at the end, because dockview
+  // spreads each restore's delta over whichever live neighbours it favours,
+  // not over the panel holding the borrowed surplus. Dropped when the last
+  // strip of the split expands.
+  const preStripWorlds = new Map<Element, Map<string, number>>();
   // A split whose every group is a strip reclaims along its PARENT's axis
   // (the in-house `stripDir`): its own size on that axis is remembered here
   // while it is flipped, and restored the moment one of its strips expands.
@@ -372,6 +382,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const natural = stripOrientationOf(group);
     const naturalAxis = axisOf(group, natural);
     const orthogonalAxis = axisOf(group, opposite(natural));
+    const world = worldAround(group, natural);
 
     // A blob reload restores the grid at the BAR (clamped up to dockview's
     // default minimum), so on the bridge's post-reload re-collapse the live
@@ -382,7 +393,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     records.set(panelId, {
       natural,
-      size: seededSize ?? naturalAxis.size(),
+      size: seededSize ?? world?.get(panelId) ?? naturalAxis.size(),
       minimum: naturalAxis.minimum(),
       maximum: naturalAxis.maximum(),
       orthogonalMinimum: orthogonalAxis.minimum(),
@@ -390,6 +401,118 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     });
 
     return true;
+  }
+
+  /** The pre-strip world of `group`'s split, capturing it now if this is the
+   * split's first strip — every direct member still sits at the size it owns,
+   * so this is the one moment the true allocation is readable. A later strip
+   * finds its own true size in here rather than remembering the inflated one
+   * it renders at once earlier bars' space has landed on it. Null only for a
+   * group outside any split. */
+  function worldAround(
+    group: SizableGroup,
+    natural: DockStripOrientation,
+  ): ReadonlyMap<string, number> | null {
+    const split = group.element.closest(SPLIT_SELECTOR);
+
+    if (split === null) {
+      return null;
+    }
+
+    const known = preStripWorlds.get(split);
+
+    if (known !== undefined) {
+      return known;
+    }
+
+    const world = new Map<string, number>();
+
+    for (const member of directMembersOf(split)) {
+      const size = axisOf(member, natural).size();
+
+      for (const heldPanel of member.panels) {
+        // After a blob reload the grid renders the serialised bars, so a
+        // live measurement here is polluted (a restored bar's clamp, or a
+        // sibling inflated by absorbing it). The sidecar's persisted size is
+        // that panel's true pre-collapse allocation — prefer it, and leave
+        // the seed in place for recordStrip to consume.
+        world.set(heldPanel.id, seededStripSizes.get(heldPanel.id) ?? size);
+      }
+    }
+
+    preStripWorlds.set(split, world);
+
+    return world;
+  }
+
+  /** `split`'s own groups in DOM order — the ones whose nearest split IS
+   * `split`, not a nested child split's. */
+  function directMembersOf(split: Element): readonly SizableGroup[] {
+    const members: SizableGroup[] = [];
+
+    for (const element of split.querySelectorAll(GROUP_SELECTOR)) {
+      if (element.closest(SPLIT_SELECTOR) !== split) {
+        continue;
+      }
+
+      const member = api.groups.find((candidate) => {
+        return candidate.element === element;
+      });
+
+      if (member !== undefined) {
+        members.push(member);
+      }
+    }
+
+    return members;
+  }
+
+  /** Puts every strip-free split's pre-strip world back and forgets it. Runs
+   * after expands and maximize exits: the LAST restore in a split cannot land
+   * everyone right on its own — dockview resizes a view by moving the delta
+   * to/from the views AFTER it (from the end) before the ones before it, not
+   * to/from the panel holding the borrowed surplus. Members are re-asserted
+   * FIRST to SECOND-TO-LAST, in order: each delta then parks on the
+   * still-unasserted suffix, and by the time the walk reaches the end the
+   * suffix holds exactly what conservation says it must — the last member
+   * lands on its own size without being asserted at all. */
+  function settleStripFreeWorlds(): void {
+    for (const [split, world] of [...preStripWorlds]) {
+      if (holdsStrip(split)) {
+        continue;
+      }
+
+      preStripWorlds.delete(split);
+      const along = orientationAgainst(split);
+      const members = directMembersOf(split);
+
+      for (const member of members.slice(0, -1)) {
+        const owned = world.get(member.panels[0]?.id ?? "");
+        const axis = axisOf(member, along);
+
+        // A member already at its size is left alone: re-setting it walks
+        // the gap-correction double-set once more and its integer rounding
+        // can nudge a sibling off by a pixel for nothing.
+        if (owned !== undefined && Math.abs(axis.size() - owned) > 0.5) {
+          setRendered(axis, owned);
+        }
+      }
+    }
+  }
+
+  function holdsStrip(split: Element): boolean {
+    for (const panelId of records.keys()) {
+      const group = groupOf(panelId);
+
+      if (
+        group !== undefined &&
+        group.element.closest(SPLIT_SELECTOR) === split
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /** Forgets `panelId`'s strip and lifts both axes' clamps. Returns the
@@ -761,6 +884,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           for (const restore of restores) {
             restore();
           }
+
+          // Worlds settled BEFORE the new boundary strips below record their
+          // sizes — the switch must not remember a mid-redistribution state.
+          settleStripFreeWorlds();
         }
 
         const boundary = maximizeBoundaryOf(
@@ -803,6 +930,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         for (const restore of restores) {
           restore();
         }
+
+        settleStripFreeWorlds();
       });
     },
     collapsePanel: (panelId: string): void => {
@@ -834,6 +963,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       glide(() => {
         settleStrips();
         restore();
+        settleStripFreeWorlds();
       });
     },
     groupCount: () => {
@@ -1258,7 +1388,12 @@ function setRendered(axis: GroupAxis, size: number): void {
   axis.set(size);
   const shortfall = size - axis.size();
 
-  if (shortfall !== 0) {
+  // Only a POSITIVE shortfall is the gap shave. A negative one means the
+  // splitview rendered the group BIGGER than asked because its siblings'
+  // constraints left no other feasible layout (an expand whose siblings are
+  // still clamped bars fills the split regardless of its recorded size) — a
+  // "correction" would push a bogus, possibly negative size into the model.
+  if (shortfall > 0) {
     axis.set(size + shortfall);
   }
 }
