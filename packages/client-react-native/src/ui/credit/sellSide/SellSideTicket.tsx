@@ -19,6 +19,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { CtaGradient } from "#/ui/CtaGradient";
 import { PriceStepper } from "#/ui/credit/sellSide/PriceStepper";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -112,6 +113,7 @@ export function SellSideTicket({
             style={styles.submitBtn}
             onPress={submitOwnQuote}
           >
+            <CtaGradient />
             <Text style={styles.submitLabel}>
               SUBMIT {sideLabel(rfq.direction)}
             </Text>
@@ -270,12 +272,17 @@ function makeStyles(t: RnTheme): SellSideTicketStyles {
       fontFamily: t.fontMono,
     },
     stepperRow: { marginTop: 12 },
+    // dc.html:305 — `background:linear-gradient(180deg, var(--acc),
+    // var(--acc2))`: CtaGradient paints the ramp; the flat accent beneath it
+    // is what shows if the SVG layer ever fails, and `overflow: "hidden"`
+    // clips the fill to the 10px radius (NewRfqForm's construction).
     submitBtn: {
       marginTop: 12,
       alignItems: "center",
       paddingVertical: 13,
       borderRadius: 10,
       backgroundColor: t.accentPrimary,
+      overflow: "hidden",
     },
     submitLabel: {
       ...labelStyle(t, 10.5, 2.5, "700"),

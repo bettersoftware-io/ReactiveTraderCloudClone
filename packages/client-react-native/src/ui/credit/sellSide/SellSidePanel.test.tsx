@@ -49,6 +49,18 @@ test("renders a ticket per open rfq, not just the first", async () => {
   expect(screen.getAllByTestId(/^sell-side-ticket-/)).toHaveLength(3);
 });
 
+// dc.html:305 — SUBMIT BID is a `linear-gradient(180deg, acc, acc2)` fill in
+// every skin, painted by CtaGradient over the flat accent fallback.
+test("the live ticket's SUBMIT CTA carries the accent ramp gradient", async () => {
+  await renderPanel({
+    rfqs: [openRfq(5)],
+    quoteFor: () => {
+      return unpriced();
+    },
+  });
+  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
+});
+
 test("renders an empty state when nothing is open", async () => {
   await renderPanel({
     rfqs: [],

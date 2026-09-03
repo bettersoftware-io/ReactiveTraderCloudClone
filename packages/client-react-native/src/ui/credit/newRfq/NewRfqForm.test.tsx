@@ -138,14 +138,14 @@ test("the broadcast gradient appears only once the ticket is submittable", async
   const submit = jest.fn<SubmitFn>();
   await renderEditingForm(submit);
 
-  expect(screen.queryByTestId("accept-gradient")).toBeNull();
+  expect(screen.queryByTestId("cta-gradient")).toBeNull();
 
   await fireEvent.press(screen.getByTestId("instrument-chip-1"));
   await fireEvent.press(
     screen.getByTestId(`quantity-chip-${RFQ_QUANTITY_CHIPS[0]}`),
   );
 
-  expect(screen.getByTestId("accept-gradient")).toBeTruthy();
+  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
 });
 
 test("sell direction rides through to the submitted rfq", async () => {

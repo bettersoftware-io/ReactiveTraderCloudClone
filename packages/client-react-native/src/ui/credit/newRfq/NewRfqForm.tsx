@@ -13,9 +13,9 @@ import {
 import { Direction, RFQ_DEFAULT_EXPIRY_SECS } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { CtaGradient } from "#/ui/CtaGradient";
 import { InstrumentChipGrid } from "#/ui/credit/newRfq/InstrumentChipGrid";
 import { QuantityChips } from "#/ui/credit/newRfq/QuantityChips";
-import { AcceptGradient } from "#/ui/credit/rfqTiles/AcceptGradient";
 import { labelStyle } from "#/ui/theme/labelStyle";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -172,7 +172,7 @@ export function NewRfqForm({
             style={canSubmit ? styles.submitBtn : styles.submitBtnDisabled}
             onPress={submitRfq}
           >
-            {canSubmit ? <AcceptGradient /> : null}
+            {canSubmit ? <CtaGradient /> : null}
             <Text style={styles.submitLabel}>
               {submitting ? "BROADCASTING…" : "⟟ BROADCAST RFQ"}
             </Text>
@@ -289,7 +289,7 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     alignItems: "center",
     paddingVertical: 14,
     borderRadius: 11,
-    // Clips `AcceptGradient`'s absolutely-filled Svg to the radius — the
+    // Clips `CtaGradient`'s absolutely-filled Svg to the radius — the
     // same move `QuoteCard`'s best-quote ACCEPT makes.
     overflow: "hidden",
     // Fallback ground beneath the gradient, and the disabled arm's base.

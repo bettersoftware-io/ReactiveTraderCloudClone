@@ -90,12 +90,12 @@ test("only the best ACCEPT is filled with the gradient", async () => {
     state: { type: "pendingWithPrice", price: 99 },
     isBest: true,
   });
-  expect(screen.getByTestId("accept-gradient")).toBeTruthy();
+  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
 });
 
 test("a non-best ACCEPT has no gradient fill", async () => {
   await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.queryByTestId("accept-gradient")).toBeNull();
+  expect(screen.queryByTestId("cta-gradient")).toBeNull();
 });
 
 test("renders no gradient tile surface even on a 3d skin (dense row, not a hero tile)", async () => {

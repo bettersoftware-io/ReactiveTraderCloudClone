@@ -12,11 +12,14 @@ import type { OrderTicketState } from "@rtc/client-core";
 import type { OrderSide } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { CtaGradient } from "#/ui/CtaGradient";
 import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { labelStyle } from "#/ui/theme/labelStyle";
+import { mixTowardBlack } from "#/ui/theme/mixTowardBlack";
 import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
@@ -40,6 +43,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const quote = useEquityQuote(symbol);
   const { state } = ticket;
   const styles = useThemedStyles(makeStyles);
+  const t = useTheme();
 
   if (state.phase === "submitting") {
     return <Ticket state={state} styles={styles} />;
@@ -193,6 +197,10 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
         style={buy ? styles.submitBuy : styles.submitSell}
         onPress={ticket.submit}
       >
+        <CtaGradient
+          from={buy ? t.accentPositive : t.accentNegative}
+          to={mixTowardBlack(buy ? t.accentPositive : t.accentNegative, 0.72)}
+        />
         <Text style={styles.submitLabel}>
           {submitLabel(form.side, form.qty, symbol, isLimit ? limit : null)}
         </Text>
@@ -355,10 +363,14 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     ...weightedFont(t, "mono", "600"),
   };
 
+  // dc.html:2371 — `linear-gradient(180deg, sideC, color-mix(in oklab, sideC
+  // 72%, black))`: CtaGradient paints the ramp over the flat side-colour
+  // fallback; `overflow: "hidden"` clips it to the 10px radius.
   const baseSubmit: ViewStyle = {
     alignItems: "center",
     paddingVertical: 13,
     borderRadius: 10,
+    overflow: "hidden",
   };
   return StyleSheet.create({
     ticket: {
