@@ -5,7 +5,7 @@ import { dockingScenePage } from "#tests/pages/DockingScenePage";
 const page = dockingScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as

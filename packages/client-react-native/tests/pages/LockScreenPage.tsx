@@ -115,7 +115,7 @@ export interface LockScreenPage {
     user: LockUser,
     unlocking?: boolean,
   ): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   textOf(testId: string): TextChildren;
   typePassword(value: string): Promise<void>;
@@ -162,8 +162,8 @@ export function lockScreenPage(): LockScreenPage {
 
       await rerenderFn(lockedTree(locked, unlock, user, unlocking));
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

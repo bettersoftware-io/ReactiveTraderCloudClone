@@ -56,7 +56,7 @@ function fakeDoneOnce(dismiss: () => void): ViewModel {
 export interface BootGatePage {
   mountRunning(visible?: boolean): Promise<void>;
   mountDoneOnce(dismiss: () => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   waitFor<T>(assertion: () => T): Promise<T>;
 }
@@ -78,8 +78,8 @@ export function bootGatePage(): BootGatePage {
         </ViewModelProvider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

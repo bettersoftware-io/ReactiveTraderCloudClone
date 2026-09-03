@@ -5,7 +5,7 @@ import { logoutButtonPage } from "#tests/pages/LogoutButtonPage";
 const page = logoutButtonPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("press signs the operator out", async () => {

@@ -19,7 +19,7 @@ export interface UseGyroDriftPage {
    * "removes the listener on unmount" spec drives this directly), distinct
    * from `unmountAll`'s cross-wave "tear the whole tree down" convention. */
   unmount(): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   waitFor<T>(assertion: () => T): Promise<T>;
   readonly value: SharedValue<GyroDrift>;
 }
@@ -50,8 +50,8 @@ export function gyroDriftPage(): UseGyroDriftPage {
 
       await unmountFn();
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     waitFor<T>(assertion: () => T): Promise<T> {
       return waitFor(assertion);

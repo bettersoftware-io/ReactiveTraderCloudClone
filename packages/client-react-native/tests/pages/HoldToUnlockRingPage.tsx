@@ -23,7 +23,7 @@ function stubProgress(value: number): SharedValue<number> {
 
 export interface HoldToUnlockRingPage {
   mount(progress: number, onPress: () => void, label?: string): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   labelText(): string;
   press(): Promise<void>;
@@ -46,8 +46,8 @@ export function holdToUnlockRingPage(): HoldToUnlockRingPage {
         />,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

@@ -40,7 +40,7 @@ function fakeViewModel(lock: () => void): ViewModel {
 
 export interface LockButtonPage {
   mount(lock: () => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   press(): Promise<void>;
 }
 
@@ -54,8 +54,8 @@ export function lockButtonPage(): LockButtonPage {
         </ViewModelProvider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async press(): Promise<void> {
       await fireEvent.press(screen.getByTestId("lock-button"));

@@ -58,7 +58,7 @@ export interface LoginScreenPage {
     login: (username: string, password: string) => void,
     options?: LoginScreenMountOptions,
   ): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   errorText(): TextChildren;
   typeUsername(value: string): Promise<void>;
@@ -85,8 +85,8 @@ export function loginScreenPage(): LoginScreenPage {
         </ViewModelProvider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

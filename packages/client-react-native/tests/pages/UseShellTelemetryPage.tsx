@@ -14,7 +14,7 @@ interface FrozenTelemetryFixture {
 
 export interface UseShellTelemetryPage {
   mount(frozen: FrozenTelemetryFixture | null): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   /** The probe's rendered `fps|latencyMs|clock|build` string — `null` only
    * if the probe never rendered at all. The spec owns the expected literal,
    * so a frozen-provider mount and the decorative-seed fallback settling on
@@ -47,8 +47,8 @@ export function shellTelemetryPage(): UseShellTelemetryPage {
         </ShellTelemetryContext.Provider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     probeText(): string | null {
       const probe = screen.queryByTestId("probe");

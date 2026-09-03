@@ -5,7 +5,7 @@ import { layersScenePage } from "#tests/pages/LayersScenePage";
 const page = layersScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be

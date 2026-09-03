@@ -13,7 +13,7 @@ import { appearanceOverlayPage } from "#tests/pages/AppearanceOverlayPage";
 const page = appearanceOverlayPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the sheet with a grab handle and no CLOSE affordance", async () => {

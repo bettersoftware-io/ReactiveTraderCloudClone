@@ -10,7 +10,7 @@ const mockPathname = jest.fn<() => string>();
 const page = statusStripPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("shows the BLOTTER module label on the /blotter route", async () => {

@@ -5,7 +5,7 @@ import { lockButtonPage } from "#tests/pages/LockButtonPage";
 const page = lockButtonPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("press locks the session", async () => {

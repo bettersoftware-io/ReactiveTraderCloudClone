@@ -10,7 +10,7 @@ export type ThemeMode = "dark" | "light" | "system";
 
 export interface ThemeModePillPage {
   mount(value: ThemeMode, onSelect: (mode: ThemeMode) => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   hasCellLabel(label: string): boolean;
   pressCell(mode: ThemeMode): Promise<void>;
   cellStyle(mode: ThemeMode): ViewStyle;
@@ -29,8 +29,8 @@ export function themeModePillPage(): ThemeModePillPage {
         <ThemeModePill value={value} onSelect={onSelect} />,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasCellLabel(label: string): boolean {
       return screen.queryByText(label) != null;

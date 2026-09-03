@@ -5,7 +5,7 @@ import { bootEmblemPage } from "#tests/pages/BootEmblemPage";
 const page = bootEmblemPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the emblem svg", async () => {

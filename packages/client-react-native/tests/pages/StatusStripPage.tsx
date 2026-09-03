@@ -9,7 +9,7 @@ import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
 
 export interface StatusStripPage {
   mount(wrapper?: (children: ReactElement) => ReactElement): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   hasTextContent(testId: string, text: string): boolean;
   clearanceWidth(): number;
 }
@@ -28,8 +28,8 @@ export function statusStripPage(): StatusStripPage {
     ): Promise<void> {
       await render(wrapper(<StatusStrip />));
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasTextContent(testId: string, text: string): boolean {
       return (

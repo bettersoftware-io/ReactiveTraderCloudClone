@@ -19,8 +19,8 @@ const { BootCanvas } = require("./BootCanvas") as typeof import("./BootCanvas");
 
 const page = bootCanvasPage();
 
-afterEach(() => {
-  page.unmountAll();
+afterEach(async () => {
+  await page.unmountAll();
   jest.restoreAllMocks();
   mockSceneProps.current = null;
 });

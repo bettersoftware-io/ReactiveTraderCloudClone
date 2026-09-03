@@ -8,7 +8,7 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface SheetSwitchPage {
   mount(checked: boolean, onToggle: (next: boolean) => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   press(): Promise<void>;
   accessibilityRole(): string | undefined;
   accessibilityLabel(): string | undefined;
@@ -33,8 +33,8 @@ export function sheetSwitchPage(): SheetSwitchPage {
         />,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async press(): Promise<void> {
       await fireEvent.press(screen.getByTestId("switch"));

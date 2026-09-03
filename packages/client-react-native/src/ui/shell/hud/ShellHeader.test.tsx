@@ -7,7 +7,7 @@ import { shellHeaderPage } from "#tests/pages/ShellHeaderPage";
 const page = shellHeaderPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("env badge reads LIVE when not in simulator mode", async () => {

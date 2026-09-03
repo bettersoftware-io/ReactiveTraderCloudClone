@@ -43,7 +43,7 @@ function fakeViewModel(status: AuthStatus): ViewModel {
 
 export interface AuthGatePage {
   mount(status: AuthStatus): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
 }
 
@@ -59,8 +59,8 @@ export function authGatePage(): AuthGatePage {
         </ViewModelProvider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

@@ -15,7 +15,7 @@ const USER: LockUser = {
 const page = lockScreenPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders nothing when the session is unlocked", async () => {

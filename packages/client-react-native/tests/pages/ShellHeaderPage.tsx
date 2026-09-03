@@ -16,7 +16,7 @@ export interface ShellHeaderPage {
     simulator: boolean,
     onToggleSimulator?: (v: boolean) => void,
   ): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   hasTextContent(testId: string, text: string): boolean;
   pressEnvBadge(): Promise<void>;
   wordmarkStyle(): TextStyle;
@@ -39,8 +39,8 @@ export function shellHeaderPage(): ShellHeaderPage {
         />,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasTextContent(testId: string, text: string): boolean {
       return (

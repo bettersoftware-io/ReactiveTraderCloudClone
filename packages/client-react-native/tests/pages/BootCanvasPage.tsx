@@ -6,7 +6,7 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface BootCanvasPage {
   mount(element: ReactElement): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   awaitExists(testId: string): Promise<boolean>;
 }
@@ -22,8 +22,8 @@ export function bootCanvasPage(): BootCanvasPage {
     async mount(element: ReactElement): Promise<void> {
       await renderWithTheme(element);
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

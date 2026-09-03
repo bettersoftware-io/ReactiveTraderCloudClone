@@ -40,7 +40,7 @@ function fakeViewModel(logout: () => void): ViewModel {
 
 export interface LogoutButtonPage {
   mount(logout: () => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   press(): Promise<void>;
 }
 
@@ -54,8 +54,8 @@ export function logoutButtonPage(): LogoutButtonPage {
         </ViewModelProvider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async press(): Promise<void> {
       await fireEvent.press(screen.getByTestId("logout-button"));

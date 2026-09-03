@@ -12,7 +12,7 @@ import { RadialCommandDock } from "#/ui/shell/hud/RadialCommandDock";
 
 export interface RadialCommandDockPage {
   mount(startOpen?: boolean): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   pressFab(): Promise<void>;
   pressSatellite(key: string): Promise<void>;
@@ -38,8 +38,8 @@ export function radialCommandDockPage(): RadialCommandDockPage {
         </DockOpenContext.Provider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

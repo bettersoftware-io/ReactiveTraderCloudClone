@@ -5,8 +5,8 @@ import { bootGatePage } from "#tests/pages/BootGatePage";
 
 const page = bootGatePage();
 
-afterEach(() => {
-  page.unmountAll();
+afterEach(async () => {
+  await page.unmountAll();
   jest.restoreAllMocks();
 });
 

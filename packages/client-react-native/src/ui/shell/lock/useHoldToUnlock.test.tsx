@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("holding rises progress toward 1 via a timed fill", async () => {

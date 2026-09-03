@@ -5,7 +5,7 @@ import { loginScreenPage } from "#tests/pages/LoginScreenPage";
 const page = loginScreenPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("typing credentials then pressing AUTHENTICATE calls login with them", async () => {

@@ -6,7 +6,7 @@ import { shellTelemetryPage } from "#tests/pages/UseShellTelemetryPage";
 const page = shellTelemetryPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("returns the frozen telemetry when a provider supplies it", async () => {

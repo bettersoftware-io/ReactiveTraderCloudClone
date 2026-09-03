@@ -5,7 +5,7 @@ import { hologramScenePage } from "#tests/pages/HologramScenePage";
 const page = hologramScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as

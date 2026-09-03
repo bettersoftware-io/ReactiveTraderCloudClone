@@ -5,7 +5,7 @@ import { HexReticleLogo } from "#/ui/shell/hud/HexReticleLogo";
 
 export interface HexReticleLogoPage {
   mount(): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
 }
 
@@ -19,8 +19,8 @@ export function hexReticleLogoPage(): HexReticleLogoPage {
     async mount(): Promise<void> {
       await render(<HexReticleLogo />);
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

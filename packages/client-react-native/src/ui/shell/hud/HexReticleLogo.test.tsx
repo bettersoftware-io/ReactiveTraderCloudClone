@@ -7,7 +7,7 @@ const mockMotion = jest.fn<() => boolean>();
 const page = hexReticleLogoPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the reticle when motion is enabled", async () => {
