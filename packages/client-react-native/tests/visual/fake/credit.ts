@@ -10,6 +10,7 @@ import {
   DEALERS_CATALOG,
   type Dealer,
   Direction,
+  INSTRUMENTS_CATALOG,
   type Instrument,
   type Quote,
   type Rfq,
@@ -139,7 +140,7 @@ function noSubmitPrice(): void {}
 function noPass(): void {}
 
 /** The real desks, same catalogue slice `fixtures.tsx`'s `PINNED_DEALERS`
- * pins (ids 0-4: Adaptive Bank, Citi, JP Morgan, Goldman Sachs, Morgan
+ * pins (ids 0-4: Adaptive Bank, Citi, J.P. Morgan, Goldman Sachs, Morgan
  * Stanley) — replacing the `Bank A/B/C` + a stray id-9 `ADAPTIVE_BANK_NAME`
  * entry this slice carried until 2026-08-30. `useDealers` is one of the nine
  * hooks not read by either visual fixture today (see this file's header
@@ -151,35 +152,19 @@ const DEALERS: readonly Dealer[] = DEALERS_CATALOG.slice(0, 5);
 /** `DEALERS[0]`'s id — "Adaptive Bank", the sell-side's own desk. */
 const ADAPTIVE_BANK_ID = 0;
 
-const INSTRUMENTS: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "Acme 5.5% 2030",
-    cusip: "000000AA1",
-    ticker: "ACME",
-    maturity: "2030",
-    interestRate: 5.5,
-    benchmark: "T 4.0 2030",
-    refPrice: 98.4,
-  },
-  {
-    id: 2,
-    name: "Vertex 4.25% 2028",
-    cusip: "000000BB2",
-    ticker: "VRTX",
-    maturity: "2028",
-    interestRate: 4.25,
-    benchmark: "T 3.5 2028",
-    refPrice: 101.2,
-  },
-];
+/** The REAL bond catalogue, whole — what the live app's `useInstruments`
+ * serves (the `credit/new-rfq` golden reads this seam for its instrument
+ * chips). Replaces the invented `Acme`/`Vertex` pair: the design's RFQ book
+ * is all ticker-named bonds, and the catalogue's `AAPL 2.4 08/30` format is
+ * the web-v5 design's own. */
+const INSTRUMENTS: readonly Instrument[] = INSTRUMENTS_CATALOG;
 
 /** Four RFQs, one per `RfqState` arm — `Open`, `Closed`, `Expired`,
  * `Cancelled` — so the golden (and this slice's own test) exercises more
  * than the single "live" arm a smaller fixture would settle for. */
 const RFQ_OPEN: Rfq = {
   id: 401,
-  instrumentId: 1,
+  instrumentId: 0,
   quantity: 5_000_000,
   direction: Direction.Buy,
   state: RfqState.Open,
@@ -189,7 +174,7 @@ const RFQ_OPEN: Rfq = {
 
 const RFQ_CLOSED: Rfq = {
   id: 402,
-  instrumentId: 2,
+  instrumentId: 4,
   quantity: 1_000_000,
   direction: Direction.Sell,
   state: RfqState.Closed,

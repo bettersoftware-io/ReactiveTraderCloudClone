@@ -720,13 +720,11 @@ export function getScenario(id: string): Scenario | undefined {
  * unselected "Select an instrument…" empty state. */
 const PINNED_EQUITY_SYMBOL = "NVDA";
 
-/** Instrument pinned for `credit/new-rfq`: the FIRST of the two the fake's
- * credit slice serves (`tests/visual/fake/credit.ts` — "Acme 5.5% 2030",
- * ticker ACME, id 1), so the golden's grid always has its first chip active.
- * The prototype shot preselects AAPL, which is an EQUITY — there is no such
- * bond in the credit instrument catalogue, and inventing one would put a
- * symbol in the golden that the running app can never show. */
-const PINNED_NEW_RFQ_INSTRUMENT_ID = 1;
+/** Instrument pinned for `credit/new-rfq`: the AAPL bond (id 0), the head of
+ * the real catalogue the fake's credit slice now serves
+ * (`tests/visual/fake/credit.ts` → `INSTRUMENTS_CATALOG`) — the same choice
+ * the prototype shot makes (`nrInst: 0`, its own AAPL bond). */
+const PINNED_NEW_RFQ_INSTRUMENT_ID = 0;
 
 /**
  * One `boot/<variant>` scenario: the real `BootSequence` (`BootSequenceFixture`)

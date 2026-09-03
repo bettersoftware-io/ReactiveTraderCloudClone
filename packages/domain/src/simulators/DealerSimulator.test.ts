@@ -36,7 +36,7 @@ describe("DealerSimulator", () => {
     ).toEqual([
       "Adaptive Bank",
       "Citi",
-      "JP Morgan",
+      "J.P. Morgan",
       "Goldman Sachs",
       "Morgan Stanley",
       "Barclays",
