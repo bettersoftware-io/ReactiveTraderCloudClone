@@ -199,11 +199,11 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
 
       const aapl = shape(await firstValueFrom(port.candles("AAPL", tf)));
       const msft = shape(await firstValueFrom(port.candles("MSFT", tf)));
-      const xom = shape(await firstValueFrom(port.candles("XOM", tf)));
+      const nflx = shape(await firstValueFrom(port.candles("NFLX", tf)));
 
       expect(maxShapeDelta(aapl, msft)).toBeGreaterThan(MIN_SHAPE_DELTA);
-      expect(maxShapeDelta(msft, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
-      expect(maxShapeDelta(aapl, xom)).toBeGreaterThan(MIN_SHAPE_DELTA);
+      expect(maxShapeDelta(msft, nflx)).toBeGreaterThan(MIN_SHAPE_DELTA);
+      expect(maxShapeDelta(aapl, nflx)).toBeGreaterThan(MIN_SHAPE_DELTA);
     },
   );
 

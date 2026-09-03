@@ -33,42 +33,51 @@ function round2(n: number): number {
 /** The real watchlist roster `EquityMarketDataSimulator` serves — copied
  * here as literals because `WATCHLIST` in
  * `packages/domain/src/simulators/EquityMarketDataSimulator.ts` is
- * domain-internal (not exported). Six symbols, so this fake owns quote/
- * candle/depth fixtures for all six, not just the pinned AAPL — MoversBoard
- * renders one row per watchlist entry. If the real
+ * domain-internal (not exported). The mobile-v1 design's eight symbols
+ * (`_seedStocks` in the standalone prototype), so this fake owns quote/
+ * candle/depth fixtures for all eight, not just the pinned NVDA —
+ * MoversBoard renders one row per watchlist entry. If the real
  * roster ever changes, this list silently drifts out of sync; there is no
  * compile-time link back to the simulator. */
 const WATCHLIST: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", exchange: "NASDAQ" },
-  { symbol: "JPM", name: "JPMorgan Chase", exchange: "NYSE" },
-  { symbol: "XOM", name: "Exxon Mobil", exchange: "NYSE" },
+  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+  { symbol: "NVDA", name: "NVIDIA Corp", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft", exchange: "NASDAQ" },
+  { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
+  { symbol: "META", name: "Meta Platforms", exchange: "NASDAQ" },
+  { symbol: "GOOGL", name: "Alphabet A", exchange: "NASDAQ" },
+  { symbol: "NFLX", name: "Netflix Inc", exchange: "NASDAQ" },
 ];
 
-/** Per-symbol last price — shared by the quote and candle fixtures below so
- * a symbol's sparkline/chart plausibly ends near its quoted price. */
+/** Per-symbol last price — the design prototype's `px` seeds verbatim.
+ * Shared by the quote and candle fixtures below so a symbol's sparkline/
+ * chart plausibly ends near its quoted price. */
 const LAST_PRICE: Readonly<Record<string, number>> = {
-  AAPL: 191.9,
-  MSFT: 414.2,
-  TSLA: 257.7,
-  AMZN: 174.7,
-  JPM: 201.65,
-  XOM: 107.7,
+  AAPL: 227.4,
+  NVDA: 131.2,
+  TSLA: 248.9,
+  MSFT: 441.1,
+  AMZN: 186.3,
+  META: 511.8,
+  GOOGL: 172.6,
+  NFLX: 645.2,
 };
 
 /** Per-symbol change%, deliberately spanning both signs and a range of
  * magnitudes: `MoversBoard` ranks and colours by this, and `MoversRow`'s pct
  * pill tints from it too — an all-positive (or all-uniform) roster would
- * only ever exercise one visual branch of each. */
+ * only ever exercise one visual branch of each. (The prototype rolls these
+ * randomly per load; a golden needs them pinned.) */
 const CHANGE_PCT: Readonly<Record<string, number>> = {
   AAPL: 1.35,
-  MSFT: -0.62,
-  TSLA: 3.92,
-  AMZN: -2.15,
-  JPM: 0.18,
-  XOM: -1.05,
+  NVDA: 3.12,
+  TSLA: -1.24,
+  MSFT: 0.46,
+  AMZN: -0.62,
+  META: 2.05,
+  GOOGL: -0.38,
+  NFLX: 1.72,
 };
 
 function buildQuote(
@@ -90,30 +99,18 @@ function buildQuote(
 /** One frozen `EquityQuote` per watchlist symbol — built once at module
  * load, so `useEquityQuote(symbol)` returns the identical object on every
  * call for the same symbol (the `toBe` identity the brief requires). */
-const QUOTES: Readonly<Record<string, EquityQuote>> = {
-  AAPL: buildQuote(
-    "AAPL",
-    LAST_PRICE.AAPL as number,
-    CHANGE_PCT.AAPL as number,
-  ),
-  MSFT: buildQuote(
-    "MSFT",
-    LAST_PRICE.MSFT as number,
-    CHANGE_PCT.MSFT as number,
-  ),
-  TSLA: buildQuote(
-    "TSLA",
-    LAST_PRICE.TSLA as number,
-    CHANGE_PCT.TSLA as number,
-  ),
-  AMZN: buildQuote(
-    "AMZN",
-    LAST_PRICE.AMZN as number,
-    CHANGE_PCT.AMZN as number,
-  ),
-  JPM: buildQuote("JPM", LAST_PRICE.JPM as number, CHANGE_PCT.JPM as number),
-  XOM: buildQuote("XOM", LAST_PRICE.XOM as number, CHANGE_PCT.XOM as number),
-};
+const QUOTES: Readonly<Record<string, EquityQuote>> = Object.fromEntries(
+  WATCHLIST.map((inst) => {
+    return [
+      inst.symbol,
+      buildQuote(
+        inst.symbol,
+        LAST_PRICE[inst.symbol] as number,
+        CHANGE_PCT[inst.symbol] as number,
+      ),
+    ];
+  }),
+);
 
 /** Candles per symbol — matches `EquityMarketDataSimulator`'s own "1D"
  * bucket count (one-minute buckets), so both `RowSparkline` (movers row) and
@@ -121,54 +118,72 @@ const QUOTES: Readonly<Record<string, EquityQuote>> = {
  * two-point stub. */
 const CANDLE_COUNT = 60;
 
-/** Deterministic pure-math wave (`Math.sin`/`Math.cos` of the bucket index —
- * NOT `Math.random`), so every candle's OHLC is a fixed function of its
- * inputs: same output on every call, no entropy source, matching the same
- * "pure function of its arguments" exemption `pinnedClock.ts` documents for
- * `Date.UTC`. `seed` only shifts the phase per symbol so the six series
- * don't all move in lockstep. */
-function buildCandles(basePrice: number, seed: number): readonly Candle[] {
-  const candles: Candle[] = [];
-  let closePrev = round2(basePrice);
+/** Deterministic PRNG (mulberry32) — a pure function of its seed, NOT
+ * `Math.random`: same output on every call, no entropy source, matching the
+ * same "pure function of its arguments" exemption `pinnedClock.ts` documents
+ * for `Date.UTC`. It exists because the previous builder drew its drift from
+ * `Math.sin` of the bucket index, and a sine reads as a smooth synthetic
+ * wave next to the design prototype's noisy random walks — visibly fake in
+ * the `equities/markets` sparklines. A seeded walk keeps the determinism a
+ * golden needs while looking like market data. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
 
-  for (let i = CANDLE_COUNT - 1; i >= 0; i--) {
-    const time = PINNED_NOW_MS - i * MINUTE_MS;
-    const open = closePrev;
-    const drift = Math.sin((i + seed) * 0.37) * basePrice * 0.004;
-    const close = round2(basePrice + drift);
+  return (): number => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A seeded random walk pinned to end at `basePrice`: closes are generated
+ * newest-first (`closes[last] === basePrice`, each older close derived by
+ * un-applying a ±0.3% step), so the chart still plausibly meets the quoted
+ * last price. Step and wick scales mirror the design prototype's own candle
+ * seeder (±0.6% bodies, ≤0.2% wicks). `seed` gives each symbol its own
+ * walk so the eight series don't move in lockstep. */
+function buildCandles(basePrice: number, seed: number): readonly Candle[] {
+  const rand = mulberry32(seed);
+
+  const closes: number[] = new Array(CANDLE_COUNT);
+  closes[CANDLE_COUNT - 1] = round2(basePrice);
+
+  for (let i = CANDLE_COUNT - 2; i >= 0; i--) {
+    const next = closes[i + 1] as number;
+    closes[i] = round2(next / (1 + (rand() - 0.48) * 0.006));
+  }
+
+  const candles: Candle[] = [];
+
+  for (let i = 0; i < CANDLE_COUNT; i++) {
+    const time = PINNED_NOW_MS - (CANDLE_COUNT - 1 - i) * MINUTE_MS;
+    const close = closes[i] as number;
+    const open = i === 0 ? close : (closes[i - 1] as number);
     const bodyHigh = Math.max(open, close);
     const bodyLow = Math.min(open, close);
     // Wicks are always >= 1 cent, so after rounding `high` is strictly
     // greater than `bodyHigh` and `low` strictly less than `bodyLow` — the
     // OHLC invariant (`low <= min(open,close) && max(open,close) <= high`)
     // holds by construction, not by luck of the rounding.
-    const wickUp = round2(
-      Math.abs(Math.sin((i + seed) * 0.53)) * basePrice * 0.0015 + 0.01,
-    );
-
-    const wickDown = round2(
-      Math.abs(Math.cos((i + seed) * 0.61)) * basePrice * 0.0015 + 0.01,
-    );
-    const high = round2(bodyHigh + wickUp);
-    const low = round2(bodyLow - wickDown);
-    const volume =
-      500_000 + Math.round(Math.abs(Math.sin((i + seed) * 0.19)) * 400_000);
+    const high = round2(bodyHigh + rand() * basePrice * 0.002 + 0.01);
+    const low = round2(bodyLow - (rand() * basePrice * 0.002 + 0.01));
+    const volume = 500_000 + Math.round(rand() * 400_000);
 
     candles.push({ time, open, high, low, close, volume });
-    closePrev = close;
   }
 
   return candles;
 }
 
-const CANDLES: Readonly<Record<string, readonly Candle[]>> = {
-  AAPL: buildCandles(LAST_PRICE.AAPL as number, 11),
-  MSFT: buildCandles(LAST_PRICE.MSFT as number, 23),
-  TSLA: buildCandles(LAST_PRICE.TSLA as number, 37),
-  AMZN: buildCandles(LAST_PRICE.AMZN as number, 49),
-  JPM: buildCandles(LAST_PRICE.JPM as number, 61),
-  XOM: buildCandles(LAST_PRICE.XOM as number, 73),
-};
+const CANDLES: Readonly<Record<string, readonly Candle[]>> = Object.fromEntries(
+  WATCHLIST.map((inst, i) => {
+    return [
+      inst.symbol,
+      buildCandles(LAST_PRICE[inst.symbol] as number, 11 + i * 12),
+    ];
+  }),
+);
 
 const EMPTY_CANDLES: readonly Candle[] = [];
 
@@ -200,14 +215,14 @@ function buildDepth(symbol: string, last: number, seed: number): DepthBook {
   return { symbol, bids, asks };
 }
 
-const DEPTH: Readonly<Record<string, DepthBook>> = {
-  AAPL: buildDepth("AAPL", LAST_PRICE.AAPL as number, 11),
-  MSFT: buildDepth("MSFT", LAST_PRICE.MSFT as number, 23),
-  TSLA: buildDepth("TSLA", LAST_PRICE.TSLA as number, 37),
-  AMZN: buildDepth("AMZN", LAST_PRICE.AMZN as number, 49),
-  JPM: buildDepth("JPM", LAST_PRICE.JPM as number, 61),
-  XOM: buildDepth("XOM", LAST_PRICE.XOM as number, 73),
-};
+const DEPTH: Readonly<Record<string, DepthBook>> = Object.fromEntries(
+  WATCHLIST.map((inst, i) => {
+    return [
+      inst.symbol,
+      buildDepth(inst.symbol, LAST_PRICE[inst.symbol] as number, 11 + i * 12),
+    ];
+  }),
+);
 
 /** `equities/blotter` used to mount `OrdersBlotter`/`PositionsBlotter` with
  * both feeds empty — an empty-state golden that asserts almost nothing about
@@ -215,89 +230,96 @@ const DEPTH: Readonly<Record<string, DepthBook>> = {
  * capture a populated blotter instead once recaptured; that is an intended
  * change, not a regression, and both tables' populated render paths are now
  * exercised by the pixel tier. Spans more than one `OrderStatus` (filled /
- * working / partiallyFilled / cancelled / rejected) and both `OrderSide`s. */
+ * working / partiallyFilled) and both `OrderSide`s. The three FILLED rows
+ * are the design prototype's `eqOrders` verbatim (ids 885-887); the last two
+ * exist so the non-terminal status arms keep pixel coverage — the prototype's
+ * own blotter shows only fills. */
 const ORDERS: readonly EquityOrder[] = [
   {
-    id: "ord-1",
+    id: "ord-887",
     symbol: "AAPL",
     side: "buy",
-    type: "market",
-    qty: 100,
+    type: "limit",
+    qty: 400,
+    limitPrice: 224.1,
     status: "filled",
-    filledQty: 100,
-    avgPrice: 191.85,
+    filledQty: 400,
+    avgPrice: 224.1,
     createdAt: PINNED_NOW_MS - 5 * MINUTE_MS,
   },
   {
-    id: "ord-2",
+    id: "ord-886",
+    symbol: "TSLA",
+    side: "sell",
+    type: "market",
+    qty: 300,
+    status: "filled",
+    filledQty: 300,
+    avgPrice: 252.0,
+    createdAt: PINNED_NOW_MS - 24 * MINUTE_MS,
+  },
+  {
+    id: "ord-885",
+    symbol: "NVDA",
+    side: "buy",
+    type: "limit",
+    qty: 1200,
+    limitPrice: 118.4,
+    status: "filled",
+    filledQty: 1200,
+    avgPrice: 118.4,
+    createdAt: PINNED_NOW_MS - 108 * MINUTE_MS,
+  },
+  {
+    id: "ord-884",
     symbol: "MSFT",
     side: "sell",
     type: "limit",
     qty: 50,
-    limitPrice: 415,
+    limitPrice: 445,
     status: "working",
     filledQty: 0,
-    createdAt: PINNED_NOW_MS - 4 * MINUTE_MS,
+    createdAt: PINNED_NOW_MS - 130 * MINUTE_MS,
   },
   {
-    id: "ord-3",
-    symbol: "TSLA",
+    id: "ord-883",
+    symbol: "META",
     side: "buy",
     type: "limit",
     qty: 75,
-    limitPrice: 250,
+    limitPrice: 510,
     status: "partiallyFilled",
     filledQty: 30,
-    avgPrice: 249.8,
-    createdAt: PINNED_NOW_MS - 3 * MINUTE_MS,
-  },
-  {
-    id: "ord-4",
-    symbol: "AMZN",
-    side: "sell",
-    type: "market",
-    qty: 40,
-    status: "cancelled",
-    filledQty: 0,
-    createdAt: PINNED_NOW_MS - 2 * MINUTE_MS,
-  },
-  {
-    id: "ord-5",
-    symbol: "JPM",
-    side: "buy",
-    type: "limit",
-    qty: 60,
-    limitPrice: 199,
-    status: "rejected",
-    filledQty: 0,
-    createdAt: PINNED_NOW_MS - MINUTE_MS,
+    avgPrice: 509.8,
+    createdAt: PINNED_NOW_MS - 150 * MINUTE_MS,
   },
 ];
 
-/** A few open positions (not the whole watchlist) — enough for
- * `PositionsBlotter`'s populated path and `DeskPnlGauge`'s gauge, spanning
- * both a profit and a loss. */
+/** The design prototype's `eqPos` — three open positions including a SHORT
+ * (TSLA −300, its own render path), marked at `LAST_PRICE`. The prototype's
+ * book is all-profit at these marks, so the losing-row tint keeps coverage
+ * from the unit tier rather than this golden. */
 const POSITIONS: readonly EquityPosition[] = [
   {
     symbol: "AAPL",
-    qty: 200,
-    avgPrice: 185.4,
-    markPrice: 191.9,
-    unrealisedPnl: 1300,
+    qty: 400,
+    avgPrice: 224.1,
+    markPrice: 227.4,
+    unrealisedPnl: 1320,
+  },
+  {
+    symbol: "NVDA",
+    qty: 1200,
+    avgPrice: 118.4,
+    markPrice: 131.2,
+    unrealisedPnl: 15360,
   },
   {
     symbol: "TSLA",
-    qty: 80,
-    avgPrice: 260.1,
-    markPrice: 257.7,
-    unrealisedPnl: -192,
-  },
-  {
-    symbol: "JPM",
-    qty: 150,
-    avgPrice: 198.2,
-    markPrice: 201.65,
-    unrealisedPnl: 517.5,
+    qty: -300,
+    avgPrice: 252.0,
+    markPrice: 248.9,
+    unrealisedPnl: 930,
   },
 ];
 

@@ -63,6 +63,7 @@ const SECTOR_MAP: Readonly<Record<string, string>> = {
   GOOGL: "Technology",
   META: "Technology",
   NVDA: "Technology",
+  NFLX: "Technology",
   AMZN: "Consumer",
   TSLA: "Consumer",
   JPM: "Finance",

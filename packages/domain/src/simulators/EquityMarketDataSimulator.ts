@@ -21,22 +21,31 @@ import type { MarketDataPort } from "../ports/marketDataPort.js";
 import { aggregateCandle, gbmStep } from "./gbm.js";
 import { hashString, mulberry32 } from "./seededRandom.js";
 
+/** The mobile-v1 design's eight-stock roster, names and seed prices verbatim
+ * (`_seedStocks` in `docs/design/mobile/v1/standalone/`) — the web-v5 design
+ * carries the same eight minus NFLX plus SPY; where the two disagree the
+ * measured surface (the RN prototype-fidelity comparison) wins. AAPL must
+ * stay first: the composition root selects whatever heads this catalogue. */
 const WATCHLIST: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", exchange: "NASDAQ" },
-  { symbol: "JPM", name: "JPMorgan Chase", exchange: "NYSE" },
-  { symbol: "XOM", name: "Exxon Mobil", exchange: "NYSE" },
+  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+  { symbol: "NVDA", name: "NVIDIA Corp", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft", exchange: "NASDAQ" },
+  { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
+  { symbol: "META", name: "Meta Platforms", exchange: "NASDAQ" },
+  { symbol: "GOOGL", name: "Alphabet A", exchange: "NASDAQ" },
+  { symbol: "NFLX", name: "Netflix Inc", exchange: "NASDAQ" },
 ];
 
 const SEED_PRICES: Readonly<Record<string, number>> = {
-  AAPL: 190,
-  MSFT: 420,
-  TSLA: 250,
-  AMZN: 180,
-  JPM: 200,
-  XOM: 110,
+  AAPL: 227.4,
+  NVDA: 131.2,
+  TSLA: 248.9,
+  MSFT: 441.1,
+  AMZN: 186.3,
+  META: 511.8,
+  GOOGL: 172.6,
+  NFLX: 645.2,
 };
 
 const VOL = 0.0015;
