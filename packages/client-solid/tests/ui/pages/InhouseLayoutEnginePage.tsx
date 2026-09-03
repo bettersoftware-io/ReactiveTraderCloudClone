@@ -40,11 +40,28 @@ interface CellFlags {
   isFixed: boolean;
 }
 
-/** A cell's `--split-size` fact plus an opaque identity token — the "live
- * state update" regression asserts the SAME cell element survives a
+/** An opaque identity token for the node at a given testid — the "live state
+ * update" regressions assert that a SPECIFIC element survives a
  * state-driven re-render (no remount), which is an identity fact, not a
- * value one; `cellUnchanged` compares two snapshots without ever handing the
- * spec a raw `Element`. */
+ * value one; `sameNode` compares two snapshots without ever handing the spec
+ * a raw `Element`. Generic over testid: `nodeSnapshot("rates-body")` for the
+ * collapse regression (the registry-rendered BODY must not remount) and
+ * `cellSnapshotOfPanel(...)` below (the split-layout CELL must not remount)
+ * are two different subjects with two different remount risks — see the
+ * fix-round-1 review's Critical finding 1: one method was previously reused
+ * across both, silently weakening the body-identity assertion to a
+ * cell-identity one. */
+interface NodeSnapshot {
+  readonly __nodeSnapshotBrand?: never;
+}
+
+interface InternalNodeSnapshot extends NodeSnapshot {
+  readonly el: Element | null;
+}
+
+/** A cell's `--split-size` fact plus the same opaque identity token as
+ * `NodeSnapshot` — used only by the resize-drag regression, which needs both
+ * the cell's identity AND its live custom property. */
 interface CellSnapshot {
   readonly splitSize: string;
 }
@@ -65,7 +82,15 @@ export interface InhouseLayoutEnginePage {
    * "components must not freeze at initial render" regressions (no React
    * analogue: React re-invokes the whole component function on every prop
    * change, so a plain value naturally recomputes; Solid component bodies
-   * run once). */
+   * run once). Load-bearing implementation detail: `state()` is dereferenced
+   * INSIDE this method's own JSX (`state={state()}` inside the `render(() =>
+   * …)` this method writes) — Solid's compiler wraps a JSX prop in a
+   * reactive getter only where the source literally contains the accessor
+   * call at that JSX site, so the getter-wrapping could not happen if the
+   * caller dereferenced the signal itself and passed a plain value in. This
+   * is why `mountLive` takes an `Accessor<LayoutState>` rather than a
+   * `LayoutState`, and why the spec drives it via `createSignal`/`setX(...)`
+   * rather than re-calling `mount` per state change. */
   mountLive(
     state: Accessor<LayoutState>,
     registry: PanelRegistry,
@@ -107,11 +132,21 @@ export interface InhouseLayoutEnginePage {
    * scoped subtree (via `within`), proving the error boundary is SCOPED to
    * that panel rather than a full-page fallback. */
   errorTextWithin(panelTestId: string): string;
+  /** An opaque identity snapshot of the node at `testId` — compare two
+   * snapshots with `sameNode`. Use this for a plain "did this exact element
+   * survive" fact (e.g. a registry-rendered panel BODY); use
+   * `cellSnapshotOfPanel` instead when the subject is a panel's wrapping
+   * split CELL and you also need its `--split-size` value. */
+  nodeSnapshot(testId: string): NodeSnapshot;
+  /** True when both snapshots' underlying element is the SAME DOM node (no
+   * remount happened between them), and neither lookup came up empty — two
+   * snapshots of a MISSING node are never "unchanged". */
+  sameNode(before: NodeSnapshot, after: NodeSnapshot): boolean;
   /** A `--split-size` + identity snapshot of the cell wrapping the panel at
    * `panelTestId` — compare two snapshots with `cellUnchanged`. */
   cellSnapshotOfPanel(panelTestId: string): CellSnapshot;
   /** True when both snapshots' underlying cell element is the SAME DOM node
-   * (no remount happened between them). */
+   * (no remount happened between them), and neither lookup came up empty. */
   cellUnchanged(before: CellSnapshot, after: CellSnapshot): boolean;
   /** Stubs every element's `getBoundingClientRect` width by looking up its
    * `data-testid` in `widthByTestId` (falling back to `fallbackWidth` for
@@ -240,6 +275,17 @@ export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
         within(node(panelTestId)).getByTestId("panel-error").textContent ?? ""
       );
     },
+    nodeSnapshot(testId: string): NodeSnapshot {
+      const snapshot: InternalNodeSnapshot = { el: node(testId) };
+
+      return snapshot;
+    },
+    sameNode(before: NodeSnapshot, after: NodeSnapshot): boolean {
+      const beforeEl = (before as InternalNodeSnapshot).el;
+      const afterEl = (after as InternalNodeSnapshot).el;
+
+      return beforeEl !== null && beforeEl === afterEl;
+    },
     cellSnapshotOfPanel(panelTestId: string): CellSnapshot {
       const el = node(panelTestId).closest("[data-testid^='cell-']");
       const snapshot: InternalCellSnapshot = {
@@ -252,10 +298,10 @@ export function inhouseLayoutEnginePage(): InhouseLayoutEnginePage {
       return snapshot;
     },
     cellUnchanged(before: CellSnapshot, after: CellSnapshot): boolean {
-      return (
-        (before as InternalCellSnapshot).el ===
-        (after as InternalCellSnapshot).el
-      );
+      const beforeEl = (before as InternalCellSnapshot).el;
+      const afterEl = (after as InternalCellSnapshot).el;
+
+      return beforeEl !== null && beforeEl === afterEl;
     },
     stubBoundingRectByTestId(
       widthByTestId: Record<string, number>,

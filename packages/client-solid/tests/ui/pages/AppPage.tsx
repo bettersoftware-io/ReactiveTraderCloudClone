@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@solidjs/testing-library";
 
 import { AppRoot } from "#/AppRoot";
 import { App } from "#/ui/App";
@@ -9,10 +15,14 @@ interface WaitForOptions {
 
 export interface AppPage {
   mount(): void;
-  /** Signs in with the committed demo credentials and waits for the login
-   * screen to disappear — the shared setup every non-seeded-session test
-   * needs before asserting on shell chrome. */
-  signIn(): Promise<void>;
+  unmountAll(): void;
+  /** Fills and submits the committed demo credentials on the login form. Does
+   * NOT wait for the login screen to disappear — that is an assertion
+   * (`page.exists("login-screen")`), so it stays spec-side via `waitFor`,
+   * matching the `waitFor(assertion)` shape everywhere else in this page: a
+   * page method never hand-throws a wait condition, it only ever performs
+   * the mechanical action. */
+  signIn(): void;
   exists(testId: string): boolean;
   text(testId: string): string;
   click(testId: string): void;
@@ -43,7 +53,10 @@ export function appPage(): AppPage {
         );
       });
     },
-    async signIn(): Promise<void> {
+    unmountAll(): void {
+      cleanup();
+    },
+    signIn(): void {
       fireEvent.input(screen.getByTestId("login-username"), {
         target: { value: "demo" },
       });
@@ -51,11 +64,6 @@ export function appPage(): AppPage {
         target: { value: "mcdc2026" },
       });
       fireEvent.click(screen.getByTestId("login-submit"));
-      await waitFor(() => {
-        if (screen.queryByTestId("login-screen") != null) {
-          throw new Error("login screen still present");
-        }
-      });
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

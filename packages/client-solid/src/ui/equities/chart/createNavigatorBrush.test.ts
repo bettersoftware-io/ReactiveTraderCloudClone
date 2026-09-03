@@ -123,7 +123,6 @@ describe("createNavigatorBrush", () => {
       number | undefined
     >(1_000_000);
     const applyViewport = vi.fn();
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(
       fixedViewport,
       applyViewport,

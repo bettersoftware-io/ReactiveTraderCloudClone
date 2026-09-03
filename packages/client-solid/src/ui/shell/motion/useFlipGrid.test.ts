@@ -9,7 +9,6 @@ describe("useFlipGrid", () => {
   it("re-measures origins on window resize so the next FLIP starts fresh", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(() => {
       return [dep()];
     });
@@ -44,7 +43,6 @@ describe("useFlipGrid", () => {
   it("skips the resize re-measure while a glide is in flight", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(() => {
       return [dep()];
     });
@@ -78,7 +76,6 @@ describe("useFlipGrid", () => {
     stage.el.appendChild(first.el);
     const [dep, setDep] = createSignal("All");
     const result = page.mount(
-      // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
       () => {
         return [dep()];
       },
@@ -116,7 +113,6 @@ describe("useFlipGrid", () => {
 
     const [dep, setDep] = createSignal("All");
     const result = page.mount(
-      // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
       () => {
         return [dep()];
       },
@@ -167,7 +163,6 @@ describe("useFlipGrid", () => {
 
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
-    // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(() => {
       return [dep()];
     });
@@ -190,7 +185,6 @@ describe("useFlipGrid", () => {
     const tile = makeTile();
     const [dep, setDep] = createSignal("All");
     const result = page.mount(
-      // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
       () => {
         return [dep()];
       },
@@ -212,7 +206,6 @@ describe("useFlipGrid", () => {
   it("does not play enter animations when the option is off", () => {
     const first = makeTile();
     const [dep, setDep] = createSignal("All");
-    // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(() => {
       return [dep()];
     });
@@ -252,7 +245,6 @@ describe("useFlipGrid", () => {
 
     const [dep, setDep] = createSignal("All");
     const result = page.mount(
-      // eslint-disable-next-line solid/reactivity -- dep() is read inside the renderHook tracked scope page.mount establishes internally
       () => {
         return [dep()];
       },

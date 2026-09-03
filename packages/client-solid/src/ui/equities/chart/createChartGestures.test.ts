@@ -137,7 +137,6 @@ describe("createChartGestures", () => {
 
   it("series growth while at the live edge slides the window forward", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible);
 
     setSeriesLen(SERIES_LEN + 5);
@@ -151,7 +150,6 @@ describe("createChartGestures", () => {
 
   it("series growth while panned away holds the viewport still", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
@@ -174,7 +172,6 @@ describe("createChartGestures", () => {
     // since jsdom/testing-library component tests always mount with the
     // real series already in hand).
     const [seriesLen, setSeriesLen] = createSignal(0);
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible);
 
     setSeriesLen(SERIES_LEN);
@@ -195,7 +192,6 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     result.plotProps.onKeyDown(keyEvent("Home"));
@@ -222,7 +218,6 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     batch(() => {
@@ -240,7 +235,6 @@ describe("createChartGestures", () => {
   it("appends with an unchanged firstCandleTime still follow the live edge (regression pin)", () => {
     const [seriesLen, setSeriesLen] = createSignal(SERIES_LEN);
     const [firstCandleTime] = createSignal<number | undefined>(1_000_000);
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     setSeriesLen(SERIES_LEN + 5);
@@ -263,7 +257,6 @@ describe("createChartGestures", () => {
       number | undefined
     >(1_000_000);
 
-    // eslint-disable-next-line solid/reactivity -- read inside the renderHook tracked scope page.mount establishes internally
     const result = page.mount(seriesLen, fixedDefaultVisible, firstCandleTime);
 
     result.plotProps.onPointerDown(pointerEvent({ clientX: 50, clientY: 50 }));
@@ -439,6 +432,7 @@ describe("createChartGestures", () => {
     // so it only exists once mount has run against a populated ref.
     const harness = page.mountHarness(fixedSeriesLen, fixedDefaultVisible);
     const before = harness.state.viewport();
+    expect(before).toBeDefined();
     const beforeSpan = before.end - before.start;
 
     // Guards the passive:false seam — a plain on:wheel binding would

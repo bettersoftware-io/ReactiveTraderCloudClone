@@ -472,12 +472,11 @@ describe("InhouseLayoutEngine", () => {
     // the task brief's "real-signal doubles" amendment.
     it("collapsing a panel via a live state update strips it and hides its body, without remounting its sibling", () => {
       const [layoutState, setLayoutState] = createSignal(state);
-      // eslint-disable-next-line solid/reactivity -- read inside the render tracked scope page.mountLive establishes internally
       page.mountLive(layoutState, registry);
 
       expect(page.stripFlag("panel-fx-analytics")).toBe(false);
       expect(page.exists("analytics-body")).toBe(true);
-      const ratesCellBefore = page.cellSnapshotOfPanel("panel-fx-rates");
+      const ratesBodyBefore = page.nodeSnapshot("rates-body");
 
       setLayoutState({ ...state, collapsed: ["fx-analytics"] });
 
@@ -485,8 +484,8 @@ describe("InhouseLayoutEngine", () => {
       expect(page.exists("analytics-body")).toBe(false);
       // The untouched sibling's DOM node is the SAME element — collapsing
       // fx-analytics must not tear down/remount fx-rates.
-      const ratesCellAfter = page.cellSnapshotOfPanel("panel-fx-rates");
-      expect(page.cellUnchanged(ratesCellBefore, ratesCellAfter)).toBe(true);
+      const ratesBodyAfter = page.nodeSnapshot("rates-body");
+      expect(page.sameNode(ratesBodyBefore, ratesBodyAfter)).toBe(true);
 
       setLayoutState({ ...state, collapsed: [] });
       expect(page.stripFlag("panel-fx-analytics")).toBe(false);
@@ -496,7 +495,6 @@ describe("InhouseLayoutEngine", () => {
     it("maximizing a panel via a live state update recomputes boundaryPath/strippedByMaximize and strips the sibling", () => {
       const [layoutState, setLayoutState] = createSignal(state);
       const onRestore = vi.fn();
-      // eslint-disable-next-line solid/reactivity -- read inside the render tracked scope page.mountLive establishes internally
       page.mountLive(layoutState, registry, { onRestore });
 
       setLayoutState({ ...state, maximized: "fx-rates" });
@@ -515,7 +513,6 @@ describe("InhouseLayoutEngine", () => {
 
     it("a resize drag driven off a live state signal keeps updating --split-size on the SAME cell element across ticks", () => {
       const [layoutState, setLayoutState] = createSignal(state);
-      // eslint-disable-next-line solid/reactivity -- read inside the render tracked scope page.mountLive establishes internally
       page.mountLive(layoutState, registry, {
         onResize: (
           _path: readonly number[],

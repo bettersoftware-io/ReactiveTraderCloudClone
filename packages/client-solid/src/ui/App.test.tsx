@@ -24,6 +24,7 @@ describe("App (shell chrome)", () => {
   });
   afterEach(() => {
     vi.unstubAllEnvs();
+    page.unmountAll();
   });
 
   // Regression (the SolidJS e2e outage): the browser e2e suites boot past the
@@ -66,7 +67,10 @@ describe("App (shell chrome)", () => {
 
   it("mounts and renders the live connection status from the simulator ports", async () => {
     page.mount();
-    await page.signIn();
+    page.signIn();
+    await page.waitFor(() => {
+      expect(page.exists("login-screen")).toBe(false);
+    });
 
     await page.waitFor(() => {
       expect(page.exists("connection-status")).toBe(true);
@@ -87,7 +91,10 @@ describe("App (shell chrome)", () => {
 
   it("renders the header nav, status bar, and the live FX layout engine with real FX panel bodies", async () => {
     page.mount();
-    await page.signIn();
+    page.signIn();
+    await page.waitFor(() => {
+      expect(page.exists("login-screen")).toBe(false);
+    });
 
     expect(page.exists("header")).toBe(true);
     expect(page.isActiveTab("tab-fx")).toBe(true);
@@ -109,7 +116,10 @@ describe("App (shell chrome)", () => {
 
   it("switches to the admin tab and shows the live layout engine with the real admin dashboard", async () => {
     page.mount();
-    await page.signIn();
+    page.signIn();
+    await page.waitFor(() => {
+      expect(page.exists("login-screen")).toBe(false);
+    });
 
     page.click("tab-admin");
 
@@ -125,7 +135,10 @@ describe("App (shell chrome)", () => {
 
   it("switches to the credit tab and shows the live layout engine with real credit panel bodies", async () => {
     page.mount();
-    await page.signIn();
+    page.signIn();
+    await page.waitFor(() => {
+      expect(page.exists("login-screen")).toBe(false);
+    });
 
     page.click("tab-credit");
 
