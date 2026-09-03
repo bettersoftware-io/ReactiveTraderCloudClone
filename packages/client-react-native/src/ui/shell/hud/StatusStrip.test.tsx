@@ -1,26 +1,28 @@
-import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
-import type { JSX } from "react";
-import { StyleSheet, type ViewStyle } from "react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
+
+import { statusStripPage } from "#tests/pages/StatusStripPage";
 
 import { ActiveModuleContext } from "./ActiveModuleContext";
 import { DOCK_FAB_SIZE } from "./dockMetrics";
 import { MODULE_ROUTES } from "./moduleRoutes";
 
 const mockPathname = jest.fn<() => string>();
-// Imported after the mocks are registered.
-const { StatusStrip } = require("./StatusStrip") as StatusStripModule;
+const page = statusStripPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("shows the BLOTTER module label on the /blotter route", async () => {
   mockPathname.mockReturnValue("/blotter");
-  await render(<StatusStrip />);
-  expect(screen.getByTestId("hud-module-label")).toHaveTextContent("BLOTTER");
+  await page.mount();
+  expect(page.hasTextContent("hud-module-label", "BLOTTER")).toBe(true);
 });
 
 test("shows RATES on the index route", async () => {
   mockPathname.mockReturnValue("/");
-  await render(<StatusStrip />);
-  expect(screen.getByTestId("hud-module-label")).toHaveTextContent("RATES");
+  await page.mount();
+  expect(page.hasTextContent("hud-module-label", "RATES")).toBe(true);
 });
 
 // The visual harness mounts every scenario under `/__visual/<id>`, which the
@@ -31,12 +33,14 @@ test("a module pinned through ActiveModuleContext overrides the pathname", async
   const credit = MODULE_ROUTES.find((m) => {
     return m.key === "credit";
   });
-  await render(
-    <ActiveModuleContext.Provider value={credit ?? null}>
-      <StatusStrip />
-    </ActiveModuleContext.Provider>,
-  );
-  expect(screen.getByTestId("hud-module-label")).toHaveTextContent("CREDIT");
+  await page.mount((children) => {
+    return (
+      <ActiveModuleContext.Provider value={credit ?? null}>
+        {children}
+      </ActiveModuleContext.Provider>
+    );
+  });
+  expect(page.hasTextContent("hud-module-label", "CREDIT")).toBe(true);
 });
 
 // P8: the dock's FAB is painted over this strip by construction, so the
@@ -47,21 +51,9 @@ test("a module pinned through ActiveModuleContext overrides the pathname", async
 // number drifts toward a collision.
 test("telemetry row reserves at least the FAB's width down its centre", async () => {
   mockPathname.mockReturnValue("/");
-  await render(<StatusStrip />);
-  const spacer = screen.getByTestId("hud-dock-clearance");
-  expect(flattenWidth(spacer.props.style)).toBeGreaterThanOrEqual(
-    DOCK_FAB_SIZE,
-  );
+  await page.mount();
+  expect(page.clearanceWidth()).toBeGreaterThanOrEqual(DOCK_FAB_SIZE);
 });
-
-function flattenWidth(style: unknown): number {
-  const flat = StyleSheet.flatten(style as ViewStyle);
-  return typeof flat?.width === "number" ? flat.width : 0;
-}
-
-interface StatusStripModule {
-  StatusStrip: () => JSX.Element;
-}
 
 jest.mock("expo-router", () => {
   return {

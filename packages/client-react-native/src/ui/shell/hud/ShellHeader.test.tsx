@@ -1,34 +1,24 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { JSX } from "react";
-import { StyleSheet, type TextStyle } from "react-native";
+// packages/client-react-native/src/ui/shell/hud/ShellHeader.test.tsx
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { FONT_JETBRAINS_MONO_600 } from "#/ui/theme/fontFamilies";
+import { shellHeaderPage } from "#tests/pages/ShellHeaderPage";
 
-// Imported after the mocks are registered.
-const { ShellHeader } = require("./ShellHeader") as ShellHeaderTestModule;
+const page = shellHeaderPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("env badge reads LIVE when not in simulator mode", async () => {
-  await render(
-    <ShellHeader
-      simulator={false}
-      onToggleSimulator={(): void => {}}
-      onOpenAppearance={(): void => {}}
-    />,
-  );
-  expect(screen.getByTestId("hud-env-badge")).toHaveTextContent("LIVE");
+  await page.mount(false);
+  expect(page.hasTextContent("hud-env-badge", "LIVE")).toBe(true);
 });
 
 test("tapping the env badge toggles the simulator flag", async () => {
   const onToggle = jest.fn();
-  await render(
-    <ShellHeader
-      simulator={false}
-      onToggleSimulator={onToggle}
-      onOpenAppearance={(): void => {}}
-    />,
-  );
-  await fireEvent.press(screen.getByTestId("hud-env-badge"));
+  await page.mount(false, onToggle);
+  await page.pressEnvBadge();
   expect(onToggle).toHaveBeenCalledWith(true);
 });
 
@@ -38,17 +28,9 @@ test("tapping the env badge toggles the simulator flag", async () => {
 const ORBITRON_WORDMARK_ADVANCE = 155.56;
 
 test("the wordmark box reserves Orbitron's real advance, so the trailing ER cannot be clipped off", async () => {
-  await render(
-    <ShellHeader
-      simulator
-      onToggleSimulator={(): void => {}}
-      onOpenAppearance={(): void => {}}
-    />,
-  );
+  await page.mount(true);
 
-  const style = StyleSheet.flatten(
-    screen.getByTestId("hud-wordmark").props.style as TextStyle,
-  );
+  const style = page.wordmarkStyle();
 
   // iOS measures this Text in the system font, not in Orbitron, and sized it
   // at 132.7pt — narrow enough to clip "REACTIVE TRADER" to "REACTIVE TRAD".
@@ -61,33 +43,15 @@ test("the wordmark box reserves Orbitron's real advance, so the trailing ER cann
 // a real JetBrains SemiBold cut, so the label must name that FAMILY and carry
 // no `fontWeight` — a faux bold would read heavier than the design.
 test("the env badge keeps the 9pt / 1-tracked mono label in the real 600 cut", async () => {
-  await render(
-    <ShellHeader
-      simulator={false}
-      onToggleSimulator={(): void => {}}
-      onOpenAppearance={(): void => {}}
-    />,
-  );
+  await page.mount(false);
 
-  const style = StyleSheet.flatten(
-    screen.getByText("LIVE").props.style as TextStyle,
-  );
+  const style = page.styleOfText("LIVE");
 
   expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO_600);
   expect(style.fontSize).toBe(9);
   expect(style.letterSpacing).toBe(1);
   expect(style.fontWeight).toBeUndefined();
 });
-
-interface ShellHeaderTestProps {
-  simulator: boolean;
-  onToggleSimulator: (v: boolean) => void;
-  onOpenAppearance: () => void;
-}
-
-interface ShellHeaderTestModule {
-  ShellHeader: (p: ShellHeaderTestProps) => JSX.Element;
-}
 
 jest.mock("./HexReticleLogo", () => {
   const react = require("react");

@@ -1,7 +1,6 @@
 import { expect, test } from "@jest/globals";
-import { renderHook } from "@testing-library/react-native";
 
-import { useBootSceneFonts } from "#/ui/shell/boot/scenes/bootSceneFonts";
+import { useBootSceneFontsPage } from "#tests/pages/UseBootSceneFontsPage";
 
 const SPECS = {
   small: { size: 9 },
@@ -10,14 +9,16 @@ const SPECS = {
 } as const;
 
 test("builds one font per declared site", async () => {
-  const fonts = await renderFonts();
+  const page = useBootSceneFontsPage();
+  const fonts = await page.fontsFor(SPECS);
 
   expect(fonts).not.toBeNull();
   expect(Object.keys(fonts ?? {}).sort()).toEqual(["body", "heading", "small"]);
 });
 
 test("builds each font at its declared size", async () => {
-  const fonts = await renderFonts();
+  const page = useBootSceneFontsPage();
+  const fonts = await page.fontsFor(SPECS);
 
   expect(fonts?.small.__size).toBe(9);
   expect(fonts?.body.__size).toBe(11);
@@ -28,7 +29,8 @@ test("builds every site from a loaded face, never a bare default", async () => {
   // The actual defect: a font built with NO typeface. It draws zero glyphs on
   // device and throws nothing, so this is as close as jest can get — every
   // site must carry a face that came from a load, not `undefined`.
-  const fonts = await renderFonts();
+  const page = useBootSceneFontsPage();
+  const fonts = await page.fontsFor(SPECS);
 
   for (const font of Object.values(fonts ?? {})) {
     expect(font.__typeface).toBeDefined();
@@ -46,8 +48,10 @@ test("hands out nothing until a face has loaded", async () => {
     return null;
   };
 
+  const page = useBootSceneFontsPage();
+
   try {
-    expect(await renderFonts()).toBeNull();
+    expect(await page.fontsFor(SPECS)).toBeNull();
   } finally {
     skia.useFont = loadedUseFont;
   }
@@ -76,16 +80,3 @@ test("hands out nothing until a face has loaded", async () => {
  * would only be asserting the mock. The device capture covers it — at 18px
  * the RANGE figures make the weight obvious.
  */
-interface RecordingFont {
-  __typeface: { source: unknown } | undefined;
-  __size: number | undefined;
-}
-
-async function renderFonts(): Promise<Record<string, RecordingFont> | null> {
-  // `renderHook` is async in @testing-library/react-native, unlike the DOM
-  // Testing Library's (see `ui/theme/fonts.test.tsx`).
-  const { result } = await renderHook(() => {
-    return useBootSceneFonts(SPECS);
-  });
-  return result.current as unknown as Record<string, RecordingFont> | null;
-}

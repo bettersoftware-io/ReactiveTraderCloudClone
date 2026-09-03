@@ -1,12 +1,16 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { appearanceButtonPage } from "#tests/pages/AppearanceButtonPage";
+
+const page = appearanceButtonPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("invokes onPress when tapped", async () => {
   const onPress = jest.fn();
-  await renderWithTheme(<AppearanceButton onPress={onPress} />);
-  void fireEvent.press(screen.getByTestId("appearance-button"));
+  await page.mount(onPress);
+  await page.press();
   expect(onPress).toHaveBeenCalledTimes(1);
 });

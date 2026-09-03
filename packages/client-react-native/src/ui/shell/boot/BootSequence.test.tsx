@@ -1,46 +1,36 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 import { AccessibilityInfo } from "react-native";
 
 import { BOOT_VARIANTS } from "@rtc/domain";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
 
-import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { bootSequencePage } from "#tests/pages/BootSequencePage";
 
 const mockUseBootMotionEnabled = jest.fn<() => boolean>();
+const page = bootSequencePage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("renders the wordmark, the SEQ line and the progress log line", async () => {
   jest
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(false);
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "laser", progress: 42, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-wordmark")).toBeTruthy();
+  await page.mount({ variant: "laser", progress: 42, done: false });
+  expect(page.exists("boot-wordmark")).toBe(true);
   // `laser` is second in the cycle; the total is the real variant count, not
   // the prototype's hard-coded 8 (they agree today — the assertion is what
   // keeps them agreeing).
-  expect(screen.getByTestId("boot-variant").props.children).toBe(
+  expect(page.textOf("boot-variant")).toBe(
     `MOBILE OS  //  SEQ 2/${BOOT_VARIANTS.length} · UI DRAW-IN`,
   );
   // 42% lands on floor(0.42 * 7) === index 2 of the seven prototype logs.
-  expect(screen.getByTestId("boot-log").props.children).toBe(
-    "▸ WS HANDSHAKE wss://rtc-clone",
-  );
+  expect(page.textOf("boot-log")).toBe("▸ WS HANDSHAKE wss://rtc-clone");
   // The percentage numeral is gone: the design's rail is bare.
-  expect(screen.queryByTestId("boot-pct")).toBeNull();
+  expect(page.exists("boot-pct")).toBe(false);
 });
 
 test("SKIP renders as the design's bordered pill", async () => {
@@ -48,20 +38,10 @@ test("SKIP renders as the design's bordered pill", async () => {
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(false);
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 0, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  const pill = screen.getByTestId("boot-skip");
-  const style = Object.assign({}, ...[pill.props.style].flat(2));
+  await page.mount({ variant: "core", progress: 0, done: false });
+  const style = page.styleOf("boot-skip");
 
-  expect(screen.getByText("SKIP \u25B8")).toBeTruthy();
+  expect(page.hasText("SKIP ▸")).toBe(true);
   expect(style.borderWidth).toBe(1);
   expect(style.borderRadius).toBe(6);
   expect(style.right).toBe(16);
@@ -77,15 +57,9 @@ test("paints the chrome in the bundled faces, never the system font", async () =
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(false);
   const theme = rnThemeTokens.holo3d.dark;
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 42, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
+  await page.mount(
+    { variant: "core", progress: 42, done: false },
+    undefined,
     theme,
   );
 
@@ -93,9 +67,9 @@ test("paints the chrome in the bundled faces, never the system font", async () =
   // in SF for weeks (fixed in `BootSequenceFixture`, which now mounts after
   // `useAppFonts()`); these assertions pin the styles themselves so a future
   // edit cannot drop a family or spread an undefined weighted face over one.
-  expect(flatFontFamily("boot-wordmark")).toBe(FONT_ORBITRON_WORDMARK);
-  expect(flatFontFamily("boot-variant")).toBe(theme.fontMono);
-  expect(flatFontFamily("boot-log")).toBe(theme.fontMono);
+  expect(page.styleOf("boot-wordmark").fontFamily).toBe(FONT_ORBITRON_WORDMARK);
+  expect(page.styleOf("boot-variant").fontFamily).toBe(theme.fontMono);
+  expect(page.styleOf("boot-log").fontFamily).toBe(theme.fontMono);
   expect(theme.fontMono).toBeTruthy();
 });
 
@@ -105,17 +79,8 @@ test("SKIP press dispatches the skip intent", async () => {
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(false);
   const skip = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 10, done: false },
-        skip,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  await fireEvent.press(screen.getByTestId("boot-skip"));
+  await page.mount({ variant: "core", progress: 10, done: false }, skip);
+  await page.press("boot-skip");
   expect(skip).toHaveBeenCalledTimes(1);
 });
 
@@ -124,24 +89,15 @@ test("motion disabled: chrome + emblem render, no Skia canvas", async () => {
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(false);
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 5, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-sequence")).toBeTruthy();
-  expect(screen.getByTestId("boot-wordmark")).toBeTruthy();
-  expect(screen.getByTestId("boot-variant")).toBeTruthy();
-  expect(screen.getByTestId("boot-progress")).toBeTruthy();
-  expect(screen.getByTestId("boot-log")).toBeTruthy();
-  expect(screen.getByTestId("boot-skip")).toBeTruthy();
-  expect(screen.getByTestId("boot-emblem")).toBeTruthy();
-  expect(screen.queryByTestId("boot-canvas")).toBeNull();
+  await page.mount({ variant: "core", progress: 5, done: false });
+  expect(page.exists("boot-sequence")).toBe(true);
+  expect(page.exists("boot-wordmark")).toBe(true);
+  expect(page.exists("boot-variant")).toBe(true);
+  expect(page.exists("boot-progress")).toBe(true);
+  expect(page.exists("boot-log")).toBe(true);
+  expect(page.exists("boot-skip")).toBe(true);
+  expect(page.exists("boot-emblem")).toBe(true);
+  expect(page.exists("boot-canvas")).toBe(false);
 });
 
 test("motion enabled on a covered variant: canvas renders, emblem does not", async () => {
@@ -149,20 +105,11 @@ test("motion enabled on a covered variant: canvas renders, emblem does not", asy
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 5, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-sequence")).toBeTruthy();
-  expect(screen.getByTestId("boot-wordmark")).toBeTruthy();
-  expect(await screen.findByTestId("boot-canvas")).toBeTruthy();
-  expect(screen.queryByTestId("boot-emblem")).toBeNull();
+  await page.mount({ variant: "core", progress: 5, done: false });
+  expect(page.exists("boot-sequence")).toBe(true);
+  expect(page.exists("boot-wordmark")).toBe(true);
+  expect(await page.awaitExists("boot-canvas")).toBe(true);
+  expect(page.exists("boot-emblem")).toBe(false);
 });
 
 test("motion enabled on an unported variant: emblem falls back, no canvas", async () => {
@@ -173,18 +120,9 @@ test("motion enabled on an unported variant: emblem falls back, no canvas", asyn
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(true);
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "docking", progress: 5, done: false },
-        noop,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-emblem")).toBeTruthy();
-  expect(screen.queryByTestId("boot-canvas")).toBeNull();
+  await page.mount({ variant: "docking", progress: 5, done: false });
+  expect(page.exists("boot-emblem")).toBe(true);
+  expect(page.exists("boot-canvas")).toBe(false);
 });
 
 test("SKIP still dispatches while the Skia canvas is showing", async () => {
@@ -193,46 +131,10 @@ test("SKIP still dispatches while the Skia canvas is showing", async () => {
     .mockResolvedValue(true);
   mockUseBootMotionEnabled.mockReturnValue(true);
   const skip = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        { variant: "core", progress: 10, done: false },
-        skip,
-      )}
-    >
-      <BootSequence onDone={noop} />
-    </ViewModelProvider>,
-  );
-  await fireEvent.press(screen.getByTestId("boot-skip"));
+  await page.mount({ variant: "core", progress: 10, done: false }, skip);
+  await page.press("boot-skip");
   expect(skip).toHaveBeenCalledTimes(1);
 });
-
-/** The `fontFamily` a testID's element actually resolves to, after the whole
- * style array is flattened — an override later in the array is exactly what
- * this has to catch. */
-function flatFontFamily(testID: string): unknown {
-  const style = screen.getByTestId(testID).props.style;
-
-  return Object.assign({}, ...[style].flat(2)).fontFamily;
-}
-
-interface BootState {
-  variant: "core" | "laser" | "docking";
-  progress: number;
-  done: boolean;
-}
-
-function fakeViewModel(state: BootState, skip: () => void): ViewModel {
-  return {
-    useBootSequence: (_onDone: () => void) => {
-      return { state, skip };
-    },
-  } as unknown as ViewModel;
-}
-
-function noop(): void {
-  // intentionally empty
-}
 
 jest.mock("react-native-safe-area-context", () => {
   return {

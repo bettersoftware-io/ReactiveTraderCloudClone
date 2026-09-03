@@ -1,53 +1,37 @@
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+
+import { useShellMotionEnabledPage } from "#tests/pages/UseShellMotionEnabledPage";
 
 const mockReducedMotion = jest.fn<() => boolean>();
 const mockPowerSaver = jest.fn<() => MockPowerSaverResult>();
 
-// Imported after the mocks are registered.
-const { useShellMotionEnabled } =
-  require("./useShellMotionEnabled") as ShellMotionModule;
-
 test("motion runs when reduced-motion is off and not freezing", async () => {
   mockReducedMotion.mockReturnValue(false);
   mockPowerSaver.mockReturnValue({ isCalm: false, isFreeze: false });
-  await renderProbe();
-  expect(screen.getByText("on")).toBeTruthy();
+  const page = useShellMotionEnabledPage();
+  await page.mount();
+  expect(page.isOn()).toBe(true);
 });
 
 test("reduced motion stills the shell", async () => {
   mockReducedMotion.mockReturnValue(true);
   mockPowerSaver.mockReturnValue({ isCalm: false, isFreeze: false });
-  await renderProbe();
-  expect(screen.getByText("off")).toBeTruthy();
+  const page = useShellMotionEnabledPage();
+  await page.mount();
+  expect(page.isOn()).toBe(false);
 });
 
 test("power-saver Freeze stills the shell", async () => {
   mockReducedMotion.mockReturnValue(false);
   mockPowerSaver.mockReturnValue({ isCalm: true, isFreeze: true });
-  await renderProbe();
-  expect(screen.getByText("off")).toBeTruthy();
+  const page = useShellMotionEnabledPage();
+  await page.mount();
+  expect(page.isOn()).toBe(false);
 });
 
 interface MockPowerSaverResult {
   isCalm: boolean;
   isFreeze: boolean;
-}
-
-interface ShellMotionModule {
-  useShellMotionEnabled: () => boolean;
-}
-
-// Probe lives nested inside the helper (not at module scope) so the file has
-// no unexported top-level component — mirrors ThemeProvider.test.tsx and
-// satisfies Biome's useComponentExportOnlyModules.
-function renderProbe(): Promise<unknown> {
-  function Probe(): React.JSX.Element {
-    return <Text>{useShellMotionEnabled() ? "on" : "off"}</Text>;
-  }
-
-  return render(<Probe />);
 }
 
 jest.mock("react-native-reanimated", () => {

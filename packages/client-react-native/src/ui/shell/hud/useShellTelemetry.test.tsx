@@ -1,73 +1,28 @@
 // packages/client-react-native/src/ui/shell/hud/useShellTelemetry.test.tsx
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
 
-const { ShellTelemetryContext } =
-  require("./ShellTelemetryContext") as ShellTelemetryContextModule;
-
-const { useShellTelemetry } =
-  require("./useShellTelemetry") as UseShellTelemetryModule;
+import { useShellTelemetryPage } from "#tests/pages/UseShellTelemetryPage";
 
 test("returns the frozen telemetry when a provider supplies it", async () => {
-  await renderProbe({ fps: 60, latencyMs: 12 });
-  expect(screen.getByText("60|12|09:47:03|V2.0-RN")).toBeTruthy();
+  const page = useShellTelemetryPage();
+  await page.mount({ fps: 60, latencyMs: 12 });
+  expect(page.hasProbeText()).toBe(true);
 });
 
 test("falls back to decorative seeds with no provider", async () => {
-  await renderProbe(null);
-  expect(screen.getByText("60|12|09:47:03|V2.0-RN")).toBeTruthy();
+  const page = useShellTelemetryPage();
+  await page.mount(null);
+  expect(page.hasProbeText()).toBe(true);
 });
-
-interface FrozenTelemetryFixture {
-  readonly fps: number;
-  readonly latencyMs: number;
-}
-
-interface ShellTelemetryFixture {
-  readonly fps: number;
-  readonly latencyMs: number;
-  readonly clock: string;
-  readonly build: string;
-}
-
-interface SharedValueStub<T> {
-  value: T;
-}
-
-interface ShellTelemetryContextModule {
-  ShellTelemetryContext: React.Context<FrozenTelemetryFixture | null>;
-}
-
-interface UseShellTelemetryModule {
-  useShellTelemetry: () => ShellTelemetryFixture;
-}
-
-// Probe lives nested inside the helper (not at module scope) so the file has
-// no unexported top-level component — mirrors ThemeProvider.test.tsx /
-// useShellMotionEnabled.test.tsx and satisfies Biome's
-// useComponentExportOnlyModules.
-function renderProbe(frozen: FrozenTelemetryFixture | null): Promise<unknown> {
-  function Probe(): React.JSX.Element {
-    const t = useShellTelemetry();
-    return <Text>{`${t.fps}|${t.latencyMs}|${t.clock}|${t.build}`}</Text>;
-  }
-
-  if (frozen === null) {
-    return render(<Probe />);
-  }
-
-  return render(
-    <ShellTelemetryContext.Provider value={frozen}>
-      <Probe />
-    </ShellTelemetryContext.Provider>,
-  );
-}
 
 // `useShellTelemetry` imports `useFrameCallback` + `runOnJS` + `useSharedValue`
 // from reanimated; stub all three so the local override doesn't drop a
 // binding the module loads. The `useFrameCallback` stub never invokes the
 // worklet, so the meter is inert and the seed/frozen path is deterministic.
+interface SharedValueStub<T> {
+  value: T;
+}
+
 jest.mock("react-native-reanimated", () => {
   return {
     useFrameCallback: (): void => {

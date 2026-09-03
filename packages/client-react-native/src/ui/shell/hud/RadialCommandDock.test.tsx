@@ -1,74 +1,61 @@
 // packages/client-react-native/src/ui/shell/hud/RadialCommandDock.test.tsx
-import { expect, jest, test } from "@jest/globals";
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 import type { JSX } from "react";
 
-import { DockOpenContext } from "./DockOpenContext";
+import { radialCommandDockPage } from "#tests/pages/RadialCommandDockPage";
 
 const mockNavigate = jest.fn();
+const page = radialCommandDockPage();
 
-const { RadialCommandDock } =
-  require("./RadialCommandDock") as RadialCommandDockModule;
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("is collapsed until the FAB is pressed", async () => {
-  await render(<RadialCommandDock />);
-  expect(screen.queryByTestId("hud-dock-sat-blotter")).toBeNull();
+  await page.mount();
+  expect(page.exists("hud-dock-sat-blotter")).toBe(false);
 });
 
 test("starts fanned out when DockOpenContext pins it open", async () => {
-  await render(
-    <DockOpenContext.Provider value={true}>
-      <RadialCommandDock />
-    </DockOpenContext.Provider>,
-  );
-  expect(screen.getByTestId("hud-dock-sat-rates")).toBeTruthy();
-  expect(screen.getByTestId("hud-dock-sat-equities")).toBeTruthy();
+  await page.mount(true);
+  expect(page.exists("hud-dock-sat-rates")).toBe(true);
+  expect(page.exists("hud-dock-sat-equities")).toBe(true);
 });
 
 test("fans out 5 satellites when opened", async () => {
-  await render(<RadialCommandDock />);
-  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
-  expect(screen.getByTestId("hud-dock-sat-rates")).toBeTruthy();
-  expect(screen.getByTestId("hud-dock-sat-blotter")).toBeTruthy();
-  expect(screen.getByTestId("hud-dock-sat-analytics")).toBeTruthy();
-  expect(screen.getByTestId("hud-dock-sat-credit")).toBeTruthy();
-  expect(screen.getByTestId("hud-dock-sat-equities")).toBeTruthy();
+  await page.mount();
+  await page.pressFab();
+  expect(page.exists("hud-dock-sat-rates")).toBe(true);
+  expect(page.exists("hud-dock-sat-blotter")).toBe(true);
+  expect(page.exists("hud-dock-sat-analytics")).toBe(true);
+  expect(page.exists("hud-dock-sat-credit")).toBe(true);
+  expect(page.exists("hud-dock-sat-equities")).toBe(true);
 });
 
 test("keeps the longest satellite label on one line", async () => {
   // `ANALYTICS` is wider than the 58px satellite column, so it wrapped to
   // `ANALYTIC`/`S` until the label got a width of its own — the design's
   // label overflows the column instead (dc.html:479).
-  await render(<RadialCommandDock />);
-  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
-  expect(screen.getByText("ANALYTICS").props.numberOfLines).toBe(1);
+  await page.mount();
+  await page.pressFab();
+  expect(page.satelliteNumberOfLines("ANALYTICS")).toBe(1);
 });
 
 test("selecting a satellite navigates to its route and closes", async () => {
-  await render(<RadialCommandDock />);
-  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
-  await fireEvent.press(screen.getByTestId("hud-dock-sat-credit"));
+  await page.mount();
+  await page.pressFab();
+  await page.pressSatellite("credit");
   expect(mockNavigate).toHaveBeenCalledWith("/credit");
-  expect(screen.queryByTestId("hud-dock-sat-credit")).toBeNull();
+  expect(page.exists("hud-dock-sat-credit")).toBe(false);
 });
 
 test("shows the active module's glyph on the FAB, then ✕ while open", async () => {
-  await render(<RadialCommandDock />);
-  const fab = within(screen.getByTestId("hud-dock-fab"));
-  expect(fab.getByText("⇅")).toBeTruthy();
+  await page.mount();
+  expect(page.fabShowsGlyph("⇅")).toBe(true);
 
-  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
-  expect(fab.getByText("✕")).toBeTruthy();
+  await page.pressFab();
+  expect(page.fabShowsGlyph("✕")).toBe(true);
 });
-
-interface RadialCommandDockModule {
-  RadialCommandDock: () => JSX.Element;
-}
 
 jest.mock("expo-router", () => {
   return {

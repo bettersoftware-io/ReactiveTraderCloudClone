@@ -5,7 +5,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "#/*": ["./src/*"]
+      "#/*": ["./src/*"],
+      "#tests/*": ["./tests/*"]
     }
   },
   // Do NOT re-add ".expo/types/**/*.ts" or "expo-env.d.ts" here, and do not

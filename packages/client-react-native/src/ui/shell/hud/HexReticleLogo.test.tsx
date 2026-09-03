@@ -1,31 +1,26 @@
 // packages/client-react-native/src/ui/shell/hud/HexReticleLogo.test.tsx
-import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
-import type { JSX } from "react";
+import { afterEach, expect, jest, test } from "@jest/globals";
+
+import { hexReticleLogoPage } from "#tests/pages/HexReticleLogoPage";
 
 const mockMotion = jest.fn<() => boolean>();
-// Imported after the mocks are registered.
-const { HexReticleLogo } = require("./HexReticleLogo") as HexReticleLogoModule;
+const page = hexReticleLogoPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("renders the reticle when motion is enabled", async () => {
   mockMotion.mockReturnValue(true);
-  await render(<HexReticleLogo />);
-  expect(screen.getByTestId("hud-logo")).toBeTruthy();
+  await page.mount();
+  expect(page.exists("hud-logo")).toBe(true);
 });
 
 test("renders a static reticle when motion is disabled (freeze / reduced)", async () => {
   mockMotion.mockReturnValue(false);
-  await render(<HexReticleLogo />);
-  expect(screen.getByTestId("hud-logo")).toBeTruthy();
+  await page.mount();
+  expect(page.exists("hud-logo")).toBe(true);
 });
-
-interface HexReticleLogoProps {
-  size?: number;
-}
-
-interface HexReticleLogoModule {
-  HexReticleLogo: (p: HexReticleLogoProps) => JSX.Element;
-}
 
 jest.mock("./useShellMotionEnabled", () => {
   return {

@@ -1,121 +1,53 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { loginScreenPage } from "#tests/pages/LoginScreenPage";
 
-import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = loginScreenPage();
+
+afterEach(() => {
+  page.unmountAll();
+});
 
 test("typing credentials then pressing AUTHENTICATE calls login with them", async () => {
   const login = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("unauthenticated", login)}>
-      <LoginScreen simulator={false} onToggleSimulator={noop} />
-    </ViewModelProvider>,
-  );
+  await page.mount("unauthenticated", login);
 
-  await fireEvent.changeText(screen.getByTestId("login-username"), "trader1");
-  await fireEvent.changeText(screen.getByTestId("login-password"), "s3cret");
-  await fireEvent.press(screen.getByTestId("login-submit"));
+  await page.typeUsername("trader1");
+  await page.typePassword("s3cret");
+  await page.pressSubmit();
 
   expect(login).toHaveBeenCalledTimes(1);
   expect(login).toHaveBeenCalledWith("trader1", "s3cret");
 });
 
 test("renders the seeded error message", async () => {
-  await renderWithTheme(
-    <ViewModelProvider
-      viewModel={fakeViewModel("unauthenticated", noop, "Invalid credentials")}
-    >
-      <LoginScreen simulator={false} onToggleSimulator={noop} />
-    </ViewModelProvider>,
-  );
+  await page.mount("unauthenticated", () => {}, {
+    error: "Invalid credentials",
+  });
 
-  expect(screen.getByTestId("login-error").props.children).toBe(
-    "Invalid credentials",
-  );
+  expect(page.errorText()).toBe("Invalid credentials");
 });
 
 test("renders no error node when state.error is null", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("unauthenticated", noop)}>
-      <LoginScreen simulator={false} onToggleSimulator={noop} />
-    </ViewModelProvider>,
-  );
+  await page.mount("unauthenticated", () => {});
 
-  expect(screen.queryByTestId("login-error")).toBeNull();
+  expect(page.exists("login-error")).toBe(false);
 });
 
 test("submit is disabled while authenticating, and pressing it does not call login", async () => {
   const login = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("authenticating", login)}>
-      <LoginScreen simulator={false} onToggleSimulator={noop} />
-    </ViewModelProvider>,
-  );
+  await page.mount("authenticating", login);
 
-  const submit = screen.getByTestId("login-submit");
-  await fireEvent.press(submit);
+  await page.pressSubmit();
   expect(login).not.toHaveBeenCalled();
 });
 
 test("toggling the sim switch calls onToggleSimulator with the new value", async () => {
   const onToggleSimulator = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel("unauthenticated", noop)}>
-      <LoginScreen simulator={false} onToggleSimulator={onToggleSimulator} />
-    </ViewModelProvider>,
-  );
+  await page.mount("unauthenticated", () => {}, { onToggleSimulator });
 
-  await fireEvent(screen.getByTestId("login-sim-toggle"), "valueChange", true);
+  await page.toggleSimulator(true);
 
   expect(onToggleSimulator).toHaveBeenCalledTimes(1);
   expect(onToggleSimulator).toHaveBeenCalledWith(true);
 });
-
-function fakeViewModel(
-  status: "unauthenticated" | "authenticating" | "authenticated",
-  login: (username: string, password: string) => void,
-  error: string | null = null,
-): ViewModel {
-  return {
-    useAuth: () => {
-      return {
-        state: {
-          status,
-          locked: false,
-          error,
-          user: null,
-        },
-        login,
-        unlock: () => {
-          return undefined;
-        },
-        lock: () => {
-          return undefined;
-        },
-        logout: () => {
-          return undefined;
-        },
-      };
-    },
-    usePowerSaver: fakePowerSaver,
-  } as unknown as ViewModel;
-}
-
-function noop(): undefined {
-  return undefined;
-}
-
-interface FakePowerSaverResult {
-  isCalm: boolean;
-  isFreeze: boolean;
-}
-
-// LoginScreen mounts LockEmblem, whose orbit gating reads
-// usePowerSaver().isFreeze via useShellMotionEnabled; the fake ViewModel
-// needs the same stub LockScreen.test carries.
-function fakePowerSaver(): FakePowerSaverResult {
-  return { isCalm: false, isFreeze: false };
-}

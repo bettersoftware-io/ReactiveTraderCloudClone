@@ -1,17 +1,12 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
-import { screen, waitFor } from "@testing-library/react-native";
-import { useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated } from "react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { bootGatePage } from "#tests/pages/BootGatePage";
 
-import { BootGate } from "#/ui/shell/boot/BootGate";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-
-const RUNNING = { variant: "core" as const, progress: 20, done: false };
+const page = bootGatePage();
 
 afterEach(() => {
+  page.unmountAll();
   jest.restoreAllMocks();
 });
 
@@ -19,12 +14,8 @@ test("renders the boot splash while the machine is running", async () => {
   jest
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeRunning()}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("boot-wordmark")).toBeTruthy();
+  await page.mountRunning();
+  expect(page.exists("boot-wordmark")).toBe(true);
 });
 
 test("dismisses through the seam after the machine reports done (reduce-motion jump-cut)", async () => {
@@ -32,12 +23,8 @@ test("dismisses through the seam after the machine reports done (reduce-motion j
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
   const dismiss = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeDoneOnce(dismiss)}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  await waitFor(() => {
+  await page.mountDoneOnce(dismiss);
+  await page.waitFor(() => {
     expect(dismiss).toHaveBeenCalled();
   });
 });
@@ -71,12 +58,8 @@ test("fades out then dismisses on the animated (non-reduce-motion) path", async 
       } as unknown as Animated.CompositeAnimation;
     });
   const dismiss = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeDoneOnce(dismiss)}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  await waitFor(() => {
+  await page.mountDoneOnce(dismiss);
+  await page.waitFor(() => {
     expect(completions).toHaveLength(1);
   });
 
@@ -103,12 +86,8 @@ test("still dismisses if the reduce-motion probe rejects (never strands the spla
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockRejectedValue(new Error("probe failed"));
   const dismiss = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeDoneOnce(dismiss)}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  await waitFor(() => {
+  await page.mountDoneOnce(dismiss);
+  await page.waitFor(() => {
     expect(dismiss).toHaveBeenCalled();
   });
 });
@@ -124,13 +103,9 @@ test("renders nothing while the seam reports the splash hidden", async () => {
   jest
     .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
     .mockResolvedValue(true);
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeRunning(false)}>
-      <BootGate />
-    </ViewModelProvider>,
-  );
-  expect(screen.queryByTestId("boot-gate")).toBeNull();
-  expect(screen.queryByTestId("boot-wordmark")).toBeNull();
+  await page.mountRunning(false);
+  expect(page.exists("boot-gate")).toBe(false);
+  expect(page.exists("boot-wordmark")).toBe(false);
 });
 
 // NO jest test guards the replay defect, deliberately — and this is the record
@@ -159,49 +134,6 @@ test("renders nothing while the seam reports the splash hidden", async () => {
 // The fix is structural rather than behavioural (the value now mounts and dies
 // WITH the splash, as both web clients' CSS opacity already does), and this tier
 // cannot see structure. The simulator is the witness; see docs/rn-open-items.md.
-
-// Never-done fake: useBootSequence returns a running state and never invokes
-// onDone — the splash stays up so we can assert it rendered.
-function noop(): undefined {
-  return undefined;
-}
-
-function fakeRunning(visible = true, dismiss: () => void = noop): ViewModel {
-  return {
-    useBootGate: () => {
-      return { visible, dismiss, reboot: noop };
-    },
-    useBootSequence: (_onDone: () => void) => {
-      return {
-        state: RUNNING,
-        skip: noop,
-      };
-    },
-  } as unknown as ViewModel;
-}
-
-// Done-once fake: invokes onDone exactly once after mount, mirroring the machine
-// firing its onDone when the ramp completes.
-function fakeDoneOnce(dismiss: () => void): ViewModel {
-  return {
-    useBootGate: () => {
-      return { visible: true, dismiss, reboot: noop };
-    },
-    useBootSequence: (onDone: () => void) => {
-      const fired = useRef(false);
-      useEffect(() => {
-        if (!fired.current) {
-          fired.current = true;
-          onDone();
-        }
-      }, [onDone]);
-      return {
-        state: { variant: "core" as const, progress: 100, done: true },
-        skip: noop,
-      };
-    },
-  } as unknown as ViewModel;
-}
 
 interface AnimationEndResult {
   finished: boolean;
