@@ -12,7 +12,7 @@ export interface UseActiveModulePage {
   /** `undefined` mounts the probe with no provider at all; `null` mounts an
    * explicit null provider; a route pins that module. */
   mount(pinned: ModuleRoute | null | undefined): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   probeLabel(): string;
 }
 
@@ -36,8 +36,8 @@ export function useActiveModulePage(): UseActiveModulePage {
         </ActiveModuleContext.Provider>,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     probeLabel(): string {
       return textContentOf(screen.getByTestId("probe"));

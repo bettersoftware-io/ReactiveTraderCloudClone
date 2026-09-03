@@ -5,7 +5,7 @@ import { jarvisScenePage } from "#tests/pages/JarvisScenePage";
 const page = jarvisScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be

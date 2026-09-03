@@ -5,7 +5,7 @@ import { coreScenePage } from "#tests/pages/CoreScenePage";
 const page = coreScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts), so pixels

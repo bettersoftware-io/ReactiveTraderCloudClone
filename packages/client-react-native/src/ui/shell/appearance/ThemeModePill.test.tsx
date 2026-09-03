@@ -9,7 +9,7 @@ import {
 const page = themeModePillPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // THREE cells, not the design's two: `system` is this app's own preference,

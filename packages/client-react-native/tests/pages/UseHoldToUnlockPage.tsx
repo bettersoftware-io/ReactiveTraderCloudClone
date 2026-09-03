@@ -23,7 +23,7 @@ export interface UseHoldToUnlockPage {
     pinned?: SharedValue<number>,
   ): Promise<void>;
   rerender(options: UseHoldToUnlockOptions): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   readonly state: UseHoldToUnlockResult;
 }
 
@@ -69,8 +69,8 @@ export function holdToUnlockPage(): UseHoldToUnlockPage {
 
       await rerenderFn(options);
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     get state(): UseHoldToUnlockResult {
       if (!result) {

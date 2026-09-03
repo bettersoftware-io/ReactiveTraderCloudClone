@@ -11,7 +11,7 @@ const mockUseBootMotionEnabled = jest.fn<() => boolean>();
 const page = bootSequencePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the wordmark, the SEQ line and the progress log line", async () => {

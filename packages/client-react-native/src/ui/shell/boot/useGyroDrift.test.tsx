@@ -13,7 +13,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("does not subscribe while disabled", async () => {

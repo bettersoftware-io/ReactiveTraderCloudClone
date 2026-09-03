@@ -36,7 +36,7 @@ type TextChildren = string | number;
 
 export interface BootSequencePage {
   mount(state: BootState, skip?: () => void, theme?: RnTheme): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   awaitExists(testId: string): Promise<boolean>;
   textOf(testId: string): TextChildren;
@@ -61,8 +61,8 @@ export function bootSequencePage(): BootSequencePage {
         theme,
       );
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

@@ -5,7 +5,7 @@ import { appearanceButtonPage } from "#tests/pages/AppearanceButtonPage";
 const page = appearanceButtonPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("invokes onPress when tapped", async () => {

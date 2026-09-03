@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the emblem under the lock-emblem testID", async () => {

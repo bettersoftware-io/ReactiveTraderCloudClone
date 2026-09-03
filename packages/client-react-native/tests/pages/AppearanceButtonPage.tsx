@@ -6,7 +6,7 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface AppearanceButtonPage {
   mount(onPress: () => void): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   press(): Promise<void>;
 }
 
@@ -16,8 +16,8 @@ export function appearanceButtonPage(): AppearanceButtonPage {
     async mount(onPress: () => void): Promise<void> {
       await renderWithTheme(<AppearanceButton onPress={onPress} />);
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async press(): Promise<void> {
       await fireEvent.press(screen.getByTestId("appearance-button"));

@@ -5,7 +5,7 @@ import { authGatePage } from "#tests/pages/AuthGatePage";
 const page = authGatePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("unauthenticated: renders LoginScreen, not the children", async () => {

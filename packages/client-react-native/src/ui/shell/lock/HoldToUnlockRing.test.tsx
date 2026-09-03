@@ -5,7 +5,7 @@ import { holdToUnlockRingPage } from "#tests/pages/HoldToUnlockRingPage";
 const page = holdToUnlockRingPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("renders the submit affordance under the lock-authenticate testID", async () => {

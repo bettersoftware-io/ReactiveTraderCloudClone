@@ -5,7 +5,7 @@ import { geoScenePage } from "#tests/pages/GeoScenePage";
 const page = geoScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked here (jest.setup.ts), so no pixel can be

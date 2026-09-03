@@ -7,7 +7,7 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 
 export interface UseShellMotionEnabledPage {
   mount(): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   hasText(text: "on" | "off"): boolean;
 }
 
@@ -24,8 +24,8 @@ export function shellMotionEnabledPage(): UseShellMotionEnabledPage {
 
       await render(<Probe />);
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasText(text: "on" | "off"): boolean {
       return screen.queryByText(text) != null;

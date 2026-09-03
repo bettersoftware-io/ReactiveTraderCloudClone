@@ -8,7 +8,7 @@ const mockNavigate = jest.fn();
 const page = radialCommandDockPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("is collapsed until the FAB is pressed", async () => {

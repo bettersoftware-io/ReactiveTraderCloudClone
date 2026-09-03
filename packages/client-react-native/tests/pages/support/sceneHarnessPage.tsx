@@ -29,7 +29,7 @@ interface SceneNodeProps {
 export interface SceneHarnessPage<P> {
   mount(props: P): Promise<void>;
   rerender(props: P): Promise<void>;
-  unmountAll(): void;
+  unmountAll(): Promise<void>;
   /** Resolves once `testId` (default: the harness's own scene testID)
    * appears; throws (with Testing Library's own diagnostic) if it never
    * does — the same failure mode `await screen.findByTestId(...)` always had
@@ -67,8 +67,8 @@ export function createSceneHarnessPage<P>(
 
       await result.rerender(harnessElement(Harness, props));
     },
-    unmountAll(): void {
-      cleanup();
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async awaitExists(testId: string = sceneTestId): Promise<boolean> {
       await screen.findByTestId(testId);

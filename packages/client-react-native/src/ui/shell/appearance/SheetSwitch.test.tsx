@@ -6,7 +6,7 @@ import { sheetSwitchPage } from "#tests/pages/SheetSwitchPage";
 const page = sheetSwitchPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("press reports the value being asked for, not the current one", async () => {

@@ -7,7 +7,7 @@ const mockPowerSaver = jest.fn<() => MockPowerSaverResult>();
 const page = shellMotionEnabledPage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 test("motion runs when reduced-motion is off and not freezing", async () => {

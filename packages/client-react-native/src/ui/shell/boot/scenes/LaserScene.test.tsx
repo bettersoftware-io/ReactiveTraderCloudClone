@@ -7,7 +7,7 @@ import { CORNER_TICK_OPACITY, LASER_PANELS } from "./laserGeometry";
 const page = laserScenePage();
 
 afterEach(() => {
-  page.unmountAll();
+  return page.unmountAll();
 });
 
 // Skia + Reanimated are fully mocked in this suite (jest.setup.ts, same as
