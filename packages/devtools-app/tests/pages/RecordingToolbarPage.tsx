@@ -15,7 +15,7 @@ import { RecordingToolbar } from "#/recording/RecordingToolbar";
 import type { RecordingModel } from "#/recording/useRecording";
 import { useRecording } from "#/recording/useRecording";
 
-export interface MountRecordingToolbarOptions {
+interface MountRecordingToolbarOptions {
   store: InspectorStore;
   appId?: string | null;
   captureModel?: (model: RecordingModel) => void;

@@ -20,7 +20,7 @@ import { ALL_SCOPE } from "#/nav/scope";
 import { TimelinePane } from "#/timeline/TimelinePane";
 import { useTimeline } from "#/timeline/useTimeline";
 
-export interface TimelinePaneHandle {
+interface TimelinePaneHandle {
   setScope: (scope: Scope) => void;
   append: () => void;
   probeRadius: () => void;

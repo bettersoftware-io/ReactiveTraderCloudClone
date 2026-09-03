@@ -13,7 +13,7 @@ import type { InspectorStore } from "@rtc/devtools-core";
 
 import { InspectorApp } from "#/InspectorApp";
 
-export interface InspectorAppHandle {
+interface InspectorAppHandle {
   rerenderSame(): void;
 }
 

@@ -4,7 +4,7 @@ import type { DiffEntry } from "@rtc/devtools-core";
 
 import { DiffView } from "#/timeline/DiffView";
 
-export interface DiffViewProps {
+interface DiffViewProps {
   entries: DiffEntry[];
   noPrior: boolean;
 }

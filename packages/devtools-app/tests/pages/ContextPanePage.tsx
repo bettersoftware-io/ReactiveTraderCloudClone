@@ -32,7 +32,7 @@ interface SeedResult {
   present: InspectorState;
 }
 
-export interface ContextPaneHandle {
+interface ContextPaneHandle {
   readonly log: readonly LogRow[];
   pin(row: LogRow): void;
   resume(): void;
