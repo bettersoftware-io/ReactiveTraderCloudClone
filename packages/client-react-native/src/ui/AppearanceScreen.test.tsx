@@ -1,10 +1,14 @@
 // packages/client-react-native/src/ui/AppearanceScreen.test.tsx
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { appearanceScreenPage } from "#tests/pages/AppearanceScreenPage";
 
 const page = appearanceScreenPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 // Three near-identical tests here used to assert the same press -> setSkin
 // binding separately (terminal, holo3d, neon) — the last was added without

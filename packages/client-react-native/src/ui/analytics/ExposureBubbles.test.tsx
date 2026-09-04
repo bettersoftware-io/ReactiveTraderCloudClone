@@ -1,10 +1,14 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
 import { exposureBubblesPage } from "#tests/pages/ExposureBubblesPage";
 
 const page = exposureBubblesPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 // EURUSD contributes to EUR (base) and USD (counter); USDJPY to USD and JPY.
 const POSITIONS: readonly CurrencyPairPosition[] = [

@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 import type { SkFont } from "@shopify/react-native-skia";
 
 import type { BubbleDrawEntry } from "#/ui/analytics/bubbleDrawModel";
@@ -6,6 +6,10 @@ import { ExposureBubble } from "#/ui/analytics/ExposureBubble";
 import { exposureBubblePage } from "#tests/pages/ExposureBubblePage";
 
 const page = exposureBubblePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const ENTRY: BubbleDrawEntry = {
   currency: "EUR",

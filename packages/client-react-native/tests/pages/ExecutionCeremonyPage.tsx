@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/ExecutionCeremonyPage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import type { TileExecutionState } from "@rtc/client-core";
@@ -20,6 +20,7 @@ export interface ExecutionCeremonyPage {
     state: TileExecutionState,
     direction: Direction | null,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   isEmpty(): boolean;
   hasText(text: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
@@ -27,22 +28,28 @@ export interface ExecutionCeremonyPage {
 
 /** The framework surface for `ExecutionCeremony.test.tsx`.
  *
- * `ExecutionCeremony` is `require()`d lazily inside each method rather than
- * imported at this module's top — mirrors `BlotterModulePage`'s identical
- * ordering trap: a static top-level import here would resolve
- * `ExecutionCeremony`'s own `expo-haptics`/`useShellMotionEnabled` imports
- * before the spec's `jest.mock("expo-haptics", ...)` factory is what the
- * module system resolves against, since a page module's own imports still
- * run in the spec's normal import order (`jest.mock()` is hoisted above
- * every `import`, not above a page's LAZY require calls). Mirrors the base
- * spec's own identical `require()` placement, one file scope over. */
+ * `ExecutionCeremony` is `require()`d lazily via `loadComponent()` — a
+ * single factory-scoped helper, called from both `mount()` and `rerender()`'s
+ * `tree()` builder, rather than a separate `require()` at each call site —
+ * instead of imported at this module's top. A static top-level import here
+ * would resolve `ExecutionCeremony`'s own `expo-haptics`/
+ * `useShellMotionEnabled` imports before the spec's `jest.mock("expo-haptics",
+ * ...)` factory is what the module system resolves against, since a page
+ * module's own imports still run in the spec's normal import order
+ * (`jest.mock()` is hoisted above every `import`, not above a page's LAZY
+ * require calls). Mirrors the base spec's own identical `require()`
+ * placement, one file scope over — jest's module registry caches the
+ * `require()`, so calling `loadComponent()` more than once costs nothing. */
 export function executionCeremonyPage(): ExecutionCeremonyPage {
+  function loadComponent(): typeof import("#/ui/rates/ticket/ExecutionCeremony") {
+    return require("#/ui/rates/ticket/ExecutionCeremony") as typeof import("#/ui/rates/ticket/ExecutionCeremony");
+  }
+
   function tree(
     state: TileExecutionState,
     direction: Direction | null,
   ): ReactElement {
-    const { ExecutionCeremony } =
-      require("#/ui/rates/ticket/ExecutionCeremony") as typeof import("#/ui/rates/ticket/ExecutionCeremony");
+    const { ExecutionCeremony } = loadComponent();
     return (
       <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
         <ExecutionCeremony state={state} direction={direction} />
@@ -57,8 +64,7 @@ export function executionCeremonyPage(): ExecutionCeremonyPage {
       state: TileExecutionState,
       direction: Direction | null,
     ): Promise<void> {
-      const { ExecutionCeremony } =
-        require("#/ui/rates/ticket/ExecutionCeremony") as typeof import("#/ui/rates/ticket/ExecutionCeremony");
+      const { ExecutionCeremony } = loadComponent();
 
       const result = await renderWithTheme(
         <ExecutionCeremony state={state} direction={direction} />,
@@ -74,6 +80,9 @@ export function executionCeremonyPage(): ExecutionCeremonyPage {
       }
 
       await rerenderFn(tree(state, direction));
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     isEmpty(): boolean {
       return screen.toJSON() === null;

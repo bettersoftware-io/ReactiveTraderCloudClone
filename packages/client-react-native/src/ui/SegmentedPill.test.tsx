@@ -1,10 +1,14 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { PillSegment } from "#/ui/SegmentedPill";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { segmentedPillPage } from "#tests/pages/SegmentedPillPage";
 
 const page = segmentedPillPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const SEGMENTS: readonly PillSegment<Key>[] = [
   { key: "a", label: "ALPHA", testID: "pill-alpha" },

@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/rates/ticket/TradeTicketSheet.test.tsx
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { CurrencyPair, Price } from "@rtc/domain";
 import { Direction, PriceMovementType } from "@rtc/domain";
@@ -32,6 +32,10 @@ const mockPrice: Price = {
 };
 
 const page = tradeTicketSheetPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const pair: CurrencyPair = {
   symbol: "EURUSD",

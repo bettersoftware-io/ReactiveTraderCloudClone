@@ -1,10 +1,14 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { PositionUpdates } from "@rtc/domain";
 
 import { analyticsScreenPage } from "#tests/pages/AnalyticsScreenPage";
 
 const page = analyticsScreenPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const DATA: PositionUpdates = {
   history: [

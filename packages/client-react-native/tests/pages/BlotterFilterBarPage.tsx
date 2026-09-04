@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/BlotterFilterBarPage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
 import { BlotterFilterBar } from "#/ui/blotter/BlotterFilterBar";
 import type { BlotterFilter } from "#/ui/blotter/blotterFilter";
@@ -17,6 +17,7 @@ export interface BlotterFilterBarPage {
     onSelect: (f: BlotterFilter) => void,
     summary: Summary,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   hasText(text: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
   pressText(text: string): Promise<void>;
@@ -37,6 +38,9 @@ export function blotterFilterBarPage(): BlotterFilterBarPage {
           summary={summary}
         />,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;

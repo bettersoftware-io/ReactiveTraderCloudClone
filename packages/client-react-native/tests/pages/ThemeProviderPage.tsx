@@ -1,10 +1,16 @@
 // packages/client-react-native/tests/pages/ThemeProviderPage.tsx
-import { render, screen } from "@testing-library/react-native";
+import {
+  cleanup,
+  type RenderResult,
+  render,
+  screen,
+} from "@testing-library/react-native";
 import { Text } from "react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { ThemeProvider } from "#/ui/theme/ThemeProvider";
+import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 
 function fakeViewModel(skin: string, mode: string): ViewModel {
@@ -22,12 +28,15 @@ export interface ThemeProviderPage {
   /** Mounts the probe under a `ThemeProvider`, fed by a fake `skin` × `mode`
    * preference pair. */
   mount(skin: string, mode: string): Promise<void>;
+  unmountAll(): Promise<void>;
   /** Mounts the probe with NO provider above it — the return value is the
    * render promise itself (not awaited here), so the caller can assert it
-   * rejects. */
-  mountBare(): Promise<unknown>;
-  bgTile(): unknown;
-  fontMono(): unknown;
+   * rejects. The spec only ever observes the REJECTED path (`useTheme`
+   * throws outside a provider); a resolved `RenderResult` is what RNTL's
+   * `render()` itself is typed to return. */
+  mountBare(): Promise<RenderResult>;
+  bgTile(): RnTheme["bgTile"];
+  fontMono(): RnTheme["fontMono"];
 }
 
 /** The framework surface for `ThemeProvider.test.tsx`. */
@@ -57,14 +66,18 @@ export function themeProviderPage(): ThemeProviderPage {
         </ViewModelProvider>,
       );
     },
-    mountBare(): Promise<unknown> {
+    async unmountAll(): Promise<void> {
+      await cleanup();
+    },
+    mountBare(): Promise<RenderResult> {
       return render(<Probe />);
     },
-    bgTile(): unknown {
-      return screen.getByTestId("probe").props.children;
+    bgTile(): RnTheme["bgTile"] {
+      return screen.getByTestId("probe").props.children as RnTheme["bgTile"];
     },
-    fontMono(): unknown {
-      return screen.getByTestId("probe-mono").props.children;
+    fontMono(): RnTheme["fontMono"] {
+      return screen.getByTestId("probe-mono").props
+        .children as RnTheme["fontMono"];
     },
   };
 }

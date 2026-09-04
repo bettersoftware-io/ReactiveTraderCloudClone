@@ -19,6 +19,7 @@ test("renders tiles and filters them", async () => {
   expect(page.exists("spot-tile-EURUSD")).toBe(false);
   expect(page.exists("spot-tile-USDJPY")).toBeTruthy();
   expect(page.exists("spot-tile-EURJPY")).toBeTruthy();
+  await page.unmountAll();
 });
 
 function pair(symbol: string): CurrencyPair {

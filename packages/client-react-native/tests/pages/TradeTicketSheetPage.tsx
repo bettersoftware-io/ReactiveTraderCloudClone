@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/TradeTicketSheetPage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import type { CurrencyPair } from "@rtc/domain";
@@ -18,25 +18,31 @@ export interface TradeTicketSheetPage {
    * wrapper is reapplied by hand each time, same as
    * `AppearanceOverlay.test.tsx`'s `wrapped()` helper). */
   rerender(pair: CurrencyPair, onClose: () => void): Promise<void>;
+  unmountAll(): Promise<void>;
   hasText(text: string): boolean;
   press(testId: string): Promise<void>;
 }
 
 /** The framework surface for `TradeTicketSheet.test.tsx`.
  *
- * `TradeTicketSheet` is `require()`d lazily inside each method rather than
- * imported at this module's top — mirrors `BlotterModulePage`'s identical
- * ordering trap: a static top-level import here would resolve
- * `TradeTicketSheet`'s own `@rtc/react-bindings`/
+ * `TradeTicketSheet` is `require()`d lazily via `loadComponent()` — a
+ * single factory-scoped helper, called from both `mount()` and `rerender()`'s
+ * `tree()` builder, rather than a separate `require()` at each call site —
+ * instead of imported at this module's top. A static top-level import here
+ * would resolve `TradeTicketSheet`'s own `@rtc/react-bindings`/
  * `#/ui/rates/ticket/sheetPresentation`/`useShellMotionEnabled` imports
  * before the spec's `mockExecute = jest.fn()` and friends exist, since a
  * page module's own imports still run in the spec's normal import order.
  * Mirrors the base spec's own identical `require()` placement, one file
- * scope over. */
+ * scope over — jest's module registry caches the `require()`, so calling
+ * `loadComponent()` more than once costs nothing. */
 export function tradeTicketSheetPage(): TradeTicketSheetPage {
+  function loadComponent(): typeof import("#/ui/rates/ticket/TradeTicketSheet") {
+    return require("#/ui/rates/ticket/TradeTicketSheet") as typeof import("#/ui/rates/ticket/TradeTicketSheet");
+  }
+
   function tree(pair: CurrencyPair, onClose: () => void): ReactElement {
-    const { TradeTicketSheet } =
-      require("#/ui/rates/ticket/TradeTicketSheet") as typeof import("#/ui/rates/ticket/TradeTicketSheet");
+    const { TradeTicketSheet } = loadComponent();
     return (
       <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
         <TradeTicketSheet pair={pair} onClose={onClose} />
@@ -48,8 +54,7 @@ export function tradeTicketSheetPage(): TradeTicketSheetPage {
 
   return {
     async mount(pair: CurrencyPair, onClose: () => void): Promise<void> {
-      const { TradeTicketSheet } =
-        require("#/ui/rates/ticket/TradeTicketSheet") as typeof import("#/ui/rates/ticket/TradeTicketSheet");
+      const { TradeTicketSheet } = loadComponent();
 
       const result = await renderWithTheme(
         <TradeTicketSheet pair={pair} onClose={onClose} />,
@@ -62,6 +67,9 @@ export function tradeTicketSheetPage(): TradeTicketSheetPage {
       }
 
       await rerenderFn(tree(pair, onClose));
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;

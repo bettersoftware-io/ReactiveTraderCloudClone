@@ -8,4 +8,5 @@ const page = harnessProbePage();
 test("RNTL renders an RN component and queries it", async () => {
   await page.mount("hello-rn-harness");
   expect(page.hasText("hello-rn-harness")).toBeTruthy();
+  await page.unmountAll();
 });

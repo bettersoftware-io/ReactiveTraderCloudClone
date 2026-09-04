@@ -1,10 +1,14 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import type { HistoricPosition } from "@rtc/domain";
 
 import { pnlChartPage } from "#tests/pages/PnlChartPage";
 
 const page = pnlChartPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("mounts for a normal history", async () => {
   await page.mount([h(0), h(10)]);

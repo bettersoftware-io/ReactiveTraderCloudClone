@@ -5,7 +5,8 @@
   "main": "expo-router/entry",
   "imports": {
     "#/*": "./src/*",
-    "#tests/*": "./tests/*"
+    "#tests/*": "./tests/*",
+    "#app/*": "./app/*"
   },
   "expo": {
     "install": {

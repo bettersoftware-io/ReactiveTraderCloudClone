@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/SpotTilePage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
 import type { CurrencyPair } from "@rtc/domain";
 
@@ -12,6 +12,7 @@ export interface SpotTilePage {
     onOpenTicket: (pair: CurrencyPair) => void,
     theme?: RnTheme,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasText(text: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
@@ -40,6 +41,9 @@ export function spotTilePage(): SpotTilePage {
         <SpotTile pair={pair} onOpenTicket={onOpenTicket} />,
         theme,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

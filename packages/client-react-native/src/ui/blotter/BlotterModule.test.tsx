@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
@@ -9,6 +9,10 @@ const mockNewTradeIds = jest.fn();
 const mockActivity = jest.fn();
 
 const page = blotterModulePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const DONE_TRADE: Trade = {
   tradeId: 1,

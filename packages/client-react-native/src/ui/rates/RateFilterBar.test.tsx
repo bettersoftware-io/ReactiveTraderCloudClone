@@ -14,4 +14,5 @@ test("renders every prototype filter and reports selection", async () => {
 
   await page.pressText("EUR");
   expect(onSelect).toHaveBeenCalledWith("EUR");
+  await page.unmountAll();
 });

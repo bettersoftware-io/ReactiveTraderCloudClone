@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/SegmentedPillPage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import { StyleSheet, type ViewStyle } from "react-native";
 
 import { type PillSegment, SegmentedPill } from "#/ui/SegmentedPill";
@@ -14,6 +14,7 @@ export interface SegmentedPillPage {
     variant: "subNav" | "sheetSegment" | "modePill",
     frameTestID?: string,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasText(text: string): boolean;
   hasTextContent(testId: string, text: string): boolean;
@@ -41,6 +42,9 @@ export function segmentedPillPage(): SegmentedPillPage {
           frameTestID={frameTestID}
         />,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

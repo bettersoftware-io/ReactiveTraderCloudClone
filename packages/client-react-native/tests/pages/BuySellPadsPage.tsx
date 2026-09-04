@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/BuySellPadsPage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
@@ -12,6 +12,7 @@ export interface BuySellPadsPage {
     price: Price,
     onExecute: (direction: Direction) => void,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   hasText(text: string): boolean;
   press(testId: string): Promise<void>;
 }
@@ -27,6 +28,9 @@ export function buySellPadsPage(): BuySellPadsPage {
       await renderWithTheme(
         <BuySellPads pair={pair} price={price} onExecute={onExecute} />,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;

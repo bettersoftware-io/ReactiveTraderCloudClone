@@ -440,15 +440,25 @@ export default tseslint.config(
   },
   {
     // client-react-native is migrated (Wave C of the page-object-isolation
-    // plan, batches 1-3): every co-located spec under
-    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under tests/pages/,
-    // so this package is held to error too — the plan's stated end state,
-    // all four packages named in it now enforced. `tests/visual/**` (the RN
-    // visual harness — the driver layer, same rationale as
-    // tests/ui/visual/** above) is excluded the same way the warn block
-    // ignores it, via the `src/**`-only scope: nothing under `tests/**`
-    // matches this block's `files` glob, error or otherwise.
-    files: ["packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}"],
+    // plan, batches 1-3 + the batch-3 fix round): every co-located spec
+    // under src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/pages/, and so do the two expo-router specs under
+    // app/**/*.{test,spec}.{ts,tsx} (app/_layout.test.tsx,
+    // app/(app)/_layout.test.tsx — migrated via the "#app/*" alias
+    // (package.json/tsconfig/jest/vitest, mirroring "#tests/*"), pages
+    // living under tests/pages/ same as every other page, never inside
+    // app/ itself (expo-router 57's route-context regex has no
+    // .test./.spec. exclusion, so a co-located page module there would
+    // register as an app route). This package is held to error too — the
+    // plan's stated end state, all four packages named in it now enforced,
+    // `src/**` AND `app/**` both covered. `tests/visual/**` (the RN visual
+    // harness — the driver layer, same rationale as tests/ui/visual/**
+    // above) stays excluded: nothing under `tests/**` matches this block's
+    // `files` globs, error or otherwise.
+    files: [
+      "packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react-native/app/**/*.{test,spec}.{ts,tsx}",
+    ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },

@@ -9,4 +9,5 @@ test("reports a boolean load state for the bundled fonts", async () => {
   // Promise<RenderHookResult>), unlike the React DOM Testing Library.
   await page.mount();
   expect(typeof page.value).toBe("boolean");
+  await page.unmountAll();
 });

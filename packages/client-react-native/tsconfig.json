@@ -6,7 +6,8 @@
     "jsx": "react-jsx",
     "paths": {
       "#/*": ["./src/*"],
-      "#tests/*": ["./tests/*"]
+      "#tests/*": ["./tests/*"],
+      "#app/*": ["./app/*"]
     }
   },
   // Do NOT re-add ".expo/types/**/*.ts" or "expo-env.d.ts" here, and do not

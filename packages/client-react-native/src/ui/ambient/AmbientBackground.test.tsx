@@ -6,6 +6,10 @@ import { ambientBackgroundPage } from "#tests/pages/AmbientBackgroundPage";
 
 const page = ambientBackgroundPage();
 
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("renders nothing when the animated-background preference is off (the mobile default)", async () => {
   await page.mount({ animatedBackground: false });
   expect(page.exists("ambient-background")).toBe(false);

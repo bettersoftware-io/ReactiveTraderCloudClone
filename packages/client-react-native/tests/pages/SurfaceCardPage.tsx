@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/SurfaceCardPage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
 import { SurfaceCard, type SurfaceCardProps } from "#/ui/SurfaceCard";
@@ -12,6 +12,7 @@ export interface SurfaceCardPage {
     testID: string,
     theme?: RnTheme,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
 }
 
@@ -29,6 +30,9 @@ export function surfaceCardPage(): SurfaceCardPage {
         </SurfaceCard>,
         theme,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

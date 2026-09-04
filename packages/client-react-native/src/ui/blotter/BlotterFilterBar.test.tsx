@@ -14,4 +14,5 @@ test("renders chips + summary and reports selection", async () => {
 
   await page.pressText("DONE");
   expect(onSelect).toHaveBeenCalledWith("DONE");
+  await page.unmountAll();
 });

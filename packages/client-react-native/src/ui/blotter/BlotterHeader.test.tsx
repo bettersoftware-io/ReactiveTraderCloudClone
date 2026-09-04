@@ -1,9 +1,13 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
 import { blotterHeaderPage } from "#tests/pages/BlotterHeaderPage";
 
 const page = blotterHeaderPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders all four column labels", async () => {
   await page.mount();

@@ -1,7 +1,8 @@
 // packages/client-react-native/tests/pages/AppRootPage.tsx
-import { render, screen } from "@testing-library/react-native";
+import { cleanup, render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
+import type { AuthStatus } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { AppRoot } from "#/app/AppRoot";
@@ -11,11 +12,17 @@ export interface AppRootPage {
    * render result so `unmount()` can be called on it afterwards. */
   mountChild(text: string): Promise<void>;
   hasText(text: string): boolean;
-  /** Unmounts the tree `mountChild` produced — the assertion under test is
-   * that this resolves without throwing/rejecting. */
-  unmount(): Promise<void>;
+  /** Unmounts the tree `mountChild` produced. Returns the real
+   * `RenderResult["unmount"]` promise (not an `await`-then-discard wrapper)
+   * — the spec asserts `resolves.toBeUndefined()` against this, which an
+   * `async unmount(): Promise<void> { await unmountTree(); }` shape would
+   * make unconditionally true (an `async` function that awaits and returns
+   * nothing always resolves to `undefined`, regardless of what the awaited
+   * call actually resolved to). */
+  unmount(): Promise<unknown>;
+  unmountAll(): Promise<void>;
   mountAuthProbe(): Promise<void>;
-  authStatus(): unknown;
+  authStatus(): AuthStatus;
 }
 
 /** The framework surface for `AppRoot.test.tsx`. Relies on the spec's own
@@ -37,12 +44,15 @@ export function appRootPage(): AppRootPage {
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;
     },
-    async unmount(): Promise<void> {
+    unmount(): Promise<unknown> {
       if (!unmountTree) {
         throw new Error("mountChild() must be called before unmount()");
       }
 
-      await unmountTree();
+      return unmountTree();
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     async mountAuthProbe(): Promise<void> {
       // Nested inside the factory body (not module scope) so the file has no
@@ -60,8 +70,8 @@ export function appRootPage(): AppRootPage {
         </AppRoot>,
       );
     },
-    authStatus(): unknown {
-      return screen.getByTestId("auth-status").props.children;
+    authStatus(): AuthStatus {
+      return screen.getByTestId("auth-status").props.children as AuthStatus;
     },
   };
 }

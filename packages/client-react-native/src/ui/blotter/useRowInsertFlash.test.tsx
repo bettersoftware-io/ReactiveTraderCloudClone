@@ -14,4 +14,5 @@ test("mounts and survives isNew and gating transitions", async () => {
   await page.rerender(true, true);
   await page.rerender(true, false);
   expect(page.hasText("row")).toBeTruthy();
+  await page.unmountAll();
 });

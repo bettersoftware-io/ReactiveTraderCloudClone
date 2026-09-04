@@ -12,4 +12,5 @@ test("mounts and survives value changes and gating", async () => {
   await page.rerender(1.086, true);
   await page.rerender(1.086, false);
   expect(page.hasText("flash")).toBeTruthy();
+  await page.unmountAll();
 });

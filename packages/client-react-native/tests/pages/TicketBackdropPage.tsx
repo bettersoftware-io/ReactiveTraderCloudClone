@@ -1,17 +1,19 @@
 // packages/client-react-native/tests/pages/TicketBackdropPage.tsx
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface TicketBackdropPage {
   mount(props: BottomSheetBackdropProps): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   press(testId: string): Promise<void>;
   /** The RAW (array-form) `style` prop off a testID — the base spec's own
    * `toContainEqual({ backgroundColor })`, which needs the array shape
    * rather than a flattened object. */
-  rawStyleOf(testId: string): unknown;
+  rawStyleOf(testId: string): StyleProp<ViewStyle>;
 }
 
 /** The framework surface for `TicketBackdrop.test.tsx`.
@@ -33,14 +35,17 @@ export function ticketBackdropPage(): TicketBackdropPage {
         require("#/ui/rates/ticket/TicketBackdrop") as typeof import("#/ui/rates/ticket/TicketBackdrop");
       await renderWithTheme(<TicketBackdrop {...props} />);
     },
+    async unmountAll(): Promise<void> {
+      await cleanup();
+    },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
     async press(testId: string): Promise<void> {
       await fireEvent.press(screen.getByTestId(testId));
     },
-    rawStyleOf(testId: string): unknown {
-      return screen.getByTestId(testId).props.style;
+    rawStyleOf(testId: string): StyleProp<ViewStyle> {
+      return screen.getByTestId(testId).props.style as StyleProp<ViewStyle>;
     },
   };
 }

@@ -1,8 +1,12 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { pnlValuePage } from "#tests/pages/PnlValuePage";
 
 const page = pnlValuePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 // The MOBILE prototype's headline (dc.html L975) is a grouped whole-dollar
 // figure — "+$29,672" — not the web design's thousands shorthand. RN rendered

@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
@@ -6,6 +6,10 @@ import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { pairPnlBarsPage } from "#tests/pages/PairPnlBarsPage";
 
 const page = pairPnlBarsPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const THEME: RnTheme = rnThemeTokens.holo.dark;
 

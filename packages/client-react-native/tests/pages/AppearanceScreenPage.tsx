@@ -1,5 +1,10 @@
 // packages/client-react-native/tests/pages/AppearanceScreenPage.tsx
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react-native";
 import { StyleSheet, type ViewStyle } from "react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -93,6 +98,7 @@ export interface AppearanceScreenPage {
     overrides?: AppearanceOverrides,
     onReplayBoot?: () => void,
   ): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasText(text: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
@@ -125,6 +131,9 @@ export function appearanceScreenPage(): AppearanceScreenPage {
           </ThemeContext.Provider>
         </ViewModelProvider>,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

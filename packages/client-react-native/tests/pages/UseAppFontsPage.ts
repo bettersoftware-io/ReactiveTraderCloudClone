@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/UseAppFontsPage.ts
-import { renderHook } from "@testing-library/react-native";
+import { cleanup, renderHook } from "@testing-library/react-native";
 
 import { useAppFonts } from "#/ui/theme/fonts";
 
@@ -9,6 +9,7 @@ interface HookResultBox<T> {
 
 export interface UseAppFontsPage {
   mount(): Promise<void>;
+  unmountAll(): Promise<void>;
   readonly value: boolean;
 }
 
@@ -33,6 +34,9 @@ export function appFontsPage(): UseAppFontsPage {
 
       const rendered = await renderHook(useProbe);
       result = rendered.result;
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     get value(): boolean {
       if (!result) {

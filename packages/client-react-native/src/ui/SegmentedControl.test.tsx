@@ -1,9 +1,13 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { Segment } from "#/ui/SegmentedControl";
 import { segmentedControlPage } from "#tests/pages/SegmentedControlPage";
 
 const page = segmentedControlPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const SEGMENTS: readonly Segment<Key>[] = [
   { key: "a", label: "ALPHA" },

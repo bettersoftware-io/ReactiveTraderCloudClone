@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
@@ -11,6 +11,10 @@ const mockMotion = jest.fn<() => boolean>(() => {
 });
 
 const page = tradeRowPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const DONE_TRADE: Trade = {
   tradeId: 42,
@@ -58,14 +62,14 @@ test("falls back to the trade date when no activity time was joined", async () =
 // without updating the mapping).
 test("paints a Done status with the positive accent colour", async () => {
   await page.mount(DONE_TRADE, false, undefined);
-  expect(page.styleOfText(TradeStatus.Done.toUpperCase()).color).toBe(
+  expect(page.textColorOf(TradeStatus.Done.toUpperCase())).toBe(
     rnThemeTokens.holo.dark.accentPositive,
   );
 });
 
 test("paints a Rejected status with the negative accent colour", async () => {
   await page.mount(REJECTED_TRADE, false, undefined);
-  expect(page.styleOfText(TradeStatus.Rejected.toUpperCase()).color).toBe(
+  expect(page.textColorOf(TradeStatus.Rejected.toUpperCase())).toBe(
     rnThemeTokens.holo.dark.accentNegative,
   );
 });

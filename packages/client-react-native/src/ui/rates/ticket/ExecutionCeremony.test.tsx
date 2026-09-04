@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { Trade } from "@rtc/domain";
 import { Direction, ExecutionStatus, TradeStatus } from "@rtc/domain";
@@ -8,6 +8,10 @@ import { executionCeremonyPage } from "#tests/pages/ExecutionCeremonyPage";
 const Haptics = require("expo-haptics") as MockedHaptics;
 
 const page = executionCeremonyPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("ready renders nothing", async () => {
   await page.mount({ status: "ready" }, null);

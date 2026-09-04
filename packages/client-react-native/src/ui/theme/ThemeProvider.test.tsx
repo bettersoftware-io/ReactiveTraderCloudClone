@@ -1,10 +1,14 @@
 // packages/client-react-native/src/ui/theme/ThemeProvider.test.tsx
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { themeProviderPage } from "#tests/pages/ThemeProviderPage";
 
 const page = themeProviderPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("provides the token cell for the resolved skin × mode", async () => {
   await page.mount("terminal", "light");

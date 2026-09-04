@@ -40,4 +40,5 @@ test("SELL uses bid → Sell, BUY uses ask → Buy", async () => {
   expect(onExecute).toHaveBeenCalledWith(Direction.Buy);
 
   expect(page.hasText("1.4")).toBeTruthy(); // spread pill
+  await page.unmountAll();
 });

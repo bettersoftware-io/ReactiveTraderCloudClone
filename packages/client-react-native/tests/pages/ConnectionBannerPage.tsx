@@ -1,5 +1,6 @@
 // packages/client-react-native/tests/pages/ConnectionBannerPage.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { cleanup, fireEvent, screen } from "@testing-library/react-native";
+import type { ViewStyle } from "react-native";
 
 import type { ConnectionStatus } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -8,7 +9,7 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 interface StyleEntryWithBackground {
-  backgroundColor: unknown;
+  backgroundColor: ViewStyle["backgroundColor"];
 }
 
 function hasBackgroundColor(entry: unknown): entry is StyleEntryWithBackground {
@@ -33,12 +34,13 @@ function fakeViewModel(
 
 export interface ConnectionBannerPage {
   mount(status: ConnectionStatus, reconnect?: () => void): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasText(text: string): boolean;
   pressText(text: string): Promise<void>;
   /** The dot's rendered style is `[staticDotStyle, { backgroundColor }]`;
    * finds the dynamic backgroundColor entry regardless of array position. */
-  dotColor(): unknown;
+  dotColor(): ViewStyle["backgroundColor"];
 }
 
 /** The framework surface for `ConnectionBanner.test.tsx`. */
@@ -56,6 +58,9 @@ export function connectionBannerPage(): ConnectionBannerPage {
         </ViewModelProvider>,
       );
     },
+    async unmountAll(): Promise<void> {
+      await cleanup();
+    },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
@@ -65,7 +70,7 @@ export function connectionBannerPage(): ConnectionBannerPage {
     async pressText(text: string): Promise<void> {
       await fireEvent.press(screen.getByText(text));
     },
-    dotColor(): unknown {
+    dotColor(): ViewStyle["backgroundColor"] {
       const style = screen.getByTestId("connection-dot").props.style as unknown;
       const styles = Array.isArray(style) ? style : [style];
       return styles.find(hasBackgroundColor)?.backgroundColor;

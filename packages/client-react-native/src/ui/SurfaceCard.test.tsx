@@ -1,9 +1,13 @@
-import { expect, test } from "@jest/globals";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { surfaceCardPage } from "#tests/pages/SurfaceCardPage";
 
 const page = surfaceCardPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders a gradient sheen for variant=tile on a 3d skin", async () => {
   await page.mount("tile", "c", rnThemeTokens.holo3d.dark);

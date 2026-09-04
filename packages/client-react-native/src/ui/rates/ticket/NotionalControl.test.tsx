@@ -1,8 +1,12 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { notionalControlPage } from "#tests/pages/NotionalControlPage";
 
 const page = notionalControlPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("steppers halve/double with a 250k floor", async () => {
   const n = makeNotional(1_000_000);

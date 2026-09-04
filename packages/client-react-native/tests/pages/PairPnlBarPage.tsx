@@ -1,10 +1,11 @@
 // packages/client-react-native/tests/pages/PairPnlBarPage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface PairPnlBarPage {
   mount(fraction: number, positive: boolean): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
 }
 
@@ -27,6 +28,9 @@ export function pairPnlBarPage(): PairPnlBarPage {
       await renderWithTheme(
         <PairPnlBar fraction={fraction} positive={positive} />,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

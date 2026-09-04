@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/UseRowInsertFlashPage.tsx
-import { render, screen } from "@testing-library/react-native";
+import { cleanup, render, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { Text } from "react-native";
 import Animated from "react-native-reanimated";
@@ -14,6 +14,7 @@ interface ProbeProps {
 export interface UseRowInsertFlashPage {
   mount(isNew: boolean, enabled: boolean): Promise<void>;
   rerender(isNew: boolean, enabled: boolean): Promise<void>;
+  unmountAll(): Promise<void>;
   hasText(text: string): boolean;
 }
 
@@ -65,6 +66,9 @@ export function rowInsertFlashPage(): UseRowInsertFlashPage {
       }
 
       await rerenderFn(probeTree({ isNew, enabled }));
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     hasText(text: string): boolean {
       return screen.queryByText(text) != null;

@@ -1,6 +1,6 @@
 // packages/client-react-native/src/ui/rates/ticket/TicketBackdrop.test.tsx
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 import type { SharedValue } from "react-native-reanimated";
 
 import { ticketBackdropPage } from "#tests/pages/TicketBackdropPage";
@@ -11,6 +11,10 @@ const mockClose = jest.fn();
 const mockLibraryBackdropProps: Record<string, unknown>[] = [];
 
 const page = ticketBackdropPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 // The props gorhom hands a `backdropComponent` (`BottomSheet.tsx`: an
 // `animatedIndex`, an `animatedPosition` and `StyleSheet.absoluteFill`). Only

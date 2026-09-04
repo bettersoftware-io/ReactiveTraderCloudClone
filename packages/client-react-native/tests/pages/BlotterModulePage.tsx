@@ -1,10 +1,16 @@
 // packages/client-react-native/tests/pages/BlotterModulePage.tsx
-import { fireEvent, screen, within } from "@testing-library/react-native";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  within,
+} from "@testing-library/react-native";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface BlotterModulePage {
   mount(): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   hasTextMatching(pattern: RegExp): boolean;
   /** Presses the text found inside a named container (e.g. the filter chip
@@ -39,6 +45,9 @@ export function blotterModulePage(): BlotterModulePage {
       const { BlotterModule } =
         require("#/ui/blotter/BlotterModule") as typeof import("#/ui/blotter/BlotterModule");
       await renderWithTheme(<BlotterModule />);
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

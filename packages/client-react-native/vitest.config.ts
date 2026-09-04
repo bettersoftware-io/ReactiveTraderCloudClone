@@ -16,6 +16,12 @@ export default defineConfig({
       // does (a missing entry here fails silently under vitest's resolver,
       // not loudly).
       "#tests/": `${path.resolve(__dirname, "tests")}/`,
+      // expo-router's `app/` tree (RootLayout/AppGroupLayout pages, wave C
+      // batch-3 fix round) — mirrors the "#/" alias above and the parallel
+      // jest/tsconfig/package.json entries. No `.test.ts` spec imports one
+      // yet, but the alias must exist before the first one does, per
+      // `#tests/`'s own precedent comment above.
+      "#app/": `${path.resolve(__dirname, "app")}/`,
     },
   },
   test: {

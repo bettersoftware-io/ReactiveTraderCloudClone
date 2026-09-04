@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { pairPnlBarPage } from "#tests/pages/PairPnlBarPage";
 
@@ -7,6 +7,10 @@ const mockMotion = jest.fn<() => boolean>(() => {
 });
 
 const page = pairPnlBarPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders a positive bar anchored to the right of the centre line", async () => {
   await page.mount(0.6, true);

@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/ExposureBubblePage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
@@ -38,6 +38,7 @@ export interface ExposureBubblePage {
    * props — the spec's own `bubble(overrides)` builder stays spec-side
    * (mirrors Wave A/C1's element-taking pages, e.g. `BootCanvasPage`). */
   mount(element: ReactElement): Promise<void>;
+  unmountAll(): Promise<void>;
   /** How many host elements of `type` the rendered tree contains. A bubble is
    * pure Skia, so no part of it carries a `testID` to query — the jest mock
    * renders each Skia primitive as a host element named after it, and
@@ -51,6 +52,9 @@ export function exposureBubblePage(): ExposureBubblePage {
   return {
     async mount(element: ReactElement): Promise<void> {
       await renderWithTheme(element);
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     countHosts(type: string): number {
       return countIn(screen.toJSON(), type);

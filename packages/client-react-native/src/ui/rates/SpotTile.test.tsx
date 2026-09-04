@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { PriceMovementType } from "@rtc/domain";
 
@@ -11,6 +11,10 @@ const mockMotion = jest.fn<() => boolean>(() => {
 });
 
 const page = spotTilePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const pair = {
   symbol: "EURUSD",

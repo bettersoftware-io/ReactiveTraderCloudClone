@@ -1,5 +1,5 @@
 // packages/client-react-native/tests/pages/AnalyticsScreenPage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
 
 import type { PositionUpdates } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -23,6 +23,7 @@ function fakeViewModel(
 
 export interface AnalyticsScreenPage {
   mount(data: PositionUpdates | null, stale: boolean): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   /** testIDs of every node matching `pattern`, in RENDER order — the base
    * spec's `getAllByTestId(pattern).map(n => n.props.testID)`, which exists
@@ -41,6 +42,9 @@ export function analyticsScreenPage(): AnalyticsScreenPage {
           <AnalyticsScreen />
         </ViewModelProvider>,
       );
+    },
+    async unmountAll(): Promise<void> {
+      await cleanup();
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;

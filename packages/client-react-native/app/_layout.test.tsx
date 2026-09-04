@@ -1,11 +1,13 @@
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
 
-import RootLayout from "./_layout";
+import { rootLayoutPage } from "#tests/pages/RootLayoutPage";
+
+const page = rootLayoutPage();
 
 test("minimal root renders a Slot inside the gesture-handler root", async () => {
-  await render(<RootLayout />);
-  expect(screen.getByTestId("router-slot")).toBeTruthy();
+  await page.mount();
+  expect(page.exists("router-slot")).toBeTruthy();
+  await page.unmountAll();
 });
 
 // `Slot` needs a router/navigation context to render its matched child. This

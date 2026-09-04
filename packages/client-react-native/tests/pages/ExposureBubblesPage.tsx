@@ -1,5 +1,6 @@
 // packages/client-react-native/tests/pages/ExposureBubblesPage.tsx
-import { screen } from "@testing-library/react-native";
+import { cleanup, screen } from "@testing-library/react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
@@ -8,11 +9,12 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 export interface ExposureBubblesPage {
   mount(positions: readonly CurrencyPairPosition[]): Promise<void>;
+  unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   /** The RAW (array-form) `style` prop off a testID — the base spec's own
    * `toContainEqual(expect.objectContaining({ height }))`, which needs the
    * array shape rather than a flattened object. */
-  rawStyleOf(testId: string): unknown;
+  rawStyleOf(testId: string): StyleProp<ViewStyle>;
 }
 
 /**
@@ -27,11 +29,14 @@ export function exposureBubblesPage(): ExposureBubblesPage {
     async mount(positions: readonly CurrencyPairPosition[]): Promise<void> {
       await renderWithTheme(<ExposureBubbles positions={positions} />);
     },
+    async unmountAll(): Promise<void> {
+      await cleanup();
+    },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
-    rawStyleOf(testId: string): unknown {
-      return screen.getByTestId(testId).props.style;
+    rawStyleOf(testId: string): StyleProp<ViewStyle> {
+      return screen.getByTestId(testId).props.style as StyleProp<ViewStyle>;
     },
   };
 }

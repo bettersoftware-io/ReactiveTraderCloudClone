@@ -1,4 +1,4 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { ConnectionStatus } from "@rtc/domain";
 
@@ -6,6 +6,10 @@ import { rnThemeTokens } from "#/ui/theme/tokens";
 import { connectionBannerPage } from "#tests/pages/ConnectionBannerPage";
 
 const page = connectionBannerPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders nothing when connected — the header dot carries that state", async () => {
   await page.mount(ConnectionStatus.CONNECTED);

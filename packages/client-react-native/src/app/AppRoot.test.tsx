@@ -1,8 +1,12 @@
-import { expect, jest, test } from "@jest/globals";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { appRootPage } from "#tests/pages/AppRootPage";
 
 const page = appRootPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 // The simulator branch owns no socket, so its `dispose` is a no-op — mounting
 // then unmounting exercises the effect's deferred-teardown path without any
