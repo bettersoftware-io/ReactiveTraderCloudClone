@@ -1,141 +1,106 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { Dealer, Quote } from "@rtc/domain";
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import { rnThemeTokens } from "#/ui/theme/tokens";
+import { quoteCardPage } from "#tests/pages/QuoteCardPage";
 
-import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
+const page = quoteCardPage();
 
-const DEALER: Dealer = { id: 7, name: "Bank A" };
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("shows the dealer name upper-cased and an unprefixed price", async () => {
-  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.getByTestId("quote-card-42")).toBeTruthy();
+  await page.mount({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(page.exists("quote-card-42")).toBe(true);
   // The design prints desks in caps (dc.html:243).
-  expect(screen.getByText("BANK A")).toBeTruthy();
-  expect(screen.getByText("99.00")).toBeTruthy();
+  expect(page.hasText("BANK A")).toBe(true);
+  expect(page.hasText("99.00")).toBe(true);
 });
 
 // These are bond prices per 100 of par, and the design prints them bare
 // (dc.html:2144). The `$` the first pass added was the deviation the Credit
 // fidelity comparison named.
 test("carries no currency prefix on the price", async () => {
-  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.queryByText("$99.00")).toBeNull();
+  await page.mount({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(page.hasText("$99.00")).toBe(false);
 });
 
 test("marks the best quote with the design's BEST tag", async () => {
-  await renderQuote({
+  await page.mount({
     state: { type: "pendingWithPrice", price: 99 },
     isBest: true,
   });
-  expect(screen.getByText("BANK A ◂ BEST")).toBeTruthy();
+  expect(page.hasText("BANK A ◂ BEST")).toBe(true);
 });
 
 // `won` is the settled card's counterpart of `isBest`: the row that actually
 // traded keeps the accent treatment once the race is over (dc.html:2151).
 test("marks an accepted quote WON, not BEST", async () => {
-  await renderQuote({ state: { type: "accepted", price: 99 } });
-  expect(screen.getByText("BANK A ◂ WON")).toBeTruthy();
+  await page.mount({ state: { type: "accepted", price: 99 } });
+  expect(page.hasText("BANK A ◂ WON")).toBe(true);
 });
 
 test("an ordinary quote carries no tag", async () => {
-  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.queryByText(/◂/)).toBeNull();
+  await page.mount({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(page.hasTextMatching(/◂/)).toBe(false);
 });
 
 test("Accept fires onAccept with the quote id for a priced pending quote", async () => {
   const onAccept = jest.fn<(id: number) => void>();
-  await renderQuote({
+  await page.mount({
     state: { type: "pendingWithPrice", price: 99 },
     acceptSlot: onAccept,
   });
-  void fireEvent.press(screen.getByTestId("quote-accept-42"));
+  await page.press("quote-accept-42");
   expect(onAccept).toHaveBeenCalledWith(42);
 });
 
 test("no Accept button without a price; the dealer reads AWAITING instead", async () => {
-  await renderQuote({ state: { type: "pendingWithoutPrice" } });
-  expect(screen.queryByTestId("quote-accept-42")).toBeNull();
-  expect(screen.getByText("AWAITING")).toBeTruthy();
+  await page.mount({ state: { type: "pendingWithoutPrice" } });
+  expect(page.exists("quote-accept-42")).toBe(false);
+  expect(page.hasText("AWAITING")).toBe(true);
 });
 
 test("no Accept button without an onAccept slot", async () => {
-  await renderQuote({
+  await page.mount({
     state: { type: "pendingWithPrice", price: 99 },
     acceptSlot: null,
   });
-  expect(screen.queryByTestId("quote-accept-42")).toBeNull();
+  expect(page.exists("quote-accept-42")).toBe(false);
 });
 
 test("the best quote haloes its ACCEPT button", async () => {
-  await renderQuote({
+  await page.mount({
     state: { type: "pendingWithPrice", price: 99 },
     isBest: true,
   });
-  expect(screen.getByTestId("accept-pulse")).toBeTruthy();
+  expect(page.exists("accept-pulse")).toBe(true);
 });
 
 test("a non-best quote gets no halo", async () => {
-  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.queryByTestId("accept-pulse")).toBeNull();
+  await page.mount({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(page.exists("accept-pulse")).toBe(false);
 });
 
 // dc.html:2152-2153 — only the best ACCEPT carries the accent → accent2 ramp;
 // every other one is a flat `chip` tint.
 test("only the best ACCEPT is filled with the gradient", async () => {
-  await renderQuote({
+  await page.mount({
     state: { type: "pendingWithPrice", price: 99 },
     isBest: true,
   });
-  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
+  expect(page.exists("cta-gradient")).toBe(true);
 });
 
 test("a non-best ACCEPT has no gradient fill", async () => {
-  await renderQuote({ state: { type: "pendingWithPrice", price: 99 } });
-  expect(screen.queryByTestId("cta-gradient")).toBeNull();
+  await page.mount({ state: { type: "pendingWithPrice", price: 99 } });
+  expect(page.exists("cta-gradient")).toBe(false);
 });
 
 test("renders no gradient tile surface even on a 3d skin (dense row, not a hero tile)", async () => {
-  await renderQuote(
+  await page.mount(
     { state: { type: "pendingWithPrice", price: 99 } },
     rnThemeTokens.holo3d.dark,
   );
-  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+  expect(page.exists("surface-sheen")).toBe(false);
 });
-
-interface RenderOptions {
-  readonly state: Quote["state"];
-  readonly isBest?: boolean;
-  /** `null` means "the card is given no accept slot at all" — distinct from
-   * omitting the key, which supplies a no-op one. A defaulted parameter cannot
-   * express that: passing `undefined` explicitly still triggers the default. */
-  readonly acceptSlot?: ((id: number) => void) | null;
-}
-
-const VIEW_MODEL = {
-  usePowerSaver: () => {
-    return { isFreeze: false };
-  },
-} as unknown as ViewModel;
-
-function noopAccept(): void {}
-
-function renderQuote(
-  { state, isBest = false, acceptSlot = noopAccept }: RenderOptions,
-  theme?: RnTheme,
-): Promise<unknown> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={VIEW_MODEL}>
-      <QuoteCard
-        quote={{ id: 42, rfqId: 1, dealerId: 7, state }}
-        dealer={DEALER}
-        isBest={isBest}
-        onAccept={acceptSlot ?? undefined}
-      />
-    </ViewModelProvider>,
-    theme,
-  );
-}

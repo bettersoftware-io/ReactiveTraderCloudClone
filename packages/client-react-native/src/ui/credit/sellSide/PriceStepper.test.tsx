@@ -1,29 +1,33 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { PriceStepper } from "#/ui/credit/sellSide/PriceStepper";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { priceStepperPage } from "#tests/pages/PriceStepperPage";
+
+const page = priceStepperPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("steps up by 0.05", async () => {
   const onChange = jest.fn<(next: number) => void>();
-  await renderWithTheme(<PriceStepper value={1.2} onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("price-stepper-up"));
+  await page.mount(1.2, onChange);
+  await page.press("price-stepper-up");
 
   expect(onChange).toHaveBeenCalledWith(1.25);
 });
 
 test("steps down by 0.05", async () => {
   const onChange = jest.fn<(next: number) => void>();
-  await renderWithTheme(<PriceStepper value={1.2} onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("price-stepper-down"));
+  await page.mount(1.2, onChange);
+  await page.press("price-stepper-down");
 
   expect(onChange).toHaveBeenCalledWith(1.15);
 });
 
 test("does not step below zero", async () => {
   const onChange = jest.fn<(next: number) => void>();
-  await renderWithTheme(<PriceStepper value={0.02} onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("price-stepper-down"));
+  await page.mount(0.02, onChange);
+  await page.press("price-stepper-down");
 
   expect(onChange).toHaveBeenCalledWith(0);
 });
@@ -32,15 +36,15 @@ test("does not step below zero", async () => {
 // place that must not leak that.
 test("keeps two decimals rather than float noise", async () => {
   const onChange = jest.fn<(next: number) => void>();
-  await renderWithTheme(<PriceStepper value={98.4} onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("price-stepper-up"));
+  await page.mount(98.4, onChange);
+  await page.press("price-stepper-up");
 
   expect(onChange).toHaveBeenCalledWith(98.45);
 });
 
 test("shows the current price to two decimals", async () => {
-  await renderWithTheme(<PriceStepper value={98.4} onChange={noop} />);
-  expect(screen.getByText("98.40")).toBeTruthy();
+  await page.mount(98.4, noop);
+  expect(page.hasText("98.40")).toBe(true);
 });
 
 function noop(): void {}

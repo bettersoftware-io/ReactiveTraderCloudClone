@@ -1,22 +1,24 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
-import { CreditNav } from "#/ui/credit/CreditNav";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { creditNavPage } from "#tests/pages/CreditNavPage";
+
+const page = creditNavPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the three sub-view segments with the design's labels", async () => {
-  await renderWithTheme(<CreditNav view="tiles" onChange={(): void => {}} />);
-  expect(screen.getByTestId("credit-nav")).toBeTruthy();
-  expect(screen.getByTestId("credit-tab-tiles")).toHaveTextContent("RFQS");
-  expect(screen.getByTestId("credit-tab-new-rfq")).toHaveTextContent("NEW RFQ");
-  expect(screen.getByTestId("credit-tab-sell-side")).toHaveTextContent(
-    "SELL-SIDE",
-  );
+  await page.mount("tiles", (): void => {});
+  expect(page.exists("credit-nav")).toBe(true);
+  expect(page.hasTextContent("credit-tab-tiles", "RFQS")).toBe(true);
+  expect(page.hasTextContent("credit-tab-new-rfq", "NEW RFQ")).toBe(true);
+  expect(page.hasTextContent("credit-tab-sell-side", "SELL-SIDE")).toBe(true);
 });
 
 test("pressing a segment reports the new view", async () => {
   const onChange = jest.fn<(v: string) => void>();
-  await renderWithTheme(<CreditNav view="tiles" onChange={onChange} />);
-  await fireEvent.press(screen.getByTestId("credit-tab-new-rfq"));
+  await page.mount("tiles", onChange);
+  await page.pressTab("new-rfq");
   expect(onChange).toHaveBeenCalledWith("new-rfq");
 });

@@ -1,12 +1,9 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { OrderTicketState } from "@rtc/client-core";
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
-import { OrderTicket } from "#/ui/equities/trade/OrderTicket";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { orderTicketPage } from "#tests/pages/OrderTicketPage";
 
 const editing: OrderTicketState = {
   phase: "editing",
@@ -14,32 +11,30 @@ const editing: OrderTicketState = {
   error: null,
 };
 
+const page = orderTicketPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("editing phase submits with the current side and symbol", async () => {
   const submit = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(editing, { submit })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket-submit")).toHaveTextContent(
-    "BUY 100 AAPL · MARKET",
-  );
-  await fireEvent.press(screen.getByTestId("order-ticket-submit"));
+  await page.mount(editing, { submit });
+  expect(
+    page.hasTextContent("order-ticket-submit", "BUY 100 AAPL · MARKET"),
+  ).toBe(true);
+  await page.press("order-ticket-submit");
   expect(submit).toHaveBeenCalledTimes(1);
 });
 
 test("quantity chips dispatch setQty and light the matching preset", async () => {
   const setQty = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(editing, { setQty })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket-qty-1000")).toHaveTextContent("1K");
-  expect(screen.getByTestId("order-ticket-qty-5000")).toHaveTextContent("5K");
-  expect(selected("order-ticket-qty-100")).toBe(true);
-  expect(selected("order-ticket-qty-500")).toBe(false);
-  await fireEvent.press(screen.getByTestId("order-ticket-qty-5000"));
+  await page.mount(editing, { setQty });
+  expect(page.hasTextContent("order-ticket-qty-1000", "1K")).toBe(true);
+  expect(page.hasTextContent("order-ticket-qty-5000", "5K")).toBe(true);
+  expect(page.selected("order-ticket-qty-100")).toBe(true);
+  expect(page.selected("order-ticket-qty-500")).toBe(false);
+  await page.press("order-ticket-qty-5000");
   expect(setQty).toHaveBeenCalledWith(5000);
 });
 
@@ -50,19 +45,18 @@ test("LMT shows the limit stepper seeded from the last price, stepping by a dime
     form: { symbol: "AAPL", side: "sell", type: "limit", qty: 1000 },
     error: null,
   };
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(limitEditing, { setLimitPrice })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket-limit")).toHaveTextContent("189.50");
-  await fireEvent.press(screen.getByTestId("order-ticket-limit-up"));
+  // `lastPrice` is the seed; every asserted number below is derived from it
+  // (the readout, and each step ± the stepper's 0.10 increment).
+  const lastPrice = 189.5;
+  await page.mount(limitEditing, { setLimitPrice }, lastPrice);
+  expect(page.hasTextContent("order-ticket-limit", "189.50")).toBe(true);
+  await page.press("order-ticket-limit-up");
   expect(setLimitPrice).toHaveBeenCalledWith(189.6);
-  await fireEvent.press(screen.getByTestId("order-ticket-limit-down"));
+  await page.press("order-ticket-limit-down");
   expect(setLimitPrice).toHaveBeenCalledWith(189.4);
-  expect(screen.getByTestId("order-ticket-submit")).toHaveTextContent(
-    "SELL 1K AAPL · @ 189.50",
-  );
+  expect(
+    page.hasTextContent("order-ticket-submit", "SELL 1K AAPL · @ 189.50"),
+  ).toBe(true);
 });
 
 test("a set limit price wins over the last price", async () => {
@@ -77,15 +71,11 @@ test("a set limit price wins over the last price", async () => {
     },
     error: null,
   };
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(limitEditing)}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket-limit")).toHaveTextContent("131.14");
-  expect(screen.getByTestId("order-ticket-submit")).toHaveTextContent(
-    "BUY 500 AAPL · @ 131.14",
-  );
+  await page.mount(limitEditing);
+  expect(page.hasTextContent("order-ticket-limit", "131.14")).toBe(true);
+  expect(
+    page.hasTextContent("order-ticket-submit", "BUY 500 AAPL · @ 131.14"),
+  ).toBe(true);
 });
 
 test("MKT hides the stepper and the CTA omits an unset quantity", async () => {
@@ -94,14 +84,10 @@ test("MKT hides the stepper and the CTA omits an unset quantity", async () => {
     form: { symbol: "AAPL", side: "buy", type: "market", qty: 0 },
     error: null,
   };
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(bare)}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.queryByTestId("order-ticket-limit")).toBeNull();
-  expect(screen.getByTestId("order-ticket-submit")).toHaveTextContent(
-    "BUY AAPL · MARKET",
+  await page.mount(bare);
+  expect(page.exists("order-ticket-limit")).toBe(false);
+  expect(page.hasTextContent("order-ticket-submit", "BUY AAPL · MARKET")).toBe(
+    true,
   );
 });
 
@@ -121,15 +107,9 @@ test("filled phase shows the fill summary and a reset control", async () => {
       createdAt: 0,
     },
   };
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(filled, { reset })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket")).toHaveTextContent("FILLED", {
-    exact: false,
-  });
-  await fireEvent.press(screen.getByTestId("order-ticket-reset"));
+  await page.mount(filled, { reset });
+  expect(page.containsTextContent("order-ticket", "FILLED")).toBe(true);
+  await page.press("order-ticket-reset");
   expect(reset).toHaveBeenCalledTimes(1);
 });
 
@@ -138,15 +118,10 @@ test("rejected phase surfaces the reason", async () => {
     phase: "rejected",
     reason: "Insufficient buying power",
   };
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(rejected)}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("order-ticket")).toHaveTextContent(
-    "Insufficient buying power",
-    { exact: false },
-  );
+  await page.mount(rejected);
+  expect(
+    page.containsTextContent("order-ticket", "Insufficient buying power"),
+  ).toBe(true);
 });
 
 // dc.html:2371 — the CTA is `linear-gradient(180deg, sideC, color-mix(in
@@ -154,12 +129,8 @@ test("rejected phase surfaces the reason", async () => {
 // the flat side-colour fallback.
 test("the submit CTA carries the side-colour ramp gradient", async () => {
   const submit = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(editing, { submit })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("cta-gradient")).toBeTruthy();
+  await page.mount(editing, { submit });
+  expect(page.exists("cta-gradient")).toBe(true);
 });
 
 // dc.html:385 — the design's order-ticket panel is a `--tile-bg` /
@@ -169,47 +140,13 @@ test("the submit CTA carries the side-colour ramp gradient", async () => {
 // disagrees.)
 test("renders the gradient tile surface on 3d skins", async () => {
   const submit = jest.fn();
-  await renderWithTheme(
-    <ViewModelProvider viewModel={vmWith(editing, { submit })}>
-      <OrderTicket symbol="AAPL" />
-    </ViewModelProvider>,
-    rnThemeTokens.holo3d.dark,
-  );
-  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+  await page.mount(editing, { submit }, undefined, rnThemeTokens.holo3d.dark);
+  expect(page.exists("surface-sheen")).toBe(true);
 });
 
-function vmWith(
-  state: OrderTicketState,
-  intents: Partial<Record<string, unknown>> = {},
-): ViewModel {
-  return {
-    useEquityQuote: () => {
-      return {
-        symbol: "AAPL",
-        bid: 0,
-        ask: 0,
-        last: 189.5,
-        changePct: 0.42,
-        timestamp: 0,
-      };
-    },
-    useOrderTicket: () => {
-      return {
-        state,
-        setSide: intents.setSide ?? (() => {}),
-        setType: intents.setType ?? (() => {}),
-        setQty: intents.setQty ?? (() => {}),
-        setLimitPrice: intents.setLimitPrice ?? (() => {}),
-        submit: intents.submit ?? (() => {}),
-        reset: intents.reset ?? (() => {}),
-      };
-    },
-  } as unknown as ViewModel;
-}
-
-// `vmWith` doesn't stub `usePowerSaver`, which `OrderCeremony`'s fill/reject
-// toast would otherwise call via `useShellMotionEnabled` on the filled/
-// rejected phases — mirrors TradeView.test.tsx / EquitiesScreen.test.tsx.
+// `page.mount()` doesn't stub `usePowerSaver`, which `OrderCeremony`'s
+// fill/reject toast would otherwise call via `useShellMotionEnabled` on the
+// filled/rejected phases — mirrors TradeView.test.tsx / EquitiesScreen.test.tsx.
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
     useShellMotionEnabled: () => {
@@ -217,10 +154,3 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
-
-function selected(testId: string): boolean {
-  const state = screen.getByTestId(testId).props.accessibilityState as
-    | { selected?: boolean }
-    | undefined;
-  return state?.selected === true;
-}

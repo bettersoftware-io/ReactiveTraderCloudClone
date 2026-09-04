@@ -1,23 +1,23 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
 import type { Candle } from "@rtc/domain";
 
-import { RowSparkline } from "#/ui/equities/markets/RowSparkline";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rowSparklinePage } from "#tests/pages/RowSparklinePage";
+
+const page = rowSparklinePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("draws a path once there are at least two closes", async () => {
-  await renderWithTheme(
-    <RowSparkline symbol="TSLA" positive candles={candles([1, 2, 3])} />,
-  );
-  expect(screen.getByTestId("eq-sparkline-TSLA")).toBeTruthy();
+  await page.mount("TSLA", candles([1, 2, 3]));
+  expect(page.exists("eq-sparkline-TSLA")).toBe(true);
 });
 
 test("renders nothing when there is not enough history to draw", async () => {
-  await renderWithTheme(
-    <RowSparkline symbol="TSLA" positive candles={candles([1])} />,
-  );
-  expect(screen.queryByTestId("eq-sparkline-TSLA")).toBeNull();
+  await page.mount("TSLA", candles([1]));
+  expect(page.exists("eq-sparkline-TSLA")).toBe(false);
 });
 
 function candles(closes: number[]): readonly Candle[] {

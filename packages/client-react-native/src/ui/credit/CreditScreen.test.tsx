@@ -1,86 +1,26 @@
-import { expect, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
-import type { Quote, Rfq } from "@rtc/domain";
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
+import { creditScreenPage } from "#tests/pages/CreditScreenPage";
 
-import { CreditScreen } from "#/ui/credit/CreditScreen";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+const page = creditScreenPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("shows the RFQ tiles sub-view by default", async () => {
-  await renderScreen();
-  expect(screen.getByTestId("credit-tiles-panel")).toBeTruthy();
+  await page.mount();
+  expect(page.exists("credit-tiles-panel")).toBe(true);
 });
 
 test("switching to New RFQ shows the create form", async () => {
-  await renderScreen();
-  await fireEvent.press(screen.getByTestId("credit-tab-new-rfq"));
-  expect(screen.getByTestId("new-rfq-form")).toBeTruthy();
+  await page.mount();
+  await page.pressTab("new-rfq");
+  expect(page.exists("new-rfq-form")).toBe(true);
 });
 
 test("switching to Sell Side shows the sell-side panel", async () => {
-  await renderScreen();
-  await fireEvent.press(screen.getByTestId("credit-tab-sell-side"));
-  expect(screen.getByTestId("sell-side-panel")).toBeTruthy();
+  await page.mount();
+  await page.pressTab("sell-side");
+  expect(page.exists("sell-side-panel")).toBe(true);
 });
-
-// A ViewModel covering every hook the three sub-views touch, all returning
-// empty collections so each renders its empty/idle state.
-function fakeViewModel(): ViewModel {
-  return {
-    useRfqs: () => {
-      return [] as readonly Rfq[];
-    },
-    useInstruments: () => {
-      return [];
-    },
-    useDealers: () => {
-      return [];
-    },
-    useAcceptQuote: () => {
-      return () => {
-        return Promise.resolve();
-      };
-    },
-    useQuotesForRfq: () => {
-      return [] as readonly Quote[];
-    },
-    useRfqCountdown: () => {
-      return 0;
-    },
-    useRfqSubmission: () => {
-      return {
-        state: { status: "editing" },
-        submit: () => {
-          return undefined;
-        },
-      };
-    },
-    useTicketSubmission: () => {
-      return {
-        state: { submitted: false },
-        submitPrice: () => {
-          return undefined;
-        },
-        pass: () => {
-          return undefined;
-        },
-      };
-    },
-    // The tiles cascade and countdown ring both gate on power-saver.
-    usePowerSaver: () => {
-      return { isFreeze: false };
-    },
-    useCreditRfqFilterPreference: () => {
-      return { filter: "live", setFilter: () => {} };
-    },
-  } as unknown as ViewModel;
-}
-
-function renderScreen(): Promise<unknown> {
-  return renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel()}>
-      <CreditScreen />
-    </ViewModelProvider>,
-  );
-}

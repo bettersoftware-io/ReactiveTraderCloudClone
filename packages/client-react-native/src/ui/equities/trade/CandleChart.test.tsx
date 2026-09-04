@@ -1,20 +1,24 @@
-import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { Candle } from "@rtc/domain";
 
-import { CandleChart } from "#/ui/equities/trade/CandleChart";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { candleChartPage } from "#tests/pages/CandleChartPage";
+
+const page = candleChartPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders the canvas once candles exist", async () => {
-  await renderWithTheme(<CandleChart candles={candles(3)} />);
-  expect(screen.getByTestId("eq-candle-chart")).toBeTruthy();
+  await page.mount(candles(3));
+  expect(page.exists("eq-candle-chart")).toBe(true);
 });
 
 test("shows an empty state instead of a blank canvas with no candles", async () => {
-  await renderWithTheme(<CandleChart candles={candles(0)} />);
-  expect(screen.getByTestId("eq-candle-empty")).toBeTruthy();
+  await page.mount(candles(0));
+  expect(page.exists("eq-candle-empty")).toBe(true);
 });
 
 // Recovered from the deleted PriceChart.test.tsx (this component's SVG
@@ -24,11 +28,8 @@ test("shows an empty state instead of a blank canvas with no candles", async () 
 // tile, which owns the gradient surface) so it never mounts a `SurfaceCard`,
 // sheen or otherwise — this asserts that stays true.
 test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
-  await renderWithTheme(
-    <CandleChart candles={candles(3)} />,
-    rnThemeTokens.holo3d.dark,
-  );
-  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+  await page.mount(candles(3), rnThemeTokens.holo3d.dark);
+  expect(page.exists("surface-sheen")).toBe(false);
 });
 
 function candles(n: number): readonly Candle[] {
