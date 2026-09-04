@@ -1,17 +1,16 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
 import { PriceMovementType } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { spotTilePage } from "#tests/pages/SpotTilePage";
 
 const mockUsePrice = jest.fn();
 const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-const { SpotTile } = require("./SpotTile") as typeof import("./SpotTile");
+const page = spotTilePage();
 
 const pair = {
   symbol: "EURUSD",
@@ -36,37 +35,34 @@ test("renders the ask pips and opens the ticket on tap", async () => {
     creationTimestamp: 0,
   });
   const onOpen = jest.fn();
-  await renderWithTheme(<SpotTile pair={pair} onOpenTicket={onOpen} />);
+  await page.mount(pair, onOpen);
 
-  expect(screen.getByText("EUR/USD")).toBeTruthy();
-  expect(screen.getByTestId("spot-tile-pips-EURUSD")).toBeTruthy(); // ask big digits
+  expect(page.hasText("EUR/USD")).toBeTruthy();
+  expect(page.exists("spot-tile-pips-EURUSD")).toBeTruthy(); // ask big digits
 
-  await fireEvent.press(screen.getByTestId("spot-tile-EURUSD"));
+  await page.press("spot-tile-EURUSD");
   expect(onOpen).toHaveBeenCalledWith(pair);
 });
 
 test("shows a loading state before the first price", async () => {
   mockUsePrice.mockReturnValue(null);
-  await renderWithTheme(<SpotTile pair={pair} onOpenTicket={jest.fn()} />);
-  expect(screen.getByText(/Loading/i)).toBeTruthy();
+  await page.mount(pair, jest.fn());
+  expect(page.hasTextMatching(/Loading/i)).toBeTruthy();
 });
 
 // dc.html:108 — the design's price tile is a full `--tile-bg` /
 // `--tile-shadow` surface, so 3d skins paint the vertical tile gradient.
 test("renders the gradient tile surface on 3d skins", async () => {
   mockUsePrice.mockReturnValue(null);
-  await renderWithTheme(
-    <SpotTile pair={pair} onOpenTicket={jest.fn()} />,
-    rnThemeTokens.holo3d.dark,
-  );
-  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+  await page.mount(pair, jest.fn(), rnThemeTokens.holo3d.dark);
+  expect(page.exists("surface-sheen")).toBeTruthy();
 });
 
 test("flat skins render no gradient tile surface", async () => {
   // renderWithTheme defaults to holo.dark (flat, `tileGradient: null`).
   mockUsePrice.mockReturnValue(null);
-  await renderWithTheme(<SpotTile pair={pair} onOpenTicket={jest.fn()} />);
-  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+  await page.mount(pair, jest.fn());
+  expect(page.exists("surface-sheen")).toBe(false);
 });
 
 jest.mock("@rtc/react-bindings", () => {

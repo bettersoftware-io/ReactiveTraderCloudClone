@@ -1,9 +1,10 @@
 import { expect, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
 
-import { MotionProbe } from "./MotionProbe";
+import { motionProbePage } from "#tests/pages/MotionProbePage";
+
+const page = motionProbePage();
 
 test("MotionProbe renders the reanimated + skia probe surface", async () => {
-  await render(<MotionProbe />);
-  expect(screen.getByTestId("motion-probe")).toBeTruthy();
+  await page.mount();
+  expect(page.exists("motion-probe")).toBeTruthy();
 });

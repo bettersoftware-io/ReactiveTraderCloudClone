@@ -1,33 +1,32 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { notionalControlPage } from "#tests/pages/NotionalControlPage";
 
-import { NotionalControl } from "./NotionalControl";
+const page = notionalControlPage();
 
 test("steppers halve/double with a 250k floor", async () => {
   const n = makeNotional(1_000_000);
-  await renderWithTheme(<NotionalControl notional={n} base="EUR" />);
+  await page.mount(n, "EUR");
 
-  await fireEvent.press(screen.getByTestId("notional-up"));
+  await page.press("notional-up");
   expect(n.change).toHaveBeenCalledWith("2000000");
 
   n.change.mockClear();
-  await fireEvent.press(screen.getByTestId("notional-down"));
+  await page.press("notional-down");
   expect(n.change).toHaveBeenCalledWith("500000");
 });
 
 test("does not go below the 250k floor", async () => {
   const n = makeNotional(250_000);
-  await renderWithTheme(<NotionalControl notional={n} base="EUR" />);
-  await fireEvent.press(screen.getByTestId("notional-down"));
+  await page.mount(n, "EUR");
+  await page.press("notional-down");
   expect(n.change).toHaveBeenCalledWith("250000");
 });
 
 test("quick chip sets the notional", async () => {
   const n = makeNotional(1_000_000);
-  await renderWithTheme(<NotionalControl notional={n} base="EUR" />);
-  await fireEvent.press(screen.getByText("5M"));
+  await page.mount(n, "EUR");
+  await page.pressText("5M");
   expect(n.change).toHaveBeenCalledWith("5000000");
 });
 
@@ -38,23 +37,21 @@ test("quick chip sets the notional", async () => {
 // every unselected chip carrying a `chip` fill the design has as transparent.
 // Asserted against the holo/dark cells `renderWithTheme` supplies by default.
 test("the selected size chip is accent-outlined and the rest are unfilled", async () => {
-  await renderWithTheme(
-    <NotionalControl notional={makeNotional(5_000_000)} base="EUR" />,
-  );
+  await page.mount(makeNotional(5_000_000), "EUR");
 
-  expect(screen.getByText("5M").parent?.props.style).toContainEqual({
+  expect(page.rawParentStyleOfText("5M")).toContainEqual({
     backgroundColor: "rgba(0,224,255,0.12)",
     borderColor: "#00e5ff",
   });
-  expect(screen.getByText("5M").props.style).toContainEqual({
+  expect(page.rawStyleOfText("5M")).toContainEqual({
     color: "#00e5ff",
   });
 
-  expect(screen.getByText("1M").parent?.props.style).toContainEqual({
+  expect(page.rawParentStyleOfText("1M")).toContainEqual({
     backgroundColor: "transparent",
     borderColor: "rgba(0,224,255,0.12)",
   });
-  expect(screen.getByText("1M").props.style).toContainEqual({
+  expect(page.rawStyleOfText("1M")).toContainEqual({
     color: "rgba(120,190,210,0.42)",
   });
 });

@@ -1,18 +1,17 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import type { RateFilter } from "#/ui/rates/ratesFilter";
+import { rateFilterBarPage } from "#tests/pages/RateFilterBarPage";
 
-import { RateFilterBar } from "./RateFilterBar";
-import type { RateFilter } from "./ratesFilter";
+const page = rateFilterBarPage();
 
 test("renders every prototype filter and reports selection", async () => {
   const onSelect = jest.fn<(f: RateFilter) => void>();
-  await renderWithTheme(<RateFilterBar selected="ALL" onSelect={onSelect} />);
+  await page.mount("ALL", onSelect);
 
-  expect(screen.getByText("ALL")).toBeTruthy();
-  expect(screen.getByText("JPY")).toBeTruthy();
+  expect(page.hasText("ALL")).toBeTruthy();
+  expect(page.hasText("JPY")).toBeTruthy();
 
-  await fireEvent.press(screen.getByText("EUR"));
+  await page.pressText("EUR");
   expect(onSelect).toHaveBeenCalledWith("EUR");
 });

@@ -1,10 +1,8 @@
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
 
-import { useViewModel } from "@rtc/react-bindings";
+import { appRootPage } from "#tests/pages/AppRootPage";
 
-import { AppRoot } from "#/app/AppRoot";
+const page = appRootPage();
 
 // The simulator branch owns no socket, so its `dispose` is a no-op — mounting
 // then unmounting exercises the effect's deferred-teardown path without any
@@ -13,13 +11,9 @@ import { AppRoot } from "#/app/AppRoot";
 // `ws.dispose()` can't be exercised here without a live connection; the sim
 // no-op unit test + buildNativePorts test + review cover it.
 test("mount then unmount of simulator AppRoot does not throw", async () => {
-  const view = await render(
-    <AppRoot simulator>
-      <Text>child</Text>
-    </AppRoot>,
-  );
-  expect(screen.getByText("child")).toBeTruthy();
-  await expect(view.unmount()).resolves.toBeUndefined();
+  await page.mountChild("child");
+  expect(page.hasText("child")).toBeTruthy();
+  await expect(page.unmount()).resolves.toBeUndefined();
 });
 
 // AppRoot no longer auto-logs-in on mount — the app is now gated behind
@@ -27,28 +21,9 @@ test("mount then unmount of simulator AppRoot does not throw", async () => {
 // no credential submitted and the auth presenter stays "unauthenticated"
 // until the operator signs in.
 test("does not auto-login on mount; auth state stays unauthenticated", async () => {
-  await renderAuthProbe();
-  expect(screen.getByTestId("auth-status").props.children).toBe(
-    "unauthenticated",
-  );
+  await page.mountAuthProbe();
+  expect(page.authStatus()).toBe("unauthenticated");
 });
-
-// Probe lives nested inside the helper (not at module scope) so the file has
-// no unexported top-level component — mirrors ThemeProvider.test.tsx and
-// satisfies Biome's useComponentExportOnlyModules.
-function renderAuthProbe(): Promise<unknown> {
-  function AuthProbe(): React.JSX.Element {
-    const { useAuth } = useViewModel();
-    const { state } = useAuth();
-    return <Text testID="auth-status">{state.status}</Text>;
-  }
-
-  return render(
-    <AppRoot simulator>
-      <AuthProbe />
-    </AppRoot>,
-  );
-}
 
 // AsyncStorage has no native module under jest, so importing the real one
 // throws at require time. Stub the two methods the preferences adapter uses

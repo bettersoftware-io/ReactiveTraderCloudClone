@@ -1,21 +1,16 @@
 import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import { StyleSheet, type TextStyle } from "react-native";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { tradeRowPage } from "#tests/pages/TradeRowPage";
 
 const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-// Required after the mocks below (SpotTile.test.tsx idiom) so
-// `useShellMotionEnabled` resolves to the mock, not the real
-// `useViewModel()`-backed hook.
-const { TradeRow } = require("./TradeRow") as typeof import("./TradeRow");
+const page = tradeRowPage();
 
 const DONE_TRADE: Trade = {
   tradeId: 42,
@@ -38,51 +33,41 @@ const REJECTED_TRADE: Trade = {
 };
 
 test("renders formatted pair, direction subline, notional, rate and status", async () => {
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time="09:15:22" />,
-  );
+  await page.mount(DONE_TRADE, false, "09:15:22");
 
-  expect(screen.getByTestId("trade-row-42")).toBeTruthy();
-  expect(screen.getByText("EUR/USD")).toBeTruthy();
-  expect(screen.getByText(`${Direction.Buy.toUpperCase()} · #42`)).toBeTruthy();
-  expect(screen.getByText("1,000,000")).toBeTruthy();
-  expect(screen.getByText("1.53818")).toBeTruthy();
-  expect(screen.getByText(TradeStatus.Done.toUpperCase())).toBeTruthy();
+  expect(page.exists("trade-row-42")).toBeTruthy();
+  expect(page.hasText("EUR/USD")).toBeTruthy();
+  expect(page.hasText(`${Direction.Buy.toUpperCase()} · #42`)).toBeTruthy();
+  expect(page.hasText("1,000,000")).toBeTruthy();
+  expect(page.hasText("1.53818")).toBeTruthy();
+  expect(page.hasText(TradeStatus.Done.toUpperCase())).toBeTruthy();
 });
 
 test("uses the joined activity time when given", async () => {
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time="09:15:22" />,
-  );
-  expect(screen.getByText("09:15:22")).toBeTruthy();
+  await page.mount(DONE_TRADE, false, "09:15:22");
+  expect(page.hasText("09:15:22")).toBeTruthy();
 });
 
 test("falls back to the trade date when no activity time was joined", async () => {
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time={undefined} />,
-  );
-  expect(screen.getByText("2026-07-01")).toBeTruthy();
+  await page.mount(DONE_TRADE, false, undefined);
+  expect(page.hasText("2026-07-01")).toBeTruthy();
 });
 
 // Discriminating colour checks: fails the moment status stops mapping to the
 // theme's accent tokens (e.g. Done/Rejected swapped, or a token renamed
 // without updating the mapping).
 test("paints a Done status with the positive accent colour", async () => {
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time={undefined} />,
+  await page.mount(DONE_TRADE, false, undefined);
+  expect(page.styleOfText(TradeStatus.Done.toUpperCase()).color).toBe(
+    rnThemeTokens.holo.dark.accentPositive,
   );
-  expect(
-    screen.getByText(TradeStatus.Done.toUpperCase()).props.style.color,
-  ).toBe(rnThemeTokens.holo.dark.accentPositive);
 });
 
 test("paints a Rejected status with the negative accent colour", async () => {
-  await renderWithTheme(
-    <TradeRow trade={REJECTED_TRADE} isNew={false} time={undefined} />,
+  await page.mount(REJECTED_TRADE, false, undefined);
+  expect(page.styleOfText(TradeStatus.Rejected.toUpperCase()).color).toBe(
+    rnThemeTokens.holo.dark.accentNegative,
   );
-  expect(
-    screen.getByText(TradeStatus.Rejected.toUpperCase()).props.style.color,
-  ).toBe(rnThemeTokens.holo.dark.accentNegative);
 });
 
 // Regression test for Important 1 (the insert flash permanently erasing
@@ -92,11 +77,9 @@ test("paints a Rejected status with the negative accent colour", async () => {
 test("renders an opaque row background with motion disabled", async () => {
   mockMotion.mockReturnValueOnce(false);
 
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time={undefined} />,
-  );
+  await page.mount(DONE_TRADE, false, undefined);
 
-  expect(screen.getByTestId("trade-row-42").props.style).toEqual(
+  expect(page.rawStyleOf("trade-row-42")).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         backgroundColor: rnThemeTokens.holo.dark.bgPrimary,
@@ -109,14 +92,10 @@ test("renders an opaque row background with motion disabled", async () => {
 // built by `labelStyle`. Both are pinned so the extraction cannot shift the
 // row's smallest type by a hair.
 test("direction subline and status pill keep the 8pt / 0.8-tracked mono recipe", async () => {
-  await renderWithTheme(
-    <TradeRow trade={DONE_TRADE} isNew={false} time="09:15:22" />,
-  );
+  await page.mount(DONE_TRADE, false, "09:15:22");
 
   for (const text of [`${Direction.Buy.toUpperCase()} · #42`, "DONE"]) {
-    const style = StyleSheet.flatten(
-      screen.getByText(text).props.style as TextStyle,
-    );
+    const style = page.styleOfText(text);
 
     expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO);
     expect(style.fontSize).toBe(8);

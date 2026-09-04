@@ -1,26 +1,24 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
 import type { CurrencyPair } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { ratesModulePage } from "#tests/pages/RatesModulePage";
 
 const mockPairs = jest.fn();
 
-const { RatesModule } =
-  require("./RatesModule") as typeof import("./RatesModule");
+const page = ratesModulePage();
 
 test("renders tiles and filters them", async () => {
   mockPairs.mockReturnValue([pair("EURUSD"), pair("USDJPY"), pair("EURJPY")]);
-  await renderWithTheme(<RatesModule />);
+  await page.mount();
 
-  expect(screen.getByTestId("spot-tile-EURUSD")).toBeTruthy();
-  expect(screen.getByTestId("spot-tile-USDJPY")).toBeTruthy();
+  expect(page.exists("spot-tile-EURUSD")).toBeTruthy();
+  expect(page.exists("spot-tile-USDJPY")).toBeTruthy();
 
-  await fireEvent.press(screen.getByText("JPY"));
-  expect(screen.queryByTestId("spot-tile-EURUSD")).toBeNull();
-  expect(screen.getByTestId("spot-tile-USDJPY")).toBeTruthy();
-  expect(screen.getByTestId("spot-tile-EURJPY")).toBeTruthy();
+  await page.pressText("JPY");
+  expect(page.exists("spot-tile-EURUSD")).toBe(false);
+  expect(page.exists("spot-tile-USDJPY")).toBeTruthy();
+  expect(page.exists("spot-tile-EURJPY")).toBeTruthy();
 });
 
 function pair(symbol: string): CurrencyPair {

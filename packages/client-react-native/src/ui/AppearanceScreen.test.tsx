@@ -1,13 +1,10 @@
 // packages/client-react-native/src/ui/AppearanceScreen.test.tsx
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import { StyleSheet, type ViewStyle } from "react-native";
 
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
-
-import { AppearanceScreen } from "#/ui/AppearanceScreen";
-import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { appearanceScreenPage } from "#tests/pages/AppearanceScreenPage";
+
+const page = appearanceScreenPage();
 
 // Three near-identical tests here used to assert the same press -> setSkin
 // binding separately (terminal, holo3d, neon) — the last was added without
@@ -21,8 +18,8 @@ test.each<[string, string]>([
   ["neon", "appearance-skin-neon"],
 ])("pressing the %s card calls setSkin with it", async (skin, testId) => {
   const setSkin = jest.fn();
-  await renderScreen(fakeViewModel(() => {}, setSkin));
-  await fireEvent.press(screen.getByTestId(testId));
+  await page.mount(() => {}, setSkin);
+  await page.press(testId);
   expect(setSkin).toHaveBeenCalledWith(skin);
 });
 
@@ -32,23 +29,19 @@ test.each<[string, string]>([
 // "renders all six skins" order test below, which only asserts the six
 // LABEL nodes.
 test("renders the terminal3d skin card", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.getByTestId("appearance-skin-terminal3d")).toBeTruthy();
+  expect(page.exists("appearance-skin-terminal3d")).toBeTruthy();
 });
 
 test("marks the active skin selected", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.getByTestId("appearance-skin-holo-active")).toBeTruthy();
+  expect(page.exists("appearance-skin-holo-active")).toBeTruthy();
 });
 
 // The domain's storage order is alphabetical-ish (classic first); the design
@@ -56,18 +49,12 @@ test("marks the active skin selected", async () => {
 // asserts the VIEW order (SKIN_DISPLAY_ORDER), not the domain's, and would
 // catch a regression back to iterating THEME_SKINS directly.
 test("renders all six skins as cards in the design's order", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  const labels = screen.getAllByTestId(/^appearance-skin-.*-label$/);
-  expect(
-    labels.map((n) => {
-      return n.props.children;
-    }),
-  ).toEqual([
+  const labels = page.labelsMatching(/^appearance-skin-.*-label$/);
+  expect(labels).toEqual([
     "HOLO HUD",
     "HOLO 3D",
     "TERMINAL",
@@ -78,13 +65,11 @@ test("renders all six skins as cards in the design's order", async () => {
 });
 
 test("each card shows three swatches", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.getAllByTestId("appearance-skin-holo-swatch")).toHaveLength(3);
+  expect(page.stylesOf("appearance-skin-holo-swatch")).toHaveLength(3);
 });
 
 // A count of three proves the swatches exist, not that they carry the right
@@ -92,15 +77,12 @@ test("each card shows three swatches", async () => {
 // test above. This pins the three swatches to the three distinct semantic
 // accent tokens, in order, for the fixed "dark" mode the stub reports.
 test("the three swatches are the three distinct semantic accent tokens, not copies of one", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  const swatches = screen.getAllByTestId("appearance-skin-holo-swatch");
-  const colors = swatches.map((n) => {
-    return StyleSheet.flatten(n.props.style as ViewStyle).backgroundColor;
+  const colors = page.stylesOf("appearance-skin-holo-swatch").map((style) => {
+    return style.backgroundColor;
   });
   const holoDark = rnThemeTokens.holo.dark;
   expect(colors).toEqual([
@@ -131,11 +113,9 @@ test("the three swatches are the three distinct semantic accent tokens, not copi
 // smallest iPhone the App Store has ever shipped (iPhone 5/SE 1st gen), used
 // as the conservative floor.
 test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; not stated in the repo)", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
   const MIN_SUPPORTED_DEVICE_WIDTH = 320;
   // This file's content container padding (AppearanceScreen.tsx `content:
@@ -146,12 +126,10 @@ test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; 
   // silently assumed; a change to that padding value must update this too.
   const CONTENT_HORIZONTAL_PADDING = 16;
 
-  const grid = screen.getByTestId("appearance-skin-grid");
-  const gap = StyleSheet.flatten(grid.props.style as ViewStyle).gap;
+  const gap = page.styleOf("appearance-skin-grid").gap;
   expect(typeof gap).toBe("number");
 
-  const cell = screen.getByTestId("appearance-skin-holo-cell");
-  const width = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const width = page.styleOf("appearance-skin-holo-cell").width;
   const cardWidthFraction = parsePercent(width) / 100;
 
   // Wrap condition: 3 * cardWidthFraction * C + 2 * gap > C, where C is the
@@ -183,11 +161,9 @@ test("the skin grid keeps real no-wrap margin on a 320pt device (assumed floor; 
 // this test derives the real floor from live rendered styles, the same way
 // the grid-wrap test above does, rather than trusting the constants.
 test("the skin card's inner content width keeps real margin over its swatch row's intrinsic width on a 320pt device", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
   const MIN_SUPPORTED_DEVICE_WIDTH = 320;
   // Same named constant, same reason it can't be read off a queried node, as
@@ -195,8 +171,7 @@ test("the skin card's inner content width keeps real margin over its swatch row'
   // ... }`).
   const CONTENT_HORIZONTAL_PADDING = 16;
 
-  const cell = screen.getByTestId("appearance-skin-neon-cell");
-  const cellWidth = StyleSheet.flatten(cell.props.style as ViewStyle).width;
+  const cellWidth = page.styleOf("appearance-skin-neon-cell").width;
   const cardWidthFraction = parsePercent(cellWidth) / 100;
 
   // "neon" is never the stub's active skin (default is "holo"), so this is
@@ -204,16 +179,13 @@ test("the skin card's inner content width keeps real margin over its swatch row'
   // same padding and border width, so either would do, but only one needs
   // querying. The border counts: at `borderWidth: 1.5` it eats 3pt of the
   // card's inner width on top of the padding.
-  const card = StyleSheet.flatten(
-    screen.getByTestId("appearance-skin-neon").props.style as ViewStyle,
-  );
+  const card = page.styleOf("appearance-skin-neon");
   const cardPadding = card.paddingHorizontal as number;
   expect(typeof cardPadding).toBe("number");
   const cardBorder = card.borderWidth as number;
   expect(typeof cardBorder).toBe("number");
 
-  const swatchRow = screen.getByTestId("appearance-skin-neon-swatch-row");
-  const swatchGap = StyleSheet.flatten(swatchRow.props.style as ViewStyle)
+  const swatchGap = page.styleOf("appearance-skin-neon-swatch-row")
     .gap as number;
   expect(typeof swatchGap).toBe("number");
 
@@ -222,12 +194,11 @@ test("the skin card's inner content width keeps real margin over its swatch row'
   // rather than multiplying the first one by three — that shortcut would
   // over-report the row by 16pt and hide a real overflow behind a false
   // margin.
-  const swatchWidths = screen
-    .getAllByTestId("appearance-skin-neon-swatch")
-    .map((node) => {
-      const width = StyleSheet.flatten(node.props.style as ViewStyle).width;
-      expect(typeof width).toBe("number");
-      return width as number;
+  const swatchWidths = page
+    .stylesOf("appearance-skin-neon-swatch")
+    .map((style) => {
+      expect(typeof style.width).toBe("number");
+      return style.width as number;
     });
 
   const swatchRowWidth =
@@ -255,45 +226,41 @@ test("the skin card's inner content width keeps real margin over its swatch row'
 
 test("shows an ambient toggle wired to useAnimatedBackground", async () => {
   const setEnabled = jest.fn();
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      { ambient: { enabled: false, setEnabled, toggle: () => {} } },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    { ambient: { enabled: false, setEnabled, toggle: () => {} } },
   );
-  await fireEvent.press(screen.getByTestId("appearance-ambient-toggle"));
+  await page.press("appearance-ambient-toggle");
   expect(setEnabled).toHaveBeenCalledWith(true);
 });
 
 test("shows a three-level power-saver control wired to usePowerSaver", async () => {
   const setLevel = jest.fn();
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      {
-        powerSaver: {
-          level: "off",
-          isCalm: false,
-          isFreeze: false,
-          setLevel,
-          cycle: () => {},
-        },
+  await page.mount(
+    () => {},
+    () => {},
+    {
+      powerSaver: {
+        level: "off",
+        isCalm: false,
+        isFreeze: false,
+        setLevel,
+        cycle: () => {},
       },
-    ),
+    },
   );
   // P5: three segments now, not an on/off toggle. Freeze is the one worth
   // asserting — it is the level the old 2-state control could never reach, so
   // a regression to a boolean toggle fails here rather than silently shipping
   // a screen that cannot express the strongest setting.
-  await fireEvent.press(screen.getByTestId("appearance-power-freeze"));
+  await page.press("appearance-power-freeze");
   expect(setLevel).toHaveBeenCalledWith("freeze");
 
-  await fireEvent.press(screen.getByTestId("appearance-power-calm"));
+  await page.press("appearance-power-calm");
   expect(setLevel).toHaveBeenCalledWith("calm");
 
-  await fireEvent.press(screen.getByTestId("appearance-power-off"));
+  await page.press("appearance-power-off");
   expect(setLevel).toHaveBeenCalledWith("off");
 });
 
@@ -305,25 +272,21 @@ test("shows a three-level power-saver control wired to usePowerSaver", async () 
 // DIRECTION / YOUR QUOTES), and this is one of the app-only sections below
 // the design's own rows.
 test("the power-saver control is labelled 'POWER SAVER'", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.getByText("POWER SAVER")).toBeTruthy();
+  expect(page.hasText("POWER SAVER")).toBeTruthy();
 });
 
 test("the power-saver caption tracks the selected level", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
   // The stub reports level "off", so the caption must be the off one — a
   // fixed caption would read as a promise the screen is not keeping.
-  expect(screen.getByText(/run normally/i)).toBeTruthy();
+  expect(page.hasTextMatching(/run normally/i)).toBeTruthy();
 });
 
 test("the 3-way mode segment presses light and drives cycle() the right number of steps from the live preference", async () => {
@@ -334,37 +297,33 @@ test("the 3-way mode segment presses light and drives cycle() the right number o
   // real presenter resolves against the true live state (dark→light→system).
   // From "system", reaching "light" is two steps: system→dark→light.
   const cycle = jest.fn();
-  await renderScreen(fakeViewModel(cycle, () => {}));
-  await fireEvent.press(screen.getByTestId("appearance-mode-light"));
+  await page.mount(cycle, () => {});
+  await page.press("appearance-mode-light");
   expect(cycle).toHaveBeenCalledTimes(2);
 });
 
 test("the 3-way mode segment presses dark and drives cycle() the right number of steps from the live preference", async () => {
   // From "system", reaching "dark" is one step: system→dark.
   const cycle = jest.fn();
-  await renderScreen(fakeViewModel(cycle, () => {}));
-  await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
+  await page.mount(cycle, () => {});
+  await page.press("appearance-mode-dark");
   expect(cycle).toHaveBeenCalledTimes(1);
 });
 
 test("selecting System advances the cycle the right number of times", async () => {
   // starts at "dark"; dark -> light -> system is 2 cycles
   const cycle = jest.fn();
-  await renderScreen(
-    fakeViewModel(cycle, () => {}, { modePreference: "dark" }),
-  );
-  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  await page.mount(cycle, () => {}, { modePreference: "dark" });
+  await page.press("appearance-mode-system");
   expect(cycle).toHaveBeenCalledTimes(2);
 });
 
 test("the redundant tap-to-change row is gone", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.queryByTestId("appearance-mode")).toBeNull();
+  expect(page.exists("appearance-mode")).toBe(false);
 });
 
 // The zero-cycle case matters most: an off-by-one in cyclesToReach would make
@@ -373,20 +332,16 @@ test("the redundant tap-to-change row is gone", async () => {
 // this file presses a DIFFERENT cell than the live preference.
 test("pressing the already-active mode cell drives cycle() zero times", async () => {
   const cycle = jest.fn();
-  await renderScreen(
-    fakeViewModel(cycle, () => {}, { modePreference: "system" }),
-  );
-  await fireEvent.press(screen.getByTestId("appearance-mode-system"));
+  await page.mount(cycle, () => {}, { modePreference: "system" });
+  await page.press("appearance-mode-system");
   expect(cycle).toHaveBeenCalledTimes(0);
 });
 
 test("segmented control presses dark from light and drives cycle() the right number of steps", async () => {
   // From "light", reaching "dark" is two steps: light→system→dark.
   const cycle = jest.fn();
-  await renderScreen(
-    fakeViewModel(cycle, () => {}, { modePreference: "light" }),
-  );
-  await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
+  await page.mount(cycle, () => {}, { modePreference: "light" });
+  await page.press("appearance-mode-dark");
   expect(cycle).toHaveBeenCalledTimes(2);
 });
 
@@ -401,20 +356,15 @@ test("segmented control presses dark from light and drives cycle() the right num
 // be pushed off the edge. `ThemeModePill.test.tsx` owns the other half (the
 // cells are intrinsic, never `flex: 1`, which would shove the title out).
 test("the mode pill shares the title's row, and the title is what gives way", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
 
-  const header = screen.getByTestId("appearance-mode-section");
-  expect(flattenFlexDirection(header.props.style)).toBe("row");
-  expect(screen.getByTestId("appearance-mode-pill")).toBeTruthy();
+  expect(page.styleOf("appearance-mode-section").flexDirection).toBe("row");
+  expect(page.exists("appearance-mode-pill")).toBeTruthy();
 
-  const title = StyleSheet.flatten(
-    screen.getByText("APPEARANCE").props.style as ViewStyle,
-  );
+  const title = page.styleOfText("APPEARANCE");
   expect(title.flexShrink).toBe(1);
 });
 
@@ -423,12 +373,10 @@ test("the mode pill shares the title's row, and the title is what gives way", as
 // `flex: 1` cells divide the row equally and are safe by construction at any
 // width, with no wrap or clip threshold to cross silently.
 test("the sheet's full-width segment cells are flex:1", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      { ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} } },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    { ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} } },
   );
 
   for (const testId of [
@@ -438,7 +386,7 @@ test("the sheet's full-width segment cells are flex:1", async () => {
     "appearance-ambient-style-aurora",
     "appearance-ambient-style-rays",
   ]) {
-    expect(flattenFlex(screen.getByTestId(testId).props.style)).toBe(1);
+    expect(page.styleOf(testId).flex).toBe(1);
   }
 });
 
@@ -449,20 +397,13 @@ test("the sheet's full-width segment cells are flex:1", async () => {
 // order/count/press test in this file while making the grid a row of
 // identical grey boxes.
 test("each theme card previews its own skin's background, not the live theme's", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
 
-  const neon = StyleSheet.flatten(
-    screen.getByTestId("appearance-skin-neon").props.style as ViewStyle,
-  );
-
-  const terminal = StyleSheet.flatten(
-    screen.getByTestId("appearance-skin-terminal").props.style as ViewStyle,
-  );
+  const neon = page.styleOf("appearance-skin-neon");
+  const terminal = page.styleOf("appearance-skin-terminal");
 
   expect(neon.backgroundColor).toBe(rnThemeTokens.neon.dark.bgPrimary);
   expect(terminal.backgroundColor).toBe(rnThemeTokens.terminal.dark.bgPrimary);
@@ -476,43 +417,37 @@ test("each theme card previews its own skin's background, not the live theme's",
 // alongside the paired "shown" test below proving the SAME id resolves once
 // ambient is on.
 test("ambient style picker is HIDDEN when ambient is off", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      { ambient: { enabled: false, setEnabled: () => {}, toggle: () => {} } },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    { ambient: { enabled: false, setEnabled: () => {}, toggle: () => {} } },
   );
-  expect(screen.queryByTestId("appearance-ambient-style")).toBeNull();
+  expect(page.exists("appearance-ambient-style")).toBe(false);
 });
 
 test("ambient style picker is SHOWN and selectable when ambient is on", async () => {
   const setStyle = jest.fn();
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      {
-        ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} },
-        ambientStyle: { style: "aurora", setStyle },
-      },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    {
+      ambient: { enabled: true, setEnabled: () => {}, toggle: () => {} },
+      ambientStyle: { style: "aurora", setStyle },
+    },
   );
-  expect(screen.getByTestId("appearance-ambient-style")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("appearance-ambient-style-rays"));
+  expect(page.exists("appearance-ambient-style")).toBeTruthy();
+  await page.press("appearance-ambient-style-rays");
   expect(setStyle).toHaveBeenCalledWith("rays");
 });
 
 test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async () => {
   const reboot = jest.fn();
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      { reboot },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    { reboot },
   );
-  await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
+  await page.press("appearance-replay-boot");
   expect(reboot).toHaveBeenCalledTimes(1);
 });
 
@@ -533,20 +468,13 @@ test("replay boot reboots then notifies onReplayBoot, in that order", async () =
   const onReplayBoot = jest.fn(() => {
     calls.push("onReplayBoot");
   });
-  await render(
-    <ViewModelProvider
-      viewModel={fakeViewModel(
-        () => {},
-        () => {},
-        { reboot },
-      )}
-    >
-      <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-        <AppearanceScreen onReplayBoot={onReplayBoot} />
-      </ThemeContext.Provider>
-    </ViewModelProvider>,
+  await page.mount(
+    () => {},
+    () => {},
+    { reboot },
+    onReplayBoot,
   );
-  await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
+  await page.press("appearance-replay-boot");
   expect(reboot).toHaveBeenCalledTimes(1);
   expect(onReplayBoot).toHaveBeenCalledTimes(1);
   expect(calls).toEqual(["reboot", "onReplayBoot"]);
@@ -559,13 +487,11 @@ test("replay boot reboots then notifies onReplayBoot, in that order", async () =
 // asserts the exact string, not a substring or regex that a mangled glyph
 // could still satisfy.
 test("replay boot button is labelled with the literal ▸ glyph, verbatim", async () => {
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-    ),
+  await page.mount(
+    () => {},
+    () => {},
   );
-  expect(screen.getByText("▸ REPLAY BOOT SEQUENCE")).toBeTruthy();
+  expect(page.hasText("▸ REPLAY BOOT SEQUENCE")).toBeTruthy();
 });
 
 // P7 moved sign-out here from the HUD header. Asserted on the SHEET rather
@@ -575,112 +501,14 @@ test("replay boot button is labelled with the literal ▸ glyph, verbatim", asyn
 // it no longer knows the control exists.
 test("sign-out is on the sheet and drives useAuth().logout()", async () => {
   const logout = jest.fn();
-  await renderScreen(
-    fakeViewModel(
-      () => {},
-      () => {},
-      { logout },
-    ),
+  await page.mount(
+    () => {},
+    () => {},
+    { logout },
   );
-  await fireEvent.press(screen.getByTestId("logout-button"));
+  await page.press("logout-button");
   expect(logout).toHaveBeenCalledTimes(1);
 });
-
-interface FakeViewModelOverrides {
-  modePreference?: "dark" | "light" | "system";
-  ambient?: {
-    enabled: boolean;
-    setEnabled: (v: boolean) => void;
-    toggle: () => void;
-  };
-  powerSaver?: {
-    level: "off" | "calm" | "freeze";
-    isCalm: boolean;
-    isFreeze: boolean;
-    setLevel: (level: "off" | "calm" | "freeze") => void;
-    cycle: () => void;
-  };
-  ambientStyle?: {
-    style: "aurora" | "rays";
-    setStyle: (s: "aurora" | "rays") => void;
-  };
-  reboot?: () => void;
-  logout?: () => void;
-}
-
-function fakeViewModel(
-  cycle: () => void,
-  setSkin: (s: string) => void,
-  overrides: FakeViewModelOverrides = {},
-): ViewModel {
-  return {
-    useThemePreference: () => {
-      return {
-        mode: "dark",
-        modePreference: overrides.modePreference ?? "system",
-        cycle,
-      };
-    },
-    useThemeSkinPreference: () => {
-      return { skin: "holo", setSkin };
-    },
-    useAnimatedBackground: () => {
-      return (
-        overrides.ambient ?? {
-          enabled: false,
-          setEnabled: () => {},
-          toggle: () => {},
-        }
-      );
-    },
-    usePowerSaver: () => {
-      return (
-        overrides.powerSaver ?? {
-          level: "off",
-          isCalm: false,
-          isFreeze: false,
-          setLevel: () => {},
-          cycle: () => {},
-        }
-      );
-    },
-    useAmbientStyle: () => {
-      return overrides.ambientStyle ?? { style: "aurora", setStyle: () => {} };
-    },
-    useBootGate: () => {
-      return {
-        visible: false,
-        reboot: overrides.reboot ?? (() => {}),
-        dismiss: () => {},
-      };
-    },
-    // Required since P7 moved `LogoutButton` into this screen's last section.
-    // The screen itself never touches auth — the seam is here purely because
-    // it now renders a child that does, which is the honest cost of the sheet
-    // owning account actions.
-    useAuth: () => {
-      return { logout: overrides.logout ?? (() => {}) };
-    },
-  } as unknown as ViewModel;
-}
-
-function renderScreen(vm: ViewModel): Promise<unknown> {
-  return render(
-    <ViewModelProvider viewModel={vm}>
-      <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-        <AppearanceScreen />
-      </ThemeContext.Provider>
-    </ViewModelProvider>,
-  );
-}
-
-function flattenFlex(style: unknown): number | undefined {
-  return StyleSheet.flatten(style as ViewStyle)?.flex;
-}
-
-function flattenFlexDirection(style: unknown): string | undefined {
-  return StyleSheet.flatten(style as ViewStyle)?.flexDirection;
-}
 
 /** RN's `width: "30%"`-style percentage values are plain strings ending in
  * `%` — this strips it and parses the number, throwing loudly rather than

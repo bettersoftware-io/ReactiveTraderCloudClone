@@ -1,10 +1,10 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
-import { StyleSheet, type ViewStyle } from "react-native";
 
-import { type PillSegment, SegmentedPill } from "#/ui/SegmentedPill";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import type { PillSegment } from "#/ui/SegmentedPill";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { segmentedPillPage } from "#tests/pages/SegmentedPillPage";
+
+const page = segmentedPillPage();
 
 const SEGMENTS: readonly PillSegment<Key>[] = [
   { key: "a", label: "ALPHA", testID: "pill-alpha" },
@@ -15,46 +15,24 @@ const SEGMENTS: readonly PillSegment<Key>[] = [
 // cells on three different schemes, all of them load-bearing for the jest and
 // e2e contracts.
 test("names each cell by its own testID, and the frame by the given one", async () => {
-  await renderWithTheme(
-    <SegmentedPill
-      segments={SEGMENTS}
-      value="a"
-      onChange={(): void => {}}
-      variant="sheetSegment"
-      frameTestID="pill-frame"
-    />,
-  );
+  await page.mount(SEGMENTS, "a", (): void => {}, "sheetSegment", "pill-frame");
 
-  expect(screen.getByTestId("pill-frame")).toBeTruthy();
-  expect(screen.getByTestId("pill-alpha")).toHaveTextContent("ALPHA");
-  expect(screen.getByTestId("pill-bravo")).toHaveTextContent("BRAVO");
+  expect(page.exists("pill-frame")).toBeTruthy();
+  expect(page.hasTextContent("pill-alpha", "ALPHA")).toBe(true);
+  expect(page.hasTextContent("pill-bravo", "BRAVO")).toBe(true);
 });
 
 test("marks only the current cell selected", async () => {
-  await renderWithTheme(
-    <SegmentedPill
-      segments={SEGMENTS}
-      value="b"
-      onChange={(): void => {}}
-      variant="sheetSegment"
-    />,
-  );
+  await page.mount(SEGMENTS, "b", (): void => {}, "sheetSegment");
 
-  expect(selected("pill-alpha")).toBe(false);
-  expect(selected("pill-bravo")).toBe(true);
+  expect(page.selected("pill-alpha")).toBe(false);
+  expect(page.selected("pill-bravo")).toBe(true);
 });
 
 test("reports the pressed cell's key", async () => {
   const onChange = jest.fn<(key: Key) => void>();
-  await renderWithTheme(
-    <SegmentedPill
-      segments={SEGMENTS}
-      value="a"
-      onChange={onChange}
-      variant="sheetSegment"
-    />,
-  );
-  await fireEvent.press(screen.getByTestId("pill-bravo"));
+  await page.mount(SEGMENTS, "a", onChange, "sheetSegment");
+  await page.press("pill-bravo");
 
   expect(onChange).toHaveBeenCalledWith("b");
 });
@@ -63,32 +41,23 @@ test("reports the pressed cell's key", async () => {
 // column, so a second child would stack under the label rather than sit
 // before it.
 test("prefixes the glyph to the label in a single text node", async () => {
-  await renderWithTheme(
-    <SegmentedPill
-      segments={[{ key: "a", label: "DARK", glyph: "☾", testID: "pill-dark" }]}
-      value="a"
-      onChange={(): void => {}}
-      variant="modePill"
-    />,
+  await page.mount(
+    [{ key: "a", label: "DARK", glyph: "☾", testID: "pill-dark" }],
+    "a",
+    (): void => {},
+    "modePill",
   );
 
-  expect(screen.getByText("☾ DARK")).toBeTruthy();
+  expect(page.hasText("☾ DARK")).toBeTruthy();
 });
 
 test("fills the active cell with the accent", async () => {
-  await renderWithTheme(
-    <SegmentedPill
-      segments={SEGMENTS}
-      value="a"
-      onChange={(): void => {}}
-      variant="sheetSegment"
-    />,
-  );
+  await page.mount(SEGMENTS, "a", (): void => {}, "sheetSegment");
 
-  expect(cell("pill-alpha").backgroundColor).toBe(
+  expect(page.cellStyleOf("pill-alpha").backgroundColor).toBe(
     rnThemeTokens.holo.dark.accentPrimary,
   );
-  expect(cell("pill-bravo").backgroundColor).toBeUndefined();
+  expect(page.cellStyleOf("pill-bravo").backgroundColor).toBeUndefined();
 });
 
 // The geometry is the only thing `variant` picks, and the two shapes are
@@ -99,46 +68,18 @@ test("fills the active cell with the accent", async () => {
 test.each<["subNav" | "sheetSegment"]>([["subNav"], ["sheetSegment"]])(
   "the %s variant gives every cell flex:1",
   async (variant) => {
-    await renderWithTheme(
-      <SegmentedPill
-        segments={SEGMENTS}
-        value="a"
-        onChange={(): void => {}}
-        variant={variant}
-      />,
-    );
+    await page.mount(SEGMENTS, "a", (): void => {}, variant);
 
-    expect(cell("pill-alpha").flex).toBe(1);
-    expect(cell("pill-bravo").flex).toBe(1);
+    expect(page.cellStyleOf("pill-alpha").flex).toBe(1);
+    expect(page.cellStyleOf("pill-bravo").flex).toBe(1);
   },
 );
 
 test("the mode pill's cells stay intrinsically sized", async () => {
-  await renderWithTheme(
-    <SegmentedPill
-      segments={SEGMENTS}
-      value="a"
-      onChange={(): void => {}}
-      variant="modePill"
-    />,
-  );
+  await page.mount(SEGMENTS, "a", (): void => {}, "modePill");
 
-  expect(cell("pill-alpha").flex).toBeUndefined();
-  expect(cell("pill-alpha").paddingHorizontal).toBe(11);
+  expect(page.cellStyleOf("pill-alpha").flex).toBeUndefined();
+  expect(page.cellStyleOf("pill-alpha").paddingHorizontal).toBe(11);
 });
-
-function cell(testId: string): ViewStyle {
-  return StyleSheet.flatten(
-    screen.getByTestId(testId).props.style as ViewStyle,
-  );
-}
-
-function selected(testId: string): boolean {
-  const state = screen.getByTestId(testId).props.accessibilityState as
-    | { selected?: boolean }
-    | undefined;
-
-  return state?.selected === true;
-}
 
 type Key = "a" | "b";

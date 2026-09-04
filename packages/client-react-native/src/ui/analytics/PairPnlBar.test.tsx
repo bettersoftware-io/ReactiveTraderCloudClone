@@ -1,22 +1,21 @@
 import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { pairPnlBarPage } from "#tests/pages/PairPnlBarPage";
 
 const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-const { PairPnlBar } = require("./PairPnlBar") as typeof import("./PairPnlBar");
+const page = pairPnlBarPage();
 
 test("renders a positive bar anchored to the right of the centre line", async () => {
-  await renderWithTheme(<PairPnlBar fraction={0.6} positive={true} />);
-  expect(screen.getByTestId("pair-pnl-bar-pos")).toBeTruthy();
+  await page.mount(0.6, true);
+  expect(page.exists("pair-pnl-bar-pos")).toBeTruthy();
 });
 
 test("renders a negative bar anchored to the left of the centre line", async () => {
-  await renderWithTheme(<PairPnlBar fraction={0.6} positive={false} />);
-  expect(screen.getByTestId("pair-pnl-bar-neg")).toBeTruthy();
+  await page.mount(0.6, false);
+  expect(page.exists("pair-pnl-bar-neg")).toBeTruthy();
 });
 
 // With motion off the bar must render its RESTING size immediately — not a
@@ -24,15 +23,15 @@ test("renders a negative bar anchored to the left of the centre line", async () 
 // it was waiting on never runs.
 test("renders at rest immediately when motion is disabled", async () => {
   mockMotion.mockReturnValue(false);
-  await renderWithTheme(<PairPnlBar fraction={0.75} positive={true} />);
+  await page.mount(0.75, true);
 
-  expect(screen.getByTestId("pair-pnl-bar-pos")).toBeTruthy();
+  expect(page.exists("pair-pnl-bar-pos")).toBeTruthy();
   mockMotion.mockReturnValue(true);
 });
 
 test("survives a zero fraction, where the bar scales to nothing", async () => {
-  await renderWithTheme(<PairPnlBar fraction={0} positive={true} />);
-  expect(screen.getByTestId("pair-pnl-bar-pos")).toBeTruthy();
+  await page.mount(0, true);
+  expect(page.exists("pair-pnl-bar-pos")).toBeTruthy();
 });
 
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {

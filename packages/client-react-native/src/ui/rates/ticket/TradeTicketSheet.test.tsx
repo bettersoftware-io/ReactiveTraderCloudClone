@@ -1,14 +1,10 @@
 // packages/client-react-native/src/ui/rates/ticket/TradeTicketSheet.test.tsx
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
-import type { ReactElement } from "react";
 
 import type { CurrencyPair, Price } from "@rtc/domain";
 import { Direction, PriceMovementType } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { ThemeContext } from "#/ui/theme/ThemeContext";
-import { rnThemeTokens } from "#/ui/theme/tokens";
+import { tradeTicketSheetPage } from "#tests/pages/TradeTicketSheetPage";
 
 const mockExecute = jest.fn();
 // `useTileExecution().state.status` mutable across renders — the auto-close
@@ -35,8 +31,7 @@ const mockPrice: Price = {
   creationTimestamp: 0,
 };
 
-const { TradeTicketSheet } =
-  require("./TradeTicketSheet") as typeof import("./TradeTicketSheet");
+const page = tradeTicketSheetPage();
 
 const pair: CurrencyPair = {
   symbol: "EURUSD",
@@ -51,9 +46,9 @@ const pair: CurrencyPair = {
 
 test("executes a buy at the current notional", async () => {
   mockExecutionStatus = "ready";
-  await renderWithTheme(<TradeTicketSheet pair={pair} onClose={jest.fn()} />);
-  expect(screen.getByText("EUR/USD")).toBeTruthy();
-  await fireEvent.press(screen.getByTestId("buy-pad"));
+  await page.mount(pair, jest.fn());
+  expect(page.hasText("EUR/USD")).toBeTruthy();
+  await page.press("buy-pad");
   expect(mockExecute).toHaveBeenCalledWith(Direction.Buy, mockPrice, 1_000_000);
 });
 
@@ -64,24 +59,19 @@ test("executes a buy at the current notional", async () => {
 // `onDismiss` -> this component's `onClose`) had no assertion of its
 // observable effect anywhere in the suite. Drives the mocked
 // `useTileExecution().state.status` terminal -> ready across two
-// `rerender()` calls (RNTL's `rerender` replaces the whole previous tree, so
-// the theme wrapper is reapplied by hand each time, same as
-// AppearanceOverlay.test.tsx's `wrapped()` helper) to prove `onClose` fires
-// exactly once, only once the machine returns to `ready` — not on the
-// terminal state itself.
+// `rerender()` calls to prove `onClose` fires exactly once, only once the
+// machine returns to `ready` — not on the terminal state itself.
 test("auto-close: dismissing on terminal -> ready fires onDismiss, which calls onClose", async () => {
   const onClose = jest.fn();
   mockExecutionStatus = "ready";
-  const { rerender } = await renderWithTheme(
-    <TradeTicketSheet pair={pair} onClose={onClose} />,
-  );
+  await page.mount(pair, onClose);
 
   mockExecutionStatus = "finished";
-  await rerender(withTheme(<TradeTicketSheet pair={pair} onClose={onClose} />));
+  await page.rerender(pair, onClose);
   expect(onClose).not.toHaveBeenCalled();
 
   mockExecutionStatus = "ready";
-  await rerender(withTheme(<TradeTicketSheet pair={pair} onClose={onClose} />));
+  await page.rerender(pair, onClose);
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
@@ -92,9 +82,9 @@ test("auto-close: dismissing on terminal -> ready fires onDismiss, which calls o
 // user sees, so a change to that seed has to be a deliberate edit here too.
 test("stamps the settlement line with the shell's clock", async () => {
   mockExecutionStatus = "ready";
-  await renderWithTheme(<TradeTicketSheet pair={pair} onClose={jest.fn()} />);
+  await page.mount(pair, jest.fn());
 
-  expect(screen.getByText("SPOT · T+2 · 09:47:03")).toBeTruthy();
+  expect(page.hasText("SPOT · T+2 · 09:47:03")).toBeTruthy();
 });
 
 // The reduced-motion / Freeze presentation is decided by `sheetPresentation`
@@ -112,11 +102,11 @@ test("asks for a presentation matching the live shell-motion flag", async () => 
   mockPresentationCalls.length = 0;
 
   mockMotionEnabled = false;
-  await renderWithTheme(<TradeTicketSheet pair={pair} onClose={jest.fn()} />);
+  await page.mount(pair, jest.fn());
   expect(mockPresentationCalls).toEqual([false]);
 
   mockMotionEnabled = true;
-  await renderWithTheme(<TradeTicketSheet pair={pair} onClose={jest.fn()} />);
+  await page.mount(pair, jest.fn());
   expect(mockPresentationCalls).toEqual([false, true]);
 
   mockMotionEnabled = false;
@@ -174,14 +164,3 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
-
-/** `renderWithTheme`'s own wrapper, reapplied by hand for `rerender()` —
- * `rerender` swaps the whole previous tree, so it needs the same
- * `ThemeContext.Provider` `renderWithTheme` supplies on the first render. */
-function withTheme(ui: ReactElement): ReactElement {
-  return (
-    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      {ui}
-    </ThemeContext.Provider>
-  );
-}

@@ -372,21 +372,26 @@ export default tseslint.config(
     rules: { "rtc/newspaper-order": "error" },
   },
   {
-    // Specs speak page objects; framework surface lives in the chokepoints
-    // ignored below. WARN while the backlog burns down through the
-    // lint-warnings ledger; each migrated package is flipped to error by a
-    // dedicated block (see the per-package blocks that follow this one).
-    // client-prototype is out of scope (abandoned reference port), and the
-    // bindings packages' renderHook specs stay out until a harness exists
-    // for them.
+    // Every package the page-object-isolation plan named (devtools-app,
+    // client-react, client-solid, client-react-native) is now migrated at
+    // `src/**` and held to ERROR by its own dedicated block below — the
+    // plan's stated end state. This block SURVIVES not as a backlog (there
+    // is none left: `docs/lint-warnings.md` reads zero), but as a residual
+    // safety net over each web/native client's `tests/**` tree, which no
+    // error block covers (their error blocks are `src/**`-only, matching
+    // devtools-app's). `tests/**` mostly holds the already-ignored
+    // pages/contract/visual chokepoints below, plus the occasional
+    // non-UI spec (e.g. client-solid's `tests/parity/cssParity.test.ts`,
+    // a filesystem check with no testing-library import, so the rule is
+    // silent on it either way) — this WARNs, rather than leaving the tree
+    // fully ungoverned, if a future spec lands directly under `tests/**`
+    // outside those chokepoints. client-prototype is out of scope (abandoned
+    // reference port), and the bindings packages' renderHook specs stay out
+    // until a harness exists for them.
     files: [
-      "packages/client-react/src/**/*.{test,spec}.{ts,tsx}",
       "packages/client-react/tests/**/*.{test,spec}.{ts,tsx}",
-      "packages/client-solid/src/**/*.{test,spec}.{ts,tsx}",
       "packages/client-solid/tests/**/*.{test,spec}.{ts,tsx}",
-      "packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}",
       "packages/client-react-native/tests/**/*.{test,spec}.{ts,tsx}",
-      "packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}",
     ],
     ignores: [
       "**/tests/**/pages/**",
@@ -396,6 +401,7 @@ export default tseslint.config(
       "**/tests/ui/contract/react/**",
       "**/tests/ui/contract/solid/**",
       "**/tests/ui/visual/**", // the visual specs ARE the driver layer (spec §Decisions 5)
+      "**/tests/visual/**", // client-react-native's visual harness — the RN counterpart of tests/ui/visual/** above, same rationale (spec §Decisions 5)
       "**/setup/**",
       "**/*fixtures*",
       "**/*.testHelpers.*",
@@ -427,9 +433,22 @@ export default tseslint.config(
     // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
     // tests/ui/pages/ (ported from client-react's pages where the specs are
     // ports of each other; App.test.tsx's page is solid-only), so this
-    // package is held to error too; the warn block above now covers only
-    // `client-react-native` (Wave C) — it is not empty.
+    // package is held to error too.
     files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-react-native is migrated (Wave C of the page-object-isolation
+    // plan, batches 1-3): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under tests/pages/,
+    // so this package is held to error too — the plan's stated end state,
+    // all four packages named in it now enforced. `tests/visual/**` (the RN
+    // visual harness — the driver layer, same rationale as
+    // tests/ui/visual/** above) is excluded the same way the warn block
+    // ignores it, via the `src/**`-only scope: nothing under `tests/**`
+    // matches this block's `files` glob, error or otherwise.
+    files: ["packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },

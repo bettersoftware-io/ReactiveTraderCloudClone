@@ -1,18 +1,16 @@
 // packages/client-react-native/src/ui/rates/ticket/TicketBackdrop.test.tsx
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { ticketBackdropPage } from "#tests/pages/TicketBackdropPage";
 
 let mockMotionEnabled = true;
 const mockClose = jest.fn();
 // Every props object the library's `BottomSheetBackdrop` was rendered with.
 const mockLibraryBackdropProps: Record<string, unknown>[] = [];
 
-const { TicketBackdrop } =
-  require("./TicketBackdrop") as typeof import("./TicketBackdrop");
+const page = ticketBackdropPage();
 
 // The props gorhom hands a `backdropComponent` (`BottomSheet.tsx`: an
 // `animatedIndex`, an `animatedPosition` and `StyleSheet.absoluteFill`). Only
@@ -31,12 +29,12 @@ const backdropProps: BottomSheetBackdropProps = {
 test("paints a static scrim, not the index-interpolated one, when shell motion is off", async () => {
   mockMotionEnabled = false;
   mockLibraryBackdropProps.length = 0;
-  await renderWithTheme(<TicketBackdrop {...backdropProps} />);
+  await page.mount(backdropProps);
 
   expect(mockLibraryBackdropProps).toEqual([]);
-  expect(
-    screen.getByTestId("ticket-backdrop-static").props.style,
-  ).toContainEqual({ backgroundColor: "rgba(0,6,10,0.78)" });
+  expect(page.rawStyleOf("ticket-backdrop-static")).toContainEqual({
+    backgroundColor: "rgba(0,6,10,0.78)",
+  });
 });
 
 // Tap-to-dismiss is what `BottomSheetBackdrop`'s `pressBehavior="close"` gave
@@ -45,9 +43,9 @@ test("paints a static scrim, not the index-interpolated one, when shell motion i
 test("the static scrim still closes the sheet on press", async () => {
   mockMotionEnabled = false;
   mockClose.mockClear();
-  await renderWithTheme(<TicketBackdrop {...backdropProps} />);
+  await page.mount(backdropProps);
 
-  await fireEvent.press(screen.getByTestId("ticket-backdrop-static"));
+  await page.press("ticket-backdrop-static");
   expect(mockClose).toHaveBeenCalledTimes(1);
 });
 
@@ -58,9 +56,9 @@ test("the static scrim still closes the sheet on press", async () => {
 test("defers to the library backdrop, themed to bgOverlay, when shell motion is on", async () => {
   mockMotionEnabled = true;
   mockLibraryBackdropProps.length = 0;
-  await renderWithTheme(<TicketBackdrop {...backdropProps} />);
+  await page.mount(backdropProps);
 
-  expect(screen.queryByTestId("ticket-backdrop-static")).toBeNull();
+  expect(page.exists("ticket-backdrop-static")).toBe(false);
   expect(mockLibraryBackdropProps).toHaveLength(1);
   expect(mockLibraryBackdropProps[0]).toMatchObject({
     animatedIndex,
