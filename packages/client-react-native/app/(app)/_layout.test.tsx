@@ -1,13 +1,15 @@
 import { expect, jest, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
 
-import AppGroupLayout from "./_layout";
+import { appGroupLayoutPage } from "#tests/pages/AppGroupLayoutPage";
+
+const page = appGroupLayoutPage();
 
 test("app-group layout mounts inside the gesture-handler root", async () => {
-  await render(<AppGroupLayout />);
+  await page.mount();
   // Fonts are not loaded in jsdom, so the gated fallback renders — proving the
   // tree (now wrapped in GestureHandlerRootView) mounts without throwing.
-  expect(screen.getByTestId("fonts-loading")).toBeTruthy();
+  expect(page.exists("fonts-loading")).toBeTruthy();
+  await page.unmountAll();
 });
 
 // AsyncStorage has no native module under jest, so importing the real one

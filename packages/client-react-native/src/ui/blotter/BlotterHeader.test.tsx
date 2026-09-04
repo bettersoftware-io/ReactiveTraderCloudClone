@@ -1,19 +1,21 @@
-import { expect, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
-import { StyleSheet, type TextStyle } from "react-native";
+import { afterEach, expect, test } from "@jest/globals";
 
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { blotterHeaderPage } from "#tests/pages/BlotterHeaderPage";
 
-import { BlotterHeader } from "./BlotterHeader";
+const page = blotterHeaderPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 test("renders all four column labels", async () => {
-  await renderWithTheme(<BlotterHeader />);
+  await page.mount();
 
-  expect(screen.getByText("PAIR · DIR")).toBeTruthy();
-  expect(screen.getByText("NOTIONAL")).toBeTruthy();
-  expect(screen.getByText("RATE")).toBeTruthy();
-  expect(screen.getByText("STATUS")).toBeTruthy();
+  expect(page.hasText("PAIR · DIR")).toBeTruthy();
+  expect(page.hasText("NOTIONAL")).toBeTruthy();
+  expect(page.hasText("RATE")).toBeTruthy();
+  expect(page.hasText("STATUS")).toBeTruthy();
 });
 
 // Pins the column caption's typography against the `labelStyle` extraction:
@@ -21,11 +23,9 @@ test("renders all four column labels", async () => {
 // is now assembled by a helper rather than spelled out here, and the pixels
 // must not move by a hair.
 test("column captions keep the 8pt / 1.5-tracked mono label recipe", async () => {
-  await renderWithTheme(<BlotterHeader />);
+  await page.mount();
 
-  const style = StyleSheet.flatten(
-    screen.getByText("NOTIONAL").props.style as TextStyle,
-  );
+  const style = page.styleOfText("NOTIONAL");
 
   expect(style.fontFamily).toBe(FONT_JETBRAINS_MONO);
   expect(style.fontSize).toBe(8);

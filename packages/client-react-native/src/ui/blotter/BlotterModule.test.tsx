@@ -1,16 +1,18 @@
-import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen, within } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { blotterModulePage } from "#tests/pages/BlotterModulePage";
 
 const mockTrades = jest.fn();
 const mockNewTradeIds = jest.fn();
 const mockActivity = jest.fn();
 
-const { BlotterModule } =
-  require("./BlotterModule") as typeof import("./BlotterModule");
+const page = blotterModulePage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const DONE_TRADE: Trade = {
   tradeId: 1,
@@ -45,26 +47,24 @@ test("renders a row per trade", async () => {
   mockTrades.mockReturnValue(ALL_TRADES);
   mockNewTradeIds.mockReturnValue(new Set<number>());
   mockActivity.mockReturnValue([]);
-  await renderWithTheme(<BlotterModule />);
+  await page.mount();
 
-  expect(screen.getByTestId("trade-row-1")).toBeTruthy();
-  expect(screen.getByTestId("trade-row-2")).toBeTruthy();
-  expect(screen.getByTestId("trade-row-3")).toBeTruthy();
+  expect(page.exists("trade-row-1")).toBeTruthy();
+  expect(page.exists("trade-row-2")).toBeTruthy();
+  expect(page.exists("trade-row-3")).toBeTruthy();
 });
 
 test("tapping the DONE chip filters to only Done trades", async () => {
   mockTrades.mockReturnValue(ALL_TRADES);
   mockNewTradeIds.mockReturnValue(new Set<number>());
   mockActivity.mockReturnValue([]);
-  await renderWithTheme(<BlotterModule />);
+  await page.mount();
 
-  await fireEvent.press(
-    within(screen.getByTestId("blotter-filter-chips")).getByText("DONE"),
-  );
+  await page.pressTextWithin("blotter-filter-chips", "DONE");
 
-  expect(screen.getByTestId("trade-row-1")).toBeTruthy();
-  expect(screen.queryByTestId("trade-row-2")).toBeNull();
-  expect(screen.queryByTestId("trade-row-3")).toBeNull();
+  expect(page.exists("trade-row-1")).toBeTruthy();
+  expect(page.exists("trade-row-2")).toBe(false);
+  expect(page.exists("trade-row-3")).toBe(false);
 });
 
 // The one bug this task can plausibly ship: summarize() must run on the FULL
@@ -74,15 +74,13 @@ test("the fills summary reflects all trades, not the filtered subset", async () 
   mockTrades.mockReturnValue(ALL_TRADES);
   mockNewTradeIds.mockReturnValue(new Set<number>());
   mockActivity.mockReturnValue([]);
-  await renderWithTheme(<BlotterModule />);
+  await page.mount();
 
-  expect(screen.getByText(/3 FILLS/)).toBeTruthy();
+  expect(page.hasTextMatching(/3 FILLS/)).toBeTruthy();
 
-  await fireEvent.press(
-    within(screen.getByTestId("blotter-filter-chips")).getByText("DONE"),
-  );
+  await page.pressTextWithin("blotter-filter-chips", "DONE");
 
-  expect(screen.getByText(/3 FILLS/)).toBeTruthy();
+  expect(page.hasTextMatching(/3 FILLS/)).toBeTruthy();
 });
 
 // Keys the activity feed's time by `trade.tradeId`, not `trade.tradeName` —
@@ -97,19 +95,13 @@ test("joins each row's activity time by tradeId, not tradeName", async () => {
     { trade: DONE_TRADE, time: "08:00:01" },
     { trade: PENDING_TRADE, time: "08:00:02" },
   ]);
-  await renderWithTheme(<BlotterModule />);
+  await page.mount();
 
-  expect(
-    within(screen.getByTestId("trade-row-1")).getByText("08:00:01"),
-  ).toBeTruthy();
-  expect(
-    within(screen.getByTestId("trade-row-2")).getByText("08:00:02"),
-  ).toBeTruthy();
+  expect(page.hasTextWithin("trade-row-1", "08:00:01")).toBeTruthy();
+  expect(page.hasTextWithin("trade-row-2", "08:00:02")).toBeTruthy();
   // Trade 3 has no activity entry — falls back to its own tradeDate.
   expect(
-    within(screen.getByTestId("trade-row-3")).getByText(
-      REJECTED_TRADE.tradeDate,
-    ),
+    page.hasTextWithin("trade-row-3", REJECTED_TRADE.tradeDate),
   ).toBeTruthy();
 });
 

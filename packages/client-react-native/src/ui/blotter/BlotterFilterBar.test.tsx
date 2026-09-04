@@ -1,24 +1,18 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import type { BlotterFilter } from "#/ui/blotter/blotterFilter";
+import { blotterFilterBarPage } from "#tests/pages/BlotterFilterBarPage";
 
-import { BlotterFilterBar } from "./BlotterFilterBar";
-import type { BlotterFilter } from "./blotterFilter";
+const page = blotterFilterBarPage();
 
 test("renders chips + summary and reports selection", async () => {
   const onSelect = jest.fn<(f: BlotterFilter) => void>();
-  await renderWithTheme(
-    <BlotterFilterBar
-      selected="ALL"
-      onSelect={onSelect}
-      summary={{ fills: 4, buys: 3, sells: 1 }}
-    />,
-  );
+  await page.mount("ALL", onSelect, { fills: 4, buys: 3, sells: 1 });
 
-  expect(screen.getByText("REJECTED")).toBeTruthy();
-  expect(screen.getByText(/4 FILLS/)).toBeTruthy();
+  expect(page.hasText("REJECTED")).toBeTruthy();
+  expect(page.hasTextMatching(/4 FILLS/)).toBeTruthy();
 
-  await fireEvent.press(screen.getByText("DONE"));
+  await page.pressText("DONE");
   expect(onSelect).toHaveBeenCalledWith("DONE");
+  await page.unmountAll();
 });

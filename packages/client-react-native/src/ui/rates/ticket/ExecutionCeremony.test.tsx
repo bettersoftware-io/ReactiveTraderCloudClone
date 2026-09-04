@@ -1,43 +1,34 @@
-import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { Trade } from "@rtc/domain";
 import { Direction, ExecutionStatus, TradeStatus } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
-import { ThemeContext } from "#/ui/theme/ThemeContext";
-import { rnThemeTokens } from "#/ui/theme/tokens";
-
-const { ExecutionCeremony } =
-  require("./ExecutionCeremony") as typeof import("./ExecutionCeremony");
+import { executionCeremonyPage } from "#tests/pages/ExecutionCeremonyPage";
 
 const Haptics = require("expo-haptics") as MockedHaptics;
 
+const page = executionCeremonyPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
+
 test("ready renders nothing", async () => {
-  const { toJSON } = await renderWithTheme(
-    <ExecutionCeremony state={{ status: "ready" }} direction={null} />,
-  );
-  expect(toJSON()).toBeNull();
+  await page.mount({ status: "ready" }, null);
+  expect(page.isEmpty()).toBe(true);
 });
 
 test("started shows the busy overlay", async () => {
-  await renderWithTheme(
-    <ExecutionCeremony
-      state={{ status: "started" }}
-      direction={Direction.Buy}
-    />,
-  );
-  expect(screen.getByText(/EXECUTING/)).toBeTruthy();
+  await page.mount({ status: "started" }, Direction.Buy);
+  expect(page.hasTextMatching(/EXECUTING/)).toBeTruthy();
 });
 
 test("finished+Done shows FILLED", async () => {
-  await renderWithTheme(
-    <ExecutionCeremony
-      state={{ status: "finished", executionStatus: ExecutionStatus.Done }}
-      direction={Direction.Buy}
-    />,
+  await page.mount(
+    { status: "finished", executionStatus: ExecutionStatus.Done },
+    Direction.Buy,
   );
-  expect(screen.getByText("FILLED")).toBeTruthy();
+  expect(page.hasText("FILLED")).toBeTruthy();
 });
 
 test("finished+Done with a trade shows the {DIR} {notional} @ {rate} detail", async () => {
@@ -53,52 +44,33 @@ test("finished+Done with a trade shows the {DIR} {notional} @ {rate} detail", as
     tradeDate: "",
     valueDate: "",
   };
-  await renderWithTheme(
-    <ExecutionCeremony
-      state={{
-        status: "finished",
-        executionStatus: ExecutionStatus.Done,
-        trade,
-      }}
-      direction={Direction.Buy}
-    />,
+  await page.mount(
+    { status: "finished", executionStatus: ExecutionStatus.Done, trade },
+    Direction.Buy,
   );
-  expect(screen.getByText("BUY 1,000,000 @ 1.0872")).toBeTruthy();
+  expect(page.hasText("BUY 1,000,000 @ 1.0872")).toBeTruthy();
 });
 
 test("finished+Rejected shows REJECTED", async () => {
-  await renderWithTheme(
-    <ExecutionCeremony
-      state={{ status: "finished", executionStatus: ExecutionStatus.Rejected }}
-      direction={Direction.Sell}
-    />,
+  await page.mount(
+    { status: "finished", executionStatus: ExecutionStatus.Rejected },
+    Direction.Sell,
   );
-  expect(screen.getByText("REJECTED")).toBeTruthy();
+  expect(page.hasText("REJECTED")).toBeTruthy();
 });
 
 test("timeout shows TIMED OUT", async () => {
-  await renderWithTheme(
-    <ExecutionCeremony
-      state={{ status: "timeout" }}
-      direction={Direction.Buy}
-    />,
-  );
-  expect(screen.getByText("TIMED OUT")).toBeTruthy();
+  await page.mount({ status: "timeout" }, Direction.Buy);
+  expect(page.hasText("TIMED OUT")).toBeTruthy();
 });
 
 test("haptic fires once entering a terminal state, not on a re-render staying finished", async () => {
   Haptics.notificationAsync.mockClear();
-  const { rerender } = await renderWithTheme(
-    <ExecutionCeremony state={{ status: "ready" }} direction={null} />,
-  );
+  await page.mount({ status: "ready" }, null);
 
-  await rerender(
-    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <ExecutionCeremony
-        state={{ status: "finished", executionStatus: ExecutionStatus.Done }}
-        direction={Direction.Buy}
-      />
-    </ThemeContext.Provider>,
+  await page.rerender(
+    { status: "finished", executionStatus: ExecutionStatus.Done },
+    Direction.Buy,
   );
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   expect(Haptics.notificationAsync).toHaveBeenCalledWith(
@@ -107,36 +79,20 @@ test("haptic fires once entering a terminal state, not on a re-render staying fi
 
   // Re-render with a fresh (but logically identical) finished state object —
   // must NOT re-fire the once-guard.
-  await rerender(
-    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <ExecutionCeremony
-        state={{ status: "finished", executionStatus: ExecutionStatus.Done }}
-        direction={Direction.Buy}
-      />
-    </ThemeContext.Provider>,
+  await page.rerender(
+    { status: "finished", executionStatus: ExecutionStatus.Done },
+    Direction.Buy,
   );
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
 });
 
 test("haptic fires Error for a rejected finish", async () => {
   Haptics.notificationAsync.mockClear();
-  const { rerender } = await renderWithTheme(
-    <ExecutionCeremony
-      state={{ status: "started" }}
-      direction={Direction.Sell}
-    />,
-  );
+  await page.mount({ status: "started" }, Direction.Sell);
 
-  await rerender(
-    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
-      <ExecutionCeremony
-        state={{
-          status: "finished",
-          executionStatus: ExecutionStatus.Rejected,
-        }}
-        direction={Direction.Sell}
-      />
-    </ThemeContext.Provider>,
+  await page.rerender(
+    { status: "finished", executionStatus: ExecutionStatus.Rejected },
+    Direction.Sell,
   );
   expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   expect(Haptics.notificationAsync).toHaveBeenCalledWith(

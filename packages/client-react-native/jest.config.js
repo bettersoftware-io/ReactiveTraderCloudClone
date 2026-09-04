@@ -31,6 +31,10 @@ module.exports = {
     // plan, Wave C) live under tests/pages/, not src/ — mirrors the "#/"
     // mapping above, matching client-react's own "#tests/" precedent.
     "^#tests/(.*)$": "<rootDir>/tests/$1",
+    // expo-router's `app/` tree (RootLayoutPage/AppGroupLayoutPage, wave C
+    // batch-3 fix round) — mirrors the "#/" mapping above and the parallel
+    // "#tests/" precedent.
+    "^#app/(.*)$": "<rootDir>/app/$1",
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",

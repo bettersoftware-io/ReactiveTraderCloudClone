@@ -1,12 +1,11 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, screen } from "@testing-library/react-native";
 
 import type { CurrencyPair, Price } from "@rtc/domain";
 import { Direction, PriceMovementType } from "@rtc/domain";
 
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { buySellPadsPage } from "#tests/pages/BuySellPadsPage";
 
-import { BuySellPads } from "./BuySellPads";
+const page = buySellPadsPage();
 
 const pair: CurrencyPair = {
   symbol: "EURUSD",
@@ -32,15 +31,14 @@ const price: Price = {
 
 test("SELL uses bid → Sell, BUY uses ask → Buy", async () => {
   const onExecute = jest.fn();
-  await renderWithTheme(
-    <BuySellPads pair={pair} price={price} onExecute={onExecute} />,
-  );
+  await page.mount(pair, price, onExecute);
 
-  await fireEvent.press(screen.getByTestId("sell-pad"));
+  await page.press("sell-pad");
   expect(onExecute).toHaveBeenCalledWith(Direction.Sell);
 
-  await fireEvent.press(screen.getByTestId("buy-pad"));
+  await page.press("buy-pad");
   expect(onExecute).toHaveBeenCalledWith(Direction.Buy);
 
-  expect(screen.getByText("1.4")).toBeTruthy(); // spread pill
+  expect(page.hasText("1.4")).toBeTruthy(); // spread pill
+  await page.unmountAll();
 });

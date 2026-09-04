@@ -1,11 +1,14 @@
-import { expect, jest, test } from "@jest/globals";
-import { screen } from "@testing-library/react-native";
+import { afterEach, expect, jest, test } from "@jest/globals";
 
 import type { PositionUpdates } from "@rtc/domain";
-import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
-import { AnalyticsScreen } from "#/ui/analytics/AnalyticsScreen";
-import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { analyticsScreenPage } from "#tests/pages/AnalyticsScreenPage";
+
+const page = analyticsScreenPage();
+
+afterEach(() => {
+  return page.unmountAll();
+});
 
 const DATA: PositionUpdates = {
   history: [
@@ -23,57 +26,37 @@ const DATA: PositionUpdates = {
 };
 
 test("shows a loading state before the first emission", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(null, false)}>
-      <AnalyticsScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("analytics-loading")).toBeTruthy();
-  expect(screen.queryByTestId("analytics-panel")).toBeNull();
+  await page.mount(null, false);
+  expect(page.exists("analytics-loading")).toBeTruthy();
+  expect(page.exists("analytics-panel")).toBe(false);
 });
 
 test("renders the three sections when data has arrived", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(DATA, false)}>
-      <AnalyticsScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("analytics-panel")).toBeTruthy();
-  expect(screen.getByTestId("analytics-widget-pnl")).toBeTruthy();
-  expect(screen.getByTestId("analytics-widget-exposure")).toBeTruthy();
-  expect(screen.getByTestId("analytics-widget-pairs")).toBeTruthy();
-  expect(screen.getByTestId("pnl-value")).toBeTruthy();
-  expect(screen.getByTestId("pnl-chart")).toBeTruthy();
-  expect(screen.getByTestId("exposure-bubbles")).toBeTruthy();
-  expect(screen.getByTestId("pair-pnl-bars")).toBeTruthy();
-  expect(screen.getByTestId("pair-pnl-row-EURUSD")).toBeTruthy();
-  expect(screen.queryByTestId("analytics-stale")).toBeNull();
+  await page.mount(DATA, false);
+  expect(page.exists("analytics-panel")).toBeTruthy();
+  expect(page.exists("analytics-widget-pnl")).toBeTruthy();
+  expect(page.exists("analytics-widget-exposure")).toBeTruthy();
+  expect(page.exists("analytics-widget-pairs")).toBeTruthy();
+  expect(page.exists("pnl-value")).toBeTruthy();
+  expect(page.exists("pnl-chart")).toBeTruthy();
+  expect(page.exists("exposure-bubbles")).toBeTruthy();
+  expect(page.exists("pair-pnl-bars")).toBeTruthy();
+  expect(page.exists("pair-pnl-row-EURUSD")).toBeTruthy();
+  expect(page.exists("analytics-stale")).toBe(false);
 });
 
 test("surfaces a stale indicator when the stream is stale", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(DATA, true)}>
-      <AnalyticsScreen />
-    </ViewModelProvider>,
-  );
-  expect(screen.getByTestId("analytics-stale")).toBeTruthy();
+  await page.mount(DATA, true);
+  expect(page.exists("analytics-stale")).toBeTruthy();
 });
 
 // The prototype's card order is P&L -> Pair P&L -> Exposure. RN rendered
 // Exposure second. Asserted positionally because the testIDs alone cannot
 // express order, and order is the whole content of this fix.
 test("renders the cards in the prototype's order", async () => {
-  await renderWithTheme(
-    <ViewModelProvider viewModel={fakeViewModel(DATA, false)}>
-      <AnalyticsScreen />
-    </ViewModelProvider>,
-  );
+  await page.mount(DATA, false);
 
-  // `getAllByTestId` returns matches in render order, which is the whole point
-  // of this test — the three testIDs alone cannot express which comes first.
-  const ids = screen.getAllByTestId(/^analytics-widget-/).map((node) => {
-    return node.props.testID;
-  });
+  const ids = page.testIdsMatching(/^analytics-widget-/);
 
   expect(ids).toStrictEqual([
     "analytics-widget-pnl",
@@ -81,20 +64,6 @@ test("renders the cards in the prototype's order", async () => {
     "analytics-widget-exposure",
   ]);
 });
-
-function fakeViewModel(
-  data: PositionUpdates | null,
-  stale: boolean,
-): ViewModel {
-  return {
-    useAnalytics: () => {
-      return data;
-    },
-    useAnalyticsStaleFlag: () => {
-      return stale;
-    },
-  } as unknown as ViewModel;
-}
 
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
