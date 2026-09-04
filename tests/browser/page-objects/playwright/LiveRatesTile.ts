@@ -28,6 +28,14 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     return await this.firstTile().innerText();
   }
 
+  async waitForFirstTileLiveRate(timeoutMs: number): Promise<void> {
+    await expect(this.firstTile()).toBeVisible({ timeout: timeoutMs });
+    await expect(this.firstTile()).toContainText(/\d+\.\d+/, {
+      timeout: timeoutMs,
+    });
+    await expect(this.firstTile()).not.toContainText("Loading...");
+  }
+
   async clickFilter(category: string): Promise<void> {
     await this.page.getByTestId(TESTIDS.liveRates.filter(category)).click();
   }

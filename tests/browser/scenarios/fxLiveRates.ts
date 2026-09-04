@@ -14,6 +14,16 @@ export async function expectFirstPriceTileVisibleWithin(
   await ctx.po.liveRatesTile.waitForFirstTile(seconds * 1_000);
 }
 
+/** Wait for the first tile to be visible AND show a live decimal rate (not
+ * the "Loading..." placeholder) — used by the fullstack real-backend smoke
+ * to prove a genuine price tick streamed the whole way from the server. */
+export async function expectFirstTileShowsLiveRateWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.liveRatesTile.waitForFirstTileLiveRate(seconds * 1_000);
+}
+
 export async function expectAtLeastNTilesVisible(
   ctx: TestContext,
   n: number,

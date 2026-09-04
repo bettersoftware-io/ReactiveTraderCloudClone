@@ -14,9 +14,9 @@
 | 6 | No `from "@playwright/test"` imports in step definition files |
 | 7 | No copy-as-selector hardcoded text strings in page-object implementations (must use `STRINGS` constants) |
 | 8 | No `this.page.*` calls in step definition files |
-| 9 | No `from "@playwright/test"` imports in native Playwright spec bodies (allowed only in `playwright.config.ts` and `_context.ts`) |
-| 10 | No direct `ctx.po.*` access in native Playwright spec bodies (allowed only in `_context.ts`) |
-| 11 | No direct `page.*` calls in native Playwright spec bodies (allowed only in `_context.ts`) |
+| 9 | No `from "@playwright/test"` imports in native Playwright spec bodies (`tests/browser/playwright/` and `tests/fullstack/browser/`; allowed only in each dir's own `playwright.config.ts` and `_context.ts`) |
+| 10 | No direct `ctx.po.*` access in native Playwright spec bodies (same two dirs; allowed only in each dir's own `_context.ts`) |
+| 11 | No direct `page.*` calls in native Playwright spec bodies (same two dirs; allowed only in each dir's own `_context.ts`) |
 | 12–14 | *Retired (Cypress, 2026-07-20) — numbers not reused.* |
 | 15 | No driver imports in presenter step/scenario/support files |
 | 16 | No DOM or page references (`getByTestId`, `page.*`, `cy.*`) in presenter step/scenario files |
@@ -46,3 +46,5 @@
 | 40 | No `fetch(` / `new WebSocket` in `devtools-app/src` (transport is the injected Duplex) |
 
 Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
+
+Gates 9–11 deliberately stop at `tests/browser/playwright/` and `tests/fullstack/browser/` — they do **not** extend to the visual-tier Playwright specs (`packages/client-react/tests/ui/visual/playwright/` and `packages/client-solid/tests/ui/visual/playwright/`: `visual.spec.ts` + `freeze.spec.ts` in each, plus their own `playwright.config.ts`). Those specs *are* the driver layer — they iterate the shared visual scenario manifest and take screenshots, so there is no "what" above them for a page object to name; wrapping them would just rename the same `page.*` calls. This mirrors the RN client's own `no-framework-calls-in-specs` ESLint rule, which carries the identical exemption for `packages/client-react-native/tests/visual/`. See the [spec-page-object-isolation design doc](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md#decisions-taken-2026-09-01-with-the-user), Decision 5.

@@ -110,6 +110,15 @@ export const TESTIDS = {
    * by the ui-contract CandleChartPage instead.
    */
   equities: {
+    /** The equities watchlist rows (WatchlistRow.tsx). Only the id the
+     * fullstack real-backend smoke needs — the panel's fuller sort/filter
+     * surface is exercised by the ui-contract WatchlistPanelPage instead. */
+    watchlist: {
+      rowPrefix: "watch-row-",
+      row: (symbol: string) => {
+        return `watch-row-${symbol}`;
+      },
+    },
     chart: {
       plot: "chart-plot",
       backToLive: "chart-back-to-live",

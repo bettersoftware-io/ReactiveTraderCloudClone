@@ -1,48 +1,16 @@
-import { expect, test } from "@playwright/test";
+import * as common from "#/browser/scenarios/common.js";
+import * as equitiesChart from "#/browser/scenarios/equitiesChart.js";
+import * as equitiesWatchlist from "#/browser/scenarios/equitiesWatchlist.js";
+import * as fxLiveRates from "#/browser/scenarios/fxLiveRates.js";
+import * as jarvis from "#/browser/scenarios/jarvis.js";
 
-import {
-  E2E_SESSION_KEY,
-  JARVIS_NARRATOR_OFF_VALUE,
-  JARVIS_NARRATOR_STORAGE_KEY,
-  seedLocalStorageItem,
-} from "#/browser/authSeed.js";
+import { test } from "./_context.js";
 
-import { loginForToken } from "../loginForToken.js";
-
-// The server's HTTP base (forwarded by fullstack/browser-smoke.ts as
-// FULLSTACK_PORT — the SAME real server the client under test connects its
-// WsReal adapters to, not the client's own Vite port).
-const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4124);
-const SERVER_BASE = `http://127.0.0.1:${SERVER_PORT}`;
-
-// AuthGate now gates the app on a real signed session: before any spec here
-// loads the app, do a genuine POST /login round-trip against the real server
-// (WS-real mode — the WS upgrade itself is token-gated, "no
-// open-when-empty fallback", see packages/server/src/http/loginHandler.ts)
-// and seed the resulting token into localStorage via addInitScript, so it's
-// present before the app's own scripts run on the FIRST navigation.
-test.beforeEach(async ({ page }) => {
-  const login = await loginForToken(SERVER_BASE);
-  const session = {
-    token: login.token,
-    username: "demo",
-    user: login.user,
-    exp: login.exp,
-  };
-  await page.addInitScript(seedLocalStorageItem, {
-    key: E2E_SESSION_KEY,
-    value: JSON.stringify(session),
-  });
-  // Seed JarvisNarrator OFF: fullstack mode drives the client against the
-  // REAL server's PricingSimulator, which starts a genuine anomaly episode
-  // often enough (aggregated across ~10 pairs) to fire an unsolicited
-  // narration turn mid-test — see authSeed.ts for the full rationale. None of
-  // the specs below exercise narration, so this makes them deterministic.
-  await page.addInitScript(seedLocalStorageItem, {
-    key: JARVIS_NARRATOR_STORAGE_KEY,
-    value: JARVIS_NARRATOR_OFF_VALUE,
-  });
-});
+// All assertions below delegate to scenario helpers (or the shared
+// `buildPlaywrightPageObjects()` page objects those helpers wrap) — gates
+// 9-11 compliant. The authenticated-session seed lives in `./_context.ts`
+// (the fullstack analogue of `browser/playwright/_context.ts`), which every
+// spec in this suite shares.
 
 /**
  * Full-stack browser happy path.
@@ -57,17 +25,10 @@ test.beforeEach(async ({ page }) => {
  */
 test.describe("full-stack: live pricing renders from the real server", () => {
   test("a price tile shows a live rate streamed from the backend", async ({
-    page,
+    ctx,
   }) => {
-    await page.goto("/");
-
-    const firstTile = page.locator("[data-testid^='tile-']").first();
-    await expect(firstTile).toBeVisible({ timeout: 20_000 });
-
-    // The rate (e.g. 1.53816, split across spans) only renders after a real
-    // tick arrives; before that the tile reads "Loading...".
-    await expect(firstTile).toContainText(/\d+\.\d+/, { timeout: 20_000 });
-    await expect(firstTile).not.toContainText("Loading...");
+    await common.openWorkspace(ctx);
+    await fxLiveRates.expectFirstTileShowsLiveRateWithin(ctx, 20);
   });
 });
 
@@ -81,18 +42,10 @@ test.describe("full-stack: live pricing renders from the real server", () => {
  */
 test.describe("full-stack: equities data renders from the real server", () => {
   test("the equities watchlist shows a live quote streamed from the backend", async ({
-    page,
+    ctx,
   }) => {
-    await page.goto("/");
-
-    await page.locator("[data-testid='tab-equities']").click();
-
-    const firstRow = page.locator("[data-testid^='watch-row-']").first();
-    await expect(firstRow).toBeVisible({ timeout: 20_000 });
-
-    // The LAST column reads "—" until a real quote tick arrives over the
-    // socket, then renders a decimal price (e.g. 142.37).
-    await expect(firstRow).toContainText(/\d+\.\d+/, { timeout: 20_000 });
+    await equitiesChart.openEquitiesWorkspace(ctx);
+    await equitiesWatchlist.expectFirstRowShowsLiveQuoteWithin(ctx, 20);
   });
 });
 
@@ -102,8 +55,8 @@ test.describe("full-stack: equities data renders from the real server", () => {
  * tests/fullstack/_orchestration.ts) → real execution → wire → UI, in one
  * spec. Same testids as the P1 browser-tier page object
  * (tests/browser/page-objects/playwright/Jarvis.ts) and scenario
- * (tests/browser/scenarios/jarvis.ts), inlined here since this spec file
- * doesn't use the browser-tier page objects.
+ * (tests/browser/scenarios/jarvis.ts) — this spec reuses that same page
+ * object + scenario layer via `buildPlaywrightPageObjects()`.
  *
  * Replies stream (server paces deltas ~26ms apart after ~1s reference-data
  * delay + snapshot reads) and the EURUSD fill can take up to ~2s after
@@ -113,9 +66,9 @@ test.describe("full-stack: equities data renders from the real server", () => {
  */
 test.describe("full-stack: jarvis chat + confirm-gated execution over the real wire", () => {
   test("answers a live-desk quote, then executes a confirm-gated trade onto the blotter", async ({
-    page,
+    ctx,
   }) => {
-    await page.goto("/");
+    await common.openWorkspace(ctx);
 
     // NOT a proof of the subscribe -> availability round-trip: JarvisMachine's
     // INITIAL.available is `true` (see packages/client-core's JarvisMachine),
@@ -130,55 +83,32 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
     // spec is missing — a negative-path fullstack case where the server
     // reports unavailable and the orb actually hides — is tracked as a
     // follow-up in docs/STATUS.md's Jarvis P3 entry.
-    const orb = page.getByTestId("jarvis-orb");
-    await expect(orb).toBeVisible({ timeout: 20_000 });
+    await jarvis.expectOrbVisibleWithin(ctx, 20);
 
-    await orb.click();
-    await expect(page.getByTestId("jarvis-overlay")).toBeVisible();
-
-    const input = page.getByTestId("jarvis-input");
-    const send = page.getByTestId("jarvis-send");
-    // Excludes narrator-origin entries (`data-origin="narrator"`, see
-    // JarvisOverlay.tsx) as belt-and-braces on top of the narrator-off seed
-    // above: even with that seed, this stays the last REPLY entry rather than
-    // an unsolicited proactive narration turn that happened to land after it.
-    const lastJarvisEntry = page
-      .locator(
-        "[data-testid='jarvis-entry'][data-role='jarvis']:not([data-origin='narrator'])",
-      )
-      .last();
+    await jarvis.openViaOrb(ctx);
+    await jarvis.expectOverlayVisible(ctx);
 
     // Turn 1: a live-desk quote question, answered from real server-side
-    // price state.
-    await input.fill("Where is EURUSD?");
-    await send.click();
-    await expect(lastJarvisEntry).toContainText("EURUSD is trading at", {
-      timeout: 20_000,
-    });
-    // toContainText above can resolve mid-stream (the full reply keeps
-    // revealing after this fragment lands), and the input stays disabled
-    // while speaking — wait for the reply to actually finish (mirrors
-    // waitForReplyDone() in tests/browser/page-objects/playwright/Jarvis.ts)
-    // before driving turn 2, rather than leaning on Playwright's implicit
-    // actionability retry against the disabled input.
-    await expect(lastJarvisEntry).toHaveAttribute("data-done", "true", {
-      timeout: 20_000,
-    });
+    // price state. The reply is excluded-narrator (belt-and-braces on top of
+    // the narrator-off seed in ./_context.ts): even with that seed, this
+    // stays the last REPLY entry rather than an unsolicited proactive
+    // narration turn that happened to land after it.
+    await jarvis.askAndExpectReplyContainsThenDone(
+      ctx,
+      "Where is EURUSD?",
+      "EURUSD is trading at",
+      20,
+    );
 
     // Turn 2: a confirm-gated trade — approve, then assert the fill reply
     // (not just any terminal reply: the rejected/timeout copy also flips
     // data-done, so pinning this exact fragment catches a reported failure
     // that still happens to move a blotter row, or vice versa).
-    await input.fill("Buy 5M EURUSD");
-    await send.click();
-
-    const confirmCard = page.getByTestId("jarvis-confirm-card");
-    await expect(confirmCard).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId("jarvis-confirm-approve").click();
-
-    await expect(lastJarvisEntry).toContainText(
+    await jarvis.askApproveAndExpectReplyContains(
+      ctx,
+      "Buy 5M EURUSD",
       "the trade is on your blotter",
-      { timeout: 20_000 },
+      20,
     );
   });
 });

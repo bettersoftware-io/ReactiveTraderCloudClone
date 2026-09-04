@@ -51,6 +51,68 @@ export async function expectFullDemoStartsAndStops(
   assertEquals(await ctx.po.jarvis.demoProgress(), null);
 }
 
+/**
+ * Wait for the header orb to be visible — the fullstack real-backend
+ * smoke's boot witness (NOT a subscribe → availability round-trip proof;
+ * see the fullstack spec's own doc comment for why that positive handshake
+ * is witnessed at the adapter/machine layers instead).
+ */
+export async function expectOrbVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.jarvis.waitForOrbVisible(seconds * 1_000);
+}
+
+/** Click the header orb to open the overlay. */
+export async function openViaOrb(ctx: TestContext): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+}
+
+/** Wait for the full-screen overlay to become visible. */
+export async function expectOverlayVisible(ctx: TestContext): Promise<void> {
+  await ctx.po.jarvis.waitForOverlayVisible();
+}
+
+/**
+ * Ask `question`, wait for the last non-narrator jarvis-role entry to
+ * CONTAIN `fragment`, then wait for that same entry's typed reveal to
+ * finish (`data-done` flips to "true"). Used by the fullstack real-backend
+ * smoke's first turn, against the real server's live desk state.
+ */
+export async function askAndExpectReplyContainsThenDone(
+  ctx: TestContext,
+  question: string,
+  fragment: string,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.jarvis.ask(question);
+  await ctx.po.jarvis.waitForNonNarratorReplyContains(
+    fragment,
+    seconds * 1_000,
+  );
+  await ctx.po.jarvis.waitForNonNarratorReplyDone(seconds * 1_000);
+}
+
+/**
+ * Ask `question`, approve the resulting confirm-gated trade card, then wait
+ * for the last non-narrator jarvis-role entry to CONTAIN `fragment` — used
+ * by the fullstack real-backend smoke's second (execution) turn.
+ */
+export async function askApproveAndExpectReplyContains(
+  ctx: TestContext,
+  question: string,
+  fragment: string,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.jarvis.ask(question);
+  await ctx.po.jarvis.approveConfirmation();
+  await ctx.po.jarvis.waitForNonNarratorReplyContains(
+    fragment,
+    seconds * 1_000,
+  );
+}
+
 /** Ask a live-desk quote question and assert the scripted brain's reply. */
 export async function expectQuoteReply(ctx: TestContext): Promise<void> {
   await ctx.po.jarvis.openViaOrb();

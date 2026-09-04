@@ -5,6 +5,14 @@ export interface LiveRatesTilePO {
   count(): Promise<number>;
   /** innerText of the first tile (used for "prices update over time" check). */
   firstTileText(): Promise<string>;
+  /**
+   * Wait for the first tile to be visible AND show a live decimal rate — a
+   * tile reads "Loading..." until a real price tick arrives, then renders
+   * the SELL/BUY rate (e.g. 1.53816). The fullstack real-backend smoke's
+   * witness that the whole chain (browser → presenter → WsReal adapter →
+   * WebSocket → server → domain) delivered a genuine tick.
+   */
+  waitForFirstTileLiveRate(timeoutMs: number): Promise<void>;
 
   /** Click a category filter (e.g. "EUR", "All"). */
   clickFilter(category: string): Promise<void>;

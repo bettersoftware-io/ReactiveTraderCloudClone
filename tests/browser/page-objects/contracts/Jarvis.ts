@@ -9,6 +9,15 @@ export interface JarvisPO {
   closeViaButton(): Promise<void>;
   /** Snapshot: is the full-screen overlay currently visible. */
   isOverlayVisible(): Promise<boolean>;
+  /**
+   * Wait for the header orb to be visible — the fullstack real-backend
+   * smoke's boot witness (see PlaywrightJarvis's doc for why this is only a
+   * mount-visibility proof, not a subscribe → availability round-trip
+   * witness).
+   */
+  waitForOrbVisible(timeoutMs: number): Promise<void>;
+  /** Wait for the full-screen overlay to become visible. */
+  waitForOverlayVisible(): Promise<void>;
   /** Type `text` into the input and send it (click SEND). */
   ask(text: string): Promise<void>;
   /** innerText of the last `jarvis`-role entry (the current/most recent reply). */
@@ -19,6 +28,27 @@ export interface JarvisPO {
    * generous internal timeout rather than accepting a caller-supplied one.
    */
   waitForReplyDone(): Promise<void>;
+  /**
+   * Wait for the last entry with `data-role="jarvis"` that is NOT
+   * narrator-origin to CONTAIN `fragment` — belt-and-braces on top of the
+   * narrator-off seed every suite applies (see `authSeed.ts`): excludes an
+   * unsolicited proactive narration turn that might land after the reply
+   * this caller cares about. Used by the fullstack real-backend smoke,
+   * where a genuine anomaly episode from the real `PricingSimulator` is a
+   * live possibility (unlike the scripted-brain suite). Caller-supplied
+   * timeout, since a real-backend reply's latency budget is the caller's
+   * own concern.
+   */
+  waitForNonNarratorReplyContains(
+    fragment: string,
+    timeoutMs: number,
+  ): Promise<void>;
+  /**
+   * Same narrator-exclusion as {@link waitForNonNarratorReplyContains}, but
+   * waits for the entry's `data-done` attribute to flip to "true" (the
+   * typed-reveal stream finishing) instead of a text fragment appearing.
+   */
+  waitForNonNarratorReplyDone(timeoutMs: number): Promise<void>;
   /** Snapshot: is the trade confirmation card currently visible. */
   isConfirmCardVisible(): Promise<boolean>;
   /** Click APPROVE on the pending confirmation card. */

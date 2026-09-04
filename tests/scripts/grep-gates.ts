@@ -244,24 +244,34 @@ const GATES: Gate[] = [
   {
     name: "9. No raw @playwright/test imports in native Playwright test bodies",
     pattern: 'from "@playwright/test"',
-    paths: ["browser/playwright/"],
+    paths: ["browser/playwright/", "fullstack/browser/"],
     excludes: [
       "/node_modules/",
       "browser/playwright/playwright.config.ts",
       "browser/playwright/_context.ts",
+      "fullstack/browser/playwright.config.ts",
+      "fullstack/browser/_context.ts",
     ],
   },
   {
     name: "10. No direct ctx.po.* access in native Playwright test bodies",
     pattern: "ctx\\.po\\.",
-    paths: ["browser/playwright/"],
-    excludes: ["/node_modules/", "browser/playwright/_context.ts"],
+    paths: ["browser/playwright/", "fullstack/browser/"],
+    excludes: [
+      "/node_modules/",
+      "browser/playwright/_context.ts",
+      "fullstack/browser/_context.ts",
+    ],
   },
   {
     name: "11. No direct page.* calls in native Playwright test bodies",
     pattern: "\\bpage\\.",
-    paths: ["browser/playwright/"],
-    excludes: ["/node_modules/", "browser/playwright/_context.ts"],
+    paths: ["browser/playwright/", "fullstack/browser/"],
+    excludes: [
+      "/node_modules/",
+      "browser/playwright/_context.ts",
+      "fullstack/browser/_context.ts",
+    ],
   },
   // Gates 12–14 retired with Cypress (2026-07-20) — numbers not reused.
   {

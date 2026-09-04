@@ -140,6 +140,19 @@ export class PlaywrightJarvis implements JarvisPO {
     return this.jarvisEntries().last();
   }
 
+  /** Every jarvis-role entry EXCLUDING narrator-origin ones — see
+   * `waitForNonNarratorReplyContains`'s contract doc for why this exists
+   * alongside the plain `jarvisEntries()` above. */
+  private nonNarratorJarvisEntries(): Locator {
+    return this.page.locator(
+      `[data-testid="${TESTIDS.jarvis.entry}"][data-role="jarvis"]:not([data-origin="narrator"])`,
+    );
+  }
+
+  private lastNonNarratorJarvisEntry(): Locator {
+    return this.nonNarratorJarvisEntries().last();
+  }
+
   private confirmCard(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.confirmCard);
   }
@@ -204,6 +217,14 @@ export class PlaywrightJarvis implements JarvisPO {
     return await this.overlay().isVisible();
   }
 
+  async waitForOrbVisible(timeoutMs: number): Promise<void> {
+    await expect(this.orb()).toBeVisible({ timeout: timeoutMs });
+  }
+
+  async waitForOverlayVisible(): Promise<void> {
+    await expect(this.overlay()).toBeVisible();
+  }
+
   async ask(text: string): Promise<void> {
     await this.input().fill(text);
     await this.sendButton().click();
@@ -217,6 +238,23 @@ export class PlaywrightJarvis implements JarvisPO {
     await expect(this.lastJarvisEntry()).toHaveAttribute("data-done", "true", {
       timeout: REPLY_DONE_TIMEOUT_MS,
     });
+  }
+
+  async waitForNonNarratorReplyContains(
+    fragment: string,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.lastNonNarratorJarvisEntry()).toContainText(fragment, {
+      timeout: timeoutMs,
+    });
+  }
+
+  async waitForNonNarratorReplyDone(timeoutMs: number): Promise<void> {
+    await expect(this.lastNonNarratorJarvisEntry()).toHaveAttribute(
+      "data-done",
+      "true",
+      { timeout: timeoutMs },
+    );
   }
 
   async isConfirmCardVisible(): Promise<boolean> {
