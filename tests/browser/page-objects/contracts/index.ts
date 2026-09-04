@@ -5,6 +5,7 @@ import type { ConnectionOverlayPO } from "./ConnectionOverlay";
 import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
 import type { EquitiesChartPO } from "./EquitiesChart";
+import type { EquitiesWatchlistPO } from "./EquitiesWatchlist";
 import type { FooterPO } from "./Footer";
 import type { FxRfqFormPO } from "./FxRfqForm";
 import type { InspectorPO } from "./Inspector";
@@ -31,6 +32,7 @@ export interface PageObjects {
   creditRfqPanel: CreditRfqPanelPO;
   blotterTable: BlotterTablePO;
   equitiesChart: EquitiesChartPO;
+  equitiesWatchlist: EquitiesWatchlistPO;
   layout: LayoutPO;
   jarvis: JarvisPO;
   preferences: PreferencesPO;

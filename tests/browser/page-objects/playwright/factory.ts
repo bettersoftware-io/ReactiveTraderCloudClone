@@ -8,6 +8,7 @@ import { PlaywrightConnectionOverlay } from "./ConnectionOverlay";
 import { PlaywrightCreditRfqForm } from "./CreditRfqForm";
 import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
 import { PlaywrightEquitiesChart } from "./EquitiesChart";
+import { PlaywrightEquitiesWatchlist } from "./EquitiesWatchlist";
 import { PlaywrightFooter } from "./Footer";
 import { PlaywrightFxRfqForm } from "./FxRfqForm";
 import { PlaywrightInspector } from "./Inspector";
@@ -35,6 +36,7 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     creditRfqPanel: new PlaywrightCreditRfqPanel(page),
     blotterTable: new PlaywrightBlotterTable(page),
     equitiesChart: new PlaywrightEquitiesChart(page),
+    equitiesWatchlist: new PlaywrightEquitiesWatchlist(page),
     layout: new PlaywrightLayout(page),
     jarvis: new PlaywrightJarvis(page),
     preferences: new PlaywrightPreferences(page),
