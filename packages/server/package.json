@@ -18,7 +18,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.115.0",
+    "@anthropic-ai/sdk": "0.124.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
