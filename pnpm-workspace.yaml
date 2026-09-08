@@ -228,6 +228,16 @@ overrides:
   # a consumer already on >=0.5.0 keeps its choice. 0.5.0 published
   # 2026-06-29 — well outside the minimumReleaseAge cooldown.
   "decode-uri-component@<0.5.0": ^0.5.0
+  # Force the transitive qs (express@5.2.1 > body-parser, 4 prod-reachable
+  # paths in @rtc/server) up from the vulnerable 6.15.3 to the PATCHED 6.16.0.
+  # Fixes BOTH moderate advisories GHSA-4mjr-xmp4-gh2g and GHSA-x5fp-wj9c-mxmx
+  # (their vulnerable ranges overlap at <=6.15.3; 6.16.0 closes both), which
+  # red CI gate 25 (`pnpm audit --prod`). Same-major CJS patch bump
+  # (main: lib/index.js — no ESM cliff like decode-uri-component above).
+  # SCOPED to the vulnerable range so a consumer already on >=6.16.0 keeps
+  # its choice. 6.16.0 published 2026-08-29 — outside the minimumReleaseAge
+  # cooldown.
+  "qs@<6.16.0": ^6.16.0
   # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
   # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
   # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router
