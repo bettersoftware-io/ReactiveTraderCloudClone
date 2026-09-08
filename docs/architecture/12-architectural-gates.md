@@ -44,6 +44,7 @@
 | 38 | No `setTimeout` / `setInterval` in `devtools-app/src` (flash/timing runs through rAF or the store) |
 | 39 | No `localStorage` in `devtools-app/src` (the inspector holds no persistence; state lives in InspectorStore) |
 | 40 | No `fetch(` / `new WebSocket` in `devtools-app/src` (transport is the injected Duplex) |
+| 41 | No `.test` / `.spec` / `.page` / `.stories` files inside `client-react-native/app/` — expo-router's route context bundles every source file there and its parser strips all extensions, so `_layout.test.tsx` becomes a second `_layout` and the route tree throws at boot; the layout specs live in `src/app/` and reach the routes via `#app/*` |
 
 Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
 

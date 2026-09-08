@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 interface Gate {
@@ -14,6 +14,40 @@ interface Gate {
    * strings (empty array = pass).
    */
   customCheck?: () => string[];
+}
+
+/**
+ * Gate 41. expo-router derives the app's routes from a `require.context` over
+ * `app/` whose regex admits EVERY source file except `+api`/`+html`, and its
+ * parser strips every extension — so a co-located `_layout.test.tsx` becomes a
+ * second `_layout` and `getRoutesCore` throws a layout-conflict error at boot.
+ * Metro's `blockList` in the RN package hides test files from the bundle, but
+ * that is a shim over the root cause: nothing but route modules may live in
+ * the route tree. The layout specs sit in `src/app/` and import the routes via
+ * `#app/*`.
+ */
+const NON_ROUTE_FILE = /\.(test|spec|page|stories)\.[jt]sx?$/;
+
+function checkRouteTreeHoldsOnlyRoutes(appDir: string): string[] {
+  const failures: string[] = [];
+
+  function walk(dir: string, relative: string): void {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const relativePath = `${relative}${entry.name}`;
+
+      if (entry.isDirectory()) {
+        walk(`${dir}${entry.name}/`, `${relativePath}/`);
+      } else if (NON_ROUTE_FILE.test(entry.name)) {
+        failures.push(
+          `${appDir}${relativePath}: not a route module — expo-router would register it as a route; move it out of app/`,
+        );
+      }
+    }
+  }
+
+  walk(appDir, "");
+
+  return failures;
 }
 
 /**
@@ -431,6 +465,16 @@ const GATES: Gate[] = [
     pattern: "fetch\\(|new WebSocket",
     paths: ["../packages/devtools-app/src/"],
     excludes: ["/node_modules/", "/__tests__/", ".test.", ".spec."],
+  },
+  {
+    name: "41. No test/spec/page/story files inside the RN expo-router route tree (every file under app/ is a route)",
+    pattern: "",
+    paths: [],
+    customCheck: () => {
+      return checkRouteTreeHoldsOnlyRoutes(
+        "../packages/client-react-native/app/",
+      );
+    },
   },
 ];
 
