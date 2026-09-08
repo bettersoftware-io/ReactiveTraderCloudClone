@@ -64,22 +64,63 @@ const tags = new Set(
   }),
 );
 
-if (tags.size === 1) {
-  const [tag] = tags;
-  console.log(
-    `check-image-tag-drift: all ${found.length} references agree on ` +
-      `mcr.microsoft.com/playwright:${tag}`,
+if (tags.size !== 1) {
+  console.error(
+    "check-image-tag-drift: the pinned Playwright container image tag has " +
+      "drifted — every reference must use the SAME tag. Found:\n" +
+      found
+        .map((entry) => {
+          return `  ${entry.file} → ${entry.tag}`;
+        })
+        .join("\n"),
   );
-  process.exit(0);
+  process.exit(1);
 }
 
-console.error(
-  "check-image-tag-drift: the pinned Playwright container image tag has " +
-    "drifted — every reference must use the SAME tag. Found:\n" +
-    found
-      .map((entry) => {
-        return `  ${entry.file} → ${entry.tag}`;
-      })
-      .join("\n"),
+// Lockstep between the FILES is necessary but not sufficient: the image must
+// also carry the browser builds the INSTALLED playwright expects, or every
+// container-based run dies at `browserType.launch: Executable doesn't exist`.
+// That is exactly what happened when Renovate bumped playwright 1.61.1 →
+// 1.63.0 (#695) while the image stayed at v1.61.0-noble — this gate was green
+// because the four references still agreed with each other. So also compare
+// the tag against the version pnpm-lock.yaml resolves for `playwright`.
+// Major.minor only: browser builds move per minor (the v1.61.0 image served
+// npm 1.61.1), so a patch skew is fine and must not fail the gate.
+const [tag] = tags;
+const lock = readFileSync(join(process.cwd(), "pnpm-lock.yaml"), "utf8");
+const lockVersions = new Set(
+  [...lock.matchAll(/^ {2}playwright@(\d+\.\d+)\.\d+:$/gm)].map((match) => {
+    return match[1];
+  }),
 );
-process.exit(1);
+const tagMatch = tag.match(/^v(\d+\.\d+)\.\d+-/);
+const tagMinor = tagMatch === null ? null : tagMatch[1];
+
+if (lockVersions.size !== 1 || tagMinor === null) {
+  console.error(
+    "check-image-tag-drift: could not compare the image tag against the " +
+      `lockfile — tag ${tag} vs lockfile playwright version(s) ` +
+      `[${[...lockVersions].join(", ")}]. One resolved playwright version ` +
+      "and a v<semver>-<distro> tag are expected.",
+  );
+  process.exit(1);
+}
+
+const [lockMinor] = lockVersions;
+
+if (lockMinor !== tagMinor) {
+  console.error(
+    "check-image-tag-drift: the pinned container image " +
+      `(playwright:${tag}) does not match the installed playwright ` +
+      `${lockMinor}.x from pnpm-lock.yaml — the image would be missing the ` +
+      "browser builds this playwright expects. Bump the tag in every file " +
+      "listed in FILES (or realign the dependency).",
+  );
+  process.exit(1);
+}
+
+console.log(
+  `check-image-tag-drift: all ${found.length} references agree on ` +
+    `mcr.microsoft.com/playwright:${tag}, matching the installed ` +
+    `playwright ${lockMinor}.x`,
+);

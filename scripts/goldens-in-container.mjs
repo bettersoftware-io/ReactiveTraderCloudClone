@@ -35,7 +35,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Keep in sync with the container tag in ci.yml / visual.yml / update-visual-goldens.yml.
-const IMAGE = "mcr.microsoft.com/playwright:v1.61.0-noble";
+const IMAGE = "mcr.microsoft.com/playwright:v1.63.0-noble";
 
 const TIERS = ["playwright"];
 

@@ -62,7 +62,7 @@ jobs:
     # Same Playwright image as the `visual` job: the client visual coverage tier
     # renders in a real browser; the Node-based tiers run fine here too. Tag must
     # track @playwright/test in packages/client-react.
-    container: mcr.microsoft.com/playwright:v1.61.0-noble
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
