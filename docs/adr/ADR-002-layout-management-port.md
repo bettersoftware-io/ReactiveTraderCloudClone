@@ -871,6 +871,29 @@ seam rather than by a port design choice:
   against — or shrink to the two-branch conditional `WorkspaceEngine`
   already is. Revisit when a **third** engine forces a real contract.
 
+## The Dockview-native feature era (decided 2026-09-10)
+
+With every parity residual retired (#670/#673/#676), the workstream inverts:
+Dockview's native capabilities that the in-house engine structurally cannot
+express — DnD rearrangement, tab stacks, panel close/reopen, dynamic panel
+instances, pop-out windows, floating groups, layout presets — are introduced
+and used, **accepting a deliberate feature disparity** between engines. The
+in-house engine is kept (and must not regress), with a possible future
+retirement if the Dockview-native experience proves out — explicitly not now.
+
+Doctrine (full version in the
+[Dockview-native features spec](../superpowers/specs/2026-09-10-dockview-native-features-design.md)):
+layout state is a three-layer stack — seed tree (code) / semantic machine
+state (client-core, round-trips engines by construction) / geometry +
+arrangement (Dockview's blob, engine-private). A feature's semantic core is
+lifted to layer 2 only where the machine already has the shape (closed set,
+instance list, popped-out session flag); the arrangement tree itself stays
+layer 3. Cross-engine conversion is a **projection, never a migration**:
+switching to in-house shows seed + layer 2 and leaves the blob untouched, so
+switching back is lossless. **The engine-parity gate's scope freezes at the
+shared subset** — seed-derivable twin scenarios only; user-shaped layouts
+stay outside the golden matrix by design.
+
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and
