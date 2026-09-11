@@ -115,18 +115,19 @@ converted to accessors/memos; and a bookkeeping `createEffect` that diffs the
 current emission against the previous one (new-trade/new-RFQ flash, RFQ
 entrance/exit cascades) previously seeded that "previous" baseline with a
 plain `let prev… = accessor()` read at setup, outside tracking. `on()`
-supplies that baseline natively — its own dependency-collection pass at setup
-IS the seed — so there's nothing left to read outside tracking. Use it
-**without** `{ defer: true }`: that option skips *calling* the callback on
-mount, but does not preserve the mount-time read as the following call's
-`previous` (measured — the first non-skipped call gets `previous: undefined`
-either way), which reintroduces the exact bug the seed existed to prevent,
-just shifted one tick later. Guard the callback body with
-`if (previous === undefined) return;` instead — the mount call still runs
-(harmlessly, since it's a no-op) and, critically, still records the mount
-values as `previous` for the first real call afterwards. See
-`CreditBlotter.tsx`, `NewRfqPanel.tsx`, and `RfqsPanel.tsx` for worked
-examples. Unsuppressed warnings are ledgered in
+supplies that baseline natively — its first run establishes it — so there's
+nothing left to read outside tracking. Use it **without** `{ defer: true }`:
+that option skips *calling* the callback on mount, but does not preserve the
+mount-time read as the following call's `previous` (measured — the first
+non-deferred call gets a valid baseline; under `defer: true` that same call
+gets `previous: undefined` instead), which reintroduces the exact bug the
+seed existed to prevent, just shifted one tick later. Fall back to the
+CURRENT values when `previous` is `undefined` (`previous ?? current`) so an
+existing equality guard handles mount with no special case — the mount call
+still runs (comparing the current value against itself, a no-op) and,
+critically, still records the mount values as `previous` for the first real
+call afterwards. See `CreditBlotter.tsx`, `NewRfqPanel.tsx`, and
+`RfqsPanel.tsx` for worked examples. Unsuppressed warnings are ledgered in
 [`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
 
 ## See also

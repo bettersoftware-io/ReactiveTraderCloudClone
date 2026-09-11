@@ -42,15 +42,9 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   // wiped exactly on that transition — not on every emission while editing,
   // and not on the initial mount (which already starts from EMPTY_VALUE).
   // `status` is tracked (not the whole `submission.state()`) per the
-  // reactivity amendment. `on()` supplies the previous status natively — no
-  // hand-rolled `let previousStatus = status()` seed read outside tracking —
-  // deliberately WITHOUT `{ defer: true }`: that option only skips *calling*
-  // the callback on mount, it doesn't hand the mount-time read to the first
-  // real call as `previous` (measured: that first call gets `previous:
-  // undefined` instead). Harmless here regardless, since this machine's
-  // first-ever transition is always editing→submitting, never
-  // confirmed→editing, but the plain (non-deferred) form below is correct
-  // without leaning on that machine-specific guarantee.
+  // reactivity amendment. No `defer`: on() records the previous input only
+  // on non-deferred runs (solid.js `on()`), so the first run must execute to
+  // seed `previous` — see the README's `solid/reactivity` section.
   createEffect(
     on(status, (currentStatus, previousStatus) => {
       if (previousStatus === "confirmed" && currentStatus === "editing") {

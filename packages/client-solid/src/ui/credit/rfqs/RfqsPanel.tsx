@@ -117,40 +117,24 @@ export function RfqsPanel(): JSX.Element {
     return matchingIds().join(",");
   });
 
-  // Component-scope memo (not hoisted inline inside the bookkeeping effect
-  // below): `on()`'s deps tuple reads this alongside matchingKey/allIdsKey/
-  // filter so BOTH the current and the previous matching-id SET come back
-  // from `on()` itself, with membership checks staying O(1) — no
-  // `new Set(matchingIds())` rebuilt (and re-tracked) inside the effect body.
+  // Component-scope memo: on()'s deps tuple reads this so it hands back both
+  // the current and the previous matching-id SET, O(1) membership either
+  // way. It recomputes on every `matchingIds()` change (more often than the
+  // old in-effect hoist, which only rebuilt on a passing run).
   const matchingIdSet = createMemo((): ReadonlySet<number> => {
     return new Set(matchingIds());
   });
 
   // React's sanctioned "adjust state during render" pattern (react.dev's
   // "You Might Not Need an Effect"), ported to an explicit Solid effect keyed
-  // off the narrowed id-set/filter memos above. `on()` supplies the previous
-  // (allIdsKey, matchingKey, filter, allIds, matchingIdSet) tuple natively,
-  // so there's no hand-rolled `let prevAll/prevMatching/prevFilter` seed read
-  // outside tracking — its own dependency-collection pass at setup
-  // establishes the baseline the same way the manual seeds used to, and the
-  // callback's first invocation already receives it as `previous` —
-  // deliberately WITHOUT `{ defer: true }`. Measured: with `{ defer: true }`
-  // the first invocation gets `previous: undefined` instead of the
-  // mount-time baseline (defer only skips *calling* the callback on mount,
-  // it doesn't preserve that mount read as the next call's `previous`),
-  // which would treat every RFQ already open at mount as a fresh arrival on
-  // the very next id-set change — the exact bug
-  // `RfqsPanel.contract.spec.ts`'s "plays a cardIn entrance animation for a
-  // newly-arrived RFQ …" case pins ("the initial seed render never plays an
-  // entrance animation" only holds if the FIRST real diff still has a valid
-  // baseline to diff against). `allChanged`/`matchingChanged`/`filterChanged`
-  // mirror the original's own short-circuit for a recompute that changed one
-  // of `allIds`/`matchingIdSet`'s array/Set identity (e.g. an unrelated
-  // quote update) without changing CONTENT. `exiting`/`entering` are read
+  // off the narrowed id-set/filter memos above. `exiting`/`entering` are read
   // via `untrack` where this effect needs their CURRENT value for its own
   // bookkeeping — never tracked — so writing to them here can't re-trigger
   // this same effect; it only re-runs when allIdsKey/matchingKey/filter/
-  // allIds/matchingIdSet actually change again.
+  // allIds/matchingIdSet actually change again. No `defer`: on() records the
+  // previous input only on non-deferred runs (solid.js `on()`), so the first
+  // run must execute to seed `previous` — see the README's `solid/reactivity`
+  // section.
   createEffect(
     on(
       () => {
@@ -172,17 +156,19 @@ export function RfqsPanel(): JSX.Element {
         ],
         previous,
       ) => {
-        if (previous === undefined) {
-          return;
-        }
-
         const [
           previousAllKey,
           previousMatchingKey,
           previousFilter,
           previousAllIds,
           previousMatchingIdSet,
-        ] = previous;
+        ] = previous ?? [
+          currentAllKey,
+          currentMatchingKey,
+          currentFilter,
+          currentAllIds,
+          currentMatchingIdSet,
+        ];
 
         const allChanged = currentAllKey !== previousAllKey;
         const matchingChanged = currentMatchingKey !== previousMatchingKey;

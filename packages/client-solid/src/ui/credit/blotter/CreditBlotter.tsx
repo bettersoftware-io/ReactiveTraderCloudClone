@@ -81,35 +81,24 @@ export function CreditBlotter(): JSX.Element {
     new Set(),
   );
 
-  // `on()` supplies the previous (tradeIdsKey, tradeIds) pair natively, so
-  // there's no hand-rolled `let prev… = …()` seed to read outside tracking:
-  // its own dependency-collection pass at setup establishes the baseline
-  // (this component's just-mounted trade set) the same way the manual seed
-  // used to, and the callback's first invocation already receives it as
-  // `previous` — deliberately WITHOUT `{ defer: true }`. Measured: with
-  // `defer: true`, the callback's first invocation reports `previous:
-  // undefined` instead of the mount-time baseline (defer only skips
-  // *calling* the callback on mount, it doesn't preserve that mount read as
-  // the next call's `previous`), which would flash every pre-existing trade
-  // as "just booked" on the very next id-set change — the exact bug the
-  // `CreditBlotter.contract.spec.ts` "flags a newly streamed-in trade …, but
-  // not pre-existing trades" case pins. The `currentKey === previous[0]`
-  // guard mirrors the original's short-circuit for a recompute that changed
-  // `tradeIds`' array identity (e.g. an unrelated quote update rebuilding
-  // `trades()`) without changing its CONTENT.
+  // No `defer`: on() records the previous input only on non-deferred runs
+  // (solid.js `on()`), so the first run must execute to seed `previous` —
+  // see the README's `solid/reactivity` section.
   createEffect(
     on(
       () => {
         return [tradeIdsKey(), tradeIds()] as const;
       },
       ([currentKey, currentIds], previous) => {
-        if (previous === undefined || currentKey === previous[0]) {
+        const [previousKey, previousIds] = previous ?? [currentKey, currentIds];
+
+        if (currentKey === previousKey) {
           return;
         }
 
-        const previousIds = new Set(previous[1]);
+        const previousIdSet = new Set(previousIds);
         const justAppeared = currentIds.filter((id) => {
-          return !previousIds.has(id);
+          return !previousIdSet.has(id);
         });
         setNewTradeIds(new Set(justAppeared));
       },
