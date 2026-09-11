@@ -1285,6 +1285,22 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     );
   });
 
+  it("serialises a stripped layout without any locked mark in the blob", async () => {
+    // Lock state is DERIVED (a group is locked iff it is a strip right now);
+    // dockview's toJSON would persist it, and a persisted lock could
+    // re-impose itself on a layout whose collapse state changed while this
+    // engine was not looking. The save scrubs it; the reload's collapse
+    // replay re-derives it.
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    engine.dispose();
+
+    expect(seen.blob()).not.toContain('"locked"');
+  });
+
   it("restores a fully-stripped column across a reload — its width and both heights", async () => {
     const seen = trackLayout();
     const first = createDockEngine({ ...base(), ...seen.options });

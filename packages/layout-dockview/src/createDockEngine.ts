@@ -1,6 +1,10 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
-import { DOCK_BLOB_VERSION, migrateDockBlob } from "#/dockBlob";
+import {
+  DOCK_BLOB_VERSION,
+  migrateDockBlob,
+  withoutLockMarks,
+} from "#/dockBlob";
 import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -244,7 +248,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const stripGeometry = stripGeometrySidecar();
     opts.onLayoutChange(
       JSON.stringify({
-        ...api.toJSON(),
+        // Lock marks are derived from strip membership (audit S1) and
+        // must never persist — see withoutLockMarks.
+        ...(withoutLockMarks(api.toJSON()) as ReturnType<
+          DockviewApi["toJSON"]
+        >),
         rtcBlobVersion: DOCK_BLOB_VERSION,
         rtcDesignPins: intactDesignPins(),
         ...(stripGeometry === undefined
@@ -1443,6 +1451,14 @@ function loadBlobOrSeed(
       // untouched.
       const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+
+      // Lock state is derived (strip membership), never trusted from a
+      // blob: a legacy or hand-edited blob may still carry `locked`, and
+      // dockview's fromJSON restores it. Normalise; the bridge's collapse
+      // replay re-locks the bars.
+      for (const group of api.groups) {
+        group.api.locked = false;
+      }
 
       return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
     } catch {
