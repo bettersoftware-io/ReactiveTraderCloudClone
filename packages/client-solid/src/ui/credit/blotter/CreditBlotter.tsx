@@ -1,5 +1,12 @@
 import type { JSX } from "solid-js";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  on,
+  Show,
+} from "solid-js";
 
 import {
   applyFilters,
@@ -70,31 +77,44 @@ export function CreditBlotter(): JSX.Element {
     return tradeIds().join(",");
   });
 
-  let prevTradeIds: TradeIdSnapshot = {
-    // eslint-disable-next-line solid/reactivity -- one-time seed: prevTradeIds needs a baseline before the createEffect below starts tracking tradeIdsKey()/tradeIds(); seeding with the CURRENT id set (rather than empty) avoids flashing every pre-existing trade as "just booked" on mount — the effect's own tracked reads pick up every subsequent change
-    key: tradeIdsKey(),
-    // eslint-disable-next-line solid/reactivity -- see justification above
-    ids: new Set(tradeIds()),
-  };
-
   const [newTradeIds, setNewTradeIds] = createSignal<ReadonlySet<number>>(
     new Set(),
   );
 
-  createEffect(() => {
-    const currentKey = tradeIdsKey();
+  // `on()` supplies the previous (tradeIdsKey, tradeIds) pair natively, so
+  // there's no hand-rolled `let prev… = …()` seed to read outside tracking:
+  // its own dependency-collection pass at setup establishes the baseline
+  // (this component's just-mounted trade set) the same way the manual seed
+  // used to, and the callback's first invocation already receives it as
+  // `previous` — deliberately WITHOUT `{ defer: true }`. Measured: with
+  // `defer: true`, the callback's first invocation reports `previous:
+  // undefined` instead of the mount-time baseline (defer only skips
+  // *calling* the callback on mount, it doesn't preserve that mount read as
+  // the next call's `previous`), which would flash every pre-existing trade
+  // as "just booked" on the very next id-set change — the exact bug the
+  // `CreditBlotter.contract.spec.ts` "flags a newly streamed-in trade …, but
+  // not pre-existing trades" case pins. The `currentKey === previous[0]`
+  // guard mirrors the original's short-circuit for a recompute that changed
+  // `tradeIds`' array identity (e.g. an unrelated quote update rebuilding
+  // `trades()`) without changing its CONTENT.
+  createEffect(
+    on(
+      () => {
+        return [tradeIdsKey(), tradeIds()] as const;
+      },
+      ([currentKey, currentIds], previous) => {
+        if (previous === undefined || currentKey === previous[0]) {
+          return;
+        }
 
-    if (currentKey === prevTradeIds.key) {
-      return;
-    }
-
-    const currentIds = tradeIds();
-    const justAppeared = currentIds.filter((id) => {
-      return !prevTradeIds.ids.has(id);
-    });
-    setNewTradeIds(new Set(justAppeared));
-    prevTradeIds = { key: currentKey, ids: new Set(currentIds) };
-  });
+        const previousIds = new Set(previous[1]);
+        const justAppeared = currentIds.filter((id) => {
+          return !previousIds.has(id);
+        });
+        setNewTradeIds(new Set(justAppeared));
+      },
+    ),
+  );
 
   function cycleSortColumn(column: keyof CreditTrade): void {
     setSort((prev) => {
@@ -280,11 +300,4 @@ function rowAccentVar(direction: Direction): string {
   return direction === Direction.Buy
     ? "var(--accent-positive)"
     : "var(--accent-negative)";
-}
-
-/** A trade-id-set snapshot, taken across emissions to detect "just booked"
- * arrivals (see the new-trade flash comment above). */
-interface TradeIdSnapshot {
-  key: string;
-  ids: ReadonlySet<number>;
 }

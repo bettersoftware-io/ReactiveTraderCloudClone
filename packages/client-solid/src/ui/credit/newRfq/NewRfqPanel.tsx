@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, on, Show } from "solid-js";
 
 import {
   CREDIT_RFQ_EXPIRY_SECONDS,
@@ -42,20 +42,23 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   // wiped exactly on that transition — not on every emission while editing,
   // and not on the initial mount (which already starts from EMPTY_VALUE).
   // `status` is tracked (not the whole `submission.state()`) per the
-  // reactivity amendment; `previousStatus` is a plain closure binding, not a
-  // signal, since nothing else needs to read it.
-  // eslint-disable-next-line solid/reactivity -- one-time seed: previousStatus needs a baseline before the createEffect below starts tracking status(); the effect's own tracked read (currentStatus) picks up every subsequent transition, and previousStatus is reassigned from that tracked read at the end of every run
-  let previousStatus = status();
-  createEffect(() => {
-    const currentStatus = status();
-
-    if (previousStatus === "confirmed" && currentStatus === "editing") {
-      setValue(EMPTY_VALUE);
-      setInstrumentOpen(false);
-    }
-
-    previousStatus = currentStatus;
-  });
+  // reactivity amendment. `on()` supplies the previous status natively — no
+  // hand-rolled `let previousStatus = status()` seed read outside tracking —
+  // deliberately WITHOUT `{ defer: true }`: that option only skips *calling*
+  // the callback on mount, it doesn't hand the mount-time read to the first
+  // real call as `previous` (measured: that first call gets `previous:
+  // undefined` instead). Harmless here regardless, since this machine's
+  // first-ever transition is always editing→submitting, never
+  // confirmed→editing, but the plain (non-deferred) form below is correct
+  // without leaning on that machine-specific guarantee.
+  createEffect(
+    on(status, (currentStatus, previousStatus) => {
+      if (previousStatus === "confirmed" && currentStatus === "editing") {
+        setValue(EMPTY_VALUE);
+        setInstrumentOpen(false);
+      }
+    }),
+  );
 
   const selectedInstrument = createMemo((): Instrument | null => {
     return (

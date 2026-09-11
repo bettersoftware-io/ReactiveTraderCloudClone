@@ -4,6 +4,7 @@ import {
   createMemo,
   createSignal,
   For,
+  on,
   onCleanup,
   Show,
   untrack,
@@ -116,146 +117,183 @@ export function RfqsPanel(): JSX.Element {
     return matchingIds().join(",");
   });
 
-  // Previous-emission snapshots (react's useState comparisons), kept as
-  // plain mutable bindings rather than signals: nothing outside the
-  // bookkeeping effect below ever reads them, so exposing them reactively
-  // would only invite the effect to re-trigger on its own writes.
-  // eslint-disable-next-line solid/reactivity -- one-time seed: prevAll needs a baseline before the createEffect below starts tracking allIdsKey()/allIds(); seeding with the CURRENT id set (rather than empty) avoids treating every RFQ already open at mount as a fresh arrival — the effect's own tracked reads pick up every subsequent change
-  let prevAll: IdSnapshot = { key: allIdsKey(), ids: new Set(allIds()) };
-  let prevMatching: IdSnapshot = {
-    // eslint-disable-next-line solid/reactivity -- one-time seed: prevMatching needs the same CURRENT-state baseline as prevAll above, for the same reason (no false "just entered the filter" on mount)
-    key: matchingKey(),
-    // eslint-disable-next-line solid/reactivity -- see justification above
-    ids: new Set(matchingIds()),
-  };
-  let prevFilter = filter();
+  // Component-scope memo (not hoisted inline inside the bookkeeping effect
+  // below): `on()`'s deps tuple reads this alongside matchingKey/allIdsKey/
+  // filter so BOTH the current and the previous matching-id SET come back
+  // from `on()` itself, with membership checks staying O(1) — no
+  // `new Set(matchingIds())` rebuilt (and re-tracked) inside the effect body.
+  const matchingIdSet = createMemo((): ReadonlySet<number> => {
+    return new Set(matchingIds());
+  });
 
   // React's sanctioned "adjust state during render" pattern (react.dev's
   // "You Might Not Need an Effect"), ported to an explicit Solid effect keyed
-  // off the narrowed id-set/filter memos above. `exiting`/`entering` are read
+  // off the narrowed id-set/filter memos above. `on()` supplies the previous
+  // (allIdsKey, matchingKey, filter, allIds, matchingIdSet) tuple natively,
+  // so there's no hand-rolled `let prevAll/prevMatching/prevFilter` seed read
+  // outside tracking — its own dependency-collection pass at setup
+  // establishes the baseline the same way the manual seeds used to, and the
+  // callback's first invocation already receives it as `previous` —
+  // deliberately WITHOUT `{ defer: true }`. Measured: with `{ defer: true }`
+  // the first invocation gets `previous: undefined` instead of the
+  // mount-time baseline (defer only skips *calling* the callback on mount,
+  // it doesn't preserve that mount read as the next call's `previous`),
+  // which would treat every RFQ already open at mount as a fresh arrival on
+  // the very next id-set change — the exact bug
+  // `RfqsPanel.contract.spec.ts`'s "plays a cardIn entrance animation for a
+  // newly-arrived RFQ …" case pins ("the initial seed render never plays an
+  // entrance animation" only holds if the FIRST real diff still has a valid
+  // baseline to diff against). `allChanged`/`matchingChanged`/`filterChanged`
+  // mirror the original's own short-circuit for a recompute that changed one
+  // of `allIds`/`matchingIdSet`'s array/Set identity (e.g. an unrelated
+  // quote update) without changing CONTENT. `exiting`/`entering` are read
   // via `untrack` where this effect needs their CURRENT value for its own
   // bookkeeping — never tracked — so writing to them here can't re-trigger
-  // this same effect; it only re-runs when allIdsKey/matchingKey/filter
-  // actually change again.
-  createEffect(() => {
-    const currentAllKey = allIdsKey();
-    const currentMatchingKey = matchingKey();
-    const currentFilter = filter();
-
-    const allChanged = currentAllKey !== prevAll.key;
-    const matchingChanged = currentMatchingKey !== prevMatching.key;
-    const filterChanged = currentFilter !== prevFilter;
-    const inputsChanged = allChanged || matchingChanged || filterChanged;
-
-    if (!inputsChanged) {
-      return;
-    }
-
-    const reduced = prefersReducedMotion();
-    const currentAllIds = allIds();
-    // eslint-disable-next-line solid/reactivity -- matchingIds() is tracked above (this createEffect reruns on matchingKey changes); hoisting the Set here (rather than rebuilding `new Set(matchingIds())` inside the `dropped` filter callback below) keeps that membership check O(1) per element instead of O(n) — the read is still synchronous within this same effect pass, never deferred
-    const currentMatchingIdSet = new Set(matchingIds());
-
-    // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that dropped
-    // out of the MATCHING set without a filter change (a state transition,
-    // e.g. an RFQ expiring while LIVE is the active tab) is retained in
-    // `exiting` so its card can play the cardOut animation before it stops
-    // rendering. A filter change never auto-exits — the outgoing tab's
-    // cards are simply replaced (matching the prototype, which only retains
-    // state-transition and trash-click exits across the swap).
-    let exitingNow = untrack(exiting);
-
-    if (!reduced && matchingChanged && !filterChanged) {
-      const allIdSet = new Set(currentAllIds);
-      // dismissed() here (and in renderedIdsNow's filter below) is tracked
-      // only for ids where evaluation reaches it — deliberate: this whole
-      // effect already reruns whenever matchingKey/allIdsKey/filter change,
-      // and dismissed() itself feeds matchingKey via the matchingIds memo
-      // above, so a dismissed() change that matters here has already been
-      // picked up by that transitive dependency by the time this runs.
-      const dropped = [...prevMatching.ids].filter((id) => {
-        return (
-          !currentMatchingIdSet.has(id) &&
-          allIdSet.has(id) &&
-          !dismissed().has(id) &&
-          !exitingNow.has(id)
-        );
-      });
-
-      if (dropped.length > 0) {
-        const merged = new Map(exitingNow);
-
-        for (const id of dropped) {
-          merged.set(id, "auto");
+  // this same effect; it only re-runs when allIdsKey/matchingKey/filter/
+  // allIds/matchingIdSet actually change again.
+  createEffect(
+    on(
+      () => {
+        return [
+          allIdsKey(),
+          matchingKey(),
+          filter(),
+          allIds(),
+          matchingIdSet(),
+        ] as const;
+      },
+      (
+        [
+          currentAllKey,
+          currentMatchingKey,
+          currentFilter,
+          currentAllIds,
+          currentMatchingIdSet,
+        ],
+        previous,
+      ) => {
+        if (previous === undefined) {
+          return;
         }
 
-        exitingNow = merged;
-        setExiting(merged);
-      }
-    }
+        const [
+          previousAllKey,
+          previousMatchingKey,
+          previousFilter,
+          previousAllIds,
+          previousMatchingIdSet,
+        ] = previous;
 
-    // Rendered = matches the active filter, plus anything mid exit
-    // animation; user-dismissed ids are gone for good. Mirrors the
-    // `rendered` memo below exactly.
-    const renderedIdsNow = rfqs()
-      .filter((r) => {
-        return (
-          !dismissed().has(r.id) &&
-          (matchesFilter(r.state, currentFilter) || exitingNow.has(r.id))
-        );
-      })
-      .sort((a, b) => {
-        return b.creationTimestamp - a.creationTimestamp;
-      })
-      .map((r) => {
-        return r.id;
-      });
+        const allChanged = currentAllKey !== previousAllKey;
+        const matchingChanged = currentMatchingKey !== previousMatchingKey;
+        const filterChanged = currentFilter !== previousFilter;
+        const inputsChanged = allChanged || matchingChanged || filterChanged;
 
-    // Prune any `entering` id that's no longer rendered (final review M-b):
-    // a card created under one filter gets an `entering` entry; if the user
-    // switches filters before its 0.46s entrance completes, the card
-    // unmounts without ever firing animationend, so nothing would otherwise
-    // clear its entry — orphaned in the map. If that same id later
-    // re-enters the rendered set via a STATE change with the filter
-    // unchanged (which shows plain, no entrance — enterCascadeAdditions
-    // deliberately omits it), the stale entry would incorrectly replay the
-    // entrance. Dropping ids the moment they leave `rendered` (same pass
-    // that computes the new additions) keeps `entering` in sync with what's
-    // actually mounted.
-    const renderedIdSet = new Set(renderedIdsNow);
-    const mergedEntering = new Map(untrack(entering));
-    let enteringChanged = false;
+        if (!inputsChanged) {
+          return;
+        }
 
-    for (const id of mergedEntering.keys()) {
-      if (!renderedIdSet.has(id)) {
-        mergedEntering.delete(id);
-        enteringChanged = true;
-      }
-    }
+        const reduced = prefersReducedMotion();
 
-    if (!reduced) {
-      const additions = enterCascadeAdditions({
-        prevAllIds: prevAll.ids,
-        shownIds: renderedIdsNow,
-        filterChanged,
-      });
+        // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that
+        // dropped out of the MATCHING set without a filter change (a state
+        // transition, e.g. an RFQ expiring while LIVE is the active tab) is
+        // retained in `exiting` so its card can play the cardOut animation
+        // before it stops rendering. A filter change never auto-exits — the
+        // outgoing tab's cards are simply replaced (matching the prototype,
+        // which only retains state-transition and trash-click exits across
+        // the swap).
+        let exitingNow = untrack(exiting);
 
-      if (additions.size > 0) {
-        additions.forEach((delay, id) => {
-          mergedEntering.set(id, delay);
-        });
-        enteringChanged = true;
-      }
-    }
+        if (!reduced && matchingChanged && !filterChanged) {
+          const allIdSet = new Set(currentAllIds);
+          // dismissed() here (and in renderedIdsNow's filter below) is
+          // tracked only for ids where evaluation reaches it — deliberate:
+          // dismissed() itself feeds matchingKey/matchingIdSet via the
+          // matchingIds memo above, so a dismissed() change that matters
+          // here has already been picked up by that transitive dependency
+          // by the time this runs.
+          const dropped = [...previousMatchingIdSet].filter((id) => {
+            return (
+              !currentMatchingIdSet.has(id) &&
+              allIdSet.has(id) &&
+              !dismissed().has(id) &&
+              !exitingNow.has(id)
+            );
+          });
 
-    if (enteringChanged) {
-      setEntering(mergedEntering);
-    }
+          if (dropped.length > 0) {
+            const merged = new Map(exitingNow);
 
-    prevAll = { key: currentAllKey, ids: new Set(currentAllIds) };
-    prevMatching = { key: currentMatchingKey, ids: currentMatchingIdSet };
-    prevFilter = currentFilter;
-  });
+            for (const id of dropped) {
+              merged.set(id, "auto");
+            }
+
+            exitingNow = merged;
+            setExiting(merged);
+          }
+        }
+
+        // Rendered = matches the active filter, plus anything mid exit
+        // animation; user-dismissed ids are gone for good. Mirrors the
+        // `rendered` memo below exactly.
+        const renderedIdsNow = rfqs()
+          .filter((r) => {
+            return (
+              !dismissed().has(r.id) &&
+              (matchesFilter(r.state, currentFilter) || exitingNow.has(r.id))
+            );
+          })
+          .sort((a, b) => {
+            return b.creationTimestamp - a.creationTimestamp;
+          })
+          .map((r) => {
+            return r.id;
+          });
+
+        // Prune any `entering` id that's no longer rendered (final review
+        // M-b): a card created under one filter gets an `entering` entry;
+        // if the user switches filters before its 0.46s entrance completes,
+        // the card unmounts without ever firing animationend, so nothing
+        // would otherwise clear its entry — orphaned in the map. If that
+        // same id later re-enters the rendered set via a STATE change with
+        // the filter unchanged (which shows plain, no entrance —
+        // enterCascadeAdditions deliberately omits it), the stale entry
+        // would incorrectly replay the entrance. Dropping ids the moment
+        // they leave `rendered` (same pass that computes the new additions)
+        // keeps `entering` in sync with what's actually mounted.
+        const renderedIdSet = new Set(renderedIdsNow);
+        const mergedEntering = new Map(untrack(entering));
+        let enteringChanged = false;
+
+        for (const id of mergedEntering.keys()) {
+          if (!renderedIdSet.has(id)) {
+            mergedEntering.delete(id);
+            enteringChanged = true;
+          }
+        }
+
+        if (!reduced) {
+          const additions = enterCascadeAdditions({
+            prevAllIds: new Set(previousAllIds),
+            shownIds: renderedIdsNow,
+            filterChanged,
+          });
+
+          if (additions.size > 0) {
+            additions.forEach((delay, id) => {
+              mergedEntering.set(id, delay);
+            });
+            enteringChanged = true;
+          }
+        }
+
+        if (enteringChanged) {
+          setEntering(mergedEntering);
+        }
+      },
+    ),
+  );
 
   // Rendered = matches the active filter, plus anything mid exit animation;
   // user-dismissed ids are gone for good. Always reflects the CURRENT
@@ -414,11 +452,6 @@ export function RfqsPanel(): JSX.Element {
  * dismissed for good on animationend) or a state transition that pushed it
  * out of the active filter ("auto", merely stops rendering). */
 type ExitReason = "remove" | "auto";
-
-interface IdSnapshot {
-  key: string;
-  ids: ReadonlySet<number>;
-}
 
 function matchesFilter(state: RfqState, filter: CreditRfqFilter): boolean {
   switch (filter) {

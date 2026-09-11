@@ -95,11 +95,6 @@ a new site may need a new one, as long as it's verified and named):
   value (`<For>`/keyed `<Show>`), or remounts fresh every time the component
   becomes visible (a boolean, non-keyed `<Show>`, e.g. `NumberFilter`), so
   the value can't change under an already-mounted instance.
-- **One-time seeds re-derived by their paired tracked effect** — a plain
-  `let` baseline read once at setup so a `createEffect` has something to
-  diff its first run against; the effect re-derives its own "previous" state
-  from its own tracked reads on every run after that, never re-reading the
-  seed source.
 - **Hoists inside an already-tracked scope** — a read that IS tracked (Solid
   tracks by dynamic execution scope, not lexical position) but is hoisted to
   a local for reuse within the same synchronous pass instead of
@@ -112,11 +107,26 @@ a new site may need a new one, as long as it's verified and named):
   mutates after creation (e.g. `Rfq.creationTimestamp`), safe independent of
   whatever remount cadence its parent happens to use.
 
-Two shapes that USED to need a directive here no longer do: props-callback
+Three shapes that USED to need a directive here no longer do: props-callback
 event handlers were previously suppressed and are now named wrappers
 (`rtc/name-jsx-handlers`), structural rather than disabled; reactive reads
 feeding rendered output were previously unsuppressed *ledgered* warnings, now
-converted to accessors/memos. Unsuppressed warnings are ledgered in
+converted to accessors/memos; and a bookkeeping `createEffect` that diffs the
+current emission against the previous one (new-trade/new-RFQ flash, RFQ
+entrance/exit cascades) previously seeded that "previous" baseline with a
+plain `let prev… = accessor()` read at setup, outside tracking. `on()`
+supplies that baseline natively — its own dependency-collection pass at setup
+IS the seed — so there's nothing left to read outside tracking. Use it
+**without** `{ defer: true }`: that option skips *calling* the callback on
+mount, but does not preserve the mount-time read as the following call's
+`previous` (measured — the first non-skipped call gets `previous: undefined`
+either way), which reintroduces the exact bug the seed existed to prevent,
+just shifted one tick later. Guard the callback body with
+`if (previous === undefined) return;` instead — the mount call still runs
+(harmlessly, since it's a no-op) and, critically, still records the mount
+values as `previous` for the first real call afterwards. See
+`CreditBlotter.tsx`, `NewRfqPanel.tsx`, and `RfqsPanel.tsx` for worked
+examples. Unsuppressed warnings are ledgered in
 [`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
 
 ## See also
