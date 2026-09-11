@@ -240,6 +240,14 @@ export const TESTIDS = {
     dockTab: (panelId: string) => {
       return `dock-tab-${panelId}`;
     },
+    /** The panel's collapse control in BOTH of its states — the header's
+     * "—" button while the panel is expanded (PanelHeadControls.tsx) and
+     * the full strip restore bar while it is collapsed (PanelStrip.tsx
+     * deliberately reuses the id); exactly one of the two is mounted at a
+     * time, so the id is always unique. */
+    collapseControl: (panelId: string) => {
+      return `panel-${panelId}-collapse`;
+    },
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,
