@@ -1,5 +1,12 @@
 import type { JSX } from "solid-js";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  on,
+  Show,
+} from "solid-js";
 
 import {
   applyFilters,
@@ -70,31 +77,33 @@ export function CreditBlotter(): JSX.Element {
     return tradeIds().join(",");
   });
 
-  let prevTradeIds: TradeIdSnapshot = {
-    // eslint-disable-next-line solid/reactivity -- one-time seed: prevTradeIds needs a baseline before the createEffect below starts tracking tradeIdsKey()/tradeIds(); seeding with the CURRENT id set (rather than empty) avoids flashing every pre-existing trade as "just booked" on mount — the effect's own tracked reads pick up every subsequent change
-    key: tradeIdsKey(),
-    // eslint-disable-next-line solid/reactivity -- see justification above
-    ids: new Set(tradeIds()),
-  };
-
   const [newTradeIds, setNewTradeIds] = createSignal<ReadonlySet<number>>(
     new Set(),
   );
 
-  createEffect(() => {
-    const currentKey = tradeIdsKey();
+  // No `defer`: on() records the previous input only on non-deferred runs
+  // (solid.js `on()`), so the first run must execute to seed `previous` —
+  // see the README's `solid/reactivity` section.
+  createEffect(
+    on(
+      () => {
+        return [tradeIdsKey(), tradeIds()] as const;
+      },
+      ([currentKey, currentIds], previous) => {
+        const [previousKey, previousIds] = previous ?? [currentKey, currentIds];
 
-    if (currentKey === prevTradeIds.key) {
-      return;
-    }
+        if (currentKey === previousKey) {
+          return;
+        }
 
-    const currentIds = tradeIds();
-    const justAppeared = currentIds.filter((id) => {
-      return !prevTradeIds.ids.has(id);
-    });
-    setNewTradeIds(new Set(justAppeared));
-    prevTradeIds = { key: currentKey, ids: new Set(currentIds) };
-  });
+        const previousIdSet = new Set(previousIds);
+        const justAppeared = currentIds.filter((id) => {
+          return !previousIdSet.has(id);
+        });
+        setNewTradeIds(new Set(justAppeared));
+      },
+    ),
+  );
 
   function cycleSortColumn(column: keyof CreditTrade): void {
     setSort((prev) => {
@@ -280,11 +289,4 @@ function rowAccentVar(direction: Direction): string {
   return direction === Direction.Buy
     ? "var(--accent-positive)"
     : "var(--accent-negative)";
-}
-
-/** A trade-id-set snapshot, taken across emissions to detect "just booked"
- * arrivals (see the new-trade flash comment above). */
-interface TradeIdSnapshot {
-  key: string;
-  ids: ReadonlySet<number>;
 }
