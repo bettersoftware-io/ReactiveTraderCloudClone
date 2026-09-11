@@ -1,3 +1,4 @@
+import type { DockviewApi } from "dockview";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { DockEngineOptions } from "#/createDockEngine";
@@ -9,6 +10,30 @@ import {
   GLIDE_ATTRIBUTE_MS,
   GROUP_GAP_PX,
 } from "#/createDockEngine";
+
+const capturedDockview = vi.hoisted(() => {
+  return { api: null as unknown };
+});
+
+// Passthrough capture of the engine's dockview api: behaviour is untouched,
+// but tests get a handle for `moveTo` — the operation a DROP performs
+// (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
+// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
+vi.mock("dockview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("dockview")>();
+
+  return {
+    ...actual,
+    createDockview: (
+      ...args: Parameters<typeof actual.createDockview>
+    ): ReturnType<typeof actual.createDockview> => {
+      const api = actual.createDockview(...args);
+      capturedDockview.api = api;
+
+      return api;
+    },
+  };
+});
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with the same stub.
@@ -1207,6 +1232,40 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     expect(seen.pins()).toEqual([]);
   });
 
+  it("dissolves a pin and releases its clamps when a member is dragged to its own rail", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const dock = lastDockviewApi();
+    const analytics = dock.getPanel("fx-analytics");
+    const rates = dock.getPanel("fx-rates");
+
+    if (analytics === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    // The drop operation IS moveTo (audit-verified): eject analytics out of
+    // the pinned rail to the far side of the rates group. Both fragments
+    // then hold ONLY pinned panels, so the exact-fill check alone passes
+    // vacuously — the structural rail invariant is what must dissolve the
+    // pin, and its clamps must release NOW, not at the next save.
+    analytics.api.moveTo({ group: rates.group, position: "left" });
+    await waitForPins(seen, 0);
+
+    const positions = dock.getPanel("fx-positions");
+
+    if (positions === undefined) {
+      throw new Error("fx-positions missing");
+    }
+
+    expect(positions.group.minimumWidth).not.toBe(
+      positions.group.maximumWidth,
+    );
+    expect(analytics.group.minimumWidth).not.toBe(
+      analytics.group.maximumWidth,
+    );
+    engine.dispose();
+  });
+
   /** Grabs the first sash of the first split matching `splitSelector` —
    * dockview's real pointer-drag entry — without moving it. */
   function grabSash(container: HTMLElement, splitSelector: string): void {
@@ -1760,6 +1819,37 @@ async function waitForBranchSize(
 
   throw new Error(
     `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
+  );
+}
+
+/** The dockview api of the most recently created engine — captured by the
+ * module mock above. */
+function lastDockviewApi(): DockviewApi {
+  if (capturedDockview.api === null) {
+    throw new Error("no dockview created yet");
+  }
+
+  return capturedDockview.api as DockviewApi;
+}
+
+/** Polls the persisted layout until its `rtcDesignPins` sidecar holds
+ * exactly `expected` pins — the pin analogue of {@link waitForSize}. */
+async function waitForPins(
+  tracker: LayoutTracker,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (tracker.saves > 0 && tracker.pins().length === expected) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `pins never reached ${expected} (last seen: ${tracker.pins().length}, saves: ${tracker.saves})`,
   );
 }
 

@@ -297,6 +297,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   const changeSub = api.onDidLayoutChange(() => {
+    // Pins are validated on EVERY layout change, not just at save time: a
+    // drop that dissolves a rail must release its min=max clamps NOW, or
+    // the next resize distributes against a phantom pin for up to
+    // debounceMs (audit S2). The returned list is the persistence filter's
+    // concern; here only the release side effect matters.
+    intactDesignPins();
+
     if (timer !== null) {
       clearTimeout(timer);
     }
@@ -828,7 +835,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const kept: DesignPinRecord[] = [];
 
     for (const record of designPins) {
-      if (panelsExactlyFill(record.pin.panelIds, groupOf)) {
+      if (pinStillShaped(record, groupOf)) {
         kept.push(record);
         continue;
       }
@@ -1093,6 +1100,60 @@ function panelsExactlyFill(
   );
 }
 
+/** The direct child view of `owner` (a split-view container) that holds
+ * `element` — the "rail" a pinned panel lives in. Null when `element` is
+ * not under `owner` at all. */
+function railViewOf(element: Element, owner: Element): Element | null {
+  let view: Element | null = element.closest(VIEW_SELECTOR);
+
+  while (
+    view !== null &&
+    (view.parentElement?.closest(SPLIT_SELECTOR) ?? null) !== owner
+  ) {
+    view = view.parentElement?.closest(VIEW_SELECTOR) ?? null;
+  }
+
+  return view;
+}
+
+/** True while a pin still describes reality: its panels exactly fill their
+ * groups AND those groups still share ONE rail (one direct child view of
+ * the pin's declaring split). Exact-fill alone passes VACUOUSLY after a
+ * drag ejects a member into its own group — both fragments then hold only
+ * pinned panels (audit S2) — so the rail identity is the real invariant. */
+function pinStillShaped(
+  record: DesignPinRecord,
+  groupOf: (panelId: string) => SizableGroup | undefined,
+): boolean {
+  if (!panelsExactlyFill(record.pin.panelIds, groupOf)) {
+    return false;
+  }
+
+  const first = groupOf(record.pin.panelIds[0] ?? "");
+
+  if (first === undefined) {
+    return false;
+  }
+
+  const owner = declaringSplitOf(first.element, record.pin.axis);
+
+  if (owner === null) {
+    return false;
+  }
+
+  const rail = railViewOf(first.element, owner);
+
+  if (rail === null) {
+    return false;
+  }
+
+  return record.pin.panelIds.every((panelId) => {
+    const group = groupOf(panelId);
+
+    return group !== undefined && railViewOf(group.element, owner) === rail;
+  });
+}
+
 /** The split that DECLARED a pin on `axis`, walking up from the pinned
  * child's DOM: a row divides width (`dv-horizontal`), a column height. For a
  * panel child that is the nearest enclosing split of the right orientation;
@@ -1166,6 +1227,7 @@ function stripOrientationOf(group: SizableGroup): DockStripOrientation {
 
 const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
+const VIEW_SELECTOR = ".dv-view";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
  * siblings side by side (a horizontal split) → a 32px vertical column;
