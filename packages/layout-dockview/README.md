@@ -114,6 +114,38 @@ flipped split's pre-flip width keyed by its stripped panel ids), which the
 post-reload collapse replay consumes; constraints are re-derived live, a
 malformed sidecar is dropped, and a strip-free blob keeps its legacy shape.
 
+## Drag-and-drop policy
+
+Dockview's native tab drag-and-drop is a supported feature of this engine
+(Phase 1 of the Dockview-native features workstream). The blessed drop set:
+the four edge-split bands and the centre-stack of any EXPANDED group, plus
+intra-group tab reordering. Three rules the engine enforces on top of
+dockview's own behaviour:
+
+- **Stripped groups reject drops.** A collapsed (or maximize-forced) bar
+  hides its whole group header, so a drop into it would swallow the dropped
+  panel invisibly. `recordStrip` sets the group's `locked =
+  "no-drop-target"` for the strip's lifetime and the release path lifts it.
+  The lock is DERIVED state: dockview serialises `locked` into `toJSON()`,
+  so the save scrubs it from every leaf (`withoutLockMarks`) and the load
+  normalises all groups unlocked — a blob never carries lock marks.
+- **Pins dissolve structurally on drag-out.** Dragging a member out of a
+  pinned rail dissolves the pin and releases its min=max clamps
+  immediately (the DnD analogue of the sash-drag release). Exact-fill alone
+  passes vacuously after such a drag — both fragments still hold only
+  pinned panels — so the invariant is rail identity: all pinned panels must
+  share one direct child view of the pin's declaring split.
+- **Strip ledgers are keyed by membership, not DOM identity.** A drop can
+  restructure split elements while reusing group elements, so the flip and
+  pre-strip-world ledgers key on sorted member panel ids; a world whose
+  membership drifted is voided rather than re-asserted over members it
+  never described.
+
+Stack-collapse policy, recorded: collapsing a member of a stacked (multi-
+tab) group first ejects it into its own group, so expanding it later does
+NOT re-stack it — the eject is permanent. Re-stack-on-expand is
+deliberately not built until a product need shows up.
+
 Zero other `@rtc/*` dependencies. Unlike `@rtc/motion-core` (pure, no-DOM
 math) this package legitimately touches the DOM: `createDockEngine` mounts
 Dockview into a container element. Its only architectural constraint is that
