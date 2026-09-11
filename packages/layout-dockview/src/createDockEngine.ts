@@ -330,8 +330,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // expands must re-assert the whole world at the end, because dockview
   // spreads each restore's delta over whichever live neighbours it favours,
   // not over the panel holding the borrowed surplus. Dropped when the last
-  // strip of the split expands.
-  const preStripWorlds = new Map<Element, Map<string, number>>();
+  // strip of the split expands. Keyed by ALL direct members' panel ids
+  // (worldKeyOf), not the split Element: a drop that adds or removes a
+  // member changes the key, which VOIDS the old world — it describes an
+  // arrangement that no longer exists, and re-asserting it over the new
+  // membership yanks space from panels it never described (audit S3).
+  const preStripWorlds = new Map<string, Map<string, number>>();
   // A split whose every group is a strip reclaims along its PARENT's axis
   // (the in-house `stripDir`): its own size on that axis is remembered here
   // while it is flipped, and restored the moment one of its strips expands.
@@ -470,7 +474,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return null;
     }
 
-    const known = preStripWorlds.get(split);
+    const key = worldKeyOf(split);
+    const known = preStripWorlds.get(key);
 
     if (known !== undefined) {
       return known;
@@ -491,9 +496,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    preStripWorlds.set(split, world);
+    preStripWorlds.set(key, world);
 
     return world;
+  }
+
+  /** The identity of a split for the world ledger: ALL its direct members'
+   * panel ids, sorted. A drop that adds or removes a member changes the
+   * key, which voids the old world — see the ledger's own comment. */
+  function worldKeyOf(split: Element): string {
+    const panelIds: string[] = [];
+
+    for (const member of directMembersOf(split)) {
+      for (const heldPanel of member.panels) {
+        panelIds.push(heldPanel.id);
+      }
+    }
+
+    return flipKeyFor(panelIds);
   }
 
   /** `split`'s own groups in DOM order — the ones whose nearest split IS
@@ -528,12 +548,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * suffix holds exactly what conservation says it must — the last member
    * lands on its own size without being asserted at all. */
   function settleStripFreeWorlds(): void {
-    for (const [split, world] of [...preStripWorlds]) {
+    for (const [key, world] of [...preStripWorlds]) {
+      const split = splitForWorldKey(world);
+
+      if (split === null || worldKeyOf(split) !== key) {
+        // Membership changed (or the panels left entirely): this world
+        // describes a defunct arrangement — void it, never re-assert it.
+        preStripWorlds.delete(key);
+        continue;
+      }
+
       if (holdsStrip(split)) {
         continue;
       }
 
-      preStripWorlds.delete(split);
+      preStripWorlds.delete(key);
       const along = orientationAgainst(split);
       const members = directMembersOf(split);
 
@@ -549,6 +578,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
       }
     }
+  }
+
+  /** The split currently holding a world's members — any of the world's
+   * panel ids resolves it (they all lived in one split at capture). */
+  function splitForWorldKey(
+    world: ReadonlyMap<string, number>,
+  ): Element | null {
+    for (const panelId of world.keys()) {
+      const split = groupOf(panelId)?.element.closest(SPLIT_SELECTOR) ?? null;
+
+      if (split !== null) {
+        return split;
+      }
+    }
+
+    return null;
   }
 
   function holdsStrip(split: Element): boolean {

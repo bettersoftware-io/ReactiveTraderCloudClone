@@ -11,30 +11,6 @@ import {
   GROUP_GAP_PX,
 } from "#/createDockEngine";
 
-const capturedDockview = vi.hoisted(() => {
-  return { api: null as unknown };
-});
-
-// Passthrough capture of the engine's dockview api: behaviour is untouched,
-// but tests get a handle for `moveTo` — the operation a DROP performs
-// (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
-// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
-vi.mock("dockview", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("dockview")>();
-
-  return {
-    ...actual,
-    createDockview: (
-      ...args: Parameters<typeof actual.createDockview>
-    ): ReturnType<typeof actual.createDockview> => {
-      const api = actual.createDockview(...args);
-      capturedDockview.api = api;
-
-      return api;
-    },
-  };
-});
-
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with the same stub.
 beforeAll(() => {
@@ -597,15 +573,52 @@ describe("collapse / expand", () => {
 
     engine.collapsePanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
-    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
-      1,
-    );
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(1);
 
     engine.expandPanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", before);
-    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
-      0,
-    );
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    engine.dispose();
+  });
+
+  it("voids a pre-strip world when a drop changes the split's membership", async () => {
+    // The world snapshot taken at fx-blotter's collapse knows only
+    // {rates, blotter}. Dropping analytics INTO the column extends the
+    // split in place (element reused — measured 2026-09-11), so an
+    // Element-keyed world survives and the expand's put-back re-asserts
+    // rates to its PRE-DROP size, yanking space from the newcomer. A world
+    // whose membership drifted describes a defunct arrangement: it must be
+    // voided, never re-asserted — rates keeps its post-drop allocation.
+    const seen = trackLayout();
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    const dock = lastDockviewApi();
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+
+    const analytics = dock.getPanel("fx-analytics");
+    const rates = dock.getPanel("fx-rates");
+
+    if (analytics === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    analytics.api.moveTo({ group: rates.group, position: "bottom" });
+    const ratesAfterDrop = rates.group.api.height;
+
+    // restore() sets blotter's own model exactly; the delta lands on the
+    // OTHER members, which is precisely what this test watches.
+    engine.expandPanel("fx-blotter");
+    await waitForSizeWithin(seen, "fx-blotter", blotterBefore, 2);
+
+    expect(
+      Math.abs(rates.group.api.height - ratesAfterDrop),
+    ).toBeLessThanOrEqual(25);
     engine.dispose();
   });
 
@@ -623,9 +636,9 @@ describe("collapse / expand", () => {
 
     engine.exitMaximize();
     await waitForSize(seen, "fx-blotter", before);
-    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
-      0,
-    );
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
     engine.dispose();
   });
 });
@@ -1289,12 +1302,8 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
       throw new Error("fx-positions missing");
     }
 
-    expect(positions.group.minimumWidth).not.toBe(
-      positions.group.maximumWidth,
-    );
-    expect(analytics.group.minimumWidth).not.toBe(
-      analytics.group.maximumWidth,
-    );
+    expect(positions.group.minimumWidth).not.toBe(positions.group.maximumWidth);
+    expect(analytics.group.minimumWidth).not.toBe(analytics.group.maximumWidth);
     engine.dispose();
   });
 
@@ -1853,6 +1862,31 @@ async function waitForBranchSize(
     `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
   );
 }
+
+const capturedDockview = vi.hoisted(() => {
+  return { api: null as unknown };
+});
+
+// Passthrough capture of the engine's dockview api: behaviour is untouched,
+// but tests get a handle for `moveTo` — the operation a DROP performs
+// (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
+// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
+// vitest hoists vi.mock/vi.hoisted during transform, so position is free.
+vi.mock("dockview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("dockview")>();
+
+  return {
+    ...actual,
+    createDockview: (
+      ...args: Parameters<typeof actual.createDockview>
+    ): ReturnType<typeof actual.createDockview> => {
+      const api = actual.createDockview(...args);
+      capturedDockview.api = api;
+
+      return api;
+    },
+  };
+});
 
 /** The dockview api of the most recently created engine — captured by the
  * module mock above. */

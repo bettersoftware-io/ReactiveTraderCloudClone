@@ -149,7 +149,12 @@ describe("withoutLockMarks (derived lock state never persists)", () => {
                 {
                   type: "leaf",
                   size: 200,
-                  data: { id: "g2", views: ["b"], activeView: "b", locked: true },
+                  data: {
+                    id: "g2",
+                    views: ["b"],
+                    activeView: "b",
+                    locked: true,
+                  },
                 },
               ],
             },
@@ -160,11 +165,9 @@ describe("withoutLockMarks (derived lock state never persists)", () => {
     };
 
     const scrubbed = withoutLockMarks(serialized) as typeof serialized;
-    const first = scrubbed.grid.root.data[0] as {
-      data: Record<string, unknown>;
-    };
-    const nested = (scrubbed.grid.root.data[1] as { data: unknown[] })
-      .data[0] as { data: Record<string, unknown> };
+    const first = scrubbed.grid.root.data[0] as LeafDataCarrier;
+    const nested = (scrubbed.grid.root.data[1] as BranchDataCarrier)
+      .data[0] as LeafDataCarrier;
 
     expect("locked" in first.data).toBe(false);
     expect("locked" in nested.data).toBe(false);
@@ -181,6 +184,16 @@ interface SerializedNode {
   type: "leaf" | "branch";
   data: unknown;
   size?: number;
+}
+
+/** A serialized leaf narrowed to the group data the scrub assertions read. */
+interface LeafDataCarrier {
+  data: Record<string, unknown>;
+}
+
+/** A serialized branch narrowed to its children array. */
+interface BranchDataCarrier {
+  data: unknown[];
 }
 
 /** The migrated blob narrowed to the grid the assertions walk. */
