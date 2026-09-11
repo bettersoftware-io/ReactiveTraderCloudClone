@@ -13,7 +13,7 @@ import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import { out, stream, type WsEffect } from "@rtc/ws-effects";
 
-import type { JarvisGateState } from "../services/jarvisGate.js";
+import type { JarvisGateState } from "../services/JarvisGateService.js";
 import { spentWindowUsd } from "../services/jarvisGate.js";
 import type { Ctx } from "./context.js";
 

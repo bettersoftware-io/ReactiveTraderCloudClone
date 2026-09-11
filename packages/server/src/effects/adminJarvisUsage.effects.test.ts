@@ -6,8 +6,9 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import { JarvisGateService } from "../services/JarvisGateService.js";
 import type { JarvisGateConfig } from "../services/jarvisGate.js";
-import { JarvisGateService, spentWindowUsd } from "../services/jarvisGate.js";
+import { spentWindowUsd } from "../services/jarvisGate.js";
 import { UsageMeter } from "../services/UsageMeter.js";
 import { adminJarvisUsageEffects } from "./adminJarvisUsage.effects.js";
 import type { Ctx } from "./context.js";

@@ -474,10 +474,19 @@ export default tseslint.config(
   },
   {
     // One class per file: a top-level class must live in a file named after it
-    // (filename's first dot-segment === class name). Applies to ALL ts/tsx;
-    // fires only when a top-level class exists, so non-class modules are
-    // untouched. Sanctioned exceptions use a per-line eslint-disable.
+    // (filename's first dot-segment === class name). Scoped to production
+    // source — the rule's purpose is filename discoverability of production
+    // classes, and that purpose doesn't hold for test doubles or env shims,
+    // which are never looked up by filename. Fires only when a top-level
+    // class exists, so non-class modules are untouched. Sanctioned exceptions
+    // use a per-line eslint-disable.
     files: ["**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.{test,spec}.{ts,tsx}",
+      "**/tests/**",
+      "**/__tests__/**",
+      "**/setup/**",
+    ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/class-filename-match": "error" },
   },

@@ -19,7 +19,8 @@ import {
   TradeStoreSimulator,
 } from "@rtc/domain";
 
-import { JarvisGateService, parseJarvisGateConfig } from "./jarvisGate.js";
+import { JarvisGateService } from "./JarvisGateService.js";
+import { parseJarvisGateConfig } from "./jarvisGate.js";
 import { ThroughputService } from "./ThroughputService.js";
 import { UsageMeter } from "./UsageMeter.js";
 

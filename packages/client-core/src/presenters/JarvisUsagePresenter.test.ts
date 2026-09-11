@@ -17,7 +17,6 @@ const SNAPSHOT: JarvisUsageSnapshot = {
 /** A JarvisUsagePort test double whose `usage$()` is a plain pass-through of
  * an injected Subject, and which counts how many times `usage$()` itself was
  * invoked (to prove warmReplay's single-subscription behaviour). */
-// eslint-disable-next-line rtc/class-filename-match -- small local JarvisUsagePort stub; file is named after the system under test
 class FakeJarvisUsagePort implements JarvisUsagePort {
   callCount = 0;
 
