@@ -786,6 +786,38 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
     });
     engine.dispose();
   });
+
+  it("restores a flipped rail across an adjacent drop's restructure", async () => {
+    // Characterisation, not a bug witness: measured in jsdom (2026-09-11),
+    // dockview rebuilds only the splits along a move's own source and
+    // destination path — an adjacent drop leaves a flipped split's element
+    // intact (5→4 splits, identity preserved). This pins that a drop in
+    // the MAIN column never costs the flipped rail its remembered width,
+    // whatever the flip ledger is keyed by.
+    const seen = trackLayout();
+    // Baseline twin FIRST: it creates and disposes its own engine, and the
+    // api capture always points at the most recent createDockview.
+    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+    const engine = createDockEngine({ ...railBase(), ...seen.options });
+    const dock = lastDockviewApi();
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", STRIP);
+
+    const blotter = dock.getPanel("fx-blotter");
+    const rates = dock.getPanel("fx-rates");
+
+    if (blotter === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    blotter.api.moveTo({ group: rates.group, position: "left" });
+
+    engine.expandPanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", railBefore);
+    engine.dispose();
+  });
 });
 
 describe("maximize (the in-house boundary policy)", () => {

@@ -279,14 +279,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     const flips: PersistedFlip[] = [];
 
-    for (const [split, size] of flippedSplits) {
-      const panelIds = [...records.keys()]
-        .filter((panelId) => {
-          const group = groupOf(panelId);
-
-          return group !== undefined && split.contains(group.element);
-        })
-        .sort();
+    // The ledger key already IS the sorted stripped panel ids (flipKeyFor);
+    // keep only the ids still stripped, so the wire format stays exactly
+    // what stripGeometryIn validates.
+    for (const [key, size] of flippedSplits) {
+      const panelIds = (JSON.parse(key) as readonly string[]).filter(
+        (panelId) => {
+          return records.has(panelId);
+        },
+      );
 
       if (panelIds.length > 0) {
         flips.push({ panelIds, size });
@@ -334,7 +335,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // A split whose every group is a strip reclaims along its PARENT's axis
   // (the in-house `stripDir`): its own size on that axis is remembered here
   // while it is flipped, and restored the moment one of its strips expands.
-  const flippedSplits = new Map<Element, number>();
+  // Keyed by the SORTED STRIPPED PANEL IDS (flipKeyOf), not the split
+  // Element: a drop rebuilds the split containers along its own path even
+  // when groups survive (audit S3), and membership is the identity that
+  // means "same column" — it is also exactly what the sidecar persists, so
+  // the in-memory ledger and the wire format now share one key.
+  const flippedSplits = new Map<string, number>();
   // Sizes the blob's sidecar carried across a reload, consumed by the
   // bridge's intent replay (recordStrip and the flip pass) and expired at
   // the first save — see serializeLayout.
@@ -378,6 +384,23 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   function groupOf(panelId: string): SizableGroup | undefined {
     return api.getPanel(panelId)?.group;
+  }
+
+  /** The split currently holding the panels a flip entry is keyed by —
+   * resolved fresh because drops rebuild split Elements (audit S3). Null
+   * when none of the key's panels remain in the dock. */
+  function splitForFlipKey(key: string): Element | null {
+    const panelIds = JSON.parse(key) as readonly string[];
+
+    for (const panelId of panelIds) {
+      const split = groupOf(panelId)?.element.closest(SPLIT_SELECTOR) ?? null;
+
+      if (split !== null) {
+        return split;
+      }
+    }
+
+    return null;
   }
 
   /** Remembers `panelId`'s group's pre-strip geometry so settleStrips can
@@ -628,21 +651,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Pass 2 — a split flipping NOW remembers its size on the parent's axis
     // before the clamps below pin it to the strip.
     for (const split of nowFlipped) {
-      if (!flippedSplits.has(split)) {
+      const key = flipKeyOf(split, stripped);
+
+      if (!flippedSplits.has(key)) {
         const witness = firstStrippedGroupIn(split, stripped, groupOf);
 
         if (witness !== undefined) {
           // Same reload rule as recordStrip: a re-collapse after a blob
           // restore would measure the bar the blob stored, so a sidecar-
           // persisted pre-flip size wins over the live witness.
-          const key = flipKeyOf(split, stripped);
           const seededSize = seededFlipSizes.get(key);
           seededFlipSizes.delete(key);
 
           // The split's size on its PARENT's axis — a column's width — is
           // the axis orthogonal to the one its own children run along.
           flippedSplits.set(
-            split,
+            key,
             seededSize ??
               axisOf(witness, opposite(orientationAgainst(split))).size(),
           );
@@ -683,17 +707,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     // Pass 4 — a split that is no longer flipped gets its remembered size
-    // back, now that its strips' orthogonal clamps are released.
-    for (const [split, size] of flippedSplits) {
-      if (nowFlipped.has(split)) {
+    // back, now that its strips' orthogonal clamps are released. Each entry
+    // resolves its CURRENT split from its own panel ids (drops rebuild
+    // split Elements — audit S3); a key whose panels left the dock entirely
+    // is dropped without a restore.
+    const nowFlippedKeys = new Set(
+      [...nowFlipped].map((split) => {
+        return flipKeyOf(split, stripped);
+      }),
+    );
+
+    for (const [key, size] of [...flippedSplits]) {
+      if (nowFlippedKeys.has(key)) {
         continue;
       }
 
-      flippedSplits.delete(split);
-      const witness = firstGroupIn(split, api.groups);
+      flippedSplits.delete(key);
+      const split = splitForFlipKey(key);
 
-      if (witness !== undefined) {
-        axisOf(witness, opposite(orientationAgainst(split))).set(size);
+      if (split !== null) {
+        const witness = firstGroupIn(split, api.groups);
+
+        if (witness !== undefined) {
+          axisOf(witness, opposite(orientationAgainst(split))).set(size);
+        }
       }
     }
 
