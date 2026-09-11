@@ -408,6 +408,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       orthogonalMinimum: orthogonalAxis.minimum(),
       orthogonalMaximum: orthogonalAxis.maximum(),
     });
+    // A bar has no visible header and its content is hidden — a drop into
+    // it would swallow the dropped panel (audit S1). Reject drops for the
+    // strip's whole lifetime; releaseStrip lifts this.
+    group.api.locked = "no-drop-target";
 
     return true;
   }
@@ -538,6 +542,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     records.delete(panelId);
+    group.api.locked = false;
     const naturalAxis = axisOf(group, record.natural);
     naturalAxis.constrain(record.minimum, record.maximum);
     axisOf(group, opposite(record.natural)).constrain(
@@ -1098,9 +1103,17 @@ function declaringSplitOf(
   return split;
 }
 
+/** dockview's per-group drop acceptance: `"no-drop-target"` makes the
+ * group's handleDropEvent bail before showing any overlay — the S1
+ * strip-drop rejection — and toggles the `dv-locked-groupview` class.
+ * Derived from strip membership, NEVER persisted (see serializeLayout's
+ * scrub). */
+type DockLockState = boolean | "no-drop-target";
+
 interface SizableGroupApi {
   readonly width: number;
   readonly height: number;
+  locked: DockLockState;
   setSize(event: GroupSizeEvent): void;
   setConstraints(constraints: GroupConstraints): void;
 }

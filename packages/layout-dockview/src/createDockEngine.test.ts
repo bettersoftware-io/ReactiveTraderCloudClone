@@ -559,6 +559,50 @@ describe("collapse / expand", () => {
     expect(engine.groupCount()).toBe(3);
     engine.dispose();
   });
+
+  it("marks a stripped group as no-drop-target and lifts it on expand", async () => {
+    // A bar has no visible header and hides its content — a drop into it
+    // would swallow the dropped panel (audit S1). dockview toggles the
+    // dv-locked-groupview class for locked === "no-drop-target", which is
+    // the observable jsdom gets.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    const before = baselineSize(base(), "fx-blotter");
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
+      1,
+    );
+
+    engine.expandPanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", before);
+    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
+      0,
+    );
+    engine.dispose();
+  });
+
+  it("locks every maximize-forced strip and unlocks them all on exit", async () => {
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    const before = baselineSize(base(), "fx-blotter");
+
+    engine.maximizePanel("fx-rates");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview").length,
+    ).toBeGreaterThanOrEqual(2);
+
+    engine.exitMaximize();
+    await waitForSize(seen, "fx-blotter", before);
+    expect(opts.container.querySelectorAll(".dv-locked-groupview")).toHaveLength(
+      0,
+    );
+    engine.dispose();
+  });
 });
 
 const STRIP = 32;
