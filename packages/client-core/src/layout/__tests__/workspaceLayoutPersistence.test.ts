@@ -106,6 +106,55 @@ describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () =>
       payload,
     );
   });
+
+  it("round-trips closed and defaults it to [] for a legacy payload without the key", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        fx: {
+          layout: {
+            ...createDefaultLayoutPort("fx").initial,
+            closed: ["fx-analytics"],
+          },
+          docked: [],
+        },
+      },
+    };
+    expect(
+      parseWorkspaceLayout(serializeWorkspaceLayout(payload))?.tabs.fx?.layout
+        .closed,
+    ).toEqual(["fx-analytics"]);
+
+    // A payload written before `closed` existed: same tab layout, key absent.
+    const legacyLayout: Record<string, unknown> = {
+      ...createDefaultLayoutPort("fx").initial,
+    };
+    delete legacyLayout.closed;
+    const legacy = JSON.stringify({
+      v: 1,
+      tabs: { fx: { layout: legacyLayout, docked: [] } },
+    });
+    expect(parseWorkspaceLayout(legacy)?.tabs.fx?.layout.closed).toEqual([]);
+  });
+
+  it("filters a ghost closed id instead of rejecting the payload", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        fx: {
+          layout: {
+            ...createDefaultLayoutPort("fx").initial,
+            closed: ["gone-panel"],
+          },
+          docked: [],
+        },
+      },
+    };
+    expect(
+      parseWorkspaceLayout(serializeWorkspaceLayout(payload))?.tabs.fx?.layout
+        .closed,
+    ).toEqual([]);
+  });
 });
 
 describe("parseWorkspaceLayout — null input", () => {

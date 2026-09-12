@@ -297,9 +297,30 @@ function validateLayoutState(value: unknown): LayoutState | null {
     }
   }
 
-  // Task 1 placeholder semantics: `closed` parsing lands with the
-  // persistence task; until then a parsed layout starts with none closed.
-  return { root, maximized, collapsed, closed: [] };
+  // `closed` is ADDITIVE on the v1 schema: a legacy payload without the key
+  // parses to [] (no version bump — this constructor never sees unknown
+  // fields), and a new payload read by the OLD parser was simply ignored.
+  const closedRaw = value.closed ?? [];
+
+  if (!Array.isArray(closedRaw)) {
+    return null;
+  }
+
+  const closed: string[] = [];
+
+  for (const entry of closedRaw) {
+    if (typeof entry !== "string") {
+      return null;
+    }
+
+    // Same rule as `collapsed` above: a dangling id matches no panel and is
+    // harmless — filtered, not a whole-payload reject.
+    if (leafIds.has(entry)) {
+      closed.push(entry);
+    }
+  }
+
+  return { root, maximized, collapsed, closed };
 }
 
 function validateDockedEntry(value: unknown): DockedPanelEntry | null {
