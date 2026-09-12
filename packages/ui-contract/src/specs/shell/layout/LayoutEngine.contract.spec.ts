@@ -8,7 +8,11 @@ import {
 } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  serializeWorkspaceLayout,
+  type UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/client-core";
 
 afterEach(() => {
   cleanupMounted();
@@ -278,6 +282,31 @@ describe("InhouseLayoutEngine", () => {
  * The scenario below therefore reads the string the writer actually stored on
  * World A and boots a genuinely SEPARATE World B from it.
  */
+describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
+  it("boots from a payload with a closed panel: the leaf is not rendered and its rail sibling takes the slot", () => {
+    const payload = serializeWorkspaceLayout({
+      v: 1,
+      tabs: {
+        fx: {
+          layout: {
+            ...createDefaultLayoutPort("fx").initial,
+            closed: ["fx-analytics"],
+          },
+          docked: [],
+        },
+      },
+    });
+    const world = createWorldSeededWith(payload);
+    const app = mountWith(world, AppShell);
+
+    expect(app.layout.panelExists("fx-analytics")).toBe(false);
+    // The rest of the fx tree is intact around the pruned leaf.
+    expect(app.layout.panelExists("fx-rates")).toBe(true);
+    expect(app.layout.panelExists("fx-positions")).toBe(true);
+    expect(app.layout.panelExists("fx-blotter")).toBe(true);
+  });
+});
+
 describe("InhouseLayoutEngine docked desk panels", () => {
   it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
     const world = createWorld({ useAnalytics: ANALYTICS_SEED });
