@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-11
 **Status:** Approved (design dialogue 2026-09-08 → 2026-09-11; user review 2026-09-12 split slice 1 into 1a/1b)
-**Plan:** to be written via the writing-plans skill after spec approval
+**Plan:** slice 0 — [`../plans/2026-09-12-pluggable-core-slice-0.md`](../plans/2026-09-12-pluggable-core-slice-0.md); later slices get their own plan each
 
 ## Purpose
 
