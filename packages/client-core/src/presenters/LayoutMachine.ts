@@ -154,6 +154,7 @@ function makeReduce(
             return id !== event.id;
           }),
         };
+
       case "close": {
         if (
           !staticIds.includes(event.id) ||
@@ -182,6 +183,7 @@ function makeReduce(
             layoutState.maximized === event.id ? null : layoutState.maximized,
         };
       }
+
       case "reopen":
         return {
           ...layoutState,

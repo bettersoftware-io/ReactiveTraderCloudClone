@@ -111,6 +111,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
       return props.tab;
     }),
   );
+
   // The in-house engine renders the VISIBLE projection: View-menu-closed
   // leaves are pruned from the tree it sees (visibleRootOf is referentially
   // stable when nothing is closed, so this memo idles at zero cost). The
@@ -268,6 +269,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               store={dockLayoutStore}
               maximized={state().maximized}
               collapsed={state().collapsed}
+              closed={state().closed}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}

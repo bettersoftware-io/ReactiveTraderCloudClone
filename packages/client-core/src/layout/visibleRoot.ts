@@ -67,6 +67,7 @@ function pruneNode(
   const keptSum = keptIndices.reduce((total, index) => {
     return total + node.sizes[index];
   }, 0);
+
   const sizes = keptIndices.map((index) => {
     return keptSum > 0 ? node.sizes[index] / keptSum : 1 / keptIndices.length;
   });

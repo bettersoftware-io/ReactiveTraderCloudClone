@@ -22,6 +22,7 @@ const root: LayoutNode = {
     { kind: "panel", panelId: "fx-blotter" },
   ],
 };
+
 const initial: LayoutState = {
   root,
   maximized: null,

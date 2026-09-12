@@ -121,6 +121,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               store={dockLayoutStore}
               maximized={state.maximized}
               collapsed={state.collapsed}
+              closed={state.closed}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}

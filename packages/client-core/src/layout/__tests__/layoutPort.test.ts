@@ -13,6 +13,7 @@ describe("LayoutPort types", () => {
         { kind: "panel", panelId: "fx-analytics" },
       ],
     };
+
     const state: LayoutState = {
       root,
       maximized: null,

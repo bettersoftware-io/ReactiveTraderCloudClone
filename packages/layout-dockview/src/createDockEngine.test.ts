@@ -1721,24 +1721,6 @@ describe("stacked visual fixture (Phase 2)", () => {
   });
 });
 
-// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
-// vitest hoists vi.mock/vi.hoisted during transform, so position is free.
-vi.mock("dockview", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("dockview")>();
-
-  return {
-    ...actual,
-    createDockview: (
-      ...args: Parameters<typeof actual.createDockview>
-    ): ReturnType<typeof actual.createDockview> => {
-      const api = actual.createDockview(...args);
-      capturedDockview.api = api;
-
-      return api;
-    },
-  };
-});
-
 /** The dockview api of the most recently created engine — captured by the
  * module mock above. */
 describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
@@ -1768,7 +1750,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
     const engine = createDockEngine({
       ...base(),
       seed: RAIL_LIKE,
-      onStripsChange: (map) => {
+      onStripsChange: (map: DockStripMap): void => {
         strips.push(map);
       },
     });
@@ -2270,3 +2252,21 @@ async function waitForBranchSize(
     `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
   );
 }
+
+// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
+// vitest hoists vi.mock/vi.hoisted during transform, so position is free.
+vi.mock("dockview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("dockview")>();
+
+  return {
+    ...actual,
+    createDockview: (
+      ...args: Parameters<typeof actual.createDockview>
+    ): ReturnType<typeof actual.createDockview> => {
+      const api = actual.createDockview(...args);
+      capturedDockview.api = api;
+
+      return api;
+    },
+  };
+});

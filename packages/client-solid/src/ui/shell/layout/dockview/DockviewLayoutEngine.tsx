@@ -25,6 +25,7 @@ import {
   type DockMaximizeScope,
   type DockStripMap,
   type DockStripOrientation,
+  seedPanelIdsOf,
 } from "@rtc/layout-dockview";
 import "@rtc/layout-dockview/styles/dockview-hud.css";
 
@@ -207,6 +208,28 @@ export function DockviewLayoutEngine(
     applied = collapsed;
   });
 
+  // The closed set reconciles rather than diffs: closePanel no-ops on an
+  // absent panel and reopenPanel on a present one, so re-asserting the whole
+  // seed set is already idempotent — every rebuild path (remount, blob saved
+  // while closed) converges on the machine's state with no bookkeeping.
+  createEffect(() => {
+    const closed = props.closed;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of seedPanelIdsOf(
+      createDefaultLayoutPort(props.tab).initial.root,
+    )) {
+      if (closed.includes(panelId)) {
+        engine.closePanel(panelId);
+      } else {
+        engine.reopenPanel(panelId);
+      }
+    }
+  });
+
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
   // `PanelStrip` in the body slot, just as in-house.
@@ -216,6 +239,7 @@ export function DockviewLayoutEngine(
       data-engine="dockview"
       data-groups={groups()}
       data-collapsed={props.collapsed.join(" ")}
+      data-closed={props.closed.join(" ")}
       class={styles.engine}
     >
       <div ref={containerEl} class={`${styles.container} dockview-theme-rtc`} />
@@ -331,6 +355,11 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** Mirrored from the LayoutMachine's layer-2 closed set (View-menu close).
+   * The bridge reconciles it against the SEED panel set: close what it
+   * names, reopen every other seed panel — both engine calls are
+   * no-op-safe. */
+  closed: readonly PanelId[];
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];

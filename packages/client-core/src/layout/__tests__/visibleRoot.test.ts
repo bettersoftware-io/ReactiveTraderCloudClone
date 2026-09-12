@@ -44,29 +44,15 @@ const THREE_STACK: LayoutNode = {
   ],
 };
 
-function leafIdsOf(node: LayoutNode): string[] {
-  if (node.kind === "panel") {
-    return [node.panelId];
-  }
-
-  return node.children.flatMap(leafIdsOf);
-}
-
-function sumSizesOf(node: LayoutNode): number {
-  if (node.kind !== "split") {
-    throw new Error("split expected");
-  }
-
-  return node.sizes.reduce((total, size) => {
-    return total + size;
-  }, 0);
-}
-
 describe("visibleRootOf", () => {
   it("prunes a closed leaf of a 2-split and hoists the survivor into its slot", () => {
     const pruned = visibleRootOf(FX_LIKE_ROOT, ["fx-analytics"]);
     // rail column had [analytics, positions] — survivor hoists into the rail slot
-    expect(leafIdsOf(pruned)).toEqual(["fx-rates", "fx-blotter", "fx-positions"]);
+    expect(leafIdsOf(pruned)).toEqual([
+      "fx-rates",
+      "fx-blotter",
+      "fx-positions",
+    ]);
 
     if (pruned.kind !== "split") {
       throw new Error("split expected");
@@ -96,7 +82,10 @@ describe("visibleRootOf", () => {
   });
 
   it("collapses transitively: closing a whole column prunes it from the row", () => {
-    const pruned = visibleRootOf(FX_LIKE_ROOT, ["fx-analytics", "fx-positions"]);
+    const pruned = visibleRootOf(FX_LIKE_ROOT, [
+      "fx-analytics",
+      "fx-positions",
+    ]);
     expect(pruned).toEqual({
       kind: "split",
       dir: "column",
@@ -115,3 +104,21 @@ describe("visibleRootOf", () => {
     expect(visibleRootOf(sole, ["bogus"])).toBe(sole);
   });
 });
+
+function leafIdsOf(node: LayoutNode): string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(leafIdsOf);
+}
+
+function sumSizesOf(node: LayoutNode): number {
+  if (node.kind !== "split") {
+    throw new Error("split expected");
+  }
+
+  return node.sizes.reduce((total, size) => {
+    return total + size;
+  }, 0);
+}

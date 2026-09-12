@@ -125,6 +125,7 @@ export function DockviewEngineHost({
             ? liveCollapsed
             : ((collapsed as readonly PanelId[] | undefined) ?? [])
         }
+        closed={[]}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}

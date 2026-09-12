@@ -132,6 +132,7 @@ export function DockviewEngineHost(
         store={store}
         maximized={(props.maximized as PanelId | null | undefined) ?? null}
         collapsed={collapsed()}
+        closed={[]}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}

@@ -10,6 +10,8 @@ import {
   type DockDesignPin,
   type DockSeedNode,
   RTC_PANEL_COMPONENT,
+  type SeedSplit,
+  seedPanelIdsOf,
 } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -1892,6 +1894,20 @@ function applyTitles(api: DockviewApi, hooks: DockPanelHooks): void {
   }
 }
 
+/** Where a reopened panel goes: addPanel relative to the anchor panel's
+ * group, in the seed-derived direction. */
+export interface SeedAnchor {
+  readonly anchorPanelId: string;
+  readonly direction: "left" | "right" | "above" | "below";
+}
+
+/** One ancestor split on the closed panel's seed path, with the child index
+ * the panel descends through — the outward-walk unit of seedAnchorFor. */
+interface SeedPathLevel {
+  readonly split: SeedSplit;
+  readonly index: number;
+}
+
 /** One step of {@link seedAnchorFor}'s walk: where `panelId` sits inside
  * `node`, as the child index path (innermost last). Null when absent. */
 function seedPathTo(
@@ -1913,14 +1929,6 @@ function seedPathTo(
   return null;
 }
 
-function seedLeafIdsOf(node: DockSeedNode): readonly string[] {
-  if (node.kind === "panel") {
-    return [node.panelId];
-  }
-
-  return node.children.flatMap(seedLeafIdsOf);
-}
-
 /** The reopen-position rule, pure over the SEED tree: find `panelId`'s seed
  * position, then take sibling subtrees in order of proximity — nearest
  * sibling of its own split first, then outward through ancestor splits —
@@ -1932,10 +1940,7 @@ export function seedAnchorFor(
   seed: DockSeedNode,
   panelId: string,
   isLive: (candidateId: string) => boolean,
-): {
-  readonly anchorPanelId: string;
-  readonly direction: "left" | "right" | "above" | "below";
-} | null {
+): SeedAnchor | null {
   const path = seedPathTo(seed, panelId);
 
   if (path === null || seed.kind === "panel") {
@@ -1944,10 +1949,7 @@ export function seedAnchorFor(
 
   // The splits along the path, innermost first, each with the child index
   // the closed panel descends through.
-  const levels: {
-    split: Extract<DockSeedNode, { kind: "split" }>;
-    index: number;
-  }[] = [];
+  const levels: SeedPathLevel[] = [];
   let node: DockSeedNode = seed;
 
   for (const index of path) {
@@ -1972,7 +1974,7 @@ export function seedAnchorFor(
       });
 
     for (const { child, childIndex } of siblings) {
-      const live = seedLeafIdsOf(child).find(isLive);
+      const live = seedPanelIdsOf(child).find(isLive);
 
       if (live === undefined) {
         continue;
