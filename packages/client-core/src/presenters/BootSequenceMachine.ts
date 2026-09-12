@@ -2,6 +2,11 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
+import type {
+  BootSequenceDeps,
+  BootSequenceIntents,
+  BootSequenceState,
+} from "@rtc/core-api";
 import { BOOT_VARIANTS, type BootVariant } from "@rtc/domain";
 
 import type { Machine } from "./machine";
@@ -14,24 +19,10 @@ export { BOOT_VARIANTS };
 export const BOOT_DURATION_MS = 4200;
 const BOOT_TICK_MS = 90;
 
-export interface BootSequenceState {
-  readonly variant: BootVariant;
-  readonly progress: number;
-  readonly done: boolean;
-}
-
-export interface BootSequenceIntents {
-  skip: () => void;
-}
-
-export interface BootSequenceDeps {
-  /** Current persisted cycle index → the variant for this run. Read once at construction. */
-  readonly variant: BootVariant;
-  /** Advance the persisted cycle pointer to the next variant (preferences seam; NO localStorage here). */
-  readonly advance: (next: BootVariant) => void;
-  /** When the ramp completes (or skip fires), notify the shell to cross-fade. */
-  readonly onDone: () => void;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { BootSequenceDeps, BootSequenceIntents, BootSequenceState };
 
 const TICKS = Math.ceil(BOOT_DURATION_MS / BOOT_TICK_MS);
 
