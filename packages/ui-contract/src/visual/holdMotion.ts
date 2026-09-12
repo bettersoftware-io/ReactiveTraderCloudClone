@@ -23,8 +23,17 @@
  * whose target is marked `data-motion="fast-forwarded"` is PAUSED at
  * `currentTime = 0`. With delay −d over duration D that is progress d/D — the
  * mount frame, i.e. `scaleX = remaining / total`. Every other golden stays
- * byte-identical to the `animations: "disabled"` era, which is the property
- * §5a of the change verified before any golden was regenerated.
+ * byte-identical to the `animations: "disabled"` era — and BYTE-identical is
+ * measured, not inferred from a green run: the tier's normal budget is
+ * `maxDiffPixelRatio: 0.005` / `maxDiffPixels: 100`, so a pass only proves
+ * "within budget", and review re-ran the whole matrix through a copy of the
+ * config forced to 0/0 tolerance: 1792/1792 reproduced exactly.
+ *
+ * ONE SIMPLIFICATION against Playwright, deliberate: it walks every shadow root
+ * and sweeps/subscribes per root, this sweeps `document` only. The app has no
+ * shadow DOM (dockview mounts plain DOM), and both events below are `composed`,
+ * so a document-level listener still sees them. A future web component would
+ * need the root walk back.
  *
  * THE STANDING LISTENERS ARE NOT OPTIONAL — they are half of what Playwright's
  * option does, and the half that is easy to miss. `toHaveScreenshot` retries
@@ -50,6 +59,13 @@ export function settleAnimationsForCapture(): void {
 
       // Playwright skips both of these, so we do too: an effect-less animation
       // paints nothing, and a zero playback rate is already held still.
+      //
+      // Playwright additionally wraps each call below in try/catch; this does
+      // not, because these two guards plus the non-finite `endTime` one are
+      // exactly the conditions `finish()` and `pause()` throw on, so no throw
+      // is reachable. If a fourth branch is ever added, restore the wrapping —
+      // an exception inside the `animationstart` listener is swallowed by
+      // event dispatch, so it would abort the rest of that sweep silently.
       if (effect === null || animation.playbackRate === 0) {
         continue;
       }

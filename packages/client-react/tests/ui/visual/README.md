@@ -146,9 +146,17 @@ It mirrors Playwright's rules everywhere — including keeping the same
 window, so motion that begins on a later mount is settled before it reaches
 film — and diverges on exactly one class: an animation whose target carries
 **`data-motion="fast-forwarded"`** is *paused at `currentTime = 0`*, its mount
-frame. Every other golden is byte-identical to the `animations: "disabled"`
-era, which was measured (a full assert run showed only countdown-bearing
-scenarios differing) before any golden was regenerated.
+frame. The one simplification is that it sweeps `document` rather than walking
+shadow roots as Playwright does: this app has no shadow DOM, and both those
+events are `composed`.
+
+Every other golden is byte-identical to the `animations: "disabled"` era, and
+**byte**-identical is measured rather than inferred: a green assert run only
+proves "within `maxDiffPixelRatio: 0.005` / `maxDiffPixels: 100`", so review
+re-ran the whole matrix through a copy of the config forced to **0/0**
+tolerance — 1792/1792 reproduced exactly. (The narrower, first measurement was
+a full assert run showing only countdown-bearing scenarios differing, taken
+before any golden was regenerated.)
 
 **If you add another fast-forwarded animation**, mark its element
 `data-motion="fast-forwarded"` in *both* clients' components. The attribute

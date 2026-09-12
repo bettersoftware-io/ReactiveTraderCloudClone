@@ -193,7 +193,8 @@ Two things Freeze deliberately does *not* take away:
   specs took the pass over themselves as `settleAnimationsForCapture`, which
   holds only the `data-motion="fast-forwarded"` RFQ drain bars at their mount
   frame and still finishes everything else — see
-  `packages/ui-contract/src/visual/holdMotion.ts`.) The spec pins `data-power-saver="freeze"` as a
+  `packages/ui-contract/src/visual/holdMotion.ts`.)
+  The spec pins `data-power-saver="freeze"` as a
   precondition so it cannot pass vacuously, and it is falsification-verified:
   removing the `animation-delay` line above makes it fail on both the delay and
   the resulting `opacity: 0`.

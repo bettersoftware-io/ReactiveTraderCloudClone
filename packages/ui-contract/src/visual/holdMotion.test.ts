@@ -7,10 +7,13 @@ import { settleAnimationsForCapture } from "./holdMotion";
  * all, and jsdom (the tier next door) implements no Web Animations API, so
  * neither could exercise this function against real animations. What IS
  * testable without a browser is the branch table: which of `cancel` / `pause` +
- * `currentTime = 0` / `finish` each animation shape receives, and that the
- * pass stays subscribed for later motion. That is the whole behavioural
- * surface — the function does nothing else — so it is stubbed here against
- * fake `document.getAnimations()` entries. The real Web-Animations semantics
+ * `currentTime = 0` / `finish` each animation shape receives, and — by
+ * capturing the subscribed handler and CALLING it over an animation that
+ * arrived after the first sweep — that the re-settle actually re-settles.
+ * (Pinning only the event NAMES would not: wiring the listeners to a no-op
+ * passed such a test, which is how this file used to be.) That is the whole
+ * behavioural surface — the function does nothing else — so it is stubbed here
+ * against fake `document.getAnimations()` entries. The real Web-Animations semantics
  * behind the branches (that `currentTime = 0` on a negative-delay animation
  * renders the mount frame) are witnessed by the pixel tier's countdown
  * goldens, which is the only place they CAN be witnessed.
@@ -83,12 +86,64 @@ describe("settleAnimationsForCapture", () => {
     expect(held.calls).toEqual([]);
   });
 
-  it("keeps settling motion that starts later, as Playwright's pass does", () => {
+  it("subscribes to both of the events Playwright's pass subscribes to", () => {
+    expect(settleWith([]).subscribed).toEqual([
+      "animationstart",
+      "transitionrun",
+    ]);
+  });
+
+  it("re-settles the whole branch table for motion that starts later", () => {
     // The capture window spans `toHaveScreenshot`'s retry loop, and an
     // animation that begins inside it has to be settled before it reaches
     // film — a one-shot sweep at readiness let 27 goldens outside the
-    // countdown family go red on climbing pixel counts.
-    expect(settleWith([])).toEqual(["animationstart", "transitionrun"]);
+    // countdown family go red on climbing pixel counts. So this drives the
+    // registered handler rather than merely asserting it exists: the whole
+    // point is WHAT it does when a newcomer appears.
+    const harness = settleWith([]);
+    const lateHold = fakeAnimation(
+      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    );
+
+    const lateOrdinary = fakeAnimation(fakeEffect(fakeTarget(null), 500));
+    const lateInfinite = fakeAnimation(
+      fakeEffect(fakeTarget(null), Number.POSITIVE_INFINITY),
+    );
+
+    harness.mount(lateHold);
+    harness.mount(lateOrdinary);
+    harness.mount(lateInfinite);
+    harness.dispatch("animationstart");
+
+    expect(lateHold.calls).toEqual(["pause"]);
+    expect(lateHold.currentTime).toBe(0);
+    expect(lateOrdinary.calls).toEqual(["finish"]);
+    expect(lateInfinite.calls).toEqual(["cancel"]);
+  });
+
+  it("re-settles a transition that starts later", () => {
+    const harness = settleWith([]);
+    const lateTransition = fakeAnimation(fakeEffect(fakeTarget(null), 200));
+
+    harness.mount(lateTransition);
+    harness.dispatch("transitionrun");
+
+    expect(lateTransition.calls).toEqual(["finish"]);
+  });
+
+  it("leaves motion already settled by the first sweep alone on a re-settle", () => {
+    // Idempotence is what makes standing listeners safe: a re-settle must not
+    // re-seek a held bar away from its mount frame, nor re-finish a finished
+    // entrance.
+    const held = fakeAnimation(
+      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    );
+    const harness = settleWith([held]);
+
+    harness.dispatch("animationstart");
+
+    expect(held.calls).toEqual(["pause", "pause"]);
+    expect(held.currentTime).toBe(0);
   });
 
   it("settles every animation on the page, not just the first", () => {
@@ -112,6 +167,15 @@ describe("settleAnimationsForCapture", () => {
 
 /** A `currentTime` no branch should write, so "was it re-seeked" is legible. */
 const UNTOUCHED_CURRENT_TIME = 1234;
+
+interface SettleHarness {
+  /** Event names the pass subscribed to, in subscription order. */
+  readonly subscribed: string[];
+  /** Adds an animation that appears after the first sweep has run. */
+  mount: (animation: FakeAnimation) => void;
+  /** Fires one subscribed event at the handler the pass actually registered. */
+  dispatch: (type: string) => void;
+}
 
 interface FakeTarget {
   getAttribute: (name: string) => string | null;
@@ -183,20 +247,43 @@ function fakeAnimation(
   };
 }
 
-/** Runs the pass over `animations`; returns the event names it subscribed to. */
-function settleWith(animations: readonly FakeAnimation[]): string[] {
+/**
+ * Runs the pass over `animations` and hands back the page it was run against:
+ * which events it subscribed to, a way to mount motion that appears AFTER the
+ * first sweep, and a way to fire one of those events at the handler it
+ * actually registered. `dispatch` throws on an unsubscribed event rather than
+ * no-op'ing, so dropping a listener fails loudly instead of vacuously.
+ */
+function settleWith(animations: readonly FakeAnimation[]): SettleHarness {
+  const live = [...animations];
   const subscribed: string[] = [];
+  const handlers = new Map<string, () => void>();
 
   vi.stubGlobal("KeyframeEffect", FakeKeyframeEffect);
   vi.stubGlobal("document", {
     getAnimations: (): readonly FakeAnimation[] => {
-      return animations;
+      return live;
     },
-    addEventListener: (type: string): void => {
+    addEventListener: (type: string, handler: () => void): void => {
       subscribed.push(type);
+      handlers.set(type, handler);
     },
   });
   settleAnimationsForCapture();
 
-  return subscribed;
+  return {
+    subscribed,
+    mount: (animation: FakeAnimation): void => {
+      live.push(animation);
+    },
+    dispatch: (type: string): void => {
+      const handler = handlers.get(type);
+
+      if (handler === undefined) {
+        throw new Error(`nothing subscribed to "${type}"`);
+      }
+
+      handler();
+    },
+  };
 }

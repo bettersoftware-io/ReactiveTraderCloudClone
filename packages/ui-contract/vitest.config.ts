@@ -1,8 +1,10 @@
 import { defineConfig } from "vitest/config";
 
 // Mirrors packages/ws-effects/vitest.config.ts's shape. `include` is scoped to
-// plain `*.test.ts` files (currently just src/visual/scenarios.test.ts, a pure-
-// logic unit test with no DOM/driver dependency) — this deliberately EXCLUDES
+// plain `*.test.ts` files (src/visual/scenarios.test.ts and
+// src/visual/holdMotion.test.ts, both pure-logic unit tests with no DOM/driver
+// dependency — note the default `node` environment applies, so neither has a
+// DOM at all) — this deliberately EXCLUDES
 // src/specs/**/*.contract.spec.ts. Those specs need a jsdom environment, a
 // registered UiContractDriver, and setupFiles that only exist in the consuming
 // packages' own configs (packages/client-react/tests/ui/contract/vitest.config.ts,
