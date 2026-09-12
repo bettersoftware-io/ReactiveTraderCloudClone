@@ -6,7 +6,7 @@ Every app in this repo — web, mobile, server — is built from the same three 
 
 ### 14.1 The Composition Root
 
-`createApp(ports: AppPorts): App` (`packages/client-core/src/composition.ts:222`) is the framework-free heart of both clients. It is a plain function — no DI container, no React — that takes one `AppPorts` object and returns `{ presenters, ports, commands }`. Construction order, in the order the statements appear in the function body:
+`createApp(ports: AppPorts): App` (`packages/client-core/src/composition.ts:395`) is the framework-free heart of both clients. It is a plain function — no DI container, no React — that takes one `AppPorts` object and returns `{ presenters, ports, commands }`. Construction order, in the order the statements appear in the function body:
 
 1. **Four presenters are hoisted to local `const`s** before the `presenters` object literal, because later presenters need direct references to their streams rather than going through the `Presenters` map: `connection = new ConnectionStatusPresenter(ports.connectionEvents)` (`composition.ts:225`), `priceStream = new PriceStreamPresenter(ports.pricing)` (`:227`), `execution = new TradeExecutionPresenter(ports.execution)` (`:228`), `rfqs = new RfqsPresenter(ports.workflow)` (`:229`), `currencyPairs = new CurrencyPairsPresenter(ports.referenceData)` (`:230`), `ordersBlotter = new OrdersBlotterPresenter(ports.orders)` (`:233`), `watchlist = new WatchlistPresenter(ports.marketData)` (`:236`).
 2. **`colorScheme` is resolved with a fallback** — `ports.colorScheme ?? { prefersDark$: () => of(false) }` (`:240-244`) — so tests, the simulator harness, and any environment without `matchMedia`/`Appearance` still get a deterministic light scheme.
@@ -32,7 +32,7 @@ Both web and RN guard the once-only build against React StrictMode's double-invo
 ```mermaid
 flowchart TD
     Ports["AppPorts<br/>built by buildBrowserPorts() / buildNativePorts()"]:::core
-    Create["createApp(ports)<br/>composition.ts:222"]:::core
+    Create["createApp(ports)<br/>composition.ts:395"]:::core
     Pres["Presenters (~40)<br/>each holds one port reference"]:::core
     Cmd["AppCommands<br/>{ reconnect }"]:::core
     UC["Domain UseCases<br/>e.g. PriceStreamUseCase<br/>new'd lazily inside presenter methods,<br/>memoized per subscription key"]:::domain

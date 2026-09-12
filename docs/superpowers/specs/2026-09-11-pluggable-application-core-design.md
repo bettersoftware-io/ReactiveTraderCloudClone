@@ -190,7 +190,9 @@ Pinned to `effect` 3.22.x.
   `runtime.runSync(SubscriptionRef.get(ref))` (the synchronous warmth).
   Typed errors are `Cause.squash`ed at the boundary only.
 - Same shared pure reducers, same strangler spread-and-override, same parity
-  manifest. `@effect/vitest` is a devDependency confined to this package.
+  manifest. Timing tests use `effect`'s own `TestContext` / `TestClock` under
+  plain vitest — `@effect/vitest` 0.30 peers on `vitest ^3.2` and the repo is
+  on 4.1.
 
 ### The core-contract tier (`@rtc/core-contract`)
 
