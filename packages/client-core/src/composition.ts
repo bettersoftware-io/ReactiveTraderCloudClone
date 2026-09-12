@@ -1152,9 +1152,12 @@ export function createApp(ports: AppPorts): App {
     ports,
     commands,
     dispose: async (): Promise<void> => {
-      // The RxJS core owns no runtime of its own: every stream tears down
-      // with its last subscriber and every composition-root machine is a
-      // session singleton. Nothing to release.
+      // A knowing no-op. `createApp` opens session-lifetime subscriptions it
+      // never unsubscribes — state mirrors, workspace-persistence kicks, the
+      // driver→chat outcome feed, the auth→transport gate — plus machines with
+      // no dispose of their own (NarratorMachine); nothing else in the app
+      // tears them down either. The intended follow-up is a `Subscription` bag
+      // collected across `createApp` and unsubscribed here.
     },
   };
 }
