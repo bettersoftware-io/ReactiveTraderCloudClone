@@ -1,16 +1,18 @@
 import { defer, map, Observable, of } from "rxjs";
 
-import type { AuthGatedTransport } from "@rtc/core-api";
+import type {
+  AppPorts,
+  AuthGatedTransport,
+  TransportPorts,
+} from "@rtc/core-api";
 import {
   type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
-  type AnomalyDetectorConfig,
   type AuthPort,
   type BlotterPort,
   type Candle,
   type CandleTimeframe,
-  type ConnectionEventsPort,
   type CreateRfqRequest,
   CreditRfqSimulator,
   type CurrencyPair,
@@ -28,7 +30,6 @@ import {
   EquityPositionSimulator,
   type EquityQuote,
   ErrorRateSimulator,
-  type EventLogPort,
   EventLogSimulator,
   type ExecutionPort,
   type ExecutionRequest,
@@ -39,7 +40,6 @@ import {
   InstrumentSimulator,
   LatencySimulator,
   type MarketDataPort,
-  type MetricControl,
   type OrderPort,
   type PlaceOrderRequest,
   type PositionPort,
@@ -53,11 +53,8 @@ import {
   ReferenceDataSimulator,
   type RfqEvent,
   type RfqQuoteResult,
-  type ServiceHealthPort,
   ServiceTopologySimulator,
   SessionSimulator,
-  type SessionsPort,
-  type TelemetryPort,
   TelemetrySimulator,
   ThroughputSimulator,
   type Trade,
@@ -80,86 +77,17 @@ import type {
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
-import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
-
-import type { DockLayoutStore } from "./dockLayoutStore";
 import type { IWsAdapter } from "./IWsAdapter";
-import type { JarvisPort } from "./jarvisPort";
-import type { JarvisUsagePort } from "./jarvisUsagePort";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 2) — re-exported here
- * so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { AuthGatedTransport };
-
-export interface AppPorts {
-  referenceData: ReferenceDataPort;
-  pricing: PricingPort;
-  execution: ExecutionPort;
-  blotter: BlotterPort;
-  analytics: AnalyticsPort;
-  instruments: InstrumentPort;
-  dealers: DealerPort;
-  workflow: WorkflowPort;
-  admin: AdminPort;
-  preferences: PreferencesPort;
-  /** J.A.R.V.I.S. chat backend — constructed internally by both port
-   * factories, never platform-supplied. Simulator mode gets the scripted
-   * (offline) brain (`ScriptedJarvisAdapter`); WS-real mode speaks the
-   * `JARVIS_*` wire protocol over the live socket (`WsJarvisAdapter`). */
-  jarvis: JarvisPort;
-  /** Rolling Jarvis usage/cost telemetry (Admin surface) — constructed
-   * internally by both port factories, never platform-supplied, mirroring
-   * `jarvis` above. Simulator mode gets an always-empty snapshot; WS-real
-   * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
-  jarvisUsage: JarvisUsagePort;
-  connectionEvents: ConnectionEventsPort;
-  marketData: MarketDataPort;
-  orders: OrderPort;
-  positions: PositionPort;
-  telemetry: TelemetryPort;
-  serviceHealth: ServiceHealthPort;
-  eventLog: EventLogPort;
-  sessions: SessionsPort;
-  auth: AuthPort;
-  sessionStore: SessionStore;
-  /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
-  metricControls: readonly MetricControl[];
-  /** Auth-gated transport handle. Optional — the simulator branch has no
-   * socket to gate, and omitting it leaves the gate inert. Supplied by the
-   * WS-real branch so `createApp` opens the connection only once the user is
-   * authenticated (and closes it on sign-out). */
-  transport?: AuthGatedTransport;
-  /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
-   * Browser implementation: `MediaQueryColorSchemeAdapter` (client-react). */
-  colorScheme?: ColorSchemeSource;
-  /** Per-tab persistence for the Dockview engine's serialized layout blob.
-   * Optional — omitting it costs no fake-ports builder a change; `Presenters
-   * .dockLayoutStore` falls back to a fresh `InMemoryDockLayoutStore` when
-   * absent. Browser implementation: `LocalStorageDockLayoutStore`
-   * (client-react). */
-  dockLayoutStore?: DockLayoutStore;
-  /** One-shot boot-splash decision, read once at composition time to seed the
-   * BootGatePresenter. Optional — omit in tests/simulators to default to
-   * playing the splash. Browser implementation: `shouldPlayBootSplash`
-   * (client-react bootSplashGate — it reads navigator/location, which stays
-   * out of this framework-free core). */
-  bootSplash?: { shouldPlay(): boolean };
-  /** Overrides `NarratorMachine`'s `detectAnomalies` thresholds — read once
-   * at composition time and threaded straight through to
-   * `createNarratorMachine`'s own `config`. Optional — `undefined` in
-   * production (the detector runs at `DEFAULT_ANOMALY_CONFIG`). Both web
-   * clients' `buildBrowserPorts.ts` supply the dev-only relaxed thresholds
-   * (`?narratorThresholds=test`, `import.meta.env.DEV`-gated) here; nothing
-   * else in the app sets it. */
-  narratorConfig?: Partial<AnomalyDetectorConfig>;
-}
-
-export type TransportPorts = Omit<AppPorts, "connectionEvents">;
+/** Moved to `@rtc/core-api` — `AuthGatedTransport` in pluggable-core-slice-0
+ * Task 2, `AppPorts`/`TransportPorts` in Task 5 — re-exported here so every
+ * existing `import … from "@rtc/client-core"` keeps working unchanged. All
+ * three are still used locally by the port factories below. */
+export type { AppPorts, AuthGatedTransport, TransportPorts };
 
 /** Dependencies injected by the platform layer into both simulator and WS-real port factories. */
 export interface PortFactoryDeps {
