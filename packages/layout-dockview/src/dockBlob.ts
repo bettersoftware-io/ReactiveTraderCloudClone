@@ -108,6 +108,49 @@ function migrateNode(node: unknown, gap: number): unknown {
   };
 }
 
+/** Removes every leaf's `locked` mark from a serialized grid. Lock state is
+ * DERIVED (a group is locked iff it currently renders as a strip — audit
+ * S1), so persisting it would let a blob re-impose a stale lock on a layout
+ * whose collapse state changed while this engine was not looking. The load
+ * path normalises to unlocked and the strip replay re-derives. */
+export function withoutLockMarks(serialized: unknown): unknown {
+  if (typeof serialized !== "object" || serialized === null) {
+    return serialized;
+  }
+
+  const blob = serialized as UnverifiedBlob;
+  const grid = blob.grid;
+
+  if (typeof grid !== "object" || grid === null) {
+    return serialized;
+  }
+
+  return {
+    ...blob,
+    grid: { ...grid, root: nodeWithoutLock((grid as UnverifiedGrid).root) },
+  };
+}
+
+function nodeWithoutLock(node: unknown): unknown {
+  if (typeof node !== "object" || node === null) {
+    return node;
+  }
+
+  const { type, data } = node as UnverifiedGridNode;
+
+  if (type === "branch" && Array.isArray(data)) {
+    return { ...node, data: data.map(nodeWithoutLock) };
+  }
+
+  if (type === "leaf" && typeof data === "object" && data !== null) {
+    const { locked: _dropped, ...rest } = data as Record<string, unknown>;
+
+    return { ...node, data: rest };
+  }
+
+  return node;
+}
+
 /** The strip sidecar's shape, loosely — see the engine's own validated
  * `stripGeometryIn`; migration only shifts numeric sizes and leaves the
  * validation to the load path. */

@@ -894,6 +894,14 @@ switching back is lossless. **The engine-parity gate's scope freezes at the
 shared subset** — seed-derivable twin scenarios only; user-shaped layouts
 stay outside the golden matrix by design.
 
+Phase 1 (DnD bless) shipped: dockview's tab drag-and-drop is a supported
+feature — drops blessed per the
+[Phase 1 plan](../superpowers/plans/2026-09-11-dockview-dnd-phase1.md);
+stripped groups reject drops (derived `locked`, scrubbed from the blob);
+pins dissolve structurally on drag-out; strip ledgers key on membership
+(policy details in the
+[package README](../../packages/layout-dockview/README.md)).
+
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and

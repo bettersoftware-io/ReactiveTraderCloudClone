@@ -135,4 +135,82 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.mouse.move(dstX, dstY, { steps: 12 });
     await this.page.mouse.up();
   }
+
+  async dragDockTabToEdge(
+    panelId: string,
+    targetTestId: string,
+    edge: "left" | "right" | "top" | "bottom",
+  ): Promise<void> {
+    // Same locators and gesture as dragDockTabOnto (see its comments for
+    // the .dv-tab / .dv-content-container / multi-step rationale) — only
+    // the destination point differs: inside dockview's EDGE band, so the
+    // drop splits a new group instead of merging.
+    const tab = this.engineRoot()
+      .locator(DOCK_TAB)
+      .filter({ has: this.page.getByTestId(TESTIDS.layout.dockTab(panelId)) });
+
+    const target = this.page
+      .getByTestId(targetTestId)
+      .locator(
+        "xpath=ancestor::*[contains(concat(' ', @class, ' '), ' dv-content-container ')]",
+      )
+      .first();
+    const srcBox = await tab.boundingBox();
+    const dstBox = await target.boundingBox();
+
+    if (srcBox === null || dstBox === null) {
+      throw new Error(
+        `dragDockTabToEdge: missing bounding box for tab ${JSON.stringify(panelId)} or drop target ${JSON.stringify(targetTestId)}`,
+      );
+    }
+
+    // 12% in from the chosen edge: far enough in to be over the group body,
+    // far enough out to sit inside dockview's edge band rather than the
+    // centre (merge) region.
+    const inset = 0.12;
+    const dstX =
+      edge === "left"
+        ? dstBox.x + dstBox.width * inset
+        : edge === "right"
+          ? dstBox.x + dstBox.width * (1 - inset)
+          : dstBox.x + dstBox.width / 2;
+
+    const dstY =
+      edge === "top"
+        ? dstBox.y + dstBox.height * inset
+        : edge === "bottom"
+          ? dstBox.y + dstBox.height * (1 - inset)
+          : dstBox.y + dstBox.height / 2;
+
+    await this.page.mouse.move(
+      srcBox.x + srcBox.width / 2,
+      srcBox.y + srcBox.height / 2,
+    );
+    await this.page.mouse.down();
+    await this.page.mouse.move(dstX, dstY, { steps: 12 });
+    await this.page.mouse.up();
+  }
+
+  async collapsePanel(panelId: string): Promise<void> {
+    await this.page
+      .getByTestId(TESTIDS.layout.collapseControl(panelId))
+      .click();
+  }
+
+  async expandPanel(panelId: string): Promise<void> {
+    await this.page
+      .getByTestId(TESTIDS.layout.collapseControl(panelId))
+      .click();
+  }
+
+  async waitDockCollapsed(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-collapsed",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
 }

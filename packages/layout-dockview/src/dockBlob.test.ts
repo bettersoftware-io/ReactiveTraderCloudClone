@@ -1,7 +1,11 @@
 import { createDockview } from "dockview";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { DOCK_BLOB_VERSION, migrateDockBlob } from "#/dockBlob";
+import {
+  DOCK_BLOB_VERSION,
+  migrateDockBlob,
+  withoutLockMarks,
+} from "#/dockBlob";
 import { toSerializedDockview } from "#/dockSeed";
 
 beforeAll(() => {
@@ -122,10 +126,74 @@ describe("migrateDockBlob", () => {
   });
 });
 
+describe("withoutLockMarks (derived lock state never persists)", () => {
+  it("strips locked from every leaf's data and leaves the rest untouched", () => {
+    const serialized = {
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "leaf",
+              size: 367,
+              data: {
+                id: "g1",
+                views: ["a"],
+                activeView: "a",
+                locked: "no-drop-target",
+              },
+            },
+            {
+              type: "branch",
+              data: [
+                {
+                  type: "leaf",
+                  size: 200,
+                  data: {
+                    id: "g2",
+                    views: ["b"],
+                    activeView: "b",
+                    locked: true,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      panels: {},
+    };
+
+    const scrubbed = withoutLockMarks(serialized) as typeof serialized;
+    const first = scrubbed.grid.root.data[0] as LeafDataCarrier;
+    const nested = (scrubbed.grid.root.data[1] as BranchDataCarrier)
+      .data[0] as LeafDataCarrier;
+
+    expect("locked" in first.data).toBe(false);
+    expect("locked" in nested.data).toBe(false);
+    expect(first.data.views).toEqual(["a"]);
+  });
+
+  it("passes malformed input through unchanged", () => {
+    expect(withoutLockMarks(null)).toBe(null);
+    expect(withoutLockMarks("nope")).toBe("nope");
+  });
+});
+
 interface SerializedNode {
   type: "leaf" | "branch";
   data: unknown;
   size?: number;
+}
+
+/** A serialized leaf narrowed to the group data the scrub assertions read. */
+interface LeafDataCarrier {
+  data: Record<string, unknown>;
+}
+
+/** A serialized branch narrowed to its children array. */
+interface BranchDataCarrier {
+  data: unknown[];
 }
 
 /** The migrated blob narrowed to the grid the assertions walk. */

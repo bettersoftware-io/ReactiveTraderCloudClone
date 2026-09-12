@@ -1,6 +1,10 @@
 import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 
-import { DOCK_BLOB_VERSION, migrateDockBlob } from "#/dockBlob";
+import {
+  DOCK_BLOB_VERSION,
+  migrateDockBlob,
+  withoutLockMarks,
+} from "#/dockBlob";
 import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -244,7 +248,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const stripGeometry = stripGeometrySidecar();
     opts.onLayoutChange(
       JSON.stringify({
-        ...api.toJSON(),
+        // Lock marks are derived from strip membership (audit S1) and
+        // must never persist — see withoutLockMarks.
+        ...(withoutLockMarks(api.toJSON()) as ReturnType<
+          DockviewApi["toJSON"]
+        >),
         rtcBlobVersion: DOCK_BLOB_VERSION,
         rtcDesignPins: intactDesignPins(),
         ...(stripGeometry === undefined
@@ -271,14 +279,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     const flips: PersistedFlip[] = [];
 
-    for (const [split, size] of flippedSplits) {
-      const panelIds = [...records.keys()]
-        .filter((panelId) => {
-          const group = groupOf(panelId);
-
-          return group !== undefined && split.contains(group.element);
-        })
-        .sort();
+    // The ledger key already IS the sorted stripped panel ids (flipKeyFor);
+    // keep only the ids still stripped, so the wire format stays exactly
+    // what stripGeometryIn validates.
+    for (const [key, size] of flippedSplits) {
+      const panelIds = (JSON.parse(key) as readonly string[]).filter(
+        (panelId) => {
+          return records.has(panelId);
+        },
+      );
 
       if (panelIds.length > 0) {
         flips.push({ panelIds, size });
@@ -289,6 +298,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   const changeSub = api.onDidLayoutChange(() => {
+    // Pins are validated on EVERY layout change, not just at save time: a
+    // drop that dissolves a rail must release its min=max clamps NOW, or
+    // the next resize distributes against a phantom pin for up to
+    // debounceMs (audit S2). The returned list is the persistence filter's
+    // concern; here only the release side effect matters.
+    intactDesignPins();
+
     if (timer !== null) {
       clearTimeout(timer);
     }
@@ -314,12 +330,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // expands must re-assert the whole world at the end, because dockview
   // spreads each restore's delta over whichever live neighbours it favours,
   // not over the panel holding the borrowed surplus. Dropped when the last
-  // strip of the split expands.
-  const preStripWorlds = new Map<Element, Map<string, number>>();
+  // strip of the split expands. Keyed by ALL direct members' panel ids
+  // (worldKeyOf), not the split Element: a drop that adds or removes a
+  // member changes the key, which VOIDS the old world — it describes an
+  // arrangement that no longer exists, and re-asserting it over the new
+  // membership yanks space from panels it never described (audit S3).
+  const preStripWorlds = new Map<string, Map<string, number>>();
   // A split whose every group is a strip reclaims along its PARENT's axis
   // (the in-house `stripDir`): its own size on that axis is remembered here
   // while it is flipped, and restored the moment one of its strips expands.
-  const flippedSplits = new Map<Element, number>();
+  // Keyed by the SORTED STRIPPED PANEL IDS (flipKeyOf), not the split
+  // Element: a drop rebuilds the split containers along its own path even
+  // when groups survive (audit S3), and membership is the identity that
+  // means "same column" — it is also exactly what the sidecar persists, so
+  // the in-memory ledger and the wire format now share one key.
+  const flippedSplits = new Map<string, number>();
   // Sizes the blob's sidecar carried across a reload, consumed by the
   // bridge's intent replay (recordStrip and the flip pass) and expired at
   // the first save — see serializeLayout.
@@ -365,6 +390,23 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return api.getPanel(panelId)?.group;
   }
 
+  /** The split currently holding the panels a flip entry is keyed by —
+   * resolved fresh because drops rebuild split Elements (audit S3). Null
+   * when none of the key's panels remain in the dock. */
+  function splitForFlipKey(key: string): Element | null {
+    const panelIds = JSON.parse(key) as readonly string[];
+
+    for (const panelId of panelIds) {
+      const split = groupOf(panelId)?.element.closest(SPLIT_SELECTOR) ?? null;
+
+      if (split !== null) {
+        return split;
+      }
+    }
+
+    return null;
+  }
+
   /** Remembers `panelId`'s group's pre-strip geometry so settleStrips can
    * clamp it. False — and nothing recorded — for an unknown panel or one
    * that already is a strip (a second record would remember the BAR as the
@@ -408,6 +450,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       orthogonalMinimum: orthogonalAxis.minimum(),
       orthogonalMaximum: orthogonalAxis.maximum(),
     });
+    // A bar has no visible header and its content is hidden — a drop into
+    // it would swallow the dropped panel (audit S1). Reject drops for the
+    // strip's whole lifetime; releaseStrip lifts this.
+    group.api.locked = "no-drop-target";
 
     return true;
   }
@@ -428,7 +474,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return null;
     }
 
-    const known = preStripWorlds.get(split);
+    const key = worldKeyOf(split);
+    const known = preStripWorlds.get(key);
 
     if (known !== undefined) {
       return known;
@@ -449,9 +496,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    preStripWorlds.set(split, world);
+    preStripWorlds.set(key, world);
 
     return world;
+  }
+
+  /** The identity of a split for the world ledger: ALL its direct members'
+   * panel ids, sorted. A drop that adds or removes a member changes the
+   * key, which voids the old world — see the ledger's own comment. */
+  function worldKeyOf(split: Element): string {
+    const panelIds: string[] = [];
+
+    for (const member of directMembersOf(split)) {
+      for (const heldPanel of member.panels) {
+        panelIds.push(heldPanel.id);
+      }
+    }
+
+    return flipKeyFor(panelIds);
   }
 
   /** `split`'s own groups in DOM order — the ones whose nearest split IS
@@ -486,12 +548,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * suffix holds exactly what conservation says it must — the last member
    * lands on its own size without being asserted at all. */
   function settleStripFreeWorlds(): void {
-    for (const [split, world] of [...preStripWorlds]) {
+    for (const [key, world] of [...preStripWorlds]) {
+      const split = splitForWorldKey(world);
+
+      if (split === null || worldKeyOf(split) !== key) {
+        // Membership changed (or the panels left entirely): this world
+        // describes a defunct arrangement — void it, never re-assert it.
+        preStripWorlds.delete(key);
+        continue;
+      }
+
       if (holdsStrip(split)) {
         continue;
       }
 
-      preStripWorlds.delete(split);
+      preStripWorlds.delete(key);
       const along = orientationAgainst(split);
       const members = directMembersOf(split);
 
@@ -507,6 +578,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
       }
     }
+  }
+
+  /** The split currently holding a world's members — any of the world's
+   * panel ids resolves it (they all lived in one split at capture). */
+  function splitForWorldKey(
+    world: ReadonlyMap<string, number>,
+  ): Element | null {
+    for (const panelId of world.keys()) {
+      const split = groupOf(panelId)?.element.closest(SPLIT_SELECTOR) ?? null;
+
+      if (split !== null) {
+        return split;
+      }
+    }
+
+    return null;
   }
 
   function holdsStrip(split: Element): boolean {
@@ -538,6 +625,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     records.delete(panelId);
+    group.api.locked = false;
     const naturalAxis = axisOf(group, record.natural);
     naturalAxis.constrain(record.minimum, record.maximum);
     axisOf(group, opposite(record.natural)).constrain(
@@ -608,21 +696,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Pass 2 — a split flipping NOW remembers its size on the parent's axis
     // before the clamps below pin it to the strip.
     for (const split of nowFlipped) {
-      if (!flippedSplits.has(split)) {
+      const key = flipKeyOf(split, stripped);
+
+      if (!flippedSplits.has(key)) {
         const witness = firstStrippedGroupIn(split, stripped, groupOf);
 
         if (witness !== undefined) {
           // Same reload rule as recordStrip: a re-collapse after a blob
           // restore would measure the bar the blob stored, so a sidecar-
           // persisted pre-flip size wins over the live witness.
-          const key = flipKeyOf(split, stripped);
           const seededSize = seededFlipSizes.get(key);
           seededFlipSizes.delete(key);
 
           // The split's size on its PARENT's axis — a column's width — is
           // the axis orthogonal to the one its own children run along.
           flippedSplits.set(
-            split,
+            key,
             seededSize ??
               axisOf(witness, opposite(orientationAgainst(split))).size(),
           );
@@ -663,17 +752,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     // Pass 4 — a split that is no longer flipped gets its remembered size
-    // back, now that its strips' orthogonal clamps are released.
-    for (const [split, size] of flippedSplits) {
-      if (nowFlipped.has(split)) {
+    // back, now that its strips' orthogonal clamps are released. Each entry
+    // resolves its CURRENT split from its own panel ids (drops rebuild
+    // split Elements — audit S3); a key whose panels left the dock entirely
+    // is dropped without a restore.
+    const nowFlippedKeys = new Set(
+      [...nowFlipped].map((split) => {
+        return flipKeyOf(split, stripped);
+      }),
+    );
+
+    for (const [key, size] of [...flippedSplits]) {
+      if (nowFlippedKeys.has(key)) {
         continue;
       }
 
-      flippedSplits.delete(split);
-      const witness = firstGroupIn(split, api.groups);
+      flippedSplits.delete(key);
+      const split = splitForFlipKey(key);
 
-      if (witness !== undefined) {
-        axisOf(witness, opposite(orientationAgainst(split))).set(size);
+      if (split !== null) {
+        const witness = firstGroupIn(split, api.groups);
+
+        if (witness !== undefined) {
+          axisOf(witness, opposite(orientationAgainst(split))).set(size);
+        }
       }
     }
 
@@ -815,7 +917,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const kept: DesignPinRecord[] = [];
 
     for (const record of designPins) {
-      if (panelsExactlyFill(record.pin.panelIds, groupOf)) {
+      if (pinStillShaped(record, groupOf)) {
         kept.push(record);
         continue;
       }
@@ -1080,6 +1182,60 @@ function panelsExactlyFill(
   );
 }
 
+/** The direct child view of `owner` (a split-view container) that holds
+ * `element` — the "rail" a pinned panel lives in. Null when `element` is
+ * not under `owner` at all. */
+function railViewOf(element: Element, owner: Element): Element | null {
+  let view: Element | null = element.closest(VIEW_SELECTOR);
+
+  while (
+    view !== null &&
+    (view.parentElement?.closest(SPLIT_SELECTOR) ?? null) !== owner
+  ) {
+    view = view.parentElement?.closest(VIEW_SELECTOR) ?? null;
+  }
+
+  return view;
+}
+
+/** True while a pin still describes reality: its panels exactly fill their
+ * groups AND those groups still share ONE rail (one direct child view of
+ * the pin's declaring split). Exact-fill alone passes VACUOUSLY after a
+ * drag ejects a member into its own group — both fragments then hold only
+ * pinned panels (audit S2) — so the rail identity is the real invariant. */
+function pinStillShaped(
+  record: DesignPinRecord,
+  groupOf: (panelId: string) => SizableGroup | undefined,
+): boolean {
+  if (!panelsExactlyFill(record.pin.panelIds, groupOf)) {
+    return false;
+  }
+
+  const first = groupOf(record.pin.panelIds[0] ?? "");
+
+  if (first === undefined) {
+    return false;
+  }
+
+  const owner = declaringSplitOf(first.element, record.pin.axis);
+
+  if (owner === null) {
+    return false;
+  }
+
+  const rail = railViewOf(first.element, owner);
+
+  if (rail === null) {
+    return false;
+  }
+
+  return record.pin.panelIds.every((panelId) => {
+    const group = groupOf(panelId);
+
+    return group !== undefined && railViewOf(group.element, owner) === rail;
+  });
+}
+
 /** The split that DECLARED a pin on `axis`, walking up from the pinned
  * child's DOM: a row divides width (`dv-horizontal`), a column height. For a
  * panel child that is the nearest enclosing split of the right orientation;
@@ -1098,9 +1254,17 @@ function declaringSplitOf(
   return split;
 }
 
+/** dockview's per-group drop acceptance: `"no-drop-target"` makes the
+ * group's handleDropEvent bail before showing any overlay — the S1
+ * strip-drop rejection — and toggles the `dv-locked-groupview` class.
+ * Derived from strip membership, NEVER persisted (see serializeLayout's
+ * scrub). */
+type DockLockState = boolean | "no-drop-target";
+
 interface SizableGroupApi {
   readonly width: number;
   readonly height: number;
+  locked: DockLockState;
   setSize(event: GroupSizeEvent): void;
   setConstraints(constraints: GroupConstraints): void;
 }
@@ -1145,6 +1309,7 @@ function stripOrientationOf(group: SizableGroup): DockStripOrientation {
 
 const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
+const VIEW_SELECTOR = ".dv-view";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
  * siblings side by side (a horizontal split) → a 32px vertical column;
@@ -1430,6 +1595,14 @@ function loadBlobOrSeed(
       // untouched.
       const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+
+      // Lock state is derived (strip membership), never trusted from a
+      // blob: a legacy or hand-edited blob may still carry `locked`, and
+      // dockview's fromJSON restores it. Normalise; the bridge's collapse
+      // replay re-locks the bars.
+      for (const group of api.groups) {
+        group.api.locked = false;
+      }
 
       return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
     } catch {

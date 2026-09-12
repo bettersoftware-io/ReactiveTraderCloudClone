@@ -1,3 +1,4 @@
+import type { DockviewApi } from "dockview";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { DockEngineOptions } from "#/createDockEngine";
@@ -559,6 +560,87 @@ describe("collapse / expand", () => {
     expect(engine.groupCount()).toBe(3);
     engine.dispose();
   });
+
+  it("marks a stripped group as no-drop-target and lifts it on expand", async () => {
+    // A bar has no visible header and hides its content — a drop into it
+    // would swallow the dropped panel (audit S1). dockview toggles the
+    // dv-locked-groupview class for locked === "no-drop-target", which is
+    // the observable jsdom gets.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    const before = baselineSize(base(), "fx-blotter");
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(1);
+
+    engine.expandPanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", before);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    engine.dispose();
+  });
+
+  it("voids a pre-strip world when a drop changes the split's membership", async () => {
+    // The world snapshot taken at fx-blotter's collapse knows only
+    // {rates, blotter}. Dropping analytics INTO the column extends the
+    // split in place (element reused — measured 2026-09-11), so an
+    // Element-keyed world survives and the expand's put-back re-asserts
+    // rates to its PRE-DROP size, yanking space from the newcomer. A world
+    // whose membership drifted describes a defunct arrangement: it must be
+    // voided, never re-asserted — rates keeps its post-drop allocation.
+    const seen = trackLayout();
+    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    const dock = lastDockviewApi();
+
+    engine.collapsePanel("fx-blotter");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+
+    const analytics = dock.getPanel("fx-analytics");
+    const rates = dock.getPanel("fx-rates");
+
+    if (analytics === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    analytics.api.moveTo({ group: rates.group, position: "bottom" });
+    const ratesAfterDrop = rates.group.api.height;
+
+    // restore() sets blotter's own model exactly; the delta lands on the
+    // OTHER members, which is precisely what this test watches.
+    engine.expandPanel("fx-blotter");
+    await waitForSizeWithin(seen, "fx-blotter", blotterBefore, 2);
+
+    expect(
+      Math.abs(rates.group.api.height - ratesAfterDrop),
+    ).toBeLessThanOrEqual(25);
+    engine.dispose();
+  });
+
+  it("locks every maximize-forced strip and unlocks them all on exit", async () => {
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    const before = baselineSize(base(), "fx-blotter");
+
+    engine.maximizePanel("fx-rates");
+    await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview").length,
+    ).toBeGreaterThanOrEqual(2);
+
+    engine.exitMaximize();
+    await waitForSize(seen, "fx-blotter", before);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    engine.dispose();
+  });
 });
 
 const STRIP = 32;
@@ -715,6 +797,38 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
       "fx-rates": "vertical",
       "fx-blotter": "vertical",
     });
+    engine.dispose();
+  });
+
+  it("restores a flipped rail across an adjacent drop's restructure", async () => {
+    // Characterisation, not a bug witness: measured in jsdom (2026-09-11),
+    // dockview rebuilds only the splits along a move's own source and
+    // destination path — an adjacent drop leaves a flipped split's element
+    // intact (5→4 splits, identity preserved). This pins that a drop in
+    // the MAIN column never costs the flipped rail its remembered width,
+    // whatever the flip ledger is keyed by.
+    const seen = trackLayout();
+    // Baseline twin FIRST: it creates and disposes its own engine, and the
+    // api capture always points at the most recent createDockview.
+    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+    const engine = createDockEngine({ ...railBase(), ...seen.options });
+    const dock = lastDockviewApi();
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", STRIP);
+
+    const blotter = dock.getPanel("fx-blotter");
+    const rates = dock.getPanel("fx-rates");
+
+    if (blotter === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    blotter.api.moveTo({ group: rates.group, position: "left" });
+
+    engine.expandPanel("fx-positions");
+    await waitForBranchSize(seen, "fx-analytics", railBefore);
     engine.dispose();
   });
 });
@@ -1163,6 +1277,36 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     expect(seen.pins()).toEqual([]);
   });
 
+  it("dissolves a pin and releases its clamps when a member is dragged to its own rail", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const dock = lastDockviewApi();
+    const analytics = dock.getPanel("fx-analytics");
+    const rates = dock.getPanel("fx-rates");
+
+    if (analytics === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    // The drop operation IS moveTo (audit-verified): eject analytics out of
+    // the pinned rail to the far side of the rates group. Both fragments
+    // then hold ONLY pinned panels, so the exact-fill check alone passes
+    // vacuously — the structural rail invariant is what must dissolve the
+    // pin, and its clamps must release NOW, not at the next save.
+    analytics.api.moveTo({ group: rates.group, position: "left" });
+    await waitForPins(seen, 0);
+
+    const positions = dock.getPanel("fx-positions");
+
+    if (positions === undefined) {
+      throw new Error("fx-positions missing");
+    }
+
+    expect(positions.group.minimumWidth).not.toBe(positions.group.maximumWidth);
+    expect(analytics.group.minimumWidth).not.toBe(analytics.group.maximumWidth);
+    engine.dispose();
+  });
+
   /** Grabs the first sash of the first split matching `splitSelector` —
    * dockview's real pointer-drag entry — without moving it. */
   function grabSash(container: HTMLElement, splitSelector: string): void {
@@ -1239,6 +1383,22 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     expect(sidecar.records["fx-analytics"].size).toEqual(
       within(before + GROUP_GAP_PX, 1),
     );
+  });
+
+  it("serialises a stripped layout without any locked mark in the blob", async () => {
+    // Lock state is DERIVED (a group is locked iff it is a strip right now);
+    // dockview's toJSON would persist it, and a persisted lock could
+    // re-impose itself on a layout whose collapse state changed while this
+    // engine was not looking. The save scrubs it; the reload's collapse
+    // replay re-derives it.
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    engine.dispose();
+
+    expect(seen.blob()).not.toContain('"locked"');
   });
 
   it("restores a fully-stripped column across a reload — its width and both heights", async () => {
@@ -1700,6 +1860,62 @@ async function waitForBranchSize(
 
   throw new Error(
     `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
+  );
+}
+
+const capturedDockview = vi.hoisted(() => {
+  return { api: null as unknown };
+});
+
+// Passthrough capture of the engine's dockview api: behaviour is untouched,
+// but tests get a handle for `moveTo` — the operation a DROP performs
+// (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
+// cannot be dispatched here; moveTo IS the engine-visible half of a drop.
+// vitest hoists vi.mock/vi.hoisted during transform, so position is free.
+vi.mock("dockview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("dockview")>();
+
+  return {
+    ...actual,
+    createDockview: (
+      ...args: Parameters<typeof actual.createDockview>
+    ): ReturnType<typeof actual.createDockview> => {
+      const api = actual.createDockview(...args);
+      capturedDockview.api = api;
+
+      return api;
+    },
+  };
+});
+
+/** The dockview api of the most recently created engine — captured by the
+ * module mock above. */
+function lastDockviewApi(): DockviewApi {
+  if (capturedDockview.api === null) {
+    throw new Error("no dockview created yet");
+  }
+
+  return capturedDockview.api as DockviewApi;
+}
+
+/** Polls the persisted layout until its `rtcDesignPins` sidecar holds
+ * exactly `expected` pins — the pin analogue of {@link waitForSize}. */
+async function waitForPins(
+  tracker: LayoutTracker,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (tracker.saves > 0 && tracker.pins().length === expected) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `pins never reached ${expected} (last seen: ${tracker.pins().length}, saves: ${tracker.saves})`,
   );
 }
 

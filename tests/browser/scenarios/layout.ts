@@ -101,3 +101,59 @@ export async function dragBlotterTabOntoRates(ctx: TestContext): Promise<void> {
     RATES_PANEL_DROP_TARGET,
   );
 }
+
+/**
+ * Drags the stacked "Blotter" tab to the LEFT edge band of its own group's
+ * body (the blotter table is the group's visible content — a freshly
+ * stacked panel is the active tab, so the rates content underneath is
+ * hidden and has no drop geometry): an EDGE drop splits the panel back out
+ * into a NEW group there, growing the group count by one — the inverse of
+ * {@link dragBlotterTabOntoRates}'s centre-merge. Dockview-engine only.
+ */
+export async function splitBlotterOutToTheLeft(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.layout.dragDockTabToEdge(
+    BLOTTER_PANEL_ID,
+    TESTIDS.blotter.table,
+    "left",
+  );
+}
+
+// PANEL_SPECS' fx-analytics panel id — the rail panel the strip-rejection
+// scenario collapses (its strip bar and header collapse control share
+// TESTIDS.layout.collapseControl).
+const ANALYTICS_PANEL_ID = "fx-analytics";
+
+/** Collapses the Analytics rail panel into a strip via its header "—". */
+export async function collapseAnalyticsPanel(ctx: TestContext): Promise<void> {
+  await ctx.po.layout.collapsePanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockCollapsed(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+}
+
+/** Expands the collapsed Analytics panel via its strip restore bar. */
+export async function expandAnalyticsPanel(ctx: TestContext): Promise<void> {
+  await ctx.po.layout.expandPanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockCollapsed([], ENGINE_SWITCH_TIMEOUT_MS);
+}
+
+/**
+ * Drops the "Blotter" tab onto the centre of the COLLAPSED Analytics
+ * panel's strip bar and asserts the drop was REJECTED: a stripped group is
+ * locked as a drop target (a swallow-proof bar — without the lock this
+ * exact centre-drop merged into the hidden-header group and the panel
+ * became unreachable), so the group count must still read `groupsBefore`.
+ */
+export async function dragBlotterOntoCollapsedAnalyticsIsRejected(
+  ctx: TestContext,
+  groupsBefore: number,
+): Promise<void> {
+  await ctx.po.layout.dragDockTabOnto(
+    BLOTTER_PANEL_ID,
+    TESTIDS.layout.collapseControl(ANALYTICS_PANEL_ID),
+  );
+  await expectDockGroups(ctx, groupsBefore, 5);
+}
