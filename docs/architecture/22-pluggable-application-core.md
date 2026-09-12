@@ -145,7 +145,7 @@ fails. At slice 0, six members have real suites (`connection`,
 `themePreference`, `themeSkinPreference`, `viewModePreference`, `powerSaver`,
 `commands.reconnect` — slice 1a's scope) and 63 are pending. Each suite
 subscribes to the member's `Stream`/`StateStream`, drives a scripted
-`AppPorts` harness (`createScriptedPorts` — Subject-backed streams, an
+`AppPorts` harness (`scriptPorts` — Subject-backed streams, an
 intent-named `driver`), advances vitest's fake timers, and asserts only at
 the envelope level described above.
 
