@@ -1,4 +1,4 @@
-import { createMemo, For, type JSX, Show } from "solid-js";
+import { createMemo, For, type JSX, Show, untrack } from "solid-js";
 
 import type { EquityInstrument } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -89,14 +89,14 @@ interface CellProps {
 
 function HeatCell(props: CellProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // props.symbol is fixed for this HeatCell's whole lifetime: SectorHeatmap's
-  // inner <For each={insts}> keys by the EquityInstrument object's own
-  // identity (useWatchlist's watchlistState is static per-symbol metadata,
-  // the same pattern useCurrencyPairs uses for Tile.tsx), so a cell only
-  // remounts if its instrument drops out of the watchlist/sector grouping —
-  // never on a quote tick.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const quote = useEquityQuote(props.symbol);
+  // useEquityQuote subscribes at CALL time from a plain symbol, not an
+  // accessor: a deliberate snapshot of the symbol this cell mounted with,
+  // spelt `untrack`. The props.symbol reads below stay live.
+  const quote = useEquityQuote(
+    untrack((): string => {
+      return props.symbol;
+    }),
+  );
 
   const direction = createMemo((): "up" | "down" => {
     return (quote()?.changePct ?? 0) >= 0 ? "up" : "down";

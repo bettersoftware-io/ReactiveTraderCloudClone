@@ -7,7 +7,7 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
 import type { JSX } from "solid-js";
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show, untrack } from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 
@@ -98,8 +98,12 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
     });
   });
 
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: `name` never changes within one scenario's mounted lifetime (a fresh VisualScenario is mounted per test)
-  const name = props.name;
+  // The whole tree below is built once from this name, and a fresh
+  // VisualScenario is mounted per test — a deliberate snapshot, spelt
+  // `untrack`.
+  const name = untrack((): string => {
+    return props.name;
+  });
   const scenario = scenarios[name];
 
   if (!scenario) {

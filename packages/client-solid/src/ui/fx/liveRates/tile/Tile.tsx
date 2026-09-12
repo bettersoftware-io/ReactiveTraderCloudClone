@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { createMemo, Show } from "solid-js";
+import { createMemo, Show, untrack } from "solid-js";
 
 import {
   type CurrencyPair,
@@ -34,28 +34,23 @@ export function Tile(props: TileProps): JSX.Element {
     useRfqTile,
     useAnimationIntents,
   } = useViewModel();
-  // props.pair is fixed for this Tile's whole lifetime: LiveRatesPanel's
-  // <For each={filteredPairs()}> keys by the CurrencyPair object's own
-  // identity (currencyPairsState is static per-symbol metadata — see
-  // solid-bindings' useCurrencyPairs — so filter()'s array reorders/adds/
-  // removes items by that same stable reference), so a Tile only remounts
-  // if its pair drops out of the filtered set and a different one takes its
-  // slot — never on a price tick. Every hook call below seeds a per-pair
-  // subscription/machine from that fixed pair, correctly read once.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const price = usePrice(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const stale = useStaleFlag(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const history = usePriceHistory(props.pair.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const notional = useNotional(props.pair.defaultNotional);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const tileExecution = useTileExecution(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const rfqState = useRfqTile(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const animIntent = useAnimationIntents(`tile:${props.pair.symbol}`);
+
+  // Each hook below opens a per-pair subscription or machine keyed on the
+  // pair, once: they take a VALUE, not an accessor, so the seed is a
+  // deliberate snapshot of the pair this Tile mounted with, and `untrack`
+  // says so at the seam. The rendered reads of `props.pair` further down are
+  // live, so nothing here rests on how the parent keys its <For>.
+  const seedPair = untrack((): CurrencyPair => {
+    return props.pair;
+  });
+
+  const price = usePrice(seedPair);
+  const stale = useStaleFlag(seedPair);
+  const history = usePriceHistory(seedPair.symbol);
+  const notional = useNotional(seedPair.defaultNotional);
+  const tileExecution = useTileExecution(seedPair);
+  const rfqState = useRfqTile(seedPair);
+  const animIntent = useAnimationIntents(`tile:${seedPair.symbol}`);
 
   // Every derived flag below reads one or more machine-state accessors — each
   // wrapped in createMemo (not a plain top-level const) so it stays reactive

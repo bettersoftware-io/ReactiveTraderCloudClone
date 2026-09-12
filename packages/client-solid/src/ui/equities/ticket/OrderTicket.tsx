@@ -6,6 +6,7 @@ import {
   Match,
   Show,
   Switch,
+  untrack,
 } from "solid-js";
 
 import type { OrderTicketIntents, OrderTicketState } from "@rtc/client-core";
@@ -113,10 +114,15 @@ interface TicketBodyProps {
 
 function TicketBody(props: TicketBodyProps): JSX.Element {
   const { useEquityQuote, useAnimationIntents } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on OrderTicket above)
-  const quote = useEquityQuote(props.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on OrderTicket above)
-  const animIntent = useAnimationIntents(`ticket:${props.symbol}`);
+  // Both subscribe at CALL time from a plain symbol, not an accessor (see the
+  // SOLID PORT NOTE above): a deliberate snapshot of the symbol this body
+  // mounted with, spelt `untrack`. props.symbol reads further down stay live.
+  const seedSymbol = untrack((): string => {
+    return props.symbol;
+  });
+
+  const quote = useEquityQuote(seedSymbol);
+  const animIntent = useAnimationIntents(`ticket:${seedSymbol}`);
 
   const animAttr = createMemo((): "fill" | undefined => {
     return animIntent()?.kind === "fill" ? "fill" : undefined;

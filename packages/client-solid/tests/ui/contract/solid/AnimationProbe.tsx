@@ -1,5 +1,6 @@
 import type { AnimationProbeProps } from "@ui-contract/pages/shell/motion/AnimationProbePage";
 import type { JSX } from "solid-js";
+import { untrack } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -13,8 +14,14 @@ import { useViewModel } from "@rtc/solid-bindings";
  */
 export function AnimationProbe(props: AnimationProbeProps): JSX.Element {
   const { useAnimationIntents } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- props.target picks which intent stream to subscribe to, read once at setup: registry.tsx constructs a fresh AnimationProbeComponent per contract-spec test, so no already-mounted instance is ever given a new target
-  const intent = useAnimationIntents(props.target);
+  // useAnimationIntents subscribes at CALL time from a plain target string,
+  // not an accessor: a deliberate snapshot of the target this probe mounted
+  // for, spelt `untrack`. The rendered `intent()` read below stays live.
+  const intent = useAnimationIntents(
+    untrack((): string => {
+      return props.target;
+    }),
+  );
 
   return <div data-testid="anim" data-anim={intent()?.kind ?? undefined} />;
 }

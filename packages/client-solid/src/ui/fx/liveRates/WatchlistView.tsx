@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, Show } from "solid-js";
+import { createMemo, For, onCleanup, Show, untrack } from "solid-js";
 
 import {
   type CurrencyCategory,
@@ -68,16 +68,15 @@ const NO_VALUE = "—";
 
 function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = useViewModel();
-  // props.pair is fixed for this row's whole lifetime, the same reasoning as
-  // Tile.tsx's identical hook block: this WatchlistView's own <For
-  // each={props.pairs}> is fed LiveRatesPanel's filteredPairs() — a stable
-  // per-symbol CurrencyPair reference (currencyPairsState is static
-  // metadata) — so <For>'s default identity-keying only remounts a row when
-  // its pair drops out of/back into the filtered set, never on a price tick.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const price = usePrice(props.pair);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const history = usePriceHistory(props.pair.symbol);
+  // Same seam as Tile.tsx: both hooks take a VALUE, so each row's streams are
+  // seeded once from the pair it mounted with — a deliberate snapshot, spelt
+  // `untrack`. Every rendered read of `props.pair` below stays live.
+  const seedPair = untrack((): CurrencyPair => {
+    return props.pair;
+  });
+
+  const price = usePrice(seedPair);
+  const history = usePriceHistory(seedPair.symbol);
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);
   });

@@ -104,9 +104,13 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
     useViewModel();
 
+  // useLayout resolves a composition-root singleton at CALL time from a plain
+  // tab value, not an accessor: a deliberate snapshot of the tab this engine
+  // mounted for, spelt `untrack`. props.tab reads below stay live.
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
-    props.tab,
+    untrack((): WorkspaceTab => {
+      return props.tab;
+    }),
   );
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged

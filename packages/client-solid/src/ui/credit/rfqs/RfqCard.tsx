@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, Show, untrack } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -54,18 +54,22 @@ import styles from "./RfqCard.module.css";
  * so no double-invocation risk there) keeps this component correct in both
  * a real browser and this test environment. */
 export function RfqCard(props: RfqCardProps): JSX.Element {
-  // props.expirySecs and props.creationTimestamp are `readonly` fields on
-  // the domain Rfq (packages/domain/src/credit/rfq.ts) set once at RFQ
-  // creation and never mutated across a state transition (Open→Closed/
-  // Expired) — only `state` changes, producing a fresh Rfq reference per
-  // RfqsPanel's own SOLID PORT NOTE. So these two are genuinely invariant
-  // for this card's whole lifetime, independent of whichever remount
-  // cadence RfqsPanel's id-keyed <For>/keyed <Show> gives RfqCardCell.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const totalMs = props.expirySecs * 1000;
+  // Both reads feed one-shot machinery, so both are deliberate snapshots and
+  // are spelt `untrack`: useRfqCountdown seeds its own timer from them, and
+  // barTiming below is a SINGLE mount-time CSS animation fast-forwarded with
+  // a negative delay — re-reading either per tick would re-trigger the
+  // keyframe every tick (see RfqCard.module.css .barFill).
+  const totalMs = untrack((): number => {
+    return props.expirySecs * 1000;
+  });
   const { useRfqCountdown } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const remainingMs = useRfqCountdown(props.creationTimestamp, totalMs);
+  const remainingMs = useRfqCountdown(
+    untrack((): number => {
+      return props.creationTimestamp;
+    }),
+    totalMs,
+  );
+
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);
   });

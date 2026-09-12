@@ -1,4 +1,4 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import { createSignal, type JSX, Show, untrack } from "solid-js";
 
 import {
   type DockLayoutStore,
@@ -36,8 +36,12 @@ export function DockviewEngineHost(
   // prop) and expose a toggle for fx-analytics, so a spec can drive a
   // collapse → expand round trip through a real prop change — the only way
   // to reach the bridge's expand path, which a fixed prop never exercises.
-  // eslint-disable-next-line solid/reactivity -- setup-scope seed is intentional: the host owns the set from here on
-  const seedCollapsed = props.collapsed as readonly PanelId[] | undefined;
+  // A deliberate snapshot, spelt `untrack`: the host owns the set from here
+  // on, so a live read would fight its own toggle.
+  const seedCollapsed = untrack((): readonly PanelId[] | undefined => {
+    return props.collapsed as readonly PanelId[] | undefined;
+  });
+
   const [liveCollapsed, setLiveCollapsed] = createSignal<readonly PanelId[]>(
     seedCollapsed ?? [],
   );
@@ -71,8 +75,11 @@ export function DockviewEngineHost(
   // once, so a plain top-level const is already "once" here — no ref needed.
   const inner = new InMemoryDockLayoutStore();
 
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this host is remounted (not re-rendered) whenever seedBlob changes
-  const seedBlob = props.seedBlob;
+  // A deliberate snapshot, spelt `untrack`: the blob seeds the store once,
+  // at construction, exactly as the real per-app-instance store is seeded.
+  const seedBlob = untrack((): string | undefined => {
+    return props.seedBlob;
+  });
 
   if (seedBlob !== undefined) {
     inner.save("fx", seedBlob);

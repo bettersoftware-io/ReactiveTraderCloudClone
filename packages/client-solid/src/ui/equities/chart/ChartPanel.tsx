@@ -1,4 +1,4 @@
-import { type Accessor, createMemo, type JSX, Show } from "solid-js";
+import { type Accessor, createMemo, type JSX, Show, untrack } from "solid-js";
 
 import type { EqDrawing } from "@rtc/client-core";
 import {
@@ -81,12 +81,22 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     shiftAnchors,
     updateDrawing,
   } = useEqDrawings();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const quote = useEquityQuote(props.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const candles = useCandles(props.symbol, props.timeframe);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const backfill = useCandleBackfill(props.symbol, props.timeframe);
+
+  // These three subscribe at CALL time from a plain symbol/timeframe, not an
+  // accessor (see the SOLID PORT NOTE above) — so the seed is a deliberate
+  // snapshot of the key this body mounted with, and `untrack` says so. Every
+  // other read of props.symbol/props.timeframe below stays live.
+  const seedSymbol = untrack((): string => {
+    return props.symbol;
+  });
+
+  const seedTimeframe = untrack((): CandleTimeframe => {
+    return props.timeframe;
+  });
+
+  const quote = useEquityQuote(seedSymbol);
+  const candles = useCandles(seedSymbol, seedTimeframe);
+  const backfill = useCandleBackfill(seedSymbol, seedTimeframe);
   // Alias so biome's (React-centric) useHookAtTopLevel heuristic no longer
   // matches on the name `useCandles`: solid-bindings' `use*` functions are
   // plain factories (toSignal-based), not React hooks, and calling one

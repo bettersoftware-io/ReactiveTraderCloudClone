@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, createSignal, For } from "solid-js";
+import { createMemo, createSignal, For, untrack } from "solid-js";
 
 import type { ColumnFilter } from "@rtc/client-core";
 
@@ -22,20 +22,18 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
     return [...valSet].sort();
   });
 
-  // props.currentFilter is read once, by design, to SEED this popover's
-  // local editing state — the same reasoning as NumberFilter.tsx's/
-  // DateFilter.tsx's identical initializer: BlotterHeader mounts this
-  // component only inside <Show when={openFilter() === col.key}> (a
-  // boolean, non-keyed Show around <FilterPanel>), fully remounting
-  // SetFilter fresh on every open with whatever currentFilter is live at
-  // that moment; currentFilter can never change out from under an
-  // already-open instance without that remount.
+  // The tick-box selection is seeded then owned by the user — a deliberate
+  // snapshot, spelt `untrack`, for the same reason as NumberFilter.tsx's and
+  // DateFilter.tsx's: reading live would discard the user's ticks whenever
+  // anything else re-applied a filter. (`allValues()` is deliberately inside
+  // the same untrack: the fallback is "everything visible when the popover
+  // opened", not a set that keeps growing under the user's fingers.)
   const [selected, setSelected] = createSignal<Set<string>>(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-    props.currentFilter?.type === "set"
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-        new Set(props.currentFilter.values)
-      : new Set(allValues()),
+    untrack((): Set<string> => {
+      return props.currentFilter?.type === "set"
+        ? new Set(props.currentFilter.values)
+        : new Set(allValues());
+    }),
   );
 
   function toggleValue(val: string): void {
