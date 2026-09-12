@@ -28,7 +28,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["VITE_SERVER_URL", "DEV", "RTC_SOURCEMAPS"]
+      "env": ["VITE_SERVER_URL", "DEV", "RTC_SOURCEMAPS", "VITE_CORE_IMPL"]
     },
     "typecheck": {
       "dependsOn": ["^build"]
@@ -67,7 +67,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["VITE_SERVER_URL", "EXPO_PUBLIC_SERVER_URL"]
+      "env": ["VITE_SERVER_URL", "EXPO_PUBLIC_SERVER_URL", "VITE_CORE_IMPL"]
     },
     "clean": {
       "cache": false

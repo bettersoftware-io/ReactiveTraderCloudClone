@@ -1,6 +1,5 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
-import { createApp, createMachineFactories } from "@rtc/client-core";
 import {
   instrumentMachineFactories,
   instrumentPresenters,
@@ -14,6 +13,7 @@ import {
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
+import { activeCore } from "#/app/selectCore";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
@@ -37,7 +37,7 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
 
   if (viewModelRef.current === null) {
-    const { presenters, commands } = createApp(buildBrowserPorts());
+    const { presenters, commands } = activeCore.createApp(buildBrowserPorts());
     const instrumented = instrumentPresenters(
       presenters,
       PRESENTER_MANIFEST,
@@ -46,7 +46,7 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
     viewModelRef.current = createViewModel(
       instrumented,
       instrumentMachineFactories(
-        createMachineFactories(instrumented),
+        activeCore.createMachineFactories(instrumented),
         devtoolsHub,
       ),
       commands,

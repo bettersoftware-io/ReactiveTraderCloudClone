@@ -286,6 +286,15 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/client-core-async':
+        specifier: workspace:*
+        version: link:../client-core-async
+      '@rtc/client-core-effect':
+        specifier: workspace:*
+        version: link:../client-core-effect
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
@@ -573,6 +582,15 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/client-core-async':
+        specifier: workspace:*
+        version: link:../client-core-async
+      '@rtc/client-core-effect':
+        specifier: workspace:*
+        version: link:../client-core-effect
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
