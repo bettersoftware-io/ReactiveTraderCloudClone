@@ -67,6 +67,10 @@ In React, freeze the timing with a `useState` initializer (never
 `ref.current` in render — lint enforces it). The caption/warn threshold can
 keep re-rendering per tick; the bar's progression is owned by CSS.
 See `RfqCard.module.css` / `RfqCountdown.tsx`.
+Mark the fill `data-motion="fast-forwarded"`: the negative delay makes the
+animation's time 0 the mounted state and its END an empty bar, so the visual
+tier holds exactly this family at time 0 instead of finishing it — see
+[the capture policy](../packages/ui-contract/README.md#capture-policy).
 
 **P2 — Glows and fills: baked-shadow overlay, animate opacity.**
 Put the target look (box-shadow, border ring, background fill) **statically**

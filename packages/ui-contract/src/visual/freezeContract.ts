@@ -14,11 +14,16 @@ import { scenarios } from "./scenarios";
  * prove that held:
  *
  *  - jsdom (unit + contract tiers) never runs CSS animations at all.
- *  - The pixel tier can't either: `toHaveScreenshot({ animations: "disabled" })`
- *    calls `animation.finish()` on every animation, which jumps straight to the
- *    end state and BYPASSES `animation-delay`. So an element held invisible by
- *    `animation: fade 0.5s 0.35s backwards` photographs perfectly while being
- *    blank for 350ms in the real browser.
+ *  - The pixel tier can't either: it settles motion before capturing, and
+ *    settling means `animation.finish()` on every finite animation, which jumps
+ *    straight to the end state and BYPASSES `animation-delay`. So an element
+ *    held invisible by `animation: fade 0.5s 0.35s backwards` photographs
+ *    perfectly while being blank for 350ms in the real browser. That was true
+ *    of `toHaveScreenshot({ animations: "disabled" })`, which is how the visual
+ *    specs used to capture, and it stays true of `settleAnimationsForCapture`
+ *    (./holdMotion.ts), which replaced it: the hold-at-mount divergence there
+ *    is scoped to `data-motion="fast-forwarded"` elements, and everything else
+ *    still finishes. Nothing about this tier's reason to exist changed.
  *
  * Reading computed style directly sidesteps both: `animations: "disabled"` is a
  * screenshot option, so a plain `page.evaluate` observes genuine live state.

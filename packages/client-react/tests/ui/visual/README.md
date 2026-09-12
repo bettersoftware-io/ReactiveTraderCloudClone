@@ -117,6 +117,46 @@ model. `client-solid`'s visual tier points its `snapshotDir` at
 `react-local/<arch>/`) tree — generated only from this package's renders —
 and asserts against it; `client-solid` owns no golden images of its own.
 
+### Capture policy: the tier settles motion itself
+
+A golden is a photograph of a *settled* page, and until 2026-09 the settling
+was Playwright's: `toHaveScreenshot({ animations: "disabled" })`, which
+`cancel()`s every infinite animation (element drops to its base style) and
+`finish()`es every finite one and every transition (entrances, flashes and
+fades land on their end state).
+
+That has one rule for finite animations, and this app has a family the rule
+gets wrong. The RFQ drain bars — the FX tile's `RfqCountdown` and credit's
+`RfqCard` — are drawn as **one** mount-time keyframe over the whole RFQ
+window, fast-forwarded to "now" by a **negative** `animation-delay` (pattern
+P1 in [`docs/performance.md`](../../../../../docs/performance.md), so the
+compositor drains the bar with zero JS per tick). For those, the animation's
+**end** is an empty bar and its **time 0** is the state the component mounted
+in — so `finish()` photographed a drained bar for a fixture that says "7000 ms
+of 10 000 remaining", and it was also a seek race: when the fast-forward
+missed the compositor-owned animation, the stability loop accepted the
+visually static *running* bar and captured it FULL, which showed up as one red
+cell per post-merge run.
+
+So `visual.spec.ts` captures with `animations: "allow"` and settles the page
+itself first, via `settleAnimationsForCapture`
+([`packages/ui-contract/src/visual/holdMotion.ts`](../../../../ui-contract/src/visual/holdMotion.ts)).
+It mirrors Playwright's rules everywhere — including keeping the same
+`animationstart` / `transitionrun` listeners subscribed for the whole capture
+window, so motion that begins on a later mount is settled before it reaches
+film — and diverges on exactly one class: an animation whose target carries
+**`data-motion="fast-forwarded"`** is *paused at `currentTime = 0`*, its mount
+frame. Every other golden is byte-identical to the `animations: "disabled"`
+era, which was measured (a full assert run showed only countdown-bearing
+scenarios differing) before any golden was regenerated.
+
+**If you add another fast-forwarded animation**, mark its element
+`data-motion="fast-forwarded"` in *both* clients' components. The attribute
+states a fact about the animation — its delay is negative elapsed time, so
+time 0 is the mounted state — not a test instruction; product code cannot
+import `@rtc/ui-contract` (devDependency only), so the literal appears in both
+places and the helper documents the contract.
+
 ### Goldens: two committed sets (CI vs local)
 
 Screenshot pixels depend on OS/arch font rasterization, so one golden set is not
