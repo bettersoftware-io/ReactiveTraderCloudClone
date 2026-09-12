@@ -4,6 +4,7 @@ import {
   BehaviorSubject,
   combineLatest,
   EMPTY,
+  merge,
   type Observable,
   of,
   Subject,
@@ -525,6 +526,52 @@ function resetWorkspaceLayoutFor(world: World): void {
   }
 
   dock.dockedTabs.clear();
+  world.workspaceLayoutResets.next(world.workspaceLayoutResets.getValue() + 1);
+}
+
+/** `useDockedPanelIds(tab)`'s current value — the panels currently `docked`
+ * AND attributed to `tab` in `dock.dockedTabs`, mirroring
+ * `composition.ts`'s `dockedPanelIdsFor` filter. Read synchronously off
+ * `bridge.panels$`'s warm value and `dock.dockedTabs` (both always
+ * available without subscribing), for `useSyncExternalStore`'s snapshot. */
+function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
+  const bridge = getJarvisPanelsBridge(world);
+  const dock = getWorkspaceDock(world);
+
+  return bridge.panels$
+    .getValue()
+    .filter((panel) => {
+      return panel.docked && dock.dockedTabs.get(panel.panelId) === tab;
+    })
+    .map((panel) => {
+      return panel.panelId;
+    });
+}
+
+/** Subscribes a React component to `dockedPanelIdsFor(world, tab)` —
+ * recomputed on every `panels$` emission (the `docked` flag itself) AND
+ * every `dock.kick$` tick (the tab-attribution write, which lands
+ * out-of-band from `panels$` — see `dockPanelIntoWorkspace`'s doc for why
+ * the two can't be collapsed into one signal). */
+function useDockedPanelIdsFor(
+  world: World,
+  tab: WorkspaceTab,
+): readonly string[] {
+  const bridge = getJarvisPanelsBridge(world);
+  const dock = getWorkspaceDock(world);
+
+  return useSyncExternalStore(
+    (onChange) => {
+      const sub = merge(bridge.panels$, dock.kick$).subscribe(onChange);
+
+      return () => {
+        return sub.unsubscribe();
+      };
+    },
+    () => {
+      return dockedPanelIdsFor(world, tab);
+    },
+  );
 }
 
 /** `readStateNow`'s fallback for the nav machine — never observed in practice
@@ -1422,6 +1469,16 @@ export function reactViewModel(world: World): ViewModel {
       return () => {
         resetWorkspaceLayoutFor(world);
       };
+    },
+    // Per-tab docked-panel membership (Task 4): mirrors
+    // `Presenters.dockedPanelIdsFor` — see `useDockedPanelIdsFor`'s doc.
+    useDockedPanelIds: (tab: WorkspaceTab) => {
+      return useDockedPanelIdsFor(world, tab);
+    },
+    // Workspace-layout reset counter (Task 4): mirrors
+    // `Presenters.workspaceLayoutResets$`, bumped by `resetWorkspaceLayoutFor`.
+    useWorkspaceLayoutResets: () => {
+      return useSubject(world.workspaceLayoutResets);
     },
     // Boot sequence: no contract spec exercises the boot sequence in Phase 2;
     // use the REAL machine with a fixed "core" variant and noop advance so it

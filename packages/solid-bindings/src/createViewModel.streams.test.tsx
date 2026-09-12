@@ -599,6 +599,66 @@ describe("createViewModel — admin/telemetry streams", () => {
     expect(result.panelData()).toMatchObject({ kind: "line" });
   }, 8_000);
 
+  it("useDockedPanelIds reads the presenter's per-tab docked-id stream", () => {
+    const { presenters, commands } = createApp(createSimPorts({}));
+    const fakePresenters: Presenters = {
+      ...presenters,
+      dockedPanelIdsFor: () => {
+        return of(["panel-x"]);
+      },
+    };
+
+    const vm = createViewModel(
+      fakePresenters,
+      createMachineFactories(fakePresenters),
+      commands,
+    );
+
+    const { result } = renderHook(() => {
+      return vm.useDockedPanelIds("fx");
+    });
+
+    expect(result()).toEqual(["panel-x"]);
+  });
+
+  it("useDockedPanelIds defaults to an empty array before the presenter emits", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useDockedPanelIds("fx");
+    });
+
+    expect(result()).toEqual([]);
+  });
+
+  it("useWorkspaceLayoutResets reads the presenter's reset counter", () => {
+    const { presenters, commands } = createApp(createSimPorts({}));
+    const fakePresenters: Presenters = {
+      ...presenters,
+      workspaceLayoutResets$: of(2),
+    };
+
+    const vm = createViewModel(
+      fakePresenters,
+      createMachineFactories(fakePresenters),
+      commands,
+    );
+
+    const { result } = renderHook(() => {
+      return vm.useWorkspaceLayoutResets();
+    });
+
+    expect(result()).toBe(2);
+  });
+
+  it("useWorkspaceLayoutResets defaults to 0", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useWorkspaceLayoutResets();
+    });
+
+    expect(result()).toBe(0);
+  });
+
   it("useEventLog reads the seeded rolling event log", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {

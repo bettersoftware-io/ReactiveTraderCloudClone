@@ -469,6 +469,17 @@ export interface ViewModel {
    * a stable, composition-owned function, so the hook is a direct
    * passthrough with no further wrapping. */
   useWorkspaceReset: () => () => void;
+  /** The layer-2 docked membership for ONE workspace tab — the accessor form
+   * of `Presenters.dockedPanelIdsFor(tab)`. Keyed `state()` like
+   * `useCandles`/`useDepth` (a factory function, not a static field), since
+   * the source is a per-tab stream. Starts empty. Consumed by the Dockview
+   * bridge (Tasks 5-6) to reconcile its dynamic panels against the live
+   * docked set. */
+  useDockedPanelIds: (tab: WorkspaceTab) => Accessor<readonly string[]>;
+  /** Bumps once per workspace-layout reset — the accessor form of
+   * `Presenters.workspaceLayoutResets$`. The Dockview bridges key their
+   * engine rebuild on it. Starts 0. */
+  useWorkspaceLayoutResets: () => Accessor<number>;
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
   useBootSequence: (onDone: () => void) => UseBootSequenceResult;
@@ -953,6 +964,22 @@ export function createViewModel(
     [] as readonly JarvisPanelVm[],
   );
 
+  // Keyed `state()` — one cached stream per tab, mirroring panelDataState
+  // below (a factory function keyed by an arg) rather than the plain
+  // `state()` most hooks here use, since dockedPanelIdsFor is a genuinely
+  // per-tab stream.
+  const dockedPanelIdsState = state(
+    (tab: WorkspaceTab) => {
+      return presenters.dockedPanelIdsFor(tab);
+    },
+    [] as readonly string[],
+  );
+
+  const workspaceLayoutResetsState = state(
+    presenters.workspaceLayoutResets$,
+    0,
+  );
+
   // Docked-safe dismissal — see `UseJarvisPanelsResult`'s doc. Routes
   // through composition's `dismissPanelFromWorkspace`, not the raw
   // `JarvisPanelsPresenter.dismissPanel`, so a docked panel's layout leaf is
@@ -1337,6 +1364,12 @@ export function createViewModel(
     },
     useWorkspaceReset: () => {
       return presenters.resetWorkspaceLayout;
+    },
+    useDockedPanelIds: (tab: WorkspaceTab) => {
+      return toSignal(dockedPanelIdsState(tab));
+    },
+    useWorkspaceLayoutResets: () => {
+      return toSignal(workspaceLayoutResetsState);
     },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {

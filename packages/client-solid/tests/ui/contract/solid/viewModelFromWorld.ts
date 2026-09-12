@@ -4,6 +4,7 @@ import {
   BehaviorSubject,
   combineLatest,
   EMPTY,
+  merge,
   type Observable,
   of,
   Subject,
@@ -835,6 +836,41 @@ function resetWorkspaceLayoutFor(world: World): void {
   }
 
   dock.dockedTabs.clear();
+  world.workspaceLayoutResets.next(world.workspaceLayoutResets.getValue() + 1);
+}
+
+/** `useDockedPanelIds(tab)`'s current value — the panels currently `docked`
+ * AND attributed to `tab` in `dock.dockedTabs`, mirroring
+ * `composition.ts`'s `dockedPanelIdsFor` filter. */
+function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
+  const dock = getWorkspaceDock(world);
+
+  return panelInstancesFor(world)
+    .filter((panel) => {
+      return panel.docked && dock.dockedTabs.get(panel.panelId) === tab;
+    })
+    .map((panel) => {
+      return panel.panelId;
+    });
+}
+
+/** Reactive form of `dockedPanelIdsFor` (Task 4) — recomputed on every
+ * `panels$` emission (the `docked` flag itself) AND every `dock.kick$` tick
+ * (the tab-attribution write, which lands out-of-band from `panels$` — see
+ * `dockPanelIntoWorkspace`'s doc for why the two can't be collapsed into one
+ * signal). `panels$` is warm (mirrors `machine.state$`), so this replays
+ * synchronously on subscribe like `state()`'s other sources here. */
+function dockedPanelIds$(
+  world: World,
+  tab: WorkspaceTab,
+): Observable<readonly string[]> {
+  const dock = getWorkspaceDock(world);
+
+  return merge(getJarvisPanelsPresenter(world).panels$, dock.kick$).pipe(
+    map(() => {
+      return dockedPanelIdsFor(world, tab);
+    }),
+  );
 }
 
 /** Build a reactive ViewModel backed by the neutral World — the Solid
@@ -1362,6 +1398,18 @@ export function solidViewModel(world: World): ViewModel {
       return () => {
         resetWorkspaceLayoutFor(world);
       };
+    },
+    // Per-tab docked-panel membership (Task 4): mirrors
+    // `Presenters.dockedPanelIdsFor` — see `dockedPanelIds$`'s doc.
+    useDockedPanelIds: (tab: WorkspaceTab) => {
+      return toSignal(
+        state(dockedPanelIds$(world, tab), [] as readonly string[]),
+      );
+    },
+    // Workspace-layout reset counter (Task 4): mirrors
+    // `Presenters.workspaceLayoutResets$`, bumped by `resetWorkspaceLayoutFor`.
+    useWorkspaceLayoutResets: () => {
+      return wrapSubject(world.workspaceLayoutResets);
     },
     // Boot sequence: no contract spec exercises the boot sequence beyond its
     // own BootSequence.contract.spec.ts (Task 9); use the REAL machine with a

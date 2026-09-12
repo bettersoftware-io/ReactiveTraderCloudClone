@@ -109,6 +109,17 @@ export const inertSlice: InertSlice = {
   useLayout: (_tab: WorkspaceTab) => {
     return LAYOUT_RESULT;
   },
+  // Per-tab docked-panel membership (Task 4): RN has no Dockview bridge, so
+  // this is a plain inert stub — always empty, mirroring `useWorkspaceReset`'s
+  // noop above.
+  useDockedPanelIds: (_tab: WorkspaceTab) => {
+    return EMPTY_DOCKED_PANEL_IDS;
+  },
+  // Workspace-layout reset counter (Task 4): inert — no RN surface fires or
+  // reads a reset.
+  useWorkspaceLayoutResets: () => {
+    return 0;
+  },
   useMetrics: () => {
     return METRICS_VIEW;
   },
@@ -140,6 +151,8 @@ const EMPTY_SESSION_COUNT_SERIES: readonly MetricSample[] = [];
 
 /** Active trader sessions — starts empty. */
 const EMPTY_SESSIONS: readonly SessionInfo[] = [];
+
+const EMPTY_DOCKED_PANEL_IDS: readonly string[] = [];
 
 /** `useMetrics`'s three rolling chart series — throughput/latency/error-rate
  * windows, all starting empty (mirrors `useThroughputSamples`/

@@ -429,6 +429,18 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWorkspaceReset: () => {
       return noop;
     },
+    // Per-tab docked-panel membership (Task 4): tab-agnostic by design — the
+    // fixture format carries no tab attribution, matching
+    // `dockedLayoutStateFor`'s documented rule (same `dockedPanelIdsIn` the
+    // layout-state fake above already reads).
+    useDockedPanelIds: (_tab: WorkspaceTab) => {
+      return at(dockedPanelIdsIn(data));
+    },
+    // Workspace-layout reset counter (Task 4): static screenshots never fire
+    // a reset.
+    useWorkspaceLayoutResets: () => {
+      return at(0);
+    },
     // Boot sequence: visual goldens capture post-boot UI; return a static initial
     // state with noop skip. The BootSequence component is not rendered in any
     // existing golden scenario.
