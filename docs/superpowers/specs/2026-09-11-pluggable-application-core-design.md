@@ -1,7 +1,7 @@
 # Pluggable Application Core (RxJS / async-await / Effect) — Design
 
 **Date:** 2026-09-11
-**Status:** Approved in design dialogue (2026-09-08 → 2026-09-11); spec awaiting user review
+**Status:** Approved (design dialogue 2026-09-08 → 2026-09-11; user review 2026-09-12 split slice 1 into 1a/1b)
 **Plan:** to be written via the writing-plans skill after spec approval
 
 ## Purpose
@@ -268,20 +268,21 @@ they wrap plain Observables.
 ### Slice 0 — foundation (no business logic ported)
 
 `@rtc/core-api` extraction with `implements` clauses; `@rtc/core-contract`
-with harness, index test and suites for slice 1's members; both alternative
+with harness, index test and suites for slice 1a's members; both alternative
 cores scaffolded at 100% delegation with `parity.json` and the drift test;
 `selectCore`, scripts, turbo env, bundle check, e2e matrix; ADR-006.
 **Exit:** both web clients boot on all three cores, every gate green,
 production bundle byte-identical.
 
-### Slices 1–7 — one vertical slice each
+### Slices 1a–7 — one vertical slice each
 
 Done when: suites for the slice's members exist and are green on RxJS; both
 alternative cores have them native; e2e matrix green; `parity.json` updated.
 
 | slice | members | why here |
 |---|---|---|
-| 1 connection + preferences | `connection`; the preference presenters `themePreference`, `themeSkinPreference`, `viewModePreference`, `creditRfqFilterPreference`, `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`, `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`, `powerSaver`; `AppCommands.reconnect` | proves synchronous replay-current early |
+| 1a connection + theme | `connection`; `themePreference`, `themeSkinPreference`, `viewModePreference`, `powerSaver`; `AppCommands.reconnect` | proves synchronous replay-current early (`cycle()`, theme flash); `powerSaver` feeds slice 2's conflation |
+| 1b remaining preferences | `creditRfqFilterPreference`, `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`, `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation` | mechanical once 1a's preference idiom exists; split out so 1a stays reviewable |
 | 2 FX pricing + blotter | `priceStream`, `priceHistory`, `currencyPairs`, `blotter`, `analytics`, `execution`; machines `staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution` | conflation, memoised identity, the racing machine |
 | 3 credit | `rfqs`, `dealers`, `instruments`, `rfqQuote`; machines `rfqTile`, `rfqSubmission`, `ticketSubmission`, `RfqCountdownMachine` | the `@rx-state` submissions and the RFQ reducer |
 | 4 equities | `watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`; machines `eqWorkspace`, `eqDrawings`, `orderTicket` | the two singletons the World harness instantiates |
