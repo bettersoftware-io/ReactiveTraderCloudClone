@@ -1,4 +1,5 @@
 import type { JSX } from "solid-js";
+import { untrack } from "solid-js";
 
 import {
   createDefaultLayoutPort,
@@ -17,10 +18,14 @@ import {
 } from "./pinnedFixtureLayoutPort";
 
 export function LayoutEngineHost(props: LayoutEngineHostProps): JSX.Element {
-  // eslint-disable-next-line solid/reactivity -- props.pinnedFixture picks the LayoutPort fed into useMachine's factory below, which itself runs exactly once (Solid setup runs once, per useMachine's own doc comment); this test host is mounted fresh per contract test, never toggled on an existing instance
-  const port: LayoutPort = props.pinnedFixture
-    ? pinnedFixtureLayoutPort
-    : createDefaultLayoutPort("fx");
+  // Snapshot: picks the LayoutPort handed to useMachine's factory, which runs
+  // once. Correct only because this host is mounted fresh per contract test,
+  // never toggled in place. The props.pinnedFixture read in the JSX is live.
+  const port = untrack((): LayoutPort => {
+    return props.pinnedFixture
+      ? pinnedFixtureLayoutPort
+      : createDefaultLayoutPort("fx");
+  });
 
   const { state, maximize, restore, collapse, expand, resize } = useMachine(
     () => {

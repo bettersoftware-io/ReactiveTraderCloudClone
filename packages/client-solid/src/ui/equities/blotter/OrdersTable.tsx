@@ -68,20 +68,6 @@ interface OrdersRowProps {
 }
 
 function OrdersRow(props: OrdersRowProps): JSX.Element {
-  // props.order.side is a `readonly` field on EquityOrder
-  // (packages/domain/src/equities/order.ts) fixed at order placement — only
-  // status/filledQty/avgPrice change across an order's lifecycle, and each
-  // transition is a brand-new EquityOrder object (see
-  // EquityOrderSimulator.place's `base()`), so OrdersTable's unkeyed
-  // <For each={props.orders}> (default reference-identity keying) actually
-  // remounts this row on every status change anyway — side is invariant
-  // across all of them regardless.
-  const accent =
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-    props.order.side === "buy"
-      ? "var(--accent-positive)"
-      : "var(--accent-negative)";
-
   return (
     <div
       data-testid={`order-row-${props.order.id}`}
@@ -89,7 +75,12 @@ function OrdersRow(props: OrdersRowProps): JSX.Element {
       data-new={props.isNew ? "true" : "false"}
       class={styles.row}
       // eslint-disable-next-line no-restricted-syntax -- runtime side accent via CSS custom property; static CSS can't express it
-      style={{ "--row-acc": accent }}
+      style={{
+        "--row-acc":
+          props.order.side === "buy"
+            ? "var(--accent-positive)"
+            : "var(--accent-negative)",
+      }}
     >
       <span class={styles.dim}>{clock(props.order.createdAt)}</span>
       <span class={styles.sym}>{props.order.symbol}</span>

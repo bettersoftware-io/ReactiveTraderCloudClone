@@ -27,16 +27,9 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     useThemePreference,
     useThemeSkinPreference,
   } = useViewModel();
-  // props.onDone is fixed for this component's whole lifetime: its one
-  // caller, BootGate, wraps it in <Show when={visible()}> — a non-keyed
-  // boolean Show that fully remounts BootSequence on every visible()
-  // false→true flip (see BootGate.tsx's own doc comment: "Each re-raise
-  // remounts BootSequence, so its per-mount machine replays fresh") — and
-  // BootGate's own setup body runs once, so `dismissOnJumpCut` (the
-  // function passed as onDone) is the same stable reference across every
-  // one of those remounts anyway.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const { state, skip } = useBootSequence(props.onDone);
+  // Forwarded, not captured: the boot machine holds `finishBoot` and calls
+  // it when the sequence ends, at which point `props.onDone` is read live.
+  const { state, skip } = useBootSequence(finishBoot);
   const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();
   // The theme preference hydrates asynchronously, so the first frames can run
@@ -143,6 +136,10 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
   const visibleLines = createMemo((): readonly string[] => {
     return BOOT_LOG_LINES.slice(0, visibleLineCount(state().progress));
   });
+
+  function finishBoot(): void {
+    props.onDone();
+  }
 
   return (
     <div

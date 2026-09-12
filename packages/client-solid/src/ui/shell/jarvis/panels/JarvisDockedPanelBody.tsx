@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { createMemo, Show } from "solid-js";
+import { createMemo, Show, untrack } from "solid-js";
 
 import type { JarvisPanelVm } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -34,8 +34,14 @@ export function JarvisDockedPanelBody(
   props: JarvisDockedPanelBodyProps,
 ): JSX.Element {
   const { useJarvisPanelData } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: `props.panelId` is a plain string, fixed for this component's whole lifetime (one mount per docked id — see the doc comment above), not a captured object field the way it was before this file's identity-churn fix; `solid/reactivity` flags any `props.x` read outside a tracked scope regardless of nesting depth, so the rule still fires on the simpler shape too — verified empirically, this disable does not become removable.
-  const data = useJarvisPanelData(props.panelId);
+  // Snapshot: useJarvisPanelData subscribes once at call time. Correct only
+  // while the parent mounts exactly one body per docked panel id. The
+  // props.panelId read in `panel` below is live.
+  const data = useJarvisPanelData(
+    untrack((): string => {
+      return props.panelId;
+    }),
+  );
 
   const panel = createMemo((): JarvisPanelVm | undefined => {
     return props.dockedPanels().find((row) => {

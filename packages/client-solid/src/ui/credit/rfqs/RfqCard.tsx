@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, Show, untrack } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -54,33 +54,40 @@ import styles from "./RfqCard.module.css";
  * so no double-invocation risk there) keeps this component correct in both
  * a real browser and this test environment. */
 export function RfqCard(props: RfqCardProps): JSX.Element {
-  // props.expirySecs and props.creationTimestamp are `readonly` fields on
-  // the domain Rfq (packages/domain/src/credit/rfq.ts) set once at RFQ
-  // creation and never mutated across a state transition (Open→Closed/
-  // Expired) — only `state` changes, producing a fresh Rfq reference per
-  // RfqsPanel's own SOLID PORT NOTE. So these two are genuinely invariant
-  // for this card's whole lifetime, independent of whichever remount
-  // cadence RfqsPanel's id-keyed <For>/keyed <Show> gives RfqCardCell.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const totalMs = props.expirySecs * 1000;
+  // Both reads feed one-shot machinery, so both are deliberate snapshots and
+  // are spelt `untrack`: useRfqCountdown seeds its own timer from them, and
+  // barTiming below is a SINGLE mount-time CSS animation fast-forwarded with
+  // a negative delay — re-reading either per tick would re-trigger the
+  // keyframe every tick (see RfqCard.module.css .barFill).
+  const totalMs = untrack((): number => {
+    return props.expirySecs * 1000;
+  });
   const { useRfqCountdown } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const remainingMs = useRfqCountdown(props.creationTimestamp, totalMs);
+  const remainingMs = useRfqCountdown(
+    untrack((): number => {
+      return props.creationTimestamp;
+    }),
+    totalMs,
+  );
+
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);
   });
 
-  // Captured ONCE at component setup (Solid components run their body once
-  // per mount, the direct analogue of React's `useState(() => ...)`
-  // initializer): the drain bar is a single mount-time CSS animation over
-  // the RFQ's full lifetime, fast-forwarded to "now" via a negative
-  // animation-delay — NOT re-driven per countdown tick (per-tick geometry
-  // writes kept a main-thread animation alive every frame; see
-  // RfqCard.module.css .barFill).
-  const barTiming: JSX.CSSProperties = {
-    "--bar-duration": `${totalMs}ms`,
-    "--bar-delay": `${Math.min(0, remainingMs() - totalMs)}ms`,
-  };
+  // Deliberate snapshot: the drain bar is a SINGLE mount-time CSS animation
+  // over the RFQ's full lifetime, fast-forwarded to "now" via a negative
+  // animation-delay. Re-reading `remainingMs()` per countdown tick would
+  // rewrite both custom properties and re-trigger the keyframe every tick —
+  // the per-frame main-thread animation this shape avoids (see
+  // RfqCard.module.css .barFill). `remainingMs` is a local accessor, so the
+  // lint rule does not fire on it; spelt `untrack` anyway, because the shape
+  // should follow the intent and not where the rule happens to fire.
+  const barTiming = untrack((): JSX.CSSProperties => {
+    return {
+      "--bar-duration": `${totalMs}ms`,
+      "--bar-delay": `${Math.min(0, remainingMs() - totalMs)}ms`,
+    };
+  });
   let cardEl!: HTMLDivElement;
 
   // Ignore animations bubbling up from descendants (none currently exist,

@@ -472,14 +472,14 @@ interface RfqCardCellProps {
 
 function RfqCardCell(props: RfqCardCellProps): JSX.Element {
   const { useQuotesForRfq, useAcceptQuote, useCancelRfq } = useViewModel();
-  // props.rfq.id never changes across a RfqCardCell instance: the outer
-  // <For each={renderedIds()}> above (this file's SOLID PORT NOTE) is keyed
-  // by the id itself, never the Rfq object, and even the inner
-  // <Show when={rfq()} keyed> that re-invokes this component on every fresh
-  // Rfq reference (a state transition) is looking up that SAME id each time
-  // — id is a `readonly` domain field, immutable for the RFQ's whole life.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const quotes = useQuotesForRfq(props.rfq.id);
+  // Snapshot: useQuotesForRfq subscribes once at call time. Correct only
+  // while the <For each={renderedIds()}> above keys on the id itself (id is a
+  // readonly domain field). Every props.rfq read below is live.
+  const quotes = useQuotesForRfq(
+    untrack((): number => {
+      return props.rfq.id;
+    }),
+  );
   const acceptQuote = useAcceptQuote();
   const cancelRfq = useCancelRfq();
   const vm = createMemo((): RfqCardVm => {

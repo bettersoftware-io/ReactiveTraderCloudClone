@@ -1,38 +1,31 @@
 import type { JSX } from "solid-js";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, untrack } from "solid-js";
 
 import type { ColumnFilter, Comparator } from "@rtc/client-core";
 
 import styles from "./DateFilter.module.css";
 
 export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
-  // props.currentFilter is read once, by design, to SEED this popover's
-  // local editing state — the same reasoning as NumberFilter.tsx's identical
-  // block: BlotterHeader mounts this component only inside
-  // <Show when={openFilter() === col.key}> (a boolean, non-keyed Show around
-  // <FilterPanel>), fully remounting DateFilter fresh on every open with
-  // whatever currentFilter is live at that moment; currentFilter can never
-  // change out from under an already-open instance without that remount.
-  const [comparator, setComparator] = createSignal<Comparator>(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-    props.currentFilter?.type === "date"
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-        props.currentFilter.comparator
-      : "eq",
-  );
+  // Seeded then owned by the user, exactly as in NumberFilter.tsx: a
+  // deliberate snapshot, spelt `untrack` — reading live would overwrite
+  // half-typed input whenever anything else re-applied a filter.
+  const seed = untrack((): DateFilterSeed => {
+    const applied = props.currentFilter;
 
-  const [value, setValue] = createSignal(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-    props.currentFilter?.type === "date" ? props.currentFilter.value : "",
-  );
+    if (applied?.type !== "date") {
+      return { comparator: "eq", value: "", valueTo: "" };
+    }
 
-  const [valueTo, setValueTo] = createSignal(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-    props.currentFilter?.type === "date" && props.currentFilter.valueTo
-      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-        props.currentFilter.valueTo
-      : "",
-  );
+    return {
+      comparator: applied.comparator,
+      value: applied.value,
+      valueTo: applied.valueTo ?? "",
+    };
+  });
+
+  const [comparator, setComparator] = createSignal<Comparator>(seed.comparator);
+  const [value, setValue] = createSignal(seed.value);
+  const [valueTo, setValueTo] = createSignal(seed.valueTo);
 
   function changeComparator(e: SelectChangeEvent): void {
     setComparator(e.currentTarget.value as Comparator);
@@ -117,6 +110,12 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
       </div>
     </div>
   );
+}
+
+interface DateFilterSeed {
+  comparator: Comparator;
+  value: string;
+  valueTo: string;
 }
 
 interface DateFilterProps<TRow> {
