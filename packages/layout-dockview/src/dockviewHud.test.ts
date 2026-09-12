@@ -91,3 +91,21 @@ function declarationsOf(selector: string): string {
 
   return css.slice(start + selector.length + 2, end);
 }
+
+describe("stacked tabs (Phase 2)", () => {
+  it("collapses an inactive stacked tab to its muted title chip", () => {
+    expect(css).toMatch(
+      /\.dv-tab\.dv-inactive-tab \[data-panel-title\] > \* \{[^}]*display: none/,
+    );
+    expect(css).toMatch(
+      /\.dv-tab\.dv-inactive-tab \[data-panel-title\]::before \{[^}]*content: attr\(data-panel-title\)/,
+    );
+  });
+
+  it("separates stacked tabs and seats the active one only in multi-tab bars", () => {
+    expect(css).toMatch(/\.dv-tab \+ \.dv-tab \{[^}]*border-inline-start: 1px solid/);
+    expect(css).toMatch(
+      /:has\(\.dv-tab \+ \.dv-tab\)\s+\.dv-tab\.dv-active-tab\s*\{[^}]*inset 0 -2px 0 0/,
+    );
+  });
+});
