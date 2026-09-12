@@ -83,6 +83,8 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           store={store}
           maximized={null}
           collapsed={["fx-analytics"]}
+          docked={[]}
+          layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
@@ -106,6 +108,51 @@ describe("DockviewLayoutEngine under StrictMode", () => {
     expect(height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
       STRIP_MODEL_HEIGHT_MAX,
     );
+  });
+
+  // Mirrors the collapse case above for the `docked` prop: a dynamic panel
+  // is reconciled into the engine at CONSTRUCTION (`dynamicPanels`, fed by
+  // the re-synced `dockedRef`), not applied by a replayed intent — so engine
+  // B, rebuilt from A's flushed blob (which already carries the dynamic
+  // panel), must still hold it: a `dockedRef` that failed to resync for B,
+  // or a construction call that dropped `dynamicPanels`, would silently
+  // lose the group instead of erroring. `groupsAttr` (not the saved blob) is
+  // the witness here — membership, unlike collapse's clamped SIZE, is
+  // visible in the group count as soon as B mounts.
+  it("re-holds the seeded docked panel in the engine the double-mount rebuilds", () => {
+    const inner = new InMemoryDockLayoutStore();
+    const store = {
+      load: (tab: string): string | null => {
+        return inner.load(tab);
+      },
+      save: (tab: string, blob: string): void => {
+        inner.save(tab, blob);
+      },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
+    };
+
+    page.mount(
+      <StrictMode>
+        <DockviewLayoutEngine
+          tab="fx"
+          registry={registry}
+          store={store}
+          maximized={null}
+          collapsed={[]}
+          docked={["panel-dyn-1"]}
+          layoutResets={0}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+        />
+      </StrictMode>,
+    );
+
+    // fx's 4 seed leaves plus the reconciled dynamic panel.
+    expect(page.groupsAttr()).toBe("5");
   });
 });
 

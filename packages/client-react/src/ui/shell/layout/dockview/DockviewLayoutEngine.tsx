@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 
 import {
   createDefaultLayoutPort,
+  DOCK_COLUMN_INITIAL_PX,
   type DockLayoutStore,
   type LayoutIntents,
   PANEL_SPECS,
@@ -49,6 +50,8 @@ export function DockviewLayoutEngine({
   store,
   maximized,
   collapsed,
+  docked,
+  layoutResets,
   onMaximize,
   onRestore,
   onCollapse,
@@ -74,10 +77,18 @@ export function DockviewLayoutEngine({
   // default minimum instead). The engine lives for the tab; only the store
   // (an app singleton) could legitimately swap it.
   const specsRef = useRef(specs);
+  // Read through a ref for the same reason as `specsRef`: `docked` is only
+  // needed at ENGINE CREATION time (as the construction-time `dynamicPanels`
+  // reconciliation list) — the diff effect below reads the prop directly for
+  // every later render, this ref only feeds a fresh engine's initial build.
+  const dockedRef = useRef(docked);
   // The collapse set last pushed into the engine, so the collapsed effect
   // below diffs rather than re-asserts (see it). RESET whenever the engine
   // is rebuilt — a fresh engine has nothing collapsed, whatever this said.
   const appliedCollapse = useRef<AppliedCollapse>({ tab, ids: [] });
+  // The docked set last pushed into the engine, mirroring `appliedCollapse`
+  // (same tab-tagged shape, same reset-on-rebuild rule) — see its comment.
+  const appliedDocked = useRef<AppliedDocked>({ tab, ids: [] });
   // The engine as STATE (beside the ref the callbacks read), so the intent
   // effects below depend on the instance and re-push the LayoutMachine's
   // `maximized` / `collapsed` into every NEW engine. Matters under
@@ -93,9 +104,12 @@ export function DockviewLayoutEngine({
 
   // Synced in an effect (not during render — React Compiler forbids touching
   // refs there); a LAYOUT effect declared BEFORE the engine effect so it runs
-  // first and the engine's title hook always sees the current specs.
+  // first and the engine's title hook always sees the current specs. `docked`
+  // rides along: the engine effect below only reads `dockedRef` at
+  // CONSTRUCTION time, so this keeps that read current the same way.
   useLayoutEffect(() => {
     specsRef.current = specs;
+    dockedRef.current = docked;
   });
 
   // A layout effect, not a passive one: dockview is created — and the slot
@@ -114,6 +128,13 @@ export function DockviewLayoutEngine({
     if (container === null) {
       return;
     }
+
+    // Which reset generation this container's engine was built for — a
+    // real diagnostic witness (not a bare dependency-array placeholder):
+    // devtools/e2e can confirm a reset actually tore down and rebuilt the
+    // engine by watching this value change, the same way `data-groups` and
+    // `data-collapsed` expose the bridge's other internals below.
+    container.dataset.dockGeneration = String(layoutResets);
 
     function mountInto(
       slot: MountedSlot["slot"],
@@ -158,9 +179,13 @@ export function DockviewLayoutEngine({
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
       },
+      dynamicPanels: dockedRef.current.map((panelId) => {
+        return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
+      }),
     });
     engineRef.current = engine;
     appliedCollapse.current = { tab, ids: [] };
+    appliedDocked.current = { tab, ids: [] };
     setGroups(engine.groupCount());
     setLiveEngine(engine);
 
@@ -170,7 +195,11 @@ export function DockviewLayoutEngine({
       setMounted([]);
       engine.dispose();
     };
-  }, [tab, store]);
+    // `layoutResets` is a dep so a workspace reset tears the LIVE engine down
+    // and rebuilds it from the (now-cleared) blob: without this, the engine
+    // survives the reset and its next `onLayoutChange` re-persists the old
+    // arrangement right back into the blob the reset just cleared.
+  }, [tab, store, layoutResets]);
 
   useEffect(() => {
     if (liveEngine === null) {
@@ -183,6 +212,42 @@ export function DockviewLayoutEngine({
       liveEngine.exitMaximize();
     }
   }, [maximized, liveEngine]);
+
+  // The docked set is a SET, not a single id, so — like `collapsed` below —
+  // this diffs against the last applied list rather than re-asserting the
+  // whole thing every render. Declared BETWEEN the maximize effect above and
+  // the collapse effect below: a dynamic panel must exist in the engine
+  // before a collapse replay can name it. The initial pass over a freshly
+  // rebuilt engine re-adds ids already present via construction-time
+  // `dynamicPanels` reconciliation — safe, since `addDynamicPanel` no-ops on
+  // an existing id.
+  useEffect(() => {
+    const engine = liveEngine;
+
+    if (engine === null) {
+      return;
+    }
+
+    const previous =
+      appliedDocked.current.tab === tab ? appliedDocked.current.ids : [];
+
+    for (const panelId of docked) {
+      if (!previous.includes(panelId)) {
+        engine.addDynamicPanel({
+          id: panelId,
+          initialPx: DOCK_COLUMN_INITIAL_PX,
+        });
+      }
+    }
+
+    for (const panelId of previous) {
+      if (!docked.includes(panelId)) {
+        engine.removeDynamicPanel(panelId);
+      }
+    }
+
+    appliedDocked.current = { tab, ids: docked };
+  }, [docked, tab, liveEngine]);
 
   // `collapsed` is a SET, not a single id like `maximized`, so this diffs
   // against the last applied list rather than re-asserting the whole thing:
@@ -326,6 +391,17 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** The active tab's layer-2 docked set — membership only; arrangement lives
+   * in the blob. Reconciled into the engine at construction (as
+   * `dynamicPanels`) and diffed against on every later render, mirroring how
+   * `collapsed` is handled. */
+  docked: readonly PanelId[];
+  /** Bumped by `resetWorkspaceLayout` after it clears this tab's persisted
+   * blob. A dep of the engine-creation effect so a bump tears the LIVE
+   * engine down and rebuilds it from the now-empty blob — a still-live
+   * engine would otherwise re-persist its old arrangement on its very next
+   * layout change, undoing the reset. */
+  layoutResets: number;
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];
@@ -348,6 +424,13 @@ type StripMap = Partial<Record<PanelId, DockStripOrientation>>;
  * pushed for — a tab switch rebuilds the engine, so the tag is what stops the
  * diff from treating the fresh engine's empty state as already-applied. */
 interface AppliedCollapse {
+  tab: WorkspaceTab;
+  ids: readonly PanelId[];
+}
+
+/** The docked set last pushed into the engine, tagged the same way as
+ * {@link AppliedCollapse} and for the identical reason. */
+interface AppliedDocked {
   tab: WorkspaceTab;
   ids: readonly PanelId[];
 }

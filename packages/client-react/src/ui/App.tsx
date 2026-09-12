@@ -77,9 +77,17 @@ const DockviewLayoutEngine = lazy(() => {
 });
 
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
-    useViewModel();
+  const {
+    useLayout,
+    useJarvisPanels,
+    useLayoutEngine,
+    useDockLayoutStore,
+    useDockedPanelIds,
+    useWorkspaceLayoutResets,
+  } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  const docked = useDockedPanelIds(tab);
+  const layoutResets = useWorkspaceLayoutResets();
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged
   // on top of the static app registries so a dock/undock or a live spec
@@ -99,12 +107,6 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
       <CreditViewProvider>
         {engine === "dockview" ? (
           <Suspense fallback={null}>
-            {/* Same merged registries as the in-house branch: dockview looks
-                a docked panel's body/head/spec up by id exactly as the
-                in-house engine does. Its SEED tree is still the static
-                default (createDefaultLayoutPort), so a pinned panel only
-                surfaces here once its id is in the persisted blob — docking
-                a Jarvis panel INTO dockview is not wired this round. */}
             <DockviewLayoutEngine
               tab={tab}
               registry={registry}
@@ -113,6 +115,8 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               store={dockLayoutStore}
               maximized={state.maximized}
               collapsed={state.collapsed}
+              docked={docked}
+              layoutResets={layoutResets}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}
