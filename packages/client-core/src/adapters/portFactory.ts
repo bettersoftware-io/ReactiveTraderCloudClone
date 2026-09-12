@@ -1,5 +1,6 @@
 import { defer, map, Observable, of } from "rxjs";
 
+import type { AuthGatedTransport } from "@rtc/core-api";
 import {
   type AdminPort,
   type AnalyticsPort,
@@ -90,12 +91,10 @@ import type { SessionStore } from "./sessionStore.js";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
-/** The subset of the transport the composition root drives from auth state.
- * Structural, so both `WsAdapter` and test fakes satisfy it. */
-export interface AuthGatedTransport {
-  connect(): void;
-  disconnect(): void;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 2) — re-exported here
+ * so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { AuthGatedTransport };
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
