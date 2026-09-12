@@ -2,6 +2,15 @@
 // Builds each web client once per application core into a temp dir and
 // asserts a build that selected core X shipped no other core's runtime.
 // Report-only for size; a hard gate for leakage.
+//
+// Precondition: the alternative-core packages must already be built —
+// each web client consumes @rtc/client-core-async / @rtc/client-core-effect
+// through their `dist/`-only `exports`, not their `src/`. CI's `Build` step
+// (which runs `pnpm build` before this check) guarantees that. Locally, a
+// stale `dist/` (e.g. after editing one core's `src/` without rebuilding it)
+// produces a false "does not contain its own marker" FAIL below — rebuild
+// first: `pnpm build`, or scoped: `pnpm --filter @rtc/client-core-async
+// --filter @rtc/client-core-effect build`.
 import { execSync } from "node:child_process";
 import {
   mkdtempSync,
@@ -19,6 +28,10 @@ const CORES = ["rxjs", "async", "effect"];
 const MARKERS = {
   effect: "effect/Fiber",
   async: "@rtc/client-core-async:brand",
+};
+const PACKAGE_DIRS = {
+  effect: "client-core-effect",
+  async: "client-core-async",
 };
 
 function listJs(dir) {
@@ -63,7 +76,7 @@ for (const client of CLIENTS) {
       }
       if (other === core && !present) {
         console.error(
-          `FAIL ${client} [${core}] does not contain its own marker (${marker}) — is selectCore wired?`,
+          `FAIL ${client} [${core}] does not contain its own marker (${marker}) — either selectCore is not wired for this core, or packages/${PACKAGE_DIRS[core]}/dist is stale (rebuild the core package first)`,
         );
         failed = true;
       }
