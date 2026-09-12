@@ -3,6 +3,7 @@ import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
+  withoutDynamicNodes,
   withoutLockMarks,
 } from "#/dockBlob";
 import {
@@ -10,6 +11,7 @@ import {
   type DockDesignPin,
   type DockSeedNode,
   RTC_PANEL_COMPONENT,
+  seedPanelIds,
 } from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
@@ -99,6 +101,15 @@ export interface DockEngineOptions {
   onStripsChange?: (strips: DockStripMap) => void;
   /** Debounce for onLayoutChange serialisation; default 250. Tests pass 0. */
   debounceMs?: number;
+  /** The layer-2 docked set at construction (Jarvis panels the app already
+   * knows should be open) — reconciled against `blob`/`seed` right after
+   * restore: a listed id missing from the restored dock is added at the
+   * grid's right edge (its `initialPx` pinned, like {@link DockEngine.addDynamicPanel});
+   * a restored dynamic id no longer listed is removed. Arrangement for ids
+   * present in BOTH is kept verbatim — membership reconciles both ways, but
+   * a panel's position/stack within the dock is never second-guessed once
+   * it is there. Absent/empty → no dynamic panels at construction. */
+  dynamicPanels?: readonly DockDynamicPanel[];
 }
 
 /** The bar a collapsed group is clamped to, matching the in-house engine's
@@ -1092,6 +1103,39 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   applyDesignPins(restored.pins);
+  reconcileDynamicPanels();
+  applyTitles(api, opts.panels); // reconciled-in panels get titles too
+
+  /** Membership-only reconciliation of `opts.dynamicPanels` against whatever
+   * `loadBlobOrSeed` just restored: a listed id already present (kept from
+   * the blob, or seeded — seeds never carry dynamic ids, but this stays
+   * generic) is left exactly where it landed; a listed id still absent is
+   * added at the right edge via the normal `insertDynamicPanel` path; a
+   * dynamic id the blob restored that is no longer listed is removed via
+   * `deleteDynamicPanel` — an orphan the app stopped tracking, not part of
+   * the seed. Runs once, at construction, after `loadBlobOrSeed`'s own
+   * scrub-and-retry net has already done what it can with a corrupt blob. */
+  function reconcileDynamicPanels(): void {
+    const staticIds = new Set(seedPanelIds(opts.seed));
+    const listed = new Map(
+      (opts.dynamicPanels ?? []).map((panel) => {
+        return [panel.id, panel] as const;
+      }),
+    );
+
+    for (const panel of [...api.panels]) {
+      if (!staticIds.has(panel.id) && !listed.has(panel.id)) {
+        deleteDynamicPanel(panel.id);
+      }
+    }
+
+    for (const panel of listed.values()) {
+      if (api.getPanel(panel.id) === undefined) {
+        insertDynamicPanel(panel);
+      }
+    }
+  }
+
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
   return {
@@ -1725,7 +1769,28 @@ function loadBlobOrSeed(
 
       return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
     } catch {
-      // fall through to the seed
+      // One dynamic (Jarvis-docked) panel's node can go unrestorable on its
+      // own — a stale/mismatched shape the app never wrote itself — without
+      // the rest of the arrangement being at fault. Before giving up on the
+      // WHOLE blob, retry once with every non-static leaf scrubbed out; a
+      // static-only blob (or one this can't safely operate on) hands back
+      // `null` and falls straight through to the seed below, same as before.
+      const scrubbed = withoutDynamicNodes(opts.blob, seedPanelIds(opts.seed));
+
+      if (scrubbed !== null) {
+        try {
+          const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
+          api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+
+          for (const group of api.groups) {
+            group.api.locked = false;
+          }
+
+          return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
+        } catch {
+          // fall through to the seed
+        }
+      }
     }
   }
 

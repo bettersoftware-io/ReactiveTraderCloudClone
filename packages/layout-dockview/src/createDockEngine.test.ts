@@ -1826,6 +1826,139 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
   });
 });
 
+describe("dynamic-panel reconciliation at construction", () => {
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+
+  it("adds a listed dynamic panel missing from a fresh (null) blob", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.dispose();
+  });
+
+  it("keeps a listed dynamic panel's dragged arrangement from the blob", async () => {
+    // engine 1: add, stack it into the rates group, capture the blob
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const dyn = api.getPanel("panel-dyn-1");
+    const rates = api.getPanel("fx-rates");
+
+    if (!dyn || !rates) {
+      throw new Error("fixture panels missing");
+    }
+
+    dyn.api.moveTo({ group: rates.group, position: "center" }); // stack it
+    expect(api.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
+    // dispose flushes one final serialisation synchronously — see baseline().
+    first.dispose();
+    const blob = seen.blob();
+    // engine 2: same blob + still listed → stays stacked, NOT re-added right-edge
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob,
+      dynamicPanels: [DYN],
+    });
+    const api2 = lastDockviewApi();
+    expect(api2.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
+    second.dispose();
+  });
+
+  it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const blob = seen.blob();
+    first.dispose();
+    const second = createDockEngine({
+      ...base(),
+      ...trackLayout().options,
+      blob,
+    }); // no dynamicPanels
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    // statics intact
+    expect(lastDockviewApi().getPanel("fx-rates")).toBeDefined();
+    second.dispose();
+  });
+
+  it("scrubs an unrestorable dynamic node instead of degrading the whole tab to seed", async () => {
+    // hand-corrupt ONLY the dynamic leaf in a real blob: a grid leaf VIEW
+    // naming a panel with NO `panels` entry at all — a shape dockview's own
+    // fromJSON genuinely throws on (unlike a merely-malformed panels entry,
+    // which it tolerates by degrading that one panel to an undefined id).
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const analyticsBefore = seen.sizeOf("fx-analytics");
+
+    if (analyticsBefore === null) {
+      throw new Error("fx-analytics has no rendered size");
+    }
+
+    // capture a real geometry delta on a static panel so seed-fallback is detectable
+    first.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    const parsed = JSON.parse(seen.blob());
+    delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
+    first.dispose();
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: JSON.stringify(parsed),
+      dynamicPanels: [DYN],
+    });
+    // The scrubbed retry succeeded (not seed): the dynamic panel layer 2
+    // still lists is re-added at its right-edge width.
+    await waitForSize(reloaded, "panel-dyn-1", 360);
+    // The static arrangement survived: `rtcStripGeometry`'s persisted
+    // pre-collapse size for fx-analytics rode through the scrub untouched
+    // (withoutDynamicNodes only ever touches `grid`/`panels`), so the first
+    // collapse-then-expand after this reload restores EXACTLY that size
+    // rather than measuring whatever fx-analytics happens to render at post-
+    // reconciliation — a seed fallback would have no such seeded size to
+    // restore from (see the sibling "restores the pre-collapse width when
+    // expanding after a reload" test for the same mechanism).
+    second.collapsePanel("fx-analytics");
+    second.expandPanel("fx-analytics");
+    await waitForSizeWithin(reloaded, "fx-analytics", analyticsBefore, 2);
+    second.dispose();
+  });
+
+  it("leaves a static-only blob with no dynamicPanels exactly as before", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const blob = seen.blob();
+    first.dispose();
+    const second = createDockEngine({
+      ...base(),
+      ...trackLayout().options,
+      blob,
+    });
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    second.dispose();
+  });
+});
+
 function within(target: number, tolerance: number): unknown {
   return {
     asymmetricMatch: (actual: unknown): boolean => {
