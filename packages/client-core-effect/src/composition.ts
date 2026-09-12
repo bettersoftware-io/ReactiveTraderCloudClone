@@ -1,4 +1,4 @@
-import { Layer, ManagedRuntime } from "effect";
+import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 
 import {
   createApp as createRxjsApp,
@@ -12,12 +12,18 @@ import type {
   Presenters,
 } from "@rtc/core-api";
 
+import type { EffectHost } from "#/bridge/out";
+
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
  * member. */
 export interface ComposedApp {
   base: App;
   app: App;
+  /** The Effect side the app owns — what a native presenter runs under, and
+   * what `app.dispose()` tears down. Exposed so the teardown guarantee is
+   * observable from a test rather than taken on trust. */
+  host: EffectHost;
 }
 
 /** The machine-factory twin of `ComposedApp`. */
@@ -33,7 +39,7 @@ export interface ComposedMachines {
  * Effects under — it is unused while the overlay is empty. */
 function nativePresenters(
   _base: Presenters,
-  _runtime: ManagedRuntime.ManagedRuntime<never, never>,
+  _host: EffectHost,
 ): Partial<Presenters> {
   return {};
 }
@@ -41,20 +47,40 @@ function nativePresenters(
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const base = createRxjsApp(ports);
   // The app owns a ManagedRuntime from day one, so `dispose()` has a real
-  // Effect-side resource to close even before any member goes native.
+  // Effect-side resource to close even before any member goes native — and a
+  // Scope, because `ManagedRuntime.runFork` mints ROOT fibers that disposing
+  // the runtime would NOT interrupt. Closing the scope is what ends them.
   const runtime = ManagedRuntime.make(Layer.empty);
+  const scope = Effect.runSync(Scope.make());
+  const host: EffectHost = { runtime, scope };
   const app: App = {
     ...base,
     presenters: {
       ...base.presenters,
-      ...nativePresenters(base.presenters, runtime),
+      ...nativePresenters(base.presenters, host),
     },
+    // Order matters: the RxJS app goes first (its teardown may still drive
+    // streams this core bridged), THEN the scope interrupts whatever fibers
+    // remain, and only then is the runtime disposed — disposing it earlier
+    // would replace its effect with a defect, so the scope's own finalizers
+    // would have nothing sound to run under. Every step is in a `finally` so
+    // one rejection cannot skip the rest, and each step is idempotent, so
+    // calling `dispose()` twice is safe.
     dispose: async () => {
-      await runtime.dispose();
-      await base.dispose();
+      try {
+        await base.dispose();
+      } finally {
+        try {
+          // The global runtime, not the managed one: this must still work if
+          // the managed runtime has already been disposed.
+          await Effect.runPromise(Scope.close(scope, Exit.void));
+        } finally {
+          await runtime.dispose();
+        }
+      }
     },
   };
-  return { base, app };
+  return { base, app, host };
 }
 
 export function createApp(ports: AppPorts): App {
