@@ -22,6 +22,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/client-core-async": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/ws-effects": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"

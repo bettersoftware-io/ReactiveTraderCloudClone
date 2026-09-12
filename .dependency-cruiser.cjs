@@ -241,6 +241,40 @@ module.exports = {
       to: { path: "node_modules/(react|react-dom|react-native)/" },
     },
     {
+      name: "alt-cores-stay-inner",
+      severity: "error",
+      comment:
+        "The alternative application cores may import only THEMSELVES, core-api, client-core (strangler delegation + shared pure reducers), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
+      from: { path: "^packages/(client-core-(?:async|effect))/src" },
+      to: {
+        path: "^packages/",
+        pathNot:
+          "^packages/($1|client-core|core-api|core-contract|domain|shared)/",
+      },
+    },
+    {
+      name: "alt-cores-framework-free",
+      severity: "error",
+      comment: "Alternative cores are framework-free like client-core.",
+      from: { path: "^packages/client-core-(async|effect)/src" },
+      to: { path: "node_modules/(react|react-dom|react-native|solid-js)/" },
+    },
+    {
+      name: "bridge-owns-rxjs",
+      severity: "error",
+      comment:
+        "Outside bridge/, an alternative core may not import rxjs or @rx-state/core at runtime — otherwise it is RxJS with extra steps. Type-only imports are allowed (dependencyTypesNot excludes them).",
+      from: {
+        path: "^packages/client-core-(async|effect)/src",
+        pathNot:
+          "^packages/client-core-(async|effect)/src/bridge/|\\.test\\.ts$",
+      },
+      to: {
+        path: "node_modules/(rxjs|@rx-state)/",
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:

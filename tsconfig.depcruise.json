@@ -28,6 +28,8 @@
       "@rtc/shared/*": ["packages/shared/src/*"],
       "@rtc/client-core": ["packages/client-core/src/index.ts"],
       "@rtc/client-core/*": ["packages/client-core/src/*"],
+      "@rtc/client-core-async": ["packages/client-core-async/src/index.ts"],
+      "@rtc/client-core-async/*": ["packages/client-core-async/src/*"],
       "@rtc/core-api": ["packages/core-api/src/index.ts"],
       "@rtc/core-api/*": ["packages/core-api/src/*"],
       "@rtc/core-contract": ["packages/core-contract/src/index.ts"],

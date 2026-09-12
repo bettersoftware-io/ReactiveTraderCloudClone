@@ -482,6 +482,19 @@ const GATES: Gate[] = [
     paths: ["../packages/core-api/src/"],
     excludes: ["/__tests__/", ".test."],
   },
+  {
+    // Belt and braces for dependency-cruiser's `bridge-owns-rxjs`: catches an
+    // `import { x } from "rxjs"` of a VALUE even where the cruiser's type-only
+    // detection misses a mixed import. A brace import without `type` is what a
+    // value import looks like under `verbatimModuleSyntax`; the runner uses
+    // `grep -rE`, which has no lookahead, so the pattern matches that form
+    // directly. `packages/client-core-effect/src/` joins this list when that
+    // package exists — grep errors (status 2) on a missing directory.
+    name: "43. Alternative cores import rxjs/@rx-state as types only outside bridge/ (bridge-owns-rxjs)",
+    pattern: '^import \\{[^}]*\\} from "(rxjs|rxjs/operators|@rx-state/core)"',
+    paths: ["../packages/client-core-async/src/"],
+    excludes: ["/bridge/", ".test."],
+  },
 ];
 
 let failed = 0;
