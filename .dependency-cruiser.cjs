@@ -210,6 +210,17 @@ module.exports = {
       },
     },
     {
+      name: "core-contract-stays-neutral",
+      severity: "error",
+      comment:
+        "@rtc/core-contract is the paradigm-neutral behavioural spec of the application core — it may import only core-api and domain, never a core (each core's runner supplies its own factory), a binding, or a client.",
+      from: { path: "^packages/core-contract/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(core-contract|core-api|domain)/",
+      },
+    },
+    {
       name: "client-core-stays-inner",
       severity: "error",
       comment:
@@ -217,7 +228,8 @@ module.exports = {
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|core-api|domain|shared)/",
+        pathNot:
+          "^packages/(client-core|core-api|core-contract|domain|shared)/",
       },
     },
     {

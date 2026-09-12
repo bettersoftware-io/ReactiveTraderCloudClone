@@ -1,5 +1,5 @@
 {
-  "name": "@rtc/client-core",
+  "name": "@rtc/core-contract",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,22 +18,20 @@
     "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "dev": "tsc-alias -w -p tsconfig.json & tsc --build --watch",
     "clean": "rm -rf dist .turbo *.tsbuildinfo reports coverage 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
     "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
-    "@rtc/shared": "workspace:*",
-    "@rx-state/core": "^0.1.4",
     "rxjs": "^7.8"
   },
   "devDependencies": {
-    "@rtc/core-contract": "workspace:*",
-    "@types/node": "^26.2.0",
-    "@vitest/coverage-v8": "^4.1.10",
     "tsc-alias": "1.9.4",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
     "vitest": "^4.1.10"
   }
 }

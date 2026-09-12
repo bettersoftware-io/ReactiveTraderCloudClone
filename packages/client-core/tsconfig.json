@@ -11,6 +11,7 @@
   },
   "references": [
     { "path": "../core-api" },
+    { "path": "../core-contract" },
     { "path": "../domain" },
     { "path": "../shared" }
   ],

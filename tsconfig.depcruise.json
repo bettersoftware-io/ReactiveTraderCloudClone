@@ -30,6 +30,8 @@
       "@rtc/client-core/*": ["packages/client-core/src/*"],
       "@rtc/core-api": ["packages/core-api/src/index.ts"],
       "@rtc/core-api/*": ["packages/core-api/src/*"],
+      "@rtc/core-contract": ["packages/core-contract/src/index.ts"],
+      "@rtc/core-contract/*": ["packages/core-contract/src/*"],
       "@rtc/react-bindings": ["packages/react-bindings/src/index.ts"],
       "@rtc/react-bindings/*": ["packages/react-bindings/src/*"],
       "@rtc/solid-bindings": ["packages/solid-bindings/src/index.ts"],

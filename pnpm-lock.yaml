@@ -142,6 +142,9 @@ importers:
         specifier: ^7.8
         version: 7.8.2
     devDependencies:
+      '@rtc/core-contract':
+        specifier: workspace:*
+        version: link:../core-contract
       '@types/node':
         specifier: ^26.2.0
         version: 26.4.1
@@ -587,6 +590,25 @@ importers:
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
+      rxjs:
+        specifier: ^7.8
+        version: 7.8.2
+    devDependencies:
+      tsc-alias:
+        specifier: 1.9.4
+        version: 1.9.4
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.11(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@29.1.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+
+  packages/core-contract:
+    dependencies:
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
+      '@rtc/domain':
+        specifier: workspace:*
+        version: link:../domain
       rxjs:
         specifier: ^7.8
         version: 7.8.2
