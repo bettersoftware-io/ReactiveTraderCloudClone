@@ -5,8 +5,9 @@ import { InMemoryDockLayoutStore } from "@rtc/client-core";
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
-import styles from "./DockviewEngine.visual.module.css";
 import { STACKED_FX_BLOB } from "./stackedFxBlob";
+
+import styles from "./DockviewEngine.visual.module.css";
 
 /**
  * Golden-only wrapper for the Dockview engine bridge (Task 7, spec

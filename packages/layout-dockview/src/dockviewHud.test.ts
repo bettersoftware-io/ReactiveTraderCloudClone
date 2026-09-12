@@ -84,14 +84,6 @@ describe("dockview-hud.css — skin-proof surface painting", () => {
   });
 });
 
-function declarationsOf(selector: string): string {
-  const start = css.indexOf(`${selector} {`);
-  expect(start, `rule for "${selector}"`).toBeGreaterThanOrEqual(0);
-  const end = css.indexOf("}", start);
-
-  return css.slice(start + selector.length + 2, end);
-}
-
 describe("stacked tabs (Phase 2)", () => {
   it("collapses an inactive stacked tab to its muted title chip", () => {
     expect(css).toMatch(
@@ -103,9 +95,19 @@ describe("stacked tabs (Phase 2)", () => {
   });
 
   it("separates stacked tabs and seats the active one only in multi-tab bars", () => {
-    expect(css).toMatch(/\.dv-tab \+ \.dv-tab \{[^}]*border-inline-start: 1px solid/);
+    expect(css).toMatch(
+      /\.dv-tab \+ \.dv-tab \{[^}]*border-inline-start: 1px solid/,
+    );
     expect(css).toMatch(
       /:has\(\.dv-tab \+ \.dv-tab\)\s+\.dv-tab\.dv-active-tab\s*\{[^}]*inset 0 -2px 0 0/,
     );
   });
 });
+
+function declarationsOf(selector: string): string {
+  const start = css.indexOf(`${selector} {`);
+  expect(start, `rule for "${selector}"`).toBeGreaterThanOrEqual(0);
+  const end = css.indexOf("}", start);
+
+  return css.slice(start + selector.length + 2, end);
+}
