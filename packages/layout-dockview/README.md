@@ -154,6 +154,21 @@ it imports no other `@rtc` package (`layout-dockview-stays-pure` in
 package (`dockview-only-in-layout-dockview`) — the engine stays
 swappable by replacing one package (ADR-002).
 
+### Stacked-tab chrome (Phase 2)
+
+A centre-drop stack renders as one 38px bar: the ACTIVE tab keeps the full
+panel head (its registered head-slot widgets), each INACTIVE tab collapses to
+a muted title chip drawn from the bridge's `data-panel-title` attribute
+(`content: attr(...)` in `dockview-hud.css` — the sheet cannot name the
+clients' hashed CSS-module nodes), with a 1px card-border seam between tabs
+and a 2px accent seat under the active one. All stacked-tab rules are
+selector-scoped to multi-tab bars, so a single-tab bar is pixel-identical to
+the pre-Phase-2 chrome. Collapse of a stacked member permanently un-stacks it
+(the eject rule); re-stack-on-expand is deliberately not built. The pixel
+witness is `shell/layout-dockview-stacked` — the first single-engine
+scenario (stacks are blob-private arrangement the in-house engine cannot
+express).
+
 ## Why `dockview`, not `dockview-core`
 
 `dockview-core` is a real npm package and works, but constructing a

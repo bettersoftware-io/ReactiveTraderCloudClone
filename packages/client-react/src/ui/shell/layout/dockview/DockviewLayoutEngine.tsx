@@ -264,6 +264,7 @@ export function DockviewLayoutEngine({
             // the body slot is the panel's entire chrome then, as in-house.
             <div
               data-testid={`dock-tab-${panelId}`}
+              data-panel-title={title}
               data-dock-strip={strip === undefined ? "false" : "true"}
               className={styles.tabSlot}
             >

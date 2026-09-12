@@ -1679,190 +1679,6 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
   }
 });
 
-function within(target: number, tolerance: number): unknown {
-  return {
-    asymmetricMatch: (actual: unknown): boolean => {
-      return (
-        typeof actual === "number" && Math.abs(actual - target) <= tolerance
-      );
-    },
-    toString: (): string => {
-      return `within(${target} ± ${tolerance})`;
-    },
-  };
-}
-
-/** The size a panel's group RENDERS at on a fresh engine built from `opts`,
- * read from the serialisation a throwaway twin flushes on dispose. The
- * engine under test has not fired onDidLayoutChange yet at that point, and
- * no intent is a no-op it could be forced through (maximize/exit used to be,
- * before maximize stripped siblings for real); jsdom sizes every container
- * identically, so the twin lays out exactly as the live engine did. Sizes
- * read back as CARDS (the model minus one gap), a little under the nominal
- * fraction — why the collapse tests capture the baseline rather than
- * hardcode 300. */
-function baselineSize(opts: DockEngineOptions, panelId: string): number {
-  const size = baseline(opts).sizeOf(panelId);
-
-  if (size === null) {
-    throw new Error(`${panelId} has no rendered size on a fresh engine`);
-  }
-
-  return size;
-}
-
-function baselines(
-  opts: DockEngineOptions,
-  panelIds: readonly string[],
-): ReadonlyMap<string, number> {
-  const seen = baseline(opts);
-
-  return new Map(
-    panelIds.map((panelId) => {
-      const size = seen.sizeOf(panelId);
-
-      if (size === null) {
-        throw new Error(`${panelId} has no rendered size on a fresh engine`);
-      }
-
-      return [panelId, size];
-    }),
-  );
-}
-
-/** {@link baselineSize} for the BRANCH holding `panelId`'s leaf — a
- * column's width inside the root row. */
-function baselineBranchSize(opts: DockEngineOptions, panelId: string): number {
-  const size = baseline(opts).branchSizeOf(panelId);
-
-  if (size === null) {
-    throw new Error(
-      `${panelId}'s branch has no rendered size on a fresh engine`,
-    );
-  }
-
-  return size;
-}
-
-function baseline(opts: DockEngineOptions): LayoutTracker {
-  const seen = trackLayout();
-  // dispose flushes one final serialisation synchronously — see the engine.
-  createDockEngine({ ...opts, ...seen.options }).dispose();
-
-  return seen;
-}
-
-/** Polls the persisted layout until `panelId`'s group reports `expected`px.
- *
- * This replaced a fixed `setTimeout(5)`, which reddened `main` once (run
- * 31806741355: `expected null to be 38` — the blob was still empty). Two
- * asynchronies stack before a size is readable: the engine's own save debounce
- * AND dockview's `onDidLayoutChange`, which is microtask-deferred via its
- * AsapEvent. 5ms cleared both on an idle laptop and lost on a loaded CI runner
- * — a fixed sleep racing an async signal, the same flake shape already
- * catalogued for the e2e tier. Poll the condition instead; the timeout message
- * carries the last value seen so a real regression still reads clearly. */
-async function waitForSize(
-  tracker: LayoutTracker,
-  panelId: string,
-  expected: number,
-): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    if (tracker.sizeOf(panelId) === expected) {
-      return;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
-  }
-
-  throw new Error(
-    `${panelId} never reached ${expected}px (last seen: ${tracker.sizeOf(panelId)}, saves: ${tracker.saves})`,
-  );
-}
-
-/** Captures every persisted layout so a test can read the size dockview
- * actually recorded, rather than the DOM — jsdom never lays anything out. */
-interface LayoutTracker {
-  options: Pick<DockEngineOptions, "onLayoutChange" | "debounceMs">;
-  saves: number;
-  sizeOf(panelId: string): number | null;
-  /** The rendered size of the BRANCH holding `panelId`'s leaf, on its own
-   * parent's axis — a column's width inside a row. */
-  branchSizeOf(panelId: string): number | null;
-  /** The `rtcDesignPins` sidecar of the last save. */
-  pins(): readonly unknown[];
-  /** The last save, verbatim — what a reload would hand the next engine. */
-  blob(): string;
-}
-
-interface StripsRecorder {
-  options: Pick<DockEngineOptions, "onStripsChange">;
-  last: DockStripMap;
-  calls: number;
-}
-
-function recordStrips(): StripsRecorder {
-  const recorder: StripsRecorder = {
-    options: {
-      onStripsChange: (next: DockStripMap): void => {
-        recorder.last = next;
-        recorder.calls += 1;
-      },
-    },
-    last: {},
-    calls: 0,
-  };
-
-  return recorder;
-}
-
-async function waitForSizeWithin(
-  tracker: LayoutTracker,
-  panelId: string,
-  expected: number,
-  tolerance: number,
-): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const size = tracker.sizeOf(panelId);
-
-    if (size !== null && Math.abs(size - expected) <= tolerance) {
-      return;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
-  }
-
-  throw new Error(
-    `${panelId} never came within ${tolerance}px of ${expected}px (last seen: ${tracker.sizeOf(panelId)})`,
-  );
-}
-
-async function waitForBranchSize(
-  tracker: LayoutTracker,
-  panelId: string,
-  expected: number,
-): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const size = tracker.branchSizeOf(panelId);
-
-    if (size !== null && Math.abs(size - expected) <= 1) {
-      return;
-    }
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, 10);
-    });
-  }
-
-  throw new Error(
-    `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
-  );
-}
-
 const capturedDockview = vi.hoisted(() => {
   return { api: null as unknown };
 });
@@ -1870,6 +1686,41 @@ const capturedDockview = vi.hoisted(() => {
 // Passthrough capture of the engine's dockview api: behaviour is untouched,
 // but tests get a handle for `moveTo` — the operation a DROP performs
 // (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
+describe("stacked visual fixture (Phase 2)", () => {
+  // The shell/layout-dockview-stacked scenario seeds BOTH clients' wrappers
+  // with this exact blob (tests/ui/visual/*/stackedFxBlob.ts, duplicated by
+  // the wrappers' self-contained convention). This test is the fixture's
+  // shape witness: if the blob format ever moves, fixture and test fail
+  // together, loudly, here.
+  const STACKED_FX_BLOB =
+    '{"grid":{"root":{"type":"branch","data":[{"type":"branch","data":[{"type":"leaf","data":{"views":["fx-rates","fx-analytics"],"activeView":"fx-rates","id":"group-1"},"size":419},{"type":"leaf","data":{"views":["fx-blotter"],"activeView":"fx-blotter","id":"group-2"},"size":281}],"size":942},{"type":"leaf","data":{"views":["fx-positions"],"activeView":"fx-positions","id":"group-4"},"size":318}],"size":700},"width":1260,"height":700,"orientation":"HORIZONTAL"},"panels":{"fx-rates":{"id":"fx-rates","contentComponent":"rtc-panel","title":"fx-rates"},"fx-analytics":{"id":"fx-analytics","contentComponent":"rtc-panel","title":"fx-analytics"},"fx-blotter":{"id":"fx-blotter","contentComponent":"rtc-panel","title":"fx-blotter"},"fx-positions":{"id":"fx-positions","contentComponent":"rtc-panel","title":"fx-positions"}},"activeGroup":"group-1","rtcBlobVersion":2,"rtcDesignPins":[]}';
+
+  it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
+    const engine = createDockEngine({
+      ...base(),
+      blob: STACKED_FX_BLOB,
+    });
+    const dock = lastDockviewApi();
+
+    expect(engine.groupCount()).toBe(3);
+    const rates = dock.getPanel("fx-rates");
+    const analytics = dock.getPanel("fx-analytics");
+
+    if (rates === undefined || analytics === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    expect(analytics.group).toBe(rates.group);
+    expect(rates.group.panels).toHaveLength(2);
+    expect(rates.group.activePanel?.id).toBe("fx-rates");
+
+    // No save assertion here: loading a blob is a restore, not a change
+    // (no onDidLayoutChange fires) — blob-format stability across a real
+    // save/reload cycle is the #670 reload suite's job.
+    engine.dispose();
+  });
+});
+
 // cannot be dispatched here; moveTo IS the engine-visible half of a drop.
 // vitest hoists vi.mock/vi.hoisted during transform, so position is free.
 vi.mock("dockview", async (importOriginal) => {
@@ -2114,4 +1965,188 @@ function base(): DockEngineOptions {
     onLayoutChange: () => {},
     debounceMs: 0,
   };
+}
+
+function within(target: number, tolerance: number): unknown {
+  return {
+    asymmetricMatch: (actual: unknown): boolean => {
+      return (
+        typeof actual === "number" && Math.abs(actual - target) <= tolerance
+      );
+    },
+    toString: (): string => {
+      return `within(${target} ± ${tolerance})`;
+    },
+  };
+}
+
+/** The size a panel's group RENDERS at on a fresh engine built from `opts`,
+ * read from the serialisation a throwaway twin flushes on dispose. The
+ * engine under test has not fired onDidLayoutChange yet at that point, and
+ * no intent is a no-op it could be forced through (maximize/exit used to be,
+ * before maximize stripped siblings for real); jsdom sizes every container
+ * identically, so the twin lays out exactly as the live engine did. Sizes
+ * read back as CARDS (the model minus one gap), a little under the nominal
+ * fraction — why the collapse tests capture the baseline rather than
+ * hardcode 300. */
+function baselineSize(opts: DockEngineOptions, panelId: string): number {
+  const size = baseline(opts).sizeOf(panelId);
+
+  if (size === null) {
+    throw new Error(`${panelId} has no rendered size on a fresh engine`);
+  }
+
+  return size;
+}
+
+function baselines(
+  opts: DockEngineOptions,
+  panelIds: readonly string[],
+): ReadonlyMap<string, number> {
+  const seen = baseline(opts);
+
+  return new Map(
+    panelIds.map((panelId) => {
+      const size = seen.sizeOf(panelId);
+
+      if (size === null) {
+        throw new Error(`${panelId} has no rendered size on a fresh engine`);
+      }
+
+      return [panelId, size];
+    }),
+  );
+}
+
+/** {@link baselineSize} for the BRANCH holding `panelId`'s leaf — a
+ * column's width inside the root row. */
+function baselineBranchSize(opts: DockEngineOptions, panelId: string): number {
+  const size = baseline(opts).branchSizeOf(panelId);
+
+  if (size === null) {
+    throw new Error(
+      `${panelId}'s branch has no rendered size on a fresh engine`,
+    );
+  }
+
+  return size;
+}
+
+function baseline(opts: DockEngineOptions): LayoutTracker {
+  const seen = trackLayout();
+  // dispose flushes one final serialisation synchronously — see the engine.
+  createDockEngine({ ...opts, ...seen.options }).dispose();
+
+  return seen;
+}
+
+/** Polls the persisted layout until `panelId`'s group reports `expected`px.
+ *
+ * This replaced a fixed `setTimeout(5)`, which reddened `main` once (run
+ * 31806741355: `expected null to be 38` — the blob was still empty). Two
+ * asynchronies stack before a size is readable: the engine's own save debounce
+ * AND dockview's `onDidLayoutChange`, which is microtask-deferred via its
+ * AsapEvent. 5ms cleared both on an idle laptop and lost on a loaded CI runner
+ * — a fixed sleep racing an async signal, the same flake shape already
+ * catalogued for the e2e tier. Poll the condition instead; the timeout message
+ * carries the last value seen so a real regression still reads clearly. */
+async function waitForSize(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (tracker.sizeOf(panelId) === expected) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId} never reached ${expected}px (last seen: ${tracker.sizeOf(panelId)}, saves: ${tracker.saves})`,
+  );
+}
+
+/** Captures every persisted layout so a test can read the size dockview
+ * actually recorded, rather than the DOM — jsdom never lays anything out. */
+interface LayoutTracker {
+  options: Pick<DockEngineOptions, "onLayoutChange" | "debounceMs">;
+  saves: number;
+  sizeOf(panelId: string): number | null;
+  /** The rendered size of the BRANCH holding `panelId`'s leaf, on its own
+   * parent's axis — a column's width inside a row. */
+  branchSizeOf(panelId: string): number | null;
+  /** The `rtcDesignPins` sidecar of the last save. */
+  pins(): readonly unknown[];
+  /** The last save, verbatim — what a reload would hand the next engine. */
+  blob(): string;
+}
+
+interface StripsRecorder {
+  options: Pick<DockEngineOptions, "onStripsChange">;
+  last: DockStripMap;
+  calls: number;
+}
+
+function recordStrips(): StripsRecorder {
+  const recorder: StripsRecorder = {
+    options: {
+      onStripsChange: (next: DockStripMap): void => {
+        recorder.last = next;
+        recorder.calls += 1;
+      },
+    },
+    last: {},
+    calls: 0,
+  };
+
+  return recorder;
+}
+
+async function waitForSizeWithin(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+  tolerance: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const size = tracker.sizeOf(panelId);
+
+    if (size !== null && Math.abs(size - expected) <= tolerance) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId} never came within ${tolerance}px of ${expected}px (last seen: ${tracker.sizeOf(panelId)})`,
+  );
+}
+
+async function waitForBranchSize(
+  tracker: LayoutTracker,
+  panelId: string,
+  expected: number,
+): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const size = tracker.branchSizeOf(panelId);
+
+    if (size !== null && Math.abs(size - expected) <= 1) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
+  }
+
+  throw new Error(
+    `${panelId}'s branch never reached ${expected}px (last seen: ${tracker.branchSizeOf(panelId)})`,
+  );
 }
