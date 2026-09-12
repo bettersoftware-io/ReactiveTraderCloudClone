@@ -110,7 +110,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import { toSignal } from "#/toSignal";
+import { type MaybeAccessor, toKeyedSignal, toSignal } from "#/toSignal";
 import { useMachine } from "#/useMachine";
 
 // Machine-backed bundle types (state + intents). Solid transformation of the
@@ -352,8 +352,29 @@ export interface CandleBackfillState {
 
 export interface ViewModel {
   // Streams
-  usePrice: (pair: CurrencyPair) => Accessor<Price | null>;
-  usePriceHistory: (symbol: string) => Accessor<readonly PriceTick[]>;
+  //
+  // KEYS ON THE PURE-SUBSCRIPTION HOOKS ARE `MaybeAccessor`. Every hook whose
+  // body is nothing but a keyed `state()` subscription (usePrice,
+  // usePriceHistory, useQuotesForRfq, useAnimationIntents, useEquityQuote,
+  // useCandles, useCandleBackfill, useDepth, useJarvisPanelData) takes each
+  // key as either a plain value or an accessor, independently: the value form
+  // subscribes once at call time (what every caller did before this existed),
+  // the accessor form re-subscribes when the key's resolved VALUE changes,
+  // which is what lets a Solid component read `props.pair` LIVE instead of
+  // snapshotting it at mount. "Value", not "read": each key goes through its
+  // own `===`-gated memo inside `toKeyedSignal`, so an accessor that reads a
+  // coarse upstream signal (`() => props.symbol`, a getter over the whole
+  // eqWorkspace state object) keeps its subscription through every unrelated
+  // update to that object — see toSignal.ts for why that matters.
+  // The machine-backed hooks below (useStaleFlag, useRowHighlight,
+  // useNotional, useRfqCountdown, useBootSequence, useOrderTicket,
+  // useTileExecution, useRfqTile) and the singleton-backed useLayout
+  // deliberately do NOT get this: rebuilding a machine on a key change would
+  // restart a timer or tear down a composition-root singleton.
+  usePrice: (pair: MaybeAccessor<CurrencyPair>) => Accessor<Price | null>;
+  usePriceHistory: (
+    symbol: MaybeAccessor<string>,
+  ) => Accessor<readonly PriceTick[]>;
   useTrades: () => Accessor<readonly Trade[]>;
   useNewTradeIds: () => Accessor<ReadonlySet<number>>;
   /** Live-executed trades, newest first, for the FX Blotter's Activity tab
@@ -361,7 +382,7 @@ export interface ViewModel {
   useActivity: () => Accessor<readonly ActivityEntry[]>;
   useAnalytics: () => Accessor<PositionUpdates | null>;
   useRfqs: () => Accessor<readonly Rfq[]>;
-  useQuotesForRfq: (rfqId: number) => Accessor<readonly Quote[]>;
+  useQuotesForRfq: (rfqId: MaybeAccessor<number>) => Accessor<readonly Quote[]>;
   useAllQuotes: () => Accessor<ReadonlyMap<number, Quote>>;
   useCurrencyPairs: () => Accessor<readonly CurrencyPair[]>;
   useInstruments: () => Accessor<readonly Instrument[]>;
@@ -450,7 +471,9 @@ export interface ViewModel {
   /** Latest animation intent for a target (e.g. "tile:EURUSD", "banner:connection").
    * Null until the AnimationDirector emits a real domain-driven intent; the dumb
    * UI maps the intent's kind to a CSS class / Motion One call. */
-  useAnimationIntents: (target: string) => Accessor<AnimationIntent | null>;
+  useAnimationIntents: (
+    target: MaybeAccessor<string>,
+  ) => Accessor<AnimationIntent | null>;
   /** Layout view-model + intents for a workspace tab (the in-house engine).
    * UNLIKE every other `useMachine`-bridged factory in `MachineFactories`,
    * `machines.layout(tab)` resolves to a composition-root SINGLETON per tab
@@ -476,19 +499,21 @@ export interface ViewModel {
   /** Watchlist of equity instruments — starts empty until the market-data port emits. */
   useWatchlist: () => Accessor<readonly EquityInstrument[]>;
   /** Latest equity quote for a symbol — null until the first quote arrives. */
-  useEquityQuote: (symbol: string) => Accessor<EquityQuote | null>;
+  useEquityQuote: (
+    symbol: MaybeAccessor<string>,
+  ) => Accessor<EquityQuote | null>;
   /** Candle series for a symbol at a timeframe (default "1D") — starts empty
    * until candles arrive. */
   useCandles: (
-    symbol: string,
-    timeframe?: CandleTimeframe,
+    symbol: MaybeAccessor<string>,
+    timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
   ) => Accessor<readonly Candle[]>;
   /** Combined backfill flags (loadingOlder/historyExhausted) for a candle
    * series — a signal over CandleSeriesPresenter's loadingOlder$ +
    * historyExhausted$, defaulting to both false. */
   useCandleBackfill: (
-    symbol: string,
-    timeframe?: CandleTimeframe,
+    symbol: MaybeAccessor<string>,
+    timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
   ) => Accessor<CandleBackfillState>;
   /** Fetch one older page for a candle series (the near-edge trigger's
    * intent) — a stable pre-bound command forwarding to
@@ -496,7 +521,7 @@ export interface ViewModel {
    * already in flight, after exhaustion, or before candles$ has emitted. */
   loadOlderCandles: (symbol: string, timeframe?: CandleTimeframe) => void;
   /** Depth book for a symbol — null until the first depth update arrives. */
-  useDepth: (symbol: string) => Accessor<DepthBook | null>;
+  useDepth: (symbol: MaybeAccessor<string>) => Accessor<DepthBook | null>;
   /** All open/filled equity orders — starts empty. */
   useEquityOrders: () => Accessor<readonly EquityOrder[]>;
   /** Current equity positions — starts empty. */
@@ -541,7 +566,9 @@ export interface ViewModel {
    * static composition-root wiring can pre-bind. Null before the panel's
    * first data frame, or once the panel is gone (dismissed/evicted/never
    * existed) — the renderer treats null as "not ready yet", not an error. */
-  useJarvisPanelData: (panelId: string) => Accessor<PanelData | null>;
+  useJarvisPanelData: (
+    panelId: MaybeAccessor<string>,
+  ) => Accessor<PanelData | null>;
   /** J.A.R.V.I.S. drive-the-app interpreter's latest batch outcomes
    * (singleton, app-level) — the UI's driven-pulse cue reads `lastBatch` to
    * flash the nav rail / workspace wrapper on a new applied outcome. Starts
@@ -1082,11 +1109,15 @@ export function createViewModel(
   }
 
   return {
-    usePrice: (pair: CurrencyPair) => {
-      return toSignal(priceState(pair));
+    usePrice: (pair: MaybeAccessor<CurrencyPair>) => {
+      return toKeyedSignal(pair, (p) => {
+        return priceState(p);
+      });
     },
-    usePriceHistory: (symbol: string) => {
-      return toSignal(priceHistoryState(symbol));
+    usePriceHistory: (symbol: MaybeAccessor<string>) => {
+      return toKeyedSignal(symbol, (sym) => {
+        return priceHistoryState(sym);
+      });
     },
     useTrades: () => {
       return toSignal(tradesState);
@@ -1103,8 +1134,10 @@ export function createViewModel(
     useRfqs: () => {
       return toSignal(rfqsState);
     },
-    useQuotesForRfq: (rfqId: number) => {
-      return toSignal(quotesForRfqState(rfqId));
+    useQuotesForRfq: (rfqId: MaybeAccessor<number>) => {
+      return toKeyedSignal(rfqId, (id) => {
+        return quotesForRfqState(id);
+      });
     },
     useAllQuotes: () => {
       return toSignal(allQuotesState);
@@ -1316,8 +1349,10 @@ export function createViewModel(
         return createRfqCountdownMachine(creationTimestamp, totalMs);
       }).state;
     },
-    useAnimationIntents: (target: string) => {
-      return toSignal(animationIntentsState(target));
+    useAnimationIntents: (target: MaybeAccessor<string>) => {
+      return toKeyedSignal(target, (t) => {
+        return animationIntentsState(t);
+      });
     },
     // Layout — UNLIKE every other useMachine-bridged factory here,
     // machines.layout(tab) resolves to a composition-root SINGLETON per tab
@@ -1346,18 +1381,32 @@ export function createViewModel(
     useWatchlist: () => {
       return toSignal(watchlistState);
     },
-    useEquityQuote: (symbol: string) => {
-      return toSignal(equityQuoteState(symbol));
+    useEquityQuote: (symbol: MaybeAccessor<string>) => {
+      return toKeyedSignal(symbol, (sym) => {
+        return equityQuoteState(sym);
+      });
     },
-    useCandles: (symbol: string, timeframe?: CandleTimeframe) => {
-      return toSignal(candlesState(symbol, timeframe));
+    useCandles: (
+      symbol: MaybeAccessor<string>,
+      timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
+    ) => {
+      return toKeyedSignal(symbol, timeframe, (sym, tf) => {
+        return candlesState(sym, tf);
+      });
     },
-    useCandleBackfill: (symbol: string, timeframe?: CandleTimeframe) => {
-      return toSignal(candleBackfillState(symbol, timeframe));
+    useCandleBackfill: (
+      symbol: MaybeAccessor<string>,
+      timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
+    ) => {
+      return toKeyedSignal(symbol, timeframe, (sym, tf) => {
+        return candleBackfillState(sym, tf);
+      });
     },
     loadOlderCandles,
-    useDepth: (symbol: string) => {
-      return toSignal(depthState(symbol));
+    useDepth: (symbol: MaybeAccessor<string>) => {
+      return toKeyedSignal(symbol, (sym) => {
+        return depthState(sym);
+      });
     },
     useEquityOrders: () => {
       return toSignal(equityOrdersState);
@@ -1429,8 +1478,10 @@ export function createViewModel(
         undockPanel: undockJarvisPanel,
       };
     },
-    useJarvisPanelData: (panelId: string) => {
-      return toSignal(panelDataState(panelId));
+    useJarvisPanelData: (panelId: MaybeAccessor<string>) => {
+      return toKeyedSignal(panelId, (id) => {
+        return panelDataState(id);
+      });
     },
     useJarvisDriver: () => {
       return toSignal(presenters.jarvisDriver.state$);

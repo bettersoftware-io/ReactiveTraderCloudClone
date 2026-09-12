@@ -1,6 +1,5 @@
 import type { AnimationProbeProps } from "@ui-contract/pages/shell/motion/AnimationProbePage";
 import type { JSX } from "solid-js";
-import { untrack } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -14,14 +13,9 @@ import { useViewModel } from "@rtc/solid-bindings";
  */
 export function AnimationProbe(props: AnimationProbeProps): JSX.Element {
   const { useAnimationIntents } = useViewModel();
-  // Snapshot: useAnimationIntents subscribes once at call time. Correct only
-  // because registry.tsx constructs a fresh probe per contract test, so no
-  // mounted instance is ever handed a new target. `intent()` below is live.
-  const intent = useAnimationIntents(
-    untrack((): string => {
-      return props.target;
-    }),
-  );
+  const intent = useAnimationIntents(() => {
+    return props.target;
+  });
 
   return <div data-testid="anim" data-anim={intent()?.kind ?? undefined} />;
 }

@@ -4,7 +4,6 @@ import {
   createSignal,
   type JSX,
   Show,
-  untrack,
 } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
@@ -31,14 +30,9 @@ import styles from "./WatchlistRow.module.css";
  */
 export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // Snapshot: useEquityQuote subscribes once at call time. Correct only while
-  // WatchlistPanel's <For each={committedOrder()}> keys on the symbol string
-  // itself. The props.symbol reads below are live.
-  const quote = useEquityQuote(
-    untrack((): string => {
-      return props.symbol;
-    }),
-  );
+  const quote = useEquityQuote(() => {
+    return props.symbol;
+  });
   let prevLast: number | undefined;
   const [tick, setTick] = createSignal<TickPulse>({ nonce: 0, up: true });
 

@@ -472,14 +472,9 @@ interface RfqCardCellProps {
 
 function RfqCardCell(props: RfqCardCellProps): JSX.Element {
   const { useQuotesForRfq, useAcceptQuote, useCancelRfq } = useViewModel();
-  // Snapshot: useQuotesForRfq subscribes once at call time. Correct only
-  // while the <For each={renderedIds()}> above keys on the id itself (id is a
-  // readonly domain field). Every props.rfq read below is live.
-  const quotes = useQuotesForRfq(
-    untrack((): number => {
-      return props.rfq.id;
-    }),
-  );
+  const quotes = useQuotesForRfq(() => {
+    return props.rfq.id;
+  });
   const acceptQuote = useAcceptQuote();
   const cancelRfq = useCancelRfq();
   const vm = createMemo((): RfqCardVm => {

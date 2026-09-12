@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, createSignal, Show, untrack } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -10,14 +10,9 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
-  // Snapshot: useAnimationIntents subscribes once at call time. Correct only
-  // because SellSideRfqRow's <Show when={abQuote()} keyed> remounts this
-  // ticket, and `rfq.id` is a readonly domain field across those remounts.
-  const anim = useAnimationIntents(
-    untrack((): string => {
-      return `rfq:${props.rfq.id}`;
-    }),
-  );
+  const anim = useAnimationIntents(() => {
+    return `rfq:${props.rfq.id}`;
+  });
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;
   const [price, setPrice] = createSignal("");
