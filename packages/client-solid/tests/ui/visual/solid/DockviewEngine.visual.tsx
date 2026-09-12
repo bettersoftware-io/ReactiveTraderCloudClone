@@ -6,6 +6,7 @@ import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutE
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
 import styles from "./DockviewEngine.visual.module.css";
+import { STACKED_FX_BLOB } from "./stackedFxBlob";
 
 /**
  * Golden-only wrapper for the Dockview engine bridge (Task 7, spec
@@ -57,6 +58,34 @@ function noop(): void {}
 
 export function DockviewEngineVisual(): JSX.Element {
   const store = new InMemoryDockLayoutStore();
+
+  return (
+    <div class={styles.stage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={visualDockPanelRegistry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />
+    </div>
+  );
+}
+
+/** The stacked twin-less sibling (`shell/layout-dockview-stacked`), Solid
+ * twin of client-react's DockviewEngineStackedVisual: the same chrome stage
+ * with the store pre-seeded by the committed stacked blob — rates+analytics
+ * in ONE group (rates active), rendering the Phase 2 stacked-tab chrome
+ * (active full head, muted `data-panel-title` chip, 1px seam, 2px accent
+ * seat). A malformed blob falls back to the seed and un-stacks the bar —
+ * these goldens fail loudly then. */
+export function DockviewEngineStackedVisual(): JSX.Element {
+  const store = new InMemoryDockLayoutStore();
+  store.save("fx", STACKED_FX_BLOB);
 
   return (
     <div class={styles.stage}>
