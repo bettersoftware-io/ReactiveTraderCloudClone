@@ -86,6 +86,10 @@ import {
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
+import {
+  type MaybeAccessor,
+  readMaybeAccessor,
+} from "@rtc/solid-bindings/toSignal";
 
 function noop(): void {}
 
@@ -95,6 +99,18 @@ function noop(): void {}
 function at<T>(value: T): () => T {
   return () => {
     return value;
+  };
+}
+
+/** `at`'s keyed sibling, for the hooks whose ViewModel signature takes a
+ * `MaybeAccessor` key: the fixture value is still static, but the KEY may be
+ * an accessor, so it must be resolved on every read through the real
+ * `readMaybeAccessor` helper rather than snapshotted once. A fake that
+ * snapshotted it (or used the accessor function itself as a lookup key)
+ * would silently disagree with the shipping ViewModel and prove nothing. */
+function atKey<K, T>(key: MaybeAccessor<K>, pick: (key: K) => T): () => T {
+  return () => {
+    return pick(readMaybeAccessor(key));
   };
 }
 
@@ -140,11 +156,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
   });
 
   return {
-    usePrice: (pair: CurrencyPair) => {
-      return at(data.prices[pair.symbol] ?? null);
+    usePrice: (pair: MaybeAccessor<CurrencyPair>) => {
+      return atKey(pair, (p) => {
+        return data.prices[p.symbol] ?? null;
+      });
     },
-    usePriceHistory: (symbol: string) => {
-      return at(data.priceHistory[symbol] ?? []);
+    usePriceHistory: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.priceHistory[sym] ?? [];
+      });
     },
     useTrades: () => {
       return at(data.trades);
@@ -161,8 +181,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useRfqs: () => {
       return at(data.rfqs);
     },
-    useQuotesForRfq: (rfqId: number) => {
-      return at(data.quotesForRfq[rfqId] ?? []);
+    useQuotesForRfq: (rfqId: MaybeAccessor<number>) => {
+      return atKey(rfqId, (id) => {
+        return data.quotesForRfq[id] ?? [];
+      });
     },
     useAllQuotes: () => {
       return at(data.allQuotes);
@@ -394,7 +416,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.
-    useAnimationIntents: (_target: string) => {
+    useAnimationIntents: (_target: MaybeAccessor<string>) => {
       return at(null);
     },
     // Layout: static snapshot for screenshots — returns the tab's default
@@ -436,11 +458,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWatchlist: () => {
       return at(data.equityWatchlist ?? []);
     },
-    useEquityQuote: (symbol: string) => {
-      return at(data.equityQuotes?.[symbol] ?? null);
+    useEquityQuote: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityQuotes?.[sym] ?? null;
+      });
     },
-    useCandles: (symbol: string) => {
-      return at(data.equityCandles?.[symbol] ?? []);
+    useCandles: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityCandles?.[sym] ?? [];
+      });
     },
     // Candle backfill: static screenshots never trigger a near-edge load, so
     // both flags stay at their default false — no AppData field backs this
@@ -469,8 +495,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useDockLayoutStore: () => {
       return dockStore;
     },
-    useDepth: (symbol: string) => {
-      return at(data.equityDepth?.[symbol] ?? null);
+    useDepth: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityDepth?.[sym] ?? null;
+      });
     },
     useEquityOrders: () => {
       return at(data.equityOrders ?? []);
@@ -663,8 +691,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // AppData.jarvisPanelData directly (no stream involved in a static
     // screenshot); a missing key returns null, same as the real VM before
     // the panel's first data frame.
-    useJarvisPanelData: (panelId: string) => {
-      return at(data.jarvisPanelData?.[panelId] ?? null);
+    useJarvisPanelData: (panelId: MaybeAccessor<string>) => {
+      return atKey(panelId, (id) => {
+        return data.jarvisPanelData?.[id] ?? null;
+      });
     },
     // Jarvis drive-the-app interpreter's outcomes (Task 10/11) — static empty
     // filler: no fixture drives a batch through a visual screenshot, so the

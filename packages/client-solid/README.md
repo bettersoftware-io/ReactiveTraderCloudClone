@@ -100,32 +100,44 @@ sanctioned opt-out), that the snapshot is deliberate. It **makes nothing
 safe.** Whatever invariant keeps a given snapshot correct still has to hold,
 and still has to be named in one line at the site.
 
-Snapshots here fall into two groups, and they are not equally comfortable:
+**The seam takes accessors.** Every `@rtc/solid-bindings` ViewModel hook whose
+body is nothing but a keyed subscription — `usePrice`, `usePriceHistory`,
+`useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
+`useCandleBackfill`, `useDepth`, `useJarvisPanelData` — takes each key as
+`T | Accessor<T>`, independently per key. The accessor form resubscribes when
+the key changes (`toKeyedSignal` in `toSignal.ts`: a `createMemo` over
+`toSignal`, so Solid's owner disposal releases the old subscription and the new
+one seeds synchronously), which closes the parity gap with `@rtc/react-bindings`
+— whose hooks are live only because React re-runs the component. Write
+`usePrice(() => props.pair)` and there is no snapshot to justify.
 
-- **Forced by the seam (~18 sites).** The `@rtc/solid-bindings` ViewModel
-  hooks — `usePrice(pair)`, `useEquityQuote(symbol)`, `useQuotesForRfq(id)`,
-  `useAnimationIntents(target)`, … — take a **value**, not an accessor, and
-  subscribe once at call time; there is no live form to write. Their
-  correctness therefore still rests on the parent keying its mount on that
-  value (`<For>` on the `CurrencyPair` reference, a keyed `<Show>` on
-  `sel::timeframe`, …), exactly as it did when these sites carried directives.
-  That is a **known parity gap** with `@rtc/react-bindings`, whose hooks are
-  live only because React re-runs the component — not a design virtue. The fix
-  is a follow-up: an additive `T | Accessor<T>` overload on the
-  **pure-subscription** hooks (`usePrice`, `usePriceHistory`, `useStaleFlag`,
-  `useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
-  `useCandleBackfill`, `useDepth`, `useJarvisPanelData`) with key-driven
-  resubscribe in `toSignal`. It must NOT be applied to the machine-seed hooks
-  (`useRowHighlight`, `useRfqCountdown`, `useNotional`, `useBootSequence`,
-  `useLayout`), where disposing and rebuilding a machine on a key change would
-  restart a timer or tear down a shared singleton.
-- **Deliberate, for a behavioural reason (~11 sites).** A live read would make
+The hooks that stay **value-only** are the ones that build something on the key
+rather than subscribe to it: `useStaleFlag`, `useRowHighlight`, `useNotional`,
+`useRfqCountdown`, `useTileExecution`, `useRfqTile`, `useOrderTicket`,
+`useBootSequence` (per-mount machines — re-keying would dispose and rebuild one,
+restarting a timer or dropping an in-flight fold) and `useLayout` (a
+composition-root singleton per tab — re-keying would tear it down for every
+other reader). Their seeds are snapshots because the hook's *shape* says so, not
+because the seam is missing a feature.
+
+`grep -rn "untrack(" packages/client-solid/src | grep -v import` counts **15**
+hits: 14 real calls plus one in a comment. They fall into two groups:
+
+- **Hook-seed (4 sites).** `Tile.tsx` (`seedPair` → `useStaleFlag` /
+  `useNotional` / `useTileExecution` / `useRfqTile`), `BlotterRow.tsx`
+  (`useRowHighlight`), `RfqCard.tsx` (`useRfqCountdown`'s
+  `creationTimestamp`), `App.tsx` (`useLayout`'s tab). Each names, in one line
+  at the site, which hooks still need the seed and the invariant that keeps it
+  correct.
+- **Deliberate, for a behavioural reason (10 sites).** A live read would make
   things worse: `RfqCountdown`/`RfqCard` drive ONE mount-time CSS keyframe
   fast-forwarded by a negative delay, and a per-tick rewrite re-triggers it
-  every tick; the blotter filter popovers seed editing signals the user then
-  owns, so a live read would clobber half-typed input; `BlotterRow`'s decay
-  machine owns its flag on its own timer. These are correct as snapshots and
-  stay that way whatever the seam does.
+  every tick; the blotter filter popovers (`DateFilter`/`SetFilter`/
+  `NumberFilter`) seed editing signals the user then owns, so a live read would
+  clobber half-typed input; `RfqsPanel`'s cascade effects want the CURRENT value
+  of their own bookkeeping signals, not a dependency on them; `App.tsx`'s
+  `untrack(dockedPanels)` keeps one uniform identity across a merge. These are
+  correct as snapshots and stay that way whatever the seam does.
 
 One read is a snapshot no matter how it is written: a context Provider's
 `value`. Solid's own `createProvider` reads it inside an `untrack`, so

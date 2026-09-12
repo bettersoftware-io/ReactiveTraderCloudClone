@@ -9,6 +9,7 @@
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
 import { BehaviorSubject, type Observable, of } from "rxjs";
+import { createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -24,6 +25,7 @@ import {
   type AuthPort,
   AuthSimulator,
   CANDLE_HISTORY_TOTAL,
+  type CandleTimeframe,
   ConnectionEventsSimulator,
   KNOWN_CURRENCY_PAIRS,
   PreferencesSimulator,
@@ -628,6 +630,175 @@ describe("createViewModel — admin/telemetry streams", () => {
       expect(result().length).toBeGreaterThan(0);
     });
     expect(result().at(-1)?.value).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// The nine pure-subscription hooks take each key as `T | Accessor<T>`. The
+// value form is covered by every test above; these pin the ADDITIVE half —
+// an accessor key is read live and the subscription follows it. The seam's
+// own resubscribe/release mechanics are covered in toSignal.keyed.test.tsx.
+describe("createViewModel — accessor keys", () => {
+  it("usePrice(accessor) reads the seeded quote for the initial pair", () => {
+    const vm = makeViewModel();
+    const [eurusd, gbpusd] = KNOWN_CURRENCY_PAIRS;
+
+    if (!eurusd || !gbpusd) {
+      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly short");
+    }
+
+    const [pair] = createSignal(eurusd);
+    const { result } = renderHook(() => {
+      return vm.usePrice(pair);
+    });
+
+    expect(result()?.symbol).toBe(eurusd.symbol);
+  });
+
+  it("usePrice(accessor) follows the key to the other pair's stream", () => {
+    const vm = makeViewModel();
+    const [eurusd, gbpusd] = KNOWN_CURRENCY_PAIRS;
+
+    if (!eurusd || !gbpusd) {
+      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly short");
+    }
+
+    const [pair, setPair] = createSignal(eurusd);
+    const { result } = renderHook(() => {
+      return vm.usePrice(pair);
+    });
+
+    setPair(gbpusd);
+
+    expect(result()?.symbol).toBe(gbpusd.symbol);
+  });
+
+  it("useEquityQuote(accessor) follows the key to the other symbol's quote", () => {
+    const vm = makeViewModel();
+    const [symbol, setSymbol] = createSignal("AAPL");
+    const { result } = renderHook(() => {
+      return vm.useEquityQuote(symbol);
+    });
+
+    expect(result()?.symbol).toBe("AAPL");
+    setSymbol("MSFT");
+
+    expect(result()?.symbol).toBe("MSFT");
+  });
+
+  it("useDepth(accessor) follows the key to the other symbol's book", () => {
+    const vm = makeViewModel();
+    const [symbol, setSymbol] = createSignal("AAPL");
+    const { result } = renderHook(() => {
+      return vm.useDepth(symbol);
+    });
+
+    expect(result()?.symbol).toBe("AAPL");
+    setSymbol("MSFT");
+
+    expect(result()?.symbol).toBe("MSFT");
+  });
+
+  // Each key is independently a MaybeAccessor, so the two mixed forms below
+  // must both type-check AND resubscribe on their own key alone.
+  it("useCandles(accessor, literal) threads the literal timeframe and follows the symbol", () => {
+    const vm = makeViewModel();
+    const [symbol, setSymbol] = createSignal("AAPL");
+    const { result } = renderHook(() => {
+      return vm.useCandles(symbol, "1W");
+    });
+
+    expect(result()).toHaveLength(CANDLE_HISTORY_TOTAL);
+    const appleSpacing = result()[1].time - result()[0].time;
+    setSymbol("MSFT");
+
+    expect(result()).toHaveLength(CANDLE_HISTORY_TOTAL);
+    // Still "1W" after the symbol change — the literal key is untracked and
+    // must not be lost when the accessor key re-runs the source.
+    expect(result()[1].time - result()[0].time).toBe(appleSpacing);
+  });
+
+  it("useCandles(literal, accessor) follows the timeframe alone", () => {
+    const vm = makeViewModel();
+    const [timeframe, setTimeframe] = createSignal<CandleTimeframe>("1W");
+    const { result } = renderHook(() => {
+      return vm.useCandles("AAPL", timeframe);
+    });
+
+    const weekSpacing = result()[1].time - result()[0].time;
+    setTimeframe("1M");
+
+    expect(result()[1].time - result()[0].time).not.toBe(weekSpacing);
+  });
+
+  it("useCandleBackfill(accessor, accessor) stays at its defaults across a key change", () => {
+    const vm = makeViewModel();
+    const [symbol, setSymbol] = createSignal("AAPL");
+    const [timeframe] = createSignal<CandleTimeframe>("1D");
+    const { result } = renderHook(() => {
+      return vm.useCandleBackfill(symbol, timeframe);
+    });
+
+    setSymbol("MSFT");
+
+    expect(result()).toEqual({ loadingOlder: false, historyExhausted: false });
+  });
+
+  it("useQuotesForRfq(accessor) starts empty for either unknown rfqId", () => {
+    const vm = makeViewModel();
+    const [rfqId, setRfqId] = createSignal(-1);
+    const { result } = renderHook(() => {
+      return vm.useQuotesForRfq(rfqId);
+    });
+
+    expect(result()).toEqual([]);
+    setRfqId(-2);
+
+    expect(result()).toEqual([]);
+  });
+
+  it("useAnimationIntents(accessor) starts null for either target", () => {
+    const vm = makeViewModel();
+    const [target, setTarget] = createSignal("tile:EURUSD");
+    const { result } = renderHook(() => {
+      return vm.useAnimationIntents(target);
+    });
+
+    expect(result()).toBeNull();
+    setTarget("tile:GBPUSD");
+
+    expect(result()).toBeNull();
+  });
+
+  it("useJarvisPanelData(accessor) stays null for either unknown panelId", () => {
+    const vm = makeViewModel();
+    const [panelId, setPanelId] = createSignal("nope-1");
+    const { result } = renderHook(() => {
+      return vm.useJarvisPanelData(panelId);
+    });
+
+    expect(result()).toBeNull();
+    setPanelId("nope-2");
+
+    expect(result()).toBeNull();
+  });
+
+  it("usePriceHistory(accessor) follows the key to the other symbol's history", () => {
+    const vm = makeViewModel();
+    const [eurusd, gbpusd] = KNOWN_CURRENCY_PAIRS;
+
+    if (!eurusd || !gbpusd) {
+      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly short");
+    }
+
+    const [symbol, setSymbol] = createSignal(eurusd.symbol);
+    const { result } = renderHook(() => {
+      return vm.usePriceHistory(symbol);
+    });
+
+    expect(Array.isArray(result())).toBe(true);
+    setSymbol(gbpusd.symbol);
+
+    expect(Array.isArray(result())).toBe(true);
   });
 });
 

@@ -1,4 +1,4 @@
-import { createMemo, For, type JSX, Show, untrack } from "solid-js";
+import { createMemo, For, type JSX, Show } from "solid-js";
 
 import type { EquityInstrument } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -89,14 +89,9 @@ interface CellProps {
 
 function HeatCell(props: CellProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // Snapshot: useEquityQuote subscribes once at call time. Correct only while
-  // the inner <For each={insts}> keys on the EquityInstrument reference
-  // (static per-symbol metadata). The props.symbol reads below are live.
-  const quote = useEquityQuote(
-    untrack((): string => {
-      return props.symbol;
-    }),
-  );
+  const quote = useEquityQuote(() => {
+    return props.symbol;
+  });
 
   const direction = createMemo((): "up" | "down" => {
     return (quote()?.changePct ?? 0) >= 0 ? "up" : "down";

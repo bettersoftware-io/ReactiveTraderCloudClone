@@ -35,22 +35,34 @@ export function Tile(props: TileProps): JSX.Element {
     useAnimationIntents,
   } = useViewModel();
 
-  // Snapshot: all seven hooks take a VALUE, not an accessor, so each
-  // subscribes once at call time. Correct only while LiveRatesPanel keys its
-  // <For each={filteredPairs()}> on the CurrencyPair reference (static
-  // per-symbol metadata), so a Tile remounts rather than re-seeding when its
-  // pair changes. The `props.pair` reads in the JSX below are live.
+  // Snapshot: the four MACHINE-seed hooks below take a VALUE, not an
+  // accessor, and build their machine once from it — useStaleFlag (a stale
+  // timer), useNotional (user-owned input state), useTileExecution and
+  // useRfqTile (in-flight execution/quote folds). Re-keying any of them would
+  // dispose and rebuild that machine, restarting the timer or dropping an
+  // in-flight trade, so they stay value-keyed and their correctness rests on
+  // LiveRatesPanel keying its <For each={filteredPairs()}> on the
+  // CurrencyPair reference (static per-symbol metadata), so a Tile remounts
+  // rather than re-seeds when its pair changes. The three
+  // pure-subscription hooks (usePrice/usePriceHistory/useAnimationIntents)
+  // take accessors and are live, as are the `props.pair` reads in the JSX.
   const seedPair = untrack((): CurrencyPair => {
     return props.pair;
   });
 
-  const price = usePrice(seedPair);
+  const price = usePrice(() => {
+    return props.pair;
+  });
   const stale = useStaleFlag(seedPair);
-  const history = usePriceHistory(seedPair.symbol);
+  const history = usePriceHistory(() => {
+    return props.pair.symbol;
+  });
   const notional = useNotional(seedPair.defaultNotional);
   const tileExecution = useTileExecution(seedPair);
   const rfqState = useRfqTile(seedPair);
-  const animIntent = useAnimationIntents(`tile:${seedPair.symbol}`);
+  const animIntent = useAnimationIntents(() => {
+    return `tile:${props.pair.symbol}`;
+  });
 
   // Every derived flag below reads one or more machine-state accessors — each
   // wrapped in createMemo (not a plain top-level const) so it stays reactive

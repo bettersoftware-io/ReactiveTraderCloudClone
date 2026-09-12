@@ -1,12 +1,7 @@
-import { type Accessor, createMemo, type JSX, Show, untrack } from "solid-js";
+import { createMemo, type JSX, Show } from "solid-js";
 
 import type { EqDrawing } from "@rtc/client-core";
-import {
-  CANDLE_DEFAULT_VISIBLE,
-  type Candle,
-  type CandleTimeframe,
-} from "@rtc/domain";
-import type { CandleBackfillState } from "@rtc/solid-bindings";
+import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CandleChart } from "./CandleChart";
@@ -23,15 +18,18 @@ import styles from "./ChartPanel.module.css";
  * ChartPanelControls split. A pure data/join component: all chart geometry
  * and gesture state live in CandleChart.
  *
- * SOLID PORT NOTE: `useEquityQuote`/`useCandles` take a plain `symbol`
- * (mirroring the react ViewModel's per-render hook-call shape), not an
- * accessor — so a persistent ChartPanel can't just re-call them when the
- * shared `sel`/`timeframe` change; it wouldn't re-run. Instead, `ChartBody`
- * below is keyed on `sel::timeframe` — Solid's keyed `<Show>` fully remounts
- * (tears down and recreates, including each hook's underlying subscription
- * AND `createChartGestures`'s gesture state) whenever that composite key's
- * VALUE changes — the same remount-on-switch signal React's
- * `key={`${sel}|${timeframe}`}` gives `useChartGestures`.
+ * SOLID PORT NOTE: `ChartBody` below is keyed on `sel::timeframe`, so Solid's
+ * keyed `<Show>` fully remounts it whenever that composite key's VALUE
+ * changes. What that remount is FOR is `createChartGestures`'s gesture state:
+ * a switch must reset the viewport, and the gesture layer has no other way to
+ * know "the series means something different now" (a symbol swap keeps a
+ * similar seriesLen; a timeframe swap can keep it identical) — the same
+ * signal react gets from `key={`${sel}|${timeframe}`}`, which it puts on
+ * `CandleChart` alone. It is NOT what keeps the data hooks correct any more:
+ * `useEquityQuote`/`useCandles`/`useCandleBackfill` take accessor keys and
+ * re-subscribe on their own, so narrowing this remount to `CandleChart` (as
+ * react does) is now a viable follow-up — one the goldens, not the type
+ * checker, would have to witness.
  */
 export function ChartPanel(): JSX.Element {
   const { useEqWorkspace } = useViewModel();
@@ -82,56 +80,49 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     updateDrawing,
   } = useEqDrawings();
 
-  // Snapshot: the three hooks below take plain values and subscribe once at
-  // call time. Correct only because ChartPanel's keyed <Show> remounts this
-  // body on every `sel::timeframe` change (the SOLID PORT NOTE above). Every
-  // other props.symbol/props.timeframe read below is live.
-  const seedSymbol = untrack((): string => {
+  const quote = useEquityQuote(() => {
     return props.symbol;
   });
 
-  const seedTimeframe = untrack((): CandleTimeframe => {
-    return props.timeframe;
-  });
+  const candles = useCandles(
+    () => {
+      return props.symbol;
+    },
+    () => {
+      return props.timeframe;
+    },
+  );
 
-  const quote = useEquityQuote(seedSymbol);
-  const candles = useCandles(seedSymbol, seedTimeframe);
-  const backfill = useCandleBackfill(seedSymbol, seedTimeframe);
-  // Alias so biome's (React-centric) useHookAtTopLevel heuristic no longer
-  // matches on the name `useCandles`: solid-bindings' `use*` functions are
-  // plain factories (toSignal-based), not React hooks, and calling one
-  // inside a keyed createMemo below is the deliberate keyed-resource
-  // pattern — not a rule violation to suppress.
-  const candleSeriesFor = useCandles;
-  // The comparison symbol's series. `useCandles` subscribes at CALL time
-  // with a plain symbol (see the SOLID PORT NOTE above) — but unlike
-  // sel/timeframe, a compare switch must NOT remount ChartBody (that would
-  // reset the viewport). Calling it inside a createMemo keyed on the
-  // compare symbol gives the keyed-resource behaviour instead: toSignal
-  // registers onCleanup, and a memo re-run disposes its previous
-  // computation's cleanups — so each compare value gets a fresh
-  // subscription and the old one is torn down, no remount involved.
-  const compareCandles = createMemo((): (() => readonly Candle[]) | null => {
-    const sym = state().compare;
-    return sym !== null ? candleSeriesFor(sym, props.timeframe) : null;
-  });
-  // Biome's useHookAtTopLevel is React-centric: solid-bindings' use*
-  // functions are plain factories, and this alias keeps the keyed
-  // createMemo call below from matching the hook-name heuristic under the
-  // repo's no-disables policy (twin of candleSeriesFor above).
-  const candleBackfillFor = useCandleBackfill;
-  // The comparison symbol's backfill flags — same keyed-resource pattern
-  // as compareCandles above (toSignal registers onCleanup; a memo re-run
-  // disposes the previous subscription). Typed via the bindings'
-  // CandleBackfillState (ChartPanel already depends on solid-bindings
-  // wholesale) rather than an inline object return type, which the repo's
-  // no-restricted-syntax rule bans outright — the isolation the global
-  // constraint asks for is CandleChart's props surface, not this internal
-  // memo.
-  const compareBackfill = createMemo(
-    (): Accessor<CandleBackfillState> | null => {
-      const sym = state().compare;
-      return sym !== null ? candleBackfillFor(sym, props.timeframe) : null;
+  const backfill = useCandleBackfill(
+    () => {
+      return props.symbol;
+    },
+    () => {
+      return props.timeframe;
+    },
+  );
+
+  // The comparison series and its backfill flags. Both keys are accessors,
+  // so a compare switch re-subscribes in place — unlike sel/timeframe it
+  // must NOT remount ChartBody, which would reset the viewport. `?? ""`
+  // parks the subscription on the empty symbol while no comparison is set
+  // and the JSX below hands CandleChart `undefined` then; verbatim the
+  // react twin's `useCandles(compare ?? "", timeframe)`.
+  const compareCandles = useCandles(
+    () => {
+      return state().compare ?? "";
+    },
+    () => {
+      return props.timeframe;
+    },
+  );
+
+  const compareBackfill = useCandleBackfill(
+    () => {
+      return state().compare ?? "";
+    },
+    () => {
+      return props.timeframe;
     },
   );
   const instruments = useWatchlist();
@@ -215,12 +206,10 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
           panes={state().panes}
           yScale={state().yScale}
           compare={
-            compareCandles() !== null
-              ? { series: compareCandles()?.() ?? [] }
-              : undefined
+            state().compare !== null ? { series: compareCandles() } : undefined
           }
           compareBackfill={
-            compareBackfill() !== null ? compareBackfill()?.() : undefined
+            state().compare !== null ? compareBackfill() : undefined
           }
           defaultVisible={defaultVisible()}
           loadingOlder={backfill().loadingOlder}
