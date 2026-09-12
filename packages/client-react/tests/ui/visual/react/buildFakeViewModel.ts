@@ -353,10 +353,20 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useBootGate: () => {
       return { visible: false, reboot: noop, dismiss: noop };
     },
-    // Countdown: static snapshot for visual goldens — returns totalMs so the bar
-    // renders at 100% fill (deterministic; never wall-clock-dependent).
-    useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
-      return totalMs;
+    // Countdown: 0 remaining, so the drain-bar animation is BORN FINISHED
+    // (RfqCard sets animation-delay to -totalMs; with fill:forwards the bar
+    // sits at scaleX(0) from its first frame). The old totalMs seed mounted a
+    // RUNNING 120s animation whose captured state was a race: playwright's
+    // animations:"disabled" pass usually seeked it to its end (the empty bar
+    // every golden holds), but when the seek missed the compositor animation
+    // the stability loop accepted the visually-static running bar and
+    // captured it FULL — one red credit cell per run, drifting between
+    // clients and cells (visual.yml 34663511987: solid attempt 1, react
+    // attempt 3, same commit). With 0 the live and the seeked state are the
+    // same pixels, so there is nothing left to race; the label honestly
+    // reads "0 secs" beside the empty bar it always sat next to.
+    useRfqCountdown: (_creationTimestamp: number, _totalMs: number) => {
+      return 0;
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.
