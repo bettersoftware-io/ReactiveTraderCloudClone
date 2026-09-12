@@ -13,11 +13,13 @@ import { createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type AnimationIntent,
   type AppPorts,
   createApp,
   createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
+  type PanelData,
   type Presenters,
 } from "@rtc/client-core";
 import {
@@ -29,6 +31,8 @@ import {
   ConnectionEventsSimulator,
   KNOWN_CURRENCY_PAIRS,
   PreferencesSimulator,
+  type PriceTick,
+  type Quote,
   type SessionUser,
 } from "@rtc/domain";
 
@@ -730,56 +734,95 @@ describe("createViewModel — accessor keys", () => {
     expect(result()[1].time - result()[0].time).not.toBe(weekSpacing);
   });
 
-  it("useCandleBackfill(accessor, accessor) stays at its defaults across a key change", () => {
-    const vm = makeViewModel();
-    const [symbol, setSymbol] = createSignal("AAPL");
-    const [timeframe] = createSignal<CandleTimeframe>("1D");
+  // The four hooks below back 7 of the 13 converted call sites, so they get
+  // keys whose two values DIFFER OBSERVABLY — an assertion that reads the same
+  // empty/default on both sides of the key change would pass against a hook
+  // that never called the accessor at all.
+  it("useQuotesForRfq(accessor) follows the key to the other rfqId's quotes", () => {
+    const world = makeViewModelWithKeyedFakes();
+    const [rfqId, setRfqId] = createSignal(1);
     const { result } = renderHook(() => {
-      return vm.useCandleBackfill(symbol, timeframe);
+      return world.vm.useQuotesForRfq(rfqId);
     });
 
-    setSymbol("MSFT");
+    expect(quoteIds(result())).toEqual([11]);
+    setRfqId(2);
 
-    expect(result()).toEqual({ loadingOlder: false, historyExhausted: false });
+    expect(quoteIds(result())).toEqual([22]);
   });
 
-  it("useQuotesForRfq(accessor) starts empty for either unknown rfqId", () => {
-    const vm = makeViewModel();
-    const [rfqId, setRfqId] = createSignal(-1);
+  it("useQuotesForRfq(accessor) releases the old rfqId — a later push there is ignored", () => {
+    const world = makeViewModelWithKeyedFakes();
+    const [rfqId, setRfqId] = createSignal(1);
     const { result } = renderHook(() => {
-      return vm.useQuotesForRfq(rfqId);
+      return world.vm.useQuotesForRfq(rfqId);
     });
 
-    expect(result()).toEqual([]);
-    setRfqId(-2);
+    setRfqId(2);
+    world.quotesFor(1).next([quoteWithId(99)]);
 
-    expect(result()).toEqual([]);
+    expect(quoteIds(result())).toEqual([22]);
   });
 
-  it("useAnimationIntents(accessor) starts null for either target", () => {
-    const vm = makeViewModel();
+  it("useAnimationIntents(accessor) follows the key to the other target's intent kind", () => {
+    const world = makeViewModelWithKeyedFakes();
     const [target, setTarget] = createSignal("tile:EURUSD");
     const { result } = renderHook(() => {
-      return vm.useAnimationIntents(target);
+      return world.vm.useAnimationIntents(target);
     });
 
-    expect(result()).toBeNull();
+    expect(result()?.kind).toBe("tickUp");
     setTarget("tile:GBPUSD");
 
-    expect(result()).toBeNull();
+    expect(result()?.kind).toBe("fill");
   });
 
-  it("useJarvisPanelData(accessor) stays null for either unknown panelId", () => {
-    const vm = makeViewModel();
-    const [panelId, setPanelId] = createSignal("nope-1");
+  it("useAnimationIntents(accessor) releases the old target — a later intent there is ignored", () => {
+    const world = makeViewModelWithKeyedFakes();
+    const [target, setTarget] = createSignal("tile:EURUSD");
     const { result } = renderHook(() => {
-      return vm.useJarvisPanelData(panelId);
+      return world.vm.useAnimationIntents(target);
     });
 
-    expect(result()).toBeNull();
-    setPanelId("nope-2");
+    setTarget("tile:GBPUSD");
+    world.intentFor("tile:EURUSD").next({
+      target: "tile:EURUSD",
+      kind: "tickDown",
+    });
 
-    expect(result()).toBeNull();
+    expect(result()?.kind).toBe("fill");
+  });
+
+  it("useJarvisPanelData(accessor) follows the key to the other panel's body", () => {
+    const world = makeViewModelWithKeyedFakes();
+    const [panelId, setPanelId] = createSignal("p1");
+    const { result } = renderHook(() => {
+      return world.vm.useJarvisPanelData(panelId);
+    });
+
+    expect(gaugeLabel(result())).toBe("panel-one");
+    setPanelId("p2");
+
+    expect(gaugeLabel(result())).toBe("panel-two");
+  });
+
+  it("useCandleBackfill(accessor, accessor) follows BOTH keys to that series' own flags", () => {
+    const world = makeViewModelWithKeyedFakes();
+    const [symbol, setSymbol] = createSignal("AAPL");
+    const [timeframe, setTimeframe] = createSignal<CandleTimeframe>("1D");
+    const { result } = renderHook(() => {
+      return world.vm.useCandleBackfill(symbol, timeframe);
+    });
+
+    // AAPL|1D loading, MSFT|1D exhausted, AAPL|1W neither (see the harness).
+    expect(result()).toEqual({ loadingOlder: true, historyExhausted: false });
+    setSymbol("MSFT");
+
+    expect(result()).toEqual({ loadingOlder: false, historyExhausted: true });
+    setSymbol("AAPL");
+    setTimeframe("1W");
+
+    expect(result()).toEqual({ loadingOlder: false, historyExhausted: false });
   });
 
   it("usePriceHistory(accessor) follows the key to the other symbol's history", () => {
@@ -795,12 +838,152 @@ describe("createViewModel — accessor keys", () => {
       return vm.usePriceHistory(symbol);
     });
 
-    expect(Array.isArray(result())).toBe(true);
+    // The simulator seeds each pair's history with its OWN symbol's ticks, so
+    // this discriminates where `Array.isArray` would not.
+    expect(everyTickSymbol(result())).toEqual([eurusd.symbol]);
     setSymbol(gbpusd.symbol);
 
-    expect(Array.isArray(result())).toBe(true);
+    expect(everyTickSymbol(result())).toEqual([gbpusd.symbol]);
   });
 });
+
+/** Per-key subjects behind the four keyed presenters whose real simulator
+ * values are indistinguishable between two keys (all empty / all null). Built
+ * the same way as `makeViewModelWithFakeCandleSeries` above — a real
+ * composition root with selected presenters swapped — so the ViewModel under
+ * test is the real one and only its sources are controlled.
+ *
+ * Seeded so that EVERY key pair differs observably: quotes 1→[11] / 2→[22],
+ * intents EURUSD→tickUp / GBPUSD→fill, panels p1→"panel-one" / p2→"panel-two",
+ * backfill AAPL|1D→loading / MSFT|1D→exhausted / AAPL|1W→neither. */
+interface KeyedFakeHarness {
+  vm: ViewModel;
+  quotesFor: (rfqId: number) => BehaviorSubject<readonly Quote[]>;
+  intentFor: (target: string) => BehaviorSubject<AnimationIntent>;
+}
+
+function makeViewModelWithKeyedFakes(): KeyedFakeHarness {
+  const { presenters, commands } = createApp(createSimPorts({}));
+
+  const quoteSubjects = new Map<number, BehaviorSubject<readonly Quote[]>>();
+
+  function quotesFor(rfqId: number): BehaviorSubject<readonly Quote[]> {
+    let subject = quoteSubjects.get(rfqId);
+
+    if (!subject) {
+      subject = new BehaviorSubject<readonly Quote[]>([
+        quoteWithId(rfqId * 11),
+      ]);
+      quoteSubjects.set(rfqId, subject);
+    }
+
+    return subject;
+  }
+
+  const intentSubjects = new Map<string, BehaviorSubject<AnimationIntent>>();
+
+  function intentFor(target: string): BehaviorSubject<AnimationIntent> {
+    let subject = intentSubjects.get(target);
+
+    if (!subject) {
+      subject = new BehaviorSubject<AnimationIntent>({
+        target,
+        // Explicit per-target seeds with a DISTINCT fallback: a two-branch
+        // ternary would hand every unrecognised key (a raw accessor function,
+        // say) whichever kind sits on the else-branch, and a test asserting
+        // that kind would then pass against a broken seam.
+        kind: SEEDED_INTENT_KINDS[target] ?? "tickDown",
+      });
+      intentSubjects.set(target, subject);
+    }
+
+    return subject;
+  }
+
+  function panelDataFor(panelId: string): Observable<PanelData | null> {
+    return of({
+      kind: "gauge",
+      // Same reasoning as SEEDED_INTENT_KINDS above — an unrecognised key must
+      // not collide with either seeded label.
+      label: SEEDED_PANEL_LABELS[panelId] ?? "panel-unknown",
+      value: "1",
+      delta: "0",
+      tone: "flat",
+    } as PanelData);
+  }
+
+  const fakePresenters: Presenters = {
+    ...presenters,
+    rfqs: {
+      ...presenters.rfqs,
+      quotesForRfq$: quotesFor,
+    } as unknown as Presenters["rfqs"],
+    animationDirector: {
+      ...presenters.animationDirector,
+      intentsFor: intentFor,
+    } as unknown as Presenters["animationDirector"],
+    jarvisPanels: {
+      ...presenters.jarvisPanels,
+      panelData$: panelDataFor,
+    } as unknown as Presenters["jarvisPanels"],
+    candleSeries: {
+      candles$: presenters.candleSeries.candles$.bind(presenters.candleSeries),
+      loadOlder: () => {},
+      loadingOlder$: (symbol: string, timeframe?: CandleTimeframe) => {
+        return of(symbol === "AAPL" && timeframe === "1D");
+      },
+      historyExhausted$: (symbol: string, timeframe?: CandleTimeframe) => {
+        return of(symbol === "MSFT" && timeframe === "1D");
+      },
+    } as unknown as Presenters["candleSeries"],
+  };
+
+  return {
+    vm: createViewModel(
+      fakePresenters,
+      createMachineFactories(fakePresenters),
+      commands,
+    ),
+    quotesFor,
+    intentFor,
+  };
+}
+
+const SEEDED_INTENT_KINDS: Readonly<Record<string, AnimationIntent["kind"]>> = {
+  "tile:EURUSD": "tickUp",
+  "tile:GBPUSD": "fill",
+};
+
+const SEEDED_PANEL_LABELS: Readonly<Record<string, string>> = {
+  p1: "panel-one",
+  p2: "panel-two",
+};
+
+function quoteWithId(id: number): Quote {
+  return { id, rfqId: 0, dealerId: 0, state: { type: "pendingWithoutPrice" } };
+}
+
+function quoteIds(quotes: readonly Quote[]): readonly number[] {
+  return quotes.map((quote) => {
+    return quote.id;
+  });
+}
+
+function gaugeLabel(data: PanelData | null): string | null {
+  return data?.kind === "gauge" ? data.label : null;
+}
+
+/** The distinct symbols present in a price history — `[sym]` for a seeded
+ * series, `[]` for an empty one. */
+function everyTickSymbol(history: readonly PriceTick[]): readonly string[] {
+  return [
+    ...new Set(
+      history.map((tick) => {
+        return tick.symbol;
+      }),
+    ),
+  ];
+}
 
 interface MakeViewModelOptions {
   /** Seed the boot gate hidden (the `?nosplash`/webdriver decision), like

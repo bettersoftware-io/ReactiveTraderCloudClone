@@ -96,7 +96,6 @@ import type { ViewModel } from "@rtc/solid-bindings";
 import { useMachine } from "@rtc/solid-bindings";
 import {
   type MaybeAccessor,
-  readMaybeAccessor,
   toKeyedSignal,
   toSignal,
 } from "@rtc/solid-bindings/toSignal";
@@ -137,15 +136,34 @@ function wrapSubject<T>(subject: BehaviorSubject<T>): Accessor<T> {
 }
 
 /** `wrapSubject`'s keyed sibling — the fake's witness for the ViewModel's
- * `MaybeAccessor` keys. `pick` re-runs whenever a key accessor it reads
- * changes, and `toKeyedSignal` (the SAME @rtc/solid-bindings helper the real
- * ViewModel is built on) swaps the subscription to the newly-picked subject.
- * Routing through the real helper is the point: a fake that resolved the key
+ * `MaybeAccessor` keys. It forwards the KEYS to `toKeyedSignal` (the SAME
+ * @rtc/solid-bindings helper the real ViewModel is built on), so the fake
+ * inherits that helper's per-key `===` gate rather than re-implementing one:
+ * `pick` is handed resolved key values and must not read signals itself.
+ * Routing through the real helper is the point — a fake that resolved the key
  * once, or treated the accessor function itself as the key, would pass every
  * contract spec while proving nothing about the seam. */
-function keyedSubject<T>(pick: () => BehaviorSubject<T>): Accessor<T> {
-  return toKeyedSignal(() => {
-    const subject = pick();
+function keyedSubject<K, T>(
+  key: MaybeAccessor<K>,
+  pick: (key: K) => BehaviorSubject<T>,
+): Accessor<T> {
+  return toKeyedSignal(key, (resolved) => {
+    const subject = pick(resolved);
+
+    return state(subject, subject.getValue());
+  });
+}
+
+/** Two-key `keyedSubject` — the candles/backfill pair. Separate from the
+ * one-key form so each key keeps its own equality gate (a symbol change and a
+ * timeframe change re-subscribe once each, never together). */
+function doubleKeyedSubject<K1, K2, T>(
+  key1: MaybeAccessor<K1>,
+  key2: MaybeAccessor<K2>,
+  pick: (key1: K1, key2: K2) => BehaviorSubject<T>,
+): Accessor<T> {
+  return toKeyedSignal(key1, key2, (a, b) => {
+    const subject = pick(a, b);
 
     return state(subject, subject.getValue());
   });
@@ -935,18 +953,18 @@ export function solidViewModel(world: World): ViewModel {
     // so a tile reading usePrice("EURUSD") re-renders only when that symbol
     // is pushed — mirroring the real ViewModel's `state()`-factory binds.
     usePrice: (pair: MaybeAccessor<CurrencyPair>) => {
-      return keyedSubject(() => {
-        return world.priceFor(readMaybeAccessor(pair).symbol);
+      return keyedSubject(pair, (p) => {
+        return world.priceFor(p.symbol);
       });
     },
     usePriceHistory: (symbol: MaybeAccessor<string>) => {
-      return keyedSubject(() => {
-        return world.historyFor(readMaybeAccessor(symbol));
+      return keyedSubject(symbol, (sym) => {
+        return world.historyFor(sym);
       });
     },
     useQuotesForRfq: (rfqId: MaybeAccessor<number>) => {
-      return keyedSubject(() => {
-        return world.quotesForRfq(readMaybeAccessor(rfqId));
+      return keyedSubject(rfqId, (id) => {
+        return world.quotesForRfq(id);
       });
     },
     // Nullary query streams.
@@ -1371,8 +1389,8 @@ export function solidViewModel(world: World): ViewModel {
     // the AnimationIntents.contract.spec can push synthetic intents and
     // assert the data-anim mapping without wiring a real AnimationDirector.
     useAnimationIntents: (target: MaybeAccessor<string>) => {
-      return keyedSubject(() => {
-        return world.intentFor(readMaybeAccessor(target));
+      return keyedSubject(target, (t) => {
+        return world.intentFor(t);
       });
     },
     // Layout: the REAL per-tab createLayoutMachine SINGLETON (Task 12/P5,
@@ -1411,8 +1429,8 @@ export function solidViewModel(world: World): ViewModel {
       return wrapSubject(world.watchlist);
     },
     useEquityQuote: (symbol: MaybeAccessor<string>) => {
-      return keyedSubject(() => {
-        return world.equityQuoteFor(readMaybeAccessor(symbol));
+      return keyedSubject(symbol, (sym) => {
+        return world.equityQuoteFor(sym);
       });
     },
     // Candles + backfill route through the REAL `CandleSeriesPresenter`
@@ -1427,32 +1445,24 @@ export function solidViewModel(world: World): ViewModel {
       symbol: MaybeAccessor<string>,
       timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
     ) => {
-      return keyedSubject(() => {
-        return getCandleBridge(
-          world,
-          readMaybeAccessor(symbol),
-          readMaybeAccessor(timeframe),
-        ).candles$;
+      return doubleKeyedSubject(symbol, timeframe, (sym, tf) => {
+        return getCandleBridge(world, sym, tf).candles$;
       });
     },
     useCandleBackfill: (
       symbol: MaybeAccessor<string>,
       timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
     ) => {
-      return keyedSubject(() => {
-        return getCandleBridge(
-          world,
-          readMaybeAccessor(symbol),
-          readMaybeAccessor(timeframe),
-        ).backfill$;
+      return doubleKeyedSubject(symbol, timeframe, (sym, tf) => {
+        return getCandleBridge(world, sym, tf).backfill$;
       });
     },
     loadOlderCandles: (symbol: string, timeframe?: CandleTimeframe): void => {
       getCandleSeries(world).loadOlder(symbol, timeframe);
     },
     useDepth: (symbol: MaybeAccessor<string>) => {
-      return keyedSubject(() => {
-        return world.depthFor(readMaybeAccessor(symbol));
+      return keyedSubject(symbol, (sym) => {
+        return world.depthFor(sym);
       });
     },
     useEquityOrders: () => {
@@ -1617,11 +1627,8 @@ export function solidViewModel(world: World): ViewModel {
     },
     useJarvisPanelData: (panelId: MaybeAccessor<string>) => {
       const presenter = getJarvisPanelsPresenter(world);
-      return toKeyedSignal(() => {
-        return state(
-          presenter.panelData$(readMaybeAccessor(panelId)),
-          null as PanelData | null,
-        );
+      return toKeyedSignal(panelId, (id) => {
+        return state(presenter.panelData$(id), null as PanelData | null);
       });
     },
     // Jarvis drive-the-app interpreter's outcomes (Task 12/P5): the REAL

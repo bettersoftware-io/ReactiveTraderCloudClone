@@ -110,12 +110,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import {
-  type MaybeAccessor,
-  readMaybeAccessor,
-  toKeyedSignal,
-  toSignal,
-} from "#/toSignal";
+import { type MaybeAccessor, toKeyedSignal, toSignal } from "#/toSignal";
 import { useMachine } from "#/useMachine";
 
 // Machine-backed bundle types (state + intents). Solid transformation of the
@@ -364,9 +359,14 @@ export interface ViewModel {
   // useCandles, useCandleBackfill, useDepth, useJarvisPanelData) takes each
   // key as either a plain value or an accessor, independently: the value form
   // subscribes once at call time (what every caller did before this existed),
-  // the accessor form resubscribes when the key changes, which is what lets a
-  // Solid component read `props.pair` LIVE instead of snapshotting it at
-  // mount. The machine-backed hooks below (useStaleFlag, useRowHighlight,
+  // the accessor form re-subscribes when the key's resolved VALUE changes,
+  // which is what lets a Solid component read `props.pair` LIVE instead of
+  // snapshotting it at mount. "Value", not "read": each key goes through its
+  // own `===`-gated memo inside `toKeyedSignal`, so an accessor that reads a
+  // coarse upstream signal (`() => props.symbol`, a getter over the whole
+  // eqWorkspace state object) keeps its subscription through every unrelated
+  // update to that object — see toSignal.ts for why that matters.
+  // The machine-backed hooks below (useStaleFlag, useRowHighlight,
   // useNotional, useRfqCountdown, useBootSequence, useOrderTicket,
   // useTileExecution, useRfqTile) and the singleton-backed useLayout
   // deliberately do NOT get this: rebuilding a machine on a key change would
@@ -1110,13 +1110,13 @@ export function createViewModel(
 
   return {
     usePrice: (pair: MaybeAccessor<CurrencyPair>) => {
-      return toKeyedSignal(() => {
-        return priceState(readMaybeAccessor(pair));
+      return toKeyedSignal(pair, (p) => {
+        return priceState(p);
       });
     },
     usePriceHistory: (symbol: MaybeAccessor<string>) => {
-      return toKeyedSignal(() => {
-        return priceHistoryState(readMaybeAccessor(symbol));
+      return toKeyedSignal(symbol, (sym) => {
+        return priceHistoryState(sym);
       });
     },
     useTrades: () => {
@@ -1135,8 +1135,8 @@ export function createViewModel(
       return toSignal(rfqsState);
     },
     useQuotesForRfq: (rfqId: MaybeAccessor<number>) => {
-      return toKeyedSignal(() => {
-        return quotesForRfqState(readMaybeAccessor(rfqId));
+      return toKeyedSignal(rfqId, (id) => {
+        return quotesForRfqState(id);
       });
     },
     useAllQuotes: () => {
@@ -1350,8 +1350,8 @@ export function createViewModel(
       }).state;
     },
     useAnimationIntents: (target: MaybeAccessor<string>) => {
-      return toKeyedSignal(() => {
-        return animationIntentsState(readMaybeAccessor(target));
+      return toKeyedSignal(target, (t) => {
+        return animationIntentsState(t);
       });
     },
     // Layout — UNLIKE every other useMachine-bridged factory here,
@@ -1382,36 +1382,30 @@ export function createViewModel(
       return toSignal(watchlistState);
     },
     useEquityQuote: (symbol: MaybeAccessor<string>) => {
-      return toKeyedSignal(() => {
-        return equityQuoteState(readMaybeAccessor(symbol));
+      return toKeyedSignal(symbol, (sym) => {
+        return equityQuoteState(sym);
       });
     },
     useCandles: (
       symbol: MaybeAccessor<string>,
       timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
     ) => {
-      return toKeyedSignal(() => {
-        return candlesState(
-          readMaybeAccessor(symbol),
-          readMaybeAccessor(timeframe),
-        );
+      return toKeyedSignal(symbol, timeframe, (sym, tf) => {
+        return candlesState(sym, tf);
       });
     },
     useCandleBackfill: (
       symbol: MaybeAccessor<string>,
       timeframe?: MaybeAccessor<CandleTimeframe | undefined>,
     ) => {
-      return toKeyedSignal(() => {
-        return candleBackfillState(
-          readMaybeAccessor(symbol),
-          readMaybeAccessor(timeframe),
-        );
+      return toKeyedSignal(symbol, timeframe, (sym, tf) => {
+        return candleBackfillState(sym, tf);
       });
     },
     loadOlderCandles,
     useDepth: (symbol: MaybeAccessor<string>) => {
-      return toKeyedSignal(() => {
-        return depthState(readMaybeAccessor(symbol));
+      return toKeyedSignal(symbol, (sym) => {
+        return depthState(sym);
       });
     },
     useEquityOrders: () => {
@@ -1485,8 +1479,8 @@ export function createViewModel(
       };
     },
     useJarvisPanelData: (panelId: MaybeAccessor<string>) => {
-      return toKeyedSignal(() => {
-        return panelDataState(readMaybeAccessor(panelId));
+      return toKeyedSignal(panelId, (id) => {
+        return panelDataState(id);
       });
     },
     useJarvisDriver: () => {

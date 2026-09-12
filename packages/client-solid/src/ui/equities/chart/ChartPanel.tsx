@@ -30,6 +30,15 @@ import styles from "./ChartPanel.module.css";
  * re-subscribe on their own, so narrowing this remount to `CandleChart` (as
  * react does) is now a viable follow-up — one the goldens, not the type
  * checker, would have to witness.
+ *
+ * The keys below are getters over the WHOLE eqWorkspace `state()` object
+ * (`<ChartBody symbol={state().sel} …>`), which `EqWorkspaceMachine` replaces
+ * on every intent — a chart-type, indicator, pane or y-scale toggle included.
+ * That is safe only because `toKeyedSignal` gates each key on its resolved
+ * VALUE (`===`) rather than on the read: re-subscribing here would drop the
+ * series to refcount 0, and `CandleSeriesPresenter`'s `defer` resets the
+ * backfill state on every fresh subscription cycle, discarding every page the
+ * user scrolled back to load. See `toSignal.ts`.
  */
 export function ChartPanel(): JSX.Element {
   const { useEqWorkspace } = useViewModel();

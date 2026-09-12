@@ -104,12 +104,16 @@ and still has to be named in one line at the site.
 body is nothing but a keyed subscription — `usePrice`, `usePriceHistory`,
 `useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
 `useCandleBackfill`, `useDepth`, `useJarvisPanelData` — takes each key as
-`T | Accessor<T>`, independently per key. The accessor form resubscribes when
-the key changes (`toKeyedSignal` in `toSignal.ts`: a `createMemo` over
-`toSignal`, so Solid's owner disposal releases the old subscription and the new
-one seeds synchronously), which closes the parity gap with `@rtc/react-bindings`
-— whose hooks are live only because React re-runs the component. Write
-`usePrice(() => props.pair)` and there is no snapshot to justify.
+`T | Accessor<T>`, independently per key. The accessor form re-subscribes when
+the key's resolved **value** changes — not on every read of it: `toKeyedSignal`
+resolves each key through its own `===`-gated `createMemo` first, so an
+accessor that reads a coarse upstream signal (`() => props.symbol`, a getter
+over a whole `state()` object) keeps its subscription through unrelated updates
+to that object. On a real key change Solid's owner disposal releases the old
+subscription and the new one seeds synchronously. That closes the parity gap
+with `@rtc/react-bindings` — whose hooks are live only because React re-runs
+the component. Write `usePrice(() => props.pair)` and there is no snapshot to
+justify.
 
 The hooks that stay **value-only** are the ones that build something on the key
 rather than subscribe to it: `useStaleFlag`, `useRowHighlight`, `useNotional`,

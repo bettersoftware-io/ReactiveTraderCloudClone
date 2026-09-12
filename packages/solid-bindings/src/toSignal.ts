@@ -26,20 +26,63 @@ export function readMaybeAccessor<T>(key: MaybeAccessor<T>): T {
   return key;
 }
 
-/** Key-driven `toSignal`: `source` is re-run whenever any signal it reads
- * changes, and the subscription follows.
+/** Key-driven `toSignal`: the subscription follows the key's VALUE.
  *
- * Solid disposes a memo's own owner before re-running it, so the previous
- * `toSignal`'s `onCleanup` unsubscribes the old source on every key change,
- * and the new `toSignal` seeds synchronously from the new source — no
- * undefined frame between keys. When `source` reads no signal (a plain value
- * key) the memo tracks nothing and runs exactly once, which is
- * behaviour-identical to calling `toSignal` directly, one memo layer aside. */
-export function toKeyedSignal<T>(
-  source: () => StateObservable<T>,
-): Accessor<T> {
+ * Each key is resolved through its OWN `createMemo` — default `===` equality —
+ * BEFORE it reaches `source`, and `source` receives the resolved values rather
+ * than reading anything itself. That gate is the whole point of taking the
+ * keys instead of an opaque thunk: a key accessor is very often a getter over
+ * a much coarser signal (`() => props.symbol`, where `props.symbol` reads the
+ * whole eqWorkspace `state()` object), so a thunk-shaped helper would re-run —
+ * and therefore tear the subscription down to refcount 0 and rebuild it — on
+ * every unrelated update to that object. For `CandleSeriesPresenter` that
+ * discards every backfilled page and re-generates the series; the earlier,
+ * thunk-shaped version of this helper did exactly that on any chart-type,
+ * indicator or y-scale toggle. `source` must therefore stay signal-free: read
+ * keys only through the arguments it is handed.
+ *
+ * Object keys compare by REFERENCE under `===`, which is the right semantic
+ * here: `CurrencyPair` is static per-symbol metadata and `LiveRatesPanel`
+ * already keys its `<For>` on that same reference.
+ *
+ * On a real key change Solid disposes the memo's own owner before re-running
+ * it, so the previous `toSignal`'s `onCleanup` unsubscribes the old source
+ * first and the new `toSignal` seeds synchronously from the new one — no
+ * undefined frame between keys. A plain value key reads no signal, so its memo
+ * runs exactly once and the subscription is created once, behaviour-identical
+ * to calling `toSignal` directly. */
+export function toKeyedSignal<K, T>(
+  key: MaybeAccessor<K>,
+  source: (key: K) => StateObservable<T>,
+): Accessor<T>;
+export function toKeyedSignal<K1, K2, T>(
+  key1: MaybeAccessor<K1>,
+  key2: MaybeAccessor<K2>,
+  source: (key1: K1, key2: K2) => StateObservable<T>,
+): Accessor<T>;
+
+export function toKeyedSignal<T>(...args: readonly unknown[]): Accessor<T> {
+  const source = args[args.length - 1] as (
+    ...keys: readonly unknown[]
+  ) => StateObservable<T>;
+
+  // One `===`-gated memo PER key, so a two-key hook re-subscribes once when
+  // its symbol changes and once when its timeframe does — never because some
+  // unrelated field of the object they were read from was replaced.
+  const resolved = args.slice(0, -1).map((key) => {
+    return createMemo(() => {
+      return readMaybeAccessor(key as MaybeAccessor<unknown>);
+    });
+  });
+
   const inner = createMemo(() => {
-    return toSignal(source());
+    return toSignal(
+      source(
+        ...resolved.map((readKey) => {
+          return readKey();
+        }),
+      ),
+    );
   });
 
   return () => {

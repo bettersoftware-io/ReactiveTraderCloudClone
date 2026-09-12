@@ -65,11 +65,24 @@ const price = usePrice(() => props.pair);            // live: follows the prop
 const candles = useCandles(() => sym(), "1W");        // mixed forms are fine
 ```
 
-`toKeyedSignal` (in `src/toSignal.ts`) is the mechanism: a `createMemo` over
-`toSignal`. Solid disposes a memo's owner before re-running it, so the previous
-`toSignal`'s `onCleanup` unsubscribes the old source and the new one seeds
-synchronously — no undefined frame between keys. A plain value key reads no
-signal, so the memo tracks nothing and runs exactly once: the value form is
+`toKeyedSignal` (in `src/toSignal.ts`) is the mechanism, and it takes the
+**keys**, not an opaque source thunk. Each key is resolved through its own
+`createMemo` (default `===` equality) *before* it reaches the source factory,
+so the subscription follows the key's **value**, not every read of it. That
+distinction is load-bearing, not pedantry: a key accessor is usually a getter
+over a much coarser signal — `() => props.symbol` where `props.symbol` reads
+the whole eqWorkspace `state()` object — and a thunk-shaped helper re-runs on
+every unrelated field of that object, tearing the subscription down to refcount
+0 and rebuilding it. For `CandleSeriesPresenter` that discards every backfilled
+page. (An earlier version of this helper did exactly that; the
+`factoryCalls` cases in `toSignal.keyed.test.tsx` pin the gate.) The
+corollary: a `source` callback must stay signal-free and read its keys only
+from the arguments it is handed.
+
+On a real key change Solid disposes the memo's owner before re-running it, so
+the previous `toSignal`'s `onCleanup` unsubscribes the old source and the new
+one seeds synchronously — no undefined frame between keys. A plain value key
+reads no signal, so its memo runs exactly once: the value form is
 behaviour-identical to calling `toSignal` directly.
 
 This is deliberately **not** applied to the `useMachine`-backed hooks
