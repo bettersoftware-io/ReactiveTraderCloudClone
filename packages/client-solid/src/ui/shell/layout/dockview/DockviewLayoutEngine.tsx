@@ -4,6 +4,7 @@ import {
   createSignal,
   For,
   type JSX,
+  on,
   onCleanup,
   onMount,
   Show,
@@ -12,6 +13,7 @@ import { Portal } from "solid-js/web";
 
 import {
   createDefaultLayoutPort,
+  DOCK_COLUMN_INITIAL_PX,
   type DockLayoutStore,
   type LayoutIntents,
   PANEL_SPECS,
@@ -44,7 +46,19 @@ import styles from "./DockviewLayoutEngine.module.css";
  * group's actions slot — so ViewModel/FxView/CreditView contexts flow (a
  * separate root would crash every context consumer) and the header is the
  * very same `PanelHead` nodes the in-house engine renders. The persisted
- * layout is an opaque blob per tab. */
+ * layout is an opaque blob per tab.
+ *
+ * REMOUNT CONTRACT (diverges from the react twin): react remounts the WHOLE
+ * bridge on a workspace reset (`key={layoutResets}` in App.tsx) because a
+ * fresh function-component invocation is the cheapest way to discard every
+ * ref/state at once there. Solid component bodies run ONCE — there is no
+ * equivalent "re-invoke and get fresh closures" move — so this component
+ * instead takes `layoutResets` as an ordinary prop and rebuilds the engine
+ * IN PLACE: the reset effect below (declared first, before every intent
+ * effect) disposes the current engine and resets `mounted`/`groups`/
+ * `strips`/`applied`/`appliedDocked` to their initial values before creating
+ * a new one from the tab's now-cleared blob — the same end state react
+ * reaches via remounting, reached here by rebuilding instead. */
 export function DockviewLayoutEngine(
   props: DockviewLayoutEngineProps,
 ): JSX.Element {
@@ -109,7 +123,20 @@ export function DockviewLayoutEngine(
     };
   }
 
-  onMount(() => {
+  // The collapse set last pushed into the engine — diffed against, not
+  // re-asserted (see the collapse effect below). RESET to `[]` whenever the
+  // engine is rebuilt (a fresh engine has nothing collapsed, whatever this
+  // said). No tab bookkeeping, unlike the react twin: the caller mounts one
+  // of these per tab (see the seed comment above), so a tab SWITCH destroys
+  // this component and `applied` starts empty alongside the fresh engine —
+  // only a same-tab workspace RESET needs this reset explicitly, since that
+  // rebuilds the engine without destroying the component.
+  let applied: readonly PanelId[] = [];
+  // The docked set last pushed into the engine, mirroring `applied` above
+  // (same reset-on-rebuild rule, same reason).
+  let appliedDocked: readonly PanelId[] = [];
+
+  function buildEngine(): void {
     if (containerEl === undefined) {
       return;
     }
@@ -126,7 +153,8 @@ export function DockviewLayoutEngine(
         // the CURRENT specs (rebuilt by WorkspaceEngine on every render)
         // without this component ever rebuilding the engine — the engine
         // lives for the tab, exactly as react's specsRef keeps it alive
-        // there; only a remount (a tab switch) creates a new one.
+        // there; only a rebuild (a workspace reset) or remount (a tab
+        // switch) creates a new one.
         title: (id: string): string => {
           return titleOf(id as PanelId);
         },
@@ -146,8 +174,20 @@ export function DockviewLayoutEngine(
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
       },
+      // Read at CONSTRUCTION time only — like react's `dockedRef.current` —
+      // reconciled once here; every later render is handled by the docked
+      // diff effect below instead.
+      dynamicPanels: props.docked.map((panelId) => {
+        return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
+      }),
     });
+    applied = [];
+    appliedDocked = [];
     setGroups(engine.groupCount());
+  }
+
+  onMount(() => {
+    buildEngine();
   });
 
   onCleanup(() => {
@@ -161,6 +201,42 @@ export function DockviewLayoutEngine(
     engine = null;
     disposed?.dispose();
   });
+
+  // Rebuilds the engine IN PLACE when the workspace-reset counter bumps —
+  // see the REMOUNT CONTRACT doc on the component. Declared BEFORE every
+  // intent effect below: on a real reset, `collapsed` also changes (the
+  // LayoutMachine's own reset clears it) in the SAME reactive flush, so this
+  // effect must run first and reset `applied`/`appliedDocked` to `[]`
+  // against the FRESH engine before the collapse/docked effects (if they
+  // also fire this tick) get a chance to diff against the OLD one.
+  //
+  // `on()` without `defer`, per the README's "bookkeeping createEffect"
+  // idiom: the mount-time call compares `layoutResets` against itself
+  // (`previous ?? current`), a deliberate no-op that also seeds `previous`
+  // for the first REAL bump — no `layoutResets === undefined` special case
+  // needed. The onMount effect above already built the engine for THIS run.
+  createEffect(
+    on(
+      () => {
+        return props.layoutResets;
+      },
+      (resets, previousResets) => {
+        if ((previousResets ?? resets) === resets) {
+          return;
+        }
+
+        const disposed = engine;
+        engine = null;
+        disposed?.dispose();
+        setMounted([]);
+        setGroups(0);
+        setStrips({});
+        applied = [];
+        appliedDocked = [];
+        buildEngine();
+      },
+    ),
+  );
 
   createEffect(() => {
     const maximized = props.maximized;
@@ -176,15 +252,43 @@ export function DockviewLayoutEngine(
     }
   });
 
+  // The docked set is a SET, not a single id, so — like `collapsed` below —
+  // this diffs against the last applied list rather than re-asserting the
+  // whole thing every render. Declared BETWEEN the maximize effect above and
+  // the collapse effect below, mirroring the react twin: a dynamic panel
+  // must exist in the engine before a collapse replay can name it. The
+  // initial pass over a freshly built engine re-adds ids already present via
+  // construction-time `dynamicPanels` reconciliation — safe, since
+  // `addDynamicPanel` no-ops on an existing id.
+  createEffect(() => {
+    const docked = props.docked;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of docked) {
+      if (!appliedDocked.includes(panelId)) {
+        engine.addDynamicPanel({
+          id: panelId,
+          initialPx: DOCK_COLUMN_INITIAL_PX,
+        });
+      }
+    }
+
+    for (const panelId of appliedDocked) {
+      if (!docked.includes(panelId)) {
+        engine.removeDynamicPanel(panelId);
+      }
+    }
+
+    appliedDocked = docked;
+  });
+
   // `collapsed` is a SET, not a single id like `maximized`, so this diffs
   // against the last applied list rather than re-asserting the whole thing:
   // `collapsePanel` remembers the pre-collapse geometry on the FIRST call for
   // a panel, so blanket-reapplying is safe but pointless work every render.
-  // No tab bookkeeping here, unlike the React twin: the caller mounts one of
-  // these per tab (see the seed comment above), so a tab switch destroys this
-  // component and `applied` starts empty alongside the fresh engine.
-  let applied: readonly PanelId[] = [];
-
   createEffect(() => {
     const collapsed = props.collapsed;
 
@@ -330,6 +434,16 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** The active tab's layer-2 docked set — membership only; arrangement lives
+   * in the blob. Reconciled into the engine at construction (as
+   * `dynamicPanels`) and diffed against on every later render, mirroring how
+   * `collapsed` is handled. */
+  docked: readonly PanelId[];
+  /** The workspace-reset counter. A bump rebuilds the engine IN PLACE from
+   * the tab's now-cleared blob — see the component's REMOUNT CONTRACT doc
+   * for why this is a prop here rather than a caller-side keyed remount like
+   * the react twin's `key={layoutResets}`. */
+  layoutResets: number;
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];

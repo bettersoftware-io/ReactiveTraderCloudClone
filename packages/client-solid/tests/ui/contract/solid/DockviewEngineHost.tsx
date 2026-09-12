@@ -135,6 +135,17 @@ export function DockviewEngineHost(
         store={store}
         maximized={(props.maximized as PanelId | null | undefined) ?? null}
         collapsed={collapsed()}
+        // Task 7 threads a real docked fixture through this host; until then
+        // this is an inert default (no dynamic panels), matching every case
+        // in DockviewEngine.contract.spec.ts, which predates the `docked`
+        // prop — mirrors the react twin's identical host.
+        docked={[]}
+        // Inert: no case in DockviewEngine.contract.spec.ts exercises a
+        // workspace-reset rebuild (that behaviour lives in
+        // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
+        // bumps, so the reset effect's `on()` never fires past its own
+        // no-op mount-time comparison.
+        layoutResets={0}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}

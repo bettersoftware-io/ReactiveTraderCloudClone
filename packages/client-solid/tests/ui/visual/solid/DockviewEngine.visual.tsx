@@ -66,6 +66,8 @@ export function DockviewEngineVisual(): JSX.Element {
         store={store}
         maximized={null}
         collapsed={[]}
+        docked={[]}
+        layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}

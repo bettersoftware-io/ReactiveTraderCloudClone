@@ -101,8 +101,14 @@ const DockviewLayoutEngine = lazy(() => {
  * resetting — a driven "layout" DriveCommand's target stays the same
  * instance the mounted view reads from either way. */
 function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
-  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
-    useViewModel();
+  const {
+    useLayout,
+    useJarvisPanels,
+    useLayoutEngine,
+    useDockLayoutStore,
+    useDockedPanelIds,
+    useWorkspaceLayoutResets,
+  } = useViewModel();
 
   // Snapshot: useLayout resolves the per-tab singleton once at call time.
   // Correct only while App's keyed <Show> remounts this engine per tab.
@@ -140,54 +146,33 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // position, canvas state) along with every `shareReplay({refCount:true})`
   // port subscription it owned (the stream-resubscribe trap — see #171-#173).
   //
-  // Fix: gate identity on the DOCKED ID SET, not the row array. `dockedIds`
-  // reduces `dockedPanels()` to a SORTED array of ids, with a CUSTOM `equals`
-  // (element-wise compare) as the memo's own change gate — NOT a joined
-  // string: `panelId` is a freeform string validated only for length 1..64
-  // (see `driveCommand.ts`'s dock-command guard), no charset restriction, so
-  // a wire-minted id CAN legally contain a comma. `CreditBlotter.tsx`'s
-  // `tradeIdsKey`/`RfqsPanel.tsx`'s `allIdsKey` join NUMBER arrays, where a
-  // comma is structurally impossible in an element — that plain-join idiom
-  // is unsound here: id `"x,y"` alone would key identically to ids `"x"` +
-  // `"y"` together, so a membership transition between colliding sets
-  // wouldn't re-key at all (registries would go silently stale, rendering
-  // nothing for a real docked panel) — a round-trip through a joined string
-  // has the same problem the other direction, splitting `"x,y"` back into
-  // two wrong ids even with no collision in play. An array-valued memo with
-  // an element-wise `equals` sidesteps encoding entirely — there is no
-  // string for two distinct id sets to collide into. This memo's own
-  // computation reruns on every `dockedPanels()` tick (cheap: ≤
-  // `MAX_DOCKED_PANELS` short strings, sorted), but `equals` short-circuits
-  // propagation to its dependents (`registry`/`specs`/`headRegistry` below)
-  // whenever the SET is unchanged. `dockedPanels` (the accessor itself, a
-  // stable function reference for this component's whole lifetime) is
-  // threaded down into `dockedRegistryFor`/`dockedHeadsFor` so each docked
-  // panel's body/head can look up its OWN current row reactively and update
-  // in place — a restyle ("make it a table") while docked, or a title
-  // rename, updates that one mounted leaf's content directly, without ever
-  // touching `registry`/`headRegistry`'s identity or remounting anything.
+  // Fix: gate identity on the DOCKED ID SET, not the row array — `dockedIds`
+  // must not churn identity per emission, or the registry/specs/headRegistry
+  // memos below (each keyed off it) would recompute on every unrelated tick,
+  // reproducing the exact remount/resubscribe trap above.
+  // `useDockedPanelIds(props.tab)` (Task 4's hook) carries this guarantee at
+  // the SOURCE — `Presenters.dockedPanelIdsFor`'s own `distinctUntilChanged`
+  // uses the identical element-wise compare a local memo used to apply
+  // itself — and additionally scopes the set to THIS tab's own attributed
+  // docked panels (matching the react twin's `docked` prop, and dockview's
+  // own `docked` prop below), rather than every docked panel across every
+  // tab: a panel docked to tab "credit" was never referenced by "fx"'s own
+  // layout tree anyway, so the narrower set loses nothing. The freeform
+  // `panelId` string (length 1..64, no charset restriction) is why this
+  // can't be a joined-string key instead — an array-valued accessor with an
+  // element-wise `equals` sidesteps encoding entirely.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
-
-  const dockedIds = createMemo<readonly string[]>(
-    () => {
-      return dockedPanels()
-        .map((panel) => {
-          return panel.panelId;
-        })
-        .sort();
-    },
-    [],
-    {
-      equals: (prev: readonly string[], next: readonly string[]): boolean => {
-        return (
-          prev.length === next.length &&
-          prev.every((id, index) => {
-            return id === next[index];
-          })
-        );
-      },
-    },
+  // `untrack`, mirroring `useLayout`'s identical snapshot above: this hook
+  // takes a VALUE, not an accessor, and subscribes once at call time — a
+  // "forced by the seam" read (see the README's solid/reactivity section),
+  // correct only because App's keyed `<Show>` remounts this component per
+  // tab, so `props.tab` never changes within one instance's lifetime.
+  const dockedIds = useDockedPanelIds(
+    untrack((): WorkspaceTab => {
+      return props.tab;
+    }),
   );
+  const layoutResets = useWorkspaceLayoutResets();
 
   const registry = createMemo(() => {
     return {
@@ -249,8 +234,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
                 a docked panel's body/head/spec up by id exactly as the
                 in-house engine does. Its SEED tree is still the static
                 default (createDefaultLayoutPort), so a pinned panel only
-                surfaces here once its id is in the persisted blob — docking
-                a Jarvis panel INTO dockview is not wired this round. */}
+                surfaces here once its id is in the persisted blob. */}
             <DockviewLayoutEngine
               tab={props.tab}
               registry={registry()}
@@ -259,6 +243,8 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               store={dockLayoutStore}
               maximized={state().maximized}
               collapsed={state().collapsed}
+              docked={dockedIds()}
+              layoutResets={layoutResets()}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}
