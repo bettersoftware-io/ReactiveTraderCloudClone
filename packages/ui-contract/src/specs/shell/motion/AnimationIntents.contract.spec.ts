@@ -27,4 +27,36 @@ describe("AnimationIntents", () => {
     page.setIntent("tile:EURUSD", null);
     expect(page.animData()).toBeNull();
   });
+
+  // The framework-neutral witness that `useAnimationIntents(target)` is keyed
+  // LIVE, not snapshotted at mount. `setProps` keeps the same component
+  // instance on both drivers (react re-renders it; solid's registry entry
+  // passes `p().target` as a compiled getter), so a probe that resolved its
+  // target once would keep reporting the OLD key's intent here and stay green
+  // on every other case in this file.
+  it("follows the target prop to a new key without remounting", () => {
+    const page = mount(AnimationProbe, { props: { target: "tile:EURUSD" } });
+
+    page.setIntent("tile:EURUSD", {
+      target: "tile:EURUSD",
+      kind: "tickUp",
+    });
+    page.setIntent("tile:GBPUSD", {
+      target: "tile:GBPUSD",
+      kind: "fill",
+    });
+    expect(page.animData()).toBe("tickUp");
+
+    // Re-key in place: the probe must now report the NEW target's intent.
+    page.setProps({ target: "tile:GBPUSD" });
+    expect(page.animData()).toBe("fill");
+
+    // …and must have RELEASED the old one: a later intent on tile:EURUSD is
+    // no longer this probe's business.
+    page.setIntent("tile:EURUSD", {
+      target: "tile:EURUSD",
+      kind: "tickDown",
+    });
+    expect(page.animData()).toBe("fill");
+  });
 });

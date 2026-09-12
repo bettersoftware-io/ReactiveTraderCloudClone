@@ -6,7 +6,6 @@ import {
   Match,
   Show,
   Switch,
-  untrack,
 } from "solid-js";
 
 import type { OrderTicketIntents, OrderTicketState } from "@rtc/client-core";
@@ -114,15 +113,13 @@ interface TicketBodyProps {
 
 function TicketBody(props: TicketBodyProps): JSX.Element {
   const { useEquityQuote, useAnimationIntents } = useViewModel();
-  // Snapshot: both hooks take a plain symbol and subscribe once at call time.
-  // Correct only because OrderTicket's <Show when={sym()} keyed> remounts this
-  // body on a symbol change (the SOLID PORT NOTE above).
-  const seedSymbol = untrack((): string => {
+  const quote = useEquityQuote(() => {
     return props.symbol;
   });
 
-  const quote = useEquityQuote(seedSymbol);
-  const animIntent = useAnimationIntents(`ticket:${seedSymbol}`);
+  const animIntent = useAnimationIntents(() => {
+    return `ticket:${props.symbol}`;
+  });
 
   const animAttr = createMemo((): "fill" | undefined => {
     return animIntent()?.kind === "fill" ? "fill" : undefined;

@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, Show, untrack } from "solid-js";
+import { createMemo, For, onCleanup, Show } from "solid-js";
 
 import {
   type CurrencyCategory,
@@ -68,15 +68,15 @@ const NO_VALUE = "—";
 
 function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = useViewModel();
-  // Snapshot: both hooks take a VALUE and subscribe once at call time.
-  // Correct only while this <For each={props.pairs}> keys on the CurrencyPair
-  // reference (same invariant as Tile.tsx). JSX reads below are live.
-  const seedPair = untrack((): CurrencyPair => {
+
+  const price = usePrice(() => {
     return props.pair;
   });
 
-  const price = usePrice(seedPair);
-  const history = usePriceHistory(seedPair.symbol);
+  const history = usePriceHistory(() => {
+    return props.pair.symbol;
+  });
+
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);
   });

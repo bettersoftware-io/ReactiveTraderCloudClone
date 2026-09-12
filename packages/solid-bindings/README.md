@@ -51,6 +51,47 @@ export function toSignal<T>(state$: StateObservable<T>): Accessor<T> {
 }
 ```
 
+### Accessor keys on the pure-subscription hooks
+
+A Solid component's setup body runs **once**, so a hook that takes a plain key
+subscribes once and never moves. Every hook here whose body is nothing but a
+keyed `state()` subscription — `usePrice`, `usePriceHistory`,
+`useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
+`useCandleBackfill`, `useDepth`, `useJarvisPanelData` — therefore takes each
+key as `MaybeAccessor<T>` (`T | Accessor<T>`), independently per key:
+
+```ts
+const price = usePrice(() => props.pair);            // live: follows the prop
+const candles = useCandles(() => sym(), "1W");        // mixed forms are fine
+```
+
+`toKeyedSignal` (in `src/toSignal.ts`) is the mechanism, and it takes the
+**keys**, not an opaque source thunk. Each key is resolved through its own
+`createMemo` (default `===` equality) *before* it reaches the source factory,
+so the subscription follows the key's **value**, not every read of it. That
+distinction is load-bearing, not pedantry: a key accessor is usually a getter
+over a much coarser signal — `() => props.symbol` where `props.symbol` reads
+the whole eqWorkspace `state()` object — and a thunk-shaped helper re-runs on
+every unrelated field of that object, tearing the subscription down to refcount
+0 and rebuilding it. For `CandleSeriesPresenter` that discards every backfilled
+page. (An earlier version of this helper did exactly that; the
+`factoryCalls` cases in `toSignal.keyed.test.tsx` pin the gate.) The
+corollary: a `source` callback must stay signal-free and read its keys only
+from the arguments it is handed.
+
+On a real key change Solid disposes the memo's owner before re-running it, so
+the previous `toSignal`'s `onCleanup` unsubscribes the old source and the new
+one seeds synchronously — no undefined frame between keys. A plain value key
+reads no signal, so its memo runs exactly once: the value form is
+behaviour-identical to calling `toSignal` directly.
+
+This is deliberately **not** applied to the `useMachine`-backed hooks
+(`useStaleFlag`, `useRowHighlight`, `useNotional`, `useRfqCountdown`,
+`useTileExecution`, `useRfqTile`, `useOrderTicket`, `useBootSequence`) or to
+`useLayout`: those BUILD something from the key, and disposing/rebuilding it on
+a key change would restart a timer, drop an in-flight fold, or tear down a
+composition-root singleton every other reader shares.
+
 ### `useMachine`'s eager disposal — the one place this diverges from `react-bindings`
 
 `react-bindings`' `useMachine` defers disposal into a `queueMicrotask` specifically to survive React 19 StrictMode's dev-only double-invoke (`setup → cleanup → setup`, synchronously within one commit) — without the deferral, the first `setup`'s cleanup would kill the machine the immediate re-`setup` still needs.

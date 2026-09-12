@@ -1,11 +1,4 @@
-import {
-  type Accessor,
-  createMemo,
-  Index,
-  type JSX,
-  Show,
-  untrack,
-} from "solid-js";
+import { type Accessor, createMemo, Index, type JSX, Show } from "solid-js";
 
 import type { DepthBook, DepthLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -14,14 +7,9 @@ import styles from "./DepthLadder.module.css";
 
 export function DepthLadder(props: DepthLadderProps): JSX.Element {
   const { useDepth } = useViewModel();
-  // Snapshot: useDepth subscribes once at call time. Correct only because
-  // EqDepthDock's <Show when={state().sel} keyed> remounts this ladder
-  // whenever the workspace selection changes.
-  const book = useDepth(
-    untrack((): string => {
-      return props.symbol;
-    }),
-  );
+  const book = useDepth(() => {
+    return props.symbol;
+  });
 
   return (
     <Show
