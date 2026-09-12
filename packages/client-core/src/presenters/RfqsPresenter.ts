@@ -17,6 +17,7 @@ import {
 import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
+  RfqsPresenter as RfqsPresenterApi,
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
@@ -73,7 +74,7 @@ function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
   return true;
 }
 
-export class RfqsPresenter {
+export class RfqsPresenter implements RfqsPresenterApi {
   private readonly state$: Observable<RfqStreamState>;
 
   readonly rfqs$: Observable<readonly Rfq[]>;

@@ -1,12 +1,15 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { AnimatedBackgroundPresenter as AnimatedBackgroundPresenterApi } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 
 /**
  * App-layer presenter for the ambient-motion perf gate. Exposes the
  * replay-current enabled flag and the write/toggle operations.
  */
-export class AnimatedBackgroundPresenter {
+export class AnimatedBackgroundPresenter
+  implements AnimatedBackgroundPresenterApi
+{
   readonly enabled$: Observable<boolean>;
 
   constructor(private readonly preferences: PreferencesPort) {

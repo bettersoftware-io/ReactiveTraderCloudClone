@@ -9,56 +9,24 @@ import {
   switchMap,
 } from "rxjs";
 
+import type {
+  AnimationDirector as AnimationDirectorApi,
+  AnimationDirectorDeps,
+  AnimationIntent,
+  AnimationKind,
+} from "@rtc/core-api";
 import {
-  type ConnectionStatus,
-  type CurrencyPair,
   ExecutionStatus,
-  type Price,
   type Quote,
   type Rfq,
   type RfqEvent,
   RfqState,
 } from "@rtc/domain";
 
-import type { EquityFillSignal } from "./OrdersBlotterPresenter";
-import type { ExecutionOutcome } from "./TradeExecutionPresenter";
-
-// Kept local (not exported) in Phase 0: nothing outside this module consumes
-// AnimationKind yet, and knip is a hard gate that bans dead exports (Task 8
-// precedent: unexport until a consumer arrives). It is re-exported as part of
-// the public AnimationIntent contract in Phase 3 when tiles map intents → CSS.
-type AnimationKind =
-  | "tickUp"
-  | "tickDown"
-  | "fill"
-  | "reject"
-  | "expiry"
-  | "newRow"
-  | "connectionChange";
-
-export interface AnimationIntent {
-  readonly target: string;
-  readonly kind: AnimationKind;
-}
-
-export interface AnimationDirectorDeps {
-  /** Emits the current list of active currency pairs (from CurrencyPairsPresenter). */
-  readonly pairs$: Observable<readonly CurrencyPair[]>;
-
-  /** Returns the live price stream for a given pair (from PriceStreamPresenter). */
-  readonly priceFor: (pair: CurrencyPair) => Observable<Price>;
-
-  readonly connectionStatus$: Observable<ConnectionStatus>;
-
-  /** Emits an outcome for every subscribed FX trade execution attempt. */
-  readonly executions$: Observable<ExecutionOutcome>;
-
-  /** Raw RfqEvent stream for credit workflow animation signals. */
-  readonly rfqEvents$: Observable<RfqEvent>;
-
-  /** Emits { symbol } for each equity order fill (from OrdersBlotterPresenter). */
-  readonly equityFills$: Observable<EquityFillSignal>;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { AnimationDirectorDeps, AnimationIntent, AnimationKind };
 
 /** Narrows RfqEvent to rfqClosed variants for type-safe filter predicates. */
 interface RfqClosedEvent {
@@ -93,7 +61,7 @@ function isQuoteAccepted(e: RfqEvent): e is RfqQuoteAcceptedEvent {
  * - banner:connection   → connectionChange   (connection-status change)
  * - ticket:${symbol}    → fill               (equity order filled)
  */
-export class AnimationDirector {
+export class AnimationDirector implements AnimationDirectorApi {
   private readonly all$: Observable<AnimationIntent>;
 
   constructor(deps: AnimationDirectorDeps) {

@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { WatchlistPresenter as WatchlistPresenterApi } from "@rtc/core-api";
 import type {
   EquityInstrument,
   EquityQuote,
@@ -8,7 +9,7 @@ import type {
 
 import { warmReplay } from "./warmReplay.js";
 
-export class WatchlistPresenter {
+export class WatchlistPresenter implements WatchlistPresenterApi {
   private readonly quoteCache = new Map<string, Observable<EquityQuote>>();
 
   readonly watchlist$: Observable<readonly EquityInstrument[]>;

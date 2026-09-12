@@ -1,5 +1,6 @@
 import type { Observable } from "rxjs";
 
+import type { InstrumentsPresenter as InstrumentsPresenterApi } from "@rtc/core-api";
 import {
   type Instrument,
   type InstrumentPort,
@@ -8,7 +9,7 @@ import {
 
 import { warmReplay } from "./warmReplay.js";
 
-export class InstrumentsPresenter {
+export class InstrumentsPresenter implements InstrumentsPresenterApi {
   readonly list$: Observable<readonly Instrument[]>;
 
   constructor(instruments: InstrumentPort) {
