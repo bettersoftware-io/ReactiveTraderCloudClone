@@ -135,7 +135,10 @@ function reconcileTabEntry(
       return { panelId: p.panelId, spec: p.spec };
     });
 
-  return { layout: { root, maximized, collapsed }, docked };
+  return {
+    layout: { root, maximized, collapsed, closed: layout.closed },
+    docked,
+  };
 }
 
 function buildPayload(deps: WorkspacePersistenceWriterDeps): WorkspaceLayoutV1 {

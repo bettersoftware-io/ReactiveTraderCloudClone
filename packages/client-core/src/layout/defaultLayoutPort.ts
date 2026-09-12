@@ -165,6 +165,7 @@ export function createDefaultLayoutPort(tab: WorkspaceTab): LayoutPort {
     root: ROOTS[tab],
     maximized: null,
     collapsed: [],
+    closed: [],
   };
   return { initial };
 }

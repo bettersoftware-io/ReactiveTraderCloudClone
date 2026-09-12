@@ -36,6 +36,17 @@ export interface LayoutIntents {
    * pre-collapsed on a later re-insert of the same id. An unknown `id` is a
    * no-op. */
   removePanel(panelId: PanelId): void;
+  /** Hide a STATIC panel from the workspace (the View menu's uncheck). The
+   * tree keeps its leaf — engines project visibility — so `reopen` restores
+   * the seed position. Refused (no-op) for non-static ids (docked Jarvis
+   * panels have dismiss/undock instead) and when it would hide the tab's
+   * last visible static leaf. Also drops the id's `collapsed` entry and
+   * clears `maximized` if it named this panel — a hidden panel must not
+   * linger as a strip or keep every sibling stripped. */
+  close(id: PanelId): void;
+  /** Un-hide a closed panel (the View menu's re-check). Unknown or not-closed
+   * ids no-op. */
+  reopen(id: PanelId): void;
   /** Discard the tree, `maximized`, and `collapsed` back to `port.initial` —
    * the port this machine was created with. */
   reset(): void;
@@ -49,6 +60,8 @@ type LayoutEvent =
   | { type: "resize"; path: readonly number[]; sizes: readonly number[] }
   | { type: "insertPanel"; id: PanelId }
   | { type: "removePanel"; id: PanelId }
+  | { type: "close"; id: PanelId }
+  | { type: "reopen"; id: PanelId }
   | { type: "reset" };
 
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
@@ -136,6 +149,45 @@ function makeReduce(
           collapsed: layoutState.collapsed.filter((id) => {
             return id !== event.id;
           }),
+          // An undocked Jarvis id must never linger in `closed` either.
+          closed: layoutState.closed.filter((id) => {
+            return id !== event.id;
+          }),
+        };
+      case "close": {
+        if (
+          !staticIds.includes(event.id) ||
+          layoutState.closed.includes(event.id)
+        ) {
+          return layoutState;
+        }
+
+        // The visibility floor: never hide the tab's last visible static
+        // leaf — a workspace with zero panels has no affordance to recover.
+        const visibleAfter = staticIds.filter((id) => {
+          return id !== event.id && !layoutState.closed.includes(id);
+        });
+
+        if (visibleAfter.length === 0) {
+          return layoutState;
+        }
+
+        return {
+          ...layoutState,
+          closed: [...layoutState.closed, event.id],
+          collapsed: layoutState.collapsed.filter((id) => {
+            return id !== event.id;
+          }),
+          maximized:
+            layoutState.maximized === event.id ? null : layoutState.maximized,
+        };
+      }
+      case "reopen":
+        return {
+          ...layoutState,
+          closed: layoutState.closed.filter((id) => {
+            return id !== event.id;
+          }),
         };
       case "reset":
         return port.initial;
@@ -179,6 +231,8 @@ export function createLayoutMachine(
   const resize$ = new Subject<ResizePayload>();
   const insertPanel$ = new Subject<PanelId>();
   const removePanel$ = new Subject<PanelId>();
+  const close$ = new Subject<PanelId>();
+  const reopen$ = new Subject<PanelId>();
   const reset$ = new Subject<void>();
 
   const events$ = merge(
@@ -215,6 +269,16 @@ export function createLayoutMachine(
     removePanel$.pipe(
       map((id): LayoutEvent => {
         return { type: "removePanel", id };
+      }),
+    ),
+    close$.pipe(
+      map((id): LayoutEvent => {
+        return { type: "close", id };
+      }),
+    ),
+    reopen$.pipe(
+      map((id): LayoutEvent => {
+        return { type: "reopen", id };
       }),
     ),
     reset$.pipe(
@@ -258,6 +322,12 @@ export function createLayoutMachine(
       removePanel: (panelId: PanelId) => {
         removePanel$.next(panelId);
       },
+      close: (id: PanelId) => {
+        close$.next(id);
+      },
+      reopen: (id: PanelId) => {
+        reopen$.next(id);
+      },
       reset: () => {
         reset$.next();
       },
@@ -270,6 +340,8 @@ export function createLayoutMachine(
       resize$.complete();
       insertPanel$.complete();
       removePanel$.complete();
+      close$.complete();
+      reopen$.complete();
       reset$.complete();
       warm.unsubscribe();
     },

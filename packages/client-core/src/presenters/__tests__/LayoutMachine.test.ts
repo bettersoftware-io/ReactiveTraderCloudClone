@@ -22,7 +22,12 @@ const root: LayoutNode = {
     { kind: "panel", panelId: "fx-blotter" },
   ],
 };
-const initial: LayoutState = { root, maximized: null, collapsed: [] };
+const initial: LayoutState = {
+  root,
+  maximized: null,
+  collapsed: [],
+  closed: [],
+};
 const port: LayoutPort = { initial };
 
 describe("createLayoutMachine", () => {
@@ -62,6 +67,38 @@ describe("createLayoutMachine", () => {
     m.intents.collapse("fx-analytics");
     m.intents.expand("fx-analytics");
     expect(current(m).collapsed).toEqual([]);
+    m.dispose();
+  });
+
+  it("close() adds the id to closed, drops its collapsed entry and clears maximized", () => {
+    const m = createLayoutMachine(port);
+    m.intents.collapse("fx-analytics");
+    m.intents.maximize("fx-analytics");
+    m.intents.close("fx-analytics");
+    expect(current(m).closed).toEqual(["fx-analytics"]);
+    expect(current(m).collapsed).not.toContain("fx-analytics");
+    expect(current(m).maximized).toBeNull();
+    m.dispose();
+  });
+
+  it("reopen() removes the id; close is idempotent; unknown ids no-op", () => {
+    const m = createLayoutMachine(port);
+    m.intents.close("fx-analytics");
+    m.intents.close("fx-analytics");
+    m.intents.close("not-a-panel");
+    expect(current(m).closed).toEqual(["fx-analytics"]);
+    m.intents.reopen("fx-analytics");
+    expect(current(m).closed).toEqual([]);
+    m.dispose();
+  });
+
+  it("close() refuses to hide the last visible static leaf", () => {
+    const m = createLayoutMachine(port); // fixture: 3 static leaves
+    m.intents.close("fx-rates");
+    m.intents.close("fx-analytics");
+    // Only fx-blotter left visible — this close must no-op.
+    m.intents.close("fx-blotter");
+    expect(current(m).closed).toEqual(["fx-rates", "fx-analytics"]);
     m.dispose();
   });
 
@@ -119,7 +156,12 @@ describe("createLayoutMachine", () => {
     };
 
     const m = createLayoutMachine({
-      initial: { root: initialPxRoot, maximized: null, collapsed: [] },
+      initial: {
+        root: initialPxRoot,
+        maximized: null,
+        collapsed: [],
+        closed: [],
+      },
     });
     m.intents.resize([], [0.6, 0.4]);
     const r = current(m).root;
@@ -155,7 +197,7 @@ describe("createLayoutMachine", () => {
     };
 
     const m = createLayoutMachine({
-      initial: { root: nestedRoot, maximized: null, collapsed: [] },
+      initial: { root: nestedRoot, maximized: null, collapsed: [], closed: [] },
     });
     m.intents.resize([1], [0.3, 0.7]);
     const r = current(m).root;
@@ -361,6 +403,7 @@ describe("createLayoutMachine", () => {
       root: seededRoot,
       maximized: null,
       collapsed: [],
+      closed: [],
     };
 
     it("starts the fold from seedState rather than port.initial", () => {

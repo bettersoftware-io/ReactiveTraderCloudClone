@@ -48,6 +48,11 @@ export interface LayoutState {
   readonly root: LayoutNode;
   readonly maximized: PanelId | null;
   readonly collapsed: readonly PanelId[];
+  /** Panels hidden from the workspace (View-menu close). The tree in `root`
+   * keeps its leaves — engines PROJECT visibility (in-house prunes at
+   * render, Dockview removes/re-adds live) — so reopen restores the seed
+   * position without any tree surgery here. */
+  readonly closed: readonly PanelId[];
 }
 export interface LayoutPort {
   readonly initial: LayoutState;

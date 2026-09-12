@@ -297,7 +297,9 @@ function validateLayoutState(value: unknown): LayoutState | null {
     }
   }
 
-  return { root, maximized, collapsed };
+  // Task 1 placeholder semantics: `closed` parsing lands with the
+  // persistence task; until then a parsed layout starts with none closed.
+  return { root, maximized, collapsed, closed: [] };
 }
 
 function validateDockedEntry(value: unknown): DockedPanelEntry | null {
