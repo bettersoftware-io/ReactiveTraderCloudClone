@@ -5,6 +5,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
 
+// packages/client-react — the webServer command runs from here (see below).
+const PACKAGE_DIR = fileURLToPath(new URL("../../../..", import.meta.url));
+
 // Goldens live in @rtc/ui-contract, beside the pixel-contract spec they assert
 // against (scenarios.ts / scenarioActions.ts / fixtures.ts / goldenPath.ts) —
 // generated exclusively from THIS package's renders (react is the reference
@@ -131,12 +134,28 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
   },
   webServer: {
-    // cwd for this command is the directory of THIS config file, so the host
-    // vite config is addressed in-suite; `pnpm exec` resolves the vite binary
-    // from the owning package regardless of cwd depth.
-    command: "pnpm exec vite --config host/vite.config.ts",
+    // Spawn from the OWNING PACKAGE's directory, not this config's. `pnpm exec`
+    // resolves a binary from the nearest package.json, and this nested dir has
+    // none: under `pnpm run …` that was masked (pnpm puts the package's
+    // node_modules/.bin on PATH first), but any direct launch of the playwright
+    // binary — a worktree, a script, an MCP — died with `Command "vite" not
+    // found` (measured 2026-09-12), and the workaround was a hand-started vite
+    // that `reuseExistingServer` then adopted. That workaround is what the
+    // next setting closes, so the command has to work on its own.
+    cwd: PACKAGE_DIR,
+    command:
+      "pnpm exec vite --config tests/ui/visual/playwright/host/vite.config.ts",
     url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // Never adopt a server this run did not start. This was `!process.env.CI`,
+    // which silently reused whatever already listened on the port — a vite
+    // from a SIBLING worktree (every checkout shares 3200), or from a worktree
+    // since removed — so a local pixel run could pass (or, with `:update`,
+    // WRITE goldens) from a tree that was not the one under test, and nothing
+    // said so. `false` makes Playwright refuse to start while the port is held
+    // ("… is already used"): loud, and the right answer. Find the holder with
+    // `lsof -p $(lsof -tiTCP:3200 -sTCP:LISTEN) | grep cwd` before killing it —
+    // a live sibling session may own it.
+    reuseExistingServer: false,
     timeout: 60_000,
   },
   projects: [

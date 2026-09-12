@@ -43,6 +43,16 @@ and narrates them — three shipped systems in one choreographed turn); and
 waterfall — each closed-vocab `PanelSpec` kind multiplies what every future
 feature can express without ever granting the model arbitrary UI power).
 
+### Generative-UI standards adapter (A2UI / MCP Apps)
+
+Expose the Jarvis panel surface to external hosts through an emerging
+agent-UI standard — a server-side `PanelSpec` ↔ standard-messages adapter, the
+same boundary move as the `/mcp` endpoint. Assessed 2026-09-10 and deliberately
+**not** adopted as the internal contract (pre-GA specs, unsettled standards
+race, our domain vocabulary is stronger than the generic catalogs); evaluate
+MCP Apps before A2UI if an interop round ever happens. Full comparison:
+[research/2026-09-10-a2ui-genui-standards-landscape.md](research/2026-09-10-a2ui-genui-standards-landscape.md).
+
 ## Tooling & workflow
 
 ### Adopt a GitHub merge queue
