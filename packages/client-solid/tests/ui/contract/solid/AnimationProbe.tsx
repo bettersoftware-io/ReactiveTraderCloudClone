@@ -14,9 +14,9 @@ import { useViewModel } from "@rtc/solid-bindings";
  */
 export function AnimationProbe(props: AnimationProbeProps): JSX.Element {
   const { useAnimationIntents } = useViewModel();
-  // useAnimationIntents subscribes at CALL time from a plain target string,
-  // not an accessor: a deliberate snapshot of the target this probe mounted
-  // for, spelt `untrack`. The rendered `intent()` read below stays live.
+  // Snapshot: useAnimationIntents subscribes once at call time. Correct only
+  // because registry.tsx constructs a fresh probe per contract test, so no
+  // mounted instance is ever handed a new target. `intent()` below is live.
   const intent = useAnimationIntents(
     untrack((): string => {
       return props.target;

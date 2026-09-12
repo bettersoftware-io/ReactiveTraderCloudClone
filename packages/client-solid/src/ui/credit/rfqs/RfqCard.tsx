@@ -74,17 +74,20 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
     return Math.ceil(remainingMs() / 1000);
   });
 
-  // Captured ONCE at component setup (Solid components run their body once
-  // per mount, the direct analogue of React's `useState(() => ...)`
-  // initializer): the drain bar is a single mount-time CSS animation over
-  // the RFQ's full lifetime, fast-forwarded to "now" via a negative
-  // animation-delay — NOT re-driven per countdown tick (per-tick geometry
-  // writes kept a main-thread animation alive every frame; see
-  // RfqCard.module.css .barFill).
-  const barTiming: JSX.CSSProperties = {
-    "--bar-duration": `${totalMs}ms`,
-    "--bar-delay": `${Math.min(0, remainingMs() - totalMs)}ms`,
-  };
+  // Deliberate snapshot: the drain bar is a SINGLE mount-time CSS animation
+  // over the RFQ's full lifetime, fast-forwarded to "now" via a negative
+  // animation-delay. Re-reading `remainingMs()` per countdown tick would
+  // rewrite both custom properties and re-trigger the keyframe every tick —
+  // the per-frame main-thread animation this shape avoids (see
+  // RfqCard.module.css .barFill). `remainingMs` is a local accessor, so the
+  // lint rule does not fire on it; spelt `untrack` anyway, because the shape
+  // should follow the intent and not where the rule happens to fire.
+  const barTiming = untrack((): JSX.CSSProperties => {
+    return {
+      "--bar-duration": `${totalMs}ms`,
+      "--bar-delay": `${Math.min(0, remainingMs() - totalMs)}ms`,
+    };
+  });
   let cardEl!: HTMLDivElement;
 
   // Ignore animations bubbling up from descendants (none currently exist,

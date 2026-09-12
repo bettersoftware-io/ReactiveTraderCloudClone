@@ -14,9 +14,9 @@ import styles from "./DepthLadder.module.css";
 
 export function DepthLadder(props: DepthLadderProps): JSX.Element {
   const { useDepth } = useViewModel();
-  // useDepth subscribes at CALL time from a plain symbol, not an accessor: a
-  // deliberate snapshot of the symbol this ladder mounted with, spelt
-  // `untrack`.
+  // Snapshot: useDepth subscribes once at call time. Correct only because
+  // EqDepthDock's <Show when={state().sel} keyed> remounts this ladder
+  // whenever the workspace selection changes.
   const book = useDepth(
     untrack((): string => {
       return props.symbol;

@@ -28,16 +28,15 @@ interface PropsHostProps<P> {
  * `@rtc/solid-bindings`'s own `createViewModel` uses internally), rather
  * than hand-rolling a second subscribe/cleanup pair for this one host. */
 export function PropsHost<P>(props: PropsHostProps<P>): JSX.Element {
-  // One subscription, opened once from the subject this host mounted with —
-  // its identity never changes, only its emissions do, and those stay live
-  // through `value`. A deliberate snapshot, spelt `untrack`.
+  // Snapshot: toSignal subscribes once at call time. Correct because
+  // props.subject's IDENTITY is fixed for one mount (the doc comment above);
+  // its emissions stay live through `value`.
   const value = untrack((): Accessor<Partial<P>> => {
     return toSignal(state(props.subject, props.subject.getValue()));
   });
 
-  // `build` constructs the tree once; what stays live is the accessor it
-  // reads through at each JSX use site, never a re-invocation of build.
-  return untrack((): JSX.Element => {
-    return props.build(value);
-  });
+  // Live: a JSX expression container, so `props.build` is read where it is
+  // used. No snapshot needed — the accessor each registry entry reads through
+  // is what carries the emissions either way.
+  return <>{props.build(value)}</>;
 }

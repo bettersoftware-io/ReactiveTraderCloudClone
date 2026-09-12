@@ -10,9 +10,9 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
-  // useAnimationIntents subscribes at CALL time from a plain target string,
-  // not an accessor: a deliberate snapshot of the RFQ this ticket mounted
-  // for, spelt `untrack`. Every props.rfq read below stays live.
+  // Snapshot: useAnimationIntents subscribes once at call time. Correct only
+  // because SellSideRfqRow's <Show when={abQuote()} keyed> remounts this
+  // ticket, and `rfq.id` is a readonly domain field across those remounts.
   const anim = useAnimationIntents(
     untrack((): string => {
       return `rfq:${props.rfq.id}`;

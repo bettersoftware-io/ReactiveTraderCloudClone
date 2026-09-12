@@ -104,9 +104,9 @@ interface JarvisPanelCardProps {
 
 function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
   const { useJarvisPanelData, usePowerSaver } = useViewModel();
-  // useJarvisPanelData subscribes at CALL time from a plain panel id, not an
-  // accessor: a deliberate snapshot of the panel this card mounted for,
-  // spelt `untrack`. Every props.panel() read below stays live.
+  // Snapshot: useJarvisPanelData subscribes once at call time. Correct only
+  // while JarvisPanelLayer's id-then-lookup <For>/<Show> mounts one card per
+  // panel id. Every props.panel() read below is live.
   const data = useJarvisPanelData(
     untrack((): string => {
       return props.panel().panelId;

@@ -89,9 +89,9 @@ interface CellProps {
 
 function HeatCell(props: CellProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // useEquityQuote subscribes at CALL time from a plain symbol, not an
-  // accessor: a deliberate snapshot of the symbol this cell mounted with,
-  // spelt `untrack`. The props.symbol reads below stay live.
+  // Snapshot: useEquityQuote subscribes once at call time. Correct only while
+  // the inner <For each={insts}> keys on the EquityInstrument reference
+  // (static per-symbol metadata). The props.symbol reads below are live.
   const quote = useEquityQuote(
     untrack((): string => {
       return props.symbol;

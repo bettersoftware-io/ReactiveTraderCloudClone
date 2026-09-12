@@ -18,9 +18,9 @@ import {
 } from "./pinnedFixtureLayoutPort";
 
 export function LayoutEngineHost(props: LayoutEngineHostProps): JSX.Element {
-  // Picks the LayoutPort handed to the machine factory below, which runs
-  // exactly once: a deliberate snapshot of the fixture this host mounted
-  // with, spelt `untrack`. The props.pinnedFixture read in the JSX stays live.
+  // Snapshot: picks the LayoutPort handed to useMachine's factory, which runs
+  // once. Correct only because this host is mounted fresh per contract test,
+  // never toggled in place. The props.pinnedFixture read in the JSX is live.
   const port = untrack((): LayoutPort => {
     return props.pinnedFixture
       ? pinnedFixtureLayoutPort

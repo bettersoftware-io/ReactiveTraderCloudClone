@@ -104,9 +104,8 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
     useViewModel();
 
-  // useLayout resolves a composition-root singleton at CALL time from a plain
-  // tab value, not an accessor: a deliberate snapshot of the tab this engine
-  // mounted for, spelt `untrack`. props.tab reads below stay live.
+  // Snapshot: useLayout resolves the per-tab singleton once at call time.
+  // Correct only while App's keyed <Show> remounts this engine per tab.
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
     untrack((): WorkspaceTab => {
       return props.tab;

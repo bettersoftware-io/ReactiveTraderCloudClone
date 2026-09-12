@@ -31,9 +31,9 @@ import styles from "./WatchlistRow.module.css";
  */
 export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
-  // useEquityQuote subscribes at CALL time from a plain symbol, not an
-  // accessor: a deliberate snapshot of the symbol this row mounted with,
-  // spelt `untrack`. The props.symbol reads below stay live.
+  // Snapshot: useEquityQuote subscribes once at call time. Correct only while
+  // WatchlistPanel's <For each={committedOrder()}> keys on the symbol string
+  // itself. The props.symbol reads below are live.
   const quote = useEquityQuote(
     untrack((): string => {
       return props.symbol;

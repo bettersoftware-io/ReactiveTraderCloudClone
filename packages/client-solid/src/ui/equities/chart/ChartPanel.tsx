@@ -82,10 +82,10 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     updateDrawing,
   } = useEqDrawings();
 
-  // These three subscribe at CALL time from a plain symbol/timeframe, not an
-  // accessor (see the SOLID PORT NOTE above) — so the seed is a deliberate
-  // snapshot of the key this body mounted with, and `untrack` says so. Every
-  // other read of props.symbol/props.timeframe below stays live.
+  // Snapshot: the three hooks below take plain values and subscribe once at
+  // call time. Correct only because ChartPanel's keyed <Show> remounts this
+  // body on every `sel::timeframe` change (the SOLID PORT NOTE above). Every
+  // other props.symbol/props.timeframe read below is live.
   const seedSymbol = untrack((): string => {
     return props.symbol;
   });

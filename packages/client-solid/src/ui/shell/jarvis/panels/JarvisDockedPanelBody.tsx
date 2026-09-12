@@ -34,9 +34,9 @@ export function JarvisDockedPanelBody(
   props: JarvisDockedPanelBodyProps,
 ): JSX.Element {
   const { useJarvisPanelData } = useViewModel();
-  // useJarvisPanelData subscribes at CALL time from a plain panel id, not an
-  // accessor: a deliberate snapshot of the panel this body mounted for,
-  // spelt `untrack`. The props.panelId read in `panel` below stays live.
+  // Snapshot: useJarvisPanelData subscribes once at call time. Correct only
+  // while the parent mounts exactly one body per docked panel id. The
+  // props.panelId read in `panel` below is live.
   const data = useJarvisPanelData(
     untrack((): string => {
       return props.panelId;

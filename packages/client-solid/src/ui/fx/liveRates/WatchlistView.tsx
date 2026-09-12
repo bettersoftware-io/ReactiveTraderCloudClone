@@ -68,9 +68,9 @@ const NO_VALUE = "—";
 
 function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = useViewModel();
-  // Same seam as Tile.tsx: both hooks take a VALUE, so each row's streams are
-  // seeded once from the pair it mounted with — a deliberate snapshot, spelt
-  // `untrack`. Every rendered read of `props.pair` below stays live.
+  // Snapshot: both hooks take a VALUE and subscribe once at call time.
+  // Correct only while this <For each={props.pairs}> keys on the CurrencyPair
+  // reference (same invariant as Tile.tsx). JSX reads below are live.
   const seedPair = untrack((): CurrencyPair => {
     return props.pair;
   });

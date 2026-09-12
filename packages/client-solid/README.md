@@ -82,43 +82,64 @@ outside tracked scope. This port carries **zero** `solid/reactivity`
 directives, in `src/` and `tests/` alike, and adding one is a review defect:
 the rule is right often enough that a suppression is the wrong tool.
 
-**The two mechanisms** actually in use:
+**The default is a live read.** A read that feeds rendered output belongs in
+the JSX (or in an accessor/`createMemo` the JSX calls), where it is tracked. A
+value copied to a `const` at setup and used in JSX later is the bug the rule
+exists to catch, not a false positive; `<For>`- and `<Show>`-scoped reads must
+STAY in the JSX body for the same reason. Where a prop is a callback, forward
+it (`function finishBoot() { props.onDone(); }`) rather than capturing it, so
+the read happens when it fires — see `BootSequence.tsx`.
 
-- **Live reads.** A read that feeds rendered output belongs in the JSX (or in
-  an accessor/`createMemo` the JSX calls), where it is tracked. A value copied
-  to a `const` at setup and used in JSX later is the bug the rule exists to
-  catch, not a false positive. `<For>`- and `<Show>`-scoped reads must STAY in
-  the JSX body for the same reason.
-- **`untrack(() => …)` for a deliberate snapshot.** Where the read really is a
-  one-time seed — this port's ViewModel hooks (`usePrice(pair)`,
-  `useDepth(symbol)`, `useQuotesForRfq(id)`, …) take a VALUE, not an accessor,
-  so they subscribe once at call time; a popover's editing signals are seeded
-  then owned by the user; `RfqCountdown`'s CSS custom properties drive one
-  mount-time keyframe that a per-tick rewrite would re-trigger — wrap the read
-  in `untrack` and say why in one line. It is rule-clean, and unlike a
-  directive it states the intent in the code rather than asserting it in a
-  comment.
+**What `untrack(() => …)` does, and what it does not.** At the top level of a
+component body it is a **runtime no-op**: Solid already calls a component
+inside one (`createComponent` is `untrack(() => Comp(props))`, solid.js), so
+`untrack(() => props.x)` there subscribes to exactly as much as the bare
+`props.x` it replaces — nothing. What it does is *declare*, to the reader and
+to `eslint-plugin-solid` (which registers its callback as a tracked scope, its
+sanctioned opt-out), that the snapshot is deliberate. It **makes nothing
+safe.** Whatever invariant keeps a given snapshot correct still has to hold,
+and still has to be named in one line at the site.
 
-Prefer the first. "Safe because the parent keys its `<For>` on this value" is
-**not** a reason to snapshot — it is a reason to make the read live, so the
-code stops depending on a parent's keying; that argument was load-bearing at
-45 sites here and is now load-bearing at none. Where a prop is a callback,
-forward it (`function finishBoot() { props.onDone(); }`) rather than capturing
-it, so the read happens when it fires — see `BootSequence.tsx`.
+Snapshots here fall into two groups, and they are not equally comfortable:
+
+- **Forced by the seam (~18 sites).** The `@rtc/solid-bindings` ViewModel
+  hooks — `usePrice(pair)`, `useEquityQuote(symbol)`, `useQuotesForRfq(id)`,
+  `useAnimationIntents(target)`, … — take a **value**, not an accessor, and
+  subscribe once at call time; there is no live form to write. Their
+  correctness therefore still rests on the parent keying its mount on that
+  value (`<For>` on the `CurrencyPair` reference, a keyed `<Show>` on
+  `sel::timeframe`, …), exactly as it did when these sites carried directives.
+  That is a **known parity gap** with `@rtc/react-bindings`, whose hooks are
+  live only because React re-runs the component — not a design virtue. The fix
+  is a follow-up: an additive `T | Accessor<T>` overload on the
+  **pure-subscription** hooks (`usePrice`, `usePriceHistory`, `useStaleFlag`,
+  `useQuotesForRfq`, `useAnimationIntents`, `useEquityQuote`, `useCandles`,
+  `useCandleBackfill`, `useDepth`, `useJarvisPanelData`) with key-driven
+  resubscribe in `toSignal`. It must NOT be applied to the machine-seed hooks
+  (`useRowHighlight`, `useRfqCountdown`, `useNotional`, `useBootSequence`,
+  `useLayout`), where disposing and rebuilding a machine on a key change would
+  restart a timer or tear down a shared singleton.
+- **Deliberate, for a behavioural reason (~11 sites).** A live read would make
+  things worse: `RfqCountdown`/`RfqCard` drive ONE mount-time CSS keyframe
+  fast-forwarded by a negative delay, and a per-tick rewrite re-triggers it
+  every tick; the blotter filter popovers seed editing signals the user then
+  owns, so a live read would clobber half-typed input; `BlotterRow`'s decay
+  machine owns its flag on its own timer. These are correct as snapshots and
+  stay that way whatever the seam does.
 
 One read is a snapshot no matter how it is written: a context Provider's
 `value`. Solid's own `createProvider` reads it inside an `untrack`, so
 `ViewModelProvider` wraps it in an explicit one to say so.
 
-One shape needs neither mechanism, and is worth its own note: a bookkeeping
-`createEffect` that diffs the current emission against the previous one
+One shape needs neither a live read nor a snapshot, and is worth its own
+note: a bookkeeping `createEffect` that diffs the current emission against the previous one
 (new-trade/new-RFQ flash, RFQ entrance/exit cascades) used to seed that
 "previous" baseline with a plain `let prev… = accessor()` read at setup,
 outside tracking. `on()` supplies that baseline natively — its first run
 establishes it — so there's nothing left to read outside tracking. Use it
 **without** `{ defer: true }`: that option skips *calling* the callback on
-mount, but does not preserve the
-mount-time read as the following call's `previous` (measured — the first
+mount, but does not preserve the mount-time read as the following call's
+`previous` (measured — the first
 non-deferred call gets a valid baseline; under `defer: true` that same call
 gets `previous: undefined` instead), which reintroduces the exact bug the
 seed existed to prevent, just shifted one tick later. Fall back to the

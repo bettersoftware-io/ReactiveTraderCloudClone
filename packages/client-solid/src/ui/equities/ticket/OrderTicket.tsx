@@ -114,9 +114,9 @@ interface TicketBodyProps {
 
 function TicketBody(props: TicketBodyProps): JSX.Element {
   const { useEquityQuote, useAnimationIntents } = useViewModel();
-  // Both subscribe at CALL time from a plain symbol, not an accessor (see the
-  // SOLID PORT NOTE above): a deliberate snapshot of the symbol this body
-  // mounted with, spelt `untrack`. props.symbol reads further down stay live.
+  // Snapshot: both hooks take a plain symbol and subscribe once at call time.
+  // Correct only because OrderTicket's <Show when={sym()} keyed> remounts this
+  // body on a symbol change (the SOLID PORT NOTE above).
   const seedSymbol = untrack((): string => {
     return props.symbol;
   });

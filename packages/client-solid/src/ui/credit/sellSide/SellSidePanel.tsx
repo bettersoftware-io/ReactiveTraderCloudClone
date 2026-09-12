@@ -98,10 +98,9 @@ interface SellSideRfqRowProps {
 
 function SellSideRfqRow(props: SellSideRfqRowProps): JSX.Element {
   const { useQuotesForRfq } = useViewModel();
-  // useQuotesForRfq subscribes at CALL time from a plain id, not an
-  // accessor: a deliberate snapshot of the RFQ this row mounted for, spelt
-  // `untrack` (mirrors RfqsPanel's RfqCardCell of the same shape). Every
-  // props.rfq read below stays live.
+  // Snapshot: useQuotesForRfq subscribes once at call time. Correct only
+  // while the <For each={rfqIds()}> above keys on the id itself (mirrors
+  // RfqsPanel's RfqCardCell). Every props.rfq read below is live.
   const quotes = useQuotesForRfq(
     untrack((): number => {
       return props.rfq.id;

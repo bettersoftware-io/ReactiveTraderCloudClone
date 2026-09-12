@@ -35,11 +35,11 @@ export function Tile(props: TileProps): JSX.Element {
     useAnimationIntents,
   } = useViewModel();
 
-  // Each hook below opens a per-pair subscription or machine keyed on the
-  // pair, once: they take a VALUE, not an accessor, so the seed is a
-  // deliberate snapshot of the pair this Tile mounted with, and `untrack`
-  // says so at the seam. The rendered reads of `props.pair` further down are
-  // live, so nothing here rests on how the parent keys its <For>.
+  // Snapshot: all seven hooks take a VALUE, not an accessor, so each
+  // subscribes once at call time. Correct only while LiveRatesPanel keys its
+  // <For each={filteredPairs()}> on the CurrencyPair reference (static
+  // per-symbol metadata), so a Tile remounts rather than re-seeding when its
+  // pair changes. The `props.pair` reads in the JSX below are live.
   const seedPair = untrack((): CurrencyPair => {
     return props.pair;
   });

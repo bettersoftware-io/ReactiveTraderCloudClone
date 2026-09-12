@@ -17,11 +17,12 @@ interface ViewModelProviderProps {
  * reactive getters backed by a proxy, and destructuring would snapshot the
  * value once instead of tracking it. */
 export function ViewModelProvider(props: ViewModelProviderProps): JSX.Element {
-  // `untrack` is not belt-and-braces here, it is the truth: Solid's own
-  // `createProvider` reads `props.value` inside an `untrack` (solid.js,
-  // `createRenderEffect(() => res = untrack(() => { ...[id]: props.value }))`),
-  // so this one JSX position is a snapshot no matter how it is written. Saying
-  // so at the call site beats a directive claiming it.
+  // Snapshot, unavoidably: Solid's own `createProvider` reads `props.value`
+  // inside an `untrack` (solid.js, `createRenderEffect(() => res =
+  // untrack(() => { ...[id]: props.value }))`), so this one JSX position is a
+  // snapshot however it is written. Correct because every call site (AppRoot,
+  // the contract render() helper, VisualScenario) mounts a fresh Provider
+  // around a fresh ViewModel, never re-values a mounted one.
   return (
     <ViewModelContext.Provider
       value={untrack((): ViewModel => {
