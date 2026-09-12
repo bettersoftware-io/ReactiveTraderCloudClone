@@ -70,4 +70,12 @@ export function createMachineFactories(
   return composeMachinesWithBase(presenters).machines;
 }
 
-export const asyncCore: CoreFactory = { createApp, createMachineFactories };
+/** Survives minification as a literal; `check:core-bundle` greps for it to
+ * prove a build that did not select this core did not ship it. */
+export const ASYNC_CORE_BRAND = "@rtc/client-core-async:brand";
+
+export const asyncCore: CoreFactory & { readonly brand: string } = {
+  brand: ASYNC_CORE_BRAND,
+  createApp,
+  createMachineFactories,
+};

@@ -165,11 +165,23 @@ jobs:
       - name: Devtools coverage gates (core + app, ≥95%, branches ≥85%)
         run: pnpm --filter @rtc/devtools-core test:coverage && pnpm --filter @rtc/devtools-app test:coverage
 
+      # The two alternative application cores (slice 0 of the pluggable-core
+      # workstream) carry the same coverage bar as every other package.
+      - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
+
       - name: Build
         run: pnpm build
 
       - name: Prod /devtools/ bundle check
         run: pnpm check:devtools-dist
+
+      # Builds each web client once per application core (rxjs/async/effect)
+      # into a temp dir and asserts a build that selected core X shipped no
+      # other core's runtime — proves selectCore.ts's literal comparison
+      # actually lets rolldown tree-shake the unselected cores out.
+      - name: Core bundle isolation (one application core per build)
+        run: pnpm check:core-bundle
 
       # This step used to tolerate ONE failure signature: worklets' Babel plugin
       # throwing `Cannot read properties of undefined (reading 'length')` on

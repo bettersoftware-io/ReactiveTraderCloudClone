@@ -1,6 +1,7 @@
 export { iterate, once } from "#/bridge/in";
 export { storeToStateStream, topicToStream } from "#/bridge/out";
 export {
+  ASYNC_CORE_BRAND,
   asyncCore,
   composeMachinesWithBase,
   composeWithBase,
