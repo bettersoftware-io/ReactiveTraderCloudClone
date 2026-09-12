@@ -104,9 +104,12 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
     useViewModel();
 
+  // Snapshot: useLayout resolves the per-tab singleton once at call time.
+  // Correct only while App's keyed <Show> remounts this engine per tab.
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
-    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
-    props.tab,
+    untrack((): WorkspaceTab => {
+      return props.tab;
+    }),
   );
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged

@@ -1,4 +1,11 @@
-import { type Accessor, createMemo, Index, type JSX, Show } from "solid-js";
+import {
+  type Accessor,
+  createMemo,
+  Index,
+  type JSX,
+  Show,
+  untrack,
+} from "solid-js";
 
 import type { DepthBook, DepthLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -7,13 +14,14 @@ import styles from "./DepthLadder.module.css";
 
 export function DepthLadder(props: DepthLadderProps): JSX.Element {
   const { useDepth } = useViewModel();
-  // props.symbol is fixed for this DepthLadder's whole lifetime: its one
-  // real caller, EqDepthDock, wraps it in a keyed <Show when={state().sel}
-  // keyed> that fully remounts DepthLadder whenever the workspace selection
-  // changes (see EqDepthDock.tsx's doc comment, and ChartPanel.tsx's for the
-  // same keyed-remount pattern in full).
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const book = useDepth(props.symbol);
+  // Snapshot: useDepth subscribes once at call time. Correct only because
+  // EqDepthDock's <Show when={state().sel} keyed> remounts this ladder
+  // whenever the workspace selection changes.
+  const book = useDepth(
+    untrack((): string => {
+      return props.symbol;
+    }),
+  );
 
   return (
     <Show

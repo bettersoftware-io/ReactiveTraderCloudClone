@@ -1,6 +1,7 @@
 import { state } from "@rx-state/core";
 import type { BehaviorSubject } from "rxjs";
 import type { Accessor, JSX } from "solid-js";
+import { untrack } from "solid-js";
 
 import { toSignal } from "@rtc/solid-bindings/toSignal";
 
@@ -27,8 +28,15 @@ interface PropsHostProps<P> {
  * `@rtc/solid-bindings`'s own `createViewModel` uses internally), rather
  * than hand-rolling a second subscribe/cleanup pair for this one host. */
 export function PropsHost<P>(props: PropsHostProps<P>): JSX.Element {
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: this component's setup runs exactly once by construction (see doc comment above), and props.subject's IDENTITY never changes across one mount — only its emitted values do, which flow through the wrapped `value` accessor reactively, not through re-reading props.subject
-  const value = toSignal(state(props.subject, props.subject.getValue()));
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: props.build is a builder function invoked once (see doc comment above) to construct the JSX tree; the reactive accessor it receives and reads through at each JSX use site is what stays live, not a re-invocation of build itself
-  return props.build(value);
+  // Snapshot: toSignal subscribes once at call time. Correct because
+  // props.subject's IDENTITY is fixed for one mount (the doc comment above);
+  // its emissions stay live through `value`.
+  const value = untrack((): Accessor<Partial<P>> => {
+    return toSignal(state(props.subject, props.subject.getValue()));
+  });
+
+  // Live: a JSX expression container, so `props.build` is read where it is
+  // used. No snapshot needed — the accessor each registry entry reads through
+  // is what carries the emissions either way.
+  return <>{props.build(value)}</>;
 }

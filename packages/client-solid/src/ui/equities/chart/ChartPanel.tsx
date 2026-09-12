@@ -1,4 +1,4 @@
-import { type Accessor, createMemo, type JSX, Show } from "solid-js";
+import { type Accessor, createMemo, type JSX, Show, untrack } from "solid-js";
 
 import type { EqDrawing } from "@rtc/client-core";
 import {
@@ -81,12 +81,22 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
     shiftAnchors,
     updateDrawing,
   } = useEqDrawings();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const quote = useEquityQuote(props.symbol);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const candles = useCandles(props.symbol, props.timeframe);
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see the SOLID PORT NOTE doc comment on ChartPanel above)
-  const backfill = useCandleBackfill(props.symbol, props.timeframe);
+
+  // Snapshot: the three hooks below take plain values and subscribe once at
+  // call time. Correct only because ChartPanel's keyed <Show> remounts this
+  // body on every `sel::timeframe` change (the SOLID PORT NOTE above). Every
+  // other props.symbol/props.timeframe read below is live.
+  const seedSymbol = untrack((): string => {
+    return props.symbol;
+  });
+
+  const seedTimeframe = untrack((): CandleTimeframe => {
+    return props.timeframe;
+  });
+
+  const quote = useEquityQuote(seedSymbol);
+  const candles = useCandles(seedSymbol, seedTimeframe);
+  const backfill = useCandleBackfill(seedSymbol, seedTimeframe);
   // Alias so biome's (React-centric) useHookAtTopLevel heuristic no longer
   // matches on the name `useCandles`: solid-bindings' `use*` functions are
   // plain factories (toSignal-based), not React hooks, and calling one

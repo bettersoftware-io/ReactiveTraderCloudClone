@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, Show, untrack } from "solid-js";
 
 import { type JarvisPanelVm, MAX_DOCKED_PANELS } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -104,8 +104,14 @@ interface JarvisPanelCardProps {
 
 function JarvisPanelCard(props: JarvisPanelCardProps): JSX.Element {
   const { useJarvisPanelData, usePowerSaver } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct: this card's panelId is fixed for its whole lifetime (the parent's id-then-lookup <For>/<Show> only ever mounts one JarvisPanelCard per id — see JarvisPanelLayer's doc comment).
-  const data = useJarvisPanelData(props.panel().panelId);
+  // Snapshot: useJarvisPanelData subscribes once at call time. Correct only
+  // while JarvisPanelLayer's id-then-lookup <For>/<Show> mounts one card per
+  // panel id. Every props.panel() read below is live.
+  const data = useJarvisPanelData(
+    untrack((): string => {
+      return props.panel().panelId;
+    }),
+  );
   const { isFreeze } = usePowerSaver();
   let rootRef: HTMLDivElement | undefined;
 

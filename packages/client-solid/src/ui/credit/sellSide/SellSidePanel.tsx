@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, Show, untrack } from "solid-js";
 
 import {
   ADAPTIVE_BANK_NAME,
@@ -98,14 +98,15 @@ interface SellSideRfqRowProps {
 
 function SellSideRfqRow(props: SellSideRfqRowProps): JSX.Element {
   const { useQuotesForRfq } = useViewModel();
-  // props.rfq.id is fixed for this SellSideRfqRow's whole lifetime: the
-  // outer <For each={rfqIds()}> above is keyed by id itself (never the Rfq
-  // object — this file's own doc comment above), and the
-  // <Show when={rfq()} keyed> wrapping this component looks up that SAME id
-  // on every re-invocation; id is a `readonly` domain field, immutable for
-  // the RFQ's whole life (mirrors RfqsPanel's RfqCardCell of the same shape).
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct (see doc comment above)
-  const quotes = useQuotesForRfq(props.rfq.id);
+  // Snapshot: useQuotesForRfq subscribes once at call time. Correct only
+  // while the <For each={rfqIds()}> above keys on the id itself (mirrors
+  // RfqsPanel's RfqCardCell). Every props.rfq read below is live.
+  const quotes = useQuotesForRfq(
+    untrack((): number => {
+      return props.rfq.id;
+    }),
+  );
+
   const abQuote = createMemo((): Quote | undefined => {
     return quotes().find((q) => {
       return q.dealerId === props.adaptiveBankId;
