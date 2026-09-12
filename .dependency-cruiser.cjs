@@ -194,7 +194,19 @@ module.exports = {
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(ui-contract|client-core|domain|motion-core)/",
+        pathNot:
+          "^packages/(ui-contract|client-core|core-api|domain|motion-core)/",
+      },
+    },
+    {
+      name: "core-api-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/core-api is the types-only application-core contract — it may import only domain/shared (types), never a core, a binding, a client, or the server.",
+      from: { path: "^packages/core-api/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(core-api|domain|shared)/",
       },
     },
     {
@@ -205,7 +217,7 @@ module.exports = {
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|domain|shared)/",
+        pathNot: "^packages/(client-core|core-api|domain|shared)/",
       },
     },
     {
@@ -224,7 +236,7 @@ module.exports = {
       from: { path: "^packages/react-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(react-bindings|client-core|domain)/",
+        pathNot: "^packages/(react-bindings|client-core|core-api|domain)/",
       },
     },
     {
@@ -235,7 +247,7 @@ module.exports = {
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(solid-bindings|client-core|domain)/",
+        pathNot: "^packages/(solid-bindings|client-core|core-api|domain)/",
       },
     },
     {

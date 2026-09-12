@@ -9,6 +9,10 @@
     // sandbox's isolated-dist / shared-root split can't desync emit.
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "references": [{ "path": "../domain" }, { "path": "../shared" }],
+  "references": [
+    { "path": "../core-api" },
+    { "path": "../domain" },
+    { "path": "../shared" }
+  ],
   "include": ["src"]
 }

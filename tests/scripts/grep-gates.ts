@@ -476,6 +476,12 @@ const GATES: Gate[] = [
       );
     },
   },
+  {
+    name: "42. @rtc/core-api exports no runtime value (types-only contract)",
+    pattern: "^export (const|let|function|class|enum|async function) ",
+    paths: ["../packages/core-api/src/"],
+    excludes: ["/__tests__/", ".test."],
+  },
 ];
 
 let failed = 0;
