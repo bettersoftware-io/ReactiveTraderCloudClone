@@ -1870,6 +1870,41 @@ const capturedDockview = vi.hoisted(() => {
 // Passthrough capture of the engine's dockview api: behaviour is untouched,
 // but tests get a handle for `moveTo` — the operation a DROP performs
 // (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
+describe("stacked visual fixture (Phase 2)", () => {
+  // The shell/layout-dockview-stacked scenario seeds BOTH clients' wrappers
+  // with this exact blob (tests/ui/visual/*/stackedFxBlob.ts, duplicated by
+  // the wrappers' self-contained convention). This test is the fixture's
+  // shape witness: if the blob format ever moves, fixture and test fail
+  // together, loudly, here.
+  const STACKED_FX_BLOB =
+    '{"grid":{"root":{"type":"branch","data":[{"type":"branch","data":[{"type":"leaf","data":{"views":["fx-rates","fx-analytics"],"activeView":"fx-rates","id":"group-1"},"size":419},{"type":"leaf","data":{"views":["fx-blotter"],"activeView":"fx-blotter","id":"group-2"},"size":281}],"size":942},{"type":"leaf","data":{"views":["fx-positions"],"activeView":"fx-positions","id":"group-4"},"size":318}],"size":700},"width":1260,"height":700,"orientation":"HORIZONTAL"},"panels":{"fx-rates":{"id":"fx-rates","contentComponent":"rtc-panel","title":"fx-rates"},"fx-analytics":{"id":"fx-analytics","contentComponent":"rtc-panel","title":"fx-analytics"},"fx-blotter":{"id":"fx-blotter","contentComponent":"rtc-panel","title":"fx-blotter"},"fx-positions":{"id":"fx-positions","contentComponent":"rtc-panel","title":"fx-positions"}},"activeGroup":"group-1","rtcBlobVersion":2,"rtcDesignPins":[]}';
+
+  it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
+    const engine = createDockEngine({
+      ...base(),
+      blob: STACKED_FX_BLOB,
+    });
+    const dock = lastDockviewApi();
+
+    expect(engine.groupCount()).toBe(3);
+    const rates = dock.getPanel("fx-rates");
+    const analytics = dock.getPanel("fx-analytics");
+
+    if (rates === undefined || analytics === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    expect(analytics.group).toBe(rates.group);
+    expect(rates.group.panels).toHaveLength(2);
+    expect(rates.group.activePanel?.id).toBe("fx-rates");
+
+    // No save assertion here: loading a blob is a restore, not a change
+    // (no onDidLayoutChange fires) — blob-format stability across a real
+    // save/reload cycle is the #670 reload suite's job.
+    engine.dispose();
+  });
+});
+
 // cannot be dispatched here; moveTo IS the engine-visible half of a drop.
 // vitest hoists vi.mock/vi.hoisted during transform, so position is free.
 vi.mock("dockview", async (importOriginal) => {
