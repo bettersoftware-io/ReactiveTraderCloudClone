@@ -1000,13 +1000,19 @@ export function createApp(ports: AppPorts): App {
       dockedPanelTabsKick$,
     ]).pipe(
       map(([panelsState]) => {
+        // Sorted: `panelsState.panels`' own order reflects spawn/dock
+        // sequencing, which is incidental to this stream's membership
+        // contract — sorting stabilizes the emitted array's identity for
+        // downstream element-wise-equals consumers (both clients' bridge
+        // props) against a reorder that isn't a real membership change.
         return panelsState.panels
           .filter((panel) => {
             return panel.docked && dockedPanelTabs.get(panel.panelId) === tab;
           })
           .map((panel) => {
             return panel.panelId;
-          });
+          })
+          .sort();
       }),
       distinctUntilChanged((prev, next) => {
         return (

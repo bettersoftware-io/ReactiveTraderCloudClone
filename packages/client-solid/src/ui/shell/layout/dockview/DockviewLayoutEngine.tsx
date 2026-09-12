@@ -48,17 +48,37 @@ import styles from "./DockviewLayoutEngine.module.css";
  * very same `PanelHead` nodes the in-house engine renders. The persisted
  * layout is an opaque blob per tab.
  *
- * REMOUNT CONTRACT (diverges from the react twin): react remounts the WHOLE
- * bridge on a workspace reset (`key={layoutResets}` in App.tsx) because a
- * fresh function-component invocation is the cheapest way to discard every
- * ref/state at once there. Solid component bodies run ONCE — there is no
- * equivalent "re-invoke and get fresh closures" move — so this component
- * instead takes `layoutResets` as an ordinary prop and rebuilds the engine
- * IN PLACE: the reset effect below (declared first, before every intent
- * effect) disposes the current engine and resets `mounted`/`groups`/
- * `strips`/`applied`/`appliedDocked` to their initial values before creating
- * a new one from the tab's now-cleared blob — the same end state react
- * reaches via remounting, reached here by rebuilding instead. */
+ * REBUILD CONTRACT (diverges from the react twin, same end state): react
+ * remounts the WHOLE bridge on a workspace reset (a `layoutResets` PROP,
+ * not a `key`, per fix round 1) because a fresh function-component
+ * invocation is a convenient way to discard every ref/state at once there.
+ * Solid component bodies run ONCE — there is no "re-invoke and get fresh
+ * closures" move — so this component instead takes `layoutResets` as an
+ * ordinary prop and rebuilds the engine IN PLACE: the reset effect below
+ * disposes the current engine and resets `mounted`/`groups`/`strips`/
+ * `applied`/`appliedDocked` to their initial values before calling the SAME
+ * `buildEngine()` the initial `onMount` uses, from the tab's now-cleared
+ * blob.
+ *
+ * SUPPRESSION GUARD (fix round 1, review Critical C1): `createDockEngine`'s
+ * `dispose()` unconditionally flushes one final serialize, even mid-rebuild
+ * — without a guard, that flush would call `props.store.save` with the OLD
+ * (about-to-be-discarded) blob, landing it right back in the store
+ * composition's `resetWorkspaceLayout()` JUST cleared, and the fresh engine
+ * would load it straight back, discarding nothing. `suppressSave` is held
+ * true for the exact span from before `dispose()` to after the new engine's
+ * construction returns — long enough to swallow the dispose flush, short
+ * enough that the new engine's OWN (debounced, so always later) save from
+ * reconciling `dynamicPanels` still lands normally.
+ *
+ * `liveEngine` (fix round 1, review I2): the maximize/docked/collapse
+ * effects below read `liveEngine()`, a SIGNAL the reset effect and
+ * `buildEngine()` write via `setLiveEngine` — the react twin's `liveEngine`
+ * STATE, for the identical reason: writing a NEW value to a signal an
+ * effect reads is what makes it re-run, so those three effects re-apply
+ * their current props onto a FRESH engine even on a tick where the prop
+ * itself didn't change value (see the reset effect's own doc for why this
+ * is NOT about which effect is merely declared first). */
 export function DockviewLayoutEngine(
   props: DockviewLayoutEngineProps,
 ): JSX.Element {
@@ -71,8 +91,19 @@ export function DockviewLayoutEngine(
   // turns the whole column vertical), so the bridge never derives this from
   // the intent it dispatched.
   const [strips, setStrips] = createSignal<StripMap>({});
+  // See the `liveEngine` doc above the component.
+  const [liveEngine, setLiveEngine] = createSignal<DockEngine | null>(null);
   let containerEl: HTMLDivElement | undefined;
+  // The engine as a PLAIN variable, beside the `liveEngine` signal: cleanup
+  // and the `onLayoutChange` closure need only the CURRENT instance (an
+  // imperative read, exactly react's `engineRef`), not a tracked one —
+  // reading `liveEngine()` there would be an untracked read anyway (both
+  // run outside any Solid computation), so a plain variable says that
+  // plainly instead of relying on a signal read's default outside-tracking
+  // behaviour.
   let engine: DockEngine | null = null;
+  // See the SUPPRESSION GUARD doc above the component.
+  let suppressSave = false;
 
   function specs(): Readonly<Record<PanelId, PanelSpec>> {
     return props.specs ?? PANEL_SPECS;
@@ -168,6 +199,11 @@ export function DockviewLayoutEngine(
         mountActions: mountInto("actions"),
       },
       onLayoutChange: (blob: string): void => {
+        // See the SUPPRESSION GUARD doc above the component.
+        if (suppressSave) {
+          return;
+        }
+
         props.store.save(props.tab, blob);
         setGroups(engine?.groupCount() ?? 0);
       },
@@ -184,6 +220,7 @@ export function DockviewLayoutEngine(
     applied = [];
     appliedDocked = [];
     setGroups(engine.groupCount());
+    setLiveEngine(engine);
   }
 
   onMount(() => {
@@ -191,24 +228,37 @@ export function DockviewLayoutEngine(
   });
 
   onCleanup(() => {
-    // Null the ref BEFORE disposing: dispose() synchronously flushes a final
-    // layout serialization through onLayoutChange's `engine?.groupCount() ??
-    // 0` read, so the ref must already read null at that point — mirrors
-    // react's cleanup ordering (engineRef.current = null before
-    // engine.dispose()), keeping the two bridges' dispose-time behaviour
-    // identical rather than just their steady-state behaviour.
+    // Null BEFORE disposing: dispose() synchronously flushes a final layout
+    // serialization through onLayoutChange's `engine?.groupCount() ?? 0`
+    // read, so both must already read null/empty at that point — mirrors
+    // react's cleanup ordering (engineRef.current = null, setLiveEngine(null)
+    // before engine.dispose()), keeping the two bridges' dispose-time
+    // behaviour identical rather than just their steady-state behaviour.
     const disposed = engine;
     engine = null;
+    setLiveEngine(null);
     disposed?.dispose();
   });
 
   // Rebuilds the engine IN PLACE when the workspace-reset counter bumps —
-  // see the REMOUNT CONTRACT doc on the component. Declared BEFORE every
-  // intent effect below: on a real reset, `collapsed` also changes (the
-  // LayoutMachine's own reset clears it) in the SAME reactive flush, so this
-  // effect must run first and reset `applied`/`appliedDocked` to `[]`
-  // against the FRESH engine before the collapse/docked effects (if they
-  // also fire this tick) get a chance to diff against the OLD one.
+  // see the REBUILD CONTRACT + SUPPRESSION GUARD docs on the component.
+  //
+  // What actually makes this correct is NOT this effect's position relative
+  // to the maximize/docked/collapse effects below (Solid re-runs UPDATE
+  // effects in signal-WRITE order, not declaration order — measured; an
+  // earlier version of this comment claimed "declared first ⇒ runs first",
+  // which is false). It is, instead: (1) `applied`/`appliedDocked` are reset
+  // to `[]` INSIDE this effect, so whenever the collapse/docked effects DO
+  // run against the fresh engine, they diff against an empty baseline, not a
+  // stale one; (2) `buildEngine()`'s own construction-time `dynamicPanels`
+  // reconciliation reads `props.docked` directly, restoring docked
+  // membership even on a tick where `props.docked` itself never changed
+  // value (so that effect need not re-run at all for docking to survive);
+  // and (3) `setLiveEngine` inside `buildEngine()` gives the maximize/
+  // collapse effects a signal-write to react to, so THEY re-run and re-apply
+  // `maximized`/`collapsed` onto the fresh engine regardless of whether
+  // those props themselves changed this tick — the same re-apply react's
+  // `liveEngine` state provides there.
   //
   // `on()` without `defer`, per the README's "bookkeeping createEffect"
   // idiom: the mount-time call compares `layoutResets` against itself
@@ -225,8 +275,10 @@ export function DockviewLayoutEngine(
           return;
         }
 
+        suppressSave = true;
         const disposed = engine;
         engine = null;
+        setLiveEngine(null);
         disposed?.dispose();
         setMounted([]);
         setGroups(0);
@@ -234,42 +286,45 @@ export function DockviewLayoutEngine(
         applied = [];
         appliedDocked = [];
         buildEngine();
+        suppressSave = false;
       },
     ),
   );
 
   createEffect(() => {
+    const currentEngine = liveEngine();
     const maximized = props.maximized;
 
-    if (engine === null) {
+    if (currentEngine === null) {
       return;
     }
 
     if (maximized !== null) {
-      engine.maximizePanel(maximized);
+      currentEngine.maximizePanel(maximized);
     } else {
-      engine.exitMaximize();
+      currentEngine.exitMaximize();
     }
   });
 
   // The docked set is a SET, not a single id, so — like `collapsed` below —
   // this diffs against the last applied list rather than re-asserting the
-  // whole thing every render. Declared BETWEEN the maximize effect above and
-  // the collapse effect below, mirroring the react twin: a dynamic panel
-  // must exist in the engine before a collapse replay can name it. The
+  // whole thing every render. Reading `liveEngine()` (not the plain `engine`
+  // variable) is what lets this effect re-run on a REBUILD even when
+  // `props.docked` itself is unchanged — see the reset effect's doc. The
   // initial pass over a freshly built engine re-adds ids already present via
   // construction-time `dynamicPanels` reconciliation — safe, since
   // `addDynamicPanel` no-ops on an existing id.
   createEffect(() => {
+    const currentEngine = liveEngine();
     const docked = props.docked;
 
-    if (engine === null) {
+    if (currentEngine === null) {
       return;
     }
 
     for (const panelId of docked) {
       if (!appliedDocked.includes(panelId)) {
-        engine.addDynamicPanel({
+        currentEngine.addDynamicPanel({
           id: panelId,
           initialPx: DOCK_COLUMN_INITIAL_PX,
         });
@@ -278,7 +333,7 @@ export function DockviewLayoutEngine(
 
     for (const panelId of appliedDocked) {
       if (!docked.includes(panelId)) {
-        engine.removeDynamicPanel(panelId);
+        currentEngine.removeDynamicPanel(panelId);
       }
     }
 
@@ -290,21 +345,22 @@ export function DockviewLayoutEngine(
   // `collapsePanel` remembers the pre-collapse geometry on the FIRST call for
   // a panel, so blanket-reapplying is safe but pointless work every render.
   createEffect(() => {
+    const currentEngine = liveEngine();
     const collapsed = props.collapsed;
 
-    if (engine === null) {
+    if (currentEngine === null) {
       return;
     }
 
     for (const panelId of collapsed) {
       if (!applied.includes(panelId)) {
-        engine.collapsePanel(panelId);
+        currentEngine.collapsePanel(panelId);
       }
     }
 
     for (const panelId of applied) {
       if (!collapsed.includes(panelId)) {
-        engine.expandPanel(panelId);
+        currentEngine.expandPanel(panelId);
       }
     }
 
@@ -440,9 +496,10 @@ export interface DockviewLayoutEngineProps {
    * `collapsed` is handled. */
   docked: readonly PanelId[];
   /** The workspace-reset counter. A bump rebuilds the engine IN PLACE from
-   * the tab's now-cleared blob — see the component's REMOUNT CONTRACT doc
+   * the tab's now-cleared blob — see the component's REBUILD CONTRACT doc
    * for why this is a prop here rather than a caller-side keyed remount like
-   * the react twin's `key={layoutResets}`. */
+   * the react twin used before fix round 1 (both bridges now rebuild via
+   * this prop, not a `key`). */
   layoutResets: number;
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */

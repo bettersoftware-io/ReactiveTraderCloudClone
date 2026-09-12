@@ -107,11 +107,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
       <CreditViewProvider>
         {engine === "dockview" ? (
           <Suspense fallback={null}>
-            {/* Keyed on the reset counter: a workspace reset remounts the
-                bridge whole (see its REMOUNT CONTRACT doc) rather than
-                threading a `layoutResets` prop into its own effects. */}
             <DockviewLayoutEngine
-              key={layoutResets}
               tab={tab}
               registry={registry}
               specs={specs}
@@ -120,6 +116,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               maximized={state.maximized}
               collapsed={state.collapsed}
               docked={docked}
+              layoutResets={layoutResets}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}

@@ -22,9 +22,8 @@ export interface DockviewLayoutEngineDockedPageProps {
   collapsed: Accessor<readonly PanelId[]>;
   /** Live, same reason as `collapsed`. */
   docked: Accessor<readonly PanelId[]>;
-  /** Live: a bump rebuilds the bridge's engine in place — the Solid
-   * analogue of the react twin's `key={layoutResets}` remount (see the
-   * component's REMOUNT CONTRACT doc). */
+  /** Live: a bump rebuilds the bridge's engine in place — see the
+   * component's REBUILD CONTRACT doc. */
   layoutResets: Accessor<number>;
 }
 

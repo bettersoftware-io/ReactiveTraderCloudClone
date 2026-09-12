@@ -8,8 +8,9 @@ interface WaitForOptions {
 export interface DockviewLayoutEngineDockedPage {
   mount(element: ReactElement): void;
   /** Re-renders the SAME React tree with a new element — the mechanism a
-   * `docked` prop change (or a `key` change, for a workspace-reset remount)
-   * goes through in the real app. */
+   * `docked` prop change, or a `layoutResets` bump (a workspace-reset
+   * rebuild, in place — no `key` change involved), goes through in the
+   * real app. */
   rerender(element: ReactElement): void;
   unmountAll(): void;
   /** The engine's `data-groups` witness — how many dockview groups the
@@ -32,10 +33,10 @@ export interface DockviewLayoutEngineDockedPage {
 
 /** The framework surface for `DockviewLayoutEngine.docked.test.tsx` — the
  * `docked` prop's membership diff (add/remove a dynamic panel) and the
- * key-driven workspace-reset remount. Mirrors
+ * `layoutResets`-driven in-place rebuild. Mirrors
  * `DockviewLayoutEngineStrictModePage`'s render/query split; this page also
- * exposes `rerender` since these cases drive the bridge through a prop or
- * key change rather than a fresh mount. */
+ * exposes `rerender` since these cases drive the bridge through a prop
+ * change rather than a fresh mount. */
 export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage {
   let doRerender: ((element: ReactElement) => void) | null = null;
 

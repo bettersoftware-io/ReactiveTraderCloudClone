@@ -133,6 +133,11 @@ export function DockviewEngineHost({
         // case in DockviewEngine.contract.spec.ts, which predates the
         // `docked` prop.
         docked={[]}
+        // Inert: no case in DockviewEngine.contract.spec.ts exercises a
+        // workspace-reset rebuild (that behaviour lives in
+        // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
+        // bumps past the mount-time no-op.
+        layoutResets={0}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}

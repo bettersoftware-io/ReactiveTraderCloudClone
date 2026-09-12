@@ -150,6 +150,13 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // must not churn identity per emission, or the registry/specs/headRegistry
   // memos below (each keyed off it) would recompute on every unrelated tick,
   // reproducing the exact remount/resubscribe trap above.
+  //
+  // DELIBERATE DIVERGENCE FROM REACT (fix round 1, Minor): the react twin's
+  // equivalent registry merge reads `useJarvisPanels().dockedPanels`
+  // directly — EVERY docked panel across every tab, unfiltered — while this
+  // merge is TAB-SCOPED (see below). Both are correct for the same reason
+  // (a tab's own layout tree only ever references its own panels' ids), so
+  // this is a genuine implementation difference, not a bug to reconcile.
   // `useDockedPanelIds(props.tab)` (Task 4's hook) carries this guarantee at
   // the SOURCE — `Presenters.dockedPanelIdsFor`'s own `distinctUntilChanged`
   // uses the identical element-wise compare a local memo used to apply

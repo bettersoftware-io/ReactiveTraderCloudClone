@@ -43,13 +43,30 @@ import styles from "./DockviewLayoutEngine.module.css";
  * very same `PanelHead` nodes the in-house engine renders. The persisted
  * layout is an opaque blob per tab.
  *
- * REMOUNT CONTRACT: this component carries no `layoutResets` prop. Instead,
- * the caller keys the element on the workspace-reset counter
- * (`key={layoutResets}` in App.tsx) — a reset remounts the WHOLE bridge,
- * discarding every per-engine ref/state (`mounted`, `groups`, `strips`,
- * `appliedCollapse`, `appliedDocked`) in one motion and rebuilding the
- * engine from the tab's now-cleared blob, rather than reaching into a
- * still-live engine and trying to reset its accumulated state in place. */
+ * REBUILD CONTRACT: a workspace reset is a `layoutResets` PROP bump (App.tsx
+ * passes the counter straight through, no `key`), handled by the rebuild
+ * effect below: it disposes the current engine, resets every per-engine ref/
+ * state (`mounted`, `groups`, `strips`, `appliedCollapse`, `appliedDocked`)
+ * to its initial value, and builds a fresh one from the tab's now-cleared
+ * blob — the SAME construction the `[tab, store]` effect below runs for a
+ * genuine mount/tab-switch. That construction body is DUPLICATED between
+ * the two effects rather than factored into a shared function: ADR-003 bans
+ * manual memoization (`useCallback` is a restricted import), and an
+ * unmemoized helper referenced from two effects with different dependency
+ * lists defeats Biome's exhaustive-deps rule either way (an unstable
+ * identity "changes" every render, or an incomplete dependency list hides
+ * real ones) — see each effect's own doc.
+ *
+ * SUPPRESSION GUARD (fix round 1, review Critical C1): `createDockEngine`'s
+ * `dispose()` unconditionally flushes one final serialize, even mid-rebuild
+ * — without a guard, that flush would call `store.save` with the OLD
+ * (about-to-be-discarded) blob, landing it right back in the store
+ * composition's `resetWorkspaceLayout()` JUST cleared, and the fresh engine
+ * would load it straight back, discarding nothing. `suppressSaveRef` is held
+ * true for the exact span from before `dispose()` to after the new engine's
+ * construction returns — long enough to swallow the dispose flush, short
+ * enough that the new engine's OWN (debounced, so always later) save from
+ * reconciling `dynamicPanels` still lands normally. */
 export function DockviewLayoutEngine({
   tab,
   registry,
@@ -59,6 +76,7 @@ export function DockviewLayoutEngine({
   maximized,
   collapsed,
   docked,
+  layoutResets,
   onMaximize,
   onRestore,
   onCollapse,
@@ -96,6 +114,8 @@ export function DockviewLayoutEngine({
   // The docked set last pushed into the engine, mirroring `appliedCollapse`
   // (same tab-tagged shape, same reset-on-rebuild rule) — see its comment.
   const appliedDocked = useRef<AppliedDocked>({ tab, ids: [] });
+  // See the SUPPRESSION GUARD doc above the component.
+  const suppressSaveRef = useRef(false);
   // The engine as STATE (beside the ref the callbacks read), so the intent
   // effects below depend on the instance and re-push the LayoutMachine's
   // `maximized` / `collapsed` into every NEW engine. Matters under
@@ -106,7 +126,10 @@ export function DockviewLayoutEngine({
   // `collapsed` alone, the effects did not re-run for B, the applied list
   // still said "done", B never collapsed, and the restore bar (rendered from
   // A's strips state) stretched across a 97px group — the shape the first
-  // `app/fx-collapsed-dockview` golden captured.
+  // `app/fx-collapsed-dockview` golden captured. The SAME mechanism is what
+  // makes a `layoutResets` rebuild re-apply `maximized`/`docked`/`collapsed`
+  // onto the fresh engine below: the reset effect calls `setLiveEngine` with
+  // the new instance, and every intent effect depends on `liveEngine`.
   const [liveEngine, setLiveEngine] = useState<DockEngine | null>(null);
 
   // Synced in an effect (not during render — React Compiler forbids touching
@@ -129,6 +152,16 @@ export function DockviewLayoutEngine({
   // animation to keep frames changing) the x86 runner captured that blank
   // frame as the `app/fx-dockview` golden — the React tier then "passed"
   // against it while Solid's panels failed.
+  //
+  // The construction body here is DUPLICATED, not shared, with the rebuild
+  // effect below (see its own doc) — the project bans manual memoization
+  // (ADR-003, `useCallback` is a restricted import), so a helper function
+  // referenced from BOTH effects would need an unstable per-render identity
+  // Biome's exhaustive-deps rule cannot verify without either an incomplete
+  // dependency list or a re-run on every render either way. Each effect
+  // instead reads `tab`/`store` (and declares its own `mountInto`) directly,
+  // exactly as this effect did before the `docked`/`layoutResets` props
+  // existed — mirroring, not violating, the pre-existing pattern here.
   useLayoutEffect(() => {
     const container = containerRef.current;
 
@@ -173,6 +206,11 @@ export function DockviewLayoutEngine({
         mountActions: mountInto("actions"),
       },
       onLayoutChange: (blob: string): void => {
+        // See the SUPPRESSION GUARD doc above the component.
+        if (suppressSaveRef.current) {
+          return;
+        }
+
         store.save(tab, blob);
         setGroups(engineRef.current?.groupCount() ?? 0);
       },
@@ -197,8 +235,96 @@ export function DockviewLayoutEngine({
     };
   }, [tab, store]);
 
+  // The workspace-reset rebuild: `layoutResets` starts at 0 (composition's
+  // `workspaceLayoutResets$` seed), so a bump past that is a genuine reset,
+  // never the mount itself — the `[tab, store]` effect above already built
+  // the engine for THIS mount, so re-building here on the FIRST render would
+  // both duplicate that work and dispose an engine nothing has used yet.
+  // This `layoutResets === 0` check is a real use of the prop inside the
+  // effect body, so `[layoutResets, tab, store]` is a complete dependency
+  // list — see the mount effect's doc above for why the construction body
+  // is duplicated here rather than shared through a named helper. */
   useEffect(() => {
-    if (liveEngine === null) {
+    if (layoutResets === 0) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const oldEngine = engineRef.current;
+
+    if (container === null) {
+      return;
+    }
+
+    suppressSaveRef.current = true;
+    engineRef.current = null;
+    setLiveEngine(null);
+    setMounted([]);
+    setGroups(0);
+    setStrips({});
+    oldEngine?.dispose();
+
+    function mountInto(
+      slot: MountedSlot["slot"],
+    ): (id: string, element: HTMLElement) => () => void {
+      return (id: string, element: HTMLElement): (() => void) => {
+        const panelId = id as PanelId;
+        setMounted((prev) => {
+          return [...prev, { panelId, element, slot }];
+        });
+
+        return () => {
+          setMounted((prev) => {
+            return prev.filter((p) => {
+              return p.element !== element;
+            });
+          });
+        };
+      };
+    }
+
+    const engine = createDockEngine({
+      container,
+      seed: createDefaultLayoutPort(tab).initial.root,
+      blob: store.load(tab),
+      panels: {
+        title: (id: string): string => {
+          return specsRef.current[id as PanelId]?.title ?? id;
+        },
+        maximizeScope: (id: string): DockMaximizeScope => {
+          return specsRef.current[id as PanelId]?.maximizeScope ?? "root";
+        },
+        mount: mountInto("body"),
+        mountTab: mountInto("tab"),
+        mountActions: mountInto("actions"),
+      },
+      onLayoutChange: (blob: string): void => {
+        // See the SUPPRESSION GUARD doc above the component.
+        if (suppressSaveRef.current) {
+          return;
+        }
+
+        store.save(tab, blob);
+        setGroups(engineRef.current?.groupCount() ?? 0);
+      },
+      onStripsChange: (next: DockStripMap): void => {
+        setStrips(next as StripMap);
+      },
+      dynamicPanels: dockedRef.current.map((panelId) => {
+        return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
+      }),
+    });
+    engineRef.current = engine;
+    appliedCollapse.current = { tab, ids: [] };
+    appliedDocked.current = { tab, ids: [] };
+    setGroups(engine.groupCount());
+    setLiveEngine(engine);
+
+    suppressSaveRef.current = false;
+  }, [layoutResets, tab, store]);
+
+  useEffect(() => {
+    if (liveEngine === null || liveEngine !== engineRef.current) {
       return;
     }
 
@@ -217,10 +343,31 @@ export function DockviewLayoutEngine({
   // rebuilt engine re-adds ids already present via construction-time
   // `dynamicPanels` reconciliation — safe, since `addDynamicPanel` no-ops on
   // an existing id.
+  //
+  // STALE-CLOSURE GUARD (fix round 1, review I1/I4 investigation): a rebuild
+  // triggered by the SAME render that ALSO changes `docked`'s (or
+  // `collapsed`'s) own reference — even to an UNCHANGED-content array —
+  // schedules TWO commits: commit A, from the render itself, whose effect
+  // closures still capture the OLD `liveEngine` (React fixes each commit's
+  // closures at render time, before ANY effect — including the reset effect
+  // ABOVE, which may already have rebuilt the engine and reset
+  // `appliedDocked`/`appliedCollapse` by the time THIS effect runs within
+  // the SAME commit — has a chance to run); and commit B, from
+  // `setLiveEngine(newEngine)` inside that reset. Commit A's stale
+  // invocation, left unguarded, would call a method on the ALREADY-DISPOSED
+  // old engine AND mark `appliedDocked.current`/`appliedCollapse.current` as
+  // already applied — poisoning the baseline commit B's (correct) invocation
+  // then reads, so the fresh engine never gets the intent replayed at all.
+  // `engine !== engineRef.current` recognises a stale commit-A closure (its
+  // `liveEngine` no longer matches the canonical, current engine the reset
+  // already installed) and no-ops it completely, leaving the bookkeeping for
+  // commit B's invocation to set correctly. Declaration order relative to
+  // the reset effect above does NOT prevent this — both effects are
+  // scheduled by, and close over, the SAME commit either way.
   useEffect(() => {
     const engine = liveEngine;
 
-    if (engine === null) {
+    if (engine === null || engine !== engineRef.current) {
       return;
     }
 
@@ -253,10 +400,12 @@ export function DockviewLayoutEngine({
   // nothing collapsed, so the previously-applied list must reset with it or the
   // diff would skip re-collapsing panels the fresh engine has never seen;
   // `liveEngine` covers every OTHER rebuild the same way (see its comment).
+  // See the docked effect's STALE-CLOSURE GUARD doc above for why
+  // `engine !== engineRef.current` is load-bearing here too.
   useEffect(() => {
     const engine = liveEngine;
 
-    if (engine === null) {
+    if (engine === null || engine !== engineRef.current) {
       return;
     }
 
@@ -392,9 +541,9 @@ export interface DockviewLayoutEngineProps {
    * `dynamicPanels`) and diffed against on every later render, mirroring how
    * `collapsed` is handled. */
   docked: readonly PanelId[];
-  // No `layoutResets` prop here — see the REMOUNT CONTRACT note on the
-  // component itself: the caller keys the element on the workspace-reset
-  // counter instead, so a reset remounts the whole bridge.
+  /** The workspace-reset counter. A bump rebuilds the engine IN PLACE from
+   * the tab's now-cleared blob — see the component's REBUILD CONTRACT doc. */
+  layoutResets: number;
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];
