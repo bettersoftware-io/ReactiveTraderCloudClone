@@ -1682,6 +1682,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     const before = lastDockviewApi().groups.length;
     engine.addDynamicPanel(DYN);
     expect(lastDockviewApi().groups.length).toBe(before);
+    expect(seen.pins()).toHaveLength(1); // no duplicate pin either
     engine.dispose();
   });
 
@@ -1709,9 +1710,23 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     const engine = createDockEngine({ ...base(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
+    const before = engine.groupCount();
     engine.removeDynamicPanel("panel-dyn-1");
     expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    expect(engine.groupCount()).toBe(before - 1);
     engine.removeDynamicPanel("panel-dyn-1"); // unknown id: no-op, no throw
+    engine.dispose();
+  });
+
+  it("does not persist the design pin after the panel is removed", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForPins(seen, 1);
+    engine.removeDynamicPanel("panel-dyn-1");
+    await vi.waitFor(() => {
+      expect(seen.pins()).toEqual([]);
+    });
     engine.dispose();
   });
 
@@ -1754,14 +1769,59 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
   });
 
   it("removing a maximize-forced strip's owner restores the survivors", async () => {
+    const opts = base();
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     const rates = baselineSize(base(), "fx-rates");
     engine.maximizePanel("panel-dyn-1"); // strips every static panel
     engine.removeDynamicPanel("panel-dyn-1");
     await waitForSizeWithin(seen, "fx-rates", rates, 8); // statics restored
+    // fx-analytics sits directly under the ROOT split as its own leaf (no
+    // intermediate branch to measure via branchSizeOf — findBranchSize's own
+    // doc comment: "Null for a leaf sitting directly under the root"). It
+    // restores via a DIFFERENT path than fx-rates: fx-rates comes back
+    // through settleStripFreeWorlds' per-member world reassert (the nested
+    // column split's membership is untouched by removing panel-dyn-1), while
+    // fx-analytics is a DIRECT member of panel-dyn-1's own split — that
+    // split's membership DOES change when panel-dyn-1 leaves, so its world
+    // is voided (the deliberate audit-S3 rule) and it is NOT put back to its
+    // exact pre-maximize width; it only needs to come back UNSTRIPPED, with
+    // dockview's own redistribution (now the sole survivor of that split)
+    // deciding its size — exactly what deleteDynamicPanel's own comment says.
+    await vi.waitFor(() => {
+      const width = seen.sizeOf("fx-analytics");
+      expect(width).not.toBeNull();
+      expect(width as number).toBeGreaterThan(STRIP);
+    });
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    engine.dispose();
+  });
+
+  it("forces a dynamic panel added during a live maximize into a strip, and restores it on exit", async () => {
+    // In-house parity: a panel docked while a maximize is live must not land
+    // full-size beside a dock of 32px strips — it joins the maximize's own
+    // strip set via the same recordStrip path maximizePanel itself uses.
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
+    const ratesBefore = baselineSize(base(), "fx-rates");
+
+    engine.maximizePanel("fx-rates");
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    expect(strips.last["panel-dyn-1"]).toBe("vertical");
+
+    engine.exitMaximize();
+    await waitForSize(seen, "panel-dyn-1", 360);
+    await waitForSizeWithin(seen, "fx-rates", ratesBefore, 8);
     engine.dispose();
   });
 });

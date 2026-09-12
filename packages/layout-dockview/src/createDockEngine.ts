@@ -1025,6 +1025,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       px: panel.initialPx,
       axis: "width",
     });
+
+    // A panel docked while a maximize is live must not land full-size next
+    // to a dock of 32px strips — force it into the maximize's own strip set
+    // via the SAME path maximizePanel uses (recordStrip, including its lock
+    // semantics), and fold it into `maximized.stripped` so exitMaximize
+    // restores it like any other panel the maximize forced.
+    if (maximized !== null && recordStrip(panel.id)) {
+      maximized = {
+        ...maximized,
+        stripped: [...maximized.stripped, panel.id],
+      };
+      glide(settleStrips);
+    }
   }
 
   /** Closes a dynamic panel and its group. Restores anything the panel's own
@@ -1042,8 +1055,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     if (maximized?.panelId === panelId) {
-      // Release the whole maximize first so the strips it made restore
-      // while their pre-strip sizes are still meaningful.
+      // releaseStrip (called per stripped id inside releaseMaximize) returns
+      // a restore closure per panel; every one of them is discarded here —
+      // deliberately. `settleStripFreeWorlds`, called below once this
+      // panel's own group is gone, re-derives the SAME put-back for any
+      // split whose membership is UNCHANGED by the removal (its captured
+      // pre-strip world still matches), so calling the closures too would
+      // just re-assert what it already restores. What this does NOT cover:
+      // this panel's own split loses a member (this group), so that split's
+      // captured world is voided rather than replayed (the membership-change
+      // rule — audit S3) — a DIRECT SIBLING living in that same split (not
+      // this panel itself, which is leaving regardless) therefore gets no
+      // explicit put-back here; dockview's own resize distribution decides
+      // its size once it inherits the freed space. Acceptable: the freed
+      // space must land somewhere, and a sibling's own pre-maximize size is
+      // no longer the only defensible answer once its split's shape changed.
       releaseMaximize();
     } else if (maximized !== null) {
       maximized = {
