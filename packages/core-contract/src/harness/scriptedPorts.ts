@@ -27,9 +27,20 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
 
+  // Built ONCE, and handed to both the core (through `connectionEvents`) and
+  // the suites (through `driver.connectionEvents$()`), so the two can never
+  // observe different merge instances. Rebuilding it per call would be
+  // observationally equivalent only while every runner's base port is hot
+  // (client-core's `reconnect$` is a bare Subject); against a base port that
+  // returns a cold per-subscribe stream, the reconnect suite would go green
+  // on a stream the core never saw. The consequence — `base.connectionEvents
+  // .events()` is called once here rather than once per subscription — is the
+  // intended semantics: one shared stream.
+  const events$ = merge(base.connectionEvents.events(), connection$);
+
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
-      return merge(base.connectionEvents.events(), connection$);
+      return events$;
     },
   };
 
@@ -46,7 +57,7 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
         connection$.next(event);
       },
       connectionEvents$: () => {
-        return connectionEvents.events();
+        return events$;
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);
