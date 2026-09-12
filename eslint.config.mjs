@@ -491,23 +491,6 @@ export default tseslint.config(
     rules: { "rtc/class-filename-match": "error" },
   },
   {
-    // Carve-out: e2e page objects use a framework-prefixed class name
-    // (PlaywrightBlotterTable) inside a subject-named file that mirrors the
-    // shared contracts/<Subject>.ts. The playwright/ <-> contracts/ filename
-    // parallelism is deliberate, so the filename matches the contract, not the
-    // class. A systematic convention across the directory (not a one-off), so
-    // it is scoped off the rule rather than disabled per file.
-    files: ["tests/browser/page-objects/playwright/**/*.ts"],
-    rules: { "rtc/class-filename-match": "off" },
-  },
-  {
-    // Carve-out: cucumber World classes live in `world.ts` by framework
-    // convention (setWorldConstructor) — one World per flavor directory. The
-    // filename is the cucumber idiom, not the class name.
-    files: ["**/world.ts"],
-    rules: { "rtc/class-filename-match": "off" },
-  },
-  {
     // One component per .tsx file: the exported component is the newspaper lede
     // (private subcomponents/helpers/types below it) and the filename matches it.
     // Scoped to client-react + client-react-native source; test .tsx are excluded
