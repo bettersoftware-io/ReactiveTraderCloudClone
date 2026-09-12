@@ -33,6 +33,33 @@ describe("bridge/in", () => {
     expect(seen).toEqual([1, 2]);
   });
 
+  it("iterate() DROPS a value queued at the moment of abort", async () => {
+    const source = new Subject<number>();
+    const controller = new AbortController();
+    const seen: number[] = [];
+    const done = (async () => {
+      for await (const v of iterate(source, controller.signal)) {
+        seen.push(v);
+      }
+    })();
+
+    source.next(1);
+    source.next(2);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(seen).toEqual([1, 2]);
+
+    // Queued but never consumed: the loop is parked on `wake`, and the
+    // `while (!signal.aborted)` guard is what it wakes into. Drop-on-abort
+    // is the contract, so a drain-shaped refactor must fail here.
+    source.next(3);
+    controller.abort();
+    await done;
+
+    expect(seen).toEqual([1, 2]);
+  });
+
   it("iterate() throws when the source errors", async () => {
     const source = new Subject<number>();
     const controller = new AbortController();

@@ -8,7 +8,13 @@ export interface TopicOptions {
 /** A hot multicast channel with refCount semantics: the producer starts on
  * the first subscriber and is aborted on the last unsubscribe. This is
  * `shareReplay({ bufferSize: 1, refCount: true })` written once, explicitly,
- * instead of implied by an operator. */
+ * instead of implied by an operator.
+ *
+ * Failure is TERMINAL, as it is for the operator this stands in for. After
+ * `fail`, the topic is dead: a later `subscribe` is handed the latched error
+ * synchronously and starts no producer, a later `publish` reaches nobody, and
+ * a later `fail` is ignored. A consumer that resubscribes after an error must
+ * get the error, never a fresh stream. */
 export interface Topic<T> {
   subscribe(
     next: (value: T) => void,
@@ -24,6 +30,12 @@ interface Replayed<T> {
   value: T;
 }
 
+/** The terminal error, boxed for the same reason — `null` means "still
+ * alive", which an error value of `null` would otherwise be confused with. */
+interface Failed {
+  error: unknown;
+}
+
 interface Subscriber<T> {
   next: (value: T) => void;
   error: (error: unknown) => void;
@@ -36,8 +48,13 @@ export function createTopic<T>(
   const subscribers = new Set<Subscriber<T>>();
   let controller: AbortController | null = null;
   let last: Replayed<T> | null = null;
+  let failed: Failed | null = null;
 
   function publish(value: T): void {
+    if (failed !== null) {
+      return;
+    }
+
     if (options.replay === true) {
       last = { value };
     }
@@ -48,6 +65,12 @@ export function createTopic<T>(
   }
 
   function fail(error: unknown): void {
+    if (failed !== null) {
+      return;
+    }
+
+    failed = { error };
+
     for (const s of [...subscribers]) {
       s.error(error);
     }
@@ -65,6 +88,11 @@ export function createTopic<T>(
       next: (value: T) => void,
       error: (error: unknown) => void = () => {},
     ) => {
+      if (failed !== null) {
+        error(failed.error);
+        return () => {};
+      }
+
       const subscriber: Subscriber<T> = { next, error };
       subscribers.add(subscriber);
 

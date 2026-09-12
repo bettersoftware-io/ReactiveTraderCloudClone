@@ -19,7 +19,12 @@ export function once<T>(source: Observable<T>): Promise<T> {
 
 /** Pull an Observable as an AsyncIterable with an unbounded queue. Ends on
  * completion, throws on error, and stops (without throwing) on abort — the
- * consuming `for await` simply exits, which is what `spawn` expects. */
+ * consuming `for await` simply exits, which is what `spawn` expects.
+ *
+ * Abort DROPS whatever is still queued, by design: a consumer that aborted is
+ * going away and does not want stragglers. There is exactly one mechanism for
+ * that — the `while (!signal.aborted)` guard below; the abort listener only
+ * has to WAKE a loop parked on `wake`, never to set state of its own. */
 export async function* iterate<T>(
   source: Observable<T>,
   signal: AbortSignal,
@@ -54,10 +59,12 @@ export async function* iterate<T>(
     },
   });
 
-  // Named for its effect, not its trigger (rtc/name-functions-by-effect):
-  // it ends the iteration and wakes the loop so the `for await` can exit.
+  // Named for its effect, not its trigger (rtc/name-functions-by-effect).
+  // It only wakes the loop: `signal.aborted` is already true by the time an
+  // abort listener runs, so the `while` guard does the ending — and setting
+  // `inbox.done` here would be a dead write claiming a second, drain-shaped
+  // mechanism that does not exist.
   function endIteration(): void {
-    inbox.done = true;
     notify();
   }
 

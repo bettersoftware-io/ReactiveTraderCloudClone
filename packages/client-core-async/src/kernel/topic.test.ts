@@ -48,6 +48,62 @@ describe("Topic", () => {
     expect(seen).toEqual([]);
   });
 
+  it("fail() is terminal: a later subscriber gets the error, not a fresh producer", () => {
+    let starts = 0;
+    const topic = createTopic<number>(async () => {
+      starts += 1;
+    });
+    topic.subscribe(() => {});
+    expect(starts).toBe(1);
+    topic.fail(new Error("boom"));
+
+    const values: number[] = [];
+    const errors: unknown[] = [];
+    const stop = topic.subscribe(
+      (v) => {
+        values.push(v);
+      },
+      (e) => {
+        errors.push(e);
+      },
+    );
+
+    // Synchronously, on subscribe — the way `shareReplay` hands a late
+    // subscriber the terminal error rather than restarting the source.
+    expect(errors).toHaveLength(1);
+    expect(values).toEqual([]);
+    expect(starts).toBe(1);
+    expect(() => {
+      stop();
+    }).not.toThrow();
+  });
+
+  it("fail() is terminal: publish() and fail() afterwards reach nobody", () => {
+    const topic = createTopic<number>(async () => {}, { replay: true });
+    topic.subscribe(() => {});
+    topic.fail(new Error("boom"));
+
+    topic.publish(1);
+
+    const values: number[] = [];
+    const errors: unknown[] = [];
+    topic.subscribe(
+      (v) => {
+        values.push(v);
+      },
+      (e) => {
+        errors.push(e);
+      },
+    );
+    topic.fail(new Error("second"));
+
+    // The post-failure publish was ignored (no replay of 1), and the second
+    // fail() did not re-deliver: exactly one error, the original one.
+    expect(values).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect((errors[0] as Error).message).toBe("boom");
+  });
+
   it("fail() is silent for a subscriber that supplied no error handler", () => {
     const topic = createTopic<number>(async () => {});
     topic.subscribe(() => {});
