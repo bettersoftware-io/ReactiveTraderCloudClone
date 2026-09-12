@@ -1,10 +1,9 @@
+export * from "#/layout/defaultLayoutPort";
 // Only the design-width constant is public — `dockColumn.ts`'s leaf
 // insert/remove helpers stay internal to LayoutMachine/workspace persistence;
 // the Dockview bridges (client-react, client-solid) need the SAME 360px pin
 // a seeded rail's `initialPx` uses, for a Jarvis panel opened at runtime via
 // `DockEngine.addDynamicPanel`.
-
-export * from "#/layout/defaultLayoutPort";
 export { DOCK_COLUMN_INITIAL_PX } from "#/layout/dockColumn";
 export * from "#/layout/layoutPort";
 export * from "#/layout/maximizeBoundary";

@@ -41,7 +41,15 @@ import styles from "./DockviewLayoutEngine.module.css";
  * group's actions slot — so ViewModel/FxView/CreditView contexts flow (a
  * separate root would crash every context consumer) and the header is the
  * very same `PanelHead` nodes the in-house engine renders. The persisted
- * layout is an opaque blob per tab. */
+ * layout is an opaque blob per tab.
+ *
+ * REMOUNT CONTRACT: this component carries no `layoutResets` prop. Instead,
+ * the caller keys the element on the workspace-reset counter
+ * (`key={layoutResets}` in App.tsx) — a reset remounts the WHOLE bridge,
+ * discarding every per-engine ref/state (`mounted`, `groups`, `strips`,
+ * `appliedCollapse`, `appliedDocked`) in one motion and rebuilding the
+ * engine from the tab's now-cleared blob, rather than reaching into a
+ * still-live engine and trying to reset its accumulated state in place. */
 export function DockviewLayoutEngine({
   tab,
   registry,
@@ -51,7 +59,6 @@ export function DockviewLayoutEngine({
   maximized,
   collapsed,
   docked,
-  layoutResets,
   onMaximize,
   onRestore,
   onCollapse,
@@ -129,13 +136,6 @@ export function DockviewLayoutEngine({
       return;
     }
 
-    // Which reset generation this container's engine was built for — a
-    // real diagnostic witness (not a bare dependency-array placeholder):
-    // devtools/e2e can confirm a reset actually tore down and rebuilt the
-    // engine by watching this value change, the same way `data-groups` and
-    // `data-collapsed` expose the bridge's other internals below.
-    container.dataset.dockGeneration = String(layoutResets);
-
     function mountInto(
       slot: MountedSlot["slot"],
     ): (id: string, element: HTMLElement) => () => void {
@@ -195,11 +195,7 @@ export function DockviewLayoutEngine({
       setMounted([]);
       engine.dispose();
     };
-    // `layoutResets` is a dep so a workspace reset tears the LIVE engine down
-    // and rebuilds it from the (now-cleared) blob: without this, the engine
-    // survives the reset and its next `onLayoutChange` re-persists the old
-    // arrangement right back into the blob the reset just cleared.
-  }, [tab, store, layoutResets]);
+  }, [tab, store]);
 
   useEffect(() => {
     if (liveEngine === null) {
@@ -396,12 +392,9 @@ export interface DockviewLayoutEngineProps {
    * `dynamicPanels`) and diffed against on every later render, mirroring how
    * `collapsed` is handled. */
   docked: readonly PanelId[];
-  /** Bumped by `resetWorkspaceLayout` after it clears this tab's persisted
-   * blob. A dep of the engine-creation effect so a bump tears the LIVE
-   * engine down and rebuilds it from the now-empty blob — a still-live
-   * engine would otherwise re-persist its old arrangement on its very next
-   * layout change, undoing the reset. */
-  layoutResets: number;
+  // No `layoutResets` prop here — see the REMOUNT CONTRACT note on the
+  // component itself: the caller keys the element on the workspace-reset
+  // counter instead, so a reset remounts the whole bridge.
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];

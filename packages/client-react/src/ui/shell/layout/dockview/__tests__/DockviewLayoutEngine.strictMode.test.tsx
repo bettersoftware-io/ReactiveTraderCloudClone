@@ -41,6 +41,9 @@ const registry: PanelRegistry = {
   "fx-blotter": () => {
     return <div>BLOTTER</div>;
   },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
 };
 
 /** The 32px bar plus dockview's gap share for a two-child column (7 × 1/2):
@@ -84,7 +87,6 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           maximized={null}
           collapsed={["fx-analytics"]}
           docked={[]}
-          layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
@@ -142,7 +144,6 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           maximized={null}
           collapsed={[]}
           docked={["panel-dyn-1"]}
-          layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
@@ -153,6 +154,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
 
     // fx's 4 seed leaves plus the reconciled dynamic panel.
     expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 });
 

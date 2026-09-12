@@ -15,6 +15,8 @@ export interface DockviewLayoutEngineStrictModePage {
    * mounted engine currently reports, as a string (the attribute's raw
    * form). */
   groupsAttr(): string | null;
+  /** Whether a testid the registry/portal tree renders is present. */
+  bodyVisible(testId: string): boolean;
 }
 
 /** The framework surface for `DockviewLayoutEngine.strictMode.test.tsx`. The
@@ -34,6 +36,9 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
     },
     groupsAttr(): string | null {
       return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    bodyVisible(testId: string): boolean {
+      return screen.queryByTestId(testId) !== null;
     },
   };
 }

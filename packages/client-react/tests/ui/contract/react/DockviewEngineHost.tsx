@@ -128,12 +128,11 @@ export function DockviewEngineHost({
             ? liveCollapsed
             : ((collapsed as readonly PanelId[] | undefined) ?? [])
         }
-        // Task 7 threads a real docked/layoutResets fixture through this
-        // host; until then these are inert defaults (no dynamic panels, no
-        // reset), matching every case in DockviewEngine.contract.spec.ts,
-        // which predates the `docked` prop.
+        // Task 7 threads a real docked fixture through this host; until
+        // then this is an inert default (no dynamic panels), matching every
+        // case in DockviewEngine.contract.spec.ts, which predates the
+        // `docked` prop.
         docked={[]}
-        layoutResets={0}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}
