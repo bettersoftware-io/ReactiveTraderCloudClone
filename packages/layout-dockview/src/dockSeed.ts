@@ -1,7 +1,7 @@
 import type { GroupviewPanelState, SerializedDockview } from "dockview";
 import { Orientation } from "dockview";
 
-const RTC_PANEL_COMPONENT = "rtc-panel";
+export const RTC_PANEL_COMPONENT = "rtc-panel";
 
 export type DockSeedNode =
   | {
@@ -322,6 +322,13 @@ function panelIdsUnder(node: DockSeedNode): string[] {
   }
 
   return node.children.flatMap(panelIdsUnder);
+}
+
+/** Every panel id under `root`, in tree order — the ids a dynamic panel must
+ * avoid colliding with, and later tasks' basis for seeding/reconciling the
+ * dock's panel set against the app's own model. */
+export function seedPanelIds(root: DockSeedNode): readonly string[] {
+  return panelIdsUnder(root);
 }
 
 /** Pixels still owed to pinned entries AFTER `index` — what the last free

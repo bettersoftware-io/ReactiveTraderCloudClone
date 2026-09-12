@@ -1,7 +1,7 @@
 import { createDockview } from "dockview";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { convertSeed, toSerializedDockview } from "#/dockSeed";
+import { convertSeed, seedPanelIds, toSerializedDockview } from "#/dockSeed";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with the same stub. Needed
@@ -500,6 +500,20 @@ describe("toSerializedDockview × dockview-core round trip", () => {
     expect(api.getGroup("group-1")?.api.width).toBe(633);
 
     api.dispose();
+  });
+});
+
+describe("seedPanelIds", () => {
+  it("collects every panel id under a nested seed, in tree order", () => {
+    expect(seedPanelIds(FX_LIKE)).toEqual([
+      "fx-rates",
+      "fx-blotter",
+      "fx-analytics",
+    ]);
+  });
+
+  it("returns the single id for a lone panel seed", () => {
+    expect(seedPanelIds({ kind: "panel", panelId: "solo" })).toEqual(["solo"]);
   });
 });
 

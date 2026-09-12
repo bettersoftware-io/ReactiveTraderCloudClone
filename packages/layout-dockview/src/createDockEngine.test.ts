@@ -1307,26 +1307,6 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
-  /** Grabs the first sash of the first split matching `splitSelector` —
-   * dockview's real pointer-drag entry — without moving it. */
-  function grabSash(container: HTMLElement, splitSelector: string): void {
-    const sash = container.querySelector(
-      `${splitSelector} > .dv-sash-container > .dv-sash`,
-    );
-
-    if (sash === null) {
-      throw new Error(`no sash under ${splitSelector}`);
-    }
-
-    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
-  }
-
-  function dragSash(container: HTMLElement, splitSelector: string): void {
-    grabSash(container, splitSelector);
-    window.dispatchEvent(new Event("pointermove"));
-    window.dispatchEvent(new Event("pointerup"));
-  }
-
   function railPinnedBase(): DockEngineOptions {
     return {
       ...railBase(),
@@ -1677,6 +1657,113 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
   function legacyPanel(id: string): Record<string, string> {
     return { id, contentComponent: "rtc-panel", title: id };
   }
+});
+
+describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+
+  it("adds a dynamic panel as a new right-edge group at its initialPx card width", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    expect(api.getPanel("panel-dyn-1")).toBeDefined();
+    // its own group — not stacked into an existing one
+    expect(api.getPanel("panel-dyn-1")?.group.panels).toHaveLength(1);
+    engine.dispose();
+  });
+
+  it("is idempotent — adding an existing id changes nothing", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const before = lastDockviewApi().groups.length;
+    engine.addDynamicPanel(DYN);
+    expect(lastDockviewApi().groups.length).toBe(before);
+    engine.dispose();
+  });
+
+  it("persists the dynamic panel's pin and releases it on a sash drag", async () => {
+    // A synthetic drag (no real geometry change) never fires dockview's own
+    // onDidLayoutChange, so — like the sibling design-pin release tests —
+    // the release is asserted from the blob dispose() flushes unconditionally,
+    // not via waitForPins.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForPins(seen, 1);
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    dragSash(opts.container, ".dv-horizontal");
+    engine.dispose();
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("removes a dynamic panel and its group", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.removeDynamicPanel("panel-dyn-1");
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    engine.removeDynamicPanel("panel-dyn-1"); // unknown id: no-op, no throw
+    engine.dispose();
+  });
+
+  it("purges the strip ledger on removal — no phantom rtcStripGeometry", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.collapsePanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    engine.removeDynamicPanel("panel-dyn-1");
+    await vi.waitFor(() => {
+      const blob = JSON.parse(seen.blob());
+      expect(JSON.stringify(blob.rtcStripGeometry ?? {})).not.toContain(
+        "panel-dyn-1",
+      );
+    });
+    engine.dispose();
+  });
+
+  it("a dynamic panel joins the stripDir walk — collapsing it as the column's last panel flips the column", async () => {
+    // Docked as a lone panel at the right edge, so collapsing it must read
+    // against the ROW (vertical strip), exactly as a static lone column does
+    // (the "fully-stripped column" suite above).
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.collapsePanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    expect(strips.last["panel-dyn-1"]).toBe("vertical");
+    engine.expandPanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", 360); // pin-remembered width restored
+    engine.dispose();
+  });
+
+  it("removing a maximize-forced strip's owner restores the survivors", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const rates = baselineSize(base(), "fx-rates");
+    engine.maximizePanel("panel-dyn-1"); // strips every static panel
+    engine.removeDynamicPanel("panel-dyn-1");
+    await waitForSizeWithin(seen, "fx-rates", rates, 8); // statics restored
+    engine.dispose();
+  });
 });
 
 function within(target: number, tolerance: number): unknown {
@@ -2114,4 +2201,24 @@ function base(): DockEngineOptions {
     onLayoutChange: () => {},
     debounceMs: 0,
   };
+}
+
+/** Grabs the first sash of the first split matching `splitSelector` —
+ * dockview's real pointer-drag entry — without moving it. */
+function grabSash(container: HTMLElement, splitSelector: string): void {
+  const sash = container.querySelector(
+    `${splitSelector} > .dv-sash-container > .dv-sash`,
+  );
+
+  if (sash === null) {
+    throw new Error(`no sash under ${splitSelector}`);
+  }
+
+  sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+}
+
+function dragSash(container: HTMLElement, splitSelector: string): void {
+  grabSash(container, splitSelector);
+  window.dispatchEvent(new Event("pointermove"));
+  window.dispatchEvent(new Event("pointerup"));
 }

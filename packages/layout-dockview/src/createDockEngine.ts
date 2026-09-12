@@ -5,7 +5,12 @@ import {
   migrateDockBlob,
   withoutLockMarks,
 } from "#/dockBlob";
-import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
+import {
+  convertSeed,
+  type DockDesignPin,
+  type DockSeedNode,
+  RTC_PANEL_COMPONENT,
+} from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
@@ -123,6 +128,17 @@ export type DockStripOrientation = "vertical" | "horizontal";
 /** Every currently collapsed panel and which way its strip reads. */
 export type DockStripMap = Readonly<Record<string, DockStripOrientation>>;
 
+/** A panel the app opens at runtime (Jarvis docking a GenUI card), rather
+ * than one seeded at mount. Always lands as its own new group at the grid's
+ * right edge — never stacked into an existing group — with `initialPx` held
+ * as a design pin exactly like a seeded rail's `initialPx`. */
+export interface DockDynamicPanel {
+  readonly id: string;
+  /** Rendered card width of the new right-edge group, px. Callers pass the
+   * client's DOCK_COLUMN_INITIAL_PX (360) — this package has no @rtc deps. */
+  readonly initialPx: number;
+}
+
 export interface DockEngine {
   /** Fill the panel's maximize boundary with it — the whole dock, or its
    * nearest enclosing column for a `"nearest-column"` panel — by stripping
@@ -149,6 +165,14 @@ export interface DockEngine {
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
+  /** Opens `panel` as a new group at the grid's right edge, pinned at its
+   * `initialPx` card width exactly like a seeded rail. No-op if the id
+   * already exists in the dock. */
+  addDynamicPanel(panel: DockDynamicPanel): void;
+  /** Closes a dynamic panel and its group, restoring whatever it stripped or
+   * collapsed (maximize boundary, strip ledger) before it goes. No-op for an
+   * unknown id. */
+  removeDynamicPanel(panelId: string): void;
   groupCount(): number;
   dispose(): void;
 }
@@ -855,6 +879,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Pins one newly-added panel's group at its design width — a dynamic
+   * panel's own `applyDesignPins` of one, so it is held exactly like a
+   * seeded rail's `initialPx` and released the same way on a sash drag. */
+  function registerDesignPin(pin: DockDesignPin): void {
+    applyDesignPins([pin]);
+  }
+
   /** Lifts every design pin whose declaring split owns `sashSplit`'s sash —
    * the user is taking over that split, exactly as an in-house drag converts
    * its split to fractions. A pinned panel that is currently a STRIP has its
@@ -974,6 +1005,66 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     window.removeEventListener("pointerup", disarmSashUnpin, true);
   }
 
+  /** Opens `panel` as a brand-new group at the grid's right edge — never
+   * stacked into an existing one — and pins it at its design width exactly
+   * like a seeded rail. No-op if the id is already in the dock. */
+  function insertDynamicPanel(panel: DockDynamicPanel): void {
+    if (api.getPanel(panel.id) !== undefined) {
+      return;
+    }
+
+    api.addPanel({
+      id: panel.id,
+      component: RTC_PANEL_COMPONENT,
+      title: opts.panels.title(panel.id),
+      position: { direction: "right" },
+      initialWidth: panel.initialPx + GROUP_GAP_PX,
+    });
+    registerDesignPin({
+      panelIds: [panel.id],
+      px: panel.initialPx,
+      axis: "width",
+    });
+  }
+
+  /** Closes a dynamic panel and its group. Restores anything the panel's own
+   * maximize or collapse left behind before it goes — a maximize this panel
+   * is the OWNER of releases in full (so the survivors' sizes are read back
+   * while they still mean something), a strip it merely joined is dropped
+   * from the record, and its own collapse (if any) is released so the
+   * surrounding geometry settles before the group disappears. No-op for an
+   * unknown id. */
+  function deleteDynamicPanel(panelId: string): void {
+    const panel = api.getPanel(panelId);
+
+    if (panel === undefined) {
+      return;
+    }
+
+    if (maximized?.panelId === panelId) {
+      // Release the whole maximize first so the strips it made restore
+      // while their pre-strip sizes are still meaningful.
+      releaseMaximize();
+    } else if (maximized !== null) {
+      maximized = {
+        ...maximized,
+        stripped: maximized.stripped.filter((id) => {
+          return id !== panelId;
+        }),
+      };
+    }
+
+    if (records.has(panelId)) {
+      // Restore the surrounding geometry while the group still exists.
+      releaseStrip(panelId);
+      records.delete(panelId); // releaseStrip bails on a gone group; belt-and-braces.
+    }
+
+    api.removePanel(panel);
+    settleStrips();
+    settleStripFreeWorlds();
+  }
+
   applyDesignPins(restored.pins);
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
@@ -1078,6 +1169,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStripFreeWorlds();
       });
     },
+    addDynamicPanel: insertDynamicPanel,
+    removeDynamicPanel: deleteDynamicPanel,
     groupCount: () => {
       return api.groups.length;
     },
