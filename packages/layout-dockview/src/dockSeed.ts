@@ -1,7 +1,10 @@
 import type { GroupviewPanelState, SerializedDockview } from "dockview";
 import { Orientation } from "dockview";
 
-const RTC_PANEL_COMPONENT = "rtc-panel";
+/** The content-component id every RTC panel registers under — the seed
+ * conversion stamps it on each serialized view, and the engine's reopen path
+ * re-adds panels with the same id so the hook renderer picks them up. */
+export const RTC_PANEL_COMPONENT = "rtc-panel";
 
 export type DockSeedNode =
   | {

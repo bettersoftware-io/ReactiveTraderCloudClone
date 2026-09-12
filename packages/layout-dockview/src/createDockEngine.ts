@@ -5,7 +5,12 @@ import {
   migrateDockBlob,
   withoutLockMarks,
 } from "#/dockBlob";
-import { convertSeed, type DockDesignPin, type DockSeedNode } from "#/dockSeed";
+import {
+  convertSeed,
+  type DockDesignPin,
+  type DockSeedNode,
+  RTC_PANEL_COMPONENT,
+} from "#/dockSeed";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
@@ -149,6 +154,18 @@ export interface DockEngine {
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
+  /** Remove the panel from the grid entirely — the layer-2 `closed` set's
+   * mechanism (the View menu's uncheck). Any strip record it holds is
+   * released first (no orphan restore bar), closing the maximized panel
+   * exits its maximize, and a maximize-forced strip drops off the record.
+   * Idempotent; a no-op for an unknown panel. */
+  closePanel(panelId: string): void;
+  /** Re-add a previously closed panel at a deterministic seed-derived
+   * position: the nearest live SEED sibling anchors it (direction from the
+   * seed split's dir), walking outward through ancestor splits when the
+   * whole sibling subtree is gone; an emptied grid just takes the panel as
+   * its root. No-op when the panel is already open. */
+  reopenPanel(panelId: string): void;
   groupCount(): number;
   dispose(): void;
 }
@@ -1078,6 +1095,77 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStripFreeWorlds();
       });
     },
+    closePanel: (panelId: string): void => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined) {
+        return;
+      }
+
+      glide(() => {
+        if (maximized?.panelId === panelId) {
+          // Closing the maximized panel exits its maximize first: its
+          // forced strips must restore, not stay bars with nothing
+          // maximized behind them.
+          const restores = releaseMaximize();
+          settleStrips();
+
+          for (const restore of restores) {
+            restore();
+          }
+
+          settleStripFreeWorlds();
+        } else if (maximized !== null) {
+          // A closing panel cannot stay listed among the maximize's strips.
+          maximized = {
+            panelId: maximized.panelId,
+            stripped: maximized.stripped.filter((id) => {
+              return id !== panelId;
+            }),
+          };
+        }
+
+        // A stripped panel's record must not outlive it — release WITHOUT
+        // the size-restore step (the panel is leaving; there is nothing to
+        // size back).
+        releaseStrip(panelId);
+
+        api.removePanel(panel);
+        // Siblings re-derive strip orientations and worlds over the new
+        // membership (drifted worlds void rather than re-assert).
+        settleStrips();
+        settleStripFreeWorlds();
+      });
+    },
+    reopenPanel: (panelId: string): void => {
+      if (api.getPanel(panelId) !== undefined) {
+        return;
+      }
+
+      const anchor = seedAnchorFor(opts.seed, panelId, (candidateId) => {
+        return (
+          candidateId !== panelId && api.getPanel(candidateId) !== undefined
+        );
+      });
+
+      glide(() => {
+        api.addPanel({
+          id: panelId,
+          component: RTC_PANEL_COMPONENT,
+          title: opts.panels.title(panelId),
+          ...(anchor === null
+            ? {}
+            : {
+                position: {
+                  referencePanel: anchor.anchorPanelId,
+                  direction: anchor.direction,
+                },
+              }),
+        });
+        settleStrips();
+        settleStripFreeWorlds();
+      });
+    },
     groupCount: () => {
       return api.groups.length;
     },
@@ -1802,4 +1890,107 @@ function applyTitles(api: DockviewApi, hooks: DockPanelHooks): void {
   for (const panel of api.panels) {
     panel.setTitle(hooks.title(panel.id));
   }
+}
+
+/** One step of {@link seedAnchorFor}'s walk: where `panelId` sits inside
+ * `node`, as the child index path (innermost last). Null when absent. */
+function seedPathTo(
+  node: DockSeedNode,
+  panelId: string,
+): readonly number[] | null {
+  if (node.kind === "panel") {
+    return node.panelId === panelId ? [] : null;
+  }
+
+  for (const [index, child] of node.children.entries()) {
+    const rest = seedPathTo(child, panelId);
+
+    if (rest !== null) {
+      return [index, ...rest];
+    }
+  }
+
+  return null;
+}
+
+function seedLeafIdsOf(node: DockSeedNode): readonly string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(seedLeafIdsOf);
+}
+
+/** The reopen-position rule, pure over the SEED tree: find `panelId`'s seed
+ * position, then take sibling subtrees in order of proximity — nearest
+ * sibling of its own split first, then outward through ancestor splits —
+ * and anchor at the first one holding a live panel. The direction reads off
+ * the deciding split's `dir` and the index relation (a row's later child
+ * reopens to the anchor's "right", etc.). Null when no seed panel is live —
+ * the caller falls back to adding at the grid edge. */
+export function seedAnchorFor(
+  seed: DockSeedNode,
+  panelId: string,
+  isLive: (candidateId: string) => boolean,
+): {
+  readonly anchorPanelId: string;
+  readonly direction: "left" | "right" | "above" | "below";
+} | null {
+  const path = seedPathTo(seed, panelId);
+
+  if (path === null || seed.kind === "panel") {
+    return null;
+  }
+
+  // The splits along the path, innermost first, each with the child index
+  // the closed panel descends through.
+  const levels: {
+    split: Extract<DockSeedNode, { kind: "split" }>;
+    index: number;
+  }[] = [];
+  let node: DockSeedNode = seed;
+
+  for (const index of path) {
+    if (node.kind !== "split") {
+      break;
+    }
+
+    levels.unshift({ split: node, index });
+    node = node.children[index];
+  }
+
+  for (const { split, index } of levels) {
+    const siblings = split.children
+      .map((child, childIndex) => {
+        return { child, childIndex };
+      })
+      .filter(({ childIndex }) => {
+        return childIndex !== index;
+      })
+      .sort((a, b) => {
+        return Math.abs(a.childIndex - index) - Math.abs(b.childIndex - index);
+      });
+
+    for (const { child, childIndex } of siblings) {
+      const live = seedLeafIdsOf(child).find(isLive);
+
+      if (live === undefined) {
+        continue;
+      }
+
+      const after = index > childIndex;
+      const direction =
+        split.dir === "row"
+          ? after
+            ? ("right" as const)
+            : ("left" as const)
+          : after
+            ? ("below" as const)
+            : ("above" as const);
+
+      return { anchorPanelId: live, direction };
+    }
+  }
+
+  return null;
 }

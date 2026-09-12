@@ -1741,6 +1741,99 @@ vi.mock("dockview", async (importOriginal) => {
 
 /** The dockview api of the most recently created engine — captured by the
  * module mock above. */
+describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
+  it("closePanel removes the panel and reopenPanel restores it beside its seed sibling", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({
+      ...base(),
+      seed: RAIL_LIKE,
+      ...seen.options,
+    });
+    const dock = lastDockviewApi();
+
+    engine.closePanel("fx-analytics");
+    expect(dock.getPanel("fx-analytics")).toBeUndefined();
+    expect(engine.groupCount()).toBe(3);
+
+    engine.reopenPanel("fx-analytics");
+    expect(dock.getPanel("fx-analytics")).toBeDefined();
+    // Anchored to fx-positions (its seed rail sibling), sharing the rail column.
+    expect(columnOf("fx-analytics")).not.toBeNull();
+    expect(columnOf("fx-analytics")).toBe(columnOf("fx-positions"));
+    engine.dispose();
+  });
+
+  it("closing a collapsed panel releases its strip; closing the maximized panel exits maximize", async () => {
+    const strips: DockStripMap[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      seed: RAIL_LIKE,
+      onStripsChange: (map) => {
+        strips.push(map);
+      },
+    });
+    const dock = lastDockviewApi();
+
+    engine.collapsePanel("fx-blotter");
+    expect(strips.at(-1)).toEqual({ "fx-blotter": "horizontal" });
+
+    engine.closePanel("fx-blotter");
+    expect(dock.getPanel("fx-blotter")).toBeUndefined();
+    // The strip record went with the panel — no orphan restore bar.
+    expect(strips.at(-1)).toEqual({});
+
+    engine.maximizePanel("fx-rates");
+    expect(strips.at(-1)).not.toEqual({});
+    engine.closePanel("fx-rates");
+    expect(dock.getPanel("fx-rates")).toBeUndefined();
+    // Closing the maximized panel exits the maximize: its forced strips
+    // restore rather than staying bars with nothing maximized.
+    expect(strips.at(-1)).toEqual({});
+    engine.dispose();
+  });
+
+  it("reopen lands at the right edge when the whole grid emptied out", () => {
+    const engine = createDockEngine(base());
+    const dock = lastDockviewApi();
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    engine.closePanel("fx-analytics");
+    expect(engine.groupCount()).toBe(0);
+
+    engine.reopenPanel("fx-rates");
+    expect(dock.getPanel("fx-rates")).toBeDefined();
+    expect(engine.groupCount()).toBe(1);
+    engine.dispose();
+  });
+
+  it("the blob round-trips a closed-panel layout and reopen after reload still anchors at the seed sibling", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      seed: RAIL_LIKE,
+      ...seen.options,
+    });
+
+    first.closePanel("fx-analytics");
+    await waitForSaves(seen);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...base(),
+      seed: RAIL_LIKE,
+      blob: seen.blob(),
+    });
+    const dock = lastDockviewApi();
+    expect(dock.getPanel("fx-analytics")).toBeUndefined();
+
+    second.reopenPanel("fx-analytics");
+    expect(dock.getPanel("fx-analytics")).toBeDefined();
+    expect(columnOf("fx-analytics")).toBe(columnOf("fx-positions"));
+    second.dispose();
+  });
+});
+
 function lastDockviewApi(): DockviewApi {
   if (capturedDockview.api === null) {
     throw new Error("no dockview created yet");
@@ -1751,6 +1844,22 @@ function lastDockviewApi(): DockviewApi {
 
 /** Polls the persisted layout until its `rtcDesignPins` sidecar holds
  * exactly `expected` pins — the pin analogue of {@link waitForSize}. */
+/** Polls until at least one serialisation landed — the debounce is 0 in
+ * tests, but the save still rides a macrotask. */
+async function waitForSaves(tracker: LayoutTracker): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (tracker.saves > 0) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
+  }
+
+  throw new Error("no save ever landed");
+}
+
 async function waitForPins(
   tracker: LayoutTracker,
   expected: number,
@@ -1943,6 +2052,17 @@ function railScope(panelId: string): DockMaximizeScope {
   return panelId === "fx-analytics" || panelId === "fx-positions"
     ? "nearest-column"
     : "root";
+}
+
+/** The `.dv-vertical` split container the panel's view lives in — the
+ * "column" identity the reopen anchor rule is asserted with. Located via the
+ * mounted content marker (`content:<id>`), which the base() hooks render. */
+function columnOf(panelId: string): Element | null {
+  const marker = [...document.querySelectorAll("*")].find((el) => {
+    return el.textContent === `content:${panelId}` && el.children.length === 0;
+  });
+
+  return marker?.closest(".dv-vertical") ?? null;
 }
 
 function base(): DockEngineOptions {
