@@ -276,17 +276,26 @@ export function DockviewLayoutEngine(
         }
 
         suppressSave = true;
-        const disposed = engine;
-        engine = null;
-        setLiveEngine(null);
-        disposed?.dispose();
-        setMounted([]);
-        setGroups(0);
-        setStrips({});
-        applied = [];
-        appliedDocked = [];
-        buildEngine();
-        suppressSave = false;
+
+        // MINOR (fix round 2): `try`/`finally` around the whole dispose-
+        // then-rebuild span — a throwing `createDockEngine` (or a throwing
+        // old engine `dispose()`) must not leave `suppressSave` stuck
+        // `true` for the rest of the session, silently dropping every
+        // later save.
+        try {
+          const disposed = engine;
+          engine = null;
+          setLiveEngine(null);
+          disposed?.dispose();
+          setMounted([]);
+          setGroups(0);
+          setStrips({});
+          applied = [];
+          appliedDocked = [];
+          buildEngine();
+        } finally {
+          suppressSave = false;
+        }
       },
     ),
   );

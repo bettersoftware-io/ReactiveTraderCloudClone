@@ -303,6 +303,143 @@ describe("DockviewLayoutEngine docked prop", () => {
 
     expect(page.stripMarked("fx-analytics")).toBe(false);
   });
+
+  // NEW-1 (fix round 2, Critical): the mount effect's cleanup used to
+  // dispose the `const engine` it captured at CONSTRUCTION time — after a
+  // reset, that's the STALE, already-disposed pre-reset instance, not the
+  // live post-reset one. Disposing it a SECOND time serialised an
+  // already-torn-down dockview api, which emits a panel-less blob
+  // (`"views":[]` everywhere); since the SUPPRESSION GUARD only holds
+  // during the reset's own window (long closed by the time unmount
+  // happens), that empty blob landed in the store — permanently emptying
+  // the tab — while the ACTUALLY live engine leaked, never disposed at all.
+  it("disposes the current (post-reset) engine on unmount, not the stale pre-reset one", async () => {
+    const inner = new InMemoryDockLayoutStore();
+    const saved: string[] = [];
+    const store: DockLayoutStore = {
+      load: (tab: string): string | null => {
+        return inner.load(tab);
+      },
+      save: (tab: string, blob: string): void => {
+        inner.save(tab, blob);
+        saved.push(blob);
+      },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
+    };
+
+    page.mount(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        docked={["panel-dyn-1"]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    page.rerender(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        docked={["panel-dyn-1"]}
+        layoutResets={1}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    // Let the rebuilt (post-reset) engine's own reconciliation save land
+    // before unmounting — the bug this guards is specific to what UNMOUNT
+    // does with the now-stale PRE-reset engine, not the reset itself.
+    await page.waitFor(() => {
+      expect(saved.length).toBeGreaterThan(0);
+    });
+
+    const savedBeforeUnmount = saved.length;
+
+    page.unmountAll();
+
+    // Whatever the unmount's own final flush wrote (zero entries, if the
+    // live engine had nothing pending; one, its final serialize) must still
+    // carry real panel views — no post-unmount save resurrects the stale
+    // pre-reset shape or empties the tab.
+    const savedDuringUnmount = saved.slice(savedBeforeUnmount);
+
+    for (const blob of savedDuringUnmount) {
+      expect(blob).not.toContain('"views":[]');
+      expect(everyLeafHasViews(JSON.parse(blob).grid.root)).toBe(true);
+    }
+
+    // The tab's LAST word, whichever save wrote it, must still be the real
+    // arrangement.
+    const last = saved[saved.length - 1] ?? "{}";
+    expect(last).not.toContain('"views":[]');
+    expect(everyLeafHasViews(JSON.parse(last).grid.root)).toBe(true);
+  });
+
+  // NEW-2 (fix round 2, Important): `workspaceLayoutResets$` is
+  // session-global and monotonic, and this component remounts per tab (via
+  // App's `key={activeTab}`) — so once ANY reset has ever happened in the
+  // session, `layoutResets` is already nonzero for every LATER tab mount.
+  // The rebuild effect used to fire whenever `layoutResets !== 0`,
+  // regardless of whether THIS instance had ever applied it — so a mount
+  // with an already-nonzero counter tore the engine down and rebuilt it a
+  // SECOND time on the very first commit (a redundant blank-frame flash,
+  // and it also arms NEW-1's cleanup hazard the moment this instance
+  // eventually unmounts).
+  it("builds the engine exactly once on mount when layoutResets is already nonzero", () => {
+    const inner = new InMemoryDockLayoutStore();
+    const saved: string[] = [];
+    let loads = 0;
+    const store: DockLayoutStore = {
+      load: (tab: string): string | null => {
+        loads += 1;
+
+        return inner.load(tab);
+      },
+      save: (tab: string, blob: string): void => {
+        inner.save(tab, blob);
+        saved.push(blob);
+      },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
+    };
+
+    page.mount(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        docked={[]}
+        layoutResets={3}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    expect(loads).toBe(1);
+    expect(saved).toEqual([]);
+    // fx's 4 seed leaves — present immediately, from the ONE construction.
+    expect(page.groupsAttr()).toBe("4");
+  });
 });
 
 function noop(): void {}
@@ -398,6 +535,25 @@ function sharesGroup(node: any, a: string, b: string): boolean {
   // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
   return ((node.data ?? []) as any[]).some((child) => {
     return sharesGroup(child, a, b);
+  });
+}
+
+/** Whether EVERY leaf under `node` still carries at least one panel view —
+ * the NEW-1 witness: a double-dispose's panel-less serialize produces a
+ * grid whose leaves carry `"views":[]`, not a grid missing leaves
+ * entirely, so this must walk every leaf rather than just checking the
+ * root shape survived. */
+// biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+function everyLeafHasViews(node: any): boolean {
+  if (node.type === "leaf") {
+    const views: unknown[] = node.data?.views ?? [];
+
+    return views.length > 0;
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  return ((node.data ?? []) as any[]).every((child) => {
+    return everyLeafHasViews(child);
   });
 }
 
