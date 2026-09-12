@@ -378,17 +378,15 @@ describe("composition — dockedPanelIdsFor", () => {
     spawnPanel("jarvis-1");
     presenters.dockPanel("jarvis-1");
 
+    const seen: (readonly string[])[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((ids) => {
+      seen.push(ids);
+    });
+
     presenters.undockPanel("jarvis-1");
+    sub.unsubscribe();
 
-    let ids: readonly string[] = [];
-    presenters
-      .dockedPanelIdsFor("fx")
-      .subscribe((emitted) => {
-        ids = emitted;
-      })
-      .unsubscribe();
-
-    expect(ids).toEqual([]);
+    expect(seen.at(-1)).toEqual([]);
   });
 
   it("dismiss drops the id from the tab stream", () => {
@@ -396,17 +394,36 @@ describe("composition — dockedPanelIdsFor", () => {
     spawnPanel("jarvis-1");
     presenters.dockPanel("jarvis-1");
 
+    const seen: (readonly string[])[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((ids) => {
+      seen.push(ids);
+    });
+
     presenters.dismissPanel("jarvis-1");
+    sub.unsubscribe();
 
-    let ids: readonly string[] = [];
-    presenters
-      .dockedPanelIdsFor("fx")
-      .subscribe((emitted) => {
-        ids = emitted;
-      })
-      .unsubscribe();
+    expect(seen.at(-1)).toEqual([]);
+  });
+});
 
-    expect(ids).toEqual([]);
+describe("composition — workspaceLayoutResets$", () => {
+  it("bumps once per resetWorkspaceLayout() call, starting from 0", () => {
+    const { presenters } = bootApp(null);
+
+    const seen: number[] = [];
+    const sub = presenters.workspaceLayoutResets$.subscribe((n) => {
+      seen.push(n);
+    });
+
+    expect(seen.at(-1)).toBe(0);
+
+    presenters.resetWorkspaceLayout();
+    expect(seen.at(-1)).toBe(1);
+
+    presenters.resetWorkspaceLayout();
+    expect(seen.at(-1)).toBe(2);
+
+    sub.unsubscribe();
   });
 });
 

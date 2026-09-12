@@ -297,6 +297,11 @@ export interface Presenters {
    * resets every layout machine created this session back to its tab's
    * default tree, and dismisses every docked panel. */
   resetWorkspaceLayout: () => void;
+  /** Bumps once per workspace-layout reset. The Dockview bridges key their
+   * engine rebuild on it, so a live engine re-seeds from the cleared blob
+   * instead of re-persisting the old arrangement; the in-house engine needs
+   * no signal (its tree resets through the LayoutMachine). */
+  workspaceLayoutResets$: Observable<number>;
   /** J.A.R.V.I.S. drive-the-app interpreter: turns `jarvis`'s own "command"
    * turn events into staggered intent dispatches on `workspaceNav`,
    * per-tab layout machines, `eqWorkspace`, the theme-skin/power-saver
@@ -744,6 +749,12 @@ export function createApp(ports: AppPorts): App {
    * AFTER the map write is what makes the attributed membership visible. */
   const dockedPanelTabsKick$ = new BehaviorSubject<void>(undefined);
 
+  /** Backs `Presenters.workspaceLayoutResets$` — see its doc. Incremented
+   * exactly once, at the very END of `resetWorkspaceLayout`, after every
+   * other reset side effect has already landed (machines reset, panels
+   * dismissed, `dockedPanelTabs` cleared, dock blobs cleared). */
+  const workspaceLayoutResets$ = new BehaviorSubject<number>(0);
+
   for (const tab of WORKSPACE_TABS) {
     const persistedTab = persistedWorkspace?.tabs[tab];
 
@@ -1040,6 +1051,8 @@ export function createApp(ports: AppPorts): App {
     for (const tab of WORKSPACE_TABS) {
       dockLayoutStore.clear(tab);
     }
+
+    workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
   }
 
   // The debounced workspace writer. Kicked by every created layout machine
@@ -1379,6 +1392,7 @@ export function createApp(ports: AppPorts): App {
     undockPanel: undockPanelFromWorkspace,
     dismissPanel: dismissPanelFromWorkspace,
     resetWorkspaceLayout,
+    workspaceLayoutResets$,
     jarvisDriver,
     jarvisDemo,
   };

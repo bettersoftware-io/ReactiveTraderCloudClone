@@ -29,4 +29,15 @@ describe("InMemoryDockLayoutStore", () => {
     store.save("fx", '{"a":2}');
     expect(store.load("fx")).toBe('{"a":2}');
   });
+
+  it("clear round-trips: removes the tab's blob and leaves the other tab's alone", () => {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", '{"a":1}');
+    store.save("credit", '{"b":2}');
+
+    store.clear("fx");
+
+    expect(store.load("fx")).toBeNull();
+    expect(store.load("credit")).toBe('{"b":2}');
+  });
 });
