@@ -227,13 +227,29 @@ interface RemovalTally {
  * Pure (no dockview import): parses `blob`, drops every `panels` entry whose
  * id is not in `staticIds`, and walks `grid.root` removing any id NOT in
  * `staticIds` from each leaf's `views` — a leaf empties, it is dropped; a
- * branch left with exactly one surviving child collapses into that child
- * directly, so scrubbing never leaves a shape dockview would not itself have
- * produced. Membership is checked against `staticIds` directly, not against
- * the `panels` dictionary's own keys, so a leaf `views` entry with no
- * matching `panels` entry at all — an unrestorable node's other common
- * corrupt shape — is scrubbed exactly like one whose `panels` entry survived
- * but was malformed.
+ * NON-root branch left with exactly one surviving child collapses into that
+ * child directly, so scrubbing never leaves a shape dockview would not
+ * itself have produced. The ROOT branch is exempt from that collapse — it
+ * stays a branch even with a single surviving child (donating the removed
+ * sibling's freed size onto that child, same as any other survivor) —
+ * because dockview's `fromJSON` rejects a leaf root outright ("root must be
+ * of type branch", verified against 7.0.4; `convertSeed`'s own lone-panel
+ * wrap exists for the identical reason). Reachable in practice: a
+ * single-panel seed tab (e.g. Admin) with one Jarvis-docked panel serializes
+ * as exactly `[static leaf, dynamic leaf]` at the root, and scrubbing the
+ * dynamic leaf must not turn that root into a bare leaf. Membership is
+ * checked against `staticIds` directly, not against the `panels`
+ * dictionary's own keys, so a leaf `views` entry with no matching `panels`
+ * entry at all — an unrestorable node's other common corrupt shape — is
+ * scrubbed exactly like one whose `panels` entry survived but was malformed.
+ *
+ * Limit: this only walks `grid.root` and `panels` — a dynamic panel torn
+ * off into its own floating or popout window (`floatingGroups`/
+ * `popoutGroups`, both outside `grid`) is not reachable here and is not
+ * scrubbed. Fail-safe, not a silent gap: an unrestorable node living only in
+ * one of those stays unrestorable, the retry's own `fromJSON` still throws,
+ * and `loadBlobOrSeed` falls through to the seed exactly as it did before
+ * this partial net existed.
  *
  * Returns `null` — the caller's cue to fall straight to the seed — when
  * nothing was actually dynamic (a static-only blob, so nothing was removed),
@@ -284,6 +300,7 @@ export function withoutDynamicNodes(
     (grid as UnverifiedGrid).root,
     staticSet,
     tally,
+    true, // isRoot — never collapsed away, see the doc comment above
   );
 
   if (!tally.any) {
@@ -316,7 +333,8 @@ function sizeOf(node: unknown): number {
 /** Removes every view id NOT in `staticIds` from one grid node's leaves,
  * recursively, marking `tally.any` the first time a view is actually
  * dropped. `null` means the node itself disappeared — an emptied leaf, or a
- * branch every child of which disappeared.
+ * branch every child of which disappeared (never true for `isRoot`, which
+ * always keeps its own branch wrapper — see below).
  *
  * A branch that loses a direct child donates that child's freed `size` to
  * the LARGEST surviving sibling rather than leaving every survivor's `size`
@@ -327,16 +345,25 @@ function sizeOf(node: unknown): number {
  * deliberately-narrow strip, e.g., a panel a user had collapsed, as it would
  * a full-size one). Donating to the largest — presumed the main content
  * area, not a fixed/pinned/collapsed one — leaves every other survivor's own
- * `size` exactly as persisted.
+ * `size` exactly as persisted. This is a heuristic, not a guarantee: between
+ * two similarly-sized survivors it may donate to the "wrong" one, but a
+ * wrong donation is self-correcting — it only misjudges an initial size on
+ * the degraded-blob path, and the very next save (or a user's own sash
+ * drag) persists whatever the layout actually settles at.
  *
- * A branch left with exactly one surviving child collapses into that child
- * directly (rather than persisting as a single-child branch), inheriting the
- * DEAD branch's own `size` — the survivor's previous `size` was along the
- * dead branch's own (orthogonal) axis, not its parent's. */
+ * A NON-root branch left with exactly one surviving child collapses into
+ * that child directly (rather than persisting as a single-child branch),
+ * inheriting the DEAD branch's own `size` — the survivor's previous `size`
+ * was along the dead branch's own (orthogonal) axis, not its parent's. The
+ * ROOT branch is exempt from this collapse: donation still applies (its
+ * sole surviving child absorbs the freed space, same as any other
+ * survivor), but the branch wrapper itself is kept — see
+ * {@link withoutDynamicNodes}'s own doc comment for why. */
 function removeDynamicViews(
   node: unknown,
   staticIds: ReadonlySet<string>,
   tally: RemovalTally,
+  isRoot: boolean,
 ): unknown | null {
   if (typeof node !== "object" || node === null) {
     return node;
@@ -348,7 +375,7 @@ function removeDynamicViews(
     let freedSize = 0;
     const children = data
       .map((child: unknown) => {
-        const result = removeDynamicViews(child, staticIds, tally);
+        const result = removeDynamicViews(child, staticIds, tally, false);
 
         if (result === null) {
           freedSize += sizeOf(child);
@@ -364,14 +391,6 @@ function removeDynamicViews(
       return null;
     }
 
-    if (children.length === 1) {
-      const survivor = children[0];
-
-      return typeof (node as UnverifiedSized).size === "number"
-        ? { ...(survivor as object), size: (node as UnverifiedSized).size }
-        : survivor;
-    }
-
     if (freedSize > 0) {
       const sizes = children.map(sizeOf);
       const largestIndex = sizes.indexOf(Math.max(...sizes));
@@ -380,6 +399,14 @@ function removeDynamicViews(
         ...largest,
         size: sizeOf(largest) + freedSize,
       };
+    }
+
+    if (children.length === 1 && !isRoot) {
+      const survivor = children[0];
+
+      return typeof (node as UnverifiedSized).size === "number"
+        ? { ...(survivor as object), size: (node as UnverifiedSized).size }
+        : survivor;
     }
 
     return { ...node, data: children };

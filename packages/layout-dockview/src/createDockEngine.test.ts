@@ -73,6 +73,13 @@ const RAIL_LIKE = {
   ],
 } as const;
 
+/** A single-panel seed — the real shape of the Admin tab. With one dynamic
+ * panel docked, its root serializes as exactly `[static leaf, dynamic
+ * leaf]`: the reproduction for the root-collapse scrub bug (a corrupt
+ * dynamic leaf's removal must not turn this root into a bare, dockview-
+ * rejected leaf). */
+const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+
 const attachedContainers: HTMLElement[] = [];
 
 afterEach(() => {
@@ -1908,18 +1915,32 @@ describe("dynamic-panel reconciliation at construction", () => {
       dynamicPanels: [DYN],
     });
     await waitForSize(seen, "panel-dyn-1", 360);
-    const analyticsBefore = seen.sizeOf("fx-analytics");
+    const api = lastDockviewApi();
+    const rates = api.getPanel("fx-rates");
+    const blotter = api.getPanel("fx-blotter");
 
-    if (analyticsBefore === null) {
-      throw new Error("fx-analytics has no rendered size");
+    if (!rates || !blotter) {
+      throw new Error("fixture panels missing");
     }
 
-    // capture a real geometry delta on a static panel so seed-fallback is detectable
-    first.collapsePanel("fx-analytics");
-    await waitForSize(seen, "fx-analytics", STRIP);
+    // Give a STATIC pair a non-seed arrangement — stack blotter into rates'
+    // own group. FX_LIKE's fresh conversion always puts them in SEPARATE
+    // groups, so this can survive a reload ONLY via a genuine restore, never
+    // via a seed fallback: the assertion below is unsatisfiable by seed,
+    // unlike an earlier version of this test that (verified by the
+    // reviewer aliasing `withoutDynamicNodes` to always return `null`)
+    // passed identically whether the scrub ran or not — reconciliation
+    // re-adds the dynamic panel via the SAME `insertDynamicPanel` path
+    // either way, and that path's own right-edge redistribution overwrites
+    // whatever ratio fx-analytics had BEFORE it ran, so a plain geometry
+    // check on a panel adjacent to the dynamic one never discriminated the
+    // two paths — this stack, on panels the dynamic panel's insertion never
+    // touches, does.
+    blotter.api.moveTo({ group: rates.group, position: "center" });
+    expect(rates.group.panels.length).toBe(2);
+    first.dispose();
     const parsed = JSON.parse(seen.blob());
     delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
-    first.dispose();
     const reloaded = trackLayout();
     const second = createDockEngine({
       ...base(),
@@ -1928,33 +1949,84 @@ describe("dynamic-panel reconciliation at construction", () => {
       dynamicPanels: [DYN],
     });
     // The scrubbed retry succeeded (not seed): the dynamic panel layer 2
-    // still lists is re-added at its right-edge width.
+    // still lists is re-added at its right-edge width...
     await waitForSize(reloaded, "panel-dyn-1", 360);
-    // The static arrangement survived: `rtcStripGeometry`'s persisted
-    // pre-collapse size for fx-analytics rode through the scrub untouched
-    // (withoutDynamicNodes only ever touches `grid`/`panels`), so the first
-    // collapse-then-expand after this reload restores EXACTLY that size
-    // rather than measuring whatever fx-analytics happens to render at post-
-    // reconciliation — a seed fallback would have no such seeded size to
-    // restore from (see the sibling "restores the pre-collapse width when
-    // expanding after a reload" test for the same mechanism).
-    second.collapsePanel("fx-analytics");
-    second.expandPanel("fx-analytics");
-    await waitForSizeWithin(reloaded, "fx-analytics", analyticsBefore, 2);
+    // ...and the static stack survived untouched — withoutDynamicNodes only
+    // ever removes dynamic ids, so a leaf naming two static ids is never
+    // touched by the scrub, unlike a seed fallback which could never
+    // reproduce this arrangement at all.
+    const ratesAfter = lastDockviewApi().getPanel("fx-rates");
+    expect(ratesAfter?.group.panels.length).toBe(2);
+    second.dispose();
+  });
+
+  it("does not degrade a single-panel seed tab to seed when its dock corrupts (root stays a branch)", async () => {
+    // The real Admin-tab shape: a single-panel seed. With one Jarvis-docked
+    // panel, its root serializes as exactly [static leaf, dynamic leaf] —
+    // removing the corrupt dynamic leaf must not collapse that root down to
+    // a bare leaf, which dockview's own fromJSON rejects outright ("root
+    // must be of type branch"), forcing the whole tab to seed. A lone
+    // panel has no other content to give it a non-seed SIZE (it always
+    // fills 100% either way), so the discriminator here is its restored
+    // GROUP ID: fromJSON restores a leaf's persisted `data.id` verbatim,
+    // while a fresh seed build assigns its own auto id, oblivious to
+    // anything the blob said — stamping a distinctive marker onto the
+    // admin leaf before corrupting the blob makes scrub-success and seed
+    // fallback unambiguously distinguishable.
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      seed: ADMIN_LIKE,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const parsed = JSON.parse(seen.blob());
+    const adminLeaf = (
+      parsed.grid.root.data as { data: { views: string[]; id: string } }[]
+    ).find((leaf) => {
+      return leaf.data.views.includes("admin");
+    });
+
+    if (!adminLeaf) {
+      throw new Error("admin leaf missing from the captured blob");
+    }
+
+    adminLeaf.data.id = "g-admin-marker"; // only a real restore preserves this
+    delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
+    first.dispose();
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      seed: ADMIN_LIKE,
+      ...reloaded.options,
+      blob: JSON.stringify(parsed),
+      dynamicPanels: [DYN],
+    });
+
+    expect(lastDockviewApi().getPanel("admin")?.group.id).toBe(
+      "g-admin-marker",
+    );
+    await waitForSize(reloaded, "panel-dyn-1", 360);
     second.dispose();
   });
 
   it("leaves a static-only blob with no dynamicPanels exactly as before", async () => {
     const seen = trackLayout();
     const first = createDockEngine({ ...base(), ...seen.options });
+    const analyticsBefore = seen.sizeOf("fx-analytics");
     const blob = seen.blob();
     first.dispose();
+    const reloaded = trackLayout();
     const second = createDockEngine({
       ...base(),
-      ...trackLayout().options,
+      ...reloaded.options,
       blob,
     });
     expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    // the static arrangement itself is untouched — not just "no phantom
+    // dynamic panel", but the SAME layout, byte for byte on this panel.
+    expect(reloaded.sizeOf("fx-analytics")).toBe(analyticsBefore);
     second.dispose();
   });
 });
