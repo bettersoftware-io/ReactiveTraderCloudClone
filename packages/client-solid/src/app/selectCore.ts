@@ -20,11 +20,17 @@ export function resolveCoreImpl(raw: string | undefined): CoreImpl {
   );
 }
 
-const IMPL = resolveCoreImpl(import.meta.env.VITE_CORE_IMPL);
+// Validation only — fail closed on an unknown value at module init.
+resolveCoreImpl(import.meta.env.VITE_CORE_IMPL);
 
-/** The application core this build boots. `import.meta.env.VITE_CORE_IMPL`
- * is inlined by Vite, so the two dead branches — and the two unused core
- * packages behind them, which declare `sideEffects: false` — are dropped
- * from the production bundle (`pnpm check:core-bundle` proves it). */
+/** The application core this build boots. The comparison is made on the
+ * literal `import.meta.env.VITE_CORE_IMPL` inlined by Vite's `define`, so
+ * rolldown folds the two dead branches and drops the unselected core
+ * packages, which declare `sideEffects: false`. `pnpm check:core-bundle`
+ * (Task 11) proves it. */
 export const activeCore: CoreFactory =
-  IMPL === "effect" ? effectCore : IMPL === "async" ? asyncCore : rxjsCore;
+  import.meta.env.VITE_CORE_IMPL === "effect"
+    ? effectCore
+    : import.meta.env.VITE_CORE_IMPL === "async"
+      ? asyncCore
+      : rxjsCore;
