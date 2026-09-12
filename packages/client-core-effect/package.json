@@ -1,0 +1,41 @@
+{
+  "name": "@rtc/client-core-effect",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports coverage 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
+  },
+  "dependencies": {
+    "@rtc/client-core": "workspace:*",
+    "@rtc/core-api": "workspace:*",
+    "@rtc/domain": "workspace:*",
+    "@rx-state/core": "^0.1.4",
+    "effect": "^3.22.2",
+    "rxjs": "^7.8"
+  },
+  "devDependencies": {
+    "@rtc/core-contract": "workspace:*",
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "tsc-alias": "1.9.4",
+    "vitest": "^4.1.10"
+  }
+}
