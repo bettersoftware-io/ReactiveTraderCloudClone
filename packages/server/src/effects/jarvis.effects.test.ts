@@ -22,10 +22,8 @@ import type {
   JarvisTurnOptions,
 } from "../agent/agentLoop.js";
 import { createJarvisLoops } from "../agent/agentLoop.js";
-import {
-  type JarvisGateConfig,
-  JarvisGateService,
-} from "../services/jarvisGate.js";
+import { JarvisGateService } from "../services/JarvisGateService.js";
+import type { JarvisGateConfig } from "../services/jarvisGate.js";
 import {
   createServices,
   type ServiceContainer,

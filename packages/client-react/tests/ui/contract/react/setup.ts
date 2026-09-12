@@ -15,7 +15,6 @@ import { reactDriver } from "./render";
 // A future contract case that needs real canvas dimensions must upgrade this
 // to a stub that FIRES its callback with a synthetic contentRect — this one
 // deliberately never will.
-// eslint-disable-next-line rtc/class-filename-match -- internal shim class in a purpose-named vitest setup module (registered by path in setupFiles)
 class ResizeObserverStub {
   observe(): void {}
 

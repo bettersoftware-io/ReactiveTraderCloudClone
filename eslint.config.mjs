@@ -474,29 +474,21 @@ export default tseslint.config(
   },
   {
     // One class per file: a top-level class must live in a file named after it
-    // (filename's first dot-segment === class name). Applies to ALL ts/tsx;
-    // fires only when a top-level class exists, so non-class modules are
-    // untouched. Sanctioned exceptions use a per-line eslint-disable.
+    // (filename's first dot-segment === class name). Scoped to production
+    // source — the rule's purpose is filename discoverability of production
+    // classes, and that purpose doesn't hold for test doubles or env shims,
+    // which are never looked up by filename. Fires only when a top-level
+    // class exists, so non-class modules are untouched. Sanctioned exceptions
+    // use a per-line eslint-disable.
     files: ["**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.{test,spec}.{ts,tsx}",
+      "**/tests/**",
+      "**/__tests__/**",
+      "**/setup/**",
+    ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/class-filename-match": "error" },
-  },
-  {
-    // Carve-out: e2e page objects use a framework-prefixed class name
-    // (PlaywrightBlotterTable) inside a subject-named file that mirrors the
-    // shared contracts/<Subject>.ts. The playwright/ <-> contracts/ filename
-    // parallelism is deliberate, so the filename matches the contract, not the
-    // class. A systematic convention across the directory (not a one-off), so
-    // it is scoped off the rule rather than disabled per file.
-    files: ["tests/browser/page-objects/playwright/**/*.ts"],
-    rules: { "rtc/class-filename-match": "off" },
-  },
-  {
-    // Carve-out: cucumber World classes live in `world.ts` by framework
-    // convention (setWorldConstructor) — one World per flavor directory. The
-    // filename is the cucumber idiom, not the class name.
-    files: ["**/world.ts"],
-    rules: { "rtc/class-filename-match": "off" },
   },
   {
     // One component per .tsx file: the exported component is the newspaper lede

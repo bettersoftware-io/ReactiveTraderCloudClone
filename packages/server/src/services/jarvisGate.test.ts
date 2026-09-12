@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { JarvisUsageSnapshot } from "@rtc/shared";
 
+import { JarvisGateService } from "./JarvisGateService.js";
 import {
   applyGateToOffer,
   computeGateLevel,
   DEFAULT_JARVIS_BUDGET_SOFT_RATIO,
   DEFAULT_JARVIS_BUDGET_USD,
-  JarvisGateService,
   parseJarvisGateConfig,
   spentWindowUsd,
 } from "./jarvisGate.js";

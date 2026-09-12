@@ -31,11 +31,8 @@ import {
 } from "@rtc/ws-effects";
 
 import type { AgentSession, JarvisLoops } from "../agent/agentLoop.js";
-import {
-  applyGateToOffer,
-  type GatedOffer,
-  type JarvisGateState,
-} from "../services/jarvisGate.js";
+import type { JarvisGateState } from "../services/JarvisGateService.js";
+import { applyGateToOffer, type GatedOffer } from "../services/jarvisGate.js";
 import type { Ctx } from "./context.js";
 
 /** SERVER_MSG for each `JarvisEvent` variant — the wire rule documented on
