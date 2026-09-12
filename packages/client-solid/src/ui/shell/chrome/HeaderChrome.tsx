@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
@@ -12,6 +12,7 @@ import { NavTab, type WorkspaceTab } from "./NavTab";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { PowerSaverToggle } from "./PowerSaverToggle";
 import { ThemePicker } from "./ThemePicker";
+import { ViewMenu } from "./ViewMenu";
 
 import drivenPulseStyles from "../jarvis/DrivenPulse.module.css";
 import styles from "./HeaderChrome.module.css";
@@ -103,6 +104,13 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
         <EnvBadge />
         <PowerSaverToggle />
         <ThemePicker />
+        {/* Keyed on the tab: a switch remounts the menu so its per-tab
+            layout singleton re-resolves (see ViewMenu's setup note). */}
+        <Show when={props.activeTab} keyed>
+          {(tab): JSX.Element => {
+            return <ViewMenu activeTab={tab} />;
+          }}
+        </Show>
         <NotificationsMenu />
         <LanguageMenu />
         <span class={styles.divider} />

@@ -305,6 +305,67 @@ describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
     expect(app.layout.panelExists("fx-positions")).toBe(true);
     expect(app.layout.panelExists("fx-blotter")).toBe(true);
   });
+
+  it("View menu: unchecking a panel closes it, rechecking reopens it in place", async () => {
+    const world = createWorld({});
+    const app = mountWith(world, AppShell);
+
+    await app.viewMenu.toggle();
+    expect(app.viewMenu.isOpen()).toBe(true);
+    // Rows follow the fx seed's leaf order: left column (tiles, blotter),
+    // then the right rail (analytics, positions).
+    expect(app.viewMenu.rowLabels()).toEqual([
+      "Live Rates",
+      "Blotter",
+      "Analytics",
+      "Positions",
+    ]);
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(true);
+
+    await app.viewMenu.toggleRow("fx-analytics");
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(false);
+    expect(app.layout.panelExists("fx-analytics")).toBe(false);
+
+    await app.viewMenu.toggleRow("fx-analytics");
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(true);
+    expect(app.layout.panelExists("fx-analytics")).toBe(true);
+  });
+
+  it("View menu: the last visible panel's row is disabled — the menu reflects the reducer's floor", async () => {
+    const world = createWorld({});
+    const app = mountWith(world, AppShell);
+
+    await app.viewMenu.toggle();
+    await app.viewMenu.toggleRow("fx-rates");
+    await app.viewMenu.toggleRow("fx-analytics");
+    await app.viewMenu.toggleRow("fx-positions");
+
+    expect(app.viewMenu.isRowDisabled("fx-blotter")).toBe(true);
+    // Clicking the disabled row must not strand the tab empty.
+    await app.viewMenu.toggleRow("fx-blotter");
+    expect(app.layout.panelExists("fx-blotter")).toBe(true);
+    // A reopen lifts the floor again.
+    await app.viewMenu.toggleRow("fx-rates");
+    expect(app.viewMenu.isRowDisabled("fx-blotter")).toBe(false);
+  });
+
+  it("View menu: docked desk panels are not listed (they have undock/dismiss already)", async () => {
+    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DOCKED_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(DOCKED_PANEL_ID);
+    expect(app.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
+
+    await app.viewMenu.toggle();
+    expect(app.viewMenu.rowExists(DOCKED_PANEL_ID)).toBe(false);
+    expect(app.viewMenu.rowLabels()).toHaveLength(4);
+  });
 });
 
 describe("InhouseLayoutEngine docked desk panels", () => {
