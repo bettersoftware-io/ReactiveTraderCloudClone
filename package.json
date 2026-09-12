@@ -14,6 +14,8 @@
     "perf:motion-audit": "pnpm --filter @rtc/tests perf:motion-audit",
     "perf:motion-audit:solid": "pnpm --filter @rtc/tests perf:motion-audit:solid",
     "test:e2e": "turbo run test:e2e",
+    "test:e2e:async": "RTC_CORE_IMPL=async pnpm test:e2e",
+    "test:e2e:effect": "RTC_CORE_IMPL=effect pnpm test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
     "goldens:regen": "node scripts/goldens-in-container.mjs regen",
     "goldens:verify": "node scripts/goldens-in-container.mjs verify",
