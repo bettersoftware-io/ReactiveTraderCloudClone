@@ -70,6 +70,9 @@ describe("DockviewLayoutEngine under StrictMode", () => {
         inner.save(tab, blob);
         saved.push(blob);
       },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
     };
 
     page.mount(

@@ -86,6 +86,9 @@ export function DockviewEngineHost({
         });
         setLastBlob(blob);
       },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
     };
   }
 

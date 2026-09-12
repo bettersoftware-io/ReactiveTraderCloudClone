@@ -8,4 +8,8 @@
 export interface DockLayoutStore {
   load(tab: string): string | null;
   save(tab: string, blob: string): void;
+  /** Discard `tab`'s stored blob — `resetWorkspaceLayout`'s per-tab cleanup,
+   * so a subsequent `load(tab)` reports null instead of handing back the
+   * discarded layout on the next boot. */
+  clear(tab: string): void;
 }

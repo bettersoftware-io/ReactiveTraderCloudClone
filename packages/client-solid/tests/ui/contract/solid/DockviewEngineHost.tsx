@@ -96,6 +96,9 @@ export function DockviewEngineHost(
       });
       setLastBlob(blob);
     },
+    clear: (tab: string): void => {
+      inner.clear(tab);
+    },
   };
 
   function headRegistry(): Partial<Record<PanelId, () => JSX.Element>> {

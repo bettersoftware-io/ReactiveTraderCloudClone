@@ -268,6 +268,7 @@ const DOCK_LAYOUT_STORE: ReturnType<ViewModel["useDockLayoutStore"]> = {
     return null;
   },
   save: noop,
+  clear: noop,
 };
 
 /** Layout-engine preference: the in-house split tree, which is the domain's

@@ -29,4 +29,8 @@ export class LocalStorageDockLayoutStore implements DockLayoutStore {
       // ignore — persistence is best-effort
     }
   }
+
+  clear(tab: string): void {
+    localStorage.removeItem(this.key(tab));
+  }
 }
