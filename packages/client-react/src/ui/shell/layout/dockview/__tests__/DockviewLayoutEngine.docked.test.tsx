@@ -77,6 +77,91 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 
+  // Post-merge verification (docking x closed interplay, 2026-09-13): a
+  // dynamic (docked) id has no LEGAL path into the layer-2 `closed` set —
+  // LayoutMachine's `close` reducer no-ops unless the target is one of the
+  // tab's static seed ids (`staticIds.includes(event.id)`) — but that is a
+  // machine-layer guarantee, not something this bridge itself enforces by
+  // rejecting the id on sight. What actually protects the bridge/engine seam
+  // is the `closed` reconciliation effect above: it walks `seedPanelIdsOf`
+  // (the tab's STATIC seed ids) and looks each one up in `closed`, so a
+  // dynamic id that somehow ends up in `closed` (a stale persisted blob, a
+  // hand-authored test state) is simply never visited — not looked up, and
+  // never passed to `engine.closePanel` — rather than being turned away
+  // explicitly. `createDockEngine.closePanel` itself has no static/dynamic
+  // distinction (it operates on whatever `dockview.api.getPanel` returns),
+  // so this bridge-level guard is the only thing standing between an
+  // ill-formed `closed` array and an accidental dynamic-panel removal. This
+  // pins that: no crash, and the docked panel stays exactly as live as an
+  // empty `closed` would leave it.
+  it("ignores a dynamic panel id sitting in the closed set — the seed-only reconciliation never visits it", () => {
+    page.mount(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={new InMemoryDockLayoutStore()}
+        maximized={null}
+        collapsed={[]}
+        closed={["panel-dyn-1"]}
+        docked={["panel-dyn-1"]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    // fx's 4 seed leaves plus the docked panel — nothing got closed.
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
+  it("keeps a live docked panel visible when closed grows to include its id on rerender", () => {
+    const store = new InMemoryDockLayoutStore();
+
+    page.mount(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={["panel-dyn-1"]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    expect(page.groupsAttr()).toBe("5");
+
+    page.rerender(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        closed={["panel-dyn-1"]}
+        docked={["panel-dyn-1"]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    // No group ever leaves — the reconciliation effect never looked
+    // "panel-dyn-1" up because it is not one of fx's seed ids.
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
   it("removes the docked panel when the prop empties, dropping its group", async () => {
     // The SAME store instance across both renders: this exercises the
     // DIFF effect's `removeDynamicPanel` on the still-live engine, not a
