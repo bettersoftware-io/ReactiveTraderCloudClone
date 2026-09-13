@@ -1,7 +1,21 @@
 import type { GroupviewPanelState, SerializedDockview } from "dockview";
 import { Orientation } from "dockview";
 
-const RTC_PANEL_COMPONENT = "rtc-panel";
+/** Every panel id of a seed tree, in DOM order — the set a bridge
+ * reconciles the layer-2 `closed` set against (close what the set names,
+ * reopen every other seed panel; both engine calls are no-op-safe). */
+export function seedPanelIdsOf(node: DockSeedNode): readonly string[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(seedPanelIdsOf);
+}
+
+/** The content-component id every RTC panel registers under — the seed
+ * conversion stamps it on each serialized view, and the engine's reopen path
+ * re-adds panels with the same id so the hook renderer picks them up. */
+export const RTC_PANEL_COMPONENT = "rtc-panel";
 
 export type DockSeedNode =
   | {
@@ -70,7 +84,7 @@ interface SplitDiscriminant {
   readonly kind: "split";
 }
 
-type SeedSplit = Extract<DockSeedNode, SplitDiscriminant>;
+export type SeedSplit = Extract<DockSeedNode, SplitDiscriminant>;
 // GroupPanelViewState (the grid leaf's `data` shape: views/activeView/id) is
 // an internal dockview-core type not re-exported from the package root —
 // pull the same type through SerializedDockview's own field instead of

@@ -409,20 +409,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useBootGate: () => {
       return { visible: at(false), reboot: noop, dismiss: noop };
     },
-    // Countdown: 0 remaining, so the drain-bar animation is BORN FINISHED
-    // (RfqCard sets animation-delay to -totalMs; with fill:forwards the bar
-    // sits at scaleX(0) from its first frame). The old totalMs seed mounted a
-    // RUNNING 120s animation whose captured state was a race: playwright's
-    // animations:"disabled" pass usually seeked it to its end (the empty bar
-    // every golden holds), but when the seek missed the compositor animation
-    // the stability loop accepted the visually-static running bar and
-    // captured it FULL — one red credit cell per run, drifting between
-    // clients and cells (visual.yml 34663511987: solid attempt 1, react
-    // attempt 3, same commit). With 0 the live and the seeked state are the
-    // same pixels, so there is nothing left to race; the label honestly
-    // reads "0 secs" beside the empty bar it always sat next to.
-    useRfqCountdown: (_creationTimestamp: number, _totalMs: number) => {
-      return at(0);
+    // Countdown: a MID-WAY remaining, so the credit card photographs as a
+    // live RFQ — a ~60% bar beside a "72 secs" caption for the 120s window.
+    // Neither the fraction nor the capture is a race any more: the bar is one
+    // mount-time keyframe fast-forwarded by a negative delay, and the spec's
+    // settleAnimationsForCapture pass holds exactly that family (marked
+    // data-motion="fast-forwarded") paused at time 0 — its mounted state —
+    // instead of finishing it. This seed briefly read 0 (PR #710), which made
+    // the bar be born finished so it matched the drained golden playwright's
+    // animations:"disabled" had always produced; that removed the flake by
+    // locking in the wrong picture, and left the FX tile's own countdown
+    // (fixture-driven, not hook-driven) untouched.
+    useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
+      return at(Math.round(totalMs * 0.6));
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.
@@ -443,6 +442,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resize: noop,
         insertPanel: noop,
         removePanel: noop,
+        close: noop,
+        reopen: noop,
         reset: noop,
       };
     },
@@ -788,7 +789,8 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
 
   if (
     data.layoutMaximized === undefined &&
-    data.layoutCollapsed === undefined
+    data.layoutCollapsed === undefined &&
+    data.layoutClosed === undefined
   ) {
     return base;
   }
@@ -797,6 +799,7 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
     ...base,
     maximized: data.layoutMaximized ?? base.maximized,
     collapsed: data.layoutCollapsed ?? base.collapsed,
+    closed: data.layoutClosed ?? base.closed,
   };
 }
 

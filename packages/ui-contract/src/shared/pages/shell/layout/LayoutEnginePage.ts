@@ -37,6 +37,12 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return within(this.root).getByTestId(`panel-${id}`);
   }
 
+  /** Whether the panel renders at all — false once View-menu close hides it
+   * (the engines PROJECT visibility; the leaf leaves the DOM entirely). */
+  panelExists(id: string): boolean {
+    return within(this.root).queryByTestId(`panel-${id}`) !== null;
+  }
+
   bodyText(id: string): string | null {
     const body = within(this.root).queryByTestId(`${id}-body`);
     return body?.textContent ?? null;

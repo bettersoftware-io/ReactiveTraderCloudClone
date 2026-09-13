@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { WorkspaceTab } from "../defaultLayoutPort";
-import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
+import {
+  createDefaultLayoutPort,
+  PANEL_SPECS,
+  staticPanelIdsFor,
+} from "../defaultLayoutPort";
 import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
 
 describe("createDefaultLayoutPort", () => {
@@ -257,6 +261,18 @@ describe("createDefaultLayoutPort", () => {
       expect(flags.every(Boolean)).toBe(true);
     },
   );
+});
+
+describe("staticPanelIdsFor", () => {
+  it("returns each tab's seed leaves in tree order — the View menu's row source", () => {
+    expect(staticPanelIdsFor("fx")).toEqual([
+      "fx-rates",
+      "fx-blotter",
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(staticPanelIdsFor("admin")).toHaveLength(1);
+  });
 });
 
 function panelIds(node: LayoutNode): string[] {

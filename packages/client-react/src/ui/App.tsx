@@ -1,6 +1,6 @@
 import { lazy, type ReactElement, Suspense } from "react";
 
-import { PANEL_SPECS } from "@rtc/client-core";
+import { PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "./credit/CreditViewProvider";
@@ -80,6 +80,14 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
     useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  // The in-house engine renders the VISIBLE projection: View-menu-closed
+  // leaves are pruned from the tree it sees (visibleRootOf is referentially
+  // stable when nothing is closed). The Dockview branch keeps the raw state
+  // fields — its projection is the bridge's closed-set replay.
+  const visibleState = {
+    ...state,
+    root: visibleRootOf(state.root, state.closed),
+  };
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged
   // on top of the static app registries so a dock/undock or a live spec
@@ -113,6 +121,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               store={dockLayoutStore}
               maximized={state.maximized}
               collapsed={state.collapsed}
+              closed={state.closed}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}
@@ -121,7 +130,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
           </Suspense>
         ) : (
           <InhouseLayoutEngine
-            state={state}
+            state={visibleState}
             registry={registry}
             specs={specs}
             headRegistry={headRegistry}

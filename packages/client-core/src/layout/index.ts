@@ -1,6 +1,7 @@
 export * from "#/layout/defaultLayoutPort";
 export * from "#/layout/layoutPort";
 export * from "#/layout/maximizeBoundary";
+export * from "#/layout/visibleRoot";
 // The workspace-persistence pair is public for one reason: each web client's
 // ui-contract fixture (`tests/ui/contract/<framework>/viewModelFromWorld.ts`)
 // reproduces composition.ts's dock/undock/persist wiring over the neutral

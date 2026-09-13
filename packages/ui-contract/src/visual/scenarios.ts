@@ -515,6 +515,15 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "App",
     fixtureKey: "app-fx-rail-maximized-dockview",
   },
+  // Phase 3 close/reopen TWINS: a View-menu-closed panel is layer-2 state
+  // both engines honour (in-house prunes at render; dockview's bridge
+  // replays closePanel), so unlike the layer-3 stacked scenario this pair
+  // GROWS the shared subset and joins the engine-parity pairing.
+  "app/fx-closed": { componentKey: "App", fixtureKey: "app-fx-closed" },
+  "app/fx-closed-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-closed-dockview",
+  },
   "app/fx-collapsed": { componentKey: "App", fixtureKey: "app-fx-collapsed" },
   "app/fx-collapsed-dockview": {
     componentKey: "App",
@@ -750,6 +759,12 @@ const baseScenarios: Record<string, Scenario> = {
   // visual:engine-parity skips it (no pair). Seeded by a committed
   // version-2 blob fixture (stackedFxBlob.ts in each client's wrapper dir),
   // shape-pinned by the engine test "loads the stacked visual fixture blob".
+  // The View menu open over the default fx workspace. ONE scenario, no
+  // engine twin — the menu is app-head chrome rendered identically under
+  // either engine (engine-independent by construction, a different reason
+  // than layout-dockview-stacked's layer-3 privacy), so a twin would
+  // duplicate pixels without adding a witness.
+  "shell/view-menu-open": { componentKey: "App", fixtureKey: "app-fx" },
   "shell/layout-dockview-stacked": {
     componentKey: "DockviewEngineStacked",
     fixtureKey: "prefs-open",
@@ -758,8 +773,10 @@ const baseScenarios: Record<string, Scenario> = {
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is
-  // verified in-browser, not pixel-diffed (it is rAF/time-driven, not freezable
-  // by `animations: "disabled"`). See the runner specs / scenarioActions.
+  // verified in-browser, not pixel-diffed (it is rAF/time-driven, so no
+  // animation-settling pass — Playwright's or this tier's own
+  // `settleAnimationsForCapture` — can freeze it). See the runner specs /
+  // scenarioActions.
   "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
   // Login/lock-wait treatments: the handshake/reactor overlays shown while a
@@ -790,8 +807,11 @@ const baseScenarios: Record<string, Scenario> = {
   // these are full freeze renders, not the partial ones they used to be.
   //
   // Their scope is still worth knowing: a screenshot cannot witness a delayed
-  // animation at all, because `toHaveScreenshot({ animations: "disabled" })`
-  // calls `animation.finish()` and jumps past `animation-delay`. So these
+  // animation at all, because settling motion for a capture calls
+  // `animation.finish()` and jumps past `animation-delay` — the
+  // `settleAnimationsForCapture` pass this tier now uses (holdMotion.ts) keeps
+  // that rule for everything but the `data-motion="fast-forwarded"` drain
+  // bars, exactly as `animations: "disabled"` did before it. So these
   // goldens prove the frozen LAYOUT, and freeze.spec.ts — which reads computed
   // style instead of pixels — proves the frozen TIMING. Neither subsumes the
   // other; the delay+`backwards` bug class that HandshakeConsole's `.sealed`

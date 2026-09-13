@@ -11,6 +11,7 @@ import { NavTab, type WorkspaceTab } from "./NavTab";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { PowerSaverToggle } from "./PowerSaverToggle";
 import { ThemePicker } from "./ThemePicker";
+import { ViewMenu } from "./ViewMenu";
 
 import drivenPulseStyles from "../jarvis/DrivenPulse.module.css";
 import styles from "./HeaderChrome.module.css";
@@ -100,6 +101,7 @@ export function HeaderChrome({
         <EnvBadge />
         <PowerSaverToggle />
         <ThemePicker />
+        <ViewMenu activeTab={activeTab} />
         <NotificationsMenu />
         <LanguageMenu />
         <span className={styles.divider} />

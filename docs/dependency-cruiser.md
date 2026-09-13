@@ -204,7 +204,10 @@ options: {
   path mappings (see the callout above). It exists solely so the cruiser
   resolves cross-package imports to `src` rather than the excluded `dist`;
   it is not part of any `tsc` build. A new package needs a line pair here,
-  the same way it needs a forbidden rule and a knip entry.
+  the same way it needs a forbidden rule and a knip entry. It is read only
+  through the TypeScript **6.x** JS API (what the `typescript` package name
+  resolves to — see [typescript-7.md](./typescript-7.md)), which is why it may
+  keep `baseUrl` even though `tsc` 7 rejects that option.
 - **`doNotFollow: node_modules`** — map first-party code only; don't descend
   into third-party packages.
 - **`exclude: (\.cache|^packages/[^/]+/dist/|/__screenshots__/|\.turbo)`** —

@@ -8,6 +8,7 @@ import {
   HeaderChromePage,
   type HeaderChromeProps,
 } from "../chrome/HeaderChromePage";
+import { ViewMenuPage } from "../chrome/ViewMenuPage";
 import {
   LayoutEnginePage,
   type LayoutEngineProps,
@@ -53,10 +54,15 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
    * a pure DOM query against `ctx.root` and none reads `LayoutEngineProps`. */
   readonly layout: LayoutEnginePage;
 
+  /** The app head's View dropdown (Phase 3 close/reopen) — pure DOM queries
+   * like `header`, so the props-less context passes straight through. */
+  readonly viewMenu: ViewMenuPage;
+
   constructor(ctx: PageContext<Record<string, never>>) {
     super(ctx);
     const asHeaderCtx = ctx as unknown as PageContext<HeaderChromeProps>;
     this.header = new HeaderChromePage(asHeaderCtx);
+    this.viewMenu = new ViewMenuPage(ctx);
     this.overlay = new JarvisOverlayPage(ctx);
     this.orb = new JarvisOrbPage(ctx);
     this.panels = new JarvisPanelLayerPage(ctx);
