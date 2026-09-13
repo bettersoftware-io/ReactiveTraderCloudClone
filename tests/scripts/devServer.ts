@@ -30,13 +30,6 @@ export const SHARED_DEV_SERVER_ENV = "RTC_DEV_SERVER_SHARED";
 // so no other server-lifecycle assumption here is client-specific.
 export const CLIENT_PKG: string =
   process.env.RTC_CLIENT_PKG ?? "@rtc/client-react";
-// Which application core the dev server should boot with. Defaults to the
-// rxjs core; the e2e suites' async/effect runs (test:e2e:async/:effect) set
-// this to drive the same Gherkin/Playwright specs against each alternative
-// core — see packages/client-*/src/app/selectCore.ts for the fold this
-// forwards into via VITE_CORE_IMPL. Consumed by playwright.config.ts and
-// playwright-cucumber/cucumber.js to suffix their report paths.
-export const CORE_IMPL: string = process.env.RTC_CORE_IMPL ?? "rxjs";
 // Resolve the monorepo root (two levels up from tests/scripts/)
 const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 

@@ -102,9 +102,13 @@ export function refToStateStream<S>(
   });
 
   // `state()` requires a default — there is no single-argument overload. It
-  // is never observed: `StateObservable` emits its default only when the
-  // source has NOT already emitted by the end of `source$.subscribe(...)`,
-  // and `perSubscription` always emits synchronously there. The cold → warm
-  // test pins that, by seeing the ref's latest value rather than this one.
+  // is read once, at construction, and is observable ONLY through a COLD
+  // `getValue()` (no subscriber yet), which hands back that construction-time
+  // value however stale the ref has since become. No SUBSCRIBER ever sees it:
+  // `StateObservable` emits its default only when the source has NOT already
+  // emitted by the end of `source$.subscribe(...)`, and `perSubscription`
+  // always emits synchronously there — every subscription re-reads the ref.
+  // The cold → warm test pins that, by seeing the ref's latest value rather
+  // than this one.
   return state(perSubscription, readCurrent());
 }

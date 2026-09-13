@@ -121,8 +121,9 @@ to reproduce them explicitly:
    `shareReplay({ bufferSize: 1, refCount: true })`'s contract, written out
    explicitly rather than implied by an operator: the async core's `Topic<T>`
    starts its producer on the first subscriber and aborts it on the last;
-   the Effect core's `Stream.share({ capacity: "unbounded", replay: 1 })`
-   gives the same shape natively.
+   the Effect core would get the same shape natively from
+   `Stream.share({ capacity: "unbounded", replay: 1 })` — no such call ships
+   yet, since every member still delegates to the RxJS core.
 3. **Memoised per-key identity.** `price$(EURUSD) === price$(EURUSD)` — a
    contract test asserts it directly, since a core that rebuilt a new stream
    per call would still type-check.

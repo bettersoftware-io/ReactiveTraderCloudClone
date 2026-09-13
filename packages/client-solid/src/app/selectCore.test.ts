@@ -15,6 +15,8 @@ describe("resolveCoreImpl", () => {
   });
 
   it("fails closed on an unknown value", () => {
-    expect(() => resolveCoreImpl("rx")).toThrow(/VITE_CORE_IMPL/);
+    expect(() => {
+      resolveCoreImpl("rx");
+    }).toThrow(/VITE_CORE_IMPL/);
   });
 });

@@ -477,8 +477,12 @@ const GATES: Gate[] = [
     },
   },
   {
+    // `export type { … }` and `export type * from` still pass — only a
+    // re-export WITHOUT the `type` keyword is a runtime value leaving the
+    // package, and the earlier pattern (declarations only) could not see one.
     name: "42. @rtc/core-api exports no runtime value (types-only contract)",
-    pattern: "^export (const|let|function|class|enum|async function) ",
+    pattern:
+      "^export (const|let|function|class|enum|async function) |^export \\{|^export \\* from",
     paths: ["../packages/core-api/src/"],
     excludes: ["/__tests__/", ".test."],
   },

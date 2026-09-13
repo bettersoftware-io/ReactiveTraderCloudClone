@@ -85,8 +85,9 @@ import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
 /** Moved to `@rtc/core-api` — `AuthGatedTransport` in pluggable-core-slice-0
  * Task 2, `AppPorts`/`TransportPorts` in Task 5 — re-exported here so every
- * existing `import … from "@rtc/client-core"` keeps working unchanged. All
- * three are still used locally by the port factories below. */
+ * existing `import … from "@rtc/client-core"` keeps working unchanged. Of the
+ * three, only `TransportPorts` is also used locally by the port factories
+ * below; `AppPorts` and `AuthGatedTransport` are re-exported for callers. */
 export type { AppPorts, AuthGatedTransport, TransportPorts };
 
 /** Dependencies injected by the platform layer into both simulator and WS-real port factories. */

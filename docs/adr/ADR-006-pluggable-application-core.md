@@ -111,7 +111,7 @@ capable of producing since none of its own members are native yet.
 
 ## Consequences
 
-- Three new packages join the graph: `@rtc/core-api` (types-only, innermost
+- Four new packages join the graph: `@rtc/core-api` (types-only, innermost
   after `domain`/`shared`), `@rtc/core-contract` (dev-only, depends on
   `core-api` + `domain` + `rxjs` only — **never** `client-core`, to avoid a
   build-order cycle with the RxJS core's own contract runner living inside

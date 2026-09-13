@@ -11,7 +11,6 @@ export type * from "#/machines/narrator";
 export type * from "#/machines/notional";
 export type * from "#/machines/orderTicket";
 export type * from "#/machines/rfqTile";
-export type * from "#/machines/staleFlag";
 export type * from "#/machines/submissions";
 export type * from "#/machines/tileExecution";
 export type * from "#/machines/workspaceNav";

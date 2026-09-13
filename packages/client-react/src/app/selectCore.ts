@@ -12,9 +12,11 @@ export function resolveCoreImpl(raw: string | undefined): CoreImpl {
   if (raw === undefined || raw === "") {
     return "rxjs";
   }
+
   if ((CORE_IMPLS as readonly string[]).includes(raw)) {
     return raw as CoreImpl;
   }
+
   throw new Error(
     `VITE_CORE_IMPL="${raw}" is not one of ${CORE_IMPLS.join(", ")}`,
   );
@@ -27,10 +29,17 @@ resolveCoreImpl(import.meta.env.VITE_CORE_IMPL);
  * literal `import.meta.env.VITE_CORE_IMPL` inlined by Vite's `define`, so
  * rolldown folds the two dead branches and drops the unselected core
  * packages, which declare `sideEffects: false`. `pnpm check:core-bundle`
- * (Task 11) proves it. */
+ * proves it. */
 export const activeCore: CoreFactory =
   import.meta.env.VITE_CORE_IMPL === "effect"
     ? effectCore
     : import.meta.env.VITE_CORE_IMPL === "async"
       ? asyncCore
       : rxjsCore;
+
+// Published so a browser test can assert the selected core actually loaded;
+// `check:core-bundle` proves the others are absent, this proves this one is
+// present.
+if (typeof document !== "undefined") {
+  document.documentElement.dataset.coreImpl = import.meta.env.VITE_CORE_IMPL;
+}

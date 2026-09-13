@@ -9,16 +9,12 @@ import {
   takeWhile,
 } from "rxjs/operators";
 
-import type {
-  RfqQuote,
-  RfqState,
-  RfqTileDeps,
-  RfqTileIntents,
-} from "@rtc/core-api";
+import type { RfqQuote, RfqState, RfqTileIntents } from "@rtc/core-api";
 import {
   type CurrencyPair,
   REJECTED_DISPLAY_MS,
   RFQ_TIMEOUT_MS,
+  type RfqQuoteResult,
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
@@ -26,7 +22,16 @@ import type { Machine } from "./machine";
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
-export type { RfqQuote, RfqState, RfqTileDeps, RfqTileIntents };
+export type { RfqQuote, RfqState, RfqTileIntents };
+
+export interface RfqTileDeps {
+  /** The request-quote command (RfqQuotePresenter.requestQuote), injected so
+   * timing is controllable in tests. */
+  requestQuote: (
+    symbol: string,
+    pipsPosition: number,
+  ) => Observable<RfqQuoteResult>;
+}
 
 /** How often the received-quote countdown ticks. Presenter-local — a UI cadence
  * concern, not a domain constant. */

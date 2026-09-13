@@ -21,10 +21,10 @@ import {
 
 import type {
   JarvisConfirmation,
-  JarvisDeps,
   JarvisEntry,
   JarvisIntents,
   JarvisMachineHandle,
+  JarvisPort,
   JarvisRole,
   JarvisState,
 } from "@rtc/core-api";
@@ -48,13 +48,34 @@ import type { DriveOutcome } from "./JarvisDriverMachine";
  * unchanged. */
 export type {
   JarvisConfirmation,
-  JarvisDeps,
   JarvisEntry,
   JarvisIntents,
   JarvisMachineHandle,
   JarvisRole,
   JarvisState,
 };
+
+export interface JarvisDeps {
+  port: JarvisPort;
+  skin$: Observable<JarvisSkin>;
+  setSkin: (skin: JarvisSkin) => void;
+  /** Live availability of the Jarvis backend. Defaults to an
+   * always-available, scripted-only value — simulator mode
+   * (`ScriptedJarvisAdapter`) and any legacy caller that doesn't wire this
+   * in are always available, offering only the `"scripted"` brain. WS-real
+   * mode threads in `WsJarvisAdapter.availability$()` (see composition.ts). */
+  availability$?: Observable<JarvisAvailability>;
+  /** The user's preferred brain (a preferences-port pass-through). Folded
+   * with `availability$` to resolve `state.effectiveBrain` — see
+   * `JarvisState.effectiveBrain`'s doc. */
+  preferredBrain$: Observable<JarvisBrain>;
+  /** The user's preferred thinking-effort budget, forwarded on every
+   * `port.ask()` call alongside the resolved effective brain. Not itself
+   * reflected in `JarvisState` — only `ask()`'s wire payload reads it. */
+  effort$: Observable<JarvisEffort>;
+  /** Injectable for tests; defaults to JARVIS_CONFIRM_TIMEOUT_MS. */
+  confirmTimeoutMs?: number;
+}
 
 export const JARVIS_CONFIRM_TIMEOUT_MS = 60_000;
 export const JARVIS_GREETING =

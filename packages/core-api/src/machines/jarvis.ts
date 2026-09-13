@@ -1,12 +1,6 @@
-import type {
-  Direction,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisSkin,
-} from "@rtc/domain";
+import type { Direction, JarvisBrain, JarvisSkin } from "@rtc/domain";
 import type { JarvisAvailabilityGate, JarvisEvent } from "@rtc/shared";
 
-import type { JarvisAvailability, JarvisPort } from "#/adapters";
 import type { Machine } from "#/machine";
 import type { DriveOutcome } from "#/machines/jarvisDriver";
 import type { Stream } from "#/stream";
@@ -134,28 +128,6 @@ export interface JarvisIntents {
    * FROM this machine's own `events$`, so this machine can't depend on
    * `jarvisDriver`'s output at CONSTRUCTION time without a cycle). */
   recordDriveOutcome: (outcome: DriveOutcome) => void;
-}
-
-export interface JarvisDeps {
-  port: JarvisPort;
-  skin$: Stream<JarvisSkin>;
-  setSkin: (skin: JarvisSkin) => void;
-  /** Live availability of the Jarvis backend. Defaults to an
-   * always-available, scripted-only value — simulator mode
-   * (`ScriptedJarvisAdapter`) and any legacy caller that doesn't wire this
-   * in are always available, offering only the `"scripted"` brain. WS-real
-   * mode threads in `WsJarvisAdapter.availability$()` (see composition.ts). */
-  availability$?: Stream<JarvisAvailability>;
-  /** The user's preferred brain (a preferences-port pass-through). Folded
-   * with `availability$` to resolve `state.effectiveBrain` — see
-   * `JarvisState.effectiveBrain`'s doc. */
-  preferredBrain$: Stream<JarvisBrain>;
-  /** The user's preferred thinking-effort budget, forwarded on every
-   * `port.ask()` call alongside the resolved effective brain. Not itself
-   * reflected in `JarvisState` — only `ask()`'s wire payload reads it. */
-  effort$: Stream<JarvisEffort>;
-  /** Injectable for tests; defaults to JARVIS_CONFIRM_TIMEOUT_MS. */
-  confirmTimeoutMs?: number;
 }
 
 /** `createJarvisMachine`'s return, widened with `events$` — every reply

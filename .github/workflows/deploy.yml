@@ -171,8 +171,16 @@ jobs:
 
       - name: Guard — production ships the RxJS core only
         run: |
+          if [ ! -d .vercel/output/static ]; then
+            echo "::error::.vercel/output/static does not exist — nothing was built, so this guard proved nothing. Check the build step above."
+            exit 1
+          fi
           if grep -rq "effect/Fiber" .vercel/output/static; then
             echo "::error::Effect runtime found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          if grep -rq "@rtc/client-core-async:brand" .vercel/output/static; then
+            echo "::error::async core brand found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
             exit 1
           fi
           echo "OK: no alternative core in the production bundle."
@@ -252,8 +260,16 @@ jobs:
 
       - name: Guard — production ships the RxJS core only
         run: |
+          if [ ! -d .vercel/output/static ]; then
+            echo "::error::.vercel/output/static does not exist — nothing was built, so this guard proved nothing. Check the build step above."
+            exit 1
+          fi
           if grep -rq "effect/Fiber" .vercel/output/static; then
             echo "::error::Effect runtime found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          if grep -rq "@rtc/client-core-async:brand" .vercel/output/static; then
+            echo "::error::async core brand found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
             exit 1
           fi
           echo "OK: no alternative core in the production bundle."

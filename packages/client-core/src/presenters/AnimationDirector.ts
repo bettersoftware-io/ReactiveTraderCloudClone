@@ -11,12 +11,16 @@ import {
 
 import type {
   AnimationDirector as AnimationDirectorApi,
-  AnimationDirectorDeps,
   AnimationIntent,
   AnimationKind,
+  EquityFillSignal,
+  ExecutionOutcome,
 } from "@rtc/core-api";
 import {
+  type ConnectionStatus,
+  type CurrencyPair,
   ExecutionStatus,
+  type Price,
   type Quote,
   type Rfq,
   type RfqEvent,
@@ -26,7 +30,26 @@ import {
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
-export type { AnimationDirectorDeps, AnimationIntent, AnimationKind };
+export type { AnimationIntent, AnimationKind };
+
+export interface AnimationDirectorDeps {
+  /** Emits the current list of active currency pairs (from CurrencyPairsPresenter). */
+  readonly pairs$: Observable<readonly CurrencyPair[]>;
+
+  /** Returns the live price stream for a given pair (from PriceStreamPresenter). */
+  readonly priceFor: (pair: CurrencyPair) => Observable<Price>;
+
+  readonly connectionStatus$: Observable<ConnectionStatus>;
+
+  /** Emits an outcome for every subscribed FX trade execution attempt. */
+  readonly executions$: Observable<ExecutionOutcome>;
+
+  /** Raw RfqEvent stream for credit workflow animation signals. */
+  readonly rfqEvents$: Observable<RfqEvent>;
+
+  /** Emits { symbol } for each equity order fill (from OrdersBlotterPresenter). */
+  readonly equityFills$: Observable<EquityFillSignal>;
+}
 
 /** Narrows RfqEvent to rfqClosed variants for type-safe filter predicates. */
 interface RfqClosedEvent {

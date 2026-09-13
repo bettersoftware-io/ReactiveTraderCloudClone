@@ -1,7 +1,5 @@
 import type { CandleTimeframe } from "@rtc/domain";
 
-import type { Stream } from "#/stream";
-
 // Declared locally rather than imported from @rtc/motion-core — client-core
 // must not depend on motion-core (see global constraints). These unify
 // structurally with motion-core's ChartKind/IndicatorId equivalents.
@@ -33,21 +31,4 @@ export interface EqWorkspaceIntents {
   togglePane(id: EqPaneId): void;
   toggleYScale(): void;
   setCompare(sym: string | null): void;
-}
-
-export interface EqWorkspaceDeps {
-  /** Symbol the workspace opens with — becomes the sole open tab and the
-   * selection. Composition supplies the first watchlist symbol (falls back
-   * to "" if none is known synchronously yet). */
-  readonly initialSymbol: string;
-  /** Optional async recovery source, used ONLY when `initialSymbol` arrives
-   * "" (WS-real: the watchlist hasn't loaded synchronously at composition
-   * time, unlike the simulator's synchronous `of(WATCHLIST)`). Emits the
-   * resolved seed symbol once, when it first becomes known; the machine
-   * takes exactly one emission and seeds `sel`/`openTabs` from it, but ONLY
-   * if nothing has selected a symbol in the meantime (a user click or the
-   * synchronous peek always wins over a late-arriving seed — see
-   * `seedPatch$` below). Omitted by tests that don't care about the async
-   * path (defaults to a source that never emits). */
-  readonly seed$?: Stream<string>;
 }

@@ -176,6 +176,9 @@ jobs:
       - name: Prod /devtools/ bundle check
         run: pnpm check:devtools-dist
 
+      # MUST run AFTER "Prod /devtools/ bundle check": the six client builds
+      # below clobber dist/devtools via the devtoolsPanel plugin's closeBundle,
+      # which writes that path regardless of --outDir.
       # Builds each web client once per application core (rxjs/async/effect)
       # into a temp dir and asserts a build that selected core X shipped no
       # other core's runtime — proves selectCore.ts's literal comparison

@@ -1,10 +1,4 @@
-import type { SchedulerLike } from "rxjs";
-
-import type { PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
-
-import type { JarvisIntents, JarvisState } from "#/machines/jarvis";
-import type { StateStream, Stream } from "#/stream";
+import type { StateStream } from "#/stream";
 
 export interface JarvisDemoStep {
   /** Rendered by `JarvisDemoState.label` while this step is in flight — a
@@ -52,31 +46,4 @@ export interface JarvisDemoIntents {
 export interface JarvisDemoMachineHandle {
   readonly state$: StateStream<JarvisDemoState>;
   readonly intents: JarvisDemoIntents;
-}
-
-export interface JarvisDemoDeps {
-  readonly jarvisState$: Stream<JarvisState>;
-  /** The SAME `events$` `JarvisMachineHandle` exposes — every turn's raw
-   * reply events, expected to already carry the identical
-   * `catchError(() => EMPTY)` guard `composition.ts` applies before handing
-   * `jarvis.events$` to `createJarvisDriverMachine`/`createJarvisPanelsMachine`
-   * (their own docs: that input is terminal on error). Needed ONLY to tell
-   * a turn's `"error"` terminal apart from its `"done"` one:
-   * `JarvisMachine.ts`'s own `eventPatch` sets `JarvisEntry.done = true`
-   * IDENTICALLY for both cases (there is no separate error flag on
-   * `JarvisEntry`), so `jarvisState$`'s `entries` alone cannot answer "did
-   * this step's turn end in error?" — only the raw event's own
-   * discriminated `type` can. See `runStep`'s doc for how a `jarvisEvents$`
-   * emission is safely correlated to THIS machine's own in-flight turn
-   * rather than a racing `narrate()` turn's. */
-  readonly jarvisEvents$: Stream<JarvisEvent>;
-  readonly jarvis: Pick<
-    JarvisIntents,
-    "open" | "close" | "sendScripted" | "declineConfirmation"
-  >;
-  readonly powerSaverLevel$: Stream<PowerSaverLevel>;
-  /** Injected for ALL time in this machine (every `timer`) — a
-   * `TestScheduler` in tests, `undefined` (rxjs's own `asyncScheduler`
-   * default) in production. Mirrors `JarvisDriverDeps.scheduler`. */
-  readonly scheduler?: SchedulerLike;
 }

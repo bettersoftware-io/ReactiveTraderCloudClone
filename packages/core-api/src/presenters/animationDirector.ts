@@ -1,12 +1,3 @@
-import type {
-  ConnectionStatus,
-  CurrencyPair,
-  Price,
-  RfqEvent,
-} from "@rtc/domain";
-
-import type { EquityFillSignal } from "#/presenters/ordersBlotter";
-import type { ExecutionOutcome } from "#/presenters/tradeExecution";
 import type { Stream } from "#/stream";
 
 export type AnimationKind =
@@ -21,25 +12,6 @@ export type AnimationKind =
 export interface AnimationIntent {
   readonly target: string;
   readonly kind: AnimationKind;
-}
-
-export interface AnimationDirectorDeps {
-  /** Emits the current list of active currency pairs (from CurrencyPairsPresenter). */
-  readonly pairs$: Stream<readonly CurrencyPair[]>;
-
-  /** Returns the live price stream for a given pair (from PriceStreamPresenter). */
-  readonly priceFor: (pair: CurrencyPair) => Stream<Price>;
-
-  readonly connectionStatus$: Stream<ConnectionStatus>;
-
-  /** Emits an outcome for every subscribed FX trade execution attempt. */
-  readonly executions$: Stream<ExecutionOutcome>;
-
-  /** Raw RfqEvent stream for credit workflow animation signals. */
-  readonly rfqEvents$: Stream<RfqEvent>;
-
-  /** Emits { symbol } for each equity order fill (from OrdersBlotterPresenter). */
-  readonly equityFills$: Stream<EquityFillSignal>;
 }
 
 /**

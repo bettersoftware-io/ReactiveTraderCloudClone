@@ -275,6 +275,14 @@ module.exports = {
       },
     },
     {
+      name: "effect-only-in-client-core-effect",
+      severity: "error",
+      comment:
+        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-core, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
+      from: { path: "^packages/", pathNot: "^packages/client-core-effect/" },
+      to: { path: "^effect(/|$)|node_modules/effect/" },
+    },
+    {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:

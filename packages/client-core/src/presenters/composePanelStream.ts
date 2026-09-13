@@ -1,12 +1,7 @@
 import { combineLatest, type Observable, of, shareReplay } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
-import type {
-  PanelData,
-  PanelPoint,
-  PanelStreamDeps,
-  PanelTone,
-} from "@rtc/core-api";
+import type { PanelData, PanelPoint, PanelTone } from "@rtc/core-api";
 import {
   type AnalyticsPort,
   AnalyticsUseCase,
@@ -15,6 +10,7 @@ import {
   type PositionUpdates,
   type PriceTick,
   type PricingPort,
+  type ReferenceDataPort,
   TradeBlotterUseCase,
   TradeStatus,
 } from "@rtc/domain";
@@ -29,7 +25,17 @@ import type {
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
-export type { PanelData, PanelPoint, PanelStreamDeps, PanelTone };
+export type { PanelData, PanelPoint, PanelTone };
+
+/** The subset of domain ports a `PanelSpecV1`'s `source` can read from —
+ * copied from `ScriptedJarvisEngine`'s `ScriptedJarvisDeps` (minus
+ * `execution`/`instantReveal$`, which no panel source needs). */
+export interface PanelStreamDeps {
+  readonly referenceData: ReferenceDataPort;
+  readonly pricing: PricingPort;
+  readonly blotter: BlotterPort;
+  readonly analytics: AnalyticsPort;
+}
 
 /** In-memory safety cap on any one series' accumulated point count — applied
  * where points ACCUMULATE over an unbounded live stream (`fxTicks`) or get

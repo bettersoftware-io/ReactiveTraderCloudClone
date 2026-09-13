@@ -9,17 +9,14 @@ import {
   takeUntil,
 } from "rxjs/operators";
 
-import type {
-  TileExecutionDeps,
-  TileExecutionIntents,
-  TileExecutionState,
-} from "@rtc/core-api";
+import type { TileExecutionIntents, TileExecutionState } from "@rtc/core-api";
 import {
   CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
   type Direction,
   EXECUTION_TIMEOUT_MS,
   type ExecuteTradeInput,
+  type ExecuteTradeResult,
   ExecutionStatus,
   type Price,
   TOO_LONG_THRESHOLD_MS,
@@ -30,7 +27,13 @@ import type { Machine } from "./machine";
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
-export type { TileExecutionDeps, TileExecutionIntents, TileExecutionState };
+export type { TileExecutionIntents, TileExecutionState };
+
+export interface TileExecutionDeps {
+  /** The execute command (TradeExecutionPresenter.execute), injected so timing
+   * is controllable in tests. */
+  execute: (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>;
+}
 
 interface ExecuteCommand {
   direction: Direction;

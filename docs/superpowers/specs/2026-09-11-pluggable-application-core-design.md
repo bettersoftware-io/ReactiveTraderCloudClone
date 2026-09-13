@@ -204,12 +204,27 @@ Dev-only, consumed by each core as a devDependency, never from `src`.
   scripted ports, advances the clock, asserts on collected values.
   Assertions are envelope-level only: values, ordering, completion, teardown
   on last unsubscribe, synchronous first value, same-key identity. Never
-  `shareReplay`, Subjects or operators. An **index test asserts every member
-  of `Presenters` and `MachineFactories` has a suite.**
+  `shareReplay`, Subjects or operators. **Shipped mechanism for "every member
+  has a suite":** `CONTRACT_SUITES` is an exhaustive
+  `Record<ContractMember, Suite | null>` keyed off `keyof Presenters` /
+  `keyof MachineFactories` / `keyof AppCommands`, so an unlisted member is a
+  COMPILE error rather than a test failure; a `null` entry must also appear in
+  the hand-maintained `PENDING_SUITES` array, and `registry.test.ts` fails on
+  any drift between the two lists.
 - **Harness.** `makeHarness()` → `{ app, machines, driver, teardown }`.
-  `createScriptedPorts()` builds a full `AppPorts` with Subject-backed
-  streams and an intent-named `driver` (`tickPrice`, `emitConnection`,
-  `resolveExecution`, `failExecution`, …). Preferences use the domain's
+  **Shipped shape:** `scriptPorts(base)` WRAPS an `AppPorts` the runner
+  supplies — each core's runner builds the base itself from
+  `createSimulatorPorts` plus its own `connectionEvents` — and overrides
+  exactly two members: `connectionEvents` (merged once with a harness-owned
+  Subject, so the `driver` can emit connection events) and `colorScheme`. It
+  does not build a full `AppPorts` of its own, because `@rtc/core-contract`
+  must not depend on `@rtc/client-core` (that edge would close a turbo
+  task-graph cycle: the RxJS core's own contract runner lives inside
+  `client-core`). The `driver` stays intent-named, and at slice 0 carries only
+  what slice 1a's members need — `emitConnection`, `connectionEvents$`,
+  `setPrefersDark`; the price/execution verbs (`tickPrice`,
+  `resolveExecution`, `failExecution`, …) arrive with the slices that assert
+  on them. Preferences use the domain's
   `PreferencesSimulator` (production code, already replay-current). Time is
   vitest fake timers for all three cores — Effect's live `Clock` sits on
   `setTimeout`, so `advanceTimersByTimeAsync` drives it; `TestClock` stays in
@@ -274,7 +289,11 @@ with harness, index test and suites for slice 1a's members; both alternative
 cores scaffolded at 100% delegation with `parity.json` and the drift test;
 `selectCore`, scripts, turbo env, bundle check, e2e matrix; ADR-006.
 **Exit:** both web clients boot on all three cores, every gate green,
-production bundle byte-identical.
+production build carries the RxJS core only — `check:core-bundle` asserts no
+foreign-core marker per build and the deploy guard re-checks the Vercel
+output. (An earlier draft said "production bundle byte-identical"; that is
+unmeetable by construction, since `selectCore.ts` itself is new code in every
+build.)
 
 ### Slices 1a–7 — one vertical slice each
 

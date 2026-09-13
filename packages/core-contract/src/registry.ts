@@ -1,4 +1,4 @@
-import type { MachineFactories, Presenters } from "@rtc/core-api";
+import type { AppCommands, MachineFactories, Presenters } from "@rtc/core-api";
 
 import type { Suite } from "#/harness/harness";
 import { describeConnectionContract } from "#/suites/connection";
@@ -10,7 +10,7 @@ import { describeViewModePreferenceContract } from "#/suites/viewModePreference"
 
 type PresenterMember = `presenters.${keyof Presenters & string}`;
 type MachineMember = `machines.${keyof MachineFactories & string}`;
-type CommandMember = "commands.reconnect";
+type CommandMember = `commands.${keyof AppCommands & string}`;
 
 /** Every member of the core contract, by dotted path. */
 export type ContractMember = PresenterMember | MachineMember | CommandMember;

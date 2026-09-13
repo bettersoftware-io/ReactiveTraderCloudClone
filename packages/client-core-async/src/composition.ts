@@ -74,7 +74,13 @@ export function createMachineFactories(
  * prove a build that did not select this core did not ship it. */
 export const ASYNC_CORE_BRAND = "@rtc/client-core-async:brand";
 
-export const asyncCore: CoreFactory & { readonly brand: string } = {
+/** A `CoreFactory` that also carries the grep-able brand literal above, so
+ * `check:core-bundle` has something to look for. */
+export interface BrandedCoreFactory extends CoreFactory {
+  readonly brand: string;
+}
+
+export const asyncCore: BrandedCoreFactory = {
   brand: ASYNC_CORE_BRAND,
   createApp,
   createMachineFactories,

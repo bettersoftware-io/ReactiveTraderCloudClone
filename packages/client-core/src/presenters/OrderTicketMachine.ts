@@ -3,7 +3,6 @@ import { concat, merge, type Observable, of, Subject } from "rxjs";
 import { map, scan, startWith, switchMap } from "rxjs/operators";
 
 import type {
-  OrderTicketDeps,
   OrderTicketForm,
   OrderTicketIntents,
   OrderTicketState,
@@ -24,7 +23,12 @@ import type { Machine } from "./machine";
  * move table — this file imports it back for local use (`validate`, the
  * `Patch` alias, `initialForm`) but does NOT re-export it, matching its
  * original (unexported) visibility here. */
-export type { OrderTicketDeps, OrderTicketIntents, OrderTicketState };
+export type { OrderTicketIntents, OrderTicketState };
+
+export interface OrderTicketDeps {
+  place: (req: PlaceOrderRequest) => Observable<EquityOrder>;
+  defaultSymbol: string;
+}
 
 type Patch = Partial<OrderTicketForm>;
 

@@ -1,11 +1,4 @@
-import type {
-  EquityOrder,
-  OrderSide,
-  OrderType,
-  PlaceOrderRequest,
-} from "@rtc/domain";
-
-import type { Stream } from "#/stream";
+import type { EquityOrder, OrderSide, OrderType } from "@rtc/domain";
 
 /** Moved alongside `OrderTicketState` (which embeds it in its "editing"
  * variant) — not itself in Task 3's move table, but `OrderTicketState`
@@ -36,9 +29,4 @@ export interface OrderTicketIntents {
   setLimitPrice(price: number | undefined): void;
   submit(): void;
   reset(): void;
-}
-
-export interface OrderTicketDeps {
-  place: (req: PlaceOrderRequest) => Stream<EquityOrder>;
-  defaultSymbol: string;
 }
