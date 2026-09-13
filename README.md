@@ -57,13 +57,16 @@ For the full picture, see:
 
 ## Prerequisites
 
-- **Node.js** 20 or newer (current LTS recommended)
-- **pnpm** 9.15.4 (the repo pins this via `packageManager`; the easiest way to
-  match it is [Corepack](https://nodejs.org/api/corepack.html)):
+- **Node.js** 26 — what every CI workflow and the server image run
+- **pnpm** 12 — the exact version is pinned by `packageManager` in the root
+  `package.json`. Any globally installed pnpm ≥ 9.7 switches to the pinned
+  version on its own; alternatively let
+  [Corepack](https://nodejs.org/api/corepack.html) (≥ 0.35, what CI uses)
+  provide it:
 
   ```bash
+  npm install -g corepack@0.35.0
   corepack enable
-  corepack prepare pnpm@9.15.4 --activate
   ```
 
 ## Install
