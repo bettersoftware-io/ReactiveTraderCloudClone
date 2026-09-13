@@ -58,6 +58,12 @@ export function DockviewLayoutEngine(
   // turns the whole column vertical), so the bridge never derives this from
   // the intent it dispatched.
   const [strips, setStrips] = createSignal<StripMap>({});
+  // Panels currently living in a pop-out window — ENGINE-owned session
+  // state surfaced whole through onPopoutsChange (the strips idiom), never
+  // the machine's: "popped" is not a workspace semantic the other engine
+  // honours, and a reload restores docked (the blob scrub is the second
+  // lock).
+  const [popped, setPopped] = createSignal<readonly PanelId[]>([]);
   let containerEl: HTMLDivElement | undefined;
   let engine: DockEngine | null = null;
 
@@ -78,6 +84,14 @@ export function DockviewLayoutEngine(
   function maximizePanel(panelId: PanelId) {
     return () => {
       props.onMaximize(panelId);
+    };
+  }
+
+  function popoutPanel(panelId: PanelId) {
+    return () => {
+      // Fire-and-forget: the engine resolves false when the browser blocks
+      // window.open — nothing to surface, the dock simply stays as-is.
+      void engine?.popoutPanel(panelId);
     };
   }
 
@@ -146,6 +160,12 @@ export function DockviewLayoutEngine(
       },
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
+      },
+      // Both clients emit a real dist/popout.html at the site root — the
+      // minimal page dockview's popout window expects (same-origin).
+      popoutUrl: "/popout.html",
+      onPopoutsChange: (next: readonly string[]): void => {
+        setPopped(next as readonly PanelId[]);
       },
     });
     setGroups(engine.groupCount());
@@ -240,6 +260,7 @@ export function DockviewLayoutEngine(
       data-groups={groups()}
       data-collapsed={props.collapsed.join(" ")}
       data-closed={props.closed.join(" ")}
+      data-popped={popped().join(" ")}
       class={styles.engine}
     >
       <div ref={containerEl} class={`${styles.container} dockview-theme-rtc`} />
@@ -286,9 +307,11 @@ export function DockviewLayoutEngine(
                     title={titleOf(p.panelId)}
                     maximizable={specs()[p.panelId]?.maximizable !== false}
                     maximizedHere={props.maximized === p.panelId}
+                    poppedHere={popped().includes(p.panelId)}
                     onCollapse={collapsePanel(p.panelId)}
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
+                    onPopout={popoutPanel(p.panelId)}
                   />
                 </Show>
               </Portal>

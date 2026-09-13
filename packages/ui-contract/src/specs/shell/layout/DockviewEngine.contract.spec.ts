@@ -59,6 +59,10 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     const page = mount(DockviewEngine, { props: {} });
     expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
     expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+    // The pop-out control is dockview-only — the bridge attaches the
+    // optional slot (in-house heads never receive it; see the LayoutEngine
+    // spec's absence witness).
+    expect(page.bodyVisible("panel-fx-rates-popout")).toBe(true);
     expect(page.intents()).toEqual([]);
 
     page.clickCollapse("fx-rates");

@@ -68,6 +68,12 @@ export function DockviewLayoutEngine({
   // turns the whole column vertical), so the bridge never derives this from
   // the intent it dispatched.
   const [strips, setStrips] = useState<StripMap>({});
+  // Panels currently living in a pop-out window — ENGINE-owned session
+  // state surfaced whole through onPopoutsChange (the strips idiom), never
+  // the machine's: "popped" is not a workspace semantic the other engine
+  // honours, and a reload restores docked (the blob scrub is the second
+  // lock).
+  const [popped, setPopped] = useState<readonly PanelId[]>([]);
   // Read through a ref by the engine's title hook: `specs` (like `registry`)
   // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
   // the engine effect below would tear dockview down and rebuild it from
@@ -168,6 +174,12 @@ export function DockviewLayoutEngine({
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
       },
+      // Both clients emit a real dist/popout.html at the site root — the
+      // minimal page dockview's popout window expects (same-origin).
+      popoutUrl: "/popout.html",
+      onPopoutsChange: (next: readonly string[]): void => {
+        setPopped(next as readonly PanelId[]);
+      },
     });
     engineRef.current = engine;
     appliedCollapse.current = { tab, ids: [] };
@@ -262,6 +274,14 @@ export function DockviewLayoutEngine({
     };
   }
 
+  function popoutPanel(panelId: PanelId) {
+    return () => {
+      // Fire-and-forget: the engine resolves false when the browser blocks
+      // window.open — nothing to surface, the dock simply stays as-is.
+      void engineRef.current?.popoutPanel(panelId);
+    };
+  }
+
   function expandOrRestorePanel(panelId: PanelId) {
     return () => {
       if (collapsed.includes(panelId)) {
@@ -282,6 +302,7 @@ export function DockviewLayoutEngine({
       data-groups={groups}
       data-collapsed={collapsed.join(" ")}
       data-closed={closed.join(" ")}
+      data-popped={popped.join(" ")}
       className={styles.engine}
     >
       <div
@@ -317,9 +338,11 @@ export function DockviewLayoutEngine({
                 title={title}
                 maximizable={specs[panelId]?.maximizable !== false}
                 maximizedHere={maximized === panelId}
+                poppedHere={popped.includes(panelId)}
                 onCollapse={collapsePanel(panelId)}
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
+                onPopout={popoutPanel(panelId)}
               />
             ) : null
           ) : strip !== undefined ? (

@@ -66,6 +66,15 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return this.panel(id).getAttribute("data-strip") === "true";
   }
 
+  /** Whether the head renders the pop-out control — always false in-house:
+   * the `onPopout` slot is optional and only the dockview bridge attaches
+   * it (the engine-gating idiom). */
+  hasPopoutControl(id: string): boolean {
+    return (
+      within(this.root).queryByTestId(`panel-${id}-popout`) !== null
+    );
+  }
+
   /** The accessible name of whatever control currently sits at the shared
    * `panel-<id>-collapse` testid: the strip's restore bar ("Restore <title>")
    * while the panel is a strip (collapsed, or a sibling of the maximized
