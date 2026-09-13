@@ -18,9 +18,12 @@ export interface LayoutPO {
   firstResizeHandleSize(): Promise<number>;
   /** Pointer-drag the first splitter handle along its axis by `dx` CSS pixels. */
   dragFirstHandleBy(dx: number): Promise<void>;
-  /** Wait for the given layout panel (InhouseLayoutEngine's PanelLeaf) to
-   *  report `data-maximized="true"` — the layout-state witness for a
-   *  driven `{kind:"layout",op:"maximize",...}` command actually landing. */
+  /** Wait for the layout-engine root's `data-maximized` witness (the
+   *  maximized panel id, or "" when none — mirrored identically by
+   *  InhouseLayoutEngine and DockviewLayoutEngine, Task 10) to equal
+   *  `panelId` — the layout-state witness for a driven
+   *  `{kind:"layout",op:"maximize",...}` command actually landing, under
+   *  either engine. */
   waitPanelMaximized(panelId: string, timeoutMs: number): Promise<void>;
   /** Waits for the layout-engine root's `data-engine` witness to equal
    * `engine` — a preference switch remounts InhouseLayoutEngine/

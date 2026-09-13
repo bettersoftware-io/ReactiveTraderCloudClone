@@ -7,15 +7,21 @@ test.describe("Layout engine", () => {
   withFxWorkspaceOpen();
 
   test("dragging a splitter handle resizes the panels", async ({ ctx }) => {
+    // Task 10 (default flip): splitters are an in-house-only feature, and
+    // dockview is now the default — this switch used to be implicit (the
+    // in-house engine WAS the default the app booted into).
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
+    await layout.expectEngine(ctx, "inhouse");
     await layout.expectSplitterDragResizes(ctx);
   });
 
-  test("switching the layout engine to dockview enables tab docking that persists across reload, and back", async ({
+  test("dockview tab docking persists across reload, and switching back to in-house works", async ({
     ctx,
   }) => {
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Task 10 (default flip): dockview is now the default the app boots
+    // into — the opening switch this test used to need (from the then-
+    // default in-house engine) is gone; only the closing switch back to
+    // in-house remains, proving the reverse direction still works.
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
@@ -39,8 +45,8 @@ test.describe("Layout engine", () => {
   test("dockview edge-split drag rearranges and persists, and a collapsed panel rejects drops", async ({
     ctx,
   }) => {
-    await layout.expectEngine(ctx, "inhouse");
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Task 10 (default flip): no opening switch needed — dockview is the
+    // default the app boots into.
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 

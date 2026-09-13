@@ -39,24 +39,30 @@ test.describe("Jarvis assistant", () => {
   test("docks a panel, survives reload docked and live, then unpins back to floating", async ({
     ctx,
   }) => {
+    // Task 10 (default flip): this ran under the in-house engine (the old
+    // default) with no explicit switch; it now runs under dockview — the
+    // NEW default — with no explicit switch either. The dockview-specific
+    // variant below took over the opening-switch/closing-revert dance this
+    // test used to carry.
     await jarvis.expectDockedPanelSurvivesReload(ctx);
   });
 
-  test("docks a panel under the dockview engine, survives reload docked, then unpins", async ({
+  test("docks a panel under the in-house engine, survives reload docked, then unpins", async ({
     ctx,
   }) => {
-    // Task 10 (default flip) inverts this: when dockview becomes the
-    // default, the opening switch goes away and the in-house journey gains
-    // one instead.
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
-    await layout.expectEngine(ctx, "dockview");
+    // Task 10 (default flip): dockview becomes the default, so covering the
+    // in-house docking path now needs an explicit switch — mirroring this
+    // test's own OLD shape (back when it was the dockview-specific one
+    // switching away from the then-default in-house engine).
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
+    await layout.expectEngine(ctx, "inhouse");
     await jarvis.expectDockedPanelSurvivesReload(ctx);
     // expectDockedPanelSurvivesReload ends with the panel back in the
-    // FLOATING layer (post-undock) — it sits on the desk above the header,
-    // so it intercepts the account menu's Preferences click below unless
-    // dismissed first.
+    // FLOATING layer (post-undock) — dismiss it so the ride leaves a clean
+    // desk, mirroring the dockview-default test's own tidy ending; no
+    // closing engine switch is needed (each test gets its own fresh
+    // context, so there is nothing for it to restore).
     await jarvis.dismissScriptedPanel(ctx);
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
   });
 
   test("flagship ride: narrator flare -> setupWorkspace drive batch assembles the vol workspace, cooldown holds", async ({
@@ -69,6 +75,11 @@ test.describe("Jarvis assistant", () => {
     // ample headroom over the default 30s, same precedent as
     // devtools.spec.ts's coalesced-stream test.
     test.setTimeout(45_000);
+    // Runs under the default dockview engine — no forced switch needed.
+    // `waitPanelMaximized` reads the engine-root `data-maximized` witness,
+    // which DockviewLayoutEngine now mirrors from InhouseLayoutEngine
+    // exactly (Task 10), so the ride's maximize assertion works under
+    // either engine.
     await jarvis.expectNarratorDriveRideSetsUpVolWorkspace(ctx);
   });
 });
