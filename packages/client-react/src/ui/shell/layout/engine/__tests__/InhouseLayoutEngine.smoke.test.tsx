@@ -25,6 +25,7 @@ const state: LayoutState = {
   },
   maximized: null,
   collapsed: [],
+  closed: [],
 };
 
 const registry: PanelRegistry = {
@@ -95,6 +96,7 @@ describe("InhouseLayoutEngine", () => {
       },
       maximized: null,
       collapsed: [],
+      closed: [],
     };
 
     const fixedRegistry: PanelRegistry = {
@@ -125,6 +127,7 @@ describe("InhouseLayoutEngine", () => {
       },
       maximized: null,
       collapsed: [],
+      closed: [],
     };
 
     const abRegistry: PanelRegistry = {
@@ -189,6 +192,7 @@ describe("InhouseLayoutEngine", () => {
         },
         maximized: null,
         collapsed: [],
+        closed: [],
       };
 
       const measuredRegistry: PanelRegistry = {
@@ -297,6 +301,7 @@ describe("InhouseLayoutEngine", () => {
       },
       maximized: null,
       collapsed: [],
+      closed: [],
     };
 
     const creditShapedRegistry: PanelRegistry = {
@@ -357,6 +362,7 @@ describe("InhouseLayoutEngine", () => {
       },
       maximized: null,
       collapsed: [],
+      closed: [],
     };
 
     const creditRegistry: PanelRegistry = {
@@ -451,6 +457,7 @@ describe("InhouseLayoutEngine", () => {
       },
       maximized: null,
       collapsed: [],
+      closed: [],
     };
     const onResize = vi.fn();
     page.mount(columnState, registry, { onResize });
