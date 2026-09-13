@@ -20,7 +20,6 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
-  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -459,8 +458,16 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     this.workspaceLayout = new BehaviorSubject<string | null>(
       s.workspaceLayout ?? null,
     );
+    // Pinned to the literal "inhouse", not the web-shared DEFAULT_LAYOUT_ENGINE
+    // (now "dockview"): RN has no Dockview bridge, so the web default doesn't
+    // apply here. This is a deliberate deviation from `PreferencesPortContract`
+    // (which now asserts the default is `DEFAULT_LAYOUT_ENGINE`, i.e.
+    // "dockview") — it survives only because this adapter is never run
+    // through `describePreferencesPortContract` (only client-react's and
+    // client-solid's are); the contract itself has no per-adapter opt-out for
+    // this field.
     this.layoutEngine = new BehaviorSubject<LayoutEngine>(
-      s.layoutEngine ?? DEFAULT_LAYOUT_ENGINE,
+      s.layoutEngine ?? "inhouse",
     );
     this.jarvisSkin = new BehaviorSubject<JarvisSkin>(
       s.jarvisSkin ?? DEFAULT_JARVIS_SKIN,
