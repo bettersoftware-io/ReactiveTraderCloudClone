@@ -33,7 +33,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19",
     "@vitest/coverage-v8": "^4.1.10",
-    "jsdom": "^29",
+    "jsdom": "^30.0.1",
     "tsc-alias": "1.9.4",
     "vitest": "^4.1.10"
   }
