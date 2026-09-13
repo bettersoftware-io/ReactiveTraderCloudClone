@@ -486,6 +486,15 @@ describe("createLayoutMachine", () => {
       machine.dispose();
     });
 
+    it("closeInstance with an unknown id no-ops — state unchanged, same reference", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      const before = current(machine);
+      machine.intents.closeInstance("eq-chart:not-open");
+      expect(current(machine)).toBe(before);
+      machine.dispose();
+    });
+
     it("reset discards instances with everything else", () => {
       const machine = createLayoutMachine(port);
       machine.intents.openInstance("eq-chart", "AAPL");

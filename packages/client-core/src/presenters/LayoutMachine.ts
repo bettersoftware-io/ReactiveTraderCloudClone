@@ -11,10 +11,10 @@ import {
 } from "#/layout/dockColumn";
 import type {
   LayoutNode,
+  LayoutPanelInstance,
   LayoutPort,
   LayoutState,
   PanelId,
-  PanelInstance,
 } from "#/layout/layoutPort";
 
 import type { Machine } from "./machine";
@@ -191,7 +191,7 @@ function makeReduce(
           return layoutState;
         }
 
-        const instance: PanelInstance = {
+        const instance: LayoutPanelInstance = {
           id,
           kind: event.kind,
           symbol: event.symbol,

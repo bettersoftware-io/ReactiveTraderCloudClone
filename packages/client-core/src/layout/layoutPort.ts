@@ -2,8 +2,8 @@
  * Task 2) — re-exported here so every existing `import … from "@rtc/client-core"`
  * keeps working unchanged. */
 export type {
-  EqChartPanelInstance as PanelInstance,
   LayoutNode,
+  LayoutPanelInstance,
   LayoutPort,
   LayoutState,
   PanelId,
