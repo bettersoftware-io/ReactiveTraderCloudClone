@@ -1,6 +1,7 @@
 import { type Observable, shareReplay } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
+import type { EventLogPresenter as EventLogPresenterApi } from "@rtc/core-api";
 import type { EventLogPort, LogEvent } from "@rtc/domain";
 
 /** Maximum number of log rows retained in the rolling window (newest-first). */
@@ -24,7 +25,7 @@ export const MAX_LOG_ROWS = 200;
  * is a composition-root singleton (packages/client-core/src/composition.ts),
  * not a per-mount instance.
  */
-export class EventLogPresenter {
+export class EventLogPresenter implements EventLogPresenterApi {
   readonly events$: Observable<readonly LogEvent[]>;
 
   constructor(port: EventLogPort) {

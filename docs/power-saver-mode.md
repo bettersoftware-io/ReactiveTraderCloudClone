@@ -186,10 +186,15 @@ Two things Freeze deliberately does *not* take away:
   iteration count ≠ 1, `transition-property` other than `none`, animated
   element stuck at `opacity: 0`, or any live (`running`/`paused`) entry left
   in `document.getAnimations()` after settling. A screenshot *cannot* catch
-  this: `toHaveScreenshot({ animations: "disabled" })` calls
-  `animation.finish()`, which jumps past the delay, so the invisible window is
-  unobservable by capture — and jsdom runs no CSS animations at all, so the
-  unit tier can't see it either. The spec pins `data-power-saver="freeze"` as a
+  this: settling motion for a capture calls `animation.finish()`, which jumps
+  past the delay, so the invisible window is unobservable by capture — and
+  jsdom runs no CSS animations at all, so the unit tier can't see it either.
+  (That was `toHaveScreenshot({ animations: "disabled" })` until the visual
+  specs took the pass over themselves as `settleAnimationsForCapture`, which
+  holds only the `data-motion="fast-forwarded"` RFQ drain bars at their mount
+  frame and still finishes everything else — see
+  `packages/ui-contract/src/visual/holdMotion.ts`.)
+  The spec pins `data-power-saver="freeze"` as a
   precondition so it cannot pass vacuously, and it is falsification-verified:
   removing the `animation-delay` line above makes it fail on both the delay and
   the resulting `opacity: 0`.

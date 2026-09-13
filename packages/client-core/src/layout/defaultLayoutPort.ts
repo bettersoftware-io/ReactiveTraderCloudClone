@@ -1,3 +1,5 @@
+import type { WorkspaceTab } from "@rtc/core-api";
+
 import type {
   LayoutNode,
   LayoutPort,
@@ -6,7 +8,7 @@ import type {
   PanelSpec,
 } from "./layoutPort";
 
-export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
+export type { WorkspaceTab };
 
 /** Static panel descriptors. `pinned: true` (unused by any default tree today)
  * marks a panel the engine renders in a fixed bottom strip, kept out of any
@@ -160,11 +162,28 @@ const ROOTS: Record<WorkspaceTab, LayoutNode> = {
 /** The default in-house arrangement for one workspace tab. A future
  * DockviewLayoutEngine would consume a differently-built LayoutPort with the
  * same shape; nothing else changes. */
+/** The tab's static seed leaves, in tree order — the View menu's row source
+ * and the same id set the layout machine derives its floor from. Reads the
+ * SEED (not a live root), so docked Jarvis leaves and closed panels never
+ * leak in. */
+export function staticPanelIdsFor(tab: WorkspaceTab): readonly PanelId[] {
+  return collectPanelIds(ROOTS[tab]);
+}
+
+function collectPanelIds(node: LayoutNode): readonly PanelId[] {
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
+  return node.children.flatMap(collectPanelIds);
+}
+
 export function createDefaultLayoutPort(tab: WorkspaceTab): LayoutPort {
   const initial: LayoutState = {
     root: ROOTS[tab],
     maximized: null,
     collapsed: [],
+    closed: [],
   };
   return { initial };
 }

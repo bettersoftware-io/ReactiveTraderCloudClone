@@ -135,6 +135,7 @@ export function DockviewEngineHost(
         store={store}
         maximized={(props.maximized as PanelId | null | undefined) ?? null}
         collapsed={collapsed()}
+        closed={[]}
         docked={(props.docked as readonly PanelId[] | undefined) ?? []}
         // Inert: no case in DockviewEngine.contract.spec.ts exercises a
         // workspace-reset rebuild (that behaviour lives in

@@ -12,7 +12,7 @@ interface WaitForOptions {
 
 function noop(): void {}
 
-export interface DockviewLayoutEngineDockedPageProps {
+interface DockviewLayoutEngineDockedPageProps {
   tab: WorkspaceTab;
   registry: PanelRegistry;
   store: DockLayoutStore;
@@ -72,6 +72,7 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
             store={props.store}
             maximized={props.maximized}
             collapsed={props.collapsed()}
+            closed={[]}
             docked={props.docked()}
             layoutResets={props.layoutResets()}
             onMaximize={noop}

@@ -148,6 +148,19 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     );
   }
 
+  /** The `data-panel-title` attribute on `panelId`'s tab mount — the text
+   * source for the stacked-tab inactive chip (`dockview-hud.css` renders it
+   * via `content: attr(data-panel-title)`, a CSS path jsdom does not
+   * evaluate, so the attribute is the witness; the pixel tier sees the
+   * chip). */
+  panelTitleMarker(panelId: string): string | null {
+    return (
+      within(this.root)
+        .queryByTestId(`dock-tab-${panelId}`)
+        ?.getAttribute("data-panel-title") ?? null
+    );
+  }
+
   /** The `data-dock-strip` marker on `panelId`'s tab mount — the hook
    * @rtc/layout-dockview's stylesheet keys on to hide the whole group
    * header while the panel is a strip (a CSS `:has()` rule jsdom does not

@@ -1,15 +1,19 @@
 import { type Observable, Subject, startWith, switchMap, tap } from "rxjs";
 
+import type {
+  EquityFillSignal,
+  OrdersBlotterPresenter as OrdersBlotterPresenterApi,
+} from "@rtc/core-api";
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
 
-/** Minimal fill-signal emitted on OrdersBlotterPresenter.fills$ — one per filled order. */
-export interface EquityFillSignal {
-  readonly symbol: string;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { EquityFillSignal };
 
-export class OrdersBlotterPresenter {
+export class OrdersBlotterPresenter implements OrdersBlotterPresenterApi {
   private readonly fillsSubject = new Subject<EquityFillSignal>();
 
   /** Triggers a fresh orders$ snapshot — nexted on every lifecycle emission

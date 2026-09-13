@@ -2,29 +2,21 @@ import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map } from "rxjs/operators";
 
+import type { NotionalIntents, NotionalView } from "@rtc/core-api";
 import { isRfqRequired, parseNotional } from "@rtc/domain";
 
 import type { Machine } from "./machine";
+
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { NotionalIntents, NotionalView };
 
 function formatWithCommas(value: number): string {
   return value.toLocaleString("en-US", {
     maximumFractionDigits: 0,
     useGrouping: true,
   });
-}
-
-/** Data-only view emitted by the notional machine. */
-export interface NotionalView {
-  displayValue: string;
-  numericValue: number;
-  error: string | null;
-  isRfq: boolean;
-  isDefault: boolean;
-}
-
-export interface NotionalIntents {
-  change: (input: string) => void;
-  reset: () => void;
 }
 
 type NotionalEvent = { type: "change"; input: string } | { type: "reset" };

@@ -254,6 +254,7 @@ const EMPTY_LAYOUT_STATE: LayoutState = {
   root: { kind: "panel", panelId: "" },
   maximized: null,
   collapsed: [],
+  closed: [],
 };
 
 /** `useLayout()`'s resting result — same value regardless of which
@@ -267,6 +268,8 @@ const LAYOUT_RESULT: LayoutResult = {
   expand: noop,
   resize: noop,
   insertPanel: noop,
+  close: noop,
+  reopen: noop,
   removePanel: noop,
   reset: noop,
 };

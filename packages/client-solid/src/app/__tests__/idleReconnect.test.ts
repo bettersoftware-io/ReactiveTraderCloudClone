@@ -37,12 +37,14 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
     vi.useRealTimers();
   });
 
+  // Fake-timer tests are starved under the parallel root run.
   it("goes IDLE_DISCONNECTED after the 15-minute idle timeout", async () => {
     expect(statuses.at(-1)).toBe(ConnectionStatus.CONNECTED);
     await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS);
     expect(statuses.at(-1)).toBe(ConnectionStatus.IDLE_DISCONNECTED);
-  });
+  }, 15_000);
 
+  // Fake-timer tests are starved under the parallel root run.
   it("commands.reconnect() transitions CONNECTING then CONNECTED", async () => {
     await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS);
     expect(statuses.at(-1)).toBe(ConnectionStatus.IDLE_DISCONNECTED);
@@ -55,5 +57,5 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
       ConnectionStatus.CONNECTING,
       ConnectionStatus.CONNECTED,
     ]);
-  });
+  }, 15_000);
 });

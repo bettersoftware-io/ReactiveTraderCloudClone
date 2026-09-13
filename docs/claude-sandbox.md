@@ -195,6 +195,9 @@ Root cause is usually one of:
    so WebStorm's older bundled TS can report phantom errors. Point it at the
    workspace TypeScript: **Settings → Languages & Frameworks → TypeScript →
    TypeScript:** field.
+   - `node_modules/typescript` is the **6.x API** package (`@typescript/typescript6`)
+     by design, while `tsc` is TypeScript 7 — see [typescript-7.md](./typescript-7.md).
+     The 6.x API is the right target for an IDE language service; 7.0 has none.
    - pnpm makes `node_modules/typescript` a **symlink**, and WebStorm's directory
      picker won't descend into it. **Paste the real resolved path** instead
      (⌘⇧G in the macOS file dialog lets you paste):

@@ -1,5 +1,5 @@
 import type { Accessor, JSX } from "solid-js";
-import { createMemo, Show, untrack } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
 import type { JarvisPanelVm } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -34,14 +34,9 @@ export function JarvisDockedPanelBody(
   props: JarvisDockedPanelBodyProps,
 ): JSX.Element {
   const { useJarvisPanelData } = useViewModel();
-  // Snapshot: useJarvisPanelData subscribes once at call time. Correct only
-  // while the parent mounts exactly one body per docked panel id. The
-  // props.panelId read in `panel` below is live.
-  const data = useJarvisPanelData(
-    untrack((): string => {
-      return props.panelId;
-    }),
-  );
+  const data = useJarvisPanelData(() => {
+    return props.panelId;
+  });
 
   const panel = createMemo((): JarvisPanelVm | undefined => {
     return props.dockedPanels().find((row) => {

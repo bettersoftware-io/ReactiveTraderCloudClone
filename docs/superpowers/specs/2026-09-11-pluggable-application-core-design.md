@@ -1,8 +1,8 @@
 # Pluggable Application Core (RxJS / async-await / Effect) — Design
 
 **Date:** 2026-09-11
-**Status:** Approved in design dialogue (2026-09-08 → 2026-09-11); spec awaiting user review
-**Plan:** to be written via the writing-plans skill after spec approval
+**Status:** Approved (design dialogue 2026-09-08 → 2026-09-11; user review 2026-09-12 split slice 1 into 1a/1b)
+**Plan:** slice 0 — [`../plans/2026-09-12-pluggable-core-slice-0.md`](../plans/2026-09-12-pluggable-core-slice-0.md); later slices get their own plan each
 
 ## Purpose
 
@@ -190,7 +190,9 @@ Pinned to `effect` 3.22.x.
   `runtime.runSync(SubscriptionRef.get(ref))` (the synchronous warmth).
   Typed errors are `Cause.squash`ed at the boundary only.
 - Same shared pure reducers, same strangler spread-and-override, same parity
-  manifest. `@effect/vitest` is a devDependency confined to this package.
+  manifest. Timing tests use `effect`'s own `TestContext` / `TestClock` under
+  plain vitest — `@effect/vitest` 0.30 peers on `vitest ^3.2` and the repo is
+  on 4.1.
 
 ### The core-contract tier (`@rtc/core-contract`)
 
@@ -202,12 +204,27 @@ Dev-only, consumed by each core as a devDependency, never from `src`.
   scripted ports, advances the clock, asserts on collected values.
   Assertions are envelope-level only: values, ordering, completion, teardown
   on last unsubscribe, synchronous first value, same-key identity. Never
-  `shareReplay`, Subjects or operators. An **index test asserts every member
-  of `Presenters` and `MachineFactories` has a suite.**
+  `shareReplay`, Subjects or operators. **Shipped mechanism for "every member
+  has a suite":** `CONTRACT_SUITES` is an exhaustive
+  `Record<ContractMember, Suite | null>` keyed off `keyof Presenters` /
+  `keyof MachineFactories` / `keyof AppCommands`, so an unlisted member is a
+  COMPILE error rather than a test failure; a `null` entry must also appear in
+  the hand-maintained `PENDING_SUITES` array, and `registry.test.ts` fails on
+  any drift between the two lists.
 - **Harness.** `makeHarness()` → `{ app, machines, driver, teardown }`.
-  `createScriptedPorts()` builds a full `AppPorts` with Subject-backed
-  streams and an intent-named `driver` (`tickPrice`, `emitConnection`,
-  `resolveExecution`, `failExecution`, …). Preferences use the domain's
+  **Shipped shape:** `scriptPorts(base)` WRAPS an `AppPorts` the runner
+  supplies — each core's runner builds the base itself from
+  `createSimulatorPorts` plus its own `connectionEvents` — and overrides
+  exactly two members: `connectionEvents` (merged once with a harness-owned
+  Subject, so the `driver` can emit connection events) and `colorScheme`. It
+  does not build a full `AppPorts` of its own, because `@rtc/core-contract`
+  must not depend on `@rtc/client-core` (that edge would close a turbo
+  task-graph cycle: the RxJS core's own contract runner lives inside
+  `client-core`). The `driver` stays intent-named, and at slice 0 carries only
+  what slice 1a's members need — `emitConnection`, `connectionEvents$`,
+  `setPrefersDark`; the price/execution verbs (`tickPrice`,
+  `resolveExecution`, `failExecution`, …) arrive with the slices that assert
+  on them. Preferences use the domain's
   `PreferencesSimulator` (production code, already replay-current). Time is
   vitest fake timers for all three cores — Effect's live `Clock` sits on
   `setTimeout`, so `advanceTimersByTimeAsync` drives it; `TestClock` stays in
@@ -268,20 +285,25 @@ they wrap plain Observables.
 ### Slice 0 — foundation (no business logic ported)
 
 `@rtc/core-api` extraction with `implements` clauses; `@rtc/core-contract`
-with harness, index test and suites for slice 1's members; both alternative
+with harness, index test and suites for slice 1a's members; both alternative
 cores scaffolded at 100% delegation with `parity.json` and the drift test;
 `selectCore`, scripts, turbo env, bundle check, e2e matrix; ADR-006.
 **Exit:** both web clients boot on all three cores, every gate green,
-production bundle byte-identical.
+production build carries the RxJS core only — `check:core-bundle` asserts no
+foreign-core marker per build and the deploy guard re-checks the Vercel
+output. (An earlier draft said "production bundle byte-identical"; that is
+unmeetable by construction, since `selectCore.ts` itself is new code in every
+build.)
 
-### Slices 1–7 — one vertical slice each
+### Slices 1a–7 — one vertical slice each
 
 Done when: suites for the slice's members exist and are green on RxJS; both
 alternative cores have them native; e2e matrix green; `parity.json` updated.
 
 | slice | members | why here |
 |---|---|---|
-| 1 connection + preferences | `connection`; the preference presenters `themePreference`, `themeSkinPreference`, `viewModePreference`, `creditRfqFilterPreference`, `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`, `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`, `powerSaver`; `AppCommands.reconnect` | proves synchronous replay-current early |
+| 1a connection + theme | `connection`; `themePreference`, `themeSkinPreference`, `viewModePreference`, `powerSaver`; `AppCommands.reconnect` | proves synchronous replay-current early (`cycle()`, theme flash); `powerSaver` feeds slice 2's conflation |
+| 1b remaining preferences | `creditRfqFilterPreference`, `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`, `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation` | mechanical once 1a's preference idiom exists; split out so 1a stays reviewable |
 | 2 FX pricing + blotter | `priceStream`, `priceHistory`, `currencyPairs`, `blotter`, `analytics`, `execution`; machines `staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution` | conflation, memoised identity, the racing machine |
 | 3 credit | `rfqs`, `dealers`, `instruments`, `rfqQuote`; machines `rfqTile`, `rfqSubmission`, `ticketSubmission`, `RfqCountdownMachine` | the `@rx-state` submissions and the RFQ reducer |
 | 4 equities | `watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`; machines `eqWorkspace`, `eqDrawings`, `orderTicket` | the two singletons the World harness instantiates |

@@ -18,9 +18,13 @@
 // reuses this SAME config with RTC_CLIENT_PKG=@rtc/client-solid, and run-all.ts
 // runs every browser suite concurrently by default — so suffix the HTML report
 // path by client to avoid two runs writing the same file at once. Empty for
-// the react default keeps its report path byte-identical to before.
-const reportSuffix =
-  process.env.RTC_CLIENT_PKG === "@rtc/client-solid" ? "-solid" : "";
+// the react default keeps its report path byte-identical to before. Likewise
+// for the application core (RTC_CORE_IMPL, forwarded to the dev server as
+// VITE_CORE_IMPL by tests/scripts/devServer.ts): the async/effect e2e runs
+// (test:e2e:async/:effect) can be mid-flight alongside the default rxjs run.
+const isSolid = process.env.RTC_CLIENT_PKG === "@rtc/client-solid";
+const coreImpl = process.env.RTC_CORE_IMPL ?? "rxjs";
+const reportSuffix = `${isSolid ? "-solid" : ""}${coreImpl === "rxjs" ? "" : `-${coreImpl}`}`;
 
 export default {
   paths: ["specs/**/*.feature"],

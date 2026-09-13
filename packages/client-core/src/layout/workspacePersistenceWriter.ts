@@ -109,6 +109,7 @@ function reconcileTabEntry(
   let root = layout.root;
   let maximized = layout.maximized;
   let collapsed = layout.collapsed;
+  let closed = layout.closed;
 
   for (const leafId of dockedLeafIds(root, staticIds)) {
     if (placedIds.has(leafId)) {
@@ -124,6 +125,11 @@ function reconcileTabEntry(
     collapsed = collapsed.filter((id) => {
       return id !== leafId;
     });
+
+    // Same scrub as `collapsed`: an undocked leaf must not persist as closed.
+    closed = closed.filter((id) => {
+      return id !== leafId;
+    });
   }
 
   const treeIds = new Set(dockedLeafIds(root, staticIds));
@@ -135,7 +141,10 @@ function reconcileTabEntry(
       return { panelId: p.panelId, spec: p.spec };
     });
 
-  return { layout: { root, maximized, collapsed }, docked };
+  return {
+    layout: { root, maximized, collapsed, closed },
+    docked,
+  };
 }
 
 function buildPayload(deps: WorkspacePersistenceWriterDeps): WorkspaceLayoutV1 {

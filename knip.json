@@ -14,6 +14,22 @@
       "entry": ["src/index.ts", "src/__fixtures__/wireFrames.ts"],
       "project": "src/**/*.ts"
     },
+    "packages/core-api": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
+    "packages/core-contract": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
+    "packages/client-core-async": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
+    "packages/client-core-effect": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/ws-effects": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
@@ -77,6 +93,7 @@
         "src/shared/mount.ts",
         "src/specs/**/*.contract.spec.ts",
         "src/visual/scenarios.test.ts",
+        "src/visual/holdMotion.test.ts",
         "src/visual/fixtures.ts",
         "src/visual/freezeClock.ts",
         "src/visual/scenarioActions.ts"

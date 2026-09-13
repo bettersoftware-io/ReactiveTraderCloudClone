@@ -16,6 +16,14 @@ import {
 } from "rxjs/operators";
 
 import type {
+  App,
+  AppCommands,
+  AppPorts,
+  AuthPresenter as AuthPresenterApi,
+  CoreFactory,
+  Presenters,
+} from "@rtc/core-api";
+import type {
   BootVariant,
   ConnectionEvent,
   CurrencyPair,
@@ -35,10 +43,9 @@ import {
 import type { JarvisHistoryEntry } from "@rtc/shared";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
-import type { DockLayoutStore } from "#/adapters/dockLayoutStore";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
-import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
+import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
 import {
   createDefaultLayoutPort,
@@ -82,22 +89,13 @@ import {
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
-  type EqDrawingsIntents,
-  type EqDrawingsState,
   EqWatchlistSortPreferencePresenter,
-  type EqWorkspaceIntents,
-  type EqWorkspaceState,
   ErrorRatePresenter,
   EventLogPresenter,
   ForceBootAnimationPresenter,
-  type IncidentIntents,
-  type IncidentState,
   InstrumentsPresenter,
-  type JarvisDemoMachineHandle,
   type JarvisDriverDeps,
-  type JarvisDriverMachineHandle,
   type JarvisEntry,
-  type JarvisMachineHandle,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
@@ -125,11 +123,7 @@ import {
   TradeExecutionPresenter,
   ViewModePreferencePresenter,
   WatchlistPresenter,
-  type WorkspaceNavIntents,
-  type WorkspaceNavState,
 } from "#/presenters/index";
-
-export type { AppPorts };
 
 /** The reconnect-intent event emitted from the Reconnect button. */
 interface ReconnectIntent {
@@ -154,183 +148,10 @@ export function routeIdleLifecycle(
   }
 }
 
-export interface Presenters {
-  priceStream: PriceStreamPresenter;
-  priceHistory: PriceHistoryPresenter;
-  execution: TradeExecutionPresenter;
-  blotter: BlotterPresenter;
-  analytics: AnalyticsPresenter;
-  rfqs: RfqsPresenter;
-  currencyPairs: CurrencyPairsPresenter;
-  instruments: InstrumentsPresenter;
-  dealers: DealersPresenter;
-  connection: ConnectionStatusPresenter;
-  rfqQuote: RfqQuotePresenter;
-  throughput: ThroughputPresenter;
-  themePreference: ThemePreferencePresenter;
-  themeSkinPreference: ThemeSkinPreferencePresenter;
-  animatedBackground: AnimatedBackgroundPresenter;
-  ambientStyle: AmbientStylePresenter;
-  chartSubstrate: ChartSubstratePresenter;
-  layoutEngine: LayoutEnginePresenter;
-  /** Per-tab persistence for the Dockview engine's serialized layout blob —
-   * `ports.dockLayoutStore ?? new InMemoryDockLayoutStore()`. Consumed
-   * through `useDockLayoutStore` as a plain passthrough (no rx: the store
-   * itself is not a stream, just load/save). */
-  dockLayoutStore: DockLayoutStore;
-  forceBootAnimation: ForceBootAnimationPresenter;
-  powerSaver: PowerSaverPresenter;
-  viewModePreference: ViewModePreferencePresenter;
-  creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
-  /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
-  eqWatchlistSortPreference: EqWatchlistSortPreferencePresenter;
-  /** Equities blotter tab preference (Orders/Positions), consumed by Task 5. */
-  eqBlotterViewPreference: EqBlotterViewPreferencePresenter;
-  animationDirector: AnimationDirector;
-  bootPreference: BootPreferencePresenter;
-  /** Boot-splash overlay visibility + the account menu's ⟳ Reboot HUD intent. */
-  bootGate: BootGatePresenter;
-  auth: AuthPresenter;
-  /** The two login-wait inspection preferences (style pin + artificial delay). */
-  loginWaitPreferences: LoginWaitPreferencesPresenter;
-  /** The two Jarvis desk-assistant preferences (brain + thinking-effort budget). */
-  jarvisPreferences: JarvisPreferencesPresenter;
-  watchlist: WatchlistPresenter;
-  candleSeries: CandleSeriesPresenter;
-  depth: DepthPresenter;
-  ordersBlotter: OrdersBlotterPresenter;
-  positions: PositionsPresenter;
-  /** Phase 5 Admin: incident injection + connection-seam control. */
-  incident: Machine<IncidentState, IncidentIntents>;
-  /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
-   * shared by the chart, instrument-tabs, and watchlist panels. */
-  eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
-  /** The app's active workspace tab — a composition-root singleton (mirrors
-   * `eqWorkspace`/`incident` above), the promoted form of the
-   * `useState<WorkspaceTab>` that used to live directly in each web client's
-   * `App.tsx`, now reachable from composition (and therefore from Jarvis's
-   * drive-the-app `switchTab` command — see the P5 `JarvisDriverMachine`,
-   * composed alongside `jarvisPanels` below). */
-  workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
-  /** Per-tab layout view-model — a memoized composition-root SINGLETON (one
-   * `Machine` instance per `WorkspaceTab`, built lazily on first request and
-   * cached for the app's whole session), mirroring `eqWorkspace`/
-   * `workspaceNav` above. Resolves the deferral Task 6's review recorded: a
-   * driven `"layout"` DriveCommand used to mutate a throwaway per-call
-   * instance nothing else ever read from (`layout` used to be a bare
-   * factory, matching `MachineFactories.layout`'s OLD "fresh machine per
-   * mount" contract — see `machine.ts`'s doc for the exception this field
-   * is now the source of truth for). `createMachineFactories`'s own `layout`
-   * field is a thin `(tab) => presenters.layoutFor(tab)` passthrough onto
-   * THIS map, so the UI (via `useLayout`, consumed WITHOUT `useMachine`'s
-   * dispose-on-unmount — see `createViewModel.ts`) and `jarvisDriver`'s
-   * `layout` dep both read/write the exact same instance per tab. Named
-   * consequence (accepted): layout state (maximized/collapsed/split sizes)
-   * now SURVIVES a tab switch instead of resetting on `WorkspaceEngine`'s
-   * `key={activeTab}` remount, since the underlying machine is no longer
-   * rebuilt per mount. The returned instance's `dispose()` is a
-   * STRUCTURAL no-op (not just a documented convention) — it exists as the
-   * backstop for ANY future `useMachine`-style consumer that disposes on
-   * unmount, so such a consumer can never tear down the shared singleton
-   * for every other consumer. Both bindings' current `useLayout` already
-   * read this singleton non-disposingly (solid-bindings via `toSignal`,
-   * react-bindings likewise), so the no-op isn't load-bearing for either
-   * today — it's defense-in-depth, not a workaround for a live caller. */
-  layoutFor: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
-  /** Equities: per-symbol chart annotations (trendlines/horizontal levels),
-   * the active draw tool, and the current selection — shared by the chart
-   * head's tool pills and the plot. */
-  eqDrawings: Machine<EqDrawingsState, EqDrawingsIntents>;
-  /** Phase 5 Admin: per-metric rolling window series for charts. */
-  throughputMetric: ThroughputMetricPresenter;
-  latencyMetric: LatencyPresenter;
-  errorRateMetric: ErrorRatePresenter;
-  /** Phase 5 Admin: service-topology graph stream. */
-  topology: ServiceTopologyPresenter;
-  /** Phase 5 Admin: newest-first rolling event log. */
-  eventLog: EventLogPresenter;
-  /** Phase 5 Admin: active trader sessions feed. */
-  sessions: SessionsPresenter;
-  /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
-  sessionsKpi: SessionsKpiPresenter;
-  /** J.A.R.V.I.S. chat overlay: entries, skin, pending confirmation, phase.
-   * Widened with `events$` (every turn's reply events) — Task 6's
-   * `jarvisPanels` below is composed from it. */
-  jarvis: JarvisMachineHandle;
-  /** J.A.R.V.I.S. usage/cost telemetry (Admin surface) — null until the
-   * first snapshot. */
-  jarvisUsage: JarvisUsagePresenter;
-  /** J.A.R.V.I.S. generative-UI desk panels: spawned/edited/dismissed via
-   * `jarvis`'s own "panel" turn events, interpreted into live `PanelData`
-   * over the domain ports. */
-  jarvisPanels: JarvisPanelsPresenter;
-  /** Dock a live desk panel into the workspace: the panels machine flips it
-   * to `docked` (it owns every no-op rule — unknown id, already docked, the
-   * docked cap), and ONLY if that actually changed does the ACTIVE tab's
-   * layout machine gain a matching leaf. The tab is captured here, at dock
-   * time: a docked panel belongs to the tab that was on screen when it was
-   * docked, and stays with that tab until it is undocked, wherever the user
-   * navigates in between. */
-  dockPanel: (panelId: string) => void;
-  /** The layer-2 docked membership for ONE workspace tab: the ids of every
-   * live desk panel currently docked INTO `tab` (per `dockedPanelTabs`'
-   * attribution, not whichever tab happens to be active now). Consumed by
-   * the Dockview bridge (`DockviewLayoutEngine`) to reconcile its dynamic
-   * panels against the live docked set — the in-house engine reads the same
-   * membership through the LayoutMachine tree instead, since a docked panel
-   * is just another leaf there. */
-  dockedPanelIdsFor: (tab: WorkspaceTab) => Observable<readonly string[]>;
-  /** Undock a docked desk panel — the exact inverse of `dockPanel`, removing
-   * the leaf from the tab the panel was docked INTO (not whichever tab
-   * happens to be active now). */
-  undockPanel: (panelId: string) => void;
-  /** Dismiss a desk panel — the DOCKED-SAFE dismissal, and the one both the
-   * UI and the driver must use in place of `jarvisPanels.dismissPanel`.
-   * Dismissing a docked panel through the raw presenter/machine intent
-   * leaves its leaf stranded in the layout tree (an empty pane with no
-   * removal control), lets the stored entry hand the panel back at the next
-   * reload, and can push the persisted docked total past
-   * `MAX_DOCKED_PANELS` — which makes the writer refuse every later write
-   * for the session. This detaches the leaf first. */
-  dismissPanel: (panelId: string) => void;
-  /** Discard the whole persisted workspace: clears the stored preference,
-   * resets every layout machine created this session back to its tab's
-   * default tree, and dismisses every docked panel. */
-  resetWorkspaceLayout: () => void;
-  /** Bumps once per workspace-layout reset. The Dockview bridges key their
-   * engine rebuild on it, so a live engine re-seeds from the cleared blob
-   * instead of re-persisting the old arrangement; the in-house engine needs
-   * no signal (its tree resets through the LayoutMachine). */
-  workspaceLayoutResets$: Observable<number>;
-  /** J.A.R.V.I.S. drive-the-app interpreter: turns `jarvis`'s own "command"
-   * turn events into staggered intent dispatches on `workspaceNav`,
-   * per-tab layout machines, `eqWorkspace`, the theme-skin/power-saver
-   * preferences, and `jarvisPanels.dismissPanel` — see
-   * `JarvisDriverMachine`'s doc for the total-interpreter/choreography
-   * contract. */
-  jarvisDriver: JarvisDriverMachineHandle;
-  /** J.A.R.V.I.S. hands-free scripted demo — a session-lifetime composition
-   * singleton (same no-dispose doctrine as `jarvisPanels`/`jarvisDriver`
-   * above) that drives `jarvis`'s REAL `sendScripted`/`declineConfirmation`
-   * intents through the fixed `JARVIS_DEMO_STEPS` script, one real
-   * scripted-brain turn per step. See `JarvisDemoMachine`'s doc for the
-   * settle-detection design (correlated via `jarvis.state$`'s `entries`
-   * PLUS the raw `jarvis.events$` terminal event — narrator-turn-safe and
-   * able to tell an errored turn from a done one, which `entries` alone
-   * cannot). */
-  jarvisDemo: JarvisDemoMachineHandle;
-}
-
-export interface AppCommands {
-  /** Push a user-initiated reconnect intent (wired to reconnect$ in composition). */
-  reconnect(): void;
-}
-
-export interface App {
-  presenters: Presenters;
-  ports: AppPorts;
-  commands: AppCommands;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 5) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { App, AppCommands, AppPorts, CoreFactory, Presenters };
 
 /**
  * Phase-0 shared seam — owned by the neutral core.
@@ -1411,7 +1232,19 @@ export function createApp(ports: AppPorts): App {
       reconnect$.next({ type: "reconnect" });
     },
   };
-  return { presenters, ports, commands };
+  return {
+    presenters,
+    ports,
+    commands,
+    dispose: async (): Promise<void> => {
+      // A knowing no-op. `createApp` opens session-lifetime subscriptions it
+      // never unsubscribes — state mirrors, workspace-persistence kicks, the
+      // driver→chat outcome feed, the auth→transport gate — plus machines with
+      // no dispose of their own (NarratorMachine); nothing else in the app
+      // tears them down either. The intended follow-up is a `Subscription` bag
+      // collected across `createApp` and unsubscribed here.
+    },
+  };
 }
 
 /**
@@ -1433,7 +1266,7 @@ export function createApp(ports: AppPorts): App {
  */
 function gateTransportOnAuth(
   transport: AuthGatedTransport | undefined,
-  auth: AuthPresenter,
+  auth: AuthPresenterApi,
 ): void {
   if (!transport) {
     return;
@@ -1525,3 +1358,7 @@ export function createMachineFactories(
     },
   };
 }
+
+/** The RxJS core as a `CoreFactory` — what `selectCore` returns for
+ * `VITE_CORE_IMPL=rxjs` and what the alternative cores delegate to. */
+export const rxjsCore: CoreFactory = { createApp, createMachineFactories };

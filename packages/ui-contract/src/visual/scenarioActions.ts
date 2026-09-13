@@ -55,6 +55,21 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // "calm" suppresses the aurora/drift layers, so the diff is entirely in the
   // background, not the interaction.
   "app/fx-power-saver": { fullPage: true },
+  // Full-bleed App scenarios like app/fx (App renders no scenario-root).
+  "app/fx-closed": { fullPage: true },
+  // The dockview twin needs the dock-mounted gate every *-dockview scenario
+  // carries (lazy engine chunk — an unmounted dock is a stable blank
+  // workspace the stabiliser will happily capture): Positions' "Net
+  // Exposure" only renders once the grid is up, and with analytics closed
+  // Positions is the rail's sole panel.
+  "app/fx-closed-dockview": { fullPage: true, waitForText: "Net Exposure" },
+  // The dropdown is view state, not AppData — the capture clicks the real
+  // toggle and waits for the head's visible-count meta ("4/4 visible").
+  "shell/view-menu-open": {
+    fullPage: true,
+    click: "view-menu-toggle",
+    waitForText: "4/4 visible",
+  },
   // The aurora ambient-style variant of the FX page — a full-bleed App scenario
   // like app/fx, so it must capture full-page (App renders no scenario-root
   // wrapper). #259 added the scenario without this action, so the harness fell

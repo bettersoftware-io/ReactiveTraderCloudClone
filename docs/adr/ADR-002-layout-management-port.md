@@ -892,7 +892,10 @@ layer 3. Cross-engine conversion is a **projection, never a migration**:
 switching to in-house shows seed + layer 2 and leaves the blob untouched, so
 switching back is lossless. **The engine-parity gate's scope freezes at the
 shared subset** — seed-derivable twin scenarios only; user-shaped layouts
-stay outside the golden matrix by design.
+stay outside the golden matrix by design. Phase 1 (DnD bless)
+shipped as PR #707; Phase 2 added the stacked-tab chrome (inactive
+title chip via `data-panel-title`, seam, accent seat — `dockview-hud.css`)
+with `shell/layout-dockview-stacked` as the first single-engine scenario.
 
 Phase 1 (DnD bless) shipped: dockview's tab drag-and-drop is a supported
 feature — drops blessed per the
@@ -901,6 +904,14 @@ stripped groups reject drops (derived `locked`, scrubbed from the blob);
 pins dissolve structurally on drag-out; strip ledgers key on membership
 (policy details in the
 [package README](../../packages/layout-dockview/README.md)).
+
+**Phase 3 (close/reopen) built 2026-09-13** — the first layer-2 lift the
+doctrine promised: `closed` lives in the client-core machine (additive,
+ghost-filtered `workspaceLayoutV1` field — no version bump), the in-house
+engine renders the `visibleRootOf` projection, Dockview replays
+`closePanel`/`reopenPanel` (seed-sibling anchor), and the fx-closed golden
+TWINS grow the shared engine subset for the first time since the parity
+freeze. The View menu in the app head is the user surface on both clients.
 
 ## References
 

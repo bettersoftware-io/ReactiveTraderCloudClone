@@ -8,7 +8,11 @@ import {
 } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  serializeWorkspaceLayout,
+  type UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/client-core";
 
 afterEach(() => {
   cleanupMounted();
@@ -278,6 +282,92 @@ describe("InhouseLayoutEngine", () => {
  * The scenario below therefore reads the string the writer actually stored on
  * World A and boots a genuinely SEPARATE World B from it.
  */
+describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
+  it("boots from a payload with a closed panel: the leaf is not rendered and its rail sibling takes the slot", () => {
+    const payload = serializeWorkspaceLayout({
+      v: 1,
+      tabs: {
+        fx: {
+          layout: {
+            ...createDefaultLayoutPort("fx").initial,
+            closed: ["fx-analytics"],
+          },
+          docked: [],
+        },
+      },
+    });
+    const world = createWorldSeededWith(payload);
+    const app = mountWith(world, AppShell);
+
+    expect(app.layout.panelExists("fx-analytics")).toBe(false);
+    // The rest of the fx tree is intact around the pruned leaf.
+    expect(app.layout.panelExists("fx-rates")).toBe(true);
+    expect(app.layout.panelExists("fx-positions")).toBe(true);
+    expect(app.layout.panelExists("fx-blotter")).toBe(true);
+  });
+
+  it("View menu: unchecking a panel closes it, rechecking reopens it in place", async () => {
+    const world = createWorld({});
+    const app = mountWith(world, AppShell);
+
+    await app.viewMenu.toggle();
+    expect(app.viewMenu.isOpen()).toBe(true);
+    // Rows follow the fx seed's leaf order: left column (tiles, blotter),
+    // then the right rail (analytics, positions).
+    expect(app.viewMenu.rowLabels()).toEqual([
+      "Live Rates",
+      "Blotter",
+      "Analytics",
+      "Positions",
+    ]);
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(true);
+
+    await app.viewMenu.toggleRow("fx-analytics");
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(false);
+    expect(app.layout.panelExists("fx-analytics")).toBe(false);
+
+    await app.viewMenu.toggleRow("fx-analytics");
+    expect(app.viewMenu.isChecked("fx-analytics")).toBe(true);
+    expect(app.layout.panelExists("fx-analytics")).toBe(true);
+  });
+
+  it("View menu: the last visible panel's row is disabled — the menu reflects the reducer's floor", async () => {
+    const world = createWorld({});
+    const app = mountWith(world, AppShell);
+
+    await app.viewMenu.toggle();
+    await app.viewMenu.toggleRow("fx-rates");
+    await app.viewMenu.toggleRow("fx-analytics");
+    await app.viewMenu.toggleRow("fx-positions");
+
+    expect(app.viewMenu.isRowDisabled("fx-blotter")).toBe(true);
+    // Clicking the disabled row must not strand the tab empty.
+    await app.viewMenu.toggleRow("fx-blotter");
+    expect(app.layout.panelExists("fx-blotter")).toBe(true);
+    // A reopen lifts the floor again.
+    await app.viewMenu.toggleRow("fx-rates");
+    expect(app.viewMenu.isRowDisabled("fx-blotter")).toBe(false);
+  });
+
+  it("View menu: docked desk panels are not listed (they have undock/dismiss already)", async () => {
+    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DOCKED_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(DOCKED_PANEL_ID);
+    expect(app.layout.isDocked(DOCKED_PANEL_ID)).toBe(true);
+
+    await app.viewMenu.toggle();
+    expect(app.viewMenu.rowExists(DOCKED_PANEL_ID)).toBe(false);
+    expect(app.viewMenu.rowLabels()).toHaveLength(4);
+  });
+});
+
 describe("InhouseLayoutEngine docked desk panels", () => {
   it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
     const world = createWorld({ useAnalytics: ANALYTICS_SEED });

@@ -88,6 +88,16 @@
       ],
     },
     {
+      // TypeScript is a deliberate DUAL install (docs/typescript-7.md): the
+      // `typescript` name aliases @typescript/typescript6 (the 6.x JS API that
+      // typescript-eslint, dependency-cruiser and Expo need) while
+      // `@typescript/native` aliases typescript@7 (the Go `tsc`). Renovate
+      // matches on the RESOLVED package, so list both targets; grouping keeps
+      // a 7.x bump and a 6.x-shim bump in one reviewable PR.
+      groupName: "typescript",
+      matchPackageNames: ["typescript", "@typescript/typescript6"],
+    },
+    {
       // Ambient type packages: no runtime surface, and a typecheck gate that
       // catches a bad one immediately. Batching them turns a long tail of
       // one-line PRs into a single reviewable diff.

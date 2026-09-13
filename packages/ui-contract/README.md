@@ -25,6 +25,7 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 | `src/visual/fixtures.ts`, `src/visual/appData.ts` | Named fixture data sets + the `AppData` injectable-data contract |
 | `src/visual/goldenPath.ts` | The shared golden-path resolver both clients' Playwright configs route `snapshotPathTemplate` through |
 | `src/visual/freezeClock.ts` | Deterministic clock freezing for time-sensitive scenarios |
+| `src/visual/holdMotion.ts` | `settleAnimationsForCapture` — the browser-side pass both clients' visual specs run before a screenshot, in place of Playwright's `animations: "disabled"` — see [Capture policy](#capture-policy) below |
 | `goldens/` | The committed golden PNG tree the `playwright` tier diffs against — see [Goldens](#goldens) below |
 
 ## Goldens
@@ -56,6 +57,25 @@ and the update routes are documented in
 [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../client-react/tests/ui/visual/UPDATING-GOLDENS.md) —
 that runbook, and the configs that point here, stay with `client-react`; only
 the PNGs moved.
+
+## Capture policy
+
+A golden is a photograph of a *settled* page. Both clients' `visual.spec.ts`
+capture with `animations: "allow"` and settle the page themselves first, by
+`page.evaluate`-ing `settleAnimationsForCapture` from `src/visual/holdMotion.ts`.
+That function mirrors what Playwright's `animations: "disabled"` does —
+`cancel()` the infinite animations, `finish()` every other animation and every
+transition, and keep re-settling on `animationstart` / `transitionrun` for the
+whole capture window — and diverges on exactly one class.
+
+That class is the **fast-forwarded** one: an animation whose target carries
+`data-motion="fast-forwarded"` is *paused at `currentTime = 0`* rather than
+finished. Those are animations whose `animation-delay` is negative elapsed
+time (the RFQ drain bars in both clients), so the animation's time 0 IS the
+state the component mounted in and its end is an empty bar — finishing them
+photographed a drained bar for a live RFQ, and racing the compositor for the
+seek produced an intermittently FULL one. The attribute lives in each client's
+own component source, since product code may not import this package.
 
 ## Where to start reading
 

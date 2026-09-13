@@ -53,12 +53,13 @@
     "@types/node": "^26.2.0",
     "@types/pngjs": "^6.0.5",
     "@types/ws": "^8.18.1",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitest/ui": "^4.1.10",
     "istanbul-lib-coverage": "^3.2.2",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
     "tsx": "^4",
-    "typescript": "^6",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^4.1.10"
   }
 }

@@ -14,6 +14,13 @@ import {
   timer,
 } from "rxjs";
 
+import type {
+  RfqSubmissionIntents,
+  RfqSubmissionState,
+  RfqsPresenter as RfqsPresenterApi,
+  TicketSubmissionIntents,
+  TicketSubmissionState,
+} from "@rtc/core-api";
 import {
   type CreateRfqInput,
   CreateRfqUseCase,
@@ -29,6 +36,16 @@ import {
 import type { Machine } from "./machine";
 import { warmReplay } from "./warmReplay.js";
 
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type {
+  RfqSubmissionIntents,
+  RfqSubmissionState,
+  TicketSubmissionIntents,
+  TicketSubmissionState,
+};
+
 /** Delay between confirming a freshly-created RFQ and redirecting the user back
  * to the RFQ list. Presenter-local — a UI cadence concern, not a domain
  * constant. Relocated from NewRfqForm's `setTimeout(..., 1500)`. */
@@ -37,32 +54,6 @@ const REDIRECT_DELAY_MS = 1500;
 interface SubmitCommand {
   input: CreateRfqInput;
   onRedirect: (rfqId: number) => void;
-}
-
-/** The create→confirmation→redirect lifecycle of NewRfqForm, relocated out of
- * the component's `await createRfq(...)` + `setTimeout` orchestration. The form
- * reads this state; draft input state stays in the component. */
-export type RfqSubmissionState =
-  | { status: "editing" }
-  | { status: "submitting" }
-  | { status: "confirmed"; rfqId: number };
-
-export interface RfqSubmissionIntents {
-  /** Submit the drafted RFQ; on success confirm, then fire onRedirect(rfqId)
-   * after REDIRECT_DELAY_MS. */
-  submit: (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => void;
-}
-
-/** The submit-price / pass lifecycle of TradeTicket, relocated out of the
- * component's `await quoteRfq(...)` / `await passQuote(...)` + `submitted`
- * useState. The price draft + parseFloat guard stay in the component. */
-export interface TicketSubmissionState {
-  submitted: boolean;
-}
-
-export interface TicketSubmissionIntents {
-  submitPrice: (quoteId: number, price: number) => void;
-  pass: (quoteId: number) => void;
 }
 
 function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -83,7 +74,7 @@ function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
   return true;
 }
 
-export class RfqsPresenter {
+export class RfqsPresenter implements RfqsPresenterApi {
   private readonly state$: Observable<RfqStreamState>;
 
   readonly rfqs$: Observable<readonly Rfq[]>;

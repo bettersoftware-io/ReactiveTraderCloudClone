@@ -72,3 +72,10 @@ export async function expectLoginScreenGone(ctx: TestContext): Promise<void> {
 export async function expectAppShellVisible(ctx: TestContext): Promise<void> {
   await login(ctx).waitAppShell(10_000);
 }
+
+/** Assert the app booted on the core this run selected — `RTC_CORE_IMPL`
+ *  (default `rxjs`), forwarded to the dev server as `VITE_CORE_IMPL` and
+ *  published by `selectCore.ts` as `<html data-core-impl>`. */
+export async function expectSelectedCoreImpl(ctx: TestContext): Promise<void> {
+  await login(ctx).waitCoreImpl(process.env.RTC_CORE_IMPL ?? "rxjs", 5_000);
+}

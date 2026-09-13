@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { EqBlotterViewPreferencePresenter as EqBlotterViewPreferencePresenterApi } from "@rtc/core-api";
 import type { EqBlotterView, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -8,7 +9,9 @@ import type { EqBlotterView, PreferencesPort } from "@rtc/domain";
  * operation, keeping persistence out of the UI. Consumed by the Blotter
  * panel (Task 5); this task only plumbs the seam through.
  */
-export class EqBlotterViewPreferencePresenter {
+export class EqBlotterViewPreferencePresenter
+  implements EqBlotterViewPreferencePresenterApi
+{
   readonly view$: Observable<EqBlotterView>;
 
   constructor(private readonly preferences: PreferencesPort) {

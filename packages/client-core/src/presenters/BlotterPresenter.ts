@@ -1,5 +1,9 @@
 import { map, type Observable, scan, shareReplay } from "rxjs";
 
+import type {
+  ActivityEntry,
+  BlotterPresenter as BlotterPresenterApi,
+} from "@rtc/core-api";
 import {
   type BlotterPort,
   DEFAULT_TRADER_NAME,
@@ -15,18 +19,10 @@ interface NewTradeScan {
   readonly initialized: boolean;
 }
 
-/** One live-executed trade, timestamped for the Activity feed. */
-export interface ActivityEntry {
-  /** Same trade the blotter table renders — the feed reuses that source,
-   * it doesn't fetch anything new. */
-  readonly trade: Trade;
-  /** Wall-clock HH:MM:SS captured the instant this trade was first observed
-   * by the presenter. `Trade` itself carries only a date (tradeDate), not a
-   * time-of-day, so this is stamped here — the app layer, same idiom as
-   * RfqCountdownMachine's `Date.now()` read at creation — rather than adding
-   * a domain field or reading the clock from the dumb UI. */
-  readonly time: string;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { ActivityEntry };
 
 interface ActivityScan {
   readonly seen: Set<number>;
@@ -49,7 +45,7 @@ function formatClockTime(ms: number): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }
 
-export class BlotterPresenter {
+export class BlotterPresenter implements BlotterPresenterApi {
   readonly trades$: Observable<readonly Trade[]>;
 
   /** Ids of trades that appeared after the initial snapshot, recomputed per

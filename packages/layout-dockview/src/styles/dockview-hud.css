@@ -80,6 +80,60 @@
   padding: 3.5px;
 }
 
+/* --- Stacked tabs (Phase 2, spec 2026-09-10 §3) ---------------------------
+ * Only a MULTI-tab bar gets any of this: the inactive-tab rules cannot match
+ * a lone tab (dockview marks it dv-active-tab), and the two shared rules
+ * scope themselves via `+` / `:has(+)`. A single-tab bar — every
+ * pre-existing golden — must stay byte-identical. */
+
+/* The INACTIVE tab collapses to a muted title chip: its rich head-slot
+ * widgets (Live Rates ▸ Watchlist ▸ CHARTS) belong to the PANEL, not the
+ * bar — un-focused they read as one merged header (the Phase 2 probe's
+ * 279px inactive tab). The chip's text comes from the bridge's
+ * data-panel-title attribute because the head's real children are hashed
+ * CSS-module nodes this framework-neutral sheet must not name. Font values
+ * mirror PanelHead.module.css `.panelTitle` (11px 600 --font-display,
+ * 0.06em) so the chip sits in the head's own type. */
+.dockview-theme-rtc .dv-tab.dv-inactive-tab [data-panel-title] > * {
+  display: none;
+}
+
+.dockview-theme-rtc .dv-tab.dv-inactive-tab [data-panel-title]::before {
+  content: attr(data-panel-title);
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 38px; /* the full head height: the chip is the tab's only box */
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #64748b);
+}
+
+.dockview-theme-rtc .dv-tab.dv-inactive-tab:hover [data-panel-title]::before {
+  color: var(--text-primary, #f1f5f9);
+}
+
+/* 1px seam between stacked tabs — the card-border colour, so the bar reads
+ * as one head with sections rather than two butted headers. `+` cannot
+ * match in a single-tab bar. */
+.dockview-theme-rtc .dv-tab + .dv-tab {
+  border-inline-start: 1px solid var(--border-primary, #334155);
+}
+
+/* Active affordance, multi-tab bars only (the `:has` guard): a 2px accent
+ * seat on the bar's bottom edge — the same edge the in-house title tab's
+ * accent border sits on. */
+.dockview-theme-rtc
+  .dv-tabs-and-actions-container:has(.dv-tab + .dv-tab)
+  .dv-tab.dv-active-tab {
+  box-shadow: inset 0 -2px 0 0 var(--accent-primary, #3b82f6);
+}
+
 /* `.panel`: the panel card — 1px border, 6px radius, panel background and
  * shadow. `background` (shorthand), not `background-color`: `--panel` is a
  * gradient image in the 3D skins. dockview's own `overflow: hidden` on the

@@ -86,6 +86,10 @@ import {
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
+import {
+  type MaybeAccessor,
+  readMaybeAccessor,
+} from "@rtc/solid-bindings/toSignal";
 
 function noop(): void {}
 
@@ -95,6 +99,18 @@ function noop(): void {}
 function at<T>(value: T): () => T {
   return () => {
     return value;
+  };
+}
+
+/** `at`'s keyed sibling, for the hooks whose ViewModel signature takes a
+ * `MaybeAccessor` key: the fixture value is still static, but the KEY may be
+ * an accessor, so it must be resolved on every read through the real
+ * `readMaybeAccessor` helper rather than snapshotted once. A fake that
+ * snapshotted it (or used the accessor function itself as a lookup key)
+ * would silently disagree with the shipping ViewModel and prove nothing. */
+function atKey<K, T>(key: MaybeAccessor<K>, pick: (key: K) => T): () => T {
+  return () => {
+    return pick(readMaybeAccessor(key));
   };
 }
 
@@ -140,11 +156,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
   });
 
   return {
-    usePrice: (pair: CurrencyPair) => {
-      return at(data.prices[pair.symbol] ?? null);
+    usePrice: (pair: MaybeAccessor<CurrencyPair>) => {
+      return atKey(pair, (p) => {
+        return data.prices[p.symbol] ?? null;
+      });
     },
-    usePriceHistory: (symbol: string) => {
-      return at(data.priceHistory[symbol] ?? []);
+    usePriceHistory: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.priceHistory[sym] ?? [];
+      });
     },
     useTrades: () => {
       return at(data.trades);
@@ -161,8 +181,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useRfqs: () => {
       return at(data.rfqs);
     },
-    useQuotesForRfq: (rfqId: number) => {
-      return at(data.quotesForRfq[rfqId] ?? []);
+    useQuotesForRfq: (rfqId: MaybeAccessor<number>) => {
+      return atKey(rfqId, (id) => {
+        return data.quotesForRfq[id] ?? [];
+      });
     },
     useAllQuotes: () => {
       return at(data.allQuotes);
@@ -387,24 +409,23 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useBootGate: () => {
       return { visible: at(false), reboot: noop, dismiss: noop };
     },
-    // Countdown: 0 remaining, so the drain-bar animation is BORN FINISHED
-    // (RfqCard sets animation-delay to -totalMs; with fill:forwards the bar
-    // sits at scaleX(0) from its first frame). The old totalMs seed mounted a
-    // RUNNING 120s animation whose captured state was a race: playwright's
-    // animations:"disabled" pass usually seeked it to its end (the empty bar
-    // every golden holds), but when the seek missed the compositor animation
-    // the stability loop accepted the visually-static running bar and
-    // captured it FULL — one red credit cell per run, drifting between
-    // clients and cells (visual.yml 34663511987: solid attempt 1, react
-    // attempt 3, same commit). With 0 the live and the seeked state are the
-    // same pixels, so there is nothing left to race; the label honestly
-    // reads "0 secs" beside the empty bar it always sat next to.
-    useRfqCountdown: (_creationTimestamp: number, _totalMs: number) => {
-      return at(0);
+    // Countdown: a MID-WAY remaining, so the credit card photographs as a
+    // live RFQ — a ~60% bar beside a "72 secs" caption for the 120s window.
+    // Neither the fraction nor the capture is a race any more: the bar is one
+    // mount-time keyframe fast-forwarded by a negative delay, and the spec's
+    // settleAnimationsForCapture pass holds exactly that family (marked
+    // data-motion="fast-forwarded") paused at time 0 — its mounted state —
+    // instead of finishing it. This seed briefly read 0 (PR #710), which made
+    // the bar be born finished so it matched the drained golden playwright's
+    // animations:"disabled" had always produced; that removed the flake by
+    // locking in the wrong picture, and left the FX tile's own countdown
+    // (fixture-driven, not hook-driven) untouched.
+    useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
+      return at(Math.round(totalMs * 0.6));
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.
-    useAnimationIntents: (_target: string) => {
+    useAnimationIntents: (_target: MaybeAccessor<string>) => {
       return at(null);
     },
     // Layout: static snapshot for screenshots — returns the tab's default
@@ -421,6 +442,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resize: noop,
         insertPanel: noop,
         removePanel: noop,
+        close: noop,
+        reopen: noop,
         reset: noop,
       };
     },
@@ -458,11 +481,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useWatchlist: () => {
       return at(data.equityWatchlist ?? []);
     },
-    useEquityQuote: (symbol: string) => {
-      return at(data.equityQuotes?.[symbol] ?? null);
+    useEquityQuote: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityQuotes?.[sym] ?? null;
+      });
     },
-    useCandles: (symbol: string) => {
-      return at(data.equityCandles?.[symbol] ?? []);
+    useCandles: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityCandles?.[sym] ?? [];
+      });
     },
     // Candle backfill: static screenshots never trigger a near-edge load, so
     // both flags stay at their default false — no AppData field backs this
@@ -491,8 +518,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useDockLayoutStore: () => {
       return dockStore;
     },
-    useDepth: (symbol: string) => {
-      return at(data.equityDepth?.[symbol] ?? null);
+    useDepth: (symbol: MaybeAccessor<string>) => {
+      return atKey(symbol, (sym) => {
+        return data.equityDepth?.[sym] ?? null;
+      });
     },
     useEquityOrders: () => {
       return at(data.equityOrders ?? []);
@@ -685,8 +714,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // AppData.jarvisPanelData directly (no stream involved in a static
     // screenshot); a missing key returns null, same as the real VM before
     // the panel's first data frame.
-    useJarvisPanelData: (panelId: string) => {
-      return at(data.jarvisPanelData?.[panelId] ?? null);
+    useJarvisPanelData: (panelId: MaybeAccessor<string>) => {
+      return atKey(panelId, (id) => {
+        return data.jarvisPanelData?.[id] ?? null;
+      });
     },
     // Jarvis drive-the-app interpreter's outcomes (Task 10/11) — static empty
     // filler: no fixture drives a batch through a visual screenshot, so the
@@ -770,7 +801,8 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
 
   if (
     data.layoutMaximized === undefined &&
-    data.layoutCollapsed === undefined
+    data.layoutCollapsed === undefined &&
+    data.layoutClosed === undefined
   ) {
     return base;
   }
@@ -779,6 +811,7 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
     ...base,
     maximized: data.layoutMaximized ?? base.maximized,
     collapsed: data.layoutCollapsed ?? base.collapsed,
+    closed: data.layoutClosed ?? base.closed,
   };
 }
 

@@ -1,12 +1,13 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { ConnectionStatusPresenter as ConnectionStatusPresenterApi } from "@rtc/core-api";
 import {
   type ConnectionEventsPort,
   ConnectionStatus,
   ConnectionStatusUseCase,
 } from "@rtc/domain";
 
-export class ConnectionStatusPresenter {
+export class ConnectionStatusPresenter implements ConnectionStatusPresenterApi {
   readonly status$: Observable<ConnectionStatus>;
 
   constructor(

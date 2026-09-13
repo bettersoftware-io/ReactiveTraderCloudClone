@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { type ReactElement, StrictMode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
@@ -86,6 +86,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           store={store}
           maximized={null}
           collapsed={["fx-analytics"]}
+          closed={[]}
           docked={[]}
           layoutResets={0}
           onMaximize={noop}
@@ -144,6 +145,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           store={store}
           maximized={null}
           collapsed={[]}
+          closed={[]}
           docked={["panel-dyn-1"]}
           layoutResets={0}
           onMaximize={noop}
@@ -157,6 +159,70 @@ describe("DockviewLayoutEngine under StrictMode", () => {
     // fx's 4 seed leaves plus the reconciled dynamic panel.
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
+  // Same rebuild trap for the layer-2 `closed` set: engine B restores from
+  // A's blob (which may or may not still hold the closed panel) and the
+  // bridge must re-assert the whole set — then a later prop change must
+  // reopen at the seed anchor. Witnessed via the saved blob's leaves.
+  it("replays the closed set into the rebuilt engine and reopens on prop change", async () => {
+    const saved: string[] = [];
+    const inner = new InMemoryDockLayoutStore();
+    const store = {
+      load: (tab: string): string | null => {
+        return inner.load(tab);
+      },
+      save: (tab: string, blob: string): void => {
+        inner.save(tab, blob);
+        saved.push(blob);
+      },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
+    };
+
+    function tree(closed: readonly string[]): ReactElement {
+      return (
+        <StrictMode>
+          <DockviewLayoutEngine
+            tab="fx"
+            registry={registry}
+            store={store}
+            maximized={null}
+            collapsed={[]}
+            closed={closed}
+            docked={[]}
+            layoutResets={0}
+            onMaximize={noop}
+            onRestore={noop}
+            onCollapse={noop}
+            onExpand={noop}
+          />
+        </StrictMode>
+      );
+    }
+
+    page.mount(tree(["fx-analytics"]));
+    await page.waitFor(
+      () => {
+        const last = saved[saved.length - 1] ?? "";
+        expect(
+          leafSizeIn(JSON.parse(last).grid.root, "fx-analytics"),
+        ).toBeNull();
+      },
+      { timeout: 3000 },
+    );
+
+    page.rerender(tree([]));
+    await page.waitFor(
+      () => {
+        const last = saved[saved.length - 1] ?? "";
+        expect(
+          leafSizeIn(JSON.parse(last).grid.root, "fx-analytics"),
+        ).not.toBeNull();
+      },
+      { timeout: 3000 },
+    );
   });
 });
 

@@ -13,7 +13,13 @@ describe("LayoutPort types", () => {
         { kind: "panel", panelId: "fx-analytics" },
       ],
     };
-    const state: LayoutState = { root, maximized: null, collapsed: [] };
+
+    const state: LayoutState = {
+      root,
+      maximized: null,
+      collapsed: [],
+      closed: [],
+    };
     const port: LayoutPort = { initial: state };
 
     expect(port.initial.root.kind).toBe("split");

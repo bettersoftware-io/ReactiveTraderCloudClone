@@ -194,7 +194,30 @@ module.exports = {
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(ui-contract|client-core|domain|motion-core)/",
+        pathNot:
+          "^packages/(ui-contract|client-core|core-api|domain|motion-core)/",
+      },
+    },
+    {
+      name: "core-api-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/core-api is the types-only application-core contract — it may import only domain/shared (types), never a core, a binding, a client, or the server.",
+      from: { path: "^packages/core-api/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(core-api|domain|shared)/",
+      },
+    },
+    {
+      name: "core-contract-stays-neutral",
+      severity: "error",
+      comment:
+        "@rtc/core-contract is the paradigm-neutral behavioural spec of the application core — it may import only core-api and domain, never a core (each core's runner supplies its own factory), a binding, or a client.",
+      from: { path: "^packages/core-contract/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(core-contract|core-api|domain)/",
       },
     },
     {
@@ -205,7 +228,8 @@ module.exports = {
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|domain|shared)/",
+        pathNot:
+          "^packages/(client-core|core-api|core-contract|domain|shared)/",
       },
     },
     {
@@ -217,6 +241,48 @@ module.exports = {
       to: { path: "node_modules/(react|react-dom|react-native)/" },
     },
     {
+      name: "alt-cores-stay-inner",
+      severity: "error",
+      comment:
+        "The alternative application cores may import only THEMSELVES, core-api, client-core (strangler delegation + shared pure reducers), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
+      from: { path: "^packages/(client-core-(?:async|effect))/src" },
+      to: {
+        path: "^packages/",
+        pathNot:
+          "^packages/($1|client-core|core-api|core-contract|domain|shared)/",
+      },
+    },
+    {
+      name: "alt-cores-framework-free",
+      severity: "error",
+      comment: "Alternative cores are framework-free like client-core.",
+      from: { path: "^packages/client-core-(async|effect)/src" },
+      to: { path: "node_modules/(react|react-dom|react-native|solid-js)/" },
+    },
+    {
+      name: "bridge-owns-rxjs",
+      severity: "error",
+      comment:
+        "Outside bridge/, an alternative core may not import rxjs or @rx-state/core at runtime — otherwise it is RxJS with extra steps. Type-only imports are allowed (dependencyTypesNot excludes them).",
+      from: {
+        path: "^packages/client-core-(async|effect)/src",
+        pathNot:
+          "^packages/client-core-(async|effect)/src/bridge/|\\.test\\.ts$",
+      },
+      to: {
+        path: "node_modules/(rxjs|@rx-state)/",
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
+      name: "effect-only-in-client-core-effect",
+      severity: "error",
+      comment:
+        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-core, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
+      from: { path: "^packages/", pathNot: "^packages/client-core-effect/" },
+      to: { path: "^effect(/|$)|node_modules/effect/" },
+    },
+    {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:
@@ -224,7 +290,7 @@ module.exports = {
       from: { path: "^packages/react-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(react-bindings|client-core|domain)/",
+        pathNot: "^packages/(react-bindings|client-core|core-api|domain)/",
       },
     },
     {
@@ -235,7 +301,7 @@ module.exports = {
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(solid-bindings|client-core|domain)/",
+        pathNot: "^packages/(solid-bindings|client-core|core-api|domain)/",
       },
     },
     {

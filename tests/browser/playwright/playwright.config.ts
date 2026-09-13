@@ -8,7 +8,13 @@ import { defineConfig, devices } from "@playwright/test";
 // client so they never write to the same path concurrently; empty for the
 // react default keeps its output path byte-identical to before.
 const isSolid = process.env.RTC_CLIENT_PKG === "@rtc/client-solid";
-const reportSuffix = isSolid ? "-solid" : "";
+// Likewise for the application core (RTC_CORE_IMPL, forwarded to the dev
+// server as VITE_CORE_IMPL by tests/scripts/devServer.ts): the async/effect
+// e2e runs (test:e2e:async/:effect) can be mid-flight alongside the default
+// rxjs run, so suffix by core too — empty for rxjs keeps its output path
+// byte-identical to before.
+const coreImpl: string = process.env.RTC_CORE_IMPL ?? "rxjs";
+const reportSuffix = `${isSolid ? "-solid" : ""}${coreImpl === "rxjs" ? "" : `-${coreImpl}`}`;
 
 // Specs excluded for the Solid run. Empty since client-solid gained the same
 // VITE_DEV_AUTH dev-credential path as client-react (login.spec.ts now runs

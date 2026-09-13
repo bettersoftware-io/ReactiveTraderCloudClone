@@ -7,9 +7,12 @@ import { scenarioActionFor } from "@ui-visual-shared/scenarioActions";
 
 // The power-saver freeze contract, asserted against computed style instead of
 // pixels. See freezeContract.ts for why neither the jsdom tiers nor the golden
-// tier can witness this: `toHaveScreenshot({ animations: "disabled" })` calls
-// `animation.finish()`, which jumps past `animation-delay` entirely. Nothing
-// here screenshots, so the live animation state is genuinely observable.
+// tier can witness this: settling motion for a capture calls
+// `animation.finish()`, which jumps past `animation-delay` entirely — true of
+// the `animations: "disabled"` this tier used to use, and still true of the
+// `settleAnimationsForCapture` pass that replaced it (holdMotion.ts), which
+// only exempts the `data-motion="fast-forwarded"` drain bars. Nothing here
+// screenshots, so the live animation state is genuinely observable.
 //
 // Deliberately co-located with visual.spec.ts: it needs the same host, the same
 // scenario matrix and the same webServer, and the visual CI job already runs

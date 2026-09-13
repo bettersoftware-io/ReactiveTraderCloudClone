@@ -2673,6 +2673,17 @@ fixtures["app-fx-rail-maximized-dockview"] = makeAppData({
   ...fixtures["app-fx-rail-maximized"],
   layoutEngine: "dockview",
 });
+// Phase 3 (close/reopen): a View-menu-closed analytics panel. The TWIN pair
+// below is the first closed-state entry in the shared subset — both engines
+// project the same pruned tree, so the engine-parity report gains a row.
+fixtures["app-fx-closed"] = makeAppData({
+  ...fixtures["app-fx"],
+  layoutClosed: ["fx-analytics"],
+});
+fixtures["app-fx-closed-dockview"] = makeAppData({
+  ...fixtures["app-fx-closed"],
+  layoutEngine: "dockview",
+});
 fixtures["app-fx-collapsed"] = makeAppData({
   ...fixtures["app-fx"],
   layoutCollapsed: ["fx-analytics"],

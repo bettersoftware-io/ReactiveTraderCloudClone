@@ -23,6 +23,7 @@ import {
   type DockMaximizeScope,
   type DockStripMap,
   type DockStripOrientation,
+  seedPanelIdsOf,
 } from "@rtc/layout-dockview";
 import "@rtc/layout-dockview/styles/dockview-hud.css";
 
@@ -95,6 +96,7 @@ export function DockviewLayoutEngine({
   store,
   maximized,
   collapsed,
+  closed,
   docked,
   layoutResets,
   onMaximize,
@@ -257,6 +259,7 @@ export function DockviewLayoutEngine({
         // drag-merge that already overwrote it with another panel's id is
         // never wrongly erased.
         let taggedGroup: HTMLElement | null = null;
+
         if (dockedRef.current.includes(panelId)) {
           taggedGroup = element.closest<HTMLElement>(".dv-groupview");
           taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
@@ -421,6 +424,7 @@ export function DockviewLayoutEngine({
         // drag-merge that already overwrote it with another panel's id is
         // never wrongly erased.
         let taggedGroup: HTMLElement | null = null;
+
         if (dockedRef.current.includes(panelId)) {
           taggedGroup = element.closest<HTMLElement>(".dv-groupview");
           taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
@@ -605,6 +609,29 @@ export function DockviewLayoutEngine({
     appliedCollapse.current = { tab, ids: collapsed };
   }, [collapsed, tab, liveEngine]);
 
+  // The closed set reconciles rather than diffs: closePanel no-ops on an
+  // absent panel and reopenPanel on a present one, so re-asserting the whole
+  // seed set is already idempotent — and it is what makes every rebuild path
+  // (StrictMode double-mount, tab switch, blob saved while closed) converge
+  // on the machine's state with no applied-list bookkeeping.
+  useEffect(() => {
+    const engine = liveEngine;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of seedPanelIdsOf(
+      createDefaultLayoutPort(tab).initial.root,
+    )) {
+      if (closed.includes(panelId)) {
+        engine.closePanel(panelId);
+      } else {
+        engine.reopenPanel(panelId);
+      }
+    }
+  }, [closed, tab, liveEngine]);
+
   function collapsePanel(panelId: PanelId) {
     return () => {
       onCollapse(panelId);
@@ -636,6 +663,7 @@ export function DockviewLayoutEngine({
       data-engine="dockview"
       data-groups={groups}
       data-collapsed={collapsed.join(" ")}
+      data-closed={closed.join(" ")}
       className={styles.engine}
     >
       <div
@@ -652,6 +680,7 @@ export function DockviewLayoutEngine({
             // the body slot is the panel's entire chrome then, as in-house.
             <div
               data-testid={`dock-tab-${panelId}`}
+              data-panel-title={title}
               data-dock-strip={strip === undefined ? "false" : "true"}
               className={styles.tabSlot}
             >
@@ -714,6 +743,12 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** Mirrored from the LayoutMachine's layer-2 closed set (View-menu close).
+   * The bridge reconciles it against the SEED panel set: close what it
+   * names, reopen every other seed panel — both engine calls are
+   * no-op-safe, which is also what makes the StrictMode rebuild replay
+   * correct with zero bookkeeping. */
+  closed: readonly PanelId[];
   /** The active tab's layer-2 docked set — membership only; arrangement lives
    * in the blob. Reconciled into the engine at construction (as
    * `dynamicPanels`) and diffed against on every later render, mirroring how

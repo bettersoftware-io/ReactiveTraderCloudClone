@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { ViewModePreferencePresenter as ViewModePreferencePresenterApi } from "@rtc/core-api";
 import type { PreferencesPort, ViewMode } from "@rtc/domain";
 
 /**
@@ -7,7 +8,9 @@ import type { PreferencesPort, ViewMode } from "@rtc/domain";
  * replay-current view-mode stream and the write operation, keeping persistence
  * out of the UI.
  */
-export class ViewModePreferencePresenter {
+export class ViewModePreferencePresenter
+  implements ViewModePreferencePresenterApi
+{
   readonly viewMode$: Observable<ViewMode>;
 
   constructor(private readonly preferences: PreferencesPort) {

@@ -537,3 +537,46 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* View menu (Phase 3 close/reopen): checkbox rows over the shared dropdown
+   shell. The check column is fixed-width so titles align whether checked
+   or not; the disabled state mirrors the layout machine's last-visible
+   floor (the reducer enforces it — the style only communicates it). */
+.viewList {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+
+.viewRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 13px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.viewRow:hover:not(:disabled) {
+  background: var(--panel-head);
+}
+
+.viewRow:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.viewCheck {
+  display: inline-block;
+  width: 12px;
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}

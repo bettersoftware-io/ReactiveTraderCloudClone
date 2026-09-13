@@ -2,42 +2,26 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
+import type {
+  EqDrawing,
+  EqDrawingAnchor,
+  EqDrawingsIntents,
+  EqDrawingsState,
+  EqDrawTool,
+} from "@rtc/core-api";
+
 import type { Machine } from "./machine";
 
-// Declared locally rather than imported from @rtc/motion-core — client-core
-// must not depend on motion-core (see global constraints; the same EqPaneId
-// doctrine as EqWorkspaceMachine). motion-core's drawingScene types unify
-// with these structurally.
-export type EqDrawTool = "cursor" | "trendline" | "hline";
-
-export interface EqDrawingAnchor {
-  readonly index: number; // candle index, snapped to a center at commit
-  readonly price: number; // unsnapped
-}
-
-export type EqDrawing =
-  | {
-      readonly id: string;
-      readonly kind: "trendline";
-      readonly a: EqDrawingAnchor;
-      readonly b: EqDrawingAnchor;
-    }
-  | { readonly id: string; readonly kind: "hline"; readonly price: number };
-
-export interface EqDrawingsState {
-  readonly tool: EqDrawTool;
-  readonly drawings: Readonly<Record<string, readonly EqDrawing[]>>;
-  readonly selectedId: string | null;
-}
-
-export interface EqDrawingsIntents {
-  setTool(tool: EqDrawTool): void;
-  addDrawing(sym: string, drawing: EqDrawing): void;
-  updateDrawing(sym: string, drawing: EqDrawing): void;
-  selectDrawing(id: string | null): void;
-  deleteSelected(sym: string): void;
-  shiftAnchors(sym: string, by: number): void;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type {
+  EqDrawing,
+  EqDrawingAnchor,
+  EqDrawingsIntents,
+  EqDrawingsState,
+  EqDrawTool,
+};
 
 type Patch = (s: EqDrawingsState) => EqDrawingsState;
 

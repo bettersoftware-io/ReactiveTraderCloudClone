@@ -1,5 +1,6 @@
 import { map, type Observable, shareReplay } from "rxjs";
 
+import type { PowerSaverPresenter as PowerSaverPresenterApi } from "@rtc/core-api";
 import type { PowerSaverLevel, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -9,7 +10,7 @@ import type { PowerSaverLevel, PreferencesPort } from "@rtc/domain";
  * (level === "freeze", drives the view layer's motion catch-all + JS gates).
  * Never mutates other preferences (master-override semantics).
  */
-export class PowerSaverPresenter {
+export class PowerSaverPresenter implements PowerSaverPresenterApi {
   readonly level$: Observable<PowerSaverLevel>;
 
   readonly isCalm$: Observable<boolean>;

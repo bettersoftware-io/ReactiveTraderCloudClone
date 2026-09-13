@@ -1,5 +1,6 @@
 import type { Observable } from "rxjs";
 
+import type { CurrencyPairsPresenter as CurrencyPairsPresenterApi } from "@rtc/core-api";
 import {
   type CurrencyPair,
   CurrencyPairsUseCase,
@@ -8,7 +9,7 @@ import {
 
 import { warmReplay } from "./warmReplay.js";
 
-export class CurrencyPairsPresenter {
+export class CurrencyPairsPresenter implements CurrencyPairsPresenterApi {
   readonly pairs$: Observable<readonly CurrencyPair[]>;
 
   constructor(referenceData: ReferenceDataPort) {

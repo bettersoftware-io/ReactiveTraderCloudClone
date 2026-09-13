@@ -27,6 +27,7 @@ import {
   type DockMaximizeScope,
   type DockStripMap,
   type DockStripOrientation,
+  seedPanelIdsOf,
 } from "@rtc/layout-dockview";
 import "@rtc/layout-dockview/styles/dockview-hud.css";
 
@@ -179,6 +180,7 @@ export function DockviewLayoutEngine(
       // it still names THIS panel, so a drag-merge that already overwrote
       // it with another panel's id is never wrongly erased.
       let taggedGroup: HTMLElement | null = null;
+
       if (props.docked.includes(panelId)) {
         taggedGroup = element.closest<HTMLElement>(".dv-groupview");
         taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
@@ -420,6 +422,28 @@ export function DockviewLayoutEngine(
     applied = collapsed;
   });
 
+  // The closed set reconciles rather than diffs: closePanel no-ops on an
+  // absent panel and reopenPanel on a present one, so re-asserting the whole
+  // seed set is already idempotent — every rebuild path (remount, blob saved
+  // while closed) converges on the machine's state with no bookkeeping.
+  createEffect(() => {
+    const closed = props.closed;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of seedPanelIdsOf(
+      createDefaultLayoutPort(props.tab).initial.root,
+    )) {
+      if (closed.includes(panelId)) {
+        engine.closePanel(panelId);
+      } else {
+        engine.reopenPanel(panelId);
+      }
+    }
+  });
+
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
   // `PanelStrip` in the body slot, just as in-house.
@@ -429,6 +453,7 @@ export function DockviewLayoutEngine(
       data-engine="dockview"
       data-groups={groups()}
       data-collapsed={props.collapsed.join(" ")}
+      data-closed={props.closed.join(" ")}
       class={styles.engine}
     >
       <div ref={containerEl} class={`${styles.container} dockview-theme-rtc`} />
@@ -450,6 +475,7 @@ export function DockviewLayoutEngine(
               <Portal mount={p.element}>
                 <div
                   data-testid={`dock-tab-${p.panelId}`}
+                  data-panel-title={titleOf(p.panelId)}
                   data-dock-strip={strip() === undefined ? "false" : "true"}
                   class={styles.tabSlot}
                 >
@@ -543,6 +569,11 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** Mirrored from the LayoutMachine's layer-2 closed set (View-menu close).
+   * The bridge reconciles it against the SEED panel set: close what it
+   * names, reopen every other seed panel — both engine calls are
+   * no-op-safe. */
+  closed: readonly PanelId[];
   /** The active tab's layer-2 docked set — membership only; arrangement lives
    * in the blob. Reconciled into the engine at construction (as
    * `dynamicPanels`) and diffed against on every later render, mirroring how

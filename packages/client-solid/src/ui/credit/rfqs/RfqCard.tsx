@@ -185,7 +185,13 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
           <div class={styles.liveRow}>
             <span class={styles.secs}>{secs()} secs</span>
             <div class={styles.barTrack}>
-              <div class={styles.barFill} style={barTiming} />
+              {/* data-motion: the negative --bar-delay makes this animation's
+                  time 0 the mounted state — see RfqCountdown.tsx. */}
+              <div
+                class={styles.barFill}
+                data-motion="fast-forwarded"
+                style={barTiming}
+              />
             </div>
             <button
               type="button"

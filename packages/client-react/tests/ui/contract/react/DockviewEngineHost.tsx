@@ -129,6 +129,7 @@ export function DockviewEngineHost({
             ? liveCollapsed
             : ((collapsed as readonly PanelId[] | undefined) ?? [])
         }
+        closed={[]}
         docked={(docked as readonly PanelId[] | undefined) ?? []}
         // Inert: no case in DockviewEngine.contract.spec.ts exercises a
         // workspace-reset rebuild (that behaviour lives in
