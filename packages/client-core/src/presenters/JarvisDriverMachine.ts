@@ -10,64 +10,30 @@ import {
 } from "rxjs";
 import { concatMap, filter, map, scan, take } from "rxjs/operators";
 
+import type {
+  DriveOutcome,
+  EqWorkspaceIntents,
+  JarvisDriverMachineHandle,
+  JarvisDriverState,
+  LayoutIntents,
+  LayoutState,
+  Machine,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
+  WorkspaceTab,
+} from "@rtc/core-api";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
 import type { DriveCommandV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
-import type { LayoutState } from "#/layout/layoutPort";
 
-import type {
-  EqWorkspaceIntents,
-  EqWorkspaceState,
-} from "./EqWorkspaceMachine";
+import type { EqWorkspaceState } from "./EqWorkspaceMachine";
 import { MAX_DOCKED_PANELS } from "./JarvisPanelsMachine";
-import type { LayoutIntents } from "./LayoutMachine";
-import type { Machine } from "./machine";
-import type {
-  WorkspaceNavIntents,
-  WorkspaceNavState,
-} from "./WorkspaceNavMachine";
 
-/** How far apart (ms) each command after the first, within one batch, is
- * applied — the visible "step by step" choreography. The batch's own FIRST
- * command always fires immediately (no dead pause before the desk visibly
- * reacts to a drive turn); this constant governs the gap BETWEEN commands
- * only. Collapses to 0 under power-saver `"freeze"` (read fresh per command
- * from `powerSaverLevel$`), per the motion-free guarantee
- * `docs/performance.md`/`docs/power-saver-mode.md` demand. */
-export const DRIVE_STAGGER_MS = 350;
-
-/** One command's application result — `"skipped"` covers both a membership
- * miss (unknown `panelId`/`symbol`) and a no-op setter already at the
- * requested value; `reason` is present only for `"skipped"`. */
-export type DriveOutcome = {
-  readonly command: DriveCommandV1;
-  readonly status: "applied" | "skipped";
-  readonly reason?: string;
-};
-
-export interface JarvisDriverState {
-  readonly lastBatch: readonly DriveOutcome[];
-}
-
-/** `createJarvisDriverMachine`'s return — named to match the
- * `JarvisPanelsMachineHandle`/`WorkspaceNavMachine` sibling idiom. No
- * `dispose`: like `JarvisPanelsMachineHandle`, this is a session-lifetime
- * composition singleton with no per-consumer teardown seam. */
-export interface JarvisDriverMachineHandle {
-  readonly state$: StateObservable<JarvisDriverState>;
-  /** Emits once per command, in APPLICATION order (i.e. staggered exactly
-   * like `state$.lastBatch` fills in — the two are nexted from the same
-   * `map()` callback) — both `"applied"` AND `"skipped"` outcomes flow
-   * through here, unfiltered. `composition.ts` subscribes this into
-   * `JarvisMachine.intents.recordDriveOutcome`, which does its own
-   * applied-only filtering when folding a transcript row — see that
-   * intent's doc for why the filter lives there and not here. Never
-   * completes: same session-lifetime, no-teardown-seam doctrine as
-   * `state$` above. */
-  readonly outcomes$: Observable<DriveOutcome>;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { DriveOutcome, JarvisDriverMachineHandle, JarvisDriverState };
 
 export interface JarvisDriverDeps {
   /** Every reply-turn event, already guarded (`catchError(() => EMPTY)` at
@@ -136,6 +102,15 @@ export interface JarvisDriverDeps {
    * production. */
   readonly scheduler?: SchedulerLike;
 }
+
+/** How far apart (ms) each command after the first, within one batch, is
+ * applied — the visible "step by step" choreography. The batch's own FIRST
+ * command always fires immediately (no dead pause before the desk visibly
+ * reacts to a drive turn); this constant governs the gap BETWEEN commands
+ * only. Collapses to 0 under power-saver `"freeze"` (read fresh per command
+ * from `powerSaverLevel$`), per the motion-free guarantee
+ * `docs/performance.md`/`docs/power-saver-mode.md` demand. */
+export const DRIVE_STAGGER_MS = 350;
 
 const INITIAL_STATE: JarvisDriverState = { lastBatch: [] };
 

@@ -7,6 +7,7 @@ import {
   take,
 } from "rxjs";
 
+import type { ThemePreferencePresenter as ThemePreferencePresenterApi } from "@rtc/core-api";
 import {
   DEFAULT_THEME_MODE_PREFERENCE,
   nextThemeModePreference,
@@ -25,7 +26,7 @@ import type { ColorSchemeSource } from "../theme/colorSchemeSource";
  * "system" collapsed against the OS via the ColorSchemeSource). Keeps
  * persistence and the media-query out of the UI.
  */
-export class ThemePreferencePresenter {
+export class ThemePreferencePresenter implements ThemePreferencePresenterApi {
   /** The stored mode choice; "system" is left un-resolved here. */
   readonly modePreference$: Observable<ThemeModePreference>;
 

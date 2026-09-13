@@ -3,6 +3,11 @@ import { concat, merge, type Observable, of, Subject } from "rxjs";
 import { map, scan, startWith, switchMap } from "rxjs/operators";
 
 import type {
+  OrderTicketForm,
+  OrderTicketIntents,
+  OrderTicketState,
+} from "@rtc/core-api";
+import type {
   EquityOrder,
   OrderSide,
   OrderType,
@@ -11,31 +16,14 @@ import type {
 
 import type { Machine } from "./machine";
 
-interface OrderTicketForm {
-  symbol: string;
-  side: OrderSide;
-  type: OrderType;
-  qty: number;
-  limitPrice?: number;
-}
-
-export type OrderTicketState =
-  | { phase: "editing"; form: OrderTicketForm; error: string | null }
-  | { phase: "submitting" }
-  | { phase: "working"; order: EquityOrder }
-  | { phase: "partiallyFilled"; order: EquityOrder }
-  | { phase: "filled"; order: EquityOrder }
-  | { phase: "rejected"; reason: string };
-
-export interface OrderTicketIntents {
-  setSymbol(symbol: string): void;
-  setSide(side: OrderSide): void;
-  setType(type: OrderType): void;
-  setQty(qty: number): void;
-  setLimitPrice(price: number | undefined): void;
-  submit(): void;
-  reset(): void;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. `OrderTicketForm` was moved alongside `OrderTicketState`
+ * (which embeds it in its "editing" variant) though not itself in Task 3's
+ * move table — this file imports it back for local use (`validate`, the
+ * `Patch` alias, `initialForm`) but does NOT re-export it, matching its
+ * original (unexported) visibility here. */
+export type { OrderTicketIntents, OrderTicketState };
 
 export interface OrderTicketDeps {
   place: (req: PlaceOrderRequest) => Observable<EquityOrder>;

@@ -121,7 +121,10 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "src",
         "styles",
       ),
+      "@rtc/client-core-async": pkgSrc("client-core-async"),
+      "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core": pkgSrc("client-core"),
+      "@rtc/core-api": pkgSrc("core-api"),
       "@rtc/domain": pkgSrc("domain"),
       "@rtc/shared": pkgSrc("shared"),
       "@rtc/motion-core": pkgSrc("motion-core"),
@@ -132,6 +135,18 @@ const rtcSourceAlias: Record<string, string> = debugBuild
   : {};
 
 export default defineConfig({
+  // VITE_CORE_IMPL selects the application core (see src/app/selectCore.ts).
+  // Vite's built-in import.meta.env replacement leaves the value as whatever
+  // string ran the process — rolldown can't fold a branch on that alone, so
+  // `define` re-inlines it as a JSON string literal that selectCore.ts's
+  // comparisons see directly, letting rolldown constant-fold the two dead
+  // branches (and drop the unselected core packages, which declare
+  // `sideEffects: false`) out of the bundle. Unset → "rxjs".
+  define: {
+    "import.meta.env.VITE_CORE_IMPL": JSON.stringify(
+      process.env.VITE_CORE_IMPL || "rxjs",
+    ),
+  },
   // React Compiler auto-memoizes components and hooks at build time, making
   // manual useMemo/useCallback redundant (see docs/adr/ADR-003). @vitejs/
   // plugin-react v6 is oxc-based and has no `babel` option, so the compiler

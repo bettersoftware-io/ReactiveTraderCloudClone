@@ -2,18 +2,20 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
+import type {
+  IncidentIntents,
+  IncidentKind,
+  IncidentState,
+} from "@rtc/core-api";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
 import type { Machine } from "./machine";
 
-export type IncidentKind = "latencySpike" | "errorBurst" | "serviceDown";
-export interface IncidentIntents {
-  inject(kind: IncidentKind): void;
-  clear(): void;
-}
-export interface IncidentState {
-  readonly active: readonly IncidentKind[];
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { IncidentIntents, IncidentKind, IncidentState };
+
 export interface IncidentDeps {
   /** Control handles for the perturbable simulators (latency, errorRate, topology). */
   readonly controls: readonly MetricControl[];

@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { LayoutEnginePresenter as LayoutEnginePresenterApi } from "@rtc/core-api";
 import type { LayoutEngine, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -7,7 +8,7 @@ import type { LayoutEngine, PreferencesPort } from "@rtc/domain";
  * replay-current engine stream and the write operation, keeping
  * persistence out of the UI.
  */
-export class LayoutEnginePresenter {
+export class LayoutEnginePresenter implements LayoutEnginePresenterApi {
   readonly engine$: Observable<LayoutEngine>;
 
   constructor(private readonly preferences: PreferencesPort) {

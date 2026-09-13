@@ -1,5 +1,6 @@
 import { take } from "rxjs";
 
+import type { BootPreferencePresenter as BootPreferencePresenterApi } from "@rtc/core-api";
 import type { BootVariant, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -8,7 +9,7 @@ import type { BootVariant, PreferencesPort } from "@rtc/domain";
  * replay-current / BehaviorSubject-backed) and the write operation, keeping
  * persistence out of the UI and out of BootSequenceMachine.
  */
-export class BootPreferencePresenter {
+export class BootPreferencePresenter implements BootPreferencePresenterApi {
   constructor(private readonly preferences: PreferencesPort) {}
 
   /** Synchronous read of the current persisted boot variant.

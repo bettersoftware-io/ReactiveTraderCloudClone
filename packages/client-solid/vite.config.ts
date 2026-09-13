@@ -121,7 +121,10 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "src",
         "styles",
       ),
+      "@rtc/client-core-async": pkgSrc("client-core-async"),
+      "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core": pkgSrc("client-core"),
+      "@rtc/core-api": pkgSrc("core-api"),
       "@rtc/domain": pkgSrc("domain"),
       "@rtc/shared": pkgSrc("shared"),
       "@rtc/motion-core": pkgSrc("motion-core"),
@@ -132,6 +135,18 @@ const rtcSourceAlias: Record<string, string> = debugBuild
   : {};
 
 export default defineConfig({
+  // VITE_CORE_IMPL selects the application core (see src/app/selectCore.ts).
+  // Vite's built-in import.meta.env replacement leaves the value as whatever
+  // string ran the process — rolldown can't fold a branch on that alone, so
+  // `define` re-inlines it as a JSON string literal that selectCore.ts's
+  // comparisons see directly, letting rolldown constant-fold the two dead
+  // branches (and drop the unselected core packages, which declare
+  // `sideEffects: false`) out of the bundle. Unset → "rxjs".
+  define: {
+    "import.meta.env.VITE_CORE_IMPL": JSON.stringify(
+      process.env.VITE_CORE_IMPL || "rxjs",
+    ),
+  },
   // solid-devtools must precede vite-plugin-solid (its own docs say so): it
   // needs to see + transform source before the solid compiler runs. Dev-only —
   // the plugin's `apply()` gate skips it for `vite build` / production mode.

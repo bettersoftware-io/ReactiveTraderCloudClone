@@ -169,6 +169,22 @@ jobs:
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
 
+      - name: Guard — production ships the RxJS core only
+        run: |
+          if [ ! -d .vercel/output/static ]; then
+            echo "::error::.vercel/output/static does not exist — nothing was built, so this guard proved nothing. Check the build step above."
+            exit 1
+          fi
+          if grep -rq "effect/Fiber" .vercel/output/static; then
+            echo "::error::Effect runtime found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          if grep -rq "@rtc/client-core-async:brand" .vercel/output/static; then
+            echo "::error::async core brand found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          echo "OK: no alternative core in the production bundle."
+
       # When a debug build is requested, prove the sourcemaps actually landed —
       # turning a silent no-op (e.g. if the RTC_SOURCEMAPS wiring ever regresses)
       # into a loud failure. Maps are INLINE data: URIs, not external .map files
@@ -241,6 +257,22 @@ jobs:
             exit 1
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
+
+      - name: Guard — production ships the RxJS core only
+        run: |
+          if [ ! -d .vercel/output/static ]; then
+            echo "::error::.vercel/output/static does not exist — nothing was built, so this guard proved nothing. Check the build step above."
+            exit 1
+          fi
+          if grep -rq "effect/Fiber" .vercel/output/static; then
+            echo "::error::Effect runtime found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          if grep -rq "@rtc/client-core-async:brand" .vercel/output/static; then
+            echo "::error::async core brand found in the production bundle — VITE_CORE_IMPL must be unset in the Vercel Production env until a core reaches parity."
+            exit 1
+          fi
+          echo "OK: no alternative core in the production bundle."
 
       # See the client-react job for why this greps for an INLINE sourcemap.
       - name: Guard — inline sourcemaps embedded when requested

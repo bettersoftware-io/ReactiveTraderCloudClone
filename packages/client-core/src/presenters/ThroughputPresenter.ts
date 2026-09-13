@@ -9,6 +9,10 @@ import {
   switchMap,
 } from "rxjs/operators";
 
+import type {
+  ThroughputPresenter as ThroughputPresenterApi,
+  ThroughputView,
+} from "@rtc/core-api";
 import type { AdminPort } from "@rtc/domain";
 
 /** UI cadence constants relocated out of the old useThroughput React hook.
@@ -27,13 +31,10 @@ interface ThroughputMessage {
   isError: boolean;
 }
 
-/** The view the AdminPanel reads: the slider/input value, the initial-load
- *  flag, and the optional confirmation/error banner. */
-export interface ThroughputView {
-  value: number;
-  loading: boolean;
-  message: ThroughputMessage | null;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { ThroughputView };
 
 const INITIAL: ThroughputView = {
   value: DEFAULT_VALUE,
@@ -58,7 +59,7 @@ type Patch = Partial<ThroughputView>;
  *    auto-dismisses after MESSAGE_DISMISS_MS; on failure show an error banner
  *    (also auto-dismissing).
  */
-export class ThroughputPresenter {
+export class ThroughputPresenter implements ThroughputPresenterApi {
   readonly state$: StateObservable<ThroughputView>;
 
   private readonly setValue$ = new Subject<number>();

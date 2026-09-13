@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { LoginWaitPreferencesPresenter as LoginWaitPreferencesPresenterApi } from "@rtc/core-api";
 import type {
   LoginWaitDelay,
   LoginWaitStyle,
@@ -16,7 +17,9 @@ import type {
  * the Preferences modal's MOTION section. Splitting them would double the
  * composition wiring to no benefit.
  */
-export class LoginWaitPreferencesPresenter {
+export class LoginWaitPreferencesPresenter
+  implements LoginWaitPreferencesPresenterApi
+{
   readonly style$: Observable<LoginWaitStyle>;
 
   readonly delay$: Observable<LoginWaitDelay>;

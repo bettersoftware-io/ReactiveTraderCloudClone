@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { CreditRfqFilterPreferencePresenter as CreditRfqFilterPreferencePresenterApi } from "@rtc/core-api";
 import type { CreditRfqFilter, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -9,7 +10,9 @@ import type { CreditRfqFilter, PreferencesPort } from "@rtc/domain";
  * the RFQs panel reads filter$, and its head's filter pills (Task 4) write
  * through setFilter.
  */
-export class CreditRfqFilterPreferencePresenter {
+export class CreditRfqFilterPreferencePresenter
+  implements CreditRfqFilterPreferencePresenterApi
+{
   readonly filter$: Observable<CreditRfqFilter>;
 
   constructor(private readonly preferences: PreferencesPort) {
