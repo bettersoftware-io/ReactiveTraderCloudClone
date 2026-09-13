@@ -446,12 +446,16 @@ export function DockviewLayoutEngine(
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
-  // `PanelStrip` in the body slot, just as in-house.
+  // `PanelStrip` in the body slot, just as in-house. `data-maximized`
+  // mirrors InhouseLayoutEngine's own root attribute exactly (the maximized
+  // panel id, or "" when none) — now the dockview-agnostic witness
+  // `waitPanelMaximized` reads, since dockview is the default engine.
   return (
     <main
       data-testid="layout-engine"
       data-engine="dockview"
       data-groups={groups()}
+      data-maximized={props.maximized ?? ""}
       data-collapsed={props.collapsed.join(" ")}
       data-closed={props.closed.join(" ")}
       class={styles.engine}
