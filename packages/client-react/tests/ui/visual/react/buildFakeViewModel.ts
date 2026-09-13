@@ -400,6 +400,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         resize: noop,
         insertPanel: noop,
         removePanel: noop,
+        close: noop,
+        reopen: noop,
         reset: noop,
       };
     },
@@ -706,7 +708,8 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
 
   if (
     data.layoutMaximized === undefined &&
-    data.layoutCollapsed === undefined
+    data.layoutCollapsed === undefined &&
+    data.layoutClosed === undefined
   ) {
     return base;
   }
@@ -715,6 +718,7 @@ function seededLayoutStateFor(data: AppData, tab: WorkspaceTab): LayoutState {
     ...base,
     maximized: data.layoutMaximized ?? base.maximized,
     collapsed: data.layoutCollapsed ?? base.collapsed,
+    closed: data.layoutClosed ?? base.closed,
   };
 }
 

@@ -22,6 +22,7 @@ import {
   type DockMaximizeScope,
   type DockStripMap,
   type DockStripOrientation,
+  seedPanelIdsOf,
 } from "@rtc/layout-dockview";
 import "@rtc/layout-dockview/styles/dockview-hud.css";
 
@@ -49,6 +50,7 @@ export function DockviewLayoutEngine({
   store,
   maximized,
   collapsed,
+  closed,
   onMaximize,
   onRestore,
   onCollapse,
@@ -217,6 +219,29 @@ export function DockviewLayoutEngine({
     appliedCollapse.current = { tab, ids: collapsed };
   }, [collapsed, tab, liveEngine]);
 
+  // The closed set reconciles rather than diffs: closePanel no-ops on an
+  // absent panel and reopenPanel on a present one, so re-asserting the whole
+  // seed set is already idempotent — and it is what makes every rebuild path
+  // (StrictMode double-mount, tab switch, blob saved while closed) converge
+  // on the machine's state with no applied-list bookkeeping.
+  useEffect(() => {
+    const engine = liveEngine;
+
+    if (engine === null) {
+      return;
+    }
+
+    for (const panelId of seedPanelIdsOf(
+      createDefaultLayoutPort(tab).initial.root,
+    )) {
+      if (closed.includes(panelId)) {
+        engine.closePanel(panelId);
+      } else {
+        engine.reopenPanel(panelId);
+      }
+    }
+  }, [closed, tab, liveEngine]);
+
   function collapsePanel(panelId: PanelId) {
     return () => {
       onCollapse(panelId);
@@ -248,6 +273,7 @@ export function DockviewLayoutEngine({
       data-engine="dockview"
       data-groups={groups}
       data-collapsed={collapsed.join(" ")}
+      data-closed={closed.join(" ")}
       className={styles.engine}
     >
       <div
@@ -327,6 +353,12 @@ export interface DockviewLayoutEngineProps {
    * no collapse primitive of its own — the engine emulates it by clamping the
    * panel's group to a strip; see createDockEngine. */
   collapsed: readonly PanelId[];
+  /** Mirrored from the LayoutMachine's layer-2 closed set (View-menu close).
+   * The bridge reconciles it against the SEED panel set: close what it
+   * names, reopen every other seed panel — both engine calls are
+   * no-op-safe, which is also what makes the StrictMode rebuild replay
+   * correct with zero bookkeeping. */
+  closed: readonly PanelId[];
   /** The same LayoutMachine intents the in-house engine's header controls
    * dispatch, so the header behaves identically under either engine. */
   onMaximize: LayoutIntents["maximize"];

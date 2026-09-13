@@ -20,6 +20,17 @@ export interface LayoutIntents {
    * pre-collapsed on a later re-insert of the same id. An unknown `id` is a
    * no-op. */
   removePanel(panelId: PanelId): void;
+  /** Hide a STATIC panel from the workspace (the View menu's uncheck). The
+   * tree keeps its leaf — engines project visibility — so `reopen` restores
+   * the seed position. Refused (no-op) for non-static ids (docked Jarvis
+   * panels have dismiss/undock instead) and when it would hide the tab's
+   * last visible static leaf. Also drops the id's `collapsed` entry and
+   * clears `maximized` if it named this panel — a hidden panel must not
+   * linger as a strip or keep every sibling stripped. */
+  close(id: PanelId): void;
+  /** Un-hide a closed panel (the View menu's re-check). Unknown or not-closed
+   * ids no-op. */
+  reopen(id: PanelId): void;
   /** Discard the tree, `maximized`, and `collapsed` back to `port.initial` —
    * the port this machine was created with. */
   reset(): void;

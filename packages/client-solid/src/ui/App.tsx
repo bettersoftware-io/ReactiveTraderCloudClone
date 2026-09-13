@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { createMemo, lazy, Show, Suspense, untrack } from "solid-js";
 
-import { PANEL_SPECS } from "@rtc/client-core";
+import { type LayoutState, PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
@@ -111,6 +111,16 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
       return props.tab;
     }),
   );
+
+  // The in-house engine renders the VISIBLE projection: View-menu-closed
+  // leaves are pruned from the tree it sees (visibleRootOf is referentially
+  // stable when nothing is closed, so this memo idles at zero cost). The
+  // Dockview branch keeps the raw state fields — its projection is the
+  // bridge's closed-set replay.
+  const visibleState = createMemo((): LayoutState => {
+    const s = state();
+    return { ...s, root: visibleRootOf(s.root, s.closed) };
+  });
   // Docked desk panels render as leaves inside THIS engine (not the
   // floating JarvisPanelLayer, which renders floatingPanels only) — merged
   // on top of the static app registries so a dock/undock is reflected on
@@ -232,7 +242,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
           when={engine() === "dockview"}
           fallback={
             <InhouseLayoutEngine
-              state={state()}
+              state={visibleState()}
               registry={registry()}
               specs={specs()}
               headRegistry={headRegistry()}
@@ -259,6 +269,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               store={dockLayoutStore}
               maximized={state().maximized}
               collapsed={state().collapsed}
+              closed={state().closed}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}

@@ -905,6 +905,14 @@ pins dissolve structurally on drag-out; strip ledgers key on membership
 (policy details in the
 [package README](../../packages/layout-dockview/README.md)).
 
+**Phase 3 (close/reopen) built 2026-09-13** — the first layer-2 lift the
+doctrine promised: `closed` lives in the client-core machine (additive,
+ghost-filtered `workspaceLayoutV1` field — no version bump), the in-house
+engine renders the `visibleRootOf` projection, Dockview replays
+`closePanel`/`reopenPanel` (seed-sibling anchor), and the fx-closed golden
+TWINS grow the shared engine subset for the first time since the parity
+freeze. The View menu in the app head is the user surface on both clients.
+
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and
