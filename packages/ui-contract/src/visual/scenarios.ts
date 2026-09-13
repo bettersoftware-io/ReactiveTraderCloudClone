@@ -773,8 +773,10 @@ const baseScenarios: Record<string, Scenario> = {
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is
-  // verified in-browser, not pixel-diffed (it is rAF/time-driven, not freezable
-  // by `animations: "disabled"`). See the runner specs / scenarioActions.
+  // verified in-browser, not pixel-diffed (it is rAF/time-driven, so no
+  // animation-settling pass — Playwright's or this tier's own
+  // `settleAnimationsForCapture` — can freeze it). See the runner specs /
+  // scenarioActions.
   "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
   // Login/lock-wait treatments: the handshake/reactor overlays shown while a
@@ -805,8 +807,11 @@ const baseScenarios: Record<string, Scenario> = {
   // these are full freeze renders, not the partial ones they used to be.
   //
   // Their scope is still worth knowing: a screenshot cannot witness a delayed
-  // animation at all, because `toHaveScreenshot({ animations: "disabled" })`
-  // calls `animation.finish()` and jumps past `animation-delay`. So these
+  // animation at all, because settling motion for a capture calls
+  // `animation.finish()` and jumps past `animation-delay` — the
+  // `settleAnimationsForCapture` pass this tier now uses (holdMotion.ts) keeps
+  // that rule for everything but the `data-motion="fast-forwarded"` drain
+  // bars, exactly as `animations: "disabled"` did before it. So these
   // goldens prove the frozen LAYOUT, and freeze.spec.ts — which reads computed
   // style instead of pixels — proves the frozen TIMING. Neither subsumes the
   // other; the delay+`backwards` bug class that HandshakeConsole's `.sealed`

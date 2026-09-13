@@ -28,6 +28,7 @@ test.describe("Login form", () => {
 
     await login.expectAppShellVisible(ctx);
     await login.expectLoginScreenGone(ctx);
+    await login.expectSelectedCoreImpl(ctx);
   });
 
   test("shows an error and stays on the login screen for wrong credentials", async ({

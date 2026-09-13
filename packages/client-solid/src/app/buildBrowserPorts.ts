@@ -92,7 +92,7 @@ function devNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
 }
 
 export function buildBrowserPorts(): AppPorts {
-  const url = import.meta.env.VITE_SERVER_URL as string | undefined;
+  const url = import.meta.env.VITE_SERVER_URL;
   const narratorConfig = devNarratorConfig();
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
@@ -162,9 +162,7 @@ export function buildBrowserPorts(): AppPorts {
   // Dev credentials come from VITE_DEV_AUTH (committed .env.development — the
   // demo roster; see packages/domain/src/auth/roster.ts), exactly as in
   // client-react's buildBrowserPorts. Unset/malformed → no accepted credentials.
-  const auth = new AuthSimulator(
-    parseDevAuth(import.meta.env.VITE_DEV_AUTH as string | undefined),
-  );
+  const auth = new AuthSimulator(parseDevAuth(import.meta.env.VITE_DEV_AUTH));
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {

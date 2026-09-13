@@ -1,6 +1,7 @@
 import { type Observable, shareReplay } from "rxjs";
 import { map, scan, startWith } from "rxjs/operators";
 
+import type { SessionsKpiPresenter as SessionsKpiPresenterApi } from "@rtc/core-api";
 import type { MetricSample, SessionsPort } from "@rtc/domain";
 
 import { WINDOW } from "./windowedSamples";
@@ -24,7 +25,7 @@ import { WINDOW } from "./windowedSamples";
  * safe because `SessionsKpiPresenter` is a composition-root singleton
  * (packages/client-core/src/composition.ts), not a per-mount instance.
  */
-export class SessionsKpiPresenter {
+export class SessionsKpiPresenter implements SessionsKpiPresenterApi {
   readonly countSeries$: Observable<readonly MetricSample[]>;
 
   constructor(port: SessionsPort) {

@@ -80,12 +80,21 @@ pnpm --filter @rtc/client-react test:ui:contract:coverage   # ≥95%
 pnpm --filter @rtc/client-solid test:ui:contract:coverage   # ≥95%, branches ≥85%
 pnpm --filter @rtc/devtools-core test:coverage               # ≥95%, branches ≥85%
 pnpm --filter @rtc/devtools-app test:coverage                # ≥95%, branches ≥85%
+pnpm --filter @rtc/client-core-async test:coverage          # Alternative-core coverage gates (async) — ≥95%, branches ≥85%
+pnpm --filter @rtc/client-core-effect test:coverage         # Alternative-core coverage gates (effect) — ≥95%, branches ≥85%
 pnpm build
 pnpm check:devtools-dist                                    # REQUIRES the build above
+pnpm check:core-bundle                                      # Core bundle isolation (one application core per build) — REQUIRES the build above, ~1 min
 ```
 
 `check:devtools-dist` asserts `packages/client-react/dist/devtools/index.html`
 exists, so it can only run after `pnpm build` — never hoist it into the fast tier.
+`check:core-bundle` likewise requires the build above: it rebuilds each web
+client once per application core and asserts the `rxjs` build carries no
+`async`/`effect` marker. The alt-core contract runners themselves
+(`composition.coreContract.test.ts`, each core's own `coreContract.test.ts`)
+are already covered by the plain `pnpm test` above — only their ≥95%
+coverage gate needs a dedicated line, mirroring the devtools coverage gates.
 
 **Not included, deliberately:** `e2e` is a separate CI job, not part of `checks`,
 and adds many minutes. Run `pnpm test:e2e` explicitly when you want it. The

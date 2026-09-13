@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { JarvisPreferencesPresenter as JarvisPreferencesPresenterApi } from "@rtc/core-api";
 import type {
   JarvisBrain,
   JarvisEffort,
@@ -21,7 +22,9 @@ import type {
  * turn actually runs with (`JarvisState.effectiveBrain`, folding in live
  * availability) lives on `useJarvis()` instead — see that hook's doc.
  */
-export class JarvisPreferencesPresenter {
+export class JarvisPreferencesPresenter
+  implements JarvisPreferencesPresenterApi
+{
   readonly brain$: Observable<JarvisBrain>;
 
   readonly effort$: Observable<JarvisEffort>;

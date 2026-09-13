@@ -1,5 +1,7 @@
 import { BehaviorSubject, type Observable } from "rxjs";
 
+import type { BootGatePresenter as BootGatePresenterApi } from "@rtc/core-api";
+
 /**
  * App-layer presenter for the boot-splash overlay's visibility. Mirrors
  * SessionPresenter's shape: a `BehaviorSubject<boolean>` seeded from the
@@ -10,7 +12,7 @@ import { BehaviorSubject, type Observable } from "rxjs";
  * menu's ⟳ Reboot HUD row — splash replay only, no app-state reset, matching
  * the prototype) and `dismiss()` lowers it once the splash has faded out.
  */
-export class BootGatePresenter {
+export class BootGatePresenter implements BootGatePresenterApi {
   readonly visible$: Observable<boolean>;
 
   private readonly visibleSubject$: BehaviorSubject<boolean>;

@@ -9,6 +9,7 @@ import {
   takeWhile,
 } from "rxjs/operators";
 
+import type { RfqQuote, RfqState, RfqTileIntents } from "@rtc/core-api";
 import {
   type CurrencyPair,
   REJECTED_DISPLAY_MS,
@@ -18,21 +19,10 @@ import {
 
 import type { Machine } from "./machine";
 
-/** The RFQ quote lifecycle of a single tile, relocated out of the old
- * useRfqState + useRfqQuote React hooks. TileRfq reads this state. */
-type RfqStatus = "init" | "requested" | "received" | "rejected";
-
-export interface RfqQuote {
-  bid: number;
-  ask: number;
-  timeoutMs: number;
-}
-
-export interface RfqState {
-  status: RfqStatus;
-  quote: RfqQuote | null;
-  remainingMs: number;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { RfqQuote, RfqState, RfqTileIntents };
 
 export interface RfqTileDeps {
   /** The request-quote command (RfqQuotePresenter.requestQuote), injected so
@@ -41,13 +31,6 @@ export interface RfqTileDeps {
     symbol: string,
     pipsPosition: number,
   ) => Observable<RfqQuoteResult>;
-}
-
-export interface RfqTileIntents {
-  requestQuote: () => void;
-  cancel: () => void;
-  reject: () => void;
-  accept: () => void;
 }
 
 /** How often the received-quote countdown ticks. Presenter-local — a UI cadence

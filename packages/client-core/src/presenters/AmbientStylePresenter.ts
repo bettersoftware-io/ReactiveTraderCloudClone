@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { AmbientStylePresenter as AmbientStylePresenterApi } from "@rtc/core-api";
 import type { AmbientStyle, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -7,7 +8,7 @@ import type { AmbientStyle, PreferencesPort } from "@rtc/domain";
  * replay-current style stream and the write operation, keeping persistence out
  * of the UI. Orthogonal to AnimatedBackgroundPresenter (the motion gate).
  */
-export class AmbientStylePresenter {
+export class AmbientStylePresenter implements AmbientStylePresenterApi {
   readonly style$: Observable<AmbientStyle>;
 
   constructor(private readonly preferences: PreferencesPort) {

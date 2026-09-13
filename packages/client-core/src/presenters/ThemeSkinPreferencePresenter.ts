@@ -1,12 +1,15 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { ThemeSkinPreferencePresenter as ThemeSkinPreferencePresenterApi } from "@rtc/core-api";
 import type { PreferencesPort, ThemeSkin } from "@rtc/domain";
 
 /**
  * App-layer presenter for the theme-skin preference. Exposes the replay-current
  * skin stream and the write operation, keeping persistence out of the UI.
  */
-export class ThemeSkinPreferencePresenter {
+export class ThemeSkinPreferencePresenter
+  implements ThemeSkinPreferencePresenterApi
+{
   readonly skin$: Observable<ThemeSkin>;
 
   constructor(private readonly preferences: PreferencesPort) {

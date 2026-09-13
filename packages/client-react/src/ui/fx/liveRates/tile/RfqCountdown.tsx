@@ -14,6 +14,14 @@ export function RfqCountdown({
   // negative animation-delay — NOT re-driven per tick (per-tick geometry
   // writes kept a main-thread animation alive every frame; see
   // RfqCountdown.module.css .fill).
+  //
+  // `data-motion="fast-forwarded"` below states the consequence of that
+  // negative delay: the delay IS elapsed time, so the animation's time 0 is
+  // the state this component was mounted in, and its END is an empty bar.
+  // Anything settling page motion by jumping animations to their end (a
+  // screenshot tool, say) would photograph a drained bar for a live RFQ, so
+  // the attribute marks the element where "hold at time 0" is the honest
+  // freeze. Same treatment on the credit RfqCard drain bar.
   const [drainTiming] = useState<CSSProperties>(() => {
     return {
       "--rfq-duration": `${totalMs}ms`,
@@ -26,6 +34,7 @@ export function RfqCountdown({
       <div className={styles.track}>
         <div
           data-testid="rfq-countdown-fill"
+          data-motion="fast-forwarded"
           data-warn={fraction <= 0.3 ? "true" : "false"}
           className={styles.fill}
           style={drainTiming}

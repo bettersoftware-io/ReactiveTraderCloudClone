@@ -9,6 +9,7 @@ import {
   takeUntil,
 } from "rxjs/operators";
 
+import type { TileExecutionIntents, TileExecutionState } from "@rtc/core-api";
 import {
   CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
@@ -19,25 +20,14 @@ import {
   ExecutionStatus,
   type Price,
   TOO_LONG_THRESHOLD_MS,
-  type Trade,
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
 
-interface ExecuteCommand {
-  direction: Direction;
-  price: Price;
-  notional: number;
-}
-
-/** The execution lifecycle of a single tile, relocated out of the old
- * useTileState + useExecuteTrade React hooks. The overlay reads this state. */
-export type TileExecutionState =
-  | { status: "ready" }
-  | { status: "started" }
-  | { status: "tooLong" }
-  | { status: "finished"; executionStatus: ExecutionStatus; trade?: Trade }
-  | { status: "timeout" };
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { TileExecutionIntents, TileExecutionState };
 
 export interface TileExecutionDeps {
   /** The execute command (TradeExecutionPresenter.execute), injected so timing
@@ -45,11 +35,10 @@ export interface TileExecutionDeps {
   execute: (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>;
 }
 
-export interface TileExecutionIntents {
-  /** Mirrors the args Tile.tsx passes today: direction, the (possibly
-   * synthetic RFQ) price, and the resolved notional. */
-  execute: (direction: Direction, price: Price, notional: number) => void;
-  dismiss: () => void;
+interface ExecuteCommand {
+  direction: Direction;
+  price: Price;
+  notional: number;
 }
 
 const READY: TileExecutionState = { status: "ready" };

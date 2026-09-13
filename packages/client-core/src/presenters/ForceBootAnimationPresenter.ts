@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { ForceBootAnimationPresenter as ForceBootAnimationPresenterApi } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 
 /**
@@ -7,7 +8,9 @@ import type { PreferencesPort } from "@rtc/domain";
  * replay-current enabled flag and the write/toggle operations. When on, the
  * boot splash plays even under prefers-reduced-motion.
  */
-export class ForceBootAnimationPresenter {
+export class ForceBootAnimationPresenter
+  implements ForceBootAnimationPresenterApi
+{
   readonly enabled$: Observable<boolean>;
 
   constructor(private readonly preferences: PreferencesPort) {

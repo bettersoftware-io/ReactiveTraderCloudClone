@@ -9,6 +9,7 @@ import {
   tap,
 } from "rxjs";
 
+import type { CandleSeriesPresenter as CandleSeriesPresenterApi } from "@rtc/core-api";
 import {
   CANDLE_HISTORY_PAGE,
   type Candle,
@@ -39,7 +40,7 @@ interface BackfillState {
   lastErrorAtMs: number | null;
 }
 
-export class CandleSeriesPresenter {
+export class CandleSeriesPresenter implements CandleSeriesPresenterApi {
   private readonly candleCache = new Map<
     string,
     Observable<readonly Candle[]>

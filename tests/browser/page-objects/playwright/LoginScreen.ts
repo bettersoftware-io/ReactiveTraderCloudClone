@@ -82,4 +82,12 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
       timeout: timeoutMs,
     });
   }
+
+  async waitCoreImpl(expected: string, timeoutMs: number): Promise<void> {
+    await expect(this.page().locator("html")).toHaveAttribute(
+      "data-core-impl",
+      expected,
+      { timeout: timeoutMs },
+    );
+  }
 }

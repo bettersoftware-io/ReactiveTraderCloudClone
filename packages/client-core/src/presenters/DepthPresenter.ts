@@ -1,8 +1,9 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { DepthPresenter as DepthPresenterApi } from "@rtc/core-api";
 import type { DepthBook, MarketDataPort } from "@rtc/domain";
 
-export class DepthPresenter {
+export class DepthPresenter implements DepthPresenterApi {
   private readonly depthCache = new Map<string, Observable<DepthBook>>();
 
   constructor(private readonly marketData: MarketDataPort) {}
