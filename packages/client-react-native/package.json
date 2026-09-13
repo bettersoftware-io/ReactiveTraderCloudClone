@@ -80,6 +80,7 @@
     "@types/jest": "^29.5.14",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-plugin-react-compiler": "^1.0.0",
     "babel-preset-expo": "~57.0.1",
@@ -89,7 +90,7 @@
     "pngjs": "^7.0.0",
     "test-renderer": "^1.2.0",
     "tsx": "^4",
-    "typescript": "^6",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^4.1.10"
   }
 }
