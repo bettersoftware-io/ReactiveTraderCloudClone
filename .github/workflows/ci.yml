@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: 26
 
-      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+      - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
         run: npm install -g corepack@0.35.0 && corepack enable
 
       - name: Resolve pnpm store path
@@ -73,7 +73,7 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      # --frozen-lockfile fails if the lockfile is out of date, and under pnpm 11
+      # --frozen-lockfile fails if the lockfile is out of date, and (since pnpm 11)
       # it also enforces the supply-chain policy: the minimumReleaseAge cooldown
       # and the allowBuilds install-script allowlist. A PR that introduces a
       # too-fresh (<24h) dependency, an unvetted build script, or a stale lockfile
@@ -229,7 +229,7 @@ jobs:
         with:
           node-version: 26
 
-      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+      - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
         run: npm install -g corepack@0.35.0 && corepack enable
 
       - name: Resolve pnpm store path
@@ -299,7 +299,7 @@ jobs:
         with:
           node-version: 26
 
-      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+      - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
         run: npm install -g corepack@0.35.0 && corepack enable
 
       - name: Resolve pnpm store path
