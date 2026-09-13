@@ -63,6 +63,18 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // The pinned-panel workspace is a full-bleed App scenario like app/fx (App
   // renders no scenario-root wrapper), so it must capture full-page.
   "layout/fx-docked-panel": { fullPage: true },
+  // Dockview twin: same full-bleed capture; the capture cannot precede the
+  // dock group's mount. Unlike the OTHER dockview twins (which restore a
+  // static SerializedDockview tree), this one inserts the docked panel into
+  // a running engine, which fires dockview's own `dv-live-region`
+  // announcement ("Desk P&L Heat opened") — a getByText("Desk P&L Heat")
+  // wait then strict-mode-collides with that live region on some renders
+  // (measured: solid, deterministically). Waiting on a heatmap CELL value
+  // instead of the title proves the same mount without touching that node.
+  "layout/fx-docked-panel-dockview": {
+    fullPage: true,
+    waitForText: "+0.12%",
+  },
   // The credit blotter's in-body "Credit Trades" title is gone (its chrome
   // moved into the panel head) — the head tab's full text proves the credit
   // workspace rendered.

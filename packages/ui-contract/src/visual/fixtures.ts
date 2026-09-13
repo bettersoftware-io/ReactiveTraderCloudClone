@@ -2632,6 +2632,14 @@ fixtures["app-fx-docked-panel"] = makeAppData({
   },
 });
 
+// Dockview twin of app-fx-docked-panel: identical dock-column content, only
+// the layout engine flipped, so the golden's diff against its in-house
+// sibling is the engine alone (visual:engine-parity's paired subset).
+fixtures["app-fx-docked-panel-dockview"] = makeAppData({
+  ...fixtures["app-fx-docked-panel"],
+  layoutEngine: "dockview",
+});
+
 // Dockview-engine twins of the three App fixtures (`app/*-dockview` in
 // scenarios.ts): identical market data and preferences, only the layout
 // engine flipped, so each golden's diff against its in-house sibling is the

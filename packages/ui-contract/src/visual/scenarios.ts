@@ -726,6 +726,13 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "App",
     fixtureKey: "app-fx-docked-panel",
   },
+  // Dockview twin: the same pinned-panel workspace under the Dockview engine —
+  // the bridge's docked prop + the engine's right-edge dynamic group, pinned
+  // pixel-for-pixel and paired into visual:engine-parity's shared subset.
+  "layout/fx-docked-panel-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-docked-panel-dockview",
+  },
 
   // Dockview engine (spec 2026-08-11): the dockview chrome — tabs, group
   // borders, sashes — over static panel stubs, themed by the HUD variable
