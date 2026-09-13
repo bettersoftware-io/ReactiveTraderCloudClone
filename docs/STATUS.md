@@ -38,7 +38,7 @@
   - `parity.test.ts` builds a real app at `describe` scope and never disposes it —
     `packages/client-core-async/src/parity.test.ts`
   - `collect()` has no error slot, so an erroring stream surfaces as an unhandled
-    RxJS error rather than a located assertion — `packages/core-contract/src/collect.ts`
+    RxJS error rather than a located assertion — `packages/core-contract/src/harness/collect.ts`
   - `Topic`: `void spawn(producer, fail)` lets a throwing subscriber abort the
     fan-out, and producer abort is cooperative — `packages/client-core-async/src/kernel/topic.ts`
   - an interrupt-only Effect cause leaves the Observable neither errored nor
@@ -67,8 +67,10 @@
     `--outDir`, so the bundle gate clobbers each client's copy —
     `packages/client-react/vite.config.ts`
   - `app.test.ts`'s `not.toBeAny()` does not actually test "never a class" —
-    `packages/core-api/src/app.test.ts`
+    `packages/core-api/src/__tests__/app.test.ts`
   - `auth.ts` types `state$` as `Stream` while composition relies on
+  - `selectCore.ts` (both clients) publishes the RAW `import.meta.env.VITE_CORE_IMPL` to `data-core-impl`; under vitest/jsdom (no `define`) that is `"undefined"` — publish the validated value instead; and `tests/browser/scenarios/login.ts` does not collapse an explicitly empty `RTC_CORE_IMPL=""` the way `devServer.ts` → vite's `|| "rxjs"` does
+
     replay-current; `StateStream` would express the warmth guarantee (slice 6) —
     `packages/core-api/src/presenters/auth.ts`
 
