@@ -1,5 +1,5 @@
 import type { JarvisWorld, World } from "@ui-contract/harness/world";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import {
   BehaviorSubject,
   combineLatest,
@@ -548,17 +548,42 @@ function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
     });
 }
 
+/** Element-wise equality for `dockedPanelIdsFor`'s cached-snapshot check
+ * below — order-sensitive (matches `bridge.panels$`'s own iteration order),
+ * which is fine: the underlying `panels$` array only changes order on an
+ * actual panel add/remove/reorder, never a no-op emission. */
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  return a.every((id, index) => {
+    return id === b[index];
+  });
+}
+
 /** Subscribes a React component to `dockedPanelIdsFor(world, tab)` —
  * recomputed on every `panels$` emission (the `docked` flag itself) AND
  * every `dock.kick$` tick (the tab-attribution write, which lands
  * out-of-band from `panels$` — see `dockPanelIntoWorkspace`'s doc for why
- * the two can't be collapsed into one signal). */
+ * the two can't be collapsed into one signal).
+ *
+ * TRAP: `useSyncExternalStore`'s `getSnapshot` MUST be referentially stable
+ * when nothing has actually changed — React compares snapshots with
+ * `Object.is`, and `dockedPanelIdsFor` returns a fresh `.filter().map()`
+ * array on every single call. Returning that array directly here made
+ * every render see a "changed" snapshot, which resubscribes/rerenders in an
+ * infinite microtask loop the instant any AppShell mounts this hook (see
+ * the React docs' "you should always return a cached snapshot" rule for
+ * `useSyncExternalStore`). The `useRef` below caches the previous array and
+ * hands it back unchanged whenever the new one is element-wise equal. */
 function useDockedPanelIdsFor(
   world: World,
   tab: WorkspaceTab,
 ): readonly string[] {
   const bridge = getJarvisPanelsBridge(world);
   const dock = getWorkspaceDock(world);
+  const cache = useRef<readonly string[]>([]);
 
   return useSyncExternalStore(
     (onChange) => {
@@ -569,7 +594,13 @@ function useDockedPanelIdsFor(
       };
     },
     () => {
-      return dockedPanelIdsFor(world, tab);
+      const next = dockedPanelIdsFor(world, tab);
+
+      if (!sameIds(next, cache.current)) {
+        cache.current = next;
+      }
+
+      return cache.current;
     },
   );
 }
