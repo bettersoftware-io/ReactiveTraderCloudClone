@@ -8,7 +8,7 @@ import type { JSX } from "solid-js";
  * copy stylesheets, MOVE the panel's DOM across) rather than a simulation of
  * one. Nothing about the engine or the bridge is mocked. Ported verbatim in
  * shape from the react twin's page. */
-export interface PopoutWindowHarness {
+interface PopoutWindowHarness {
   /** Every URL `window.open` was asked for, in order. */
   requestedUrls(): readonly string[];
   /** Drives the child's load handshake — dockview defers the rest of the

@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
@@ -139,26 +140,8 @@ describe("dockview bridge pop-out wiring", () => {
   it("clears popped state when a workspace reset rebuilds the engine", async () => {
     const popout = page.stubPopoutWindow();
     const store = new InMemoryDockLayoutStore();
-    const view = (layoutResets: number) => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={store}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          layoutResets={layoutResets}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-        />
-      );
-    };
 
-    page.mount(view(0));
+    page.mount(resetView(store, 0));
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
@@ -176,7 +159,7 @@ describe("dockview bridge pop-out wiring", () => {
     // set (it only publishes on a CHANGE, and it starts empty), so the
     // bridge must clear the state itself — otherwise the docked panel keeps
     // greyed controls for a window that no longer exists.
-    page.rerender(view(1));
+    page.rerender(resetView(store, 1));
 
     await page.waitFor(() => {
       expect(page.engineAttribute("data-popped")).toBe("");
@@ -190,3 +173,27 @@ describe("dockview bridge pop-out wiring", () => {
 });
 
 function noop(): void {}
+
+/** The pop-out reset case mounts the same tree twice with a bumped
+ * `layoutResets`, so the props live here rather than being duplicated. */
+function resetView(
+  store: InMemoryDockLayoutStore,
+  layoutResets: number,
+): ReactElement {
+  return (
+    <DockviewLayoutEngine
+      tab="fx"
+      registry={registry}
+      store={store}
+      maximized={null}
+      collapsed={[]}
+      closed={[]}
+      docked={[]}
+      layoutResets={layoutResets}
+      onMaximize={noop}
+      onRestore={noop}
+      onCollapse={noop}
+      onExpand={noop}
+    />
+  );
+}
