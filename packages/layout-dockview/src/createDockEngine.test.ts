@@ -210,7 +210,7 @@ describe("createDockEngine", () => {
     expect(disposed.sort()).toEqual(["fx-analytics", "fx-blotter", "fx-rates"]);
   });
 
-  it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", () => {
+  it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", async () => {
     const opts = base();
     const log: string[] = [];
 
@@ -256,6 +256,12 @@ describe("createDockEngine", () => {
     analyticsTab.dispatchEvent(
       new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
     );
+    // Since dockview 8 (with HTML5 drag-and-drop on, the default) a tab's
+    // pointerdown DEFERS activation to the next animation frame, so a drag
+    // that begins in the same gesture cannot double-act on the strip
+    // (dockview/dockview#1631). The remount therefore lands one frame after
+    // the pointerdown, exactly as it does for a user — assert after it.
+    await nextAnimationFrame();
     const sharedSlot = analyticsTab
       .closest(".dv-groupview")
       ?.querySelector(".rtc-dock-actions");
@@ -2003,6 +2009,16 @@ function twoTabGroupLayout(): unknown {
 
 /** The `.dv-tab` (dockview's own draggable wrapper) whose fallback title
  * label reads `title` — what `base()`'s title hook produced for the panel. */
+/** Resolves once the pending animation frame has run — dockview 8 schedules
+ * pointer-driven tab activation on one. */
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      resolve();
+    });
+  });
+}
+
 function tabOf(container: HTMLElement, title: string): HTMLElement {
   const label = [...container.querySelectorAll(".rtc-dock-tab-title")].find(
     (el) => {

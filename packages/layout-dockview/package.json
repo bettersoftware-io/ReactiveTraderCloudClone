@@ -25,7 +25,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "dockview": "7.0.4"
+    "dockview": "8.3.1"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
