@@ -406,8 +406,13 @@ export function DockviewLayoutEngine({
     ): (id: string, element: HTMLElement) => () => void {
       return (id: string, element: HTMLElement): (() => void) => {
         const panelId = id as PanelId;
+        // Monotonic per mount — see the first construction site's doc: a
+        // dockview transaction transiently holds old and new mounts of one
+        // (slot, panelId), so the portal key needs a per-mount component.
+        nextMountId.current += 1;
+        const mountId = nextMountId.current;
         setMounted((prev) => {
-          return [...prev, { panelId, element, slot }];
+          return [...prev, { panelId, element, slot, mountId }];
         });
 
         // A dynamically-docked Jarvis panel always lands in its own solo
@@ -507,6 +512,12 @@ export function DockviewLayoutEngine({
         },
         onStripsChange: (next: DockStripMap): void => {
           setStrips(next as StripMap);
+        },
+        // Both clients emit a real dist/popout.html at the site root — the
+        // minimal page dockview's popout window expects (same-origin).
+        popoutUrl: "/popout.html",
+        onPopoutsChange: (next: readonly string[]): void => {
+          setPopped(next as readonly PanelId[]);
         },
         dynamicPanels: dockedRef.current.map((panelId) => {
           return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
