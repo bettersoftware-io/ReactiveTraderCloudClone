@@ -237,6 +237,7 @@ export function DockviewLayoutEngine(
               <Portal mount={p.element}>
                 <div
                   data-testid={`dock-tab-${p.panelId}`}
+                  data-panel-title={titleOf(p.panelId)}
                   data-dock-strip={strip() === undefined ? "false" : "true"}
                   class={styles.tabSlot}
                 >

@@ -740,6 +740,21 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "prefs-open",
   },
 
+  // The stacked tab bar (Phase 2, spec 2026-09-10 §3): rates+analytics
+  // centre-stacked in one group — active tab keeps the full head, the
+  // inactive one collapses to the muted data-panel-title chip, 1px seam,
+  // 2px accent seat. THE FIRST SINGLE-ENGINE SCENARIO, deliberately: a tab
+  // stack is layer-3 Dockview-private arrangement the in-house engine
+  // cannot express, and the parity gate's scope is the shared seed-derivable
+  // subset (the spec's disparity doctrine) — so no in-house twin exists and
+  // visual:engine-parity skips it (no pair). Seeded by a committed
+  // version-2 blob fixture (stackedFxBlob.ts in each client's wrapper dir),
+  // shape-pinned by the engine test "loads the stacked visual fixture blob".
+  "shell/layout-dockview-stacked": {
+    componentKey: "DockviewEngineStacked",
+    fixtureKey: "prefs-open",
+  },
+
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is

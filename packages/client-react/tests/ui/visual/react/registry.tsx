@@ -55,7 +55,10 @@ import { PreferencesContent } from "#/ui/shell/prefs/PreferencesContent";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
-import { DockviewEngineVisual } from "./DockviewEngine.visual";
+import {
+  DockviewEngineStackedVisual,
+  DockviewEngineVisual,
+} from "./DockviewEngine.visual";
 import { EquitiesChartCanvas } from "./EquitiesChartCanvas.visual";
 import {
   EquitiesChartArea,
@@ -750,5 +753,10 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // static 4-panel registry — see DockviewEngine.visual.tsx.
   DockviewEngine: () => {
     return <DockviewEngineVisual />;
+  },
+  // The stacked tab bar (Phase 2): same stage, store pre-seeded with the
+  // committed stacked blob — see DockviewEngineStackedVisual.
+  DockviewEngineStacked: () => {
+    return <DockviewEngineStackedVisual />;
   },
 };

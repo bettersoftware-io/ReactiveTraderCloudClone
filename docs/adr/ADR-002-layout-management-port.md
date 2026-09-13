@@ -892,7 +892,10 @@ layer 3. Cross-engine conversion is a **projection, never a migration**:
 switching to in-house shows seed + layer 2 and leaves the blob untouched, so
 switching back is lossless. **The engine-parity gate's scope freezes at the
 shared subset** — seed-derivable twin scenarios only; user-shaped layouts
-stay outside the golden matrix by design.
+stay outside the golden matrix by design. Phase 1 (DnD bless)
+shipped as PR #707; Phase 2 added the stacked-tab chrome (inactive
+title chip via `data-panel-title`, seam, accent seat — `dockview-hud.css`)
+with `shell/layout-dockview-stacked` as the first single-engine scenario.
 
 Phase 1 (DnD bless) shipped: dockview's tab drag-and-drop is a supported
 feature — drops blessed per the

@@ -8,6 +8,8 @@ import {
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
+import { STACKED_FX_BLOB } from "./stackedFxBlob";
+
 import styles from "./DockviewEngine.visual.module.css";
 
 /**
@@ -64,6 +66,42 @@ export function DockviewEngineVisual(): ReactElement {
 
   if (storeRef.current === null) {
     storeRef.current = new InMemoryDockLayoutStore();
+  }
+
+  return (
+    <div className={styles.stage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={visualDockPanelRegistry}
+        store={storeRef.current}
+        maximized={null}
+        collapsed={[]}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />
+    </div>
+  );
+}
+
+/** The stacked twin-less sibling (`shell/layout-dockview-stacked`): the same
+ * chrome stage, but the store is pre-seeded with the committed stacked blob
+ * — rates+analytics in ONE group (rates active), so the bar renders the
+ * Phase 2 stacked-tab chrome: full head on the active tab, the muted
+ * `data-panel-title` chip on the inactive one, 1px seam, 2px accent seat.
+ * Deterministic the same way the base wrapper is: the blob is a committed
+ * constant (shape-pinned by the engine test "loads the stacked visual
+ * fixture blob"), and `loadBlobOrSeed` falls back to the seed on any
+ * malformed blob — which would un-stack the bar and fail these goldens
+ * loudly. */
+export function DockviewEngineStackedVisual(): ReactElement {
+  const storeRef = useRef<DockLayoutStore | null>(null);
+
+  if (storeRef.current === null) {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", STACKED_FX_BLOB);
+    storeRef.current = store;
   }
 
   return (

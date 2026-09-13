@@ -43,6 +43,12 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.tabTitles()).toContain("Custom head");
   });
 
+  it("stamps each tab mount with data-panel-title — the stacked-tab chip's text source", () => {
+    const page = mount(DockviewEngine, { props: {} });
+    expect(page.panelTitleMarker("fx-rates")).toBe("Live Rates");
+    expect(page.panelTitleMarker("fx-analytics")).toBe("Analytics");
+  });
+
   it("renders the title as the in-house accent tab inside dockview's tab when no head is registered", () => {
     const page = mount(DockviewEngine, { props: {} });
     expect(page.bodyVisible("panel-fx-blotter-title")).toBe(true);
