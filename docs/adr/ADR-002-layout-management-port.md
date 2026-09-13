@@ -933,6 +933,14 @@ shipped as PR #707; Phase 2 added the stacked-tab chrome (inactive
 title chip via `data-panel-title`, seam, accent seat — `dockview-hud.css`)
 with `shell/layout-dockview-stacked` as the first single-engine scenario.
 
+Phase 5 (pop-out windows) ships tear-out tiles on dockview's native
+`addPopoutGroup` — with one doctrine refinement over this spec's sketch:
+popped state is ENGINE-OWNED session state (`onPopoutsChange`, the strips
+precedent), not a layer-2 machine flag — "popped" is no workspace semantic
+the other engine honours, so session-scope holds by construction and the
+serialize-time `popoutGroups` scrub is the second lock. See the
+[layout-dockview README's pop-out section](../../packages/layout-dockview/README.md#pop-out-windows-phase-5).
+
 Phase 1 (DnD bless) shipped: dockview's tab drag-and-drop is a supported
 feature — drops blessed per the
 [Phase 1 plan](../superpowers/plans/2026-09-11-dockview-dnd-phase1.md);

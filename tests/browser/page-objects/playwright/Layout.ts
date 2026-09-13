@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { LayoutPO } from "../contracts/Layout";
+import type { LayoutPO, PopoutWindowPO } from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
 
@@ -208,6 +208,42 @@ export class PlaywrightLayout implements LayoutPO {
   ): Promise<void> {
     await expect(this.engineRoot()).toHaveAttribute(
       "data-collapsed",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async popoutPanel(panelId: string): Promise<PopoutWindowPO> {
+    // window.open fires on the OPENER page — "popup" is its event, not the
+    // context's generic "page".
+    const popupPromise = this.page.waitForEvent("popup");
+    await this.page.getByTestId(TESTIDS.layout.popoutControl(panelId)).click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState();
+
+    return {
+      waitForTestId: async (
+        testId: string,
+        timeoutMs: number,
+      ): Promise<void> => {
+        await popup
+          .getByTestId(testId)
+          .waitFor({ state: "attached", timeout: timeoutMs });
+      },
+      closeFromInside: async (): Promise<void> => {
+        await popup.evaluate(() => {
+          window.close();
+        });
+      },
+    };
+  }
+
+  async waitDockPopped(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-popped",
       panelIds.join(" "),
       { timeout: timeoutMs },
     );

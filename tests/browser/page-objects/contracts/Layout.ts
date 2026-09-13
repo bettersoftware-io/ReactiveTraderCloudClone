@@ -65,4 +65,24 @@ export interface LayoutPO {
     panelIds: readonly string[],
     timeoutMs: number,
   ): Promise<void>;
+  /** Clicks the panel's ↗ pop-out control and resolves once the child
+   * window exists and finished loading. Dockview-engine only — the control
+   * is the bridge's optional slot. */
+  popoutPanel(panelId: string): Promise<PopoutWindowPO>;
+  /** Waits for the dockview engine root's `data-popped` witness (the
+   * bridge's popped panel ids, space-joined, fed by the engine's
+   * onPopoutsChange) to equal `panelIds`. */
+  waitDockPopped(panelIds: readonly string[], timeoutMs: number): Promise<void>;
+}
+
+/** A live pop-out child window, as far as a scenario needs to drive it. */
+export interface PopoutWindowPO {
+  /** Resolves once `testId` is attached in the CHILD window's document —
+   * the witness that the group's DOM (portalled head slot and live panel
+   * body alike) moved wholesale across the document boundary. */
+  waitForTestId(testId: string, timeoutMs: number): Promise<void>;
+  /** Closes the window FROM INSIDE (`window.close()`), so `beforeunload`
+   * runs and dockview docks the panels home — the driver's own page-close
+   * skips `beforeunload` and must not be used for this path. */
+  closeFromInside(): Promise<void>;
 }

@@ -6,6 +6,7 @@ import {
   migrateDockBlob,
   withoutDynamicNodes,
   withoutLockMarks,
+  withoutPopoutGroups,
 } from "#/dockBlob";
 import { toSerializedDockview } from "#/dockSeed";
 
@@ -334,6 +335,116 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
     ).toBeNull();
   });
 });
+
+describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
+  // The fixtures ENCODE the shape a mid-popout save measured (2026-09-13
+  // spike): the popped panels live under a top-level `popoutGroups` entry
+  // while the main grid keeps a hidden placeholder leaf whose id is the
+  // entry's `gridReferenceGroup`. jsdom cannot create this state itself —
+  // its window.open is blocked — so the scrub is witnessed fixture-first,
+  // then through a REAL fromJSON round-trip (a converter test that never
+  // feeds dockview proves nothing).
+  it("re-parents a single-group popout onto its hidden reference leaf and drops the key", () => {
+    const scrubbed = withoutPopoutGroups(poppedBlob()) as PoppedBlobShape;
+
+    expect("popoutGroups" in scrubbed).toBe(false);
+    const reference = scrubbed.grid.root.data[1] as PoppedLeaf;
+    expect(reference.data.views).toEqual(["fx-analytics"]);
+    expect(reference.data.activeView).toBe("fx-analytics");
+    expect("visible" in reference).toBe(false);
+  });
+
+  it("a scrubbed blob restores every panel docked in a real dockview (no extra group)", () => {
+    const dock = mountDockview();
+    dock.layout(1000, 800);
+
+    dock.fromJSON(
+      withoutPopoutGroups(poppedBlob()) as Parameters<typeof dock.fromJSON>[0],
+    );
+
+    expect(dock.groups.length).toBe(2);
+    expect(dock.getPanel("rates")).toBeDefined();
+    expect(dock.getPanel("fx-analytics")).toBeDefined();
+    expect(
+      dock.groups.every((group) => {
+        return group.api.location.type === "grid";
+      }),
+    ).toBe(true);
+  });
+
+  it("passes malformed popoutGroups through untouched", () => {
+    expect(withoutPopoutGroups({ popoutGroups: 42, grid: null })).toEqual({
+      popoutGroups: 42,
+      grid: null,
+    });
+    expect(withoutPopoutGroups(null)).toBe(null);
+  });
+});
+
+/** The measured mid-popout save: fx-analytics popped, its reference leaf
+ * hidden in the main grid with empty views. */
+function poppedBlob(): PoppedBlobShape {
+  return {
+    grid: {
+      root: {
+        type: "branch",
+        data: [
+          {
+            type: "leaf",
+            size: 640,
+            data: { id: "g1", views: ["rates"], activeView: "rates" },
+          },
+          {
+            type: "leaf",
+            size: 360,
+            visible: false,
+            data: { id: "gref", views: [] },
+          },
+        ],
+      },
+      width: 1000,
+      height: 800,
+      orientation: "HORIZONTAL",
+    },
+    panels: {
+      rates: { id: "rates", contentComponent: "rtc-panel", title: "RATES" },
+      "fx-analytics": {
+        id: "fx-analytics",
+        contentComponent: "rtc-panel",
+        title: "ANALYTICS",
+      },
+    },
+    popoutGroups: [
+      {
+        data: {
+          id: "gpop",
+          views: ["fx-analytics"],
+          activeView: "fx-analytics",
+        },
+        gridReferenceGroup: "gref",
+        position: null,
+      },
+    ],
+  };
+}
+
+/** The popped fixture narrowed to what the scrub assertions walk. */
+interface PoppedBlobShape {
+  grid: {
+    root: { type: "branch"; data: unknown[] };
+    width: number;
+    height: number;
+    orientation: string;
+  };
+  panels: Record<string, Record<string, unknown>>;
+  popoutGroups?: unknown;
+}
+
+/** A leaf of the popped fixture, views and visibility readable. */
+interface PoppedLeaf {
+  visible?: boolean;
+  data: { id: string; views: string[]; activeView?: string };
+}
 
 interface SerializedNode {
   type: "leaf" | "branch";

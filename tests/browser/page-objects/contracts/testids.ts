@@ -248,6 +248,12 @@ export const TESTIDS = {
     collapseControl: (panelId: string) => {
       return `panel-${panelId}-collapse`;
     },
+    /** The panel's ↗ pop-out control (PanelHeadControls.tsx) — rendered
+     * only under the dockview engine (the bridge attaches the optional
+     * onPopout slot; in-house heads never receive it). */
+    popoutControl: (panelId: string) => {
+      return `panel-${panelId}-popout`;
+    },
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,

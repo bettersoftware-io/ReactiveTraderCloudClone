@@ -107,6 +107,7 @@ export function DockviewLayoutEngine({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
   const [mounted, setMounted] = useState<readonly MountedSlot[]>([]);
+  const nextMountId = useRef(0);
   const [groups, setGroups] = useState(0);
   // Which way each collapsed panel's strip reads — decided by the engine
   // from the axis the panel's space reclaims along (createDockEngine's
@@ -115,6 +116,12 @@ export function DockviewLayoutEngine({
   // turns the whole column vertical), so the bridge never derives this from
   // the intent it dispatched.
   const [strips, setStrips] = useState<StripMap>({});
+  // Panels currently living in a pop-out window — ENGINE-owned session
+  // state surfaced whole through onPopoutsChange (the strips idiom), never
+  // the machine's: "popped" is not a workspace semantic the other engine
+  // honours, and a reload restores docked (the blob scrub is the second
+  // lock).
+  const [popped, setPopped] = useState<readonly PanelId[]>([]);
   // Read through a ref by the engine's title hook: `specs` (like `registry`)
   // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
   // the engine effect below would tear dockview down and rebuild it from
@@ -221,8 +228,15 @@ export function DockviewLayoutEngine({
     ): (id: string, element: HTMLElement) => () => void {
       return (id: string, element: HTMLElement): (() => void) => {
         const panelId = id as PanelId;
+        // Monotonic per mount: a dockview transaction that re-creates a
+        // panel's slot — a pop-out moving the tab into the child window, a
+        // drop rebuilding a tab — mounts the NEW element before the old
+        // one's dispose runs, so (slot, panelId) alone transiently names
+        // two live entries and React warns about duplicate portal keys.
+        nextMountId.current += 1;
+        const mountId = nextMountId.current;
         setMounted((prev) => {
-          return [...prev, { panelId, element, slot }];
+          return [...prev, { panelId, element, slot, mountId }];
         });
 
         // A dynamically-docked Jarvis panel always lands in its own solo
@@ -308,6 +322,12 @@ export function DockviewLayoutEngine({
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
       },
+      // Both clients emit a real dist/popout.html at the site root — the
+      // minimal page dockview's popout window expects (same-origin).
+      popoutUrl: "/popout.html",
+      onPopoutsChange: (next: readonly string[]): void => {
+        setPopped(next as readonly PanelId[]);
+      },
       dynamicPanels: dockedRef.current.map((panelId) => {
         return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
       }),
@@ -386,8 +406,13 @@ export function DockviewLayoutEngine({
     ): (id: string, element: HTMLElement) => () => void {
       return (id: string, element: HTMLElement): (() => void) => {
         const panelId = id as PanelId;
+        // Monotonic per mount — see the first construction site's doc: a
+        // dockview transaction transiently holds old and new mounts of one
+        // (slot, panelId), so the portal key needs a per-mount component.
+        nextMountId.current += 1;
+        const mountId = nextMountId.current;
         setMounted((prev) => {
-          return [...prev, { panelId, element, slot }];
+          return [...prev, { panelId, element, slot, mountId }];
         });
 
         // A dynamically-docked Jarvis panel always lands in its own solo
@@ -456,6 +481,13 @@ export function DockviewLayoutEngine({
       setMounted([]);
       setGroups(0);
       setStrips({});
+      // Popped state clears with the engine that owned those windows. The
+      // rebuilt engine will NOT re-announce an empty set: its
+      // `publishPoppedPanels` starts at `lastPopped = []` and only fires on
+      // a CHANGE, so a fresh engine with no popouts is silent — leaving a
+      // stale `poppedHere` to grey a docked panel's controls forever. Same
+      // reason `setStrips({})` sits directly above.
+      setPopped([]);
       oldEngine?.dispose();
 
       const engine = createDockEngine({
@@ -487,6 +519,12 @@ export function DockviewLayoutEngine({
         },
         onStripsChange: (next: DockStripMap): void => {
           setStrips(next as StripMap);
+        },
+        // Both clients emit a real dist/popout.html at the site root — the
+        // minimal page dockview's popout window expects (same-origin).
+        popoutUrl: "/popout.html",
+        onPopoutsChange: (next: readonly string[]): void => {
+          setPopped(next as readonly PanelId[]);
         },
         dynamicPanels: dockedRef.current.map((panelId) => {
           return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
@@ -644,6 +682,14 @@ export function DockviewLayoutEngine({
     };
   }
 
+  function popoutPanel(panelId: PanelId) {
+    return () => {
+      // Fire-and-forget: the engine resolves false when the browser blocks
+      // window.open — nothing to surface, the dock simply stays as-is.
+      void engineRef.current?.popoutPanel(panelId);
+    };
+  }
+
   function expandOrRestorePanel(panelId: PanelId) {
     return () => {
       if (collapsed.includes(panelId)) {
@@ -668,13 +714,14 @@ export function DockviewLayoutEngine({
       data-maximized={maximized ?? ""}
       data-collapsed={collapsed.join(" ")}
       data-closed={closed.join(" ")}
+      data-popped={popped.join(" ")}
       className={styles.engine}
     >
       <div
         ref={containerRef}
         className={`${styles.container} dockview-theme-rtc`}
       />
-      {mounted.map(({ panelId, element, slot }) => {
+      {mounted.map(({ panelId, element, slot, mountId }) => {
         const title = specs[panelId]?.title ?? panelId;
         const strip = strips[panelId];
         return createPortal(
@@ -703,9 +750,11 @@ export function DockviewLayoutEngine({
                 title={title}
                 maximizable={specs[panelId]?.maximizable !== false}
                 maximizedHere={maximized === panelId}
+                poppedHere={popped.includes(panelId)}
                 onCollapse={collapsePanel(panelId)}
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
+                onPopout={popoutPanel(panelId)}
               />
             ) : null
           ) : strip !== undefined ? (
@@ -728,7 +777,7 @@ export function DockviewLayoutEngine({
             </div>
           ),
           element,
-          `${slot}:${panelId}`,
+          `${slot}:${panelId}:${mountId}`,
         );
       })}
     </main>
@@ -775,6 +824,9 @@ interface MountedSlot {
   /** Which dockview-owned element this is: the panel body, the panel's tab
    * (head slot), or its group's right-hand actions slot (controls). */
   readonly slot: "body" | "tab" | "actions";
+  /** Monotonic per mount call — the portal key's uniqueness across a
+   * transaction that holds old and new mounts of one slot at once. */
+  readonly mountId: number;
 }
 
 type StripMap = Partial<Record<PanelId, DockStripOrientation>>;

@@ -92,6 +92,12 @@ export function DockviewLayoutEngine(
   // turns the whole column vertical), so the bridge never derives this from
   // the intent it dispatched.
   const [strips, setStrips] = createSignal<StripMap>({});
+  // Panels currently living in a pop-out window — ENGINE-owned session
+  // state surfaced whole through onPopoutsChange (the strips idiom), never
+  // the machine's: "popped" is not a workspace semantic the other engine
+  // honours, and a reload restores docked (the blob scrub is the second
+  // lock).
+  const [popped, setPopped] = createSignal<readonly PanelId[]>([]);
   // See the `liveEngine` doc above the component.
   const [liveEngine, setLiveEngine] = createSignal<DockEngine | null>(null);
   let containerEl: HTMLDivElement | undefined;
@@ -123,6 +129,14 @@ export function DockviewLayoutEngine(
   function maximizePanel(panelId: PanelId) {
     return () => {
       props.onMaximize(panelId);
+    };
+  }
+
+  function popoutPanel(panelId: PanelId) {
+    return () => {
+      // Fire-and-forget: the engine resolves false when the browser blocks
+      // window.open — nothing to surface, the dock simply stays as-is.
+      void engine?.popoutPanel(panelId);
     };
   }
 
@@ -256,6 +270,12 @@ export function DockviewLayoutEngine(
       onStripsChange: (next: DockStripMap): void => {
         setStrips(next as StripMap);
       },
+      // Both clients emit a real dist/popout.html at the site root — the
+      // minimal page dockview's popout window expects (same-origin).
+      popoutUrl: "/popout.html",
+      onPopoutsChange: (next: readonly string[]): void => {
+        setPopped(next as readonly PanelId[]);
+      },
       // Read at CONSTRUCTION time only — like react's `dockedRef.current` —
       // reconciled once here; every later render is handled by the docked
       // diff effect below instead.
@@ -336,6 +356,13 @@ export function DockviewLayoutEngine(
           setMounted([]);
           setGroups(0);
           setStrips({});
+          // Popped state clears with the engine that owned those windows.
+          // The rebuilt engine will NOT re-announce an empty set: its
+          // `publishPoppedPanels` starts at `lastPopped = []` and only fires
+          // on a CHANGE, so a fresh engine with no popouts is silent —
+          // leaving a stale `poppedHere` to grey a docked panel's controls
+          // forever. Same reason `setStrips({})` sits directly above.
+          setPopped([]);
           applied = [];
           appliedDocked = [];
           buildEngine();
@@ -458,6 +485,7 @@ export function DockviewLayoutEngine(
       data-maximized={props.maximized ?? ""}
       data-collapsed={props.collapsed.join(" ")}
       data-closed={props.closed.join(" ")}
+      data-popped={popped().join(" ")}
       class={styles.engine}
     >
       <div ref={containerEl} class={`${styles.container} dockview-theme-rtc`} />
@@ -504,9 +532,11 @@ export function DockviewLayoutEngine(
                     title={titleOf(p.panelId)}
                     maximizable={specs()[p.panelId]?.maximizable !== false}
                     maximizedHere={props.maximized === p.panelId}
+                    poppedHere={popped().includes(p.panelId)}
                     onCollapse={collapsePanel(p.panelId)}
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
+                    onPopout={popoutPanel(p.panelId)}
                   />
                 </Show>
               </Portal>

@@ -74,4 +74,16 @@ test.describe("Layout engine", () => {
     await layout.dragBlotterOntoCollapsedAnalyticsIsRejected(ctx, 4);
     await layout.expandAnalyticsPanel(ctx);
   });
+
+  test("popping a panel out opens a live child window and closing it docks the panel home", async ({
+    ctx,
+  }) => {
+    // Task 10 (default flip): pop-outs are a dockview-only feature and
+    // dockview is now the default the app boots into — the opening switch
+    // this test needed while in-house was the default is gone.
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.popoutBlotterShowsLiveContentAndDocksHomeOnClose(ctx);
+  });
 });

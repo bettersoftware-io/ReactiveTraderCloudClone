@@ -157,3 +157,32 @@ export async function dragBlotterOntoCollapsedAnalyticsIsRejected(
   );
   await expectDockGroups(ctx, groupsBefore, 5);
 }
+
+// Generous ceiling for the child window's load + the dock-home settle — a
+// real window.open on a loaded CI runner, not a same-document poll.
+const POPUP_TIMEOUT_MS = 5_000;
+
+/**
+ * Pops the blotter out into a real child window, proves the group's DOM
+ * moved wholesale across the document boundary (the portalled head slot AND
+ * the live panel body resolve in the CHILD document), then closes the
+ * window from inside — `beforeunload` must run for dockview's native
+ * dock-home — and asserts the panel is back (popped witness empty, group
+ * count restored).
+ */
+export async function popoutBlotterShowsLiveContentAndDocksHomeOnClose(
+  ctx: TestContext,
+): Promise<void> {
+  const popup = await ctx.po.layout.popoutPanel(BLOTTER_PANEL_ID);
+
+  await popup.waitForTestId(
+    TESTIDS.layout.dockTab(BLOTTER_PANEL_ID),
+    POPUP_TIMEOUT_MS,
+  );
+  await popup.waitForTestId(TESTIDS.blotter.table, POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockPopped([BLOTTER_PANEL_ID], POPUP_TIMEOUT_MS);
+
+  await popup.closeFromInside();
+  await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockGroupCount(4, POPUP_TIMEOUT_MS);
+}

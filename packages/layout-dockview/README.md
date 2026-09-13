@@ -184,6 +184,31 @@ switches and blobs saved while closed all converge with no bookkeeping.
 The last visible static panel of a tab cannot be closed — the reducer
 enforces the floor; the View menu only reflects it.
 
+## Pop-out windows (Phase 5)
+
+`popoutPanel(panelId)` delegates to dockview's native `addPopoutGroup`: a
+same-origin child window opens at the group's screen box (`popoutUrl`
+option, default `/popout.html` — both clients ship a real, minimal page at
+that path: dockview waits for the child's `load`, appends its own container
+and copies every parent stylesheet, so the page needs nothing but an empty
+body). The group's DOM moves wholesale into the child document — both
+frameworks keep painting live across the boundary, no portal work — while
+the main grid keeps a hidden placeholder. Closing the window docks the
+panels home natively (`beforeunload`; note a driver-level page close skips
+it — e2e closes from inside).
+
+**Popped state is engine-owned session state**, surfaced whole through
+`onPopoutsChange` (the strips idiom) — deliberately NOT layer-2 machine
+state: "popped" is not a workspace semantic the other engine honours (the
+panel is still *open*), so the machine and `workspaceLayoutV1` never learn
+of it, and a reload restores docked by construction. The second lock is the
+serialize-time scrub: `withoutPopoutGroups` re-parents any mid-popout save's
+`popoutGroups` views onto their hidden `gridReferenceGroup` leaf (the
+`withoutLockMarks` walk style), so a persisted blob never carries a popout.
+While popped, the head's collapse/maximize (and the ↗ control itself)
+render disabled — geometry intents have no meaning for a group parked in
+another document.
+
 ## Why `dockview`, not `dockview-core`
 
 `dockview-core` is a real npm package and works, but constructing a
