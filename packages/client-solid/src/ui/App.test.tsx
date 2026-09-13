@@ -123,7 +123,13 @@ describe("App (shell chrome)", () => {
 
     expect(page.exists("header")).toBe(true);
     expect(page.isActiveTab("tab-fx")).toBe(true);
-    expect(page.exists("layout-engine")).toBe(true);
+    // The Dockview engine (the default since the 2026-09 flip) is a lazy
+    // chunk behind Suspense(fallback=null), so the engine root itself — not
+    // just its contents — arrives a microtask after mount. Everything below
+    // is synchronous against that settled tree.
+    await page.waitFor(() => {
+      expect(page.exists("layout-engine")).toBe(true);
+    });
     // The FX tab is fully live (Task 13): the (now default) real Dockview
     // engine grid renders with all four FX panels present, and their bodies
     // are the REAL FX subtree (liveRates/analytics/positions/blotter) — no
@@ -155,7 +161,13 @@ describe("App (shell chrome)", () => {
     page.click("tab-admin");
 
     expect(page.isActiveTab("tab-admin")).toBe(true);
-    expect(page.exists("layout-engine")).toBe(true);
+    // The Dockview engine (the default since the 2026-09 flip) is a lazy
+    // chunk behind Suspense(fallback=null), so the engine root itself — not
+    // just its contents — arrives a microtask after mount. Everything below
+    // is synchronous against that settled tree.
+    await page.waitFor(() => {
+      expect(page.exists("layout-engine")).toBe(true);
+    });
     // The admin tab is fully live (Task 16): the (now default) real Dockview
     // engine renders with the single admin-dashboard panel, whose body is
     // the REAL admin subtree — no more `pending-panel` placeholders
@@ -176,7 +188,13 @@ describe("App (shell chrome)", () => {
     page.click("tab-credit");
 
     expect(page.isActiveTab("tab-credit")).toBe(true);
-    expect(page.exists("layout-engine")).toBe(true);
+    // The Dockview engine (the default since the 2026-09 flip) is a lazy
+    // chunk behind Suspense(fallback=null), so the engine root itself — not
+    // just its contents — arrives a microtask after mount. Everything below
+    // is synchronous against that settled tree.
+    await page.waitFor(() => {
+      expect(page.exists("layout-engine")).toBe(true);
+    });
     // The credit tab is fully live (Task 14): the (now default) real
     // Dockview engine grid renders with the three default credit panels
     // present (credit-sell-side is registered but not part of the default

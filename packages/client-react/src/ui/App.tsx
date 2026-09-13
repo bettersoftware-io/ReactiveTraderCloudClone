@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { lazy, type ReactElement, Suspense } from "react";
 
 import { PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
@@ -11,7 +11,6 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import {
   appHeadRegistry,
   dockedHeadsFor,
@@ -27,6 +26,28 @@ import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
 import drivenPulseStyles from "./shell/jarvis/DrivenPulse.module.css";
+
+// Dockview stays behind lazy()/Suspense; the in-house engine stays STATIC.
+// Two separate reasons, and they do not generalise to each other:
+//   - IN-HOUSE STATIC: its own chunk measures ~3.8KB gzip (~1.2% of the
+//     bundle) — not worth a chunk boundary, and splitting it armed the #594
+//     blank-golden class on all 11 in-house `app/*`/layout scenarios (none
+//     of which carries a readiness gate) and forced contract specs to flush
+//     a Suspense boundary before asserting.
+//   - DOCKVIEW LAZY: not primarily about bytes (its chunk is ~75KB gzip) but
+//     about MOUNT TIMING. Every `*-dockview` golden was generated with the
+//     engine arriving one commit late, and those scenarios carry explicit
+//     `waitForText` gates for exactly that. Mounting it eagerly makes
+//     `createDockEngine` measure a container that has not finished settling,
+//     which shifted the FX blotter's contents 1px and doubled the measured
+//     distance from the in-house twin (14893 → 29034 differing pixels in the
+//     classic-dark blotter band) — i.e. eager mounting moves the default
+//     engine AWAY from in-house parity. Keep it deferred.
+const DockviewLayoutEngine = lazy(() => {
+  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
 
 export function App(): ReactElement {
   // Machine-backed nav (Task 10): the promoted composition-root singleton
@@ -105,29 +126,25 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        {/* Both engines are static imports — no lazy()/Suspense split. The
-         * in-house engine's own chunk measured ~3.8KB gzip (~1.2% of the
-         * bundle), not worth a chunk boundary; a prior version of this file
-         * lazy-loaded it, which armed the #594 blank-golden class on every
-         * in-house `app/*`/layout visual scenario and forced contract specs
-         * to explicitly flush a Suspense boundary before asserting. */}
         {engine === "dockview" ? (
-          <DockviewLayoutEngine
-            tab={tab}
-            registry={registry}
-            specs={specs}
-            headRegistry={headRegistry}
-            store={dockLayoutStore}
-            maximized={state.maximized}
-            collapsed={state.collapsed}
-            closed={state.closed}
-            docked={docked}
-            layoutResets={layoutResets}
-            onMaximize={maximize}
-            onRestore={restore}
-            onCollapse={collapse}
-            onExpand={expand}
-          />
+          <Suspense fallback={null}>
+            <DockviewLayoutEngine
+              tab={tab}
+              registry={registry}
+              specs={specs}
+              headRegistry={headRegistry}
+              store={dockLayoutStore}
+              maximized={state.maximized}
+              collapsed={state.collapsed}
+              closed={state.closed}
+              docked={docked}
+              layoutResets={layoutResets}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
+            />
+          </Suspense>
         ) : (
           <InhouseLayoutEngine
             state={visibleState}
