@@ -1680,7 +1680,7 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
 });
 
 const capturedDockview = vi.hoisted(() => {
-  return { api: null as unknown };
+  return { api: null as unknown, options: null as unknown };
 });
 
 // Passthrough capture of the engine's dockview api: behaviour is untouched,
@@ -1813,6 +1813,79 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
     expect(dock.getPanel("fx-analytics")).toBeDefined();
     expect(columnOf("fx-analytics")).toBe(columnOf("fx-positions"));
     second.dispose();
+  });
+});
+
+describe("pop-out windows (session-scoped, the strips precedent)", () => {
+  // jsdom can witness ONLY the popup-blocked branch: window.open returns
+  // null here, so dockview's addPopoutGroup resolves false and touches
+  // nothing. The opened-window path — stylesheet copy, DOM movement,
+  // dock-home on close — is the e2e popup smoke's job (plan Task 7).
+  it("popoutPanel resolves false under a blocked window.open and leaves the grid intact", async () => {
+    const opened = vi
+      .spyOn(window, "open")
+      .mockImplementation(() => {
+        return null;
+      });
+    const popped: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      onPopoutsChange: (panelIds: readonly string[]): void => {
+        popped.push(panelIds);
+      },
+    });
+    const before = engine.groupCount();
+
+    await expect(engine.popoutPanel("fx-analytics")).resolves.toBe(false);
+
+    expect(engine.groupCount()).toBe(before);
+    expect(popped).toEqual([]);
+    engine.dispose();
+    opened.mockRestore();
+  });
+
+  it("popoutPanel on an unknown panel resolves false without touching dockview", async () => {
+    const engine = createDockEngine(base());
+    const before = engine.groupCount();
+
+    await expect(engine.popoutPanel("nope")).resolves.toBe(false);
+
+    expect(engine.groupCount()).toBe(before);
+    engine.dispose();
+  });
+
+  it("threads popoutUrl into dockview's create options", () => {
+    createDockEngine({ ...base(), popoutUrl: "/popout.html" }).dispose();
+
+    expect(
+      (capturedDockview.options as { popoutUrl?: string }).popoutUrl,
+    ).toBe("/popout.html");
+  });
+
+  it("collapse still round-trips after a blocked pop-out attempt (guards, not crashes)", async () => {
+    // Characterisation half of the popped-panel no-op: jsdom cannot create
+    // popped state, so this pins that the pop-out path's guards leave the
+    // ordinary strip machinery untouched end-to-end.
+    const opened = vi
+      .spyOn(window, "open")
+      .mockImplementation(() => {
+        return null;
+      });
+    const strips: DockStripMap[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      onStripsChange: (map: DockStripMap): void => {
+        strips.push(map);
+      },
+    });
+
+    await engine.popoutPanel("fx-analytics");
+    engine.collapsePanel("fx-analytics");
+    expect(strips.at(-1)).toEqual({ "fx-analytics": "vertical" });
+    engine.expandPanel("fx-analytics");
+    expect(strips.at(-1)).toEqual({});
+    engine.dispose();
+    opened.mockRestore();
   });
 });
 
@@ -2265,6 +2338,7 @@ vi.mock("dockview", async (importOriginal) => {
     ): ReturnType<typeof actual.createDockview> => {
       const api = actual.createDockview(...args);
       capturedDockview.api = api;
+      capturedDockview.options = args[1];
 
       return api;
     },

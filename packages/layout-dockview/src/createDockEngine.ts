@@ -99,6 +99,18 @@ export interface DockEngineOptions {
    * so this, not the intent's own result, is the client's source of truth
    * for which restore bar to render. Not fired at construction (no strips). */
   onStripsChange?: (strips: DockStripMap) => void;
+  /** Fired whenever the set of popped-out panels changes — after a pop-out
+   * opens or a popout window closes (dock-home), with every panel id
+   * currently living in a popout window. Popped state is ENGINE-OWNED
+   * session state (the strips precedent): it never reaches the layout
+   * machine or any persistence, so a reload restores everything docked by
+   * construction. Not fired at construction (nothing popped). */
+  onPopoutsChange?: (poppedPanelIds: readonly string[]) => void;
+  /** The pop-out target page dockview opens in the child window (component
+   * option; same-origin enforced by dockview). Defaults to dockview's own
+   * `/popout.html`. The page ships empty — dockview appends its container
+   * and copies the parent's stylesheets after `load`. */
+  popoutUrl?: string;
   /** Debounce for onLayoutChange serialisation; default 250. Tests pass 0. */
   debounceMs?: number;
 }
@@ -168,6 +180,15 @@ export interface DockEngine {
    * whole sibling subtree is gone; an emptied grid just takes the panel as
    * its root. No-op when the panel is already open. */
   reopenPanel(panelId: string): void;
+  /** Tear the panel's group out into a separate browser window. Dockview
+   * owns the whole transaction (window features, stylesheet copy into the
+   * child document, moving the engine-owned DOM so the client keeps
+   * painting, dock-home on window close). Resolves false — grid untouched —
+   * for an unknown panel or a blocked `window.open` (the only branch jsdom
+   * can witness; the opened path is e2e's). Session-scoped: popped state is
+   * never persisted, and the blob scrub drops any `popoutGroups` a
+   * mid-popout save captured. */
+  popoutPanel(panelId: string): Promise<boolean>;
   groupCount(): number;
   dispose(): void;
 }
@@ -223,6 +244,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // See RTC_DOCKVIEW_THEME's own doc comment: this is what actually routes
     // the HUD theme's --dv-* variables past dockview's internal defaults.
     theme: RTC_DOCKVIEW_THEME,
+    // Only when the client provided one: dockview's default is already
+    // /popout.html, and an explicit undefined would still override nothing,
+    // but the options object stays minimal like the rest of this literal.
+    ...(opts.popoutUrl === undefined ? {} : { popoutUrl: opts.popoutUrl }),
   });
 
   const width = opts.container.clientWidth || 1200;
@@ -316,7 +341,31 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return { records: recordSizes, flips };
   }
 
+  // The popped set, published like strips: recomputed on every layout
+  // change (dockview fires one for the pop-out transaction and again on
+  // dock-home), compared, and handed to the client whole.
+  let lastPopped: readonly string[] = [];
+
+  function publishPoppedPanels(): void {
+    const popped = api.groups
+      .filter((group) => {
+        return group.api.location.type === "popout";
+      })
+      .flatMap((group) => {
+        return group.panels.map((panel) => {
+          return panel.id;
+        });
+      })
+      .sort();
+
+    if (popped.join("\u0000") !== lastPopped.join("\u0000")) {
+      lastPopped = popped;
+      opts.onPopoutsChange?.(popped);
+    }
+  }
+
   const changeSub = api.onDidLayoutChange(() => {
+    publishPoppedPanels();
     // Pins are validated on EVERY layout change, not just at save time: a
     // drop that dissolves a rail must release its min=max clamps NOW, or
     // the next resize distributes against a phantom pin for up to
@@ -1167,6 +1216,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStrips();
         settleStripFreeWorlds();
       });
+    },
+    popoutPanel: async (panelId: string): Promise<boolean> => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined) {
+        return false;
+      }
+
+      // Dockview owns the whole transaction — window features, stylesheet
+      // copy, DOM movement, dock-home on close. False = popup blocked (or
+      // an edge group): the grid is untouched in that case, and jsdom can
+      // only ever take this branch (window.open → null).
+      return api.addPopoutGroup(panel.group);
     },
     groupCount: () => {
       return api.groups.length;
