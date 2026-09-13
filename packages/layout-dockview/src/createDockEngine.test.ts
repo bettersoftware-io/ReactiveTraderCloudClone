@@ -1822,11 +1822,9 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
   // nothing. The opened-window path — stylesheet copy, DOM movement,
   // dock-home on close — is the e2e popup smoke's job (plan Task 7).
   it("popoutPanel resolves false under a blocked window.open and leaves the grid intact", async () => {
-    const opened = vi
-      .spyOn(window, "open")
-      .mockImplementation(() => {
-        return null;
-      });
+    const opened = vi.spyOn(window, "open").mockImplementation(() => {
+      return null;
+    });
     const popped: (readonly string[])[] = [];
     const engine = createDockEngine({
       ...base(),
@@ -1857,20 +1855,18 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
   it("threads popoutUrl into dockview's create options", () => {
     createDockEngine({ ...base(), popoutUrl: "/popout.html" }).dispose();
 
-    expect(
-      (capturedDockview.options as { popoutUrl?: string }).popoutUrl,
-    ).toBe("/popout.html");
+    expect((capturedDockview.options as PopoutUrlCarrier).popoutUrl).toBe(
+      "/popout.html",
+    );
   });
 
   it("collapse still round-trips after a blocked pop-out attempt (guards, not crashes)", async () => {
     // Characterisation half of the popped-panel no-op: jsdom cannot create
     // popped state, so this pins that the pop-out path's guards leave the
     // ordinary strip machinery untouched end-to-end.
-    const opened = vi
-      .spyOn(window, "open")
-      .mockImplementation(() => {
-        return null;
-      });
+    const opened = vi.spyOn(window, "open").mockImplementation(() => {
+      return null;
+    });
     const strips: DockStripMap[] = [];
     const engine = createDockEngine({
       ...base(),
@@ -2327,6 +2323,12 @@ async function waitForBranchSize(
 }
 
 // cannot be dispatched here; moveTo IS the engine-visible half of a drop.
+/** The dockview create options narrowed to the popout target the engine
+ * threads through. */
+interface PopoutUrlCarrier {
+  readonly popoutUrl?: string;
+}
+
 // vitest hoists vi.mock/vi.hoisted during transform, so position is free.
 vi.mock("dockview", async (importOriginal) => {
   const actual = await importOriginal<typeof import("dockview")>();

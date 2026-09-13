@@ -204,9 +204,7 @@ describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
     dock.layout(1000, 800);
 
     dock.fromJSON(
-      withoutPopoutGroups(poppedBlob()) as Parameters<
-        typeof dock.fromJSON
-      >[0],
+      withoutPopoutGroups(poppedBlob()) as Parameters<typeof dock.fromJSON>[0],
     );
 
     expect(dock.groups.length).toBe(2);

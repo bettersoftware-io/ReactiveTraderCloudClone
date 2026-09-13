@@ -275,11 +275,16 @@ export function withoutPopoutGroups(serialized: unknown): unknown {
   return scrubbed;
 }
 
+/** A popped entry's panels ready for re-parenting: every view in order,
+ * and the one that was active (if any survived serialisation). */
+interface ReparentedViews {
+  readonly views: readonly string[];
+  readonly activeView: string | undefined;
+}
+
 /** The entry's panels, flattened in order: the single-group form's `data`
  * views, or every leaf's views of the multi-group form's nested grid. */
-function poppedViewsOf(
-  entry: UnverifiedPopoutGroup,
-): { views: readonly string[]; activeView: string | undefined } | null {
+function poppedViewsOf(entry: UnverifiedPopoutGroup): ReparentedViews | null {
   const states: UnverifiedViewState[] = [];
 
   if (typeof entry.data === "object" && entry.data !== null) {
@@ -355,7 +360,7 @@ function rootWithPopoutReparented(
 function nodeWithLeafRefilled(
   node: unknown,
   referenceId: string,
-  popped: { views: readonly string[]; activeView: string | undefined },
+  popped: ReparentedViews,
 ): unknown | null {
   if (typeof node !== "object" || node === null) {
     return null;
@@ -378,7 +383,11 @@ function nodeWithLeafRefilled(
     return null;
   }
 
-  if (type !== "leaf" || typeof data === "object" === false || data === null) {
+  if (
+    type !== "leaf" ||
+    (typeof data === "object") === false ||
+    data === null
+  ) {
     return null;
   }
 

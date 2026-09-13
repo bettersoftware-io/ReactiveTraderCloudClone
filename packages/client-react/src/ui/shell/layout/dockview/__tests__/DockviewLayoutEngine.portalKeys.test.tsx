@@ -21,32 +21,6 @@ beforeAll(() => {
   }
 });
 
-const capturedHooks = vi.hoisted(() => {
-  return {
-    mountTab: null as ((id: string, el: HTMLElement) => () => void) | null,
-  };
-});
-
-// Passthrough capture of the bridge's `panels` hooks: the engine behaves
-// normally, but the test gets dockview's side of `mountTab` — the call a
-// pop-out transaction makes for the moved tab BEFORE the old element's
-// dispose runs (the transient the duplicate-key warning came from; jsdom
-// cannot open the real popout window, so the overlap is driven directly).
-vi.mock("@rtc/layout-dockview", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@rtc/layout-dockview")>();
-
-  return {
-    ...actual,
-    createDockEngine: (
-      ...args: Parameters<typeof actual.createDockEngine>
-    ): ReturnType<typeof actual.createDockEngine> => {
-      capturedHooks.mountTab = args[0].panels.mountTab ?? null;
-
-      return actual.createDockEngine(...args);
-    },
-  };
-});
-
 const page = dockviewLayoutEngineStrictModePage();
 
 const registry: PanelRegistry = {
@@ -108,3 +82,29 @@ describe("dockview portal keys", () => {
 });
 
 function noop(): void {}
+
+const capturedHooks = vi.hoisted(() => {
+  return {
+    mountTab: null as ((id: string, el: HTMLElement) => () => void) | null,
+  };
+});
+
+// Passthrough capture of the bridge's `panels` hooks: the engine behaves
+// normally, but the test gets dockview's side of `mountTab` — the call a
+// pop-out transaction makes for the moved tab BEFORE the old element's
+// dispose runs (the transient the duplicate-key warning came from; jsdom
+// cannot open the real popout window, so the overlap is driven directly).
+vi.mock("@rtc/layout-dockview", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@rtc/layout-dockview")>();
+
+  return {
+    ...actual,
+    createDockEngine: (
+      ...args: Parameters<typeof actual.createDockEngine>
+    ): ReturnType<typeof actual.createDockEngine> => {
+      capturedHooks.mountTab = args[0].panels.mountTab ?? null;
+
+      return actual.createDockEngine(...args);
+    },
+  };
+});
