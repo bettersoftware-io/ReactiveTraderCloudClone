@@ -59,6 +59,7 @@ export function DockviewLayoutEngine({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
   const [mounted, setMounted] = useState<readonly MountedSlot[]>([]);
+  const nextMountId = useRef(0);
   const [groups, setGroups] = useState(0);
   // Which way each collapsed panel's strip reads — decided by the engine
   // from the axis the panel's space reclaims along (createDockEngine's
@@ -122,8 +123,15 @@ export function DockviewLayoutEngine({
     ): (id: string, element: HTMLElement) => () => void {
       return (id: string, element: HTMLElement): (() => void) => {
         const panelId = id as PanelId;
+        // Monotonic per mount: a dockview transaction that re-creates a
+        // panel's slot — a pop-out moving the tab into the child window, a
+        // drop rebuilding a tab — mounts the NEW element before the old
+        // one's dispose runs, so (slot, panelId) alone transiently names
+        // two live entries and React warns about duplicate portal keys.
+        nextMountId.current += 1;
+        const mountId = nextMountId.current;
         setMounted((prev) => {
-          return [...prev, { panelId, element, slot }];
+          return [...prev, { panelId, element, slot, mountId }];
         });
 
         return () => {
@@ -280,7 +288,7 @@ export function DockviewLayoutEngine({
         ref={containerRef}
         className={`${styles.container} dockview-theme-rtc`}
       />
-      {mounted.map(({ panelId, element, slot }) => {
+      {mounted.map(({ panelId, element, slot, mountId }) => {
         const title = specs[panelId]?.title ?? panelId;
         const strip = strips[panelId];
         return createPortal(
@@ -334,7 +342,7 @@ export function DockviewLayoutEngine({
             </div>
           ),
           element,
-          `${slot}:${panelId}`,
+          `${slot}:${panelId}:${mountId}`,
         );
       })}
     </main>
@@ -373,6 +381,9 @@ interface MountedSlot {
   /** Which dockview-owned element this is: the panel body, the panel's tab
    * (head slot), or its group's right-hand actions slot (controls). */
   readonly slot: "body" | "tab" | "actions";
+  /** Monotonic per mount call — the portal key's uniqueness across a
+   * transaction that holds old and new mounts of one slot at once. */
+  readonly mountId: number;
 }
 
 type StripMap = Partial<Record<PanelId, DockStripOrientation>>;
