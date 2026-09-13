@@ -45,6 +45,9 @@ test.describe("Jarvis assistant", () => {
   test("docks a panel under the dockview engine, survives reload docked, then unpins", async ({
     ctx,
   }) => {
+    // Task 10 (default flip) inverts this: when dockview becomes the
+    // default, the opening switch goes away and the in-house journey gains
+    // one instead.
     await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
     await layout.expectEngine(ctx, "dockview");
     await jarvis.expectDockedPanelSurvivesReload(ctx);

@@ -124,6 +124,57 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(false);
   });
 
+  // Fix round 1 review (Task 9 follow-up): the mount callback tags the
+  // panel's dockview GROUP root with the shared `panel-<id>` testid (the one
+  // `jarvis.ts`'s `waitForPanelDockedLive`/`isPanelDocked` key on
+  // engine-agnostically — see that callback's own doc for why a group, not
+  // a per-panel wrapper, is the tagged element) but never cleared it on
+  // undock — a stale tag would linger on a group the panel no longer
+  // occupies. This pins the disposer's defensive clear: after undocking,
+  // NO element anywhere in the container still carries this testid.
+  it("clears the docked panel's group-root panel-<id> tag on undock, not just its body", async () => {
+    const store = new InMemoryDockLayoutStore();
+
+    page.mount(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        docked={["panel-dyn-1"]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    expect(page.bodyVisible("panel-panel-dyn-1")).toBe(true);
+
+    page.rerender(
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={registry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        docked={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+      />,
+    );
+
+    await page.waitFor(() => {
+      expect(page.groupsAttr()).toBe("4");
+    });
+    expect(page.bodyVisible("panel-panel-dyn-1")).toBe(false);
+  });
+
   // Fix round 1 (review Critical C1 + I3): the ORIGINAL version of this test
   // discriminated the reset by a collapsed strip's clamped SIZE — which
   // proves nothing, since a REPLAYED collapse on a fresh engine also clamps

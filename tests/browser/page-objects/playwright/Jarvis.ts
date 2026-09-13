@@ -26,11 +26,15 @@ const PANEL_RENDERER_TIMEOUT_MS = 15_000;
  * reduced-motion) before the underlying intent fires — generous for CI. */
 const PANEL_DISMISS_TIMEOUT_MS = 15_000;
 
-/** The docked leaf (a `panel-<id>` section, mounted via either engine's own
- * panel registry — `InhouseLayoutEngine` or `DockviewLayoutEngine`) mounts
- * synchronously off the same `dockedPanels` VM list `dockPanel`'s click
- * updates, and its body renderer one tick after that (own `data$`
- * subscription, same as the floating card) — generous for CI. */
+/** The docked leaf (a `panel-<id>` section) renders the same registry
+ * content and testids under either engine, but not on the same timeline:
+ * `InhouseLayoutEngine` mounts it synchronously off the same `dockedPanels`
+ * VM list `dockPanel`'s click updates, while `DockviewLayoutEngine` only
+ * portals it once its own docked-diff effect has called `addDynamicPanel`
+ * and dockview has mounted the panel on a later render. Either way, the
+ * body renderer follows one tick after (own `data$` subscription, same as
+ * the floating card) — this timeout is generous enough to cover both
+ * paths. */
 const PANEL_DOCKED_LIVE_TIMEOUT_MS = 15_000;
 
 /** `WorkspacePersistenceWriter` debounces the `rtc-workspace-layout-v1`

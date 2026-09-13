@@ -224,9 +224,9 @@ export function DockviewLayoutEngine({
         });
 
         // A dynamically-docked Jarvis panel always lands in its own solo
-        // group (see `DockDynamicPanel`'s doc: "never stacked into an
-        // existing group"), so that group's own DOM root doubles, safely
-        // and unambiguously, as the shared `panel-<id>` leaf testid
+        // group AT MOUNT TIME (see `DockDynamicPanel`'s doc: "never stacked
+        // into an existing group"), so that group's own DOM root doubles,
+        // at that moment, as the shared `panel-<id>` leaf testid
         // `InhouseLayoutEngine`'s `PanelLeaf` carries — the one
         // `jarvis.ts`'s `waitForPanelDockedLive`/`isPanelDocked` key on,
         // engine-agnostically. Dockview itself never gives a single DOM
@@ -237,10 +237,29 @@ export function DockviewLayoutEngine({
         // drag helper already keys off (`.dv-tab`). A no-op for a static
         // panel (never in `dockedRef.current`), whose group may legitimately
         // be shared/stacked with siblings.
+        //
+        // RESIDUAL, deliberately not fixed: the tag is a snapshot of "solo
+        // at mount", not a live truth. Dockview's cross-group drag-and-drop
+        // is live in this app, so a later drag CAN make it stale — dragging
+        // this panel into another group leaves the tag on a group it no
+        // longer occupies, and dragging a second docked panel to MERGE into
+        // THIS one's group overwrites the tag, losing it for this panel
+        // entirely. The real fix — tagging the panel's own wrapper instead
+        // of its (possibly shared) group ancestor — isn't taken: the tag
+        // exists only for the docked-panel e2e/PO witnesses, and today's
+        // product never combines "docked via Jarvis" with "then dragged" in
+        // the flow those witnesses exercise. The disposer below only keeps
+        // the COMMON case (dock → undock, no drag in between) honest, via a
+        // direct reference to the exact node tagged here — never re-derived
+        // by re-querying `.dv-groupview` at dispose time, which could
+        // resolve to a DIFFERENT (or no) group after a drag moved this
+        // panel — and cleared only if it still names THIS panel, so a
+        // drag-merge that already overwrote it with another panel's id is
+        // never wrongly erased.
+        let taggedGroup: HTMLElement | null = null;
         if (dockedRef.current.includes(panelId)) {
-          element
-            .closest<HTMLElement>(".dv-groupview")
-            ?.setAttribute("data-testid", `panel-${panelId}`);
+          taggedGroup = element.closest<HTMLElement>(".dv-groupview");
+          taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
         }
 
         return () => {
@@ -249,6 +268,10 @@ export function DockviewLayoutEngine({
               return p.element !== element;
             });
           });
+
+          if (taggedGroup?.getAttribute("data-testid") === `panel-${panelId}`) {
+            taggedGroup.removeAttribute("data-testid");
+          }
         };
       };
     }
@@ -365,9 +388,9 @@ export function DockviewLayoutEngine({
         });
 
         // A dynamically-docked Jarvis panel always lands in its own solo
-        // group (see `DockDynamicPanel`'s doc: "never stacked into an
-        // existing group"), so that group's own DOM root doubles, safely
-        // and unambiguously, as the shared `panel-<id>` leaf testid
+        // group AT MOUNT TIME (see `DockDynamicPanel`'s doc: "never stacked
+        // into an existing group"), so that group's own DOM root doubles,
+        // at that moment, as the shared `panel-<id>` leaf testid
         // `InhouseLayoutEngine`'s `PanelLeaf` carries — the one
         // `jarvis.ts`'s `waitForPanelDockedLive`/`isPanelDocked` key on,
         // engine-agnostically. Dockview itself never gives a single DOM
@@ -378,10 +401,29 @@ export function DockviewLayoutEngine({
         // drag helper already keys off (`.dv-tab`). A no-op for a static
         // panel (never in `dockedRef.current`), whose group may legitimately
         // be shared/stacked with siblings.
+        //
+        // RESIDUAL, deliberately not fixed: the tag is a snapshot of "solo
+        // at mount", not a live truth. Dockview's cross-group drag-and-drop
+        // is live in this app, so a later drag CAN make it stale — dragging
+        // this panel into another group leaves the tag on a group it no
+        // longer occupies, and dragging a second docked panel to MERGE into
+        // THIS one's group overwrites the tag, losing it for this panel
+        // entirely. The real fix — tagging the panel's own wrapper instead
+        // of its (possibly shared) group ancestor — isn't taken: the tag
+        // exists only for the docked-panel e2e/PO witnesses, and today's
+        // product never combines "docked via Jarvis" with "then dragged" in
+        // the flow those witnesses exercise. The disposer below only keeps
+        // the COMMON case (dock → undock, no drag in between) honest, via a
+        // direct reference to the exact node tagged here — never re-derived
+        // by re-querying `.dv-groupview` at dispose time, which could
+        // resolve to a DIFFERENT (or no) group after a drag moved this
+        // panel — and cleared only if it still names THIS panel, so a
+        // drag-merge that already overwrote it with another panel's id is
+        // never wrongly erased.
+        let taggedGroup: HTMLElement | null = null;
         if (dockedRef.current.includes(panelId)) {
-          element
-            .closest<HTMLElement>(".dv-groupview")
-            ?.setAttribute("data-testid", `panel-${panelId}`);
+          taggedGroup = element.closest<HTMLElement>(".dv-groupview");
+          taggedGroup?.setAttribute("data-testid", `panel-${panelId}`);
         }
 
         return () => {
@@ -390,6 +432,10 @@ export function DockviewLayoutEngine({
               return p.element !== element;
             });
           });
+
+          if (taggedGroup?.getAttribute("data-testid") === `panel-${panelId}`) {
+            taggedGroup.removeAttribute("data-testid");
+          }
         };
       };
     }
