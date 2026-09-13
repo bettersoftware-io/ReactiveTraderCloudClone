@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
@@ -135,6 +136,58 @@ describe("dockview bridge pop-out wiring", () => {
 
     // Only the popped panel is suppressed — its siblings stay poppable.
     expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
+
+    popout.restore();
+    page.unmountAll();
+  });
+
+  it("clears popped state when a workspace reset rebuilds the engine", async () => {
+    const popout = page.stubPopoutWindow();
+    const store = new InMemoryDockLayoutStore();
+    const [layoutResets, setLayoutResets] = createSignal(0);
+
+    page.mount(() => {
+      return (
+        <DockviewLayoutEngine
+          tab="fx"
+          registry={registry}
+          store={store}
+          maximized={null}
+          collapsed={[]}
+          closed={[]}
+          docked={[]}
+          layoutResets={layoutResets()}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+        />
+      );
+    });
+
+    await page.waitFor(() => {
+      expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
+    });
+
+    page.clickControl("panel-fx-analytics-popout");
+    await popout.settleOpen();
+
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-popped")).toBe("fx-analytics");
+    });
+
+    // A workspace reset disposes the engine that owned that window and
+    // builds a fresh one. The new engine never re-announces an empty popped
+    // set (it only publishes on a CHANGE, and it starts empty), so the
+    // bridge must clear the state itself — otherwise the docked panel keeps
+    // greyed controls for a window that no longer exists.
+    setLayoutResets(1);
+
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-popped")).toBe("");
+    });
+    expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
+    expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
 
     popout.restore();
     page.unmountAll();

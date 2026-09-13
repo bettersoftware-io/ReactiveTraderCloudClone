@@ -135,6 +135,58 @@ describe("dockview bridge pop-out wiring", () => {
     popout.restore();
     page.unmountAll();
   });
+
+  it("clears popped state when a workspace reset rebuilds the engine", async () => {
+    const popout = page.stubPopoutWindow();
+    const store = new InMemoryDockLayoutStore();
+    const view = (layoutResets: number) => {
+      return (
+        <DockviewLayoutEngine
+          tab="fx"
+          registry={registry}
+          store={store}
+          maximized={null}
+          collapsed={[]}
+          closed={[]}
+          docked={[]}
+          layoutResets={layoutResets}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+        />
+      );
+    };
+
+    page.mount(view(0));
+
+    await page.waitFor(() => {
+      expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
+    });
+
+    page.clickControl("panel-fx-analytics-popout");
+    await popout.settleOpen();
+
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-popped")).toBe("fx-analytics");
+    });
+
+    // A workspace reset disposes the engine that owned that window and
+    // builds a fresh one. The new engine never re-announces an empty popped
+    // set (it only publishes on a CHANGE, and it starts empty), so the
+    // bridge must clear the state itself — otherwise the docked panel keeps
+    // greyed controls for a window that no longer exists.
+    page.rerender(view(1));
+
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-popped")).toBe("");
+    });
+    expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
+    expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
+
+    popout.restore();
+    page.unmountAll();
+  });
 });
 
 function noop(): void {}

@@ -356,6 +356,13 @@ export function DockviewLayoutEngine(
           setMounted([]);
           setGroups(0);
           setStrips({});
+          // Popped state clears with the engine that owned those windows.
+          // The rebuilt engine will NOT re-announce an empty set: its
+          // `publishPoppedPanels` starts at `lastPopped = []` and only fires
+          // on a CHANGE, so a fresh engine with no popouts is silent —
+          // leaving a stale `poppedHere` to grey a docked panel's controls
+          // forever. Same reason `setStrips({})` sits directly above.
+          setPopped([]);
           applied = [];
           appliedDocked = [];
           buildEngine();
