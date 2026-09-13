@@ -85,6 +85,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
     "@manypkg/cli": "^0.25.1",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "dependency-cruiser": "^18.0.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
@@ -98,7 +99,7 @@
     "syncpack": "^15.3.2",
     "tsx": "^4",
     "turbo": "^2.4",
-    "typescript": "^6",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.61.1",
     "vitest": "^4.1.10"
   }

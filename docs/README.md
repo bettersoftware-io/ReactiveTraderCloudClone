@@ -82,6 +82,9 @@ flowchart TD
 - [`dependency-cruiser.md`](dependency-cruiser.md) — the dependency-graph
   enforcement setup.
 - [`tooling-roadmap.md`](tooling-roadmap.md) — planned/adopted dev-tooling.
+- [`typescript-7.md`](typescript-7.md) — why `tsc` is TypeScript **7** while the
+  `typescript` package name resolves to the **6.x** API (the dual install), the
+  measurements behind it, the three gates that block a plain bump, and the exit plan.
 - [`mobile-ci-testing-options.md`](mobile-ci-testing-options.md) — decision
   support for running iOS/Android tests in CI: why iOS needs a Mac, every option
   with dated costs, what teams actually gate on, and a staged recommendation.
