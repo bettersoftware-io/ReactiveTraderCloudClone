@@ -19,6 +19,10 @@ export class PlaywrightLayout implements LayoutPO {
     return this.page.locator(HANDLE).first();
   }
 
+  private panel(panelId: string): Locator {
+    return this.page.getByTestId(TESTIDS.layout.panel(panelId));
+  }
+
   private engineRoot(): Locator {
     return this.page.getByTestId(TESTIDS.layout.engineRoot);
   }
@@ -55,14 +59,11 @@ export class PlaywrightLayout implements LayoutPO {
   }
 
   async waitPanelMaximized(panelId: string, timeoutMs: number): Promise<void> {
-    // The engine ROOT's `data-maximized` (the maximized panel id, or "" when
-    // none) — both engines mirror this attribute exactly (Task 10's default
-    // flip), so this is the engine-agnostic witness now, not a per-panel one
-    // (dockview has no stable per-panel testid for a STATIC panel the way
-    // InhouseLayoutEngine's PanelLeaf does).
-    await expect(this.engineRoot()).toHaveAttribute("data-maximized", panelId, {
-      timeout: timeoutMs,
-    });
+    await expect(this.panel(panelId)).toHaveAttribute(
+      "data-maximized",
+      "true",
+      { timeout: timeoutMs },
+    );
   }
 
   async waitEngine(
