@@ -31,8 +31,8 @@
     "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
-    "jsdom": "^29",
-    "tsc-alias": "1.9.4",
+    "jsdom": "^30.0.1",
+    "tsc-alias": "1.9.5",
     "vitest": "^4.1.10"
   }
 }

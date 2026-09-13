@@ -272,16 +272,20 @@ overrides:
   # jest/vitest suite — worklets is disabled under jest and Metro is never run;
   # the CI `expo export` step (ci.yml) is the only exerciser.
   #
-  # (1) VERSION: pin worklets to the SDK-57-blessed 0.10.0 that reanimated@4.5.0
-  # was BUILT against (its own devDependency is react-native-worklets@0.10.0, and
-  # expo's bundledNativeModules for SDK 57 pins 0.10.0). The worklets babel plugin
-  # and the worklets runtime must be the SAME version or the transform emits code
-  # the runtime mis-reads (`Cannot read properties of undefined (reading 'length')`
-  # while transforming reanimated's own Easing.ts) — see the Reanimated
-  # troubleshooting guide. reanimated peers `0.10.x`, so a natural install lets
-  # pnpm float the peer to 0.10.1 (a MISMATCH vs the 0.10.0 plugin); force 0.10.0
-  # everywhere so plugin == runtime == the tested pair.
-  react-native-worklets: 0.10.0
+  # (1) VERSION: pin worklets to ONE exact version, the one the direct dependency
+  # in packages/client-react-native/package.json declares (0.12.2, the 0.12.x
+  # line reanimated@4.6.0 peers on and was built against). The worklets babel
+  # plugin and the worklets runtime must be the SAME version or the transform
+  # emits code the runtime mis-reads (`Cannot read properties of undefined
+  # (reading 'length')` while transforming reanimated's own Easing.ts) — see the
+  # Reanimated troubleshooting guide. reanimated peers a RANGE (`0.12.x`), so a
+  # natural install can float the peer to a later patch (a MISMATCH vs the
+  # plugin the app installed); force the exact version everywhere so
+  # plugin == runtime == the tested pair. KEEP THIS IN LOCKSTEP with the
+  # package.json entry: Renovate never edits this file (see renovate.json5), so
+  # a worklets bump lands here by hand or `pnpm check:versions` (syncpack) reds
+  # on the split — exactly how #698 first failed.
+  react-native-worklets: 0.12.2
   # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
   # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
   # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
