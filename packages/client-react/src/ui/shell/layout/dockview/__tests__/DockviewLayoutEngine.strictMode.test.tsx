@@ -41,6 +41,9 @@ const registry: PanelRegistry = {
   "fx-blotter": () => {
     return <div>BLOTTER</div>;
   },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
 };
 
 /** The 32px bar plus dockview's gap share for a two-child column (7 × 1/2):
@@ -70,6 +73,9 @@ describe("DockviewLayoutEngine under StrictMode", () => {
         inner.save(tab, blob);
         saved.push(blob);
       },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
     };
 
     page.mount(
@@ -81,6 +87,8 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           maximized={null}
           collapsed={["fx-analytics"]}
           closed={[]}
+          docked={[]}
+          layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
@@ -106,6 +114,53 @@ describe("DockviewLayoutEngine under StrictMode", () => {
     );
   });
 
+  // Mirrors the collapse case above for the `docked` prop: a dynamic panel
+  // is reconciled into the engine at CONSTRUCTION (`dynamicPanels`, fed by
+  // the re-synced `dockedRef`), not applied by a replayed intent — so engine
+  // B, rebuilt from A's flushed blob (which already carries the dynamic
+  // panel), must still hold it: a `dockedRef` that failed to resync for B,
+  // or a construction call that dropped `dynamicPanels`, would silently
+  // lose the group instead of erroring. `groupsAttr` (not the saved blob) is
+  // the witness here — membership, unlike collapse's clamped SIZE, is
+  // visible in the group count as soon as B mounts.
+  it("re-holds the seeded docked panel in the engine the double-mount rebuilds", () => {
+    const inner = new InMemoryDockLayoutStore();
+    const store = {
+      load: (tab: string): string | null => {
+        return inner.load(tab);
+      },
+      save: (tab: string, blob: string): void => {
+        inner.save(tab, blob);
+      },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
+    };
+
+    page.mount(
+      <StrictMode>
+        <DockviewLayoutEngine
+          tab="fx"
+          registry={registry}
+          store={store}
+          maximized={null}
+          collapsed={[]}
+          closed={[]}
+          docked={["panel-dyn-1"]}
+          layoutResets={0}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+        />
+      </StrictMode>,
+    );
+
+    // fx's 4 seed leaves plus the reconciled dynamic panel.
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
   // Same rebuild trap for the layer-2 `closed` set: engine B restores from
   // A's blob (which may or may not still hold the closed panel) and the
   // bridge must re-assert the whole set — then a later prop change must
@@ -121,6 +176,9 @@ describe("DockviewLayoutEngine under StrictMode", () => {
         inner.save(tab, blob);
         saved.push(blob);
       },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
     };
 
     function tree(closed: readonly string[]): ReactElement {
@@ -133,6 +191,8 @@ describe("DockviewLayoutEngine under StrictMode", () => {
             maximized={null}
             collapsed={[]}
             closed={closed}
+            docked={[]}
+            layoutResets={0}
             onMaximize={noop}
             onRestore={noop}
             onCollapse={noop}

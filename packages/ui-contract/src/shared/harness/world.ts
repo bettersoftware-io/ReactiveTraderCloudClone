@@ -460,6 +460,13 @@ export interface World {
    * `createWorld(…, workspaceLayoutSeed)` seeded with the string read back off
    * the first World — see `createWorld`'s `workspaceLayoutSeed` parameter. */
   readonly workspaceLayout: BehaviorSubject<string | null>;
+  /** Bumps once per workspace-layout reset — the fake-World form of
+   * `Presenters.workspaceLayoutResets$`. Each framework's
+   * `viewModelFromWorld` driver's `resetWorkspaceLayoutFor` nexts this at
+   * the end of the reset (mirrors `composition.ts`'s
+   * `workspaceLayoutResets$`), and `useWorkspaceLayoutResets` reads it
+   * straight through. Starts 0. */
+  readonly workspaceLayoutResets: BehaviorSubject<number>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -814,6 +821,8 @@ export function createWorld(
     workspaceLayoutSeed ?? null,
   );
 
+  const workspaceLayoutResets = new BehaviorSubject<number>(0);
+
   const layoutEngine = new BehaviorSubject<LayoutEngine>(
     layoutEngineSeed ?? DEFAULT_LAYOUT_ENGINE,
   );
@@ -1042,6 +1051,7 @@ export function createWorld(
       return jarvisUsage$.next(value);
     },
     workspaceLayout,
+    workspaceLayoutResets,
     animatedBackground,
     powerSaverLevel,
     forceBootAnimation,

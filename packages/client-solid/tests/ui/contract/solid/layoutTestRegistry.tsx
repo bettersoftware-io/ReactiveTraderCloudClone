@@ -28,4 +28,14 @@ export const layoutTestRegistry: PanelRegistry = {
   "admin-throughput": () => {
     return <div data-testid="admin-throughput-body">ADMIN</div>;
   },
+  // The Task 7 docked-fixture panel: a stand-in for a real Jarvis desk panel
+  // once it's docked into a tab (id shape mirrors DOCKED_PANEL_ID in
+  // LayoutEngine.contract.spec.ts, "panel-<name>"). Rendering one of
+  // PANEL_RENDERER_TESTIDS (JarvisPanelLayerPage) instead of a bare `-body`
+  // div lets DockviewEngine.contract.spec.ts's docked cases assert the same
+  // renderer-testid witness the world-driven docked specs use for a real
+  // desk panel's body.
+  "panel-desk-heat": () => {
+    return <div data-testid="jarvis-panel-heatmap">DESK HEAT</div>;
+  },
 };

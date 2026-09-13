@@ -73,6 +73,13 @@ const RAIL_LIKE = {
   ],
 } as const;
 
+/** A single-panel seed — the real shape of the Admin tab. With one dynamic
+ * panel docked, its root serializes as exactly `[static leaf, dynamic
+ * leaf]`: the reproduction for the root-collapse scrub bug (a corrupt
+ * dynamic leaf's removal must not turn this root into a bare, dockview-
+ * rejected leaf). */
+const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+
 const attachedContainers: HTMLElement[] = [];
 
 afterEach(() => {
@@ -210,7 +217,7 @@ describe("createDockEngine", () => {
     expect(disposed.sort()).toEqual(["fx-analytics", "fx-blotter", "fx-rates"]);
   });
 
-  it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", () => {
+  it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", async () => {
     const opts = base();
     const log: string[] = [];
 
@@ -256,6 +263,12 @@ describe("createDockEngine", () => {
     analyticsTab.dispatchEvent(
       new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
     );
+    // Since dockview 8 (with HTML5 drag-and-drop on, the default) a tab's
+    // pointerdown DEFERS activation to the next animation frame, so a drag
+    // that begins in the same gesture cannot double-act on the strip
+    // (dockview/dockview#1631). The remount therefore lands one frame after
+    // the pointerdown, exactly as it does for a user — assert after it.
+    await nextAnimationFrame();
     const sharedSlot = analyticsTab
       .closest(".dv-groupview")
       ?.querySelector(".rtc-dock-actions");
@@ -1307,26 +1320,6 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
-  /** Grabs the first sash of the first split matching `splitSelector` —
-   * dockview's real pointer-drag entry — without moving it. */
-  function grabSash(container: HTMLElement, splitSelector: string): void {
-    const sash = container.querySelector(
-      `${splitSelector} > .dv-sash-container > .dv-sash`,
-    );
-
-    if (sash === null) {
-      throw new Error(`no sash under ${splitSelector}`);
-    }
-
-    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
-  }
-
-  function dragSash(container: HTMLElement, splitSelector: string): void {
-    grabSash(container, splitSelector);
-    window.dispatchEvent(new Event("pointermove"));
-    window.dispatchEvent(new Event("pointerup"));
-  }
-
   function railPinnedBase(): DockEngineOptions {
     return {
       ...railBase(),
@@ -1679,6 +1672,371 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
   }
 });
 
+describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+
+  it("adds a dynamic panel as a new right-edge group at its initialPx card width", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    expect(api.getPanel("panel-dyn-1")).toBeDefined();
+    // its own group — not stacked into an existing one
+    expect(api.getPanel("panel-dyn-1")?.group.panels).toHaveLength(1);
+    engine.dispose();
+  });
+
+  it("is idempotent — adding an existing id changes nothing", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const before = lastDockviewApi().groups.length;
+    engine.addDynamicPanel(DYN);
+    expect(lastDockviewApi().groups.length).toBe(before);
+    expect(seen.pins()).toHaveLength(1); // no duplicate pin either
+    engine.dispose();
+  });
+
+  it("persists the dynamic panel's pin and releases it on a sash drag", async () => {
+    // A synthetic drag (no real geometry change) never fires dockview's own
+    // onDidLayoutChange, so — like the sibling design-pin release tests —
+    // the release is asserted from the blob dispose() flushes unconditionally,
+    // not via waitForPins.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForPins(seen, 1);
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    dragSash(opts.container, ".dv-horizontal");
+    engine.dispose();
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("removes a dynamic panel and its group", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const before = engine.groupCount();
+    engine.removeDynamicPanel("panel-dyn-1");
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    expect(engine.groupCount()).toBe(before - 1);
+    engine.removeDynamicPanel("panel-dyn-1"); // unknown id: no-op, no throw
+    engine.dispose();
+  });
+
+  it("does not persist the design pin after the panel is removed", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForPins(seen, 1);
+    engine.removeDynamicPanel("panel-dyn-1");
+    await vi.waitFor(() => {
+      expect(seen.pins()).toEqual([]);
+    });
+    engine.dispose();
+  });
+
+  it("purges the strip ledger on removal — no phantom rtcStripGeometry", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.collapsePanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    engine.removeDynamicPanel("panel-dyn-1");
+    await vi.waitFor(() => {
+      const blob = JSON.parse(seen.blob());
+      expect(JSON.stringify(blob.rtcStripGeometry ?? {})).not.toContain(
+        "panel-dyn-1",
+      );
+    });
+    engine.dispose();
+  });
+
+  it("a dynamic panel joins the stripDir walk — collapsing it as the column's last panel flips the column", async () => {
+    // Docked as a lone panel at the right edge, so collapsing it must read
+    // against the ROW (vertical strip), exactly as a static lone column does
+    // (the "fully-stripped column" suite above).
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.collapsePanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    expect(strips.last["panel-dyn-1"]).toBe("vertical");
+    engine.expandPanel("panel-dyn-1");
+    await waitForSize(seen, "panel-dyn-1", 360); // pin-remembered width restored
+    engine.dispose();
+  });
+
+  it("removing a maximize-forced strip's owner restores the survivors", async () => {
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const rates = baselineSize(base(), "fx-rates");
+    engine.maximizePanel("panel-dyn-1"); // strips every static panel
+    engine.removeDynamicPanel("panel-dyn-1");
+    await waitForSizeWithin(seen, "fx-rates", rates, 8); // statics restored
+    // fx-analytics sits directly under the ROOT split as its own leaf (no
+    // intermediate branch to measure via branchSizeOf — findBranchSize's own
+    // doc comment: "Null for a leaf sitting directly under the root"). It
+    // restores via a DIFFERENT path than fx-rates: fx-rates comes back
+    // through settleStripFreeWorlds' per-member world reassert (the nested
+    // column split's membership is untouched by removing panel-dyn-1), while
+    // fx-analytics is a DIRECT member of panel-dyn-1's own split — that
+    // split's membership DOES change when panel-dyn-1 leaves, so its world
+    // is voided (the deliberate audit-S3 rule) and it is NOT put back to its
+    // exact pre-maximize width; it only needs to come back UNSTRIPPED, with
+    // dockview's own redistribution (now the sole survivor of that split)
+    // deciding its size — exactly what deleteDynamicPanel's own comment says.
+    await vi.waitFor(() => {
+      const width = seen.sizeOf("fx-analytics");
+      expect(width).not.toBeNull();
+      expect(width as number).toBeGreaterThan(STRIP);
+    });
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    engine.dispose();
+  });
+
+  it("forces a dynamic panel added during a live maximize into a strip, and restores it on exit", async () => {
+    // In-house parity: a panel docked while a maximize is live must not land
+    // full-size beside a dock of 32px strips — it joins the maximize's own
+    // strip set via the same recordStrip path maximizePanel itself uses.
+    const seen = trackLayout();
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      ...strips.options,
+    });
+    const ratesBefore = baselineSize(base(), "fx-rates");
+
+    engine.maximizePanel("fx-rates");
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", STRIP);
+    expect(strips.last["panel-dyn-1"]).toBe("vertical");
+
+    engine.exitMaximize();
+    await waitForSize(seen, "panel-dyn-1", 360);
+    await waitForSizeWithin(seen, "fx-rates", ratesBefore, 8);
+    engine.dispose();
+  });
+});
+
+describe("dynamic-panel reconciliation at construction", () => {
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+
+  it("adds a listed dynamic panel missing from a fresh (null) blob", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.dispose();
+  });
+
+  it("keeps a listed dynamic panel's dragged arrangement from the blob", async () => {
+    // engine 1: add, stack it into the rates group, capture the blob
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const dyn = api.getPanel("panel-dyn-1");
+    const rates = api.getPanel("fx-rates");
+
+    if (!dyn || !rates) {
+      throw new Error("fixture panels missing");
+    }
+
+    dyn.api.moveTo({ group: rates.group, position: "center" }); // stack it
+    expect(api.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
+    // dispose flushes one final serialisation synchronously — see baseline().
+    first.dispose();
+    const blob = seen.blob();
+    // engine 2: same blob + still listed → stays stacked, NOT re-added right-edge
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob,
+      dynamicPanels: [DYN],
+    });
+    const api2 = lastDockviewApi();
+    expect(api2.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
+    second.dispose();
+  });
+
+  it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const blob = seen.blob();
+    first.dispose();
+    const second = createDockEngine({
+      ...base(),
+      ...trackLayout().options,
+      blob,
+    }); // no dynamicPanels
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    // statics intact
+    expect(lastDockviewApi().getPanel("fx-rates")).toBeDefined();
+    second.dispose();
+  });
+
+  it("scrubs an unrestorable dynamic node instead of degrading the whole tab to seed", async () => {
+    // hand-corrupt ONLY the dynamic leaf in a real blob: a grid leaf VIEW
+    // naming a panel with NO `panels` entry at all — a shape dockview's own
+    // fromJSON genuinely throws on (unlike a merely-malformed panels entry,
+    // which it tolerates by degrading that one panel to an undefined id).
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const rates = api.getPanel("fx-rates");
+    const blotter = api.getPanel("fx-blotter");
+
+    if (!rates || !blotter) {
+      throw new Error("fixture panels missing");
+    }
+
+    // Give a STATIC pair a non-seed arrangement — stack blotter into rates'
+    // own group. FX_LIKE's fresh conversion always puts them in SEPARATE
+    // groups, so this can survive a reload ONLY via a genuine restore, never
+    // via a seed fallback: the assertion below is unsatisfiable by seed,
+    // unlike an earlier version of this test that (verified by the
+    // reviewer aliasing `withoutDynamicNodes` to always return `null`)
+    // passed identically whether the scrub ran or not — reconciliation
+    // re-adds the dynamic panel via the SAME `insertDynamicPanel` path
+    // either way, and that path's own right-edge redistribution overwrites
+    // whatever ratio fx-analytics had BEFORE it ran, so a plain geometry
+    // check on a panel adjacent to the dynamic one never discriminated the
+    // two paths — this stack, on panels the dynamic panel's insertion never
+    // touches, does.
+    blotter.api.moveTo({ group: rates.group, position: "center" });
+    expect(rates.group.panels.length).toBe(2);
+    first.dispose();
+    const parsed = JSON.parse(seen.blob());
+    delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob: JSON.stringify(parsed),
+      dynamicPanels: [DYN],
+    });
+    // The scrubbed retry succeeded (not seed): the dynamic panel layer 2
+    // still lists is re-added at its right-edge width...
+    await waitForSize(reloaded, "panel-dyn-1", 360);
+    // ...and the static stack survived untouched — withoutDynamicNodes only
+    // ever removes dynamic ids, so a leaf naming two static ids is never
+    // touched by the scrub, unlike a seed fallback which could never
+    // reproduce this arrangement at all.
+    const ratesAfter = lastDockviewApi().getPanel("fx-rates");
+    expect(ratesAfter?.group.panels.length).toBe(2);
+    second.dispose();
+  });
+
+  it("does not degrade a single-panel seed tab to seed when its dock corrupts (root stays a branch)", async () => {
+    // The real Admin-tab shape: a single-panel seed. With one Jarvis-docked
+    // panel, its root serializes as exactly [static leaf, dynamic leaf] —
+    // removing the corrupt dynamic leaf must not collapse that root down to
+    // a bare leaf, which dockview's own fromJSON rejects outright ("root
+    // must be of type branch"), forcing the whole tab to seed. A lone
+    // panel has no other content to give it a non-seed SIZE (it always
+    // fills 100% either way), so the discriminator here is its restored
+    // GROUP ID: fromJSON restores a leaf's persisted `data.id` verbatim,
+    // while a fresh seed build assigns its own auto id, oblivious to
+    // anything the blob said — stamping a distinctive marker onto the
+    // admin leaf before corrupting the blob makes scrub-success and seed
+    // fallback unambiguously distinguishable.
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      seed: ADMIN_LIKE,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const parsed = JSON.parse(seen.blob());
+    const adminLeaf = (
+      parsed.grid.root.data as { data: { views: string[]; id: string } }[]
+    ).find((leaf) => {
+      return leaf.data.views.includes("admin");
+    });
+
+    if (!adminLeaf) {
+      throw new Error("admin leaf missing from the captured blob");
+    }
+
+    adminLeaf.data.id = "g-admin-marker"; // only a real restore preserves this
+    delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
+    first.dispose();
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      seed: ADMIN_LIKE,
+      ...reloaded.options,
+      blob: JSON.stringify(parsed),
+      dynamicPanels: [DYN],
+    });
+
+    expect(lastDockviewApi().getPanel("admin")?.group.id).toBe(
+      "g-admin-marker",
+    );
+    await waitForSize(reloaded, "panel-dyn-1", 360);
+    second.dispose();
+  });
+
+  it("leaves a static-only blob with no dynamicPanels exactly as before", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...base(), ...seen.options });
+    const analyticsBefore = seen.sizeOf("fx-analytics");
+    const blob = seen.blob();
+    first.dispose();
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...base(),
+      ...reloaded.options,
+      blob,
+    });
+    expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    // the static arrangement itself is untouched — not just "no phantom
+    // dynamic panel", but the SAME layout, byte for byte on this panel.
+    expect(reloaded.sizeOf("fx-analytics")).toBe(analyticsBefore);
+    second.dispose();
+  });
+});
+
 const capturedDockview = vi.hoisted(() => {
   return { api: null as unknown, options: null as unknown };
 });
@@ -1695,9 +2053,15 @@ describe("stacked visual fixture (Phase 2)", () => {
   const STACKED_FX_BLOB =
     '{"grid":{"root":{"type":"branch","data":[{"type":"branch","data":[{"type":"leaf","data":{"views":["fx-rates","fx-analytics"],"activeView":"fx-rates","id":"group-1"},"size":419},{"type":"leaf","data":{"views":["fx-blotter"],"activeView":"fx-blotter","id":"group-2"},"size":281}],"size":942},{"type":"leaf","data":{"views":["fx-positions"],"activeView":"fx-positions","id":"group-4"},"size":318}],"size":700},"width":1260,"height":700,"orientation":"HORIZONTAL"},"panels":{"fx-rates":{"id":"fx-rates","contentComponent":"rtc-panel","title":"fx-rates"},"fx-analytics":{"id":"fx-analytics","contentComponent":"rtc-panel","title":"fx-analytics"},"fx-blotter":{"id":"fx-blotter","contentComponent":"rtc-panel","title":"fx-blotter"},"fx-positions":{"id":"fx-positions","contentComponent":"rtc-panel","title":"fx-positions"}},"activeGroup":"group-1","rtcBlobVersion":2,"rtcDesignPins":[]}';
 
+  // Seeded with RAIL_LIKE, not base()'s FX_LIKE: the fixture blob carries
+  // all four real FX panels, and a panel a blob names but the SEED does not
+  // is a dynamic node — the construction-time reconciliation scrubs it as an
+  // orphan when no `dynamicPanels` entry claims it. RAIL_LIKE is the real FX
+  // tab's shape, which is what the visual wrapper actually seeds.
   it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
     const engine = createDockEngine({
       ...base(),
+      seed: RAIL_LIKE,
       blob: STACKED_FX_BLOB,
     });
     const dock = lastDockviewApi();
@@ -2072,6 +2436,16 @@ function twoTabGroupLayout(): unknown {
 
 /** The `.dv-tab` (dockview's own draggable wrapper) whose fallback title
  * label reads `title` — what `base()`'s title hook produced for the panel. */
+/** Resolves once the pending animation frame has run — dockview 8 schedules
+ * pointer-driven tab activation on one. */
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      resolve();
+    });
+  });
+}
+
 function tabOf(container: HTMLElement, title: string): HTMLElement {
   const label = [...container.querySelectorAll(".rtc-dock-tab-title")].find(
     (el) => {
@@ -2136,6 +2510,26 @@ function base(): DockEngineOptions {
     onLayoutChange: () => {},
     debounceMs: 0,
   };
+}
+
+/** Grabs the first sash of the first split matching `splitSelector` —
+ * dockview's real pointer-drag entry — without moving it. */
+function grabSash(container: HTMLElement, splitSelector: string): void {
+  const sash = container.querySelector(
+    `${splitSelector} > .dv-sash-container > .dv-sash`,
+  );
+
+  if (sash === null) {
+    throw new Error(`no sash under ${splitSelector}`);
+  }
+
+  sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+}
+
+function dragSash(container: HTMLElement, splitSelector: string): void {
+  grabSash(container, splitSelector);
+  window.dispatchEvent(new Event("pointermove"));
+  window.dispatchEvent(new Event("pointerup"));
 }
 
 function within(target: number, tolerance: number): unknown {

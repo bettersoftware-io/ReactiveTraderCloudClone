@@ -22,6 +22,12 @@ export interface DockviewLayoutEngineStrictModePage {
   /** The control's `disabled` state, or null when no such testid exists. */
   controlDisabled(testId: string): boolean | null;
   clickControl(testId: string): void;
+  /** The engine's `data-groups` witness — how many dockview groups the
+   * mounted engine currently reports, as a string (the attribute's raw
+   * form). */
+  groupsAttr(): string | null;
+  /** Whether a testid the registry/portal tree renders is present. */
+  bodyVisible(testId: string): boolean;
 }
 
 /** The framework surface for `DockviewLayoutEngine.strictMode.test.tsx`. The
@@ -63,6 +69,12 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
     },
     clickControl(testId: string): void {
       screen.getByTestId(testId).click();
+    },
+    groupsAttr(): string | null {
+      return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    bodyVisible(testId: string): boolean {
+      return screen.queryByTestId(testId) !== null;
     },
   };
 }

@@ -53,9 +53,11 @@
     "jarvisUsage": "delegated",
     "jarvisPanels": "delegated",
     "dockPanel": "delegated",
+    "dockedPanelIdsFor": "delegated",
     "undockPanel": "delegated",
     "dismissPanel": "delegated",
     "resetWorkspaceLayout": "delegated",
+    "workspaceLayoutResets$": "delegated",
     "jarvisDriver": "delegated",
     "jarvisDemo": "delegated"
   },

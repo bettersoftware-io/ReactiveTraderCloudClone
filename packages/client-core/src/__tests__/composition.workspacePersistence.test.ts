@@ -316,6 +316,138 @@ describe("composition — workspace-layout writer", () => {
     const payload = await storedPayload(preferences);
     expect(payload?.tabs.credit?.docked ?? []).toEqual([]);
   });
+
+  it("resetWorkspaceLayout clears every tab's dock blob", () => {
+    const { presenters } = bootApp(null);
+    const store = presenters.dockLayoutStore;
+
+    store.save("fx", "{}");
+    store.save("credit", "{}");
+
+    presenters.resetWorkspaceLayout();
+
+    expect(store.load("fx")).toBeNull();
+    expect(store.load("credit")).toBeNull();
+  });
+});
+
+describe("composition — dockedPanelIdsFor", () => {
+  it("emits the id with tab attribution when a panel docks into the active tab", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-1");
+
+    const seen: (readonly string[])[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((ids) => {
+      seen.push(ids);
+    });
+
+    presenters.dockPanel("jarvis-1");
+    sub.unsubscribe();
+
+    expect(seen.at(-1)).toEqual(["jarvis-1"]);
+
+    // The other tab never lists it.
+    let credit: readonly string[] = [];
+    presenters
+      .dockedPanelIdsFor("credit")
+      .subscribe((ids) => {
+        credit = ids;
+      })
+      .unsubscribe();
+    expect(credit).toEqual([]);
+  });
+
+  it("replays current membership to a late subscriber", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-1");
+    presenters.dockPanel("jarvis-1");
+
+    let ids: readonly string[] = [];
+    presenters
+      .dockedPanelIdsFor("fx")
+      .subscribe((emitted) => {
+        ids = emitted;
+      })
+      .unsubscribe();
+
+    expect(ids).toEqual(["jarvis-1"]);
+  });
+
+  it("undock drops the id from the tab stream", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-1");
+    presenters.dockPanel("jarvis-1");
+
+    const seen: (readonly string[])[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((ids) => {
+      seen.push(ids);
+    });
+
+    presenters.undockPanel("jarvis-1");
+    sub.unsubscribe();
+
+    expect(seen.at(-1)).toEqual([]);
+  });
+
+  it("dismiss drops the id from the tab stream", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-1");
+    presenters.dockPanel("jarvis-1");
+
+    const seen: (readonly string[])[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((ids) => {
+      seen.push(ids);
+    });
+
+    presenters.dismissPanel("jarvis-1");
+    sub.unsubscribe();
+
+    expect(seen.at(-1)).toEqual([]);
+  });
+
+  // Final-review fix wave (2026-09-13): pins the `.sort()` in the real
+  // presenter's `map` — docking two panels into the SAME tab in
+  // non-alphabetical order (jarvis-2 before jarvis-1) must still emit them
+  // sorted, since `panelsState.panels`' own order reflects dock sequencing,
+  // which downstream element-wise-equals consumers (both clients' bridge
+  // props) must not see as membership churn on an unsorted reorder.
+  it("emits two panels docked into the same tab in sorted order, regardless of dock sequence", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-2");
+    spawnPanel("jarvis-1");
+
+    let ids: readonly string[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((emitted) => {
+      ids = emitted;
+    });
+
+    presenters.dockPanel("jarvis-2");
+    presenters.dockPanel("jarvis-1");
+    sub.unsubscribe();
+
+    expect(ids).toEqual(["jarvis-1", "jarvis-2"]);
+  });
+});
+
+describe("composition — workspaceLayoutResets$", () => {
+  it("bumps once per resetWorkspaceLayout() call, starting from 0", () => {
+    const { presenters } = bootApp(null);
+
+    const seen: number[] = [];
+    const sub = presenters.workspaceLayoutResets$.subscribe((n) => {
+      seen.push(n);
+    });
+
+    expect(seen.at(-1)).toBe(0);
+
+    presenters.resetWorkspaceLayout();
+    expect(seen.at(-1)).toBe(1);
+
+    presenters.resetWorkspaceLayout();
+    expect(seen.at(-1)).toBe(2);
+
+    sub.unsubscribe();
+  });
 });
 
 describe("composition — dismissing a docked panel", () => {
