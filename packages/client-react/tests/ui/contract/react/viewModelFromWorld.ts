@@ -531,7 +531,14 @@ function resetWorkspaceLayoutFor(world: World): void {
 
 /** `useDockedPanelIds(tab)`'s current value — the panels currently `docked`
  * AND attributed to `tab` in `dock.dockedTabs`, mirroring
- * `composition.ts`'s `dockedPanelIdsFor` filter. Read synchronously off
+ * `composition.ts`'s `dockedPanelIdsFor` filter — including its `.sort()`
+ * (final-review fix wave, 2026-09-13): the real presenter sorts because
+ * `panels$`'s own order reflects dock sequencing, which downstream
+ * element-wise-equals consumers must not see as membership churn on an
+ * unsorted reorder. The sort happens HERE, inside the recompute, before
+ * `useDockedPanelIdsFor`'s cached-snapshot identity compare below — sorting
+ * after that compare would defeat it (two dock orders producing the same
+ * sorted array must read as unchanged). Read synchronously off
  * `bridge.panels$`'s warm value and `dock.dockedTabs` (both always
  * available without subscribing), for `useSyncExternalStore`'s snapshot. */
 function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
@@ -545,7 +552,8 @@ function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
     })
     .map((panel) => {
       return panel.panelId;
-    });
+    })
+    .sort();
 }
 
 /** Element-wise equality for `dockedPanelIdsFor`'s cached-snapshot check

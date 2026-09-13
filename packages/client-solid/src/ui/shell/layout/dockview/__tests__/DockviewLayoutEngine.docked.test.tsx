@@ -58,6 +58,9 @@ describe("DockviewLayoutEngine docked prop", () => {
       collapsed: () => {
         return [];
       },
+      closed: () => {
+        return [];
+      },
       docked: () => {
         return ["panel-dyn-1"];
       },
@@ -67,6 +70,80 @@ describe("DockviewLayoutEngine docked prop", () => {
     });
 
     // fx's 4 seed leaves plus the one docked panel.
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
+  // Post-merge verification (docking x closed interplay, 2026-09-13): mirrors
+  // the react twin's identically-named case. A dynamic (docked) id has no
+  // LEGAL path into the layer-2 `closed` set — LayoutMachine's `close`
+  // reducer no-ops unless the target is one of the tab's static seed ids
+  // (`staticIds.includes(event.id)`) — but that is a machine-layer guarantee,
+  // not something this bridge itself enforces by rejecting the id on sight.
+  // What actually protects the bridge/engine seam is the `closed`
+  // reconciliation effect: it walks `seedPanelIdsOf` (the tab's STATIC seed
+  // ids) and looks each one up in `closed`, so a dynamic id that somehow ends
+  // up in `closed` (a stale persisted blob, a hand-authored test state) is
+  // simply never visited — not looked up, and never passed to
+  // `engine.closePanel` — rather than being turned away explicitly. This
+  // pins that at MOUNT time: no crash, and the docked panel stays exactly as
+  // live as an empty `closed` would leave it.
+  it("ignores a dynamic panel id sitting in the closed set at mount — the seed-only reconciliation never visits it", () => {
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed: () => {
+        return ["panel-dyn-1"];
+      },
+      docked: () => {
+        return ["panel-dyn-1"];
+      },
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    // fx's 4 seed leaves plus the docked panel — nothing got closed.
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+  });
+
+  // Post-merge verification (docking x closed interplay, 2026-09-13): the
+  // live-accessor counterpart to the mount-time case above — `closed`
+  // growing to include the docked id on an already-live engine (a signal
+  // write, Solid's analogue of the react twin's rerender) hits the same
+  // reconciliation effect and is equally ignored: no group ever leaves.
+  it("keeps a live docked panel visible when closed grows to include its id", () => {
+    const [closed, setClosed] = createSignal<readonly PanelId[]>([]);
+
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed,
+      docked: () => {
+        return ["panel-dyn-1"];
+      },
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    expect(page.groupsAttr()).toBe("5");
+
+    setClosed(["panel-dyn-1"]);
+
+    // No group ever leaves — the reconciliation effect never looked
+    // "panel-dyn-1" up because it is not one of fx's seed ids.
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
@@ -86,6 +163,9 @@ describe("DockviewLayoutEngine docked prop", () => {
       store,
       maximized: null,
       collapsed: () => {
+        return [];
+      },
+      closed: () => {
         return [];
       },
       docked,
@@ -126,6 +206,9 @@ describe("DockviewLayoutEngine docked prop", () => {
       store,
       maximized: null,
       collapsed: () => {
+        return [];
+      },
+      closed: () => {
         return [];
       },
       docked,
@@ -188,6 +271,9 @@ describe("DockviewLayoutEngine docked prop", () => {
       store,
       maximized: null,
       collapsed: () => {
+        return [];
+      },
+      closed: () => {
         return [];
       },
       docked: () => {
@@ -262,6 +348,9 @@ describe("DockviewLayoutEngine docked prop", () => {
       store,
       maximized: null,
       collapsed,
+      closed: () => {
+        return [];
+      },
       docked: () => {
         return [];
       },

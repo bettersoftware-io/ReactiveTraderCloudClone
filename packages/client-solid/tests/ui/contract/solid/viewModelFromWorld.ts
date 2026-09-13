@@ -879,7 +879,10 @@ function resetWorkspaceLayoutFor(world: World): void {
 
 /** `useDockedPanelIds(tab)`'s current value — the panels currently `docked`
  * AND attributed to `tab` in `dock.dockedTabs`, mirroring
- * `composition.ts`'s `dockedPanelIdsFor` filter. */
+ * `composition.ts`'s `dockedPanelIdsFor` filter — including its `.sort()`
+ * (final-review fix wave, 2026-09-13): the real presenter sorts because
+ * `panels$`'s own order reflects dock sequencing, which is incidental to the
+ * membership contract downstream consumers rely on. */
 function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
   const dock = getWorkspaceDock(world);
 
@@ -889,7 +892,8 @@ function dockedPanelIdsFor(world: World, tab: WorkspaceTab): readonly string[] {
     })
     .map((panel) => {
       return panel.panelId;
-    });
+    })
+    .sort();
 }
 
 /** Reactive form of `dockedPanelIdsFor` (Task 4) — recomputed on every

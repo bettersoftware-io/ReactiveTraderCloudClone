@@ -20,6 +20,11 @@ interface DockviewLayoutEngineDockedPageProps {
   /** Live: the `docked`-prop membership tests diff against a still-live
    * engine (an add/remove diff) rather than a rebuild. */
   collapsed: Accessor<readonly PanelId[]>;
+  /** Live, same reason as `collapsed`. Defaults were hardcoded to `[]` before
+   * the closed×docked guard cases (post-merge verification, 2026-09-13)
+   * needed it live too — see this file's mirrored comment in the react
+   * twin's spec for what those cases pin. */
+  closed: Accessor<readonly PanelId[]>;
   /** Live, same reason as `collapsed`. */
   docked: Accessor<readonly PanelId[]>;
   /** Live: a bump rebuilds the bridge's engine in place — see the
@@ -72,7 +77,7 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
             store={props.store}
             maximized={props.maximized}
             collapsed={props.collapsed()}
-            closed={[]}
+            closed={props.closed()}
             docked={props.docked()}
             layoutResets={props.layoutResets()}
             onMaximize={noop}

@@ -404,6 +404,29 @@ describe("composition — dockedPanelIdsFor", () => {
 
     expect(seen.at(-1)).toEqual([]);
   });
+
+  // Final-review fix wave (2026-09-13): pins the `.sort()` in the real
+  // presenter's `map` — docking two panels into the SAME tab in
+  // non-alphabetical order (jarvis-2 before jarvis-1) must still emit them
+  // sorted, since `panelsState.panels`' own order reflects dock sequencing,
+  // which downstream element-wise-equals consumers (both clients' bridge
+  // props) must not see as membership churn on an unsorted reorder.
+  it("emits two panels docked into the same tab in sorted order, regardless of dock sequence", () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    spawnPanel("jarvis-2");
+    spawnPanel("jarvis-1");
+
+    let ids: readonly string[] = [];
+    const sub = presenters.dockedPanelIdsFor("fx").subscribe((emitted) => {
+      ids = emitted;
+    });
+
+    presenters.dockPanel("jarvis-2");
+    presenters.dockPanel("jarvis-1");
+    sub.unsubscribe();
+
+    expect(ids).toEqual(["jarvis-1", "jarvis-2"]);
+  });
 });
 
 describe("composition — workspaceLayoutResets$", () => {
