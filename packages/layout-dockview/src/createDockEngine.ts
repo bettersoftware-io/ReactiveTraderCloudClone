@@ -4,6 +4,7 @@ import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
   withoutLockMarks,
+  withoutPopoutGroups,
 } from "#/dockBlob";
 import {
   convertSeed,
@@ -293,8 +294,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     opts.onLayoutChange(
       JSON.stringify({
         // Lock marks are derived from strip membership (audit S1) and
-        // must never persist — see withoutLockMarks.
-        ...(withoutLockMarks(api.toJSON()) as ReturnType<
+        // must never persist — see withoutLockMarks. Popout state is
+        // session-scoped the same way: a mid-popout save re-parents the
+        // popped panels onto their hidden reference leaf so a reload
+        // restores fully docked — see withoutPopoutGroups.
+        ...(withoutPopoutGroups(withoutLockMarks(api.toJSON())) as ReturnType<
           DockviewApi["toJSON"]
         >),
         rtcBlobVersion: DOCK_BLOB_VERSION,
