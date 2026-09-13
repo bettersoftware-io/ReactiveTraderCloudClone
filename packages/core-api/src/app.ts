@@ -92,6 +92,7 @@ import type {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
+import type { Stream } from "#/stream";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -276,6 +277,14 @@ export interface Presenters {
    * docked, and stays with that tab until it is undocked, wherever the user
    * navigates in between. */
   dockPanel: (panelId: string) => void;
+  /** The layer-2 docked membership for ONE workspace tab: the ids of every
+   * live desk panel currently docked INTO `tab` (per the composition root's
+   * dock-time tab attribution, not whichever tab happens to be active now).
+   * Consumed by the Dockview bridge (`DockviewLayoutEngine`) to reconcile
+   * its dynamic panels against the live docked set — the in-house engine
+   * reads the same membership through the LayoutMachine tree instead, since
+   * a docked panel is just another leaf there. */
+  dockedPanelIdsFor: (tab: WorkspaceTab) => Stream<readonly string[]>;
   /** Undock a docked desk panel — the exact inverse of `dockPanel`, removing
    * the leaf from the tab the panel was docked INTO (not whichever tab
    * happens to be active now). */
@@ -293,6 +302,11 @@ export interface Presenters {
    * resets every layout machine created this session back to its tab's
    * default tree, and dismisses every docked panel. */
   resetWorkspaceLayout: () => void;
+  /** Bumps once per workspace-layout reset. The Dockview bridges key their
+   * engine rebuild on it, so a live engine re-seeds from the cleared blob
+   * instead of re-persisting the old arrangement; the in-house engine needs
+   * no signal (its tree resets through the LayoutMachine). */
+  workspaceLayoutResets$: Stream<number>;
   /** J.A.R.V.I.S. drive-the-app interpreter: turns `jarvis`'s own "command"
    * turn events into staggered intent dispatches on `workspaceNav`,
    * per-tab layout machines, `eqWorkspace`, the theme-skin/power-saver

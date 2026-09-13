@@ -1,4 +1,11 @@
-import { EMPTY, type Observable, of, Subject } from "rxjs";
+import {
+  BehaviorSubject,
+  combineLatest,
+  EMPTY,
+  type Observable,
+  of,
+  Subject,
+} from "rxjs";
 import {
   catchError,
   distinctUntilChanged,
@@ -537,12 +544,37 @@ export function createApp(ports: AppPorts): App {
     readPreferenceNow(ports.preferences.workspaceLayout$(), null),
   );
 
+  /** Backs `Presenters.dockLayoutStore` — hoisted to a local so
+   * `resetWorkspaceLayout`'s per-tab `clear()` sweep and the presenters
+   * literal below share the exact SAME instance rather than each evaluating
+   * `ports.dockLayoutStore ?? new InMemoryDockLayoutStore()` separately
+   * (which would construct two independent fallback stores, leaving Reset
+   * clearing one while the UI reads the other). */
+  const dockLayoutStore =
+    ports.dockLayoutStore ?? new InMemoryDockLayoutStore();
+
   /** Which tab each docked panel belongs to — seeded from the persisted
    * payload at boot and updated on every dock/undock. This is the rule the
    * writer persists by: a docked panel lands under the tab that was ACTIVE
    * when it was docked, not under whichever tab is showing when the write
    * finally fires. */
   const dockedPanelTabs = new Map<string, WorkspaceTab>();
+
+  /** Kicked after EVERY mutation of `dockedPanelTabs` (`set` here and in
+   * `dockPanelIntoWorkspace`, `delete` in `detachDockedLeaf`, `clear` in
+   * `resetWorkspaceLayout`) — see `dockedPanelIdsFor`'s doc for why this
+   * exists: `jarvisPanelsMachine.state$` emits a panel's `docked` flip
+   * SYNCHRONOUSLY, before the caller has had a chance to attribute it to a
+   * tab in this map, so subscribing to `state$` alone would combine the
+   * flip with a still-stale (or not-yet-updated) map read. Nexting this
+   * AFTER the map write is what makes the attributed membership visible. */
+  const dockedPanelTabsKick$ = new BehaviorSubject<void>(undefined);
+
+  /** Backs `Presenters.workspaceLayoutResets$` — see its doc. Incremented
+   * exactly once, at the very END of `resetWorkspaceLayout`, after every
+   * other reset side effect has already landed (machines reset, panels
+   * dismissed, `dockedPanelTabs` cleared, dock blobs cleared). */
+  const workspaceLayoutResets$ = new BehaviorSubject<number>(0);
 
   for (const tab of WORKSPACE_TABS) {
     const persistedTab = persistedWorkspace?.tabs[tab];
@@ -554,6 +586,7 @@ export function createApp(ports: AppPorts): App {
     for (const entry of persistedTab.docked) {
       jarvisPanelsMachine.restoreDockedPanel(entry.panelId, entry.spec);
       dockedPanelTabs.set(entry.panelId, tab);
+      dockedPanelTabsKick$.next(undefined);
     }
   }
 
@@ -712,6 +745,7 @@ export function createApp(ports: AppPorts): App {
 
     const tab = latestActiveTab;
     dockedPanelTabs.set(panelId, tab);
+    dockedPanelTabsKick$.next(undefined);
     layoutFor(tab).intents.insertPanel(panelId);
   }
 
@@ -740,6 +774,7 @@ export function createApp(ports: AppPorts): App {
   function detachDockedLeaf(panelId: string): void {
     const tab = dockedPanelTabs.get(panelId);
     dockedPanelTabs.delete(panelId);
+    dockedPanelTabsKick$.next(undefined);
 
     if (tab) {
       layoutFor(tab).intents.removePanel(panelId);
@@ -770,6 +805,47 @@ export function createApp(ports: AppPorts): App {
     jarvisPanels.dismissPanel(panelId);
   }
 
+  /** See `Presenters.dockedPanelIdsFor`'s doc. `combineLatest` with
+   * `dockedPanelTabsKick$` is load-bearing, not decorative: `jarvisPanelsMachine`
+   * flips a panel's `docked` flag SYNCHRONOUSLY inside `dockPanelIntoWorkspace`
+   * (via `jarvisPanelsMachine.dockPanel`), before that same call goes on to
+   * attribute the panel to a tab in `dockedPanelTabs` — so a bare
+   * `jarvisPanelsMachine.state$.pipe(map(...))` would compute this tab's
+   * membership against a map that hasn't been written to yet, on the very
+   * emission that matters. Kicking `dockedPanelTabsKick$` AFTER every map
+   * mutation (dock, undock, dismiss, reset) is what makes the attributed
+   * membership visible to a subscriber. */
+  function dockedPanelIdsFor(tab: WorkspaceTab): Observable<readonly string[]> {
+    return combineLatest([
+      jarvisPanelsMachine.state$,
+      dockedPanelTabsKick$,
+    ]).pipe(
+      map(([panelsState]) => {
+        // Sorted: `panelsState.panels`' own order reflects spawn/dock
+        // sequencing, which is incidental to this stream's membership
+        // contract — sorting stabilizes the emitted array's identity for
+        // downstream element-wise-equals consumers (both clients' bridge
+        // props) against a reorder that isn't a real membership change.
+        return panelsState.panels
+          .filter((panel) => {
+            return panel.docked && dockedPanelTabs.get(panel.panelId) === tab;
+          })
+          .map((panel) => {
+            return panel.panelId;
+          })
+          .sort();
+      }),
+      distinctUntilChanged((prev, next) => {
+        return (
+          prev.length === next.length &&
+          prev.every((id, index) => {
+            return id === next[index];
+          })
+        );
+      }),
+    );
+  }
+
   /** Discard the persisted workspace — see `Presenters.resetWorkspaceLayout`.
    * `dismissPanel` works on a docked panel directly, so there is no
    * undock-then-dismiss dance; the layout machines are reset wholesale
@@ -797,6 +873,13 @@ export function createApp(ports: AppPorts): App {
     }
 
     dockedPanelTabs.clear();
+    dockedPanelTabsKick$.next(undefined);
+
+    for (const tab of WORKSPACE_TABS) {
+      dockLayoutStore.clear(tab);
+    }
+
+    workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
   }
 
   // The debounced workspace writer. Kicked by every created layout machine
@@ -1021,7 +1104,7 @@ export function createApp(ports: AppPorts): App {
     ambientStyle: new AmbientStylePresenter(ports.preferences),
     chartSubstrate: new ChartSubstratePresenter(ports.preferences),
     layoutEngine: new LayoutEnginePresenter(ports.preferences),
-    dockLayoutStore: ports.dockLayoutStore ?? new InMemoryDockLayoutStore(),
+    dockLayoutStore,
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
@@ -1132,9 +1215,11 @@ export function createApp(ports: AppPorts): App {
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
     jarvisPanels,
     dockPanel: dockPanelIntoWorkspace,
+    dockedPanelIdsFor,
     undockPanel: undockPanelFromWorkspace,
     dismissPanel: dismissPanelFromWorkspace,
     resetWorkspaceLayout,
+    workspaceLayoutResets$,
     jarvisDriver,
     jarvisDemo,
   };

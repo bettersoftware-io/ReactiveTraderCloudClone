@@ -23,6 +23,12 @@ export interface DockviewEngineProps {
   /** `"no-maximize"`: fx-blotter `maximizable: false`, fx-positions absent
    * from the specs entirely. */
   specsVariant?: "no-maximize";
+  /** Mirrors the LayoutMachine's per-tab docked set the real WorkspaceEngine
+   * threads into the bridge's `docked` prop (Task 4/5's `DockviewLayoutEngine
+   * Props.docked`, Task 7 wires it through this host). Panel ids here must
+   * also have a `layoutTestRegistry` entry to render a body — see
+   * `panel-desk-heat` there. */
+  docked?: readonly string[];
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike
@@ -51,6 +57,20 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
 
   groupsAttr(): string | null {
     return this.engineEl().getAttribute("data-groups");
+  }
+
+  /** Waits for `data-groups` to settle at `count` — it only refreshes off
+   * dockview's own `onLayoutChange` callback, which a dynamic-panel removal
+   * (undocking) fires asynchronously rather than synchronously with the
+   * prop change, unlike every other witness on this page. */
+  async waitForGroups(count: number): Promise<void> {
+    await waitFor(() => {
+      const actual = this.groupsAttr();
+
+      if (actual !== String(count)) {
+        throw new Error(`expected data-groups to be ${count}, was ${actual}`);
+      }
+    });
   }
 
   /** The collapse set the bridge received, as ids in prop order. Dockview

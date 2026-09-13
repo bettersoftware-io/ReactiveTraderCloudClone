@@ -1,4 +1,5 @@
 import * as jarvis from "../scenarios/jarvis";
+import * as layout from "../scenarios/layout";
 import { test } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
 
@@ -39,6 +40,23 @@ test.describe("Jarvis assistant", () => {
     ctx,
   }) => {
     await jarvis.expectDockedPanelSurvivesReload(ctx);
+  });
+
+  test("docks a panel under the dockview engine, survives reload docked, then unpins", async ({
+    ctx,
+  }) => {
+    // Task 10 (default flip) inverts this: when dockview becomes the
+    // default, the opening switch goes away and the in-house journey gains
+    // one instead.
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await jarvis.expectDockedPanelSurvivesReload(ctx);
+    // expectDockedPanelSurvivesReload ends with the panel back in the
+    // FLOATING layer (post-undock) — it sits on the desk above the header,
+    // so it intercepts the account menu's Preferences click below unless
+    // dismissed first.
+    await jarvis.dismissScriptedPanel(ctx);
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
   });
 
   test("flagship ride: narrator flare -> setupWorkspace drive batch assembles the vol workspace, cooldown holds", async ({

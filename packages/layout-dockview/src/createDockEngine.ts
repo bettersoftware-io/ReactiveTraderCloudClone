@@ -3,6 +3,7 @@ import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
 import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
+  withoutDynamicNodes,
   withoutLockMarks,
 } from "#/dockBlob";
 import {
@@ -101,6 +102,15 @@ export interface DockEngineOptions {
   onStripsChange?: (strips: DockStripMap) => void;
   /** Debounce for onLayoutChange serialisation; default 250. Tests pass 0. */
   debounceMs?: number;
+  /** The layer-2 docked set at construction (Jarvis panels the app already
+   * knows should be open) — reconciled against `blob`/`seed` right after
+   * restore: a listed id missing from the restored dock is added at the
+   * grid's right edge (its `initialPx` pinned, like {@link DockEngine.addDynamicPanel});
+   * a restored dynamic id no longer listed is removed. Arrangement for ids
+   * present in BOTH is kept verbatim — membership reconciles both ways, but
+   * a panel's position/stack within the dock is never second-guessed once
+   * it is there. Absent/empty → no dynamic panels at construction. */
+  dynamicPanels?: readonly DockDynamicPanel[];
 }
 
 /** The bar a collapsed group is clamped to, matching the in-house engine's
@@ -130,6 +140,17 @@ export type DockStripOrientation = "vertical" | "horizontal";
 /** Every currently collapsed panel and which way its strip reads. */
 export type DockStripMap = Readonly<Record<string, DockStripOrientation>>;
 
+/** A panel the app opens at runtime (Jarvis docking a GenUI card), rather
+ * than one seeded at mount. Always lands as its own new group at the grid's
+ * right edge — never stacked into an existing group — with `initialPx` held
+ * as a design pin exactly like a seeded rail's `initialPx`. */
+export interface DockDynamicPanel {
+  readonly id: string;
+  /** Rendered card width of the new right-edge group, px. Callers pass the
+   * client's DOCK_COLUMN_INITIAL_PX (360) — this package has no @rtc deps. */
+  readonly initialPx: number;
+}
+
 export interface DockEngine {
   /** Fill the panel's maximize boundary with it — the whole dock, or its
    * nearest enclosing column for a `"nearest-column"` panel — by stripping
@@ -156,6 +177,14 @@ export interface DockEngine {
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
+  /** Opens `panel` as a new group at the grid's right edge, pinned at its
+   * `initialPx` card width exactly like a seeded rail. No-op if the id
+   * already exists in the dock. */
+  addDynamicPanel(panel: DockDynamicPanel): void;
+  /** Closes a dynamic panel and its group, restoring whatever it stripped or
+   * collapsed (maximize boundary, strip ledger) before it goes. No-op for an
+   * unknown id. */
+  removeDynamicPanel(panelId: string): void;
   /** Remove the panel from the grid entirely — the layer-2 `closed` set's
    * mechanism (the View menu's uncheck). Any strip record it holds is
    * released first (no orphan restore bar), closing the maximized panel
@@ -874,6 +903,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Pins one newly-added panel's group at its design width — a dynamic
+   * panel's own `applyDesignPins` of one, so it is held exactly like a
+   * seeded rail's `initialPx` and released the same way on a sash drag. */
+  function registerDesignPin(pin: DockDesignPin): void {
+    applyDesignPins([pin]);
+  }
+
   /** Lifts every design pin whose declaring split owns `sashSplit`'s sash —
    * the user is taking over that split, exactly as an in-house drag converts
    * its split to fractions. A pinned panel that is currently a STRIP has its
@@ -993,7 +1029,126 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     window.removeEventListener("pointerup", disarmSashUnpin, true);
   }
 
+  /** Opens `panel` as a brand-new group at the grid's right edge — never
+   * stacked into an existing one — and pins it at its design width exactly
+   * like a seeded rail. No-op if the id is already in the dock. */
+  function insertDynamicPanel(panel: DockDynamicPanel): void {
+    if (api.getPanel(panel.id) !== undefined) {
+      return;
+    }
+
+    api.addPanel({
+      id: panel.id,
+      component: RTC_PANEL_COMPONENT,
+      title: opts.panels.title(panel.id),
+      position: { direction: "right" },
+      initialWidth: panel.initialPx + GROUP_GAP_PX,
+    });
+    registerDesignPin({
+      panelIds: [panel.id],
+      px: panel.initialPx,
+      axis: "width",
+    });
+
+    // A panel docked while a maximize is live must not land full-size next
+    // to a dock of 32px strips — force it into the maximize's own strip set
+    // via the SAME path maximizePanel uses (recordStrip, including its lock
+    // semantics), and fold it into `maximized.stripped` so exitMaximize
+    // restores it like any other panel the maximize forced.
+    if (maximized !== null && recordStrip(panel.id)) {
+      maximized = {
+        ...maximized,
+        stripped: [...maximized.stripped, panel.id],
+      };
+      glide(settleStrips);
+    }
+  }
+
+  /** Closes a dynamic panel and its group. Restores anything the panel's own
+   * maximize or collapse left behind before it goes — a maximize this panel
+   * is the OWNER of releases in full (so the survivors' sizes are read back
+   * while they still mean something), a strip it merely joined is dropped
+   * from the record, and its own collapse (if any) is released so the
+   * surrounding geometry settles before the group disappears. No-op for an
+   * unknown id. */
+  function deleteDynamicPanel(panelId: string): void {
+    const panel = api.getPanel(panelId);
+
+    if (panel === undefined) {
+      return;
+    }
+
+    if (maximized?.panelId === panelId) {
+      // releaseStrip (called per stripped id inside releaseMaximize) returns
+      // a restore closure per panel; every one of them is discarded here —
+      // deliberately. `settleStripFreeWorlds`, called below once this
+      // panel's own group is gone, re-derives the SAME put-back for any
+      // split whose membership is UNCHANGED by the removal (its captured
+      // pre-strip world still matches), so calling the closures too would
+      // just re-assert what it already restores. What this does NOT cover:
+      // this panel's own split loses a member (this group), so that split's
+      // captured world is voided rather than replayed (the membership-change
+      // rule — audit S3) — a DIRECT SIBLING living in that same split (not
+      // this panel itself, which is leaving regardless) therefore gets no
+      // explicit put-back here; dockview's own resize distribution decides
+      // its size once it inherits the freed space. Acceptable: the freed
+      // space must land somewhere, and a sibling's own pre-maximize size is
+      // no longer the only defensible answer once its split's shape changed.
+      releaseMaximize();
+    } else if (maximized !== null) {
+      maximized = {
+        ...maximized,
+        stripped: maximized.stripped.filter((id) => {
+          return id !== panelId;
+        }),
+      };
+    }
+
+    if (records.has(panelId)) {
+      // Restore the surrounding geometry while the group still exists.
+      releaseStrip(panelId);
+      records.delete(panelId); // releaseStrip bails on a gone group; belt-and-braces.
+    }
+
+    api.removePanel(panel);
+    settleStrips();
+    settleStripFreeWorlds();
+  }
+
   applyDesignPins(restored.pins);
+  reconcileDynamicPanels();
+  applyTitles(api, opts.panels); // reconciled-in panels get titles too
+
+  /** Membership-only reconciliation of `opts.dynamicPanels` against whatever
+   * `loadBlobOrSeed` just restored: a listed id already present (kept from
+   * the blob, or seeded — seeds never carry dynamic ids, but this stays
+   * generic) is left exactly where it landed; a listed id still absent is
+   * added at the right edge via the normal `insertDynamicPanel` path; a
+   * dynamic id the blob restored that is no longer listed is removed via
+   * `deleteDynamicPanel` — an orphan the app stopped tracking, not part of
+   * the seed. Runs once, at construction, after `loadBlobOrSeed`'s own
+   * scrub-and-retry net has already done what it can with a corrupt blob. */
+  function reconcileDynamicPanels(): void {
+    const staticIds = new Set(seedPanelIdsOf(opts.seed));
+    const listed = new Map(
+      (opts.dynamicPanels ?? []).map((panel) => {
+        return [panel.id, panel] as const;
+      }),
+    );
+
+    for (const panel of [...api.panels]) {
+      if (!staticIds.has(panel.id) && !listed.has(panel.id)) {
+        deleteDynamicPanel(panel.id);
+      }
+    }
+
+    for (const panel of listed.values()) {
+      if (api.getPanel(panel.id) === undefined) {
+        insertDynamicPanel(panel);
+      }
+    }
+  }
+
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
   return {
@@ -1097,6 +1252,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStripFreeWorlds();
       });
     },
+    addDynamicPanel: insertDynamicPanel,
+    removeDynamicPanel: deleteDynamicPanel,
     closePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
 
@@ -1696,7 +1853,31 @@ function loadBlobOrSeed(
 
       return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
     } catch {
-      // fall through to the seed
+      // One dynamic (Jarvis-docked) panel's node can go unrestorable on its
+      // own — a stale/mismatched shape the app never wrote itself — without
+      // the rest of the arrangement being at fault. Before giving up on the
+      // WHOLE blob, retry once with every non-static leaf scrubbed out; a
+      // static-only blob (or one this can't safely operate on) hands back
+      // `null` and falls straight through to the seed below, same as before.
+      const scrubbed = withoutDynamicNodes(
+        opts.blob,
+        seedPanelIdsOf(opts.seed),
+      );
+
+      if (scrubbed !== null) {
+        try {
+          const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
+          api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+
+          for (const group of api.groups) {
+            group.api.locked = false;
+          }
+
+          return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
+        } catch {
+          // fall through to the seed
+        }
+      }
     }
   }
 

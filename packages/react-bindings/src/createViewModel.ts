@@ -420,6 +420,17 @@ export interface ViewModel {
    * a stable, composition-owned function, so the hook is a direct
    * passthrough with no further wrapping. */
   useWorkspaceReset: () => () => void;
+  /** The layer-2 docked membership for ONE workspace tab — the plain-value
+   * form of `Presenters.dockedPanelIdsFor(tab)`. Keyed `bind()` like
+   * `useCandles`/`useDepth` (a factory function, not a static field), since
+   * the source is a per-tab stream. Starts empty. Consumed by the Dockview
+   * bridge (Tasks 5-6) to reconcile its dynamic panels against the live
+   * docked set. */
+  useDockedPanelIds: (tab: WorkspaceTab) => readonly string[];
+  /** Bumps once per workspace-layout reset — the plain-value form of
+   * `Presenters.workspaceLayoutResets$`. The Dockview bridges key their
+   * engine rebuild on it. Starts 0. */
+  useWorkspaceLayoutResets: () => number;
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
   useBootSequence: (onDone: () => void) => UseBootSequenceResult;
@@ -905,6 +916,22 @@ export function createViewModel(
     [] as readonly JarvisPanelVm[],
   );
 
+  // Keyed bind — one cached stream per tab, mirroring useJarvisPanelDataValue
+  // above (a factory function keyed by an arg) rather than the plain bind()
+  // most hooks here use, since dockedPanelIdsFor is a genuinely per-tab
+  // stream.
+  const [useDockedPanelIds] = bind(
+    (tab: WorkspaceTab) => {
+      return presenters.dockedPanelIdsFor(tab);
+    },
+    [] as readonly string[],
+  );
+
+  const [useWorkspaceLayoutResetsValue] = bind(
+    presenters.workspaceLayoutResets$,
+    0,
+  );
+
   // Docked-safe dismissal — see `Presenters.dismissPanel`'s doc. Routes
   // through composition's `dismissPanelFromWorkspace`, not the raw
   // `JarvisPanelsPresenter.dismissPanel`, so a docked panel's layout leaf is
@@ -1303,6 +1330,8 @@ export function createViewModel(
     useWorkspaceReset: () => {
       return presenters.resetWorkspaceLayout;
     },
+    useDockedPanelIds,
+    useWorkspaceLayoutResets: useWorkspaceLayoutResetsValue,
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
         return machines.boot(onDone);

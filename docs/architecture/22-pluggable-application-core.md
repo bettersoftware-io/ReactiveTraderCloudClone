@@ -133,8 +133,8 @@ to reproduce them explicitly:
 `@rtc/core-contract` mirrors `@rtc/ui-contract`'s shape at a different
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
-and `commands.reconnect` (69 members at slice 0: 57 presenters, 11 machines,
-1 command). Adding a member to `Presenters` or `MachineFactories` without
+and `commands.reconnect` (71 members: 59 presenters, 11 machines, 1
+command). Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 
@@ -144,7 +144,7 @@ appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
 fails. At slice 0, six members have real suites (`connection`,
 `themePreference`, `themeSkinPreference`, `viewModePreference`, `powerSaver`,
-`commands.reconnect` — slice 1a's scope) and 63 are pending. Each suite
+`commands.reconnect` — slice 1a's scope) and 65 are pending. Each suite
 subscribes to the member's `Stream`/`StateStream`, drives a scripted
 `AppPorts` harness (`scriptPorts` — Subject-backed streams, an
 intent-named `driver`), advances vitest's fake timers, and asserts only at

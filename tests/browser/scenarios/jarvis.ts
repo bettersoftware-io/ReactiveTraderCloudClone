@@ -249,6 +249,21 @@ export async function expectDockedPanelSurvivesReload(
   );
 }
 
+/**
+ * Dismisses the scripted GBP-volatility panel (the same `SCRIPTED_PANEL_ID`
+ * {@link expectDockedPanelSurvivesReload} docks/undocks) via its own ✕
+ * control and waits for the floating layer to be empty. NOT folded into
+ * `expectDockedPanelSurvivesReload` itself — other callers of that shared
+ * scenario want the ride to end with the panel still floating. A caller
+ * that needs to drive the header chrome afterwards (e.g. the account menu's
+ * Preferences trigger) needs this first: the floating panel sits on the
+ * desk layer above the header and otherwise intercepts that click.
+ */
+export async function dismissScriptedPanel(ctx: TestContext): Promise<void> {
+  await ctx.po.jarvis.dismissPanel(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForNoPanels();
+}
+
 /** The layout panel id the scripted vol-workspace drive batch maximizes
  * (see `SCRIPTED_VOL_WORKSPACE_BATCH` in ScriptedJarvisEngine.ts). */
 const EQ_CHART_PANEL_ID = "eq-chart";
