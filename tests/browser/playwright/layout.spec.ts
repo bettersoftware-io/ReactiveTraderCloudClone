@@ -68,4 +68,15 @@ test.describe("Layout engine", () => {
     await layout.dragBlotterOntoCollapsedAnalyticsIsRejected(ctx, 4);
     await layout.expandAnalyticsPanel(ctx);
   });
+
+  test("popping a panel out opens a live child window and closing it docks the panel home", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "inhouse");
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.popoutBlotterShowsLiveContentAndDocksHomeOnClose(ctx);
+  });
 });
