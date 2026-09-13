@@ -106,9 +106,7 @@ export interface MountOptions<P> {
    * World per `mount()` call, but a spec that needs both Worlds' page objects
    * reaches for `createWorld` + `mountWith`). */
   workspaceLayout?: string | null;
-  /** Seeds `useLayoutEngine`; defaults to the literal "inhouse" (pinned
-   * independently of DEFAULT_LAYOUT_ENGINE, now "dockview" — see
-   * `harness/world.ts`'s `layoutEngine` seed for why). */
+  /** Seeds `useLayoutEngine`; defaults to DEFAULT_LAYOUT_ENGINE ("inhouse"). */
   layoutEngine?: LayoutEngine;
 }
 

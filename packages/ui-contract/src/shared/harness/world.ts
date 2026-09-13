@@ -42,6 +42,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -626,9 +627,7 @@ export function createWorld(
   jarvisNarratorSeed?: JarvisNarratorPreference,
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
   chartSubstrateSeed?: ChartSubstrate,
-  /** Seeds `World.layoutEngine`; defaults to the literal "inhouse" (pinned
-   * independently of DEFAULT_LAYOUT_ENGINE, now "dockview" — see the harness
-   * body for why). */
+  /** Seeds `World.layoutEngine`; defaults to DEFAULT_LAYOUT_ENGINE ("inhouse"). */
   layoutEngineSeed?: LayoutEngine,
   /** Seeds `World.workspaceLayout` (GenUI L3) — the serialized
    * `workspaceLayoutV1` string a previous session would have stored.
@@ -824,12 +823,8 @@ export function createWorld(
 
   const workspaceLayoutResets = new BehaviorSubject<number>(0);
 
-  // Pinned to the literal "inhouse", NOT DEFAULT_LAYOUT_ENGINE (which flipped
-  // to "dockview"): contract specs that assume the in-house engine seed it
-  // implicitly through this fallback rather than passing layoutEngineSeed
-  // explicitly every time — flipping this fallback broke three spec files.
   const layoutEngine = new BehaviorSubject<LayoutEngine>(
-    layoutEngineSeed ?? "inhouse",
+    layoutEngineSeed ?? DEFAULT_LAYOUT_ENGINE,
   );
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors

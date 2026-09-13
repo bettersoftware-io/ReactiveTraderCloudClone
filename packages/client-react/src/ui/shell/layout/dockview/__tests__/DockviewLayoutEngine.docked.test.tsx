@@ -77,52 +77,6 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 
-  // Task 10 (default flip): `data-maximized` mirrors InhouseLayoutEngine's
-  // own root attribute exactly (the maximized panel id, or "" when none) —
-  // the engine-agnostic witness `waitPanelMaximized` (tests/browser) now
-  // reads, since dockview is the default engine.
-  it("mirrors the maximized prop onto the engine root's data-maximized attribute", () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized="fx-rates"
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-      />,
-    );
-
-    expect(page.maximizedAttr()).toBe("fx-rates");
-  });
-
-  it("reports an empty data-maximized when no panel is maximized", () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-      />,
-    );
-
-    expect(page.maximizedAttr()).toBe("");
-  });
-
   // Post-merge verification (docking x closed interplay, 2026-09-13): a
   // dynamic (docked) id has no LEGAL path into the layer-2 `closed` set —
   // LayoutMachine's `close` reducer no-ops unless the target is one of the

@@ -15,6 +15,7 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
+  DEFAULT_LAYOUT_ENGINE,
   type LogEvent,
   type MetricSample,
   type SessionInfo,
@@ -286,13 +287,11 @@ const DOCK_LAYOUT_STORE: ReturnType<ViewModel["useDockLayoutStore"]> = {
   clear: noop,
 };
 
-/** Layout-engine preference: pinned to the literal "inhouse", not
- * `DEFAULT_LAYOUT_ENGINE` (now "dockview" for the web clients). No RN surface
- * offers the Dockview alternative — it is a web-only engine, RN has no
- * Dockview bridge — so this never varies and the web default doesn't apply
- * here. */
+/** Layout-engine preference: the in-house split tree, which is the domain's
+ * own default (`DEFAULT_LAYOUT_ENGINE`). No RN surface offers the Dockview
+ * alternative — it is a web-only engine — so this never varies. */
 const LAYOUT_ENGINE_RESULT: ReturnType<ViewModel["useLayoutEngine"]> = {
-  engine: "inhouse",
+  engine: DEFAULT_LAYOUT_ENGINE,
   setEngine: noop,
 };
 
