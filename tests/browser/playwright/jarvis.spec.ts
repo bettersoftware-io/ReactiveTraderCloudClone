@@ -1,4 +1,5 @@
 import * as jarvis from "../scenarios/jarvis";
+import * as layout from "../scenarios/layout";
 import { test } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
 
@@ -39,6 +40,15 @@ test.describe("Jarvis assistant", () => {
     ctx,
   }) => {
     await jarvis.expectDockedPanelSurvivesReload(ctx);
+  });
+
+  test("docks a panel under the dockview engine, survives reload docked, then unpins", async ({
+    ctx,
+  }) => {
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await jarvis.expectDockedPanelSurvivesReload(ctx);
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
   });
 
   test("flagship ride: narrator flare -> setupWorkspace drive batch assembles the vol workspace, cooldown holds", async ({

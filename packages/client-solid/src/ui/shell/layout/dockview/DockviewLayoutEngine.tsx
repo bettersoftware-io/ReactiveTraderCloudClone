@@ -144,6 +144,28 @@ export function DockviewLayoutEngine(
         return [...prev, { panelId, element, slot }];
       });
 
+      // A dynamically-docked Jarvis panel always lands in its own solo
+      // group (see `DockDynamicPanel`'s doc: "never stacked into an
+      // existing group"), so that group's own DOM root doubles, safely and
+      // unambiguously, as the shared `panel-<id>` leaf testid
+      // `InhouseLayoutEngine`'s `PanelLeaf` carries — the one `jarvis.ts`'s
+      // `waitForPanelDockedLive`/`isPanelDocked` key on, engine-
+      // agnostically. Dockview itself never gives a single DOM node
+      // spanning both the tab (head, holding the unpin control) and
+      // content (body) slots — they're separate subtrees it manages — so
+      // this reaches for the one ancestor dockview DOES share between
+      // them: `.dv-groupview`, the same internal class name `Layout.ts`'s
+      // drag helper already keys off (`.dv-tab`). A no-op for a static
+      // panel (never in `props.docked`), whose group may legitimately be
+      // shared/stacked with siblings. Reading `props.docked` here (rather
+      // than a ref, react's twin) is correct for the same reason `titleOf`/
+      // `specs()` above read straight through the reactive prop getter.
+      if (props.docked.includes(panelId)) {
+        element
+          .closest<HTMLElement>(".dv-groupview")
+          ?.setAttribute("data-testid", `panel-${panelId}`);
+      }
+
       return () => {
         setMounted((prev) => {
           return prev.filter((p) => {

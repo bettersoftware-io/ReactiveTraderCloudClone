@@ -26,7 +26,8 @@ const PANEL_RENDERER_TIMEOUT_MS = 15_000;
  * reduced-motion) before the underlying intent fires — generous for CI. */
 const PANEL_DISMISS_TIMEOUT_MS = 15_000;
 
-/** The docked leaf (`InhouseLayoutEngine`'s `panel-<id>` section) mounts
+/** The docked leaf (a `panel-<id>` section, mounted via either engine's own
+ * panel registry — `InhouseLayoutEngine` or `DockviewLayoutEngine`) mounts
  * synchronously off the same `dockedPanels` VM list `dockPanel`'s click
  * updates, and its body renderer one tick after that (own `data$`
  * subscription, same as the floating card) — generous for CI. */
