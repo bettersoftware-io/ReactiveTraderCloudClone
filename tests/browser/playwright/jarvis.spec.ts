@@ -51,6 +51,11 @@ test.describe("Jarvis assistant", () => {
     await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
     await layout.expectEngine(ctx, "dockview");
     await jarvis.expectDockedPanelSurvivesReload(ctx);
+    // expectDockedPanelSurvivesReload ends with the panel back in the
+    // FLOATING layer (post-undock) — it sits on the desk above the header,
+    // so it intercepts the account menu's Preferences click below unless
+    // dismissed first.
+    await jarvis.dismissScriptedPanel(ctx);
     await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
   });
 
