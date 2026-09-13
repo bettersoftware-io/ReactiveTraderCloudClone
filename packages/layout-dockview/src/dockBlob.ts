@@ -197,3 +197,254 @@ function liftSizeOf(entry: unknown, gap: number): unknown {
 
   return typeof size === "number" ? { ...entry, size: size + gap } : entry;
 }
+
+/** A blob that MAY carry a `panels` dictionary, loosely. */
+interface PanelsCarrier {
+  readonly panels?: unknown;
+}
+
+/** One grid leaf's `data`, loosely — the tab ids it stacks and which one is
+ * active. */
+interface UnverifiedLeafData {
+  readonly views?: unknown;
+  readonly activeView?: unknown;
+}
+
+/** Mutable removal tally threaded through {@link removeDynamicViews} — a
+ * plain boolean box rather than a return value, since a node's OWN return
+ * (its possibly-scrubbed replacement, or `null` if it disappeared entirely)
+ * already carries different meaning. */
+interface RemovalTally {
+  any: boolean;
+}
+
+/**
+ * Strips every dynamic-panel node out of a serialized blob — the partial net
+ * `loadBlobOrSeed` reaches for when a full `fromJSON` fails, so one
+ * unrestorable Jarvis-docked panel does not degrade an otherwise-healthy
+ * static arrangement all the way down to the seed.
+ *
+ * Pure (no dockview import): parses `blob`, drops every `panels` entry whose
+ * id is not in `staticIds`, and walks `grid.root` removing any id NOT in
+ * `staticIds` from each leaf's `views` — a leaf empties, it is dropped; a
+ * NON-root branch left with exactly one surviving child collapses into that
+ * child directly, so scrubbing never leaves a shape dockview would not
+ * itself have produced. The ROOT branch is exempt from that collapse — it
+ * stays a branch even with a single surviving child (donating the removed
+ * sibling's freed size onto that child, same as any other survivor) —
+ * because dockview's `fromJSON` rejects a leaf root outright ("root must be
+ * of type branch", verified against 7.0.4; `convertSeed`'s own lone-panel
+ * wrap exists for the identical reason). Reachable in practice: a
+ * single-panel seed tab (e.g. Admin) with one Jarvis-docked panel serializes
+ * as exactly `[static leaf, dynamic leaf]` at the root, and scrubbing the
+ * dynamic leaf must not turn that root into a bare leaf. Membership is
+ * checked against `staticIds` directly, not against the `panels`
+ * dictionary's own keys, so a leaf `views` entry with no matching `panels`
+ * entry at all — an unrestorable node's other common corrupt shape — is
+ * scrubbed exactly like one whose `panels` entry survived but was malformed.
+ *
+ * Limit: this only walks `grid.root` and `panels` — a dynamic panel torn
+ * off into its own floating or popout window (`floatingGroups`/
+ * `popoutGroups`, both outside `grid`) is not reachable here and is not
+ * scrubbed. Fail-safe, not a silent gap: an unrestorable node living only in
+ * one of those stays unrestorable, the retry's own `fromJSON` still throws,
+ * and `loadBlobOrSeed` falls through to the seed exactly as it did before
+ * this partial net existed.
+ *
+ * Returns `null` — the caller's cue to fall straight to the seed — when
+ * nothing was actually dynamic (a static-only blob, so nothing was removed),
+ * or when the blob's shape is not one this can safely operate on
+ * (unparseable JSON, or a missing/malformed `grid`/`panels`): it never
+ * guesses at a shape it cannot verify.
+ */
+export function withoutDynamicNodes(
+  blob: string,
+  staticIds: readonly string[],
+): string | null {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(blob);
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return null;
+  }
+
+  const carrier = parsed as UnverifiedBlob & PanelsCarrier;
+  const grid = carrier.grid;
+  const panels = carrier.panels;
+
+  if (
+    typeof grid !== "object" ||
+    grid === null ||
+    typeof panels !== "object" ||
+    panels === null
+  ) {
+    return null;
+  }
+
+  const staticSet = new Set(staticIds);
+  const panelEntries = Object.entries(panels as Record<string, unknown>);
+  const remainingPanelEntries = panelEntries.filter(([id]) => {
+    return staticSet.has(id);
+  });
+
+  const tally: RemovalTally = {
+    any: remainingPanelEntries.length !== panelEntries.length,
+  };
+
+  const root = removeDynamicViews(
+    (grid as UnverifiedGrid).root,
+    staticSet,
+    tally,
+    true, // isRoot — never collapsed away, see the doc comment above
+  );
+
+  if (!tally.any) {
+    return null;
+  }
+
+  if (root === null) {
+    return null;
+  }
+
+  return JSON.stringify({
+    ...carrier,
+    grid: { ...grid, root },
+    panels: Object.fromEntries(remainingPanelEntries),
+  });
+}
+
+/** A grid node that MAY carry a numeric `size` — every branch/leaf does in
+ * practice, but this walks unverified input. */
+interface UnverifiedSized {
+  readonly size?: unknown;
+}
+
+function sizeOf(node: unknown): number {
+  const size = (node as UnverifiedSized | null)?.size;
+
+  return typeof size === "number" ? size : 0;
+}
+
+/** Removes every view id NOT in `staticIds` from one grid node's leaves,
+ * recursively, marking `tally.any` the first time a view is actually
+ * dropped. `null` means the node itself disappeared — an emptied leaf, or a
+ * branch every child of which disappeared (never true for `isRoot`, which
+ * always keeps its own branch wrapper — see below).
+ *
+ * A branch that loses a direct child donates that child's freed `size` to
+ * the LARGEST surviving sibling rather than leaving every survivor's `size`
+ * as-is (dockview's own deserializer falls back to redistributing a
+ * mismatched branch EVENLY across every child once its children's sizes no
+ * longer sum to the branch's own — exactly the failure mode this function
+ * exists to avoid, since it would just as happily blow up a sibling's
+ * deliberately-narrow strip, e.g., a panel a user had collapsed, as it would
+ * a full-size one). Donating to the largest — presumed the main content
+ * area, not a fixed/pinned/collapsed one — leaves every other survivor's own
+ * `size` exactly as persisted. This is a heuristic, not a guarantee: between
+ * two similarly-sized survivors it may donate to the "wrong" one, but a
+ * wrong donation is self-correcting — it only misjudges an initial size on
+ * the degraded-blob path, and the very next save (or a user's own sash
+ * drag) persists whatever the layout actually settles at.
+ *
+ * A NON-root branch left with exactly one surviving child collapses into
+ * that child directly (rather than persisting as a single-child branch),
+ * inheriting the DEAD branch's own `size` — the survivor's previous `size`
+ * was along the dead branch's own (orthogonal) axis, not its parent's. The
+ * ROOT branch is exempt from this collapse: donation still applies (its
+ * sole surviving child absorbs the freed space, same as any other
+ * survivor), but the branch wrapper itself is kept — see
+ * {@link withoutDynamicNodes}'s own doc comment for why. */
+function removeDynamicViews(
+  node: unknown,
+  staticIds: ReadonlySet<string>,
+  tally: RemovalTally,
+  isRoot: boolean,
+): unknown | null {
+  if (typeof node !== "object" || node === null) {
+    return node;
+  }
+
+  const { type, data } = node as UnverifiedGridNode;
+
+  if (type === "branch" && Array.isArray(data)) {
+    let freedSize = 0;
+    const children = data
+      .map((child: unknown) => {
+        const result = removeDynamicViews(child, staticIds, tally, false);
+
+        if (result === null) {
+          freedSize += sizeOf(child);
+        }
+
+        return result;
+      })
+      .filter((child): child is NonNullable<typeof child> => {
+        return child !== null;
+      });
+
+    if (children.length === 0) {
+      return null;
+    }
+
+    if (freedSize > 0) {
+      const sizes = children.map(sizeOf);
+      const largestIndex = sizes.indexOf(Math.max(...sizes));
+      const largest = children[largestIndex] as Record<string, unknown>;
+      children[largestIndex] = {
+        ...largest,
+        size: sizeOf(largest) + freedSize,
+      };
+    }
+
+    if (children.length === 1 && !isRoot) {
+      const survivor = children[0];
+
+      return typeof (node as UnverifiedSized).size === "number"
+        ? { ...(survivor as object), size: (node as UnverifiedSized).size }
+        : survivor;
+    }
+
+    return { ...node, data: children };
+  }
+
+  if (type === "leaf") {
+    const leafData = data as UnverifiedLeafData | undefined;
+
+    if (
+      typeof leafData !== "object" ||
+      leafData === null ||
+      !Array.isArray(leafData.views)
+    ) {
+      return node;
+    }
+
+    const views = leafData.views.filter((id: unknown) => {
+      return typeof id !== "string" || staticIds.has(id);
+    });
+
+    if (views.length === leafData.views.length) {
+      return node;
+    }
+
+    tally.any = true;
+
+    if (views.length === 0) {
+      return null;
+    }
+
+    const activeView =
+      typeof leafData.activeView === "string" &&
+      !staticIds.has(leafData.activeView)
+        ? views[0]
+        : leafData.activeView;
+
+    return { ...node, data: { ...leafData, views, activeView } };
+  }
+
+  return node;
+}

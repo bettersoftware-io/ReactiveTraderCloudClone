@@ -13,4 +13,8 @@ export class InMemoryDockLayoutStore implements DockLayoutStore {
   save(tab: string, blob: string): void {
     this.blobs.set(tab, blob);
   }
+
+  clear(tab: string): void {
+    this.blobs.delete(tab);
+  }
 }

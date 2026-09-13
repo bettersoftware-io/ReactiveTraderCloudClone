@@ -3,6 +3,7 @@
 // GREEN: SessionsKpiPresenter wired into composition + createViewModel → passes.
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,6 +12,7 @@ import {
   createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
+  type Presenters,
   SessionsKpiPresenter,
 } from "@rtc/client-core";
 import {
@@ -102,6 +104,66 @@ describe("createViewModel — admin hooks", () => {
       vizKind: "line",
     });
   }, 8_000);
+
+  it("useDockedPanelIds reads the presenter's per-tab docked-id stream", () => {
+    const { presenters, commands } = createApp(createSimPorts());
+    const fakePresenters: Presenters = {
+      ...presenters,
+      dockedPanelIdsFor: () => {
+        return of(["panel-x"]);
+      },
+    };
+
+    const hooks = createViewModel(
+      fakePresenters,
+      createMachineFactories(fakePresenters),
+      commands,
+    );
+
+    const { result } = renderHook(() => {
+      return hooks.useDockedPanelIds("fx");
+    });
+
+    expect(result.current).toEqual(["panel-x"]);
+  });
+
+  it("useDockedPanelIds defaults to an empty array before the presenter emits", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useDockedPanelIds("fx");
+    });
+
+    expect(result.current).toEqual([]);
+  });
+
+  it("useWorkspaceLayoutResets reads the presenter's reset counter", () => {
+    const { presenters, commands } = createApp(createSimPorts());
+    const fakePresenters: Presenters = {
+      ...presenters,
+      workspaceLayoutResets$: of(2),
+    };
+
+    const hooks = createViewModel(
+      fakePresenters,
+      createMachineFactories(fakePresenters),
+      commands,
+    );
+
+    const { result } = renderHook(() => {
+      return hooks.useWorkspaceLayoutResets();
+    });
+
+    expect(result.current).toBe(2);
+  });
+
+  it("useWorkspaceLayoutResets defaults to 0", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useWorkspaceLayoutResets();
+    });
+
+    expect(result.current).toBe(0);
+  });
 });
 
 function makeHooks(): ViewModel {

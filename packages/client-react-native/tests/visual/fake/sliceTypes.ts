@@ -139,6 +139,7 @@ export type AnalyticsSlice = Pick<
 export type InertSlice = Pick<
   ViewModel,
   | "useAnimationIntents"
+  | "useDockedPanelIds"
   | "useDockLayoutStore"
   | "useEventLog"
   | "useJarvis"
@@ -155,6 +156,7 @@ export type InertSlice = Pick<
   | "useSessions"
   | "useThroughput"
   | "useTopology"
+  | "useWorkspaceLayoutResets"
   | "useWorkspaceNav"
   | "useWorkspaceReset"
 >;

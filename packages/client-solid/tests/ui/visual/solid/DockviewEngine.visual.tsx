@@ -69,6 +69,8 @@ export function DockviewEngineVisual(): JSX.Element {
         maximized={null}
         collapsed={[]}
         closed={[]}
+        docked={[]}
+        layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
@@ -98,6 +100,8 @@ export function DockviewEngineStackedVisual(): JSX.Element {
         maximized={null}
         collapsed={[]}
         closed={[]}
+        docked={[]}
+        layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}

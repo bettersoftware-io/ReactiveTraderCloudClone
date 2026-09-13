@@ -77,6 +77,8 @@ export function DockviewEngineVisual(): ReactElement {
         maximized={null}
         collapsed={[]}
         closed={[]}
+        docked={[]}
+        layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
@@ -114,6 +116,8 @@ export function DockviewEngineStackedVisual(): ReactElement {
         maximized={null}
         collapsed={[]}
         closed={[]}
+        docked={[]}
+        layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}

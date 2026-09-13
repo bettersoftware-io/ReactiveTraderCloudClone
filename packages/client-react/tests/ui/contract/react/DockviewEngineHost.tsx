@@ -27,6 +27,7 @@ export function DockviewEngineHost({
   withHeads,
   maximized,
   collapsed,
+  docked,
   interactive,
   specsVariant,
 }: DockviewEngineHostProps): ReactElement {
@@ -86,6 +87,9 @@ export function DockviewEngineHost({
         });
         setLastBlob(blob);
       },
+      clear: (tab: string): void => {
+        inner.clear(tab);
+      },
     };
   }
 
@@ -126,6 +130,12 @@ export function DockviewEngineHost({
             : ((collapsed as readonly PanelId[] | undefined) ?? [])
         }
         closed={[]}
+        docked={(docked as readonly PanelId[] | undefined) ?? []}
+        // Inert: no case in DockviewEngine.contract.spec.ts exercises a
+        // workspace-reset rebuild (that behaviour lives in
+        // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
+        // bumps past the mount-time no-op.
+        layoutResets={0}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}
@@ -169,6 +179,10 @@ interface DockviewEngineHostProps {
   withHeads?: boolean;
   maximized?: string | null;
   collapsed?: readonly string[];
+  /** Threaded straight into `DockviewLayoutEngine`'s `docked` prop (Task 7).
+   * A docked id needs its own `layoutTestRegistry` entry to render a body —
+   * see `panel-desk-heat` there. */
+  docked?: readonly string[];
   interactive?: boolean;
   specsVariant?: SpecsVariant;
 }

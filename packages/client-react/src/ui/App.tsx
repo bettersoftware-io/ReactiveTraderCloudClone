@@ -77,9 +77,17 @@ const DockviewLayoutEngine = lazy(() => {
 });
 
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout, useJarvisPanels, useLayoutEngine, useDockLayoutStore } =
-    useViewModel();
+  const {
+    useLayout,
+    useJarvisPanels,
+    useLayoutEngine,
+    useDockLayoutStore,
+    useDockedPanelIds,
+    useWorkspaceLayoutResets,
+  } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+  const docked = useDockedPanelIds(tab);
+  const layoutResets = useWorkspaceLayoutResets();
   // The in-house engine renders the VISIBLE projection: View-menu-closed
   // leaves are pruned from the tree it sees (visibleRootOf is referentially
   // stable when nothing is closed). The Dockview branch keeps the raw state
@@ -107,12 +115,6 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
       <CreditViewProvider>
         {engine === "dockview" ? (
           <Suspense fallback={null}>
-            {/* Same merged registries as the in-house branch: dockview looks
-                a docked panel's body/head/spec up by id exactly as the
-                in-house engine does. Its SEED tree is still the static
-                default (createDefaultLayoutPort), so a pinned panel only
-                surfaces here once its id is in the persisted blob — docking
-                a Jarvis panel INTO dockview is not wired this round. */}
             <DockviewLayoutEngine
               tab={tab}
               registry={registry}
@@ -122,6 +124,8 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               maximized={state.maximized}
               collapsed={state.collapsed}
               closed={state.closed}
+              docked={docked}
+              layoutResets={layoutResets}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}

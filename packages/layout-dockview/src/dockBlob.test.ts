@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
+  withoutDynamicNodes,
   withoutLockMarks,
 } from "#/dockBlob";
 import { toSerializedDockview } from "#/dockSeed";
@@ -177,6 +178,160 @@ describe("withoutLockMarks (derived lock state never persists)", () => {
   it("passes malformed input through unchanged", () => {
     expect(withoutLockMarks(null)).toBe(null);
     expect(withoutLockMarks("nope")).toBe("nope");
+  });
+});
+
+describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", () => {
+  const STATIC_IDS = ["rates", "blotter"] as const;
+
+  it("removes one dynamic leaf, dropping its panels entry and its views entry", () => {
+    const blob = JSON.stringify({
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "leaf",
+              size: 526,
+              data: { id: "g-rates", views: ["rates"], activeView: "rates" },
+            },
+            {
+              type: "leaf",
+              size: 273,
+              data: {
+                id: "g-blotter",
+                views: ["blotter"],
+                activeView: "blotter",
+              },
+            },
+            {
+              type: "leaf",
+              size: 367,
+              data: {
+                id: "g-dyn",
+                views: ["panel-dyn-1"],
+                activeView: "panel-dyn-1",
+              },
+            },
+          ],
+        },
+      },
+      panels: {
+        rates: { id: "rates" },
+        blotter: { id: "blotter" },
+        "panel-dyn-1": { id: "panel-dyn-1" },
+      },
+    });
+
+    const scrubbed = JSON.parse(
+      withoutDynamicNodes(blob, STATIC_IDS) ?? "null",
+    );
+
+    expect(scrubbed.panels).toEqual({
+      rates: { id: "rates" },
+      blotter: { id: "blotter" },
+    });
+    const leaves = (
+      scrubbed.grid.root.data as { data: { views: string[] } }[]
+    ).map((leaf) => {
+      return leaf.data.views;
+    });
+    expect(leaves).toEqual([["rates"], ["blotter"]]);
+    // the removed leaf's size (367) is donated to a survivor, not dropped —
+    // the branch's children still sum to the pre-removal total (1166).
+    const sizes = (scrubbed.grid.root.data as { size: number }[]).map(
+      (leaf) => {
+        return leaf.size;
+      },
+    );
+    expect(sizes[0] + sizes[1]).toBe(526 + 273 + 367);
+  });
+
+  it("returns null for a static-only blob — nothing was dynamic", () => {
+    const blob = JSON.stringify({
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "leaf",
+              size: 526,
+              data: { id: "g-rates", views: ["rates"], activeView: "rates" },
+            },
+            {
+              type: "leaf",
+              size: 273,
+              data: {
+                id: "g-blotter",
+                views: ["blotter"],
+                activeView: "blotter",
+              },
+            },
+          ],
+        },
+      },
+      panels: { rates: { id: "rates" }, blotter: { id: "blotter" } },
+    });
+
+    expect(withoutDynamicNodes(blob, STATIC_IDS)).toBeNull();
+  });
+
+  it("keeps a one-child root a branch — dockview rejects a leaf root", () => {
+    // A single-panel seed tab (e.g. Admin) with one Jarvis-docked panel: the
+    // root branch has exactly [static leaf, dynamic leaf]. Removing the
+    // dynamic leaf must NOT collapse root down to a bare leaf — dockview's
+    // own fromJSON rejects that shape outright ("root must be of type
+    // branch"), which would otherwise force the whole tab to seed.
+    const blob = JSON.stringify({
+      grid: {
+        root: {
+          type: "branch",
+          data: [
+            {
+              type: "leaf",
+              size: 833,
+              data: { id: "g-admin", views: ["admin"], activeView: "admin" },
+            },
+            {
+              type: "leaf",
+              size: 367,
+              data: {
+                id: "g-dyn",
+                views: ["panel-dyn-1"],
+                activeView: "panel-dyn-1",
+              },
+            },
+          ],
+        },
+      },
+      panels: {
+        admin: { id: "admin" },
+        "panel-dyn-1": { id: "panel-dyn-1" },
+      },
+    });
+
+    const scrubbed = JSON.parse(withoutDynamicNodes(blob, ["admin"]) ?? "null");
+
+    expect(scrubbed.panels).toEqual({ admin: { id: "admin" } });
+    expect(scrubbed.grid.root.type).toBe("branch");
+    expect(scrubbed.grid.root.data).toHaveLength(1);
+    expect(scrubbed.grid.root.data[0].data.views).toEqual(["admin"]);
+    // the removed leaf's freed size (367) is donated to the sole survivor —
+    // the same donation rule as any other branch, not dropped on the floor.
+    expect(scrubbed.grid.root.data[0].size).toBe(833 + 367);
+  });
+
+  it("returns null for garbage — unparseable, or missing grid/panels", () => {
+    expect(withoutDynamicNodes("not json", STATIC_IDS)).toBeNull();
+    expect(
+      withoutDynamicNodes(JSON.stringify({ hello: 1 }), STATIC_IDS),
+    ).toBeNull();
+    expect(
+      withoutDynamicNodes(JSON.stringify({ grid: {} }), STATIC_IDS),
+    ).toBeNull();
+    expect(
+      withoutDynamicNodes(JSON.stringify({ panels: {} }), STATIC_IDS),
+    ).toBeNull();
   });
 });
 
