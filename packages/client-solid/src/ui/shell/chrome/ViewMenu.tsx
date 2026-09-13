@@ -1,8 +1,9 @@
+import type { JSX } from "solid-js";
+import { createMemo, createSignal, For, Show, untrack } from "solid-js";
+
 import type { WorkspaceTab } from "@rtc/client-core";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
-import type { JSX } from "solid-js";
-import { createMemo, createSignal, For, Show, untrack } from "solid-js";
 
 import styles from "./HeaderChrome.module.css";
 
@@ -30,6 +31,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
   const closedSet = createMemo((): ReadonlySet<string> => {
     return new Set(state().closed);
   });
+
   const visibleCount = createMemo((): number => {
     return panelIds.length - closedSet().size;
   });
@@ -43,6 +45,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
       reopen(panelId);
       return;
     }
+
     close(panelId);
   }
 
@@ -72,11 +75,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
         </svg>
       </button>
       <Show when={open()}>
-        <div
-          data-testid="view-menu-panel"
-          class={styles.dropdown}
-          role="menu"
-        >
+        <div data-testid="view-menu-panel" class={styles.dropdown} role="menu">
           <div class={styles.dropdownHead}>
             <span class={styles.dropdownTitle}>VIEW</span>
             <span class={styles.dropdownMeta}>
@@ -85,18 +84,21 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
           </div>
           <ul class={styles.viewList}>
             <For each={panelIds}>
-              {(panelId): JSX.Element => {
-                const isVisible = (): boolean => {
+              {(panelId: string): JSX.Element => {
+                function isVisible(): boolean {
                   return !closedSet().has(panelId);
-                };
+                }
+
                 // The machine refuses to hide the last visible static
                 // leaf; the row mirrors that floor as a disabled state.
-                const isFloor = (): boolean => {
+                function isFloor(): boolean {
                   return isVisible() && visibleCount() === 1;
-                };
+                }
+
                 function togglePanelRow(): void {
                   togglePanelVisibility(panelId);
                 }
+
                 return (
                   <li>
                     <button

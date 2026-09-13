@@ -31,6 +31,7 @@ export function ViewMenu({ activeTab }: ViewMenuProps): ReactElement {
       reopen(panelId);
       return;
     }
+
     close(panelId);
   }
 

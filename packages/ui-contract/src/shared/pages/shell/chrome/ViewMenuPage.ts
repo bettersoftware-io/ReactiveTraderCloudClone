@@ -33,9 +33,7 @@ export class ViewMenuPage extends MountedComponent<Record<string, never>> {
 
   /** True when the panel has a row in the open menu. */
   rowExists(panelId: string): boolean {
-    return (
-      within(this.root).queryByTestId(`view-menu-row-${panelId}`) !== null
-    );
+    return within(this.root).queryByTestId(`view-menu-row-${panelId}`) !== null;
   }
 
   /** The row's checkbox state — true = panel visible. */

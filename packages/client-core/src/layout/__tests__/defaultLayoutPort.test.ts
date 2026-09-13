@@ -263,6 +263,18 @@ describe("createDefaultLayoutPort", () => {
   );
 });
 
+describe("staticPanelIdsFor", () => {
+  it("returns each tab's seed leaves in tree order — the View menu's row source", () => {
+    expect(staticPanelIdsFor("fx")).toEqual([
+      "fx-rates",
+      "fx-blotter",
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(staticPanelIdsFor("admin")).toHaveLength(1);
+  });
+});
+
 function panelIds(node: LayoutNode): string[] {
   return node.kind === "panel"
     ? [node.panelId]
@@ -312,15 +324,3 @@ function collectHandleFlags(
 
   return flags;
 }
-
-describe("staticPanelIdsFor", () => {
-  it("returns each tab's seed leaves in tree order — the View menu's row source", () => {
-    expect(staticPanelIdsFor("fx")).toEqual([
-      "fx-rates",
-      "fx-blotter",
-      "fx-analytics",
-      "fx-positions",
-    ]);
-    expect(staticPanelIdsFor("admin")).toHaveLength(1);
-  });
-});

@@ -107,7 +107,7 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
         {/* Keyed on the tab: a switch remounts the menu so its per-tab
             layout singleton re-resolves (see ViewMenu's setup note). */}
         <Show when={props.activeTab} keyed>
-          {(tab): JSX.Element => {
+          {(tab: WorkspaceTab): JSX.Element => {
             return <ViewMenu activeTab={tab} />;
           }}
         </Show>

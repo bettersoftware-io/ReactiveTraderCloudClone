@@ -172,6 +172,7 @@ function collectPanelIds(node: LayoutNode): readonly PanelId[] {
   if (node.kind === "panel") {
     return [node.panelId];
   }
+
   return node.children.flatMap(collectPanelIds);
 }
 
