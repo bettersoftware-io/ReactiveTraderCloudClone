@@ -115,6 +115,10 @@ export interface AppData {
   layoutMaximized?: PanelId | null;
   /** The layout machine's `collapsed` set, seeded likewise; defaults to []. */
   layoutCollapsed?: readonly PanelId[];
+  /** The layout machine's `closed` set (View-menu close), seeded likewise;
+   * defaults to []. Both engines project it — the fx-closed twins are the
+   * Phase 3 witnesses that the shared subset grew. */
+  layoutClosed?: readonly PanelId[];
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
