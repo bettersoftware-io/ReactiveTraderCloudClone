@@ -176,6 +176,17 @@ export default defineConfig({
     // an inline data: URI has no separate request to block. See docs/DEPLOY.md.
     sourcemap: debugBuild ? "inline" : false,
     rolldownOptions: {
+      // Two real pages: the app and the dockview pop-out target. The popout
+      // page ships EMPTY (dockview appends its container and copies the
+      // parent's stylesheets after `load`); it exists so the child window
+      // stops falling back to the SPA (which booted the whole app under
+      // dockview's container) and so the deployed site serves a real file —
+      // Vercel routing is filesystem-first, so dist/popout.html wins over
+      // the SPA rewrite with no vercel config change.
+      input: {
+        index: fileURLToPath(new URL("index.html", import.meta.url)),
+        popout: fileURLToPath(new URL("popout.html", import.meta.url)),
+      },
       output: {
         // React DevTools names components from each function's runtime `.name`
         // / `displayName`, not from sourcemaps — so a minified deploy shows
