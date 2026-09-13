@@ -38,7 +38,12 @@ import { parsePanelSpec } from "@rtc/shared";
 import type { WorkspaceTab } from "./defaultLayoutPort";
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds } from "./dockColumn";
-import type { LayoutNode, LayoutState, SplitDir } from "./layoutPort";
+import type {
+  LayoutNode,
+  LayoutPanelInstance,
+  LayoutState,
+  SplitDir,
+} from "./layoutPort";
 
 export interface DockedPanelEntry {
   readonly panelId: string;
@@ -89,6 +94,28 @@ const MAX_LAYOUT_NODE_DEPTH = 64;
  * reverse import would invert that established dependency direction. Keep
  * the two literals in sync by hand if either changes. */
 const MAX_DOCKED_PANELS = 4;
+
+/** Mirrors `MAX_PANEL_INSTANCES` in
+ * `packages/client-core/src/presenters/LayoutMachine.ts` (Phase 4 dynamic
+ * chart instances) — re-declared as a literal here rather than imported,
+ * for the same reason as `MAX_DOCKED_PANELS` just above: `presenters`
+ * already imports FROM `layout` (`LayoutMachine.ts` pulls
+ * `LayoutNode`/`LayoutState`/`PanelId` from `./layoutPort` and
+ * `dockedLeafIds` etc. from `./dockColumn`), so the reverse import here
+ * would invert that established dependency direction. Keep this literal —
+ * and `expectedInstanceId` below, which mirrors the machine's
+ * `instanceIdFor` — in sync by hand if either changes on the machine
+ * side. */
+const MAX_PANEL_INSTANCES = 4;
+
+/** Mirrors the machine's `instanceIdFor` (see `MAX_PANEL_INSTANCES`'s doc
+ * for why this is a local copy rather than an import): the wire encoding of
+ * a `LayoutPanelInstance` id is `"<kind>:<symbol>"`, and a parsed entry
+ * whose `id` disagrees with this is malformed — reconstructing nothing,
+ * just dropping it (see the `instances` validation below). */
+function expectedInstanceId(kind: "eq-chart", symbol: string): string {
+  return `${kind}:${symbol}`;
+}
 
 export function serializeWorkspaceLayout(payload: WorkspaceLayoutV1): string {
   return JSON.stringify(payload);
@@ -320,10 +347,63 @@ function validateLayoutState(value: unknown): LayoutState | null {
     }
   }
 
-  // `instances` (Phase 4 dynamic panel instances) is not persisted yet —
-  // Task 2 wires the parser; until then every parsed layout gets an empty
-  // set, same treatment as a legacy payload with no `closed` key.
-  return { root, maximized, collapsed, closed, instances: [] };
+  // `instances` (Phase 4 dynamic panel instances) is ADDITIVE like `closed`
+  // just above: a legacy payload without the key parses to [] (no version
+  // bump — this constructor never sees unknown fields), and a new payload
+  // read by the OLD parser was simply ignored.
+  //
+  // Unlike `collapsed`/`closed` — which filter a dangling id against the
+  // tab's OWN dock-column leaves — a malformed `instances` ENTRY here is
+  // filtered individually against its own shape (kind/symbol/id
+  // agreement), deduped by id (first occurrence wins), and capped at
+  // `MAX_PANEL_INSTANCES`: a single corrupted entry (a stale kind from a
+  // future variant, a symbol typo, a duplicate written mid-refactor) is
+  // fully recoverable by dropping just that one entry, and there is no
+  // equivalent to `maximized`'s all-panels-collapse failure mode here to
+  // justify rejecting the whole layout over it. A non-array `instances`
+  // value itself is still a whole-layout reject, mirroring `closed`'s
+  // handling of the same case immediately above.
+  const instancesRaw = value.instances ?? [];
+
+  if (!Array.isArray(instancesRaw)) {
+    return null;
+  }
+
+  const instances: LayoutPanelInstance[] = [];
+  const seenInstanceIds = new Set<string>();
+
+  for (const entryRaw of instancesRaw) {
+    if (instances.length >= MAX_PANEL_INSTANCES) {
+      break;
+    }
+
+    if (!isRecord(entryRaw)) {
+      continue;
+    }
+
+    const { kind, symbol, id } = entryRaw;
+
+    if (kind !== "eq-chart") {
+      continue;
+    }
+
+    if (typeof symbol !== "string" || symbol.length === 0) {
+      continue;
+    }
+
+    if (typeof id !== "string" || id !== expectedInstanceId(kind, symbol)) {
+      continue;
+    }
+
+    if (seenInstanceIds.has(id)) {
+      continue;
+    }
+
+    seenInstanceIds.add(id);
+    instances.push({ id, kind, symbol });
+  }
+
+  return { root, maximized, collapsed, closed, instances };
 }
 
 function validateDockedEntry(value: unknown): DockedPanelEntry | null {
