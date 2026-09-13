@@ -18,7 +18,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.124.0",
+    "@anthropic-ai/sdk": "0.125.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
@@ -31,7 +31,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
-    "tsc-alias": "1.9.4",
+    "tsc-alias": "1.9.5",
     "tsx": "^4",
     "vitest": "^4.1.10"
   }
