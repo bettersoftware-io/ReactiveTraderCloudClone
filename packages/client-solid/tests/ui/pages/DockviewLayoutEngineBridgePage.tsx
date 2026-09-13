@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@solidjs/testing-library";
+import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
 
 export interface DockviewLayoutEngineBridgePage {
@@ -7,6 +7,11 @@ export interface DockviewLayoutEngineBridgePage {
   /** Runs `assertion` until it stops throwing (or the timeout elapses) —
    * the spec supplies the assertion, this page owns the polling mechanic. */
   waitFor(assertion: () => void): Promise<void>;
+  /** The layout-engine root's `attribute` value, or null when absent. */
+  engineAttribute(attribute: string): string | null;
+  /** The control's `disabled` state, or null when no such testid exists. */
+  controlDisabled(testId: string): boolean | null;
+  clickControl(testId: string): void;
 }
 
 /** The framework surface for `DockviewLayoutEngine.popout.test.tsx` — the
@@ -22,6 +27,19 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
     },
     waitFor(assertion: () => void): Promise<void> {
       return waitFor(assertion);
+    },
+    engineAttribute(attribute: string): string | null {
+      return (
+        screen.queryByTestId("layout-engine")?.getAttribute(attribute) ?? null
+      );
+    },
+    controlDisabled(testId: string): boolean | null {
+      const control = screen.queryByTestId(testId);
+
+      return control instanceof HTMLButtonElement ? control.disabled : null;
+    },
+    clickControl(testId: string): void {
+      screen.getByTestId(testId).click();
     },
   };
 }

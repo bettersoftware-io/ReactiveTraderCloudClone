@@ -9,18 +9,6 @@ afterEach(() => {
   page.unmountAll();
 });
 
-function base(): PanelHeadControlsProps {
-  return {
-    panelId: "fx-rates",
-    title: "Live Rates",
-    maximizable: true,
-    maximizedHere: false,
-    onCollapse: vi.fn(),
-    onMaximize: vi.fn(),
-    onRestore: vi.fn(),
-  };
-}
-
 describe("PanelHeadControls pop-out slot", () => {
   it("renders the pop-out control only when the slot is attached, and clicking it fires the slot", () => {
     const onPopout = vi.fn();
@@ -52,3 +40,15 @@ describe("PanelHeadControls pop-out slot", () => {
     expect(page.disabled("panel-fx-rates-maximize")).toBe(false);
   });
 });
+
+function base(): PanelHeadControlsProps {
+  return {
+    panelId: "fx-rates",
+    title: "Live Rates",
+    maximizable: true,
+    maximizedHere: false,
+    onCollapse: vi.fn(),
+    onMaximize: vi.fn(),
+    onRestore: vi.fn(),
+  };
+}

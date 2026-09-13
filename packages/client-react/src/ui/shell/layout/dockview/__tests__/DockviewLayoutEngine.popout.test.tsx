@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
@@ -62,34 +61,30 @@ describe("dockview bridge pop-out wiring", () => {
     // Every tab's controls carry the pop-out slot under this bridge (the
     // engine-gating: in-house heads never receive it).
     await page.waitFor(() => {
-      expect(popoutControl("fx-rates")?.disabled).toBe(false);
+      expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
     });
 
     // jsdom cannot open a real popout window, so the engine-owned popped
     // set is driven through the captured callback — the bridge's side is
     // exactly the same either way.
-    act(() => {
+    page.runInAct(() => {
       captured.options?.onPopoutsChange?.(["fx-analytics"]);
     });
 
     await page.waitFor(() => {
-      expect(
-        document
-          .querySelector('[data-testid="layout-engine"]')
-          ?.getAttribute("data-popped"),
-      ).toBe("fx-analytics");
+      expect(page.engineAttribute("data-popped")).toBe("fx-analytics");
     });
-    expect(collapseControl("fx-analytics")?.disabled).toBe(true);
-    expect(popoutControl("fx-analytics")?.disabled).toBe(true);
-    expect(collapseControl("fx-rates")?.disabled).toBe(false);
+    expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(true);
+    expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(true);
+    expect(page.controlDisabled("panel-fx-rates-collapse")).toBe(false);
 
     // Dock-home empties the set and re-arms the controls.
-    act(() => {
+    page.runInAct(() => {
       captured.options?.onPopoutsChange?.([]);
     });
 
     await page.waitFor(() => {
-      expect(collapseControl("fx-analytics")?.disabled).toBe(false);
+      expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
     });
 
     page.unmountAll();
@@ -112,10 +107,10 @@ describe("dockview bridge pop-out wiring", () => {
     );
 
     await page.waitFor(() => {
-      expect(popoutControl("fx-rates")).not.toBeNull();
+      expect(page.controlDisabled("panel-fx-rates-popout")).not.toBeNull();
     });
 
-    popoutControl("fx-rates")?.click();
+    page.clickControl("panel-fx-rates-popout");
     expect(captured.popoutCalls).toContain("fx-rates");
 
     page.unmountAll();
@@ -123,14 +118,6 @@ describe("dockview bridge pop-out wiring", () => {
 });
 
 function noop(): void {}
-
-function popoutControl(panelId: string): HTMLButtonElement | null {
-  return document.querySelector(`[data-testid="panel-${panelId}-popout"]`);
-}
-
-function collapseControl(panelId: string): HTMLButtonElement | null {
-  return document.querySelector(`[data-testid="panel-${panelId}-collapse"]`);
-}
 
 interface CapturedEngineWiring {
   options: {

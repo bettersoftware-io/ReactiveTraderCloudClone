@@ -218,9 +218,7 @@ export class PlaywrightLayout implements LayoutPO {
     // window.open fires on the OPENER page — "popup" is its event, not the
     // context's generic "page".
     const popupPromise = this.page.waitForEvent("popup");
-    await this.page
-      .getByTestId(TESTIDS.layout.popoutControl(panelId))
-      .click();
+    await this.page.getByTestId(TESTIDS.layout.popoutControl(panelId)).click();
     const popup = await popupPromise;
     await popup.waitForLoadState();
 

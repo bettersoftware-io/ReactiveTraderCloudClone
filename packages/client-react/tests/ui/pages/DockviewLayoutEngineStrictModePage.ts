@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactElement } from "react";
 
 interface WaitForOptions {
@@ -14,6 +14,14 @@ export interface DockviewLayoutEngineStrictModePage {
   /** Runs `assertion` until it stops throwing (or `options.timeout` elapses)
    * — the spec supplies the assertion, this page owns the polling mechanic. */
   waitFor(assertion: () => void, options?: WaitForOptions): Promise<void>;
+  /** Runs `work` inside React's `act` — for driving a captured engine
+   * callback (a setState outside any React event) from a spec. */
+  runInAct(work: () => void): void;
+  /** The layout-engine root's `attribute` value, or null when absent. */
+  engineAttribute(attribute: string): string | null;
+  /** The control's `disabled` state, or null when no such testid exists. */
+  controlDisabled(testId: string): boolean | null;
+  clickControl(testId: string): void;
 }
 
 /** The framework surface for `DockviewLayoutEngine.strictMode.test.tsx`. The
@@ -39,6 +47,22 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
     },
     waitFor(assertion: () => void, options?: WaitForOptions): Promise<void> {
       return waitFor(assertion, options);
+    },
+    runInAct(work: () => void): void {
+      act(work);
+    },
+    engineAttribute(attribute: string): string | null {
+      return (
+        screen.queryByTestId("layout-engine")?.getAttribute(attribute) ?? null
+      );
+    },
+    controlDisabled(testId: string): boolean | null {
+      const control = screen.queryByTestId(testId);
+
+      return control instanceof HTMLButtonElement ? control.disabled : null;
+    },
+    clickControl(testId: string): void {
+      screen.getByTestId(testId).click();
     },
   };
 }

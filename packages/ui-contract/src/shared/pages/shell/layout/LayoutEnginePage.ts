@@ -70,9 +70,7 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
    * the `onPopout` slot is optional and only the dockview bridge attaches
    * it (the engine-gating idiom). */
   hasPopoutControl(id: string): boolean {
-    return (
-      within(this.root).queryByTestId(`panel-${id}-popout`) !== null
-    );
+    return within(this.root).queryByTestId(`panel-${id}-popout`) !== null;
   }
 
   /** The accessible name of whatever control currently sits at the shared

@@ -369,12 +369,12 @@ describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
 });
 
 describe("InhouseLayoutEngine docked desk panels", () => {
-    it("renders no pop-out control — the slot is dockview-only (engine gating by optional prop)", () => {
+  it("renders no pop-out control — the slot is dockview-only (engine gating by optional prop)", () => {
     const page = mount(LayoutEngine, {});
     expect(page.hasPopoutControl("fx-rates")).toBe(false);
   });
 
-it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
+  it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
     const world = createWorld({ useAnalytics: ANALYTICS_SEED });
     const app = mountWith(world, AppShell);
 
