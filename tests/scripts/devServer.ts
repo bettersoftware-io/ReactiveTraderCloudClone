@@ -100,6 +100,7 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
       PORT: String(preferredPort),
       NODE_OPTIONS: "",
       VITE_DEV_AUTH: '{"demo":"demo"}',
+      VITE_CORE_IMPL: process.env.RTC_CORE_IMPL ?? "",
     },
   });
   let log = "";

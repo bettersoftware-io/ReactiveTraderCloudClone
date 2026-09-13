@@ -1,5 +1,6 @@
 import { type Observable, shareReplay } from "rxjs";
 
+import type { ChartSubstratePresenter as ChartSubstratePresenterApi } from "@rtc/core-api";
 import type { ChartSubstrate, PreferencesPort } from "@rtc/domain";
 
 /**
@@ -7,7 +8,7 @@ import type { ChartSubstrate, PreferencesPort } from "@rtc/domain";
  * replay-current substrate stream and the write operation, keeping
  * persistence out of the UI.
  */
-export class ChartSubstratePresenter {
+export class ChartSubstratePresenter implements ChartSubstratePresenterApi {
   readonly substrate$: Observable<ChartSubstrate>;
 
   constructor(private readonly preferences: PreferencesPort) {

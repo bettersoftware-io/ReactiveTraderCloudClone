@@ -2,9 +2,25 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, type Observable, Subject } from "rxjs";
 import { filter, map, scan } from "rxjs/operators";
 
+import type {
+  JarvisPanelsMachineHandle,
+  JarvisPanelsState,
+  PanelInstance,
+  PanelStatus,
+} from "@rtc/core-api";
 import type { PanelSpecV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
+
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type {
+  JarvisPanelsMachineHandle,
+  JarvisPanelsState,
+  PanelInstance,
+  PanelStatus,
+};
 
 /** Live desk panels are capped at four; a spawn beyond the cap evicts the
  * oldest (index 0) — FIFO. An edit to an already-live panelId never counts
@@ -36,24 +52,6 @@ export const UNSUPPORTED_SENTINEL_SPEC: PanelSpecV1 = Object.freeze({
   transforms: Object.freeze([]),
   viz: Object.freeze({ kind: "table" }),
 }) as PanelSpecV1;
-
-export type PanelStatus = "live" | "unsupported";
-
-export interface PanelInstance {
-  readonly panelId: string;
-  /** null when `status` is "unsupported" — see `UNSUPPORTED_SENTINEL_SPEC`'s doc. */
-  readonly spec: PanelSpecV1 | null;
-  readonly status: PanelStatus;
-  /** True once the panel has been docked into the workspace via `dockPanel`
-   * (or restored docked at boot via `restoreDockedPanel`) — false for every
-   * fresh wire spawn. A docked panel is invisible to `MAX_LIVE_PANELS`'s
-   * floating cap; see that const's doc. */
-  readonly docked: boolean;
-}
-
-export interface JarvisPanelsState {
-  readonly panels: readonly PanelInstance[];
-}
 
 const INITIAL: JarvisPanelsState = { panels: [] };
 
@@ -242,20 +240,6 @@ function restoreDockedPanelInState(
   }
 
   return [...panels, { panelId, spec, status: "live", docked: true }];
-}
-
-/** `createJarvisPanelsMachine`'s return — named (rather than inline) to match
- * `JarvisMachine.ts`'s `JarvisMachineHandle` idiom for its own factory
- * return. */
-export interface JarvisPanelsMachineHandle {
-  readonly state$: StateObservable<JarvisPanelsState>;
-  readonly dismissPanel: (panelId: string) => void;
-  readonly dockPanel: (panelId: string) => void;
-  readonly undockPanel: (panelId: string) => void;
-  /** Boot-time rehydration ONLY: append a docked panel restored from the
-   * persisted workspace payload. Ignores the floating cap; respects
-   * `MAX_DOCKED_PANELS` (excess silently dropped). */
-  readonly restoreDockedPanel: (panelId: string, spec: PanelSpecV1) => void;
 }
 
 /** `restoreDockedPanel`'s intent payload — named (rather than an inline

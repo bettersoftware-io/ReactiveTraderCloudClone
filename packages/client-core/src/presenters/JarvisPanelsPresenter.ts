@@ -1,7 +1,11 @@
 import { EMPTY, type Observable, of, type Subscription } from "rxjs";
 import { map, shareReplay, switchMap } from "rxjs/operators";
 
-import type { PanelSpecV1, PanelViz } from "@rtc/shared";
+import type {
+  JarvisPanelsPresenter as JarvisPanelsPresenterApi,
+  JarvisPanelVm,
+} from "@rtc/core-api";
+import type { PanelSpecV1 } from "@rtc/shared";
 
 import {
   composePanelStream,
@@ -11,23 +15,12 @@ import {
 import type {
   JarvisPanelsMachineHandle,
   PanelInstance,
-  PanelStatus,
 } from "./JarvisPanelsMachine.js";
 
-/** The row `JarvisPanelsOverlay` (a later task) renders per live desk panel.
- * `data$` is the interpreted `composePanelStream` output for a `"live"`
- * panel, or `EMPTY` for `"unsupported"` — never the raw spec, and never a
- * stream that could emit for an unsupported panel. */
-export interface JarvisPanelVm {
-  readonly panelId: string;
-  readonly title: string;
-  readonly rationale: string | null;
-  readonly status: PanelStatus;
-  readonly vizKind: PanelViz["kind"] | null;
-  readonly data$: Observable<PanelData>;
-  /** Mirrors `PanelInstance.docked` — see that field's doc. */
-  readonly docked: boolean;
-}
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { JarvisPanelVm };
 
 /** Title shown for a panel the render adapter (Task 4) substituted with
  * `UNSUPPORTED_SENTINEL_SPEC` — the VM never touches that sentinel's own
@@ -110,7 +103,7 @@ function buildPanelVm(
  * reads from — dock with no leaf and no tab attribution. Composition holds
  * the `JarvisPanelsMachineHandle` directly for the half it needs.
  */
-export class JarvisPanelsPresenter {
+export class JarvisPanelsPresenter implements JarvisPanelsPresenterApi {
   private readonly cache = new Map<string, PanelCacheEntry>();
 
   /** One multiplexed `panelData$(panelId)` result kept per distinct id ever

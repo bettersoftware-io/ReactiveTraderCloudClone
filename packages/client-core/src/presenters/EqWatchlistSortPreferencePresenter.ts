@@ -1,5 +1,6 @@
 import { type Observable, shareReplay, take } from "rxjs";
 
+import type { EqWatchlistSortPreferencePresenter as EqWatchlistSortPreferencePresenterApi } from "@rtc/core-api";
 import {
   DEFAULT_EQ_WATCHLIST_SORT,
   type EqWatchlistSort,
@@ -13,7 +14,9 @@ import {
  * (the Watchlist head's ⇅ button advances sym → chg → price → sym), keeping
  * persistence out of the UI. Mirrors ThemePreferencePresenter's cycle().
  */
-export class EqWatchlistSortPreferencePresenter {
+export class EqWatchlistSortPreferencePresenter
+  implements EqWatchlistSortPreferencePresenterApi
+{
   readonly sort$: Observable<EqWatchlistSort>;
 
   constructor(private readonly preferences: PreferencesPort) {

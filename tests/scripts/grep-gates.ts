@@ -476,6 +476,32 @@ const GATES: Gate[] = [
       );
     },
   },
+  {
+    // `export type { … }` and `export type * from` still pass — only a
+    // re-export WITHOUT the `type` keyword is a runtime value leaving the
+    // package, and the earlier pattern (declarations only) could not see one.
+    name: "42. @rtc/core-api exports no runtime value (types-only contract)",
+    pattern:
+      "^export (const|let|function|class|enum|async function) |^export \\{|^export \\* from",
+    paths: ["../packages/core-api/src/"],
+    excludes: ["/__tests__/", ".test."],
+  },
+  {
+    // Belt and braces for dependency-cruiser's `bridge-owns-rxjs`: catches an
+    // `import { x } from "rxjs"` of a VALUE even where the cruiser's type-only
+    // detection misses a mixed import. A brace import without `type` is what a
+    // value import looks like under `verbatimModuleSyntax`; the runner uses
+    // `grep -rE`, which has no lookahead, so the pattern matches that form
+    // directly. Both alternative cores are listed; grep errors (status 2) on a
+    // missing directory, so every path here must name a package that exists.
+    name: "43. Alternative cores import rxjs/@rx-state as types only outside bridge/ (bridge-owns-rxjs)",
+    pattern: '^import \\{[^}]*\\} from "(rxjs|rxjs/operators|@rx-state/core)"',
+    paths: [
+      "../packages/client-core-async/src/",
+      "../packages/client-core-effect/src/",
+    ],
+    excludes: ["/bridge/", ".test."],
+  },
 ];
 
 let failed = 0;

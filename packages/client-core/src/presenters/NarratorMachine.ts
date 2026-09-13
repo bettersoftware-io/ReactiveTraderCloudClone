@@ -14,6 +14,7 @@ import {
   withLatestFrom,
 } from "rxjs/operators";
 
+import type { NarratorHandle } from "@rtc/core-api";
 import {
   type AnomalyDetectorConfig,
   type AnomalyEvent,
@@ -25,20 +26,10 @@ import {
 
 import { JARVIS_NARRATION_PREFIX } from "./JarvisMachine.js";
 
-/** How long a successful narration silences the channel — measured on
- * `NarratorDeps.scheduler` (`scheduler.now()`), NEVER `Date.now()` directly,
- * so the gate is deterministic under a `TestScheduler`'s virtual time in
- * tests and still correct in production (the default scheduler's `now()`
- * IS `Date.now()` — see `deps.scheduler`'s doc). */
-export const NARRATION_COOLDOWN_MS = 300_000;
-
-/** Hard per-session cap: the 5th surviving anomaly (and every one after it)
- * is dropped forever, regardless of how long it has been since the last
- * narration. Session-lifetime — there is no reset, matching this machine's
- * own session-lifetime composition-root lifecycle (mirrors
- * `JarvisPanelsMachine`/`JarvisDriverMachine`: built once, never
- * re-composed per consumer). */
-export const MAX_NARRATIONS_PER_SESSION = 4;
+/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
+ * here so every existing `import … from "@rtc/client-core"` keeps working
+ * unchanged. */
+export type { NarratorHandle };
 
 export interface NarratorDeps {
   /** The live FX pair roster to detect over — composition wires this from
@@ -103,9 +94,20 @@ export interface NarratorDeps {
   readonly config?: Partial<AnomalyDetectorConfig>;
 }
 
-export interface NarratorHandle {
-  readonly stop: () => void;
-}
+/** How long a successful narration silences the channel — measured on
+ * `NarratorDeps.scheduler` (`scheduler.now()`), NEVER `Date.now()` directly,
+ * so the gate is deterministic under a `TestScheduler`'s virtual time in
+ * tests and still correct in production (the default scheduler's `now()`
+ * IS `Date.now()` — see `deps.scheduler`'s doc). */
+export const NARRATION_COOLDOWN_MS = 300_000;
+
+/** Hard per-session cap: the 5th surviving anomaly (and every one after it)
+ * is dropped forever, regardless of how long it has been since the last
+ * narration. Session-lifetime — there is no reset, matching this machine's
+ * own session-lifetime composition-root lifecycle (mirrors
+ * `JarvisPanelsMachine`/`JarvisDriverMachine`: built once, never
+ * re-composed per consumer). */
+export const MAX_NARRATIONS_PER_SESSION = 4;
 
 /** The pinned narration copy (T7 review ruling): the vol channel detects a
  * large single-tick MOVE against the window's own trailing σ, not a rise in

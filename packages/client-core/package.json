@@ -23,12 +23,14 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
+    "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@rtc/core-contract": "workspace:*",
     "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^4.1.10",
     "tsc-alias": "1.9.4",

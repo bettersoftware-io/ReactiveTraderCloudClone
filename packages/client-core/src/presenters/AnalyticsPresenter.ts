@@ -1,5 +1,6 @@
 import type { Observable } from "rxjs";
 
+import type { AnalyticsPresenter as AnalyticsPresenterApi } from "@rtc/core-api";
 import {
   type AnalyticsPort,
   AnalyticsUseCase,
@@ -8,7 +9,7 @@ import {
 
 import { warmReplay } from "./warmReplay.js";
 
-export class AnalyticsPresenter {
+export class AnalyticsPresenter implements AnalyticsPresenterApi {
   readonly position$: Observable<PositionUpdates>;
 
   constructor(analytics: AnalyticsPort) {

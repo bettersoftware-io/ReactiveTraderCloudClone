@@ -1,5 +1,6 @@
 import { type Observable, startWith } from "rxjs";
 
+import type { JarvisUsagePresenter as JarvisUsagePresenterApi } from "@rtc/core-api";
 import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import type { JarvisUsagePort } from "#/adapters/jarvisUsagePort";
@@ -18,7 +19,7 @@ import { warmReplay } from "./warmReplay.js";
  * for the whole session (see `warmReplay`'s doc), so the Admin tab's
  * `key={activeTab}` remount doesn't re-send the wire subscribe.
  */
-export class JarvisUsagePresenter {
+export class JarvisUsagePresenter implements JarvisUsagePresenterApi {
   readonly usage$: Observable<AdminJarvisUsagePayload | null>;
 
   constructor(port: JarvisUsagePort) {
