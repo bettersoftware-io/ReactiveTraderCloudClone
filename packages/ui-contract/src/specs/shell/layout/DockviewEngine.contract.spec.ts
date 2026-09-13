@@ -203,3 +203,69 @@ describe("DockviewLayoutEngine (shared harness)", () => {
     expect(page.collapsedIds()).toEqual([]);
   });
 });
+
+/** Docked desk panels under Dockview (Task 7). Unlike
+ * `LayoutEngine.contract.spec.ts`'s world-driven "InhouseLayoutEngine docked
+ * desk panels" block (which mounts the real `App` shell and dispatches a
+ * genuine Jarvis dock intent), this host's registry is a static fixture — it
+ * has no `dockedHeadsFor` head (no `jarvis-panel-undock` control), so these
+ * cases witness the dock through the bridge's own render contract instead:
+ * a new dockview GROUP (data-groups), the registry's BODY content actually
+ * mounted (not just a count), and the default title tab as its head — the
+ * same witnesses every other case in this file already uses. */
+describe("DockviewLayoutEngine docked desk panels", () => {
+  const DOCKED_PANEL_ID = "panel-desk-heat";
+
+  it("mounts a docked desk panel's body and head as a dockview group", () => {
+    const page = mount(DockviewEngine, {
+      props: { docked: [DOCKED_PANEL_ID] },
+    });
+
+    // The fx default tree's 4 leaves, plus the docked panel's own group.
+    expect(page.groupsAttr()).toBe("5");
+    // The registry's actual content, not a stand-in count.
+    expect(page.bodyVisible("jarvis-panel-heatmap")).toBe(true);
+    // The static fx panels are untouched by the dock.
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+    // Its head mounts INSIDE dockview's own tab (the drag surface). The
+    // fixture isn't in PANEL_SPECS, so its title falls back to the bare id,
+    // exactly as the "no-maximize" case's dropped fx-positions does above.
+    expect(page.insideDockTab(`panel-${DOCKED_PANEL_ID}-title`)).toBe(true);
+    expect(page.tabTitles()).toContain(DOCKED_PANEL_ID);
+  });
+
+  it("undocking removes the panel from the dock", async () => {
+    const page = mount(DockviewEngine, {
+      props: { docked: [DOCKED_PANEL_ID] },
+    });
+    expect(page.groupsAttr()).toBe("5");
+    expect(page.bodyVisible("jarvis-panel-heatmap")).toBe(true);
+
+    page.setProps({ docked: [] });
+
+    // `data-groups` only refreshes off dockview's own debounced
+    // onLayoutChange — the removal fires it, but not synchronously with
+    // the prop change (see DockviewLayoutEngine.docked.test.tsx).
+    await page.waitForGroups(4);
+    expect(page.bodyVisible("jarvis-panel-heatmap")).toBe(false);
+    // The static fx tree is unaffected by the undock.
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+  });
+
+  it("a docked panel participates in collapse", () => {
+    const page = mount(DockviewEngine, {
+      props: {
+        docked: [DOCKED_PANEL_ID],
+        collapsed: [DOCKED_PANEL_ID],
+      },
+    });
+
+    // The collapse-set witness reached the bridge for the docked id too.
+    expect(page.collapsedIds()).toEqual([DOCKED_PANEL_ID]);
+    // It renders as the in-house restore strip (dockview-hud.css hides the
+    // whole group header behind this marker), same as any other panel.
+    expect(page.stripMarked(DOCKED_PANEL_ID)).toBe(true);
+    // A strip replaces the body slot's content entirely.
+    expect(page.bodyVisible("jarvis-panel-heatmap")).toBe(false);
+  });
+});

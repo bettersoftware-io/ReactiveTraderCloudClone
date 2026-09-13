@@ -9,6 +9,10 @@ import {
   type HeaderChromeProps,
 } from "../chrome/HeaderChromePage";
 import {
+  DockviewEnginePage,
+  type DockviewEngineProps,
+} from "../layout/DockviewEnginePage";
+import {
   LayoutEnginePage,
   type LayoutEngineProps,
 } from "../layout/LayoutEnginePage";
@@ -53,6 +57,18 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
    * a pure DOM query against `ctx.root` and none reads `LayoutEngineProps`. */
   readonly layout: LayoutEnginePage;
 
+  /** The active tab's engine, read through `DockviewEnginePage` instead — the
+   * witnesses `layout` above uses (`panel-<id>` leaf wrappers) don't exist
+   * under the Dockview bridge; a spec that seeds `world.layoutEngine` to
+   * `"dockview"` before mounting reads the SAME root through this page
+   * object instead (Task 7, carried from Task 4's review: proves the fakes'
+   * per-tab docked derivation — `dockedPanelIdsFor` / `merge(bridge.panels$,
+   * dock.kick$)` in `viewModelFromWorld.ts` — runs under the real
+   * `DockviewLayoutEngine`, not just the in-house engine `layout` exercises
+   * above). Same props-context cast as `layout`: every `DockviewEnginePage`
+   * accessor is a pure DOM query against `ctx.root`. */
+  readonly dockviewLayout: DockviewEnginePage;
+
   constructor(ctx: PageContext<Record<string, never>>) {
     super(ctx);
     const asHeaderCtx = ctx as unknown as PageContext<HeaderChromeProps>;
@@ -62,6 +78,9 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
     this.panels = new JarvisPanelLayerPage(ctx);
     this.layout = new LayoutEnginePage(
       ctx as unknown as PageContext<LayoutEngineProps>,
+    );
+    this.dockviewLayout = new DockviewEnginePage(
+      ctx as unknown as PageContext<DockviewEngineProps>,
     );
   }
 

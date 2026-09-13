@@ -367,6 +367,49 @@ describe("InhouseLayoutEngine docked desk panels", () => {
   });
 });
 
+/**
+ * The identical dock scenario as the block above, but with `world.layoutEngine`
+ * flipped to `"dockview"` first — proving the fakes' per-tab docked derivation
+ * (`dockedPanelIdsFor` / `merge(bridge.panels$, dock.kick$)` in
+ * `viewModelFromWorld.ts`, both clients) runs under the REAL
+ * `DockviewLayoutEngine` too, not only the in-house engine the block above
+ * exercises (Task 7, carried from Task 4's review — that derivation was
+ * otherwise unexecuted by any spec). `App.tsx`'s `WorkspaceEngine` threads
+ * `useDockedPanelIds`/`useWorkspaceLayoutResets` into WHICHEVER engine
+ * `useLayoutEngine()` selects, so the SAME `app` (and the same dock route
+ * through `app.overlay`/`app.panels`) is read through `app.dockviewLayout`
+ * instead of `app.layout` here.
+ */
+describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => {
+  it("a docked panel mounts as a dockview group with a live body, under the real per-tab docked derivation", async () => {
+    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    world.layoutEngine.next("dockview");
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me desk positions");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: DOCKED_PANEL_ID, spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    await app.panels.dockPanel(DOCKED_PANEL_ID);
+
+    // The fx default tree's 4 leaves, plus the docked panel's own group —
+    // dockview mounted through the SAME `docked` prop the in-house block
+    // above proves via `isDocked`.
+    await app.dockviewLayout.waitForGroups(5);
+    // The BODY, not just a group count: the docked panel's real
+    // `panelData$` subscription is live over the seeded analytics, exactly
+    // as `dockedRendererTestId` proves for the in-house engine above.
+    expect(app.dockviewLayout.bodyVisible("jarvis-panel-table")).toBe(true);
+    // Its head is the real `dockedHeadsFor` unpin/close control, mounted
+    // INSIDE dockview's own tab (the drag surface) — the app's per-panel
+    // head registry reaches this bridge exactly as it reaches the in-house
+    // engine, unlike DockviewEngine.contract.spec.ts's own stub registry.
+    expect(app.dockviewLayout.insideDockTab("jarvis-panel-undock")).toBe(true);
+  });
+});
+
 /** The panel this block docks — an `analytics`-sourced table. */
 const DOCKED_PANEL_ID = "panel-desk-positions";
 

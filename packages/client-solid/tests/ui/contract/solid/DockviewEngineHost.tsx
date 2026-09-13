@@ -135,11 +135,7 @@ export function DockviewEngineHost(
         store={store}
         maximized={(props.maximized as PanelId | null | undefined) ?? null}
         collapsed={collapsed()}
-        // Task 7 threads a real docked fixture through this host; until then
-        // this is an inert default (no dynamic panels), matching every case
-        // in DockviewEngine.contract.spec.ts, which predates the `docked`
-        // prop — mirrors the react twin's identical host.
-        docked={[]}
+        docked={(props.docked as readonly PanelId[] | undefined) ?? []}
         // Inert: no case in DockviewEngine.contract.spec.ts exercises a
         // workspace-reset rebuild (that behaviour lives in
         // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
@@ -189,6 +185,10 @@ interface DockviewEngineHostProps {
   withHeads?: boolean;
   maximized?: string | null;
   collapsed?: readonly string[];
+  /** Threaded straight into `DockviewLayoutEngine`'s `docked` prop (Task 7).
+   * A docked id needs its own `layoutTestRegistry` entry to render a body —
+   * see `panel-desk-heat` there. */
+  docked?: readonly string[];
   interactive?: boolean;
   specsVariant?: SpecsVariant;
 }
