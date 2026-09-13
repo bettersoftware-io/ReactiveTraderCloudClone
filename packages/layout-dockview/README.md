@@ -169,6 +169,21 @@ witness is `shell/layout-dockview-stacked` — the first single-engine
 scenario (stacks are blob-private arrangement the in-house engine cannot
 express).
 
+## Close / reopen (Phase 3)
+
+A View-menu close is layer-2 state (`LayoutState.closed`, client-core): the
+engine's `closePanel` removes the panel live (releasing any strip record
+without a restore, exiting a maximize that names it, and letting the
+structural pin check dissolve an affected pin), and `reopenPanel` re-adds
+it **at its seed home**: the anchor is the nearest surviving SEED sibling —
+proximity within the panel's own seed split first, then outward — with a
+right-edge fallback when nothing of the seed survives (exported pure
+`seedAnchorFor`). The bridges reconcile the whole seed set on every change
+(close and reopen are both no-op-safe), so StrictMode rebuilds, tab
+switches and blobs saved while closed all converge with no bookkeeping.
+The last visible static panel of a tab cannot be closed — the reducer
+enforces the floor; the View menu only reflects it.
+
 ## Why `dockview`, not `dockview-core`
 
 `dockview-core` is a real npm package and works, but constructing a
