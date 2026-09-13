@@ -94,6 +94,7 @@ describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () =>
       maximized: null,
       collapsed: [],
       closed: [],
+      instances: [],
     };
 
     const payload: WorkspaceLayoutV1 = {
@@ -198,7 +199,13 @@ describe("parseWorkspaceLayout — tree/docked reconciliation", () => {
       v: 1,
       tabs: {
         fx: {
-          layout: { root, maximized: null, collapsed: [], closed: [] },
+          layout: {
+            root,
+            maximized: null,
+            collapsed: [],
+            closed: [],
+            instances: [],
+          },
           docked: [],
         },
       },

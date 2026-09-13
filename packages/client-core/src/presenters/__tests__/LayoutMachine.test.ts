@@ -28,6 +28,7 @@ const initial: LayoutState = {
   maximized: null,
   collapsed: [],
   closed: [],
+  instances: [],
 };
 const port: LayoutPort = { initial };
 
@@ -162,6 +163,7 @@ describe("createLayoutMachine", () => {
         maximized: null,
         collapsed: [],
         closed: [],
+        instances: [],
       },
     });
     m.intents.resize([], [0.6, 0.4]);
@@ -198,7 +200,13 @@ describe("createLayoutMachine", () => {
     };
 
     const m = createLayoutMachine({
-      initial: { root: nestedRoot, maximized: null, collapsed: [], closed: [] },
+      initial: {
+        root: nestedRoot,
+        maximized: null,
+        collapsed: [],
+        closed: [],
+        instances: [],
+      },
     });
     m.intents.resize([1], [0.3, 0.7]);
     const r = current(m).root;
@@ -405,6 +413,7 @@ describe("createLayoutMachine", () => {
       maximized: null,
       collapsed: [],
       closed: [],
+      instances: [],
     };
 
     it("starts the fold from seedState rather than port.initial", () => {
@@ -444,6 +453,45 @@ describe("createLayoutMachine", () => {
         sizes: [0.5, 0.5],
       });
       m.dispose();
+    });
+  });
+
+  describe("openInstance / closeInstance (Phase 4 panel instances)", () => {
+    it("openInstance adds eq-chart:<symbol>, dedupes, and caps at 4", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.openInstance("eq-chart", "AAPL");
+      expect(current(machine).instances).toEqual([
+        { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      ]);
+
+      for (const s of ["MSFT", "NVDA", "TSLA", "AMZN"]) {
+        machine.intents.openInstance("eq-chart", s);
+      }
+
+      expect(current(machine).instances).toHaveLength(4);
+      machine.dispose();
+    });
+
+    it("closeInstance removes it and clears its collapsed/maximized traces", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.collapse("eq-chart:AAPL");
+      machine.intents.maximize("eq-chart:AAPL");
+      machine.intents.closeInstance("eq-chart:AAPL");
+      const s = current(machine);
+      expect(s.instances).toEqual([]);
+      expect(s.collapsed).not.toContain("eq-chart:AAPL");
+      expect(s.maximized).toBeNull();
+      machine.dispose();
+    });
+
+    it("reset discards instances with everything else", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.reset();
+      expect(current(machine).instances).toEqual([]);
+      machine.dispose();
     });
   });
 });

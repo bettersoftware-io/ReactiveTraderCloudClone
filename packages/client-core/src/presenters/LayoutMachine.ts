@@ -14,6 +14,7 @@ import type {
   LayoutPort,
   LayoutState,
   PanelId,
+  PanelInstance,
 } from "#/layout/layoutPort";
 
 import type { Machine } from "./machine";
@@ -22,6 +23,18 @@ import type { Machine } from "./machine";
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
 export type { LayoutIntents, LayoutMachineOptions };
+
+/** Global cap on dynamically opened panel instances (Phase 4) — mirrors the
+ * `MAX_DOCKED_PANELS = 4` precedent in `composition.ts` / `JarvisPanelsMachine.ts`.
+ * Exported: Task 3/5 reuse it when deciding whether to offer "open chart". */
+export const MAX_PANEL_INSTANCES = 4;
+
+/** Builds the engine panelId for a dynamically opened instance — `id` doubles
+ * as the panelId so every id-keyed subsystem (registry, blob, strips, pins)
+ * needs no new key shape. Exported: Task 3/5 reuse it. */
+export function instanceIdFor(kind: "eq-chart", symbol: string): PanelId {
+  return `${kind}:${symbol}`;
+}
 
 type LayoutEvent =
   | { type: "maximize"; id: PanelId }
@@ -33,9 +46,12 @@ type LayoutEvent =
   | { type: "removePanel"; id: PanelId }
   | { type: "close"; id: PanelId }
   | { type: "reopen"; id: PanelId }
+  | { type: "openInstance"; kind: "eq-chart"; symbol: string }
+  | { type: "closeInstance"; id: PanelId }
   | { type: "reset" };
 
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
+type OpenInstancePayload = { kind: "eq-chart"; symbol: string };
 
 /** Replace the `sizes` of the split node reached by walking `path` from `node`.
  * Each path index selects a split child; a non-split target or an out-of-range
@@ -162,6 +178,51 @@ function makeReduce(
             return id !== event.id;
           }),
         };
+
+      case "openInstance": {
+        const id = instanceIdFor(event.kind, event.symbol);
+
+        if (
+          layoutState.instances.some((instance) => {
+            return instance.id === id;
+          }) ||
+          layoutState.instances.length >= MAX_PANEL_INSTANCES
+        ) {
+          return layoutState;
+        }
+
+        const instance: PanelInstance = {
+          id,
+          kind: event.kind,
+          symbol: event.symbol,
+        };
+        return {
+          ...layoutState,
+          instances: [...layoutState.instances, instance],
+        };
+      }
+
+      case "closeInstance":
+        if (
+          !layoutState.instances.some((instance) => {
+            return instance.id === event.id;
+          })
+        ) {
+          return layoutState;
+        }
+
+        return {
+          ...layoutState,
+          instances: layoutState.instances.filter((instance) => {
+            return instance.id !== event.id;
+          }),
+          collapsed: layoutState.collapsed.filter((id) => {
+            return id !== event.id;
+          }),
+          maximized:
+            layoutState.maximized === event.id ? null : layoutState.maximized,
+        };
+
       case "reset":
         return port.initial;
     }
@@ -188,6 +249,8 @@ export function createLayoutMachine(
   const removePanel$ = new Subject<PanelId>();
   const close$ = new Subject<PanelId>();
   const reopen$ = new Subject<PanelId>();
+  const openInstance$ = new Subject<OpenInstancePayload>();
+  const closeInstance$ = new Subject<PanelId>();
   const reset$ = new Subject<void>();
 
   const events$ = merge(
@@ -234,6 +297,16 @@ export function createLayoutMachine(
     reopen$.pipe(
       map((id): LayoutEvent => {
         return { type: "reopen", id };
+      }),
+    ),
+    openInstance$.pipe(
+      map(({ kind, symbol }): LayoutEvent => {
+        return { type: "openInstance", kind, symbol };
+      }),
+    ),
+    closeInstance$.pipe(
+      map((id): LayoutEvent => {
+        return { type: "closeInstance", id };
       }),
     ),
     reset$.pipe(
@@ -283,6 +356,12 @@ export function createLayoutMachine(
       reopen: (id: PanelId) => {
         reopen$.next(id);
       },
+      openInstance: (kind: "eq-chart", symbol: string) => {
+        openInstance$.next({ kind, symbol });
+      },
+      closeInstance: (id: PanelId) => {
+        closeInstance$.next(id);
+      },
       reset: () => {
         reset$.next();
       },
@@ -297,6 +376,8 @@ export function createLayoutMachine(
       removePanel$.complete();
       close$.complete();
       reopen$.complete();
+      openInstance$.complete();
+      closeInstance$.complete();
       reset$.complete();
       warm.unsubscribe();
     },

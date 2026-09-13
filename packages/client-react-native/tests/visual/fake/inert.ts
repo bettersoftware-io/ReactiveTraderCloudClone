@@ -255,6 +255,7 @@ const EMPTY_LAYOUT_STATE: LayoutState = {
   maximized: null,
   collapsed: [],
   closed: [],
+  instances: [],
 };
 
 /** `useLayout()`'s resting result — same value regardless of which
@@ -271,6 +272,8 @@ const LAYOUT_RESULT: LayoutResult = {
   close: noop,
   reopen: noop,
   removePanel: noop,
+  openInstance: noop,
+  closeInstance: noop,
   reset: noop,
 };
 

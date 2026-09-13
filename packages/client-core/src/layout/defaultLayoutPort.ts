@@ -184,6 +184,7 @@ export function createDefaultLayoutPort(tab: WorkspaceTab): LayoutPort {
     maximized: null,
     collapsed: [],
     closed: [],
+    instances: [],
   };
   return { initial };
 }

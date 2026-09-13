@@ -41,5 +41,6 @@ export const pinnedFixtureLayoutPort: LayoutPort = {
     maximized: null,
     collapsed: [],
     closed: [],
+    instances: [],
   },
 };

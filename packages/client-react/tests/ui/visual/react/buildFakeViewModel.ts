@@ -402,6 +402,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         removePanel: noop,
         close: noop,
         reopen: noop,
+        openInstance: noop,
+        closeInstance: noop,
         reset: noop,
       };
     },

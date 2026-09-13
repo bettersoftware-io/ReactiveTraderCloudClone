@@ -142,7 +142,11 @@ function reconcileTabEntry(
     });
 
   return {
-    layout: { root, maximized, collapsed, closed },
+    // `instances` (Phase 4 dynamic panel instances) isn't persisted yet —
+    // Task 2 designs that; `parseWorkspaceLayout` already discards whatever
+    // lands here back to `[]` on read (`workspaceLayoutPersistence.ts`), so
+    // writing anything else here would be dead weight, not real persistence.
+    layout: { root, maximized, collapsed, closed, instances: [] },
     docked,
   };
 }

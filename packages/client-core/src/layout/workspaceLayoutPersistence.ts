@@ -320,7 +320,10 @@ function validateLayoutState(value: unknown): LayoutState | null {
     }
   }
 
-  return { root, maximized, collapsed, closed };
+  // `instances` (Phase 4 dynamic panel instances) is not persisted yet —
+  // Task 2 wires the parser; until then every parsed layout gets an empty
+  // set, same treatment as a legacy payload with no `closed` key.
+  return { root, maximized, collapsed, closed, instances: [] };
 }
 
 function validateDockedEntry(value: unknown): DockedPanelEntry | null {

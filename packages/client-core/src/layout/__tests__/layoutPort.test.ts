@@ -19,6 +19,7 @@ describe("LayoutPort types", () => {
       maximized: null,
       collapsed: [],
       closed: [],
+      instances: [],
     };
     const port: LayoutPort = { initial: state };
 
