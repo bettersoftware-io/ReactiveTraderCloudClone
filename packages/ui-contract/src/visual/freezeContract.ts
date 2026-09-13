@@ -25,8 +25,10 @@ import { scenarios } from "./scenarios";
  *    is scoped to `data-motion="fast-forwarded"` elements, and everything else
  *    still finishes. Nothing about this tier's reason to exist changed.
  *
- * Reading computed style directly sidesteps both: `animations: "disabled"` is a
- * screenshot option, so a plain `page.evaluate` observes genuine live state.
+ * Reading computed style directly sidesteps both: this spec never calls the
+ * capture-time settle (`settleAnimationsForCapture` runs only in the golden
+ * specs, right before their shot), so its `page.evaluate` observes genuine
+ * live state.
  *
  * This is the regression witness for a bug that actually shipped —
  * HandshakeConsole's `.sealed` line blanked itself for 350ms on exactly the
