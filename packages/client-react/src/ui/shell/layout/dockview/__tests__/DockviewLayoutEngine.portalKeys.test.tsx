@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
@@ -39,74 +39,56 @@ const registry: PanelRegistry = {
 };
 
 describe("dockview portal keys", () => {
-  it("keys slot portals per mount, so a popout/remount transaction never duplicates keys", async () => {
-    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    const store = new InMemoryDockLayoutStore();
+  it("keys slot portals per mount, so a real pop-out transaction never duplicates keys", async () => {
+    const popout = page.stubPopoutWindow();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-      />,
-    );
+    // The transaction that used to warn: dockview mounts the panel's tab
+    // into the child window's element BEFORE disposing the old one, so the
+    // bridge holds two live mounts for the same (slot, panelId) for a
+    // moment. Driven here by the REAL popout rather than a hand-called
+    // hook — the same crossing the browser performs.
+    const errors = await page.captureConsoleErrors(async () => {
+      page.mount(
+        <DockviewLayoutEngine
+          tab="fx"
+          registry={registry}
+          store={new InMemoryDockLayoutStore()}
+          maximized={null}
+          collapsed={[]}
+          closed={[]}
+          docked={[]}
+          layoutResets={0}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+        />,
+      );
 
-    const mountTab = capturedHooks.mountTab;
-    expect(mountTab).not.toBeNull();
+      await page.waitFor(() => {
+        expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
+      });
 
-    // The pop-out transaction's shape: dockview mounts the panel's tab into
-    // the child window's element FIRST, then disposes the old one — two
-    // live entries for the same (slot, panelId) for a moment.
-    const second = document.createElement("div");
-    const disposeSecond = mountTab?.("fx-rates", second) ?? noop;
-    await page.waitFor(() => {
-      expect(second.childNodes.length).toBeGreaterThan(0);
+      page.clickControl("panel-fx-rates-popout");
+      await popout.settleOpen();
+
+      await page.waitFor(() => {
+        expect(page.engineAttribute("data-popped")).toBe("fx-rates");
+      });
     });
 
-    const duplicateKeyErrors = errors.mock.calls.filter(([message]) => {
-      return String(message).includes("same key");
-    });
-    expect(duplicateKeyErrors).toHaveLength(0);
+    // The panel's DOM really crossed into the other document — without that
+    // the transaction never happened and the assertion below is vacuous.
+    expect(popout.childContentLength()).toBeGreaterThan(0);
 
-    disposeSecond();
-    errors.mockRestore();
+    const duplicateKeyErrors = errors.filter((message) => {
+      return message.includes("same key");
+    });
+    expect(duplicateKeyErrors).toEqual([]);
+
+    popout.restore();
     page.unmountAll();
   });
 });
 
 function noop(): void {}
-
-const capturedHooks = vi.hoisted(() => {
-  return {
-    mountTab: null as ((id: string, el: HTMLElement) => () => void) | null,
-  };
-});
-
-// Passthrough capture of the bridge's `panels` hooks: the engine behaves
-// normally, but the test gets dockview's side of `mountTab` — the call a
-// pop-out transaction makes for the moved tab BEFORE the old element's
-// dispose runs (the transient the duplicate-key warning came from; jsdom
-// cannot open the real popout window, so the overlap is driven directly).
-vi.mock("@rtc/layout-dockview", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@rtc/layout-dockview")>();
-
-  return {
-    ...actual,
-    createDockEngine: (
-      ...args: Parameters<typeof actual.createDockEngine>
-    ): ReturnType<typeof actual.createDockEngine> => {
-      capturedHooks.mountTab = args[0].panels.mountTab ?? null;
-
-      return actual.createDockEngine(...args);
-    },
-  };
-});

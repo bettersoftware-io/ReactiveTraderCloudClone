@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
@@ -38,8 +38,18 @@ const registry: PanelRegistry = {
   },
 };
 
+// The engine, dockview and the browser's own `window.open` all run for real
+// here: the only stand-in is the WINDOW the pop-out opens into (an
+// iframe-backed document, since jsdom opens none). Nothing mocks
+// `@rtc/layout-dockview` — a package mock resolves to a different module
+// instance under the contract-coverage config than under the unit config
+// (measured: the component kept the real `createDockEngine` while the spec
+// held the mocked one), so a mock-based witness passes one gate and fails
+// the other. Driving the real path is both configs' truth.
 describe("dockview bridge pop-out wiring", () => {
-  it("threads popoutUrl into the engine, surfaces popped state as data-popped, and greys the popped panel's controls", async () => {
+  it("asks the browser for the pop-out page, then greys the popped panel's controls", async () => {
+    const popout = page.stubPopoutWindow();
+
     page.mount(() => {
       return (
         <DockviewLayoutEngine
@@ -58,39 +68,41 @@ describe("dockview bridge pop-out wiring", () => {
         />
       );
     });
-
-    // The bridge names the real page both clients emit at their site root.
-    expect(captured.options?.popoutUrl).toBe("/popout.html");
 
     // Every tab's controls carry the pop-out slot under this bridge (the
     // engine-gating: in-house heads never receive it).
     await page.waitFor(() => {
-      expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
+      expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
     });
 
-    // jsdom cannot open a real popout window, so the engine-owned popped
-    // set is driven through the captured callback — the bridge's side is
-    // exactly the same either way.
-    captured.options?.onPopoutsChange?.(["fx-analytics"]);
+    page.clickControl("panel-fx-analytics-popout");
 
+    // The click reached `engine.popoutPanel`, which asked the browser for
+    // the page both clients emit at their site root — the URL the bridge
+    // threads into the engine, witnessed where it actually lands.
+    await page.waitFor(() => {
+      expect(popout.requestedUrls()).toEqual(["/popout.html"]);
+    });
+
+    await popout.settleOpen();
+
+    // The engine's own popped set reached the bridge, which stamps it and
+    // greys the controls that make no sense for a panel in another window.
     await page.waitFor(() => {
       expect(page.engineAttribute("data-popped")).toBe("fx-analytics");
     });
+    expect(popout.childContentLength()).toBeGreaterThan(0);
     expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(true);
     expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(true);
     expect(page.controlDisabled("panel-fx-rates-collapse")).toBe(false);
 
-    // Dock-home empties the set and re-arms the controls.
-    captured.options?.onPopoutsChange?.([]);
-
-    await page.waitFor(() => {
-      expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
-    });
-
+    popout.restore();
     page.unmountAll();
   });
 
-  it("routes the pop-out control's click to engine.popoutPanel", async () => {
+  it("leaves the pop-out control live for a panel that is still docked", async () => {
+    const popout = page.stubPopoutWindow();
+
     page.mount(() => {
       return (
         <DockviewLayoutEngine
@@ -111,56 +123,22 @@ describe("dockview bridge pop-out wiring", () => {
     });
 
     await page.waitFor(() => {
-      expect(page.controlDisabled("panel-fx-rates-popout")).not.toBeNull();
+      expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
     });
 
-    page.clickControl("panel-fx-rates-popout");
-    expect(captured.popoutCalls).toContain("fx-rates");
+    page.clickControl("panel-fx-analytics-popout");
+    await popout.settleOpen();
 
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-popped")).toBe("fx-analytics");
+    });
+
+    // Only the popped panel is suppressed — its siblings stay poppable.
+    expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
+
+    popout.restore();
     page.unmountAll();
   });
 });
 
 function noop(): void {}
-
-interface CapturedEngineWiring {
-  options: {
-    popoutUrl?: string;
-    onPopoutsChange?: (poppedPanelIds: readonly string[]) => void;
-  } | null;
-  popoutCalls: string[];
-}
-
-const captured = vi.hoisted((): CapturedEngineWiring => {
-  return { options: null, popoutCalls: [] };
-});
-
-// Passthrough capture: the engine runs for real, but the test keeps the
-// options the bridge handed it (popoutUrl, onPopoutsChange) and wraps
-// popoutPanel to record calls — jsdom blocks window.open, so the real
-// method must not be awaited for an opened window here.
-vi.mock("@rtc/layout-dockview", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@rtc/layout-dockview")>();
-
-  return {
-    ...actual,
-    createDockEngine: (
-      ...args: Parameters<typeof actual.createDockEngine>
-    ): ReturnType<typeof actual.createDockEngine> => {
-      captured.options = {
-        popoutUrl: args[0].popoutUrl,
-        onPopoutsChange: args[0].onPopoutsChange,
-      };
-      const engine = actual.createDockEngine(...args);
-
-      return {
-        ...engine,
-        popoutPanel: (panelId: string): Promise<boolean> => {
-          captured.popoutCalls.push(panelId);
-
-          return engine.popoutPanel(panelId);
-        },
-      };
-    },
-  };
-});
