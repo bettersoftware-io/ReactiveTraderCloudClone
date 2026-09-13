@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { lazy, type ReactElement, Suspense } from "react";
 
 import { PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
@@ -11,7 +11,6 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
-import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import {
   appHeadRegistry,
   dockedHeadsFor,
@@ -64,6 +63,29 @@ export function App(): ReactElement {
   );
 }
 
+// Dockview is the DEFAULT engine, so its module is PRELOADED at page load
+// (the module-scope `import()` below starts the fetch immediately) — a
+// default engine whose chunk is first requested at render time cannot render
+// the workspace at all on an offline boot, which is why a plain `lazy()` here
+// reddened connection.spec's offline journeys across all three e2e jobs.
+//
+// The COMPONENT is still mounted through `lazy()`/`Suspense`, one commit
+// later than a static import would. That deferral is load-bearing for
+// rendering, not for bytes: mounting it in the first commit makes dockview
+// distribute the grid 1px differently (measured: the FX blotter group at
+// top=715 h=329 instead of solid's top=716 h=328, on an identical 1907x980
+// container), which is a react-only divergence — solid still matches the
+// committed goldens. Preload + deferred mount keeps both properties.
+const dockviewModule: Promise<
+  typeof import("./shell/layout/dockview/DockviewLayoutEngine")
+> = import("./shell/layout/dockview/DockviewLayoutEngine");
+
+const DockviewLayoutEngine = lazy(() => {
+  return dockviewModule.then((m) => {
+    return { default: m.DockviewLayoutEngine };
+  });
+});
+
 interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
@@ -105,29 +127,25 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   return (
     <FxViewProvider>
       <CreditViewProvider>
-        {/* Both engines are static imports — no lazy()/Suspense split. The
-         * in-house engine's own chunk measured ~3.8KB gzip (~1.2% of the
-         * bundle), not worth a chunk boundary; a prior version of this file
-         * lazy-loaded it, which armed the #594 blank-golden class on every
-         * in-house `app/*`/layout visual scenario and forced contract specs
-         * to explicitly flush a Suspense boundary before asserting. */}
         {engine === "dockview" ? (
-          <DockviewLayoutEngine
-            tab={tab}
-            registry={registry}
-            specs={specs}
-            headRegistry={headRegistry}
-            store={dockLayoutStore}
-            maximized={state.maximized}
-            collapsed={state.collapsed}
-            closed={state.closed}
-            docked={docked}
-            layoutResets={layoutResets}
-            onMaximize={maximize}
-            onRestore={restore}
-            onCollapse={collapse}
-            onExpand={expand}
-          />
+          <Suspense fallback={null}>
+            <DockviewLayoutEngine
+              tab={tab}
+              registry={registry}
+              specs={specs}
+              headRegistry={headRegistry}
+              store={dockLayoutStore}
+              maximized={state.maximized}
+              collapsed={state.collapsed}
+              closed={state.closed}
+              docked={docked}
+              layoutResets={layoutResets}
+              onMaximize={maximize}
+              onRestore={restore}
+              onCollapse={collapse}
+              onExpand={expand}
+            />
+          </Suspense>
         ) : (
           <InhouseLayoutEngine
             state={visibleState}
