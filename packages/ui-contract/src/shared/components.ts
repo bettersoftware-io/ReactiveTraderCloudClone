@@ -34,7 +34,10 @@ import {
   CandleChartPage,
   type CandleChartProps,
 } from "./pages/equities/chart/CandleChartPage";
-import { ChartPanelPage } from "./pages/equities/chart/ChartPanelPage";
+import {
+  ChartPanelPage,
+  type ChartPanelProps,
+} from "./pages/equities/chart/ChartPanelPage";
 import { EqChartHeadPage } from "./pages/equities/chart/EqChartHeadPage";
 import {
   InstrumentHeaderPage,
@@ -582,11 +585,9 @@ export const InstrumentTabs = component<
   return new InstrumentTabsPage(ctx);
 });
 
-export const ChartPanel = component<Record<string, never>, ChartPanelPage>(
-  (ctx) => {
-    return new ChartPanelPage(ctx);
-  },
-);
+export const ChartPanel = component<ChartPanelProps, ChartPanelPage>((ctx) => {
+  return new ChartPanelPage(ctx);
+});
 
 export const InstrumentHeader = component<
   InstrumentHeaderProps,

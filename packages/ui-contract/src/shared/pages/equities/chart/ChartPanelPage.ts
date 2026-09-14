@@ -7,11 +7,19 @@ import { STUB_RECT } from "./CandleChartPage";
 
 const PLOT_TESTID = "chart-plot";
 
+/** Props ChartPanel reads (Phase 4 dynamic chart instances): an optional
+ * pinned symbol that, when set, overrides the shared eqWorkspace selection
+ * for every symbol-keyed read/write in the panel. */
+export interface ChartPanelProps {
+  pinnedSymbol?: string;
+}
+
 /**
  * Page object for ChartPanel: the body composing InstrumentHeader +
- * CandleChart from the shared eqWorkspace machine's selection.
+ * CandleChart from the shared eqWorkspace machine's selection — or, when
+ * `pinnedSymbol` is set, from that fixed symbol instead.
  */
-export class ChartPanelPage extends MountedComponent<Record<string, never>> {
+export class ChartPanelPage extends MountedComponent<ChartPanelProps> {
   isEmpty(): boolean {
     return within(this.root).queryByText(/select an instrument/i) !== null;
   }

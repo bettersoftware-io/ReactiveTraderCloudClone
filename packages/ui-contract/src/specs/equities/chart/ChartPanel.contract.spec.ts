@@ -59,7 +59,44 @@ describe("ChartPanel", () => {
     expect(panel.isEmpty()).toBe(false);
     expect(panel.candleCount()).toBe(60);
   });
+
+  // Phase 4 dynamic chart instances: a dynamically opened instance panel is
+  // pinned to its own symbol via `pinnedSymbol`, independent of the shared
+  // workspace selection. Distinct quote values per symbol below so this
+  // assertion cannot pass by accident (a bug reading the selected symbol's
+  // quote instead of the pinned one's would show AAPL's 104.00/103.90).
+  it("renders the pinned symbol's chart even when the workspace selection is a different symbol", () => {
+    const panel = mount(ChartPanel, {
+      props: { pinnedSymbol: "MSFT" },
+      equities: {
+        watchlist: PINNED_INSTRUMENTS,
+        quotes: {
+          AAPL: quote(),
+          MSFT: quote({ symbol: "MSFT", last: 250, bid: 249.5 }),
+        },
+        candles: { AAPL: CANDLES, MSFT: CANDLES },
+      },
+    });
+
+    // Default selection is the watchlist's first symbol (AAPL) — different
+    // from the pinned MSFT instance.
+    expect(panel.isEmpty()).toBe(false);
+    expect(panel.lastPrice()).toBe("250.00");
+    expect(panel.bid()).toBe("249.50");
+
+    // Driving the shared workspace selection elsewhere (the existing
+    // workspace page object) must not move the pinned instance off its
+    // symbol.
+    panel.selectInstrument("AAPL");
+    expect(panel.lastPrice()).toBe("250.00");
+    expect(panel.bid()).toBe("249.50");
+  });
 });
+
+const PINNED_INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+];
 
 function quote(overrides: Partial<EquityQuote> = {}): EquityQuote {
   return {
