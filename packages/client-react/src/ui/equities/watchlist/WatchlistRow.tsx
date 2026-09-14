@@ -33,7 +33,19 @@ import styles from "./WatchlistRow.module.css";
  * structure itself makes the two independent. The wrapper is rendered ONLY
  * when `onOpenChart` is defined — in-house (`undefined`) returns the row
  * `<button>` alone, byte-identical to the pre-Phase-4-Task-5 markup, so its
- * goldens are untouched. */
+ * goldens are untouched.
+ *
+ * `data-watch-sym` (`useRankGlide`'s query target — see that file's doc) sits
+ * on whichever element is THIS row's OUTER, per-row node: `.row` itself when
+ * there's no wrapper (in-house), or `.rowWrapper` when there is (dockview) —
+ * never on `.row` when it's wrapped. `useRankGlide` glides that exact node's
+ * `transform`, so it must be the row's full visual unit (chart button
+ * included under dockview), not just the inner `.row` button — a node one
+ * level too deep would leave the chart button visually behind on every
+ * re-sort. `useRankGlide`'s highlight pass separately resolves the actual
+ * `.row` surface via `[data-rank-glow]`'s parent (always `.row`, regardless
+ * of which node carries `data-watch-sym`), since the direction-tint CSS keys
+ * off `.row[data-rank-dir]` specifically. */
 export function WatchlistRow({
   symbol,
   name,
@@ -88,7 +100,11 @@ export function WatchlistRow({
     <button
       type="button"
       data-testid={`watch-row-${symbol}`}
-      data-watch-sym={symbol}
+      // Omitted here (React drops an `undefined` attribute) when the row is
+      // about to be wrapped below — `.rowWrapper` carries it instead, since
+      // IT is the outer per-row node under dockview. See this file's
+      // top-of-component doc note.
+      data-watch-sym={onOpenChart === undefined ? symbol : undefined}
       data-selected={selected ? "true" : "false"}
       className={styles.row}
       onClick={selectSymbol}
@@ -128,7 +144,7 @@ export function WatchlistRow({
   }
 
   return (
-    <div className={styles.rowWrapper}>
+    <div className={styles.rowWrapper} data-watch-sym={symbol}>
       {rowButton}
       <button
         type="button"

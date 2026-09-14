@@ -23,10 +23,20 @@ export class WatchlistPanelPage extends MountedComponent<
     return within(this.root).getByTestId(`${ROW_PREFIX}${symbol}`);
   }
 
+  /** A row element's symbol, read off its OWN `data-testid` rather than
+   * `data-watch-sym` — Phase 4 Task 5 moved that attribute to `.rowWrapper`
+   * under dockview (see WatchlistRow.tsx's doc note), so it's no longer on
+   * this element there; the testid (`watch-row-<symbol>`), unlike
+   * `data-watch-sym`, is on the row `<button>` in BOTH engine modes.
+   * Mirrors `LiveRatesWorkspacePage`'s identical testid-strip idiom. */
+  private symbolOf(el: HTMLElement): string {
+    return el.getAttribute("data-testid")?.replace(ROW_PREFIX, "") ?? "";
+  }
+
   /** The symbols of the rendered rows, in current sort order. */
   rows(): string[] {
     return this.rowEls().map((el) => {
-      return el.getAttribute("data-watch-sym") ?? "";
+      return this.symbolOf(el);
     });
   }
 
@@ -40,7 +50,7 @@ export class WatchlistPanelPage extends MountedComponent<
     const active = this.rowEls().find((el) => {
       return el.getAttribute("data-selected") === "true";
     });
-    return active?.getAttribute("data-watch-sym") ?? null;
+    return active ? this.symbolOf(active) : null;
   }
 
   /** Click a row — fires the shared eqWorkspace machine's select(symbol). */
@@ -98,5 +108,17 @@ export class WatchlistPanelPage extends MountedComponent<
     if (button) {
       await this.user.click(button);
     }
+  }
+
+  /** The exact element set `useRankGlide` queries via `[data-watch-sym]` —
+   * one per row, and the node its `translateY` glide actually animates. In
+   * in-house mode this is each row's own `<button>`; under dockview it's
+   * each `.rowWrapper` (Phase 4 Task 5's chart-button sibling wrapper — see
+   * WatchlistRow.tsx's doc note), so the glide carries the whole row,
+   * chart button included, instead of leaving it behind. */
+  rankGlideTargets(): HTMLElement[] {
+    return Array.from(
+      this.root.querySelectorAll<HTMLElement>("[data-watch-sym]"),
+    );
   }
 }

@@ -387,6 +387,59 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
     }
   });
 
+  it("keeps [data-watch-sym] on the OUTER per-row node in both engine modes, so rank-glide's translateY moves the whole row (chart button included)", () => {
+    for (const layoutEngine of ["inhouse", "dockview"] as const) {
+      const panel = mount(WatchlistPanel, {
+        layoutEngine,
+        equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+      });
+
+      const targets = panel.rankGlideTargets();
+
+      // Exactly one glide target per row — a duplicate (e.g. the attribute
+      // left on BOTH the wrapper and the inner row button) would make
+      // useRankGlide's querySelectorAll double-count a row and corrupt
+      // rowHeight()'s two-node gap measurement.
+      expect(
+        targets
+          .map((el) => {
+            return el.getAttribute("data-watch-sym");
+          })
+          .sort(),
+      ).toEqual(
+        [
+          ...INSTRUMENTS.map((inst) => {
+            return inst.symbol;
+          }),
+        ].sort(),
+      );
+
+      // Every matched node must be a DIRECT child of the SAME list
+      // container — not a descendant several levels down — so
+      // useRankGlide's translateY on the node itself carries the whole row.
+      // Under dockview, a target one level too deep (the inner `.row`
+      // button, wrapped by its OWN `.rowWrapper`) would instead have a
+      // DIFFERENT parent per row, since each row owns its own wrapper.
+      const parents = new Set(
+        targets.map((el) => {
+          return el.parentElement;
+        }),
+      );
+      expect(parents.size).toBe(1);
+
+      if (layoutEngine === "dockview") {
+        // The matched node must BE the wrapper (containing the chart
+        // button) — not the inner row button alone, which would leave the
+        // chart button behind on every re-sort glide.
+        for (const target of targets) {
+          expect(
+            target.querySelector('[data-testid^="watch-open-chart-"]'),
+          ).not.toBeNull();
+        }
+      }
+    }
+  });
+
   it("clicking the button opens a REAL instance for that row's symbol — witnessed by a second independent mount sharing the same World's layout machine — without touching the workspace selection", async () => {
     const world = dockviewWorld({
       watchlist: INSTRUMENTS,
