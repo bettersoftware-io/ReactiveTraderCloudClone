@@ -139,13 +139,15 @@ describe("createDockEngine", () => {
 
   it("restores a valid blob (round-trip through its own serialisation)", () => {
     let saved: string | null = null;
+    const firstOpts = base();
     const first = createDockEngine({
-      ...base(),
+      ...firstOpts,
       onLayoutChange: (blob: string) => {
         saved = blob;
       },
       debounceMs: 0,
     });
+    touchContainer(firstOpts.container); // a user was here, so dispose persists
     first.maximizePanel("fx-rates"); // any layout mutation triggers serialisation
     first.dispose();
     expect(saved).not.toBeNull();
@@ -412,13 +414,16 @@ describe("createDockEngine", () => {
 
   it("coalesces two rapid layout mutations into a single onLayoutChange call", async () => {
     const calls: string[] = [];
+    const opts = base();
     const engine = createDockEngine({
-      ...base(),
+      ...opts,
       debounceMs: 30,
       onLayoutChange: (blob: string) => {
         calls.push(blob);
       },
     });
+    // User-originated mutations, so dispose's final flush applies below.
+    touchContainer(opts.container);
 
     // Each mutation's onDidLayoutChange notification is itself microtask-
     // deferred by dockview-core (AsapEvent), so a bare `await Promise.resolve()`
@@ -439,8 +444,101 @@ describe("createDockEngine", () => {
     });
     expect(calls).toHaveLength(1); // exactly one save for the two mutations
 
-    engine.dispose(); // dispose's own unconditional flush — a second, separate call
+    engine.dispose(); // dispose's own final flush — a second, separate call
     expect(calls).toHaveLength(2);
+  });
+});
+
+describe("dispose flush — arrangement origin", () => {
+  it("does not persist a layout no pointer touched (seed path)", () => {
+    const calls: string[] = [];
+    const opts = base();
+    const engine = createDockEngine({
+      ...opts,
+      // Long enough that no debounced save can land before dispose.
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    // A programmatic mutation — what a bridge's maximize/collapse REPLAY
+    // does. It reconstructs layer-2 state and is replayed on the next mount,
+    // so it is not arrangement and must not survive dispose.
+    engine.maximizePanel("fx-rates");
+    engine.dispose();
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("does not persist a layout no pointer touched (blob path)", () => {
+    const blob = userArrangedBlob(base());
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      blob,
+      debounceMs: 60_000,
+      onLayoutChange: (next: string) => {
+        calls.push(next);
+      },
+    });
+
+    engine.maximizePanel("fx-rates");
+    engine.dispose();
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("persists through onLayoutChange once a pointer went down inside the container", () => {
+    const calls: string[] = [];
+    const opts = base();
+    const engine = createDockEngine({
+      ...opts,
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    opts.container.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    engine.maximizePanel("fx-rates");
+    engine.dispose();
+
+    // Through the callback specifically: a bridge's reset path relies on a
+    // suppression guard INSIDE onLayoutChange to stop this flush writing a
+    // pre-reset layout over a store it has just cleared.
+    expect(calls).toHaveLength(1);
+  });
+
+  it("a StrictMode double construction reseeds at the second engine's size instead of rescaling the first's", () => {
+    // The visual host's failing shape, measured on app/fx-dockview: an eager
+    // mount constructs engine #1 while the chrome above the container has
+    // not settled (981px), StrictMode disposes it, and engine #2 constructs
+    // at the settled 980px from whatever the store then holds.
+    let stored: string | null = null;
+
+    createDockEngine({
+      ...base(),
+      container: sizedContainer(1907, 981),
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        stored = blob;
+      },
+    }).dispose();
+
+    const second = userFlushedSize(
+      { ...base(), container: sizedContainer(1907, 980), blob: stored },
+      "fx-blotter",
+    );
+
+    const fresh = userFlushedSize(
+      { ...base(), container: sizedContainer(1907, 980) },
+      "fx-blotter",
+    );
+
+    expect(second).toBe(fresh);
+    // …and the reason: engine #1 persisted nothing, so #2 seeded exactly.
+    expect(stored).toBeNull();
   });
 });
 
@@ -1133,7 +1231,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("opens the rail at its design width and persists the pin in the blob", () => {
     const seen = trackLayout();
-    createDockEngine({ ...railPinnedBase(), ...seen.options }).dispose();
+    persistArranged({ ...railPinnedBase(), ...seen.options });
 
     expect(seen.branchSizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([RAIL_PIN]);
@@ -1141,11 +1239,11 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("pins a lone panel child too, not just a rail split", () => {
     const seen = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...base(),
       ...seen.options,
       seed: { ...FX_LIKE, initialPx: [undefined, 360] },
-    }).dispose();
+    });
 
     expect(seen.sizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([
@@ -1227,14 +1325,14 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   it("re-applies a still-pinned blob's pin on the next load", () => {
     const opts = railPinnedBase();
     const seen = trackLayout();
-    createDockEngine({ ...opts, ...seen.options }).dispose();
+    persistArranged({ ...opts, ...seen.options });
 
     const reloaded = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...railPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
-    }).dispose();
+    });
 
     expect(reloaded.pins()).toEqual([RAIL_PIN]);
     expect(reloaded.branchSizeOf("fx-analytics")).toBe(360);
@@ -1248,28 +1346,27 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
 
     const reloaded = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...railPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
-    }).dispose();
+    });
 
     expect(reloaded.pins()).toEqual([]);
   });
 
   it("treats a legacy blob without the sidecar as unpinned", () => {
     const seen = trackLayout();
-    const first = createDockEngine({ ...railPinnedBase(), ...seen.options });
-    first.dispose();
+    persistArranged({ ...railPinnedBase(), ...seen.options });
     const legacy: Record<string, unknown> = JSON.parse(seen.blob());
     delete legacy.rtcDesignPins;
 
     const reloaded = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...railPinnedBase(),
       ...reloaded.options,
       blob: JSON.stringify(legacy),
-    }).dispose();
+    });
 
     expect(reloaded.pins()).toEqual([]);
   });
@@ -1278,14 +1375,14 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     // A blob whose analytics tab was drag-docked beside rates: the pin's
     // clamp would hold the rates group too, so it must dissolve instead.
     const seen = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...base(),
       ...seen.options,
       blob: JSON.stringify({
         ...(twoTabGroupLayout() as Record<string, unknown>),
         rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
       }),
-    }).dispose();
+    });
 
     expect(seen.pins()).toEqual([]);
   });
@@ -1485,7 +1582,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("drops a malformed sidecar instead of trusting it", async () => {
     const seen = trackLayout();
-    createDockEngine({ ...base(), ...seen.options }).dispose();
+    persistArranged({ ...base(), ...seen.options });
     const tampered: Record<string, unknown> = JSON.parse(seen.blob());
     tampered.rtcStripGeometry = {
       records: { "fx-analytics": { size: "wide" } },
@@ -1505,15 +1602,15 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("keeps a strip-free blob free of the sidecar and stable across a reload", () => {
     const seen = trackLayout();
-    createDockEngine({ ...base(), ...seen.options }).dispose();
+    persistArranged({ ...base(), ...seen.options });
     expect(JSON.parse(seen.blob()).rtcStripGeometry).toBeUndefined();
 
     const reloaded = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...base(),
       ...reloaded.options,
       blob: seen.blob(),
-    }).dispose();
+    });
     expect(reloaded.blob()).toBe(seen.blob());
   });
 });
@@ -1521,7 +1618,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
   it("stamps every save with the current blob version", () => {
     const seen = trackLayout();
-    createDockEngine({ ...base(), ...seen.options }).dispose();
+    persistArranged({ ...base(), ...seen.options });
 
     expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
   });
@@ -1595,11 +1692,11 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
     };
 
     const seen = trackLayout();
-    createDockEngine({
+    persistArranged({
       ...base(),
       ...seen.options,
       blob: JSON.stringify(legacy),
-    }).dispose();
+    });
 
     // The pin's PUBLIC card px survives migration untouched and the clamp
     // adds the gap — the rail reads its design width exactly, and the
@@ -1856,8 +1953,9 @@ describe("dynamic-panel reconciliation at construction", () => {
   it("keeps a listed dynamic panel's dragged arrangement from the blob", async () => {
     // engine 1: add, stack it into the rates group, capture the blob
     const seen = trackLayout();
+    const firstOpts = base();
     const first = createDockEngine({
-      ...base(),
+      ...firstOpts,
       ...seen.options,
       dynamicPanels: [DYN],
     });
@@ -1872,7 +1970,9 @@ describe("dynamic-panel reconciliation at construction", () => {
 
     dyn.api.moveTo({ group: rates.group, position: "center" }); // stack it
     expect(api.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
-    // dispose flushes one final serialisation synchronously — see baseline().
+    // The stack stands in for a DnD, which starts with a pointer in the dock —
+    // so dispose's final flush persists it (see baseline()).
+    touchContainer(firstOpts.container);
     first.dispose();
     const blob = seen.blob();
     // engine 2: same blob + still listed → stays stacked, NOT re-added right-edge
@@ -1915,8 +2015,9 @@ describe("dynamic-panel reconciliation at construction", () => {
     // fromJSON genuinely throws on (unlike a merely-malformed panels entry,
     // which it tolerates by degrading that one panel to an undefined id).
     const seen = trackLayout();
+    const firstOpts = base();
     const first = createDockEngine({
-      ...base(),
+      ...firstOpts,
       ...seen.options,
       dynamicPanels: [DYN],
     });
@@ -1944,6 +2045,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     // touches, does.
     blotter.api.moveTo({ group: rates.group, position: "center" });
     expect(rates.group.panels.length).toBe(2);
+    touchContainer(firstOpts.container); // a DnD's pointer, as above
     first.dispose();
     const parsed = JSON.parse(seen.blob());
     delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
@@ -2017,23 +2119,25 @@ describe("dynamic-panel reconciliation at construction", () => {
     second.dispose();
   });
 
-  it("leaves a static-only blob with no dynamicPanels exactly as before", async () => {
+  it("leaves a static-only blob with no dynamicPanels exactly as before", () => {
+    // Capture a REAL blob first. An earlier version read the tracker
+    // synchronously right after construction, before any save could land:
+    // it compared null to null and restored from an empty-string "blob" that
+    // silently fell back to the seed — green without ever testing a restore.
     const seen = trackLayout();
-    const first = createDockEngine({ ...base(), ...seen.options });
+    persistArranged({ ...base(), ...seen.options });
     const analyticsBefore = seen.sizeOf("fx-analytics");
-    const blob = seen.blob();
-    first.dispose();
+    expect(analyticsBefore).not.toBeNull();
+
     const reloaded = trackLayout();
-    const second = createDockEngine({
-      ...base(),
-      ...reloaded.options,
-      blob,
-    });
+    const opts = { ...base(), ...reloaded.options, blob: seen.blob() };
+    const second = createDockEngine(opts);
     expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
+    touchContainer(opts.container);
+    second.dispose();
     // the static arrangement itself is untouched — not just "no phantom
     // dynamic panel", but the SAME layout, byte for byte on this panel.
     expect(reloaded.sizeOf("fx-analytics")).toBe(analyticsBefore);
-    second.dispose();
   });
 });
 
@@ -2296,6 +2400,17 @@ async function waitForPins(
 
 function trackLayout(): LayoutTracker {
   let blob = "";
+
+  function savedBlob(): string {
+    if (blob === "") {
+      throw new Error(
+        "no layout was saved — did the engine get a pointer before dispose? (see persistArranged)",
+      );
+    }
+
+    return blob;
+  }
+
   const tracker = {
     options: {
       onLayoutChange: (next: string): void => {
@@ -2315,11 +2430,17 @@ function trackLayout(): LayoutTracker {
         ? null
         : findBranchSize(JSON.parse(blob).grid.root, panelId);
     },
+    // These two THROW rather than returning [] / "" when nothing was saved: an
+    // empty read is indistinguishable from "saved, and empty", so a test
+    // asserting `pins()).toEqual([])` or two equal blobs would pass with no
+    // save at all. That became reachable once dispose stopped flushing
+    // untouched engines. (sizeOf stays nullable: waitForSize polls it before
+    // the first save, and a null already fails any size assertion loudly.)
     pins: (): readonly unknown[] => {
-      return blob === "" ? [] : (JSON.parse(blob).rtcDesignPins ?? []);
+      return JSON.parse(savedBlob()).rtcDesignPins ?? [];
     },
     blob: (): string => {
-      return blob;
+      return savedBlob();
     },
   };
 
@@ -2597,10 +2718,79 @@ function baselineBranchSize(opts: DockEngineOptions, panelId: string): number {
   return size;
 }
 
+/** A detached-from-layout container that REPORTS a size, as a real browser
+ * container would — jsdom lays nothing out, so clientWidth/clientHeight are
+ * otherwise 0 and the engine falls back to 1200x800. */
+function sizedContainer(width: number, height: number): HTMLElement {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  attachedContainers.push(container);
+  Object.defineProperty(container, "clientWidth", {
+    configurable: true,
+    get: () => {
+      return width;
+    },
+  });
+  Object.defineProperty(container, "clientHeight", {
+    configurable: true,
+    get: () => {
+      return height;
+    },
+  });
+
+  return container;
+}
+
+/** Stands in for a user having been inside the dock: dispose only persists a
+ * layout a pointer touched (see the engine's dispose). */
+function touchContainer(container: HTMLElement): void {
+  container.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+}
+
+/** Builds an engine from `opts`, lets a pointer touch it, and disposes it —
+ * leaving behind the persisted form of a session a user arranged. The idiom
+ * for reading what a construction serialises: dispose no longer flushes an
+ * engine nobody touched. */
+function persistArranged(opts: DockEngineOptions): void {
+  const engine = createDockEngine(opts);
+  touchContainer(opts.container);
+  engine.dispose();
+}
+
+/** The blob a user-arranged engine built from `opts` persists on dispose. */
+function userArrangedBlob(opts: DockEngineOptions): string {
+  const seen = trackLayout();
+  const engine = createDockEngine({ ...opts, ...seen.options });
+  touchContainer(opts.container);
+  engine.dispose();
+
+  return seen.blob();
+}
+
+/** `panelId`'s rendered size on an engine built from `opts`, read from the
+ * blob it persists once a pointer has touched it. */
+function userFlushedSize(opts: DockEngineOptions, panelId: string): number {
+  const seen = trackLayout();
+  const engine = createDockEngine({ ...opts, ...seen.options });
+  touchContainer(opts.container);
+  engine.dispose();
+
+  const size = seen.sizeOf(panelId);
+
+  if (size === null) {
+    throw new Error(`${panelId} has no rendered size`);
+  }
+
+  return size;
+}
+
 function baseline(opts: DockEngineOptions): LayoutTracker {
   const seen = trackLayout();
-  // dispose flushes one final serialisation synchronously — see the engine.
-  createDockEngine({ ...opts, ...seen.options }).dispose();
+  const engine = createDockEngine({ ...opts, ...seen.options });
+  // dispose flushes one final serialisation synchronously, but only for a
+  // layout a pointer touched — see the engine. The twin exists to be read.
+  touchContainer(opts.container);
+  engine.dispose();
 
   return seen;
 }

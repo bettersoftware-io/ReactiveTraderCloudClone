@@ -1204,6 +1204,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
+  // Whether a user has been inside the dock since construction — the ORIGIN
+  // test for what dispose may persist. Layer 3 persists ARRANGEMENT (sash
+  // drags, DnD, restacks, and the maximize/collapse/pop-out buttons, all of
+  // which live inside this container); everything else that mutates the grid
+  // before a user touches it — pins, the dynamic-panel reconcile, a bridge's
+  // maximize/collapse/closed replays, a settle-time resize — is re-derived
+  // from options and layer-2 state on the next construction. Content can't
+  // tell those apart (a replay changes the grid exactly as a click does);
+  // origin can. Over-approximates safely: a plain click also sets it, but a
+  // human click only happens once the container has settled.
+  let userArranged = false;
+
+  function markUserArranged(): void {
+    userArranged = true;
+  }
+
+  opts.container.addEventListener("pointerdown", markUserArranged, true);
+
   return {
     maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
@@ -1397,6 +1415,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     dispose: () => {
       changeSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
+      opts.container.removeEventListener("pointerdown", markUserArranged, true);
       disarmSashUnpin();
 
       if (glideTimer !== null) {
@@ -1405,19 +1424,32 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         opts.container.removeAttribute(DOCK_GLIDE_ATTRIBUTE);
       }
 
-      // The last layout mutation must survive dispose. Dockview's model
+      // The last USER arrangement must survive dispose. Dockview's model
       // updates synchronously (only its onDidLayoutChange notification is
-      // microtask-deferred, via AsapEvent), so a mutation right before
-      // dispose — e.g. maximize just ahead of navigating away — would
+      // microtask-deferred, via AsapEvent), so a user's mutation right before
+      // dispose — e.g. clicking maximize just ahead of navigating away — would
       // otherwise be lost: cancel any pending debounce and flush one final
-      // serialisation unconditionally rather than only when a timer happens
-      // to already be pending.
+      // serialisation rather than only when a timer happens to be pending.
+      //
+      // …but ONLY if a user was here (see userArranged). An untouched engine's
+      // grid is a pure function of its options, so flushing it persists
+      // nothing the next construction can't rebuild — and it is actively
+      // harmful: the container may not have settled yet. StrictMode's
+      // synchronous double mount disposes engine #1 while an eager mount still
+      // sees the pre-settle 981px container; flushing then hands engine #2 a
+      // 981px blob, which dockview proportionally rescales into 980px and
+      // loses a pixel on the tiles/blotter sash (measured, app/fx-dockview).
+      // Skipping lets #2 seed exactly. The flush stays on onLayoutChange so a
+      // bridge's reset-suppression guard still sees it.
       if (timer !== null) {
         clearTimeout(timer);
         timer = null;
       }
 
-      serializeLayout();
+      if (userArranged) {
+        serializeLayout();
+      }
+
       api.dispose();
     },
   };
