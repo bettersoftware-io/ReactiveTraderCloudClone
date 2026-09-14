@@ -19,6 +19,8 @@ import {
   appPanelRegistry,
   dockedRegistryFor,
   dockedSpecsFor,
+  instanceRegistryFor,
+  instanceSpecsFor,
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
@@ -102,8 +104,21 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   // edit ("make it a table" while docked) is reflected on the very next
   // render, regardless of which tab the panel was docked into.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
-  const registry = { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) };
-  const specs = { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels) };
+  // Chart instances (layer-2 membership the layout machine owns) merge in
+  // after the docked slices. Only the Dockview engine ever looks an instance
+  // id up — it is not in the layout tree, so in-house never renders one.
+  const registry = {
+    ...appPanelRegistry,
+    ...dockedRegistryFor(dockedPanels),
+    ...instanceRegistryFor(state.instances),
+  };
+
+  const specs = {
+    ...PANEL_SPECS,
+    ...dockedSpecsFor(dockedPanels),
+    ...instanceSpecsFor(state.instances),
+  };
+
   const headRegistry = {
     ...appHeadRegistry,
     ...dockedHeadsFor(dockedPanels, undockPanel, dismissPanel),
@@ -125,6 +140,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               collapsed={state.collapsed}
               closed={state.closed}
               docked={docked}
+              instances={state.instances}
               layoutResets={layoutResets}
               onMaximize={maximize}
               onRestore={restore}

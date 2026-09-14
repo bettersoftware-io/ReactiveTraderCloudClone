@@ -57,6 +57,7 @@ describe("dockview portal keys", () => {
           collapsed={[]}
           closed={[]}
           docked={[]}
+          instances={[]}
           layoutResets={0}
           onMaximize={noop}
           onRestore={noop}

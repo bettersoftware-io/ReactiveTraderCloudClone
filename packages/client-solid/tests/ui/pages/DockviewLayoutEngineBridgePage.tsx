@@ -30,6 +30,10 @@ export interface DockviewLayoutEngineBridgePage {
   waitFor(assertion: () => void): Promise<void>;
   /** The layout-engine root's `attribute` value, or null when absent. */
   engineAttribute(attribute: string): string | null;
+  /** The engine's `data-groups` witness, as the attribute's raw string. */
+  groupsAttr(): string | null;
+  /** Whether a testid the registry/portal tree renders is present. */
+  bodyVisible(testId: string): boolean;
   /** The control's `disabled` state, or null when no such testid exists. */
   controlDisabled(testId: string): boolean | null;
   clickControl(testId: string): void;
@@ -37,9 +41,10 @@ export interface DockviewLayoutEngineBridgePage {
   stubPopoutWindow(): PopoutWindowHarness;
 }
 
-/** The framework surface for `DockviewLayoutEngine.popout.test.tsx` — the
- * solid bridge's jsdom wiring tests (the react twin reuses its StrictMode
- * page; solid has no StrictMode, so this page carries only render/waitFor). */
+/** The framework surface for `DockviewLayoutEngine.popout.test.tsx` and
+ * `DockviewLayoutEngine.instances.test.tsx` — the solid bridge's jsdom
+ * wiring tests (the react twin reuses its StrictMode page; solid has no
+ * StrictMode, so this page carries only render/waitFor and the queries). */
 export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage {
   return {
     mount(element: () => JSX.Element): void {
@@ -55,6 +60,12 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
       return (
         screen.queryByTestId("layout-engine")?.getAttribute(attribute) ?? null
       );
+    },
+    groupsAttr(): string | null {
+      return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    bodyVisible(testId: string): boolean {
+      return screen.queryByTestId(testId) !== null;
     },
     controlDisabled(testId: string): boolean | null {
       const control = screen.queryByTestId(testId);

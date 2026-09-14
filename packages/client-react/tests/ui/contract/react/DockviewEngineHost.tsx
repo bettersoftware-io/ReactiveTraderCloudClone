@@ -131,6 +131,7 @@ export function DockviewEngineHost({
         }
         closed={[]}
         docked={(docked as readonly PanelId[] | undefined) ?? []}
+        instances={[]}
         // Inert: no case in DockviewEngine.contract.spec.ts exercises a
         // workspace-reset rebuild (that behaviour lives in
         // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never

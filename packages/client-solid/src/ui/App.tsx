@@ -1,7 +1,12 @@
 import type { JSX } from "solid-js";
 import { createMemo, lazy, Show, Suspense, untrack } from "solid-js";
 
-import { type LayoutState, PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
+import {
+  type LayoutPanelInstance,
+  type LayoutState,
+  PANEL_SPECS,
+  visibleRootOf,
+} from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
@@ -21,6 +26,8 @@ import {
   appPanelRegistry,
   dockedRegistryFor,
   dockedSpecsFor,
+  instanceRegistryFor,
+  instanceSpecsFor,
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
@@ -190,11 +197,27 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     }),
   );
   const layoutResets = useWorkspaceLayoutResets();
+  // Chart instances (layer-2 membership the layout machine owns), gated on
+  // the instance ID SET for the same IDENTITY CHURN reason as `dockedIds`:
+  // `state()` emits on EVERY layout change (maximize, collapse, resize), so
+  // reading `state().instances` straight into the registry memo would hand
+  // both engines a fresh-identity registry on each and remount every panel.
+  // An id encodes kind + symbol, so equal ids mean equal rows. Only the
+  // Dockview engine ever looks an instance id up — it is not in the layout
+  // tree, so in-house never renders one.
+  const instances = createMemo(
+    (): readonly LayoutPanelInstance[] => {
+      return state().instances;
+    },
+    undefined,
+    { equals: sameInstanceIds },
+  );
 
   const registry = createMemo(() => {
     return {
       ...appPanelRegistry,
       ...dockedRegistryFor(dockedIds(), dockedPanels),
+      ...instanceRegistryFor(instances()),
     };
   });
 
@@ -214,6 +237,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     return {
       ...PANEL_SPECS,
       ...dockedSpecsFor(dockedIds(), untrack(dockedPanels)),
+      ...instanceSpecsFor(instances()),
     };
   });
 
@@ -262,6 +286,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               collapsed={state().collapsed}
               closed={state().closed}
               docked={dockedIds()}
+              instances={instances()}
               layoutResets={layoutResets()}
               onMaximize={maximize}
               onRestore={restore}
@@ -272,5 +297,18 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
         </Show>
       </CreditViewProvider>
     </FxViewProvider>
+  );
+}
+
+/** Element-wise instance-id equality — the `instances` memo's identity gate. */
+function sameInstanceIds(
+  previous: readonly LayoutPanelInstance[],
+  next: readonly LayoutPanelInstance[],
+): boolean {
+  return (
+    previous.length === next.length &&
+    previous.every((instance, index) => {
+      return instance.id === next[index]?.id;
+    })
   );
 }
