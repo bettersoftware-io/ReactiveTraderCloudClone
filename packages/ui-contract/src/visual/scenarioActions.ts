@@ -369,6 +369,21 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-equities",
     waitForText: "☰ Watchlist",
   },
+  // Phase 4 (dynamic chart instances): the dock-mounted gate here must prove
+  // an INSTANCE panel mounted, not just the base equities dock — the same
+  // Phase 3 lesson every *-dockview capture already carries (a pre-mount
+  // dock is a stable blank workspace the stabiliser would happily accept).
+  // "Microsoft Corp. · NASDAQ" is InstrumentHeader's name+exchange lede
+  // (ChartPanel via useWatchlist), rendered ONLY inside the MSFT instance's
+  // pinned chart — the default docked chart follows eqWorkspace.sel (AAPL)
+  // and never shows MSFT, and WatchlistRow renders the bare instrument name
+  // alone (no " · <exchange>" suffix), so this text cannot come from the
+  // watchlist row instead.
+  "app/equities-instances-dockview": {
+    fullPage: true,
+    click: "tab-equities",
+    waitForText: "Microsoft Corp. · NASDAQ",
+  },
   "app/admin-dockview": {
     fullPage: true,
     click: "tab-admin",
