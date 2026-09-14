@@ -59,4 +59,44 @@ export class WatchlistPanelPage extends MountedComponent<
 
     return el.getAttribute("data-up") === "true" ? "up" : "down";
   }
+
+  /** The row's "open chart in a new panel" button (Phase 4 Task 5),
+   * dockview-engine-only — absent from the DOM entirely under in-house. */
+  private openChartButton(symbol: string): HTMLElement | null {
+    return within(this.root).queryByTestId(`watch-open-chart-${symbol}`);
+  }
+
+  /** True when the row renders an open-chart button at all — false under the
+   * in-house engine, where the affordance has no DOM presence. */
+  hasOpenChartButton(symbol: string): boolean {
+    return this.openChartButton(symbol) !== null;
+  }
+
+  /** The button's accessible name (aria-label), or null when the row has no
+   * open-chart button (see `hasOpenChartButton`). */
+  openChartButtonLabel(symbol: string): string | null {
+    return this.openChartButton(symbol)?.getAttribute("aria-label") ?? null;
+  }
+
+  /** True when the symbol's open-chart button is aria-disabled (already has
+   * an instance, or the per-tab cap is reached) — false when the button is
+   * absent (see `hasOpenChartButton`) or not disabled. */
+  chartButtonDisabled(symbol: string): boolean {
+    return (
+      this.openChartButton(symbol)?.getAttribute("aria-disabled") === "true"
+    );
+  }
+
+  /** Clicks the row's open-chart button — a SIBLING of the row's own button
+   * (see WatchlistRow.tsx's doc note on why they can't nest), so this can
+   * never also select the row. A no-op when the button is disabled (the
+   * browser refuses to dispatch the click to a natively `disabled` button at
+   * all) or absent (no row button at all under in-house). */
+  async clickOpenChart(symbol: string): Promise<void> {
+    const button = this.openChartButton(symbol);
+
+    if (button) {
+      await this.user.click(button);
+    }
+  }
 }
