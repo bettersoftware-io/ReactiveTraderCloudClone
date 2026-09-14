@@ -52,6 +52,7 @@ import {
   type WorkspaceTab,
 } from "#/layout/defaultLayoutPort";
 import type { LayoutNode, LayoutState } from "#/layout/layoutPort";
+import { isPanelInstanceId } from "#/layout/panelInstances";
 import { parseWorkspaceLayout } from "#/layout/workspaceLayoutPersistence";
 import type { DockedPanelPlacement } from "#/layout/workspacePersistenceWriter";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
@@ -715,6 +716,15 @@ export function createApp(ports: AppPorts): App {
    * Guarding here — before either machine is touched — keeps the panel
    * genuinely undocked and the tree untouched, so persistence stays healthy.
    *
+   * The guard also refuses the chart-instance NAMESPACE (`isPanelInstanceId`,
+   * derived from `instanceIdFor` — every `eq-chart:<symbol>` id): a docked
+   * panel sharing an id with an open (or later opened) chart instance would
+   * put ONE engine panel under two owners — the Dockview bridge's docked and
+   * instance diff effects would add/remove it against each other, and the
+   * registry merge would let one shadow the other's body. Refusing the whole
+   * prefix, not just ids open right now, keeps a later `openInstance` from
+   * colliding with an earlier dock.
+   *
    * KNOWN RESIDUAL (documented, not fixed here — see task-7-report.md fix
    * round 1): `JarvisDriverMachine`'s `dockPanel` case (the DriveCommand
    * path a scripted/AI turn uses) checks only `livePanelIds`/
@@ -729,7 +739,7 @@ export function createApp(ports: AppPorts): App {
    * never shadowed, and persistence never breaks, because this guard runs
    * first regardless of caller. */
   function dockPanelIntoWorkspace(panelId: string): void {
-    if (STATIC_WORKSPACE_PANEL_IDS.has(panelId)) {
+    if (STATIC_WORKSPACE_PANEL_IDS.has(panelId) || isPanelInstanceId(panelId)) {
       return;
     }
 

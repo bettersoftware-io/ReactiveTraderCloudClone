@@ -17,6 +17,7 @@ import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import { dockedLeafIds, insertDockedLeaf } from "#/layout/dockColumn";
 import type { LayoutState } from "#/layout/layoutPort";
+import { instanceIdFor } from "#/layout/panelInstances";
 import type {
   PersistedTabLayout,
   WorkspaceLayoutV1,
@@ -230,6 +231,29 @@ describe("composition — workspace-layout writer", () => {
     expect(payload?.tabs.fx?.docked).toEqual([
       { panelId: "jarvis-1", spec: SPEC },
     ]);
+  });
+
+  // Final-review M2: a wire-minted panelId in the chart-instance namespace
+  // (`eq-chart:<symbol>`) must be refused the same way — a docked panel and a
+  // chart instance sharing one id would be one engine panel with two owners.
+  it("dockPanel on a panelId in the chart-instance namespace is refused — no dock, no leaf", async () => {
+    const { presenters, spawnPanel } = bootApp(null);
+    const instanceShaped = instanceIdFor("eq-chart", "AAPL");
+    spawnPanel(instanceShaped);
+
+    presenters.dockPanel(instanceShaped);
+
+    expect(await firstValueFrom(presenters.jarvisPanels.dockedPanels$)).toEqual(
+      [],
+    );
+    expect(
+      (await firstValueFrom(presenters.jarvisPanels.floatingPanels$)).map(
+        (panel) => {
+          return panel.panelId;
+        },
+      ),
+    ).toEqual([instanceShaped]);
+    expect(await dockedLeavesOf(presenters, "fx")).toEqual([]);
   });
 
   it("leaves a tab whose layout machine was never created untouched in the payload", async () => {

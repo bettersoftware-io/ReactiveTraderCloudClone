@@ -104,18 +104,29 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   // edit ("make it a table" while docked) is reflected on the very next
   // render, regardless of which tab the panel was docked into.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
-  // Chart instances (layer-2 membership the layout machine owns) merge in
-  // after the docked slices. Only the Dockview engine ever looks an instance
-  // id up — it is not in the layout tree, so in-house never renders one.
   const registry = {
     ...appPanelRegistry,
     ...dockedRegistryFor(dockedPanels),
-    ...instanceRegistryFor(state.instances),
   };
 
   const specs = {
     ...PANEL_SPECS,
     ...dockedSpecsFor(dockedPanels),
+  };
+
+  // Chart instances (layer-2 membership the layout machine owns) merge in
+  // after the docked slices for the Dockview engine ONLY — an instance id is
+  // not in the layout tree, so in-house never renders one and never receives
+  // one (the Solid twin's split, too). Rebuilding these per render remounts
+  // nothing: the bridge's portals are keyed by slot/panel/mount and reconcile
+  // the same element types in place.
+  const dockviewRegistry = {
+    ...registry,
+    ...instanceRegistryFor(state.instances),
+  };
+
+  const dockviewSpecs = {
+    ...specs,
     ...instanceSpecsFor(state.instances),
   };
 
@@ -132,8 +143,8 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
           <Suspense fallback={null}>
             <DockviewLayoutEngine
               tab={tab}
-              registry={registry}
-              specs={specs}
+              registry={dockviewRegistry}
+              specs={dockviewSpecs}
               headRegistry={headRegistry}
               store={dockLayoutStore}
               maximized={state.maximized}
