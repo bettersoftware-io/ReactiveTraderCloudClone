@@ -4,7 +4,7 @@ import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { useRankGlide } from "./useRankGlide";
-import { WatchlistRow } from "./WatchlistRow";
+import { type ChartUnavailableReason, WatchlistRow } from "./WatchlistRow";
 import { sortWatchlistRows, type WatchlistRowInput } from "./watchlistVm";
 
 import styles from "./WatchlistPanel.module.css";
@@ -65,6 +65,16 @@ export function WatchlistPanel(): JSX.Element {
   const atInstanceCap = createMemo((): boolean => {
     return layoutState().instances.length >= MAX_PANEL_INSTANCES;
   });
+
+  function chartUnavailableFor(
+    symbol: string,
+  ): ChartUnavailableReason | undefined {
+    if (instancedSymbols().has(symbol)) {
+      return "already-open";
+    }
+
+    return atInstanceCap() ? "limit-reached" : undefined;
+  }
 
   function openChartInstanceForSymbol(symbol: string): void {
     openInstance("eq-chart", symbol);
@@ -160,9 +170,7 @@ export function WatchlistPanel(): JSX.Element {
                   onOpenChart={
                     showChartButton() ? openChartInstanceForSymbol : undefined
                   }
-                  chartDisabled={
-                    instancedSymbols().has(symbol) || atInstanceCap()
-                  }
+                  chartUnavailable={chartUnavailableFor(symbol)}
                 />
               </Show>
             );

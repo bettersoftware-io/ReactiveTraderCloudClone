@@ -76,6 +76,7 @@ export function DockviewEngineVisual(): JSX.Element {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />
     </div>
   );
@@ -108,6 +109,7 @@ export function DockviewEngineStackedVisual(): JSX.Element {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />
     </div>
   );

@@ -87,7 +87,9 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
     useDockedPanelIds,
     useWorkspaceLayoutResets,
   } = useViewModel();
-  const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+
+  const { state, maximize, restore, collapse, expand, resize, closeInstance } =
+    useLayout(tab);
   const docked = useDockedPanelIds(tab);
   const layoutResets = useWorkspaceLayoutResets();
   // The in-house engine renders the VISIBLE projection: View-menu-closed
@@ -157,6 +159,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
               onRestore={restore}
               onCollapse={collapse}
               onExpand={expand}
+              onCloseInstance={closeInstance}
             />
           </Suspense>
         ) : (

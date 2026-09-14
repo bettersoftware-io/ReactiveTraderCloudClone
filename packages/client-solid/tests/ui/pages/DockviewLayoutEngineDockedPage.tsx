@@ -85,6 +85,7 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
             onRestore={noop}
             onCollapse={noop}
             onExpand={noop}
+            onCloseInstance={noop}
           />
         );
       });

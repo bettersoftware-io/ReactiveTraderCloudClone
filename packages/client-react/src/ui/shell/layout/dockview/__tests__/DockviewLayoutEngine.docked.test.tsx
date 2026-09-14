@@ -70,6 +70,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -111,6 +112,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -137,6 +139,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -157,6 +160,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -187,6 +191,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -207,6 +212,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -244,6 +250,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -264,6 +271,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -325,6 +333,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -360,6 +369,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -412,6 +422,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -432,6 +443,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -457,6 +469,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -503,6 +516,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -521,6 +535,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -597,6 +612,7 @@ describe("DockviewLayoutEngine docked prop", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 

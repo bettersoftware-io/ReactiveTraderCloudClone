@@ -94,6 +94,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           onRestore={noop}
           onCollapse={noop}
           onExpand={noop}
+          onCloseInstance={noop}
         />
       </StrictMode>,
     );
@@ -154,6 +155,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           onRestore={noop}
           onCollapse={noop}
           onExpand={noop}
+          onCloseInstance={noop}
         />
       </StrictMode>,
     );
@@ -200,6 +202,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
             onRestore={noop}
             onCollapse={noop}
             onExpand={noop}
+            onCloseInstance={noop}
           />
         </StrictMode>
       );

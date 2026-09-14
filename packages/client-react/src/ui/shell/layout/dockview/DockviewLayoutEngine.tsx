@@ -106,6 +106,7 @@ export function DockviewLayoutEngine({
   onRestore,
   onCollapse,
   onExpand,
+  onCloseInstance,
 }: DockviewLayoutEngineProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
@@ -752,6 +753,12 @@ export function DockviewLayoutEngine({
     };
   }
 
+  function closeInstancePanel(panelId: PanelId) {
+    return () => {
+      onCloseInstance(panelId);
+    };
+  }
+
   function expandOrRestorePanel(panelId: PanelId) {
     return () => {
       if (collapsed.includes(panelId)) {
@@ -761,6 +768,10 @@ export function DockviewLayoutEngine({
       }
     };
   }
+
+  // Only a chart instance's head gets the close control — a static panel
+  // closes through the View menu, a Jarvis-docked one through its own head.
+  const instanceIds = instanceIdsOf(instances);
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
@@ -773,7 +784,7 @@ export function DockviewLayoutEngine({
       data-collapsed={collapsed.join(" ")}
       data-closed={closed.join(" ")}
       data-popped={popped.join(" ")}
-      data-instances={instanceIdsOf(instances).join(" ")}
+      data-instances={instanceIds.join(" ")}
       className={styles.engine}
     >
       <div
@@ -814,6 +825,11 @@ export function DockviewLayoutEngine({
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
                 onPopout={popoutPanel(panelId)}
+                onClose={
+                  instanceIds.includes(panelId)
+                    ? closeInstancePanel(panelId)
+                    : undefined
+                }
               />
             ) : null
           ) : strip !== undefined ? (
@@ -880,6 +896,9 @@ export interface DockviewLayoutEngineProps {
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
   onExpand: LayoutIntents["expand"];
+  /** Closes a chart instance — attached as the head's close control on
+   * instance panels only (never a static or Jarvis-docked panel). */
+  onCloseInstance: LayoutIntents["closeInstance"];
 }
 
 interface MountedSlot {

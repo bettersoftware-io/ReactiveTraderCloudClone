@@ -143,6 +143,22 @@ export function DockviewLayoutEngine(
     };
   }
 
+  function closeInstancePanel(panelId: PanelId) {
+    return () => {
+      props.onCloseInstance(panelId);
+    };
+  }
+
+  // Only a chart instance's head gets the close control — a static panel
+  // closes through the View menu, a Jarvis-docked one through its own head.
+  // Read at the JSX use site (a reactive prop getter), so the actions slot
+  // itself never remounts when the instance set changes.
+  function isOpenInstance(panelId: PanelId): boolean {
+    return props.instances.some((instance) => {
+      return instance.id === panelId;
+    });
+  }
+
   function expandOrRestorePanel(panelId: PanelId) {
     return () => {
       if (props.collapsed.includes(panelId)) {
@@ -594,6 +610,11 @@ export function DockviewLayoutEngine(
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
+                    onClose={
+                      isOpenInstance(p.panelId)
+                        ? closeInstancePanel(p.panelId)
+                        : undefined
+                    }
                   />
                 </Show>
               </Portal>
@@ -691,6 +712,9 @@ export interface DockviewLayoutEngineProps {
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
   onExpand: LayoutIntents["expand"];
+  /** Closes a chart instance — attached as the head's close control on
+   * instance panels only (never a static or Jarvis-docked panel). */
+  onCloseInstance: LayoutIntents["closeInstance"];
 }
 
 interface MountedSlot {

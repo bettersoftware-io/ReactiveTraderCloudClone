@@ -3,6 +3,7 @@ import {
   MountedComponent,
   type PageContext,
 } from "@ui-contract/harness/component";
+import { WatchlistPanelPage } from "@ui-contract/pages/equities/WatchlistPanelPage";
 
 import {
   HeaderChromePage,
@@ -74,11 +75,18 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
    * like `header`, so the props-less context passes straight through. */
   readonly viewMenu: ViewMenuPage;
 
+  /** The equities tab's watchlist rail (once that tab is active) — pure DOM
+   * queries against the shared root like every page above, so the props-less
+   * context passes straight through. Lets a spec drive the open-chart row
+   * affordance AND read the engine it opens into from one mounted shell. */
+  readonly watchlist: WatchlistPanelPage;
+
   constructor(ctx: PageContext<Record<string, never>>) {
     super(ctx);
     const asHeaderCtx = ctx as unknown as PageContext<HeaderChromeProps>;
     this.header = new HeaderChromePage(asHeaderCtx);
     this.viewMenu = new ViewMenuPage(ctx);
+    this.watchlist = new WatchlistPanelPage(ctx);
     this.overlay = new JarvisOverlayPage(ctx);
     this.orb = new JarvisOrbPage(ctx);
     this.panels = new JarvisPanelLayerPage(ctx);

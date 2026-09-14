@@ -124,7 +124,8 @@ describe("DockviewLayoutEngine instances prop", () => {
   // The unmount's dispose flush is the witness of the live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
     const { store, inner } = recordingStore();
-    inner.save("fx", instanceOnTheLeftBlob(AAPL.id));
+    const seed = instanceOnTheLeftBlob(AAPL.id);
+    inner.save("fx", seed);
     const [layoutResets, setLayoutResets] = createSignal(0);
 
     mountEngine({ store, instances: [AAPL], layoutResets });
@@ -142,6 +143,9 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     page.unmountAll();
 
+    // The dispose flush really wrote — the position read below is the
+    // rebuilt engine's own serialisation, never the untouched seed.
+    expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
   });
 
@@ -201,6 +205,66 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(false);
   });
 
+  // Final-review C1: an instance must be closable from its own head. The
+  // signal stands in for the layout machine's instance list, and the close
+  // control's click has to travel the real `onCloseInstance` slot back into
+  // the prop before the witness changes.
+  it("puts a close control on an instance head only, and clicking it removes the instance", async () => {
+    const [instances, setInstances] = createSignal<
+      readonly LayoutPanelInstance[]
+    >([AAPL]);
+
+    function removeInstance(id: PanelId): void {
+      setInstances((previous) => {
+        return previous.filter((instance) => {
+          return instance.id !== id;
+        });
+      });
+    }
+
+    mountEngine({
+      store: new InMemoryDockLayoutStore(),
+      instances,
+      onCloseInstance: removeInstance,
+    });
+
+    expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
+    expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(true);
+    // A static head is mounted with its own controls — but no close.
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-rates-close")).toBe(false);
+
+    page.clickControl(`panel-${AAPL.id}-close`);
+
+    await page.waitFor(() => {
+      expect(page.groupsAttr()).toBe("4");
+    });
+    expect(page.engineAttribute("data-instances")).toBe("");
+    expect(page.bodyVisible("chart-AAPL-body")).toBe(false);
+    expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(false);
+  });
+
+  // The actions slot must not remount when the instance set changes (the
+  // close control's presence is a reactive prop, not a new slot): a static
+  // head's control node survives a sibling instance opening.
+  it("keeps a static head's control node when a sibling instance opens", async () => {
+    const [instances, setInstances] = createSignal<
+      readonly LayoutPanelInstance[]
+    >([]);
+
+    mountEngine({ store: new InMemoryDockLayoutStore(), instances });
+
+    const collapseBefore = page.bodyElement("panel-fx-rates-collapse");
+    expect(collapseBefore).not.toBeNull();
+
+    setInstances([AAPL]);
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(true);
+    });
+    expect(page.bodyElement("panel-fx-rates-collapse")).toBe(collapseBefore);
+  });
+
   // The mount-time half of the blob contract: an engine persists a layout
   // carrying the instance, and a later mount from that blob keeps it — at
   // its persisted spot (left edge), not re-added on the right, which is
@@ -208,11 +272,14 @@ describe("DockviewLayoutEngine instances prop", () => {
   // reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
     const { store, inner } = recordingStore();
-    inner.save("fx", instanceOnTheLeftBlob(AAPL.id));
+    const seed = instanceOnTheLeftBlob(AAPL.id);
+    inner.save("fx", seed);
 
     mountEngine({ store, instances: [AAPL] });
     page.unmountAll();
 
+    // Persisted by the engine's dispose flush, not the seed read back.
+    expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
 
     mountEngine({ store, instances: [AAPL] });
@@ -222,6 +289,7 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     page.unmountAll();
 
+    expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
   });
 
@@ -279,6 +347,7 @@ interface EngineProps {
   layoutResets?: () => number;
   /** Live registry — defaults to the static `registry` above. */
   registry?: () => PanelRegistry;
+  onCloseInstance?: (id: PanelId) => void;
 }
 
 /** Mounts once, dereferencing every live prop INSIDE the JSX so Solid's
@@ -306,6 +375,7 @@ function mountEngine(props: EngineProps): void {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={props.onCloseInstance ?? noop}
       />
     );
   });

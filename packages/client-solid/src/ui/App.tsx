@@ -123,11 +123,12 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
 
   // Snapshot: useLayout resolves the per-tab singleton once at call time.
   // Correct only while App's keyed <Show> remounts this engine per tab.
-  const { state, maximize, restore, collapse, expand, resize } = useLayout(
-    untrack((): WorkspaceTab => {
-      return props.tab;
-    }),
-  );
+  const { state, maximize, restore, collapse, expand, resize, closeInstance } =
+    useLayout(
+      untrack((): WorkspaceTab => {
+        return props.tab;
+      }),
+    );
 
   // The in-house engine renders the VISIBLE projection: View-menu-closed
   // leaves are pruned from the tree it sees (visibleRootOf is referentially
@@ -322,6 +323,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
               onRestore={restore}
               onCollapse={collapse}
               onExpand={expand}
+              onCloseInstance={closeInstance}
             />
           </Suspense>
         </Show>

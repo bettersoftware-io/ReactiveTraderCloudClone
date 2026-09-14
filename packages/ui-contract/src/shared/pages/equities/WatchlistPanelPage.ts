@@ -88,6 +88,12 @@ export class WatchlistPanelPage extends MountedComponent<
     return this.openChartButton(symbol)?.getAttribute("aria-label") ?? null;
   }
 
+  /** The button's `title` tooltip, or null when the row has no open-chart
+   * button — the same text as its accessible name, enabled or disabled. */
+  openChartButtonTitle(symbol: string): string | null {
+    return this.openChartButton(symbol)?.getAttribute("title") ?? null;
+  }
+
   /** True when the symbol's open-chart button is aria-disabled (already has
    * an instance, or the per-tab cap is reached) — false when the button is
    * absent (see `hasOpenChartButton`) or not disabled. */

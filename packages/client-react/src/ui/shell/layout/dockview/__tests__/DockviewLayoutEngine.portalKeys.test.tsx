@@ -63,6 +63,7 @@ describe("dockview portal keys", () => {
           onRestore={noop}
           onCollapse={noop}
           onExpand={noop}
+          onCloseInstance={noop}
         />,
       );
 

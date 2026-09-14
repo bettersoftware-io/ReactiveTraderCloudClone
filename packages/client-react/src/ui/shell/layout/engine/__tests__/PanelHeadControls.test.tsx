@@ -41,6 +41,29 @@ describe("PanelHeadControls pop-out slot", () => {
   });
 });
 
+describe("PanelHeadControls close slot", () => {
+  it("renders the close control only when the slot is attached, and clicking it fires the slot", () => {
+    const onClose = vi.fn();
+    page.mount({ ...base(), onClose });
+
+    expect(page.exists("panel-fx-rates-close")).toBe(true);
+    page.click("panel-fx-rates-close");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no close control without the slot — every static head's shape", () => {
+    page.mount({ ...base(), onPopout: vi.fn() });
+
+    expect(page.exists("panel-fx-rates-close")).toBe(false);
+  });
+
+  it("greys the close control while popped, like its siblings", () => {
+    page.mount({ ...base(), onClose: vi.fn(), poppedHere: true });
+
+    expect(page.disabled("panel-fx-rates-close")).toBe(true);
+  });
+});
+
 function base(): PanelHeadControlsProps {
   return {
     panelId: "fx-rates",

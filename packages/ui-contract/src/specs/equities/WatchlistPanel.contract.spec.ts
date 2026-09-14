@@ -473,6 +473,9 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
 
     await panel.clickOpenChart("AAPL");
     expect(panel.chartButtonDisabled("AAPL")).toBe(true);
+    // The disabled button says WHY it refuses, not just what it would do.
+    expect(panel.openChartButtonLabel("AAPL")).toBe("Chart already open");
+    expect(panel.openChartButtonTitle("AAPL")).toBe("Chart already open");
 
     // The button is now aria-disabled AND natively disabled — a second click
     // fires no click event at all, so this must change nothing: the OTHER
@@ -495,6 +498,14 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
 
     const capped = CAP_INSTRUMENTS[MAX_PANEL_INSTANCES] as EquityInstrument;
     expect(panel.chartButtonDisabled(capped.symbol)).toBe(true);
+    expect(panel.openChartButtonLabel(capped.symbol)).toBe(
+      `Chart limit (${MAX_PANEL_INSTANCES}) reached`,
+    );
+    expect(panel.openChartButtonTitle(capped.symbol)).toBe(
+      `Chart limit (${MAX_PANEL_INSTANCES}) reached`,
+    );
+    // An already-open row names the more specific reason even at the cap.
+    expect(panel.openChartButtonLabel("AAPL")).toBe("Chart already open");
 
     // Clicking the capped row's disabled button must not open a 5th instance
     // (witnessed indirectly: the button stays disabled, never flips to an

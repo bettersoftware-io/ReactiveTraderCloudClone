@@ -133,7 +133,8 @@ describe("DockviewLayoutEngine instances prop", () => {
   // the rebuilt engine's live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
     const { store, inner } = recordingStore();
-    inner.save("fx", instanceOnTheLeftBlob(AAPL.id));
+    const seed = instanceOnTheLeftBlob(AAPL.id);
+    inner.save("fx", seed);
 
     page.mount(engine({ store, instances: [AAPL], layoutResets: 0 }));
 
@@ -146,6 +147,9 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     page.unmountAll();
 
+    // The dispose flush really wrote — the position read below is the
+    // rebuilt engine's own serialisation, never the untouched seed.
+    expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
   });
 
@@ -196,6 +200,42 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(false);
   });
 
+  // Final-review C1: an instance must be closable from its own head. The
+  // spec owns the instance list the way App's layout machine does: the
+  // `onCloseInstance` slot drops the named instance and re-renders, so the
+  // close control's click has to travel the real slot back into the prop
+  // before the witness changes.
+  it("puts a close control on an instance head only, and clicking it removes the instance", async () => {
+    const store = new InMemoryDockLayoutStore();
+    let instances: readonly LayoutPanelInstance[] = [AAPL];
+
+    function removeInstance(id: PanelId): void {
+      instances = instances.filter((instance) => {
+        return instance.id !== id;
+      });
+      page.rerender(
+        engine({ store, instances, onCloseInstance: removeInstance }),
+      );
+    }
+
+    page.mount(engine({ store, instances, onCloseInstance: removeInstance }));
+
+    expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
+    expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(true);
+    // A static head is mounted with its own controls — but no close.
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-rates-close")).toBe(false);
+
+    page.clickControl(`panel-${AAPL.id}-close`);
+
+    await page.waitFor(() => {
+      expect(page.groupsAttr()).toBe("4");
+    });
+    expect(page.engineAttribute("data-instances")).toBe("");
+    expect(page.bodyVisible("chart-AAPL-body")).toBe(false);
+    expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(false);
+  });
+
   // The FIRST construction site's half of the blob contract: an engine
   // persists a layout carrying the instance, and a later mount from that
   // blob keeps it — at its persisted spot (left edge), not re-added on the
@@ -203,11 +243,15 @@ describe("DockviewLayoutEngine instances prop", () => {
   // the engine's reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
     const { store, inner } = recordingStore();
-    inner.save("fx", instanceOnTheLeftBlob(AAPL.id));
+    const seed = instanceOnTheLeftBlob(AAPL.id);
+    inner.save("fx", seed);
 
     page.mount(engine({ store, instances: [AAPL] }));
     page.unmountAll();
 
+    // Persisted by the engine's dispose flush, not the seed read back.
+    const persistedBlob = inner.load("fx");
+    expect(persistedBlob).not.toBe(seed);
     const persisted = lastGridRoot(inner);
     expect(rootLeafIndexOf(persisted, AAPL.id)).toBe(0);
 
@@ -218,6 +262,7 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     page.unmountAll();
 
+    expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
   });
 });
@@ -227,6 +272,7 @@ interface EngineProps {
   instances: readonly LayoutPanelInstance[];
   docked?: readonly PanelId[];
   layoutResets?: number;
+  onCloseInstance?: (id: PanelId) => void;
 }
 
 function engine(props: EngineProps): ReactElement {
@@ -245,6 +291,7 @@ function engine(props: EngineProps): ReactElement {
       onRestore={noop}
       onCollapse={noop}
       onExpand={noop}
+      onCloseInstance={props.onCloseInstance ?? noop}
     />
   );
 }

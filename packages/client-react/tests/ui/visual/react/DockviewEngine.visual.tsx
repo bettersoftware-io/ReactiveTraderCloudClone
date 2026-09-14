@@ -84,6 +84,7 @@ export function DockviewEngineVisual(): ReactElement {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />
     </div>
   );
@@ -124,6 +125,7 @@ export function DockviewEngineStackedVisual(): ReactElement {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />
     </div>
   );

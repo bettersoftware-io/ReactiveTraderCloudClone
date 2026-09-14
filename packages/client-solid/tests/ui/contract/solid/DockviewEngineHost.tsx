@@ -156,6 +156,9 @@ export function DockviewEngineHost(
         onExpand={(id: PanelId) => {
           recordIntent(`expand:${id}`);
         }}
+        onCloseInstance={(id: PanelId) => {
+          recordIntent(`closeInstance:${id}`);
+        }}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import {
   Show,
 } from "solid-js";
 
+import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./WatchlistRow.module.css";
@@ -177,10 +178,10 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
           type="button"
           data-testid={`watch-open-chart-${props.symbol}`}
           class={styles.openChart}
-          aria-label={`Open ${props.symbol} chart in a new panel`}
-          title={`Open ${props.symbol} chart in a new panel`}
-          disabled={props.chartDisabled}
-          aria-disabled={props.chartDisabled}
+          aria-label={openChartLabel(props.symbol, props.chartUnavailable)}
+          title={openChartLabel(props.symbol, props.chartUnavailable)}
+          disabled={props.chartUnavailable !== undefined}
+          aria-disabled={props.chartUnavailable !== undefined}
           onClick={openChart}
         >
           📈
@@ -203,12 +204,35 @@ export interface WatchlistRowProps {
    * alone (no wrapper, no chart button at all), so in-house goldens stay
    * byte-identical. */
   onOpenChart?: (symbol: string) => void;
-  /** True when this symbol already has an open instance, or the per-tab cap
-   * (MAX_PANEL_INSTANCES) is reached — the button renders `aria-disabled`
-   * and `disabled` (mirrors `PanelHeadControls`' pairing), so a click is a
-   * genuine no-op. Ignored (no button at all) when `onOpenChart` is
-   * undefined. */
-  chartDisabled?: boolean;
+  /** Set when this symbol already has an open instance (`"already-open"`),
+   * or the per-tab cap (MAX_PANEL_INSTANCES) is reached (`"limit-reached"`)
+   * — the button renders `aria-disabled` and `disabled` (mirrors
+   * `PanelHeadControls`' pairing), so a click is a genuine no-op, and its
+   * title/accessible name state the reason. Ignored (no button at all) when
+   * `onOpenChart` is undefined. */
+  chartUnavailable?: ChartUnavailableReason;
+}
+
+/** Why a row's open-chart button is disabled — `undefined` when it is not. A
+ * duplicate wins over the cap: it is the more specific reason. */
+export type ChartUnavailableReason = "already-open" | "limit-reached";
+
+/** The open-chart button's title and accessible name: the action while it is
+ * enabled, the reason once it is disabled (a disabled control that only
+ * names its action leaves the user guessing why it refuses). */
+function openChartLabel(
+  symbol: string,
+  reason: ChartUnavailableReason | undefined,
+): string {
+  if (reason === "already-open") {
+    return "Chart already open";
+  }
+
+  if (reason === "limit-reached") {
+    return `Chart limit (${MAX_PANEL_INSTANCES}) reached`;
+  }
+
+  return `Open ${symbol} chart in a new panel`;
 }
 
 interface TickPulse {

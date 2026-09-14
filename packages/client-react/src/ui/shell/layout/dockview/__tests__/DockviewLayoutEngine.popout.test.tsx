@@ -66,6 +66,7 @@ describe("dockview bridge pop-out wiring", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -118,6 +119,7 @@ describe("dockview bridge pop-out wiring", () => {
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -197,6 +199,7 @@ function resetView(
       onRestore={noop}
       onCollapse={noop}
       onExpand={noop}
+      onCloseInstance={noop}
     />
   );
 }
