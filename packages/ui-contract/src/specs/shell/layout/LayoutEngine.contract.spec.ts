@@ -551,6 +551,11 @@ describe("DockviewLayoutEngine chart instances (world-driven, App shell)", () =>
     expect(app.dockviewLayout.hasCloseControl(msft)).toBe(true);
     expect(app.dockviewLayout.hasCloseControl("eq-chart")).toBe(false);
 
+    // An unrelated layout change (maximizing the instance itself) keeps the
+    // instance set as it was — and closing works from the maximized head.
+    app.dockviewLayout.clickMaximize(msft);
+    expect(app.dockviewLayout.instanceIds()).toEqual([msft]);
+
     app.dockviewLayout.clickClose(msft);
 
     expect(app.dockviewLayout.instanceIds()).toEqual([]);
