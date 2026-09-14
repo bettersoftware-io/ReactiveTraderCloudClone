@@ -32,21 +32,37 @@ import styles from "./ChartPanel.module.css";
  * checker, would have to witness.
  *
  * The keys below are getters over the WHOLE eqWorkspace `state()` object
- * (`<ChartBody symbol={state().sel} …>`), which `EqWorkspaceMachine` replaces
- * on every intent — a chart-type, indicator, pane or y-scale toggle included.
- * That is safe only because `toKeyedSignal` gates each key on its resolved
- * VALUE (`===`) rather than on the read: re-subscribing here would drop the
- * series to refcount 0, and `CandleSeriesPresenter`'s `defer` resets the
- * backfill state on every fresh subscription cycle, discarding every page the
- * user scrolled back to load. See `toSignal.ts`.
+ * (`<ChartBody symbol={sym()} …>`, `sym` itself reading `state().sel` when
+ * unpinned), which `EqWorkspaceMachine` replaces on every intent — a
+ * chart-type, indicator, pane or y-scale toggle included. That is safe only
+ * because `toKeyedSignal` gates each key on its resolved VALUE (`===`) rather
+ * than on the read: re-subscribing here would drop the series to refcount 0,
+ * and `CandleSeriesPresenter`'s `defer` resets the backfill state on every
+ * fresh subscription cycle, discarding every page the user scrolled back to
+ * load. See `toSignal.ts`.
+ *
+ * `props.pinnedSymbol` (Phase 4 dynamic chart instances): when set, a
+ * dynamically opened instance panel renders its own FIXED symbol instead of
+ * the shared workspace selection — `sym` below resolves it, and both the
+ * `bodyKey` remount key and the `symbol` prop handed to `ChartBody` read it
+ * instead of `state().sel`. Deliberately NOT threaded to the instrument tabs
+ * (there are none here; instance panels get no head controls, see
+ * appPanelRegistry) or to view settings — timeframe, chart type, indicators,
+ * panes and y-scale all keep following the shared eqWorkspace singleton. That
+ * is a known v1 limitation: a pinned instance shows its own symbol, not its
+ * own view settings.
  */
-export function ChartPanel(): JSX.Element {
+export function ChartPanel(props: ChartPanelProps): JSX.Element {
   const { useEqWorkspace } = useViewModel();
   const { state } = useEqWorkspace();
 
+  const sym = createMemo((): string => {
+    return props.pinnedSymbol ?? state().sel;
+  });
+
   const bodyKey = createMemo((): string | false => {
-    const s = state();
-    return s.sel ? `${s.sel}::${s.timeframe}` : false;
+    const s = sym();
+    return s ? `${s}::${state().timeframe}` : false;
   });
 
   return (
@@ -56,10 +72,17 @@ export function ChartPanel(): JSX.Element {
       fallback={<div class={styles.empty}>SELECT AN INSTRUMENT</div>}
     >
       {(_key: string): JSX.Element => {
-        return <ChartBody symbol={state().sel} timeframe={state().timeframe} />;
+        return <ChartBody symbol={sym()} timeframe={state().timeframe} />;
       }}
     </Show>
   );
+}
+
+interface ChartPanelProps {
+  /** A dynamically opened instance's fixed symbol (Phase 4 dynamic chart
+   * instances). Unset for the default docked eq-chart panel, which keeps
+   * following the shared eqWorkspace selection. */
+  pinnedSymbol?: string;
 }
 
 interface ChartBodyProps {

@@ -1,6 +1,11 @@
 import type { Accessor } from "solid-js";
 
-import type { JarvisPanelVm, PanelId, PanelSpec } from "@rtc/client-core";
+import type {
+  JarvisPanelVm,
+  LayoutPanelInstance,
+  PanelId,
+  PanelSpec,
+} from "@rtc/client-core";
 
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
@@ -156,6 +161,50 @@ export function dockedSpecsFor(
       return row.panelId === panelId;
     });
     return [panelId, { id: panelId, title: panel?.title ?? panelId }] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+/** The DYNAMIC id→component slice for the currently OPEN chart instances
+ * (Phase 4 dynamic chart instances) — merged with `appPanelRegistry` the same
+ * way `dockedRegistryFor` is, rebuilt fresh every render from the layout
+ * machine's live `instances` list. Unlike `dockedRegistryFor` above,
+ * `LayoutPanelInstance` rows are plain immutable data replaced wholesale by
+ * the layout machine (no live-title mutation to dodge), so this takes the
+ * row array directly rather than an id-set/accessor pair. Each entry pins its
+ * own `ChartPanel` to the instance's symbol via `pinnedSymbol` — no
+ * instrument tabs (there is no head-registry entry for an instance id; see
+ * `appHeadRegistry`), and view settings intentionally keep following the
+ * shared eqWorkspace singleton (see `ChartPanel`'s own doc for that v1
+ * limitation). */
+export function instanceRegistryFor(
+  instances: readonly LayoutPanelInstance[],
+): PanelRegistry {
+  const entries = instances.map((instance) => {
+    return [
+      instance.id,
+      () => {
+        return <ChartPanel pinnedSymbol={instance.symbol} />;
+      },
+    ] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+/** The DYNAMIC `specs` slice for the currently open chart instances — merged
+ * with `PANEL_SPECS` the same way `dockedSpecsFor` merges with `PANEL_SPECS`.
+ * `title` is the instance's symbol (an instance panel has no other name to
+ * show); `maximizeScope: "root"` matches every other dock panel — an
+ * instance never bounds its maximize to a column. Only the Dockview engine
+ * ever reads this map for a dynamic id (in-house projects instances away). */
+export function instanceSpecsFor(
+  instances: readonly LayoutPanelInstance[],
+): Readonly<Record<PanelId, PanelSpec>> {
+  const entries = instances.map((instance) => {
+    return [
+      instance.id,
+      { id: instance.id, title: instance.symbol, maximizeScope: "root" },
+    ] as const;
   });
   return Object.fromEntries(entries);
 }
