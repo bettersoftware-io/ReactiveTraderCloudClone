@@ -49,11 +49,9 @@ export function InhouseLayoutEngine({
   // the standalone's rail semantics), and strippedByMaximize is the set of
   // panels it forces to strip bars: every leaf under the boundary except the
   // maximized panel itself. Panels OUTSIDE the boundary render normally.
-  // Null/empty when nothing is maximized.
-  const boundaryPath =
-    state.maximized === null
-      ? null
-      : maximizeBoundaryPath(state.root, state.maximized, specs);
+  // Null/empty when no maximize applies — nothing maximized, or a maximized
+  // id this tree has no leaf for (a Dockview-only chart instance).
+  const boundaryPath = maximizeBoundaryPath(state.root, state.maximized, specs);
   const strippedByMaximize = strippedPanelIds(state, boundaryPath);
   const sharedProps: SharedProps = {
     state,

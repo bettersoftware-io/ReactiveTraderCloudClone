@@ -57,6 +57,26 @@ describe("InhouseLayoutEngine", () => {
     expect(page.exists("analytics-body")).toBe(false);
   });
 
+  // The layout machine can hold a Dockview-only chart instance id in
+  // `maximized`/`collapsed` (the Dockview head dispatches it; persistence
+  // round-trips it). The in-house tree has no leaf for it, so it must render
+  // as NO maximize/collapse — never a root maximize that strips every panel.
+  it("renders every panel un-stripped when maximized/collapsed name an id with no leaf in the tree", () => {
+    page.mount(
+      {
+        ...state,
+        maximized: "eq-chart:AAPL",
+        collapsed: ["eq-chart:AAPL"],
+      },
+      registry,
+    );
+    expect(page.stripFlag("panel-fx-rates")).toBe(false);
+    expect(page.stripFlag("panel-fx-analytics")).toBe(false);
+    expect(page.text("rates-body")).toBe("RATES");
+    expect(page.text("analytics-body")).toBe("ANALYTICS");
+    expect(page.exists("handle--0")).toBe(true);
+  });
+
   it("calls onMaximize when a panel's maximize button is pressed", () => {
     const onMaximize = vi.fn();
     page.mount(state, registry, { onMaximize });

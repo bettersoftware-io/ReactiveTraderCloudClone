@@ -72,13 +72,12 @@ export function InhouseLayoutEngine(
   // ancestor column split for a "nearest-column" panel — the standalone's
   // rail semantics), and strippedByMaximize is the set of panels it forces to
   // strip bars: every leaf under the boundary except the maximized panel
-  // itself. Panels OUTSIDE the boundary render normally. Null/empty when
-  // nothing is maximized.
+  // itself. Panels OUTSIDE the boundary render normally. Null/empty when no
+  // maximize applies — nothing maximized, or a maximized id this tree has no
+  // leaf for (a Dockview-only chart instance).
   function boundaryPath(): readonly number[] | null {
     const state = props.state;
-    return state.maximized === null
-      ? null
-      : maximizeBoundaryPath(state.root, state.maximized, specs());
+    return maximizeBoundaryPath(state.root, state.maximized, specs());
   }
 
   function strippedByMaximize(): ReadonlySet<PanelId> {

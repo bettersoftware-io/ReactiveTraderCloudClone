@@ -44,6 +44,7 @@ import type {
   LayoutState,
   SplitDir,
 } from "./layoutPort";
+import { instanceIdFor, MAX_PANEL_INSTANCES } from "./panelInstances";
 
 export interface DockedPanelEntry {
   readonly panelId: string;
@@ -94,28 +95,6 @@ const MAX_LAYOUT_NODE_DEPTH = 64;
  * reverse import would invert that established dependency direction. Keep
  * the two literals in sync by hand if either changes. */
 const MAX_DOCKED_PANELS = 4;
-
-/** Mirrors `MAX_PANEL_INSTANCES` in
- * `packages/client-core/src/presenters/LayoutMachine.ts` (Phase 4 dynamic
- * chart instances) — re-declared as a literal here rather than imported,
- * for the same reason as `MAX_DOCKED_PANELS` just above: `presenters`
- * already imports FROM `layout` (`LayoutMachine.ts` pulls
- * `LayoutNode`/`LayoutState`/`PanelId` from `./layoutPort` and
- * `dockedLeafIds` etc. from `./dockColumn`), so the reverse import here
- * would invert that established dependency direction. Keep this literal —
- * and `expectedInstanceId` below, which mirrors the machine's
- * `instanceIdFor` — in sync by hand if either changes on the machine
- * side. */
-const MAX_PANEL_INSTANCES = 4;
-
-/** Mirrors the machine's `instanceIdFor` (see `MAX_PANEL_INSTANCES`'s doc
- * for why this is a local copy rather than an import): the wire encoding of
- * a `LayoutPanelInstance` id is `"<kind>:<symbol>"`, and a parsed entry
- * whose `id` disagrees with this is malformed — reconstructing nothing,
- * just dropping it (see the `instances` validation below). */
-function expectedInstanceId(kind: "eq-chart", symbol: string): string {
-  return `${kind}:${symbol}`;
-}
 
 export function serializeWorkspaceLayout(payload: WorkspaceLayoutV1): string {
   return JSON.stringify(payload);
@@ -292,63 +271,8 @@ function validateLayoutState(value: unknown): LayoutState | null {
 
   const leafIds = new Set(dockedLeafIds(root, []));
 
-  const maximized = value.maximized;
-
-  if (
-    maximized !== null &&
-    (typeof maximized !== "string" || !leafIds.has(maximized))
-  ) {
-    return null;
-  }
-
-  const collapsedRaw = value.collapsed;
-
-  if (!Array.isArray(collapsedRaw)) {
-    return null;
-  }
-
-  const collapsed: string[] = [];
-
-  for (const entry of collapsedRaw) {
-    if (typeof entry !== "string") {
-      return null;
-    }
-
-    // A dangling `collapsed` id matches no panel and is harmless — the
-    // engine simply never finds it. Unlike `maximized` (rejected above),
-    // whose dangling case strips EVERY panel in the tab to a 32px bar on
-    // every boot, there is no failure mode worth discarding the whole
-    // payload over here, so the ghost id is filtered rather than rejected.
-    if (leafIds.has(entry)) {
-      collapsed.push(entry);
-    }
-  }
-
-  // `closed` is ADDITIVE on the v1 schema: a legacy payload without the key
-  // parses to [] (no version bump — this constructor never sees unknown
-  // fields), and a new payload read by the OLD parser was simply ignored.
-  const closedRaw = value.closed ?? [];
-
-  if (!Array.isArray(closedRaw)) {
-    return null;
-  }
-
-  const closed: string[] = [];
-
-  for (const entry of closedRaw) {
-    if (typeof entry !== "string") {
-      return null;
-    }
-
-    // Same rule as `collapsed` above: a dangling id matches no panel and is
-    // harmless — filtered, not a whole-payload reject.
-    if (leafIds.has(entry)) {
-      closed.push(entry);
-    }
-  }
-
   // `instances` (Phase 4 dynamic panel instances) is ADDITIVE like `closed`
-  // just above: a legacy payload without the key parses to [] (no version
+  // below: a legacy payload without the key parses to [] (no version
   // bump — this constructor never sees unknown fields), and a new payload
   // read by the OLD parser was simply ignored.
   //
@@ -362,7 +286,12 @@ function validateLayoutState(value: unknown): LayoutState | null {
   // equivalent to `maximized`'s all-panels-collapse failure mode here to
   // justify rejecting the whole layout over it. A non-array `instances`
   // value itself is still a whole-layout reject, mirroring `closed`'s
-  // handling of the same case immediately above.
+  // handling of the same case below.
+  //
+  // Parsed FIRST: an open instance's id is a legitimate `maximized` /
+  // `collapsed` value (the Dockview head's controls dispatch it, the machine
+  // stores it), so both memberships below accept a tree leaf OR a parsed
+  // instance id — see `isKnownPanel`.
   const instancesRaw = value.instances ?? [];
 
   if (!Array.isArray(instancesRaw)) {
@@ -391,7 +320,7 @@ function validateLayoutState(value: unknown): LayoutState | null {
       continue;
     }
 
-    if (typeof id !== "string" || id !== expectedInstanceId(kind, symbol)) {
+    if (typeof id !== "string" || id !== instanceIdFor(kind, symbol)) {
       continue;
     }
 
@@ -401,6 +330,69 @@ function validateLayoutState(value: unknown): LayoutState | null {
 
     seenInstanceIds.add(id);
     instances.push({ id, kind, symbol });
+  }
+
+  // A `maximized`/`collapsed` id must name a panel this tab can render: a
+  // tree leaf, or one of the instances just parsed. `closed` stays
+  // leaf-only (an instance closes by leaving `instances`, never via
+  // `closed`).
+  function isKnownPanel(id: string): boolean {
+    return leafIds.has(id) || seenInstanceIds.has(id);
+  }
+
+  const maximized = value.maximized;
+
+  if (
+    maximized !== null &&
+    (typeof maximized !== "string" || !isKnownPanel(maximized))
+  ) {
+    return null;
+  }
+
+  const collapsedRaw = value.collapsed;
+
+  if (!Array.isArray(collapsedRaw)) {
+    return null;
+  }
+
+  const collapsed: string[] = [];
+
+  for (const entry of collapsedRaw) {
+    if (typeof entry !== "string") {
+      return null;
+    }
+
+    // A dangling `collapsed` id matches no panel and is harmless — the
+    // engine simply never finds it. Unlike `maximized` (rejected above),
+    // whose dangling case strips EVERY panel in the tab to a 32px bar on
+    // every boot, there is no failure mode worth discarding the whole
+    // payload over here, so the ghost id is filtered rather than rejected.
+    if (isKnownPanel(entry)) {
+      collapsed.push(entry);
+    }
+  }
+
+  // `closed` is ADDITIVE on the v1 schema: a legacy payload without the key
+  // parses to [] (no version bump — this constructor never sees unknown
+  // fields), and a new payload read by the OLD parser was simply ignored.
+  const closedRaw = value.closed ?? [];
+
+  if (!Array.isArray(closedRaw)) {
+    return null;
+  }
+
+  const closed: string[] = [];
+
+  for (const entry of closedRaw) {
+    if (typeof entry !== "string") {
+      return null;
+    }
+
+    // Same rule as `collapsed` above: a dangling id matches no panel and is
+    // harmless — filtered, not a whole-payload reject.
+    if (leafIds.has(entry)) {
+      closed.push(entry);
+    }
   }
 
   return { root, maximized, collapsed, closed, instances };

@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
+import { instanceIdFor } from "#/layout/panelInstances";
+import {
+  parseWorkspaceLayout,
+  serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
+} from "#/layout/workspaceLayoutPersistence";
 
 import { createLayoutMachine } from "../LayoutMachine";
 
@@ -503,7 +509,40 @@ describe("createLayoutMachine", () => {
       machine.dispose();
     });
   });
+
+  // The persistence module must round-trip whatever this machine emits: an
+  // instance id is a legitimate `maximized`/`collapsed` value (the Dockview
+  // head's own controls dispatch it), even though it is never a tree leaf.
+  describe("instance ids in maximized/collapsed survive workspace persistence", () => {
+    it("round-trips a state whose maximized panel is an open instance", () => {
+      const machine = createLayoutMachine(createDefaultLayoutPort("equities"));
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.maximize(instanceIdFor("eq-chart", "AAPL"));
+      const payload = persistedEquities(current(machine));
+
+      expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toEqual(
+        payload,
+      );
+      machine.dispose();
+    });
+
+    it("round-trips a state whose collapsed set names an open instance", () => {
+      const machine = createLayoutMachine(createDefaultLayoutPort("equities"));
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.collapse(instanceIdFor("eq-chart", "AAPL"));
+      const payload = persistedEquities(current(machine));
+
+      expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toEqual(
+        payload,
+      );
+      machine.dispose();
+    });
+  });
 });
+
+function persistedEquities(layout: LayoutState): WorkspaceLayoutV1 {
+  return { v: 1, tabs: { equities: { layout, docked: [] } } };
+}
 
 function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
   let view: LayoutState | undefined;

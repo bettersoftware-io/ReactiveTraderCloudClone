@@ -335,6 +335,49 @@ describe("parseWorkspaceLayout — maximized/collapsed membership", () => {
     expect(parsed).not.toBeNull();
     expect(parsed?.tabs.fx?.layout.collapsed).toEqual(["fx-rates"]);
   });
+
+  // An open instance's id IS a valid maximized/collapsed value (see
+  // LayoutMachine.test.ts's persistence round-trips) — but only while that
+  // instance is actually in `instances`. An instance-shaped id with no
+  // matching instance is as dangling as any other ghost.
+  it("still rejects a maximized id that is neither a leaf nor an open instance, even when it is instance-shaped", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        equities: {
+          layout: {
+            ...createDefaultLayoutPort("equities").initial,
+            maximized: "eq-chart:MSFT",
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+            ],
+          },
+          docked: [],
+        },
+      },
+    };
+    expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toBeNull();
+  });
+
+  it("filters a collapsed instance id whose instance is not open, keeping the open instance's", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        equities: {
+          layout: {
+            ...createDefaultLayoutPort("equities").initial,
+            collapsed: ["eq-chart:MSFT", "eq-chart:AAPL"],
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+            ],
+          },
+          docked: [],
+        },
+      },
+    };
+    const parsed = parseWorkspaceLayout(serializeWorkspaceLayout(payload));
+    expect(parsed?.tabs.equities?.layout.collapsed).toEqual(["eq-chart:AAPL"]);
+  });
 });
 
 describe("parseWorkspaceLayout — instances (Phase 4 dynamic panel instances)", () => {

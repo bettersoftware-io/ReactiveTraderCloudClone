@@ -7,6 +7,10 @@ export * from "#/layout/defaultLayoutPort";
 export { DOCK_COLUMN_INITIAL_PX } from "#/layout/dockColumn";
 export * from "#/layout/layoutPort";
 export * from "#/layout/maximizeBoundary";
+// The instance id/cap pair is public (both web clients' watchlist + Dockview
+// bridge read them); the namespace predicate stays internal to client-core's
+// own id-collision guard.
+export { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
 export * from "#/layout/visibleRoot";
 // The workspace-persistence pair is public for one reason: each web client's
 // ui-contract fixture (`tests/ui/contract/<framework>/viewModelFromWorld.ts`)

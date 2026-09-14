@@ -16,6 +16,7 @@ import type {
   LayoutState,
   PanelId,
 } from "#/layout/layoutPort";
+import { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
 
 import type { Machine } from "./machine";
 
@@ -23,18 +24,6 @@ import type { Machine } from "./machine";
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
 export type { LayoutIntents, LayoutMachineOptions };
-
-/** Global cap on dynamically opened panel instances (Phase 4) — mirrors the
- * `MAX_DOCKED_PANELS = 4` precedent in `composition.ts` / `JarvisPanelsMachine.ts`.
- * Exported: Task 3/5 reuse it when deciding whether to offer "open chart". */
-export const MAX_PANEL_INSTANCES = 4;
-
-/** Builds the engine panelId for a dynamically opened instance — `id` doubles
- * as the panelId so every id-keyed subsystem (registry, blob, strips, pins)
- * needs no new key shape. Exported: Task 3/5 reuse it. */
-export function instanceIdFor(kind: "eq-chart", symbol: string): PanelId {
-  return `${kind}:${symbol}`;
-}
 
 type LayoutEvent =
   | { type: "maximize"; id: PanelId }

@@ -6,26 +6,32 @@ import type { LayoutNode, PanelId, PanelSpec } from "./layoutPort";
  * untouched. `[]` — the root, i.e. the whole dock — unless the maximized
  * panel's spec opts into `maximizeScope: "nearest-column"`, in which case it
  * is the nearest ancestor `dir === "column"` split (the standalone design's
- * rail panels maximize within their own column). Falls back to the root when
- * nothing is maximized, the panel is not in the tree, or it has no column
- * ancestor. Pure render-time policy: LayoutState and the layout machine know
- * nothing of scopes. */
+ * rail panels maximize within their own column); a nearest-column panel with
+ * no column ancestor falls back to the root.
+ *
+ * `null` means NO maximize applies: nothing is maximized, or the maximized
+ * id is not a leaf of `root`. The second case is reachable — the layout
+ * machine legitimately holds a Dockview-only chart instance id
+ * (`eq-chart:<symbol>`) in `maximized`, and an in-house render of that state
+ * has no such leaf; treating it as a root-scope maximize would strip EVERY
+ * panel in the tab with no maximized panel to restore from. Pure render-time
+ * policy: LayoutState and the layout machine know nothing of scopes. */
 export function maximizeBoundaryPath(
   root: LayoutNode,
   maximizedId: PanelId | null,
   specs: Readonly<Record<PanelId, PanelSpec>>,
-): readonly number[] {
+): readonly number[] | null {
   if (maximizedId === null) {
-    return [];
-  }
-
-  if (specs[maximizedId]?.maximizeScope !== "nearest-column") {
-    return [];
+    return null;
   }
 
   const panelPath = pathToPanel(root, maximizedId);
 
   if (panelPath === null) {
+    return null;
+  }
+
+  if (specs[maximizedId]?.maximizeScope !== "nearest-column") {
     return [];
   }
 
