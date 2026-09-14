@@ -1,6 +1,7 @@
 import {
   type Accessor,
   createEffect,
+  createMemo,
   createSignal,
   For,
   type JSX,
@@ -282,8 +283,8 @@ export function DockviewLayoutEngine(
       onPopoutsChange: (next: readonly string[]): void => {
         setPopped(next as readonly PanelId[]);
       },
-      // Read at CONSTRUCTION time only — like react's `dockedRef.current` /
-      // `instancesRef.current` — reconciled once here; every later render is
+      // Read at CONSTRUCTION time only — like react's `dockedRef` /
+      // `instancesRef` construction reads — reconciled once here; every later render is
       // handled by the docked and instance diff effects below instead. Both
       // channels MUST be listed: an unlisted dynamic id the blob restored is
       // deleted as an orphan, so an instance missing here loses its blob
@@ -542,7 +543,20 @@ export function DockviewLayoutEngine(
             return strips()[p.panelId];
           }
 
+          // PER-SLOT MEMOIZED LOOKUP (fix round 1): App hands this bridge a
+          // registry of NEW identity whenever the instance set changes, and
+          // a tracked `props.registry[id]?.()` would re-run EVERY mounted
+          // panel's factory on it — a remount (DOM, component state, stream
+          // subscriptions) for panels that never changed. A memo per slot
+          // compares the ENTRY by reference, so only a slot whose own entry
+          // changed re-renders. React needs no twin: its portals reconcile
+          // the same element tree in place. Created in the branch that uses
+          // it, so a slot only ever owns the memo it reads.
+
           if (p.slot === "tab") {
+            const headEntry = createMemo(() => {
+              return props.headRegistry?.[p.panelId];
+            });
             // `data-dock-strip` tells dockview-hud.css to hide the whole
             // group header while the panel is a strip — the strip bar in
             // the body slot is the panel's entire chrome then, as in-house.
@@ -558,7 +572,7 @@ export function DockviewLayoutEngine(
                     <PanelHeadSlot
                       panelId={p.panelId}
                       title={titleOf(p.panelId)}
-                      headContent={props.headRegistry?.[p.panelId]}
+                      headContent={headEntry()}
                     />
                   </Show>
                 </div>
@@ -586,6 +600,10 @@ export function DockviewLayoutEngine(
             );
           }
 
+          const bodyEntry = createMemo(() => {
+            return props.registry[p.panelId];
+          });
+
           return (
             <Portal mount={p.element}>
               <Show
@@ -606,7 +624,7 @@ export function DockviewLayoutEngine(
                      * InhouseLayoutEngine.smoke.test.tsx's error-boundary
                      * case. */}
                     <PanelErrorBoundary title={titleOf(p.panelId)}>
-                      {props.registry[p.panelId]?.()}
+                      {bodyEntry()?.()}
                     </PanelErrorBoundary>
                   </div>
                 }

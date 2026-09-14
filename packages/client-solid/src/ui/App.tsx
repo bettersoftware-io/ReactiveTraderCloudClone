@@ -30,6 +30,10 @@ import {
   instanceSpecsFor,
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
+import {
+  type PanelRegistry,
+  reuseRegistryEntries,
+} from "./shell/layout/engine/panelRegistry";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
 
@@ -204,7 +208,9 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   // both engines a fresh-identity registry on each and remount every panel.
   // An id encodes kind + symbol, so equal ids mean equal rows. Only the
   // Dockview engine ever looks an instance id up — it is not in the layout
-  // tree, so in-house never renders one.
+  // tree, so in-house never renders one, and never receives one: the
+  // `registry`/`specs` memos below stay instance-free, and only the
+  // `dockview*` merges further down read `instances()`.
   const instances = createMemo(
     (): readonly LayoutPanelInstance[] => {
       return state().instances;
@@ -217,7 +223,6 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     return {
       ...appPanelRegistry,
       ...dockedRegistryFor(dockedIds(), dockedPanels),
-      ...instanceRegistryFor(instances()),
     };
   });
 
@@ -237,8 +242,33 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     return {
       ...PANEL_SPECS,
       ...dockedSpecsFor(dockedIds(), untrack(dockedPanels)),
-      ...instanceSpecsFor(instances()),
     };
+  });
+
+  // PER-ID-STABLE INSTANCE ENTRIES (fix round 1): `instanceRegistryFor`
+  // builds a fresh closure per instance on every call, so opening a SIBLING
+  // instance would change every existing instance's entry reference — and
+  // the Dockview bridge's per-slot memo re-runs a panel's factory exactly
+  // when its entry reference changes. `reuseRegistryEntries` keeps the
+  // previous closure for every id still open (sound: an instance id encodes
+  // its symbol) and drops the ones that closed.
+  const instanceRegistry = createMemo(
+    (previous: PanelRegistry): PanelRegistry => {
+      return reuseRegistryEntries(previous, instanceRegistryFor(instances()));
+    },
+    {},
+  );
+
+  // The Dockview engine's own merges: the in-house slices plus the instance
+  // slices. A new identity on every instance open/close is harmless here —
+  // the bridge looks each slot's entry up through its own memo, so only the
+  // opened/closed panel re-renders.
+  const dockviewRegistry = createMemo((): PanelRegistry => {
+    return { ...registry(), ...instanceRegistry() };
+  });
+
+  const dockviewSpecs = createMemo(() => {
+    return { ...specs(), ...instanceSpecsFor(instances()) };
   });
 
   const headRegistry = createMemo(() => {
@@ -278,8 +308,8 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
                 surfaces here once its id is in the persisted blob. */}
             <DockviewLayoutEngine
               tab={props.tab}
-              registry={registry()}
-              specs={specs()}
+              registry={dockviewRegistry()}
+              specs={dockviewSpecs()}
               headRegistry={headRegistry()}
               store={dockLayoutStore}
               maximized={state().maximized}

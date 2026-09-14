@@ -9,7 +9,10 @@ import {
   type PanelId,
 } from "@rtc/client-core";
 
-import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
+import {
+  type PanelRegistry,
+  reuseRegistryEntries,
+} from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";
 
 import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
@@ -52,7 +55,7 @@ const MSFT: LayoutPanelInstance = {
 // dockview opened for it.
 const registry: PanelRegistry = {
   "fx-rates": () => {
-    return <div>RATES</div>;
+    return <div data-testid="fx-rates-body">RATES</div>;
   },
   "fx-analytics": () => {
     return <div>ANALYTICS</div>;
@@ -221,6 +224,50 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
   });
+
+  // Fix round 1 (review IMPORTANT): opening a chart instance used to hand
+  // the bridge a registry of fresh identity, and the body slot's tracked
+  // `props.registry[id]?.()` re-ran EVERY mounted panel's factory — a new
+  // DOM node (and fresh stream subscriptions) for panels that never
+  // changed. The registry here is composed the way App.tsx composes the
+  // Dockview one: a new object per read, the static entries spread in, and
+  // the instance slice rebuilt with fresh closures per call but passed
+  // through `reuseRegistryEntries`. Same NODE (not just same text) for the
+  // static panel and the sibling instance is the witness.
+  it("keeps every mounted panel body's DOM node when a sibling instance opens", async () => {
+    const [instances, setInstances] = createSignal<
+      readonly LayoutPanelInstance[]
+    >([AAPL]);
+    let instanceSlice: PanelRegistry = {};
+
+    function composeRegistry(): PanelRegistry {
+      instanceSlice = reuseRegistryEntries(
+        instanceSlice,
+        stubInstanceRegistryFor(instances()),
+      );
+
+      return { ...registry, ...instanceSlice };
+    }
+
+    mountEngine({
+      store: new InMemoryDockLayoutStore(),
+      instances,
+      registry: composeRegistry,
+    });
+
+    const aaplBefore = page.bodyElement("instance-AAPL-body");
+    const ratesBefore = page.bodyElement("fx-rates-body");
+    expect(aaplBefore).not.toBeNull();
+    expect(ratesBefore).not.toBeNull();
+
+    setInstances([AAPL, MSFT]);
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("instance-MSFT-body")).toBe(true);
+    });
+    expect(page.bodyElement("fx-rates-body")).toBe(ratesBefore);
+    expect(page.bodyElement("instance-AAPL-body")).toBe(aaplBefore);
+  });
 });
 
 interface EngineProps {
@@ -230,6 +277,8 @@ interface EngineProps {
     | (() => readonly LayoutPanelInstance[]);
   docked?: () => readonly PanelId[];
   layoutResets?: () => number;
+  /** Live registry — defaults to the static `registry` above. */
+  registry?: () => PanelRegistry;
 }
 
 /** Mounts once, dereferencing every live prop INSIDE the JSX so Solid's
@@ -245,7 +294,7 @@ function mountEngine(props: EngineProps): void {
     return (
       <DockviewLayoutEngine
         tab="fx"
-        registry={registry}
+        registry={props.registry?.() ?? registry}
         store={props.store}
         maximized={null}
         collapsed={[]}
@@ -263,6 +312,28 @@ function mountEngine(props: EngineProps): void {
 }
 
 function noop(): void {}
+
+/** A stand-in for `instanceRegistryFor` with its exact identity behaviour —
+ * a FRESH closure per instance on every call — minus the real ChartPanel
+ * (which needs the whole ViewModel). */
+function stubInstanceRegistryFor(
+  instances: readonly LayoutPanelInstance[],
+): PanelRegistry {
+  const entries = instances.map((instance) => {
+    return [
+      instance.id,
+      () => {
+        return (
+          <div data-testid={`instance-${instance.symbol}-body`}>
+            {instance.symbol}
+          </div>
+        );
+      },
+    ] as const;
+  });
+
+  return Object.fromEntries(entries);
+}
 
 interface RecordingStore {
   store: DockLayoutStore;

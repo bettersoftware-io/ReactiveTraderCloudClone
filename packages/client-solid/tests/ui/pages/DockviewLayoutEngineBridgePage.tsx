@@ -34,6 +34,9 @@ export interface DockviewLayoutEngineBridgePage {
   groupsAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
+  /** The element carrying `testId`, or null — for node-identity assertions
+   * (a remount replaces the node even when its content is identical). */
+  bodyElement(testId: string): HTMLElement | null;
   /** The control's `disabled` state, or null when no such testid exists. */
   controlDisabled(testId: string): boolean | null;
   clickControl(testId: string): void;
@@ -66,6 +69,9 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;
+    },
+    bodyElement(testId: string): HTMLElement | null {
+      return screen.queryByTestId(testId);
     },
     controlDisabled(testId: string): boolean | null {
       const control = screen.queryByTestId(testId);
