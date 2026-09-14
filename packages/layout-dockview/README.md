@@ -209,6 +209,19 @@ While popped, the head's collapse/maximize (and the ↗ control itself)
 render disabled — geometry intents have no meaning for a group parked in
 another document.
 
+## Instances consume the dynamic-panel API (Phase 4)
+
+Multi-instance equities charts (one `eq-chart:<symbol>` panel per open
+symbol) are built entirely on the client side of the engine boundary — this
+package gained no code for Phase 4. The client-core layout machine owns
+`LayoutState.instances` as its second layer-2 lift (alongside `closed`), and
+the bridges open/close an instance by calling the existing
+`addDynamicPanel`/`removeDynamicPanel` pair with the instance's id and a
+spec resolved from the bridge's own merged `specsRef` map (title = the
+symbol, `maximizeScope: "root"`). See the dynamic-panel API and its
+restore-time reconciliation rules in the
+[GenUI × Dockview design's engine-API section](../../docs/superpowers/specs/2026-09-12-genui-dockview-docking-and-default-flip-design.md#4-engine-api-rtclayout-dockview).
+
 ## Why `dockview`, not `dockview-core`
 
 `dockview-core` is a real npm package and works, but constructing a
