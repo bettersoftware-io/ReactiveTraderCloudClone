@@ -41,6 +41,14 @@ ruleTester.run("name-functions-by-effect", nameFunctionsByEffect, {
       code: "class C {\n  onTrade(listener: TradeListener): void {}\n}\n",
     },
     {
+      name: "a private sink method named for its EFFECT stays valid",
+      code: "class C {\n  private streamPnlReply(push: (e: Event) => void): void {}\n}\n",
+    },
+    {
+      name: "a PUBLIC attach point is still a slot even though it takes only a callback",
+      code: "class C {\n  public onTrade(listener: TradeListener): void {}\n}\n",
+    },
+    {
       name: "JSX attribute names are never inspected",
       code: "const el = <button onClick={cancelRfq} />;\n",
     },
@@ -205,6 +213,11 @@ ruleTester.run("name-functions-by-effect", nameFunctionsByEffect, {
       name: "attach-point exemption needs the SOLE param to be the callback",
       code: "interface A { onTrade(id: number, cb: TradeListener): void }\n",
       errors: [{ messageId: "nameByEffect", data: { name: "onTrade" } }],
+    },
+    {
+      name: "a PRIVATE method cannot be an attach point — nothing outside can register with it",
+      code: "class C {\n  private handlePnl(push: (e: Event) => void): void {}\n}\n",
+      errors: [{ messageId: "nameByEffect", data: { name: "handlePnl" } }],
     },
     {
       name: "handle* class field arrow",
