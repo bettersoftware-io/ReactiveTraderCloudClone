@@ -935,11 +935,13 @@ function dynamicPanelsOf(
   ];
 }
 
-/** A chart instance as a dynamic panel: it opens at the dock column's
- * design width but `unpinned`, so instances share space proportionally —
- * pinned, four of them at 360px crushed the main chart and pushed the last
- * one off-screen. Every site an instance enters the engine goes through
- * here; a Jarvis-docked id never does. */
+/** A chart instance as a dynamic panel, `unpinned`: it opens at
+ * `min(the dock column's design width, an equal share)`, and every instance
+ * open or close re-equalises its split — instances at their design width
+ * while there is room, else instances and the main area in equal shares
+ * (pinned, four at 360px crushed the main chart and pushed the last one
+ * off-screen). Every site an instance enters the engine goes through here; a
+ * Jarvis-docked id never does, so it stays pinned. */
 function instancePanelOf(panelId: PanelId): DockDynamicPanel {
   return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX, unpinned: true };
 }
