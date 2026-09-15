@@ -347,6 +347,116 @@ describe("DockviewLayoutEngine instances prop", () => {
   });
 });
 
+// R15b: a chart instance opens UNPINNED (instances share space — four pinned
+// 360px columns crushed the workspace), a Jarvis dock stays pinned at its
+// design width. Witnessed through the persisted blob's `rtcDesignPins`
+// sidecar, once per way an instance becomes a dynamic panel — `buildEngine`'s
+// `dynamicPanels` (at mount and on a `layoutResets` rebuild) and the instance
+// diff effect — with the Jarvis dock beside it proving the sidecar was
+// written at all.
+describe("DockviewLayoutEngine instance pins", () => {
+  it("opens a construction-time instance unpinned, the Jarvis dock beside it pinned", () => {
+    const { store, inner } = recordingStore();
+
+    mountEngine({
+      store,
+      instances: [AAPL],
+      docked: () => {
+        return ["panel-dyn-1"];
+      },
+    });
+    page.touchDock();
+    page.unmountAll();
+
+    expectInstanceUnpinnedBesidePinnedDock(inner);
+  });
+
+  // The first engine is never touched, so its dispose writes nothing, and
+  // the blob is cleared before the bump — the only blob afterwards is the
+  // REBUILT engine's, whose instance came from `buildEngine`'s own
+  // `dynamicPanels` (the diff effect's add no-ops on it).
+  it("opens the instance unpinned in the engine a layoutResets rebuild constructs", async () => {
+    const { store, inner } = recordingStore();
+    const [layoutResets, setLayoutResets] = createSignal(0);
+
+    mountEngine({
+      store,
+      instances: [AAPL],
+      docked: () => {
+        return ["panel-dyn-1"];
+      },
+      layoutResets,
+    });
+    inner.clear("fx");
+    setLayoutResets((n) => {
+      return n + 1;
+    });
+
+    await page.waitFor(() => {
+      expect(page.groupsAttr()).toBe("6");
+    });
+    page.touchDock();
+    page.unmountAll();
+
+    expectInstanceUnpinnedBesidePinnedDock(inner);
+  });
+
+  it("opens an instance the diff effect adds unpinned", async () => {
+    const { store, inner } = recordingStore();
+    const [instances, setInstances] = createSignal<
+      readonly LayoutPanelInstance[]
+    >([]);
+
+    mountEngine({
+      store,
+      instances,
+      docked: () => {
+        return ["panel-dyn-1"];
+      },
+    });
+    setInstances([AAPL]);
+
+    await page.waitFor(() => {
+      expect(page.groupsAttr()).toBe("6");
+    });
+    page.touchDock();
+    page.unmountAll();
+
+    expectInstanceUnpinnedBesidePinnedDock(inner);
+  });
+});
+
+/** The R15b split in the persisted blob: the Jarvis dock pinned, the chart
+ * instance not (the FX seed's own rail pin rides along, so membership — not
+ * equality — is the assertion). */
+function expectInstanceUnpinnedBesidePinnedDock(
+  store: InMemoryDockLayoutStore,
+): void {
+  const pinned = pinnedIdsOf(store);
+
+  expect(pinned).toContain("panel-dyn-1");
+  expect(pinned).not.toContain(AAPL.id);
+}
+
+/** Every panel id the persisted "fx" blob's `rtcDesignPins` sidecar pins.
+ * Throws when nothing was persisted — an absent blob must never read as
+ * "saved, and nothing pinned". */
+function pinnedIdsOf(store: InMemoryDockLayoutStore): readonly string[] {
+  const blob = store.load("fx");
+
+  if (blob === null) {
+    throw new Error("no fx layout was persisted");
+  }
+
+  const pins = (JSON.parse(blob).rtcDesignPins ?? []) as readonly {
+    panelIds: readonly string[];
+  }[];
+
+  return pins.flatMap((pin) => {
+    return pin.panelIds;
+  });
+}
+
 interface EngineProps {
   store: DockLayoutStore;
   instances:

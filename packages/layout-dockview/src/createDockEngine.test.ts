@@ -2081,6 +2081,47 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     engine.dispose();
   });
 
+  it("opens an `unpinned` dynamic panel at its initialPx without a design pin, beside a pinned one", async () => {
+    // R15b: chart instances share space — same right-edge group at the same
+    // opening width, but no min=max clamp and nothing in rtcDesignPins. The
+    // flag-less panel beside it is pinned exactly as before.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel({
+      id: "panel-dyn-2",
+      initialPx: 360,
+      unpinned: true,
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    const [minimum, maximum] = widthClampOf("panel-dyn-2");
+    expect(minimum).not.toBe(maximum);
+    expect(minimum).not.toBe(360 + GROUP_GAP_PX);
+
+    engine.addDynamicPanel(DYN);
+    expect(widthClampOf("panel-dyn-1")).toEqual([
+      360 + GROUP_GAP_PX,
+      360 + GROUP_GAP_PX,
+    ]);
+    touchContainer(opts.container);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("reconciles an `unpinned` construction-time dynamic panel without a design pin", () => {
+    const seen = trackLayout();
+    persistArranged({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [{ id: "panel-dyn-2", initialPx: 360, unpinned: true }],
+    });
+
+    expect(seen.sizeOf("panel-dyn-2")).toBe(360);
+    expect(seen.pins()).toEqual([]);
+  });
+
   it("forces a dynamic panel added during a live maximize into a strip, and restores it on exit", async () => {
     // In-house parity: a panel docked while a maximize is live must not land
     // full-size beside a dock of 32px strips — it joins the maximize's own

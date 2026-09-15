@@ -26,6 +26,7 @@ import {
 } from "@rtc/client-core";
 import {
   createDockEngine,
+  type DockDynamicPanel,
   type DockEngine,
   type DockMaximizeScope,
   type DockStripMap,
@@ -307,11 +308,7 @@ export function DockviewLayoutEngine(
       // channels MUST be listed: an unlisted dynamic id the blob restored is
       // deleted as an orphan, so an instance missing here loses its blob
       // position.
-      dynamicPanels: [...props.docked, ...instanceIdsOf(props.instances)].map(
-        (panelId) => {
-          return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
-        },
-      ),
+      dynamicPanels: dynamicPanelsOf(props.docked, props.instances),
     });
     applied = [];
     appliedDocked = [];
@@ -471,10 +468,7 @@ export function DockviewLayoutEngine(
 
     for (const panelId of instanceIds) {
       if (!appliedInstances.includes(panelId)) {
-        currentEngine.addDynamicPanel({
-          id: panelId,
-          initialPx: DOCK_COLUMN_INITIAL_PX,
-        });
+        currentEngine.addDynamicPanel(instancePanelOf(panelId));
       }
     }
 
@@ -728,6 +722,30 @@ interface MountedSlot {
 }
 
 type StripMap = Partial<Record<PanelId, DockStripOrientation>>;
+
+/** The construction-time `dynamicPanels` for `buildEngine` (at mount and on
+ * every `layoutResets` rebuild): Jarvis-docked panels pinned at their design
+ * width like a seeded rail, chart instances via {@link instancePanelOf}. */
+function dynamicPanelsOf(
+  docked: readonly PanelId[],
+  instances: readonly LayoutPanelInstance[],
+): readonly DockDynamicPanel[] {
+  return [
+    ...docked.map((panelId): DockDynamicPanel => {
+      return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
+    }),
+    ...instanceIdsOf(instances).map(instancePanelOf),
+  ];
+}
+
+/** A chart instance as a dynamic panel: it opens at the dock column's
+ * design width but `unpinned`, so instances share space proportionally —
+ * pinned, four of them at 360px crushed the main chart and pushed the last
+ * one off-screen. Every site an instance enters the engine goes through
+ * here; a Jarvis-docked id never does. */
+function instancePanelOf(panelId: PanelId): DockDynamicPanel {
+  return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX, unpinned: true };
+}
 
 /** The namespace every chart-instance panel id lives in ("eq-chart:"). */
 const INSTANCE_ID_PREFIX = instanceIdFor("eq-chart", "");

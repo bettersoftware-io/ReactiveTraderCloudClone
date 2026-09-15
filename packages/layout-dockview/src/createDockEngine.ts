@@ -118,7 +118,8 @@ export interface DockEngineOptions {
   /** The layer-2 docked set at construction (Jarvis panels the app already
    * knows should be open) — reconciled against `blob`/`seed` right after
    * restore: a listed id missing from the restored dock is added at the
-   * grid's right edge (its `initialPx` pinned, like {@link DockEngine.addDynamicPanel});
+   * grid's right edge (its `initialPx` pinned unless `unpinned`, like
+   * {@link DockEngine.addDynamicPanel});
    * a restored dynamic id no longer listed is removed. Arrangement for ids
    * present in BOTH is kept verbatim — membership reconciles both ways, but
    * a panel's position/stack within the dock is never second-guessed once
@@ -153,15 +154,22 @@ export type DockStripOrientation = "vertical" | "horizontal";
 /** Every currently collapsed panel and which way its strip reads. */
 export type DockStripMap = Readonly<Record<string, DockStripOrientation>>;
 
-/** A panel the app opens at runtime (Jarvis docking a GenUI card), rather
- * than one seeded at mount. Always lands as its own new group at the grid's
- * right edge — never stacked into an existing group — with `initialPx` held
- * as a design pin exactly like a seeded rail's `initialPx`. */
+/** A panel the app opens at runtime (Jarvis docking a GenUI card, a chart
+ * instance), rather than one seeded at mount. Always lands as its own new
+ * group at the grid's right edge — never stacked into an existing group —
+ * with `initialPx` held as a design pin exactly like a seeded rail's
+ * `initialPx`, unless it is {@link DockDynamicPanel.unpinned}. */
 export interface DockDynamicPanel {
   readonly id: string;
   /** Rendered card width of the new right-edge group, px. Callers pass the
    * client's DOCK_COLUMN_INITIAL_PX (360) — this package has no @rtc deps. */
   readonly initialPx: number;
+  /** Opens at `initialPx` but registers NO design pin: the group is an
+   * ordinary proportional member of the grid from the start, sharing space
+   * on every resize instead of holding its width. For panels that multiply
+   * (chart instances — four pinned 360px columns crush the workspace);
+   * absent, the panel is pinned like a seeded rail (a Jarvis dock). */
+  readonly unpinned?: boolean;
 }
 
 export interface DockEngine {
@@ -190,9 +198,9 @@ export interface DockEngine {
   /** Restore a collapsed panel to the exact size/constraints it had before.
    * No-op unless this engine collapsed it. */
   expandPanel(panelId: string): void;
-  /** Opens `panel` as a new group at the grid's right edge, pinned at its
-   * `initialPx` card width exactly like a seeded rail. No-op if the id
-   * already exists in the dock. */
+  /** Opens `panel` as a new group at the grid's right edge at its `initialPx`
+   * card width, pinned there exactly like a seeded rail unless the panel is
+   * `unpinned`. No-op if the id already exists in the dock. */
   addDynamicPanel(panel: DockDynamicPanel): void;
   /** Closes a dynamic panel and its group, restoring whatever it stripped or
    * collapsed (maximize boundary, strip ledger) before it goes. No-op for an
@@ -1172,8 +1180,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   /** Opens `panel` as a brand-new group at the grid's right edge — never
-   * stacked into an existing one — and pins it at its design width exactly
-   * like a seeded rail. No-op if the id is already in the dock. */
+   * stacked into an existing one — at its design width, and pins it there
+   * exactly like a seeded rail unless it is `unpinned`. No-op if the id is
+   * already in the dock. */
   function insertDynamicPanel(panel: DockDynamicPanel): void {
     if (api.getPanel(panel.id) !== undefined) {
       return;
@@ -1186,11 +1195,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       position: { direction: "right" },
       initialWidth: panel.initialPx + GROUP_GAP_PX,
     });
-    registerDesignPin({
-      panelIds: [panel.id],
-      px: panel.initialPx,
-      axis: "width",
-    });
+
+    if (panel.unpinned !== true) {
+      registerDesignPin({
+        panelIds: [panel.id],
+        px: panel.initialPx,
+        axis: "width",
+      });
+    }
 
     // A panel docked while a maximize is live must not land full-size next
     // to a dock of 32px strips — force it into the maximize's own strip set
