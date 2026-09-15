@@ -3675,6 +3675,203 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
   });
 });
 
+// Phase 6a Task 1: five facts about dockview-core@8.3.1's floating primitive
+// that no amount of reading THIS repo answers — jsdom witnesses the full
+// success path (unlike pop-out, addFloatingGroup is synchronous and needs no
+// window.open; a floating group is an absolutely-positioned div in the SAME
+// document), so these are real characterizations, not blocked-branch stubs.
+describe("dockview floating groups (characterization of the 8.3.1 primitive)", () => {
+  // Q1 + Q2 + Q5 (membership half): float a grid-resident group and inspect
+  // what changed underneath.
+  it("detaches a grid group in place, unchanged group count, still reporting floating", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+    const before = api.getPanel("fx-analytics");
+
+    if (before === undefined) {
+      throw new Error("fx-analytics missing before float");
+    }
+
+    const gridBefore = api.groups.length;
+
+    // No prior removal: passing the grid-resident group straight in.
+    api.addFloatingGroup(before.group, {
+      x: 40,
+      y: 40,
+      width: 420,
+      height: 320,
+    });
+
+    const after = api.getPanel("fx-analytics");
+
+    if (after === undefined) {
+      throw new Error("fx-analytics missing after float");
+    }
+
+    const group = after.group;
+
+    // Q1: addFloatingGroup detached the ALREADY-grid-resident group itself —
+    // no separate removal call was made above, and the panel is still found
+    // under the same group instance, now reporting "floating".
+    expect(group.api.location.type).toBe("floating");
+    // Q5: dockview's own group registry is unchanged in size — a floating
+    // group stays a known "group object" (api.groups is "all group objects",
+    // not "all grid-docked groups"); only the spatial grid loses it.
+    expect(api.groups.length).toBe(gridBefore);
+    engine.dispose();
+  });
+
+  // Q2, corrected: `.dv-split-view-container` is NOT a grid-only class —
+  // dockview mounts a float through its own private nested gridview, which
+  // gets that exact same class for its own single-view wrapper. So
+  // `closest(".dv-split-view-container")` from the floated element is NOT
+  // null (it finds the float's OWN wrapper) — the brief's sketch assumed
+  // this class was grid-exclusive, and jsdom disproves that directly.
+  // The real boundary: the floated element leaves the ORIGINAL grid's own
+  // split-view subtree entirely, landing in a sibling `dv-floating-overlay-
+  // host` layer that is still a descendant of the engine's own container.
+  it("leaves the grid's own split-view subtree for dockview's private floating-overlay layer", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...base(), container });
+    const api = lastDockviewApi();
+    const panel = api.getPanel("fx-analytics");
+
+    if (panel === undefined) {
+      throw new Error("fx-analytics missing");
+    }
+
+    // Captured BEFORE floating: every split-view-container that belongs to
+    // the SEED grid itself (root row split + the rates/blotter column split).
+    const gridSplitsBefore = [
+      ...container.querySelectorAll(".dv-split-view-container"),
+    ];
+
+    expect(gridSplitsBefore.length).toBeGreaterThan(0); // sanity: grid has splits
+
+    api.addFloatingGroup(panel.group, { x: 40, y: 40 });
+
+    const floated = api.getPanel("fx-analytics");
+
+    if (floated === undefined) {
+      throw new Error("fx-analytics missing after float");
+    }
+
+    // None of the grid's OWN pre-existing splits contain the float anymore...
+    for (const split of gridSplitsBefore) {
+      expect(split.contains(floated.group.element)).toBe(false);
+    }
+    // ...it is still inside the engine's own mount point overall...
+    expect(container.contains(floated.group.element)).toBe(true);
+    // ...specifically inside dockview's dedicated floating-overlay layer,
+    // a subtree entirely separate from the grid's own gridview.
+    expect(
+      floated.group.element.closest(".dv-floating-overlay-host"),
+    ).not.toBeNull();
+    engine.dispose();
+  });
+
+  // Q3: does toJSON/fromJSON round-trip an open float?
+  it("round-trips a floating group through toJSON/fromJSON", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+    const panel = api.getPanel("fx-analytics");
+
+    if (panel === undefined) {
+      throw new Error("fx-analytics missing");
+    }
+
+    api.addFloatingGroup(panel.group, { x: 40, y: 40 });
+
+    const serialized = api.toJSON() as {
+      floatingGroups?: readonly unknown[];
+    };
+
+    expect(serialized.floatingGroups).toHaveLength(1);
+
+    const restoreTarget = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+    const restoreApi = lastDockviewApi();
+
+    restoreApi.fromJSON(api.toJSON());
+    const restoredPanel = restoreApi.getPanel("fx-analytics");
+
+    if (restoredPanel === undefined) {
+      throw new Error("fx-analytics missing after fromJSON restore");
+    }
+
+    // fromJSON restored the float, not just the panel: location reads
+    // "floating" on the freshly-loaded engine too.
+    expect(restoredPanel.group.api.location.type).toBe("floating");
+    restoreTarget.dispose();
+    engine.dispose();
+  });
+
+  // Q4: does a public DockviewApi method dock a float back to the grid?
+  // dockviewComponent.d.ts:265-266 declares moveGroupOrPanel/moveGroup on
+  // IDockviewComponent (the internal accessor) — neither is re-declared on
+  // the public DockviewApi surface `lastDockviewApi()` returns.
+  it("has no public moveGroupOrPanel to dock a float back to the grid", () => {
+    const engine = createDockEngine(base());
+    const api = lastDockviewApi();
+
+    expect(
+      (api as unknown as Record<string, unknown>).moveGroupOrPanel,
+    ).toBeUndefined();
+    engine.dispose();
+  });
+
+  it("has no public moveGroup to dock a float back to the grid", () => {
+    const engine = createDockEngine(base());
+    const api = lastDockviewApi();
+
+    expect(
+      (api as unknown as Record<string, unknown>).moveGroup,
+    ).toBeUndefined();
+    engine.dispose();
+  });
+
+  // Q4, the working mechanism: DockviewPanelApi.moveTo (already public, and
+  // already used throughout this file for ordinary grid-to-grid drops) is
+  // implemented on the internal accessor's moveGroupOrPanel underneath, so it
+  // docks a FLOATED panel back onto a grid group too — no remove-and-reopen
+  // needed. This is the real answer Task 2 should build on.
+  it("panel.api.moveTo docks a floated panel back onto a grid group", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+    const analytics = api.getPanel("fx-analytics");
+    const rates = api.getPanel("fx-rates");
+
+    if (analytics === undefined || rates === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    api.addFloatingGroup(analytics.group, { x: 40, y: 40 });
+    expect(analytics.group.api.location.type).toBe("floating");
+
+    analytics.api.moveTo({ group: rates.group, position: "bottom" });
+
+    const docked = api.getPanel("fx-analytics");
+
+    if (docked === undefined) {
+      throw new Error("fx-analytics missing after moveTo");
+    }
+
+    expect(docked.group.api.location.type).toBe("grid");
+    engine.dispose();
+  });
+});
+
 function lastDockviewApi(): DockviewApi {
   if (capturedDockview.api === null) {
     throw new Error("no dockview created yet");
