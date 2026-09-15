@@ -54,14 +54,19 @@ const STRIP_MODEL_HEIGHT_MAX = 40;
 
 describe("DockviewLayoutEngine under StrictMode", () => {
   // StrictMode double-invokes effects: the layout effect's cleanup disposes
-  // engine A — whose dispose flushes its STRIPPED geometry into the store —
-  // and the re-run builds engine B from that blob, with the strip's group at
-  // dockview's minimum height and nothing collapsed. The bridge must re-push
-  // the collapse set into B; a stale "already applied" list left B
-  // un-collapsed while A's strips state still rendered the restore bar,
+  // engine A and the re-run builds engine B with nothing collapsed. The bridge
+  // must re-push the collapse set into B; a stale "already applied" list left
+  // B un-collapsed while A's strips state still rendered the restore bar,
   // stretched across a ~97px group (the first `app/fx-collapsed-dockview`
   // golden). The witness is the blob B saves: the strip's leaf at the bar's
   // height, not the minimum.
+  //
+  // (A no longer flushes on dispose — nobody touched it, so its layout is
+  // rebuildable; see createDockEngine's dispose. B therefore seeds rather than
+  // restoring A's blob, and B's save is the only one. This test used to wait
+  // for `saved.length >= 2`, counting A's flush; it now waits on the witness
+  // itself, which fails both ways — B never re-collapsing saves the ~97px
+  // minimum, and B never saving times out.)
   it("re-applies the seeded collapse set to the engine the double-mount rebuilds", async () => {
     const saved: string[] = [];
     const inner = new InMemoryDockLayoutStore();
@@ -99,28 +104,30 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       </StrictMode>,
     );
 
-    // A's dispose-time flush is save #1 (synchronous); B's debounced save of
-    // its own collapse is what we wait for.
+    // B's debounced save of its own collapse.
     await page.waitFor(
       () => {
-        expect(saved.length).toBeGreaterThanOrEqual(2);
+        const last = saved[saved.length - 1];
+        expect(last).toBeDefined();
+
+        const height = leafSizeIn(
+          JSON.parse(last ?? "").grid.root,
+          "fx-analytics",
+        );
+        expect(height).not.toBeNull();
+        expect(height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+          STRIP_MODEL_HEIGHT_MAX,
+        );
       },
       { timeout: 3000 },
-    );
-
-    const last = saved[saved.length - 1] ?? "";
-    const height = leafSizeIn(JSON.parse(last).grid.root, "fx-analytics");
-    expect(height).not.toBeNull();
-    expect(height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
-      STRIP_MODEL_HEIGHT_MAX,
     );
   });
 
   // Mirrors the collapse case above for the `docked` prop: a dynamic panel
   // is reconciled into the engine at CONSTRUCTION (`dynamicPanels`, fed by
   // the re-synced `dockedRef`), not applied by a replayed intent — so engine
-  // B, rebuilt from A's flushed blob (which already carries the dynamic
-  // panel), must still hold it: a `dockedRef` that failed to resync for B,
+  // B, rebuilt from the seed (A, untouched, persisted nothing), must still
+  // hold it: a `dockedRef` that failed to resync for B,
   // or a construction call that dropped `dynamicPanels`, would silently
   // lose the group instead of erroring. `groupsAttr` (not the saved blob) is
   // the witness here — membership, unlike collapse's clamped SIZE, is
