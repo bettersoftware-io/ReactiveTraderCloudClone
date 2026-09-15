@@ -350,7 +350,7 @@ export class ScriptedJarvisEngine {
         await this.reveal(FALLBACK_REPLY, push);
         return;
       case "pnl":
-        await this.handlePnl(push);
+        await this.streamPnlReply(push);
         return;
       case "movers":
         await this.streamMoversReply(pairs, push);
@@ -386,7 +386,9 @@ export class ScriptedJarvisEngine {
     }
   }
 
-  private async handlePnl(push: (event: JarvisEvent) => void): Promise<void> {
+  private async streamPnlReply(
+    push: (event: JarvisEvent) => void,
+  ): Promise<void> {
     push({ type: "toolEvent", tool: "desk", status: "running" });
     const analytics = await this.snapshot(
       new AnalyticsUseCase(this.deps.analytics).execute(),

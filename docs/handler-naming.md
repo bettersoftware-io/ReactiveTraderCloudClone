@@ -40,6 +40,36 @@ So `onTrade(listener: TradeListener)` (a method whose sole parameter *is* the
 callback) is still recognized as a slot — the discriminator is which way the
 function flows, not the syntax alone.
 
+### `private` members are never slots
+
+A slot exists so an **external** consumer can attach a handler — that is the
+decoupling the rule protects. A `private` member has no external consumer by
+construction, so it cannot be one however its parameter is shaped, and it is
+never exempted as an attach point.
+
+This closes a hole that fails *open*. "Which way does the function flow" is not
+actually readable from a signature: a parameter typed `(e: Event) => void` is a
+listener flowing **in** when consumers register it, and an output **sink**
+flowing **out** when the body calls it to emit. Both parse identically, so a
+private sink method was silently exempted:
+
+```ts
+// ❌ before — exempted as an "attach point", because its sole param is a callback
+private async handlePnl(push: (event: JarvisEvent) => void): Promise<void> {
+  push({ type: "toolEvent", tool: "desk", status: "running" });
+  // …
+}
+
+// ✅ after — the sink is an output, so the name states what it emits
+private async streamPnlReply(push: (event: JarvisEvent) => void): Promise<void> {
+```
+
+It sat unflagged in `ScriptedJarvisEngine` among six correctly-named
+`stream*Reply` siblings, which take the identical `push` sink — and escaped only
+because it was the one that needed no data parameter, so its arity matched the
+attach-point shape. `protected` is deliberately **not** treated this way: a
+subclass can call a protected member, so it retains a narrow external consumer.
+
 ## Handlers get names even when the body is one line
 
 An inline arrow (`onChange={(e) => { notional.change(e.target.value); }}`) is

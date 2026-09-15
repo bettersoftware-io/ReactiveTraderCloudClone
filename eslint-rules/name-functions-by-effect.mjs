@@ -18,6 +18,17 @@
 // The discriminator is which way the function flows, so it needs no type
 // checker: a slot RECEIVES a function; a handler receives data and runs.
 //
+// ACCESSIBILITY IS PART OF THAT DISCRIMINATOR. "Which way does it flow" is not
+// readable from a signature alone: a param typed `(e: Event) => void` is a
+// listener flowing IN when consumers register it, and an output SINK flowing
+// OUT when the body calls it to emit. Both parse identically. `private` breaks
+// the tie without type information — a slot needs an EXTERNAL consumer to
+// attach to it, and a private member has none — so a private member is never
+// exempted as an attach point.
+//
+//   private handlePnl(push: (e: JarvisEvent) => void) { push(...) }  // flagged
+//   public  onTrade(listener: TradeListener) { this.subs.push(listener) } // slot
+//
 // SLOT SYNTAX MATTERS. A function-typed member written in PROPERTY syntax
 // (`onToggleDealer: (id: number) => void`) is exempt as a slot. The identical
 // intent written in METHOD syntax (`onToggleDealer(id: number): void`) parses
@@ -66,6 +77,13 @@
 //
 // NOT VISITED (known gaps, zero sites today, left unvisited on purpose rather
 // than by oversight):
+//   - `#private` members: MethodDefinition/PropertyDefinition both require an
+//     Identifier key, and a `#name` parses as PrivateIdentifier, so those
+//     members are not visited at all — and the accessibility tightening above
+//     therefore does not reach them either. Zero `#` members in the repo today.
+//   - `protected`: deliberately NOT treated like `private`. A subclass can call
+//     a protected member, so it retains a (narrow) external consumer and the
+//     "no one can attach" argument does not hold. Zero sites today either way.
 //   - TSAbstractMethodDefinition (`abstract handleClick(e: string): void;`)
 //   - TSDeclareFunction (ambient declarations, overload signatures)
 //   - functionValueOf() returns null — and so the binding is unchecked — for
@@ -141,6 +159,23 @@ function isAttachPoint(params) {
   return isCallbackType(annotation ? annotation.typeAnnotation : null);
 }
 
+/** True when a class member is declared `private`, which disqualifies it from
+ * being a slot no matter how its parameter is shaped. A slot exists so an
+ * EXTERNAL consumer can attach a handler — that is the decoupling this rule
+ * protects — and a `private` member has no external consumer by construction.
+ *
+ * Without this, isAttachPoint() cannot tell a callback flowing IN (a listener
+ * being registered) from one flowing OUT (an output SINK the body calls), since
+ * the two are structurally identical at the signature. That ambiguity fails
+ * open: `ScriptedJarvisEngine.handlePnl(push)` sat unflagged among six
+ * correctly-named `stream*Reply` siblings, exempted only because it was the one
+ * sink method needing no data param. `private` resolves it syntactically,
+ * without type information, the same way the rest of the rule works.
+ */
+function isPrivateMember(node) {
+  return node.accessibility === "private";
+}
+
 /** The function expression a binding holds, unwrapping `useCallback(fn, deps)`.
  * Returns null for anything that is not a function value — `vi.fn()` calls and
  * uninitialised declarators land here, which is why spies and slot captures are
@@ -179,13 +214,13 @@ export const nameFunctionsByEffect = {
     schema: [],
     messages: {
       nameByEffect:
-        "'{{name}}' names its trigger, not its effect. Name it for what it does, to what — an effect verb plus a DOMAIN noun, never an event noun. A name that states its effect also survives being wired to a different trigger: handleClick -> dismissTicket; processClick -> dismissTicket (still an event noun); handleKeyDown -> blurNotionalOnEnter; onMessage -> emitParsedFrame; onConnect -> recordConnect; frameCallback -> drawFrame. If this name is a SLOT consumers attach to — a function-typed prop, or a method whose sole parameter is a callback — the rule does not fire; check the shape.",
+        "'{{name}}' names its trigger, not its effect. Name it for what it does, to what — an effect verb plus a DOMAIN noun, never an event noun. A name that states its effect also survives being wired to a different trigger: handleClick -> dismissTicket; processClick -> dismissTicket (still an event noun); handleKeyDown -> blurNotionalOnEnter; onMessage -> emitParsedFrame; onConnect -> recordConnect; frameCallback -> drawFrame. If this name is a SLOT consumers attach to — a function-typed prop, or a NON-private method whose sole parameter is a callback — the rule does not fire; check the shape. A `private` member is never a slot: nothing outside can attach to it, so a private method taking only a callback is receiving an output SINK, and gets named for what it emits (handlePnl -> streamPnlReply).",
     },
   },
 
   create(context) {
-    function check(nameNode, name, params) {
-      if (!statesNoEffect(name) || isAttachPoint(params)) {
+    function check(nameNode, name, params, canBeSlot = true) {
+      if (!statesNoEffect(name) || (canBeSlot && isAttachPoint(params))) {
         return;
       }
 
@@ -221,12 +256,17 @@ export const nameFunctionsByEffect = {
         const fn = functionValueOf(node.value);
 
         if (fn) {
-          check(node.key, node.key.name, fn.params);
+          check(node.key, node.key.name, fn.params, !isPrivateMember(node));
         }
       },
       MethodDefinition(node) {
         if (!node.computed && node.key.type === "Identifier") {
-          check(node.key, node.key.name, node.value.params);
+          check(
+            node.key,
+            node.key.name,
+            node.value.params,
+            !isPrivateMember(node),
+          );
         }
       },
       TSMethodSignature(node) {
