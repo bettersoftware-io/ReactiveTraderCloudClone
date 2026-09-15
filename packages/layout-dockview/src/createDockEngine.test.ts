@@ -3872,6 +3872,72 @@ describe("dockview floating groups (characterization of the 8.3.1 primitive)", (
   });
 });
 
+// Phase 6a Task 2: the engine's own float/dock surface built on the Task 1
+// primitive above — floatPanel, dockPanel, and the onFloatsChange publish
+// channel.
+describe("DockEngine floatPanel / dockPanel / onFloatsChange", () => {
+  it("floatPanel floats the panel's group and publishes the floating set", async () => {
+    const floats: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+      onFloatsChange: (panelIds: readonly string[]): void => {
+        floats.push(panelIds);
+      },
+    });
+
+    expect(engine.floatPanel("fx-analytics")).toBe(true);
+    // api.onDidLayoutChange's own notification is microtask-deferred
+    // (dockview-core's AsapEvent) — see the debounce test above.
+    await Promise.resolve();
+
+    expect(floats.at(-1)).toEqual(["fx-analytics"]);
+    engine.dispose();
+  });
+
+  it("floatPanel returns false for an unknown panel and publishes nothing", () => {
+    const floats: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      onFloatsChange: (panelIds: readonly string[]): void => {
+        floats.push(panelIds);
+      },
+    });
+
+    expect(engine.floatPanel("nope")).toBe(false);
+
+    expect(floats).toEqual([]);
+    engine.dispose();
+  });
+
+  it("dockPanel returns a floating panel to its seed-home slot", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+    const before = engine.groupCount();
+    engine.floatPanel("fx-analytics");
+
+    engine.dockPanel("fx-analytics");
+
+    const api = lastDockviewApi();
+    const docked = api.getPanel("fx-analytics");
+
+    if (docked === undefined) {
+      throw new Error("fx-analytics missing after dockPanel");
+    }
+
+    expect(docked.group.api.location.type).toBe("grid");
+    // Symmetric with floatPanel's own Q5 finding (floating leaves
+    // groupCount unchanged): dockview's moveGroupOrPanel, moving a
+    // single-panel non-grid source group to an adjacent position, reuses
+    // that SAME DockviewGroupPanel instance rather than allocating a new
+    // one and orphaning the old — measured directly here, not assumed.
+    expect(engine.groupCount()).toBe(before);
+    engine.dispose();
+  });
+});
+
 function lastDockviewApi(): DockviewApi {
   if (capturedDockview.api === null) {
     throw new Error("no dockview created yet");

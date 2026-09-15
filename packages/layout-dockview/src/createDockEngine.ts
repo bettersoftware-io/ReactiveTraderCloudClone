@@ -2,6 +2,8 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewTheme,
+  directionToPosition,
+  type FloatingGroupOptions,
   type SerializedDockview,
 } from "dockview";
 
@@ -113,6 +115,10 @@ export interface DockEngineOptions {
    * machine or any persistence, so a reload restores everything docked by
    * construction. Not fired at construction (nothing popped). */
   onPopoutsChange?: (poppedPanelIds: readonly string[]) => void;
+  /** Every panel currently in a FLOATING group, sorted. Fires only on change.
+   * Unlike the popped set, floating IS persisted — a float is layer-3
+   * arrangement, like a drag or a stack (see the Phase 6 design, §3.3). */
+  readonly onFloatsChange?: (floatingPanelIds: readonly string[]) => void;
   /** The pop-out target page dockview opens in the child window (component
    * option; same-origin enforced by dockview). Defaults to dockview's own
    * `/popout.html`. The page ships empty — dockview appends its container
@@ -238,6 +244,11 @@ export interface DockEngine {
    * never persisted, and the blob scrub drops any `popoutGroups` a
    * mid-popout save captured. */
   popoutPanel(panelId: string): Promise<boolean>;
+  /** Floats panelId's group as a box over the grid; false when refused —
+   * unknown panel, already floating, or a live maximize (see §3.2). */
+  floatPanel(panelId: string): boolean;
+  /** Returns a floating panel to its seed-home slot; no-op when not floating. */
+  dockPanel(panelId: string): void;
   groupCount(): number;
   dispose(): void;
 }
@@ -293,6 +304,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // See RTC_DOCKVIEW_THEME's own doc comment: this is what actually routes
     // the HUD theme's --dv-* variables past dockview's internal defaults.
     theme: RTC_DOCKVIEW_THEME,
+    // `floatingGroupBounds` (dockview-core@8.3.1 options.d.ts:299) keeps a
+    // float draggable but never lets it leave the container — "a float
+    // cannot be dragged out of reach" (Phase 6 design §3.3).
+    floatingGroupBounds: "boundedWithinViewport",
+    // `disableFloatingGroups` deliberately left unset: shift-drag-to-float
+    // and drag-to-dock (dockview's own built-in gestures) are a KEPT
+    // feature, not a deviation this engine suppresses.
     // Only when the client provided one: dockview's default is already
     // /popout.html, and an explicit undefined would still override nothing,
     // but the options object stays minimal like the rest of this literal.
@@ -397,6 +415,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // change (dockview fires one for the pop-out transaction and again on
   // dock-home), compared, and handed to the client whole.
   let lastPopped: readonly string[] = [];
+  let lastFloating: readonly string[] = [];
 
   function publishPoppedPanels(): void {
     const popped = api.groups
@@ -416,8 +435,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  function publishFloatingPanels(): void {
+    const floating = api.groups
+      .filter((group) => {
+        return group.api.location.type === "floating";
+      })
+      .flatMap((group) => {
+        return group.panels.map((panel) => {
+          return panel.id;
+        });
+      })
+      .sort();
+
+    if (floating.join(" ") !== lastFloating.join(" ")) {
+      lastFloating = floating;
+      opts.onFloatsChange?.(floating);
+    }
+  }
+
   const changeSub = api.onDidLayoutChange(() => {
     publishPoppedPanels();
+    publishFloatingPanels();
     // Pins are validated on EVERY layout change, not just at save time: a
     // drop that dissolves a rail must release its min=max clamps NOW, or
     // the next resize distributes against a phantom pin for up to
@@ -2156,6 +2194,66 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // only ever take this branch (window.open → null).
       return api.addPopoutGroup(panel.group);
     },
+    floatPanel: (panelId: string): boolean => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined || panel.group.api.location.type !== "grid") {
+        return false;
+      }
+
+      api.addFloatingGroup(
+        panel.group,
+        floatingBoundsFor(panel.group, opts.container),
+      );
+
+      return true;
+    },
+    dockPanel: (panelId: string): void => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined || panel.group.api.location.type !== "floating") {
+        return;
+      }
+
+      // The seed tree names where this panel belongs; seedAnchorFor (the
+      // same helper reopenPanel already uses) resolves it to the nearest
+      // GRID-resident seed sibling — restricting "live" to a grid location
+      // (Ruling 5) is what covers both halves of Ruling 4 in one predicate:
+      // a CLOSED sibling is simply not found by seedPanelIdsOf().find, and a
+      // FLOATING one (the anchor's own group "gone" to a float) is excluded
+      // the exact same way, so either case falls through to the grid-group
+      // fallback below rather than throwing.
+      const anchor = seedAnchorFor(opts.seed, panelId, (candidateId) => {
+        const candidate = api.getPanel(candidateId);
+
+        return (
+          candidateId !== panelId &&
+          candidate !== undefined &&
+          candidate.group.api.location.type === "grid"
+        );
+      });
+      const anchorGroup =
+        anchor === null ? undefined : api.getPanel(anchor.anchorPanelId)?.group;
+      const targetGroup =
+        anchorGroup ??
+        api.groups.find((candidateGroup) => {
+          return candidateGroup.api.location.type === "grid";
+        });
+
+      // Nothing grid-resident to dock onto (every other panel is itself
+      // closed, floating, or popped) — leave the panel floating rather than
+      // throw.
+      if (targetGroup === undefined) {
+        return;
+      }
+
+      panel.api.moveTo({
+        group: targetGroup,
+        ...(anchor === null
+          ? {}
+          : { position: directionToPosition(anchor.direction) }),
+      });
+    },
     groupCount: () => {
       return api.groups.length;
     },
@@ -2200,6 +2298,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       api.dispose();
     },
+  };
+}
+
+/** The float's opening box: the group's own current on-screen rect, offset
+ * relative to `container` and clamped so it lands fully inside it — "a
+ * float cannot be dragged out of reach" (Phase 6 design §3.3) applies to
+ * where it OPENS, not only to where a drag can carry it afterwards (that
+ * ongoing clamp is the component-level `floatingGroupBounds` option). */
+function floatingBoundsFor(
+  group: SizableGroup,
+  container: HTMLElement,
+): FloatingGroupOptions {
+  const groupRect = group.element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const width = groupRect.width;
+  const height = groupRect.height;
+  const maxX = Math.max(0, containerRect.width - width);
+  const maxY = Math.max(0, containerRect.height - height);
+
+  return {
+    x: Math.min(Math.max(groupRect.left - containerRect.left, 0), maxX),
+    y: Math.min(Math.max(groupRect.top - containerRect.top, 0), maxY),
+    width,
+    height,
   };
 }
 
