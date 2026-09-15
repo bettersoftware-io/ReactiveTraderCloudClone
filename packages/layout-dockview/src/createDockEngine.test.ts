@@ -3606,6 +3606,116 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   });
 });
 
+/**
+ * A design pin is a RELATIVE width: the rail holds its pixels while some
+ * other panel absorbs whatever the container has spare. Close the last
+ * absorber and the pin — which is min=max — leaves the grid with no child
+ * able to take the remaining space, so dockview shrinks the WHOLE GRID to
+ * the pinned extent and the dock shows a void beside it.
+ *
+ * Measured on the `RAIL_LIKE` seed pinned at 360 in a 1200-wide dock:
+ *
+ *   seed                      dock 1200 :: rates 833 | blotter 833 | rail 367
+ *   close fx-rates            dock 1200 :: blotter 833 | rail 367
+ *   close fx-blotter          dock  367 :: rail 367            ← 833px gone
+ *
+ * The same seed with NO pin keeps the dock at 1200 and hands the rail all
+ * 1200, which is the control proving the pin is the cause.
+ *
+ * STATUS Phase-4 follow-up (b).
+ */
+describe("closing the last absorber releases a design pin (follow-up b)", () => {
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+  }
+
+  function dockWidth(): number {
+    return lastDockviewApi().width;
+  }
+
+  function widthOf(panelId: string): number {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.width;
+  }
+
+  it("holds the pin while an absorber survives", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+
+    // fx-blotter is still there to absorb: the rail keeps its design width
+    // and the grid still fills the dock.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("fills the dock once the last absorbing panel is closed", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    // Nothing is left to absorb, so the pin yields — exactly as a sash drag
+    // makes it yield — rather than starving the grid.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
+  });
+
+  it("re-clamps the pin when a reopened panel can absorb again", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    expect(widthOf("fx-analytics")).toBe(1200);
+
+    // SUSPENDED, not forgotten: the moment something can absorb again, the
+    // rail goes back to its design width. This is why the fix cannot simply
+    // drop the pin — R18's "close both statics, then open a chart instance"
+    // path depends on the rail still being 360 when the instance lands.
+    engine.reopenPanel("fx-blotter");
+
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("keeps a suspended pin in the blob, so a reload still knows the width", () => {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    // The clamp is lifted, but the design width is not lost — persisting it
+    // is the difference between "suspended" and "released".
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("leaves an unpinned seed alone — the control", () => {
+    const engine = createDockEngine(railBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
+  });
+});
+
 describe("pop-out windows (session-scoped, the strips precedent)", () => {
   // jsdom can witness ONLY the popup-blocked branch: window.open returns
   // null here, so dockview's addPopoutGroup resolves false and touches
