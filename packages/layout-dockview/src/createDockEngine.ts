@@ -1271,6 +1271,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // right behaviour for it, so only a pristine grid is corrected. This gate
     // guards the CORRECTION, not the handler — a step that must follow every
     // resize belongs below the correction, not behind this return.
+    //
+    // Deliberately coarse: ANY pointerdown in the dock ends correction for
+    // this mount — a click in an order ticket as much as a sash drag. The
+    // correction exists for the settle BEFORE interaction; a later window
+    // resize after any click is dockview-proportional again, by design.
+    // Widening this to "arrangement-only" pointers would need a reliable way
+    // to tell the two apart, which is exactly what origin-by-pointer avoids.
     if (userArranged) {
       return;
     }
@@ -1288,12 +1295,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       gap: GROUP_GAP_PX,
     }).serialized.grid;
 
-    if (exact.orientation === api.toJSON().grid.orientation) {
-      alignBranchSizes(
-        exact.root,
-        api.toJSON().grid.root,
-        axisDividedBy(exact.orientation),
-      );
+    // One serialisation per corrective resize: on a pristine grid a user
+    // dragging the window edge runs this every frame.
+    const live = api.toJSON().grid;
+
+    if (exact.orientation === live.orientation) {
+      alignBranchSizes(exact.root, live.root, axisDividedBy(exact.orientation));
     }
   }
 
@@ -1361,6 +1368,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return panelId === undefined ? undefined : groupOf(panelId);
   }
 
+  // Assumes ResizeObserver exists — safe, dockview's own ShellManager already
+  // requires it; jsdom tests stub it (see createDockEngine.test.ts).
   const resizeObserver = new ResizeObserver(() => {
     reapplyExactLayoutOnResize();
   });
