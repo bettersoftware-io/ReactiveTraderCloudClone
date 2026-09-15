@@ -2674,6 +2674,180 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
+  // ——— R20: the rule is width-axis only, and owed shares are paid within
+  // the action's own scope. ———
+
+  it("R20 an instance dragged under eq-blotter keeps the column's heights through a root maximize of another instance", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-blotter");
+    const before = sizesOf(["eq-chart", "eq-blotter", "i-aapl", "i-msft"]);
+    expect(before.map(heightOf)).toEqual([645, 167, 168, 980]);
+
+    engine.maximizePanel("i-msft");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-chart", "eq-blotter", "i-aapl", "i-msft"])).toEqual(
+      before,
+    );
+    engine.dispose();
+  });
+
+  it("R20 an instance dragged under eq-chart keeps the column's heights through a root maximize of eq-blotter", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-chart");
+    const heights = sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf);
+    expect(heights).toEqual([322, 335, 323]);
+
+    engine.maximizePanel("eq-blotter");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf)).toEqual(
+      heights,
+    );
+    engine.dispose();
+  });
+
+  it("R20 an instance dragged under eq-watchlist keeps the rail column's heights through its nearest-column maximize", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-watchlist");
+    const before = sizesOf(["eq-ticket", "eq-watchlist", "i-aapl", "i-msft"]);
+    expect(before.map(heightOf)).toEqual([490, 245, 245, 980]);
+
+    engine.maximizePanel("eq-watchlist");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-ticket", "eq-watchlist", "i-aapl", "i-msft"])).toEqual(
+      before,
+    );
+    engine.dispose();
+  });
+
+  it("R20 closing an instance in a mixed column never shares the column's heights", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 3),
+    });
+
+    stackUnder("i-aapl", "eq-blotter");
+    stackUnder("i-msft", "eq-blotter");
+    engine.removeDynamicPanel("i-msft");
+
+    const heights = sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf);
+    expect(heights).not.toContain(360 + GROUP_GAP_PX);
+    expect(
+      heights.reduce((sum, height) => {
+        return sum + height;
+      }, 0),
+    ).toBe(980);
+    engine.dispose();
+  });
+
+  it("R20 a mark kept for a strip is not paid by an unrelated collapse → expand", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.collapsePanel("i-msft");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    dragWidth("i-aapl", 500);
+    const dragged = cardWidths(["eq-chart", "i-aapl", "i-nvda"]);
+    expect(dragged).toEqual([830, 500, 220]);
+
+    engine.collapsePanel("eq-blotter");
+    engine.expandPanel("eq-blotter");
+
+    expect(cardWidths(["eq-chart", "i-aapl", "i-nvda"])).toEqual(dragged);
+    engine.dispose();
+  });
+
+  it("R20 deleting a Jarvis dock does not pay an instance split's mark", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: [
+        { id: "panel-dyn-1", initialPx: 360 },
+        ...INSTANCES.slice(0, 2),
+      ],
+    });
+
+    engine.collapsePanel("i-msft");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    dragWidth("i-aapl", 500);
+
+    engine.removeDynamicPanel("panel-dyn-1");
+
+    // Paying the kept mark would put AAPL back to its 360 design width.
+    expect(cardWidths(["i-aapl"])).not.toEqual([360]);
+    engine.dispose();
+  });
+
+  it("R20 closing the maximized eq-chart pays the maximize's owed shares like an exit", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.closePanel("eq-chart");
+
+    expect(cardWidths(["eq-blotter", "eq-ticket", "i-aapl", "i-msft"])).toEqual(
+      [869, RAIL_PX, 360, 360],
+    );
+    engine.dispose();
+  });
+
+  /** Drops `panelId` under `targetId`'s group — the DnD's moveTo. */
+  function stackUnder(panelId: string, targetId: string): void {
+    const dock = lastDockviewApi();
+    const moved = dock.getPanel(panelId);
+    const target = dock.getPanel(targetId);
+
+    if (moved === undefined || target === undefined) {
+      throw new Error(`${panelId} or ${targetId} missing`);
+    }
+
+    moved.api.moveTo({ group: target.group, position: "bottom" });
+  }
+
+  /** A sash drag of `panelId`'s group to a `card` px width. */
+  function dragWidth(panelId: string, card: number): void {
+    lastDockviewApi()
+      .getPanel(panelId)
+      ?.group.api.setSize({ width: card + GROUP_GAP_PX });
+  }
+
+  /** Each panel's group `[card width, height]` on the live engine. */
+  function sizesOf(
+    panelIds: readonly string[],
+  ): readonly (readonly [number, number])[] {
+    return panelIds.map((panelId) => {
+      const group = lastDockviewApi().getPanel(panelId)?.group;
+
+      if (group === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return [group.api.width - GROUP_GAP_PX, group.api.height] as const;
+    });
+  }
+
+  function heightOf(size: readonly [number, number]): number {
+    return size[1];
+  }
+
   function railColumnScope(panelId: string): DockMaximizeScope {
     return panelId === "eq-ticket" || panelId === "eq-watchlist"
       ? "nearest-column"

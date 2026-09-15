@@ -954,15 +954,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return [panel.id, panel.initialPx] as const;
       }),
   );
-  // Splits that owe a share (R18): an unpinned instance opened or closed
-  // while a maximize was live, or while its split held a strip, so the rule
-  // was skipped or ran over a geometry about to change. Keyed by a member
+  // Width-axis splits that owe a share (R18–R20), keyed by a member
   // INSTANCE's panel id, never a split Element — dockview rebuilds split
-  // Elements on restructure, and the split is re-derived from the id's group
-  // when the debt is paid (settleOwedShares). A plain maximize → exit or
-  // collapse → expand with no instance change leaves this empty, so a width
-  // the user dragged is never re-equalised behind their back.
-  const owedShareIds = new Set<string>();
+  // Elements on restructure, so the split is re-derived from the id's group
+  // when the debt is paid (settleOwedShares). The cause scopes who may pay:
+  // - "maximize": set during a live maximize — an instance opened or closed
+  //   under it, or one the maximize STRIPPED inside its own boundary (R19) —
+  //   and paid when that maximize ends (exit, switch, owner deleted/closed);
+  // - "retained": the rule ran while the split held a strip (or a maximize's
+  //   debt found one still there), kept for the expand of a strip in that
+  //   same split, or for a later maximize whose boundary contains it.
+  // Nothing else pays: a maximize that strips no instance, a collapse →
+  // expand elsewhere, or a Jarvis dock's removal leaves a dragged width be.
+  const owedShares = new Map<string, OwedShareCause>();
   let pendingSashSplit: Element | null = null;
 
   function applyDesignPins(pins: readonly DockDesignPin[]): void {
@@ -1253,7 +1257,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       if (panel.unpinned === true) {
-        owedShareIds.add(panel.id); // paid once the maximize lifts
+        owedShares.set(panel.id, "maximize"); // paid when the maximize ends
       }
     } else if (panel.unpinned === true) {
       shareInstanceSplitOf(panel.id);
@@ -1273,6 +1277,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     if (panel === undefined) {
       return;
     }
+
+    // Read while the owner still exists: deleting it ends the maximize, whose
+    // owed shares are paid within this boundary once the survivors restore.
+    const endedBoundary =
+      maximized?.panelId === panelId ? liveMaximizeBoundary() : null;
 
     if (maximized?.panelId === panelId) {
       // releaseStrip (called per stripped id inside releaseMaximize) returns
@@ -1321,7 +1330,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       );
     });
     const wasUnpinned = unpinnedDynamicPanels.delete(panelId);
-    owedShareIds.delete(panelId);
+    owedShares.delete(panelId);
 
     api.removePanel(panel);
     settleStrips();
@@ -1331,18 +1340,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       if (maximized === null) {
         shareInstanceSplitOf(siblingId);
       } else {
-        owedShareIds.add(siblingId); // paid once the maximize lifts
+        owedShares.set(siblingId, "maximize"); // paid when the maximize ends
       }
     }
 
-    // Removing the maximize OWNER lifted the maximize: any share owed from
-    // inside it is paid now that the survivors' geometry is restored.
-    settleOwedShares();
+    if (endedBoundary !== null) {
+      settleMaximizeShares(endedBoundary);
+    }
   }
 
-  /** Runs the sharing rule over the split `instanceId` shares, and marks the
-   * split as still owing a share when it holds a strip — the strip's expand
-   * will restore a size the rule never accounted for. */
+  /** Runs the sharing rule over the width-axis split `instanceId` shares and
+   * pays that split's owed shares with it — nothing outside it. The mark is
+   * kept ("retained") while the split holds a strip, whose expand restores a
+   * size the rule never accounted for. */
   function shareInstanceSplitOf(instanceId: string): void {
     const split = instanceSplitOf(instanceId);
 
@@ -1350,51 +1360,82 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return;
     }
 
-    shareSplitAmongInstances(split);
-
-    if (holdsStripChild(split)) {
-      owedShareIds.add(instanceId);
-    }
+    owedShares.set(instanceId, owedShares.get(instanceId) ?? "retained");
+    settleOwedShares((_cause, owedSplit) => {
+      return owedSplit === split;
+    });
   }
 
-  /** Pays every owed share whose geometry has been restored: re-derives each
-   * marked instance's split, re-runs the rule there, and clears the mark
-   * unless that split still holds a strip (the next expand pays it then).
-   * No-op while a maximize is live. Called after exitMaximize's restores, a
-   * maximize switch's restores, removing the maximize owner, and expand. */
-  function settleOwedShares(): void {
-    if (maximized !== null || owedShareIds.size === 0) {
+  /** Pays the shares an ended maximize owes: those it caused, and any kept
+   * for a split inside its boundary (the maximize restored that geometry). */
+  function settleMaximizeShares(boundary: Element): void {
+    settleOwedShares((cause, split) => {
+      return cause === "maximize" || boundary.contains(split);
+    });
+  }
+
+  /** Pays the owed shares `shouldPay` selects, once geometry is restored:
+   * re-derives each marked instance's split, re-runs the rule there, and
+   * clears the marks unless the split still holds a strip (kept as
+   * "retained"). A mark whose instance no longer shares a width-axis split
+   * is dropped. No-op while a maximize is live. */
+  function settleOwedShares(
+    shouldPay: (cause: OwedShareCause, split: Element) => boolean,
+  ): void {
+    if (maximized !== null || owedShares.size === 0) {
       return;
     }
 
     const owedBySplit = new Map<Element, string[]>();
 
-    for (const instanceId of [...owedShareIds]) {
+    for (const [instanceId, cause] of [...owedShares]) {
       const split = instanceSplitOf(instanceId);
 
       if (split === null) {
-        owedShareIds.delete(instanceId);
+        owedShares.delete(instanceId);
         continue;
       }
 
-      owedBySplit.set(split, [...(owedBySplit.get(split) ?? []), instanceId]);
+      if (shouldPay(cause, split)) {
+        owedBySplit.set(split, [...(owedBySplit.get(split) ?? []), instanceId]);
+      }
     }
 
     for (const [split, instanceIds] of owedBySplit) {
       shareSplitAmongInstances(split);
+      const stillStripped = holdsStripChild(split);
 
-      if (!holdsStripChild(split)) {
-        for (const instanceId of instanceIds) {
-          owedShareIds.delete(instanceId);
+      for (const instanceId of instanceIds) {
+        if (stillStripped) {
+          owedShares.set(instanceId, "retained");
+        } else {
+          owedShares.delete(instanceId);
         }
       }
     }
   }
 
-  /** The split an unpinned instance's group shares space in: its nearest
-   * split, stepping over any split made only of instance groups (a column
-   * the user stacked instances into counts as ONE member of its parent).
-   * Null when the instance is gone or sits outside any split. */
+  /** The live maximize's boundary element, read while its owner exists —
+   * the in-house `maximizeBoundaryPath`, as maximizePanel derived it. */
+  function liveMaximizeBoundary(): Element {
+    const owner = maximized === null ? undefined : groupOf(maximized.panelId);
+
+    return owner === undefined || maximized === null
+      ? opts.container
+      : maximizeBoundaryOf(
+          owner.element,
+          opts.panels.maximizeScope?.(maximized.panelId) ?? "root",
+          opts.container,
+        );
+  }
+
+  /** The WIDTH-axis split (children side by side) an unpinned instance
+   * shares space in — the only kind the rule acts on (R20). A split made
+   * only of instance groups (a column the user stacked instances into) is
+   * ONE member of its parent, so it is stepped over. An instance dragged
+   * into a column that also holds a static panel shares nothing: that
+   * column is a static member of its parent, and a column's heights are
+   * never the rule's. Null then, or when the instance is gone. */
   function instanceSplitOf(instanceId: string): Element | null {
     let split = groupOf(instanceId)?.element.closest(SPLIT_SELECTOR) ?? null;
 
@@ -1404,14 +1445,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return split?.contains(group.element) === true;
       });
 
-      if (parent === null || designPxOfInstanceChild(inside) === undefined) {
-        return split;
+      if (parent !== null && designPxOfInstanceChild(inside) !== undefined) {
+        split = parent;
+        continue;
       }
 
-      split = parent;
+      return sharesWidth(split) ? split : null;
     }
 
     return null;
+  }
+
+  /** The nearest width-axis split above `panelId`'s group — the split a
+   * vertical strip of it reclaimed its width along. */
+  function widthSplitAbove(panelId: string): Element | null {
+    let split = groupOf(panelId)?.element.closest(SPLIT_SELECTOR) ?? null;
+
+    while (split !== null && !sharesWidth(split)) {
+      split = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
+    }
+
+    return split;
   }
 
   /** Whether any direct child of `split` is a strip — the geometry a later
@@ -1426,8 +1480,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     });
   }
 
-  /** The R17/R18 sharing rule over one split: instances get their design
-   * width; when there isn't room, instances and the main area share equally.
+  /** The R17–R20 sharing rule over one WIDTH-axis split (children side by
+   * side; any other split is ignored): instances get their design width;
+   * when there isn't room, instances and the main area share equally.
    * SAFE TO CALL AFTER ANY GEOMETRY RESTORE (an exit, an expand, a viewport
    * resize settling): it reads only live sizes, constraints, strip records
    * and design pins, holds no state, and is idempotent on a shared split.
@@ -1458,7 +1513,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * back to each group's own constraints: releasing changes no size (dockview
    * re-lays out at the current sizes), and nothing is recorded as a pin. */
   function shareSplitAmongInstances(split: Element | null): void {
-    if (split === null) {
+    // Width axis only (R20): a column's heights are never the rule's.
+    if (split === null || !sharesWidth(split)) {
       return;
     }
 
@@ -1676,7 +1732,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       glide(() => {
         // Switching from another maximized panel: put ITS strips back fully
         // first, so the sizes recorded below are real ones, not the bars.
-        const switching = maximized !== null;
+        const endedBoundary =
+          maximized === null ? null : liveMaximizeBoundary();
         const restores = releaseMaximize();
 
         if (restores.length > 0) {
@@ -1691,10 +1748,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           settleStripFreeWorlds();
         }
 
-        if (switching) {
+        if (endedBoundary !== null) {
           // A share owed from inside the old maximize is paid on its
           // restored geometry, before the new one records sizes.
-          settleOwedShares();
+          settleMaximizeShares(endedBoundary);
         }
 
         const boundary = maximizeBoundaryOf(
@@ -1732,9 +1789,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // a min=max group cannot absorb. A maximize that strips no instance
         // (e.g. a nearest-column one outside the instances' row) marks
         // nothing, so a width the user dragged survives it.
+        // Only an instance whose width-axis split lies inside the boundary:
+        // a nearest-column maximize that strips an instance stacked in its
+        // column changes that column's heights, not its row's widths.
         for (const strippedId of stripped) {
-          if (unpinnedDynamicPanels.has(strippedId)) {
-            owedShareIds.add(strippedId);
+          const split = unpinnedDynamicPanels.has(strippedId)
+            ? instanceSplitOf(strippedId)
+            : null;
+
+          if (split !== null && boundary.contains(split)) {
+            owedShares.set(strippedId, "maximize");
           }
         }
 
@@ -1752,6 +1816,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       glide(() => {
+        const endedBoundary = liveMaximizeBoundary();
         const restores = releaseMaximize();
         // Siblings first (a broken column restores its width), then each
         // panel's own length on its natural axis.
@@ -1762,7 +1827,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
 
         settleStripFreeWorlds();
-        settleOwedShares();
+        settleMaximizeShares(endedBoundary);
       });
     },
     collapsePanel: (panelId: string): void => {
@@ -1785,6 +1850,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     },
     expandPanel: (panelId: string): void => {
+      // Read before the release: only a VERTICAL strip reclaimed width, and
+      // only the width-axis split it reclaimed along may have its owed
+      // shares paid — an unrelated expand (a blotter's height bar) pays none.
+      const reclaimedWidthSplit =
+        lastStrips[panelId] === "vertical" ? widthSplitAbove(panelId) : null;
       const restore = releaseStrip(panelId);
 
       if (restore === null) {
@@ -1795,7 +1865,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStrips();
         restore();
         settleStripFreeWorlds();
-        settleOwedShares();
+
+        if (reclaimedWidthSplit !== null) {
+          settleOwedShares((_cause, split) => {
+            return split === reclaimedWidthSplit;
+          });
+        }
       });
     },
     addDynamicPanel: insertDynamicPanel,
@@ -1806,6 +1881,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       if (panel === undefined) {
         return;
       }
+
+      // Closing the maximize owner ends the maximize exactly as an exit does,
+      // owed shares included — read its boundary while the owner exists.
+      const endedBoundary =
+        maximized?.panelId === panelId ? liveMaximizeBoundary() : null;
 
       glide(() => {
         if (maximized?.panelId === panelId) {
@@ -1840,6 +1920,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // membership (drifted worlds void rather than re-assert).
         settleStrips();
         settleStripFreeWorlds();
+
+        if (endedBoundary !== null) {
+          settleMaximizeShares(endedBoundary);
+        }
       });
     },
     reopenPanel: (panelId: string): void => {
@@ -1952,6 +2036,16 @@ interface PinMember {
   readonly panelId: string;
   readonly previousMinimum: number;
   readonly previousMaximum: number;
+}
+
+/** Why a width-axis split owes a share — which actions may pay it. See the
+ * engine's `owedShares`. */
+type OwedShareCause = "maximize" | "retained";
+
+/** Whether `split` lays its children side by side — a WIDTH-axis split, the
+ * only kind the sharing rule acts on. */
+function sharesWidth(split: Element): boolean {
+  return orientationAgainst(split) === "vertical";
 }
 
 /** An instance member the sharing rule sizes: the along-split axis of every
