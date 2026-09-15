@@ -13,7 +13,20 @@
       "Bash(pnpm --filter @rtc/client-react test)",
       "Bash(pnpm --filter @rtc/client-react test:e2e)",
       "Bash(pnpm --filter @rtc/client-react typecheck)",
-      "Bash(gh pr merge *)"
+      "Bash(gh pr merge *)",
+      "Bash(git fetch *)",
+      "Bash(git merge-base *)",
+      "Bash(pnpm exec biome ci .)",
+      "Bash(pnpm check:doc-links)",
+      "Bash(pnpm lint:eslint)",
+      "Bash(pnpm lint:eslint:types)",
+      "Bash(pnpm audit --prod)",
+      "Bash(pnpm check:deps)",
+      "Bash(pnpm lint:dead)",
+      "Bash(pnpm outdated *)",
+      "Bash(pnpm why *)",
+      "Bash(npm view *)",
+      "mcp__plugin_context7_context7__query-docs"
     ]
   },
   "hooks": {
