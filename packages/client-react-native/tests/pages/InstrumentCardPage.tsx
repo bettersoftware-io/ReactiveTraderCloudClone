@@ -1,7 +1,6 @@
 // packages/client-react-native/tests/pages/InstrumentCardPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
@@ -9,6 +8,7 @@ import { ViewModelProvider } from "@rtc/react-bindings";
 import { InstrumentCard } from "#/ui/equities/trade/InstrumentCard";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 function vm(): ViewModel {
   return {
@@ -63,9 +63,7 @@ export function instrumentCardPage(): InstrumentCardPage {
       return screen.queryByText(pattern) != null;
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
   };
 }

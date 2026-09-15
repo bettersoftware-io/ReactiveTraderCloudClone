@@ -5,13 +5,14 @@ import {
   render,
   screen,
 } from "@testing-library/react-native";
-import { StyleSheet, type ViewStyle } from "react-native";
+import type { ViewStyle } from "react-native";
 
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AppearanceScreen } from "#/ui/AppearanceScreen";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 interface AppearanceOverrides {
   modePreference?: "dark" | "light" | "system";
@@ -148,18 +149,14 @@ export function appearanceScreenPage(): AppearanceScreenPage {
       await fireEvent.press(screen.getByTestId(testId));
     },
     styleOf(testId: string): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
     styleOfText(text: string): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
     stylesOf(testIdOrPattern: string | RegExp): readonly ViewStyle[] {
       return screen.getAllByTestId(testIdOrPattern).map((node) => {
-        return StyleSheet.flatten(node.props.style as ViewStyle);
+        return flattenStyleOf(node);
       });
     },
     labelsMatching(pattern: RegExp): readonly unknown[] {

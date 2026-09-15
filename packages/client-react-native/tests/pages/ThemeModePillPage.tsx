@@ -1,10 +1,10 @@
 // packages/client-react-native/tests/pages/ThemeModePillPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { TextStyle, ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import { ThemeModePill } from "#/ui/shell/appearance/ThemeModePill";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export type ThemeMode = "dark" | "light" | "system";
 
@@ -39,14 +39,10 @@ export function themeModePillPage(): ThemeModePillPage {
       await fireEvent.press(screen.getByTestId(`appearance-mode-${mode}`));
     },
     cellStyle(mode: ThemeMode): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(`appearance-mode-${mode}`).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(`appearance-mode-${mode}`));
     },
     labelStyle(label: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(label).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(label));
     },
     cellSelected(mode: ThemeMode): boolean | undefined {
       return (
