@@ -145,6 +145,10 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
 
+    // The rebuild built a NEW engine (its own fresh `userArranged`, per
+    // #737) — arrange it before the final unmount, or dispose has nothing
+    // to flush and the guard below reads the untouched seed vacuously.
+    page.touchDock();
     page.unmountAll();
 
     // The dispose flush really wrote — the position read below is the
@@ -247,6 +251,10 @@ describe("DockviewLayoutEngine instances prop", () => {
     inner.save("fx", seed);
 
     page.mount(engine({ store, instances: [AAPL] }));
+    // Arrange the dock before dispose: #737 only flushes a layout a pointer
+    // touched, and each mount below builds its own fresh engine (its own
+    // `userArranged`).
+    page.touchDock();
     page.unmountAll();
 
     // Persisted by the engine's dispose flush, not the seed read back.
@@ -260,6 +268,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
 
+    page.touchDock();
     page.unmountAll();
 
     expect(inner.load("fx")).not.toBe(seed);

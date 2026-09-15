@@ -78,18 +78,20 @@ import styles from "./DockviewLayoutEngine.module.css";
  * never needs since it never touches `suppressSaveRef`.
  *
  * SUPPRESSION GUARD (fix round 1, review Critical C1; fix round 2 added the
- * `try`/`finally`): `createDockEngine`'s `dispose()` unconditionally flushes
- * one final serialize, even mid-rebuild — without a guard, that flush would
- * call `store.save` with the OLD (about-to-be-discarded) blob, landing it
- * right back in the store composition's `resetWorkspaceLayout()` JUST
- * cleared, and the fresh engine would load it straight back, discarding
- * nothing. `suppressSaveRef` is held true for the exact span from before
- * `dispose()` to after the new engine's construction returns — long enough
- * to swallow the dispose flush, short enough that the new engine's OWN
- * (debounced, so always later) save from reconciling `dynamicPanels` still
- * lands normally. That span is a `try`/`finally`: a throwing
- * `createDockEngine` (or an old engine's throwing `dispose()`) must not
- * leave saves suppressed for the rest of the session. */
+ * `try`/`finally`): `createDockEngine`'s `dispose()` flushes one final
+ * serialize once a pointer has touched the dock since construction (see
+ * #737) — a mid-rebuild engine has almost always been touched by then, so
+ * a dirty engine still flushes on reset, and without a guard that flush
+ * would call `store.save` with the OLD (about-to-be-discarded) blob,
+ * landing it right back in the store composition's `resetWorkspaceLayout()`
+ * JUST cleared, and the fresh engine would load it straight back,
+ * discarding nothing. `suppressSaveRef` is held true for the exact span
+ * from before `dispose()` to after the new engine's construction returns —
+ * long enough to swallow the dispose flush, short enough that the new
+ * engine's OWN (debounced, so always later) save from reconciling
+ * `dynamicPanels` still lands normally. That span is a `try`/`finally`: a
+ * throwing `createDockEngine` (or an old engine's throwing `dispose()`)
+ * must not leave saves suppressed for the rest of the session. */
 export function DockviewLayoutEngine({
   tab,
   registry,

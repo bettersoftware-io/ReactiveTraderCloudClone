@@ -49,6 +49,12 @@ export interface DockviewLayoutEngineStrictModePage {
   groupsAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
+  /** Stands in for a user having arranged the dock: #737 changed
+   * `createDockEngine`'s `dispose()` to flush its final serialisation only
+   * once a `pointerdown` has landed inside the container since
+   * construction — an untouched engine's dispose writes nothing. Mirrors
+   * `layout-dockview`'s own `touchContainer` test helper. */
+  touchDock(): void;
   /** Installs the pop-out window stand-in for the duration of a spec. */
   stubPopoutWindow(): PopoutWindowHarness;
   /** Records every `console.error` for the duration of `work`, returning the
@@ -101,6 +107,18 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;
+    },
+    touchDock(): void {
+      // `.dockview-theme-rtc` is the literal class the bridge puts on its
+      // container div (not a CSS Modules token), so it's reachable
+      // regardless of how modules resolve in this test run.
+      const container = document.querySelector(".dockview-theme-rtc");
+
+      if (container === null) {
+        throw new Error("touchDock: no mounted dock container found");
+      }
+
+      container.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     },
     stubPopoutWindow(): PopoutWindowHarness {
       return stubPopoutWindow();

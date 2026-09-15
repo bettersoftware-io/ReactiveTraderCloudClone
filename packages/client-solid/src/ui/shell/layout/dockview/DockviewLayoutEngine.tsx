@@ -65,8 +65,10 @@ import styles from "./DockviewLayoutEngine.module.css";
  * the tab's now-cleared blob.
  *
  * SUPPRESSION GUARD (fix round 1, review Critical C1): `createDockEngine`'s
- * `dispose()` unconditionally flushes one final serialize, even mid-rebuild
- * — without a guard, that flush would call `props.store.save` with the OLD
+ * `dispose()` flushes one final serialize once a pointer has touched the
+ * dock since construction (see #737) — a mid-rebuild engine has almost
+ * always been touched by then, so a dirty engine still flushes on reset,
+ * and without a guard that flush would call `props.store.save` with the OLD
  * (about-to-be-discarded) blob, landing it right back in the store
  * composition's `resetWorkspaceLayout()` JUST cleared, and the fresh engine
  * would load it straight back, discarding nothing. `suppressSave` is held
