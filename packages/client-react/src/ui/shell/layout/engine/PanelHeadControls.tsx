@@ -5,8 +5,9 @@ import type { PanelId } from "@rtc/client-core";
 import styles from "./PanelHead.module.css";
 
 /** The header's RIGHT half: the collapse ("—") and maximize (⛶ / ⧉ once
- * maximized) controls. `maximizable: false` hides only the maximize control
- * — the panel still strips when a sibling maximizes (spec'd on PanelSpec). */
+ * maximized) controls, plus the optional pop-out (↗) and close (✕) slots.
+ * `maximizable: false` hides only the maximize control — the panel still
+ * strips when a sibling maximizes (spec'd on PanelSpec). */
 export function PanelHeadControls({
   panelId,
   title,
@@ -17,6 +18,7 @@ export function PanelHeadControls({
   onMaximize,
   onRestore,
   onPopout,
+  onClose,
 }: PanelHeadControlsProps): ReactElement {
   // While the panel lives in a pop-out window the geometry intents have no
   // meaning for its group (parked in another document) — every control
@@ -64,6 +66,20 @@ export function PanelHeadControls({
           {maximizedHere ? "⧉" : "⛶"}
         </button>
       ) : null}
+      {onClose !== undefined ? (
+        <button
+          type="button"
+          data-testid={`panel-${panelId}-close`}
+          className={styles.panelControl}
+          aria-label={`Close ${title}`}
+          title={`Close ${title}`}
+          disabled={popped}
+          aria-disabled={popped}
+          onClick={onClose}
+        >
+          ✕
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -86,4 +102,9 @@ export interface PanelHeadControlsProps {
    * the dockview bridge attaches it (the `mountActions` engine-gating
    * idiom): in-house and RN heads render no pop-out control, zero fan-out. */
   onPopout?: () => void;
+  /** Closes the panel outright. Optional slot — only the dockview bridge
+   * attaches it, and only for a dynamically opened chart instance (a static
+   * panel closes through the View menu instead); absent, the head renders no
+   * close control and its markup is unchanged. */
+  onClose?: () => void;
 }

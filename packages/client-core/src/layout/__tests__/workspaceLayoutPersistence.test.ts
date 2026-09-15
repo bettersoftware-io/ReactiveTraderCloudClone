@@ -94,6 +94,7 @@ describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () =>
       maximized: null,
       collapsed: [],
       closed: [],
+      instances: [],
     };
 
     const payload: WorkspaceLayoutV1 = {
@@ -155,6 +156,43 @@ describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () =>
         .closed,
     ).toEqual([]);
   });
+
+  it("round-trips instances (Phase 4 dynamic panel instances)", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        equities: {
+          layout: {
+            ...createDefaultLayoutPort("equities").initial,
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+              { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+            ],
+          },
+          docked: [],
+        },
+      },
+    };
+    expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toEqual(
+      payload,
+    );
+  });
+
+  it("round-trips instances and defaults it to [] for a legacy payload without the key", () => {
+    // A payload written before `instances` existed: same tab layout, key
+    // absent — mirrors the `closed` legacy test just above.
+    const legacyLayout: Record<string, unknown> = {
+      ...createDefaultLayoutPort("equities").initial,
+    };
+    delete legacyLayout.instances;
+    const legacy = JSON.stringify({
+      v: 1,
+      tabs: { equities: { layout: legacyLayout, docked: [] } },
+    });
+    expect(
+      parseWorkspaceLayout(legacy)?.tabs.equities?.layout.instances,
+    ).toEqual([]);
+  });
 });
 
 describe("parseWorkspaceLayout — null input", () => {
@@ -198,7 +236,13 @@ describe("parseWorkspaceLayout — tree/docked reconciliation", () => {
       v: 1,
       tabs: {
         fx: {
-          layout: { root, maximized: null, collapsed: [], closed: [] },
+          layout: {
+            root,
+            maximized: null,
+            collapsed: [],
+            closed: [],
+            instances: [],
+          },
           docked: [],
         },
       },
@@ -290,6 +334,123 @@ describe("parseWorkspaceLayout — maximized/collapsed membership", () => {
     const parsed = parseWorkspaceLayout(serializeWorkspaceLayout(payload));
     expect(parsed).not.toBeNull();
     expect(parsed?.tabs.fx?.layout.collapsed).toEqual(["fx-rates"]);
+  });
+
+  // An open instance's id IS a valid maximized/collapsed value (see
+  // LayoutMachine.test.ts's persistence round-trips) — but only while that
+  // instance is actually in `instances`. An instance-shaped id with no
+  // matching instance is as dangling as any other ghost.
+  it("still rejects a maximized id that is neither a leaf nor an open instance, even when it is instance-shaped", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        equities: {
+          layout: {
+            ...createDefaultLayoutPort("equities").initial,
+            maximized: "eq-chart:MSFT",
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+            ],
+          },
+          docked: [],
+        },
+      },
+    };
+    expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toBeNull();
+  });
+
+  it("filters a collapsed instance id whose instance is not open, keeping the open instance's", () => {
+    const payload: WorkspaceLayoutV1 = {
+      v: 1,
+      tabs: {
+        equities: {
+          layout: {
+            ...createDefaultLayoutPort("equities").initial,
+            collapsed: ["eq-chart:MSFT", "eq-chart:AAPL"],
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+            ],
+          },
+          docked: [],
+        },
+      },
+    };
+    const parsed = parseWorkspaceLayout(serializeWorkspaceLayout(payload));
+    expect(parsed?.tabs.equities?.layout.collapsed).toEqual(["eq-chart:AAPL"]);
+  });
+});
+
+describe("parseWorkspaceLayout — instances (Phase 4 dynamic panel instances)", () => {
+  it("filters malformed instance entries instead of rejecting the payload, keeping only the valid, first-seen, capped (4) entries — the rest of the layout stays intact", () => {
+    const rawInstances = [
+      // Valid — kept (1st).
+      { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      // Wrong kind — dropped.
+      { id: "eq-chart:MSFT", kind: "candles", symbol: "MSFT" },
+      // Empty symbol — dropped.
+      { id: "eq-chart:", kind: "eq-chart", symbol: "" },
+      // id disagrees with symbol (would-be id is "eq-chart:TSLA") — dropped.
+      { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "TSLA" },
+      // Duplicate of the first entry's id — dropped, first occurrence wins.
+      { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      // Valid — kept (2nd).
+      { id: "eq-chart:GOOG", kind: "eq-chart", symbol: "GOOG" },
+      // Valid — kept (3rd).
+      { id: "eq-chart:AMZN", kind: "eq-chart", symbol: "AMZN" },
+      // Valid — kept (4th, fills MAX_PANEL_INSTANCES).
+      { id: "eq-chart:NFLX", kind: "eq-chart", symbol: "NFLX" },
+      // Would be valid, but the cap of 4 is already full — dropped.
+      { id: "eq-chart:TSLA", kind: "eq-chart", symbol: "TSLA" },
+    ];
+
+    const legacyLayout: Record<string, unknown> = {
+      ...createDefaultLayoutPort("fx").initial,
+      collapsed: ["fx-rates"],
+      closed: ["fx-analytics"],
+      instances: rawInstances,
+    };
+
+    const raw = JSON.stringify({
+      v: 1,
+      tabs: { fx: { layout: legacyLayout, docked: [] } },
+    });
+
+    const parsed = parseWorkspaceLayout(raw);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.tabs.fx?.layout.instances).toEqual([
+      { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      { id: "eq-chart:GOOG", kind: "eq-chart", symbol: "GOOG" },
+      { id: "eq-chart:AMZN", kind: "eq-chart", symbol: "AMZN" },
+      { id: "eq-chart:NFLX", kind: "eq-chart", symbol: "NFLX" },
+    ]);
+    // The rest of the layout (root/collapsed/closed) is untouched by the
+    // instances filtering above.
+    expect(parsed?.tabs.fx?.layout.root).toEqual(
+      createDefaultLayoutPort("fx").initial.root,
+    );
+    expect(parsed?.tabs.fx?.layout.collapsed).toEqual(["fx-rates"]);
+    expect(parsed?.tabs.fx?.layout.closed).toEqual(["fx-analytics"]);
+  });
+
+  it("rejects the whole payload when `instances` is present but not an array — same handling this file gives a non-array `closed`", () => {
+    // `closed` (just above, in the round-trip describe) is read via
+    // `value.closed ?? []` then `if (!Array.isArray(closedRaw)) return
+    // null;` inside `validateLayoutState` — a present-but-wrong-shape
+    // value fails the WHOLE layout (and so the whole payload), unlike a
+    // legacy-absent key which defaults to `[]`. `instances` is parsed with
+    // the identical `value.instances ?? []` / `Array.isArray` guard, so a
+    // non-array value here must fail the same way.
+    const legacyLayout: Record<string, unknown> = {
+      ...createDefaultLayoutPort("fx").initial,
+      instances: "not-an-array",
+    };
+
+    const raw = JSON.stringify({
+      v: 1,
+      tabs: { fx: { layout: legacyLayout, docked: [] } },
+    });
+
+    expect(parseWorkspaceLayout(raw)).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import type { PanelId } from "@rtc/client-core";
+import type { LayoutPanelInstance, PanelId } from "@rtc/client-core";
 
 const PANEL_IDS: readonly PanelId[] = [
   "fx-rates",
@@ -22,10 +22,13 @@ const PANEL_IDS: readonly PanelId[] = [
 ];
 
 let appPanelRegistry: typeof import("../appPanelRegistry")["appPanelRegistry"];
+let instanceRegistryFor: typeof import("../appPanelRegistry")["instanceRegistryFor"];
+let instanceSpecsFor: typeof import("../appPanelRegistry")["instanceSpecsFor"];
 // `Component<never>` rather than bare `Component` (= `Component<{}>`): NewRfqPanel
 // takes a required prop, and parameter contravariance means only a `never` props
 // type accepts every module root in one map.
 let expectedByPanelId: ReadonlyMap<PanelId, Component<never>>;
+let chartPanelComponent: Component<never>;
 
 beforeAll(async () => {
   // Generous timeout (default 10s): CI's cold transform of the whole App
@@ -72,6 +75,9 @@ beforeAll(async () => {
   ]);
 
   appPanelRegistry = registryModule.appPanelRegistry;
+  instanceRegistryFor = registryModule.instanceRegistryFor;
+  instanceSpecsFor = registryModule.instanceSpecsFor;
+  chartPanelComponent = ChartPanel as Component<never>;
   expectedByPanelId = new Map<PanelId, Component<never>>([
     ["fx-rates", LiveRatesPanel],
     ["fx-analytics", AnalyticsPanel],
@@ -134,6 +140,61 @@ describe("appPanelRegistry", () => {
   });
 });
 
+const INSTANCES: readonly LayoutPanelInstance[] = [
+  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+];
+
+describe("instanceRegistryFor", () => {
+  it("maps each instance id to a ChartPanel pinned to its own symbol", () => {
+    const registry = instanceRegistryFor(INSTANCES);
+
+    for (const instance of INSTANCES) {
+      const entry = registry[instance.id];
+
+      expect(entry).toBeTypeOf("function");
+      const { component, props } = createdBy(entry());
+      expect(component).toBe(chartPanelComponent);
+      expect((props as PinnedSymbolProps).pinnedSymbol).toBe(instance.symbol);
+    }
+  });
+
+  it("wires exactly the given instance ids and no others", () => {
+    const registry = instanceRegistryFor(INSTANCES);
+
+    expect(Object.keys(registry).sort()).toEqual(
+      INSTANCES.map((instance) => {
+        return instance.id;
+      }).sort(),
+    );
+  });
+
+  it("returns an empty registry for an empty instance list", () => {
+    expect(instanceRegistryFor([])).toEqual({});
+  });
+});
+
+describe("instanceSpecsFor", () => {
+  it("gives each instance's symbol as the title and a root maximize scope", () => {
+    expect(instanceSpecsFor(INSTANCES)).toEqual({
+      "eq-chart:AAPL": {
+        id: "eq-chart:AAPL",
+        title: "AAPL",
+        maximizeScope: "root",
+      },
+      "eq-chart:MSFT": {
+        id: "eq-chart:MSFT",
+        title: "MSFT",
+        maximizeScope: "root",
+      },
+    });
+  });
+
+  it("returns empty specs for an empty instance list", () => {
+    expect(instanceSpecsFor([])).toEqual({});
+  });
+});
+
 interface CreatedComponent {
   component: unknown;
   props: unknown;
@@ -141,6 +202,10 @@ interface CreatedComponent {
 
 interface NewRfqProps {
   onCreated: unknown;
+}
+
+interface PinnedSymbolProps {
+  pinnedSymbol?: string;
 }
 
 /** Unwraps the marker our mocked `createComponent` returns. Throws rather than

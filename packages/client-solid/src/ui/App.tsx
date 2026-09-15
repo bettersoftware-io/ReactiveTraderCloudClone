@@ -1,7 +1,12 @@
 import type { JSX } from "solid-js";
 import { createMemo, lazy, Show, Suspense, untrack } from "solid-js";
 
-import { type LayoutState, PANEL_SPECS, visibleRootOf } from "@rtc/client-core";
+import {
+  type LayoutPanelInstance,
+  type LayoutState,
+  PANEL_SPECS,
+  visibleRootOf,
+} from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
@@ -21,8 +26,14 @@ import {
   appPanelRegistry,
   dockedRegistryFor,
   dockedSpecsFor,
+  instanceRegistryFor,
+  instanceSpecsFor,
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
+import {
+  type PanelRegistry,
+  reuseRegistryEntries,
+} from "./shell/layout/engine/panelRegistry";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
 
@@ -112,11 +123,12 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
 
   // Snapshot: useLayout resolves the per-tab singleton once at call time.
   // Correct only while App's keyed <Show> remounts this engine per tab.
-  const { state, maximize, restore, collapse, expand, resize } = useLayout(
-    untrack((): WorkspaceTab => {
-      return props.tab;
-    }),
-  );
+  const { state, maximize, restore, collapse, expand, resize, closeInstance } =
+    useLayout(
+      untrack((): WorkspaceTab => {
+        return props.tab;
+      }),
+    );
 
   // The in-house engine renders the VISIBLE projection: View-menu-closed
   // leaves are pruned from the tree it sees (visibleRootOf is referentially
@@ -190,6 +202,23 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     }),
   );
   const layoutResets = useWorkspaceLayoutResets();
+  // Chart instances (layer-2 membership the layout machine owns), gated on
+  // the instance ID SET for the same IDENTITY CHURN reason as `dockedIds`:
+  // `state()` emits on EVERY layout change (maximize, collapse, resize), so
+  // reading `state().instances` straight into the registry memo would hand
+  // both engines a fresh-identity registry on each and remount every panel.
+  // An id encodes kind + symbol, so equal ids mean equal rows. Only the
+  // Dockview engine ever looks an instance id up — it is not in the layout
+  // tree, so in-house never renders one, and never receives one: the
+  // `registry`/`specs` memos below stay instance-free, and only the
+  // `dockview*` merges further down read `instances()`.
+  const instances = createMemo(
+    (): readonly LayoutPanelInstance[] => {
+      return state().instances;
+    },
+    undefined,
+    { equals: sameInstanceIds },
+  );
 
   const registry = createMemo(() => {
     return {
@@ -215,6 +244,32 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
       ...PANEL_SPECS,
       ...dockedSpecsFor(dockedIds(), untrack(dockedPanels)),
     };
+  });
+
+  // PER-ID-STABLE INSTANCE ENTRIES (fix round 1): `instanceRegistryFor`
+  // builds a fresh closure per instance on every call, so opening a SIBLING
+  // instance would change every existing instance's entry reference — and
+  // the Dockview bridge's per-slot memo re-runs a panel's factory exactly
+  // when its entry reference changes. `reuseRegistryEntries` keeps the
+  // previous closure for every id still open (sound: an instance id encodes
+  // its symbol) and drops the ones that closed.
+  const instanceRegistry = createMemo(
+    (previous: PanelRegistry): PanelRegistry => {
+      return reuseRegistryEntries(previous, instanceRegistryFor(instances()));
+    },
+    {},
+  );
+
+  // The Dockview engine's own merges: the in-house slices plus the instance
+  // slices. A new identity on every instance open/close is harmless here —
+  // the bridge looks each slot's entry up through its own memo, so only the
+  // opened/closed panel re-renders.
+  const dockviewRegistry = createMemo((): PanelRegistry => {
+    return { ...registry(), ...instanceRegistry() };
+  });
+
+  const dockviewSpecs = createMemo(() => {
+    return { ...specs(), ...instanceSpecsFor(instances()) };
   });
 
   const headRegistry = createMemo(() => {
@@ -254,23 +309,38 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
                 surfaces here once its id is in the persisted blob. */}
             <DockviewLayoutEngine
               tab={props.tab}
-              registry={registry()}
-              specs={specs()}
+              registry={dockviewRegistry()}
+              specs={dockviewSpecs()}
               headRegistry={headRegistry()}
               store={dockLayoutStore}
               maximized={state().maximized}
               collapsed={state().collapsed}
               closed={state().closed}
               docked={dockedIds()}
+              instances={instances()}
               layoutResets={layoutResets()}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}
               onExpand={expand}
+              onCloseInstance={closeInstance}
             />
           </Suspense>
         </Show>
       </CreditViewProvider>
     </FxViewProvider>
+  );
+}
+
+/** Element-wise instance-id equality — the `instances` memo's identity gate. */
+function sameInstanceIds(
+  previous: readonly LayoutPanelInstance[],
+  next: readonly LayoutPanelInstance[],
+): boolean {
+  return (
+    previous.length === next.length &&
+    previous.every((instance, index) => {
+      return instance.id === next[index]?.id;
+    })
   );
 }

@@ -10,8 +10,8 @@ const equitiesRoot: LayoutNode =
 const creditRoot: LayoutNode = createDefaultLayoutPort("credit").initial.root;
 
 describe("maximizeBoundaryPath", () => {
-  it("returns the root for nothing maximized", () => {
-    expect(maximizeBoundaryPath(fxRoot, null, PANEL_SPECS)).toEqual([]);
+  it("returns null (no maximize) for nothing maximized", () => {
+    expect(maximizeBoundaryPath(fxRoot, null, PANEL_SPECS)).toBeNull();
   });
 
   it("returns the root for a root-scope panel (no maximizeScope on its spec)", () => {
@@ -90,11 +90,18 @@ describe("maximizeBoundaryPath", () => {
     expect(maximizeBoundaryPath(flatRow, "a", specs)).toEqual([]);
   });
 
-  it("falls back to the root for an id that is not in the tree", () => {
+  // A maximized id with no leaf in the tree — e.g. a Dockview-only chart
+  // instance (`eq-chart:<symbol>`) the layout machine holds while the
+  // in-house engine renders — must mean "no maximize", never a root-scope
+  // one: the root boundary would strip every panel with nothing to restore.
+  it("returns null (no maximize) for an id that is not in the tree, whatever its scope", () => {
     const specs: Readonly<Record<PanelId, PanelSpec>> = {
       ghost: { id: "ghost", title: "Ghost", maximizeScope: "nearest-column" },
     };
-    expect(maximizeBoundaryPath(fxRoot, "ghost", specs)).toEqual([]);
+    expect(maximizeBoundaryPath(fxRoot, "ghost", specs)).toBeNull();
+    expect(
+      maximizeBoundaryPath(equitiesRoot, "eq-chart:AAPL", PANEL_SPECS),
+    ).toBeNull();
   });
 });
 

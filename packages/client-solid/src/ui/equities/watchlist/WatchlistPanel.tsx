@@ -1,9 +1,10 @@
 import { createMemo, createSignal, For, type JSX, Show } from "solid-js";
 
+import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { useRankGlide } from "./useRankGlide";
-import { WatchlistRow } from "./WatchlistRow";
+import { type ChartUnavailableReason, WatchlistRow } from "./WatchlistRow";
 import { sortWatchlistRows, type WatchlistRowInput } from "./watchlistVm";
 
 import styles from "./WatchlistPanel.module.css";
@@ -28,14 +29,56 @@ import styles from "./WatchlistPanel.module.css";
  * the glide is animating.
  */
 export function WatchlistPanel(): JSX.Element {
-  const { useWatchlist, useEqWorkspace, useEqWatchlistSort, usePowerSaver } =
-    useViewModel();
+  const {
+    useWatchlist,
+    useEqWorkspace,
+    useEqWatchlistSort,
+    usePowerSaver,
+    useLayout,
+    useLayoutEngine,
+  } = useViewModel();
   const instruments = useWatchlist();
   const workspace = useEqWorkspace();
   const { sort } = useEqWatchlistSort();
   const { isFreeze } = usePowerSaver();
+  const { engine } = useLayoutEngine();
+  const { state: layoutState, openInstance } = useLayout("equities");
   const [quotes, setQuotes] = createSignal<Record<string, QuoteSnapshot>>({});
   let listEl: HTMLDivElement | undefined;
+
+  // The "open chart" affordance is dockview-only (the in-house engine has no
+  // way to show a dynamically opened instance) — see WatchlistRow's
+  // `onOpenChart?` doc for why `undefined` (not a hidden button) is how that
+  // gate is expressed.
+  const showChartButton = createMemo((): boolean => {
+    return engine() === "dockview";
+  });
+
+  const instancedSymbols = createMemo((): ReadonlySet<string> => {
+    return new Set(
+      layoutState().instances.map((instance) => {
+        return instance.symbol;
+      }),
+    );
+  });
+
+  const atInstanceCap = createMemo((): boolean => {
+    return layoutState().instances.length >= MAX_PANEL_INSTANCES;
+  });
+
+  function chartUnavailableFor(
+    symbol: string,
+  ): ChartUnavailableReason | undefined {
+    if (instancedSymbols().has(symbol)) {
+      return "already-open";
+    }
+
+    return atInstanceCap() ? "limit-reached" : undefined;
+  }
+
+  function openChartInstanceForSymbol(symbol: string): void {
+    openInstance("eq-chart", symbol);
+  }
 
   function reportQuote(symbol: string, last: number, changePct: number): void {
     setQuotes((prev) => {
@@ -124,6 +167,10 @@ export function WatchlistPanel(): JSX.Element {
                   selected={symbol === workspace.state().sel}
                   onSelect={workspace.select}
                   onQuote={reportQuote}
+                  onOpenChart={
+                    showChartButton() ? openChartInstanceForSymbol : undefined
+                  }
+                  chartUnavailable={chartUnavailableFor(symbol)}
                 />
               </Show>
             );

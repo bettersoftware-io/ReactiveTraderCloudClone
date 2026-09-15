@@ -493,6 +493,21 @@ const baseScenarios: Record<string, Scenario> = {
   },
   "app/admin-dockview": { componentKey: "App", fixtureKey: "app-fx-dockview" },
 
+  // Phase 4 (dynamic chart instances): two extra pinned chart panels (AAPL,
+  // MSFT) open on the equities workspace, seeded via the fixture's
+  // `layoutInstances` (never a click — mirrors the layout-STATE twins
+  // below). THE THIRD SINGLE-ENGINE SCENARIO (after shell/layout-dockview-
+  // stacked and shell/view-menu-open): instances are layer-2 membership
+  // that only the Dockview bridge renders (`instanceRegistryFor` /
+  // `instanceSpecsFor` in App.tsx) — the in-house engine projects them away
+  // entirely, so no in-house twin CAN exist. `enginePairs.ts` already skips
+  // any `-dockview` golden with no un-suffixed sibling, so this needs no
+  // extra registration there.
+  "app/equities-instances-dockview": {
+    componentKey: "App",
+    fixtureKey: "equities-instances-dockview",
+  },
+
   // Layout-STATE twins (PR #649): the four distinct shapes the layout policy
   // produces — a root-scope maximize, a nearest-column (rail) maximize, a
   // lone strip, and a fully-stripped column — each shot in the real FX

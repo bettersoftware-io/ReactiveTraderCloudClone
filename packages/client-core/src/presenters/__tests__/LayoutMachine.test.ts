@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
+import { instanceIdFor } from "#/layout/panelInstances";
+import {
+  parseWorkspaceLayout,
+  serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
+} from "#/layout/workspaceLayoutPersistence";
 
 import { createLayoutMachine } from "../LayoutMachine";
 
@@ -28,6 +34,7 @@ const initial: LayoutState = {
   maximized: null,
   collapsed: [],
   closed: [],
+  instances: [],
 };
 const port: LayoutPort = { initial };
 
@@ -162,6 +169,7 @@ describe("createLayoutMachine", () => {
         maximized: null,
         collapsed: [],
         closed: [],
+        instances: [],
       },
     });
     m.intents.resize([], [0.6, 0.4]);
@@ -198,7 +206,13 @@ describe("createLayoutMachine", () => {
     };
 
     const m = createLayoutMachine({
-      initial: { root: nestedRoot, maximized: null, collapsed: [], closed: [] },
+      initial: {
+        root: nestedRoot,
+        maximized: null,
+        collapsed: [],
+        closed: [],
+        instances: [],
+      },
     });
     m.intents.resize([1], [0.3, 0.7]);
     const r = current(m).root;
@@ -405,6 +419,7 @@ describe("createLayoutMachine", () => {
       maximized: null,
       collapsed: [],
       closed: [],
+      instances: [],
     };
 
     it("starts the fold from seedState rather than port.initial", () => {
@@ -446,7 +461,88 @@ describe("createLayoutMachine", () => {
       m.dispose();
     });
   });
+
+  describe("openInstance / closeInstance (Phase 4 panel instances)", () => {
+    it("openInstance adds eq-chart:<symbol>, dedupes, and caps at 4", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.openInstance("eq-chart", "AAPL");
+      expect(current(machine).instances).toEqual([
+        { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      ]);
+
+      for (const s of ["MSFT", "NVDA", "TSLA", "AMZN"]) {
+        machine.intents.openInstance("eq-chart", s);
+      }
+
+      expect(current(machine).instances).toHaveLength(4);
+      machine.dispose();
+    });
+
+    it("closeInstance removes it and clears its collapsed/maximized traces", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.collapse("eq-chart:AAPL");
+      machine.intents.maximize("eq-chart:AAPL");
+      machine.intents.closeInstance("eq-chart:AAPL");
+      const s = current(machine);
+      expect(s.instances).toEqual([]);
+      expect(s.collapsed).not.toContain("eq-chart:AAPL");
+      expect(s.maximized).toBeNull();
+      machine.dispose();
+    });
+
+    it("closeInstance with an unknown id no-ops — state unchanged, same reference", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      const before = current(machine);
+      machine.intents.closeInstance("eq-chart:not-open");
+      expect(current(machine)).toBe(before);
+      machine.dispose();
+    });
+
+    it("reset discards instances with everything else", () => {
+      const machine = createLayoutMachine(port);
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.reset();
+      expect(current(machine).instances).toEqual([]);
+      machine.dispose();
+    });
+  });
+
+  // The persistence module must round-trip whatever this machine emits: an
+  // instance id is a legitimate `maximized`/`collapsed` value (the Dockview
+  // head's own controls dispatch it), even though it is never a tree leaf.
+  describe("instance ids in maximized/collapsed survive workspace persistence", () => {
+    it("round-trips a state whose maximized panel is an open instance", () => {
+      const machine = createLayoutMachine(createDefaultLayoutPort("equities"));
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.maximize(instanceIdFor("eq-chart", "AAPL"));
+      const payload = persistedEquities(current(machine));
+
+      expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toEqual(
+        payload,
+      );
+      machine.dispose();
+    });
+
+    it("round-trips a state whose collapsed set names an open instance", () => {
+      const machine = createLayoutMachine(createDefaultLayoutPort("equities"));
+      machine.intents.openInstance("eq-chart", "AAPL");
+      machine.intents.collapse(instanceIdFor("eq-chart", "AAPL"));
+      const payload = persistedEquities(current(machine));
+
+      expect(parseWorkspaceLayout(serializeWorkspaceLayout(payload))).toEqual(
+        payload,
+      );
+      machine.dispose();
+    });
+  });
 });
+
+function persistedEquities(layout: LayoutState): WorkspaceLayoutV1 {
+  return { v: 1, tabs: { equities: { layout, docked: [] } } };
+}
 
 function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
   let view: LayoutState | undefined;

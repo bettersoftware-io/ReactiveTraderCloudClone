@@ -1,5 +1,6 @@
 import { type ReactElement, useEffect, useRef, useState } from "react";
 
+import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./WatchlistRow.module.css";
@@ -18,13 +19,42 @@ import styles from "./WatchlistRow.module.css";
  * sync), the pulse overlay is `key`ed on a monotonic tick counter: each
  * genuine tick remounts a fresh overlay element whose CSS `animation …
  * forwards` plays once and settles invisible — no timer, no clearing effect.
- */
+ *
+ * The optional trailing "open chart" affordance (`onOpenChart`, Phase 4 Task
+ * 5) is a real `<button>` rendered as a SIBLING of the row's own `<button>`,
+ * both wrapped in a `.rowWrapper` div — never a descendant of it. A `<button>`
+ * cannot validly nest another `<button>` (invalid HTML; React's own DOM-
+ * nesting validator warns on it), so nesting was never on the table, and a
+ * non-button `role="button"` stand-in trips this repo's Biome
+ * `useSemanticElements` rule (a real `<button>` genuinely is available here,
+ * unlike that rule's two documented false-positive exceptions in
+ * `biome.jsonc`). Being SIBLINGS rather than nested also means a click or
+ * keyboard activation on the chart button can never bubble into the row's
+ * own `onClick` in the first place — no `stopPropagation` needed, the
+ * structure itself makes the two independent. The wrapper is rendered ONLY
+ * when `onOpenChart` is defined — in-house (`undefined`) returns the row
+ * `<button>` alone, byte-identical to the pre-Phase-4-Task-5 markup, so its
+ * goldens are untouched.
+ *
+ * `data-watch-sym` (`useRankGlide`'s query target — see that file's doc) sits
+ * on whichever element is THIS row's OUTER, per-row node: `.row` itself when
+ * there's no wrapper (in-house), or `.rowWrapper` when there is (dockview) —
+ * never on `.row` when it's wrapped. `useRankGlide` glides that exact node's
+ * `transform`, so it must be the row's full visual unit (chart button
+ * included under dockview), not just the inner `.row` button — a node one
+ * level too deep would leave the chart button visually behind on every
+ * re-sort. `useRankGlide`'s highlight pass separately resolves the actual
+ * `.row` surface via `[data-rank-glow]`'s parent (always `.row`, regardless
+ * of which node carries `data-watch-sym`), since the direction-tint CSS keys
+ * off `.row[data-rank-dir]` specifically. */
 export function WatchlistRow({
   symbol,
   name,
   selected,
   onSelect,
   onQuote,
+  onOpenChart,
+  chartUnavailable,
 }: WatchlistRowProps): ReactElement {
   const { useEquityQuote } = useViewModel();
   const quote = useEquityQuote(symbol);
@@ -63,11 +93,19 @@ export function WatchlistRow({
     onSelect(symbol);
   }
 
-  return (
+  function openChart(): void {
+    onOpenChart?.(symbol);
+  }
+
+  const rowButton = (
     <button
       type="button"
       data-testid={`watch-row-${symbol}`}
-      data-watch-sym={symbol}
+      // Omitted here (React drops an `undefined` attribute) when the row is
+      // about to be wrapped below — `.rowWrapper` carries it instead, since
+      // IT is the outer per-row node under dockview. See this file's
+      // top-of-component doc note.
+      data-watch-sym={onOpenChart === undefined ? symbol : undefined}
       data-selected={selected ? "true" : "false"}
       className={styles.row}
       onClick={selectSymbol}
@@ -101,6 +139,28 @@ export function WatchlistRow({
       </span>
     </button>
   );
+
+  if (onOpenChart === undefined) {
+    return rowButton;
+  }
+
+  return (
+    <div className={styles.rowWrapper} data-watch-sym={symbol}>
+      {rowButton}
+      <button
+        type="button"
+        data-testid={`watch-open-chart-${symbol}`}
+        className={styles.openChart}
+        aria-label={openChartLabel(symbol, chartUnavailable)}
+        title={openChartLabel(symbol, chartUnavailable)}
+        disabled={chartUnavailable !== undefined}
+        aria-disabled={chartUnavailable !== undefined}
+        onClick={openChart}
+      >
+        📈
+      </button>
+    </div>
+  );
 }
 
 export interface WatchlistRowProps {
@@ -109,6 +169,42 @@ export interface WatchlistRowProps {
   selected: boolean;
   onSelect: (symbol: string) => void;
   onQuote: (symbol: string, last: number, changePct: number) => void;
+  /** Opens a dynamically-opened chart instance for this row's symbol (Phase 4
+   * Task 5). Optional slot, mirroring `PanelHeadControls.onPopout?` — the
+   * panel attaches it only when the layout engine is dockview (the in-house
+   * engine cannot show instances); undefined renders the row `<button>`
+   * alone (no wrapper, no chart button at all), so in-house goldens stay
+   * byte-identical. */
+  onOpenChart?: (symbol: string) => void;
+  /** Set when this symbol already has an open instance (`"already-open"`),
+   * or the per-tab cap (MAX_PANEL_INSTANCES) is reached (`"limit-reached"`)
+   * — the button renders `aria-disabled` and `disabled` (mirrors
+   * `PanelHeadControls`' pairing), so a click is a genuine no-op, and its
+   * title/accessible name state the reason. Ignored (no button at all) when
+   * `onOpenChart` is undefined. */
+  chartUnavailable?: ChartUnavailableReason;
+}
+
+/** Why a row's open-chart button is disabled — `undefined` when it is not. A
+ * duplicate wins over the cap: it is the more specific reason. */
+export type ChartUnavailableReason = "already-open" | "limit-reached";
+
+/** The open-chart button's title and accessible name: the action while it is
+ * enabled, the reason once it is disabled (a disabled control that only
+ * names its action leaves the user guessing why it refuses). */
+function openChartLabel(
+  symbol: string,
+  reason: ChartUnavailableReason | undefined,
+): string {
+  if (reason === "already-open") {
+    return "Chart already open";
+  }
+
+  if (reason === "limit-reached") {
+    return `Chart limit (${MAX_PANEL_INSTANCES}) reached`;
+  }
+
+  return `Open ${symbol} chart in a new panel`;
 }
 
 interface TickPulse {

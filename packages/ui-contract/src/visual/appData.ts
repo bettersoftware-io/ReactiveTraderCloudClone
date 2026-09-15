@@ -8,6 +8,7 @@ import type {
   IncidentKind,
   JarvisState,
   JarvisUsageSnapshot,
+  LayoutPanelInstance,
   NotionalView,
   OrderTicketState,
   PanelData,
@@ -119,6 +120,12 @@ export interface AppData {
    * defaults to []. Both engines project it — the fx-closed twins are the
    * Phase 3 witnesses that the shared subset grew. */
   layoutClosed?: readonly PanelId[];
+  /** The layout machine's `instances` list (Phase 4 dynamic chart
+   * instances) — dynamically opened `eq-chart:<symbol>` panels, seeded
+   * likewise; defaults to []. Only Dockview renders instances (in-house
+   * projects them away), so this field only ever affects a `-dockview`
+   * fixture — there is no in-house instances scenario to twin. */
+  layoutInstances?: readonly LayoutPanelInstance[];
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */

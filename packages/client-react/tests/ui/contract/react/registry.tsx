@@ -845,8 +845,12 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     ChartPanel,
-    (): ReactElement => {
-      return <ChartPanelComponent />;
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <ChartPanelComponent
+          pinnedSymbol={p.pinnedSymbol as string | undefined}
+        />
+      );
     },
   ],
   [

@@ -93,11 +93,13 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           collapsed={["fx-analytics"]}
           closed={[]}
           docked={[]}
+          instances={[]}
           layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
           onExpand={noop}
+          onCloseInstance={noop}
         />
       </StrictMode>,
     );
@@ -154,11 +156,13 @@ describe("DockviewLayoutEngine under StrictMode", () => {
           collapsed={[]}
           closed={[]}
           docked={["panel-dyn-1"]}
+          instances={[]}
           layoutResets={0}
           onMaximize={noop}
           onRestore={noop}
           onCollapse={noop}
           onExpand={noop}
+          onCloseInstance={noop}
         />
       </StrictMode>,
     );
@@ -199,11 +203,13 @@ describe("DockviewLayoutEngine under StrictMode", () => {
             collapsed={[]}
             closed={closed}
             docked={[]}
+            instances={[]}
             layoutResets={0}
             onMaximize={noop}
             onRestore={noop}
             onCollapse={noop}
             onExpand={noop}
+            onCloseInstance={noop}
           />
         </StrictMode>
       );

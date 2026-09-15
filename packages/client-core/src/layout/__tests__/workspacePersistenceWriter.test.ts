@@ -132,6 +132,34 @@ describe("createWorkspacePersistenceWriter", () => {
     expect(payload?.tabs.fx?.docked).toEqual([]);
   });
 
+  it("emits the machine's real instances (Phase 4 dynamic panel instances)", () => {
+    const h = harness(null);
+    const base = withDocked("equities", []);
+    h.setLayouts(
+      new Map([
+        [
+          "equities",
+          {
+            ...base,
+            instances: [
+              { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+              { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+            ],
+          },
+        ],
+      ]),
+    );
+
+    h.kick();
+    h.flush();
+
+    const payload = parseWorkspaceLayout(h.stored());
+    expect(payload?.tabs.equities?.layout.instances).toEqual([
+      { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+      { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+    ]);
+  });
+
   it("drops a ghost placement whose leaf is not in the tab's tree", () => {
     const h = harness(null);
     h.setLayouts(new Map([["fx", withDocked("fx", [])]]));

@@ -64,11 +64,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -104,11 +106,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={["panel-dyn-1"]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -129,11 +133,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -148,11 +154,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={["panel-dyn-1"]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -177,11 +185,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -196,11 +206,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -232,11 +244,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -251,11 +265,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -311,11 +327,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -345,11 +363,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={1}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -396,11 +416,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={["fx-analytics"]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -415,11 +437,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={["fx-analytics"]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={1}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -439,11 +463,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={1}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -484,11 +510,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -501,11 +529,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={["panel-dyn-1"]}
+        instances={[]}
         layoutResets={1}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -576,11 +606,13 @@ describe("DockviewLayoutEngine docked prop", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={3}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 

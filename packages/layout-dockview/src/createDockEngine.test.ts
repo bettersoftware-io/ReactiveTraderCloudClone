@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 
-import type { DockEngineOptions } from "#/createDockEngine";
+import type { DockDynamicPanel, DockEngineOptions } from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
@@ -1655,6 +1655,176 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   }
 });
 
+describe("maximize over a design pin (R15a — the maximized panel fills)", () => {
+  // A pin is min=max on its axis, and a maximize only STRIPS the others: a
+  // pinned maximized group would hold its design width beside a dock of bars
+  // (measured live: [32,32,32,32,360,32,32]). In-house fills the dock, so the
+  // maximize suspends the pin's clamp — the RECORD stays (a save mid-maximize
+  // still carries it) — and every exit path re-clamps it.
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
+  const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
+
+  it("lifts a maximized dynamic panel's pin clamp so it fills, and exit restores the exact clamp", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+
+    engine.maximizePanel("panel-dyn-1");
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    await vi.waitFor(() => {
+      expect(seen.sizeOf("panel-dyn-1")).toBeGreaterThan(360 * 2);
+    });
+    // The record outlives the suspension: a save taken now still pins.
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    engine.exitMaximize();
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.dispose();
+  });
+
+  it("re-clamps the first panel's pin when the maximize switches to another panel", () => {
+    // fx-analytics is nearest-column scoped here: the switch's boundary is
+    // the rail column, so the dynamic panel is NOT re-stripped — its clamp
+    // is readable right after the switch.
+    const engine = createDockEngine(railBase());
+    engine.addDynamicPanel(DYN);
+
+    engine.maximizePanel("panel-dyn-1");
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+
+    engine.maximizePanel("fx-analytics");
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    engine.dispose();
+  });
+
+  it("suspends a seeded rail pin across all its members for a root-scope maximize", async () => {
+    const seen = trackLayout();
+    const opts: DockEngineOptions = {
+      ...railBase(),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+      panels: { ...railBase().panels, maximizeScope: rootScope },
+    };
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+
+    engine.maximizePanel("fx-analytics");
+    // The maximized group AND its stripped rail sibling: the rail column's
+    // width is the meet of both, so lifting one alone would still hold it.
+    expect(widthClampOf("fx-analytics")).not.toEqual(PINNED);
+    expect(widthClampOf("fx-positions")).not.toEqual(PINNED);
+    await vi.waitFor(() => {
+      expect(seen.branchSizeOf("fx-analytics")).toBeGreaterThan(360 * 2);
+    });
+
+    engine.exitMaximize();
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+    expect(widthClampOf("fx-positions")).toEqual(PINNED);
+    await waitForBranchSize(seen, "fx-analytics", 360);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("keeps a rail pin whose split lies outside a nearest-column maximize's boundary", () => {
+    // The rail's width pin is declared by the ROOT row; a nearest-column
+    // maximize claims only its column's height, so the width stays held.
+    const engine = createDockEngine({
+      ...railBase(),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    });
+
+    engine.maximizePanel("fx-analytics");
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+    engine.dispose();
+  });
+
+  it("removing a pinned owner of the maximize leaves no suspended state behind", async () => {
+    // Baseline FIRST: its throwaway twin replaces lastDockviewApi().
+    const rates = baselineSize(base(), "fx-rates");
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+    engine.addDynamicPanel(DYN_2);
+
+    engine.maximizePanel("panel-dyn-1");
+    engine.removeDynamicPanel("panel-dyn-1");
+
+    // The survivor comes back from its strip at its own pin, unlocked.
+    expect(widthClampOf("panel-dyn-2")).toEqual(PINNED);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    await waitForSizeWithin(seen, "fx-rates", rates, 8);
+
+    // A later maximize of the survivor suspends and restores only ITS pin.
+    engine.maximizePanel("panel-dyn-2");
+    expect(widthClampOf("panel-dyn-2")).not.toEqual(PINNED);
+    engine.exitMaximize();
+    expect(widthClampOf("panel-dyn-2")).toEqual(PINNED);
+    await waitForPins(seen, 1);
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-2"], px: 360, axis: "width" },
+    ]);
+    engine.dispose();
+  });
+
+  it("a sash drag mid-maximize releases the pin for good — exit does not re-clamp it", () => {
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+
+    engine.maximizePanel("panel-dyn-1");
+    dragSash(opts.container, ".dv-horizontal");
+    engine.exitMaximize();
+
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    engine.dispose();
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("a blob saved mid-maximize carries the pin; the reload clamps it and a replayed maximize suspends it again", () => {
+    const firstOpts = base();
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    first.maximizePanel("panel-dyn-1");
+    touchContainer(firstOpts.container);
+    first.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    const second = createDockEngine({
+      ...base(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+      dynamicPanels: [DYN],
+    });
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    second.maximizePanel("panel-dyn-1"); // the bridge's replay
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    second.exitMaximize();
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    second.dispose();
+  });
+
+  function rootScope(): DockMaximizeScope {
+    return "root";
+  }
+});
+
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   // The blob serialises the layout AS RENDERED — a collapsed panel's group is
   // in it at the bar size. Reloading such a blob restores the tiny group (at
@@ -2141,6 +2311,47 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     engine.dispose();
   });
 
+  it("opens an `unpinned` dynamic panel at its initialPx without a design pin, beside a pinned one", async () => {
+    // R15b: chart instances share space — same right-edge group at the same
+    // opening width, but no min=max clamp and nothing in rtcDesignPins. The
+    // flag-less panel beside it is pinned exactly as before.
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel({
+      id: "panel-dyn-2",
+      initialPx: 360,
+      unpinned: true,
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    const [minimum, maximum] = widthClampOf("panel-dyn-2");
+    expect(minimum).not.toBe(maximum);
+    expect(minimum).not.toBe(360 + GROUP_GAP_PX);
+
+    engine.addDynamicPanel(DYN);
+    expect(widthClampOf("panel-dyn-1")).toEqual([
+      360 + GROUP_GAP_PX,
+      360 + GROUP_GAP_PX,
+    ]);
+    touchContainer(opts.container);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("reconciles an `unpinned` construction-time dynamic panel without a design pin", () => {
+    const seen = trackLayout();
+    persistArranged({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [{ id: "panel-dyn-2", initialPx: 360, unpinned: true }],
+    });
+
+    expect(seen.sizeOf("panel-dyn-2")).toBe(360);
+    expect(seen.pins()).toEqual([]);
+  });
+
   it("forces a dynamic panel added during a live maximize into a strip, and restores it on exit", async () => {
     // In-house parity: a panel docked while a maximize is live must not land
     // full-size beside a dock of 32px strips — it joins the maximize's own
@@ -2164,6 +2375,887 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     await waitForSizeWithin(seen, "fx-rates", ratesBefore, 8);
     engine.dispose();
   });
+});
+
+describe("unpinned dynamic panels share their split (R17)", () => {
+  // Instances get their design width; when there isn't room, instances and
+  // the main area share equally. Pinned children (the 290px rail, a Jarvis
+  // dock) and strips are never resized. Measured on the REAL equities seed
+  // at the visual host's dock widths (1920 viewport → 1907, 1440 → 1427),
+  // where jsdom reproduces the visual host's geometry exactly.
+  const EQUITIES_LIKE = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.78, 0.22],
+    initialPx: [undefined, 290],
+    children: [
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.66, 0.34],
+        children: [
+          { kind: "panel", panelId: "eq-chart" },
+          { kind: "panel", panelId: "eq-blotter" },
+        ],
+      },
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "eq-ticket" },
+          { kind: "panel", panelId: "eq-watchlist" },
+        ],
+      },
+    ],
+  } as const;
+  const RAIL_PX = 290;
+  const INSTANCES = ["i-aapl", "i-msft", "i-nvda", "i-tsla"].map((id) => {
+    return { id, initialPx: 360, unpinned: true };
+  });
+
+  it("1920, two instances opened together: the pinned picture (main 869, 360/360)", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    expectDockFilled(1907, ["eq-chart", "eq-ticket", "i-aapl", "i-msft"]);
+    engine.dispose();
+  });
+
+  it("1920, two instances opened one call apart: the same pinned picture, and neither is left min=max", async () => {
+    const engine = createDockEngine(equitiesAt(1907));
+    engine.addDynamicPanel(INSTANCES[0] as (typeof INSTANCES)[number]);
+    await nextMacrotask();
+    engine.addDynamicPanel(INSTANCES[1] as (typeof INSTANCES)[number]);
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+
+    for (const id of ["i-aapl", "i-msft"]) {
+      const [minimum, maximum] = widthClampOf(id);
+      expect(minimum).not.toBe(maximum);
+    }
+
+    engine.dispose();
+  });
+
+  it("1920, four instances: instances and main share equally, filling the dock exactly", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES,
+    });
+
+    expectEqualShares(ids, 4);
+    expect(cardWidths(["eq-ticket"])).toEqual([RAIL_PX]);
+    expectDockFilled(1907, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("1440, four instances: equal shares, nothing overflows the right edge", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    expectEqualShares(ids, 4);
+    expect(cardWidths(["eq-ticket"])).toEqual([RAIL_PX]);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("closing one of four instances re-shares the split among the remaining three", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.removeDynamicPanel("i-nvda");
+
+    expectEqualShares(ids, 3);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("a pinned Jarvis dock beside the instances keeps its design width and its pin", () => {
+    const opts = equitiesAt(1907);
+    const seen = trackLayout();
+    const engine = createDockEngine({
+      ...opts,
+      ...seen.options,
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 360 }, ...INSTANCES],
+    });
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+
+    expect(cardWidths(["panel-dyn-1"])).toEqual([360]);
+    expect(widthClampOf("panel-dyn-1")).toEqual([
+      360 + GROUP_GAP_PX,
+      360 + GROUP_GAP_PX,
+    ]);
+    expectEqualShares(ids, 4);
+    expectDockFilled(1907, ["eq-ticket", "panel-dyn-1", ...ids]);
+    touchContainer(opts.container);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["eq-ticket", "eq-watchlist"], px: RAIL_PX, axis: "width" },
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("a split with a pinned rail and a strip keeps both untouched while instances are equalised", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      ...strips.options,
+      seed: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.6, 0.2, 0.2],
+        initialPx: [undefined, 290, undefined],
+        children: [
+          EQUITIES_LIKE.children[0],
+          EQUITIES_LIKE.children[1],
+          { kind: "panel", panelId: "eq-news" },
+        ],
+      },
+    });
+
+    engine.collapsePanel("eq-news");
+    expect(strips.last).toEqual({ "eq-news": "vertical" });
+
+    for (const instance of INSTANCES) {
+      engine.addDynamicPanel(instance);
+    }
+
+    expect(cardWidths(["eq-ticket", "eq-news"])).toEqual([RAIL_PX, STRIP]);
+    expect(widthClampOf("eq-ticket")).toEqual([
+      RAIL_PX + GROUP_GAP_PX,
+      RAIL_PX + GROUP_GAP_PX,
+    ]);
+    expectEqualShares(ids, 4);
+    expectDockFilled(1907, ["eq-ticket", "eq-news", ...ids]);
+    engine.dispose();
+  });
+
+  // ——— R18: the rule re-runs once geometry is restored after a maximize or
+  // strip it was skipped under, stacked instance columns count once, the
+  // share never drops below a group's minimum, and the no-static branch. ———
+
+  const ROOM_FOR_THREE = [502, RAIL_PX, 360, 360, 360];
+
+  it("R18 nearest-column maximize → open an instance → exit: the split is re-shared", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-watchlist");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    engine.exitMaximize();
+
+    expect(
+      cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft", "i-nvda"]),
+    ).toEqual(ROOM_FOR_THREE);
+    engine.dispose();
+  });
+
+  it("R18 root maximize → open an instance → exit: the split is re-shared", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    engine.exitMaximize();
+
+    expect(
+      cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft", "i-nvda"]),
+    ).toEqual(ROOM_FOR_THREE);
+    expectDockFilled(1907, [
+      "eq-chart",
+      "eq-ticket",
+      "i-aapl",
+      "i-msft",
+      "i-nvda",
+    ]);
+    engine.dispose();
+  });
+
+  it("R18 maximize an instance → open a fifth → exit: five equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla", "i-goog"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("i-aapl");
+    engine.addDynamicPanel({ id: "i-goog", initialPx: 360, unpinned: true });
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 5);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R18 root maximize → close a non-owner instance → exit: three equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.removeDynamicPanel("i-nvda");
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 3);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R18 maximize an instance → close it: the survivors share equally", () => {
+    const ids = ["eq-chart", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("i-aapl");
+    engine.removeDynamicPanel("i-aapl");
+
+    expectEqualShares(ids, 3);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R18 collapse an instance → open two → expand it: four equal shares, none crushed", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.collapsePanel("i-aapl");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    engine.addDynamicPanel(INSTANCES[3] as (typeof INSTANCES)[number]);
+    engine.expandPanel("i-aapl");
+
+    expectEqualShares(ids, 4);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R18 a column of stacked instances counts as ONE instance member", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+    const dock = lastDockviewApi();
+    const aapl = dock.getPanel("i-aapl");
+    const msft = dock.getPanel("i-msft");
+
+    if (aapl === undefined || msft === undefined) {
+      throw new Error("fixture instances missing");
+    }
+
+    // The drop operation IS moveTo: stack MSFT under AAPL as a column.
+    msft.api.moveTo({ group: aapl.group, position: "bottom" });
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    engine.addDynamicPanel(INSTANCES[3] as (typeof INSTANCES)[number]);
+
+    // Main, rail, [AAPL over MSFT], NVDA, TSLA — three instance members.
+    expect(
+      cardWidths([
+        "eq-chart",
+        "eq-ticket",
+        "i-aapl",
+        "i-msft",
+        "i-nvda",
+        "i-tsla",
+      ]),
+    ).toEqual([502, RAIL_PX, 360, 360, 360, 360]);
+    expectDockFilled(1907, [
+      "eq-chart",
+      "eq-ticket",
+      "i-aapl",
+      "i-nvda",
+      "i-tsla",
+    ]);
+    engine.dispose();
+  });
+
+  it("R19 maximize eq-chart (root) with two untouched instances → exit: the rule's picture, not a crushed last instance", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.exitMaximize();
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    expectDockFilled(1907, ["eq-chart", "eq-ticket", "i-aapl", "i-msft"]);
+    engine.dispose();
+  });
+
+  it("R19 maximize eq-chart (root) with four instances at 1440 → exit: equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 4);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R19 switch the maximize from eq-chart to an instance → exit: the rule's picture", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.maximizePanel("i-aapl");
+    engine.exitMaximize();
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    engine.dispose();
+  });
+
+  it("R19 maximize an instance (root scope) with four open → exit: equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("i-nvda");
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 4);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R19 a maximize that strips no instance, and a plain collapse → expand, leave a user-resized instance alone", () => {
+    // R19's narrower guarantee: only a maximize that STRIPS an instance owes
+    // a share. A nearest-column maximize of the rail's watchlist strips the
+    // ticket above it and nothing in the root row, so the dragged width
+    // survives; so does a collapse → expand with no instance opened/closed.
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+    const aapl = lastDockviewApi().getPanel("i-aapl");
+
+    if (aapl === undefined) {
+      throw new Error("fixture instance missing");
+    }
+
+    aapl.group.api.setSize({ width: 500 + GROUP_GAP_PX }); // a sash drag
+    const dragged = cardWidths(["eq-chart", "i-aapl", "i-msft"]);
+    expect(dragged[1]).toBe(500);
+
+    engine.maximizePanel("eq-watchlist");
+    engine.exitMaximize();
+    expect(cardWidths(["eq-chart", "i-aapl", "i-msft"])).toEqual(dragged);
+
+    engine.collapsePanel("i-msft");
+    engine.expandPanel("i-msft");
+    expect(cardWidths(["eq-chart", "i-aapl", "i-msft"])).toEqual(dragged);
+    engine.dispose();
+  });
+
+  it("R18 a dock too narrow for the shares clamps instances at their minimum, never below", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(700),
+      dynamicPanels: INSTANCES,
+    });
+    const dock = lastDockviewApi();
+
+    for (const id of ["eq-chart", ...INSTANCES.map(idOf)]) {
+      const group = dock.getPanel(id)?.group;
+
+      expect(group?.api.width).toBeGreaterThanOrEqual(group?.minimumWidth ?? 0);
+    }
+
+    expect(new Set(cardWidths(INSTANCES.map(idOf))).size).toBe(1);
+    engine.dispose();
+  });
+
+  it("R18 a split with no static member shares floor(U / n), the last instance taking the remainder", () => {
+    const engine = createDockEngine(equitiesAt(1427));
+
+    engine.closePanel("eq-chart");
+    engine.closePanel("eq-blotter");
+    // With only the pinned rail left, dockview clamps the whole grid to the
+    // rail's max width; the first instance makes the root unbounded again,
+    // and the container's resize settle (the engine's ResizeObserver path,
+    // not this rule's) re-lays it out to the dock — stood in for here.
+    engine.addDynamicPanel(INSTANCES[0] as (typeof INSTANCES)[number]);
+    lastDockviewApi().layout(1427, 980);
+
+    for (const instance of INSTANCES.slice(1, 3)) {
+      engine.addDynamicPanel(instance);
+    }
+
+    // U = 1427 − the 297 rail model = 1130; floor(1130 / 3) = 376 (369 card).
+    expect(cardWidths(["eq-ticket", "i-aapl", "i-msft", "i-nvda"])).toEqual([
+      RAIL_PX,
+      369,
+      369,
+      371,
+    ]);
+    expectDockFilled(1427, ["eq-ticket", "i-aapl", "i-msft", "i-nvda"]);
+    engine.dispose();
+  });
+
+  it("R18 pinned dock → switch the maximize to another pinned dock → exit: both clamps restored", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: [
+        { id: "panel-dyn-1", initialPx: 360 },
+        { id: "panel-dyn-2", initialPx: 360 },
+      ],
+    });
+
+    engine.maximizePanel("panel-dyn-1");
+    engine.maximizePanel("panel-dyn-2");
+    expect(widthClampOf("panel-dyn-2")).not.toEqual([367, 367]);
+    engine.exitMaximize();
+
+    expect(widthClampOf("panel-dyn-1")).toEqual([367, 367]);
+    expect(widthClampOf("panel-dyn-2")).toEqual([367, 367]);
+    expect(cardWidths(["eq-chart", "panel-dyn-1", "panel-dyn-2"])).toEqual([
+      869, 360, 360,
+    ]);
+    engine.dispose();
+  });
+
+  it("R18 pinned dock → switch the maximize to an unpinned instance → exit: nothing moves", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: [
+        { id: "panel-dyn-1", initialPx: 360 },
+        ...INSTANCES.slice(0, 2),
+      ],
+    });
+    const before = cardWidths(["eq-chart", "panel-dyn-1", "i-aapl", "i-msft"]);
+
+    engine.maximizePanel("panel-dyn-1");
+    engine.maximizePanel("i-aapl");
+    engine.exitMaximize();
+
+    expect(before).toEqual([502, 360, 360, 360]);
+    expect(cardWidths(["eq-chart", "panel-dyn-1", "i-aapl", "i-msft"])).toEqual(
+      before,
+    );
+    expect(widthClampOf("panel-dyn-1")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("R18 maximize a pinned dock → collapse it → exit → expand: its clamp and width come back", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 360 }],
+    });
+
+    engine.maximizePanel("panel-dyn-1");
+    engine.collapsePanel("panel-dyn-1");
+    engine.exitMaximize();
+    expect(cardWidths(["panel-dyn-1"])).toEqual([STRIP]);
+    engine.expandPanel("panel-dyn-1");
+
+    expect(widthClampOf("panel-dyn-1")).toEqual([367, 367]);
+    expect(cardWidths(["panel-dyn-1"])).toEqual([360]);
+    engine.dispose();
+  });
+
+  // ——— R20: the rule is width-axis only, and owed shares are paid within
+  // the action's own scope. ———
+
+  it("R20 an instance dragged under eq-blotter keeps the column's heights through a root maximize of another instance", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-blotter");
+    const before = sizesOf(["eq-chart", "eq-blotter", "i-aapl", "i-msft"]);
+    expect(before.map(heightOf)).toEqual([645, 167, 168, 980]);
+
+    engine.maximizePanel("i-msft");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-chart", "eq-blotter", "i-aapl", "i-msft"])).toEqual(
+      before,
+    );
+    engine.dispose();
+  });
+
+  it("R20 an instance dragged under eq-chart keeps the column's heights through a root maximize of eq-blotter", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-chart");
+    const heights = sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf);
+    expect(heights).toEqual([322, 335, 323]);
+
+    engine.maximizePanel("eq-blotter");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf)).toEqual(
+      heights,
+    );
+    engine.dispose();
+  });
+
+  it("R20 an instance dragged under eq-watchlist keeps the rail column's heights through its nearest-column maximize", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    stackUnder("i-aapl", "eq-watchlist");
+    const before = sizesOf(["eq-ticket", "eq-watchlist", "i-aapl", "i-msft"]);
+    expect(before.map(heightOf)).toEqual([490, 245, 245, 980]);
+
+    engine.maximizePanel("eq-watchlist");
+    engine.exitMaximize();
+
+    expect(sizesOf(["eq-ticket", "eq-watchlist", "i-aapl", "i-msft"])).toEqual(
+      before,
+    );
+    engine.dispose();
+  });
+
+  it("R20 closing an instance in a mixed column never shares the column's heights", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 3),
+    });
+
+    stackUnder("i-aapl", "eq-blotter");
+    stackUnder("i-msft", "eq-blotter");
+    engine.removeDynamicPanel("i-msft");
+
+    const heights = sizesOf(["eq-chart", "eq-blotter", "i-aapl"]).map(heightOf);
+    expect(heights).not.toContain(360 + GROUP_GAP_PX);
+    expect(
+      heights.reduce((sum, height) => {
+        return sum + height;
+      }, 0),
+    ).toBe(980);
+    engine.dispose();
+  });
+
+  it("R20 a mark kept for a strip is not paid by an unrelated collapse → expand", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.collapsePanel("i-msft");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    dragWidth("i-aapl", 500);
+    const dragged = cardWidths(["eq-chart", "i-aapl", "i-nvda"]);
+    expect(dragged).toEqual([830, 500, 220]);
+
+    engine.collapsePanel("eq-blotter");
+    engine.expandPanel("eq-blotter");
+
+    expect(cardWidths(["eq-chart", "i-aapl", "i-nvda"])).toEqual(dragged);
+    engine.dispose();
+  });
+
+  it("R20 deleting a Jarvis dock does not pay an instance split's mark", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: [
+        { id: "panel-dyn-1", initialPx: 360 },
+        ...INSTANCES.slice(0, 2),
+      ],
+    });
+
+    engine.collapsePanel("i-msft");
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+    dragWidth("i-aapl", 500);
+
+    engine.removeDynamicPanel("panel-dyn-1");
+
+    // Paying the kept mark would put AAPL back to its 360 design width.
+    expect(cardWidths(["i-aapl"])).not.toEqual([360]);
+    engine.dispose();
+  });
+
+  it("R20 closing the maximized eq-chart pays the maximize's owed shares like an exit", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.closePanel("eq-chart");
+
+    expect(cardWidths(["eq-blotter", "eq-ticket", "i-aapl", "i-msft"])).toEqual(
+      [869, RAIL_PX, 360, 360],
+    );
+    engine.dispose();
+  });
+
+  // ——— R21: a container resize re-shares chart instances at the new width,
+  // outside the settle-correction gates (reapplyExactLayoutOnResize). Opening
+  // a chart instance is itself a pointerdown inside the dock — it already
+  // sets userArranged — so a hook gated behind "!userArranged" would never
+  // run for exactly the engines that hold instances. ———
+
+  it("R21 a container resize re-shares four instances at the new width", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+
+    expectEqualShares(ids, 4); // baseline at 1907
+
+    driveResize(opts.container, 1427, 980);
+
+    expectEqualShares(ids, 4); // re-shared at 1427, without any open/close
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R21 the same resize re-shares even once the dock is user-arranged", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+
+    // Proves the share runs OUTSIDE the settle-correction gates: touch the
+    // container the way a real sash drag or click would, so userArranged is
+    // true independent of whatever opening the instances above already did.
+    touchContainer(opts.container);
+    expectEqualShares(ids, 4); // baseline at 1907
+
+    driveResize(opts.container, 1427, 980);
+
+    expectEqualShares(ids, 4); // still re-shared, even though userArranged
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R21 a nearest-column maximize elsewhere still lets a resize re-share the instances", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({
+      ...opts,
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES,
+    });
+
+    // The rail's nearest-column maximize boundary contains only the rail
+    // column (eq-ticket/eq-watchlist) — nothing of the instances' row. A
+    // blanket "skip every share while ANY maximize is live" gate would still
+    // block this, even though nothing in the instances' split is a strip.
+    engine.maximizePanel("eq-watchlist");
+
+    driveResize(opts.container, 1427, 980);
+
+    expectEqualShares(ids, 4);
+    engine.dispose();
+  });
+
+  // A root-maximize-of-an-instance regression test (mirroring the deleted
+  // vacuous spec) is deliberately NOT included here: a root (or
+  // container-falling-back nearest-column) maximize's own strip pass marks
+  // every OTHER sibling in api.groups as a strip record, so
+  // shareSplitAmongInstances always sees either zero live members (an
+  // early return) or exactly one — the maximized member itself, with no
+  // static member present — which its own formula computes back to its
+  // current size exactly (`sharedTotal - share * (instances.length - 1)`
+  // with `instances.length === 1` is `sharedTotal - 0`). Verified both by
+  // this derivation and by mutation: deleting the boundary-scoping check
+  // entirely and re-running a root-maximize-of-an-instance resize produces
+  // byte-identical card widths before and after. The scoping check is
+  // still correct and kept (see reapplyExactLayoutOnResize's comment) — it
+  // stops the share rule from ever treating a maximized fill as an
+  // ordinary instance, which today happens to be a no-op only as an
+  // accident of the maximize mechanism, not a guarantee this rule should
+  // lean on. The nearest-column test above is what actually depends on the
+  // scoping (it fails on the pre-fix blanket gate); this one would not.
+
+  /** Redefines `container`'s reported size and delivers the resize to every
+   * ResizeObserver watching it — the same drive-the-observer idiom as the
+   * "settle resize" describe above, reused here for the R21 share-on-resize
+   * behaviour rather than the seed-correction one. */
+  function driveResize(
+    container: HTMLElement,
+    width: number,
+    height: number,
+  ): void {
+    Object.defineProperty(container, "clientWidth", {
+      configurable: true,
+      get: () => {
+        return width;
+      },
+    });
+    Object.defineProperty(container, "clientHeight", {
+      configurable: true,
+      get: () => {
+        return height;
+      },
+    });
+
+    for (const observer of [...recordedObservers]) {
+      if (observer.targets.includes(container)) {
+        const entry = {
+          target: container,
+          contentRect: { width, height },
+        } as unknown as ResizeObserverEntry;
+        observer.callback([entry], observer as unknown as ResizeObserver);
+      }
+    }
+  }
+
+  /** Drops `panelId` under `targetId`'s group — the DnD's moveTo. */
+  function stackUnder(panelId: string, targetId: string): void {
+    const dock = lastDockviewApi();
+    const moved = dock.getPanel(panelId);
+    const target = dock.getPanel(targetId);
+
+    if (moved === undefined || target === undefined) {
+      throw new Error(`${panelId} or ${targetId} missing`);
+    }
+
+    moved.api.moveTo({ group: target.group, position: "bottom" });
+  }
+
+  /** A sash drag of `panelId`'s group to a `card` px width. */
+  function dragWidth(panelId: string, card: number): void {
+    lastDockviewApi()
+      .getPanel(panelId)
+      ?.group.api.setSize({ width: card + GROUP_GAP_PX });
+  }
+
+  /** Each panel's group `[card width, height]` on the live engine. */
+  function sizesOf(
+    panelIds: readonly string[],
+  ): readonly (readonly [number, number])[] {
+    return panelIds.map((panelId) => {
+      const group = lastDockviewApi().getPanel(panelId)?.group;
+
+      if (group === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return [group.api.width - GROUP_GAP_PX, group.api.height] as const;
+    });
+  }
+
+  function heightOf(size: readonly [number, number]): number {
+    return size[1];
+  }
+
+  function railColumnScope(panelId: string): DockMaximizeScope {
+    return panelId === "eq-ticket" || panelId === "eq-watchlist"
+      ? "nearest-column"
+      : "root";
+  }
+
+  function idOf(panel: DockDynamicPanel): string {
+    return panel.id;
+  }
+
+  function equitiesAt(dockWidth: number): DockEngineOptions {
+    return {
+      ...base(),
+      container: sizedContainer(dockWidth, 980),
+      seed: EQUITIES_LIKE,
+    };
+  }
+
+  /** Each panel's group card width (model − one gap) on the live engine. */
+  function cardWidths(panelIds: readonly string[]): readonly number[] {
+    return panelIds.map((panelId) => {
+      const panel = lastDockviewApi().getPanel(panelId);
+
+      if (panel === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return panel.group.api.width - GROUP_GAP_PX;
+    });
+  }
+
+  /** The root row's children (one representative panel each) fill the dock
+   * to the pixel — no overflow past the right edge, no gap. */
+  function expectDockFilled(
+    dockWidth: number,
+    rootChildPanelIds: readonly string[],
+  ): void {
+    const models = cardWidths(rootChildPanelIds).map((card) => {
+      return card + GROUP_GAP_PX;
+    });
+
+    expect(
+      models.reduce((sum, model) => {
+        return sum + model;
+      }, 0),
+    ).toBe(dockWidth);
+  }
+
+  /** Every instance sits at one share `w`; the main area (first id) holds
+   * `w` plus at most the integer remainder (fewer than `members` px). */
+  function expectEqualShares(
+    [mainId, ...instanceIds]: readonly string[],
+    instanceCount: number,
+  ): void {
+    expect(instanceIds).toHaveLength(instanceCount);
+    const [main = 0, ...instances] = cardWidths([mainId ?? "", ...instanceIds]);
+    const share = instances[0] ?? 0;
+
+    expect(share).toBeLessThan(360);
+    expect(instances).toEqual(
+      instances.map(() => {
+        return share;
+      }),
+    );
+    expect(main - share).toBeGreaterThanOrEqual(0);
+    expect(main - share).toBeLessThan(instanceCount + 1);
+  }
 });
 
 describe("dynamic-panel reconciliation at construction", () => {
@@ -2591,6 +3683,19 @@ function lastDockviewApi(): DockviewApi {
   return capturedDockview.api as DockviewApi;
 }
 
+/** `[minimumWidth, maximumWidth]` of `panelId`'s group on the last engine —
+ * a design pin reads as both equal to its model width (card + gap). jsdom
+ * lays nothing out, so constraints are the witness, not rendered pixels. */
+function widthClampOf(panelId: string): readonly [number, number] {
+  const panel = lastDockviewApi().getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return [panel.group.minimumWidth, panel.group.maximumWidth];
+}
+
 /** Polls the persisted layout until its `rtcDesignPins` sidecar holds
  * exactly `expected` pins — the pin analogue of {@link waitForSize}. */
 /** Polls until at least one serialisation landed — the debounce is 0 in
@@ -2794,6 +3899,14 @@ function nextAnimationFrame(): Promise<void> {
     requestAnimationFrame(() => {
       resolve();
     });
+  });
+}
+
+/** Resolves after one macrotask — "one call apart", as a user's second click
+ * would be, so no same-tick state carries between two engine calls. */
+function nextMacrotask(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
   });
 }
 

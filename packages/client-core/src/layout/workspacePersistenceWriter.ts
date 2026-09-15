@@ -142,7 +142,16 @@ function reconcileTabEntry(
     });
 
   return {
-    layout: { root, maximized, collapsed, closed },
+    // `instances` (Phase 4 dynamic panel instances) is written straight
+    // from live state. Unlike `docked`, an instance isn't a tree leaf — see
+    // `LayoutPanelInstance`'s doc: only the dockview engine renders
+    // instances, the tree in `root` never contains them — so there is no
+    // orphan/ghost reconciliation to do here, and no leaf-existence check
+    // to run against `root`. `parseWorkspaceLayout` re-validates shape,
+    // dedups, and re-caps on read regardless
+    // (`workspaceLayoutPersistence.ts`), so a divergence here is still
+    // caught, not silently trusted.
+    layout: { root, maximized, collapsed, closed, instances: layout.instances },
     docked,
   };
 }

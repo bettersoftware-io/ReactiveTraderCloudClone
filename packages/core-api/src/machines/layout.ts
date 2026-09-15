@@ -31,8 +31,14 @@ export interface LayoutIntents {
   /** Un-hide a closed panel (the View menu's re-check). Unknown or not-closed
    * ids no-op. */
   reopen(id: PanelId): void;
-  /** Discard the tree, `maximized`, and `collapsed` back to `port.initial` —
-   * the port this machine was created with. */
+  /** Open a chart instance for `symbol` ("eq-chart:<symbol>"). No-op when
+   * the symbol already has an instance or MAX_PANEL_INSTANCES is reached. */
+  openInstance(kind: "eq-chart", symbol: string): void;
+  /** Remove an instance. Drops its `collapsed` entry and clears `maximized`
+   * if it named this id (the Phase 3 close rules); unknown ids no-op. */
+  closeInstance(id: PanelId): void;
+  /** Discard the tree, `maximized`, `collapsed`, and `instances` back to
+   * `port.initial` — the port this machine was created with. */
   reset(): void;
 }
 

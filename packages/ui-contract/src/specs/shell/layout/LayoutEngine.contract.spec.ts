@@ -1,5 +1,9 @@
 import { AppShell, LayoutEngine } from "@ui-contract/components";
-import type { HookValues, World } from "@ui-contract/harness/world";
+import type {
+  EquitiesSeed,
+  HookValues,
+  World,
+} from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -10,9 +14,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createDefaultLayoutPort,
+  instanceIdFor,
   serializeWorkspaceLayout,
   type UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/client-core";
+import type { EquityQuote } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -505,6 +511,62 @@ describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => 
   });
 });
 
+/**
+ * Chart instances end to end through the real `App` shell under Dockview
+ * (final-review C1): the watchlist row opens an instance into the equities
+ * engine, the instance's OWN head closes it again, and closing hands the cap
+ * slot back — the row's open-chart button is live once more. `App.tsx`
+ * threads `useLayout(tab).closeInstance` into the bridge, so this is the one
+ * witness that the close control reaches the REAL layout machine rather than
+ * a host-recorded intent.
+ */
+describe("DockviewLayoutEngine chart instances (world-driven, App shell)", () => {
+  it("opens an instance from the watchlist, closes it from its head, and re-enables the row", async () => {
+    const world = createWorldWithEquities({
+      watchlist: [
+        { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+        { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+      ],
+      quotes: {
+        AAPL: equityQuote("AAPL", 229.35, 0.5),
+        MSFT: equityQuote("MSFT", 467.12, 2.1),
+      },
+    });
+    world.layoutEngine.next("dockview");
+    const app = mountWith(world, AppShell);
+    await app.header.clickTab("equities");
+
+    const msft = instanceIdFor("eq-chart", "MSFT");
+    expect(app.dockviewLayout.instanceIds()).toEqual([]);
+
+    await app.watchlist.clickOpenChart("MSFT");
+
+    expect(app.dockviewLayout.instanceIds()).toEqual([msft]);
+    expect(app.watchlist.chartButtonDisabled("MSFT")).toBe(true);
+    expect(app.watchlist.openChartButtonLabel("MSFT")).toBe(
+      "Chart already open",
+    );
+    // The close control sits on the instance's head only — the equities
+    // tab's static chart panel keeps its View-menu close, not this one.
+    expect(app.dockviewLayout.hasCloseControl(msft)).toBe(true);
+    expect(app.dockviewLayout.hasCloseControl("eq-chart")).toBe(false);
+
+    // An unrelated layout change (maximizing the instance itself) keeps the
+    // instance set as it was — and closing works from the maximized head.
+    app.dockviewLayout.clickMaximize(msft);
+    expect(app.dockviewLayout.instanceIds()).toEqual([msft]);
+
+    app.dockviewLayout.clickClose(msft);
+
+    expect(app.dockviewLayout.instanceIds()).toEqual([]);
+    expect(app.dockviewLayout.hasCloseControl(msft)).toBe(false);
+    expect(app.watchlist.chartButtonDisabled("MSFT")).toBe(false);
+    expect(app.watchlist.openChartButtonLabel("MSFT")).toBe(
+      "Open MSFT chart in a new panel",
+    );
+  });
+});
+
 /** The panel this block docks — an `analytics`-sourced table. */
 const DOCKED_PANEL_ID = "panel-desk-positions";
 
@@ -586,4 +648,36 @@ function flushWorkspacePersistence(): Promise<void> {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, 0);
   });
+}
+
+/** `createWorld` with an equities seed — the 10th positional parameter
+ * (see `harness/world.ts`), every earlier seed left to its default. */
+function createWorldWithEquities(equities: EquitiesSeed): World {
+  return createWorld(
+    {},
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    equities,
+  );
+}
+
+function equityQuote(
+  symbol: string,
+  last: number,
+  changePct: number,
+): EquityQuote {
+  return {
+    symbol,
+    bid: last - 0.05,
+    ask: last + 0.05,
+    last,
+    changePct,
+    timestamp: 0,
+  };
 }

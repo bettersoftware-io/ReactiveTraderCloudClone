@@ -3,6 +3,7 @@
  * keeps working unchanged. */
 export type {
   LayoutNode,
+  LayoutPanelInstance,
   LayoutPort,
   LayoutState,
   PanelId,

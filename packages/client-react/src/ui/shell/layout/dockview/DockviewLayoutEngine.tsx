@@ -11,7 +11,9 @@ import {
   createDefaultLayoutPort,
   DOCK_COLUMN_INITIAL_PX,
   type DockLayoutStore,
+  instanceIdFor,
   type LayoutIntents,
+  type LayoutPanelInstance,
   PANEL_SPECS,
   type PanelId,
   type PanelSpec,
@@ -19,6 +21,7 @@ import {
 } from "@rtc/client-core";
 import {
   createDockEngine,
+  type DockDynamicPanel,
   type DockEngine,
   type DockMaximizeScope,
   type DockStripMap,
@@ -47,8 +50,8 @@ import styles from "./DockviewLayoutEngine.module.css";
  * REBUILD CONTRACT: a workspace reset is a `layoutResets` PROP bump (App.tsx
  * passes the counter straight through, no `key`), handled by the rebuild
  * effect below: it disposes the current engine, resets every per-engine ref/
- * state (`mounted`, `groups`, `strips`, `appliedCollapse`, `appliedDocked`)
- * to its initial value, and builds a fresh one from the tab's now-cleared
+ * state (`mounted`, `groups`, `strips`, `appliedCollapse`, `appliedDocked`,
+ * `appliedInstances`) to its initial value, and builds a fresh one from the tab's now-cleared
  * blob. The construction call itself (`createDockEngine({...})` plus its
  * nested `mountInto` helper) is DUPLICATED VERBATIM between that effect and
  * the `[tab, store]` mount/switch effect below — not factored into a shared
@@ -76,18 +79,20 @@ import styles from "./DockviewLayoutEngine.module.css";
  * never needs since it never touches `suppressSaveRef`.
  *
  * SUPPRESSION GUARD (fix round 1, review Critical C1; fix round 2 added the
- * `try`/`finally`): `createDockEngine`'s `dispose()` unconditionally flushes
- * one final serialize, even mid-rebuild — without a guard, that flush would
- * call `store.save` with the OLD (about-to-be-discarded) blob, landing it
- * right back in the store composition's `resetWorkspaceLayout()` JUST
- * cleared, and the fresh engine would load it straight back, discarding
- * nothing. `suppressSaveRef` is held true for the exact span from before
- * `dispose()` to after the new engine's construction returns — long enough
- * to swallow the dispose flush, short enough that the new engine's OWN
- * (debounced, so always later) save from reconciling `dynamicPanels` still
- * lands normally. That span is a `try`/`finally`: a throwing
- * `createDockEngine` (or an old engine's throwing `dispose()`) must not
- * leave saves suppressed for the rest of the session. */
+ * `try`/`finally`): `createDockEngine`'s `dispose()` flushes one final
+ * serialize once a pointer has touched the dock since construction (see
+ * #737) — a mid-rebuild engine has almost always been touched by then, so
+ * a dirty engine still flushes on reset, and without a guard that flush
+ * would call `store.save` with the OLD (about-to-be-discarded) blob,
+ * landing it right back in the store composition's `resetWorkspaceLayout()`
+ * JUST cleared, and the fresh engine would load it straight back,
+ * discarding nothing. `suppressSaveRef` is held true for the exact span
+ * from before `dispose()` to after the new engine's construction returns —
+ * long enough to swallow the dispose flush, short enough that the new
+ * engine's OWN (debounced, so always later) save from reconciling
+ * `dynamicPanels` still lands normally. That span is a `try`/`finally`: a
+ * throwing `createDockEngine` (or an old engine's throwing `dispose()`)
+ * must not leave saves suppressed for the rest of the session. */
 export function DockviewLayoutEngine({
   tab,
   registry,
@@ -98,11 +103,13 @@ export function DockviewLayoutEngine({
   collapsed,
   closed,
   docked,
+  instances,
   layoutResets,
   onMaximize,
   onRestore,
   onCollapse,
   onExpand,
+  onCloseInstance,
 }: DockviewLayoutEngineProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
@@ -136,6 +143,10 @@ export function DockviewLayoutEngine({
   // reconciliation list) — the diff effect below reads the prop directly for
   // every later render, this ref only feeds a fresh engine's initial build.
   const dockedRef = useRef(docked);
+  // The same construction-time-only read as `dockedRef`, for the layout
+  // machine's chart instances — a SEPARATE channel from `docked`, so the
+  // instance diff effect below can never act on a Jarvis-docked id.
+  const instancesRef = useRef(instances);
   // Read through a ref for the same reason as `specsRef`/`dockedRef`: the
   // mount effect below needs the CURRENT `layoutResets` to seed
   // `appliedResetsRef` (see its doc), but reading the raw prop directly
@@ -153,6 +164,9 @@ export function DockviewLayoutEngine({
   // The docked set last pushed into the engine, mirroring `appliedCollapse`
   // (same tab-tagged shape, same reset-on-rebuild rule) — see its comment.
   const appliedDocked = useRef<AppliedDocked>({ tab, ids: [] });
+  // The instance ids last pushed into the engine — `appliedDocked`'s twin for
+  // the `instances` channel (same tab tag, same reset-on-rebuild rule).
+  const appliedInstances = useRef<AppliedDocked>({ tab, ids: [] });
   // See the SUPPRESSION GUARD doc above the component.
   const suppressSaveRef = useRef(false);
   // The `layoutResets` value already reflected in the currently-built
@@ -193,6 +207,7 @@ export function DockviewLayoutEngine({
   useLayoutEffect(() => {
     specsRef.current = specs;
     dockedRef.current = docked;
+    instancesRef.current = instances;
     layoutResetsRef.current = layoutResets;
   });
 
@@ -328,13 +343,15 @@ export function DockviewLayoutEngine({
       onPopoutsChange: (next: readonly string[]): void => {
         setPopped(next as readonly PanelId[]);
       },
-      dynamicPanels: dockedRef.current.map((panelId) => {
-        return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
-      }),
+      // Jarvis-docked panels and chart instances, both reconciled at
+      // construction — an unlisted dynamic id the blob restored is deleted
+      // as an orphan, so an instance missing here loses its blob position.
+      dynamicPanels: dynamicPanelsOf(dockedRef.current, instancesRef.current),
     });
     engineRef.current = engine;
     appliedCollapse.current = { tab, ids: [] };
     appliedDocked.current = { tab, ids: [] };
+    appliedInstances.current = { tab, ids: [] };
     appliedResetsRef.current = layoutResetsRef.current;
     setGroups(engine.groupCount());
     setLiveEngine(engine);
@@ -526,13 +543,15 @@ export function DockviewLayoutEngine({
         onPopoutsChange: (next: readonly string[]): void => {
           setPopped(next as readonly PanelId[]);
         },
-        dynamicPanels: dockedRef.current.map((panelId) => {
-          return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
-        }),
+        // Jarvis-docked panels and chart instances, both reconciled at
+        // construction — an unlisted dynamic id the blob restored is deleted
+        // as an orphan, so an instance missing here loses its blob position.
+        dynamicPanels: dynamicPanelsOf(dockedRef.current, instancesRef.current),
       });
       engineRef.current = engine;
       appliedCollapse.current = { tab, ids: [] };
       appliedDocked.current = { tab, ids: [] };
+      appliedInstances.current = { tab, ids: [] };
       appliedResetsRef.current = layoutResets;
       setGroups(engine.groupCount());
       setLiveEngine(engine);
@@ -612,6 +631,40 @@ export function DockviewLayoutEngine({
     appliedDocked.current = { tab, ids: docked };
   }, [docked, tab, liveEngine]);
 
+  // The layout machine's chart instances — the docked effect's twin on its
+  // own channel, declared beside it for the same reason (a collapse replay
+  // may name an instance, which must already exist). Removal only ever walks
+  // `appliedInstances`, never `appliedDocked`, and `isInstanceId` refuses any
+  // id outside the `eq-chart:` namespace, so dropping an instance can never
+  // take a Jarvis-docked panel with it. See the maximize effect's
+  // STALE-CLOSURE GUARD doc for why `engine !== engineRef.current` is
+  // load-bearing here too.
+  useEffect(() => {
+    const engine = liveEngine;
+
+    if (engine === null || engine !== engineRef.current) {
+      return;
+    }
+
+    const previous =
+      appliedInstances.current.tab === tab ? appliedInstances.current.ids : [];
+    const current = instanceIdsOf(instances);
+
+    for (const panelId of current) {
+      if (!previous.includes(panelId)) {
+        engine.addDynamicPanel(instancePanelOf(panelId));
+      }
+    }
+
+    for (const panelId of previous) {
+      if (!current.includes(panelId) && isInstanceId(panelId)) {
+        engine.removeDynamicPanel(panelId);
+      }
+    }
+
+    appliedInstances.current = { tab, ids: current };
+  }, [instances, tab, liveEngine]);
+
   // `collapsed` is a SET, not a single id like `maximized`, so this diffs
   // against the last applied list rather than re-asserting the whole thing:
   // `collapsePanel` remembers the pre-collapse geometry on the FIRST call for a
@@ -690,6 +743,12 @@ export function DockviewLayoutEngine({
     };
   }
 
+  function closeInstancePanel(panelId: PanelId) {
+    return () => {
+      onCloseInstance(panelId);
+    };
+  }
+
   function expandOrRestorePanel(panelId: PanelId) {
     return () => {
       if (collapsed.includes(panelId)) {
@@ -699,6 +758,10 @@ export function DockviewLayoutEngine({
       }
     };
   }
+
+  // Only a chart instance's head gets the close control — a static panel
+  // closes through the View menu, a Jarvis-docked one through its own head.
+  const instanceIds = instanceIdsOf(instances);
 
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
@@ -711,6 +774,7 @@ export function DockviewLayoutEngine({
       data-collapsed={collapsed.join(" ")}
       data-closed={closed.join(" ")}
       data-popped={popped.join(" ")}
+      data-instances={instanceIds.join(" ")}
       className={styles.engine}
     >
       <div
@@ -751,6 +815,11 @@ export function DockviewLayoutEngine({
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
                 onPopout={popoutPanel(panelId)}
+                onClose={
+                  instanceIds.includes(panelId)
+                    ? closeInstancePanel(panelId)
+                    : undefined
+                }
               />
             ) : null
           ) : strip !== undefined ? (
@@ -803,6 +872,11 @@ export interface DockviewLayoutEngineProps {
    * `dynamicPanels`) and diffed against on every later render, mirroring how
    * `collapsed` is handled. */
   docked: readonly PanelId[];
+  /** The layout machine's layer-2 chart instances — membership only, like
+   * `docked`, and on its own channel: reconciled into the engine at every
+   * construction (as `dynamicPanels`) and diffed against on every later
+   * render. Only this engine renders them (in-house projects them away). */
+  instances: readonly LayoutPanelInstance[];
   /** The workspace-reset counter. A bump rebuilds the engine IN PLACE from
    * the tab's now-cleared blob — see the component's REBUILD CONTRACT doc. */
   layoutResets: number;
@@ -812,6 +886,9 @@ export interface DockviewLayoutEngineProps {
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
   onExpand: LayoutIntents["expand"];
+  /** Closes a chart instance — attached as the head's close control on
+   * instance panels only (never a static or Jarvis-docked panel). */
+  onCloseInstance: LayoutIntents["closeInstance"];
 }
 
 interface MountedSlot {
@@ -840,4 +917,48 @@ interface AppliedCollapse {
 interface AppliedDocked {
   tab: WorkspaceTab;
   ids: readonly PanelId[];
+}
+
+/** The construction-time `dynamicPanels` for both engine build sites (the
+ * mount effect and the `layoutResets` rebuild): Jarvis-docked panels pinned
+ * at their design width like a seeded rail, chart instances via
+ * {@link instancePanelOf}. */
+function dynamicPanelsOf(
+  docked: readonly PanelId[],
+  instances: readonly LayoutPanelInstance[],
+): readonly DockDynamicPanel[] {
+  return [
+    ...docked.map((panelId): DockDynamicPanel => {
+      return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX };
+    }),
+    ...instanceIdsOf(instances).map(instancePanelOf),
+  ];
+}
+
+/** A chart instance as a dynamic panel, `unpinned`: it opens at
+ * `min(the dock column's design width, an equal share)`, and every instance
+ * open or close re-equalises its split — instances at their design width
+ * while there is room, else instances and the main area in equal shares
+ * (pinned, four at 360px crushed the main chart and pushed the last one
+ * off-screen). Every site an instance enters the engine goes through here; a
+ * Jarvis-docked id never does, so it stays pinned. */
+function instancePanelOf(panelId: PanelId): DockDynamicPanel {
+  return { id: panelId, initialPx: DOCK_COLUMN_INITIAL_PX, unpinned: true };
+}
+
+/** The namespace every chart-instance panel id lives in ("eq-chart:"). */
+const INSTANCE_ID_PREFIX = instanceIdFor("eq-chart", "");
+
+function instanceIdsOf(
+  instances: readonly LayoutPanelInstance[],
+): readonly PanelId[] {
+  return instances.map((instance) => {
+    return instance.id;
+  });
+}
+
+/** Whether `panelId` names a chart instance — the guard that keeps instance
+ * removal from ever touching a panel outside the instance namespace. */
+function isInstanceId(panelId: PanelId): boolean {
+  return panelId.startsWith(INSTANCE_ID_PREFIX);
 }

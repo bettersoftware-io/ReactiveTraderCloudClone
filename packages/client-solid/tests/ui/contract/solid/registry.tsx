@@ -922,8 +922,12 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     ChartPanel,
-    (): JSX.Element => {
-      return <ChartPanelComponent />;
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <ChartPanelComponent
+          pinnedSymbol={p().pinnedSymbol as string | undefined}
+        />
+      );
     },
   ],
   [

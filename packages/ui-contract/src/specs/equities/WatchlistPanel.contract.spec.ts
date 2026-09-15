@@ -1,4 +1,5 @@
 import { EqWatchlistHead, WatchlistPanel } from "@ui-contract/components";
+import type { EquitiesSeed, World } from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -7,6 +8,7 @@ import {
 } from "@ui-contract/mount";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import type { EquityInstrument, EquityQuote } from "@rtc/domain";
 
 afterEach(() => {
@@ -346,6 +348,204 @@ describe("WatchlistPanel + EqWatchlistHead — sort cycle order + persistence", 
     expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
   });
 });
+
+describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, dockview-gated)", () => {
+  // Five distinct symbols so the MAX_PANEL_INSTANCES=4 cap test can open four
+  // instances and still have a fifth, never-opened row to prove disables at
+  // the cap rather than only on a duplicate.
+  const CAP_INSTRUMENTS: readonly EquityInstrument[] = [
+    { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+    { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+    { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+    { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
+    { symbol: "GOOG", name: "Alphabet Inc", exchange: "NASDAQ" },
+  ];
+
+  it("renders an accessible, enabled open-chart button on every row under the dockview engine", () => {
+    const panel = mount(WatchlistPanel, {
+      layoutEngine: "dockview",
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
+
+    for (const symbol of ["AAPL", "MSFT", "TSLA"]) {
+      expect(panel.hasOpenChartButton(symbol)).toBe(true);
+      expect(panel.openChartButtonLabel(symbol)).toBe(
+        `Open ${symbol} chart in a new panel`,
+      );
+      expect(panel.chartButtonDisabled(symbol)).toBe(false);
+    }
+  });
+
+  it("renders NO open-chart button at all under the in-house engine", () => {
+    // No `layoutEngine` option — defaults to DEFAULT_LAYOUT_ENGINE ("inhouse").
+    const panel = mount(WatchlistPanel, {
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
+
+    for (const symbol of ["AAPL", "MSFT", "TSLA"]) {
+      expect(panel.hasOpenChartButton(symbol)).toBe(false);
+    }
+  });
+
+  it("keeps [data-watch-sym] on the OUTER per-row node in both engine modes, so rank-glide's translateY moves the whole row (chart button included)", () => {
+    for (const layoutEngine of ["inhouse", "dockview"] as const) {
+      const panel = mount(WatchlistPanel, {
+        layoutEngine,
+        equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+      });
+
+      const targets = panel.rankGlideTargets();
+
+      // Exactly one glide target per row — a duplicate (e.g. the attribute
+      // left on BOTH the wrapper and the inner row button) would make
+      // useRankGlide's querySelectorAll double-count a row and corrupt
+      // rowHeight()'s two-node gap measurement.
+      expect(
+        targets
+          .map((el) => {
+            return el.getAttribute("data-watch-sym");
+          })
+          .sort(),
+      ).toEqual(
+        [
+          ...INSTRUMENTS.map((inst) => {
+            return inst.symbol;
+          }),
+        ].sort(),
+      );
+
+      // Every matched node must be a DIRECT child of the SAME list
+      // container — not a descendant several levels down — so
+      // useRankGlide's translateY on the node itself carries the whole row.
+      // Under dockview, a target one level too deep (the inner `.row`
+      // button, wrapped by its OWN `.rowWrapper`) would instead have a
+      // DIFFERENT parent per row, since each row owns its own wrapper.
+      const parents = new Set(
+        targets.map((el) => {
+          return el.parentElement;
+        }),
+      );
+      expect(parents.size).toBe(1);
+
+      if (layoutEngine === "dockview") {
+        // The matched node must BE the wrapper (containing the chart
+        // button) — not the inner row button alone, which would leave the
+        // chart button behind on every re-sort glide.
+        for (const target of targets) {
+          expect(
+            target.querySelector('[data-testid^="watch-open-chart-"]'),
+          ).not.toBeNull();
+        }
+      }
+    }
+  });
+
+  it("clicking the button opens a REAL instance for that row's symbol — witnessed by a second independent mount sharing the same World's layout machine — without touching the workspace selection", async () => {
+    const world = dockviewWorld({
+      watchlist: INSTRUMENTS,
+      quotes: QUOTES,
+      initialSymbol: "AAPL",
+    });
+    // Two independent mounts sharing one World's REAL per-tab LayoutMachine
+    // singleton — mirrors the eqWorkspace cross-component-sharing proof
+    // above: the SECOND mount's own aria-disabled state is driven purely by
+    // the shared machine, not by anything the click's own mount remembers.
+    const panel = mountWith(world, WatchlistPanel, {});
+    const otherPanel = mountWith(world, WatchlistPanel, {});
+
+    expect(panel.chartButtonDisabled("MSFT")).toBe(false);
+    expect(otherPanel.chartButtonDisabled("MSFT")).toBe(false);
+
+    await panel.clickOpenChart("MSFT");
+
+    expect(panel.chartButtonDisabled("MSFT")).toBe(true);
+    expect(otherPanel.chartButtonDisabled("MSFT")).toBe(true);
+
+    // The eqWorkspace selection is a DIFFERENT machine — opening a chart
+    // instance must never move it.
+    expect(panel.selectedSymbol()).toBe("AAPL");
+    expect(otherPanel.selectedSymbol()).toBe("AAPL");
+  });
+
+  it("a duplicate click on an already-open symbol disables that row and no-ops on a second click", async () => {
+    const world = dockviewWorld({ watchlist: INSTRUMENTS, quotes: QUOTES });
+    const panel = mountWith(world, WatchlistPanel, {});
+
+    await panel.clickOpenChart("AAPL");
+    expect(panel.chartButtonDisabled("AAPL")).toBe(true);
+    // The disabled button says WHY it refuses, not just what it would do.
+    expect(panel.openChartButtonLabel("AAPL")).toBe("Chart already open");
+    expect(panel.openChartButtonTitle("AAPL")).toBe("Chart already open");
+
+    // The button is now aria-disabled AND natively disabled — a second click
+    // fires no click event at all, so this must change nothing: the OTHER
+    // rows stay untouched (proving the duplicate didn't, say, consume a cap
+    // slot twice).
+    await panel.clickOpenChart("AAPL");
+    expect(panel.chartButtonDisabled("MSFT")).toBe(false);
+    expect(panel.chartButtonDisabled("TSLA")).toBe(false);
+  });
+
+  it("at MAX_PANEL_INSTANCES, every OTHER symbol's button disables too — even a row that never got an instance", async () => {
+    expect(CAP_INSTRUMENTS.length).toBeGreaterThan(MAX_PANEL_INSTANCES);
+
+    const world = dockviewWorld({ watchlist: CAP_INSTRUMENTS, quotes: QUOTES });
+    const panel = mountWith(world, WatchlistPanel, {});
+
+    for (const instrument of CAP_INSTRUMENTS.slice(0, MAX_PANEL_INSTANCES)) {
+      await panel.clickOpenChart(instrument.symbol);
+    }
+
+    const capped = CAP_INSTRUMENTS[MAX_PANEL_INSTANCES] as EquityInstrument;
+    expect(panel.chartButtonDisabled(capped.symbol)).toBe(true);
+    expect(panel.openChartButtonLabel(capped.symbol)).toBe(
+      `Chart limit (${MAX_PANEL_INSTANCES}) reached`,
+    );
+    expect(panel.openChartButtonTitle(capped.symbol)).toBe(
+      `Chart limit (${MAX_PANEL_INSTANCES}) reached`,
+    );
+    // An already-open row names the more specific reason even at the cap.
+    expect(panel.openChartButtonLabel("AAPL")).toBe("Chart already open");
+
+    // Clicking the capped row's disabled button must not open a 5th instance
+    // (witnessed indirectly: the button stays disabled, never flips to an
+    // enabled "already has an instance" state that a bug could produce).
+    await panel.clickOpenChart(capped.symbol);
+    expect(panel.chartButtonDisabled(capped.symbol)).toBe(true);
+  });
+});
+
+/** A World seeded with the dockview layout engine — the open-chart
+ * affordance's gate. `createWorld`'s positional signature has no named
+ * options, so every seed between `equitiesSeed` and `layoutEngineSeed` is
+ * passed through as `undefined` (their own defaults). */
+function dockviewWorld(equities: EquitiesSeed): World {
+  return createWorld(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    equities,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    "dockview",
+  );
+}
 
 function quote(symbol: string, last: number, changePct: number): EquityQuote {
   return {

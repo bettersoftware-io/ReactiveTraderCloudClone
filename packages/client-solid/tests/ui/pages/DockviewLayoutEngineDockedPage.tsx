@@ -79,11 +79,13 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
             collapsed={props.collapsed()}
             closed={props.closed()}
             docked={props.docked()}
+            instances={[]}
             layoutResets={props.layoutResets()}
             onMaximize={noop}
             onRestore={noop}
             onCollapse={noop}
             onExpand={noop}
+            onCloseInstance={noop}
           />
         );
       });

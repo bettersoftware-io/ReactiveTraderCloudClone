@@ -921,6 +921,23 @@ engine renders the `visibleRootOf` projection, Dockview replays
 TWINS grow the shared engine subset for the first time since the parity
 freeze. The View menu in the app head is the user surface on both clients.
 
+**Phase 4 (chart instances) shipped 2026-09-15 (PR #738), user-accepted** —
+the workstream's second layer-2 lift: `LayoutState.instances`
+(client-core, additive `workspaceLayoutV1` field beside `closed`) backs a
+per-symbol equities chart panel (`eq-chart:<symbol>`, capped at 4 per tab),
+opened from a watchlist row affordance, closed from its own head's close
+control, and rendered only under the Dockview engine, riding the GenUI ×
+Dockview round's `addDynamicPanel`/`removeDynamicPanel` — the engine half is
+consumed, not built (see the
+[layout-dockview README's instances section](../../packages/layout-dockview/README.md#instances-consume-the-dynamic-panel-api-phase-4)).
+In-house never renders instances (disparity doctrine). That round's
+nearest-column-maximize over-strip gap stays open, and Phase 4 makes it more
+reachable: the gap depends on the ACTIVE maximize's scope, not the newcomer's,
+so maximizing the equities watchlist (a `nearest-column` panel that hosts the
+open-chart button) and then opening a chart makes the new chart arrive as a
+strip until the maximize is exited. The engine fix is deferred to
+`createDockEngine.ts`.
+
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and

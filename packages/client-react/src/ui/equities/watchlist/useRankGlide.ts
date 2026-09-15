@@ -83,7 +83,18 @@ function playHighlight(
     return undefined;
   }
 
-  node.dataset.rankDir = direction;
+  // The rank-dir attribute must land on the ROW SURFACE (`.row`, whose CSS
+  // keys `.row[data-rank-dir="…"] .rankGlow` off it) — NOT on `node`, which
+  // under dockview (Phase 4 Task 5's chart-button sibling wrapper) is
+  // `.rowWrapper`, an ANCESTOR of `.row` that selector doesn't reach.
+  // `[data-rank-glow]` is always `.row`'s own direct child in both engine
+  // modes (see WatchlistRow.tsx), so its parent IS the row surface
+  // regardless of which node `useRankGlide` actually glides.
+  const rowSurface = glow.parentElement;
+
+  if (rowSurface) {
+    rowSurface.dataset.rankDir = direction;
+  }
 
   try {
     return glow.animate(
@@ -110,6 +121,12 @@ function prefersReducedMotion(): boolean {
  * "committed" order) — the caller must key/iterate off this return value,
  * not the raw `candidate` it passed in, so the DOM's physical row order never
  * jumps ahead of what the glide is animating from/to.
+ *
+ * `data-watch-sym` must sit on the row's OUTER, per-row DOM node — `.row`
+ * itself, or `.rowWrapper` when the dockview-only chart button wraps it
+ * (Phase 4 Task 5, see WatchlistRow.tsx) — so the translateY glide below
+ * carries the row's full visual unit (chart button included), not just its
+ * inner text content.
  *
  * Candidates arriving while a glide is still in flight (WAAPI animations not
  * yet `.finished`) are coalesced: only the LATEST is buffered and applied the

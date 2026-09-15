@@ -60,11 +60,13 @@ describe("dockview bridge pop-out wiring", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -111,11 +113,13 @@ describe("dockview bridge pop-out wiring", () => {
         collapsed={[]}
         closed={[]}
         docked={[]}
+        instances={[]}
         layoutResets={0}
         onMaximize={noop}
         onRestore={noop}
         onCollapse={noop}
         onExpand={noop}
+        onCloseInstance={noop}
       />,
     );
 
@@ -189,11 +193,13 @@ function resetView(
       collapsed={[]}
       closed={[]}
       docked={[]}
+      instances={[]}
       layoutResets={layoutResets}
       onMaximize={noop}
       onRestore={noop}
       onCollapse={noop}
       onExpand={noop}
+      onCloseInstance={noop}
     />
   );
 }

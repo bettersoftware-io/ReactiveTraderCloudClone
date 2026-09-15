@@ -1,9 +1,10 @@
 import { type ReactElement, useRef, useState } from "react";
 
+import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useRankGlide } from "./useRankGlide";
-import { WatchlistRow } from "./WatchlistRow";
+import { type ChartUnavailableReason, WatchlistRow } from "./WatchlistRow";
 import { sortWatchlistRows, type WatchlistRowInput } from "./watchlistVm";
 
 import styles from "./WatchlistPanel.module.css";
@@ -28,14 +29,48 @@ import styles from "./WatchlistPanel.module.css";
  * the glide is animating.
  */
 export function WatchlistPanel(): ReactElement {
-  const { useWatchlist, useEqWorkspace, useEqWatchlistSort, usePowerSaver } =
-    useViewModel();
+  const {
+    useWatchlist,
+    useEqWorkspace,
+    useEqWatchlistSort,
+    usePowerSaver,
+    useLayout,
+    useLayoutEngine,
+  } = useViewModel();
   const instruments = useWatchlist();
   const workspace = useEqWorkspace();
   const { sort } = useEqWatchlistSort();
   const { isFreeze } = usePowerSaver();
+  const { engine } = useLayoutEngine();
+  const { state: layoutState, openInstance } = useLayout("equities");
   const [quotes, setQuotes] = useState<Record<string, QuoteSnapshot>>({});
   const listRef = useRef<HTMLDivElement>(null);
+
+  // The "open chart" affordance is dockview-only (the in-house engine has no
+  // way to show a dynamically opened instance) — see WatchlistRow's
+  // `onOpenChart?` doc for why `undefined` (not a hidden button) is how that
+  // gate is expressed.
+  const showChartButton = engine === "dockview";
+  const instancedSymbols = new Set(
+    layoutState.instances.map((instance) => {
+      return instance.symbol;
+    }),
+  );
+  const atInstanceCap = layoutState.instances.length >= MAX_PANEL_INSTANCES;
+
+  function chartUnavailableFor(
+    symbol: string,
+  ): ChartUnavailableReason | undefined {
+    if (instancedSymbols.has(symbol)) {
+      return "already-open";
+    }
+
+    return atInstanceCap ? "limit-reached" : undefined;
+  }
+
+  function openChartInstanceForSymbol(symbol: string): void {
+    openInstance("eq-chart", symbol);
+  }
 
   function reportQuote(symbol: string, last: number, changePct: number): void {
     setQuotes((prev) => {
@@ -101,6 +136,10 @@ export function WatchlistPanel(): ReactElement {
             selected={symbol === workspace.state.sel}
             onSelect={workspace.select}
             onQuote={reportQuote}
+            onOpenChart={
+              showChartButton ? openChartInstanceForSymbol : undefined
+            }
+            chartUnavailable={chartUnavailableFor(symbol)}
           />
         );
       })}

@@ -9,7 +9,7 @@ import type {
   OrderTicketState,
   RfqQuote,
 } from "@rtc/client-core";
-import { JARVIS_GREETING } from "@rtc/client-core";
+import { instanceIdFor, JARVIS_GREETING } from "@rtc/client-core";
 import {
   ADAPTIVE_BANK_NAME,
   type Candle,
@@ -1774,6 +1774,30 @@ export const aaplCandles: readonly Candle[] = [
   },
 ];
 
+// Phase 4 (dynamic chart instances): MSFT candles, derived by scaling the
+// AAPL series into MSFT's price band so the series ends exactly on
+// equityQuotes.MSFT.last — mirrors how aaplCandles ends on
+// equityQuotes.AAPL.last. Used only by the equities-instances-dockview
+// fixture, which is the first (and so far only) place in the matrix a
+// pinned non-AAPL chart instance renders real content.
+const MSFT_CANDLE_SCALE: number =
+  equityQuotes.MSFT.last / aaplCandles[aaplCandles.length - 1].close;
+
+const msftCandles: readonly Candle[] = aaplCandles.map((c) => {
+  return {
+    time: c.time,
+    open: roundToCents(c.open * MSFT_CANDLE_SCALE),
+    high: roundToCents(c.high * MSFT_CANDLE_SCALE),
+    low: roundToCents(c.low * MSFT_CANDLE_SCALE),
+    close: roundToCents(c.close * MSFT_CANDLE_SCALE),
+    volume: c.volume,
+  };
+});
+
+function roundToCents(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 const aaplDepthBook: DepthBook = {
   symbol: "AAPL",
   asks: [
@@ -2709,4 +2733,18 @@ fixtures["credit-populated-dockview"] = makeAppData({
 fixtures["equities-loaded-dockview"] = makeAppData({
   ...fixtures["equities-loaded"],
   layoutEngine: "dockview",
+});
+// Phase 4 (dynamic chart instances): two instance panels open (AAPL, MSFT)
+// on top of the dockview-engine equities workspace. Single-engine only —
+// see scenarios.ts `app/equities-instances-dockview` for why no in-house
+// twin exists. equityCandles is widened to include MSFT (equities-loaded's
+// base only carries AAPL) so BOTH pinned charts render real candle content
+// rather than one falling back to ChartPanel's empty series.
+fixtures["equities-instances-dockview"] = makeAppData({
+  ...fixtures["equities-loaded-dockview"],
+  equityCandles: { AAPL: aaplCandles, MSFT: msftCandles },
+  layoutInstances: [
+    { id: instanceIdFor("eq-chart", "AAPL"), kind: "eq-chart", symbol: "AAPL" },
+    { id: instanceIdFor("eq-chart", "MSFT"), kind: "eq-chart", symbol: "MSFT" },
+  ],
 });

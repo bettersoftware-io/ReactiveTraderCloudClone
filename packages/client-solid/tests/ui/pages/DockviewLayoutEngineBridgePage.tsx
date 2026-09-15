@@ -30,16 +30,30 @@ export interface DockviewLayoutEngineBridgePage {
   waitFor(assertion: () => void): Promise<void>;
   /** The layout-engine root's `attribute` value, or null when absent. */
   engineAttribute(attribute: string): string | null;
+  /** The engine's `data-groups` witness, as the attribute's raw string. */
+  groupsAttr(): string | null;
+  /** Whether a testid the registry/portal tree renders is present. */
+  bodyVisible(testId: string): boolean;
+  /** The element carrying `testId`, or null — for node-identity assertions
+   * (a remount replaces the node even when its content is identical). */
+  bodyElement(testId: string): HTMLElement | null;
   /** The control's `disabled` state, or null when no such testid exists. */
   controlDisabled(testId: string): boolean | null;
   clickControl(testId: string): void;
+  /** Stands in for a user having arranged the dock: #737 changed
+   * `createDockEngine`'s `dispose()` to flush its final serialisation only
+   * once a `pointerdown` has landed inside the container since
+   * construction — an untouched engine's dispose writes nothing. Mirrors
+   * `layout-dockview`'s own `touchContainer` test helper. */
+  touchDock(): void;
   /** Installs the pop-out window stand-in for the duration of a spec. */
   stubPopoutWindow(): PopoutWindowHarness;
 }
 
-/** The framework surface for `DockviewLayoutEngine.popout.test.tsx` — the
- * solid bridge's jsdom wiring tests (the react twin reuses its StrictMode
- * page; solid has no StrictMode, so this page carries only render/waitFor). */
+/** The framework surface for `DockviewLayoutEngine.popout.test.tsx` and
+ * `DockviewLayoutEngine.instances.test.tsx` — the solid bridge's jsdom
+ * wiring tests (the react twin reuses its StrictMode page; solid has no
+ * StrictMode, so this page carries only render/waitFor and the queries). */
 export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage {
   return {
     mount(element: () => JSX.Element): void {
@@ -56,6 +70,15 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
         screen.queryByTestId("layout-engine")?.getAttribute(attribute) ?? null
       );
     },
+    groupsAttr(): string | null {
+      return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    bodyVisible(testId: string): boolean {
+      return screen.queryByTestId(testId) !== null;
+    },
+    bodyElement(testId: string): HTMLElement | null {
+      return screen.queryByTestId(testId);
+    },
     controlDisabled(testId: string): boolean | null {
       const control = screen.queryByTestId(testId);
 
@@ -63,6 +86,18 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
     },
     clickControl(testId: string): void {
       screen.getByTestId(testId).click();
+    },
+    touchDock(): void {
+      // `.dockview-theme-rtc` is the literal class the bridge puts on its
+      // container div (not a CSS Modules token), so it's reachable
+      // regardless of how modules resolve in this test run.
+      const container = document.querySelector(".dockview-theme-rtc");
+
+      if (container === null) {
+        throw new Error("touchDock: no mounted dock container found");
+      }
+
+      container.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     },
     stubPopoutWindow(): PopoutWindowHarness {
       return stubPopoutWindow();

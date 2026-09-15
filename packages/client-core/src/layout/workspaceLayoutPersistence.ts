@@ -38,7 +38,13 @@ import { parsePanelSpec } from "@rtc/shared";
 import type { WorkspaceTab } from "./defaultLayoutPort";
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds } from "./dockColumn";
-import type { LayoutNode, LayoutState, SplitDir } from "./layoutPort";
+import type {
+  LayoutNode,
+  LayoutPanelInstance,
+  LayoutState,
+  SplitDir,
+} from "./layoutPort";
+import { instanceIdFor, MAX_PANEL_INSTANCES } from "./panelInstances";
 
 export interface DockedPanelEntry {
   readonly panelId: string;
@@ -265,11 +271,80 @@ function validateLayoutState(value: unknown): LayoutState | null {
 
   const leafIds = new Set(dockedLeafIds(root, []));
 
+  // `instances` (Phase 4 dynamic panel instances) is ADDITIVE like `closed`
+  // below: a legacy payload without the key parses to [] (no version
+  // bump — this constructor never sees unknown fields), and a new payload
+  // read by the OLD parser was simply ignored.
+  //
+  // Unlike `collapsed`/`closed` — which filter a dangling id against the
+  // tab's OWN dock-column leaves — a malformed `instances` ENTRY here is
+  // filtered individually against its own shape (kind/symbol/id
+  // agreement), deduped by id (first occurrence wins), and capped at
+  // `MAX_PANEL_INSTANCES`: a single corrupted entry (a stale kind from a
+  // future variant, a symbol typo, a duplicate written mid-refactor) is
+  // fully recoverable by dropping just that one entry, and there is no
+  // equivalent to `maximized`'s all-panels-collapse failure mode here to
+  // justify rejecting the whole layout over it. A non-array `instances`
+  // value itself is still a whole-layout reject, mirroring `closed`'s
+  // handling of the same case below.
+  //
+  // Parsed FIRST: an open instance's id is a legitimate `maximized` /
+  // `collapsed` value (the Dockview head's controls dispatch it, the machine
+  // stores it), so both memberships below accept a tree leaf OR a parsed
+  // instance id — see `isKnownPanel`.
+  const instancesRaw = value.instances ?? [];
+
+  if (!Array.isArray(instancesRaw)) {
+    return null;
+  }
+
+  const instances: LayoutPanelInstance[] = [];
+  const seenInstanceIds = new Set<string>();
+
+  for (const entryRaw of instancesRaw) {
+    if (instances.length >= MAX_PANEL_INSTANCES) {
+      break;
+    }
+
+    if (!isRecord(entryRaw)) {
+      continue;
+    }
+
+    const { kind, symbol, id } = entryRaw;
+
+    if (kind !== "eq-chart") {
+      continue;
+    }
+
+    if (typeof symbol !== "string" || symbol.length === 0) {
+      continue;
+    }
+
+    if (typeof id !== "string" || id !== instanceIdFor(kind, symbol)) {
+      continue;
+    }
+
+    if (seenInstanceIds.has(id)) {
+      continue;
+    }
+
+    seenInstanceIds.add(id);
+    instances.push({ id, kind, symbol });
+  }
+
+  // A `maximized`/`collapsed` id must name a panel this tab can render: a
+  // tree leaf, or one of the instances just parsed. `closed` stays
+  // leaf-only (an instance closes by leaving `instances`, never via
+  // `closed`).
+  function isKnownPanel(id: string): boolean {
+    return leafIds.has(id) || seenInstanceIds.has(id);
+  }
+
   const maximized = value.maximized;
 
   if (
     maximized !== null &&
-    (typeof maximized !== "string" || !leafIds.has(maximized))
+    (typeof maximized !== "string" || !isKnownPanel(maximized))
   ) {
     return null;
   }
@@ -292,7 +367,7 @@ function validateLayoutState(value: unknown): LayoutState | null {
     // whose dangling case strips EVERY panel in the tab to a 32px bar on
     // every boot, there is no failure mode worth discarding the whole
     // payload over here, so the ghost id is filtered rather than rejected.
-    if (leafIds.has(entry)) {
+    if (isKnownPanel(entry)) {
       collapsed.push(entry);
     }
   }
@@ -320,7 +395,7 @@ function validateLayoutState(value: unknown): LayoutState | null {
     }
   }
 
-  return { root, maximized, collapsed, closed };
+  return { root, maximized, collapsed, closed, instances };
 }
 
 function validateDockedEntry(value: unknown): DockedPanelEntry | null {

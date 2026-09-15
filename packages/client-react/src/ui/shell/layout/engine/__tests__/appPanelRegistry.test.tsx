@@ -1,7 +1,7 @@
 import type { ComponentType, ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { PanelId } from "@rtc/client-core";
+import type { LayoutPanelInstance, PanelId } from "@rtc/client-core";
 
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
@@ -19,7 +19,11 @@ import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 
-import { appPanelRegistry } from "../appPanelRegistry";
+import {
+  appPanelRegistry,
+  instanceRegistryFor,
+  instanceSpecsFor,
+} from "../appPanelRegistry";
 
 // appPanelRegistry is pure wiring: panel id -> module root. A swapped pair
 // yields a completely plausible-looking app showing the wrong module in two
@@ -111,6 +115,65 @@ describe("appPanelRegistry", () => {
   });
 });
 
+const INSTANCES: readonly LayoutPanelInstance[] = [
+  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+];
+
+describe("instanceRegistryFor", () => {
+  it("maps each instance id to a ChartPanel pinned to its own symbol", () => {
+    const registry = instanceRegistryFor(INSTANCES);
+
+    for (const instance of INSTANCES) {
+      const entry = registry[instance.id];
+
+      expect(entry).toBeTypeOf("function");
+      const element = entry() as ReactElement<PinnedSymbolProps>;
+      expect(element.type).toBe(ChartPanel);
+      expect(element.props.pinnedSymbol).toBe(instance.symbol);
+    }
+  });
+
+  it("wires exactly the given instance ids and no others", () => {
+    const registry = instanceRegistryFor(INSTANCES);
+
+    expect(Object.keys(registry).sort()).toEqual(
+      INSTANCES.map((instance) => {
+        return instance.id;
+      }).sort(),
+    );
+  });
+
+  it("returns an empty registry for an empty instance list", () => {
+    expect(instanceRegistryFor([])).toEqual({});
+  });
+});
+
+describe("instanceSpecsFor", () => {
+  it("gives each instance's symbol as the title and a root maximize scope", () => {
+    expect(instanceSpecsFor(INSTANCES)).toEqual({
+      "eq-chart:AAPL": {
+        id: "eq-chart:AAPL",
+        title: "AAPL",
+        maximizeScope: "root",
+      },
+      "eq-chart:MSFT": {
+        id: "eq-chart:MSFT",
+        title: "MSFT",
+        maximizeScope: "root",
+      },
+    });
+  });
+
+  it("returns empty specs for an empty instance list", () => {
+    expect(instanceSpecsFor([])).toEqual({});
+  });
+});
+
 interface NewRfqProps {
   onCreated: unknown;
+}
+
+interface PinnedSymbolProps {
+  pinnedSymbol?: string;
 }

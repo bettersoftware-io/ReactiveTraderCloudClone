@@ -12,13 +12,23 @@ import styles from "./ChartPanel.module.css";
 
 /**
  * The chart panel's body: the live instrument header over the interactive
- * candle plot for the workspace's selected symbol. The control row
- * (instrument tabs + chart-type/indicator/timeframe pills) is hoisted to
- * EqChartHead, the panel's headControls — mirroring the prototype's
- * ChartPanelControls split. A pure data/join component: all chart geometry
- * and gesture state live in CandleChart.
+ * candle plot for the workspace's selected symbol — or, for a dynamically
+ * opened instance panel (Phase 4), the instance's PINNED symbol instead. The
+ * control row (instrument tabs + chart-type/indicator/timeframe pills) is
+ * hoisted to EqChartHead, the panel's headControls — mirroring the
+ * prototype's ChartPanelControls split. A pure data/join component: all
+ * chart geometry and gesture state live in CandleChart.
+ *
+ * `pinnedSymbol` (Phase 4 dynamic chart instances): when set, every
+ * symbol-keyed read/write below uses it instead of the shared workspace
+ * selection — the instance stops following `sel` entirely. Deliberately NOT
+ * threaded to the instrument tabs (there are none here; instance panels get
+ * no head controls, see appPanelRegistry) or to view settings — timeframe,
+ * chart type, indicators, panes and y-scale all keep following the shared
+ * eqWorkspace singleton. That is a known v1 limitation: a pinned instance
+ * shows its own symbol on its own view settings, not its own.
  */
-export function ChartPanel(): ReactElement {
+export function ChartPanel({ pinnedSymbol }: ChartPanelProps): ReactElement {
   const {
     useEqWorkspace,
     useEquityQuote,
@@ -33,6 +43,7 @@ export function ChartPanel(): ReactElement {
   const { substrate } = useChartSubstrate();
   const { sel, timeframe, chartType, indicators, panes, yScale, compare } =
     state;
+  const sym = pinnedSymbol ?? sel;
 
   const {
     state: drawState,
@@ -42,8 +53,8 @@ export function ChartPanel(): ReactElement {
     shiftAnchors,
     updateDrawing,
   } = useEqDrawings();
-  const quote = useEquityQuote(sel);
-  const candles = useCandles(sel, timeframe);
+  const quote = useEquityQuote(sym);
+  const candles = useCandles(sym, timeframe);
   // The comparison symbol's series — the presenter maps "" to a stable
   // empty series, so no compare costs nothing. Reuses the same keyed
   // useCandles bind as the primary (per-symbol streams already exist).
@@ -52,17 +63,17 @@ export function ChartPanel(): ReactElement {
   // pair of inert false-defaults, so no comparison costs nothing (mirrors
   // the compareCandles line above).
   const compareBackfill = useCandleBackfill(compare ?? "", timeframe);
-  const backfill = useCandleBackfill(sel, timeframe);
+  const backfill = useCandleBackfill(sym, timeframe);
   const instruments = useWatchlist();
   const instrument = instruments.find((i) => {
-    return i.symbol === sel;
+    return i.symbol === sym;
   });
   // Derived once here (no timers) and shared by the header's flash colour
   // and the candle plot's last-bar glow — mirrors the prototype's single
   // fl/flashOn computed in EquitiesScreen and threaded to both.
   const { flashOn, dir } = useTickFlash(quote?.last ?? null);
 
-  if (!sel) {
+  if (!sym) {
     return <div className={styles.empty}>SELECT AN INSTRUMENT</div>;
   }
 
@@ -74,7 +85,7 @@ export function ChartPanel(): ReactElement {
   // error cooldown), so this needs no eligibility logic of its own — the
   // near-edge gate in CandleChart decides WHEN, this decides WHAT.
   function loadOlderForChart(): void {
-    loadOlderCandles(sel, timeframe);
+    loadOlderCandles(sym, timeframe);
 
     if (compare !== null) {
       loadOlderCandles(compare, timeframe);
@@ -92,26 +103,26 @@ export function ChartPanel(): ReactElement {
   }
 
   function commitDrawing(d: EqDrawing): void {
-    addDrawing(sel, d);
+    addDrawing(sym, d);
   }
 
   function updateDrawingOnSelectedSymbol(d: EqDrawing): void {
-    updateDrawing(sel, d);
+    updateDrawing(sym, d);
   }
 
   function deleteSelectedDrawing(): void {
-    deleteSelected(sel);
+    deleteSelected(sym);
   }
 
   function shiftAnchorsForSelectedSymbol(by: number): void {
-    shiftAnchors(sel, by);
+    shiftAnchors(sym, by);
   }
 
   return (
     <div className={styles.body}>
       <div className={styles.chartArea}>
         <InstrumentHeader
-          symbol={sel}
+          symbol={sym}
           instrumentName={instrument?.name}
           exchange={instrument?.exchange}
           quote={quote}
@@ -125,7 +136,7 @@ export function ChartPanel(): ReactElement {
           // way to know "the series means something different now" (a
           // symbol swap keeps a similar seriesLen; a timeframe swap can
           // even keep it identical), so a fresh mount is the reset signal.
-          key={`${sel}|${timeframe}`}
+          key={`${sym}|${timeframe}`}
           candles={candles}
           liveRate={quote?.last ?? 0}
           flashOn={flashOn}
@@ -142,7 +153,7 @@ export function ChartPanel(): ReactElement {
           onLoadOlder={loadOlderForChart}
           onLoadOlderCompare={loadOlderForCompare}
           drawTool={drawState.tool}
-          drawings={drawState.drawings[sel] ?? EMPTY_DRAWINGS}
+          drawings={drawState.drawings[sym] ?? EMPTY_DRAWINGS}
           selectedDrawingId={drawState.selectedId}
           onCommitDrawing={commitDrawing}
           onUpdateDrawing={updateDrawingOnSelectedSymbol}
@@ -160,3 +171,10 @@ export function ChartPanel(): ReactElement {
 // EMPTY_DRAWINGS default — this one covers the "selected symbol not yet a
 // key in state.drawings" case).
 const EMPTY_DRAWINGS: readonly EqDrawing[] = [];
+
+interface ChartPanelProps {
+  /** A dynamically opened instance's fixed symbol (Phase 4 dynamic chart
+   * instances). Unset for the default docked eq-chart panel, which keeps
+   * following the shared eqWorkspace selection. */
+  pinnedSymbol?: string;
+}

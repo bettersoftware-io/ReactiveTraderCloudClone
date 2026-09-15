@@ -44,6 +44,22 @@ export type LayoutNode =
       readonly initialPx?: readonly (number | undefined)[];
     }
   | { readonly kind: "panel"; readonly panelId: PanelId };
+/** One dynamically opened panel instance (Phase 4). `id` doubles as the
+ * engine panelId — "eq-chart:<symbol>" — so every id-keyed subsystem
+ * (registry, blob, strips, pins) needs no new key shape. Only the dockview
+ * engine renders instances; in-house projects them away (disparity
+ * doctrine — the tree in `root` never contains them).
+ *
+ * Named `LayoutPanelInstance` (not the bare `PanelInstance`) because
+ * `#/machines/jarvisPanels` already declares an unrelated `PanelInstance` (a
+ * docked Jarvis panel entry) that keeps the bare name — see that file's doc.
+ * This is the single name for the Phase 4 type; it is never aliased. */
+export interface LayoutPanelInstance {
+  readonly id: PanelId;
+  readonly kind: "eq-chart";
+  readonly symbol: string;
+}
+
 export interface LayoutState {
   readonly root: LayoutNode;
   readonly maximized: PanelId | null;
@@ -53,6 +69,10 @@ export interface LayoutState {
    * render, Dockview removes/re-adds live) — so reopen restores the seed
    * position without any tree surgery here. */
   readonly closed: readonly PanelId[];
+  /** Dynamically opened panel instances (Phase 4) — capped and deduped by
+   * `openInstance`. Not part of `root`'s tree; see `LayoutPanelInstance`'s
+   * doc. */
+  readonly instances: readonly LayoutPanelInstance[];
 }
 export interface LayoutPort {
   readonly initial: LayoutState;

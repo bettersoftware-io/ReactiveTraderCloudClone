@@ -129,6 +129,24 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     return this.root.querySelector("[data-dock-glide]") !== null;
   }
 
+  /** The chart-instance ids the bridge received (`data-instances`), in prop
+   * order — the layout machine's `instances` as the engine sees them. */
+  instanceIds(): readonly string[] {
+    const raw = this.engineEl().getAttribute("data-instances") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
+  }
+
+  /** True when `panelId`'s head renders the close control — attached to
+   * chart-instance heads only. */
+  hasCloseControl(panelId: string): boolean {
+    return within(this.root).queryByTestId(`panel-${panelId}-close`) !== null;
+  }
+
+  clickClose(panelId: string): void {
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-close`));
+  }
+
   clickCollapse(panelId: string): void {
     fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-collapse`));
   }

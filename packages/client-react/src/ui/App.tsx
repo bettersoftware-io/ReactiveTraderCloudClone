@@ -19,6 +19,8 @@ import {
   appPanelRegistry,
   dockedRegistryFor,
   dockedSpecsFor,
+  instanceRegistryFor,
+  instanceSpecsFor,
 } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
@@ -85,7 +87,9 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
     useDockedPanelIds,
     useWorkspaceLayoutResets,
   } = useViewModel();
-  const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
+
+  const { state, maximize, restore, collapse, expand, resize, closeInstance } =
+    useLayout(tab);
   const docked = useDockedPanelIds(tab);
   const layoutResets = useWorkspaceLayoutResets();
   // The in-house engine renders the VISIBLE projection: View-menu-closed
@@ -102,8 +106,32 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   // edit ("make it a table" while docked) is reflected on the very next
   // render, regardless of which tab the panel was docked into.
   const { dockedPanels, undockPanel, dismissPanel } = useJarvisPanels();
-  const registry = { ...appPanelRegistry, ...dockedRegistryFor(dockedPanels) };
-  const specs = { ...PANEL_SPECS, ...dockedSpecsFor(dockedPanels) };
+  const registry = {
+    ...appPanelRegistry,
+    ...dockedRegistryFor(dockedPanels),
+  };
+
+  const specs = {
+    ...PANEL_SPECS,
+    ...dockedSpecsFor(dockedPanels),
+  };
+
+  // Chart instances (layer-2 membership the layout machine owns) merge in
+  // after the docked slices for the Dockview engine ONLY — an instance id is
+  // not in the layout tree, so in-house never renders one and never receives
+  // one (the Solid twin's split, too). Rebuilding these per render remounts
+  // nothing: the bridge's portals are keyed by slot/panel/mount and reconcile
+  // the same element types in place.
+  const dockviewRegistry = {
+    ...registry,
+    ...instanceRegistryFor(state.instances),
+  };
+
+  const dockviewSpecs = {
+    ...specs,
+    ...instanceSpecsFor(state.instances),
+  };
+
   const headRegistry = {
     ...appHeadRegistry,
     ...dockedHeadsFor(dockedPanels, undockPanel, dismissPanel),
@@ -117,19 +145,21 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
           <Suspense fallback={null}>
             <DockviewLayoutEngine
               tab={tab}
-              registry={registry}
-              specs={specs}
+              registry={dockviewRegistry}
+              specs={dockviewSpecs}
               headRegistry={headRegistry}
               store={dockLayoutStore}
               maximized={state.maximized}
               collapsed={state.collapsed}
               closed={state.closed}
               docked={docked}
+              instances={state.instances}
               layoutResets={layoutResets}
               onMaximize={maximize}
               onRestore={restore}
               onCollapse={collapse}
               onExpand={expand}
+              onCloseInstance={closeInstance}
             />
           </Suspense>
         ) : (
