@@ -1,5 +1,13 @@
 import type { DockviewApi } from "dockview";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import type { DockEngineOptions } from "#/createDockEngine";
 import {
@@ -12,17 +20,14 @@ import {
 } from "#/createDockEngine";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
-// dockview-core's own unit tests run under jsdom with the same stub.
+// dockview-core's own unit tests run under jsdom with a no-op stub. This one
+// also RECORDS what each observer watches, so a test can deliver a resize to
+// the engine's own container observer (see "settle resize") — everywhere else
+// it behaves as the no-op did: nothing is ever delivered unprompted.
 beforeAll(() => {
   if (typeof ResizeObserver === "undefined") {
     // biome-ignore lint/suspicious/noExplicitAny: test-only global patch
-    (globalThis as any).ResizeObserver = class {
-      observe(): void {}
-
-      unobserve(): void {}
-
-      disconnect(): void {}
-    };
+    (globalThis as any).ResizeObserver = RecordingResizeObserver;
   }
 });
 
@@ -540,6 +545,231 @@ describe("dispose flush — arrangement origin", () => {
     // …and the reason: engine #1 persisted nothing, so #2 seeded exactly.
     expect(stored).toBeNull();
   });
+});
+
+describe("settle resize — a pristine grid tracks its source exactly", () => {
+  // The real FX tab's ratios (client-core defaultLayoutPort's FX_ROOT). Made-up
+  // fractions do NOT reproduce the bug: 0.75/0.25 + 0.65/0.35 rescaled
+  // 981→980 losslessly (measured), so a fixture that "looks equivalent" would
+  // let a broken fix pass.
+  const FX_REAL = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.73, 0.27],
+    initialPx: [undefined, 360],
+    children: [
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.66, 0.34],
+        children: [
+          { kind: "panel", panelId: "fx-rates" },
+          { kind: "panel", panelId: "fx-blotter" },
+        ],
+      },
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "fx-analytics" },
+          { kind: "panel", panelId: "fx-positions" },
+        ],
+      },
+    ],
+  } as const;
+
+  const FX_IDS = ["fx-rates", "fx-blotter", "fx-analytics", "fx-positions"];
+
+  beforeEach(() => {
+    recordedObservers.splice(0);
+  });
+
+  function fxAt(width: number, height: number): DockEngineOptions {
+    return {
+      ...base(),
+      container: sizedContainer(width, height),
+      seed: FX_REAL,
+      debounceMs: 60_000,
+    };
+  }
+
+  /** The container settles to width×height. With `dockviewFirst`, dockview's
+   * own shell observer has already laid the grid out proportionally — what a
+   * browser does, and the lossy step — before ours runs; without it, ours runs
+   * first. RO callback order across observers isn't something to rely on. */
+  function settleTo(
+    container: HTMLElement,
+    width: number,
+    height: number,
+    dockviewFirst: boolean,
+  ): void {
+    Object.defineProperty(container, "clientWidth", {
+      configurable: true,
+      get: () => {
+        return width;
+      },
+    });
+    Object.defineProperty(container, "clientHeight", {
+      configurable: true,
+      get: () => {
+        return height;
+      },
+    });
+
+    if (dockviewFirst) {
+      lastDockviewApi().layout(width, height);
+    }
+
+    for (const observer of [...recordedObservers]) {
+      if (observer.targets.includes(container)) {
+        const entry = {
+          target: container,
+          contentRect: { width, height },
+        } as unknown as ResizeObserverEntry;
+        observer.callback([entry], observer as unknown as ResizeObserver);
+      }
+    }
+  }
+
+  /** Every FX group's live height×width, as dockview holds it right now. */
+  function liveSizes(): Record<string, string> {
+    const api = lastDockviewApi();
+
+    return Object.fromEntries(
+      FX_IDS.map((id) => {
+        const group = api.getPanel(id)?.group;
+
+        return [id, `${group?.api.height}x${group?.api.width}`];
+      }),
+    );
+  }
+
+  function freshSizesAt(width: number, height: number): Record<string, string> {
+    const engine = createDockEngine(fxAt(width, height));
+    const sizes = liveSizes();
+    engine.dispose();
+
+    return sizes;
+  }
+
+  it("lands a settle resize on exactly what a fresh engine at that size renders (seed path)", () => {
+    const expected = freshSizesAt(1907, 980);
+
+    const opts = fxAt(1907, 981);
+    const engine = createDockEngine(opts);
+    settleTo(opts.container, 1907, 980, true);
+
+    expect(liveSizes()).toEqual(expected);
+    engine.dispose();
+  });
+
+  it("lands exactly even when our observer runs before dockview lays out", () => {
+    const expected = freshSizesAt(1907, 980);
+
+    const opts = fxAt(1907, 981);
+    const engine = createDockEngine(opts);
+    settleTo(opts.container, 1907, 980, false);
+
+    expect(liveSizes()).toEqual(expected);
+    engine.dispose();
+  });
+
+  it("leaves a user-arranged grid to dockview's proportional resize", () => {
+    // The lossy result, for comparison: dockview alone, nobody correcting.
+    const lossyOpts = fxAt(1907, 981);
+    const lossy = createDockEngine(lossyOpts);
+    lastDockviewApi().layout(1907, 980);
+    const proportional = liveSizes();
+    lossy.dispose();
+
+    const opts = fxAt(1907, 981);
+    const engine = createDockEngine(opts);
+    // Once a user has arranged the dock, its proportions are theirs: a resize
+    // must rescale them, never snap back to the seed.
+    touchContainer(opts.container);
+    settleTo(opts.container, 1907, 980, true);
+
+    expect(liveSizes()).toEqual(proportional);
+    expect(proportional).not.toEqual(freshSizesAt(1907, 980));
+    engine.dispose();
+  });
+
+  it("restores a blob saved at the settled size exactly after settling from a pre-settle container (blob path)", () => {
+    const blob = userArrangedBlob(fxAt(1907, 980));
+
+    const reference = createDockEngine({ ...fxAt(1907, 980), blob });
+    const expected = liveSizes();
+    reference.dispose();
+
+    const opts = { ...fxAt(1907, 981), blob };
+    const engine = createDockEngine(opts);
+    settleTo(opts.container, 1907, 980, true);
+
+    expect(liveSizes()).toEqual(expected);
+    engine.dispose();
+  });
+
+  it("never snaps a restored user arrangement back to the seed on settle", () => {
+    // A user dragged the tiles/blotter sash well away from the seed's ratio
+    // and the layout was saved at the settled size…
+    const savedOpts = fxAt(1907, 980);
+    let blob = "";
+    const saver = createDockEngine({
+      ...savedOpts,
+      onLayoutChange: (next: string) => {
+        blob = next;
+      },
+    });
+    touchContainer(savedOpts.container);
+    lastDockviewApi().getPanel("fx-rates")?.group.api.setSize({ height: 500 });
+    saver.dispose();
+    const userRates = Number.parseInt(
+      String(JSON.parse(blob).grid.root.data[0].data[0].size),
+      10,
+    );
+    expect(userRates).toBeLessThan(600);
+
+    // …then a reload restores it into a pre-settle container, still pristine
+    // (nobody has touched THIS mount yet).
+    const opts = { ...fxAt(1907, 981), blob };
+    const engine = createDockEngine(opts);
+    settleTo(opts.container, 1907, 980, true);
+
+    expect(heightOf("fx-rates")).toBe(userRates);
+    engine.dispose();
+  });
+
+  it("keeps a replayed strip at its bar through a settle", () => {
+    const opts = fxAt(1907, 981);
+    const engine = createDockEngine(opts);
+    // A bridge's collapse REPLAY: programmatic, so the grid is still pristine.
+    engine.collapsePanel("fx-blotter");
+    // group.api heights are MODEL sizes (card + gap), so the bar is read live
+    // rather than compared to the 32px STRIP card constant.
+    const barBefore = heightOf("fx-blotter");
+    settleTo(opts.container, 1907, 980, true);
+
+    const bar = heightOf("fx-blotter");
+    const rates = heightOf("fx-rates");
+    engine.dispose();
+
+    expect(bar).toBe(barBefore);
+    // …and its sibling took the rest of the column rather than a seed size
+    // that would leave a gap (or overlap) against the clamped bar.
+    const fresh = freshSizesAt(1907, 980);
+    expect(rates + bar).toBe(
+      modelHeight(fresh["fx-rates"]) + modelHeight(fresh["fx-blotter"]),
+    );
+  });
+
+  function heightOf(panelId: string): number {
+    return lastDockviewApi().getPanel(panelId)?.group.api.height ?? Number.NaN;
+  }
+
+  function modelHeight(size: string | undefined): number {
+    return Number.parseInt((size ?? "").split("x")[0] ?? "", 10);
+  }
 });
 
 describe("collapse / expand", () => {
@@ -2716,6 +2946,31 @@ function baselineBranchSize(opts: DockEngineOptions, panelId: string): number {
   }
 
   return size;
+}
+
+/** Every ResizeObserver constructed since the last clear, in order. */
+const recordedObservers: RecordingResizeObserver[] = [];
+
+/** The file's ResizeObserver stand-in: inert unless a test delivers a resize
+ * by calling an observer's `callback` for a target it is watching. */
+class RecordingResizeObserver {
+  readonly targets: Element[] = [];
+
+  constructor(readonly callback: ResizeObserverCallback) {
+    recordedObservers.push(this);
+  }
+
+  observe(target: Element): void {
+    this.targets.push(target);
+  }
+
+  unobserve(target: Element): void {
+    this.targets.splice(this.targets.indexOf(target), 1);
+  }
+
+  disconnect(): void {
+    this.targets.splice(0);
+  }
 }
 
 /** A detached-from-layout container that REPORTS a size, as a real browser

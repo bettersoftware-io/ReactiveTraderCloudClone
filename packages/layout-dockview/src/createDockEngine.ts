@@ -1,4 +1,9 @@
-import { createDockview, type DockviewApi, type DockviewTheme } from "dockview";
+import {
+  createDockview,
+  type DockviewApi,
+  type DockviewTheme,
+  type SerializedDockview,
+} from "dockview";
 
 import {
   DOCK_BLOB_VERSION,
@@ -1222,6 +1227,154 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", markUserArranged, true);
 
+  // A pristine grid tracks its source EXACTLY through container resizes.
+  //
+  // The construction above measures the container once, and an eager mount
+  // can measure it before the chrome above has settled (981px, settling to
+  // 980 — measured on app/fx-dockview). Dockview's shell observer then lays
+  // the grid out proportionally to the settled size, and a proportional
+  // rescale between two integer extents is lossy: the tiles/blotter sash comes
+  // out 1px off what a construction at 980 renders. So while no user has
+  // arranged the dock (see userArranged), each settled size re-derives the
+  // exact grid from the source and re-applies its sizes in place.
+  //
+  // Our own observer, not dockview's: 8.3.1's ShellManager watches its shell
+  // unconditionally (disableAutoResizing does not reach it) and a pure resize
+  // fires no onDidLayoutChange, so there is nothing to hook. Calling
+  // api.layout first makes callback ORDER irrelevant — if dockview already
+  // laid out, it is a no-op (dockview skips equal dimensions); if not,
+  // dockview's own later call is.
+  let trackedWidth = width;
+  let trackedHeight = height;
+
+  function reapplyExactLayoutOnResize(): void {
+    const nextWidth = opts.container.clientWidth;
+    const nextHeight = opts.container.clientHeight;
+
+    // Hidden (display: none) collapses to 0×0 — dockview skips it too.
+    if (nextWidth === 0 || nextHeight === 0) {
+      return;
+    }
+
+    if (nextWidth === trackedWidth && nextHeight === trackedHeight) {
+      return;
+    }
+
+    trackedWidth = nextWidth;
+    trackedHeight = nextHeight;
+
+    // Always, so anything after this line sees the grid at its settled size
+    // whichever observer ran first.
+    api.layout(nextWidth, nextHeight);
+
+    // A user's arrangement is theirs: dockview's proportional resize is the
+    // right behaviour for it, so only a pristine grid is corrected. This gate
+    // guards the CORRECTION, not the handler — a step that must follow every
+    // resize belongs below the correction, not behind this return.
+    //
+    // Deliberately coarse: ANY pointerdown in the dock ends correction for
+    // this mount — a click in an order ticket as much as a sash drag. The
+    // correction exists for the settle BEFORE interaction; a later window
+    // resize after any click is dockview-proportional again, by design.
+    // Widening this to "arrangement-only" pointers would need a reliable way
+    // to tell the two apart, which is exactly what origin-by-pointer avoids.
+    if (userArranged) {
+      return;
+    }
+
+    // Only a SEEDED grid is corrected. A blob restored into a pre-settle
+    // container and settled back to the size it was saved at comes out
+    // exact on its own — measured: 0 lossy of 2,103 cases (3 widths ×
+    // heights 600–1300), where the same sweep found the seed path lossy in
+    // 717 — because that is a round trip, while a seed built at 981 is not.
+    if (!restored.seeded) {
+      return;
+    }
+
+    const exact = convertSeed(opts.seed, nextWidth, nextHeight, {
+      gap: GROUP_GAP_PX,
+    }).serialized.grid;
+
+    // One serialisation per corrective resize: on a pristine grid a user
+    // dragging the window edge runs this every frame.
+    const live = api.toJSON().grid;
+
+    if (exact.orientation === live.orientation) {
+      alignBranchSizes(exact.root, live.root, axisDividedBy(exact.orientation));
+    }
+  }
+
+  /** Sets `live`'s children to `exact`'s sizes along `along`, then recurses —
+   * outer level first, because resizing a parent proportionally rescales its
+   * children (the lossy step again, one level down) and the inner pass then
+   * corrects that. A level is sized only when its children match the source
+   * one-for-one (same panels, same order). Anything the source did not size —
+   * a dynamic panel, a closed leaf's absence — leaves that level to dockview,
+   * while matched children below it are still aligned. Groups under a design
+   * pin or a strip need no special case: their live min=max constraints win
+   * over a set, so a sibling sized against one is clamped back by dockview. */
+  function alignBranchSizes(
+    exact: GridNode,
+    live: GridNode,
+    along: DockStripOrientation,
+  ): void {
+    if (exact.type !== "branch" || live.type !== "branch") {
+      return;
+    }
+
+    const exactChildren = exact.data as readonly GridNode[];
+    const liveChildren = live.data as readonly GridNode[];
+    const matched =
+      exactChildren.length === liveChildren.length &&
+      exactChildren.every((child, index) => {
+        const peer = liveChildren[index];
+
+        return peer !== undefined && samePanels(child, peer);
+      });
+
+    if (matched) {
+      // All but the last: each set redistributes along the axis, and the last
+      // child absorbs whatever remains — which is exactly its exact size.
+      for (let index = 0; index < exactChildren.length - 1; index += 1) {
+        const size = exactChildren[index]?.size;
+        const group = firstGroupUnder(liveChildren[index]);
+
+        if (size !== undefined && group !== undefined) {
+          axisOf(group, along).set(size);
+        }
+      }
+    }
+
+    const inner = crossAxisOf(along);
+
+    // Recursion needs only STRUCTURE from the live snapshot (sizes are read
+    // back from the groups), so it stays valid after the sets above.
+    for (const child of exactChildren) {
+      const peer = liveChildren.find((candidate) => {
+        return samePanels(candidate, child);
+      });
+
+      if (peer !== undefined) {
+        alignBranchSizes(child, peer, inner);
+      }
+    }
+  }
+
+  function firstGroupUnder(
+    node: GridNode | undefined,
+  ): SizableGroup | undefined {
+    const panelId = node === undefined ? undefined : panelIdsIn(node)[0];
+
+    return panelId === undefined ? undefined : groupOf(panelId);
+  }
+
+  // Assumes ResizeObserver exists — safe, dockview's own ShellManager already
+  // requires it; jsdom tests stub it (see createDockEngine.test.ts).
+  const resizeObserver = new ResizeObserver(() => {
+    reapplyExactLayoutOnResize();
+  });
+  resizeObserver.observe(opts.container);
+
   return {
     maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
@@ -1416,6 +1569,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       changeSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
       opts.container.removeEventListener("pointerdown", markUserArranged, true);
+      resizeObserver.disconnect();
       disarmSashUnpin();
 
       if (glideTimer !== null) {
@@ -1918,6 +2072,54 @@ interface RestoredLayout {
   readonly stripSizes: ReadonlyMap<string, number>;
   /** Each persisted flipped split's pre-flip size, by {@link flipKeyFor}. */
   readonly flipSizes: ReadonlyMap<string, number>;
+  /** Whether this load converted the seed (rather than restoring a blob) —
+   * the case a settle resize must correct; see reapplyExactLayoutOnResize. */
+  readonly seeded: boolean;
+}
+
+type SerializedGrid = SerializedDockview["grid"];
+
+/** One node of a serialized grid — a branch's `data` is its children. */
+type GridNode = SerializedGrid["root"];
+
+/** The part of a serialized leaf's `data` the grid walk reads. */
+interface LeafData {
+  readonly views?: readonly string[];
+}
+
+/** Every panel id under a serialized grid node, in order. */
+function panelIdsIn(node: GridNode): readonly string[] {
+  if (node.type === "leaf") {
+    return (node.data as LeafData).views ?? [];
+  }
+
+  return (node.data as readonly GridNode[]).flatMap(panelIdsIn);
+}
+
+/** Whether two serialized nodes hold the same panels in the same order —
+ * how a source's node is matched to the live one it describes. */
+function samePanels(a: GridNode, b: GridNode): boolean {
+  const left = panelIdsIn(a);
+  const right = panelIdsIn(b);
+
+  return (
+    left.length === right.length &&
+    left.every((panelId, index) => {
+      return right[index] === panelId;
+    })
+  );
+}
+
+/** The {@link axisOf} name for the extent a grid of `orientation` divides at
+ * its root: a HORIZONTAL grid lays children side by side (widths). */
+function axisDividedBy(orientation: string): DockStripOrientation {
+  return orientation === "HORIZONTAL" ? "vertical" : "horizontal";
+}
+
+/** Grid branches alternate orientation, so a child branch divides the other
+ * extent. */
+function crossAxisOf(along: DockStripOrientation): DockStripOrientation {
+  return along === "vertical" ? "horizontal" : "vertical";
 }
 
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
@@ -1949,7 +2151,11 @@ function loadBlobOrSeed(
         group.api.locked = false;
       }
 
-      return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
+      return {
+        pins: designPinsIn(parsed),
+        ...stripGeometryIn(parsed),
+        seeded: false,
+      };
     } catch {
       // One dynamic (Jarvis-docked) panel's node can go unrestorable on its
       // own — a stale/mismatched shape the app never wrote itself — without
@@ -1971,7 +2177,11 @@ function loadBlobOrSeed(
             group.api.locked = false;
           }
 
-          return { pins: designPinsIn(parsed), ...stripGeometryIn(parsed) };
+          return {
+            pins: designPinsIn(parsed),
+            ...stripGeometryIn(parsed),
+            seeded: false,
+          };
         } catch {
           // fall through to the seed
         }
@@ -1984,7 +2194,12 @@ function loadBlobOrSeed(
   });
   api.fromJSON(serialized);
 
-  return { pins, stripSizes: new Map(), flipSizes: new Map() };
+  return {
+    pins,
+    stripSizes: new Map(),
+    flipSizes: new Map(),
+    seeded: true,
+  };
 }
 
 /** A blob that MAY carry the pin sidecar — what a save wrote, unverified. */
