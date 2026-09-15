@@ -533,11 +533,20 @@ export function DockviewLayoutEngine(
   // `data-collapsed` witnesses that the collapse set reached this bridge —
   // identically for both clients — while the strip itself is a real
   // `PanelStrip` in the body slot, just as in-house.
+  //
+  // `data-maximized` is the SAME render as the in-house engine's own
+  // `state.maximized ?? ""`, and must stay unconditional for the same reason
+  // `data-collapsed` is: the shared page object reads one attribute for both
+  // engines, so an engine that omits it reports "nothing is maximized" rather
+  // than "this engine has no witness". `JarvisDriverPage.maximizedPanelId`
+  // now throws on absence, which turns that into a loud failure — but only
+  // because every engine renders it here.
   return (
     <main
       data-testid="layout-engine"
       data-engine="dockview"
       data-groups={groups()}
+      data-maximized={props.maximized ?? ""}
       data-collapsed={props.collapsed.join(" ")}
       data-closed={props.closed.join(" ")}
       data-popped={popped().join(" ")}

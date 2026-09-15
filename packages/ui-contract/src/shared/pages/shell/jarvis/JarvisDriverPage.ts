@@ -137,16 +137,63 @@ export class JarvisDriverPage extends MountedComponent<Record<string, never>> {
 
   /** The active tab's currently-maximized panel id (`data-maximized`), or
    * `""` when nothing is maximized — mirrors `InhouseLayoutEngine`'s own
-   * `state.maximized ?? ""` render. */
+   * `state.maximized ?? ""` render, which the Dockview bridges render too.
+   *
+   * THROWS when the attribute is absent rather than reporting it as `""`.
+   * Both engines render the witness unconditionally, so "no attribute" is
+   * never a layout state — it means this engine stopped publishing it. The
+   * old `?? ""` collapsed that into the same answer as "nothing is
+   * maximized", which is what every `toBe("")` assertion expects: those
+   * passed against an engine carrying no witness at all, checking nothing.
+   * See the engine-parity block in `LayoutEngine.contract.spec.ts`. */
   maximizedPanelId(): string {
-    return this.layoutEngine().getAttribute("data-maximized") ?? "";
+    const engine = this.layoutEngine();
+    const witness = engine.getAttribute("data-maximized");
+
+    if (witness === null) {
+      throw new Error(
+        `layout-engine (data-engine="${engine.getAttribute("data-engine") ?? "inhouse"}") renders no data-maximized attribute — ` +
+          "the maximize witness is missing, which is NOT the same as nothing being maximized. " +
+          "Every engine must render it; see DockviewLayoutEngine's <main> element.",
+      );
+    }
+
+    return witness;
   }
 
   /** True while the given panel id's own wrapper (`panel-${id}`) reports
    * itself maximized (`data-maximized="true"`) — the per-panel counterpart
-   * to {@link maximizedPanelId}'s layout-engine-level read. */
+   * to {@link maximizedPanelId}'s layout-engine-level read.
+   *
+   * Under Dockview there is often no per-panel wrapper to read: only a
+   * Jarvis-DOCKED panel tags its dockview group with `panel-${id}`, and a
+   * group can hold several stacked panels, so tagging every one would be
+   * wrong. The fallback is exact rather than approximate — in-house derives
+   * BOTH attributes from the same `state.maximized` (`data-maximized=
+   * {state.maximized === panelId}` per panel against `state.maximized ?? ""`
+   * at the root), so the root witness answers this question identically. The
+   * per-panel attribute's real job is the CSS hook `.panel[data-maximized=
+   * "true"]`.
+   *
+   * Never reports absence as a clean `false`: a wrapper that exists WITHOUT
+   * the witness throws, and the root fallback throws when the root witness is
+   * itself missing. */
   isPanelMaximized(panelId: string): boolean {
     const panel = within(this.root).queryByTestId(`panel-${panelId}`);
-    return panel?.getAttribute("data-maximized") === "true";
+
+    if (panel === null) {
+      return this.maximizedPanelId() === panelId;
+    }
+
+    const witness = panel.getAttribute("data-maximized");
+
+    if (witness === null) {
+      throw new Error(
+        `panel "${panelId}" has a wrapper but renders no data-maximized attribute — the per-panel ` +
+          "maximize witness is missing, which is NOT the same as the panel not being maximized.",
+      );
+    }
+
+    return witness === "true";
   }
 }
