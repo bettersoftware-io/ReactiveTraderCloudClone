@@ -3077,23 +3077,45 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
-  it("R21 a resize while a panel is maximized does not re-share the instances", () => {
-    const ids = ["i-aapl", "i-msft", "i-nvda", "i-tsla"];
+  it("R21 a nearest-column maximize elsewhere still lets a resize re-share the instances", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
     const opts = equitiesAt(1907);
-    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+    const engine = createDockEngine({
+      ...opts,
+      panels: { ...base().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES,
+    });
 
-    engine.maximizePanel("eq-chart");
-    const before = cardWidths(ids);
+    // The rail's nearest-column maximize boundary contains only the rail
+    // column (eq-ticket/eq-watchlist) — nothing of the instances' row. A
+    // blanket "skip every share while ANY maximize is live" gate would still
+    // block this, even though nothing in the instances' split is a strip.
+    engine.maximizePanel("eq-watchlist");
 
     driveResize(opts.container, 1427, 980);
 
-    // The share rule must not touch the stripped instances underneath a
-    // live maximize's boundary: their widths stay exactly what the maximize
-    // recorded, untouched by the resize (the maximize-exit path is what
-    // pays any share the maximize owes — see settleMaximizeShares).
-    expect(cardWidths(ids)).toEqual(before);
+    expectEqualShares(ids, 4);
     engine.dispose();
   });
+
+  // A root-maximize-of-an-instance regression test (mirroring the deleted
+  // vacuous spec) is deliberately NOT included here: a root (or
+  // container-falling-back nearest-column) maximize's own strip pass marks
+  // every OTHER sibling in api.groups as a strip record, so
+  // shareSplitAmongInstances always sees either zero live members (an
+  // early return) or exactly one — the maximized member itself, with no
+  // static member present — which its own formula computes back to its
+  // current size exactly (`sharedTotal - share * (instances.length - 1)`
+  // with `instances.length === 1` is `sharedTotal - 0`). Verified both by
+  // this derivation and by mutation: deleting the boundary-scoping check
+  // entirely and re-running a root-maximize-of-an-instance resize produces
+  // byte-identical card widths before and after. The scoping check is
+  // still correct and kept (see reapplyExactLayoutOnResize's comment) — it
+  // stops the share rule from ever treating a maximized fill as an
+  // ordinary instance, which today happens to be a no-op only as an
+  // accident of the maximize mechanism, not a guarantee this rule should
+  // lean on. The nearest-column test above is what actually depends on the
+  // scoping (it fails on the pre-fix blanket gate); this one would not.
 
   /** Redefines `container`'s reported size and delivers the resize to every
    * ResizeObserver watching it — the same drive-the-observer idiom as the

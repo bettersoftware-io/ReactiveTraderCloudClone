@@ -1805,25 +1805,36 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // resize, deliberately OUTSIDE both gates above: opening a chart
     // instance is itself a pointerdown inside the dock, so it sets
     // userArranged immediately — a hook gated behind "!userArranged" would
-    // never run for exactly the engines that hold instances. Skipped while
-    // a maximize is live: the maximized boundary's stripped siblings are not
-    // sized by the share rule anyway, and the maximize-exit path
-    // (settleMaximizeShares) already pays whatever shares that boundary owes
-    // once it restores.
-    if (maximized === null) {
-      const splits = new Set<Element>();
+    // never run for exactly the engines that hold instances.
+    //
+    // Scoped to splits OUTSIDE the live maximize's boundary, not "skip while
+    // ANY maximize is live": a maximize elsewhere (e.g. a nearest-column
+    // maximize of the rail) never touches the instances' own split, so a
+    // blanket skip would strand them at a stale share for no reason (R21
+    // below). What the exclusion guards against: a split INSIDE the
+    // boundary can hold the maximized group itself — a root-maximized
+    // instance's row is nothing but strips plus that one live,
+    // fully-expanded member. That member must never be run through the
+    // ordinary share formula, which treats a lone live member as an
+    // instance to be sized down toward its design width — today it happens
+    // to be a no-op there only because a maximize's own strip pass always
+    // leaves at most one live, static-free member behind, which is an
+    // accident of the maximize mechanism, not something this rule should
+    // rely on. The maximize-exit path (settleMaximizeShares) is what pays
+    // whatever a boundary's own split owes once it restores.
+    const boundary = maximized === null ? null : liveMaximizeBoundary();
+    const splits = new Set<Element>();
 
-      for (const instanceId of unpinnedDynamicPanels.keys()) {
-        const split = instanceSplitOf(instanceId);
+    for (const instanceId of unpinnedDynamicPanels.keys()) {
+      const split = instanceSplitOf(instanceId);
 
-        if (split !== null) {
-          splits.add(split);
-        }
+      if (split !== null && (boundary === null || !boundary.contains(split))) {
+        splits.add(split);
       }
+    }
 
-      for (const split of splits) {
-        shareSplitAmongInstances(split);
-      }
+    for (const split of splits) {
+      shareSplitAmongInstances(split);
     }
   }
 
