@@ -3039,6 +3039,95 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
+  // ——— R21: a container resize re-shares chart instances at the new width,
+  // outside the settle-correction gates (reapplyExactLayoutOnResize). Opening
+  // a chart instance is itself a pointerdown inside the dock — it already
+  // sets userArranged — so a hook gated behind "!userArranged" would never
+  // run for exactly the engines that hold instances. ———
+
+  it("R21 a container resize re-shares four instances at the new width", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+
+    expectEqualShares(ids, 4); // baseline at 1907
+
+    driveResize(opts.container, 1427, 980);
+
+    expectEqualShares(ids, 4); // re-shared at 1427, without any open/close
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R21 the same resize re-shares even once the dock is user-arranged", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+
+    // Proves the share runs OUTSIDE the settle-correction gates: touch the
+    // container the way a real sash drag or click would, so userArranged is
+    // true independent of whatever opening the instances above already did.
+    touchContainer(opts.container);
+    expectEqualShares(ids, 4); // baseline at 1907
+
+    driveResize(opts.container, 1427, 980);
+
+    expectEqualShares(ids, 4); // still re-shared, even though userArranged
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R21 a resize while a panel is maximized does not re-share the instances", () => {
+    const ids = ["i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const opts = equitiesAt(1907);
+    const engine = createDockEngine({ ...opts, dynamicPanels: INSTANCES });
+
+    engine.maximizePanel("eq-chart");
+    const before = cardWidths(ids);
+
+    driveResize(opts.container, 1427, 980);
+
+    // The share rule must not touch the stripped instances underneath a
+    // live maximize's boundary: their widths stay exactly what the maximize
+    // recorded, untouched by the resize (the maximize-exit path is what
+    // pays any share the maximize owes — see settleMaximizeShares).
+    expect(cardWidths(ids)).toEqual(before);
+    engine.dispose();
+  });
+
+  /** Redefines `container`'s reported size and delivers the resize to every
+   * ResizeObserver watching it — the same drive-the-observer idiom as the
+   * "settle resize" describe above, reused here for the R21 share-on-resize
+   * behaviour rather than the seed-correction one. */
+  function driveResize(
+    container: HTMLElement,
+    width: number,
+    height: number,
+  ): void {
+    Object.defineProperty(container, "clientWidth", {
+      configurable: true,
+      get: () => {
+        return width;
+      },
+    });
+    Object.defineProperty(container, "clientHeight", {
+      configurable: true,
+      get: () => {
+        return height;
+      },
+    });
+
+    for (const observer of [...recordedObservers]) {
+      if (observer.targets.includes(container)) {
+        const entry = {
+          target: container,
+          contentRect: { width, height },
+        } as unknown as ResizeObserverEntry;
+        observer.callback([entry], observer as unknown as ResizeObserver);
+      }
+    }
+  }
+
   /** Drops `panelId` under `targetId`'s group — the DnD's moveTo. */
   function stackUnder(panelId: string, targetId: string): void {
     const dock = lastDockviewApi();

@@ -1768,8 +1768,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     // A user's arrangement is theirs: dockview's proportional resize is the
     // right behaviour for it, so only a pristine grid is corrected. This gate
-    // guards the CORRECTION, not the handler — a step that must follow every
-    // resize belongs below the correction, not behind this return.
+    // guards the CORRECTION below, not the handler — a step that must follow
+    // every resize (see the instance re-share below) belongs OUTSIDE it.
     //
     // Deliberately coarse: ANY pointerdown in the dock ends correction for
     // this mount — a click in an order ticket as much as a sash drag. The
@@ -1777,29 +1777,53 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // resize after any click is dockview-proportional again, by design.
     // Widening this to "arrangement-only" pointers would need a reliable way
     // to tell the two apart, which is exactly what origin-by-pointer avoids.
-    if (userArranged) {
-      return;
-    }
-
+    //
     // Only a SEEDED grid is corrected. A blob restored into a pre-settle
     // container and settled back to the size it was saved at comes out
     // exact on its own — measured: 0 lossy of 2,103 cases (3 widths ×
     // heights 600–1300), where the same sweep found the seed path lossy in
     // 717 — because that is a round trip, while a seed built at 981 is not.
-    if (!restored.seeded) {
-      return;
+    if (!userArranged && restored.seeded) {
+      const exact = convertSeed(opts.seed, nextWidth, nextHeight, {
+        gap: GROUP_GAP_PX,
+      }).serialized.grid;
+
+      // One serialisation per corrective resize: on a pristine grid a user
+      // dragging the window edge runs this every frame.
+      const live = api.toJSON().grid;
+
+      if (exact.orientation === live.orientation) {
+        alignBranchSizes(
+          exact.root,
+          live.root,
+          axisDividedBy(exact.orientation),
+        );
+      }
     }
 
-    const exact = convertSeed(opts.seed, nextWidth, nextHeight, {
-      gap: GROUP_GAP_PX,
-    }).serialized.grid;
+    // Re-share every unpinned chart instance's split after ANY settled
+    // resize, deliberately OUTSIDE both gates above: opening a chart
+    // instance is itself a pointerdown inside the dock, so it sets
+    // userArranged immediately — a hook gated behind "!userArranged" would
+    // never run for exactly the engines that hold instances. Skipped while
+    // a maximize is live: the maximized boundary's stripped siblings are not
+    // sized by the share rule anyway, and the maximize-exit path
+    // (settleMaximizeShares) already pays whatever shares that boundary owes
+    // once it restores.
+    if (maximized === null) {
+      const splits = new Set<Element>();
 
-    // One serialisation per corrective resize: on a pristine grid a user
-    // dragging the window edge runs this every frame.
-    const live = api.toJSON().grid;
+      for (const instanceId of unpinnedDynamicPanels.keys()) {
+        const split = instanceSplitOf(instanceId);
 
-    if (exact.orientation === live.orientation) {
-      alignBranchSizes(exact.root, live.root, axisDividedBy(exact.orientation));
+        if (split !== null) {
+          splits.add(split);
+        }
+      }
+
+      for (const split of splits) {
+        shareSplitAmongInstances(split);
+      }
     }
   }
 
