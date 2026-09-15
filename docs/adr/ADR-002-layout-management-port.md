@@ -921,8 +921,8 @@ engine renders the `visibleRootOf` projection, Dockview replays
 TWINS grow the shared engine subset for the first time since the parity
 freeze. The View menu in the app head is the user surface on both clients.
 
-**Phase 4 (chart instances) built 2026-09-14, pending the user's acceptance
-(PR #738)** — the workstream's second layer-2 lift: `LayoutState.instances`
+**Phase 4 (chart instances) shipped 2026-09-15 (PR #738), user-accepted** —
+the workstream's second layer-2 lift: `LayoutState.instances`
 (client-core, additive `workspaceLayoutV1` field beside `closed`) backs a
 per-symbol equities chart panel (`eq-chart:<symbol>`, capped at 4 per tab),
 opened from a watchlist row affordance, closed from its own head's close
