@@ -2147,6 +2147,240 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
   });
 });
 
+describe("unpinned dynamic panels share their split (R17)", () => {
+  // Instances get their design width; when there isn't room, instances and
+  // the main area share equally. Pinned children (the 290px rail, a Jarvis
+  // dock) and strips are never resized. Measured on the REAL equities seed
+  // at the visual host's dock widths (1920 viewport → 1907, 1440 → 1427),
+  // where jsdom reproduces the visual host's geometry exactly.
+  const EQUITIES_LIKE = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.78, 0.22],
+    initialPx: [undefined, 290],
+    children: [
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.66, 0.34],
+        children: [
+          { kind: "panel", panelId: "eq-chart" },
+          { kind: "panel", panelId: "eq-blotter" },
+        ],
+      },
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "eq-ticket" },
+          { kind: "panel", panelId: "eq-watchlist" },
+        ],
+      },
+    ],
+  } as const;
+  const RAIL_PX = 290;
+  const INSTANCES = ["i-aapl", "i-msft", "i-nvda", "i-tsla"].map((id) => {
+    return { id, initialPx: 360, unpinned: true };
+  });
+
+  it("1920, two instances opened together: the pinned picture (main 869, 360/360)", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    expectDockFilled(1907, ["eq-chart", "eq-ticket", "i-aapl", "i-msft"]);
+    engine.dispose();
+  });
+
+  it("1920, two instances opened one call apart: the same pinned picture, and neither is left min=max", async () => {
+    const engine = createDockEngine(equitiesAt(1907));
+    engine.addDynamicPanel(INSTANCES[0] as (typeof INSTANCES)[number]);
+    await nextMacrotask();
+    engine.addDynamicPanel(INSTANCES[1] as (typeof INSTANCES)[number]);
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+
+    for (const id of ["i-aapl", "i-msft"]) {
+      const [minimum, maximum] = widthClampOf(id);
+      expect(minimum).not.toBe(maximum);
+    }
+
+    engine.dispose();
+  });
+
+  it("1920, four instances: instances and main share equally, filling the dock exactly", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES,
+    });
+
+    expectEqualShares(ids, 4);
+    expect(cardWidths(["eq-ticket"])).toEqual([RAIL_PX]);
+    expectDockFilled(1907, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("1440, four instances: equal shares, nothing overflows the right edge", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    expectEqualShares(ids, 4);
+    expect(cardWidths(["eq-ticket"])).toEqual([RAIL_PX]);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("closing one of four instances re-shares the split among the remaining three", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.removeDynamicPanel("i-nvda");
+
+    expectEqualShares(ids, 3);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("a pinned Jarvis dock beside the instances keeps its design width and its pin", () => {
+    const opts = equitiesAt(1907);
+    const seen = trackLayout();
+    const engine = createDockEngine({
+      ...opts,
+      ...seen.options,
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 360 }, ...INSTANCES],
+    });
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+
+    expect(cardWidths(["panel-dyn-1"])).toEqual([360]);
+    expect(widthClampOf("panel-dyn-1")).toEqual([
+      360 + GROUP_GAP_PX,
+      360 + GROUP_GAP_PX,
+    ]);
+    expectEqualShares(ids, 4);
+    expectDockFilled(1907, ["eq-ticket", "panel-dyn-1", ...ids]);
+    touchContainer(opts.container);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["eq-ticket", "eq-watchlist"], px: RAIL_PX, axis: "width" },
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("a split with a pinned rail and a strip keeps both untouched while instances are equalised", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      ...strips.options,
+      seed: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.6, 0.2, 0.2],
+        initialPx: [undefined, 290, undefined],
+        children: [
+          EQUITIES_LIKE.children[0],
+          EQUITIES_LIKE.children[1],
+          { kind: "panel", panelId: "eq-news" },
+        ],
+      },
+    });
+
+    engine.collapsePanel("eq-news");
+    expect(strips.last).toEqual({ "eq-news": "vertical" });
+
+    for (const instance of INSTANCES) {
+      engine.addDynamicPanel(instance);
+    }
+
+    expect(cardWidths(["eq-ticket", "eq-news"])).toEqual([RAIL_PX, STRIP]);
+    expect(widthClampOf("eq-ticket")).toEqual([
+      RAIL_PX + GROUP_GAP_PX,
+      RAIL_PX + GROUP_GAP_PX,
+    ]);
+    expectEqualShares(ids, 4);
+    expectDockFilled(1907, ["eq-ticket", "eq-news", ...ids]);
+    engine.dispose();
+  });
+
+  function equitiesAt(dockWidth: number): DockEngineOptions {
+    return {
+      ...base(),
+      container: sizedContainer(dockWidth, 980),
+      seed: EQUITIES_LIKE,
+    };
+  }
+
+  /** Each panel's group card width (model − one gap) on the live engine. */
+  function cardWidths(panelIds: readonly string[]): readonly number[] {
+    return panelIds.map((panelId) => {
+      const panel = lastDockviewApi().getPanel(panelId);
+
+      if (panel === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return panel.group.api.width - GROUP_GAP_PX;
+    });
+  }
+
+  /** The root row's children (one representative panel each) fill the dock
+   * to the pixel — no overflow past the right edge, no gap. */
+  function expectDockFilled(
+    dockWidth: number,
+    rootChildPanelIds: readonly string[],
+  ): void {
+    const models = cardWidths(rootChildPanelIds).map((card) => {
+      return card + GROUP_GAP_PX;
+    });
+
+    expect(
+      models.reduce((sum, model) => {
+        return sum + model;
+      }, 0),
+    ).toBe(dockWidth);
+  }
+
+  /** Every instance sits at one share `w`; the main area (first id) holds
+   * `w` plus at most the integer remainder (fewer than `members` px). */
+  function expectEqualShares(
+    [mainId, ...instanceIds]: readonly string[],
+    instanceCount: number,
+  ): void {
+    expect(instanceIds).toHaveLength(instanceCount);
+    const [main = 0, ...instances] = cardWidths([mainId ?? "", ...instanceIds]);
+    const share = instances[0] ?? 0;
+
+    expect(share).toBeLessThan(360);
+    expect(instances).toEqual(
+      instances.map(() => {
+        return share;
+      }),
+    );
+    expect(main - share).toBeGreaterThanOrEqual(0);
+    expect(main - share).toBeLessThan(instanceCount + 1);
+  }
+});
+
 describe("dynamic-panel reconciliation at construction", () => {
   const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
 
@@ -2788,6 +3022,14 @@ function nextAnimationFrame(): Promise<void> {
     requestAnimationFrame(() => {
       resolve();
     });
+  });
+}
+
+/** Resolves after one macrotask — "one call apart", as a user's second click
+ * would be, so no same-tick state carries between two engine calls. */
+function nextMacrotask(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
   });
 }
 
