@@ -2471,9 +2471,82 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
-  it("R18 a plain maximize → exit and collapse → expand leave a user-resized instance alone", () => {
+  it("R19 maximize eq-chart (root) with two untouched instances → exit: the rule's picture, not a crushed last instance", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.exitMaximize();
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    expectDockFilled(1907, ["eq-chart", "eq-ticket", "i-aapl", "i-msft"]);
+    engine.dispose();
+  });
+
+  it("R19 maximize eq-chart (root) with four instances at 1440 → exit: equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 4);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R19 switch the maximize from eq-chart to an instance → exit: the rule's picture", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-chart");
+    engine.maximizePanel("i-aapl");
+    engine.exitMaximize();
+
+    expect(cardWidths(["eq-chart", "eq-ticket", "i-aapl", "i-msft"])).toEqual([
+      869,
+      RAIL_PX,
+      360,
+      360,
+    ]);
+    engine.dispose();
+  });
+
+  it("R19 maximize an instance (root scope) with four open → exit: equal shares", () => {
+    const ids = ["eq-chart", "i-aapl", "i-msft", "i-nvda", "i-tsla"];
+    const engine = createDockEngine({
+      ...equitiesAt(1427),
+      dynamicPanels: INSTANCES,
+    });
+
+    engine.maximizePanel("i-nvda");
+    engine.exitMaximize();
+
+    expectEqualShares(ids, 4);
+    expectDockFilled(1427, ["eq-ticket", ...ids]);
+    engine.dispose();
+  });
+
+  it("R19 a maximize that strips no instance, and a plain collapse → expand, leave a user-resized instance alone", () => {
+    // R19's narrower guarantee: only a maximize that STRIPS an instance owes
+    // a share. A nearest-column maximize of the rail's watchlist strips the
+    // ticket above it and nothing in the root row, so the dragged width
+    // survives; so does a collapse → expand with no instance opened/closed.
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      panels: { ...base().panels, maximizeScope: railColumnScope },
       dynamicPanels: INSTANCES.slice(0, 2),
     });
     const aapl = lastDockviewApi().getPanel("i-aapl");
@@ -2486,10 +2559,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     const dragged = cardWidths(["eq-chart", "i-aapl", "i-msft"]);
     expect(dragged[1]).toBe(500);
 
-    // Maximize an INSTANCE: its restore is exact on its own (a root
-    // eq-chart maximize is not — see the report's R18 finding on the world
-    // ledger), so any movement here could only come from a re-share.
-    engine.maximizePanel("i-msft");
+    engine.maximizePanel("eq-watchlist");
     engine.exitMaximize();
     expect(cardWidths(["eq-chart", "i-aapl", "i-msft"])).toEqual(dragged);
 

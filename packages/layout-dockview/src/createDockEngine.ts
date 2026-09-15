@@ -1720,6 +1720,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
 
         maximized = { panelId, stripped };
+
+        // R19: a maximize that STRIPS an unpinned instance owes its split a
+        // share on exit. It compensates for a known limitation of the strip
+        // restore: the pre-strip world ledger (worldAround /
+        // directMembersOf / settleStripFreeWorlds) records only the LEAF
+        // groups sitting directly in a split, never its branch children (the
+        // main column, the rail), so on exit the rail's restore from its bar
+        // takes its width out of the last instance (1136 · 290 · 360 · 93
+        // instead of 869 · 290 · 360 · 360). Pinned instances masked this —
+        // a min=max group cannot absorb. A maximize that strips no instance
+        // (e.g. a nearest-column one outside the instances' row) marks
+        // nothing, so a width the user dragged survives it.
+        for (const strippedId of stripped) {
+          if (unpinnedDynamicPanels.has(strippedId)) {
+            owedShareIds.add(strippedId);
+          }
+        }
+
         // After the strips are recorded (a pinned rail sibling's record
         // captures the pin, then is patched off it) and before settleStrips
         // clamps the bars — whose freed space the maximized group can only
